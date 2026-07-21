@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import AppTextField from "@/@core/components/app-form-elements/AppTextField.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
@@ -24,7 +24,7 @@ const isLoadingFilters = ref(false);
 const isAdvancedFiltersVisible = ref(false);
 
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => (brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket'));
+const isRestaurant = computed(() => false);
 
 // Degradado dinámico igual que el login: secondary (inicio) → primary (fin)
 const headerGradient = computed(() => {

@@ -9,19 +9,13 @@ import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { useSupplierConnectionStore } from "@/stores/supplierConnection";
 import Swal from "sweetalert2";
-import { onMounted, ref, watch, computed } from "vue";
+import { onMounted, onUnmounted, ref, watch, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
-import { useBrandingStore } from "@/stores/useBrandingStore";
-
 const authStore = useAuthStore();
-const brandingStore = useBrandingStore();
 const suppliers = ref([]);
 const totalSupplier = ref(0);
 const loading = ref(false);
-
-// Tipo de negocio es restaurante
-const isRestaurant = computed(() => (brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket'));
 
 const page = ref(1);
 const itemsPerPage = ref(10);
@@ -30,7 +24,7 @@ const orderBy = ref();
 const searchQuery = ref("");
 const debtFilter = ref(null);
 const minScore = ref(null);
-const typeFilter = ref((brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket') ? null : "drogueria");
+const typeFilter = ref(null);
 
 const stats = ref({
   total_debt: 0,
@@ -189,7 +183,7 @@ const handleSort = (sortOptions) => {
 };
 
 const handleAddSupplier = (type = "drogueria") => {
-  currentSupplier.value = { type: isRestaurant.value ? "externo" : type };
+  currentSupplier.value = { type };
   supplierFormErrors.value = {};
   isEditDialogVisible.value = true;
 };
@@ -377,6 +371,12 @@ const updateTableOptions = (options) => {
     orderBy.value = options.sortBy[0]?.order;
   }
 };
+
+onUnmounted(() => {
+  if (debounceTimer) {
+    clearTimeout(debounceTimer);
+  }
+});
 </script>
 
 <template>

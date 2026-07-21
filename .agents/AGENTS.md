@@ -34,7 +34,6 @@
 ## 5. CONTROL DE COMPILACIÓN Y ASSETS
 - **ESTRICTO:** No ejecutar comandos de compilación o instalación de paquetes como `npm run build`, `npm run dev`, `npm install`, `pnpm build`, `pnpm dev` o `pnpm install` bajo ninguna circunstancia, a menos que el usuario lo solicite de manera explícita y directa en su mensaje.
 
-## 6. INICIALIZACIÓN DE CONTEXTO (ERP FARMACIAS)
-- **Inicio de Chat:** Al iniciar cada chat en este proyecto, preguntar inmediatamente en qué tipo de negocio se va a trabajar y si los cambios serán exclusivos de ese tipo de negocio.
-- **Cambio Automático de Base de Datos:** Una vez que el usuario indique el negocio, proceder de forma automática a modificar/configurar la base de datos correspondiente en el archivo `.env` del proyecto.
-
+## 6. REESCRITURA DE PROMPTS Y EJECUCIÓN DIRECTA
+- **Reescritura del Prompt:** Optimiza la petición del usuario redactándola de forma precisa, clara y estructurada como un parámetro de comportamiento de IA.
+- **Ejecución Directa:** Responde inmediatamente a la solicitud del usuario aplicando la versión optimizada que acabas de generar.

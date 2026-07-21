@@ -9,6 +9,7 @@ import axios from "@/plugins/axios";
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { toast } from "@/plugins/sweetalert";
 import { useQuotationClient } from "@/composables/useQuotationClient";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 
 const {
   selectedClient,
@@ -99,8 +100,30 @@ const laboratories = ref([]);
 const origins = ref([]);
 const selectedGroupId = ref(null);
 
-const isLoadingFilters = ref(false);
-const selectedDisplayCurrency = ref("COP");
+const brandingStore = useBrandingStore();
+
+const availableCurrencies = computed(() => {
+  const defaults = ["USD", "BS", "COP"];
+  const configured = brandingStore.settings?.tpv_payment_methods;
+  if (!configured) return defaults;
+  return defaults.filter(currency => configured[currency] && configured[currency].enabled !== false);
+});
+
+const defaultCurrency = computed(() => {
+  return brandingStore.settings?.default_currency || "USD";
+});
+
+const selectedDisplayCurrency = ref(defaultCurrency.value);
+
+watch(
+  defaultCurrency,
+  (newVal) => {
+    if (newVal && availableCurrencies.value.includes(newVal)) {
+      selectedDisplayCurrency.value = newVal;
+    }
+  },
+  { immediate: true }
+);
 
 const quotationDetails = ref(null);
 const isPrinting = ref(false);
@@ -507,12 +530,15 @@ const filteredDishes = computed(() => {
   return list;
 });
 
+const enableDishes = ref(false);
+
 const fetchGeneralSettings = async () => {
   try {
     const { data } = await axios.get("/general-settings");
     const settings = data.data || data;
-    isRestaurant.value = settings.business_type === "restaurant";
-    if (isRestaurant.value) {
+    enableDishes.value = settings.enable_dishes !== undefined ? !!settings.enable_dishes : true;
+    isRestaurant.value = settings.quotation_style === "restaurant";
+    if (isRestaurant.value && enableDishes.value) {
       activeTab.value = "menu";
     }
   } catch (error) {
@@ -522,6 +548,9 @@ const fetchGeneralSettings = async () => {
 };
 
 const fetchDishes = async () => {
+  // Solo cargar platos si el interruptor "Habilitar Platos" está activo en la configuración
+  if (!enableDishes.value) return;
+
   dishesLoading.value = true;
   try {
     const { data } = await axios.get("/dishes", {
@@ -530,22 +559,10 @@ const fetchDishes = async () => {
     dishes.value = Array.isArray(data.data) ? data.data : data;
   } catch (error) {
     console.error("[TPV] Error al cargar platos:", error);
-    toast.error("Error al cargar el menú de platos.");
   } finally {
     dishesLoading.value = false;
   }
 };
-
-watch(activeTab, (val) => {
-  if (val === "menu" && dishes.value.length === 0) {
-    fetchDishes();
-  }
-});
-
-watch(filterSearchQuery, (val) => {
-  dishFilterQuery.value = val;
-  fetchDishes();
-});
 
 onMounted(async () => {
   await fetchGeneralSettings();

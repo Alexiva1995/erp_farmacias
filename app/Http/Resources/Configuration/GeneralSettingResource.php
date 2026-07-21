@@ -14,6 +14,46 @@ class GeneralSettingResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $defaultPaymentMethods = [
+            'COP' => [
+                'enabled' => true,
+                'methods' => [
+                    ['label' => 'Efectivo', 'value' => 'cash', 'enabled' => true, 'description' => 'Pago directo en pesos COP en caja.'],
+                    ['label' => 'Transferencia', 'value' => 'bank_transfer', 'enabled' => true, 'description' => 'Bancolombia Cuenta Ahorros: 123-456789-01.'],
+                    ['label' => 'Tarjeta Débito/Crédito', 'value' => 'card', 'enabled' => true, 'description' => 'Punto de venta físico en tienda.'],
+                ]
+            ],
+            'USD' => [
+                'enabled' => true,
+                'methods' => [
+                    ['label' => 'Efectivo', 'value' => 'cash', 'enabled' => true, 'description' => 'Pago en dólares en efectivo (billetes en buen estado).'],
+                    ['label' => 'Binance Pay', 'value' => 'binance', 'enabled' => true, 'description' => 'Pay ID: 987654321.'],
+                    ['label' => 'PayPal', 'value' => 'paypal', 'enabled' => true, 'description' => 'Correo: pagos@tova.com (sumar comisión del 5%).'],
+                    ['label' => 'Zelle', 'value' => 'zelle', 'enabled' => true, 'description' => 'Correo: zelle@tova.com - Titular: Tova Group.'],
+                    ['label' => 'Transferencia', 'value' => 'bank_transfer', 'enabled' => true, 'description' => 'Bank of America Ruta: 026009593 - Cuenta: 987654321.'],
+                    ['label' => 'Venta a Crédito', 'value' => 'credit', 'enabled' => true, 'description' => 'Límite de crédito sujeto a aprobación previa.'],
+                ]
+            ],
+            'BS' => [
+                'enabled' => true,
+                'methods' => [
+                    ['label' => 'Efectivo Bs', 'value' => 'cash_bs', 'enabled' => true, 'description' => 'Efectivo en Bolívares en caja.'],
+                    ['label' => 'Pago Móvil', 'value' => 'mobile_payment', 'enabled' => true, 'description' => 'Banco: 0102 - Teléfono: 0414-1234567 - RIF: J-12345678-0.'],
+                    ['label' => 'Tarjeta de Débito', 'value' => 'debit_card', 'enabled' => true, 'description' => 'Punto de venta débito nacional.'],
+                    ['label' => 'Tarjeta de Crédito', 'value' => 'credit_card', 'enabled' => true, 'description' => 'Punto de venta crédito nacional.'],
+                    ['label' => 'Transferencia Bs', 'value' => 'bank_transfer_bs', 'enabled' => true, 'description' => 'Banco de Venezuela Cuenta Corriente: 0102-XXXX-XX-XXXXXXXXXX.'],
+                ]
+            ]
+        ];
+
+        $paymentMethods = $this->tpv_payment_methods;
+        if (is_string($paymentMethods)) {
+            $paymentMethods = json_decode($paymentMethods, true);
+        }
+        if (empty($paymentMethods)) {
+            $paymentMethods = $defaultPaymentMethods;
+        }
+
         return [
             'id' => $this->id,
             'fiscal_mode' => $this->fiscal_mode,
@@ -64,7 +104,22 @@ class GeneralSettingResource extends JsonResource
             'enable_optimization' => (bool) ($this->enable_optimization ?? true),
             'traceability_mode' => $this->traceability_mode ?? 'units',
             'enable_dishes' => (bool) ($this->enable_dishes ?? true),
+            'enable_quotations' => (bool) ($this->enable_quotations ?? true),
+            'quotation_style' => $this->quotation_style ?? 'pharmacy',
+            'tpv_style' => $this->tpv_style ?? 'pharmacy',
+            'enable_flash_checkout' => (bool) $this->enable_flash_checkout,
+            'tpv_payment_methods' => $paymentMethods,
+            'tpv_rate_type' => $this->tpv_rate_type ?? 'bcv',
+            'enabled_offer_types' => $this->enabled_offer_types ?? ['general', 'individual', 'category', 'pack', 'company', 'doctor', 'prescription', 'expiration'],
+            'enabled_crm_views' => $this->enabled_crm_views ?? ['clients', 'companies', 'doctors', 'lottery'],
+            'enabled_rrhh_views' => $this->enabled_rrhh_views ?? ['employees', 'social_benefits', 'resignations', 'cleaning', 'laboratory', 'product', 'employee_task', 'employee_month'],
+            'enabled_supplier_views' => $this->enabled_supplier_views ?? ['list', 'purchase_orders'],
+            'enabled_supplier_types' => $this->enabled_supplier_types ?? ['inventory', 'expenses'],
+            'supplier_form_fields' => $this->supplier_form_fields ?? ['name', 'social_reason', 'rif', 'address', 'sales_phone', 'collections_phone', 'payment_due_type', 'invoice_date_reference', 'custom_due_days', 'payment_due_reference', 'payment_method', 'is_indexed', 'logistics_dispatch'],
+            'expense_supplier_form_fields' => $this->expense_supplier_form_fields ?? ['name', 'rif', 'address', 'sales_phone', 'payment_method', 'is_indexed'],
             'product_form_fields' => $this->product_form_fields ?? null,
+            'enabled_finance_views' => $this->enabled_finance_views ?? ['profitability', 'exchangerate', 'pending-payments', 'payment-history', 'cashout', 'payslips', 'cash-closure', 'cash-closure-user', 'income-statement', 'expense-expenses', 'balance-general', 'furnitures-list', 'loans-list'],
+            'profitability_calculation_type' => $this->profitability_calculation_type ?? 'simple',
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

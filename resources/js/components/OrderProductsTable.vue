@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { formatCurrency } from "@/utils/currencyFormatter";
 import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
 import axios from "@/plugins/axios";
@@ -6,7 +6,7 @@ import { computed, ref, watch, onMounted } from "vue";
 import { useBrandingStore } from "@/stores/useBrandingStore";
 
 const brandingStore = useBrandingStore();
-const isSportsRental = computed(() => brandingStore.settings?.business_type === 'sports_rental');
+const isSportsRental = computed(() => false);
 
 const props = defineProps({
   products: { type: Array, required: true },

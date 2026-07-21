@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
 import TraceabilityMovementDetailsDialog from "@/components/dialogs/TraceabilityMovementDetailsDialog.vue";
 import { useBrandingStore } from "@/stores/useBrandingStore";
@@ -6,7 +6,7 @@ import { formatDateSimple } from "@/utils/formatters";
 import { computed, ref } from "vue";
 
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => (brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket'));
+const isRestaurant = computed(() => false);
 
 const props = defineProps({
   sales: { type: Array, required: true },

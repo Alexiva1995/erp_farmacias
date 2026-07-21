@@ -182,8 +182,8 @@ class EcommerceController extends Controller
             'customer_document_number' => 'nullable|string|max:50',
             'payment_proof'            => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
             'items'                    => 'required|array|min:1',
-            'items.*.product_id'       => 'required|integer|exists:products,id',
-            'items.*.variant_id'       => 'nullable|integer|exists:product_variants,id',
+            'items.*.product_id'       => 'required|integer',
+            'items.*.variant_id'       => 'nullable|integer',
             'items.*.quantity'         => 'required|integer|min:1',
         ]);
 
@@ -351,10 +351,10 @@ class EcommerceController extends Controller
                     ->where('id', $id)
                     ->update(['status' => 'Paid', 'updated_at' => now()]);
 
-                // Marcar la orden TPV vinculada como cerrada (venta confirmada)
+                // Marcar la orden TPV vinculada como completada (venta confirmada)
                 if (!empty($ecommerceOrder->tpv_order_id)) {
                     \App\Models\Order::where('id', $ecommerceOrder->tpv_order_id)
-                        ->update(['status' => 'closed']);
+                        ->update(['status' => 'Completed']);
                 }
 
                 return response()->json([
@@ -488,11 +488,11 @@ class EcommerceController extends Controller
                     ->where('id', $id)
                     ->update(['status' => 'Completed', 'updated_at' => now()]);
 
-                // Marcar la orden TPV como cerrada si aún está pendiente
+                // Marcar la orden TPV como completada si aún está pendiente
                 if (!empty($ecommerceOrder->tpv_order_id)) {
                     \App\Models\Order::where('id', $ecommerceOrder->tpv_order_id)
-                        ->whereNotIn('status', ['closed', 'cancelled'])
-                        ->update(['status' => 'closed']);
+                        ->whereNotIn('status', ['Completed', 'cancelled'])
+                        ->update(['status' => 'Completed']);
                 }
 
                 return response()->json([
@@ -517,6 +517,7 @@ class EcommerceController extends Controller
     private function consolidateOrder(object $ecommerceOrder): int
     {
         $id = $ecommerceOrder->id;
+        $isRestaurant = \App\Models\GeneralSetting::first()?->business_type === 'restaurant';
 
         // Evitar duplicar si ya fue consolidada previamente
         if (!empty($ecommerceOrder->tpv_order_id)) {
@@ -644,6 +645,7 @@ class EcommerceController extends Controller
             'currency'        => $currency,                  // Moneda del cliente
             'total_cost'      => $totalCost,
             'taxable_base'    => $amountInPaymentCurrency,
+            'money_returns'   => 0.00,
             'order_date'      => now(),
             'status'          => 'pending',                  // Pendiente hasta que el admin apruebe
             'payment_methods' => $paymentMethods,

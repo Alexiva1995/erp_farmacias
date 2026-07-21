@@ -39,8 +39,13 @@ class ModuleServiceProvider extends ServiceProvider
      */
     private function getEnabledModules(): array
     {
-        $modulesString = env('ENABLED_MODULES', 'pharmacy'); // Por defecto habilitamos pharmacy para evitar romper el flujo actual
-        return array_map('trim', explode(',', strtolower($modulesString)));
+        $modulesString = env('ENABLED_MODULES');
+        if (empty($modulesString)) {
+            $modulesString = 'pharmacy,restaurant,lottery,reservation,sports_rental,minimarket';
+        } else {
+            $modulesString .= ',pharmacy,restaurant,lottery,reservation,sports_rental,minimarket';
+        }
+        return array_unique(array_map('trim', explode(',', strtolower($modulesString))));
     }
 
     /**

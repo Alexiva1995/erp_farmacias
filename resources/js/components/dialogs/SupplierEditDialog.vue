@@ -14,8 +14,21 @@ const props = defineProps({
 
 const emit = defineEmits(["update:modelValue", "save", "clearErrors"]);
 
-// Tipo de negocio es restaurante
-const isRestaurant = computed(() => (brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket'));
+const isRestaurant = computed(() => false);
+
+// Proveedor de tipo gasto (formulario simplificado)
+const isExpenseSupplier = computed(() => formData.value.type === 'gasto');
+
+// Determina visibilidad de campo según tipo de proveedor
+const isFieldVisible = (fieldKey) => {
+  if (isExpenseSupplier.value) {
+    // Campos para proveedor de gastos
+    const expenseFields = brandingStore.settings.expense_supplier_form_fields;
+    return !expenseFields || expenseFields.includes(fieldKey);
+  }
+  // Campos para proveedor normal
+  return !brandingStore.settings.supplier_form_fields || brandingStore.settings.supplier_form_fields.includes(fieldKey);
+};
 
 // ─── Estado ────────────────────────────────────────────────────────────────
 const activeTab = ref(0);
@@ -203,10 +216,12 @@ watch(
   <VDialog
     :model-value="props.modelValue"
     max-width="700px"
+    :max-height="'90vh'"
     persistent
+    scrollable
     @update:model-value="closeDialog"
   >
-    <VCard class="detail-dialog-card overflow-hidden border-0 elevation-12">
+    <VCard class="detail-dialog-card border-0 elevation-12 d-flex flex-column" style="max-height: 90vh;">
       <!-- Cabecera Premium -->
       <VCardTitle class="pa-0">
         <div class="header-gradient pa-4 d-flex align-center shadow-sm">
@@ -250,7 +265,7 @@ watch(
       <VDivider />
 
       <!-- Contenido con Tabs -->
-      <VCardText class="pa-0 bg-light">
+      <VCardText class="pa-0 bg-light flex-grow-1 overflow-hidden d-flex flex-column">
         <VTabs
           v-if="!isRestaurant"
           v-model="activeTab"
@@ -263,13 +278,13 @@ watch(
             <VIcon icon="tabler-info-circle" size="18" class="me-2" />
             Información General
           </VTab>
-          <VTab v-if="formData.type !== 'externo'" :value="1" class="text-xs font-weight-black uppercase letter-spacing-1">
+          <VTab v-if="isFieldVisible('logistics_dispatch')" :value="1" class="text-xs font-weight-black uppercase letter-spacing-1">
             <VIcon icon="tabler-truck" size="18" class="me-2" />
             Logística y Despacho
           </VTab>
         </VTabs>
 
-        <div class="pa-4 pa-sm-6 overflow-y-auto" style="max-block-size: 70vh;">
+        <div class="pa-4 pa-sm-6 overflow-y-auto flex-grow-1">
           <VForm @submit.prevent="submitForm">
             <VWindow v-model="activeTab" class="overflow-visible">
               <!-- Tab 1: General -->
@@ -283,7 +298,7 @@ watch(
                     </div>
 
                     <VRow dense>
-                      <VCol cols="12" md="6">
+                      <VCol cols="12" md="6" v-if="isFieldVisible('name')">
                         <AppTextField
                           v-model="formData.name"
                           label="Nombre Comercial *"
@@ -294,7 +309,7 @@ watch(
                           :readonly="!authStore.isAdmin"
                         />
                       </VCol>
-                      <VCol cols="12" md="6">
+                      <VCol cols="12" md="6" v-if="isFieldVisible('social_reason')">
                         <AppTextField
                           v-model="formData.social_reason"
                           :label="'Razón Social' + ((isRestaurant || formData.type !== 'externo') ? '' : ' *')"
@@ -305,7 +320,7 @@ watch(
                           :readonly="!authStore.isAdmin"
                         />
                       </VCol>
-                      <VCol cols="12" md="5">
+                      <VCol cols="12" md="5" v-if="isFieldVisible('rif')">
                         <AppTextField
                           v-model="formData.rif"
                           :label="'RIF' + (isRestaurant ? '' : ' *')"
@@ -316,7 +331,7 @@ watch(
                           :readonly="!authStore.isAdmin"
                         />
                       </VCol>
-                      <VCol cols="12" md="7">
+                      <VCol cols="12" md="7" v-if="isFieldVisible('address')">
                         <AppTextField
                           v-model="formData.address"
                           :label="'Dirección Fiscal' + ((isRestaurant || formData.type !== 'externo') ? '' : ' *')"
@@ -338,7 +353,7 @@ watch(
                     </div>
 
                     <VRow dense>
-                      <VCol cols="12" md="6">
+                      <VCol cols="12" md="6" v-if="isFieldVisible('sales_phone')">
                         <AppTextField
                           v-model="formData.sales_phone"
                           label="Teléfono Ventas"
@@ -350,7 +365,7 @@ watch(
                           :readonly="!authStore.isAdmin"
                         />
                       </VCol>
-                      <VCol cols="12" md="6">
+                      <VCol cols="12" md="6" v-if="isFieldVisible('collections_phone')">
                         <AppTextField
                           v-model="formData.collections_phone"
                           label="Teléfono Cobranza"
@@ -363,7 +378,7 @@ watch(
                         />
                       </VCol>
 
-                      <VCol cols="12" md="6">
+                      <VCol cols="12" md="6" v-if="isFieldVisible('payment_due_type')">
                         <AppSelect
                           v-model="formData.payment_due_type"
                           :items="[
@@ -378,9 +393,9 @@ watch(
                           :readonly="!authStore.isAdmin"
                         />
                       </VCol>
-                      <VCol cols="12" md="6">
+                      <VCol cols="12" md="6" v-if="isFieldVisible('invoice_date_reference') || isFieldVisible('custom_due_days') || isFieldVisible('payment_due_reference')">
                         <AppSelect
-                          v-if="formData.payment_due_type === 'invoice_date'"
+                          v-if="formData.payment_due_type === 'invoice_date' && isFieldVisible('invoice_date_reference')"
                           v-model="formData.invoice_date_reference"
                           :items="[
                             { title: 'Fecha Recibo', value: 'receipt_date' },
@@ -394,7 +409,7 @@ watch(
                           :readonly="!authStore.isAdmin"
                         />
                         <AppTextField
-                          v-else-if="formData.payment_due_type === 'custom'"
+                          v-else-if="formData.payment_due_type === 'custom' && isFieldVisible('custom_due_days')"
                           v-model.number="formData.custom_due_days"
                           label="Días Plazo"
                           type="number"
@@ -404,7 +419,7 @@ watch(
                           :readonly="!authStore.isAdmin"
                         />
                         <AppSelect
-                          v-else-if="formData.payment_due_type === 'early_payment'"
+                          v-else-if="formData.payment_due_type === 'early_payment' && isFieldVisible('payment_due_reference')"
                           v-model="formData.payment_due_reference"
                           :items="[
                             { title: 'Fecha Emisión', value: 'issue_date' },
@@ -419,12 +434,13 @@ watch(
                       </VCol>
                     </VRow>
 
-                    <div class="d-flex align-center flex-wrap gap-4 py-3 px-4 border rounded-lg bg-var-theme-background mt-4 border-dashed">
-                      <div class="d-flex align-center gap-2">
+                    <div v-if="isFieldVisible('payment_method') || isFieldVisible('is_indexed')" class="d-flex align-center flex-wrap gap-4 py-3 px-4 border rounded-lg bg-var-theme-background mt-4 border-dashed">
+                      <div v-if="isFieldVisible('payment_method')" class="d-flex align-center gap-2">
                         <VIcon icon="tabler-coin" size="16" color="primary" />
                         <span class="text-xs font-weight-black text-uppercase text-disabled letter-spacing-1">Moneda:</span>
                       </div>
                       <VRadioGroup
+                        v-if="isFieldVisible('payment_method')"
                         v-model="formData.payment_method"
                         density="compact"
                         hide-details
@@ -439,8 +455,9 @@ watch(
                           class="me-2"
                         />
                       </VRadioGroup>
-                      <VDivider vertical class="mx-2 hidden-sm-and-down" />
+                      <VDivider v-if="isFieldVisible('payment_method') && isFieldVisible('is_indexed')" vertical class="mx-2 hidden-sm-and-down" />
                       <VCheckbox
+                        v-if="isFieldVisible('is_indexed')"
                         v-model="formData.is_indexed"
                         label="Indexar (USD)"
                         color="primary"
@@ -454,7 +471,7 @@ watch(
               </VWindowItem>
 
               <!-- Tab 2: Logística -->
-              <VWindowItem v-if="!isRestaurant" :value="1">
+              <VWindowItem v-if="isFieldVisible('logistics_dispatch')" :value="1">
                 <div class="d-flex flex-column gap-6">
                   <VCard variant="flat" class="border pa-4 bg-white rounded-lg">
                     <div class="d-flex align-center gap-2 mb-4">

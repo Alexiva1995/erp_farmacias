@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
 import { useBrandingStore } from "@/stores/useBrandingStore";
 import { useDisplay } from 'vuetify';
@@ -8,7 +8,7 @@ import axios from 'axios';
 import Swal from 'sweetalert2';
 
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => (brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket'));
+const isRestaurant = computed(() => false);
 
 const props = defineProps({
   grupos: { type: Array, required: true },         // Array de { group_id, group_name, productos }

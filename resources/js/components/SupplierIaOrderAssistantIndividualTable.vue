@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
 import { useBrandingStore } from "@/stores/useBrandingStore";
 
@@ -11,7 +11,7 @@ import { useDebounceFn } from '@vueuse/core';
 import Swal from 'sweetalert2';
 
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => (brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket'));
+const isRestaurant = computed(() => false);
 
 const props = defineProps({
   products: { type: Array, required: true },

@@ -28,6 +28,11 @@ async function startApp() {
 
     registerPlugins(app)
 
+    app.config.warnHandler = (msg, instance, trace) => {
+      if (msg.includes('<Suspense>') || msg.includes('Suspense is an experimental feature')) return;
+      console.warn(`[Vue warn]: ${msg}`, trace);
+    };
+
     app.config.errorHandler = (err, instance, info) => {
       console.error("¡ERROR CAPTURADO POR VUE GLOBAL!", err);
       console.log("Instancia donde ocurrió:", instance);

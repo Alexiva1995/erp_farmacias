@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 // Filtros para conteo cíclico de inventario
 import AppFilterBase from "@/components/AppFilterBase.vue";
 import { useAuthStore } from "@/stores/auth";
@@ -25,7 +25,7 @@ const emit = defineEmits([
 ]);
 
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => (brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket'));
+const isRestaurant = computed(() => false);
 
 const sortOptions = computed(() => [
   { title: "Producto (A-Z)",         icon: "tabler-sort-ascending-letters",  key: "product.name",    order: "asc"  },

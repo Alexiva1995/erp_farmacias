@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { useBrandingStore } from "@/stores/useBrandingStore";
 import { computed } from "vue";
 
@@ -17,7 +17,7 @@ const emits = defineEmits([
 ]);
 
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => (brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket'));
+const isRestaurant = computed(() => false);
 
 const headers = [
   { title: "ID", key: "product_id", align: "center", width: "80px" },

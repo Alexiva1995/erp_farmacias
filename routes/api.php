@@ -106,16 +106,16 @@ Route::get("/public/suppliers/upload/{token}", [SupplierPublicUploadController::
 Route::post("/public/suppliers/upload/{token}", [SupplierPublicUploadController::class, "upload"]);
 Route::get("/public/orders/{hash}", [SupplierOrderResponseController::class, "show"]);
 Route::post("/public/orders/{hash}/respond", [SupplierOrderResponseController::class, "respond"]);
-Route::middleware('module:reservation')->group(function () {
-    Route::post("/public/reservations/webhook", [\App\Http\Controllers\Api\ReservationController::class, "webhook"]);
-    Route::get("/public/reservations/confirm-direct/{id}", [\App\Http\Controllers\Api\ReservationController::class, "confirmDirect"]);
-    Route::get("/public/reservations", [\App\Http\Controllers\Api\ReservationController::class, "index"]);
-    Route::post("/public/reservations", [\App\Http\Controllers\Api\ReservationController::class, "store"]);
-    Route::get("/public/reservations/search-to-cancel", [\App\Http\Controllers\Api\ReservationController::class, "searchToCancel"]);
-    Route::post("/public/reservations/{id}/request-cancellation", [\App\Http\Controllers\Api\ReservationController::class, "requestCancellation"]);
-    Route::get("/public/reservations/{id}/confirm-cancellation", [\App\Http\Controllers\Api\ReservationController::class, "confirmCancellationByAdmin"]);
-    Route::patch("/public/reservations/{id}/confirm", [\App\Http\Controllers\Api\ReservationController::class, "publicConfirm"]);
-});
+
+Route::post("/public/reservations/webhook", [\App\Http\Controllers\Api\ReservationController::class, "webhook"]);
+Route::get("/public/reservations/confirm-direct/{id}", [\App\Http\Controllers\Api\ReservationController::class, "confirmDirect"]);
+Route::get("/public/reservations", [\App\Http\Controllers\Api\ReservationController::class, "index"]);
+Route::post("/public/reservations", [\App\Http\Controllers\Api\ReservationController::class, "store"]);
+Route::get("/public/reservations/search-to-cancel", [\App\Http\Controllers\Api\ReservationController::class, "searchToCancel"]);
+Route::post("/public/reservations/{id}/request-cancellation", [\App\Http\Controllers\Api\ReservationController::class, "requestCancellation"]);
+Route::get("/public/reservations/{id}/confirm-cancellation", [\App\Http\Controllers\Api\ReservationController::class, "confirmCancellationByAdmin"]);
+Route::patch("/public/reservations/{id}/confirm", [\App\Http\Controllers\Api\ReservationController::class, "publicConfirm"]);
+
 Route::post("/public/telegram/webhook", [\App\Http\Controllers\Api\TelegramWebhookController::class, "handle"]);
 Route::get("/public/clients/identification/{identification}", [\App\Http\Controllers\Api\ClientController::class, "consultByIdentification"]);
 Route::post("/public/visits", [\App\Http\Controllers\Api\BookingVisitController::class, "store"]);
@@ -140,15 +140,13 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
 
 // Rutas protegidas que requieren autenticación (Sanctum)
 Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
-    Route::middleware('module:reservation')->group(function () {
-        Route::get('/reservations', [\App\Http\Controllers\Api\ReservationController::class, 'index']);
-        Route::post('/reservations', [\App\Http\Controllers\Api\ReservationController::class, 'store']);
-        Route::patch('/reservations/{id}/status', [\App\Http\Controllers\Api\ReservationController::class, 'updateStatus']);
-        Route::delete('/reservations/{id}', [\App\Http\Controllers\Api\ReservationController::class, 'destroy']);
-        Route::post('/fixed-schedules', [\App\Http\Controllers\Api\FixedScheduleController::class, 'store']);
-        Route::put('/fixed-schedules/{id}', [\App\Http\Controllers\Api\FixedScheduleController::class, 'update']);
-        Route::delete('/fixed-schedules/{id}', [\App\Http\Controllers\Api\FixedScheduleController::class, 'destroy']);
-    });
+    Route::get('/reservations', [\App\Http\Controllers\Api\ReservationController::class, 'index']);
+    Route::post('/reservations', [\App\Http\Controllers\Api\ReservationController::class, 'store']);
+    Route::patch('/reservations/{id}/status', [\App\Http\Controllers\Api\ReservationController::class, 'updateStatus']);
+    Route::delete('/reservations/{id}', [\App\Http\Controllers\Api\ReservationController::class, 'destroy']);
+    Route::post('/fixed-schedules', [\App\Http\Controllers\Api\FixedScheduleController::class, 'store']);
+    Route::put('/fixed-schedules/{id}', [\App\Http\Controllers\Api\FixedScheduleController::class, 'update']);
+    Route::delete('/fixed-schedules/{id}', [\App\Http\Controllers\Api\FixedScheduleController::class, 'destroy']);
 
     Route::get('/general-settings', [GeneralSettingController::class, 'index']);
     Route::post('/import-csv', [\App\Http\Controllers\Api\DataImportController::class, 'importCsv']);
@@ -239,9 +237,7 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
     Route::post("/origins", [ResourceController::class, "storeOrigin"]);
     Route::get("/categories", [ResourceController::class, "getCategories"]);
     Route::apiResource("locations", LocationController::class);
-    Route::middleware('module:restaurant')->group(function () {
-        Route::apiResource("dishes", DishController::class);
-    });
+    Route::apiResource("dishes", DishController::class);
     Route::get("/suppliers", [ResourceController::class, "getSuppliers"]);
     Route::get("/products/all", [ResourceController::class, "getAllProducts"]);
     Route::get("/barcode/{barcode}", [ResourceController::class, "findProductByBarcode"]);
@@ -459,7 +455,6 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
 
     // Rutas de CRM
     Route::prefix("crm")->group(function () {
-        Route::middleware('module:pharmacy')->group(function () {
             Route::prefix("doctors")->group(function () {
                 Route::post("/", [DoctorController::class, "create"]);
                 Route::post("/edit/{id}", [DoctorController::class, "edit"]);
@@ -475,7 +470,6 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
             Route::prefix("specialties")->group(function () {
                 Route::get("/", [SpecialtyController::class, "index"]);
             });
-        });
 
         Route::prefix("companies")->group(function () {
             Route::post("/", [CompanyController::class, "create"]);
@@ -506,11 +500,9 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
             Route::post("/bulk-cne-verify", [ClientController::class, "bulkVerifyCne"]);
         });
 
-        Route::middleware('module:lottery')->group(function () {
-            Route::prefix("lottery")->group(function () {
-                Route::post("/filtrar-ordenes-sin-paginar", [LotteryController::class, "filtrarOrdenesWithoutPaginate"]);
-                Route::post("/filtrar-ordenes", [LotteryController::class, "filtrarOrdenesPaginate"]);
-            });
+        Route::prefix("lottery")->group(function () {
+            Route::post("/filtrar-ordenes-sin-paginar", [LotteryController::class, "filtrarOrdenesWithoutPaginate"]);
+            Route::post("/filtrar-ordenes", [LotteryController::class, "filtrarOrdenesPaginate"]);
         });
     });
 

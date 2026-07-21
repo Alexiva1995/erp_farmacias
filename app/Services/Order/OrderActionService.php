@@ -1474,7 +1474,7 @@ class OrderActionService
                 $productLot->increment('quantity', $item->quantity);
                 
                 // Sincronizar stock del producto
-                $totalStock = $item->product->lots()->sum('quantity');
+                $totalStock = (float) ($item->product->lots()->sum('quantity') ?? 0);
                 $item->product->updateQuietly(['stock' => $totalStock]);
                 \App\Services\Inventory\StockoutService::syncStockout($item->product, $totalStock);
 
@@ -1605,7 +1605,32 @@ class OrderActionService
             }
         }
 
-        // 3. Procesar Precio Fijo (fixed_price) primero, ya que altera el precio base del ítem
+        // 3. Procesar Oferta General (% de descuento a todos los productos / por categoría)
+        $generalPromos = $promotions->where('type', 'general');
+        if ($generalPromos->isNotEmpty()) {
+            foreach ($generalPromos as $promo) {
+                $discountPct = (float) ($promo->fixed_price ?? 0);
+                if ($discountPct <= 0) continue;
+
+                foreach ($details as $detail) {
+                    $categoryId = $detail->product_type === 'dish' ? ($detail->dish->category_id ?? null) : ($detail->product->category_id ?? null);
+                    if (!empty($promo->categories) && is_array($promo->categories) && count($promo->categories) > 0) {
+                        if (!$categoryId || !in_array($categoryId, $promo->categories)) {
+                            continue;
+                        }
+                    }
+
+                    $factor = (1 - ($discountPct / 100));
+                    $detail->price = round(((float) $detail->price) * $factor, 2);
+                    $detail->unit_price_usd = round(((float) $detail->unit_price_usd) * $factor, 4);
+                    $detail->discount_percentage = $discountPct;
+                    $detail->discount_type = 'general';
+                    $detail->discount_source_id = $promo->id;
+                }
+            }
+        }
+
+        // 4. Procesar Precio Fijo (fixed_price) primero, ya que altera el precio base del ítem
         $fixedPricePromos = $promotions->where('type', 'fixed_price');
         if ($fixedPricePromos->isNotEmpty()) {
             foreach ($details as $detail) {

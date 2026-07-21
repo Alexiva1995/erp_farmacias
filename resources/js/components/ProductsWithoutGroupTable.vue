@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
 import { ref, computed } from "vue";
 import axios from "@/plugins/axios";
@@ -18,7 +18,7 @@ const props = defineProps({
 
 const emit = defineEmits(["update:options", "update-product", "group-created"]);
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => (brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket'));
+const isRestaurant = computed(() => false);
 
 const editingProductId = ref(null);
 const editingValue = ref(null);

@@ -1,4 +1,5 @@
 <script setup>
+import { computed } from "vue";
 import axios from "@/plugins/axios";
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
 import { library } from "@fortawesome/fontawesome-svg-core";
@@ -22,6 +23,7 @@ const props = defineProps({
 
 const brandingStore = useBrandingStore();
 const isMinimarket = computed(() => brandingStore.settings?.business_type === 'minimarket');
+const isMiniMarket = isMinimarket;
 
 const sortByModel = computed(() => {
   if (!props.sortBy) return [];
@@ -185,7 +187,9 @@ const formatPrice = (price) => {
 
 const getCalculatedSalePrice = (item) => {
   const cost = parseFloat(item.unit_cost || 0);
-  if (isMinimarket.value) {
+  const useCompound = props.settings?.profitability_calculation_type === 'compound';
+
+  if (isMinimarket.value || useCompound) {
     const isLocked = item.profitability?.is_locked == "1";
     const shipping = isLocked && item.profitability?.shipping_cost !== null ? parseFloat(item.profitability.shipping_cost) : parseFloat(props.settings?.shipping_cost || 0);
     const packaging = isLocked && item.profitability?.packaging_cost !== null ? parseFloat(item.profitability.packaging_cost) : parseFloat(props.settings?.packaging_cost || 0);

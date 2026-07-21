@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { computed, ref, watch } from "vue";
 import { formatDateSimple } from "@/utils/formatters";
 import { useBrandingStore } from "@/stores/useBrandingStore";
@@ -17,7 +17,7 @@ const props = defineProps({
 const emit = defineEmits(["update:modelValue", "save"]);
 
 const brandingStore = useBrandingStore();
-const isMiniMarket = computed(() => brandingStore.settings?.business_type === 'minimarket');
+const isMiniMarket = computed(() => false);
 
 const defaultLot = {
   product_id: null,

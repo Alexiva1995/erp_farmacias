@@ -19,10 +19,10 @@ class DoctorRepository implements \App\Contracts\Doctor
         return $record;
     }
 
-    public function edit(array $data): Model
+    public function edit(string $id, array $data): Model
     {
-        Doctor::where("id", "=", $data["id"])->update($data);
-        return Doctor::with('specialty')->find($data["id"]);
+        Doctor::where("id", "=", $id)->update($data);
+        return Doctor::with('specialty')->find($id);
     }
 
     public function consultAll(): Collection
@@ -79,18 +79,24 @@ class DoctorRepository implements \App\Contracts\Doctor
     }
 
 
-    public function filtrar($filtros, $perPage = 10): LengthAwarePaginator
+    public function filtrar(array $filtros): LengthAwarePaginator
     {
+        $perPage = isset($filtros['itemsPerPage']) ? (int) $filtros['itemsPerPage'] : 10;
         $consulta = $this->builerPaginate($filtros);
 
         return $consulta->paginate($perPage);
     }
 
-    public function filterWithoutPaginate($filtros): Collection
+    public function filterWithoutPaginate(array $filtros): Collection
     {
-
         $consulta = $this->builerPaginate($filtros);
 
         return $consulta->get();
+    }
+
+    public function exportExcel(array $filtros): \App\Exports\DoctorsExport
+    {
+        $query = $this->builerPaginate($filtros);
+        return new \App\Exports\DoctorsExport($query);
     }
 }

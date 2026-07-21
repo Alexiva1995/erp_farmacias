@@ -51,14 +51,8 @@ const router = createRouter({
 
     const pagesWithAuth = addAuthMeta(filteredPages)
     
-    // Agregar ruta manual para renuncias (siguiendo el patrón del proyecto)
+    // Agregar rutas manuales no auto-generadas por unplugin-vue-router
     const manualRoutes = [
-      {
-        path: '/rrhh/resignations',
-        name: 'rrhh-resignations',
-        component: () => import('@/pages/rrhh/resignations/index.vue'),
-        meta: { requiresAuth: true }
-      },
       {
         path: '/restaurant/process-audit',
         name: 'restaurant-process-audit',

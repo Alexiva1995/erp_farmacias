@@ -24,6 +24,7 @@ const headers = [
 
 const getPromoTypeName = (type) => {
   switch (type) {
+    case "general": return "Oferta General (%)";
     case "2x1": return "Oferta 2X1";
     case "3x2": return "Oferta 3X2";
     case "50_second": return "50% en el segundo";
@@ -33,7 +34,7 @@ const getPromoTypeName = (type) => {
 };
 
 const getCategoryNames = (categoryIds) => {
-  if (!Array.isArray(categoryIds) || categoryIds.length === 0) return "Ninguna";
+  if (!Array.isArray(categoryIds) || categoryIds.length === 0) return "Todas las Categorías";
   return categoryIds
     .map(id => {
       const cat = props.categories.find(c => c.id === id);
@@ -78,7 +79,10 @@ const getCategoryNames = (categoryIds) => {
 
         <!-- Fixed Price Column -->
         <template #item.fixed_price="{ item }">
-          <span v-if="item.type === 'fixed_price'" class="text-sm font-weight-black text-success">
+          <span v-if="item.type === 'general'" class="text-sm font-weight-black text-primary">
+            {{ parseFloat(item.fixed_price).toFixed(1) }}% DESC
+          </span>
+          <span v-else-if="item.type === 'fixed_price'" class="text-sm font-weight-black text-success">
             ${{ parseFloat(item.fixed_price).toFixed(2) }}
           </span>
           <span v-else class="text-disabled">—</span>

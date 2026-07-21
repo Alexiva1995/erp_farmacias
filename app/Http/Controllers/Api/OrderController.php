@@ -63,12 +63,37 @@ class OrderController extends Controller
     public function consultByIdentification(Request $request)
     {
         $buscarPorIdentificaion = $this->client->consultByIdentification($request->Identification);
+        
+        // Si no se encuentra y la identificacion es el cliente generico, crearlo
+        if (!$buscarPorIdentificaion && $request->Identification === '99999999') {
+            try {
+                $buscarPorIdentificaion = \App\Models\Client::create([
+                    'identification' => '99999999',
+                    'identification_type' => 'V-',
+                    'name' => 'Consumidor',
+                    'last_name' => 'Final',
+                    'email' => 'consumidorfinal@tova.com',
+                    'phone' => '0000000000',
+                    'address' => 'Consumidor Final',
+                ]);
+            } catch (\Exception $e) {
+                Log::error("Error al crear cliente genérico automático: " . $e->getMessage());
+            }
+        }
+
         if (!$buscarPorIdentificaion) {
             return ApiResponse::success([
                 'found' => false,
                 'identification_searched' => $request->Identification
             ], "the client not found", 200);
         }
+
+        // Si es el cliente generico, forzar el nombre a Consumidor Final
+        if ($request->Identification === '99999999') {
+            $buscarPorIdentificaion->name = "Consumidor";
+            $buscarPorIdentificaion->last_name = "Final";
+        }
+
         return ApiResponse::success([
             'found' => true,
             'client' => $buscarPorIdentificaion,
@@ -442,15 +467,15 @@ class OrderController extends Controller
 
     public function cancelledOrder(Order $order)
     {
-        if ($order->status !== Order::COMPLETED) {
-            return ApiResponse::error('Solo se pueden cancelar órdenes completadas.', 400);
+        if (in_array(strtolower($order->status), ['cancelled', 'abandoned'])) {
+            return ApiResponse::error('La orden ya se encuentra cancelada o abandonada.', 400);
         }
         try {
             $abandonedOrder = $this->orderActionService->cancelledOrder($order);
-            return ApiResponse::success('Orden cancelada exitosamente.', ['order' => $abandonedOrder]);
+            return ApiResponse::success(['order' => $abandonedOrder], 'Orden cancelada exitosamente.');
         } catch (\Exception $e) {
-            Log::error('Error al cancelada la orden:', ['error' => $e->getMessage(), 'order_id' => $order->id]);
-            return ApiResponse::error('No se pudo cancelada la orden: ' . $e->getMessage(), 500);
+            Log::error('Error al cancelar la orden:', ['error' => $e->getMessage(), 'order_id' => $order->id]);
+            return ApiResponse::error('No se pudo cancelar la orden: ' . $e->getMessage(), 500);
         }
     }
 

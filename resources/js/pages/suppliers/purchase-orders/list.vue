@@ -4,17 +4,17 @@ import PurchaseOrdersFilter from "@/components/PurchaseOrdersFilter.vue";
 import PurchaseOrdersTable from "@/components/PurchaseOrdersTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { useDisplay } from "vuetify";
 import { useAuthStore } from "@/stores/auth";
+import Swal from "sweetalert2";
 
+const { mobile } = useDisplay();
 const authStore = useAuthStore();
 const searchQuery = ref("");
 const startDate = ref("");
 const endDate = ref("");
-const activeTab = ref(0); // Cambiado a entero para coincidir con el diseño común
-
-// Convierte el valor del tab al entero que espera el backend
-const tabStatusMap = { 0: 0, 1: 1, 2: 2 };
+const activeTab = ref(0);
 
 const tabItems = [
   {
@@ -115,11 +115,17 @@ const handleManage = (purchaseOrder) => {
 };
 
 const handleDeleteOrder = async (id) => {
-  if (
-    confirm(
-      "¿Estás seguro de eliminar esta orden? No podrás deshacer esta acción.",
-    )
-  ) {
+  const result = await Swal.fire({
+    title: "¿Estás seguro?",
+    text: "No podrás deshacer la eliminación de esta orden de compra.",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonText: "Sí, eliminar",
+    cancelButtonText: "Cancelar",
+    reverseButtons: true,
+  });
+
+  if (result.isConfirmed) {
     try {
       await axios.delete(`/suppliers/purchase-orders/${id}`);
       toast.success("Orden eliminada correctamente.");
@@ -148,16 +154,25 @@ onMounted(() => {
   fetchStats();
 });
 
-// Cambiar de pestaña o filtro => reset a página 1 y recargar
+let debounceTimer = null;
+
+// Cambiar de pestaña o filtro => reset a página 1 y recargar con debounce
 watch([selectedSupplier, activeTab, searchQuery, startDate, endDate], () => {
   page.value = 1;
-  fetchPurchaseOrders();
-  fetchStats();
+  if (debounceTimer) clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => {
+    fetchPurchaseOrders();
+    fetchStats();
+  }, 300);
 });
 
 // Paginar sin resetear la página
 watch([page, itemsPerPage], () => {
   fetchPurchaseOrders();
+});
+
+onUnmounted(() => {
+  if (debounceTimer) clearTimeout(debounceTimer);
 });
 
 const updateTableOptions = (options) => {

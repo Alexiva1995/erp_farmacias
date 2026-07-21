@@ -1,6 +1,6 @@
 <script setup>
 import { toast } from "@/plugins/sweetalert";
-import axios from "axios";
+import axios from "@/plugins/axios";
 import { ref, watch, computed } from "vue";
 import { useAuthStore } from "@/stores/auth.js";
 

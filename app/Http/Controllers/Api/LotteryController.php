@@ -7,10 +7,10 @@ use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 
+use App\Http\Resources\LotteryResource;
+
 class LotteryController extends Controller
 {
-    //
-
     public function __construct(
         protected Lottery $lottery
     ) {}
@@ -39,7 +39,7 @@ class LotteryController extends Controller
 
         $respuesta = $this->lottery->filterOrdersWithoutPaginate($filtros);
 
-        return ApiResponse::success($respuesta, "OK", 200);
+        return ApiResponse::success(LotteryResource::collection($respuesta), "OK", 200);
     }
 
 

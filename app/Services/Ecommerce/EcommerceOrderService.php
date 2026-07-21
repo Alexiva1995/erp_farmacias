@@ -68,19 +68,13 @@ class EcommerceOrderService
 
                         // Ajustar precio según el modificador de la variante
                         $unitPrice += (float) $variant->price_modifier;
-
-                        // Validar y descontar stock de variante
-                        if ($variant->stock < $item['quantity']) {
-                            throw new Exception("Stock insuficiente para el producto '{$product->name}' en la variante seleccionada.");
-                        }
-                        $variant->decrement('stock', $item['quantity']);
-                    } else {
-                        // Sin variante: validar y descontar stock global
-                        if ($product->stock < $item['quantity']) {
-                            throw new Exception("Stock insuficiente para el producto '{$product->name}'.");
-                        }
-                        $product->decrement('stock', $item['quantity']);
                     }
+
+                    // Validar y descontar siempre del stock principal del producto
+                    if ($product->stock < $item['quantity']) {
+                        throw new Exception("Stock insuficiente para el producto '{$product->name}'.");
+                    }
+                    $product->decrement('stock', $item['quantity']);
 
                     $subtotal    = $unitPrice * $item['quantity'];
                     $totalAmount += $subtotal;
@@ -98,11 +92,55 @@ class EcommerceOrderService
             $currency          = strtoupper($orderData['payment_currency'] ?? 'USD');
             $totalInCurrency   = $this->convertToClientCurrency($totalAmount, $currency);
 
-            // 3. Resolver el usuario 'tienda' para asociar el pedido
+            // 3. Registrar o buscar cliente en BD si no existe
+            if (!empty($orderData['customer_document_number'])) {
+                $docType  = $orderData['customer_document_type'] ?? 'V-';
+                $docNum   = trim($orderData['customer_document_number']);
+                $cleanNum = preg_replace('/[^0-9]/', '', $docNum);
+
+                $existingClient = \App\Models\Client::where('identification', $docNum)
+                    ->orWhere('identification', $docType . $docNum)
+                    ->orWhere('identification', $cleanNum)
+                    ->orWhere('identification', 'like', '%' . $cleanNum . '%')
+                    ->first();
+
+                if ($existingClient) {
+                    $fullName  = trim($orderData['customer_name'] ?? '');
+                    $parts     = explode(' ', $fullName, 2);
+                    $firstName = $parts[0] ?? $existingClient->name;
+                    $lastName  = $parts[1] ?? $existingClient->last_name;
+
+                    $existingClient->update([
+                        'name'      => $firstName ?: $existingClient->name,
+                        'last_name' => $lastName ?: $existingClient->last_name,
+                        'email'     => !empty($orderData['customer_email']) ? $orderData['customer_email'] : $existingClient->email,
+                        'phone'     => !empty($orderData['customer_phone']) ? $orderData['customer_phone'] : $existingClient->phone,
+                        'address'   => !empty($orderData['shipping_address']) ? $orderData['shipping_address'] : $existingClient->address,
+                    ]);
+                } else {
+                    $fullName  = trim($orderData['customer_name'] ?? '');
+                    $parts     = explode(' ', $fullName, 2);
+                    $firstName = $parts[0] ?? 'Cliente';
+                    $lastName  = $parts[1] ?? '';
+
+                    \App\Models\Client::create([
+                        'identification_type' => $docType,
+                        'identification'      => $docNum,
+                        'name'                => $firstName,
+                        'last_name'           => $lastName,
+                        'email'               => !empty($orderData['customer_email']) ? $orderData['customer_email'] : null,
+                        'phone'               => !empty($orderData['customer_phone']) ? $orderData['customer_phone'] : null,
+                        'address'             => !empty($orderData['shipping_address']) ? $orderData['shipping_address'] : null,
+                        'is_active'           => true,
+                    ]);
+                }
+            }
+
+            // 4. Resolver el usuario 'tienda' para asociar el pedido
             $tiendaUser   = DB::table('users')->where('username', 'tienda')->first();
             $tiendaUserId = $tiendaUser ? $tiendaUser->id : null;
 
-            // 4. Crear la orden de e-commerce con moneda del cliente
+            // 5. Crear la orden de e-commerce con moneda del cliente
             $orderId = DB::table('ecommerce_orders')->insertGetId([
                 'user_id'                  => $tiendaUserId,
                 'customer_name'            => $orderData['customer_name'],

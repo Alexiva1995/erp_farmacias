@@ -16,6 +16,9 @@ import {
   watch,
 } from "vue";
 
+import { useBrandingStore } from "@/stores/useBrandingStore";
+
+const brandingStore = useBrandingStore();
 const chipColor = "primary";
 
 const props = defineProps({
@@ -57,22 +60,42 @@ const payments = ref([
   },
 ]);
 
+watch(
+  payments,
+  (newPayments) => {
+    newPayments.forEach((p) => {
+      if (
+        p.reference &&
+        p.currency === "BS" &&
+        ["debit_card", "credit_card", "card"].includes(p.method)
+      ) {
+        const cleanRef = p.reference.toString().trim();
+        if (cleanRef) {
+          localStorage.setItem("tpv_last_card_reference_bs", cleanRef);
+        }
+      }
+    });
+  },
+  { deep: true },
+);
+
 const currencies = [
   { label: "Pesos Colombianos (COP)", value: "COP" },
   { label: "Bolívares (BS)", value: "BS" },
   { label: "Dólares (USD)", value: "USD" },
 ];
 
-const paymentMethodsByCurrency = {
+const fallbackPaymentMethods = {
   COP: [
     { label: "Efectivo", value: "cash_cop" },
     { label: "Transferencia", value: "bank_transfer" },
   ],
   BS: [
-    { label: "Efectivo", value: "cash_bs" },
+    { label: "Efectivo Bs", value: "cash_bs" },
     { label: "Pago Móvil", value: "mobile_payment" },
-    { label: "Transferencia", value: "bank_transfer_bs" },
-    { label: "Tarjeta", value: "card" },
+    { label: "Transferencia Bs", value: "bank_transfer_bs" },
+    { label: "T. Débito", value: "debit_card" },
+    { label: "T. Crédito", value: "credit_card" },
   ],
   USD: [
     { label: "Efectivo", value: "cash_usd" },
@@ -80,6 +103,47 @@ const paymentMethodsByCurrency = {
     { label: "PayPal", value: "paypal" },
   ],
 };
+
+const normalizeMethodValue = (val, currencyKey) => {
+  if (val === "cash") {
+    if (currencyKey === "USD") return "cash_usd";
+    if (currencyKey === "BS") return "cash_bs";
+    if (currencyKey === "COP") return "cash_cop";
+  }
+  if (val === "bank_transfer" && currencyKey === "BS") {
+    return "bank_transfer_bs";
+  }
+  return val;
+};
+
+const paymentMethodsByCurrency = computed(() => {
+  const configured = brandingStore.settings?.tpv_payment_methods;
+  if (!configured) return fallbackPaymentMethods;
+
+  const result = {};
+  ["COP", "BS", "USD"].forEach((currencyKey) => {
+    const curObj = configured[currencyKey];
+    let rawMethods = [];
+    if (Array.isArray(curObj)) {
+      rawMethods = curObj;
+    } else if (curObj && Array.isArray(curObj.methods)) {
+      rawMethods = curObj.methods;
+    } else {
+      rawMethods = fallbackPaymentMethods[currencyKey] || [];
+    }
+
+    const enabledMethods = rawMethods
+      .filter((m) => m.enabled !== false)
+      .map((m) => ({
+        ...m,
+        value: normalizeMethodValue(m.value, currencyKey),
+      }));
+
+    result[currencyKey] = enabledMethods;
+  });
+
+  return result;
+});
 
 const exchangeRates = ref({});
 
@@ -91,12 +155,12 @@ const userUsername = computed(() => {
 });
 
 const isTransferMethod = (method) =>
-  ["bank_transfer", "bank_transfer_bs", "mobile_payment", "card"].includes(
+  ["bank_transfer", "bank_transfer_bs", "mobile_payment", "card", "debit_card", "credit_card"].includes(
     method
   );
 
 const isCashMethod = (method) => {
-  return ["cash_bs", "cash_usd", "cash_cop"].includes(method);
+  return ["cash", "cash_bs", "cash_usd", "cash_cop"].includes(method);
 };
 
 const requiresReference = (method) => {
@@ -175,20 +239,30 @@ const fetchExchangeRates = async () => {
       if (rateValue !== 0) {
         formattedRates[currencyCode]["USD"] = 1 / rateValue;
       }
-
-      if (formattedRates["COP"] && formattedRates["BS"]) {
-        formattedRates["COP"]["BS"] = parseFloat(
-          (formattedRates["COP"]["USD"] * formattedRates["USD"]["BS"]).toFixed(
-            9
-          )
-        );
-        formattedRates["BS"]["COP"] = parseFloat(
-          (formattedRates["BS"]["USD"] * formattedRates["USD"]["COP"]).toFixed(
-            9
-          )
-        );
-      }
     });
+
+    const tpvRateType = brandingStore.settings?.tpv_rate_type || 'bcv';
+    if (tpvRateType === 'binance' && formattedRates["USD"]?.['BINANCE']) {
+      formattedRates["USD"]["BS"] = formattedRates["USD"]['BINANCE'];
+    } else if (tpvRateType === 'eur' && formattedRates["USD"]?.['EUR']) {
+      formattedRates["USD"]["BS"] = formattedRates["USD"]['EUR'];
+    } else if (tpvRateType === 'bcv' && formattedRates["USD"]?.['BCV']) {
+      formattedRates["USD"]["BS"] = formattedRates["USD"]['BCV'];
+    }
+
+    if (formattedRates["BS"] && formattedRates["USD"] && formattedRates["USD"]["BS"] > 0) {
+      formattedRates["BS"]["USD"] = 1 / formattedRates["USD"]["BS"];
+    }
+
+    if (formattedRates["COP"] && formattedRates["BS"]) {
+      formattedRates["COP"]["BS"] = parseFloat(
+        (formattedRates["COP"]["USD"] * formattedRates["USD"]["BS"]).toFixed(9)
+      );
+      formattedRates["BS"]["COP"] = parseFloat(
+        (formattedRates["BS"]["USD"] * formattedRates["USD"]["COP"]).toFixed(9)
+      );
+    }
+
     exchangeRates.value = formattedRates;
     ratesLoaded.value = true;
   } catch (error) {
@@ -365,13 +439,13 @@ const showChangeAmount = computed(() => {
 
 const getPaymentMethodLabel = (methodValue, currency) => {
   if (!methodValue) return "N/A";
-  const methodsForCurrency = paymentMethodsByCurrency[currency];
+  const methodsForCurrency = paymentMethodsByCurrency.value[currency];
   if (methodsForCurrency) {
     const foundMethod = methodsForCurrency.find((m) => m.value === methodValue);
     if (foundMethod) return foundMethod.label;
   }
-  for (const key in paymentMethodsByCurrency) {
-    const methods = paymentMethodsByCurrency[key];
+  for (const key in paymentMethodsByCurrency.value) {
+    const methods = paymentMethodsByCurrency.value[key];
     const foundMethod = methods.find((m) => m.value === methodValue);
     if (foundMethod) return foundMethod.label;
   }
@@ -413,16 +487,53 @@ const selectPaymentMethod = (methodValue, currency = null) => {
   payments.value.push(newPayment);
   const availablePayment = payments.value[payments.value.length - 1];
 
-  availablePayment.inputAmount = "";
-  availablePayment.amount = null;
+  const defaultAmount = !isCashMethod(methodValue)
+    ? getConvertedRemainingAmount(targetCurrency)
+    : null;
+
+  availablePayment.inputAmount = defaultAmount !== null && defaultAmount > 0 ? defaultAmount : "";
+  availablePayment.amount = defaultAmount !== null && defaultAmount > 0 ? defaultAmount : null;
   availablePayment._isInputActive = true;
+
+  const isCard = ["debit_card", "credit_card", "card"].includes(methodValue);
+  if (!requiresReference(methodValue, targetCurrency)) {
+    availablePayment.reference = null;
+  } else {
+    availablePayment._isReferenceActive = true;
+    if (isCard && targetCurrency === "BS") {
+      let lastRef = localStorage.getItem("tpv_last_card_reference_bs");
+      if (!lastRef) {
+        const prevPayment = payments.value.find(
+          (p) => isCard && p.currency === "BS" && p.reference
+        );
+        if (prevPayment && prevPayment.reference) {
+          lastRef = prevPayment.reference;
+        }
+      }
+      if (lastRef) {
+        const cleanLastRef = lastRef.trim();
+        const parsed = parseInt(cleanLastRef, 10);
+        if (!isNaN(parsed)) {
+          const nextRef = (parsed + 1).toString().padStart(cleanLastRef.length, "0");
+          availablePayment.reference = nextRef;
+        } else {
+          availablePayment.reference = cleanLastRef;
+        }
+      }
+    }
+  }
 
   nextTick(() => {
     const paymentIndex = payments.value.indexOf(availablePayment);
     const input = document.querySelector(
       `.payment-input[data-payment-index="${paymentIndex}"]`
     );
-    if (input) input.focus();
+    if (input) {
+      input.focus();
+      if (defaultAmount !== null && defaultAmount > 0) {
+        input.select();
+      }
+    }
   });
 };
 
@@ -702,7 +813,7 @@ const isLastPaymentAdded = (payment) => {
 };
 
 const getAvailableMethodsForCurrency = (currency) => {
-  return paymentMethodsByCurrency[currency] || [];
+  return paymentMethodsByCurrency.value[currency] || [];
 };
 
 const handleCompletePurchase = () => {

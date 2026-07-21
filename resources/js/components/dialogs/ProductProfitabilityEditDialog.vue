@@ -7,6 +7,7 @@ import { useBrandingStore } from "@/stores/useBrandingStore";
 const props = defineProps({
   dialog: { type: Boolean, required: true },
   product: { type: Object, required: true },
+  settings: { type: Object, default: () => ({}) },
 });
 
 const emit = defineEmits(["refresh", "close-modal"]);
@@ -20,7 +21,10 @@ const taxUsa = ref(0);
 const loading = ref(false);
 
 const brandingStore = useBrandingStore();
-const isMinimarket = computed(() => brandingStore.settings?.business_type === 'minimarket');
+const isMinimarket = computed(() => {
+  return brandingStore.settings?.business_type === 'minimarket' || props.settings?.profitability_calculation_type === 'compound';
+});
+const isMiniMarket = isMinimarket;
 
 const previewSalePrice = computed(() => {
   const cost = Number(props.product.unit_cost || 0);

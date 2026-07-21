@@ -618,7 +618,7 @@ onMounted(async () => {
               </VCol>
 
               <!-- Sección de Aprobación de Pedidos de E-commerce -->
-              <VCol v-if="brandingStore.settings.business_type !== 'minimarket'" cols="12" class="mt-8">
+              <VCol cols="12" class="mt-8">
                 <div class="border pa-6 rounded-0 bg-white d-flex flex-column gap-4">
                   <div>
                     <h3 class="text-subtitle-2 font-weight-bold text-uppercase tracking-wider d-flex align-center gap-2" style="margin-bottom: 5px;">

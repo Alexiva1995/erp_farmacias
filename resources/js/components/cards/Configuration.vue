@@ -7,7 +7,6 @@ const fiscalMode = ref('')
 const specialStatus = ref('')
 const allForeignSalesSpe = ref(false)
 const blindCashClosure = ref(false)
-const businessType = ref('pharmacy')
 const tpvMode = ref('complete')
 
 const configFiscal = [
@@ -20,13 +19,6 @@ const specialTaxpayerOptions = [
   { label: "Activa", value: "activa" },
 ]
 
-const businessTypeOptions = [
-  { label: "Farmacia", value: "pharmacy" },
-  { label: "Restaurante", value: "restaurant" },
-  { label: "Alquiler Deportivo", value: "sports_rental" },
-  { label: "Mini Market (Accesorios y Cosméticos)", value: "minimarket" },
-]
-
 const fetchSettings = async () => {
   try {
     const response = await axios.get('/general-settings')
@@ -35,7 +27,6 @@ const fetchSettings = async () => {
     specialStatus.value = settings.special_taxpayer_status
     allForeignSalesSpe.value = !!settings.all_foreign_sales_spe
     blindCashClosure.value = !!settings.blind_cash_closure
-    businessType.value = settings.business_type || 'pharmacy'
     tpvMode.value = settings.tpv_mode || 'complete'
   } catch (error) {
     console.error("Error cargando configuración:", error)
@@ -50,7 +41,6 @@ const updateSettings = async () => {
       special_taxpayer_status: specialStatus.value,
       all_foreign_sales_spe: allForeignSalesSpe.value,
       blind_cash_closure: blindCashClosure.value,
-      business_type: businessType.value,
       tpv_mode: tpvMode.value
     })
     toast.success("Configuración actualizada existosamente")
@@ -68,22 +58,6 @@ onMounted(() => {
 <template>
   <VCard class="mb-6">
     <VCardItem class="py-2">
-      <VCardTitle class="text-h6"> Tipo de Negocio </VCardTitle>
-      <VRadioGroup
-        v-model="businessType"
-        inline
-        @update:model-value="updateSettings"
-      >
-        <VRadio   
-          v-for="item in businessTypeOptions"
-          :key="item.value"
-          :label="item.label"
-          :value="item.value"
-        />
-      </VRadioGroup>
-    </VCardItem>
-
-    <VCardItem v-if="businessType !== 'minimarket'" class="py-2">
       <VCardTitle class="text-h6"> Configuración Fiscal </VCardTitle>
       <VRadioGroup
         v-model="fiscalMode"
@@ -99,7 +73,7 @@ onMounted(() => {
       </VRadioGroup>
     </VCardItem>
 
-    <VCardItem v-if="businessType !== 'minimarket'" class="py-2">
+    <VCardItem class="py-2">
       <VCardTitle class="text-h6">Sujeto pasivo especial </VCardTitle>
       <VRadioGroup
         v-model="specialStatus"
@@ -114,7 +88,7 @@ onMounted(() => {
         />
       </VRadioGroup>
     </VCardItem>
-    <VCardItem v-if="businessType !== 'minimarket'" class="py-2">
+    <VCardItem class="py-2">
       <VCardTitle class="text-h6"> Recargo SPE Global </VCardTitle>
       <VSwitch
         v-model="allForeignSalesSpe"

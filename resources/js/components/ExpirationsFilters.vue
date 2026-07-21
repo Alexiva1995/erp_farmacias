@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 // Filtros para fechas de vencimiento de inventario con acciones por lotes
 import AppFilterBase from "@/components/AppFilterBase.vue";
 import dayjs from "dayjs";
@@ -9,7 +9,7 @@ import { useAbility } from "@casl/vue";
 const { can } = useAbility();
 
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => (brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket'));
+const isRestaurant = computed(() => false);
 
 const props = defineProps({
   searchQuery:        { type: String, required: true },

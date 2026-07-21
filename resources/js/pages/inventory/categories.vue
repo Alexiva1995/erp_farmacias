@@ -14,8 +14,8 @@ const { can } = useAbility()
 const router = useRouter()
 const brandingStore = useBrandingStore()
 
-const isMiniMarket = computed(() => brandingStore.settings.business_type === 'minimarket')
-const isSportsRental = computed(() => brandingStore.settings.business_type === 'sports_rental')
+const isMiniMarket = computed(() => false)
+const isSportsRental = computed(() => false)
 
 // --- Estados ---
 const categories = ref([])

@@ -94,7 +94,9 @@ class ProfitabilityServices implements Profitability
             $generalSettings = \Illuminate\Support\Facades\DB::table('general_settings')->first();
             $isMinimarket = $generalSettings && $generalSettings->business_type === 'minimarket';
 
-            if ($isMinimarket) {
+            $useCompound = ($generalSettings && $generalSettings->business_type === 'minimarket') || ($generalSettings && isset($generalSettings->profitability_calculation_type) && $generalSettings->profitability_calculation_type === 'compound');
+
+            if ($useCompound) {
                 $settings = $this->consultOne();
                 $productProfitability = \App\Models\ProductProfitability::where('product_id', $productId)->first();
 

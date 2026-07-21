@@ -32,8 +32,24 @@ export default [
         to: 'configuration-tpv',
       },
       {
+        title: 'CRM',
+        to: 'configuration-crm',
+      },
+      {
+        title: 'RRHH',
+        to: 'configuration-rrhh',
+      },
+      {
+        title: 'Finanzas',
+        to: 'configuration-finances',
+      },
+      {
         title: 'Productos',
         to: 'configuration-products',
+      },
+      {
+        title: 'Proveedores',
+        to: 'configuration-suppliers',
       },
       {
         title: 'Importar Datos',

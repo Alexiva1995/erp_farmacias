@@ -150,12 +150,21 @@ const fetchExchangeRates = async () => {
       }
     });
 
-    // Override BS with BINANCE for restaurants, and EUR for pharmacies
+    // Override BS según tpv_rate_type configurado (binance, eur, bcv)
+    const tpvRateType = brandingStore.settings?.tpv_rate_type;
     if (formattedRates["USD"]) {
-      if ((isRestaurant.value || isSportsRental.value) && formattedRates["USD"]["BINANCE"]) {
+      if (tpvRateType === "binance" && formattedRates["USD"]["BINANCE"]) {
         formattedRates["USD"]["BS"] = formattedRates["USD"]["BINANCE"];
-      } else if (!(isRestaurant.value || isSportsRental.value) && formattedRates["USD"]["EUR"]) {
+      } else if (tpvRateType === "eur" && formattedRates["USD"]["EUR"]) {
         formattedRates["USD"]["BS"] = formattedRates["USD"]["EUR"];
+      } else if (tpvRateType === "bcv" && formattedRates["USD"]["BCV"]) {
+        formattedRates["USD"]["BS"] = formattedRates["USD"]["BCV"];
+      } else if (!tpvRateType) {
+        if ((isRestaurant.value || isSportsRental.value) && formattedRates["USD"]["BINANCE"]) {
+          formattedRates["USD"]["BS"] = formattedRates["USD"]["BINANCE"];
+        } else if (!(isRestaurant.value || isSportsRental.value) && formattedRates["USD"]["EUR"]) {
+          formattedRates["USD"]["BS"] = formattedRates["USD"]["EUR"];
+        }
       }
 
       if (formattedRates["BS"]) {
@@ -283,12 +292,13 @@ const fetchGeneralSettings = async () => {
   try {
     const { data } = await axios.get("/general-settings");
     const settings = data.data || data;
+    enableDishes.value = settings.enable_dishes !== undefined ? !!settings.enable_dishes : true;
     isSpecialTaxpayer.value = settings.special_taxpayer_status === "activa";
     allForeignSalesSpe.value = !!settings.all_foreign_sales_spe;
-    // Determinar si el negocio es restaurante para mostrar el menú de platos
-    isRestaurant.value = settings.business_type === "restaurant";
-    isSportsRental.value = settings.business_type === "sports_rental";
-    if (isRestaurant.value) {
+    // Determinar la interfaz a mostrar basándose en la configuración explícita del TPV
+    isRestaurant.value = settings.tpv_style === "restaurant";
+    isSportsRental.value = settings.tpv_style === "sports_rental";
+    if (isRestaurant.value && enableDishes.value) {
       activeTab.value = "menu";
     }
   } catch (error) {
@@ -297,8 +307,13 @@ const fetchGeneralSettings = async () => {
   }
 };
 
+const enableDishes = ref(false);
+
 // Carga el catálogo de platos activos para el TPV
 const fetchDishes = async () => {
+  // Solo cargar platos si el interruptor "Habilitar Platos" está activo en la configuración
+  if (!enableDishes.value) return;
+
   dishesLoading.value = true;
   try {
     const { data } = await axios.get("/dishes", {
@@ -308,7 +323,6 @@ const fetchDishes = async () => {
     dishes.value = Array.isArray(data.data) ? data.data : data;
   } catch (error) {
     console.error("[TPV] Error al cargar platos:", error);
-    toast.error("Error al cargar el menú de platos.");
   } finally {
     dishesLoading.value = false;
   }
@@ -360,8 +374,15 @@ const fetchProducts = async () => {
     products.value = response.data.data;
     totalProduct.value = response.data.total;
   } catch (error) {
-    console.error("Hubo un error al obtener los productos:", error);
-    toast.error("Error al obtener los productos.");
+    if (error.response && error.response.status === 401) {
+      console.warn("[TPV] Sesión expirada (401). Recargando ventana...");
+      window.location.reload();
+    } else if (error.response && error.response.status === 429) {
+      toast.warning("Límite de peticiones alcanzado. Por favor, espera un momento.");
+    } else {
+      console.error("Hubo un error al obtener los productos:", error);
+      toast.error("Error al obtener los productos.");
+    }
   } finally {
     loading.value = false;
   }
@@ -379,8 +400,13 @@ const fetchSelectOptions = async () => {
     origins.value = originResponse.data;
     categories.value = catResponse.data;
   } catch (error) {
-    console.error("Error al cargar opciones de los selects:", error);
-    toast.error("No se pudieron cargar los filtros.");
+    if (error.response && error.response.status === 401) {
+      console.warn("[TPV] Sesión expirada (401). Recargando ventana...");
+      window.location.reload();
+    } else {
+      console.error("Error al cargar opciones de los selects:", error);
+      toast.error("No se pudieron cargar los filtros.");
+    }
   } finally {
     isLoadingFilters.value = false;
   }
@@ -407,8 +433,15 @@ const fetchDoctorOffers = async () => {
       }));
     }
   } catch (error) {
-    console.error("Error fetching doctor offers:", error);
-    toast.error("Error al cargar las ofertas de médicos.");
+    if (error.response && error.response.status === 401) {
+      console.warn("[TPV] Sesión expirada (401). Recargando ventana...");
+      window.location.reload();
+    } else if (error.response && error.response.status === 429) {
+      toast.warning("Límite de peticiones alcanzado al cargar ofertas médicas. Espera un momento.");
+    } else {
+      console.error("Error fetching doctor offers:", error);
+      toast.error("Error al cargar las ofertas de médicos.");
+    }
   } finally {
     loadingDoctorOffers.value = false;
   }
@@ -925,7 +958,7 @@ watch(
       } catch (error) {
         console.error("Error en watcher de productos:", error);
       }
-    }, 300);
+    }, 450);
   },
   { deep: false },
 );
@@ -1274,7 +1307,12 @@ const fetchOpenOrder = async () => {
       if (response.data.data.order.pending_order) {
         openOrderData.value = response.data.data.order.pending_order;
         reservedOrderData.value = response.data.data.order.reserved_order;
-        selectedClient.value = response.data.data.order.pending_order.client;
+        const clientObj = response.data.data.order.pending_order.client;
+        if (clientObj && clientObj.identification === '99999999') {
+          clientObj.name = "Consumidor";
+          clientObj.last_name = "Final";
+        }
+        selectedClient.value = clientObj;
         hasOpenOrder.value = true;
         if (openOrderData.value.currency) {
           // En modo alquiler deportivo siempre mostrar COP
@@ -1369,11 +1407,13 @@ onMounted(async () => {
         if (isSimpleTpv && !hasOpenOrder.value) {
           try {
             const checkClientResp = await axios.get('/tpv/order/client/99999999');
-            let genericClientId = 3;
+            let genericClientId = null;
             if (checkClientResp.data?.data?.client?.id) {
               genericClientId = checkClientResp.data.data.client.id;
             }
-            await addOrden(genericClientId);
+            if (genericClientId) {
+              await addOrden(genericClientId);
+            }
           } catch (err) {
             console.error("Error al iniciar orden automática en onMounted simple mode:", err);
           }
@@ -1723,8 +1763,32 @@ const addOrden = async (id, forceCurrency = null) => {
     toast.success("Orden creada exitosamente.");
     return response.data.data.order;
   } catch (error) {
-    console.error("Error al agregar la orden:", error);
-    toast.error("Error al agregar la orden.");
+    if (error.response && error.response.status === 401) {
+      console.warn("[TPV] Sesión expirada (401). Recargando ventana...");
+      window.location.reload();
+    } else {
+      console.error("Error al agregar la orden:", error);
+      
+      // Intentar extraer el mensaje de error o la excepcion del backend de forma exhaustiva
+      const responseData = error.response?.data;
+      let details = "Error de red o base de datos.";
+      
+      if (responseData) {
+        if (responseData.message) {
+          details = responseData.message;
+        } else if (responseData.error) {
+          details = typeof responseData.error === 'object' ? JSON.stringify(responseData.error) : responseData.error;
+        } else if (responseData.exception) {
+          details = responseData.exception;
+        } else {
+          details = JSON.stringify(responseData);
+        }
+      } else if (error.message) {
+        details = error.message;
+      }
+      
+      toast.error(`Error al agregar la orden: ${details}`);
+    }
     return null;
   }
 };
@@ -1822,6 +1886,8 @@ const clearFormErrors = () => {
 };
 
 const handleCurrencyChanged = async (newCurrency) => {
+  if (isCurrencyChanging.value) return;
+  if (selectedDisplayCurrency.value === newCurrency) return;
   isCurrencyChanging.value = true;
   try {
     if (hasOpenOrder.value && openOrderData.value?.id) {
@@ -2151,7 +2217,12 @@ const updateOrderTotalsInBackend = async () => {
     };
     await axios.patch(`/tpv/orders/${openOrderData.value.id}`, payload);
   } catch (error) {
-    toast.error("Error al actualizar los totales de la orden.");
+    if (error.response && error.response.status === 401) {
+      console.warn("[TPV] Sesión expirada (401). Recargando ventana para reautenticar...");
+      window.location.reload();
+    } else {
+      toast.error("Error al actualizar los totales de la orden.");
+    }
   }
 };
 /*
@@ -2361,9 +2432,13 @@ const addProductToOrder = async ({
     if (isSimpleTpv) {
       try {
         const checkClientResp = await axios.get('/tpv/order/client/99999999');
-        let genericClientId = 3;
+        let genericClientId = null;
         if (checkClientResp.data?.data?.client?.id) {
           genericClientId = checkClientResp.data.data.client.id;
+        }
+        if (!genericClientId) {
+          toast.error("El cliente genérico 99999999 no está disponible en la base de datos.");
+          return;
         }
         const newOrder = await addOrden(genericClientId);
         if (!newOrder) {
@@ -2696,6 +2771,20 @@ const handleFlashCheckout = async ({ method, currency }) => {
 
   try {
     isFinishingOrder.value = true;
+
+    // Obtener e inyectar el cliente generico 99999999 a la orden si no lo tiene asignado
+    if (!selectedClient.value || selectedClient.value.identification !== '99999999') {
+      try {
+        const checkClientResp = await axios.get('/tpv/order/client/99999999');
+        if (checkClientResp.data?.data?.client?.id) {
+          const genericClientId = checkClientResp.data.data.client.id;
+          await axios.patch(`/tpv/orders/${openOrderData.value.id}/client`, { client_id: genericClientId });
+        }
+      } catch (err) {
+        console.error("Error al asignar cliente generico en cobro rápido:", err);
+      }
+    }
+
     const total = totalOrderAmountWithspecialTaxAmount.value;
     const paymentsData = [
       {
@@ -3614,6 +3703,7 @@ const startHeartbeat = () => {
 
 let heartbeatInterval;
 onMounted(() => {
+  brandingStore.fetchSettings();
   heartbeatInterval = startHeartbeat();
 });
 

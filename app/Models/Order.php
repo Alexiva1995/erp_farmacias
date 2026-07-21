@@ -39,6 +39,7 @@ class Order extends Model
 
     protected $casts = [
         'payment_methods' => 'array',
+        'money_returns' => 'decimal:2',
         'has_multiple_currencies' => 'boolean',
         'order_date' => 'datetime',
         'taxable_base' => 'decimal:2',

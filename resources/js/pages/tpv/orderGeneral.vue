@@ -7,6 +7,7 @@ import OrderTicketThermal54 from "@/components/OrderTicketThermal54.vue";
 import OrderViewModal from "@/components/dialogs/OrderViewModal.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
+import Swal from "sweetalert2";
 import { useAuthStore } from "@/stores/auth";
 import { useRoute } from "vue-router";
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
@@ -311,6 +312,16 @@ const fetchSellers = async () => {
   }
 };
 
+const fetchAllTabCounts = async () => {
+  await Promise.allSettled([
+    fetchOrderCompleted(),
+    fetchOrderAll(),
+    fetchOrderCancelled(),
+    fetchOrderAbandoned(),
+    fetchQuotations(),
+  ]);
+};
+
 const fetchActiveTabData = () => {
   const tab = activeTab.value;
   if (tab === 0) fetchOrderCompleted();
@@ -322,7 +333,7 @@ const fetchActiveTabData = () => {
 
 onMounted(async () => {
   fetchSellers();
-  fetchActiveTabData();
+  fetchAllTabCounts();
 
   if (route.query.orderId) {
     const orderId = parseInt(route.query.orderId, 10);
@@ -485,7 +496,7 @@ watch([globalStartDate, globalEndDate], () => {
   pageOrdersAbandoned.value = 1;
   pageOrdersCancelled.value = 1;
   pageQuotations.value = 1;
-  fetchActiveTabData();
+  fetchAllTabCounts();
 }, { deep: true });
 
 const updateTableOptionsOrdersCompleted = (options) => {
@@ -735,6 +746,37 @@ const handleCloseViewModal = () => {
   amountForPrint.value = 0;
   creditAmountForPrint.value = 0;
   creditForPrint.value = false;
+};
+
+const handleCancelOrder = async (orderId) => {
+  if (!orderId) return;
+  Swal.fire({
+    title: "¿Cancelar Orden?",
+    text: `¿Estás seguro de cancelar la orden #${orderId}?`,
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#d33",
+    cancelButtonColor: "#6e7881",
+    confirmButtonText: "Sí, Cancelar Orden",
+    cancelButtonText: "No, Mantener",
+  }).then(async (result) => {
+    if (result.isConfirmed) {
+      try {
+        await axios.patch(`/tpv/orders/${orderId}/cancelled`);
+        toast.success(`Orden #${orderId} cancelada exitosamente.`);
+        if (viewModal.value) handleCloseViewModal();
+        if (activeTab.value === 0) fetchOrdersCompleted();
+        else if (activeTab.value === 1) fetchOrdersAll();
+        else if (activeTab.value === 2) fetchOrderCancelled();
+        else if (activeTab.value === 3) fetchOrderAbandoned();
+        fetchAllTabCounts();
+      } catch (err) {
+        console.error("Error cancelando orden:", err);
+        const msg = err.response?.data?.message || "No se pudo cancelar la orden.";
+        toast.error(msg);
+      }
+    }
+  });
 };
 
 const handleViewOrder = async (orderId) => {
@@ -1086,6 +1128,7 @@ const sellerDisplayName = (item) => (item?.username ? capitalizeFirstAndLastName
           @print-order="printOrder"
           @print-order-thermal="printOrderThermal54"
           @view-order="handleViewOrder"
+          @cancel-order="handleCancelOrder"
         />
       </VWindowItem>
       <VWindowItem :value="4">
@@ -1179,6 +1222,7 @@ const sellerDisplayName = (item) => (item?.username ? capitalizeFirstAndLastName
       :credit-amount="creditAmountForPrint"
       :credit="creditForPrint"
       @close="handleCloseViewModal"
+      @cancel-order="handleCancelOrder"
       :is-special-taxpayer="isSpecialTaxpayer"
     />
   </div>

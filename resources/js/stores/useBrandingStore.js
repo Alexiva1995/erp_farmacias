@@ -39,6 +39,7 @@ export const useBrandingStore = defineStore('branding', () => {
     section3_button_text: 'COMPRAR BRONCEADOR',
     cyclic_inventory_mode: 'double',
     cyclic_inventory_barcode_required: true,
+    tpv_payment_methods: null,
   })
 
   const isLoading = ref(false)
@@ -46,8 +47,8 @@ export const useBrandingStore = defineStore('branding', () => {
   const exchangeRates = ref([])
   let fetchPromise = null
 
-  const fetchSettings = async () => {
-    if (isLoaded.value && settings.value.app_rif) {
+  const fetchSettings = async (force = false) => {
+    if (!force && isLoaded.value && settings.value.app_rif) {
       return
     }
     
@@ -145,12 +146,20 @@ export const useBrandingStore = defineStore('branding', () => {
     return `${r}, ${g}, ${b}`
   }
 
+  // Actualiza solo el campo tpv_payment_methods de forma reactiva
+  const updatePaymentMethods = (methods) => {
+    // Mutación directa de la propiedad para que los computed que dependen de
+    // settings.tpv_payment_methods detecten el cambio sin reemplazar el objeto raíz
+    settings.value.tpv_payment_methods = methods
+  }
+
   return {
     settings,
     exchangeRates,
     isLoading,
     isLoaded,
     fetchSettings,
+    updatePaymentMethods,
     hexToRgb,
   }
 })

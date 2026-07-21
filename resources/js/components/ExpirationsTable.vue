@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
 import { formatDateSimple } from "@/utils/formatters";
 import { computed } from "vue";
@@ -7,7 +7,7 @@ import { useAbility } from "@casl/vue";
 
 const { can } = useAbility();
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => (brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket'));
+const isRestaurant = computed(() => false);
 
 const props = defineProps({
   modelValue: {

@@ -166,12 +166,23 @@ const getBINANCE = async () => {
   }
 };
 
-function refresh() {
-  getCOP();
-  getDollarBCV();
-  getEUR();
-  getCOPC();
-  getBINANCE();
+const loading = ref(false);
+
+async function refresh() {
+  loading.value = true;
+  try {
+    await Promise.all([
+      getCOP(),
+      getDollarBCV(),
+      getEUR(),
+      getCOPC(),
+      getBINANCE()
+    ]);
+  } catch (error) {
+    console.error("Error al refrescar las tasas:", error);
+  } finally {
+    loading.value = false;
+  }
 }
 
 onMounted(() => {

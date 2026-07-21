@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import InventoryStockFilters from "@/components/InventoryStockFilters.vue";
 import InventoryStockTable from "@/components/InventoryStockTable.vue";
 import InventoryStockGrupoTable from "@/components/InventoryStockGrupoTable.vue";
@@ -23,7 +23,7 @@ const modulo = reactive({
 });
 
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => (brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket'));
+const isRestaurant = computed(() => false);
 
 const searchQuery = ref("");
 const selectedLaboratory = ref(null);

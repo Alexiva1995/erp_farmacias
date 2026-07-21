@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="payment-history-page pb-12">
     <div class="d-flex flex-column gap-1 mt-1">
       <!-- Filtros Premium -->
@@ -144,101 +144,118 @@
 
     <!-- Vista Móvil: Cards -->
     <div v-else class="d-flex flex-column gap-4">
-      <VCard
-        v-for="item in payments"
-        :key="item.id"
-        class="rounded-lg border shadow-sm overflow-hidden"
-      >
-        <div class="pa-4 bg-surface-variant-light d-flex align-center gap-3">
-          <VAvatar
-            size="48"
-            color="primary"
-            variant="tonal"
-            class="rounded-lg shadow-sm"
-          >
-            <VIcon icon="tabler-receipt" size="24" />
-          </VAvatar>
-          <div class="d-flex flex-column flex-grow-1">
-            <span
-              class="text-base font-weight-black leading-tight truncate"
-              style="max-inline-size: 180px"
-            >
-              {{ item.invoices?.[0]?.supplier?.name || "Proveedor N/A" }}
-            </span>
-            <span class="text-xs text-disabled">{{
-              formatDate(item.payment_date)
-            }}</span>
-          </div>
-          <VChip
-            :color="getCurrencyColor(item.currency)"
-            variant="elevated"
-            class="font-weight-black px-4 rounded-lg shadow-sm"
-          >
-            {{ normalizeCurrencyCode(item.currency) }}
-          </VChip>
-        </div>
-
-        <VDivider class="opacity-10" />
-
-        <div class="pa-4 pt-4">
-          <div class="d-flex justify-space-between align-center mb-4">
-            <div class="d-flex flex-column">
-              <span
-                class="text-super-xs text-disabled font-weight-black uppercase"
-                >Monto Pagado</span
-              >
-              <span class="text-xl font-weight-black text-primary">
-                {{ formatCurrency(item.amount, item.currency) }}
-              </span>
-            </div>
-            <div class="text-right d-flex flex-column">
-              <span
-                class="text-super-xs text-disabled font-weight-black uppercase"
-                >Ref. USD</span
-              >
-              <span class="text-base font-weight-bold text-success"
-                >USD {{ formatNumber(item.amount_usd) }}</span
-              >
-            </div>
-          </div>
-
-          <div class="d-flex gap-2">
-            <VBtn
-              block
-              variant="tonal"
-              color="primary"
-              class="rounded-lg font-weight-black flex-grow-1"
-              prepend-icon="tabler-eye"
-              @click="viewPaymentDetails(item)"
-            >
-              Detalles
-            </VBtn>
-            <VBtn
-              v-if="item.photo_url"
-              variant="tonal"
-              color="success"
-              class="rounded-lg px-4"
-              @click="viewReceipt(item.photo_url)"
-            >
-              <VIcon icon="tabler-file-dollar" />
-            </VBtn>
-          </div>
-        </div>
-      </VCard>
-
-      <!-- Paginación Móvil -->
-      <VCard
-        class="rounded-lg border shadow-sm pa-3 d-flex justify-center align-center bg-surface"
-      >
-        <VPagination
-          v-model="page"
-          :length="Math.ceil(totalPayments / itemsPerPage)"
-          total-visible="3"
-          density="comfortable"
-          active-color="primary"
-          @update:model-value="fetchPaymentHistory"
+      <template v-if="loading">
+        <VSkeletonLoader
+          v-for="n in 3"
+          :key="n"
+          type="card-avatar, actions"
+          class="rounded-lg border shadow-sm"
         />
-      </VCard>
+      </template>
+      <template v-else-if="payments.length === 0">
+        <VCard class="rounded-lg border shadow-sm pa-8 text-center bg-surface">
+          <VIcon icon="tabler-receipt-off" size="48" color="disabled" class="mb-2" />
+          <h4 class="text-h6 font-weight-black text-medium-emphasis">No se encontraron pagos</h4>
+          <p class="text-xs text-disabled">Prueba cambiando los filtros de búsqueda</p>
+        </VCard>
+      </template>
+      <template v-else>
+        <VCard
+          v-for="item in payments"
+          :key="item.id"
+          class="rounded-lg border shadow-sm overflow-hidden"
+        >
+          <div class="pa-4 bg-surface-variant-light d-flex align-center gap-3">
+            <VAvatar
+              size="48"
+              color="primary"
+              variant="tonal"
+              class="rounded-lg shadow-sm"
+            >
+              <VIcon icon="tabler-receipt" size="24" />
+            </VAvatar>
+            <div class="d-flex flex-column flex-grow-1">
+              <span
+                class="text-base font-weight-black leading-tight truncate"
+                style="max-inline-size: 180px"
+              >
+                {{ item.invoices?.[0]?.supplier?.name || "Proveedor N/A" }}
+              </span>
+              <span class="text-xs text-disabled">{{
+                formatDate(item.payment_date)
+              }}</span>
+            </div>
+            <VChip
+              :color="getCurrencyColor(item.currency)"
+              variant="elevated"
+              class="font-weight-black px-4 rounded-lg shadow-sm"
+            >
+              {{ normalizeCurrencyCode(item.currency) }}
+            </VChip>
+          </div>
+
+          <VDivider class="opacity-10" />
+
+          <div class="pa-4 pt-4">
+            <div class="d-flex justify-space-between align-center mb-4">
+              <div class="d-flex flex-column">
+                <span
+                  class="text-super-xs text-disabled font-weight-black uppercase"
+                  >Monto Pagado</span
+                >
+                <span class="text-xl font-weight-black text-primary">
+                  {{ formatCurrency(item.amount, item.currency) }}
+                </span>
+              </div>
+              <div class="text-right d-flex flex-column">
+                <span
+                  class="text-super-xs text-disabled font-weight-black uppercase"
+                  >Ref. USD</span
+                >
+                <span class="text-base font-weight-bold text-success"
+                  >USD {{ formatNumber(item.amount_usd) }}</span
+                >
+              </div>
+            </div>
+
+            <div class="d-flex gap-2">
+              <VBtn
+                block
+                variant="tonal"
+                color="primary"
+                class="rounded-lg font-weight-black flex-grow-1"
+                prepend-icon="tabler-eye"
+                @click="viewPaymentDetails(item)"
+              >
+                Detalles
+              </VBtn>
+              <VBtn
+                v-if="item.photo_url"
+                variant="tonal"
+                color="success"
+                class="rounded-lg px-4"
+                @click="viewReceipt(item.photo_url)"
+              >
+                <VIcon icon="tabler-file-dollar" />
+              </VBtn>
+            </div>
+          </div>
+        </VCard>
+
+        <!-- Paginación Móvil -->
+        <VCard
+          class="rounded-lg border shadow-sm pa-3 d-flex justify-center align-center bg-surface"
+        >
+          <VPagination
+            v-model="page"
+            :length="Math.ceil(totalPayments / itemsPerPage)"
+            total-visible="3"
+            density="comfortable"
+            active-color="primary"
+            @update:model-value="fetchPaymentHistory"
+          />
+        </VCard>
+      </template>
     </div>
 
     <!-- Modal Detalles de Pago -->

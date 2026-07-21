@@ -44,9 +44,17 @@ class ClientRepository implements \App\Contracts\Client
     {
         $clean = preg_replace('/[^0-9]/', '', $identification);
 
+        if (empty($clean)) {
+            return null;
+        }
+
         return Client::query()->with("company")
             ->where("identification", "=", $identification)
             ->orWhere("identification", "=", $clean)
+            ->orWhere("identification", "=", "V-{$clean}")
+            ->orWhere("identification", "=", "E-{$clean}")
+            ->orWhere("identification", "=", "J-{$clean}")
+            ->orWhere("identification", "=", "G-{$clean}")
             ->orWhere("identification", "like", "%{$clean}%")
             ->first();
     }

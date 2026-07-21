@@ -453,7 +453,7 @@ onMounted(() => {
 
             <template #item.payment_method="{ item }">
               <VChip size="x-small" variant="tonal" color="primary" class="font-weight-bold rounded-lg text-uppercase">
-                {{ item.payment_method || 'Web' }}
+                {{ getPaymentLabel(item.payment_method) }}
               </VChip>
             </template>
 

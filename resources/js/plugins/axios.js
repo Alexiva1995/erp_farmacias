@@ -66,6 +66,20 @@ const roundQuantitiesAndStock = (obj) => {
   return newObj;
 };
 
+let isRefreshingCsrf = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach(prom => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
 // Interceptor de respuesta
 axiosInstance.interceptors.response.use(
   (response) => {
@@ -75,7 +89,53 @@ axiosInstance.interceptors.response.use(
     }
     return response;
   },
-  (error) => {
+  async (error) => {
+    const originalRequest = error.config;
+
+    // Manejo transparente de error 419 (CSRF Token Mismatch)
+    if (error.response?.status === 419 && originalRequest && !originalRequest._retry) {
+      if (isRefreshingCsrf) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        }).then(() => {
+          return axiosInstance(originalRequest);
+        }).catch(err => {
+          return Promise.reject(err);
+        });
+      }
+
+      originalRequest._retry = true;
+      isRefreshingCsrf = true;
+
+      try {
+        // Renovar cookie CSRF desde Sanctum/Laravel
+        await axios.get('/sanctum/csrf-cookie', { baseURL: '' });
+        
+        // Extraer y actualizar el token en el meta tag del DOM
+        const match = document.cookie.match(/XSRF-TOKEN=([^;]+)/);
+        if (match) {
+          const newToken = decodeURIComponent(match[1]);
+          const metaCsrf = document.querySelector('meta[name="csrf-token"]');
+          if (metaCsrf) {
+            metaCsrf.setAttribute('content', newToken);
+          }
+          if (originalRequest.headers) {
+            originalRequest.headers['X-CSRF-TOKEN'] = newToken;
+          }
+        }
+
+        processQueue(null);
+        return axiosInstance(originalRequest);
+      } catch (csrfError) {
+        processQueue(csrfError, null);
+        console.warn('Error renovando CSRF token:', csrfError);
+        window.location.reload();
+        return Promise.reject(csrfError);
+      } finally {
+        isRefreshingCsrf = false;
+      }
+    }
+
     // Guardar el último error de Axios de forma global para el sistema de Toasts
     window.lastAxiosError = error;
     

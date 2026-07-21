@@ -16,6 +16,7 @@ const emit = defineEmits(["update:modelValue", "save", "modal-closed"]);
 const { mobile } = useDisplay();
 
 const promoTypes = [
+  { title: "Oferta General (% Descuento a Todos)", value: "general" },
   { title: "Oferta 2X1 (Pagas el de mayor valor, menor gratis de la misma categoría)", value: "2x1" },
   { title: "Oferta 3X2 (Pagas los 2 más caros, menor gratis de la misma categoría)", value: "3x2" },
   { title: "50% en el segundo (50% en el de menor valor)", value: "50_second" },
@@ -121,6 +122,30 @@ const onCancel = () => {
                   class="rounded-lg font-weight-bold"
                   :disabled="props.loading"
                 />
+              </div>
+            </VCol>
+
+            <!-- Porcentaje de Descuento (Si es Oferta General) -->
+            <VCol v-if="localFormData.type === 'general'" cols="12">
+              <div class="mb-4">
+                <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Porcentaje de Descuento (%)</span>
+                <VTextField
+                  v-model.number="localFormData.fixed_price"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  suffix="%"
+                  placeholder="Ej: 10"
+                  variant="outlined"
+                  density="comfortable"
+                  hide-details
+                  class="rounded-lg font-weight-bold"
+                  :disabled="props.loading"
+                  :error="!!props.formErrors.fixed_price"
+                  :error-messages="props.formErrors.fixed_price"
+                />
+                <span class="text-caption text-medium-emphasis mt-1 d-block">Si no seleccionas categorías, este porcentaje se aplicará a TODOS los productos.</span>
               </div>
             </VCol>
 

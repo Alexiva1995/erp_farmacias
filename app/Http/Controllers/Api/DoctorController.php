@@ -11,10 +11,10 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
 
+use App\Http\Resources\DoctorResource;
+
 class DoctorController extends Controller
 {
-    //
-
     public function __construct(
         protected Doctor $doctor
     ) {}
@@ -23,7 +23,7 @@ class DoctorController extends Controller
     public function create(CreateDoctorRequest $request): JsonResponse
     {
         $record = $this->doctor->create($request->data->all());
-        return ApiResponse::success($record, "Doctor creado exitosamente", 200);
+        return ApiResponse::success(new DoctorResource($record), "Doctor creado exitosamente", 200);
     }
 
     public function edit(EditDoctorRequest $request): JsonResponse
@@ -39,13 +39,13 @@ class DoctorController extends Controller
         }
 
         $respuestaDB = $this->doctor->edit($request->data->id, $request->data->all());
-        return ApiResponse::success($respuestaDB, "Doctor actualizado exitosamente", 200);
+        return ApiResponse::success(new DoctorResource($respuestaDB), "Doctor actualizado exitosamente", 200);
     }
 
     public function consultAll(): JsonResponse
     {
         $respuesDB = $this->doctor->consultAll();
-        return ApiResponse::success($respuesDB, "Operación exitosa", 200);
+        return ApiResponse::success(DoctorResource::collection($respuesDB), "Operación exitosa", 200);
     }
 
     public function consultById(Request $request)

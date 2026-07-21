@@ -4,13 +4,7 @@
       <VProgressCircular indeterminate color="primary" />
     </div>
     <div v-else>
-      <!-- Dashboard Consolidado de Minimarket (Sólo si es minimarket) -->
-      <div v-if="brandingStore.settings.business_type === 'minimarket'" class="mb-6">
-        <MinimarketDashboard />
-      </div>
 
-      <!-- Fila 1 & 2 Originales (Sólo si NO es minimarket) -->
-      <template v-else>
         <!-- Fila 1: Felicitaciones y Estadísticas -->
         <VRow class="mb-6 match-height">
           <!-- Tarjeta de Felicitaciones -->
@@ -114,7 +108,6 @@
             <EcommerceRevenueReport class="h-100" />
           </VCol>
         </VRow>
-      </template>
 
       <!-- Fila 3: Reportes Detallados -->
       <VRow class="mb-6 match-height">

@@ -1,11 +1,11 @@
-<script setup>
+﻿<script setup>
 // Filtros IA Asistente Pedidos (Proveedores)
 import AppFilterBase from "@/components/AppFilterBase.vue";
 import { useBrandingStore } from "@/stores/useBrandingStore";
 import { computed } from "vue";
 
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => (brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket'));
+const isRestaurant = computed(() => false);
 
 const props = defineProps({
   searchQuery:        { type: String,  default: "" },

@@ -268,20 +268,20 @@ watch(
   }
 );
 
-// Paginación y filtros
+// Paginación y filtros optimizados
 let debounceTimer;
+
+watch([searchQuery, selectedCategory, selectedStatus], () => {
+  page.value = 1;
+});
+
 watch(
   [page, itemsPerPage, searchQuery, selectedCategory, selectedStatus],
   () => {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => fetchDishes(), 300);
-  },
-  { deep: true }
+  }
 );
-
-watch([searchQuery, selectedCategory, selectedStatus], () => {
-  page.value = 1;
-});
 
 // Cargar la lista inicial de productos para ingredientes al abrir el diálogo
 watch(isEditDialogVisible, (val) => {
@@ -489,10 +489,12 @@ onMounted(() => {
 
     <!-- Listado Principal -->
     <VCard variant="flat" class="border rounded-lg bg-surface overflow-hidden">
-      <!-- Loading State -->
-      <div v-if="loading" class="pa-10 text-center">
-        <VProgressCircular indeterminate color="primary" size="48" thickness="4" />
-        <p class="text-disabled mt-3 font-weight-bold uppercase">Cargando menú...</p>
+      <!-- Loading State con Skeleton Loader -->
+      <div v-if="loading" class="pa-6">
+        <VSkeletonLoader
+          type="table-row-divider@5"
+          class="bg-transparent"
+        />
       </div>
 
       <!-- Empty State -->

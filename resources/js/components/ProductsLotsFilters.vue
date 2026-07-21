@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 // Filtros Lotes de Productos (Inventario)
 import AppFilterBase from "@/components/AppFilterBase.vue";
 import { useAuthStore } from "@/stores/auth";
@@ -59,8 +59,8 @@ const sortOptions = [
 
 const authStore = useAuthStore();
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => (brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket'));
-const isMiniMarket = computed(() => brandingStore.settings.business_type === 'minimarket');
+const isRestaurant = computed(() => false);
+const isMiniMarket = computed(() => false);
 const currentUser = computed(() => authStore.user);
 const selectedSort = ref(null);
 

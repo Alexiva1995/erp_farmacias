@@ -92,12 +92,7 @@ const handleFileSelect = (e) => {
 }
 
 const fetchSettings = async () => {
-  try {
-    const response = await axios.get('/general-settings')
-    businessType.value = response.data.data.business_type || 'pharmacy'
-  } catch (error) {
-    console.error('Error al cargar configuración:', error)
-  }
+  // Configuración cargada al inicio (business_type eliminado)
 }
 
 const triggerImport = async () => {

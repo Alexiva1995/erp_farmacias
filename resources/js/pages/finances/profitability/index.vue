@@ -88,9 +88,19 @@ const fetchProducts = async () => {
 
 const percentProfitability = async () => {
   try {
-    const response = await axios.get("/finances/profitability");
-    globalSettings.value = response.data || {};
-    profitability.value = response.data.default_profitability_percentage || 0;
+    const [profitabilityResponse, generalSettingsResponse] = await Promise.all([
+      axios.get("/finances/profitability"),
+      axios.get("/general-settings"),
+    ]);
+
+    const profitData = profitabilityResponse.data || {};
+    const generalData = generalSettingsResponse.data?.data || {};
+
+    globalSettings.value = {
+      ...profitData,
+      profitability_calculation_type: generalData.profitability_calculation_type || 'simple'
+    };
+    profitability.value = profitData.default_profitability_percentage || 0;
   } catch (error) {
     console.error("Hubo un error al obtener la rentabilidad:", error);
   }
@@ -148,14 +158,10 @@ function reloadTable() {
   percentProfitability();
 }
 
-// Watchers
+// Watchers unificados para evitar race conditions
 let debounceTimer;
 watch(
   [
-    page,
-    itemsPerPage,
-    sortBy,
-    orderBy,
     searchQuery,
     selectedLaboratory,
     selectedOrigin,
@@ -165,25 +171,23 @@ watch(
     lockedValue,
   ],
   () => {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => fetchProducts(), 300);
-  },
-  { deep: true },
+    // Si cambia cualquier filtro, reiniciamos a la primera página.
+    // Esto disparará a su vez el watcher del page.
+    if (page.value !== 1) {
+      page.value = 1;
+    } else {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => fetchProducts(), 300);
+    }
+  }
 );
 
 watch(
-  [
-    searchQuery,
-    selectedLaboratory,
-    selectedOrigin,
-    stockStatusFilter,
-    startDate,
-    endDate,
-    lockedValue,
-  ],
+  [page, itemsPerPage, sortBy, orderBy],
   () => {
-    page.value = 1;
-  },
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => fetchProducts(), 300);
+  }
 );
 
 // Lifecycle
@@ -382,6 +386,7 @@ onMounted(() => {
 
     <ProductProfitabilityEditDialog
       :product="productProfitability"
+      :settings="globalSettings"
       :dialog="editDialog"
       @close-modal="editDialog = false"
       @refresh="reloadTable"

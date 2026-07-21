@@ -9,7 +9,7 @@ use App\Models\Employee;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
 
-class ResignationRepository implements \App\Contracts\Resignation
+class ResignationRepository
 {
     /**
      * Guardar una nueva renuncia en la base de datos

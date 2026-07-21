@@ -1,11 +1,11 @@
-<script setup>
+﻿<script setup>
 import axios from "@/plugins/axios";
 import Swal from "sweetalert2";
 import { useBrandingStore } from "@/stores/useBrandingStore";
 import { computed, ref } from "vue";
 
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => (brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket'));
+const isRestaurant = computed(() => false);
 
 const props = defineProps({
   dollar: { type: Number, required: true },

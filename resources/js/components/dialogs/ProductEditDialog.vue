@@ -12,9 +12,9 @@ const authStore = useAuthStore();
 const { xs } = useDisplay();
 const brandingStore = useBrandingStore();
 
-const isRestaurant = computed(() => (brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket'));
-const isMiniMarket = computed(() => brandingStore.settings.business_type === 'minimarket');
-const isSportsRental = computed(() => brandingStore.settings.business_type === 'sports_rental');
+const isRestaurant = computed(() => false);
+const isMiniMarket = computed(() => false);
+const isSportsRental = computed(() => false);
 
 const isFieldEnabled = (fieldKey) => {
   return !brandingStore.settings.product_form_fields || brandingStore.settings.product_form_fields.includes(fieldKey);
@@ -74,7 +74,7 @@ const groupInput = ref(null);
 
 const handleNextTab = () => {
   if (activeTab.value === 0) {
-    activeTab.value = isMiniMarket.value ? 3 : 1;
+    activeTab.value = brandingStore.settings.enable_variations ? 3 : 1;
   } else if (activeTab.value === 3) {
     activeTab.value = 1;
   } else if (activeTab.value === 1) {
@@ -91,7 +91,7 @@ const createLaboratory = async () => {
       name: newLabName.value,
     });
 
-    toast.success(isRestaurant.value || isMiniMarket.value || isSportsRental.value ? "Marca creada con éxito" : "Laboratorio creado con éxito");
+    toast.success("Laboratorio / Marca creada con éxito");
     emit("laboratory-created", response.data.laboratory);
     formData.value.laboratory_id = response.data.laboratory.id;
     isLabDialogVisible.value = false;
@@ -102,7 +102,7 @@ const createLaboratory = async () => {
         error.response.data.errors?.name?.[0] || "Error de validación",
       );
     } else {
-      toast.error(isRestaurant.value || isMiniMarket.value || isSportsRental.value ? "Error al crear la marca" : "Error al crear el laboratorio");
+      toast.error("Error al crear el laboratorio / marca");
     }
   } finally {
     isSavingLab.value = false;
@@ -369,8 +369,8 @@ const submitForm = () => {
     });
   }
 
-  // Serializar variaciones de cosmética si existen
-  if (isMiniMarket.value && Array.isArray(formData.value.variants)) {
+  // Serializar variaciones si existen
+  if (brandingStore.settings.enable_variations && Array.isArray(formData.value.variants)) {
     payload.append("variants", JSON.stringify(formData.value.variants));
   }
 
@@ -454,7 +454,7 @@ const submitForm = () => {
             <VIcon icon="tabler-info-circle" class="me-2" size="18" />
             General
           </VTab>
-          <VTab v-if="isMiniMarket && brandingStore.settings.enable_variations" :value="3" class="text-button font-weight-black">
+          <VTab v-if="brandingStore.settings.enable_variations" :value="3" class="text-button font-weight-black">
             <VIcon icon="tabler-palette" class="me-2" size="18" />
             Variaciones
           </VTab>
@@ -977,8 +977,8 @@ const submitForm = () => {
             </div>
           </VWindowItem>
 
-          <!-- Pestaña Variaciones (Solo para Mini Market) -->
-          <VWindowItem v-if="isMiniMarket" :value="3" class="pa-2 pt-0">
+          <!-- Pestaña Variaciones -->
+          <VWindowItem v-if="brandingStore.settings.enable_variations" :value="3" class="pa-2 pt-0">
             <div :class="[xs ? 'gap-4' : 'gap-6', 'd-flex flex-column']">
               <div class="d-flex flex-column gap-3">
                 <div class="d-flex align-center justify-space-between">

@@ -1,10 +1,10 @@
-<script setup>
+﻿<script setup>
 import AppFilterBase from "@/components/AppFilterBase.vue";
 import { computed } from "vue";
 import { useBrandingStore } from "@/stores/useBrandingStore";
 
 const brandingStore = useBrandingStore();
-const isMiniMarket = computed(() => brandingStore.settings?.business_type === 'minimarket');
+const isMiniMarket = computed(() => false);
 
 const props = defineProps({
   searchQuery: String,

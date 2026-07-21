@@ -26,8 +26,7 @@ import AppMobilePagination from "@/components/AppMobilePagination.vue";
 
 const { mobile } = useDisplay();
 
-// Tipo de negocio es restaurante
-const isRestaurant = computed(() => (brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket'));
+const isRestaurant = computed(() => false);
 
 const emit = defineEmits([
   "update:options",

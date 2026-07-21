@@ -11,9 +11,9 @@ import { toast } from "@/plugins/sweetalert";
 
 const authStore = useAuthStore();
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => (brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket'));
-const isMiniMarket = computed(() => brandingStore.settings.business_type === 'minimarket');
-const isSportsRental = computed(() => brandingStore.settings.business_type === 'sports_rental');
+const isRestaurant = computed(() => false);
+const isMiniMarket = computed(() => false);
+const isSportsRental = computed(() => false);
 
 const isFieldEnabled = (fieldKey) => {
   return !brandingStore.settings.product_form_fields || brandingStore.settings.product_form_fields.includes(fieldKey);

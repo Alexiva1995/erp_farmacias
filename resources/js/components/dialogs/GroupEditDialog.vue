@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { computed, ref, watch } from "vue";
@@ -14,7 +14,7 @@ const props = defineProps({
 const emit = defineEmits(["update:modelValue", "save", "clearErrors"]);
 
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => (brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket'));
+const isRestaurant = computed(() => false);
 
 const formData = ref({});
 const formErrors = ref({});

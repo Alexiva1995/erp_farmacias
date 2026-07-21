@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
 import { formatPrice, formatDateSimple } from "@/utils/formatters";
 import { useBrandingStore } from "@/stores/useBrandingStore";
@@ -16,8 +16,8 @@ const props = defineProps({
 });
 
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => (brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket'));
-const isMiniMarket = computed(() => brandingStore.settings?.business_type === 'minimarket');
+const isRestaurant = computed(() => false);
+const isMiniMarket = computed(() => false);
 
 const isGroup = computed(() => props.viewType === "group");
 

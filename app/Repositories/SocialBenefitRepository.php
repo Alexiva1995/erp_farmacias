@@ -16,7 +16,7 @@ use App\Models\UsersSalaryDetails;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
 

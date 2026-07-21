@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import BarcodeScannerDialog from "@/components/dialogs/BarcodeScannerDialog.vue";
 import { toast } from "@/plugins/sweetalert";
 import { formatDateSimple } from "@/utils/formatters";
@@ -6,7 +6,7 @@ import { computed, ref, watch } from "vue";
 import { useBrandingStore } from "@/stores/useBrandingStore";
 
 const brandingStore = useBrandingStore();
-const isMiniMarket = computed(() => brandingStore.settings?.business_type === 'minimarket');
+const isMiniMarket = computed(() => false);
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },

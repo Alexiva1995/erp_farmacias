@@ -13,7 +13,10 @@ const props = defineProps({
 const emit = defineEmits(["refresh", "close-modal", "update:dialog"]);
 
 const brandingStore = useBrandingStore();
-const isMinimarket = computed(() => brandingStore.settings?.business_type === 'minimarket');
+const isMinimarket = computed(() => {
+  return brandingStore.settings?.business_type === 'minimarket' || props.settings?.profitability_calculation_type === 'compound';
+});
+const isMiniMarket = isMinimarket;
 
 const localPercentage = ref(0);
 const shippingCost = ref(0);

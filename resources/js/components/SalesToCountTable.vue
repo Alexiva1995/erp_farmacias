@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
 import { computed } from "vue";
 import { formatPrice, formatDateSimple } from "@/utils/formatters";
@@ -17,7 +17,7 @@ const props = defineProps({
 const emit = defineEmits(["update:options", "count-product"]);
 
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => (brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket'));
+const isRestaurant = computed(() => false);
 
 const headers = computed(() => {
   const baseHeaders = [

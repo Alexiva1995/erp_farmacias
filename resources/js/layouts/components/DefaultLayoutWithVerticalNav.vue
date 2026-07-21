@@ -43,36 +43,151 @@ const processedNavItems = computed(() => {
     return true;
   });
 
-  const isRestaurant = (brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket');
-  const isSportsRental = brandingStore.settings.business_type === 'sports_rental';
   const isSimpleCyclic = brandingStore.settings.cyclic_inventory_mode === 'simple';
   const enableLots = brandingStore.settings.enable_lots ?? true;
   
-  const filterRestaurantNav = (navItemsList) => {
-    const isMiniMarket = brandingStore.settings.business_type === 'minimarket';
-    
+  const filterNav = (navItemsList) => {
     return navItemsList.map((item) => {
       let copy = { ...item };
-      
-      // Si el item padre es el de IA Assistence, renombrarlo a Pedidos en restaurante
-      if (isRestaurant && copy.title === 'IA Assistence') {
-        copy.title = 'Pedidos';
-        // Asignarle 'to' directo para que redirija inmediatamente al hacer click
-        copy.to = 'suppliers-supplieriaorderassistant';
-        // Eliminar los hijos para evitar el desplegable y que entre directo
-        delete copy.children;
-        return copy;
-      }
 
       if (copy.children && Array.isArray(copy.children)) {
-        // Primero procesamos recursivamente los hijos
-        let childs = filterRestaurantNav([...copy.children]);
+        let childs = filterNav([...copy.children]);
         
-        // Si es Alquiler Deportivo, filtrar los submenús de la sección "Promociones" para dejar únicamente 'Individual'
-        if (isSportsRental && copy.title === 'Promociones') {
-          childs = childs.filter((c) => c.title === 'Individual');
+        // Filtrado dinámico de submenús de Promociones según enabled_offer_types
+        if (copy.title === 'Promociones') {
+          const enabledOffers = brandingStore.settings.enabled_offer_types || ['general', 'individual', 'category', 'pack', 'company', 'doctor', 'prescription', 'expiration'];
+          const offerPathMap = {
+            'general': '/tpv/generalOffer',
+            'individual': '/tpv/individualOffer',
+            'category': '/tpv/categoryOffer',
+            'pack': '/tpv/packOffer',
+            'company': '/tpv/companyOffer',
+            'doctor': '/tpv/doctorOffer',
+            'prescription': '/tpv/prescriptionOffer',
+            'expiration': '/tpv/expirationOffer',
+          };
+          childs = childs.filter(c => {
+            const path = typeof c.to === 'object' ? c.to.path : c.to;
+            for (const [type, typePath] of Object.entries(offerPathMap)) {
+              if (path === typePath) {
+                return enabledOffers.includes(type);
+              }
+            }
+            return true;
+          });
+          if (childs.length === 0) return null;
         }
-        
+
+        // Filtrado dinámico de submenús de CRM según enabled_crm_views
+        if (copy.title === 'CRM') {
+          const enabledCrm = brandingStore.settings.enabled_crm_views || ['clients', 'companies', 'doctors', 'lottery'];
+          const crmRouteMap = {
+            'clients': 'crm-clients',
+            'companies': 'crm-companies',
+            'doctors': 'crm-doctors',
+            'lottery': 'crm-lottery',
+          };
+          childs = childs.filter(c => {
+            for (const [key, name] of Object.entries(crmRouteMap)) {
+              if (c.to === name) {
+                return enabledCrm.includes(key);
+              }
+            }
+            return true;
+          });
+          if (childs.length === 0) return null;
+        }
+
+        // Filtrado dinámico de submenús de RRHH según enabled_rrhh_views
+        if (copy.title === 'RRHH') {
+          const enabledRrhh = brandingStore.settings.enabled_rrhh_views || ['employees', 'social_benefits', 'resignations', 'cleaning', 'laboratory', 'product', 'employee_task', 'employee_month'];
+          const rrhhRouteMap = {
+            'employees': 'rrhh-employees',
+            'social_benefits': 'rrhh-social-benefits',
+            'resignations': 'rrhh-resignations',
+          };
+          const productivityRouteMap = {
+            'cleaning': 'productivity-cleaning',
+            'laboratory': 'productivity-laboratory',
+            'product': 'productivity-product',
+            'employee_task': 'productivity-employee-task',
+            'employee_month': 'productivity-employee-month',
+          };
+
+          childs = childs.filter(c => {
+            for (const [key, name] of Object.entries(rrhhRouteMap)) {
+              if (c.to === name) {
+                return enabledRrhh.includes(key);
+              }
+            }
+            if (c.title === 'Productividad' && Array.isArray(c.children)) {
+              c.children = c.children.filter(sub => {
+                for (const [key, name] of Object.entries(productivityRouteMap)) {
+                  if (sub.to === name) {
+                    return enabledRrhh.includes(key);
+                  }
+                }
+                return true;
+              });
+              return c.children.length > 0;
+            }
+            return true;
+          });
+          if (childs.length === 0) return null;
+        }
+
+        // Filtrado dinámico de submenús de Proveedores según enabled_supplier_views
+        if (copy.title === 'Proveedores') {
+          const enabledSuppliers = brandingStore.settings.enabled_supplier_views || ['list', 'purchase_orders'];
+          const supplierRouteMap = {
+            'list': 'suppliers-list',
+            'purchase_orders': 'suppliers-purchase-orders-list',
+          };
+          childs = childs.filter(c => {
+            for (const [key, name] of Object.entries(supplierRouteMap)) {
+              if (c.to === name) {
+                return enabledSuppliers.includes(key);
+              }
+            }
+            return true;
+          });
+          if (childs.length === 0) return null;
+        }
+
+        // Filtrado dinámico de submenús de Finanzas según enabled_finance_views
+        if (copy.title === 'Finanzas') {
+          const enabledFinances = brandingStore.settings.enabled_finance_views || [
+            'profitability', 'exchangerate', 'pending-payments', 'payment-history', 
+            'cashout', 'payslips', 'cash-closure', 'cash-closure-user', 
+            'income-statement', 'expense-expenses', 'balance-general', 
+            'furnitures-list', 'loans-list'
+          ];
+          const financeRouteMap = {
+            'profitability': 'finances-profitability',
+            'exchangerate': 'finances-exchangerate',
+            'pending-payments': 'finances-pending-payments',
+            'payment-history': 'finances-payment-history',
+            'cashout': 'finances-cashout',
+            'payslips': 'finances-payslips',
+            'cash-closure': 'finances-cash-closure',
+            'cash-closure-user': 'finances-cash-closure-user',
+            'income-statement': 'finances-income-statement',
+            'expense-expenses': 'finances-expense-expenses',
+            'balance-general': 'balance-general',
+            'furnitures-list': 'furnitures-list',
+            'loans-list': 'loans-list',
+          };
+          childs = childs.filter(c => {
+            for (const [key, name] of Object.entries(financeRouteMap)) {
+              if (c.to === name) {
+                return enabledFinances.includes(key);
+              }
+            }
+            return true;
+          });
+          if (childs.length === 0) return null;
+        }
+
         // Ocultar Pendientes en modo simple
         if (isSimpleCyclic) {
           childs = childs.filter((c) => c.to !== 'cyclics-cyclic');
@@ -92,26 +207,9 @@ const processedNavItems = computed(() => {
           return { ...c };
         });
 
-        // Filtrados generales de otros módulos no relacionados con productos
-        if (isSportsRental) {
-          childs = childs.filter((c) => 
-            c.to !== 'tpv-ecommerce-orders' && 
-            c.title !== 'Pedidos Eco' &&
-            c.to !== 'tpv-quotation'
-          );
-        }
-
-        if (!isMiniMarket && !isRestaurant) {
-          // Si no es restaurante/minimarket, aplicar filtrado de recetas/médicos por defecto
-          childs = childs.filter((c) => 
-            c.title !== 'Devoluciones' && 
-            c.title !== 'Medico' && 
-            c.title !== 'Recipe' && 
-            c.to !== 'crm-doctors' &&
-            c.to !== 'productivity-laboratory' &&
-            c.title !== 'Laboratorios Empleados' &&
-            c.to !== 'fiscal-retenciones'
-          );
+        const enableQuotationsSetting = brandingStore.settings.enable_quotations ?? true;
+        if (!enableQuotationsSetting) {
+          childs = childs.filter((c) => c.to !== 'tpv-quotation');
         }
 
         if (!enableLots) {
@@ -187,65 +285,7 @@ const processedNavItems = computed(() => {
     });
   };
  
-  items = filterRestaurantNav(items);
- 
-  // 2. Si es modo restaurante o alquiler deportivo, ocultar E-commerce
-  items = items.filter(item => {
-    const title = (item.title || '').toLowerCase();
-    const to = (item.to || '').toLowerCase();
-    
-    if (isRestaurant) {
-      return title !== 'reservas' && to !== 'reservations' && title !== 'e-commerce' && title !== 'ecommerce' && to !== 'tova-store';
-    }
-    if (isSportsRental) {
-      return title !== 'e-commerce' && title !== 'ecommerce' && to !== 'tova-store';
-    }
-    return true;
-  });
-
-  if (isRestaurant) {
-    // Y habilitar "Operativa" para Admin y Empleado. Quitamos el subject de CASL dinámicamente
-    // para que no requiera privilegios exclusivos de 'admin' en la evaluación de CASL del layout.
-    items = items.map(item => {
-      if (item.title === 'Operativa') {
-        let copy = { ...item };
-        delete copy.action;
-        delete copy.subject;
-        if (copy.children) {
-          copy.children = copy.children.map(child => {
-            let childCopy = { ...child };
-            delete childCopy.action;
-            delete childCopy.subject;
-            return childCopy;
-          });
-        }
-        return copy;
-      }
-      return item;
-    });
-  }
- 
-  // 3. Si el negocio es de Alquiler de Canchas/Reservas (sports_rental),
-  // reordenamos el menú para colocar 'Reservas' en el primer lugar (arriba del Home)
-  if (isSportsRental) {
-    const reservationsItem = items.find(item => {
-      const title = (item.title || '').toLowerCase();
-      const toVal = item.to;
-      let toStr = '';
-      if (typeof toVal === 'string') {
-        toStr = toVal.toLowerCase();
-      } else if (toVal && typeof toVal === 'object' && toVal.name) {
-        toStr = String(toVal.name).toLowerCase();
-      }
-      return title === 'reservas' || toStr === 'reservations';
-    });
-    if (reservationsItem) {
-      // Filtrar el ítem de su posición original
-      items = items.filter(item => item !== reservationsItem);
-      // Colocarlo al puro principio del array (arriba de Home)
-      items.unshift(reservationsItem);
-    }
-  }
+  items = filterNav(items).filter(Boolean);
  
   // Solo procesar si el usuario está cargado
   if (!authStore.isLoaded || !authStore.user) {

@@ -690,17 +690,21 @@ class PendingPaymentsController extends Controller
                 if ($payment->payment_type === 'partial') {
                     $invoiceIds = $payment->invoices->pluck('id');
 
-                    // Obtener todos los pagos para estas facturas
+                    // Obtener todos los pagos asociados a estas facturas precargando las tasas
                     $allPayments = InvoicePayment::whereHas('invoices', function ($query) use ($invoiceIds) {
                         $query->whereIn('id', $invoiceIds);
                     })->get();
+
+                    // Mapear de una sola vez las tasas de cambio requeridas para evitar consultas individuales
+                    $neededCurrencies = $allPayments->pluck('payment_method')->unique()->filter(fn($c) => $c !== 'USD');
+                    $rates = ExchangeRate::whereIn('currency_code', $neededCurrencies)->get()->keyBy('currency_code');
 
                     $totalPaidUSD = 0;
                     foreach ($allPayments as $p) {
                         if ($p->payment_method === 'USD') {
                             $totalPaidUSD += $p->amount;
                         } else {
-                            $exchangeRate = ExchangeRate::where('currency_code', $p->payment_method)->first();
+                            $exchangeRate = $rates->get($p->payment_method);
                             if ($exchangeRate) {
                                 $totalPaidUSD += round($p->amount / $exchangeRate->rate, 2);
                             }

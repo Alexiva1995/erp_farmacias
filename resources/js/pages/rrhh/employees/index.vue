@@ -5,15 +5,14 @@ import ResignationFormDialog from "@/components/dialogs/ResignationFormDialog.vu
 import EmployeeFilters from "@/components/EmployeeFilters.vue";
 import EmployeeTable from "@/components/EmployeeTable.vue";
 import axios from "@/plugins/axios";
-import { toast } from "@/plugins/sweetalert";
-import { onMounted, ref, watch } from "vue";
+import { toast, Swal } from "@/plugins/sweetalert";
+import { onMounted, onUnmounted, ref, watch } from "vue";
 
 const showFireEmployeeDialog = ref(false);
 const showDialog = ref(false);
 const showResignationDialog = ref(false);
 const loading = ref(false);
 const search = ref("");
-const currency = ref(null);
 
 const roles = ref([]);
 const employees = ref([]);
@@ -31,6 +30,7 @@ const fetchEmployees = async () => {
   loading.value = true;
   try {
     const params = {
+      page: page.value,
       perPage: itemsPerPage.value,
       search: search.value,
       active: showActiveEmployees.value,
@@ -55,21 +55,23 @@ const fetchRoles = async () => {
 };
 
 const handleShowDialog = () => {
+  selectedEmployee.value = null;
   showDialog.value = true;
 };
 
 const handleEditEmployee = (employee) => {
-  showDialog.value = true;
   selectedEmployee.value = employee;
+  showDialog.value = true;
 };
 
 const handleClearFilters = () => {
   search.value = "";
   showActiveEmployees.value = true;
+  page.value = 1;
 };
 
 const handleRefreshTable = async () => {
-  fetchEmployees();
+  await fetchEmployees();
 };
 
 const handleShowFireEmployeeDialog = (employee) => {
@@ -78,34 +80,37 @@ const handleShowFireEmployeeDialog = (employee) => {
 };
 
 const handleDeleteEmployee = async (employee) => {
-  console.log('Empleado a eliminar:', employee);
+  const result = await Swal.fire({
+    title: '¿Eliminar empleado?',
+    text: `¿Está seguro de que desea eliminar a ${employee.name || ''} ${employee.last_name || ''}?`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#d33',
+    cancelButtonColor: '#3085d6',
+    confirmButtonText: 'Sí, eliminar',
+    cancelButtonText: 'Cancelar',
+  });
+
+  if (!result.isConfirmed) return;
+
   try {
     await axios.delete(`/rrhh/employees/${employee.id}`);
     await fetchEmployees();
     toast.success("Se eliminó el empleado exitosamente");
   } catch (error) {
-    console.error('Error al eliminar empleado:', error.response?.data || error.message);
     toast.error("No se pudo eliminar al empleado");
   }
 };
 
-const fetchCurrency = async () => {
-  try {
-    const { data } = await axios.get("finances/exchange-rates/consultOneBCV");
-    currency.value = data.rate;
-  } catch (error) {
-    toast.error("No se pudo obtener la tasa bcv del dia");
-  }
-};
-
-onMounted(() => Promise.all([fetchEmployees(), fetchRoles(), fetchCurrency()]));
+onMounted(() => {
+  Promise.all([fetchEmployees(), fetchRoles()]);
+});
 
 const handleGenerateResignation = async (employee) => {
   try {
     const resignation = employee.resignation;
 
     if (resignation) {
-      // Si existe, abrir en modo edición
       selectedEmployeeForResignation.value = employee;
       existingResignationData.value = {
         ...resignation,
@@ -121,7 +126,6 @@ const handleGenerateResignation = async (employee) => {
     console.error("Error al preparar edición de renuncia:", error);
   }
 
-  // Si no existe, crear nueva
   selectedEmployeeForResignation.value = employee;
   existingResignationData.value = null;
   isEditingResignation.value = false;
@@ -134,6 +138,8 @@ const handleDownloadResignation = async (employee) => {
     return;
   }
 
+  let url = null;
+  let link = null;
   try {
     const downloadUrl = `/api/rrhh/resignations/${employee.resignation.id}/download-pdf`;
     
@@ -142,30 +148,33 @@ const handleDownloadResignation = async (employee) => {
     const { data } = await axios.get(downloadUrl, { responseType: 'blob' });
     
     const blob = new Blob([data], { type: 'application/pdf' });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
+    url = window.URL.createObjectURL(blob);
+    link = document.createElement('a');
     link.href = url;
     link.setAttribute('download', `carta-renuncia-${employee.identification}.pdf`);
     document.body.appendChild(link);
     link.click();
-    link.remove();
-    window.URL.revokeObjectURL(url);
   } catch (error) {
     toast.error("Error al descargar la carta de renuncia");
-    console.error(error);
+  } finally {
+    if (link && link.parentNode) {
+      link.remove();
+    }
+    if (url) {
+      window.URL.revokeObjectURL(url);
+    }
   }
 };
 
-const handleResignationGenerated = (resignationData) => {
+const handleResignationGenerated = () => {
   toast.success("Carta de renuncia generada exitosamente");
 
-  // Limpiar el estado del modal
   showResignationDialog.value = false;
   isEditingResignation.value = false;
   existingResignationData.value = null;
   selectedEmployeeForResignation.value = null;
 
-  // Aquí se puede agregar lógica adicional como actualizar la tabla o enviar notificación
+  fetchEmployees();
 };
 
 const handleCloseEmployeeDialog = () => {
@@ -174,6 +183,17 @@ const handleCloseEmployeeDialog = () => {
 };
 
 const handleReset2FA = async (id) => {
+  const result = await Swal.fire({
+    title: '¿Reiniciar 2FA?',
+    text: '¿Desea reiniciar la autenticación de dos factores para este empleado?',
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: 'Sí, reiniciar',
+    cancelButtonText: 'Cancelar',
+  });
+
+  if (!result.isConfirmed) return;
+
   try {
     await axios.put(`/rrhh/employees/${id}/reset-2fa`);
     toast.success("Autenticación de dos factores reiniciada exitosamente");
@@ -181,6 +201,11 @@ const handleReset2FA = async (id) => {
     toast.error("No se pudo reiniciar la autenticación de dos factores");
   }
 };
+
+// Reiniciar la página a 1 si cambia la búsqueda o el filtro activo
+watch([search, showActiveEmployees], () => {
+  page.value = 1;
+});
 
 let debounceTimer;
 watch(
@@ -191,7 +216,14 @@ watch(
   },
   { deep: true }
 );
+
+onUnmounted(() => {
+  if (debounceTimer) {
+    clearTimeout(debounceTimer);
+  }
+});
 </script>
+
 <template>
   <div class="rrhh-employees-page pb-12">
     <div class="d-flex flex-column gap-1 mt-1">
@@ -205,7 +237,6 @@ watch(
       <FireEmployeeDialog
         v-model="showFireEmployeeDialog"
         :selected-employee="selectedEmployee"
-        :currency="currency"
         @refresh-table="handleRefreshTable"
       />
 

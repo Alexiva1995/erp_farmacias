@@ -12,10 +12,10 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
 
+use App\Http\Resources\CompanyResource;
+
 class CompanyController extends Controller
 {
-    //
-
     public function __construct(
         protected Company $company,
         protected Client  $client
@@ -25,19 +25,19 @@ class CompanyController extends Controller
     public function create(CreateCompanyRequest $request): JsonResponse
     {
         $companyDb = $this->company->create($request->company->all());
-        return ApiResponse::success($companyDb, "Empresa creada exitosamente", 200);
+        return ApiResponse::success(new CompanyResource($companyDb), "Empresa creada exitosamente", 200);
     }
 
     public function edit(EditCompanyRequest $request): JsonResponse
     {
         $respuestaDB = $this->company->edit($request->company->all());
-        return ApiResponse::success($respuestaDB, "Empresa actualizada exitosamente", 200);
+        return ApiResponse::success(new CompanyResource($respuestaDB), "Empresa actualizada exitosamente", 200);
     }
 
     public function consultAll(): JsonResponse
     {
         $respuesDB = $this->company->consultAll();
-        return ApiResponse::success($respuesDB, "Operación exitosa", 200);
+        return ApiResponse::success(CompanyResource::collection($respuesDB), "Operación exitosa", 200);
     }
 
     public function consultById(Request $request)

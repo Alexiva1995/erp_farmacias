@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { ref, onMounted, watch, computed } from "vue";
@@ -12,7 +12,7 @@ const props = defineProps({
 });
 
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => (brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'minimarket'));
+const isRestaurant = computed(() => false);
 
 const emit = defineEmits(["update:modelValue"]);
 

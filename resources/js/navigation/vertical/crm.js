@@ -16,6 +16,14 @@ export default [
         to: 'crm-clients',
       },
       {
+        title: 'Convenios',
+        to: 'crm-companies',
+      },
+      {
+        title: 'Médicos',
+        to: 'crm-doctors',
+      },
+      {
         title: 'Sorteo',
         to: 'crm-lottery',
       }

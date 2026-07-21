@@ -30,7 +30,7 @@ class CheckModule
      */
     private function getEnabledModules(): array
     {
-        $modulesString = env('ENABLED_MODULES', 'pharmacy');
-        return array_map('trim', explode(',', strtolower($modulesString)));
+        $modulesString = env('ENABLED_MODULES', 'pharmacy,restaurant,lottery,reservation,sports_rental,minimarket');
+        return array_unique(array_map('trim', explode(',', strtolower($modulesString))));
     }
 }
