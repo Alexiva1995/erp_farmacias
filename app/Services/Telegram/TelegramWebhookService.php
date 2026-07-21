@@ -204,7 +204,7 @@ class TelegramWebhookService
 
             // Caso H: Comando para consultar pagos pendientes de los próximos 7 días
             if ($cleanText === 'pagos pendientes' || $cleanText === '/pagos_pendientes' || $cleanText === 'pagos_pendientes') {
-                $this->sendUpcoming7DaysPayments($chatId);
+                $this->sendOverduePayments($chatId);
                 return;
             }
 
@@ -3075,6 +3075,118 @@ class TelegramWebhookService
             \Illuminate\Support\Facades\DB::rollBack();
             Log::error("Error al procesar unidades personalizadas de stockout: " . $e->getMessage());
             $this->telegramService->sendMessage("❌ Error al registrar el pedido personalizado: " . $e->getMessage(), $chatId);
+        }
+    }
+
+    /**
+     * Consultar y listar deudas vencidas agrupadas por proveedor para Telegram.
+     */
+    public function sendOverduePayments($chatId): void
+    {
+        try {
+            $today = \Carbon\Carbon::today()->toDateString();
+
+            $invoices = \App\Models\Invoice::with(['supplier'])
+                ->where(function ($q) {
+                    $q->whereNull('status_payment')
+                      ->orWhere('status_payment', '!=', 1);
+                })
+                ->where(function ($q) use ($today) {
+                    $q->whereDate('payment_date', '<=', $today)
+                      ->orWhereDate('exp_date', '<', \Carbon\Carbon::today());
+                })
+                ->orderBy('payment_date', 'asc')
+                ->get();
+
+            if ($invoices->isEmpty()) {
+                $this->telegramService->sendMessage("✅ *[PAGOS VENCIDOS]*\n\nNo hay pagos vencidos actualmente en el sistema.", $chatId);
+                return;
+            }
+
+            // Agrupar por proveedor_id y fecha de pago
+            $grouped = $invoices->groupBy(function ($invoice) {
+                return $invoice->supplier_id . '_' . $invoice->payment_date;
+            });
+
+            $msg = "⚠️ *[REPORTE DE PAGOS VENCIDOS]* ⚠️\n\n";
+
+            foreach ($grouped as $key => $group) {
+                $firstInvoice = $group->first();
+                $supplierName = $firstInvoice->supplier->name ?? 'Desconocido';
+                $paymentDateFormatted = $firstInvoice->payment_date ? \Carbon\Carbon::parse($firstInvoice->payment_date)->format('d/m/Y') : 'Sin Fecha';
+                
+                $msg .= "🏢 *{$supplierName}*\n📅 *Fecha de Vencimiento:* `{$paymentDateFormatted}`\n";
+
+                $groupInvoicesText = "";
+                $groupTotalOriginal = 0;
+                $currency = $firstInvoice->currency;
+
+                foreach ($group as $invoice) {
+                    // Calcular el saldo restante en su moneda original
+                    $invoicePayments = \App\Models\InvoicePayment::whereHas('invoices', function ($query) use ($invoice) {
+                        $query->where('id', $invoice->id);
+                    })->get();
+
+                    $invoicePaidUSD = 0;
+                    foreach ($invoicePayments as $p) {
+                        if ($p->payment_method === 'USD') {
+                            $invoicePaidUSD += $p->amount;
+                            $rateCurrency = ($p->payment_method === 'COP') ? 'COPC' : $p->payment_method;
+                            $exRate = \App\Models\ExchangeRate::where('currency_code', $rateCurrency)->first();
+                            if ($exRate) {
+                                $invoicePaidUSD += round($p->amount / $exRate->rate, 2);
+                            }
+                        }
+                    }
+
+                    $invoiceRemainingUSD = max(0, $invoice->total_usd - $invoicePaidUSD);
+                    
+                    if ($invoiceRemainingUSD <= 0.01) {
+                        continue;
+                    }
+
+                    if ($invoice->is_indexed && $invoice->currency === 'Bs') {
+                        $bcvRate = \App\Models\ExchangeRate::where('currency_code', 'BS')->first()?->rate ?? 1.00;
+                        $invoiceRemainingOriginal = round($invoice->total_usd * $bcvRate, 2);
+                    } else {
+                        $invoiceRemainingOriginal = $invoice->total_amount;
+
+                        if ($invoicePaidUSD > 0) {
+                            $invoiceRemainingUSD = max(0, $invoice->total_usd - $invoicePaidUSD);
+                            if ($invoice->currency === 'Bs') {
+                                $exchangeRate = \App\Models\ExchangeRate::where('currency_code', 'VES')->first();
+                                if ($exchangeRate) {
+                                    $invoiceRemainingOriginal = round($invoiceRemainingUSD * $exchangeRate->rate, 2);
+                                }
+                            } elseif ($invoice->currency === 'COP') {
+                                $exchangeRate = \App\Models\ExchangeRate::where('currency_code', 'COPC')->first();
+                                if ($exchangeRate) {
+                                    $invoiceRemainingOriginal = round($invoiceRemainingUSD * $exchangeRate->rate, 2);
+                                }
+                            } else {
+                                $invoiceRemainingOriginal = $invoiceRemainingUSD;
+                            }
+                        }
+                    }
+
+                    $groupInvoicesText .= "  • `{$invoice->invoice_number}`: " . number_format($invoiceRemainingOriginal, 2) . " {$invoice->currency}\n";
+                    $groupTotalOriginal += $invoiceRemainingOriginal;
+                }
+
+                if (empty($groupInvoicesText)) {
+                    continue;
+                }
+
+                $msg .= $groupInvoicesText;
+                $msg .= "💰 *Total vencido:* `" . number_format($groupTotalOriginal, 2) . " {$currency}`\n";
+                $msg .= "───────────────────\n";
+            }
+
+            $this->telegramService->sendMessage($msg, $chatId);
+
+        } catch (\Exception $e) {
+            \Log::error('[TelegramWebhook] Error al enviar pagos vencidos: ' . $e->getMessage());
+            $this->telegramService->sendMessage("❌ Error al obtener los pagos vencidos: " . $e->getMessage(), $chatId);
         }
     }
 }

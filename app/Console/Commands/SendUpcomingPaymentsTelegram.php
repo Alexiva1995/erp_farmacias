@@ -19,7 +19,7 @@ class SendUpcomingPaymentsTelegram extends Command
      *
      * @var string
      */
-    protected $description = 'Envía el reporte de pagos pendientes de los próximos 7 días al administrador de Telegram';
+    protected $description = 'Envía el reporte de pagos vencidos diariamente al administrador de Telegram';
 
     /**
      * Execute the console command.
@@ -43,8 +43,8 @@ class SendUpcomingPaymentsTelegram extends Command
             return 1;
         }
 
-        $webhookService->sendUpcoming7DaysPayments($adminChatId);
-        $this->info('Reporte de pagos pendientes enviado exitosamente.');
+        $webhookService->sendOverduePayments($adminChatId);
+        $this->info('Reporte de pagos vencidos enviado exitosamente.');
         return 0;
     }
 }

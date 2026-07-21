@@ -119,8 +119,8 @@ class PendingPaymentsController extends Controller
             // CORRECCIÓN ISSUE #1: Fecha de vencimiento es payment_date - 1 día
             if ($request->filled('show_overdue_only') && $request->boolean('show_overdue_only')) {
                 $query->where(function ($q) {
-                    // Fecha de vencimiento = payment_date - 1 día
-                    $dueDate = Carbon::now()->subDay();
+                    // Fecha de vencimiento = payment_date hoy
+                    $dueDate = Carbon::now();
                     $q->whereDate('payment_date', '<=', $dueDate)
                         ->orWhereDate('exp_date', '<', Carbon::now());
                 });

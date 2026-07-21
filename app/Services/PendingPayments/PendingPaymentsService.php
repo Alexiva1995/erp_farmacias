@@ -18,8 +18,8 @@ class PendingPaymentsService
      */
     public function getPendingInvoices(array $filters = []): Collection
     {
-        // 🔍 LOG DEBUG: Inicio del servicio
-        \Log::info('🔍 [DEBUG] PendingPaymentsService::getPendingInvoices - INICIO', [
+        // ­ƒöì LOG DEBUG: Inicio del servicio
+        \Log::info('­ƒöì [DEBUG] PendingPaymentsService::getPendingInvoices - INICIO', [
             'filters_recibidos' => $filters,
             'filters_count' => count($filters),
             'timestamp' => now()->toDateTimeString()
@@ -32,8 +32,8 @@ class PendingPaymentsService
                     ->orWhere('status_payment', '!=', 1);
             });
 
-        // 🔍 LOG DEBUG: Query base creada
-        \Log::info('🔍 [DEBUG] Query base creada', [
+        // ­ƒöì LOG DEBUG: Query base creada
+        \Log::info('­ƒöì [DEBUG] Query base creada', [
             'query_sql' => $query->toSql(),
             'query_bindings' => $query->getBindings()
         ]);
@@ -41,28 +41,28 @@ class PendingPaymentsService
         // Aplicar filtros
         if (isset($filters['supplier_id'])) {
             $query->where('supplier_id', $filters['supplier_id']);
-            \Log::info('🔍 [DEBUG] Filtro supplier_id aplicado', ['supplier_id' => $filters['supplier_id']]);
+            \Log::info('­ƒöì [DEBUG] Filtro supplier_id aplicado', ['supplier_id' => $filters['supplier_id']]);
         }
 
         if (isset($filters['start_date'])) {
             $query->whereDate('payment_date', '>=', $filters['start_date']);
-            \Log::info('🔍 [DEBUG] Filtro start_date aplicado', ['start_date' => $filters['start_date']]);
+            \Log::info('­ƒöì [DEBUG] Filtro start_date aplicado', ['start_date' => $filters['start_date']]);
         }
 
         if (isset($filters['end_date'])) {
             $query->whereDate('payment_date', '<=', $filters['end_date']);
-            \Log::info('🔍 [DEBUG] Filtro end_date aplicado', ['end_date' => $filters['end_date']]);
+            \Log::info('­ƒöì [DEBUG] Filtro end_date aplicado', ['end_date' => $filters['end_date']]);
         }
 
         if (isset($filters['show_overdue_only']) && $filters['show_overdue_only']) {
             $query->where(function ($q) {
-                $dueDate = Carbon::now()->subDay();
+                $dueDate = Carbon::now();
                 $q->whereDate('payment_date', '<=', $dueDate)
                     ->orWhereDate('exp_date', '<', Carbon::now());
             });
-            \Log::info('🔍 [DEBUG] Filtro show_overdue_only aplicado', [
+            \Log::info('­ƒöì [DEBUG] Filtro show_overdue_only aplicado', [
                 'show_overdue_only' => $filters['show_overdue_only'],
-                'due_date' => Carbon::now()->subDay()->toDateString()
+                'due_date' => Carbon::now()->toDateString()
             ]);
         }
 
@@ -74,16 +74,16 @@ class PendingPaymentsService
         END')
             ->orderBy('payment_date', 'asc');
 
-        // 🔍 LOG DEBUG: Query final antes de ejecutar
-        \Log::info('🔍 [DEBUG] Query final antes de ejecutar', [
+        // ­ƒöì LOG DEBUG: Query final antes de ejecutar
+        \Log::info('­ƒöì [DEBUG] Query final antes de ejecutar', [
             'query_sql_final' => $query->toSql(),
             'query_bindings_final' => $query->getBindings()
         ]);
 
         $result = $query->get();
 
-        // 🔍 LOG DEBUG: Resultado obtenido
-        \Log::info('🔍 [DEBUG] Resultado obtenido del servicio', [
+        // ­ƒöì LOG DEBUG: Resultado obtenido
+        \Log::info('­ƒöì [DEBUG] Resultado obtenido del servicio', [
             'total_facturas' => $result->count(),
             'facturas_ids' => $result->pluck('id')->toArray(),
             'facturas_detalle' => $result->map(function ($invoice) {
@@ -167,7 +167,7 @@ class PendingPaymentsService
         // Contar facturas por moneda
         $currencyCounts = $invoices->groupBy('currency')->map->count();
 
-        // Retornar la moneda más común
+        // Retornar la moneda m├ís com├║n
         return $currencyCounts->sortDesc()->keys()->first() ?? 'USD';
     }
 

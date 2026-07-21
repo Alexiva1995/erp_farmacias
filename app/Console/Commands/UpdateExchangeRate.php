@@ -26,7 +26,7 @@ class UpdateExchangeRate extends Command
     /**
      * Execute the console command.
      */
-    public function handle()
+    public function handle(\App\Services\TelegramService $telegramService)
     {
         // ── Dólar BCV → BS ──────────────────────────────────────────────────
         $bcvRate = null;
@@ -139,6 +139,25 @@ class UpdateExchangeRate extends Command
 
         // Limpiar caché global de tasas de cambio
         Cache::forget('resources.all_exchange_rates');
+
+        // Obtener tasas finales de la base de datos para el reporte
+        $bcvVal = ExchangeRate::where('currency_code', 'BS')->value('rate');
+        $binanceVal = ExchangeRate::where('currency_code', 'BINANCE')->value('rate');
+        $eurVal = ExchangeRate::where('currency_code', 'EUR')->value('rate');
+
+        $bcvValFormatted = $bcvVal ? number_format((float) $bcvVal, 2, ',', '.') : 'No disponible';
+        $binanceValFormatted = $binanceVal ? number_format((float) $binanceVal, 2, ',', '.') : 'No disponible';
+        $eurValFormatted = $eurVal ? number_format((float) $eurVal, 2, ',', '.') : 'No disponible';
+
+        $fechaStr = now()->format('d/m/Y h:i A');
+
+        $message = "🔔 *Tasas cambiarias actualizadas automáticamente* 🔔\n\n" .
+                   "💵 *Dólar BCV:* {$bcvValFormatted} Bs.\n" .
+                   "🟢 *Dólar Binance:* {$binanceValFormatted} Bs.\n" .
+                   "💶 *Euro Oficial:* {$eurValFormatted} Bs.\n\n" .
+                   "Valores actualizados al *{$fechaStr}*.";
+
+        $telegramService->sendMessage($message);
     }
 }
 
