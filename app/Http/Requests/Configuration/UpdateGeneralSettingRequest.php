@@ -72,7 +72,7 @@ class UpdateGeneralSettingRequest extends FormRequest
             'traceability_mode' => 'nullable|string|in:units,consumption',
             'enable_dishes' => 'nullable|boolean',
             'enable_quotations' => 'nullable|boolean',
-            'quotation_style' => 'nullable|string|in:pharmacy,restaurant',
+            'quotation_style' => 'nullable|string|in:pharmacy,restaurant,cosmetic',
             'tpv_style' => 'nullable|string|in:pharmacy,restaurant,sports_rental',
             'enable_flash_checkout' => 'nullable|boolean',
             'tpv_payment_methods' => 'nullable|array',

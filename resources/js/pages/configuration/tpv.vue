@@ -283,7 +283,8 @@ onMounted(() => {
                 v-model="quotationStyle"
                 :items="[
                   { title: 'Estilo Farmacia', value: 'pharmacy' },
-                  { title: 'Estilo Restaurante', value: 'restaurant' }
+                  { title: 'Estilo Restaurante', value: 'restaurant' },
+                  { title: 'Estilo Cosmético', value: 'cosmetic' }
                 ]"
                 item-title="title"
                 item-value="value"
