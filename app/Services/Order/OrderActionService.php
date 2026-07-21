@@ -1851,23 +1851,21 @@ class OrderActionService
 
                     $factor = (1 - ($discountPct / 100));
                     
-                    if (!isset($product->original_price)) {
-                        $product->original_price = $product->sale_price;
-                    }
+                    $origPrice = isset($product->original_price) ? $product->original_price : $product->sale_price;
+                    $this->setDynamicAttribute($product, 'original_price', $origPrice);
                     
-                    $product->sale_price = round(((float) $product->sale_price) * $factor, 2);
-                    $product->price_cop = round(((float) $product->price_cop) * $factor, 2);
-                    $product->price_bs = round(((float) $product->price_bs) * $factor, 2);
-                    $product->discount_percentage = $discountPct;
-                    $product->discount_type = 'general';
-                    $product->discount_source_id = $promo->id;
+                    $this->setDynamicAttribute($product, 'sale_price', round(((float) $product->sale_price) * $factor, 2));
+                    $this->setDynamicAttribute($product, 'price_cop', round(((float) $product->price_cop) * $factor, 2));
+                    $this->setDynamicAttribute($product, 'price_bs', round(((float) $product->price_bs) * $factor, 2));
+                    $this->setDynamicAttribute($product, 'discount_percentage', $discountPct);
+                    $this->setDynamicAttribute($product, 'discount_type', 'general');
+                    $this->setDynamicAttribute($product, 'discount_source_id', $promo->id);
 
                     if ($product instanceof \Illuminate\Database\Eloquent\Model && $product->relationLoaded('variants')) {
                         foreach ($product->variants as $variant) {
-                            if (!isset($variant->original_price)) {
-                                $variant->original_price = $variant->price;
-                            }
-                            $variant->price = round(((float) $variant->price) * $factor, 2);
+                            $vOrigPrice = isset($variant->original_price) ? $variant->original_price : $variant->price;
+                            $this->setDynamicAttribute($variant, 'original_price', $vOrigPrice);
+                            $this->setDynamicAttribute($variant, 'price', round(((float) $variant->price) * $factor, 2));
                         }
                     }
                 }
@@ -1883,14 +1881,13 @@ class OrderActionService
                         }
                     }
 
-                    if (!isset($product->original_price)) {
-                        $product->original_price = $product->sale_price;
-                    }
+                    $origPrice = isset($product->original_price) ? $product->original_price : $product->sale_price;
+                    $this->setDynamicAttribute($product, 'original_price', $origPrice);
 
-                    $product->sale_price = $promo->fixed_price;
-                    $product->discount_percentage = 0;
-                    $product->discount_type = 'fixed_price';
-                    $product->discount_source_id = $promo->id;
+                    $this->setDynamicAttribute($product, 'sale_price', $promo->fixed_price);
+                    $this->setDynamicAttribute($product, 'discount_percentage', 0);
+                    $this->setDynamicAttribute($product, 'discount_type', 'fixed_price');
+                    $this->setDynamicAttribute($product, 'discount_source_id', $promo->id);
 
                     $rateUsdToCop = 1.0;
                     $usdRateObj = \App\Models\ExchangeRate::where('currency_code', 'USD')->latest()->first();
@@ -1903,15 +1900,14 @@ class OrderActionService
                         $rateUsdToBs = (float) $bsRateObj->rate;
                     }
 
-                    $product->price_cop = round(((float) $promo->fixed_price) * $rateUsdToCop, 2);
-                    $product->price_bs = round(((float) $promo->fixed_price) * $rateUsdToBs, 2);
+                    $this->setDynamicAttribute($product, 'price_cop', round(((float) $promo->fixed_price) * $rateUsdToCop, 2));
+                    $this->setDynamicAttribute($product, 'price_bs', round(((float) $promo->fixed_price) * $rateUsdToBs, 2));
 
                     if ($product instanceof \Illuminate\Database\Eloquent\Model && $product->relationLoaded('variants')) {
                         foreach ($product->variants as $variant) {
-                            if (!isset($variant->original_price)) {
-                                $variant->original_price = $variant->price;
-                            }
-                            $variant->price = $promo->fixed_price;
+                            $vOrigPrice = isset($variant->original_price) ? $variant->original_price : $variant->price;
+                            $this->setDynamicAttribute($variant, 'original_price', $vOrigPrice);
+                            $this->setDynamicAttribute($variant, 'price', $promo->fixed_price);
                         }
                     }
                 }
@@ -1919,5 +1915,17 @@ class OrderActionService
         }
 
         return $products;
+    }
+
+    /**
+     * Helper para asignar atributos de forma compatible con la serializacion de Eloquent y stdClass.
+     */
+    private function setDynamicAttribute($object, $key, $value)
+    {
+        if ($object instanceof \Illuminate\Database\Eloquent\Model) {
+            $object->setAttribute($key, $value);
+        } else {
+            $object->$key = $value;
+        }
     }
 }
