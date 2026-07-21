@@ -26,16 +26,6 @@ class SendUpcomingPaymentsTelegram extends Command
      */
     public function handle(TelegramWebhookService $webhookService): int
     {
-        // Solo ejecutar en entornos de farmacia
-        $dbName = config('database.connections.mysql.database');
-        $botType = env('TELEGRAM_BOT_TYPE');
-        
-        $isFarmacia = str_contains($dbName, 'farmacia') || $botType === 'farmacia';
-
-        if (!$isFarmacia) {
-            $this->info('Comando omitido: Este entorno no es de farmacia.');
-            return 0;
-        }
 
         $adminChatId = config('services.telegram.admin_chat_id') ?: config('services.telegram.chat_id');
         if (empty($adminChatId)) {

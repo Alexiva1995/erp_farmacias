@@ -2139,25 +2139,7 @@ class TelegramWebhookService
      */
     protected function getBotType(): string
     {
-        // 1. Prioridad: Variable de entorno explícita en el .env de cada despliegue
-        $envType = env('TELEGRAM_BOT_TYPE');
-        if ($envType) {
-            return strtolower(trim($envType));
-        }
-
-        // 2. Detección automática por nombre de base de datos activa
-        $dbName = config('database.connections.mysql.database');
-        if (str_contains($dbName, 'farmacia')) {
-            return 'farmacia';
-        }
-        if (str_contains($dbName, 'toffle') || str_contains($dbName, 'minimarket') || str_contains($dbName, 'restaurant')) {
-            return 'restaurante';
-        }
-        if (str_contains($dbName, 'golclub') || str_contains($dbName, 'cancha') || str_contains($dbName, 'reserva')) {
-            return 'canchas';
-        }
-
-        // Permitir todo si no se puede determinar
+        // Habilitar todos los comandos de Telegram sin importar el tipo de negocio
         return 'all';
     }
 

@@ -370,5 +370,6 @@ declare module 'vue' {
     UserInfoEditDialog: typeof import('./resources/js/components/dialogs/UserInfoEditDialog.vue')['default']
     UserUpgradePlanDialog: typeof import('./resources/js/components/dialogs/UserUpgradePlanDialog.vue')['default']
     VerifyCountModal: typeof import('./resources/js/components/dialogs/VerifyCountModal.vue')['default']
+    VueApexCharts: typeof import('vue3-apexcharts')['default']
   }
 }
