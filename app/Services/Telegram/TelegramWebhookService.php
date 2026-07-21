@@ -3151,8 +3151,8 @@ class TelegramWebhookService
                         }
                     }
 
-                    $groupInvoicesText .= "  • `{$invoice->invoice_number}`: " . number_format($invoiceRemainingOriginal, 2) . " {$invoice->currency}\n";
-                    $groupTotalOriginal += $invoiceRemainingOriginal;
+                    $groupInvoicesText .= "  • `{$invoice->invoice_number}`: " . number_format((float) $invoiceRemainingOriginal, 2) . " {$invoice->currency}\n";
+                    $groupTotalOriginal += (float) $invoiceRemainingOriginal;
                 }
 
                 if (empty($groupInvoicesText)) {
@@ -3160,7 +3160,7 @@ class TelegramWebhookService
                 }
 
                 $msg .= $groupInvoicesText;
-                $msg .= "💰 *Total vencido:* `" . number_format($groupTotalOriginal, 2) . " {$currency}`\n";
+                $msg .= "💰 *Total vencido:* `" . number_format((float) $groupTotalOriginal, 2) . " {$currency}`\n";
                 $msg .= "───────────────────\n";
             }
 
