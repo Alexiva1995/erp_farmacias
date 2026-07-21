@@ -556,13 +556,13 @@ onMounted(async () => {
             <img 
               v-if="brandingStore.settings.hero_image"
               :src="brandingStore.settings.hero_image" 
-              alt="TOVA Campaña Hero" 
+              alt="VICTORIA DORE Campaña Hero" 
               class="hero-campaign-image fade-image"
               :class="{ 'image-visible': heroImageLoaded }"
               @load="heroImageLoaded = true"
             />
             <div v-else class="hero-image-fallback" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background-color: var(--editorial-grey-bg); color: var(--editorial-black); font-family: var(--editorial-font-serif); font-size: 40px; letter-spacing: 8px;">
-              <span>TOVA</span>
+              <span>VICTORIA DORE</span>
             </div>
           </div>
         </div>
@@ -571,10 +571,10 @@ onMounted(async () => {
 
 
 
-    <!-- 3. EXPLORAR TOVA & CATÁLOGO GENERAL EN GRILLA DE DOS FILAS (4x2) CON PAGINACIÓN -->
+    <!-- 3. EXPLORAR VICTORIA DORE & CATÁLOGO GENERAL EN GRILLA DE DOS FILAS (4x2) CON PAGINACIÓN -->
     <section id="catalog" class="editorial-products-section reveal-on-scroll" style="padding: 80px 40px; background-color: var(--editorial-grey-bg); border-bottom: 1px solid var(--editorial-border);">
       <div class="section-title-wrap" style="text-align: center; margin-bottom: 30px;">
-        <h2 class="editorial-title-serif">EXPLORAR TOVA</h2>
+        <h2 class="editorial-title-serif">EXPLORAR VICTORIA DORE</h2>
         <div class="title-decor-line"></div>
       </div>
 
