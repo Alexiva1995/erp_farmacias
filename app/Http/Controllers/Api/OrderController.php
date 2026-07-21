@@ -47,11 +47,15 @@ class OrderController extends Controller
 
         if ($perPage < 1) {
             $items = $dataQuery->get();
+            app(\App\Services\Order\OrderActionService::class)->applyGeneralPromotionsToProducts($items);
             return response()->json(['data' => $items, 'total' => $items->count()]);
         }
 
         $offset = ($page - 1) * $perPage;
         $items = $dataQuery->skip($offset)->take($perPage)->get();
+
+        // Aplicar promociones generales activas
+        app(\App\Services\Order\OrderActionService::class)->applyGeneralPromotionsToProducts($items);
 
         return response()->json([
             'data' => $items,

@@ -107,12 +107,17 @@ class EcommerceController extends Controller
                 $product->image_url = $product->photo_url;
                 return $product;
             });
+            $productsCollection = $products->getCollection();
         } else {
             $products->transform(function ($product) {
                 $product->image_url = $product->photo_url;
                 return $product;
             });
+            $productsCollection = $products;
         }
+
+        // Aplicar promociones generales activas
+        app(\App\Services\Order\OrderActionService::class)->applyGeneralPromotionsToProducts($productsCollection);
 
         return response()->json([
             'success' => true,

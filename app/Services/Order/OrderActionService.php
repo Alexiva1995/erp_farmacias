@@ -1816,4 +1816,104 @@ class OrderActionService
         $detail->price = $priceToSet;
         $detail->unit_price_usd = $usdPrice;
     }
+
+    /**
+     * Aplica los descuentos de ofertas generales activas a una coleccion o array de productos.
+     */
+    public function applyGeneralPromotionsToProducts($products)
+    {
+        $promotions = \App\Models\GeneralPromotion::where('is_active', true)->get();
+        if ($promotions->isEmpty()) {
+            return $products;
+        }
+
+        $generalPromos = $promotions->where('type', 'general');
+        $fixedPricePromos = $promotions->where('type', 'fixed_price');
+
+        foreach ($products as $product) {
+            $categoryId = $product->category_id;
+            
+            // 1. Aplicar descuento general (porcentaje)
+            if ($generalPromos->isNotEmpty()) {
+                foreach ($generalPromos as $promo) {
+                    $discountPct = (float) ($promo->fixed_price ?? 0);
+                    if ($discountPct <= 0) continue;
+
+                    if (!empty($promo->categories) && is_array($promo->categories) && count($promo->categories) > 0) {
+                        if (!$categoryId || !in_array($categoryId, $promo->categories)) {
+                            continue;
+                        }
+                    }
+
+                    $factor = (1 - ($discountPct / 100));
+                    
+                    if (!isset($product->original_price)) {
+                        $product->original_price = $product->sale_price;
+                    }
+                    
+                    $product->sale_price = round(((float) $product->sale_price) * $factor, 2);
+                    $product->price_cop = round(((float) $product->price_cop) * $factor, 2);
+                    $product->price_bs = round(((float) $product->price_bs) * $factor, 2);
+                    $product->discount_percentage = $discountPct;
+                    $product->discount_type = 'general';
+                    $product->discount_source_id = $promo->id;
+
+                    if ($product->relationLoaded('variants')) {
+                        foreach ($product->variants as $variant) {
+                            if (!isset($variant->original_price)) {
+                                $variant->original_price = $variant->price;
+                            }
+                            $variant->price = round(((float) $variant->price) * $factor, 2);
+                        }
+                    }
+                }
+            }
+
+            // 2. Aplicar precio fijo (fixed_price)
+            if ($fixedPricePromos->isNotEmpty()) {
+                foreach ($fixedPricePromos as $promo) {
+                    if (is_null($promo->fixed_price)) continue;
+                    if (!empty($promo->categories) && is_array($promo->categories) && count($promo->categories) > 0) {
+                        if (!$categoryId || !in_array($categoryId, $promo->categories)) {
+                            continue;
+                        }
+                    }
+
+                    if (!isset($product->original_price)) {
+                        $product->original_price = $product->sale_price;
+                    }
+
+                    $product->sale_price = $promo->fixed_price;
+                    $product->discount_percentage = 0;
+                    $product->discount_type = 'fixed_price';
+                    $product->discount_source_id = $promo->id;
+
+                    $rateUsdToCop = 1.0;
+                    $usdRateObj = \App\Models\ExchangeRate::where('currency_code', 'USD')->latest()->first();
+                    if ($usdRateObj && (float) $usdRateObj->rate > 0) {
+                        $rateUsdToCop = (float) $usdRateObj->rate;
+                    }
+                    $rateUsdToBs = 1.0;
+                    $bsRateObj = \App\Models\ExchangeRate::where('currency_code', 'VES')->latest()->first();
+                    if ($bsRateObj && (float) $bsRateObj->rate > 0) {
+                        $rateUsdToBs = (float) $bsRateObj->rate;
+                    }
+
+                    $product->price_cop = round(((float) $promo->fixed_price) * $rateUsdToCop, 2);
+                    $product->price_bs = round(((float) $promo->fixed_price) * $rateUsdToBs, 2);
+
+                    if ($product->relationLoaded('variants')) {
+                        foreach ($product->variants as $variant) {
+                            if (!isset($variant->original_price)) {
+                                $variant->original_price = $variant->price;
+                            }
+                            $variant->price = $promo->fixed_price;
+                        }
+                    }
+                }
+            }
+        }
+
+        return $products;
+    }
 }
