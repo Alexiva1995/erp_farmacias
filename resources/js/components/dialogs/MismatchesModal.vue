@@ -4,8 +4,10 @@ import { formatCurrency } from "@/utils/currencyFormatter";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { useDisplay } from "vuetify";
+import { useAuthStore } from "@/stores/auth";
 
 const { mobile } = useDisplay();
+const authStore = useAuthStore();
 
 const props = defineProps({
   isDialogVisible: {
@@ -241,7 +243,7 @@ const handleAcceptMismatch = async (closingId, item) => {
             </VTable>
 
             <!-- Comentarios del Cajero -->
-            <div class="bg-grey-lighten-4 rounded-lg pa-3 border text-caption" style="line-height: 1.4;">
+            <div v-if="authStore.isAdmin" class="bg-grey-lighten-4 rounded-lg pa-3 border text-caption" style="line-height: 1.4;">
               <strong class="text-disabled uppercase d-block mb-1">Notas / Justificación del cajero:</strong>
               <span class="text-medium-emphasis font-weight-medium italic">{{ closing.blind_note || 'Sin comentarios registrados por el cajero.' }}</span>
             </div>

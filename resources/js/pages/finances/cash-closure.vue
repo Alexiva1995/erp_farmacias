@@ -133,6 +133,14 @@ const fetchDailyCashData = async () => {
         syncReferenceData(updatedDaily);
       }
     }
+
+    // Sincronización automática de descuadres si el modal está abierto
+    if (viewModalMismatch.value && dailyCashData.value.id) {
+      const updatedDaily = dailyCash.value.find(d => d.id === dailyCashData.value.id);
+      if (updatedDaily) {
+        dailyCashData.value = updatedDaily;
+      }
+    }
   } catch (error) {
     console.error("Hubo un error al obtener los cierres diarios:", error);
     toast.error("Error al obtener los cierres diarios.");
