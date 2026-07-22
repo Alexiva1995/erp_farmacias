@@ -15,7 +15,7 @@ import MonthlyCashModal from "@/components/dialogs/MonthlyCashModal.vue";
 import ConsolidationReferenceModal from "@/components/dialogs/ReferenceModal.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { nextTick, onMounted, ref } from "vue";
+import { nextTick, onMounted, ref, computed } from "vue";
 import { useDisplay } from "vuetify";
 import { useAuthStore } from "@/stores/auth";
 
@@ -23,7 +23,8 @@ const authStore = useAuthStore();
 const { mobile } = useDisplay();
 const isInitialized = ref(false);
 
-const activeTab = ref("sellers");
+const isSupervisor = computed(() => authStore.user?.role_id === 2);
+const activeTab = ref(authStore.user?.role_id === 2 ? "daily" : "sellers");
 
 const sellerCash = ref([]);
 const totalSellerCash = ref(0);
@@ -749,7 +750,7 @@ const closingDaily = async (daily) => {
       />
 
       <VTabs v-model="activeTab" class="mb-6 rounded-lg border bg-surface" color="primary" grow>
-        <VTab value="sellers">
+        <VTab v-if="!isSupervisor" value="sellers">
           <VIcon start icon="tabler-users" />
           Historial Vendedores
         </VTab>
@@ -764,7 +765,7 @@ const closingDaily = async (daily) => {
       </VTabs>
 
       <VWindow v-model="activeTab">
-        <VWindowItem value="sellers">
+        <VWindowItem v-if="!isSupervisor" value="sellers">
           <SellerBoxTable
             :sellerCash="sellerCash"
             :loading="loadingSellerCash"
