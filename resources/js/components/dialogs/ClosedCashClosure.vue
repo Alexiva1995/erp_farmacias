@@ -1,7 +1,7 @@
-<script setup>
 import { formatCurrency } from "@/utils/currencyFormatter";
 import { computed, defineEmits, defineProps, ref } from "vue";
 import { useDisplay } from "vuetify";
+import Swal from "sweetalert2";
 
 const { mobile } = useDisplay();
 
@@ -27,6 +27,53 @@ const declaredBsMobile = ref("");
 const declaredBsCard = ref("");
 
 const isBlind = computed(() => !!props.cashClosureData?.blind_cash_closure);
+
+// Variables computadas de visibilidad para los inputs ciegos basadas en si hubo al menos una venta real en el TPV
+const showCopCashInput = computed(() => {
+  const cash = parseFloat(props.cashClosureData?.cop_cash || 0);
+  const abono = parseFloat(props.cashClosureData?.cop_cash_payment_credit || 0);
+  return (cash + abono) > 0;
+});
+
+const showCopTransferInput = computed(() => {
+  const trans = parseFloat(props.cashClosureData?.cop_transfer || 0);
+  const abono = parseFloat(props.cashClosureData?.cop_transfer_payment_credit || 0);
+  return (trans + abono) > 0;
+});
+
+const showUsdInput = computed(() => {
+  const cash = parseFloat(props.cashClosureData?.usd_cash || 0);
+  const trans = parseFloat(props.cashClosureData?.usd_transfer || 0);
+  const pay = parseFloat(props.cashClosureData?.usd_paypal || 0);
+  const bin = parseFloat(props.cashClosureData?.usd_binance || 0);
+  const conv = parseFloat(props.cashClosureData?.usd_conversion || 0);
+  
+  const abonoCash = parseFloat(props.cashClosureData?.usd_cash_payment_credit || 0);
+  const abonoPay = parseFloat(props.cashClosureData?.usd_paypal_payment_credit || 0);
+  const abonoBin = parseFloat(props.cashClosureData?.usd_binance_payment_credit || 0);
+  
+  return (cash + trans + pay + bin + conv + abonoCash + abonoPay + abonoBin) > 0;
+});
+
+const showCreditInput = computed(() => {
+  const credit = parseFloat(props.cashClosureData?.usd_credit || 0);
+  return credit > 0;
+});
+
+const showBsMobileInput = computed(() => {
+  const trans = parseFloat(props.cashClosureData?.bs_transfer || 0);
+  const mobile = parseFloat(props.cashClosureData?.bs_mobile || 0);
+  const abonoMobile = parseFloat(props.cashClosureData?.bs_mobile_payment_credit || 0);
+  const abonoTrans = parseFloat(props.cashClosureData?.bs_transfer_payment_credit || 0);
+  return (trans + mobile + abonoMobile + abonoTrans) > 0;
+});
+
+const showBsCardInput = computed(() => {
+  const deb = parseFloat(props.cashClosureData?.bs_card_debito || 0);
+  const cred = parseFloat(props.cashClosureData?.bs_card_credit || 0);
+  const abono = parseFloat(props.cashClosureData?.bs_card_payment_credit || 0);
+  return (deb + cred + abono) > 0;
+});
 
 // Totales calculados
 const totalCopConSobrante = computed(() => {
@@ -97,10 +144,46 @@ const creditFields = computed(() => [
 
 const closeModal = () => emit("update:isDialogVisible", false);
 
-const completeClosure = () => {
+const completeClosure = async () => {
   if (isBlind.value) {
+    // Lista de advertencias para métodos electrónicos si el usuario declara 0 pero tiene ventas registradas en el sistema
+    const warnings = [];
+    
+    if (showCopTransferInput.value && parseFloat(declaredCopTransfer.value || 0) === 0) {
+      warnings.push("Transferencia (COP)");
+    }
+    if (showCreditInput.value && parseFloat(declaredCredit.value || 0) === 0) {
+      warnings.push("Crédito (USD)");
+    }
+    if (showBsMobileInput.value && parseFloat(declaredBsMobile.value || 0) === 0) {
+      warnings.push("Pago Móvil / Transferencia (Bs.)");
+    }
+    if (showBsCardInput.value && parseFloat(declaredBsCard.value || 0) === 0) {
+      warnings.push("Tarjeta Débito / Crédito (Bs.)");
+    }
+
+    if (warnings.length > 0) {
+      const formattedWarnings = warnings.join(", ");
+      const confirm = await Swal.fire({
+        title: "¿Estás seguro?",
+        text: `El sistema detectó ventas registradas en: ${formattedWarnings}, pero has declarado 0 en ellos. ¿Deseas continuar con el cierre reportando 0 en estos métodos?`,
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#3085d6",
+        cancelButtonColor: "#d33",
+        confirmButtonText: "Sí, estoy seguro",
+        cancelButtonText: "No, revisar de nuevo"
+      });
+
+      if (!confirm.isConfirmed) {
+        return; // Detener el cierre para que el usuario pueda corregir
+      }
+    }
+
     const copDelivered = parseFloat(props.cashClosureData?.cop_delivered) || 0;
     const decCop = parseFloat(declaredCop.value) || 0;
+    
+    // El sobrante de COP se calcula automáticamente si la declaración física del cajero es mayor a lo vendido
     const calcSobrante = Math.max(0, decCop - copDelivered);
     const origTotalCop = parseFloat(props.cashClosureData?.total_cop) || 0;
 
@@ -165,39 +248,39 @@ const completeClosure = () => {
             DECLARACIÓN DE VALORES DEL TURNO
           </div>
           <VRow dense>
-            <VCol cols="12" sm="6">
+            <VCol v-if="showCopCashInput" cols="12" sm="6">
               <VCard variant="outlined" class="pa-3 mb-3 bg-white rounded-lg">
-                <div class="text-caption font-weight-bold text-medium-emphasis mb-1">Monto en COP (Efectivo)</div>
+                <div class="text-caption font-weight-bold text-medium-emphasis mb-1">Efectivo (COP)</div>
                 <VTextField v-model="declaredCop" placeholder="0" type="number" density="compact" variant="outlined" hide-details prefix="$" />
               </VCard>
             </VCol>
-            <VCol cols="12" sm="6">
+            <VCol v-if="showCopTransferInput" cols="12" sm="6">
               <VCard variant="outlined" class="pa-3 mb-3 bg-white rounded-lg">
-                <div class="text-caption font-weight-bold text-medium-emphasis mb-1">Monto en COP (Transferencia / Bancolombia)</div>
+                <div class="text-caption font-weight-bold text-medium-emphasis mb-1">Transferencia (COP)</div>
                 <VTextField v-model="declaredCopTransfer" placeholder="0" type="number" density="compact" variant="outlined" hide-details prefix="$" />
               </VCard>
             </VCol>
-            <VCol cols="12" sm="6">
+            <VCol v-if="showUsdInput" cols="12" sm="6">
               <VCard variant="outlined" class="pa-3 mb-3 bg-white rounded-lg">
-                <div class="text-caption font-weight-bold text-medium-emphasis mb-1">Monto en USD (Efectivo/Electrónico)</div>
+                <div class="text-caption font-weight-bold text-medium-emphasis mb-1">Efectivo (USD)</div>
                 <VTextField v-model="declaredUsd" placeholder="0" type="number" density="compact" variant="outlined" hide-details prefix="$" />
               </VCard>
             </VCol>
-            <VCol cols="12" sm="6">
+            <VCol v-if="showCreditInput" cols="12" sm="6">
               <VCard variant="outlined" class="pa-3 mb-3 bg-white rounded-lg">
-                <div class="text-caption font-weight-bold text-medium-emphasis mb-1">Monto en CRÉDITO (USD)</div>
+                <div class="text-caption font-weight-bold text-medium-emphasis mb-1">Crédito (USD)</div>
                 <VTextField v-model="declaredCredit" placeholder="0" type="number" density="compact" variant="outlined" hide-details prefix="$" />
               </VCard>
             </VCol>
-            <VCol cols="12" sm="6">
+            <VCol v-if="showBsMobileInput" cols="12" sm="6">
               <VCard variant="outlined" class="pa-3 mb-3 bg-white rounded-lg">
-                <div class="text-caption font-weight-bold text-medium-emphasis mb-1">Monto en BS (Transf. / Pago Móvil)</div>
+                <div class="text-caption font-weight-bold text-medium-emphasis mb-1">Pago Móvil / Transferencia (Bs.)</div>
                 <VTextField v-model="declaredBsMobile" placeholder="0" type="number" density="compact" variant="outlined" hide-details prefix="Bs" />
               </VCard>
             </VCol>
-            <VCol cols="12" sm="6">
+            <VCol v-if="showBsCardInput" cols="12" sm="6">
               <VCard variant="outlined" class="pa-3 mb-3 bg-white rounded-lg">
-                <div class="text-caption font-weight-bold text-medium-emphasis mb-1">Monto en BS (Tarjetas TD/TC)</div>
+                <div class="text-caption font-weight-bold text-medium-emphasis mb-1">Tarjeta Débito / Crédito (Bs.)</div>
                 <VTextField v-model="declaredBsCard" placeholder="0" type="number" density="compact" variant="outlined" hide-details prefix="Bs" />
               </VCard>
             </VCol>

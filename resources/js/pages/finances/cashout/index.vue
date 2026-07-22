@@ -25,6 +25,7 @@ const isAdjustmentModalOpen = ref(false);
 const isAdjusting = ref(false);
 const adjustmentValue = ref(0);
 const adjustmentWallet = ref(null);
+const isInitialized = ref(false);
 
 const page = ref(1);
 const transactionsTotal = ref(0);
@@ -135,6 +136,8 @@ watch(
     selectedOption,
   ],
   ([pg, items, date, currency, detailed, option]) => {
+    if (!isInitialized.value) return;
+
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
       fetchTransactions({ date, currency, detailed, option });
@@ -190,15 +193,18 @@ const submitAdjustment = async () => {
 };
 
 // ─── Ciclo de vida ────────────────────────────────────────────────────────────
-onMounted(() => {
+onMounted(async () => {
   if (authStore.isVendedor) {
     toast.error("Acceso denegado: No tienes permisos para ver esta sección.");
     router.push("/invoice/invoices");
     return;
   }
-  fetchTransactions();
-  fetchTransactionsGroupped();
-  fetchWallets();
+  await Promise.all([
+    fetchTransactions(),
+    fetchTransactionsGroupped(),
+    fetchWallets()
+  ]);
+  isInitialized.value = true;
 });
 </script>
 

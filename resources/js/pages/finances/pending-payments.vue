@@ -21,6 +21,8 @@ const totalInvoices = ref(0);
 const suppliers = ref([]);
 const isLoadingFilters = ref(false);
 const exchangeRate = ref(1);
+const updatingIndexed = ref({});
+const updatingDates = ref({});
 
 // Filtros
 const searchQuery = ref("");
@@ -116,15 +118,18 @@ const handleTableUpdate = (options) => {
 };
 
 const toggleIndexedStatus = async (item) => {
+  updatingIndexed.value[item.id] = true;
   try {
     await axios.put(`/finances/invoices/${item.id}/toggle-indexed`, {
       is_indexed: item.is_indexed,
     });
     toast.success("Estado de indexación actualizado");
-    fetchPendingPayments();
+    await fetchPendingPayments();
   } catch (error) {
     item.is_indexed = !item.is_indexed;
     toast.error("Error al actualizar indexación");
+  } finally {
+    updatingIndexed.value[item.id] = false;
   }
 };
 
@@ -159,15 +164,18 @@ const handlePaymentProcessed = () => {
 };
 
 const handleUpdateDate = async (item, newDate) => {
+  updatingDates.value[item.id] = true;
   try {
     await axios.patch(`/finances/pending-payments/invoices/${item.id}/update-date`, {
       payment_date: newDate,
     });
     toast.success("Fecha de pago actualizada correctamente");
-    fetchPendingPayments();
+    await fetchPendingPayments();
   } catch (error) {
     console.error("Error al actualizar fecha:", error);
     toast.error("Error al actualizar la fecha de pago");
+  } finally {
+    updatingDates.value[item.id] = false;
   }
 };
 
@@ -285,6 +293,8 @@ watch(
         :selected-table-invoices="selectedTableInvoices"
         :items-per-page="itemsPerPage"
         :page="page"
+        :updating-indexed="updatingIndexed"
+        :updating-dates="updatingDates"
         @update:options="handleTableUpdate"
         @toggle-indexed="toggleIndexedStatus"
         @process-payment="processPayment"

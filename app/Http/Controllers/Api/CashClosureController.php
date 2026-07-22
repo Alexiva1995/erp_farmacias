@@ -13,6 +13,8 @@ use App\Http\Requests\CashClosure\CloseCashClosureRequest;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Pagination\LengthAwarePaginator;
 use App\Models\Order;
+use App\Http\Resources\Finances\CashClosingResource;
+use App\Http\Resources\Finances\DailyCashClosureResource;
 
 class CashClosureController extends Controller
 {
@@ -36,10 +38,10 @@ class CashClosureController extends Controller
 
         if ($perPage < 1) {
             $items = $query->get();
-            return response()->json(['data' => $items, 'total' => $items->count()]);
+            return response()->json(['data' => CashClosingResource::collection($items), 'total' => $items->count()]);
         }
         $paginatedResult = $query->paginate($perPage);
-        return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
+        return response()->json(['data' => CashClosingResource::collection($paginatedResult->items()), 'total' => $paginatedResult->total()]);
     }
 
 
@@ -118,11 +120,11 @@ class CashClosureController extends Controller
 
         if ($perPage < 1) {
             $items = $query->get();
-            return response()->json(['data' => $items, 'total' => $items->count()]);
+            return response()->json(['data' => DailyCashClosureResource::collection($items), 'total' => $items->count()]);
         }
         
         $paginatedResult = $query->paginate($perPage);
-        return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
+        return response()->json(['data' => DailyCashClosureResource::collection($paginatedResult->items()), 'total' => $paginatedResult->total()]);
     }
 
     public function getMonthlyCashTable(Request $request)
@@ -153,10 +155,22 @@ class CashClosureController extends Controller
         
         if ($perPage < 1) {
             $items = $query->get();
-            return response()->json(['data' => $items, 'total' => $items->count()]);
+            return response()->json(['data' => CashClosingResource::collection($items), 'total' => $items->count()]);
         }
         $paginatedResult = $query->paginate($perPage);
-        return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
+        return response()->json(['data' => CashClosingResource::collection($paginatedResult->items()), 'total' => $paginatedResult->total()]);
+    }
+
+    public function show(int $id)
+    {
+        $cashClosing = \App\Models\CashClosing::with([
+            'seller',
+            'orders' => function ($query) {
+                $query->where('status', 'Completed')->with('client');
+            }
+        ])->findOrFail($id);
+
+        return new CashClosingResource($cashClosing);
     }
 
     public function getmonthlyCashclosing(Request $request)
@@ -187,7 +201,7 @@ class CashClosureController extends Controller
         $dailyClosureIds = $request->input('closingMonthlyIds', []);
         $cashClosings = $this->cashClosureActionService->getCashClosingsAllSellers($dailyClosureIds);
         return response()->json([
-            'data' => $cashClosings
+            'data' => CashClosingResource::collection($cashClosings)
         ]);
     }
 

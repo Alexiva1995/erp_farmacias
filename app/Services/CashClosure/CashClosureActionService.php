@@ -165,6 +165,13 @@ class CashClosureActionService
             $updateData['declared_bs_mobile'] = $decBsMobile;
             $updateData['declared_bs_card'] = $decBsCard;
 
+            $updateData['diff_cop'] = round($decCop - $sysCop, 2);
+            $updateData['diff_cop_transfer'] = round($decCopTransfer - $sysCopTransfer, 2);
+            $updateData['diff_usd'] = round($decUsd - $sysUsd, 2);
+            $updateData['diff_credit'] = round($decCredit - $sysCredit, 2);
+            $updateData['diff_bs_mobile'] = round($decBsMobile - $sysBsMobile, 2);
+            $updateData['diff_bs_card'] = round($decBsCard - $sysBsCard, 2);
+
             $mismatches = [];
             $notes = [];
 
@@ -275,18 +282,34 @@ class CashClosureActionService
             $TotalBsDeliveryInUsd = $dailyCashClosureInstance->getTotalBsDeliveryInUsd($cashClosings);
 
             $dailyClosure = DailyCashClosure::create([
-                'total_sales' => $cashClosings->sum('total_sales'),
-                'total_usd' => $cashClosings->sum('total_usd'),
-                'total_cop' => $cashClosings->sum('total_cop'),
-                'total_bs' => $cashClosings->sum('total_bs'),
-                'bs_card' => $cashClosings->sum('bs_card_debito') + $cashClosings->sum('bs_card_credit'),
-                'bs_mobile' => $cashClosings->sum('bs_mobile'),
-                'usd_delivered' => $cashClosings->sum('usd_delivered'),
-                'cop_delivered' => $cashClosings->sum('cop_delivered'),
-                'bs_delivered' => $cashClosings->sum('bs_delivered'),
-                'total_credits' => $cashClosings->sum('usd_credit'),
+                'total_sales'          => $cashClosings->sum('total_sales'),
+                'total_usd'            => $cashClosings->sum('total_usd'),
+                'total_cop'            => $cashClosings->sum('total_cop'),
+                'total_bs'             => $cashClosings->sum('total_bs'),
+                // Suma colapsada (compatibilidad)
+                'bs_card'              => $cashClosings->sum('bs_card_debito') + $cashClosings->sum('bs_card_credit'),
+                // Desglose Bs por método
+                'bs_cash'              => $cashClosings->sum('bs_cash'),
+                'bs_card_debito'       => $cashClosings->sum('bs_card_debito'),
+                'bs_card_credit'       => $cashClosings->sum('bs_card_credit'),
+                'bs_transfer'          => $cashClosings->sum('bs_transfer'),
+                'bs_mobile'            => $cashClosings->sum('bs_mobile'),
+                // Desglose USD por método
+                'usd_cash'             => $cashClosings->sum('usd_cash'),
+                'usd_transfer'         => $cashClosings->sum('usd_transfer'),
+                'usd_paypal'           => $cashClosings->sum('usd_paypal'),
+                'usd_binance'          => $cashClosings->sum('usd_binance'),
+                // Desglose COP por método
+                'cop_cash'             => $cashClosings->sum('cop_cash'),
+                'cop_transfer'         => $cashClosings->sum('cop_transfer'),
+                'cop_spare'            => $cashClosings->sum('cop_spare'),
+                // Totales consolidados
+                'usd_delivered'        => $cashClosings->sum('usd_delivered'),
+                'cop_delivered'        => $cashClosings->sum('cop_delivered'),
+                'bs_delivered'         => $cashClosings->sum('bs_delivered'),
+                'total_credits'        => $cashClosings->sum('usd_credit'),
                 'total_payment_credit' => $cashClosings->sum('usd_transfer_payment_credit') + $cashClosings->sum('usd_cash_payment_credit') + $cashClosings->sum('usd_paypal_payment_credit') + $cashClosings->sum('usd_binance_payment_credit') + $TotalCopPaymentInUsd + $TotalBsPaymentInUsd,
-                'total_delivery' => $TotalCopDeliveryInUsd + $cashClosings->sum('usd_delivered') + $cashClosings->sum('usd_transfer') + $cashClosings->sum('usd_paypal') + $cashClosings->sum('usd_binance') + $TotalBsDeliveryInUsd,
+                'total_delivery'       => $TotalCopDeliveryInUsd + $cashClosings->sum('usd_delivered') + $cashClosings->sum('usd_transfer') + $cashClosings->sum('usd_paypal') + $cashClosings->sum('usd_binance') + $TotalBsDeliveryInUsd,
             ]);
 
             foreach ($cashClosings as $cashClosing) {
@@ -446,6 +469,7 @@ class CashClosureActionService
                 DB::raw('SUM(total_cop) as total_cop_seller_native'),
                 DB::raw('SUM(total_bs) as total_bs_seller_native'),
                 DB::raw('SUM(total_sales) as total_sales_seller'),
+                DB::raw('SUM(usd_credit) as total_credits_seller'),
                 // Recogemos las sumas históricas del JOIN
                 DB::raw('SUM(COALESCE(order_totals.total_bs_usd_hist, 0)) as total_bs_usd_hist'),
                 DB::raw('SUM(COALESCE(order_totals.total_cop_usd_hist, 0)) as total_cop_usd_hist')
@@ -460,8 +484,9 @@ class CashClosureActionService
         $totalSalesBsInUSD = 0.0;
         $totalSalesGlobalCopInUsd = 0.0;
         $totalSalesGlobal = 0.0;
+        $totalSalesCredits = 0.0;
 
-        $summaryData = $sellerSummary->map(function ($summary) use (&$totalSalesBs, &$totalSalesUsd, &$totalSalesCop, &$totalSalesBsInUSD, &$totalSalesGlobalCopInUsd, &$totalSalesGlobal) {
+        $summaryData = $sellerSummary->map(function ($summary) use (&$totalSalesBs, &$totalSalesUsd, &$totalSalesCop, &$totalSalesBsInUSD, &$totalSalesGlobalCopInUsd, &$totalSalesGlobal, &$totalSalesCredits) {
 
             // Ya no usamos tasas actuales, usamos el valor histórico traído del JOIN
             $bsInUsd = (float) $summary->total_bs_usd_hist;
@@ -473,29 +498,32 @@ class CashClosureActionService
             $totalSalesBsInUSD += $bsInUsd;
             $totalSalesGlobalCopInUsd += $copInUsd;
             $totalSalesGlobal += (float) $summary->total_sales_seller;
+            $totalSalesCredits += (float) $summary->total_credits_seller;
 
             return [
                 'seller_id' => $summary->seller_id,
                 'seller_name' => $summary->username,
                 'closures_count' => $summary->cash_closures_count,
-                'total_sales' => number_format($summary->total_sales_seller, 2, ',', '.'),
-                'total_usd' => number_format($summary->total_usd_seller_native, 2, ',', '.'),
-                'total_cop' => number_format($summary->total_cop_seller_native, 0, ',', '.'),
-                'total_bs' => number_format($summary->total_bs_seller_native, 2, ',', '.'),
+                'total_sales' => number_format((float)$summary->total_sales_seller, 2, ',', '.'),
+                'total_usd' => number_format((float)$summary->total_usd_seller_native, 2, ',', '.'),
+                'total_cop' => number_format((float)$summary->total_cop_seller_native, 0, ',', '.'),
+                'total_bs' => number_format((float)$summary->total_bs_seller_native, 2, ',', '.'),
+                'total_credits' => number_format((float)$summary->total_credits_seller, 2, ',', '.'),
 
-                'total_bs_in_usd' => number_format($bsInUsd, 2, ',', '.'),
-                'total_cop_in_usd' => number_format($copInUsd, 2, ',', '.'),
+                'total_bs_in_usd' => number_format((float)$bsInUsd, 2, ',', '.'),
+                'total_cop_in_usd' => number_format((float)$copInUsd, 2, ',', '.'),
             ];
         });
 
         return [
             'summary' => $summaryData,
-            'totalSalesBs' => number_format($totalSalesBs, 2, ',', '.'),
-            'totalSalesUsd' => number_format($totalSalesUsd, 2, ',', '.'),
-            'totalSalesCop' => number_format($totalSalesCop, 0, ',', '.'),
-            'totalSalesBsInUSD' => number_format($totalSalesBsInUSD, 2, ',', '.'),
-            'totalSalesGlobalCopInUsd' => number_format($totalSalesGlobalCopInUsd, 2, ',', '.'),
-            'totalSalesGlobal' => number_format($totalSalesGlobal, 2, ',', '.'),
+            'totalSalesBs' => number_format((float)$totalSalesBs, 2, ',', '.'),
+            'totalSalesUsd' => number_format((float)$totalSalesUsd, 2, ',', '.'),
+            'totalSalesCop' => number_format((float)$totalSalesCop, 0, ',', '.'),
+            'totalSalesBsInUSD' => number_format((float)$totalSalesBsInUSD, 2, ',', '.'),
+            'totalSalesGlobalCopInUsd' => number_format((float)$totalSalesGlobalCopInUsd, 2, ',', '.'),
+            'totalSalesGlobal' => number_format((float)$totalSalesGlobal, 2, ',', '.'),
+            'totalSalesCredits' => number_format((float)$totalSalesCredits, 2, ',', '.'),
         ];
     }
 

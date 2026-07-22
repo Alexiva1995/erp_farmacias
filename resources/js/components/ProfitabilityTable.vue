@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import axios from "@/plugins/axios";
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
 import { library } from "@fortawesome/fontawesome-svg-core";
@@ -57,124 +57,25 @@ const headers = computed(() => {
   ];
 });
 
-async function storeProfitability(product_id, profitability) {
-  let data = {
-    product_id: product_id,
-    profitability_percentage: profitability,
-    is_locked: 1,
-  };
+const loadingLocks = ref({});
 
-  //console.log(data)
+async function toggleLock(productId, percentage) {
+  if (loadingLocks.value[productId]) return;
+  loadingLocks.value[productId] = true;
+
   try {
-    const response = await axios.post(
-      "/finances/profitability/product/store",
-      data,
-    );
-
+    const response = await axios.post("/finances/profitability/product/toggle-lock", {
+      product_id: productId,
+      profitability_percentage: percentage
+    });
     console.log("Éxito:", response.data);
     emit("refresh");
   } catch (error) {
-    console.error("Error en la solicitud:", error);
-
-    if (error.response) {
-      // El servidor respondió con un código de error
-      console.error("Datos del error:", error.response.data);
-      console.error("Status:", error.response.status);
-      console.error("Headers:", error.response.headers);
-
-      if (error.response.status === 405) {
-        console.error("Sugerencia: Prueba con PUT/PATCH en lugar de POST");
-      }
-    } else if (error.request) {
-      // La solicitud fue hecha pero no hubo respuesta
-      console.error("No se recibió respuesta del servidor");
-    } else {
-      // Hubo un error al configurar la solicitud
-      console.error("Error al configurar la solicitud:", error.message);
-    }
+    console.error("Error al actualizar el bloqueo de margen:", error);
+  } finally {
+    loadingLocks.value[productId] = false;
   }
 }
-
-async function editProfitability(
-  product_id,
-  profitability,
-  profitability_id,
-  is_locked,
-) {
-  if (is_locked == 1) {
-    is_locked = 0;
-  } else {
-    is_locked = 1;
-  }
-
-  let data = {
-    id: profitability_id,
-    product_id: product_id,
-    profitability_percentage: profitability,
-    is_locked: is_locked,
-  };
-
-  console.log(data);
-  try {
-    const response = await axios.post(
-      "/finances/profitability/product/update",
-      data,
-    );
-
-    console.log("Éxito:", response.data);
-    emit("refresh");
-  } catch (error) {
-    console.error("Error en la solicitud:", error);
-
-    if (error.response) {
-      // El servidor respondió con un código de error
-      console.error("Datos del error:", error.response.data);
-      console.error("Status:", error.response.status);
-      console.error("Headers:", error.response.headers);
-
-      if (error.response.status === 405) {
-        console.error("Sugerencia: Prueba con PUT/PATCH en lugar de POST");
-      }
-    } else if (error.request) {
-      // La solicitud fue hecha pero no hubo respuesta
-      console.error("No se recibió respuesta del servidor");
-    } else {
-      // Hubo un error al configurar la solicitud
-      console.error("Error al configurar la solicitud:", error.message);
-    }
-  }
-}
-
-const productExistProfitability = async (
-  product_id = null,
-  profitability_id,
-  profitability,
-  is_locked = null,
-) => {
-  try {
-    const response = await axios.get(
-      `/finances/profitability/product/${product_id}`,
-    );
-
-    if (response.status === 200) {
-      //console.log("producto id" . product_id)
-      //console.log("Rentabilida ". profitability)
-      //console.log("Is Locked ". is_locked)
-      //console.log("Editar")
-      await editProfitability(
-        product_id,
-        profitability,
-        profitability_id,
-        is_locked,
-      );
-    }
-  } catch (error) {
-    //console.log(product_id)
-    //console.log(profitability)
-    //console.log("Crear")
-    await storeProfitability(product_id, profitability);
-  }
-};
 
 const formatPrice = (price) => {
   return new Intl.NumberFormat("es-US", {
@@ -409,12 +310,12 @@ const getProfitabilityPercentage = (item) => {
               "
               variant="tonal"
               class="rounded-lg"
+              :loading="!!loadingLocks[item.id]"
+              :disabled="!!loadingLocks[item.id]"
               @click="
-                productExistProfitability(
+                toggleLock(
                   item.id,
-                  item.profitability?.id,
                   props.profitability,
-                  item.profitability?.is_locked,
                 )
               "
             >
@@ -549,12 +450,12 @@ const getProfitabilityPercentage = (item) => {
                 item.profitability?.is_locked == '1' ? 'error' : 'secondary'
               "
               class="rounded-lg px-4"
+              :loading="!!loadingLocks[item.id]"
+              :disabled="!!loadingLocks[item.id]"
               @click="
-                productExistProfitability(
+                toggleLock(
                   item.id,
-                  item.profitability?.id,
                   props.profitability,
-                  item.profitability?.is_locked,
                 )
               "
             >

@@ -16,6 +16,7 @@ use Carbon\Carbon;
 use App\Models\PayslipDetails;
 use App\Models\SalaryConcept;
 use Illuminate\Support\Facades\DB;
+use App\Http\Resources\Finances\PayslipResource;
 
 class PayslipController extends Controller
 {
@@ -31,7 +32,10 @@ class PayslipController extends Controller
         ];
         $results = $this->payslipServices->index($data);
 
-        return ApiResponse::success(['data' => $results->items(), 'total' => $results->total()]);
+        return ApiResponse::success([
+            'data' => PayslipResource::collection($results->items()),
+            'total' => $results->total()
+        ]);
     }
 
     public function finalize(Payslip $payslip, FinalizePayslipRequest $request)
@@ -55,7 +59,7 @@ class PayslipController extends Controller
         $data = $this->payslipServices->getData($payslip, $type);
 
         return ApiResponse::success([
-            'results' => $data['items'],
+            'results' => PayslipDetailResource::collection($data['items']),
             'name' => $data['name'],
             'date' => $data['date'],
             'status' => $data['status'],

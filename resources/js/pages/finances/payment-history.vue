@@ -609,7 +609,7 @@
 
 <script setup>
 import PaymentHistoryFilters from "@/components/PaymentHistoryFilters.vue";
-import axios from "axios";
+import axios from "@/plugins/axios";
 import { computed, onMounted, ref, watch } from "vue";
 
 // Estado de UI
@@ -694,7 +694,7 @@ const fetchPaymentHistory = async () => {
         (params[key] === null || params[key] === "") && delete params[key],
     );
 
-    const response = await axios.get("/api/finances/payment-history", {
+    const response = await axios.get("/finances/payment-history", {
       params,
     });
 
@@ -712,7 +712,7 @@ const fetchPaymentHistory = async () => {
 const fetchSuppliers = async () => {
   try {
     const response = await axios.get(
-      "/api/finances/pending-payments/suppliers",
+      "/finances/pending-payments/suppliers",
     );
     if (response.data.status === "success" || response.data.success) {
       suppliers.value = response.data.data || [];

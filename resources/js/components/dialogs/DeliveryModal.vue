@@ -766,24 +766,26 @@ defineExpose({ printReport });
             style="padding: 5px; margin-block-end: 10px;"
           >
             <table class="info-table">
-              <tr>
-                <td style="inline-size: 40%;">
-                  <strong>CORRELATIVO:</strong> #{{ props.cashData.id }}
-                </td>
-                <td style="inline-size: 30%;">
-                  <strong>TASAS:</strong> BCV: {{ props.cashData.exchange_rate }} BS
-                </td>
-                <td style="inline-size: 30%; text-align: end;">
-                  <strong>EMISIÓN:</strong> {{ formatDateTime(new Date(), 'date') }}
-                </td>
-              </tr>
-              <tr>
-                <td><strong>CAJA GUARDADA:</strong> {{ formatCurrency(totalUsdEquivalentGlobal, 'USD') }}</td>
-                <td>COP: {{ props.cashData.cop_exchange_rate }} COP</td>
-                <td style="text-align: end;">
-                  <strong>HORA:</strong> {{ getCurrentTime() }}
-                </td>
-              </tr>
+              <tbody>
+                <tr>
+                  <td style="inline-size: 40%;">
+                    <strong>CORRELATIVO:</strong> #{{ props.cashData.id }}
+                  </td>
+                  <td style="inline-size: 30%;">
+                    <strong>TASAS:</strong> BCV: {{ props.cashData.exchange_rate }} BS
+                  </td>
+                  <td style="inline-size: 30%; text-align: end;">
+                    <strong>EMISIÓN:</strong> {{ formatDateTime(new Date(), 'date') }}
+                  </td>
+                </tr>
+                <tr>
+                  <td><strong>CAJA GUARDADA:</strong> {{ formatCurrency(totalUsdEquivalentGlobal, 'USD') }}</td>
+                  <td>COP: {{ props.cashData.cop_exchange_rate }} COP</td>
+                  <td style="text-align: end;">
+                    <strong>HORA:</strong> {{ getCurrentTime() }}
+                  </td>
+                </tr>
+              </tbody>
             </table>
           </div>
 

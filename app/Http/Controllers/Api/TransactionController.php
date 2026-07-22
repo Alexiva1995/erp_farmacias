@@ -6,6 +6,7 @@ use App\Contracts\Transaction;
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Finances\AjusteBalanceRequest;
+use App\Http\Resources\Finances\TransactionResource;
 use Illuminate\Http\Request;
 
 class TransactionController extends Controller
@@ -28,7 +29,7 @@ class TransactionController extends Controller
 
         $results = $this->transaction->getAll($data);
         return ApiResponse::success([
-            'items' => $results['paginator']->items(),
+            'items' => TransactionResource::collection($results['paginator']->items()),
             'total' => $results['paginator']->total(),
             'previous_total_usd' => $results['previous_total_usd']
         ]);

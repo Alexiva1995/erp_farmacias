@@ -1,4 +1,5 @@
 <script setup>
+import { computed } from "vue";
 import { useDisplay } from "vuetify";
 
 const props = defineProps({
@@ -7,23 +8,20 @@ const props = defineProps({
   totalSellerCash: { type: Number, required: true },
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
+  tpvPaymentMethods: { type: Object, default: () => ({ COP: [], USD: [], BS: [] }) }
 });
 
 const emit = defineEmits(["update:options", "print-cash", "download-cash"]);
 
 const { mobile } = useDisplay();
 
-const headers = [
+const headers = computed(() => [
   { title: "Vendedor", key: "seller.username", sortable: true },
-  { title: "CUSD", key: "usd_credit", sortable: true, align: "end" },
-  { title: "USD", key: "total_usd", sortable: true, align: "end" },
-  { title: "E. USD", key: "usd_delivered", sortable: true, align: "end" },
-  { title: "COP", key: "total_cop", sortable: true, align: "end" },
-  { title: "E. COP", key: "cop_delivered", sortable: true, align: "end" },
-  { title: "Bs PM", key: "bs_mobile", sortable: true, align: "end" },
-  { title: "Banco Bs", key: "bs_card", sortable: false, align: "end" },
+  { title: "Crédito", key: "usd_credit", sortable: true, align: "end" },
+  { title: "USD", key: "usd_delivered", sortable: true, align: "end" },
+  { title: "COP", key: "cop_delivered", sortable: true, align: "end" },
   { title: "Bs.", key: "total_bs", sortable: true, align: "end" },
-  { title: "Total USD", key: "total_sales", sortable: true, align: "end" },
+  { title: "Total", key: "total_sales", sortable: true, align: "end" },
   { title: "Estado", key: "status", sortable: true, align: "center" },
   {
     title: "Acciones",
@@ -32,27 +30,120 @@ const headers = [
     align: "center",
     width: "120px",
   },
-];
+]);
+
+const getPaymentDetail = (item, currency) => {
+  if (!item) return [];
+  const details = [];
+  
+  let rawMethods = props.tpvPaymentMethods;
+  if (typeof rawMethods === 'string') {
+    try {
+      rawMethods = JSON.parse(rawMethods);
+    } catch (e) {
+      rawMethods = {};
+    }
+  }
+  const methods = rawMethods || {};
+  
+  if (currency === 'USD') {
+    const currencyObj = methods.USD || {};
+    const activeMethods = Array.isArray(currencyObj.methods) ? currencyObj.methods : [];
+    
+    activeMethods.forEach(m => {
+      let val = 0;
+      if (m.value === 'cash') val = parseFloat(item.usd_cash || 0);
+      else if (m.value === 'bank_transfer') val = parseFloat(item.usd_transfer || 0);
+      else if (m.value === 'paypal') val = parseFloat(item.usd_paypal || 0);
+      else if (m.value === 'binance') val = parseFloat(item.usd_binance || 0);
+      else if (m.value === 'credit') val = parseFloat(item.usd_credit || 0);
+      
+      if (val > 0) {
+        details.push({ label: m.label || m.value, value: fmtUsd(val) });
+      }
+    });
+  } else if (currency === 'COP') {
+    const currencyObj = methods.COP || {};
+    const activeMethods = Array.isArray(currencyObj.methods) ? currencyObj.methods : [];
+    
+    activeMethods.forEach(m => {
+      let val = 0;
+      if (m.value === 'cash') val = parseFloat(item.cop_cash || 0);
+      else if (m.value === 'bank_transfer') val = parseFloat(item.cop_transfer || 0);
+      
+      if (val > 0) {
+        details.push({ label: m.label || m.value, value: fmtCop(val) });
+      }
+    });
+
+    if (parseFloat(item.cop_cash_payment_credit || 0) > 0) {
+      details.push({ label: "Abono Crédito", value: fmtCop(item.cop_cash_payment_credit) });
+    }
+    if (parseFloat(item.cop_spare || 0) > 0) {
+      details.push({ label: "Sobrante", value: fmtCop(item.cop_spare) });
+    }
+  } else if (currency === 'BS') {
+    const currencyObj = methods.BS || {};
+    const activeMethods = Array.isArray(currencyObj.methods) ? currencyObj.methods : [];
+    
+    activeMethods.forEach(m => {
+      let val = 0;
+      if (m.value === 'cash_bs') val = parseFloat(item.bs_cash || 0);
+      else if (m.value === 'mobile_payment') val = parseFloat(item.bs_mobile || 0);
+      else if (m.value === 'debit_card') val = parseFloat(item.bs_card_debito || 0);
+      else if (m.value === 'credit_card') val = parseFloat(item.bs_card_credit || 0);
+      else if (m.value === 'bank_transfer_bs') val = parseFloat(item.bs_transfer || 0);
+      
+      if (val > 0) {
+        details.push({ label: m.label || m.value, value: fmtBs(val) });
+      }
+    });
+  }
+  return details;
+};
 
 const statusMap = {
   closed: { label: "Cerrada", color: "success", icon: "tabler-lock" },
   open: { label: "Abierta", color: "warning", icon: "tabler-lock-open" },
 };
 
-const fmtUsd = (val) =>
-  new Intl.NumberFormat("es-VE", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(val ?? 0) + " USD";
-const fmtCop = (val) =>
-  Math.round(val ?? 0)
-    .toString()
-    .replace(/\B(?=(\d{3})+(?!\d))/g, ".") + " COP";
-const fmtBs = (val) =>
-  new Intl.NumberFormat("es-VE", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(val ?? 0) + " Bs.";
+const fmtUsd = (val) => {
+  try {
+    const num = parseFloat(val);
+    if (isNaN(num)) return "0,00 USD";
+    return new Intl.NumberFormat("es-VE", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(num) + " USD";
+  } catch (e) {
+    return "0,00 USD";
+  }
+};
+
+const fmtCop = (val) => {
+  try {
+    const num = parseFloat(val);
+    if (isNaN(num)) return "0 COP";
+    return Math.round(num)
+      .toString()
+      .replace(/\B(?=(\d{3})+(?!\d))/g, ".") + " COP";
+  } catch (e) {
+    return "0 COP";
+  }
+};
+
+const fmtBs = (val) => {
+  try {
+    const num = parseFloat(val);
+    if (isNaN(num)) return "0,00 Bs.";
+    return new Intl.NumberFormat("es-VE", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(num) + " Bs.";
+  } catch (e) {
+    return "0,00 Bs.";
+  }
+};
 
 const formatUsername = (username) => {
   if (!username) return "—";
@@ -140,41 +231,60 @@ const getAvatarColor = (id) => {
             fmtUsd(item.usd_credit)
           }}</span>
         </template>
+
         <template #item.usd_delivered="{ item }">
-          <span class="text-sm font-weight-bold">{{
-            fmtUsd(item.usd_delivered)
-          }}</span>
+          <div class="d-flex align-center justify-end gap-1">
+            <span class="text-sm font-weight-bold">{{ fmtUsd(item.usd_delivered) }}</span>
+            <VMenu v-if="getPaymentDetail(item, 'USD').length > 1" open-on-hover close-on-content-click location="top">
+              <template #activator="{ props: menuProps }">
+                <VIcon v-bind="menuProps" icon="tabler-info-circle" size="14" class="text-disabled cursor-pointer" />
+              </template>
+              <VCard class="pa-2 text-xs" min-width="160">
+                <div v-for="det in getPaymentDetail(item, 'USD')" :key="det.label" class="d-flex justify-space-between py-1 border-bottom">
+                  <span class="font-weight-medium me-4 uppercase text-disabled text-super-xs">{{ det.label }}:</span>
+                  <span class="font-weight-black">{{ det.value }}</span>
+                </div>
+              </VCard>
+            </VMenu>
+          </div>
         </template>
-        <template #item.total_usd="{ item }">
-          <span class="text-sm font-weight-bold text-primary">{{
-            fmtUsd(item.total_usd)
-          }}</span>
-        </template>
-        <template #item.total_cop="{ item }">
-          <span class="text-sm font-weight-bold text-success">{{
-            fmtCop(item.total_cop)
-          }}</span>
-        </template>
-        <template #item.total_bs="{ item }">
-          <span class="text-sm font-weight-bold text-warning">{{
-            fmtBs(item.total_bs)
-          }}</span>
-        </template>
+
         <template #item.cop_delivered="{ item }">
-          <span class="text-sm font-weight-bold">{{
-            fmtCop(item.cop_delivered)
-          }}</span>
+          <div class="d-flex align-center justify-end gap-1">
+            <span class="text-sm font-weight-bold text-success">{{ fmtCop(item.cop_delivered) }}</span>
+            <VMenu v-if="getPaymentDetail(item, 'COP').length > 1" open-on-hover close-on-content-click location="top">
+              <template #activator="{ props: menuProps }">
+                <VIcon v-bind="menuProps" icon="tabler-info-circle" size="14" class="text-disabled cursor-pointer" />
+              </template>
+              <VCard class="pa-2 text-xs" min-width="160">
+                <div v-for="det in getPaymentDetail(item, 'COP')" :key="det.label" class="d-flex justify-space-between py-1 border-bottom">
+                  <span class="font-weight-medium me-4 uppercase text-disabled text-super-xs">{{ det.label }}:</span>
+                  <span class="font-weight-black">{{ det.value }}</span>
+                </div>
+              </VCard>
+            </VMenu>
+          </div>
         </template>
-        <template #item.bs_mobile="{ item }">
-          <span class="text-xs font-weight-medium text-info">{{
-            fmtBs(item.bs_mobile)
-          }}</span>
+
+        <template #item.total_bs="{ item }">
+          <div class="d-flex align-center justify-end gap-1">
+            <span class="text-sm font-weight-bold text-warning">
+              {{ fmtBs(parseFloat(item.bs_cash || 0) + parseFloat(item.bs_card_debito || 0) + parseFloat(item.bs_card_credit || 0) + parseFloat(item.bs_transfer || 0) + parseFloat(item.bs_mobile || 0)) }}
+            </span>
+            <VMenu v-if="getPaymentDetail(item, 'BS').length > 1" open-on-hover close-on-content-click location="top">
+              <template #activator="{ props: menuProps }">
+                <VIcon v-bind="menuProps" icon="tabler-info-circle" size="14" class="text-disabled cursor-pointer" />
+              </template>
+              <VCard class="pa-2 text-xs" min-width="160">
+                <div v-for="det in getPaymentDetail(item, 'BS')" :key="det.label" class="d-flex justify-space-between py-1 border-bottom">
+                  <span class="font-weight-medium me-4 uppercase text-disabled text-super-xs">{{ det.label }}:</span>
+                  <span class="font-weight-black">{{ det.value }}</span>
+                </div>
+              </VCard>
+            </VMenu>
+          </div>
         </template>
-        <template #item.bs_card="{ item }">
-          <span class="text-xs font-weight-medium text-info">{{
-            fmtBs(parseFloat(item.bs_card_debito || 0) + parseFloat(item.bs_card_credit || 0) + parseFloat(item.bs_transfer || 0))
-          }}</span>
-        </template>
+
         <template #item.total_sales="{ item }">
           <VChip
             size="x-small"

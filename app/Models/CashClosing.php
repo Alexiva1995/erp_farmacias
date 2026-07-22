@@ -63,9 +63,29 @@ class CashClosing extends Model
         'declared_bs_card',
         'blind_mismatches',
         'blind_note',
+        'diff_cop',
+        'diff_cop_transfer',
+        'diff_usd',
+        'diff_credit',
+        'diff_bs_mobile',
+        'diff_bs_card',
     ];
 
-    protected $appends = ['total_bs_in_usd', 'total_cop_in_usd', 'blind_cash_closure'];
+    protected $appends = ['total_bs_in_usd', 'total_cop_in_usd', 'blind_cash_closure', 'exchange_rate', 'cop_exchange_rate'];
+
+    public function exchangeRate(): Attribute
+    {
+        return Attribute::make(
+            get: fn() => $this->getServiceExchangeRate('BS'),
+        );
+    }
+
+    public function copExchangeRate(): Attribute
+    {
+        return Attribute::make(
+            get: fn() => $this->getServiceExchangeRate('COP'),
+        );
+    }
 
     public function seller()
     {

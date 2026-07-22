@@ -750,9 +750,11 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
         Route::get('/reports/abc-analysis', \App\Http\Controllers\Api\ProductAbcReportController::class);
         Route::prefix("profitability")->group(function () {
             Route::get("/", [ProfitabilityController::class, "consultOne"]);
+            Route::get("/products", [ProfitabilityController::class, "getProductsForProfitability"]);
             Route::post("/store", [ProfitabilityController::class, "store"]);
             Route::post("/{id}", [ProfitabilityController::class, "edit"]);
             Route::prefix("product")->group(function () {
+                Route::post("/toggle-lock", [ProfitabilityController::class, "toggleLock"]);
                 Route::get("/{id}", [ProfitabilityController::class, "getProduct"]);
                 Route::post("/update", [ProfitabilityController::class, "editProfitabilityProduct"]);
                 Route::post("/store", [ProfitabilityController::class, "storeProfitabilityProduct"]);
@@ -834,13 +836,15 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
             Route::get('/dailyCash', [CashClosureController::class, 'getDailyCashTable']);
             Route::get('/monthlyCash', [CashClosureController::class, 'getMonthlyCashTable']);
             Route::get('/sellerCash', [CashClosureController::class, 'getSellerCashTable']);
+            Route::get('/sellers', [CashClosureController::class, 'getSellersWithClosures']);
             Route::get('/monthlyCashclosing', [CashClosureController::class, 'getmonthlyCashclosing']);
             Route::post('/downloadReport', [CashClosureController::class, 'downloadReport']);
             Route::post('/PrintReport', [CashClosureController::class, 'printdReport']);
             Route::get('/monthlyCashclosingAllSellers', [CashClosureController::class, 'getmonthlyCashclosingAllSellers']);
-            Route::get('/sellers', [CashClosureController::class, 'getSellersWithClosures']);
             Route::patch('/confirm-reference', [CashClosureController::class, 'confirmReference']);
             Route::patch('/update-blind-amounts', [CashClosureController::class, 'updateBlindAmounts']);
+            Route::post('/mismatches/accept', [\App\Http\Controllers\Api\Finance\MismatchManagementController::class, 'acceptMismatch']);
+            Route::get('/{id}', [CashClosureController::class, 'show']);
         });
 
         Route::prefix("expenses")->group(function () {

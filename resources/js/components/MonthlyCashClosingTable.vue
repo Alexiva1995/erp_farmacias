@@ -7,18 +7,135 @@ const props = defineProps({
   totalMonthlyCash:  { type: Number, required: true },
   itemsPerPage:      { type: Number, required: true },
   page:              { type: Number, required: true },
+  tpvPaymentMethods: { type: Object, default: () => ({ COP: [], USD: [], BS: [] }) }
 });
 
 const emit = defineEmits(['update:options', 'view-cash']);
 
 const { mobile } = useDisplay();
 
+const fmtUsd = (val) => {
+  const num = parseFloat(val);
+  if (isNaN(num)) return "0,00 USD";
+  return new Intl.NumberFormat("es-VE", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(num) + " USD";
+};
+
+const fmtCop = (val) => {
+  const num = parseFloat(val);
+  if (isNaN(num)) return "0 COP";
+  return Math.round(num)
+    .toString()
+    .replace(/\B(?=(\d{3})+(?!\d))/g, ".") + " COP";
+};
+
+const fmtBs = (val) => {
+  const num = parseFloat(val);
+  if (isNaN(num)) return "0,00 Bs.";
+  return new Intl.NumberFormat("es-VE", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(num) + " Bs.";
+};
+
+const getPaymentDetail = (item, currency) => {
+  if (!item) return [];
+  const details = [];
+  
+  let rawMethods = props.tpvPaymentMethods;
+  if (typeof rawMethods === 'string') {
+    try {
+      rawMethods = JSON.parse(rawMethods);
+    } catch (e) {
+      rawMethods = {};
+    }
+  }
+  
+  const defaultMethods = {
+    USD: [
+      { value: 'cash', label: 'Efectivo' },
+      { value: 'bank_transfer', label: 'Transferencia' },
+      { value: 'paypal', label: 'PayPal' },
+      { value: 'binance', label: 'Binance' },
+      { value: 'credit', label: 'Crédito' }
+    ],
+    COP: [
+      { value: 'cash', label: 'Efectivo' },
+      { value: 'bank_transfer', label: 'Transferencia' }
+    ],
+    BS: [
+      { value: 'cash_bs', label: 'Efectivo' },
+      { value: 'mobile_payment', label: 'Pago Móvil' },
+      { value: 'debit_card', label: 'Tarjeta Débito' },
+      { value: 'credit_card', label: 'Tarjeta Crédito' },
+      { value: 'bank_transfer_bs', label: 'Transferencia' }
+    ]
+  };
+
+  const methods = (rawMethods && Object.keys(rawMethods).length > 0) ? rawMethods : defaultMethods;
+  
+  if (currency === 'USD') {
+    const currencyObj = methods.USD || {};
+    const activeMethods = Array.isArray(currencyObj.methods) ? currencyObj.methods : (Array.isArray(currencyObj) ? currencyObj : []);
+    
+    activeMethods.forEach(m => {
+      let val = 0;
+      if (m.value === 'cash') val = parseFloat(item.usd_cash || 0);
+      else if (m.value === 'bank_transfer') val = parseFloat(item.usd_transfer || 0);
+      else if (m.value === 'paypal') val = parseFloat(item.usd_paypal || 0);
+      else if (m.value === 'binance') val = parseFloat(item.usd_binance || 0);
+      else if (m.value === 'credit') val = parseFloat(item.usd_credit || 0);
+      
+      if (val > 0) {
+        details.push({ label: m.label || m.value, value: fmtUsd(val) });
+      }
+    });
+  } else if (currency === 'COP') {
+    const currencyObj = methods.COP || {};
+    const activeMethods = Array.isArray(currencyObj.methods) ? currencyObj.methods : (Array.isArray(currencyObj) ? currencyObj : []);
+    
+    activeMethods.forEach(m => {
+      let val = 0;
+      if (m.value === 'cash') val = parseFloat(item.cop_cash || 0);
+      else if (m.value === 'bank_transfer') val = parseFloat(item.cop_transfer || 0);
+      
+      if (val > 0) {
+        details.push({ label: m.label || m.value, value: fmtCop(val) });
+      }
+    });
+    
+    if (parseFloat(item.cop_spare || 0) > 0) {
+      details.push({ label: "Sobrante", value: fmtCop(item.cop_spare) });
+    }
+  } else if (currency === 'BS') {
+    const currencyObj = methods.BS || {};
+    const activeMethods = Array.isArray(currencyObj.methods) ? currencyObj.methods : (Array.isArray(currencyObj) ? currencyObj : []);
+    
+    activeMethods.forEach(m => {
+      let val = 0;
+      if (m.value === 'cash_bs') val = parseFloat(item.bs_cash || 0);
+      else if (m.value === 'mobile_payment') val = parseFloat(item.bs_mobile || 0);
+      else if (m.value === 'debit_card') val = parseFloat(item.bs_card_debito || 0);
+      else if (m.value === 'credit_card') val = parseFloat(item.bs_card_credit || 0);
+      else if (m.value === 'bank_transfer_bs') val = parseFloat(item.bs_transfer || 0);
+      
+      if (val > 0) {
+        details.push({ label: m.label || m.value, value: fmtBs(val) });
+      }
+    });
+  }
+  return details;
+};
+
 const headers = [
   { title: "Período",         key: "period",              sortable: true },
+  { title: "Crédito",         key: "amount_credits",       sortable: false, align: "end" },
   { title: "USD",             key: "amount_usd",           sortable: true, align: "end" },
   { title: "COP",             key: "amount_cop",           sortable: true, align: "end" },
   { title: "Bs.",             key: "amount_bs",            sortable: true, align: "end" },
-  { title: "Total (≈ USD)",   key: "total_usd_equivalent", sortable: false, align: "end" },
+  { title: "Total USD",       key: "total_usd_equivalent", sortable: false, align: "end" },
   { title: "Días",            key: "days_closed",          sortable: false, align: "center" },
   { title: "Promedio/Día",    key: "daily_average",        sortable: true, align: "end" },
   { title: "Acciones",        key: "actions",              sortable: false, align: "center", width: "100px" },
@@ -64,14 +181,59 @@ const getAvatarColor = (id) => {
           </div>
         </template>
 
+        <template #item.amount_credits="{ item }">
+          <span class="text-sm font-weight-bold text-disabled">{{ item.amount_credits ?? '0,00' }} USD</span>
+        </template>
+
         <template #item.amount_usd="{ item }">
-          <span class="text-sm font-weight-bold text-primary">{{ item.amount_usd }} USD</span>
+          <div class="d-flex align-center justify-end gap-1">
+            <span class="text-sm font-weight-bold text-primary">{{ item.amount_usd }} USD</span>
+            <VMenu v-if="getPaymentDetail(item, 'USD').length > 1" open-on-hover close-on-content-click location="top">
+              <template #activator="{ props: menuProps }">
+                <VIcon v-bind="menuProps" icon="tabler-info-circle" size="14" class="text-disabled cursor-pointer animate-pulse" />
+              </template>
+              <VCard class="pa-2 text-xs" min-width="160">
+                <div v-for="det in getPaymentDetail(item, 'USD')" :key="det.label" class="d-flex justify-space-between py-1 border-bottom">
+                  <span class="font-weight-medium me-4 uppercase text-disabled text-super-xs">{{ det.label }}:</span>
+                  <span class="font-weight-black">{{ det.value }}</span>
+                </div>
+              </VCard>
+            </VMenu>
+          </div>
         </template>
+
         <template #item.amount_cop="{ item }">
-          <span class="text-sm font-weight-bold text-success">{{ item.amount_cop }} COP</span>
+          <div class="d-flex align-center justify-end gap-1">
+            <span class="text-sm font-weight-bold text-success">{{ item.amount_cop }} COP</span>
+            <VMenu v-if="getPaymentDetail(item, 'COP').length > 0" open-on-hover close-on-content-click location="top">
+              <template #activator="{ props: menuProps }">
+                <VIcon v-bind="menuProps" icon="tabler-info-circle" size="14" class="text-disabled cursor-pointer animate-pulse" />
+              </template>
+              <VCard class="pa-2 text-xs" min-width="160">
+                <div v-for="det in getPaymentDetail(item, 'COP')" :key="det.label" class="d-flex justify-space-between py-1 border-bottom">
+                  <span class="font-weight-medium me-4 uppercase text-disabled text-super-xs">{{ det.label }}:</span>
+                  <span class="font-weight-black">{{ det.value }}</span>
+                </div>
+              </VCard>
+            </VMenu>
+          </div>
         </template>
+
         <template #item.amount_bs="{ item }">
-          <span class="text-sm font-weight-bold text-warning">{{ item.amount_bs }} Bs.</span>
+          <div class="d-flex align-center justify-end gap-1">
+            <span class="text-sm font-weight-bold text-warning">{{ item.amount_bs }} Bs.</span>
+            <VMenu v-if="getPaymentDetail(item, 'BS').length > 1" open-on-hover close-on-content-click location="top">
+              <template #activator="{ props: menuProps }">
+                <VIcon v-bind="menuProps" icon="tabler-info-circle" size="14" class="text-disabled cursor-pointer animate-pulse" />
+              </template>
+              <VCard class="pa-2 text-xs" min-width="160">
+                <div v-for="det in getPaymentDetail(item, 'BS')" :key="det.label" class="d-flex justify-space-between py-1 border-bottom">
+                  <span class="font-weight-medium me-4 uppercase text-disabled text-super-xs">{{ det.label }}:</span>
+                  <span class="font-weight-black">{{ det.value }}</span>
+                </div>
+              </VCard>
+            </VMenu>
+          </div>
         </template>
 
         <template #item.total_usd_equivalent="{ item }">
@@ -127,6 +289,10 @@ const getAvatarColor = (id) => {
 
           <!-- Resumen de Totales Físicos -->
           <div class="d-flex flex-column gap-2 mb-4">
+            <div class="d-flex justify-space-between align-center px-1">
+              <span class="text-xs text-disabled font-weight-bold uppercase">Crédito</span>
+              <span class="text-xs font-weight-black text-disabled">{{ item.amount_credits ?? '0,00' }} USD</span>
+            </div>
             <div class="d-flex justify-space-between align-center px-1">
               <span class="text-xs text-disabled font-weight-bold uppercase">USD Físico</span>
               <span class="text-xs font-weight-black text-primary">{{ item.amount_usd }} USD</span>

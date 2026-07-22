@@ -16,8 +16,24 @@ class DailyCashClosure extends Model
         'total_usd',
         'total_cop',
         'total_bs',
+        // Compatibilidad — suma colapsada banco Bs
         'bs_card',
+        // Desglose Bs por método
+        'bs_cash',
+        'bs_card_debito',
+        'bs_card_credit',
+        'bs_transfer',
         'bs_mobile',
+        // Desglose USD por método
+        'usd_cash',
+        'usd_transfer',
+        'usd_paypal',
+        'usd_binance',
+        // Desglose COP por método
+        'cop_cash',
+        'cop_transfer',
+        'cop_spare',
+        // Totales consolidados
         'usd_delivered',
         'cop_delivered',
         'bs_delivered',

@@ -9,6 +9,8 @@ const props = defineProps({
   selectedTableInvoices: { type: Array, default: () => [] },
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
+  updatingIndexed: { type: Object, default: () => ({}) },
+  updatingDates: { type: Object, default: () => ({}) },
 });
 
 const emit = defineEmits([
@@ -225,6 +227,7 @@ const getInitials = (name) => {
             color="primary"
             density="compact"
             hide-details
+            :disabled="!!props.updatingIndexed[item.id]"
             @change="emit('toggle-indexed', item)"
           />
         </template>
@@ -249,6 +252,8 @@ const getInitials = (name) => {
                   size="32"
                   color="info"
                   class="rounded-circle shadow-sm"
+                  :loading="!!props.updatingDates[item.id]"
+                  :disabled="!!props.updatingDates[item.id]"
                   @click="openMenu(item)"
                 >
                   <VIcon icon="tabler-calendar" size="18" />

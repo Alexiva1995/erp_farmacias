@@ -1,4 +1,5 @@
 <script setup>
+import { computed } from "vue";
 import { useDisplay } from "vuetify";
 
 const props = defineProps({
@@ -7,27 +8,24 @@ const props = defineProps({
   totalDailyCash: { type: Number, required: true },
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
+  tpvPaymentMethods: { type: Object, default: () => ({ COP: [], USD: [], BS: [] }) },
 });
 
 const emit = defineEmits([
   "update:options",
   "view-cash",
-  "delivery",
   "reference",
   "closing-daily",
+  "mismatch",
 ]);
 
 const { mobile } = useDisplay();
 
-const headers = [
+const headers = computed(() => [
   { title: "Fecha", key: "date", sortable: true },
-  { title: "CUSD", key: "total_credits", sortable: true, align: "end" },
-  { title: "USD", key: "total_usd", sortable: true, align: "end" },
-  { title: "E. USD", key: "usd_delivered", sortable: true, align: "end" },
-  { title: "COP", key: "total_cop", sortable: true, align: "end" },
-  { title: "E. COP", key: "cop_delivered", sortable: true, align: "end" },
-  { title: "Bs PM", key: "bs_mobile", sortable: true, align: "end" },
-  { title: "Banco Bs", key: "bs_card", sortable: true, align: "end" },
+  { title: "Crédito", key: "total_credits", sortable: true, align: "end" },
+  { title: "USD", key: "usd_delivered", sortable: true, align: "end" },
+  { title: "COP", key: "cop_delivered", sortable: true, align: "end" },
   { title: "Bs.", key: "total_bs", sortable: true, align: "end" },
   { title: "Total USD", key: "total_sales", sortable: true, align: "end" },
   {
@@ -37,25 +35,15 @@ const headers = [
     align: "center",
     width: "140px",
   },
-];
+]);
 
 const fmtDate = (v) => {
   if (!v) return "—";
   const date = new Date(v);
   const days = ["DOM", "LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB"];
   const months = [
-    "ENE",
-    "FEB",
-    "MAR",
-    "ABR",
-    "MAY",
-    "JUN",
-    "JUL",
-    "AGO",
-    "SEP",
-    "OCT",
-    "NOV",
-    "DIC",
+    "ENE", "FEB", "MAR", "ABR", "MAY", "JUN",
+    "JUL", "AGO", "SEP", "OCT", "NOV", "DIC",
   ];
   return `${days[date.getDay()]} ${date.getDate()} ${months[date.getMonth()]}`;
 };
@@ -64,20 +52,96 @@ const fmtUsd = (v) =>
   new Intl.NumberFormat("es-VE", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(v ?? 0);
+  }).format(v ?? 0) + " USD";
+
 const fmtCop = (v) =>
   Math.round(v ?? 0)
     .toString()
-    .replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    .replace(/\B(?=(\d{3})+(?!\d))/g, ".") + " COP";
+
 const fmtBs = (v) =>
   new Intl.NumberFormat("es-VE", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(v ?? 0);
+  }).format(v ?? 0) + " Bs.";
 
 const getAvatarColor = (id) => {
   const colors = ["primary", "success", "info", "warning", "purple", "cyan"];
   return colors[id % colors.length];
+};
+
+/* 
+  Construye el desglose por método de pago para el consolidado diario.
+  Ahora daily_closures tiene columnas individuales por cada método,
+  igual que cash_closing. Se cruzan con la config del TPV para mostrar
+  solo los que tienen saldo > 0, con el nombre configurado.
+*/
+const getPaymentDetail = (item, currency) => {
+  if (!item) return [];
+  const details = [];
+
+  let rawMethods = props.tpvPaymentMethods;
+  if (typeof rawMethods === "string") {
+    try { rawMethods = JSON.parse(rawMethods); } catch (e) { rawMethods = {}; }
+  }
+  const methods = rawMethods || {};
+
+  if (currency === "USD") {
+    const currencyObj = methods.USD || {};
+    const activeMethods = Array.isArray(currencyObj.methods) ? currencyObj.methods : [];
+    activeMethods.forEach((m) => {
+      let val = 0;
+      if (m.value === "cash")          val = parseFloat(item.usd_cash || 0);
+      else if (m.value === "bank_transfer") val = parseFloat(item.usd_transfer || 0);
+      else if (m.value === "paypal")   val = parseFloat(item.usd_paypal || 0);
+      else if (m.value === "binance")  val = parseFloat(item.usd_binance || 0);
+      else if (m.value === "credit")   val = parseFloat(item.total_credits || 0);
+      if (val > 0) details.push({ label: m.label || m.value, value: fmtUsd(val) });
+    });
+  } else if (currency === "COP") {
+    const currencyObj = methods.COP || {};
+    const activeMethods = Array.isArray(currencyObj.methods) ? currencyObj.methods : [];
+    activeMethods.forEach((m) => {
+      let val = 0;
+      if (m.value === "cash")          val = parseFloat(item.cop_cash || 0);
+      else if (m.value === "bank_transfer") val = parseFloat(item.cop_transfer || 0);
+      if (val > 0) details.push({ label: m.label || m.value, value: fmtCop(val) });
+    });
+  } else if (currency === "BS") {
+    const currencyObj = methods.BS || {};
+    const activeMethods = Array.isArray(currencyObj.methods) ? currencyObj.methods : [];
+    activeMethods.forEach((m) => {
+      let val = 0;
+      if (m.value === "cash_bs")           val = parseFloat(item.bs_cash || 0);
+      else if (m.value === "mobile_payment")  val = parseFloat(item.bs_mobile || 0);
+      else if (m.value === "debit_card")   val = parseFloat(item.bs_card_debito || 0);
+      else if (m.value === "credit_card")  val = parseFloat(item.bs_card_credit || 0);
+      else if (m.value === "bank_transfer_bs") val = parseFloat(item.bs_transfer || 0);
+      if (val > 0) details.push({ label: m.label || m.value, value: fmtBs(val) });
+    });
+  }
+  return details;
+};
+
+const hasMismatch = (item) => {
+  if (!item.cash_closings || !Array.isArray(item.cash_closings)) return false;
+  return item.cash_closings.some((closing) => {
+    let mismatches = closing.blind_mismatches;
+    if (typeof mismatches === "string") {
+      try { mismatches = JSON.parse(mismatches); } catch (e) { mismatches = []; }
+    }
+    if (!Array.isArray(mismatches) || mismatches.length === 0) return false;
+
+    // Si tiene descuadres, verificamos si todos los de COP son sobrantes positivos
+    return mismatches.some(m => {
+      if (m.includes('cop') || m === 'declared_cop') {
+        const sysCop = parseFloat(closing.cop_cash || 0) + parseFloat(closing.cop_cash_payment_credit || 0);
+        const decCop = parseFloat(closing.declared_cop || 0);
+        return decCop < sysCop; // Solo es descuadre si es faltante
+      }
+      return true; // Cualquier otra discrepancia en otra moneda sí cuenta como descuadre
+    });
+  });
 };
 </script>
 
@@ -113,6 +177,7 @@ const getAvatarColor = (id) => {
         class="text-no-wrap premium-table"
         @update:options="(opt) => emit('update:options', opt)"
       >
+        <!-- Fecha -->
         <template #item.date="{ item }">
           <div class="d-flex align-center gap-3 py-2">
             <VAvatar
@@ -123,52 +188,96 @@ const getAvatarColor = (id) => {
             >
               <VIcon icon="tabler-calendar" size="16" />
             </VAvatar>
-            <span class="text-sm font-weight-black uppercase">{{
-              fmtDate(item.created_at)
-            }}</span>
+            <div class="d-flex flex-column">
+              <span class="text-sm font-weight-black uppercase">{{
+                fmtDate(item.created_at)
+              }}</span>
+              <VChip
+                v-if="hasMismatch(item)"
+                size="x-small"
+                color="error"
+                variant="flat"
+                class="mt-1 font-weight-bold rounded px-1 text-uppercase align-self-start"
+                style="font-size: 9px; height: 16px;"
+              >
+                Descuadre
+              </VChip>
+              <VChip
+                v-else
+                size="x-small"
+                color="success"
+                variant="tonal"
+                class="mt-1 font-weight-bold rounded px-1 text-uppercase align-self-start"
+                style="font-size: 9px; height: 16px;"
+              >
+                Cuadrado
+              </VChip>
+            </div>
           </div>
         </template>
 
+        <!-- Crédito -->
         <template #item.total_credits="{ item }">
           <span class="text-sm font-weight-bold text-error">{{
             fmtUsd(item.total_credits)
           }}</span>
         </template>
+
+        <!-- USD (entrega + popover) -->
         <template #item.usd_delivered="{ item }">
-          <span class="text-sm font-weight-bold">{{
-            fmtUsd(item.usd_delivered)
-          }}</span>
+          <div class="d-flex align-center justify-end gap-1">
+            <span class="text-sm font-weight-bold">{{ fmtUsd(item.usd_delivered) }}</span>
+            <VMenu v-if="getPaymentDetail(item, 'USD').length > 0" open-on-hover close-on-content-click location="top">
+              <template #activator="{ props: menuProps }">
+                <VIcon v-bind="menuProps" icon="tabler-info-circle" size="14" class="text-disabled cursor-pointer" />
+              </template>
+              <VCard class="pa-2 text-xs" min-width="160">
+                <div v-for="det in getPaymentDetail(item, 'USD')" :key="det.label" class="d-flex justify-space-between py-1 border-bottom">
+                  <span class="font-weight-medium me-4 uppercase text-disabled text-super-xs">{{ det.label }}:</span>
+                  <span class="font-weight-black">{{ det.value }}</span>
+                </div>
+              </VCard>
+            </VMenu>
+          </div>
         </template>
-        <template #item.total_usd="{ item }">
-          <span class="text-sm font-weight-bold text-primary">{{
-            fmtUsd(item.total_usd)
-          }}</span>
-        </template>
-        <template #item.total_cop="{ item }">
-          <span class="text-sm font-weight-bold text-success">{{
-            fmtCop(item.total_cop)
-          }}</span>
-        </template>
+
+        <!-- COP (entrega + popover) -->
         <template #item.cop_delivered="{ item }">
-          <span class="text-sm font-weight-bold">{{
-            fmtCop(item.cop_delivered)
-          }}</span>
+          <div class="d-flex align-center justify-end gap-1">
+            <span class="text-sm font-weight-bold text-success">{{ fmtCop(item.cop_delivered) }}</span>
+            <VMenu v-if="getPaymentDetail(item, 'COP').length > 0" open-on-hover close-on-content-click location="top">
+              <template #activator="{ props: menuProps }">
+                <VIcon v-bind="menuProps" icon="tabler-info-circle" size="14" class="text-disabled cursor-pointer" />
+              </template>
+              <VCard class="pa-2 text-xs" min-width="160">
+                <div v-for="det in getPaymentDetail(item, 'COP')" :key="det.label" class="d-flex justify-space-between py-1 border-bottom">
+                  <span class="font-weight-medium me-4 uppercase text-disabled text-super-xs">{{ det.label }}:</span>
+                  <span class="font-weight-black">{{ det.value }}</span>
+                </div>
+              </VCard>
+            </VMenu>
+          </div>
         </template>
-        <template #item.bs_mobile="{ item }">
-          <span class="text-xs font-weight-medium text-info">{{
-            fmtBs(item.bs_mobile)
-          }}</span>
-        </template>
-        <template #item.bs_card="{ item }">
-          <span class="text-xs font-weight-medium text-info">{{
-            fmtBs(item.bs_card)
-          }}</span>
-        </template>
+
+        <!-- Bs. (total + popover) -->
         <template #item.total_bs="{ item }">
-          <span class="text-sm font-weight-bold text-warning">{{
-            fmtBs(item.total_bs)
-          }}</span>
+          <div class="d-flex align-center justify-end gap-1">
+            <span class="text-sm font-weight-bold text-warning">{{ fmtBs(item.total_bs) }}</span>
+            <VMenu v-if="getPaymentDetail(item, 'BS').length > 0" open-on-hover close-on-content-click location="top">
+              <template #activator="{ props: menuProps }">
+                <VIcon v-bind="menuProps" icon="tabler-info-circle" size="14" class="text-disabled cursor-pointer" />
+              </template>
+              <VCard class="pa-2 text-xs" min-width="160">
+                <div v-for="det in getPaymentDetail(item, 'BS')" :key="det.label" class="d-flex justify-space-between py-1 border-bottom">
+                  <span class="font-weight-medium me-4 uppercase text-disabled text-super-xs">{{ det.label }}:</span>
+                  <span class="font-weight-black">{{ det.value }}</span>
+                </div>
+              </VCard>
+            </VMenu>
+          </div>
         </template>
+
+        <!-- Total USD -->
         <template #item.total_sales="{ item }">
           <VChip
             size="x-small"
@@ -180,6 +289,7 @@ const getAvatarColor = (id) => {
           </VChip>
         </template>
 
+        <!-- Acciones -->
         <template #item.actions="{ item }">
           <div class="d-flex align-center justify-center gap-1">
             <VTooltip text="Ver Detalle" location="top">
@@ -195,19 +305,6 @@ const getAvatarColor = (id) => {
                 />
               </template>
             </VTooltip>
-            <VTooltip text="Entregas" location="top">
-              <template #activator="{ props: tip }">
-                <VBtn
-                  v-bind="tip"
-                  icon="tabler-box"
-                  size="32"
-                  variant="text"
-                  color="success"
-                  class="rounded-lg"
-                  @click="emit('delivery', item)"
-                />
-              </template>
-            </VTooltip>
             <VTooltip text="Referencias" location="top">
               <template #activator="{ props: tip }">
                 <VBtn
@@ -218,6 +315,21 @@ const getAvatarColor = (id) => {
                   color="secondary"
                   class="rounded-lg"
                   @click="emit('reference', item)"
+                />
+              </template>
+            </VTooltip>
+            <VTooltip text="Descuadres Contables" location="top">
+              <template #activator="{ props: tip }">
+                <VBtn
+                  v-bind="tip"
+                  icon="tabler-alert-triangle"
+                  size="32"
+                  variant="text"
+                  :color="hasMismatch(item) ? 'error' : 'grey-lighten-1'"
+                  :disabled="!hasMismatch(item)"
+                  class="rounded-lg"
+                  :class="{ 'animate-pulse': hasMismatch(item) }"
+                  @click="emit('mismatch', item)"
                 />
               </template>
             </VTooltip>
@@ -245,10 +357,32 @@ const getAvatarColor = (id) => {
                 <VIcon icon="tabler-calendar-event" size="20" />
               </VAvatar>
               <div class="d-flex flex-column">
-                <span
-                  class="text-sm font-weight-black leading-tight uppercase"
-                  >{{ fmtDate(item.created_at) }}</span
-                >
+                <div class="d-flex align-center gap-2">
+                  <span
+                    class="text-sm font-weight-black leading-tight uppercase"
+                    >{{ fmtDate(item.created_at) }}</span
+                  >
+                  <VChip
+                    v-if="hasMismatch(item)"
+                    size="x-small"
+                    color="error"
+                    variant="flat"
+                    class="font-weight-bold rounded px-1 text-uppercase"
+                    style="font-size: 8px; height: 14px;"
+                  >
+                    Descuadre
+                  </VChip>
+                  <VChip
+                    v-else
+                    size="x-small"
+                    color="success"
+                    variant="tonal"
+                    class="font-weight-bold rounded px-1 text-uppercase"
+                    style="font-size: 8px; height: 14px;"
+                  >
+                    Cuadrado
+                  </VChip>
+                </div>
                 <span class="text-xs text-disabled font-weight-bold uppercase"
                   >Consolidado Diario {{ item.id }}</span
                 >
@@ -278,14 +412,6 @@ const getAvatarColor = (id) => {
             </div>
             <div class="d-flex justify-space-between align-center px-2">
               <span class="text-xs text-disabled font-weight-bold uppercase"
-                >Venta USD</span
-              >
-              <span class="text-xs font-weight-black text-primary">{{
-                fmtUsd(item.total_usd)
-              }}</span>
-            </div>
-            <div class="d-flex justify-space-between align-center px-2">
-              <span class="text-xs text-disabled font-weight-bold uppercase"
                 >E. USD (Físico)</span
               >
               <span class="text-xs font-weight-black">{{
@@ -295,20 +421,13 @@ const getAvatarColor = (id) => {
             <VDivider class="my-1 opacity-5" />
             <div class="d-flex justify-space-between align-center px-2">
               <span class="text-xs text-disabled font-weight-bold uppercase"
-                >Venta COP</span
-              >
-              <span class="text-xs font-weight-black text-success">{{
-                fmtCop(item.total_cop)
-              }}</span>
-            </div>
-            <div class="d-flex justify-space-between align-center px-2">
-              <span class="text-xs text-disabled font-weight-bold uppercase"
                 >E. COP (Físico)</span
               >
-              <span class="text-xs font-weight-black">{{
+              <span class="text-xs font-weight-black text-success">{{
                 fmtCop(item.cop_delivered)
               }}</span>
             </div>
+            <VDivider class="my-1 opacity-5" />
             <div class="d-flex justify-space-between align-center px-2">
               <span class="text-xs text-disabled font-weight-bold uppercase"
                 >Pago Móvil Bs.</span
@@ -327,7 +446,7 @@ const getAvatarColor = (id) => {
             </div>
             <div class="d-flex justify-space-between align-center px-2">
               <span class="text-xs text-disabled font-weight-bold uppercase"
-                >Venta Bs.</span
+                >Total Bs.</span
               >
               <span class="text-xs font-weight-black text-warning">{{
                 fmtBs(item.total_bs)
@@ -358,15 +477,6 @@ const getAvatarColor = (id) => {
               DETALLES
             </VBtn>
             <VBtn
-              icon="tabler-box"
-              color="success"
-              variant="tonal"
-              class="rounded-lg"
-              size="40"
-              min-width="40"
-              @click="emit('delivery', item)"
-            />
-            <VBtn
               icon="tabler-clipboard-list"
               color="secondary"
               variant="tonal"
@@ -374,6 +484,16 @@ const getAvatarColor = (id) => {
               size="40"
               min-width="40"
               @click="emit('reference', item)"
+            />
+            <VBtn
+              v-if="hasMismatch(item)"
+              icon="tabler-alert-triangle"
+              color="error"
+              variant="flat"
+              class="rounded-lg animate-pulse"
+              size="40"
+              min-width="40"
+              @click="emit('mismatch', item)"
             />
           </div>
         </VCardText>

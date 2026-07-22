@@ -75,7 +75,7 @@ const fetchProducts = async () => {
   );
 
   try {
-    const response = await axios.get("/products", { params });
+    const response = await axios.get("/finances/profitability/products", { params });
     products.value = response.data.data;
     totalProduct.value = response.data.total;
   } catch (error) {
@@ -262,7 +262,7 @@ onMounted(() => {
         </VCol>
 
         <!-- Productos -->
-        <VCol cols="6" md="2" class="pa-1">
+        <VCol cols="4" md="2" class="pa-1">
           <VCard class="stats-card border-0 overflow-hidden">
             <VCardText class="pa-5 relative-content">
               <div class="d-flex flex-column align-center text-center">
@@ -275,7 +275,7 @@ onMounted(() => {
                 >
                   <VIcon icon="tabler-package" size="24" />
                 </VAvatar>
-                <span class="text-overline text-disabled leading-none mb-1"
+                <span class="text-overline text-disabled leading-none mb-1 text-truncate" style="max-width: 100%"
                   >Productos</span
                 >
                 <h4 class="text-h4 font-weight-black">{{ totalProduct }}</h4>
@@ -287,7 +287,7 @@ onMounted(() => {
 
 
         <!-- Bloqueados -->
-        <VCol cols="6" md="2" class="pa-1">
+        <VCol cols="4" md="2" class="pa-1">
           <VCard class="stats-card border-0 overflow-hidden">
             <VCardText class="pa-5 relative-content">
               <div class="d-flex flex-column align-center text-center">
@@ -300,7 +300,7 @@ onMounted(() => {
                 >
                   <VIcon icon="tabler-lock" size="24" />
                 </VAvatar>
-                <span class="text-overline text-disabled leading-none mb-1"
+                <span class="text-overline text-disabled leading-none mb-1 text-truncate" style="max-width: 100%"
                   >Bloqueados</span
                 >
                 <h4 class="text-h4 font-weight-black text-warning">
@@ -316,7 +316,7 @@ onMounted(() => {
         </VCol>
 
         <!-- Última Actualización -->
-        <VCol cols="12" md="2" class="pa-1">
+        <VCol cols="4" md="2" class="pa-1">
           <VCard class="stats-card border-0 overflow-hidden">
             <VCardText class="pa-5 relative-content">
               <div class="d-flex flex-column align-center text-center">
@@ -329,7 +329,7 @@ onMounted(() => {
                 >
                   <VIcon icon="tabler-history" size="24" />
                 </VAvatar>
-                <span class="text-overline text-disabled leading-none mb-1"
+                <span class="text-overline text-disabled leading-none mb-1 text-truncate" style="max-width: 100%"
                   >Última Act.</span
                 >
                 <h4 class="text-h4 font-weight-black text-info">HOY</h4>
