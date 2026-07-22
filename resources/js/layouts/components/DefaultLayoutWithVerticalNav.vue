@@ -20,6 +20,8 @@ const authStore = useAuthStore();
 const brandingStore = useBrandingStore();
 const configStore = useLayoutConfigStore();
 
+const isSupervisor = computed(() => authStore.user?.role_id === 2);
+
 // Procesar el menú dinámicamente según el rol del usuario
 // Usar computed con dependencia específica para evitar re-evaluaciones innecesarias
 const processedNavItems = computed(() => {
@@ -204,6 +206,9 @@ const processedNavItems = computed(() => {
           childs = childs.filter(c => {
             for (const [key, name] of Object.entries(financeRouteMap)) {
               if (c.to === name) {
+                if (isSupervisor.value && c.to === 'finances-cash-closure-user' && c.subject === 'user') {
+                  return false;
+                }
                 return enabledFinances.includes(key);
               }
             }
