@@ -15,8 +15,8 @@ class MismatchManagementController extends Controller
     public function acceptMismatch(Request $request)
     {
         // Solo administradores o supervisores
-        if ($request->user()->role_id !== 1) {
-            return response()->json(['message' => 'Acceso denegado. Solo administradores pueden aceptar descuadres.'], 403);
+        if (!in_array($request->user()->role_id, [1, 2])) {
+            return response()->json(['message' => 'Acceso denegado. Solo administradores y supervisores pueden aceptar descuadres.'], 403);
         }
 
         $request->validate([
