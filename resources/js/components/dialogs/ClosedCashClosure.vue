@@ -1,3 +1,4 @@
+<script setup>
 import { formatCurrency } from "@/utils/currencyFormatter";
 import { computed, defineEmits, defineProps, ref } from "vue";
 import { useDisplay } from "vuetify";
