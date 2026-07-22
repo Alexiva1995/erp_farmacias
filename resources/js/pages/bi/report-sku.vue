@@ -1,6 +1,6 @@
 <script setup>
 import axios from "@/plugins/axios";
-import { onMounted, ref, watch } from "vue";
+import { onMounted, ref, watch, computed } from "vue";
 import { toast } from "@/plugins/sweetalert";
 
 const skus = ref([]);
@@ -181,13 +181,24 @@ const updateTableOptions = (options) => {
 };
 
 let debounceTimer;
+
+// Watch para filtros pesados (reinician a la página 1)
 watch(
-  [page, itemsPerPage, sortBy, orderBy, search, startDate, endDate, selectedLaboratory, selectedGroup, semaphoreFilter, statusFilter],
+  [search, startDate, endDate, selectedLaboratory, selectedGroup, semaphoreFilter, statusFilter],
+  () => {
+    page.value = 1;
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => fetchReport(), 400);
+  }
+);
+
+// Watch para paginación y orden (sin reiniciar página)
+watch(
+  [page, itemsPerPage, sortBy, orderBy],
   () => {
     clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => fetchReport(), 500);
-  },
-  { deep: true }
+    debounceTimer = setTimeout(() => fetchReport(), 100);
+  }
 );
 
 const getSemaphoreColor = (status) => {
@@ -302,6 +313,7 @@ const formatMoney = (val) => {
               color="secondary"
               size="38"
               class="rounded-circle shadow-sm"
+              :disabled="loading"
               @click="handleClearFilters"
             >
               <VIcon icon="tabler-eraser" size="20" />
@@ -420,16 +432,25 @@ const formatMoney = (val) => {
         <VCard class="stats-card rounded-lg border shadow-sm overflow-hidden h-full position-relative">
           <div class="card-bg-decoration" :style="{ background: `linear-gradient(45deg, rgba(var(--v-theme-${kpi.color}), 0.1), transparent)` }"></div>
           <VCardText class="pa-5 relative-content">
-            <div class="d-flex align-center justify-space-between mb-4">
-              <VAvatar :color="kpi.color" variant="tonal" size="48" rounded="lg" class="elevation-1">
-                <VIcon :icon="kpi.icon" size="26" />
-              </VAvatar>
-              <div class="text-right">
-                <span class="text-overline font-weight-bold text-disabled" style="letter-spacing: 1px !important; line-height: 1.2; display: block">{{ kpi.title }}</span>
-                <h4 class="text-h4 font-weight-black mt-1">{{ kpi.value }}</h4>
+            <div v-if="loading" class="d-flex flex-column gap-2 py-2">
+              <div class="d-flex justify-space-between align-center">
+                <div class="w-25 bg-secondary-light animate-pulse rounded" style="height: 32px;"></div>
+                <div class="w-50 bg-secondary-light animate-pulse rounded" style="height: 24px;"></div>
               </div>
+              <div class="w-100 bg-secondary-light animate-pulse rounded mt-3" style="height: 10px;"></div>
             </div>
-            <VDivider class="mb-3 opacity-20" />
+            <div v-else>
+              <div class="d-flex align-center justify-space-between mb-4">
+                <VAvatar :color="kpi.color" variant="tonal" size="48" rounded="lg" class="elevation-1">
+                  <VIcon :icon="kpi.icon" size="26" />
+                </VAvatar>
+                <div class="text-right">
+                  <span class="text-overline font-weight-bold text-disabled" style="letter-spacing: 1px !important; line-height: 1.2; display: block">{{ kpi.title }}</span>
+                  <h4 class="text-h4 font-weight-black mt-1">{{ kpi.value }}</h4>
+                </div>
+              </div>
+              <VDivider class="mb-3 opacity-20" />
+            </div>
             <div class="d-flex align-center justify-space-between">
               <span class="text-caption font-weight-medium text-medium-emphasis">{{ kpi.desc }}</span>
               <VIcon icon="tabler-chart-pie" size="16" :color="kpi.color" class="opacity-50" />
@@ -674,4 +695,16 @@ const formatMoney = (val) => {
 }
 
 .gap-1 { gap: 4px !important; }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .5; }
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+.bg-secondary-light {
+  background-color: rgba(var(--v-theme-secondary), 0.15);
+}
 </style>

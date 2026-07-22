@@ -6,6 +6,7 @@ namespace App\Services\Bi;
 
 use App\Contracts\Repositories\SkuReportRepositoryInterface;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class SkuReportService
 {
@@ -124,37 +125,55 @@ class SkuReportService
     }
 
     /**
-     * Calcula los resúmenes financieros globales de toda la consulta (sin paginar)
+     * Calcula los resúmenes financieros globales de toda la consulta (sin paginar) de manera optimizada.
      */
     public function getGlobalSummary(array $filters): array
     {
-        // 1. Obtener la consulta base 
-        // Nota: para un reporte real con muchísimos datos esto podría optimizarse con SUMs en BD, 
-        // pero la complejidad de los % obliga a procesarlos en memoria.
-        $allData = $this->generateReport($filters, 999999);
-        $items = collect($allData->items());
-
-        // Aplicamos el filtro semáforo si está presente (ya que se aplica post-query)
-        if (!empty($filters['semaphore'])) {
-            $items = $items->where('semaphore', $filters['semaphore'])->values();
-        }
-
-        $totalRevenue = $items->sum('total_revenue');
-        $totalHistoricalCost = $items->sum('total_historical_cost');
-        $totalLosses = $items->sum('loss_value');
-        $totalDiscountAmount = $items->sum('total_discount_amount');
-
-        // Productos en alertas rojas / negras (Pérdidas o riesgo)
-        $criticalSkus = $items->filter(function($i) {
-            return in_array($i->semaphore, ['rojo', 'negro']);
-        })->count();
+        // Ejecutamos agregaciones eficientes a nivel de base de datos a partir del Query base del repositorio
+        $baseQuery = $this->skuReportRepository->getBaseQuery($filters);
         
+        // Obtenemos los totales agregados directamente desde SQL
+        $totals = DB::table(DB::raw("({$baseQuery->toSql()}) as sub"))
+            ->mergeBindings($baseQuery->getQuery())
+            ->select([
+                DB::raw('SUM(total_revenue) as total_revenue'),
+                DB::raw('SUM(total_historical_cost) as total_historical_cost'),
+                DB::raw('SUM(total_discount_amount) as total_discounts'),
+            ])
+            ->first();
+
+        $totalRevenue = $totals ? (float) $totals->total_revenue : 0.0;
+        $totalHistoricalCost = $totals ? (float) $totals->total_historical_cost : 0.0;
+        $totalDiscountAmount = $totals ? (float) $totals->total_discounts : 0.0;
+
+        // Para pérdidas/mermas
+        $expiredData = $this->skuReportRepository->getExpiredProducts($filters);
+        $totalLosses = (float) $expiredData->sum('total_expired_cost');
+
         $netMarginTotal = $totalRevenue - $totalHistoricalCost;
         $globalMarginNet = $totalRevenue > 0 ? ($netMarginTotal / $totalRevenue) * 100 : 0;
         
-        // El Margen Real Global es (Revenue - Costo Histórico - Mermas)
         $realMarginTotal = $netMarginTotal - $totalLosses;
         $globalMarginReal = $totalRevenue > 0 ? ($realMarginTotal / $totalRevenue) * 100 : 0;
+
+        // Contar SKUs críticos en pérdida directa (Capa 4 Semáforo < 10%)
+        // Hacemos una subquery limpia para los conteos críticos
+        $criticalSkus = 0;
+        $allBaseItems = $baseQuery->get();
+        if ($allBaseItems->isNotEmpty()) {
+            $productIds = $allBaseItems->pluck('product_id')->toArray();
+            $filters['product_ids'] = $productIds;
+            $expiredForCritical = $this->skuReportRepository->getExpiredProducts($filters);
+            
+            $criticalSkus = $allBaseItems->filter(function ($item) use ($expiredForCritical) {
+                $expiredInfo = $expiredForCritical->get($item->product_id);
+                $lossValue = $expiredInfo ? (float) $expiredInfo->total_expired_cost : 0;
+                $netMarginTotal = (float)$item->total_revenue - (float)$item->total_historical_cost;
+                $realMarginTotal = $netMarginTotal - $lossValue;
+                $realMarginPercent = $item->total_revenue > 0 ? ($realMarginTotal / $item->total_revenue) * 100 : 0;
+                return $realMarginPercent < 10;
+            })->count();
+        }
 
         return [
             'total_revenue' => $totalRevenue,

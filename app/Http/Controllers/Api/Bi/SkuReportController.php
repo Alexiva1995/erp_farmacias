@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Api\Bi;
 use App\Http\Controllers\Controller;
 use App\Services\Bi\SkuReportService;
 use App\Http\Resources\Bi\SkuReportResource;
-use Illuminate\Http\Request;
+use App\Http\Requests\Bi\SkuReportRequest;
 
 class SkuReportController extends Controller
 {
@@ -19,25 +19,16 @@ class SkuReportController extends Controller
     /**
      * Genera el reporte de Margen por SKU basado en las ventas concretadas y mermas.
      *
-     * @param Request $request
+     * @param SkuReportRequest $request
      * @return \Illuminate\Http\JsonResponse
      */
-    public function generateReport(Request $request)
+    public function generateReport(SkuReportRequest $request)
     {
-        $filters = $request->only([
-            'start_date',
-            'end_date',
-            'laboratory_id',
-            'group_id',
-            'semaphore', // verde, amarillo, rojo, negro
-            'is_active', // estado del producto
-            'sortBy',
-            'orderBy'
-        ]);
+        $filters = $request->validated();
 
         $perPage = $request->input('itemsPerPage', 15);
         
-        $paginatedReport = $this->skuReportService->generateReport($filters, $perPage);
+        $paginatedReport = $this->skuReportService->generateReport($filters, (int) $perPage);
 
         // Si hay filtrado por Semáforo después de calculado
         if (!empty($filters['semaphore'])) {
@@ -60,14 +51,12 @@ class SkuReportController extends Controller
     /**
      * Exporta el reporte de Margen SKU
      *
-     * @param Request $request
+     * @param SkuReportRequest $request
      * @return \Illuminate\Http\JsonResponse|\Symfony\Component\HttpFoundation\BinaryFileResponse
      */
-    public function export(Request $request)
+    public function export(SkuReportRequest $request)
     {
-        $filters = $request->only([
-            'start_date', 'end_date', 'laboratory_id', 'group_id', 'semaphore', 'search', 'is_active'
-        ]);
+        $filters = $request->validated();
 
         // Obtenemos todos los registros sin paginar
         $allData = $this->skuReportService->generateReport($filters, 999999);
