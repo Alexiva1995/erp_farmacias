@@ -45,6 +45,7 @@ export const buildAbilityForRules = (user) => {
       can('manage', 'finances-cashout');
       can('manage', 'finances-payslips');
       can('manage', 'finances-cash-closure');
+      can('manage', 'finances-cash-closure-user');
       can('manage', 'user');
       can('manage', 'productividad');
       can('manage', 'gastos-expenses');
