@@ -81,19 +81,25 @@ const formatCurrency = (amount, currency, omitCurrency = false) => {
 
 const formatDate = (date) => {
   if (!date) return "N/A";
-  return new Date(date).toLocaleDateString("es-VE");
+  const dateStr = typeof date === 'string' ? date.substring(0, 10).replace(/-/g, '/') : date;
+  return new Date(dateStr).toLocaleDateString("es-VE");
 };
 
 const formatDueDate = (paymentDate) => {
   if (!paymentDate) return "N/A";
-  const dueDate = new Date(paymentDate);
+  const dateStr = typeof paymentDate === 'string' ? paymentDate.substring(0, 10).replace(/-/g, '/') : paymentDate;
+  const dueDate = new Date(dateStr);
   return dueDate.toLocaleDateString("es-VE");
 };
 
 const isOverdue = (paymentDate) => {
   if (!paymentDate) return false;
-  const dueDate = new Date(paymentDate);
-  return dueDate < new Date();
+  const dateStr = typeof paymentDate === 'string' ? paymentDate.substring(0, 10).replace(/-/g, '/') : paymentDate;
+  const dueDate = new Date(dateStr);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  dueDate.setHours(0, 0, 0, 0);
+  return dueDate < today;
 };
 
 const getStatusColor = (status) => {
