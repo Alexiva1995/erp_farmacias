@@ -74,6 +74,11 @@ class GeneralSetting extends Model
         'supplier_form_fields',
         'expense_supplier_form_fields',
         'profitability_calculation_type',
+        'expense_mode',
+        'expense_auto_approve',
+        'enabled_ia_assistant_views',
+        'enable_invoices',
+        'enable_invoice_locations',
     ];
 
     protected $casts = [
@@ -96,6 +101,7 @@ class GeneralSetting extends Model
         'enable_donations' => 'boolean',
         'enable_locations' => 'boolean',
         'enable_optimization' => 'boolean',
+        'traceability_mode' => 'string',
         'enable_dishes' => 'boolean',
         'enable_quotations' => 'boolean',
         'quotation_style' => 'string',
@@ -111,5 +117,10 @@ class GeneralSetting extends Model
         'supplier_form_fields' => 'array',
         'expense_supplier_form_fields' => 'array',
         'profitability_calculation_type' => 'string',
+        'expense_mode' => 'string',
+        'expense_auto_approve' => 'boolean',
+        'enabled_ia_assistant_views' => 'array',
+        'enable_invoices' => 'boolean',
+        'enable_invoice_locations' => 'boolean',
     ];
 }

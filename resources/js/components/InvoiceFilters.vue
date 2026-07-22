@@ -18,6 +18,7 @@ const emit = defineEmits([
   "update:startDate",
   "update:endDate",
   "clear",
+  "create-invoice",
 ]);
 
 const hasAdvancedFilters = computed(
@@ -29,10 +30,13 @@ const hasAdvancedFilters = computed(
   <AppFilterBase
     :search="props.searchQuery"
     :has-advanced-filters="hasAdvancedFilters"
+    :show-add="true"
+    add-button-text="Registrar Factura"
     search-placeholder="Buscar N° Factura, Control..."
     class="py-1"
     @update:search="emit('update:searchQuery', $event)"
     @clear="emit('clear')"
+    @add="emit('create-invoice')"
   >
     <template #advanced-filters>
       <!-- Proveedor -->

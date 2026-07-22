@@ -37,19 +37,8 @@ const formatPrice = (price) => {
   }).format(price);
 };
 
-const calculateCurrentValue = (item) => {
-  const currentYear = new Date().getFullYear();
-  const yearsDepreciated = Math.max(0, currentYear - item.acquisition_year);
-  const totalDepreciation =
-    (item.annual_depreciation_rate / 100) * yearsDepreciated;
-  const depreciationFactor = Math.max(0, 1 - totalDepreciation);
-
-  return item.cost * depreciationFactor;
-};
-
 const getDepreciationStatus = (item) => {
-  const currentValue = calculateCurrentValue(item);
-  const depreciationPercentage = ((item.cost - currentValue) / item.cost) * 100;
+  const depreciationPercentage = item.depreciation_percentage;
 
   if (depreciationPercentage <= 20) {
     return { text: "Excelente", color: "success", icon: "tabler-circle-check" };
@@ -145,10 +134,10 @@ const formatDepreciation = (rate) => {
       <template #item.current_value="{ item }">
         <div class="d-flex flex-column">
           <span class="text-sm font-weight-bold text-primary">
-            {{ formatPrice(calculateCurrentValue(item)) }}
+            {{ formatPrice(item.current_value) }}
           </span>
           <span class="text-xs text-disabled font-weight-medium">
-            {{ ((calculateCurrentValue(item) / item.cost) * 100).toFixed(1) }}% residual
+            {{ (100 - item.depreciation_percentage).toFixed(1) }}% residual
           </span>
         </div>
       </template>
@@ -252,7 +241,7 @@ const formatDepreciation = (rate) => {
                 </VCol>
                 <VCol cols="6" class="text-right border-l-dashed pl-4">
                   <div class="text-caption text-disabled uppercase font-weight-bold mb-1">Valor Actual</div>
-                  <div class="text-body-2 font-weight-black text-primary">{{ formatPrice(calculateCurrentValue(item)) }}</div>
+                  <div class="text-body-2 font-weight-black text-primary">{{ formatPrice(item.current_value) }}</div>
                 </VCol>
               </VRow>
 

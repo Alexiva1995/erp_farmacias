@@ -35,4 +35,14 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->dontReport([
             \App\Exceptions\PaymentDiscrepancyException::class,
         ]);
+
+        $exceptions->report(function (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error($e->getMessage(), [
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'userId' => auth()->id(),
+            ]);
+
+            return false; // Evita el reporte por defecto con el stack trace masivo de Laravel
+        });
     })->create();

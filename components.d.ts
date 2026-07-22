@@ -200,6 +200,7 @@ declare module 'vue' {
     LoaderComponent: typeof import('./resources/js/components/LoaderComponent.vue')['default']
     LoanEditDialog: typeof import('./resources/js/components/dialogs/LoanEditDialog.vue')['default']
     LoanFilters: typeof import('./resources/js/components/LoanFilters.vue')['default']
+    LoanPaymentDialog: typeof import('./resources/js/components/dialogs/LoanPaymentDialog.vue')['default']
     LoanTable: typeof import('./resources/js/components/LoanTable.vue')['default']
     LocationEditDialog: typeof import('./resources/js/components/dialogs/LocationEditDialog.vue')['default']
     LocationTable: typeof import('./resources/js/components/LocationTable.vue')['default']

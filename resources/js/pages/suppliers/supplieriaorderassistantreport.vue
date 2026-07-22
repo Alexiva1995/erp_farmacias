@@ -9,12 +9,12 @@ import Swal from 'sweetalert2';
 import { roundIaAnalysis } from "@/utils/iaAnalysisRounding";
 import { onMounted, reactive, ref, watch } from 'vue';
 import { useRouter } from "vue-router";
-const router= useRouter()
+const router = useRouter()
 
-const statuModule= reactive({
-  data:{},
-  items:[],
-  total:0,
+const reportState = reactive({
+  data: {},
+  items: [],
+  total: 0,
 })
 
 const laboratories = ref([]);
@@ -22,6 +22,8 @@ const productos = ref([]);
 const productosSelect = ref([]);
 
 const loading = ref(false);
+const generatingPdf = ref(false);
+const exportingExcel = ref(false);
 
 const page = ref(1);
 const itemsPerPage = ref(10);
@@ -29,12 +31,12 @@ const sortBy = ref("solicitar");
 const orderBy = ref("desc");
 
 const selectedLaboratory = ref([]);
-const selectProducts= ref([]);
-const checkColombia= ref(false);
+const selectProducts = ref([]);
+const checkColombia = ref(false);
 
-const tipo_de_filtracion= ref("combinado"); // promedio o ventas o combinado
-const lapso_de_tiempo= ref("3 month");// tiempo
-const stock= ref("all");// Fallas , Execeso o All
+const tipo_de_filtracion = ref("combinado"); // promedio o ventas o combinado
+const lapso_de_tiempo = ref("3 month");// tiempo
+const stock = ref("all");// Fallas , Exceso o All
 const showIgnored = ref(false);
 const showGraphs = ref(false);
 
@@ -60,7 +62,6 @@ async function consultarKpisGlobales() {
       show_ignored: showIgnored.value,
     };
     
-    // Usar el endpoint de estadísticas específico que calcula todo en el servidor
     const resp = await axios.post('/suppliers-ia-assistant-report/stats', data);
     const stats = resp.data?.data || { necesitan: 0, exceso: 0, ok: 0 };
     
@@ -75,40 +76,38 @@ async function consultarKpisGlobales() {
 }
 
 async function consultarDataReport(){
-  let data={
-    itemsPerPage:itemsPerPage.value,
-    page:page.value,
-    orderBy:orderBy.value,
-    sortBy:sortBy.value,
-    product:selectProducts.value,
-    laboratoryId:selectedLaboratory.value,
-    is_colombia:checkColombia.value,
-    lapso_de_tiempo:lapso_de_tiempo.value,
-    tipo_filtracion:tipo_de_filtracion.value,
-    stock:stock.value,
+  let data = {
+    itemsPerPage: itemsPerPage.value,
+    page: page.value,
+    orderBy: orderBy.value,
+    sortBy: sortBy.value,
+    product: selectProducts.value,
+    laboratoryId: selectedLaboratory.value,
+    is_colombia: checkColombia.value,
+    lapso_de_tiempo: lapso_de_tiempo.value,
+    tipo_filtracion: tipo_de_filtracion.value,
+    stock: stock.value,
     show_ignored: showIgnored.value,
     with_trend: showGraphs.value,
   }
 
-  let respuestaApi= await axios.post(`suppliers-ia-assistant-report/filtrar-paginate?page=${page.value}`,data)
-  if(respuestaApi.status!=200){
-    toast.error("error al filtrar")
+  let respuestaApi = await axios.post(`suppliers-ia-assistant-report/filtrar-paginate?page=${page.value}`, data)
+  if(respuestaApi.status != 200){
+    toast.error("Error al filtrar")
   }
-  console.log("data filtro => ",respuestaApi)
-  return {...respuestaApi.data}
+  return { ...respuestaApi.data }
 }
 
 async function consultarProductos(){
-  let respuestaApi= await axios.get("suppliers-ia-assistant-report/consult-products")
-  if(respuestaApi.status!=200){
+  let respuestaApi = await axios.get("suppliers-ia-assistant-report/consult-products")
+  if(respuestaApi.status != 200){
     toast.error("Error al consultar los productos")
   }
-  console.log("list products => ",respuestaApi)
   return [...respuestaApi.data.data]
 }
 
 async function consultarLaboratorios(){
-  let respuesta=await axios.get("/laboratories")
+  let respuesta = await axios.get("/laboratories")
   laboratories.value = respuesta.data;
 }
 
@@ -147,13 +146,12 @@ const handleClearIgnore = async () => {
     try {
       await axios.post('/suppliers-ia-assistant-report/clear-ignore-until');
       toast.success("Todos los productos han sido restaurados.");
-      // Recargar datos
       await Promise.all([
         consultarKpisGlobales(),
         (async () => {
-          statuModule.data = await consultarDataReport();
-          statuModule.total = statuModule.data.data.total;
-          statuModule.items = [...statuModule.data.data.data];
+          reportState.data = await consultarDataReport();
+          reportState.total = reportState.data.data.total;
+          reportState.items = [...reportState.data.data.data];
         })()
       ]);
     } catch (error) {
@@ -173,7 +171,6 @@ const updateTableOptionsTable = options => {
     sortBy.value = options.sortBy[0].key
     orderBy.value = options.sortBy[0].order
   } else {
-    // Si vuetify intenta limpiar el sort, mantenemos el default para no perder el orden
     sortBy.value = "solicitar"
     orderBy.value = "desc"
   }
@@ -191,10 +188,9 @@ watch([
   showIgnored,
   showGraphs,
 ], async () => {
-  // Solo cargar si hay laboratorios seleccionados
   if (!selectedLaboratory.value || selectedLaboratory.value.length === 0) {
-    statuModule.items = [];
-    statuModule.total = 0;
+    reportState.items = [];
+    reportState.total = 0;
     kpiGlobal.necesitan = 0;
     kpiGlobal.exceso = 0;
     kpiGlobal.ok = 0;
@@ -204,14 +200,14 @@ watch([
   clearTimeout(filterTimeout);
   filterTimeout = setTimeout(async () => {
     loading.value = true;
-    page.value = 1; // reset a la primera página si cambian filtros
+    page.value = 1;
     
     await Promise.all([
       consultarKpisGlobales(),
       (async () => {
-        statuModule.data = await consultarDataReport();
-        statuModule.total = statuModule.data.data.total;
-        statuModule.items = [...statuModule.data.data.data];
+        reportState.data = await consultarDataReport();
+        reportState.total = reportState.data.data.total;
+        reportState.items = [...reportState.data.data.data];
       })()
     ]);
     
@@ -224,84 +220,85 @@ watch([page, itemsPerPage, orderBy, sortBy], async () => {
   if (!selectedLaboratory.value || selectedLaboratory.value.length === 0) return;
 
   loading.value = true;
-  statuModule.data = await consultarDataReport();
-  statuModule.total = statuModule.data.data.total;
-  statuModule.items = [...statuModule.data.data.data];
+  reportState.data = await consultarDataReport();
+  reportState.total = reportState.data.data.total;
+  reportState.items = [...reportState.data.data.data];
   loading.value = false;
 });
 
-
 async function filtrarSinPaginar(dataFiltro){
-  let respuestaApi = await axios.post(`/suppliers-ia-assistant-report/filtrar-without-paginate`,dataFiltro)
-  if(respuestaApi.status!=200){
-    toast.success("Error al filtrar los datos")
+  let respuestaApi = await axios.post(`/suppliers-ia-assistant-report/filtrar-without-paginate`, dataFiltro)
+  if(respuestaApi.status != 200){
+    toast.error("Error al filtrar los datos")
   }
-  console.log("respues api => ",respuestaApi)
-
   return [...respuestaApi.data.data]
 }
 
 async function generarPdf(){
-//  alert("desuwa")
-  let filtros={
-    orderBy:orderBy.value,
-    sortBy:sortBy.value,
-    product:selectProducts.value,
-    laboratoryId:selectedLaboratory.value,
-    is_colombia:checkColombia.value,
-    lapso_de_tiempo:lapso_de_tiempo.value,
-    tipo_filtracion:tipo_de_filtracion.value,
-    stock:stock.value,
-    show_ignored: showIgnored.value,
-    with_trend: showGraphs.value,
+  generatingPdf.value = true;
+  try {
+    let filtros = {
+      orderBy: orderBy.value,
+      sortBy: sortBy.value,
+      product: selectProducts.value,
+      laboratoryId: selectedLaboratory.value,
+      is_colombia: checkColombia.value,
+      lapso_de_tiempo: lapso_de_tiempo.value,
+      tipo_filtracion: tipo_de_filtracion.value,
+      stock: stock.value,
+      show_ignored: showIgnored.value,
+      with_trend: showGraphs.value,
+    }
+
+    let respuestaApi = await filtrarSinPaginar(filtros)
+
+    if(respuestaApi.length == 0){
+      toast.info("No hay data para generar un reporte")
+      return null;
+    }
+
+    pdfProductsAssistantReportGenerator(respuestaApi)
+    pdfSupplierOrderReportGenerator(respuestaApi)
+    toast.success("PDFs generados correctamente.")
+  } catch (error) {
+    console.error("Error al generar PDF:", error);
+    toast.error("Error al generar los archivos PDF.");
+  } finally {
+    generatingPdf.value = false;
   }
-
-  let respuestaApi=await filtrarSinPaginar(filtros)
-
-    if(respuestaApi.length==0){
-    toast.info("No hay data para generar un reporte")
-    return null;
-  }
-
-  console.log("data pdf => ",respuestaApi)
-
-  // Generar ambos PDFs
-  pdfProductsAssistantReportGenerator(respuestaApi)
-  pdfSupplierOrderReportGenerator(respuestaApi)
 }
 
 async function exportarExcel(formato){
-
+  exportingExcel.value = true;
   try{
-      let params={
-        orderBy:orderBy.value,
-        sortBy:sortBy.value,
-        product:selectProducts.value,
-        laboratoryId:selectedLaboratory.value,
-        is_colombia:checkColombia.value,
-        lapso_de_tiempo:lapso_de_tiempo.value,
-        tipo_filtracion:tipo_de_filtracion.value,
-        stock:stock.value,
-        show_ignored: showIgnored.value,
-        with_trend: showGraphs.value,
-        formato
+    let params = {
+      orderBy: orderBy.value,
+      sortBy: sortBy.value,
+      product: selectProducts.value,
+      laboratoryId: selectedLaboratory.value,
+      is_colombia: checkColombia.value,
+      lapso_de_tiempo: lapso_de_tiempo.value,
+      tipo_filtracion: tipo_de_filtracion.value,
+      stock: stock.value,
+      show_ignored: showIgnored.value,
+      with_trend: showGraphs.value,
+      formato
     }
 
     let respuestaApi = await axios.post(
       '/suppliers-ia-assistant-report/exportar/excel',
-      params,  // Tus parámetros como objeto
+      params,
       {
         responseType: 'blob',
         headers: {
-          'Content-Type': 'application/json',  // Asegura el envío correcto de los parámetros
+          'Content-Type': 'application/json',
         }
       }
     );
 
-    console.log("res => ",respuestaApi)
-
-    if(respuestaApi.status!=200){
-      toast.success("Error al filtrar los datos")
+    if(respuestaApi.status != 200){
+      toast.error("Error al exportar los datos")
+      return;
     }
     const url = window.URL.createObjectURL(new Blob([respuestaApi.data]));
     const link = document.createElement("a");
@@ -321,17 +318,18 @@ async function exportarExcel(formato){
 
     link.remove();
     window.URL.revokeObjectURL(url);
+    toast.success("Excel exportado correctamente.");
   } catch (error) {
     console.error("Error al exportar los datos:", error);
+    toast.error("Error al exportar el archivo Excel.");
+  } finally {
+    exportingExcel.value = false;
   }
-
 }
-
 
 onMounted(async () => {
   loading.value = true;
   
-  // Cargar catálogos iniciales
   await Promise.all([
     consultarProductos().then(res => {
       productos.value = res;
@@ -347,6 +345,7 @@ onMounted(async () => {
   loading.value = false;
 });
 </script>
+
 <template>
   <div>
     <!-- Filtros -->
@@ -364,6 +363,8 @@ onMounted(async () => {
       :laboratories="laboratories"
       :tipo_de_filtracion="tipo_de_filtracion"
       :lapso_de_tiempo="lapso_de_tiempo"
+      :generating-pdf="generatingPdf"
+      :exporting-excel="exportingExcel"
       @clear="handleClearFilters"
       @clear-ignore="handleClearIgnore"
       @export-pdf="generarPdf"
@@ -373,10 +374,56 @@ onMounted(async () => {
       :suppliers="suppliers"
     />
 
+    <!-- KPIs Globales -->
+    <VRow class="mb-6">
+      <VCol cols="12" sm="4">
+        <VCard class="border shadow-sm overflow-hidden" elevation="0">
+          <VCardText class="pa-4 d-flex align-center">
+            <div class="d-flex align-center justify-center rounded-lg bg-light-error pa-3 me-4">
+              <VIcon icon="tabler-alert-triangle" color="error" size="24" />
+            </div>
+            <div>
+              <span class="text-xs text-disabled text-uppercase font-weight-bold">Fallas Detectadas</span>
+              <VSkeletonLoader v-if="loadingStats" type="text" width="60" height="24" class="mt-1" />
+              <h3 v-else class="text-h4 font-weight-black text-error mt-1">{{ kpiGlobal.necesitan }}</h3>
+            </div>
+          </VCardText>
+        </VCard>
+      </VCol>
+      <VCol cols="12" sm="4">
+        <VCard class="border shadow-sm overflow-hidden" elevation="0">
+          <VCardText class="pa-4 d-flex align-center">
+            <div class="d-flex align-center justify-center rounded-lg bg-light-warning pa-3 me-4">
+              <VIcon icon="tabler-trending-up" color="warning" size="24" />
+            </div>
+            <div>
+              <span class="text-xs text-disabled text-uppercase font-weight-bold">Stock Excedente</span>
+              <VSkeletonLoader v-if="loadingStats" type="text" width="60" height="24" class="mt-1" />
+              <h3 v-else class="text-h4 font-weight-black text-warning mt-1">{{ kpiGlobal.exceso }}</h3>
+            </div>
+          </VCardText>
+        </VCard>
+      </VCol>
+      <VCol cols="12" sm="4">
+        <VCard class="border shadow-sm overflow-hidden" elevation="0">
+          <VCardText class="pa-4 d-flex align-center">
+            <div class="d-flex align-center justify-center rounded-lg bg-light-success pa-3 me-4">
+              <VIcon icon="tabler-circle-check" color="success" size="24" />
+            </div>
+            <div>
+              <span class="text-xs text-disabled text-uppercase font-weight-bold">Productos al Día</span>
+              <VSkeletonLoader v-if="loadingStats" type="text" width="60" height="24" class="mt-1" />
+              <h3 v-else class="text-h4 font-weight-black text-success mt-1">{{ kpiGlobal.ok }}</h3>
+            </div>
+          </VCardText>
+        </VCard>
+      </VCol>
+    </VRow>
+
     <!-- Tabla -->
     <SupplierAssistantReportTable
-      :products="statuModule.items"
-      :total-product="statuModule.total"
+      :products="reportState.items"
+      :total-product="reportState.total"
       :loading="loading"
       :items-per-page="itemsPerPage"
       :page="page"
@@ -390,5 +437,14 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-/* Estilos originales */
+.bg-light-error {
+  background-color: rgba(var(--v-theme-error), 0.1);
+}
+.bg-light-warning {
+  background-color: rgba(var(--v-theme-warning), 0.1);
+}
+.bg-light-success {
+  background-color: rgba(var(--v-theme-success), 0.1);
+}
 </style>
+

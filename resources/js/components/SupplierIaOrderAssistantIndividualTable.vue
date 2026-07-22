@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
 import { useBrandingStore } from "@/stores/useBrandingStore";
 
@@ -6,9 +6,10 @@ import { useDisplay } from 'vuetify';
 import VueApexCharts from 'vue3-apexcharts';
 import { roundIaAnalysis } from "@/utils/iaAnalysisRounding";
 import { ref, computed, watch } from 'vue';
-import axios from 'axios';
+import axios from "@/plugins/axios";
 import { useDebounceFn } from '@vueuse/core';
 import Swal from 'sweetalert2';
+import { toast } from "@/plugins/sweetalert";
 
 const brandingStore = useBrandingStore();
 const isRestaurant = computed(() => false);
@@ -26,7 +27,7 @@ const props = defineProps({
   selectedSupplierId: { type: [Number, String], default: null },
 });
 
-const emit = defineEmits(["update:options", "update:page", "refresh", "product-scarce-toggled", "open-comparator", "remove-item"]);
+const emit = defineEmits(["update:options", "update:page", "refresh", "product-scarce-toggled", "open-comparator", "remove-item", "reject-ai-match"]);
 
 // Track edited pedido values per item id
 const editedValues = ref({});
@@ -45,11 +46,12 @@ const updateInputValue = (item, val) => {
 // Función para persistir en BD con debounce
 const persistManualQuantity = useDebounceFn(async (productId, quantity) => {
   try {
-    await axios.post(`/api/suppliers-ia-order-assistant/products/${productId}/update-manual-quantity`, {
+    await axios.post(`/suppliers-ia-order-assistant/products/${productId}/update-manual-quantity`, {
       quantity: quantity
     });
   } catch (error) {
     console.error("Error persisting manual quantity:", error);
+    toast.error("Error al guardar la cantidad manual.");
   }
 }, 800);
 
@@ -72,10 +74,12 @@ const handleToggleScarce = async (product) => {
   
   togglingScarce.value = product.id;
   try {
-    await axios.post(`/api/products/${product.id}/toggle-scarce`);
+    await axios.post(`/suppliers-ia-order-assistant/products-without-supplier/${product.id}/toggle-scarce`);
     emit('product-scarce-toggled', product.id);
+    toast.success("Estado de escasez actualizado.");
   } catch (error) {
     console.error("Error toggling scarce status:", error);
+    toast.error("Error al cambiar estado de escasez.");
   } finally {
     togglingScarce.value = null;
   }
@@ -88,15 +92,15 @@ const isProcessing = ref({});
 const rejectAiMatch = async (item) => {
   if (!item.best_supplier?.is_ai_matched || !item.best_supplier?.id) return;
   try {
-    await axios.post('/api/supplier-ai-match/reject', {
+    await axios.post('/supplier-ai-match/reject', {
       product_id:          item.id,
       product_supplier_id: item.best_supplier.id,
     });
-    // Limpiar el proveedor localmente para reflejar el cambio sin reload
-    item.best_supplier = null;
-    item.best_supplier_price = null;
+    emit('reject-ai-match', item.id);
+    toast.success("Sugerencia de IA rechazada correctamente.");
   } catch (error) {
     console.error('Error rechazando match IA:', error);
+    toast.error("Error al rechazar la sugerencia de la IA.");
   }
 };
 
@@ -139,11 +143,12 @@ const onActionClick = async (item, action) => {
 
       if (isConfirmed) {
         try {
-          await axios.post(`/api/suppliers-ia-order-assistant/products/${item.id}/update-barcode`, {
+          await axios.post(`/suppliers-ia-order-assistant/products/${item.id}/update-barcode`, {
             barcode: cheapestBarcode
           });
           // Actualizamos la propiedad barcode localmente
           item.barcode = cheapestBarcode;
+          toast.success("Código de barras actualizado.");
         } catch (updateError) {
           console.error("Error updating barcode:", updateError);
           if (updateError.response?.status === 409 && updateError.response?.data?.conflict) {
@@ -152,30 +157,24 @@ const onActionClick = async (item, action) => {
               text: updateError.response.data.message,
               icon: "warning",
               showCancelButton: true,
-              confirmButtonText: "Sí, desvincular y asignar",
+              confirmButtonText: "Sí, desvincular and asignar",
               cancelButtonText: "Cancelar",
             });
             if (confirmForce) {
               try {
-                await axios.post(`/api/suppliers-ia-order-assistant/products/${item.id}/update-barcode`, {
+                await axios.post(`/suppliers-ia-order-assistant/products/${item.id}/update-barcode`, {
                   barcode: cheapestBarcode,
                   force: true
                 });
                 item.barcode = cheapestBarcode;
-                Swal.fire({
-                  title: "Éxito",
-                  text: "Código de barras asignado y desvinculado del producto anterior.",
-                  icon: "success",
-                  timer: 2000,
-                  showConfirmButton: false,
-                });
+                toast.success("Código de barras asignado y desvinculado.");
               } catch (forceError) {
                 console.error("Error forcing barcode update:", forceError);
-                Swal.fire("Error", "No se pudo forzar el reajuste del código de barras.", "error");
+                toast.error("No se pudo forzar el reajuste del código de barras.");
               }
             }
           } else {
-            Swal.fire("Error", "No se pudo actualizar el código de barras.", "error");
+            toast.error("No se pudo actualizar el código de barras.");
           }
         }
       }
@@ -200,21 +199,24 @@ const onActionClick = async (item, action) => {
         }
       }
 
-      await axios.post('/api/suppliers-ia-order-assistant/add-to-order', payload);
+      await axios.post('/suppliers-ia-order-assistant/add-to-order', payload);
+      toast.success("Producto añadido a la orden.");
       emit('remove-item', item.id);
     } catch (error) {
        console.error("Error adding to order:", error);
+       toast.error("Error al añadir producto a la orden.");
     } finally {
       delete isProcessing.value[item.id];
     }
   } else if (action === 'ignore') {
     isProcessing.value[item.id] = 'ignoring';
     try {
-      await axios.post(`/api/suppliers-ia-order-assistant/products/${item.id}/ignore`);
+      await axios.post(`/suppliers-ia-order-assistant/products/${item.id}/ignore`);
+      toast.success("Producto ignorado.");
       emit('remove-item', item.id);
     } catch (error) {
       console.error("Error ignoring product:", error);
-      Swal.fire("Error", "No se pudo ignorar el producto.", "error");
+      toast.error("No se pudo ignorar el producto.");
     } finally {
       delete isProcessing.value[item.id];
     }

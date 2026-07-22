@@ -1,5 +1,6 @@
 <script setup>
 import LoanEditDialog from "@/components/dialogs/LoanEditDialog.vue";
+import LoanPaymentDialog from "@/components/dialogs/LoanPaymentDialog.vue";
 import LoanFilters from "@/components/LoanFilters.vue";
 import LoanTable from "@/components/LoanTable.vue";
 import axios from "@/plugins/axios";
@@ -11,6 +12,7 @@ import Swal from "sweetalert2";
 const loans = ref([]);
 const totalLoans = ref(0);
 const loading = ref(false);
+const isSaving = ref(false);
 
 const page = ref(1);
 const itemsPerPage = ref(10);
@@ -26,9 +28,11 @@ const endDate = ref(null);
 const loanYears = ref([]);
 
 const isEditDialogVisible = ref(false);
+const isPaymentDialogVisible = ref(false);
 const currentLoan = ref({});
 
 const loanFormErrors = ref({});
+const loanPaymentErrors = ref({});
 
 const isLoadingFilters = ref(false);
 
@@ -122,6 +126,12 @@ const handleEditLoan = (item) => {
   isEditDialogVisible.value = true;
 };
 
+const handleAddPayment = (item) => {
+  currentLoan.value = { ...item };
+  loanPaymentErrors.value = {};
+  isPaymentDialogVisible.value = true;
+};
+
 const handleDeleteLoan = async (id) => {
   const result = await Swal.fire({
     title: "¿Estás seguro?",
@@ -164,6 +174,7 @@ const handleDeleteLoan = async (id) => {
 const handleSaveLoan = async (loanFormData) => {
   const isNewLoan = !currentLoan.value.id;
   const url = isNewLoan ? "/loans" : `/loans/${currentLoan.value.id}`;
+  isSaving.value = true;
 
   try {
     if (isNewLoan) {
@@ -183,6 +194,28 @@ const handleSaveLoan = async (loanFormData) => {
       console.error("Error al guardar/crear el préstamo:", error);
       toast.error("Hubo un error al guardar el préstamo.");
     }
+  } finally {
+    isSaving.value = false;
+  }
+};
+
+const handleSavePayment = async (paymentFormData) => {
+  isSaving.value = true;
+  try {
+    await axios.post(`/loans/${currentLoan.value.id}/payments`, paymentFormData);
+    toast.success("Abono registrado con éxito.");
+    isPaymentDialogVisible.value = false;
+    await fetchLoans();
+  } catch (error) {
+    if (error.response && error.response.status === 422) {
+      loanPaymentErrors.value = error.response.data.errors;
+      toast.error("Por favor, corrige los errores en el formulario.");
+    } else {
+      console.error("Error al registrar el abono:", error);
+      toast.error("Hubo un error al registrar el abono.");
+    }
+  } finally {
+    isSaving.value = false;
   }
 };
 
@@ -204,6 +237,10 @@ const clearFormErrors = () => {
   loanFormErrors.value = {};
 };
 
+const clearPaymentErrors = () => {
+  loanPaymentErrors.value = {};
+};
+
 const handleSort = (sortOptions) => {
   if (sortOptions.key === undefined && sortOptions.order === undefined) {
     sortBy.value = undefined;
@@ -218,39 +255,50 @@ const handleSort = (sortOptions) => {
 <template>
   <div class="loans-view pb-12">
     <div class="d-flex flex-column gap-1 mt-1">
-    <LoanFilters
-      class="mb-6"
-      v-model:searchQuery="searchQuery"
-      v-model:selectedYear="selectedYear"
-      v-model:statusFilter="statusFilter"
-      v-model:startDate="startDate"
-      v-model:endDate="endDate"
-      :loan-years="loanYears"
-      :loading="isLoadingFilters"
-      @clear="handleClearFilters"
-      @add-loan="handleAddLoan"
-      @sort="handleSort"
-    />
+      <LoanFilters
+        class="mb-6"
+        v-model:searchQuery="searchQuery"
+        v-model:selectedYear="selectedYear"
+        v-model:statusFilter="statusFilter"
+        v-model:startDate="startDate"
+        v-model:endDate="endDate"
+        :loan-years="loanYears"
+        :loading="isLoadingFilters"
+        @clear="handleClearFilters"
+        @add-loan="handleAddLoan"
+        @sort="handleSort"
+      />
 
-    <LoanTable
-      :loans="loans"
-      :loading="loading"
-      :total-loans="totalLoans"
-      :items-per-page="itemsPerPage"
-      :page="page"
-      @update:options="updateTableOptions"
-      @edit-loan="handleEditLoan"
-      @delete-loan="handleDeleteLoan"
-    />
+      <LoanTable
+        :loans="loans"
+        :loading="loading"
+        :total-loans="totalLoans"
+        :items-per-page="itemsPerPage"
+        :page="page"
+        @update:options="updateTableOptions"
+        @edit-loan="handleEditLoan"
+        @delete-loan="handleDeleteLoan"
+        @add-payment="handleAddPayment"
+      />
 
-    <LoanEditDialog
-      v-model="isEditDialogVisible"
-      :loan="currentLoan"
-      :loan-years="loanYears"
-      :errors="loanFormErrors"
-      @save="handleSaveLoan"
-      @clear-errors="clearFormErrors"
-    />
+      <LoanEditDialog
+        v-model="isEditDialogVisible"
+        :loan="currentLoan"
+        :loan-years="loanYears"
+        :errors="loanFormErrors"
+        :submitting="isSaving"
+        @save="handleSaveLoan"
+        @clear-errors="clearFormErrors"
+      />
+
+      <LoanPaymentDialog
+        v-model="isPaymentDialogVisible"
+        :loan="currentLoan"
+        :errors="loanPaymentErrors"
+        :submitting="isSaving"
+        @save="handleSavePayment"
+        @clear-errors="clearPaymentErrors"
+      />
     </div>
   </div>
 </template>

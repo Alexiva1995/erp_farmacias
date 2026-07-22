@@ -30,9 +30,11 @@ class AutoReplenishmentCommand extends Command
     {
         $configId = $this->option('config');
 
-        $query = AutoReplenishmentConfig::with('supplier')->where('is_active', true);
+        $query = AutoReplenishmentConfig::with('supplier');
         if ($configId) {
             $query->where('id', $configId);
+        } else {
+            $query->where('is_active', true);
         }
 
         $configs = $query->get();

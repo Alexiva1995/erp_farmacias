@@ -794,36 +794,113 @@ class IaAssistantReportService
         $tipo = $filtros['tipo_filtracion'] ?? 'average';
         $conDescuentoStr = filter_var($filtros['con_descuento'] ?? true, FILTER_VALIDATE_BOOLEAN) ? "true" : "false";
 
-        $items->each(function ($p) use ($filtros, $tipo, $conDescuentoStr) {
+        // Obtener todos los group_ids para carga masiva
+        $groupIds = $items->filter(fn($p) => $p->is_unified_group && !empty($p->group_id))
+            ->pluck('group_id')
+            ->unique()
+            ->toArray();
+
+        if (empty($groupIds)) {
+            return $products;
+        }
+
+        // 1. Obtener todos los productos de estos grupos en una sola query
+        $allGroupProducts = \App\Models\Product::whereIn('group_id', $groupIds)
+            ->where('is_deleted', false)
+            ->where('is_scarce', false)
+            ->get()
+            ->groupBy('group_id');
+
+        // 2. Sumar stock en lote
+        $stocks = \Illuminate\Support\Facades\DB::table('product_lots')
+            ->join('products', 'products.id', '=', 'product_lots.product_id')
+            ->select('products.group_id', \Illuminate\Support\Facades\DB::raw('SUM(product_lots.quantity) as total_quantity'))
+            ->whereIn('products.group_id', $groupIds)
+            ->where(function($q) {
+                $q->where('product_lots.expiration_date', '>=', now()->toDateString())
+                  ->orWhereNull('product_lots.expiration_date');
+            })
+            ->groupBy('products.group_id')
+            ->pluck('total_quantity', 'group_id');
+
+        // 3. Sumar ventas en lote
+        $sales = \Illuminate\Support\Facades\DB::table('order_details')
+            ->join('orders', 'orders.id', '=', 'order_details.order_id')
+            ->join('products', 'products.id', '=', 'order_details.product_id')
+            ->select('products.group_id', \Illuminate\Support\Facades\DB::raw('SUM(order_details.quantity) as total_quantity'))
+            ->whereIn('products.group_id', $groupIds)
+            ->where('orders.status', 'Completed')
+            ->whereBetween('orders.created_at', [$filtros['previousDate'], $filtros['dateToday']])
+            ->groupBy('products.group_id')
+            ->pluck('total_quantity', 'group_id');
+
+        // 4. Sumar Auto Order (AO) en lote
+        $totalAOQuery = \Illuminate\Support\Facades\DB::table('auto_order_details')
+            ->join('auto_orders', 'auto_orders.id', '=', 'auto_order_details.order_id')
+            ->join('product_suppliers', 'auto_order_details.product_suppliers_id', '=', 'product_suppliers.id')
+            ->join('products', 'products.id', '=', 'product_suppliers.product_id')
+            ->select('products.group_id', \Illuminate\Support\Facades\DB::raw('SUM(auto_order_details.quantity) as total_quantity'))
+            ->whereIn('products.group_id', $groupIds)
+            ->whereIn('auto_orders.status', [0, 1])
+            ->where('auto_order_details.status', 0)
+            ->whereNull('auto_orders.deleted_at')
+            ->whereNull('auto_order_details.deleted_at');
+
+        if (!empty($filtros['supplier_id'])) {
+            $totalAOQuery->where('auto_orders.supplier_id', $filtros['supplier_id']);
+        }
+
+        $autoOrders = $totalAOQuery->groupBy('products.group_id')
+            ->pluck('total_quantity', 'group_id');
+
+        // 5. Concatenar laboratorios en lote
+        $labs = \Illuminate\Support\Facades\DB::table('products')
+            ->join('laboratories', 'laboratories.id', '=', 'products.laboratory_id')
+            ->select('products.group_id', 'laboratories.name')
+            ->whereIn('products.group_id', $groupIds)
+            ->where('products.is_deleted', 0)
+            ->where('products.is_scarce', 0)
+            ->get()
+            ->groupBy('group_id')
+            ->map(function($items) {
+                return implode(' / ', $items->pluck('name')->unique()->filter()->toArray());
+            });
+
+        // 6. Obtener ofertas en lote para todos los productos de todos los grupos
+        $allProductsAcrossGroups = new \Illuminate\Database\Eloquent\Collection();
+        foreach ($allGroupProducts as $gId => $productsInGroup) {
+            foreach ($productsInGroup as $pr) {
+                $allProductsAcrossGroups->push($pr);
+            }
+        }
+
+        $allSuppliersData = $this->productSupplierRepository->getSupplierToReplenishTheProducts($allProductsAcrossGroups, $conDescuentoStr);
+        $allSuppliersData = $this->productSupplierRepository->checkTolerance($allSuppliersData, $conDescuentoStr);
+
+        $bestSupplierByGroupId = [];
+        foreach ($allProductsAcrossGroups as $index => $pr) {
+            $supplierData = $allSuppliersData[$index] ?? null;
+            if ($supplierData && isset($supplierData['supplier'])) {
+                $price = $supplierData['precio_final_supplier'] ?? 0;
+                $gId = $pr->group_id;
+                if ($price > 0) {
+                    if (!isset($bestSupplierByGroupId[$gId]) || $price < $bestSupplierByGroupId[$gId]['precio_final_supplier']) {
+                        $bestSupplierByGroupId[$gId] = $supplierData;
+                    }
+                }
+            }
+        }
+
+        // Asignar los datos consolidados a cada producto unificado
+        $items->each(function ($p) use ($filtros, $tipo, $allGroupProducts, $stocks, $sales, $autoOrders, $labs, $bestSupplierByGroupId) {
             if ($p->is_unified_group && $p->group_id) {
-                // 1. Obtener todos los productos del grupo activos
-                $groupProducts = \App\Models\Product::where('group_id', $p->group_id)
-                    ->where('is_deleted', false)
-                    ->where('is_scarce', false)
-                    ->get();
+                $groupProducts = $allGroupProducts->get($p->group_id);
+                if (!$groupProducts || $groupProducts->isEmpty()) return;
 
-                if ($groupProducts->isEmpty()) return;
+                $totalStock = (float)($stocks->get($p->group_id) ?? 0);
+                $totalSales = (float)($sales->get($p->group_id) ?? 0);
+                $totalAO = (float)($autoOrders->get($p->group_id) ?? 0);
 
-                $groupProductIds = $groupProducts->pluck('id')->toArray();
-
-                // 2. Sumar stock
-                $totalStock = \Illuminate\Support\Facades\DB::table('product_lots')
-                    ->whereIn('product_id', $groupProductIds)
-                    ->where(function($q) {
-                        $q->where('expiration_date', '>=', now()->toDateString())
-                          ->orWhereNull('expiration_date');
-                    })
-                    ->sum('quantity');
-
-                // 3. Sumar ventas
-                $totalSales = \Illuminate\Support\Facades\DB::table('order_details')
-                    ->join('orders', 'orders.id', '=', 'order_details.order_id')
-                    ->whereIn('order_details.product_id', $groupProductIds)
-                    ->where('orders.status', 'Completed')
-                    ->whereBetween('orders.created_at', [$filtros['previousDate'], $filtros['dateToday']])
-                    ->sum('order_details.quantity');
-
-                // 4. Sumar promedios
                 $sumSalesAverage = $groupProducts->sum('sales_average');
                 $lapso = $filtros['lapso_de_tiempo'] ?? "1 month";
                 $totalPromedio = match($lapso) {
@@ -836,23 +913,7 @@ class IaAssistantReportService
                     default    => $sumSalesAverage,
                 };
 
-                // 5. Sumar Auto Order (AO)
-                $totalAOQuery = \Illuminate\Support\Facades\DB::table('auto_order_details')
-                    ->join('auto_orders', 'auto_orders.id', '=', 'auto_order_details.order_id')
-                    ->join('product_suppliers', 'auto_order_details.product_suppliers_id', '=', 'product_suppliers.id')
-                    ->whereIn('product_suppliers.product_id', $groupProductIds)
-                    ->whereIn('auto_orders.status', [0, 1])
-                    ->where('auto_order_details.status', 0)
-                    ->whereNull('auto_orders.deleted_at')
-                    ->whereNull('auto_order_details.deleted_at');
-
-                if (!empty($filtros['supplier_id'])) {
-                    $totalAOQuery->where('auto_orders.supplier_id', $filtros['supplier_id']);
-                }
-
-                $totalAO = $totalAOQuery->sum('auto_order_details.quantity');
-
-                // 6. Calcular solicitar y demanda ponderada
+                // Calcular solicitar y demanda ponderada
                 if ($tipo === 'sales') {
                     $p->demanda_ponderada = $totalSales;
                     $resultado = $totalSales - $totalStock - $totalAO;
@@ -870,36 +931,14 @@ class IaAssistantReportService
                 $p->totalQuantityInAutoOrder = $totalAO;
                 $p->solicitar = $resultado > 0 ? ceil($resultado) : floor($resultado);
 
-                // 7. Concatenar laboratorios
-                $labNames = \Illuminate\Support\Facades\DB::table('products')
-                    ->join('laboratories', 'laboratories.id', '=', 'products.laboratory_id')
-                    ->whereIn('products.id', $groupProductIds)
-                    ->where('products.is_deleted', 0)
-                    ->where('products.is_scarce', 0)
-                    ->distinct()
-                    ->pluck('laboratories.name')
-                    ->filter()
-                    ->toArray();
-                $concatenatedLabNames = implode(' / ', $labNames);
+                // Asignar laboratorios concatenados
+                $concatenatedLabNames = $labs->get($p->group_id) ?: 'S/L';
                 $labModel = new \App\Models\Laboratory();
-                $labModel->name = $concatenatedLabNames ?: 'S/L';
+                $labModel->name = $concatenatedLabNames;
                 $p->setRelation('laboratory', $labModel);
 
-                // 8. Buscar mejor oferta para el grupo de productos
-                $groupProductsCollection = new \Illuminate\Database\Eloquent\Collection($groupProducts);
-                $groupSuppliers = $this->productSupplierRepository->getSupplierToReplenishTheProducts($groupProductsCollection, $conDescuentoStr);
-                $groupSuppliers = $this->productSupplierRepository->checkTolerance($groupSuppliers, $conDescuentoStr);
-
-                $bestOption = null;
-                foreach ($groupSuppliers as $supplierData) {
-                    if ($supplierData && isset($supplierData['supplier'])) {
-                        $price = $supplierData['precio_final_supplier'] ?? 0;
-                        if ($price > 0 && ($bestOption === null || $price < $bestOption['precio_final_supplier'])) {
-                            $bestOption = $supplierData;
-                        }
-                    }
-                }
-
+                // Asignar mejor proveedor
+                $bestOption = $bestSupplierByGroupId[$p->group_id] ?? null;
                 if ($bestOption) {
                     $bestSupplier = $bestOption['supplier'];
                     if ($bestSupplier) {
@@ -933,34 +972,148 @@ class IaAssistantReportService
         $items = collect($itemsReponer);
         if ($items->isEmpty()) return $itemsReponer;
 
-        $processedItems = $items->map(function ($item) use ($filtros, $tipo, $conDescuento) {
+        $groupIds = $items->map(fn($item) => $item['product'] ?? null)
+            ->filter(fn($p) => $p && $p->is_unified_group && !empty($p->group_id))
+            ->pluck('group_id')
+            ->unique()
+            ->toArray();
+
+        if (empty($groupIds)) {
+            return $itemsReponer;
+        }
+
+        // 1. Obtener todos los productos de estos grupos en una sola query
+        $allGroupProducts = \App\Models\Product::whereIn('group_id', $groupIds)
+            ->where('is_deleted', false)
+            ->where('is_scarce', false)
+            ->get()
+            ->groupBy('group_id');
+
+        // 2. Sumar stock en lote
+        $stocks = \Illuminate\Support\Facades\DB::table('product_lots')
+            ->join('products', 'products.id', '=', 'product_lots.product_id')
+            ->select('products.group_id', \Illuminate\Support\Facades\DB::raw('SUM(product_lots.quantity) as total_quantity'))
+            ->whereIn('products.group_id', $groupIds)
+            ->where(function($q) {
+                $q->where('product_lots.expiration_date', '>=', now()->toDateString())
+                  ->orWhereNull('expiration_date');
+            })
+            ->groupBy('products.group_id')
+            ->pluck('total_quantity', 'group_id');
+
+        // 3. Sumar ventas en lote
+        $sales = \Illuminate\Support\Facades\DB::table('order_details')
+            ->join('orders', 'orders.id', '=', 'order_details.order_id')
+            ->join('products', 'products.id', '=', 'order_details.product_id')
+            ->select('products.group_id', \Illuminate\Support\Facades\DB::raw('SUM(order_details.quantity) as total_quantity'))
+            ->whereIn('products.group_id', $groupIds)
+            ->where('orders.status', 'Completed')
+            ->whereBetween('orders.created_at', [$filtros['previousDate'], $filtros['dateToday']])
+            ->groupBy('products.group_id')
+            ->pluck('total_quantity', 'group_id');
+
+        // 4. Sumar Auto Order (AO) en lote
+        $totalAOQuery = \Illuminate\Support\Facades\DB::table('auto_order_details')
+            ->join('auto_orders', 'auto_orders.id', '=', 'auto_order_details.order_id')
+            ->join('product_suppliers', 'auto_order_details.product_suppliers_id', '=', 'product_suppliers.id')
+            ->join('products', 'products.id', '=', 'product_suppliers.product_id')
+            ->select('products.group_id', \Illuminate\Support\Facades\DB::raw('SUM(auto_order_details.quantity) as total_quantity'))
+            ->whereIn('products.group_id', $groupIds)
+            ->whereIn('auto_orders.status', [0, 1])
+            ->where('auto_order_details.status', 0)
+            ->whereNull('auto_orders.deleted_at')
+            ->whereNull('auto_order_details.deleted_at');
+
+        if (!empty($filtros['supplier_id'])) {
+            $totalAOQuery->where('auto_orders.supplier_id', $filtros['supplier_id']);
+        }
+
+        $autoOrders = $totalAOQuery->groupBy('products.group_id')
+            ->pluck('total_quantity', 'group_id');
+
+        // 5. Concatenar laboratorios en lote
+        $labs = \Illuminate\Support\Facades\DB::table('products')
+            ->join('laboratories', 'laboratories.id', '=', 'products.laboratory_id')
+            ->select('products.group_id', 'laboratories.name')
+            ->whereIn('products.group_id', $groupIds)
+            ->where('products.is_deleted', 0)
+            ->where('products.is_scarce', 0)
+            ->get()
+            ->groupBy('group_id')
+            ->map(function($items) {
+                return implode(' / ', $items->pluck('name')->unique()->filter()->toArray());
+            });
+
+        // Calcular cantidades sugeridas consolidadas por grupo
+        $solicitarByGroupId = [];
+        foreach ($groupIds as $gId) {
+            $groupProducts = $allGroupProducts->get($gId);
+            if (!$groupProducts || $groupProducts->isEmpty()) continue;
+
+            $totalStock = (float)($stocks->get($gId) ?? 0);
+            $totalSales = (float)($sales->get($gId) ?? 0);
+            $totalAO = (float)($autoOrders->get($gId) ?? 0);
+
+            $sumSalesAverage = $groupProducts->sum('sales_average');
+            $lapso = $filtros['lapso_de_tiempo'] ?? "1 month";
+            $totalPromedio = match($lapso) {
+                "7 days"  => $sumSalesAverage / 4,
+                "15 days" => $sumSalesAverage / 2,
+                "1 month" => $sumSalesAverage,
+                "3 month" => $sumSalesAverage * 3,
+                "6 month" => $sumSalesAverage * 6,
+                "1 year"  => $sumSalesAverage * 12,
+                default    => $sumSalesAverage,
+            };
+
+            if ($tipo === 'sales') {
+                $resultado = $totalSales - $totalStock - $totalAO;
+            } elseif ($tipo === 'combinado') {
+                $resultado = (($totalSales + $totalPromedio) / 2) - $totalStock - $totalAO;
+            } else {
+                $resultado = $totalPromedio - $totalStock - $totalAO;
+            }
+
+            $solicitarByGroupId[$gId] = $resultado > 0 ? ceil($resultado) : floor($resultado);
+        }
+
+        // 6. Obtener ofertas en lote para todos los productos de todos los grupos
+        $allProductsAcrossGroups = new \Illuminate\Database\Eloquent\Collection();
+        foreach ($allGroupProducts as $gId => $productsInGroup) {
+            foreach ($productsInGroup as $pr) {
+                $solicitarConsolidado = $solicitarByGroupId[$gId] ?? 0;
+                $pr->solicitar = -$solicitarConsolidado;
+                $allProductsAcrossGroups->push($pr);
+            }
+        }
+
+        $allSuppliersData = $this->productSupplierRepository->getSupplierToReplenishTheProducts($allProductsAcrossGroups, $conDescuento);
+        $allSuppliersData = $this->productSupplierRepository->checkTolerance($allSuppliersData, $conDescuento);
+
+        $bestReponerByGroupId = [];
+        foreach ($allProductsAcrossGroups as $index => $pr) {
+            $supplierData = $allSuppliersData[$index] ?? null;
+            if ($supplierData && isset($supplierData['supplier'])) {
+                $price = $supplierData['precio_final_supplier'] ?? 0;
+                $gId = $pr->group_id;
+                if ($price > 0) {
+                    if (!isset($bestReponerByGroupId[$gId]) || $price < $bestReponerByGroupId[$gId]['precio_final_supplier']) {
+                        $bestReponerByGroupId[$gId] = $supplierData;
+                    }
+                }
+            }
+        }
+
+        $processedItems = $items->map(function ($item) use ($filtros, $tipo, $conDescuento, $allGroupProducts, $stocks, $sales, $autoOrders, $labs, $solicitarByGroupId, $bestReponerByGroupId) {
             $p = $item['product'] ?? null;
             if ($p && $p->is_unified_group && $p->group_id) {
-                // 1. Obtener todos los productos del grupo activos
-                $groupProducts = \App\Models\Product::where('group_id', $p->group_id)
-                    ->where('is_deleted', false)
-                    ->where('is_scarce', false)
-                    ->get();
+                $groupProducts = $allGroupProducts->get($p->group_id);
+                if (!$groupProducts || $groupProducts->isEmpty()) return $item;
 
-                if ($groupProducts->isEmpty()) return $item;
-
-                $groupProductIds = $groupProducts->pluck('id')->toArray();
-
-                // 2. Sumar stock, ventas, promedio, AO de todo el grupo
-                $totalStock = \Illuminate\Support\Facades\DB::table('product_lots')
-                    ->whereIn('product_id', $groupProductIds)
-                    ->where(function($q) {
-                        $q->where('expiration_date', '>=', now()->toDateString())
-                          ->orWhereNull('expiration_date');
-                    })
-                    ->sum('quantity');
-
-                $totalSales = \Illuminate\Support\Facades\DB::table('order_details')
-                    ->join('orders', 'orders.id', '=', 'order_details.order_id')
-                    ->whereIn('order_details.product_id', $groupProductIds)
-                    ->where('orders.status', 'Completed')
-                    ->whereBetween('orders.created_at', [$filtros['previousDate'], $filtros['dateToday']])
-                    ->sum('order_details.quantity');
+                $totalStock = (float)($stocks->get($p->group_id) ?? 0);
+                $totalSales = (float)($sales->get($p->group_id) ?? 0);
+                $totalAO = (float)($autoOrders->get($p->group_id) ?? 0);
+                $solicitarConsolidado = $solicitarByGroupId[$p->group_id] ?? 0;
 
                 $sumSalesAverage = $groupProducts->sum('sales_average');
                 $lapso = $filtros['lapso_de_tiempo'] ?? "1 month";
@@ -974,84 +1127,33 @@ class IaAssistantReportService
                     default    => $sumSalesAverage,
                 };
 
-                $totalAOQuery = \Illuminate\Support\Facades\DB::table('auto_order_details')
-                    ->join('auto_orders', 'auto_orders.id', '=', 'auto_order_details.order_id')
-                    ->join('product_suppliers', 'auto_order_details.product_suppliers_id', '=', 'product_suppliers.id')
-                    ->whereIn('product_suppliers.product_id', $groupProductIds)
-                    ->whereIn('auto_orders.status', [0, 1])
-                    ->where('auto_order_details.status', 0)
-                    ->whereNull('auto_orders.deleted_at')
-                    ->whereNull('auto_order_details.deleted_at');
-
-                if (!empty($filtros['supplier_id'])) {
-                    $totalAOQuery->where('auto_orders.supplier_id', $filtros['supplier_id']);
-                }
-
-                $totalAO = $totalAOQuery->sum('auto_order_details.quantity');
-
-                // 3. Calcular solicitar consolidado (demanda - stock - AO)
                 if ($tipo === 'sales') {
                     $p->demanda_ponderada = $totalSales;
-                    $resultado = $totalSales - $totalStock - $totalAO;
                 } elseif ($tipo === 'combinado') {
                     $p->demanda_ponderada = ($totalSales + $totalPromedio) / 2;
-                    $resultado = $p->demanda_ponderada - $totalStock - $totalAO;
                 } else {
                     $p->demanda_ponderada = $totalPromedio;
-                    $resultado = $totalPromedio - $totalStock - $totalAO;
                 }
 
-                $solicitarConsolidado = $resultado > 0 ? ceil($resultado) : floor($resultado);
-
-                // Actualizar los atributos en el modelo de producto unificado
                 $p->lote_quantity = $totalStock;
                 $p->total_sold_completed = $totalSales;
                 $p->promedio_calculado = $totalPromedio;
                 $p->totalQuantityInAutoOrder = $totalAO;
                 $p->solicitar = $solicitarConsolidado;
 
-                // Concatenar laboratorios del grupo
-                $labNames = \Illuminate\Support\Facades\DB::table('products')
-                    ->join('laboratories', 'laboratories.id', '=', 'products.laboratory_id')
-                    ->whereIn('products.id', $groupProductIds)
-                    ->where('products.is_deleted', 0)
-                    ->where('products.is_scarce', 0)
-                    ->distinct()
-                    ->pluck('laboratories.name')
-                    ->filter()
-                    ->toArray();
-                $concatenatedLabNames = implode(' / ', $labNames);
+                // Laboratorios
+                $concatenatedLabNames = $labs->get($p->group_id) ?: 'S/L';
                 $labModel = new \App\Models\Laboratory();
-                $labModel->name = $concatenatedLabNames ?: 'S/L';
+                $labModel->name = $concatenatedLabNames;
                 $p->setRelation('laboratory', $labModel);
 
-                // 4. Obtener ofertas para todo el grupo para elegir la mejor (más barata)
-                $groupProductsCollection = new \Illuminate\Database\Eloquent\Collection($groupProducts);
-                
-                // Temporalmente ponemos el solicitar consolidado invertido en todos los productos para que getSupplierToReplenishTheProducts use la demanda correcta
-                $groupProductsCollection->each(function($gp) use ($solicitarConsolidado) {
-                    $gp->solicitar = -$solicitarConsolidado;
-                });
-
-                $groupReponer = $this->productSupplierRepository->getSupplierToReplenishTheProducts($groupProductsCollection, $conDescuento);
-                $groupReponer = $this->productSupplierRepository->checkTolerance($groupReponer, $conDescuento);
-
-                $bestReponerItem = null;
-                foreach ($groupReponer as $gItem) {
-                    if ($gItem && isset($gItem['supplier'])) {
-                        $price = $gItem['precio_final_supplier'] ?? 0;
-                        if ($price > 0 && ($bestReponerItem === null || $price < $bestReponerItem['precio_final_supplier'])) {
-                            $bestReponerItem = $gItem;
-                        }
-                    }
-                }
+                // Buscar la mejor oferta
+                $bestReponerItem = $bestReponerByGroupId[$p->group_id] ?? null;
 
                 if ($bestReponerItem) {
-                    // Usamos el mejor item del grupo pero le ponemos el producto unificado con sus datos consolidados
                     $bestReponerItem['product'] = $p;
                     $bestReponerItem['solicitar'] = -$solicitarConsolidado;
-                    
-                    // Sincronizar atributos de mejor proveedor en el producto
+
                     $bestSupplier = $bestReponerItem['supplier'];
                     if ($bestSupplier) {
                         $bestSupplier = clone $bestSupplier;
@@ -1068,7 +1170,6 @@ class IaAssistantReportService
 
                     return $bestReponerItem;
                 } else {
-                    // No hay proveedores disponibles para ningún producto del grupo
                     $item['product'] = $p;
                     $item['solicitar'] = -$solicitarConsolidado;
                     $p->setAttribute('best_supplier', null);
@@ -1083,6 +1184,4 @@ class IaAssistantReportService
 
         return $processedItems->toArray();
     }
-
 }
-

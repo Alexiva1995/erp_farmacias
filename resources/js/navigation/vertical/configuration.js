@@ -40,12 +40,24 @@ export default [
         to: 'configuration-rrhh',
       },
       {
+        title: 'Gastos',
+        to: 'configuration-expenses',
+      },
+      {
         title: 'Finanzas',
         to: 'configuration-finances',
       },
       {
+        title: 'IA Assistence',
+        to: 'configuration-ia-assistant',
+      },
+      {
         title: 'Productos',
         to: 'configuration-products',
+      },
+      {
+        title: 'Facturas',
+        to: 'configuration-invoices',
       },
       {
         title: 'Proveedores',

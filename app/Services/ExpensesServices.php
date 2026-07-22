@@ -33,7 +33,10 @@ class ExpensesServices implements Expenses
 
     public function create(CreateExpenseData $data): Expense
     {
-        $data->status = ExpenseStatus::PENDING->value;
+        $settings = \App\Models\GeneralSetting::first();
+        $autoApprove = $settings?->expense_auto_approve ?? false;
+
+        $data->status = $autoApprove ? ExpenseStatus::APPROVED->value : ExpenseStatus::PENDING->value;
 
         return $this->expensesRepository->create($data);
     }

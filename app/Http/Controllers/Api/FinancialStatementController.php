@@ -88,38 +88,57 @@ class FinancialStatementController extends Controller
             // Obtener tasas de cambio
             $exchangeRates = $this->getExchangeRates();
 
-            // Calcular ingresos con conversión a USD
-            $orders = Order::where('status', 'Completed')
+            // Calcular ingresos agrupados por moneda para optimizar memoria
+            $incomeByCurrency = Order::where('status', 'Completed')
                 ->whereBetween('order_date', [$startDate, $endDate])
-                ->get(['total_amount', 'currency']);
+                ->selectRaw('currency, SUM(total_amount) as total')
+                ->groupBy('currency')
+                ->pluck('total', 'currency')
+                ->toArray();
 
-            $totalIncome = $orders->sum(function ($order) use ($exchangeRates) {
-                return $this->convertToUsd($order->total_amount, $order->currency, $exchangeRates);
-            });
+            $totalIncome = 0.00;
+            foreach ($incomeByCurrency as $currency => $total) {
+                $totalIncome += $this->convertToUsd($total, $currency, $exchangeRates);
+            }
 
-            // Calcular costos con conversión a USD
-            $ordersWithCosts = Order::where('status', 'Completed')
+            // Calcular costos agrupados por moneda para optimizar memoria
+            $costsByCurrency = Order::where('status', 'Completed')
                 ->whereBetween('order_date', [$startDate, $endDate])
-                ->get(['total_cost', 'currency']);
+                ->selectRaw('currency, SUM(COALESCE(total_cost, 0)) as total')
+                ->groupBy('currency')
+                ->pluck('total', 'currency')
+                ->toArray();
 
-            $totalCosts = $ordersWithCosts->sum(function ($order) use ($exchangeRates) {
-                return $this->convertToUsd($order->total_cost ?? 0, $order->currency, $exchangeRates);
-            });
+            $totalCosts = 0.00;
+            foreach ($costsByCurrency as $currency => $total) {
+                $totalCosts += $this->convertToUsd($total, $currency, $exchangeRates);
+            }
 
-            // Calcular gastos con conversión a USD
-            $expenses = Expense::whereBetween('expense_date', [$startDate, $endDate])
+            // Calcular gastos agrupados por moneda para optimizar memoria
+            // Para gastos, usamos total_usd si es mayor que cero, sino convertimos amount
+            $expensesUsdSum = (float) Expense::whereBetween('expense_date', [$startDate, $endDate])
                 ->whereDoesntHave('category', function ($q) {
                     $q->where('name', 'Pagos de Facturas');
                 })
-                ->get(['total_usd', 'amount', 'currency']);
+                ->where('total_usd', '>', 0)
+                ->sum('total_usd');
 
-            $totalExpenses = $expenses->sum(function ($expense) use ($exchangeRates) {
-                // Usar total_usd si está disponible, sino convertir amount
-                if ($expense->total_usd > 0) {
-                    return round((float) $expense->total_usd, 2);
-                }
-                return $this->convertToUsd($expense->amount ?? 0, $expense->currency ?? 'Bs', $exchangeRates);
-            });
+            $expensesByCurrency = Expense::whereBetween('expense_date', [$startDate, $endDate])
+                ->whereDoesntHave('category', function ($q) {
+                    $q->where('name', 'Pagos de Facturas');
+                })
+                ->where(function ($query) {
+                    $query->whereNull('total_usd')->orWhere('total_usd', 0);
+                })
+                ->selectRaw('currency, SUM(COALESCE(amount, 0)) as total')
+                ->groupBy('currency')
+                ->pluck('total', 'currency')
+                ->toArray();
+
+            $totalExpenses = $expensesUsdSum;
+            foreach ($expensesByCurrency as $currency => $total) {
+                $totalExpenses += $this->convertToUsd($total, $currency ?: 'Bs', $exchangeRates);
+            }
 
             // Calcular utilidad neta
             $netProfit = $totalIncome - $totalCosts - $totalExpenses;
@@ -164,38 +183,56 @@ class FinancialStatementController extends Controller
             // Obtener tasas de cambio
             $exchangeRates = $this->getExchangeRates();
 
-            // Calcular ingresos con conversión a USD
-            $orders = Order::where('status', 'Completed')
+            // Calcular ingresos agrupados por moneda para optimizar memoria
+            $incomeByCurrency = Order::where('status', 'Completed')
                 ->whereBetween('order_date', [$startDate, $endDate])
-                ->get(['total_amount', 'currency']);
+                ->selectRaw('currency, SUM(total_amount) as total')
+                ->groupBy('currency')
+                ->pluck('total', 'currency')
+                ->toArray();
 
-            $totalIncome = $orders->sum(function ($order) use ($exchangeRates) {
-                return $this->convertToUsd($order->total_amount, $order->currency, $exchangeRates);
-            });
+            $totalIncome = 0.00;
+            foreach ($incomeByCurrency as $currency => $total) {
+                $totalIncome += $this->convertToUsd($total, $currency, $exchangeRates);
+            }
 
-            // Calcular costos con conversión a USD
-            $ordersWithCosts = Order::where('status', 'Completed')
+            // Calcular costos agrupados por moneda para optimizar memoria
+            $costsByCurrency = Order::where('status', 'Completed')
                 ->whereBetween('order_date', [$startDate, $endDate])
-                ->get(['total_cost', 'currency']);
+                ->selectRaw('currency, SUM(COALESCE(total_cost, 0)) as total')
+                ->groupBy('currency')
+                ->pluck('total', 'currency')
+                ->toArray();
 
-            $totalCosts = $ordersWithCosts->sum(function ($order) use ($exchangeRates) {
-                return $this->convertToUsd($order->total_cost ?? 0, $order->currency, $exchangeRates);
-            });
+            $totalCosts = 0.00;
+            foreach ($costsByCurrency as $currency => $total) {
+                $totalCosts += $this->convertToUsd($total, $currency, $exchangeRates);
+            }
 
-            // Calcular gastos con conversión a USD
-            $expenses = Expense::whereBetween('expense_date', [$startDate, $endDate])
+            // Calcular gastos agrupados por moneda para optimizar memoria
+            $expensesUsdSum = (float) Expense::whereBetween('expense_date', [$startDate, $endDate])
                 ->whereDoesntHave('category', function ($q) {
                     $q->where('name', 'Pagos de Facturas');
                 })
-                ->get(['total_usd', 'amount', 'currency']);
+                ->where('total_usd', '>', 0)
+                ->sum('total_usd');
 
-            $totalExpenses = $expenses->sum(function ($expense) use ($exchangeRates) {
-                // Usar total_usd si está disponible, sino convertir amount
-                if ($expense->total_usd > 0) {
-                    return round((float) $expense->total_usd, 2);
-                }
-                return $this->convertToUsd($expense->amount ?? 0, $expense->currency ?? 'Bs', $exchangeRates);
-            });
+            $expensesByCurrency = Expense::whereBetween('expense_date', [$startDate, $endDate])
+                ->whereDoesntHave('category', function ($q) {
+                    $q->where('name', 'Pagos de Facturas');
+                })
+                ->where(function ($query) {
+                    $query->whereNull('total_usd')->orWhere('total_usd', 0);
+                })
+                ->selectRaw('currency, SUM(COALESCE(amount, 0)) as total')
+                ->groupBy('currency')
+                ->pluck('total', 'currency')
+                ->toArray();
+
+            $totalExpenses = $expensesUsdSum;
+            foreach ($expensesByCurrency as $currency => $total) {
+                $totalExpenses += $this->convertToUsd($total, $currency ?: 'Bs', $exchangeRates);
+            }
 
             // Calcular utilidad neta
             $netProfit = $totalIncome - $totalCosts - $totalExpenses;

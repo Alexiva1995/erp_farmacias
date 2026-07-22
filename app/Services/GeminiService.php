@@ -213,38 +213,55 @@ class GeminiService
         try {
             $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={$key}";
 
-            $response = Http::timeout(25)->post($url, [
-                'contents' => [
-                    ['parts' => [['text' => $prompt]]]
-                ],
-                // Forzar JSON estructurado con schema definido
-                'generationConfig' => [
-                    'responseMimeType' => 'application/json',
-                    'responseSchema'   => [
-                        'type'       => 'object',
-                        'properties' => [
-                            'matched'             => ['type' => 'boolean'],
-                            'product_supplier_id' => ['type' => ['integer', 'null']],
-                            'confidence_score'    => ['type' => 'number', 'description' => '0.0 to 1.0'],
-                            'reason'              => ['type' => 'string'],
-                        ],
-                        'required' => ['matched'],
+            $maxRetries = 3;
+            $retryDelay = 5;
+
+            for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
+                $response = Http::timeout(25)->post($url, [
+                    'contents' => [
+                        ['parts' => [['text' => $prompt]]]
                     ],
-                ],
-            ]);
+                    // Forzar JSON estructurado con schema definido
+                    'generationConfig' => [
+                        'responseMimeType' => 'application/json',
+                        'responseSchema'   => [
+                            'type'       => 'object',
+                            'properties' => [
+                                'matched'             => ['type' => 'boolean'],
+                                'product_supplier_id' => [
+                                    'type'     => 'integer',
+                                    'nullable' => true,
+                                ],
+                                'confidence_score'    => ['type' => 'number', 'description' => '0.0 to 1.0'],
+                                'reason'              => ['type' => 'string'],
+                            ],
+                            'required' => ['matched'],
+                        ],
+                    ],
+                ]);
 
-            if ($response->successful()) {
-                $result       = $response->json();
-                $textResponse = $result['candidates'][0]['content']['parts'][0]['text'] ?? '';
-                $data         = json_decode($textResponse, true);
+                if ($response->successful()) {
+                    $result       = $response->json();
+                    $textResponse = $result['candidates'][0]['content']['parts'][0]['text'] ?? '';
+                    $data         = json_decode($textResponse, true);
 
-                if (json_last_error() === JSON_ERROR_NONE && isset($data['matched'])) {
-                    return $data;
+                    if (json_last_error() === JSON_ERROR_NONE && isset($data['matched'])) {
+                        return $data;
+                    }
+
+                    Log::warning('[GeminiService::matchProduct] JSON inválido: ' . $textResponse);
+                    return null;
                 }
 
-                Log::warning('[GeminiService::matchProduct] JSON inválido: ' . $textResponse);
-            } else {
+                if ($response->status() === 429) {
+                    Log::warning("[GeminiService::matchProduct] Límite de cuota alcanzado (429). Reintento {$attempt} de {$maxRetries} en {$retryDelay} segundos...");
+                    sleep($retryDelay);
+                    $retryDelay *= 2;
+                    continue;
+                }
+
                 Log::error('[GeminiService::matchProduct] API error: ' . $response->body());
+                break;
             }
         } catch (\Exception $e) {
             Log::error('[GeminiService::matchProduct] Excepción: ' . $e->getMessage());

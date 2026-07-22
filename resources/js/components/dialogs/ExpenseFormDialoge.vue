@@ -1,6 +1,7 @@
-﻿<script setup lang="js">
+<script setup lang="js">
 import { toast } from "@/plugins/sweetalert";
 import { computed, ref, watch } from "vue";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 
 const props = defineProps({
   modalFormulario: { type: Boolean, required: true },
@@ -9,9 +10,25 @@ const props = defineProps({
   formError: { type: Object, default: () => ({}) },
   categorias: { type: Array, default: () => [] },
   type_of_expense: { type: String, default: "normal" },
+  loading: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(["modalClose", "save", "clearErrorForm"]);
+
+const brandingStore = useBrandingStore();
+
+// Copia local reactiva para evitar mutaciones directas de props
+const localForm = ref({ ...props.formData });
+
+// Sincronizar copia local cuando el modal se abre o cambia formData
+watch(
+  () => props.modalFormulario,
+  (isOpen) => {
+    if (isOpen) {
+      localForm.value = { ...props.formData };
+    }
+  }
+);
 
 // File upload related refs
 const invoiceFile = ref(null);
@@ -32,7 +49,7 @@ const currencies = ["BS", "USD", "COP"];
 const recurrencia = ["Mensual", "Semestral", "Anual"];
 
 const shouldShowExchangeRate = computed(() => {
-  return props.formData.currency === "BS" || props.formData.currency === "COP";
+  return localForm.value.currency === "BS" || localForm.value.currency === "COP";
 });
 
 const getCurrencySymbol = computed(() => {
@@ -41,17 +58,30 @@ const getCurrencySymbol = computed(() => {
     USD: "$",
     COP: "COP$",
   };
-  return symbolMap[props.formData.currency] || "$";
+  return symbolMap[localForm.value.currency] || "$";
 });
+
+// Watch para sincronizar monto total en modo simple
+watch(
+  () => localForm.value.total_amount,
+  (newVal) => {
+    if (brandingStore.settings.expense_mode === 'simple') {
+      localForm.value.exempt_amount = Number(newVal) || 0;
+      localForm.value.taxable_base = 0;
+      localForm.value.tax_amount = 0;
+      localForm.value.iva = false;
+    }
+  }
+);
 
 // Watch para calcular impuesto automáticamente
 watch(
-  () => props.formData.taxable_base,
+  () => localForm.value.taxable_base,
   (newValue) => {
     if (newValue !== undefined && newValue !== null) {
       const base = Number(newValue) || 0;
-      props.formData.tax_amount = parseFloat((base * 0.16).toFixed(2));
-      props.formData.iva = base > 0;
+      localForm.value.tax_amount = parseFloat((base * 0.16).toFixed(2));
+      localForm.value.iva = base > 0;
     }
   },
 );
@@ -59,15 +89,15 @@ watch(
 // Watch para calcular total automáticamente
 watch(
   () => [
-    props.formData.exempt_amount,
-    props.formData.taxable_base,
-    props.formData.tax_amount,
+    localForm.value.exempt_amount,
+    localForm.value.taxable_base,
+    localForm.value.tax_amount,
   ],
   () => {
-    const excento = Number(props.formData.exempt_amount) || 0;
-    const base = Number(props.formData.taxable_base) || 0;
-    const impuesto = Number(props.formData.tax_amount) || 0;
-    props.formData.total_amount = parseFloat(
+    const excento = Number(localForm.value.exempt_amount) || 0;
+    const base = Number(localForm.value.taxable_base) || 0;
+    const impuesto = Number(localForm.value.tax_amount) || 0;
+    localForm.value.total_amount = parseFloat(
       (excento + base + impuesto).toFixed(2),
     );
   },
@@ -76,9 +106,9 @@ watch(
 
 // Computed para equivalencia USD centralizado
 const computedTotalUsd = computed(() => {
-  const totalAmount = Number(props.formData.total_amount) || 0;
-  const currency = props.formData.currency;
-  const exchangeRate = Number(props.formData.exchange_rate) || 0;
+  const totalAmount = Number(localForm.value.total_amount) || 0;
+  const currency = localForm.value.currency;
+  const exchangeRate = Number(localForm.value.exchange_rate) || 0;
 
   let totalUsd = 0;
   if (currency === "USD") {
@@ -87,18 +117,18 @@ const computedTotalUsd = computed(() => {
     totalUsd = totalAmount / exchangeRate;
   }
 
-  // Sincronizamos con el formData para el envío
-  props.formData.total_usd = parseFloat(totalUsd.toFixed(2));
+  // Sincronizamos con el localForm para el envío
+  localForm.value.total_usd = parseFloat(totalUsd.toFixed(2));
   
-  return props.formData.total_usd;
+  return localForm.value.total_usd;
 });
 
 // Watch para limpiar tasa de cambio si la moneda es USD
 watch(
-  () => props.formData.currency,
+  () => localForm.value.currency,
   (newCurrency) => {
     if (newCurrency === "USD") {
-      props.formData.exchange_rate = 0;
+      localForm.value.exchange_rate = 0;
     }
   },
 );
@@ -106,28 +136,28 @@ watch(
 // Watch para calcular amount_bs automáticamente cuando es deducible y la moneda no es BS
 watch(
   () => [
-    props.formData.is_deductible,
-    props.formData.currency,
-    props.formData.amount,
-    props.formData.conversion_rate,
+    localForm.value.is_deductible,
+    localForm.value.currency,
+    localForm.value.amount,
+    localForm.value.conversion_rate,
   ],
   () => {
     if (
-      props.formData.is_deductible === true &&
-      props.formData.currency !== "BS" &&
-      props.formData.conversion_rate > 0 &&
-      props.formData.amount > 0
+      localForm.value.is_deductible === true &&
+      localForm.value.currency !== "BS" &&
+      localForm.value.conversion_rate > 0 &&
+      localForm.value.amount > 0
     ) {
-      const amount = Number(props.formData.amount) || 0;
-      const rate = Number(props.formData.conversion_rate) || 0;
-      props.formData.amount_bs = parseFloat((amount * rate).toFixed(2));
+      const amount = Number(localForm.value.amount) || 0;
+      const rate = Number(localForm.value.conversion_rate) || 0;
+      localForm.value.amount_bs = parseFloat((amount * rate).toFixed(2));
     } else if (
-      props.formData.currency === "BS" &&
-      props.formData.is_deductible === true
+      localForm.value.currency === "BS" &&
+      localForm.value.is_deductible === true
     ) {
       // Si la moneda es BS, amount_bs es igual a amount
-      props.formData.amount_bs = parseFloat(
-        (Number(props.formData.amount) || 0).toFixed(2),
+      localForm.value.amount_bs = parseFloat(
+        (Number(localForm.value.amount) || 0).toFixed(2),
       );
     }
   },
@@ -221,24 +251,24 @@ async function submitForm() {
   emit("clearErrorForm");
 
   // Validate required fields first
-  if (!props.formData.name) {
+  if (!localForm.value.name) {
     toast.error("El nombre del gasto es requerido");
     return;
   }
 
-  if (!props.formData.category_id) {
+  if (!localForm.value.category_id) {
     toast.error("La categoría es requerida");
     return;
   }
 
-  if (!props.formData.total_amount || props.formData.total_amount <= 0) {
+  if (!localForm.value.total_amount || localForm.value.total_amount <= 0) {
     toast.error("El monto total debe ser mayor a 0");
     return;
   }
 
   // Emit the save event with form data and file
   emit("save", {
-    ...props.formData,
+    ...localForm.value,
     // Pass the file to be handled by parent after expense creation
     invoice_file: invoiceFile.value,
   });
@@ -316,7 +346,7 @@ async function submitForm() {
               sm="6"
             >
               <VTextField
-                v-model="props.formData.name"
+                v-model="localForm.name"
                 :error-messages="props.formError.name"
                 label="Nombre del Gasto"
                 placeholder="Ej: Pago de Luz"
@@ -332,7 +362,7 @@ async function submitForm() {
               sm="6"
             >
               <VSelect
-                v-model="props.formData.category_id"
+                v-model="localForm.category_id"
                 label="Categoría"
                 :items="props.categorias"
                 :error-messages="props.formError.category_id"
@@ -352,7 +382,7 @@ async function submitForm() {
               md="4"
             >
               <VSelect
-                v-model="props.formData.currency"
+                v-model="localForm.currency"
                 label="Moneda"
                 :items="currencies"
                 :error-messages="props.formError.currency"
@@ -369,12 +399,12 @@ async function submitForm() {
               md="4"
             >
               <VSelect
-                v-model="props.formData.count"
+                v-model="localForm.count"
                 label="Método de Pago"
                 :items="
-                  props.formData.currency === 'BS'
+                  localForm.currency === 'BS'
                     ? bs
-                    : props.formData.currency === 'USD'
+                    : localForm.currency === 'USD'
                       ? usd
                       : cop
                 "
@@ -393,7 +423,7 @@ async function submitForm() {
               md="4"
             >
               <AppDateTimePicker
-                v-model="props.formData.expense_date"
+                v-model="localForm.expense_date"
                 :error-messages="props.formError.expense_date"
                 placeholder="Fecha del Gasto"
                 variant="outlined"
@@ -411,7 +441,7 @@ async function submitForm() {
               md="4"
             >
               <VSelect
-                v-model="props.formData.recurrence"
+                v-model="localForm.recurrence"
                 label="Recurrencia"
                 :items="recurrencia"
                 :error-messages="props.formError.recurrence"
@@ -435,7 +465,7 @@ async function submitForm() {
           variant="flat"
           class="pa-3 bg-white rounded-xl border shadow-sm mb-4"
         >
-          <VRow>
+          <VRow v-if="brandingStore.settings.expense_mode !== 'simple'">
             <VCol
               cols="6"
               md="3"
@@ -443,7 +473,7 @@ async function submitForm() {
               <div class="d-flex flex-column">
                 <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">Monto Exento</span>
                 <VTextField
-                  v-model.number="props.formData.exempt_amount"
+                  v-model.number="localForm.exempt_amount"
                   :error-messages="props.formError.exempt_amount"
                   placeholder="0.00"
                   type="number"
@@ -462,7 +492,7 @@ async function submitForm() {
               <div class="d-flex flex-column">
                 <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">Base Imponible</span>
                 <VTextField
-                  v-model.number="props.formData.taxable_base"
+                  v-model.number="localForm.taxable_base"
                   :error-messages="props.formError.taxable_base"
                   placeholder="0.00"
                   type="number"
@@ -481,7 +511,7 @@ async function submitForm() {
               <div class="d-flex flex-column">
                 <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">IVA (16%)</span>
                 <VTextField
-                  v-model.number="props.formData.tax_amount"
+                  v-model.number="localForm.tax_amount"
                   placeholder="0.00"
                   type="number"
                   variant="underlined"
@@ -500,7 +530,7 @@ async function submitForm() {
               <div class="d-flex flex-column">
                 <span class="text-super-xs font-weight-black text-error uppercase mb-1">Total Factura</span>
                 <VTextField
-                  v-model.number="props.formData.total_amount"
+                  v-model.number="localForm.total_amount"
                   placeholder="0.00"
                   type="number"
                   variant="underlined"
@@ -513,9 +543,31 @@ async function submitForm() {
               </div>
             </VCol>
           </VRow>
+
+          <!-- Vista en Modo Simple -->
+          <VRow v-else>
+            <VCol
+              cols="12"
+            >
+              <div class="d-flex flex-column">
+                <span class="text-super-xs font-weight-black text-error uppercase mb-1">Monto Total del Gasto</span>
+                <VTextField
+                  v-model.number="localForm.total_amount"
+                  :error-messages="props.formError.total_amount || props.formError.exempt_amount"
+                  placeholder="0.00"
+                  type="number"
+                  variant="outlined"
+                  density="comfortable"
+                  :prefix="getCurrencySymbol"
+                  class="font-weight-black text-error"
+                  hide-details="auto"
+                />
+              </div>
+            </VCol>
+          </VRow>
   
             <VRow
-              v-if="shouldShowExchangeRate || props.formData.total_amount"
+              v-if="shouldShowExchangeRate || localForm.total_amount"
               class="mt-2 pt-2 border-t border-dashed"
             >
               <VCol
@@ -524,7 +576,7 @@ async function submitForm() {
                 sm="6"
               >
                 <VTextField
-                  v-model.number="props.formData.exchange_rate"
+                  v-model.number="localForm.exchange_rate"
                   :error-messages="props.formError.exchange_rate"
                   label="Tasa de Cambio (Oficial)"
                   type="number"
@@ -682,8 +734,8 @@ async function submitForm() {
               height="50"
               block
               class="font-weight-black rounded-lg shadow-primary text-button uppercase"
-              :loading="isUploading"
-              :disabled="isUploading"
+              :loading="props.loading"
+              :disabled="props.loading"
               @click="submitForm"
             >
               <VIcon

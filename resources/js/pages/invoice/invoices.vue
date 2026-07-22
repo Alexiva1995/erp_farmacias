@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref, watch } from "vue";
+import { onMounted, onUnmounted, ref, watch } from "vue";
 
 import InvoiceFilters from "@/components/InvoiceFilters.vue";
 import InvoiceTable from "@/components/InvoiceTable.vue";
@@ -89,7 +89,7 @@ const fetchInvoices = async () => {
   }
 };
 
-let debounceTimer;
+let debounceTimer = null;
 watch(
   [
     page,
@@ -119,6 +119,12 @@ watch([searchQuery, selectedSupplier, startDate, endDate], () => {
 onMounted(() => {
   fetchSuppliers();
   fetchInvoices();
+});
+
+onUnmounted(() => {
+  if (debounceTimer) {
+    clearTimeout(debounceTimer);
+  }
 });
 
 const updateTableOptions = (options) => {

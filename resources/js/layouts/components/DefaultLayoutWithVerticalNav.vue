@@ -40,6 +40,9 @@ const processedNavItems = computed(() => {
     if (title === 'operativa' || to === 'restaurant-process-audit' || to === 'inventory-dishes') {
       return enabledModules.includes('restaurant');
     }
+    if (title === 'facturas' || to === 'invoice' || to.startsWith('invoice-')) {
+      return brandingStore.settings.enable_invoices ?? true;
+    }
     return true;
   });
 
@@ -147,6 +150,27 @@ const processedNavItems = computed(() => {
             for (const [key, name] of Object.entries(supplierRouteMap)) {
               if (c.to === name) {
                 return enabledSuppliers.includes(key);
+              }
+            }
+            return true;
+          });
+          if (childs.length === 0) return null;
+        }
+
+        // Filtrado dinámico de submenús de IA Assistence según enabled_ia_assistant_views
+        if (copy.title === 'IA Assistence') {
+          const enabledIaAssistant = brandingStore.settings.enabled_ia_assistant_views || ['pedidos', 'reporte', 'oportunidad', 'comparador', 'automatizacion'];
+          const iaAssistantRouteMap = {
+            'pedidos': 'suppliers-supplieriaorderassistant',
+            'reporte': 'suppliers-supplieriaorderassistantreport',
+            'oportunidad': 'suppliers-market-opportunities',
+            'comparador': 'suppliers-product-comparator-list',
+            'automatizacion': 'suppliers-auto-replenishment',
+          };
+          childs = childs.filter(c => {
+            for (const [key, name] of Object.entries(iaAssistantRouteMap)) {
+              if (c.to === name) {
+                return enabledIaAssistant.includes(key);
               }
             }
             return true;

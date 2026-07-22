@@ -46,63 +46,6 @@ const formatDate = (dateString) => {
     return "Fecha inválida";
   }
 };
-
-const calculateTotalAmount = (item) => {
-  return item.total_amount || (item.monthly_payment * item.total_installments);
-};
-
-const calculateRemainingBalance = (item) => {
-  return item.remaining_balance !== undefined ? item.remaining_balance : (item.monthly_payment * item.total_installments);
-};
-
-const getLoanStatus = (item) => {
-  const currentDate = new Date();
-  const loanDate = new Date(item.loan_date);
-  const monthsPassed = Math.floor(
-    (currentDate - loanDate) / (1000 * 60 * 60 * 24 * 30.44),
-  );
-  const remainingBalance = calculateRemainingBalance(item);
-
-  if (remainingBalance <= 0) {
-    return {
-      text: "Completado",
-      color: "success",
-      icon: "tabler-circle-check",
-    };
-  } else if (monthsPassed >= item.total_installments) {
-    return { text: "Vencido", color: "error", icon: "tabler-alert-circle" };
-  } else if (item.total_installments - monthsPassed <= 3) {
-    return {
-      text: "Por Vencer",
-      color: "warning",
-      icon: "tabler-clock-hour-4",
-    };
-  } else {
-    return { text: "Activo", color: "info", icon: "tabler-progress" };
-  }
-};
-
-const getProgressPercentage = (item) => {
-  const currentDate = new Date();
-  const loanDate = new Date(item.loan_date);
-  const monthsPassed = Math.max(
-    0,
-    Math.floor((currentDate - loanDate) / (1000 * 60 * 60 * 24 * 30.44)),
-  );
-  const installmentsPaid = Math.min(monthsPassed, item.total_installments);
-
-  return (installmentsPaid / item.total_installments) * 100;
-};
-
-const getRemainingMonths = (item) => {
-  const currentDate = new Date();
-  const loanDate = new Date(item.loan_date);
-  const monthsPassed = Math.floor(
-    (currentDate - loanDate) / (1000 * 60 * 60 * 24 * 30.44),
-  );
-
-  return Math.max(0, item.total_installments - monthsPassed);
-};
 </script>
 
 <template>
@@ -141,14 +84,7 @@ const getRemainingMonths = (item) => {
               {{ formatDate(item.loan_date) }}
             </span>
             <span class="text-xs text-disabled">
-              Inició hace
-              {{
-                Math.floor(
-                  (new Date() - new Date(item.loan_date)) /
-                    (1000 * 60 * 60 * 24 * 30.44),
-                )
-              }}
-              meses
+              Inició hace {{ item.months_passed }} meses
             </span>
           </div>
         </div>
@@ -171,7 +107,7 @@ const getRemainingMonths = (item) => {
 
       <template #item.total_amount="{ item }">
         <span class="text-body-2 font-weight-medium">{{
-          formatCurrency(calculateTotalAmount(item))
+          formatCurrency(item.total_amount)
         }}</span>
       </template>
 
@@ -179,36 +115,36 @@ const getRemainingMonths = (item) => {
         <div class="d-flex flex-column" style="min-inline-size: 140px">
           <div class="d-flex justify-space-between align-center mb-1">
             <span class="text-body-2 font-weight-black">{{
-              formatCurrency(calculateRemainingBalance(item))
+              formatCurrency(item.remaining_balance)
             }}</span>
             <span class="text-xs font-weight-bold"
-              >{{ getProgressPercentage(item).toFixed(0) }}%</span
+              >{{ item.progress_percentage.toFixed(0) }}%</span
             >
           </div>
           <VProgressLinear
-            :model-value="getProgressPercentage(item)"
-            :color="getLoanStatus(item).color"
+            :model-value="item.progress_percentage"
+            :color="item.status.color"
             height="6"
             rounded
             class="rounded-pill"
           />
           <span class="text-xs text-disabled mt-1 font-weight-medium">
-            {{ getRemainingMonths(item) }} meses rest.
+            {{ item.remaining_months }} meses rest.
           </span>
         </div>
       </template>
 
       <template #item.status="{ item }">
         <VChip
-          :color="getLoanStatus(item).color"
+          :color="item.status.color"
           variant="tonal"
           size="small"
           class="font-weight-bold rounded-lg"
         >
           <template #prepend>
-            <VIcon :icon="getLoanStatus(item).icon" size="14" class="mr-1" />
+            <VIcon :icon="item.status.icon" size="14" class="mr-1" />
           </template>
-          {{ getLoanStatus(item).text }}
+          {{ item.status.text }}
         </VChip>
       </template>
 
@@ -227,6 +163,7 @@ const getRemainingMonths = (item) => {
           </VBtn>
 
           <VBtn
+            v-if="item.remaining_balance > 0"
             icon
             size="32"
             variant="tonal"
@@ -293,22 +230,23 @@ const getRemainingMonths = (item) => {
                   </div>
                 </div>
                 <div class="d-flex gap-2">
-                    <VBtn
-                      icon="tabler-edit"
-                      variant="tonal"
-                      color="warning"
-                      size="36"
-                      class="rounded-lg"
-                      @click="emit('edit-loan', item)"
-                    />
-                    <VBtn
-                      icon="tabler-currency-dollar"
-                      variant="tonal"
-                      color="success"
-                      size="36"
-                      class="rounded-lg"
-                      @click="emit('add-payment', item)"
-                    />
+                  <VBtn
+                    icon="tabler-edit"
+                    variant="tonal"
+                    color="warning"
+                    size="36"
+                    class="rounded-lg"
+                    @click="emit('edit-loan', item)"
+                  />
+                  <VBtn
+                    v-if="item.remaining_balance > 0"
+                    icon="tabler-currency-dollar"
+                    variant="tonal"
+                    color="success"
+                    size="36"
+                    class="rounded-lg"
+                    @click="emit('add-payment', item)"
+                  />
                   <VBtn
                     icon="tabler-trash"
                     variant="tonal"
@@ -340,7 +278,7 @@ const getRemainingMonths = (item) => {
                     Saldo Pendiente
                   </div>
                   <div class="text-body-2 font-weight-black">
-                    {{ formatCurrency(calculateRemainingBalance(item)) }}
+                    {{ formatCurrency(item.remaining_balance) }}
                   </div>
                 </VCol>
               </VRow>
@@ -351,12 +289,12 @@ const getRemainingMonths = (item) => {
                     >Progreso de Pago</span
                   >
                   <span class="text-xs font-weight-black text-primary"
-                    >{{ getProgressPercentage(item).toFixed(1) }}%</span
+                    >{{ item.progress_percentage.toFixed(1) }}%</span
                   >
                 </div>
                 <VProgressLinear
-                  :model-value="getProgressPercentage(item)"
-                  :color="getLoanStatus(item).color"
+                  :model-value="item.progress_percentage"
+                  :color="item.status.color"
                   height="10"
                   rounded
                   class="rounded-pill"
@@ -367,7 +305,7 @@ const getRemainingMonths = (item) => {
                   >
                   <span
                     class="text-xs text-disabled font-weight-medium text-uppercase"
-                    >{{ getRemainingMonths(item) }} meses rest.</span
+                    >{{ item.remaining_months }} meses rest.</span
                   >
                 </div>
               </div>
@@ -381,14 +319,14 @@ const getRemainingMonths = (item) => {
                   >
                   <div class="d-flex align-center gap-1">
                     <VIcon
-                      :icon="getLoanStatus(item).icon"
-                      :color="getLoanStatus(item).color"
+                      :icon="item.status.icon"
+                      :color="item.status.color"
                       size="14"
                     />
                     <span
-                      :class="`text-body-2 font-weight-black text-${getLoanStatus(item).color}`"
+                      :class="`text-body-2 font-weight-black text-${item.status.color}`"
                     >
-                      {{ getLoanStatus(item).text }}
+                      {{ item.status.text }}
                     </span>
                   </div>
                 </div>
@@ -397,7 +335,7 @@ const getRemainingMonths = (item) => {
                     >Total Préstamo</span
                   >
                   <div class="text-body-2 font-weight-bold">
-                    {{ formatCurrency(calculateTotalAmount(item)) }}
+                    {{ formatCurrency(item.total_amount) }}
                   </div>
                 </div>
               </div>

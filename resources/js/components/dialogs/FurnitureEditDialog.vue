@@ -7,6 +7,7 @@ const props = defineProps({
   furniture: { type: Object, default: () => ({}) },
   acquisitionYears: { type: Array, default: () => [] },
   errors: { type: Object, default: () => ({}) },
+  loading: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(["update:modelValue", "save", "clearErrors"]);
@@ -175,6 +176,7 @@ const submitForm = () => {
                   density="comfortable"
                   hide-details="auto"
                   class="rounded-lg font-weight-black"
+                  :disabled="props.loading"
                   :error-messages="formErrors.name"
                 />
               </VCol>
@@ -192,6 +194,7 @@ const submitForm = () => {
                   density="comfortable"
                   hide-details="auto"
                   class="rounded-lg font-weight-black"
+                  :disabled="props.loading"
                   :error-messages="formErrors.cost"
                 />
               </VCol>
@@ -208,6 +211,7 @@ const submitForm = () => {
                   density="comfortable"
                   hide-details="auto"
                   class="rounded-lg font-weight-black"
+                  :disabled="props.loading"
                   :error-messages="formErrors.acquisition_year"
                 />
               </VCol>
@@ -227,6 +231,7 @@ const submitForm = () => {
                   density="comfortable"
                   hide-details="auto"
                   class="rounded-lg font-weight-black"
+                  :disabled="props.loading"
                   :error-messages="formErrors.annual_depreciation_rate"
                 />
                 <div class="text-super-xs text-disabled mt-2 d-flex align-center gap-1">
@@ -310,6 +315,7 @@ const submitForm = () => {
               height="50"
               block
               class="font-weight-black rounded-lg uppercase"
+              :disabled="props.loading"
               @click="closeDialog"
             >
               Cancelar
@@ -322,7 +328,8 @@ const submitForm = () => {
               height="50"
               block
               class="font-weight-black rounded-lg shadow-primary uppercase"
-              :disabled="!formData.name || !formData.cost || !formData.acquisition_year || !formData.annual_depreciation_rate"
+              :loading="props.loading"
+              :disabled="props.loading || !formData.name || !formData.cost || !formData.acquisition_year || !formData.annual_depreciation_rate"
               @click="submitForm"
             >
               <VIcon start icon="tabler-device-floppy" size="18" />

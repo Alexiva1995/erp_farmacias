@@ -7,6 +7,7 @@ const props = defineProps({
   loan: { type: Object, default: () => ({}) },
   loanYears: { type: Array, default: () => [] },
   errors: { type: Object, default: () => ({}) },
+  submitting: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(["update:modelValue", "save", "clearErrors"]);
@@ -323,6 +324,7 @@ const submitForm = () => {
               height="50"
               block
               class="font-weight-black rounded-lg uppercase"
+              :disabled="props.submitting"
               @click="closeDialog"
             >
               Cancelar
@@ -335,7 +337,8 @@ const submitForm = () => {
               height="50"
               block
               class="font-weight-black rounded-lg shadow-primary uppercase"
-              :disabled="!formData.loan_date || !formData.monthly_payment || !formData.total_installments"
+              :loading="props.submitting"
+              :disabled="!formData.loan_date || !formData.monthly_payment || !formData.total_installments || props.submitting"
               @click="submitForm"
             >
               <VIcon start icon="tabler-device-floppy" size="18" />

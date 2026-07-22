@@ -33,6 +33,14 @@ class ExpensesController extends Controller
     {
         $expense = $this->expenses->create($request->data);
 
+        if ($expense->status === \App\Enums\ExpenseStatus::APPROVED->value) {
+            // Mapeo de cuenta usando Enum para la transacción
+            $paymentMethod = \App\Enums\ExpensePaymentMethod::fromOldLabel($expense->count);
+            $expense->count = $paymentMethod->value;
+            
+            $this->transaction->createTransactionSalida($expense);
+        }
+
         return ApiResponse::success(new ExpenseResource($expense), "ok");
     }
 
@@ -148,14 +156,14 @@ class ExpensesController extends Controller
             return ApiResponse::error("Gasto no encontrado", 404);
         }
 
-        $this->expenses->updateStatus($request->id, $request->status);
+        $updatedExpense = $this->expenses->updateStatus($request->id, $request->status);
 
         if ($request->status === \App\Enums\ExpenseStatus::APPROVED->value) {
             // Mapeo de cuenta usando Enum para la transacción
-            $paymentMethod = \App\Enums\ExpensePaymentMethod::fromOldLabel($expense->count);
-            $expense->count = $paymentMethod->value;
+            $paymentMethod = \App\Enums\ExpensePaymentMethod::fromOldLabel($updatedExpense->count);
+            $updatedExpense->count = $paymentMethod->value;
             
-            $this->transaction->createTransactionSalida($expense);
+            $this->transaction->createTransactionSalida($updatedExpense);
         }
 
         return ApiResponse::success(null, "Estado actualizado con éxito", 200);

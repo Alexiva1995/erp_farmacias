@@ -155,10 +155,14 @@ onMounted(() => {
 });
 
 let debounceTimer = null;
+let ignoreNextPageWatch = false;
 
 // Cambiar de pestaña o filtro => reset a página 1 y recargar con debounce
 watch([selectedSupplier, activeTab, searchQuery, startDate, endDate], () => {
-  page.value = 1;
+  if (page.value !== 1) {
+    ignoreNextPageWatch = true;
+    page.value = 1;
+  }
   if (debounceTimer) clearTimeout(debounceTimer);
   debounceTimer = setTimeout(() => {
     fetchPurchaseOrders();
@@ -168,6 +172,10 @@ watch([selectedSupplier, activeTab, searchQuery, startDate, endDate], () => {
 
 // Paginar sin resetear la página
 watch([page, itemsPerPage], () => {
+  if (ignoreNextPageWatch) {
+    ignoreNextPageWatch = false;
+    return;
+  }
   fetchPurchaseOrders();
 });
 
@@ -270,7 +278,12 @@ const handleClearFilters = () => {
                     >{{ kpi.title }}</span
                   >
                   <h4 class="font-weight-black mt-1" :class="mobile ? 'text-sm' : 'text-h4'">
-                    {{ kpi.value }}
+                    <template v-if="loading">
+                      <div class="skeleton-loader d-inline-block rounded" style="block-size: 24px; inline-size: 70px;"></div>
+                    </template>
+                    <template v-else>
+                      {{ kpi.value }}
+                    </template>
                   </h4>
                 </div>
               </div>
@@ -361,6 +374,16 @@ const handleClearFilters = () => {
 </template>
 
 <style scoped>
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.skeleton-loader {
+  animation: pulse 1.5s infinite ease-in-out;
+  background-color: rgba(var(--v-border-color), 0.12);
+}
+
 .stats-card:hover {
   box-shadow: 0 8px 25px 0 rgba(0, 0, 0, 8%) !important;
   transform: translateY(-5px);

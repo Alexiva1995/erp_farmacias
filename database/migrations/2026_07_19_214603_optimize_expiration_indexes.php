@@ -13,8 +13,12 @@ return new class extends Migration
      */
     public function up(): void
     {
+        $isMysql = DB::getDriverName() === 'mysql';
+
         // Añadir índice en created_at de expired_logs solo si no existe aún
-        $expiredLogIndexExists = collect(DB::select("SHOW INDEX FROM `expired_logs` WHERE Key_name = 'idx_expired_logs_created_at'"))->isNotEmpty();
+        $expiredLogIndexExists = $isMysql
+            ? collect(DB::select("SHOW INDEX FROM `expired_logs` WHERE Key_name = 'idx_expired_logs_created_at'"))->isNotEmpty()
+            : false;
 
         if (!$expiredLogIndexExists) {
             Schema::table('expired_logs', function (Blueprint $table) {
@@ -23,7 +27,9 @@ return new class extends Migration
         }
 
         // Eliminar índice duplicado en product_lots solo si existe en esta base de datos
-        $productLotIndexExists = collect(DB::select("SHOW INDEX FROM `product_lots` WHERE Key_name = 'product_lots_product_id_index'"))->isNotEmpty();
+        $productLotIndexExists = $isMysql
+            ? collect(DB::select("SHOW INDEX FROM `product_lots` WHERE Key_name = 'product_lots_product_id_index'"))->isNotEmpty()
+            : false;
 
         if ($productLotIndexExists) {
             Schema::table('product_lots', function (Blueprint $table) {

@@ -236,6 +236,7 @@ const kpis = [
       :form-data="formulario"
       :form-error="formularioError"
       :categorias="statuModule.categorias"
+      :loading="statuModule.loadingApp"
       @modal-close="cerrarModal"
       @clear-error-form="formularioError = {}"
       @save="enviar"

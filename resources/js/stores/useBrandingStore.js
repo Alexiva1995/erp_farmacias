@@ -40,6 +40,10 @@ export const useBrandingStore = defineStore('branding', () => {
     cyclic_inventory_mode: 'double',
     cyclic_inventory_barcode_required: true,
     tpv_payment_methods: null,
+    expense_mode: 'real',
+    expense_auto_approve: false,
+    enable_invoices: true,
+    enable_invoice_locations: true,
   })
 
   const isLoading = ref(false)

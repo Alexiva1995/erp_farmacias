@@ -2,8 +2,6 @@
 
 declare(strict_types=1);
 
-// TODO: identificar las consulta de auto orden compo consulta por grupo
-
 namespace App\Repositories;
 
 use App\Models\Product;
@@ -26,7 +24,7 @@ class ProductRepository
 
     public function consultarTodosLosProductOrdenaPor($sortBy = "name", $orderBy = "ASC")
     {
-        return Product::query()->orderBy($sortBy, $orderBy)->get();
+        return Product::query()->select(['id', 'name'])->orderBy($sortBy, $orderBy)->get();
     }
 
     public function builerFiltrarProductforStock($filtros): Builder

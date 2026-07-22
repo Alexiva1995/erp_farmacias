@@ -292,8 +292,13 @@ class InvoiceActionService
         }
 
         return DB::transaction(function () use ($invoice, $data) {
+            $enableInvoiceLocations = \App\Models\GeneralSetting::first()?->enable_invoice_locations ?? true;
+            $finalStatus = $enableInvoiceLocations ? 'to_order' : 'ordered';
 
-            $updateData = ['status' => 'to_order'];
+            $updateData = ['status' => $finalStatus];
+            if (!$enableInvoiceLocations) {
+                $updateData['ordered_by'] = Auth::id();
+            }
             $paymentRule = null;
 
             if (!empty($data['payment_rule_id'])) {
@@ -311,8 +316,8 @@ class InvoiceActionService
                     $finalUnitCost = $originalUnitCost - $discountAmountDetail;
 
                     $detail->update([
-                        'unit_cost' => $finalUnitCost,
-                        'total_cost' => $finalUnitCost * $detail->quantity,
+                         'unit_cost' => $finalUnitCost,
+                         'total_cost' => $finalUnitCost * $detail->quantity,
                     ]);
                 }
             }
@@ -331,10 +336,10 @@ class InvoiceActionService
             $invoice->load(['details.product.profitability']);
 
             // ÚNICO punto donde se crean movimientos de inventario (purchase) por factura.
-            // No se crean al cargar (loaded) ni al ordenar/archivar (ordered); solo al aprobar (loaded → to_order).
+            // No se crean al cargar (loaded) ni al ordenar/archivar (ordered); solo al aprobar (loaded → to_order / ordered).
             \App\Observers\ProductObserver::handleInvoiceMovement($invoice);
 
-            // Crear lotes al aprobar (sin ubicación todavía, se actualizará después)
+            // Crear lotes al aprobar (sin ubicación todavía, se actualizará después o se setea N/A)
             foreach ($invoice->details as $detail) {
                 // Convertir unit_cost a USD antes de crear el lote
                 $unitCostInInvoiceCurrency = $detail->unit_cost;
@@ -342,8 +347,13 @@ class InvoiceActionService
                     ? $unitCostInInvoiceCurrency
                     : ($unitCostInInvoiceCurrency / ($invoice->exchange_rate ?? 1));
 
-                // Crear lote sin ubicación (se actualizará en updateInvoiceLocations)
+                // Crear lote
                 $productLot = $this->createProductLot($detail, $unitCostInUSD, $invoice);
+
+                if (!$enableInvoiceLocations) {
+                    $productLot->update(['location' => 'N/A']);
+                    $detail->update(['location' => 'N/A']);
+                }
 
                 // Actualizar el movimiento existente con el product_lot_id
                 \App\Models\InventoryMovement::where('invoice_id', $invoice->id)

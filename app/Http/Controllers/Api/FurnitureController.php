@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Furniture;
 use App\Services\Furniture\FurnitureActionService;
 use App\Services\Furniture\FurnitureQueryService;
+use App\Http\Resources\FurnitureResource;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Validator;
@@ -28,41 +29,25 @@ class FurnitureController extends Controller
 
         if ($perPage < 1) {
             $items = $query->get();
-            return response()->json(['data' => $items, 'total' => $items->count()]);
+            return FurnitureResource::collection($items);
         }
 
         $paginatedResult = $query->paginate($perPage);
 
-        return response()->json([
-            'data' => $paginatedResult->items(),
-            'total' => $paginatedResult->total()
-        ]);
+        return FurnitureResource::collection($paginatedResult);
     }
 
     /**
      * Crea un nuevo mobiliario
      */
-    public function store(Request $request)
+    public function store(\App\Http\Requests\StoreFurnitureRequest $request)
     {
-        $rules = [
-            'name' => 'required|string|max:255',
-            'cost' => 'required|numeric|min:0.01',
-            'acquisition_year' => 'required|integer|min:2000|max:' . date('Y'),
-            'annual_depreciation_rate' => 'required|numeric|min:0|max:100',
-        ];
-
-        $validator = Validator::make($request->all(), $rules);
-
-        if ($validator->fails()) {
-            throw new ValidationException($validator);
-        }
-
         try {
-            $furniture = $this->furnitureActionService->createFurniture($validator->validated());
+            $furniture = $this->furnitureActionService->createFurniture($request->validated());
 
             return response()->json([
                 'message' => 'Mobiliario creado con éxito.',
-                'furniture' => $furniture
+                'furniture' => new FurnitureResource($furniture)
             ], 201);
         } catch (\Exception $e) {
             return response()->json([
@@ -76,36 +61,23 @@ class FurnitureController extends Controller
      */
     public function show(Furniture $furniture)
     {
-        return response()->json(['data' => $furniture]);
+        return new FurnitureResource($furniture);
     }
 
     /**
      * Actualiza un mobiliario existente
      */
-    public function update(Request $request, Furniture $furniture)
+    public function update(\App\Http\Requests\UpdateFurnitureRequest $request, Furniture $furniture)
     {
-        $rules = [
-            'name' => 'required|string|max:255',
-            'cost' => 'required|numeric|min:0.01',
-            'acquisition_year' => 'required|integer|min:2000|max:' . date('Y'),
-            'annual_depreciation_rate' => 'required|numeric|min:0|max:100',
-        ];
-
-        $validator = Validator::make($request->all(), $rules);
-
-        if ($validator->fails()) {
-            throw new ValidationException($validator);
-        }
-
         try {
             $updatedFurniture = $this->furnitureActionService->updateFurniture(
                 $furniture,
-                $validator->validated()
+                $request->validated()
             );
 
             return response()->json([
                 'message' => 'Mobiliario actualizado con éxito.',
-                'furniture' => $updatedFurniture
+                'furniture' => new FurnitureResource($updatedFurniture)
             ]);
         } catch (\Exception $e) {
             return response()->json([

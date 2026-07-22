@@ -97,6 +97,10 @@ const headers = computed(() => {
     baseHeaders.push({ title: "Localización", key: "locations_summary", sortable: true });
   }
 
+  if (props.actionsMode === "ordered") {
+    baseHeaders.push({ title: "Operador", key: "ordered_by_user.name", sortable: false });
+  }
+
   baseHeaders.push(
     { title: "Total", key: "total_amount", sortable: true },
     { title: "Acciones", key: "actions", sortable: false, align: "center" }
@@ -151,6 +155,12 @@ const processedInvoices = computed(() => {
       </template>
       <template #item.supplier\.name="{ item }">
         <span class="font-weight-medium">{{ item.supplier.name }}</span>
+      </template>
+      <template #item.ordered_by_user\.name="{ item }">
+        <span v-if="item.ordered_by_user" class="text-sm font-weight-medium">
+          {{ item.ordered_by_user.name }}
+        </span>
+        <span v-else class="text-caption text-medium-emphasis">No asignado</span>
       </template>
       <template #item.total_amount="{ item }">
         <div class="d-flex flex-column">
@@ -267,8 +277,14 @@ const processedInvoices = computed(() => {
 
     <!-- Vista Móvil: Tarjetas -->
     <div v-else class="pa-4 bg-light-surface">
-      <div v-if="loading" class="d-flex justify-center py-8">
-        <VProgressCircular indeterminate color="primary" />
+      <div v-if="loading" class="d-flex flex-column ga-4">
+        <VSkeletonLoader
+          v-for="i in 3"
+          :key="i"
+          type="article, actions"
+          class="border rounded-lg pa-3 bg-surface w-100"
+          style="height: 180px;"
+        />
       </div>
       <div v-else-if="processedInvoices.length === 0" class="text-center py-8 text-disabled text-sm">
         No se encontraron facturas

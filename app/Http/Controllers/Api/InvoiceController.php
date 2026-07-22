@@ -8,11 +8,11 @@ use App\Services\Invoices\InvoiceActionService;
 use App\Services\Invoices\InvoiceQueryService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
 use App\Http\Resources\InvoiceResource;
 use Illuminate\Support\Facades\Log;
+use App\Http\Requests\Invoices\StoreInvoiceRequest;
+use App\Http\Requests\Invoices\UpdateInvoiceDataRequest;
+use App\Http\Requests\Invoices\SaveInvoiceDetailsRequest;
 
 class InvoiceController extends Controller
 {
@@ -60,44 +60,9 @@ class InvoiceController extends Controller
         return response()->json(['data' => $details]);
     }
 
-    public function store(Request $request)
+    public function store(StoreInvoiceRequest $request)
     {
-        $rules = [
-            'supplier_id' => 'required|exists:suppliers,id',
-            'invoice_number' => 'required|string|max:100|unique:invoices,invoice_number',
-            'control_number' => 'required|string|max:100',
-            'currency' => ['required', Rule::in(['Bs', 'USD', 'COP'])],
-            'exp_date' => 'required|date',
-            'payment_date' => 'nullable|date|after_or_equal:received_date',
-            'received_date' => 'required|date',
-            'discount_rule_id' => 'nullable|exists:discount_rules,id',
-            'exempt_amount' => 'nullable|numeric|min:0',
-            'taxable_base' => 'nullable|numeric|min:0',
-            'tax_amount' => 'nullable|numeric|min:0',
-            'total_amount' => 'required|numeric|gt:0',
-            'created_invoice_date' => 'required|date',
-        ];
-        $currency = $request->input('currency');
-
-        if ($currency !== 'USD') {
-            $rules['exchange_rate'] = 'required|numeric|gt:0';
-            $rules['total_usd'] = 'nullable|numeric|gt:0';
-        } else {
-            $rules['exchange_rate'] = 'nullable|numeric';
-            $rules['total_usd'] = 'nullable|numeric|gt:0';
-        }
-
-        $messages = [
-            'invoice_number.unique' => 'El número de factura ya ha sido registrado en el sistema.',
-        ];
-
-        $validator = Validator::make($request->all(), $rules, $messages);
-
-        if ($validator->fails()) {
-            throw new ValidationException($validator);
-        }
-
-        $invoice = $this->invoiceActionService->createInvoice($validator->validated());
+        $invoice = $this->invoiceActionService->createInvoice($request->validated());
 
         return response()->json([
             'message' => 'Factura registrada con éxito.',
@@ -180,50 +145,10 @@ class InvoiceController extends Controller
         return response()->json(['data' => $details]);
     }
 
-    public function updateData(Request $request, Invoice $invoice)
+    public function updateData(UpdateInvoiceDataRequest $request, Invoice $invoice)
     {
-        $rules = [
-            'supplier_id' => 'required|exists:suppliers,id',
-            'invoice_number' => [
-                'required',
-                'string',
-                'max:100',
-                Rule::unique('invoices', 'invoice_number')->ignore($invoice->id)
-            ],
-            'control_number' => 'required|string|max:100',
-            'exp_date' => 'required|date',
-            'payment_date' => 'nullable|date|after_or_equal:received_date',
-            'received_date' => 'required|date',
-            'discount_rule_id' => 'nullable|exists:discount_rules,id',
-            'exempt_amount' => 'nullable|numeric|min:0',
-            'taxable_base' => 'nullable|numeric|min:0',
-            'tax_amount' => 'nullable|numeric|min:0',
-            'total_amount' => 'required|numeric|gt:0',
-            'currency' => ['required', Rule::in(['Bs', 'USD', 'COP'])],
-            'created_invoice_date' => 'required|date',
-        ];
-        $currency = $request->input('currency');
-
-        if ($currency !== 'USD') {
-            $rules['exchange_rate'] = 'required|numeric|gt:0';
-            $rules['total_usd'] = 'nullable|numeric|gt:0';
-        } else {
-            $rules['exchange_rate'] = 'nullable|numeric';
-            $rules['total_usd'] = 'nullable|numeric|gt:0';
-        }
-
-        $messages = [
-            'invoice_number.unique' => 'El número de factura ya ha sido registrado en el sistema.',
-        ];
-
-        $validator = Validator::make($request->all(), $rules, $messages);
-
-        if ($validator->fails()) {
-            throw new ValidationException($validator);
-        }
-
         try {
-            $updatedInvoice = $this->invoiceActionService->updateInvoiceData($invoice, $validator->validated());
+            $updatedInvoice = $this->invoiceActionService->updateInvoiceData($invoice, $request->validated());
 
             return response()->json([
                 'message' => 'Datos de la factura actualizados con éxito.',
@@ -235,54 +160,10 @@ class InvoiceController extends Controller
         }
     }
 
-    public function saveDetails(Request $request, Invoice $invoice)
+    public function saveDetails(SaveInvoiceDetailsRequest $request, Invoice $invoice)
     {
-        $rules = [
-            'invoice' => 'required|array',
-            'invoice.supplier_discount_id' => 'nullable|exists:supplier_discounts,id',
-            'details' => 'present|array',
-            'details.*.product.id' => 'required|integer|exists:products,id',
-            'details.*.quantity' => 'required|numeric|min:1',
-            'details.*.unit_cost' => 'required|numeric|min:0',
-            'details.*.lot_number' => 'required|string|max:100',
-            'details.*.expiration_date' => 'required|date',
-            'details.*.location' => 'nullable|string|max:100',
-            'details.*.tax_enabled' => 'boolean',
-            'details.*.is_return' => 'boolean',
-        ];
-
-        $messages = [
-            'invoice.required' => 'Faltan los datos de la cabecera de la factura.',
-            'invoice.supplier_discount_id.exists' => 'El descuento seleccionado no es válido.',
-
-            'details.present' => 'La lista de productos es obligatoria.',
-            'details.array' => 'El formato de la lista de productos es incorrecto.',
-
-            'details.*.product.id.exists' => 'Uno de los productos enviados no existe en la base de datos.',
-
-            'details.*.quantity.required' => 'La cantidad es obligatoria para todos los productos.',
-            'details.*.quantity.min' => 'La cantidad de los productos debe ser al menos 1.',
-
-            'details.*.unit_cost.required' => 'El costo es obligatorio.',
-            'details.*.unit_cost.min' => 'El costo no puede ser negativo.',
-
-            'details.*.lot_number.required' => 'El N° de Lote es obligatorio para todos los productos.',
-            'details.*.lot_number.max' => 'El N° de Lote es demasiado largo (máx 100 caracteres).',
-
-            'details.*.expiration_date.required' => 'La Fecha de Vencimiento es obligatoria para todos los productos.',
-            'details.*.expiration_date.date' => 'El formato de fecha de vencimiento es inválido.',
-
-            'details.*.location.max' => 'La ubicación es demasiado larga.',
-        ];
-
-        $validator = Validator::make($request->all(), $rules, $messages);
-
-        if ($validator->fails()) {
-            throw new ValidationException($validator);
-        }
-
         try {
-            $updatedInvoice = $this->invoiceActionService->saveInvoiceDetails($invoice, $validator->validated());
+            $updatedInvoice = $this->invoiceActionService->saveInvoiceDetails($invoice, $request->validated());
             return response()->json([
                 'message' => 'Progreso de la factura guardado con éxito.',
                 'invoice' => new InvoiceResource($updatedInvoice)
