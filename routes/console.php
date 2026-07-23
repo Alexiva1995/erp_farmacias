@@ -79,3 +79,23 @@ Schedule::command('app:apply-global-profitability')
     ->onOneServer()
     ->withoutOverlapping();
 
+// Reposición automática de inventario: cada config activa define su propio cron
+// Se lee de BD para registrar cada expresión cron de forma independiente
+try {
+    $configs = \App\Models\AutoReplenishmentConfig::where('is_active', true)->get();
+    foreach ($configs as $config) {
+        Schedule::command("replenishment:run --config={$config->id}")
+            ->cron($config->schedule_expression)
+            ->withoutOverlapping()
+            ->runInBackground()
+            ->onSuccess(function () use ($config) {
+                \Log::info("[AutoReplenishment] Config '{$config->name}' ejecutada exitosamente.");
+            })
+            ->onFailure(function () use ($config) {
+                \Log::error("[AutoReplenishment] Fallo en config '{$config->name}'.");
+            });
+    }
+} catch (\Exception $e) {
+    // Silenciar si la tabla no existe aún (primera migración)
+    \Log::warning('[AutoReplenishment] No se pudo cargar configs: ' . $e->getMessage());
+}

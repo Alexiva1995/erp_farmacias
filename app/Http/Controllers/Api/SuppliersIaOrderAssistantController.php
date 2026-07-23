@@ -15,6 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use App\Models\Product as ModelsProduct;
+use App\Http\Requests\Suppliers\DirectOrderRequest;
 use Maatwebsite\Excel\Facades\Excel;
 
 class SuppliersIaOrderAssistantController extends Controller
@@ -291,7 +292,8 @@ class SuppliersIaOrderAssistantController extends Controller
             if ($filtros["tipo_filtracion"] == "average") {
                 $productos = $this->product->filtrarIaOrderAssistantTypeAverageWithoutPaginate($filtros);
             } else {
-                $productos = $this->product->filtrarIaOrderAssistantTypeAverageWithoutPaginate($filtros);
+                // Usar ventas reales para modo sales y combinado
+                $productos = $this->product->filtrarIaOrderAssistantTypeSalesWithoutPaginate($filtros);
             }
 
             $productos = $this->product->calcularAOProducts($productos);
@@ -533,13 +535,8 @@ class SuppliersIaOrderAssistantController extends Controller
 
 
 
-    public function directOrder(Request $request)
+    public function directOrder(DirectOrderRequest $request)
     {
-        $request->validate([
-            'productId' => 'required',
-            'quantity' => 'required|numeric|min:1',
-        ]);
-
         $productId = $request->productId;
         $quantity = $request->quantity;
 

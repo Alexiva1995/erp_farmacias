@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\CashClosure;
 
 use Illuminate\Http\Request;
@@ -229,7 +231,21 @@ class CashClosureQueryService
             DB::raw('SUM(total_sales) as total_sales_month'),
             DB::raw('SUM(total_usd) as amount_usd_month'),
             DB::raw('SUM(total_bs) as amount_bs_month'),
-            DB::raw('SUM(total_cop) as amount_cop_month')
+            DB::raw('SUM(total_cop) as amount_cop_month'),
+            DB::raw('SUM(total_credits) as amount_credits_month'),
+            DB::raw('SUM(usd_cash) as usd_cash'),
+            DB::raw('SUM(usd_transfer) as usd_transfer'),
+            DB::raw('SUM(usd_paypal) as usd_paypal'),
+            DB::raw('SUM(usd_binance) as usd_binance'),
+            DB::raw('SUM(total_credits) as usd_credit'),
+            DB::raw('SUM(cop_cash) as cop_cash'),
+            DB::raw('SUM(cop_transfer) as cop_transfer'),
+            DB::raw('SUM(bs_cash) as bs_cash'),
+            DB::raw('SUM(bs_mobile) as bs_mobile'),
+            DB::raw('SUM(bs_transfer) as bs_transfer'),
+            DB::raw('SUM(bs_card_debito) as bs_card_debito'),
+            DB::raw('SUM(bs_card_credit) as bs_card_credit'),
+            DB::raw('SUM(cop_spare) as cop_spare')
         )
             ->groupBy('year', 'month');
 
@@ -257,6 +273,8 @@ class CashClosureQueryService
             $dailyAverageRaw = ($daysClosed > 0) ? ((float)$summary->total_sales_month / $daysClosed) : 0;
             $dailyClosureIds = array_map('intval', explode(',', $summary->daily_closure_ids));
 
+            $credits = (float) $summary->amount_credits_month;
+
             $object = new \stdClass();
             $object->closing_date  = $endDate->format('Y-m-d');
             $object->created_at    = $endDate->format('Y-m-d');
@@ -265,9 +283,29 @@ class CashClosureQueryService
             $object->amount_usd    = number_format($usd,  2, ',', '.');
             $object->amount_bs     = number_format($bs,   2, ',', '.');
             $object->amount_cop    = number_format($cop,   0, ',', '.');
+            $object->amount_credits = number_format($credits, 2, ',', '.');
+
+            // Métodos crudos agregados para popover
+            $object->usd_cash = (float)$summary->usd_cash;
+            $object->usd_transfer = (float)$summary->usd_transfer;
+            $object->usd_paypal = (float)$summary->usd_paypal;
+            $object->usd_binance = (float)$summary->usd_binance;
+            $object->usd_credit = (float)$summary->usd_credit;
+            $object->cop_cash = (float)$summary->cop_cash;
+            $object->cop_transfer = (float)$summary->cop_transfer;
+            $object->cop_spare = (float)$summary->cop_spare;
+            $object->bs_cash = (float)$summary->bs_cash;
+            $object->bs_mobile = (float)$summary->bs_mobile;
+            $object->bs_transfer = (float)$summary->bs_transfer;
+            $object->bs_card_debito = (float)$summary->bs_card_debito;
+            $object->bs_card_credit = (float)$summary->bs_card_credit;
 
             // Total unificado en USD equivalente (suma correcta)
             $object->total_usd_equivalent = number_format($totalUsdEquivalent, 2, ',', '.');
+            
+            // Conversiones equivalentes en USD calculados usando tasa histórica de la fila
+            $object->total_bs_in_usd = number_format(($bsRate > 0) ? ($bs / $bsRate) : 0, 2, ',', '.');
+            $object->total_cop_in_usd = number_format(($copRate > 0) ? ($cop / $copRate) : 0, 2, ',', '.');
 
             $object->days_closed       = $daysClosed;
             $object->daily_average_raw = $dailyAverageRaw;
@@ -282,15 +320,7 @@ class CashClosureQueryService
 
     private function getBaseQuerySellerCash(): Builder
     {
-        //return CashClosing::query()->with('orders.details.product', 'seller');
-        return CashClosing::query()->with([
-        'orders' => function ($query) {
-            // Filtramos las órdenes para que solo traiga las completadas
-            $query->where('status', 'Completed'); 
-        },
-        'orders.details.product', 
-        'seller'
-        ]);
+        return CashClosing::query()->with(['seller']);
     }
 
     private function applyFilters(Builder $query, array $filters): Builder
@@ -370,3 +400,4 @@ class CashClosureQueryService
             ->get();
     }
 }
+

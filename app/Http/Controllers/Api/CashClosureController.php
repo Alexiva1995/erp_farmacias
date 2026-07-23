@@ -10,9 +10,14 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\CashClosureExport;
 use App\Http\Requests\CashClosure\CloseCashClosureRequest;
+use App\Http\Requests\CashClosure\ConfirmReferenceRequest;
+use App\Http\Requests\CashClosure\GeneratePdfReportRequest;
+use App\Http\Requests\CashClosure\UpdateBlindAmountsRequest;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Pagination\LengthAwarePaginator;
 use App\Models\Order;
+use App\Http\Resources\Finances\CashClosingResource;
+use App\Http\Resources\Finances\DailyCashClosureResource;
 
 class CashClosureController extends Controller
 {
@@ -36,10 +41,10 @@ class CashClosureController extends Controller
 
         if ($perPage < 1) {
             $items = $query->get();
-            return response()->json(['data' => $items, 'total' => $items->count()]);
+            return response()->json(['data' => CashClosingResource::collection($items), 'total' => $items->count()]);
         }
         $paginatedResult = $query->paginate($perPage);
-        return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
+        return response()->json(['data' => CashClosingResource::collection($paginatedResult->items()), 'total' => $paginatedResult->total()]);
     }
 
 
@@ -72,12 +77,8 @@ class CashClosureController extends Controller
         return $pdf;
     }
 
-    public function generate(Request $request)
+    public function generate(GeneratePdfReportRequest $request)
     {
-        $request->validate([
-            'html' => 'required|string',
-            'filename' => 'required|string'
-        ]);
         $pdf = $this->pdf($request->input('html'));
         return $pdf->download($request->input('filename'));
     }
@@ -118,11 +119,11 @@ class CashClosureController extends Controller
 
         if ($perPage < 1) {
             $items = $query->get();
-            return response()->json(['data' => $items, 'total' => $items->count()]);
+            return response()->json(['data' => DailyCashClosureResource::collection($items), 'total' => $items->count()]);
         }
         
         $paginatedResult = $query->paginate($perPage);
-        return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
+        return response()->json(['data' => DailyCashClosureResource::collection($paginatedResult->items()), 'total' => $paginatedResult->total()]);
     }
 
     public function getMonthlyCashTable(Request $request)
@@ -153,10 +154,22 @@ class CashClosureController extends Controller
         
         if ($perPage < 1) {
             $items = $query->get();
-            return response()->json(['data' => $items, 'total' => $items->count()]);
+            return response()->json(['data' => CashClosingResource::collection($items), 'total' => $items->count()]);
         }
         $paginatedResult = $query->paginate($perPage);
-        return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
+        return response()->json(['data' => CashClosingResource::collection($paginatedResult->items()), 'total' => $paginatedResult->total()]);
+    }
+
+    public function show(int $id)
+    {
+        $cashClosing = \App\Models\CashClosing::with([
+            'seller',
+            'orders' => function ($query) {
+                $query->where('status', 'Completed')->with('client');
+            }
+        ])->findOrFail($id);
+
+        return new CashClosingResource($cashClosing);
     }
 
     public function getmonthlyCashclosing(Request $request)
@@ -187,7 +200,7 @@ class CashClosureController extends Controller
         $dailyClosureIds = $request->input('closingMonthlyIds', []);
         $cashClosings = $this->cashClosureActionService->getCashClosingsAllSellers($dailyClosureIds);
         return response()->json([
-            'data' => $cashClosings
+            'data' => CashClosingResource::collection($cashClosings)
         ]);
     }
 
@@ -197,13 +210,8 @@ class CashClosureController extends Controller
         return response()->json($sellers);
     }
 
-    public function confirmReference(Request $request)
+    public function confirmReference(ConfirmReferenceRequest $request)
     {
-        $request->validate([
-            'order_id' => 'required|exists:orders,id',
-            'reference_code' => 'required',
-        ]);
-
         $order = Order::findOrFail($request->order_id);
         // Obtenemos los métodos de pago crudos (sin filtros del accessor)
         $rawPaymentMethods = $order->getRawOriginal('payment_methods');
@@ -247,23 +255,8 @@ class CashClosureController extends Controller
         ], 404);
     }
 
-    public function updateBlindAmounts(Request $request)
+    public function updateBlindAmounts(UpdateBlindAmountsRequest $request)
     {
-        // Solo administradores (role_id = 1)
-        if ($request->user()->role_id !== 1) {
-            return response()->json(['message' => 'Acceso denegado. Solo administradores pueden realizar esta acción.'], 403);
-        }
-
-        $request->validate([
-            'id' => 'required|exists:cash_closing,id',
-            'declared_cop' => 'nullable|numeric',
-            'declared_cop_transfer' => 'nullable|numeric',
-            'declared_usd' => 'nullable|numeric',
-            'declared_credit' => 'nullable|numeric',
-            'declared_bs_mobile' => 'nullable|numeric',
-            'declared_bs_card' => 'nullable|numeric',
-        ]);
-
         $cashClosing = \App\Models\CashClosing::findOrFail($request->id);
 
         $decCop = (float) ($request->declared_cop ?? 0);

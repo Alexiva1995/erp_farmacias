@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Fiscal\StoreFiscalCommandRequest;
+use App\Http\Requests\Fiscal\ConfirmFiscalPrintRequest;
 use App\Http\Resources\Fiscal\FiscalCommandResource;
 use App\Models\FiscalHistory;
 use App\Services\Fiscal\FiscalActionService;
@@ -38,13 +39,8 @@ class FiscalPrinterController extends Controller
     /**
      * Confirm that a fiscal invoice has been printed.
      */
-    public function confirm(Request $request, $id)
+    public function confirm(ConfirmFiscalPrintRequest $request, $id)
     {
-        $request->validate([
-            'invoice_number' => 'required',
-            'fiscal_id' => 'nullable',
-        ]);
-
         try {
             $fiscal = FiscalHistory::findOrFail($id);
             $fiscal->update([
@@ -64,13 +60,8 @@ class FiscalPrinterController extends Controller
      * Confirm that a fiscal invoice has been printed (REPLICA).
      * Ensures fiscal_id is always saved.
      */
-    public function confirmReplica(Request $request, $id)
+    public function confirmReplica(ConfirmFiscalPrintRequest $request, $id)
     {
-        $request->validate([
-            'invoice_number' => 'required',
-            'fiscal_id' => 'nullable',
-        ]);
-
         try {
             Log::info("Fiscal Bridge Replica - Confirmando Factura #{$id}", $request->all());
 

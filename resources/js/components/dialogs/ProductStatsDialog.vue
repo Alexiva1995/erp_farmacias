@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { computed, ref, watch } from "vue";
 import axios from "@/plugins/axios";
 import { formatPrice, formatDateSimple } from "@/utils/formatters";
@@ -16,8 +16,8 @@ const emit = defineEmits(["update:modelValue"]);
 const { xs } = useDisplay();
 
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => brandingStore.settings?.business_type === 'restaurant');
-const isMiniMarket = computed(() => brandingStore.settings?.business_type === 'minimarket');
+const isRestaurant = computed(() => false);
+const isMiniMarket = computed(() => false);
 
 const loading = ref(false);
 const stats = ref(null);

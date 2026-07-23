@@ -1,0 +1,233 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Repositories;
+
+use App\Models\Client;
+use Illuminate\Contracts\Pagination\Paginator;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Log;
+
+class ClientRepository implements \App\Contracts\Client
+{
+    public function create(array $data): Model
+    {
+        $record = Client::create($data);
+        return $record;
+    }
+
+    public function edit(array $data): Model
+    {
+        if (($data['name'] || empty($data['name'])) && ($data['last_name'] || empty($data['last_name'])) && strlen($data['phone']) === 10) {
+            $data['status'] = 2;
+        }
+
+        if ($data['phone'] === '0') {
+            $data['status'] = 1;
+        }
+
+        Client::where("id", "=", $data["id"])->update($data);
+        return Client::find($data["id"]);
+    }
+
+    public function consultById(string $id): ?Model
+    {
+        $client = Client::query()->with("company")->where("id", "=", $id)->first();
+        return $client;
+    }
+
+    public function consultByIdentification(string $identification): ?Model
+    {
+        $clean = preg_replace('/[^0-9]/', '', $identification);
+
+        if (empty($clean)) {
+            return null;
+        }
+
+        return Client::query()->with("company")
+            ->where("identification", "=", $identification)
+            ->orWhere("identification", "=", $clean)
+            ->orWhere("identification", "=", "V-{$clean}")
+            ->orWhere("identification", "=", "E-{$clean}")
+            ->orWhere("identification", "=", "J-{$clean}")
+            ->orWhere("identification", "=", "G-{$clean}")
+            ->orWhere("identification", "like", "%{$clean}%")
+            ->first();
+    }
+
+    public function consultAll(): Collection
+    {
+        return Client::query()->with("company")->get();
+    }
+
+    public function builerPaginate($filtros): Builder
+    {
+        $consulta = Client::query()
+            ->select('clients.*')
+            ->addSelect([
+                'days_since_last_purchase' => \DB::table('orders')
+                    ->selectRaw('DATEDIFF(NOW(), MAX(order_date))')
+                    ->whereColumn('client_id', 'clients.id')
+            ])
+            ->with([
+                "company" => function ($query) {
+                    $query->withTrashed();
+                }
+            ]);
+
+        if (array_key_exists("buscardor_filtro", $filtros)) {
+            if ($filtros["buscardor_filtro"] != "") {
+                $consulta->where(function ($query) use ($filtros) {
+                    $query->whereRaw("CONCAT(name,' ',last_name) LIKE ?", ["%{$filtros["buscardor_filtro"]}%"])
+                        ->orWhereRaw("CONCAT(last_name,' ',name) LIKE ?", ["%{$filtros["buscardor_filtro"]}%"])
+                        ->orWhere("name", "like", "%" . $filtros["buscardor_filtro"] . "%")
+                        ->orWhere("last_name", "like", "%" . $filtros["buscardor_filtro"] . "%")
+                        ->orWhere("address", "like", "%" . $filtros["buscardor_filtro"] . "%")
+                        ->orWhere("id", "like", "%" . $filtros["buscardor_filtro"] . "%")
+                        ->orWhere("identification", "like", "%" . $filtros["buscardor_filtro"] . "%");
+                });
+            }
+        }
+
+        if (array_key_exists("fechaDesde_filtro", $filtros) && array_key_exists("fechaHasta_filtro", $filtros)) {
+            if ($filtros["fechaDesde_filtro"] != "" && $filtros["fechaHasta_filtro"] != "") {
+                $consulta->whereBetween("created_at", [$filtros["fechaDesde_filtro"], $filtros["fechaHasta_filtro"]]);
+            }
+        }
+
+        if (!array_key_exists("tipo_identificacion_filtro", $filtros)) {
+            if (array_key_exists("tipo", $filtros)) {
+                $consulta->whereIn("identification_type", $filtros["tipo"]);
+            }
+        }
+
+        if (array_key_exists("tipo_identificacion_filtro", $filtros)) {
+            if ($filtros["tipo_identificacion_filtro"] != "") {
+                $consulta->where("identification_type", $filtros["tipo_identificacion_filtro"]);
+            } else {
+                $consulta->whereIn("identification_type", $filtros["tipo"]);
+            }
+        }
+
+        if (array_key_exists("company_id", $filtros)) {
+            $consulta->where("company_id", "=", $filtros["company_id"]);
+        }
+
+        if (array_key_exists("client_type", $filtros) && $filtros["client_type"] != "") {
+            $consulta->where("client_type", "=", $filtros["client_type"]);
+        }
+
+        if (array_key_exists("sortBy", $filtros) && array_key_exists("orderBy", $filtros)) {
+            $consulta->orderBy($filtros["sortBy"], $filtros["orderBy"]);
+        } else {
+            $consulta->orderBy("name", "ASC");
+        }
+
+        if (array_key_exists('status', $filtros)) {
+            $consulta->where("status", "=", $filtros["status"]);
+        }
+
+        if (array_key_exists("has_phone", $filtros) && $filtros["has_phone"] !== null && $filtros["has_phone"] !== "") {
+            if ($filtros["has_phone"] === 'yes') {
+                $consulta->whereNotNull('phone')->where('phone', '!=', '');
+            } elseif ($filtros["has_phone"] === 'no') {
+                $consulta->where(function($q) {
+                    $q->whereNull('phone')->orWhere('phone', '=', '');
+                });
+            }
+        }
+
+        return $consulta;
+    }
+
+    public function filterWithoutPaginate(array $filtros): Collection
+    {
+        $consulta = $this->builerPaginate($filtros);
+        return $consulta->get();
+    }
+
+    public function consultAllWithoutCompany(): Collection
+    {
+        return Client::query()->get();
+    }
+
+    public function deleteById(string $id): void
+    {
+        Client::where("id", "=", $id)->delete();
+    }
+
+    public function filtrar($filtros, $perPage = 10): LengthAwarePaginator
+    {
+        $consulta = $this->builerPaginate($filtros);
+        return $consulta->paginate($perPage);
+    }
+
+    public function assignCompany(int $client_id, int $company_id): ?Model
+    {
+        $client = $this->consultById($client_id);
+        if (!$client) {
+            return null;
+        }
+        $client->company_id = $company_id;
+        $client->save();
+
+        return $client;
+    }
+
+    public function removerAssignCompany(int $client_id): ?Model
+    {
+        $client = $this->consultById($client_id);
+        if (!$client) {
+            return null;
+        }
+        $client->company_id = null;
+        $client->save();
+
+        return $client;
+    }
+
+    public function bulkCleanupInvalid(): int
+    {
+        return Client::where(function ($query) {
+                $query->where('phone', 'REGEXP', '^[0]+$')
+                    ->orWhere('phone', 'REGEXP', '^04[12][246]$')
+                    ->orWhere('phone', 'REGEXP', '^4[12][246]$')
+                    ->orWhere('phone', 'REGEXP', '^04$')
+                    ->orWhere('phone', '12345678')
+                    ->orWhere(function($q) {
+                        $q->whereNotNull('phone')
+                          ->where('phone', '!=', '')
+                          ->whereRaw('LENGTH(phone) < 10');
+                    });
+            })
+            ->update(['phone' => null]);
+    }
+
+    public function pending(array $filters, int $perPage = 10): LengthAwarePaginator
+    {
+        $consulta = $this->builerPaginate($filters);
+        if (!isset($filters['status'])) {
+            $consulta->where('status', 1);
+        }
+        return $consulta->paginate($perPage);
+    }
+
+    public function exportExcel(array $filtros): \App\Exports\ClientsExport
+    {
+        $query = $this->builerPaginate($filtros);
+        return new \App\Exports\ClientsExport($query);
+    }
+
+    public function updateCompany(int $client_id, int $company_id, bool $status): ?Model
+    {
+        if ($status) {
+            return $this->assignCompany($client_id, $company_id);
+        } else {
+            return $this->removerAssignCompany($client_id);
+        }
+    }
+}

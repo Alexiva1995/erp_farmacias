@@ -51,6 +51,12 @@ export default [
         action: 'manage',
         subject: 'comparadorAssistence',
       },
+      {
+        title: 'Automatización',
+        to: 'suppliers-auto-replenishment',
+        action: 'manage',
+        subject: 'admin',
+      },
     ],
   },
 ];

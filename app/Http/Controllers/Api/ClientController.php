@@ -18,10 +18,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
 
+use App\Http\Resources\ClientResource;
+
 class ClientController extends Controller
 {
-    //
-
     public function __construct(
         protected Client $client,
         protected CNEQueryService $cneService
@@ -31,56 +31,16 @@ class ClientController extends Controller
 
     public function create(CreateClientRequest $request): JsonResponse
     {
-        if ($request->client->identification_type == "J-") {
-            if ($request->client->last_name != "" | $request->client->last_name != null) {
-                $errors = [
-                    "last_name" => ["Si el usuario es una entidad jurídica, el apellido no es necesario."]
-                ];
-                return ApiResponse::error("Si el usuario es una entidad jurídica, el apellido no es necesario.", 400, $errors);
-            }
-            if ($request->client->company_id != "" | $request->client->company_id != null) {
-                $errors = [
-                    "company_id" => ["Si el usuario es una entidad jurídica, la compañía no es necesaria."]
-                ];
-                return ApiResponse::error("Si el usuario es una entidad jurídica, la compañía no es necesaria.", 400, $errors);
-            }
-        }
-
         $respuestaDB = $this->client->create($request->client->all());
 
-        return ApiResponse::success($respuestaDB, "Cliente creado exitosamente", 200);
+        return ApiResponse::success(new ClientResource($respuestaDB), "Cliente creado exitosamente", 200);
     }
 
     public function edit(EditClientRequest $request): JsonResponse
     {
-        $buscarPorIdentificaion = $this->client->consultByIdentification($request->client->identification);
-        if ($buscarPorIdentificaion) {
-            if ($request->client->id != $buscarPorIdentificaion->id) {
-                $errors = [
-                    "identification" => ["No se puede actualizar porque la cédula/RIF ya está en uso"]
-                ];
-                return ApiResponse::error("No se puede actualizar porque la cédula/RIF ya está en uso", 400, $errors);
-            }
-        }
-
-        if ($request->client->identification_type == "J-") {
-            if ($request->client->last_name != "" | $request->client->last_name != null) {
-                $errors = [
-                    "last_name" => ["Si el usuario es una entidad jurídica, el apellido no es necesario."]
-                ];
-                return ApiResponse::error("Si el usuario es una entidad jurídica, el apellido no es necesario.", 400, $errors);
-            }
-            if ($request->client->company_id != "" | $request->client->company_id != null) {
-                $errors = [
-                    "company_id" => ["Si el usuario es una entidad jurídica, la compañía no es necesaria."]
-                ];
-                return ApiResponse::error("Si el usuario es una entidad jurídica, la compañía no es necesaria.", 400, $errors);
-            }
-        }
-
         $respuestaDB = $this->client->edit($request->client->all());
 
-        return ApiResponse::success($respuestaDB, "Cliente editado exitosamente", 200);
+        return ApiResponse::success(new ClientResource($respuestaDB), "Cliente editado exitosamente", 200);
     }
 
     public function updateCompany(UpdateCompanyClientFormRequest $request): JsonResponse
@@ -542,14 +502,16 @@ class ClientController extends Controller
      * Proceso masivo para corregir nombres usando el CNE.
      * Solo para cédulas V- (Venezolanos).
      */
-    public function bulkVerifyCne(): JsonResponse
+    public function countByDateRange(Request $request): JsonResponse
     {
-        try {
-            $results = $this->cneService->verifyBatch(100);
+        $fechaDesde = $request->input('fechaDesde_filtro') ?: now()->startOfMonth()->toDateString();
+        $fechaHasta = $request->input('fechaHasta_filtro') ?: now()->endOfMonth()->toDateString();
 
-            return ApiResponse::success($results, "Verificación CNE completada: {$results['updated']} corregidos, {$results['not_found']} no encontrados.", 200);
-        } catch (\Throwable $e) {
-            return ApiResponse::error("Error en verificación masiva: " . $e->getMessage(), 500);
-        }
+        $count = ClientModel::whereBetween('created_at', [
+            Carbon::parse($fechaDesde)->startOfDay(),
+            Carbon::parse($fechaHasta)->endOfDay()
+        ])->count();
+
+        return ApiResponse::success(['count' => $count], "Conteo de clientes exitoso", 200);
     }
 }

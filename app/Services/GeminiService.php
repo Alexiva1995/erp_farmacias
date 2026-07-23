@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
@@ -164,4 +166,108 @@ class GeminiService
             return null;
         }
     }
+
+    /**
+     * Emparejar un producto local con candidatos del catálogo de proveedor.
+     * Usa responseMimeType y responseSchema para garantizar JSON estructurado.
+     * Retorna { matched, product_supplier_id, confidence_score, reason } o null.
+     */
+    public function matchProduct(array $product, array $candidates, array $rejections = []): ?array
+    {
+        $key = $this->apiKey ?: env('GEMINI_API_KEY');
+        if (empty($key) || empty($candidates)) {
+            return null;
+        }
+
+        // Construir lista de candidatos enriquecida
+        $candidateLines = '';
+        foreach ($candidates as $cand) {
+            $candidateLines .= "- ID:{$cand['id']} | {$cand['name']} | Lab: {$cand['laboratory']} | IA: {$cand['active_ingredient']}\n";
+        }
+
+        // Construir historial de rechazos si existe para aprendizaje en contexto (in-context learning)
+        $rejectionsSection = '';
+        if (!empty($rejections)) {
+            $rejectionsSection = "\nHISTORIAL DE RECHAZOS ANTERIORES POR EL FARMACÉUTICO (NO SUGERIR ESTOS Y APRENDER DEL ERROR):\n";
+            foreach ($rejections as $rej) {
+                $rejectionsSection .= "- Nombre Proveedor: '{$rej['supplier_product_name']}' | Razón del rechazo: '{$rej['reason']}'\n";
+            }
+            $rejectionsSection .= "Analiza por qué fueron rechazados. Por ejemplo, si se rechazó por ser de marca comercial diferente o forma farmacéutica incorrecta, no cometas el mismo error.\n";
+        }
+
+        $prompt = "Eres un farmacéutico experto de control de inventario. Compara este producto de inventario con la lista de productos del proveedor.\n\n"
+            . "PRODUCTO LOCAL:\n"
+            . "  Nombre: {$product['name']}\n"
+            . "  Laboratorio (Marca): {$product['laboratory']}\n"
+            . "  Ingrediente Activo: {$product['active_ingredient']}\n\n"
+            . "REGLAS FARMACÉUTICAS ESTRICTAS:\n"
+            . "1. Ingrediente Activo y Concentración: Solo marca matched=true si el ingrediente activo y la concentración numérica son EXACTAMENTE IDÉNTICOS (ej. 500mg != 250mg, 10ml != 15ml).\n"
+            . "2. Forma Farmacéutica: Deben tener la misma vía de administración y forma (ej. Crema != Ungüento, Tabletas != Cápsulas, Inyectable != Gotas).\n"
+            . "3. Marca / Genérico: Si el producto local es una marca comercial muy específica (ej: 'Advil') y el candidato de proveedor es un genérico puro (ej: 'Ibuprofeno'), NO asocies a menos que no haya otra opción, pero prioriza la marca exacta si existe. Si el local es genérico, sí puede matchear con genéricos de otros laboratorios.\n"
+            . "4. Si hay duda razonable, prefiere matched=false.\n"
+            . $rejectionsSection . "\n"
+            . "CANDIDATOS DEL PROVEEDOR (ID | Nombre | Laboratorio | Ingrediente Activo):\n"
+            . $candidateLines
+            . "\nResponde con el ID del candidato que coincide o null si ninguno cumple las reglas.";
+
+        try {
+            $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={$key}";
+
+            $maxRetries = 3;
+            $retryDelay = 5;
+
+            for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
+                $response = Http::timeout(25)->post($url, [
+                    'contents' => [
+                        ['parts' => [['text' => $prompt]]]
+                    ],
+                    // Forzar JSON estructurado con schema definido
+                    'generationConfig' => [
+                        'responseMimeType' => 'application/json',
+                        'responseSchema'   => [
+                            'type'       => 'object',
+                            'properties' => [
+                                'matched'             => ['type' => 'boolean'],
+                                'product_supplier_id' => [
+                                    'type'     => 'integer',
+                                    'nullable' => true,
+                                ],
+                                'confidence_score'    => ['type' => 'number', 'description' => '0.0 to 1.0'],
+                                'reason'              => ['type' => 'string'],
+                            ],
+                            'required' => ['matched'],
+                        ],
+                    ],
+                ]);
+
+                if ($response->successful()) {
+                    $result       = $response->json();
+                    $textResponse = $result['candidates'][0]['content']['parts'][0]['text'] ?? '';
+                    $data         = json_decode($textResponse, true);
+
+                    if (json_last_error() === JSON_ERROR_NONE && isset($data['matched'])) {
+                        return $data;
+                    }
+
+                    Log::warning('[GeminiService::matchProduct] JSON inválido: ' . $textResponse);
+                    return null;
+                }
+
+                if ($response->status() === 429) {
+                    Log::warning("[GeminiService::matchProduct] Límite de cuota alcanzado (429). Reintento {$attempt} de {$maxRetries} en {$retryDelay} segundos...");
+                    sleep($retryDelay);
+                    $retryDelay *= 2;
+                    continue;
+                }
+
+                Log::error('[GeminiService::matchProduct] API error: ' . $response->body());
+                break;
+            }
+        } catch (\Exception $e) {
+            Log::error('[GeminiService::matchProduct] Excepción: ' . $e->getMessage());
+        }
+
+        return null;
+    }
 }
+

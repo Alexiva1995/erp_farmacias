@@ -12,7 +12,7 @@ import axios from "@/plugins/axios";
 import Swal from "sweetalert2";
 import { toast } from "@/plugins/sweetalert";
 import { useAuthStore } from "@/stores/auth";
-import { nextTick, onMounted, ref, watch, computed } from "vue";
+import { nextTick, onMounted, onUnmounted, ref, watch, computed } from "vue";
 import { useDisplay } from "vuetify";
 
 const { isVendedor } = useAuthStore();
@@ -116,6 +116,10 @@ watch(
   },
   { deep: true }
 );
+
+onUnmounted(() => {
+  clearTimeout(debounceTimer);
+});
 
 onMounted(() => {
   if (!isVendedor) {

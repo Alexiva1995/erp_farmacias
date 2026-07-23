@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\Order;
 
 use App\Models\Order;
@@ -615,7 +617,7 @@ class OrderActionService
                 // Los platos de restaurante no tienen producto asociado (product es null)
                 if ($detail->product_type === 'dish') {
                     $dish = $detail->dish;
-                    $priceBs = $detail->price_bs ?? (float)$detail->price;
+                    $priceBs = (float)($detail->price_bs ?? $detail->price);
                     $quantity = $detail->quantity;
                     $itemSubtotal = $priceBs * $quantity;
                     $exemptAmount += $itemSubtotal;
@@ -628,7 +630,7 @@ class OrderActionService
 
                 // Usar el precio en BS mandado desde el frontend (Fijo y exacto)
                 // Si por alguna razón no existe (ventas viejas), cae de nuevo al catálogo
-                $priceBs = $detail->price_bs ?? ($product->price_bs * (1 - (($detail->discount_percentage ?? 0) / 100)));
+                $priceBs = (float)($detail->price_bs ?? ($product->price_bs * (1 - (($detail->discount_percentage ?? 0) / 100))));
 
                 // Si el producto tiene IVA, extraer el neto
                 if ($product->iva == 1) {
@@ -1472,7 +1474,7 @@ class OrderActionService
                 $productLot->increment('quantity', $item->quantity);
                 
                 // Sincronizar stock del producto
-                $totalStock = $item->product->lots()->sum('quantity');
+                $totalStock = (float) ($item->product->lots()->sum('quantity') ?? 0);
                 $item->product->updateQuietly(['stock' => $totalStock]);
                 \App\Services\Inventory\StockoutService::syncStockout($item->product, $totalStock);
 
@@ -1603,7 +1605,32 @@ class OrderActionService
             }
         }
 
-        // 3. Procesar Precio Fijo (fixed_price) primero, ya que altera el precio base del ítem
+        // 3. Procesar Oferta General (% de descuento a todos los productos / por categoría)
+        $generalPromos = $promotions->where('type', 'general');
+        if ($generalPromos->isNotEmpty()) {
+            foreach ($generalPromos as $promo) {
+                $discountPct = (float) ($promo->fixed_price ?? 0);
+                if ($discountPct <= 0) continue;
+
+                foreach ($details as $detail) {
+                    $categoryId = $detail->product_type === 'dish' ? ($detail->dish->category_id ?? null) : ($detail->product->category_id ?? null);
+                    if (!empty($promo->categories) && is_array($promo->categories) && count($promo->categories) > 0) {
+                        if (!$categoryId || !in_array($categoryId, $promo->categories)) {
+                            continue;
+                        }
+                    }
+
+                    $factor = (1 - ($discountPct / 100));
+                    $detail->price = round(((float) $detail->price) * $factor, 2);
+                    $detail->unit_price_usd = round(((float) $detail->unit_price_usd) * $factor, 4);
+                    $detail->discount_percentage = $discountPct;
+                    $detail->discount_type = 'general';
+                    $detail->discount_source_id = $promo->id;
+                }
+            }
+        }
+
+        // 4. Procesar Precio Fijo (fixed_price) primero, ya que altera el precio base del ítem
         $fixedPricePromos = $promotions->where('type', 'fixed_price');
         if ($fixedPricePromos->isNotEmpty()) {
             foreach ($details as $detail) {
@@ -1788,5 +1815,117 @@ class OrderActionService
 
         $detail->price = $priceToSet;
         $detail->unit_price_usd = $usdPrice;
+    }
+
+    /**
+     * Aplica los descuentos de ofertas generales activas a una coleccion o array de productos.
+     */
+    public function applyGeneralPromotionsToProducts($products)
+    {
+        $promotions = \App\Models\GeneralPromotion::where('is_active', true)->get();
+        if ($promotions->isEmpty()) {
+            return $products;
+        }
+
+        $generalPromos = $promotions->where('type', 'general');
+        $fixedPricePromos = $promotions->where('type', 'fixed_price');
+
+        foreach ($products as $product) {
+            // Ignorar packs en promociones generales
+            if (isset($product->item_type) && $product->item_type === 'pack') {
+                continue;
+            }
+            $categoryId = $product->category_id ?? null;
+            
+            // 1. Aplicar descuento general (porcentaje)
+            if ($generalPromos->isNotEmpty()) {
+                foreach ($generalPromos as $promo) {
+                    $discountPct = (float) ($promo->fixed_price ?? 0);
+                    if ($discountPct <= 0) continue;
+
+                    if (!empty($promo->categories) && is_array($promo->categories) && count($promo->categories) > 0) {
+                        if (!$categoryId || !in_array($categoryId, $promo->categories)) {
+                            continue;
+                        }
+                    }
+
+                    $factor = (1 - ($discountPct / 100));
+                    
+                    $origPrice = isset($product->original_price) ? $product->original_price : $product->sale_price;
+                    $this->setDynamicAttribute($product, 'original_price', $origPrice);
+                    
+                    $this->setDynamicAttribute($product, 'sale_price', round(((float) $product->sale_price) * $factor, 2));
+                    $this->setDynamicAttribute($product, 'price_cop', round(((float) $product->price_cop) * $factor, 2));
+                    $this->setDynamicAttribute($product, 'price_bs', round(((float) $product->price_bs) * $factor, 2));
+                    $this->setDynamicAttribute($product, 'discount_percentage', $discountPct);
+                    $this->setDynamicAttribute($product, 'discount_type', 'general');
+                    $this->setDynamicAttribute($product, 'discount_source_id', $promo->id);
+
+                    if ($product instanceof \Illuminate\Database\Eloquent\Model && $product->relationLoaded('variants')) {
+                        foreach ($product->variants as $variant) {
+                            $vOrigPrice = isset($variant->original_price) ? $variant->original_price : $variant->price;
+                            $this->setDynamicAttribute($variant, 'original_price', $vOrigPrice);
+                            $this->setDynamicAttribute($variant, 'price', round(((float) $variant->price) * $factor, 2));
+                        }
+                    }
+                }
+            }
+
+            // 2. Aplicar precio fijo (fixed_price)
+            if ($fixedPricePromos->isNotEmpty()) {
+                foreach ($fixedPricePromos as $promo) {
+                    if (is_null($promo->fixed_price)) continue;
+                    if (!empty($promo->categories) && is_array($promo->categories) && count($promo->categories) > 0) {
+                        if (!$categoryId || !in_array($categoryId, $promo->categories)) {
+                            continue;
+                        }
+                    }
+
+                    $origPrice = isset($product->original_price) ? $product->original_price : $product->sale_price;
+                    $this->setDynamicAttribute($product, 'original_price', $origPrice);
+
+                    $this->setDynamicAttribute($product, 'sale_price', $promo->fixed_price);
+                    $this->setDynamicAttribute($product, 'discount_percentage', 0);
+                    $this->setDynamicAttribute($product, 'discount_type', 'fixed_price');
+                    $this->setDynamicAttribute($product, 'discount_source_id', $promo->id);
+
+                    $rateUsdToCop = 1.0;
+                    $usdRateObj = \App\Models\ExchangeRate::where('currency_code', 'USD')->latest()->first();
+                    if ($usdRateObj && (float) $usdRateObj->rate > 0) {
+                        $rateUsdToCop = (float) $usdRateObj->rate;
+                    }
+                    $rateUsdToBs = 1.0;
+                    $bsRateObj = \App\Models\ExchangeRate::where('currency_code', 'VES')->latest()->first();
+                    if ($bsRateObj && (float) $bsRateObj->rate > 0) {
+                        $rateUsdToBs = (float) $bsRateObj->rate;
+                    }
+
+                    $this->setDynamicAttribute($product, 'price_cop', round(((float) $promo->fixed_price) * $rateUsdToCop, 2));
+                    $this->setDynamicAttribute($product, 'price_bs', round(((float) $promo->fixed_price) * $rateUsdToBs, 2));
+
+                    if ($product instanceof \Illuminate\Database\Eloquent\Model && $product->relationLoaded('variants')) {
+                        foreach ($product->variants as $variant) {
+                            $vOrigPrice = isset($variant->original_price) ? $variant->original_price : $variant->price;
+                            $this->setDynamicAttribute($variant, 'original_price', $vOrigPrice);
+                            $this->setDynamicAttribute($variant, 'price', $promo->fixed_price);
+                        }
+                    }
+                }
+            }
+        }
+
+        return $products;
+    }
+
+    /**
+     * Helper para asignar atributos de forma compatible con la serializacion de Eloquent y stdClass.
+     */
+    private function setDynamicAttribute($object, $key, $value)
+    {
+        if ($object instanceof \Illuminate\Database\Eloquent\Model) {
+            $object->setAttribute($key, $value);
+        } else {
+            $object->$key = $value;
+        }
     }
 }

@@ -24,8 +24,7 @@ const emit = defineEmits([
   "add-supplier",
 ]);
 
-// Tipo de negocio es restaurante
-const isRestaurant = computed(() => brandingStore.settings?.business_type === "restaurant");
+const isRestaurant = computed(() => false);
 
 const sortOptions = [
   { title: "Deuda mayor", icon: "tabler-arrow-up", key: "debt", order: "desc" },
@@ -62,11 +61,23 @@ const scoreOptions = [
   { title: "2.0+ Estrellas", value: 40 },
 ];
 
-const typeOptions = [
-  { title: "Todos", value: null },
-  { title: "Droguería", value: "drogueria" },
-  { title: "Proveedor Externo", value: "externo" },
-];
+const typeOptions = computed(() => {
+  const enabledTypes = brandingStore.settings.enabled_supplier_types || ['inventory', 'expenses'];
+  const opts = [{ title: "Todos", value: null }];
+  if (enabledTypes.includes('inventory')) {
+    opts.push({ title: "Droguería", value: "drogueria" });
+    opts.push({ title: "Proveedor Externo", value: "externo" });
+  }
+  if (enabledTypes.includes('expenses')) {
+    opts.push({ title: "Proveedor de Gastos", value: "gasto" });
+  }
+  return opts;
+});
+
+const showExpenseSupplierBtn = computed(() => {
+  const enabledTypes = brandingStore.settings.enabled_supplier_types || ['inventory', 'expenses'];
+  return enabledTypes.includes('expenses');
+});
 
 const hasAdvancedFilters = computed(
   () => !!(props.debtFilter || props.minScore || (!isRestaurant.value && props.type)),
@@ -85,7 +96,7 @@ const hasAdvancedFilters = computed(
     @update:search="emit('update:searchQuery', $event)"
     @clear="emit('clear')"
     @sort="(sortFilter) => emit('sort', sortFilter)"
-    @add="emit('add-supplier', 'externo')"
+    @add="emit('add-supplier', 'drogueria')"
     class="py-1"
   >
     <template #actions-extra>
@@ -101,6 +112,20 @@ const hasAdvancedFilters = computed(
       >
         <VIcon icon="tabler-building-store" />
         <VTooltip activator="parent" location="top">Añadir Proveedor Externo</VTooltip>
+      </VBtn>
+
+      <!-- Botón para añadir proveedor de gastos -->
+      <VBtn
+        v-if="showExpenseSupplierBtn"
+        icon
+        color="warning"
+        variant="tonal"
+        size="38"
+        class="rounded-circle shadow-sm"
+        @click="emit('add-supplier', 'gasto')"
+      >
+        <VIcon icon="tabler-receipt-tax" />
+        <VTooltip activator="parent" location="top">Añadir Proveedor de Gastos</VTooltip>
       </VBtn>
     </template>
 

@@ -132,8 +132,8 @@ const onActionClick = (item) => {
 
 const allHeaders = [
   { title: "PRODUCTO / PROVEEDOR", key: "name", sortable: true, width: "175px" },
-  { title: "COSTO", key: "our_cost", sortable: false, width: "90px", align: 'end' },
-  { title: "COSTP", key: "unit_cost_usd", sortable: true, width: "90px", align: 'end' },
+  { title: "NUESTRO COSTO", key: "our_cost", sortable: false, width: "90px", align: 'end' },
+  { title: "COSTO USD", key: "unit_cost_usd", sortable: true, width: "90px", align: 'end' },
   { title: "AHORRO", key: "price_diff", sortable: false, width: "110px", align: 'center' },
   { title: "ACCIÓN", key: "actions", sortable: false, width: "110px", align: "end" },
 ];

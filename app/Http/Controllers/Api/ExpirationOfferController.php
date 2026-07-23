@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\ProductLot;
 use App\Models\ExpirationOffer;
+use App\Http\Requests\Offers\StoreExpirationOfferRequest;
+use App\Http\Requests\Offers\UpdateExpirationOfferRequest;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -80,16 +82,12 @@ class ExpirationOfferController extends Controller
     /**
      * Crear una Oferta
      */
-    public function store(Request $request): JsonResponse
+    public function store(StoreExpirationOfferRequest $request): JsonResponse
     {
         DB::beginTransaction();
 
         try {
-            $validated = $request->validate([
-                'months_to_expiration' => 'required|integer|min:1|max:36',
-                'discount_percentage' => 'required|numeric|min:0.01|max:100',
-                'is_active' => 'boolean',
-            ]);
+            $validated = $request->validated();
 
             // Verificar si ya existe una regla activa para estos meses
             $existingOffer = ExpirationOffer::where('months_to_expiration', $validated['months_to_expiration'])
@@ -133,19 +131,14 @@ class ExpirationOfferController extends Controller
     /**
      * Actualizar una Oferta
      */
-    public function update(Request $request, $id): JsonResponse
+    public function update(UpdateExpirationOfferRequest $request, $id): JsonResponse
     {
         DB::beginTransaction();
 
         try {
 
             // Validar primero
-            // Validar primero
-            $validated = $request->validate([
-                'months_to_expiration' => 'sometimes|integer|min:1|max:36',
-                'discount_percentage' => 'sometimes|numeric|min:0.01|max:100',
-                'is_active' => 'sometimes|boolean',
-            ]);
+            $validated = $request->validated();
 
             // Buscar la oferta manualmente
             $expirationOffer = ExpirationOffer::find($id);

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
@@ -21,9 +23,9 @@ class TelegramService
     /**
      * Enviar mensaje a Telegram (opcionalmente a un chat personalizado).
      */
-    public function sendMessage(string $message, ?string $customChatId = null, ?array $replyMarkup = null): bool
+    public function sendMessage(string $message, string|int|null $customChatId = null, ?array $replyMarkup = null): bool
     {
-        $targetChatId = $customChatId ?: $this->chatId;
+        $targetChatId = $customChatId ? (string) $customChatId : $this->chatId;
 
         if (empty($this->token) || empty($targetChatId)) {
             Log::warning('[TelegramService] TELEGRAM_BOT_TOKEN o CHAT_ID no configurados');

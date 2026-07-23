@@ -1,10 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Contracts\Doctor;
 use App\Exports\DoctorsExport;
-use App\Repository\DoctorRepository;
+use App\Repositories\DoctorRepository;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Pagination\LengthAwarePaginator;

@@ -20,6 +20,8 @@ class Dish extends Model
         'percentage_profit',
         'category_id',
         'status',
+        'photo_url',
+        'description',
     ];
 
     public function ingredients(): BelongsToMany

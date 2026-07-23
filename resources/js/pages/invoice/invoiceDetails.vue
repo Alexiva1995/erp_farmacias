@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import BarcodeSearchModal from "@/components/dialogs/BarcodeSearchModal.vue";
 import ProductEditDialog from "@/components/dialogs/ProductEditDialog.vue";
 import ProductFilters from "@/components/ProductFilters.vue";
@@ -13,7 +13,7 @@ import { useAuthStore } from "@/stores/auth";
 
 const brandingStore = useBrandingStore();
 const authStore = useAuthStore();
-const isRestaurant = computed(() => brandingStore.settings?.business_type === 'restaurant');
+const isRestaurant = computed(() => false);
 
 const props = defineProps({
   invoiceId: { type: [Number, String], required: true },

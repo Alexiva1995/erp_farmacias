@@ -13,6 +13,9 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->append(\App\Http\Middleware\FixPaginationLimit::class);
+        $middleware->alias([
+            'module' => \App\Http\Middleware\CheckModule::class,
+        ]);
 
         $middleware->group('api', [
             \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
@@ -32,4 +35,12 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->dontReport([
             \App\Exceptions\PaymentDiscrepancyException::class,
         ]);
+
+        $exceptions->report(function (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error($e->getMessage(), [
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'userId' => auth()->id(),
+            ]);
+        });
     })->create();

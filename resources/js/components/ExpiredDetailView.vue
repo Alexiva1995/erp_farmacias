@@ -1,10 +1,10 @@
-<script setup>
+﻿<script setup>
 import { formatDateSimple, formatPrice as formatCurrency } from "@/utils/formatters";
 import { computed } from "vue";
 import { useBrandingStore } from "@/stores/useBrandingStore";
 
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
+const isRestaurant = computed(() => false);
 const formatDate = formatDateSimple;
 
 const props = defineProps({

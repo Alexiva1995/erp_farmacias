@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from "vue";
+import { computed, ref, reactive } from "vue";
 import { useDisplay } from "vuetify";
 import { useAuthStore } from "@/stores/auth";
 
@@ -9,6 +9,8 @@ const props = defineProps({
   selectedTableInvoices: { type: Array, default: () => [] },
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
+  updatingIndexed: { type: Object, default: () => ({}) },
+  updatingDates: { type: Object, default: () => ({}) },
 });
 
 const emit = defineEmits([
@@ -25,6 +27,22 @@ const emit = defineEmits([
 
 const { mobile } = useDisplay();
 const authStore = useAuthStore();
+
+const tempDates = reactive({});
+const menuStates = reactive({});
+
+const openMenu = (item) => {
+  tempDates[item.id] = item.payment_date;
+  menuStates[item.id] = true;
+};
+
+const saveDate = (item) => {
+  const selectedVal = tempDates[item.id];
+  if (selectedVal) {
+    emit('update-date', item, selectedVal);
+  }
+  menuStates[item.id] = false;
+};
 
 const headers = [
   { title: "", key: "select", sortable: false, width: "40px" },
@@ -63,19 +81,25 @@ const formatCurrency = (amount, currency, omitCurrency = false) => {
 
 const formatDate = (date) => {
   if (!date) return "N/A";
-  return new Date(date).toLocaleDateString("es-VE");
+  const dateStr = typeof date === 'string' ? date.substring(0, 10).replace(/-/g, '/') : date;
+  return new Date(dateStr).toLocaleDateString("es-VE");
 };
 
 const formatDueDate = (paymentDate) => {
   if (!paymentDate) return "N/A";
-  const dueDate = new Date(paymentDate);
+  const dateStr = typeof paymentDate === 'string' ? paymentDate.substring(0, 10).replace(/-/g, '/') : paymentDate;
+  const dueDate = new Date(dateStr);
   return dueDate.toLocaleDateString("es-VE");
 };
 
 const isOverdue = (paymentDate) => {
   if (!paymentDate) return false;
-  const dueDate = new Date(paymentDate);
-  return dueDate < new Date();
+  const dateStr = typeof paymentDate === 'string' ? paymentDate.substring(0, 10).replace(/-/g, '/') : paymentDate;
+  const dueDate = new Date(dateStr);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  dueDate.setHours(0, 0, 0, 0);
+  return dueDate < today;
 };
 
 const getStatusColor = (status) => {
@@ -209,6 +233,7 @@ const getInitials = (name) => {
             color="primary"
             density="compact"
             hide-details
+            :disabled="!!props.updatingIndexed[item.id]"
             @change="emit('toggle-indexed', item)"
           />
         </template>
@@ -224,7 +249,7 @@ const getInitials = (name) => {
         <template #item.actions="{ item }">
           <div class="d-flex align-center gap-1">
             <!-- Editar Fecha -->
-            <VMenu v-if="authStore.isAdmin" :close-on-content-click="false" location="start">
+            <VMenu v-if="authStore.isAdmin" v-model="menuStates[item.id]" :close-on-content-click="false" location="start">
               <template #activator="{ props: menuProps }">
                 <VBtn
                   v-bind="menuProps"
@@ -233,22 +258,36 @@ const getInitials = (name) => {
                   size="32"
                   color="info"
                   class="rounded-circle shadow-sm"
+                  :loading="!!props.updatingDates[item.id]"
+                  :disabled="!!props.updatingDates[item.id]"
+                  @click="openMenu(item)"
                 >
                   <VIcon icon="tabler-calendar" size="18" />
                   <VTooltip activator="parent" location="top">Cambiar Fecha Vencimiento</VTooltip>
                 </VBtn>
               </template>
-              <VCard min-width="250" class="pa-4 rounded-lg shadow-lg">
+              <VCard min-width="280" class="pa-4 rounded-lg shadow-lg">
                 <div class="text-xs font-weight-black uppercase mb-2 text-disabled">Nueva Fecha Pago</div>
-                <VTextField
-                  type="date"
-                  :model-value="item.payment_date"
-                  placeholder="Seleccionar Fecha"
-                  variant="outlined"
-                  density="compact"
-                  prepend-inner-icon="tabler-calendar"
-                  @update:model-value="(val) => emit('update-date', item, val)"
-                />
+                <div class="d-flex align-center gap-2">
+                  <VTextField
+                    type="date"
+                    v-model="tempDates[item.id]"
+                    placeholder="Seleccionar Fecha"
+                    variant="outlined"
+                    density="compact"
+                    prepend-inner-icon="tabler-calendar"
+                    hide-details
+                  />
+                  <VBtn
+                    icon
+                    size="36"
+                    color="primary"
+                    class="rounded-lg"
+                    @click="saveDate(item)"
+                  >
+                    <VIcon icon="tabler-check" size="18" />
+                  </VBtn>
+                </div>
               </VCard>
             </VMenu>
 
@@ -373,7 +412,7 @@ const getInitials = (name) => {
               </div>
               <div class="d-flex gap-1">
                 <!-- Editar Fecha (Móvil) -->
-                <VMenu v-if="authStore.isAdmin" :close-on-content-click="false" location="top">
+                <VMenu v-if="authStore.isAdmin" v-model="menuStates[item.id]" :close-on-content-click="false" location="top">
                   <template #activator="{ props: menuProps }">
                     <VBtn
                       v-bind="menuProps"
@@ -382,22 +421,33 @@ const getInitials = (name) => {
                       size="32"
                       color="info"
                       class="rounded-lg shadow-sm"
-                      @click.stop
+                      @click.stop="openMenu(item)"
                     >
                       <VIcon icon="tabler-calendar-edit" size="18" />
                     </VBtn>
                   </template>
-                  <VCard min-width="250" class="pa-4 rounded-lg shadow-lg">
+                  <VCard min-width="280" class="pa-4 rounded-lg shadow-lg" @click.stop>
                     <div class="text-xs font-weight-black uppercase mb-2 text-disabled">Nueva Fecha Pago</div>
-                    <VTextField
-                      type="date"
-                      :model-value="item.payment_date"
-                      placeholder="Seleccionar Fecha"
-                      variant="outlined"
-                      density="compact"
-                      prepend-inner-icon="tabler-calendar"
-                      @update:model-value="(val) => emit('update-date', item, val)"
-                    />
+                    <div class="d-flex align-center gap-2">
+                      <VTextField
+                        type="date"
+                        v-model="tempDates[item.id]"
+                        placeholder="Seleccionar Fecha"
+                        variant="outlined"
+                        density="compact"
+                        prepend-inner-icon="tabler-calendar"
+                        hide-details
+                      />
+                      <VBtn
+                        icon
+                        size="36"
+                        color="primary"
+                        class="rounded-lg"
+                        @click="saveDate(item)"
+                      >
+                        <VIcon icon="tabler-check" size="18" />
+                      </VBtn>
+                    </div>
                   </VCard>
                 </VMenu>
 

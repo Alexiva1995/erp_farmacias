@@ -1,13 +1,15 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Contracts\ProductSupplier;
 use App\Models\Product;
 use App\Models\ProductSupplier as ModelsProductSupplier;
 use App\Models\Supplier;
-use App\Repository\ProductLotsRepository;
-use App\Repository\ProductSupplierRepository;
+use App\Repositories\ProductLotsRepository;
+use App\Repositories\ProductSupplierRepository;
 use DateTime;
 use Illuminate\Database\Eloquent\Collection;
 
@@ -139,17 +141,21 @@ class ProductSupplierServices implements ProductSupplier
             if ($replenishTheProduct["productSupplier"]) {
                 if ($conDescuento == "true") {
                     if ($replenishTheProduct["productSupplier"]->unit_cost_usd_with_discount != null && $replenishTheProduct["productSupplier"]->unit_cost_usd_with_discount != "") {
-                        $replenishTheProduct["percentageIncrease"] = $this->calculatePercentageDifferenceIncrease($replenishTheProduct["product"]->unit_cost, $replenishTheProduct["productSupplier"]->unit_cost_usd_with_discount);
                         $unitCostProductSupplier = (float) $replenishTheProduct["productSupplier"]->unit_cost_usd_with_discount;
                     }
                 } else {
                     if ($replenishTheProduct["productSupplier"]->unit_cost_usd != null && $replenishTheProduct["productSupplier"]->unit_cost_usd != "") {
-                        $replenishTheProduct["percentageIncrease"] = $this->calculatePercentageDifferenceIncrease($replenishTheProduct["product"]->unit_cost, $replenishTheProduct["productSupplier"]->unit_cost_usd);
                         $unitCostProductSupplier = (float) $replenishTheProduct["productSupplier"]->unit_cost_usd;
                     }
                 }
             }
 
+            // Obtener el costo base de comparación según análisis de bloqueo de alzas
+            $costoBaseComparacion = $this->getBaseCostForToleranceComparison($replenishTheProduct["product"], $unitCostProductSupplier);
+
+            if ($unitCostProductSupplier > 0) {
+                $replenishTheProduct["percentageIncrease"] = $this->calculatePercentageDifferenceIncrease($costoBaseComparacion, $unitCostProductSupplier);
+            }
 
             // si el prducto tiene un rango de precion entre el 0 o 4 manejamos un 20%
             if ($unitCostProductSupplier > 0 && $unitCostProductSupplier <= 4) {
@@ -215,4 +221,28 @@ class ProductSupplierServices implements ProductSupplier
         return $productosConOportunidad;
     }
 
+    /**
+     * Calcula el costo base de comparación para el análisis de incrementos.
+     * Si el producto tiene un precio de bloqueo activo (price_lock_baseline), compara contra dicho precio.
+     * Si el precio del proveedor baja de forma que iguale o sea menor que el bloqueo, el bloqueo se desactiva.
+     */
+    private function getBaseCostForToleranceComparison(Product $product, float $supplierPrice = 0): float
+    {
+        $localCost = (float)($product->unit_cost ?? 0);
+
+        if ($product->price_lock_baseline !== null && (float)$product->price_lock_baseline > 0) {
+            $baseline = (float)$product->price_lock_baseline;
+
+            // Si el precio del proveedor regresó a niveles originales (menor o igual a la marca de bloqueo), se desactiva el bloqueo
+            if ($supplierPrice > 0 && $supplierPrice <= $baseline) {
+                Product::where('id', $product->id)->update(['price_lock_baseline' => null]);
+                $product->price_lock_baseline = null;
+                return $localCost;
+            }
+
+            return $baseline;
+        }
+
+        return $localCost;
+    }
 }

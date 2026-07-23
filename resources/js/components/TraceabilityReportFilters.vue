@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import AppFilterBase from "@/components/AppFilterBase.vue";
 import { useBrandingStore } from "@/stores/useBrandingStore";
 import { computed } from "vue";
@@ -20,7 +20,7 @@ const emit = defineEmits([
 ]);
 
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
+const isRestaurant = computed(() => false);
 
 const movementTypes = [
   { title: "Venta",      value: "sale"       },

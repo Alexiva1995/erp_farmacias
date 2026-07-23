@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
@@ -8,7 +8,7 @@ import { formatDateSimple } from "@/utils/formatters";
 import { useBrandingStore } from "@/stores/useBrandingStore";
 
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
+const isRestaurant = computed(() => false);
 
 const props = defineProps({
   products: { type: Array, required: true },

@@ -1,4 +1,5 @@
 <script setup>
+import { computed, ref } from "vue";
 import axios from "@/plugins/axios";
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
 import { library } from "@fortawesome/fontawesome-svg-core";
@@ -6,9 +7,12 @@ import { faLock, faUnlock } from "@fortawesome/free-solid-svg-icons";
 
 library.add(faLock, faUnlock);
 
+import { useBrandingStore } from "@/stores/useBrandingStore";
+
 const props = defineProps({
   products: { type: Array, required: true },
   profitability: { type: Number, required: true },
+  settings: { type: Object, default: () => ({}) },
   loading: { type: Boolean, default: false },
   totalProduct: { type: Number, required: true },
   itemsPerPage: { type: Number, required: true },
@@ -17,6 +21,10 @@ const props = defineProps({
   orderBy: { type: String, default: 'asc' },
 });
 
+const brandingStore = useBrandingStore();
+const isMinimarket = computed(() => brandingStore.settings?.business_type === 'minimarket');
+const isMiniMarket = isMinimarket;
+
 const sortByModel = computed(() => {
   if (!props.sortBy) return [];
   return [{ key: props.sortBy, order: props.orderBy || 'asc' }];
@@ -24,133 +32,50 @@ const sortByModel = computed(() => {
 
 const emit = defineEmits(["refresh", "update:options", "editProduct"]);
 
-const headers = [
-  { title: "id", key: "id", sortable: true },
-  { title: "Producto", key: "name", sortable: true },
-  { title: "Costo", key: "unit_cost", sortable: true },
-  { title: "Precio Venta", key: "sale_price", sortable: true },
-  { title: "% Utilidad", key: "profitability", sortable: true },
-  { title: "Acciones", key: "actions", sortable: false },
-];
+const headers = computed(() => {
+  if (isMinimarket.value) {
+    return [
+      { title: "id", key: "id", sortable: true },
+      { title: "Producto", key: "name", sortable: true },
+      { title: "Costo Base", key: "unit_cost", sortable: true },
+      { title: "TAX (USA)", key: "tax_usa", sortable: false },
+      { title: "Envío", key: "shipping_cost", sortable: false },
+      { title: "Embalaje", key: "packaging_cost", sortable: false },
+      { title: "Margen Gastos", key: "expense_margin", sortable: false },
+      { title: "Margen Utilidad", key: "profit_margin", sortable: false },
+      { title: "Precio Venta", key: "sale_price", sortable: true },
+      { title: "Acciones", key: "actions", sortable: false },
+    ];
+  }
+  return [
+    { title: "id", key: "id", sortable: true },
+    { title: "Producto", key: "name", sortable: true },
+    { title: "Costo", key: "unit_cost", sortable: true },
+    { title: "Precio Venta", key: "sale_price", sortable: true },
+    { title: "% Utilidad", key: "profitability", sortable: true },
+    { title: "Acciones", key: "actions", sortable: false },
+  ];
+});
 
-async function storeProfitability(product_id, profitability) {
-  let data = {
-    product_id: product_id,
-    profitability_percentage: profitability,
-    is_locked: 1,
-  };
+const loadingLocks = ref({});
 
-  //console.log(data)
+async function toggleLock(productId, percentage) {
+  if (loadingLocks.value[productId]) return;
+  loadingLocks.value[productId] = true;
+
   try {
-    const response = await axios.post(
-      "/finances/profitability/product/store",
-      data,
-    );
-
+    const response = await axios.post("/finances/profitability/product/toggle-lock", {
+      product_id: productId,
+      profitability_percentage: percentage
+    });
     console.log("Éxito:", response.data);
     emit("refresh");
   } catch (error) {
-    console.error("Error en la solicitud:", error);
-
-    if (error.response) {
-      // El servidor respondió con un código de error
-      console.error("Datos del error:", error.response.data);
-      console.error("Status:", error.response.status);
-      console.error("Headers:", error.response.headers);
-
-      if (error.response.status === 405) {
-        console.error("Sugerencia: Prueba con PUT/PATCH en lugar de POST");
-      }
-    } else if (error.request) {
-      // La solicitud fue hecha pero no hubo respuesta
-      console.error("No se recibió respuesta del servidor");
-    } else {
-      // Hubo un error al configurar la solicitud
-      console.error("Error al configurar la solicitud:", error.message);
-    }
+    console.error("Error al actualizar el bloqueo de margen:", error);
+  } finally {
+    loadingLocks.value[productId] = false;
   }
 }
-
-async function editProfitability(
-  product_id,
-  profitability,
-  profitability_id,
-  is_locked,
-) {
-  if (is_locked == 1) {
-    is_locked = 0;
-  } else {
-    is_locked = 1;
-  }
-
-  let data = {
-    id: profitability_id,
-    product_id: product_id,
-    profitability_percentage: profitability,
-    is_locked: is_locked,
-  };
-
-  console.log(data);
-  try {
-    const response = await axios.post(
-      "/finances/profitability/product/update",
-      data,
-    );
-
-    console.log("Éxito:", response.data);
-    emit("refresh");
-  } catch (error) {
-    console.error("Error en la solicitud:", error);
-
-    if (error.response) {
-      // El servidor respondió con un código de error
-      console.error("Datos del error:", error.response.data);
-      console.error("Status:", error.response.status);
-      console.error("Headers:", error.response.headers);
-
-      if (error.response.status === 405) {
-        console.error("Sugerencia: Prueba con PUT/PATCH en lugar de POST");
-      }
-    } else if (error.request) {
-      // La solicitud fue hecha pero no hubo respuesta
-      console.error("No se recibió respuesta del servidor");
-    } else {
-      // Hubo un error al configurar la solicitud
-      console.error("Error al configurar la solicitud:", error.message);
-    }
-  }
-}
-
-const productExistProfitability = async (
-  product_id = null,
-  profitability_id,
-  profitability,
-  is_locked = null,
-) => {
-  try {
-    const response = await axios.get(
-      `/finances/profitability/product/${product_id}`,
-    );
-
-    if (response.status === 200) {
-      //console.log("producto id" . product_id)
-      //console.log("Rentabilida ". profitability)
-      //console.log("Is Locked ". is_locked)
-      //console.log("Editar")
-      await editProfitability(
-        product_id,
-        profitability,
-        profitability_id,
-        is_locked,
-      );
-    }
-  } catch (error) {
-    //console.log(product_id)
-    //console.log(profitability)
-    //console.log("Crear")
-    await storeProfitability(product_id, profitability);
-  }
-};
 
 const formatPrice = (price) => {
   return new Intl.NumberFormat("es-US", {
@@ -163,13 +88,31 @@ const formatPrice = (price) => {
 
 const getCalculatedSalePrice = (item) => {
   const cost = parseFloat(item.unit_cost || 0);
-  const perc =
-    item.profitability?.is_locked == "1"
-      ? parseFloat(item.profitability.profitability_percentage || 0)
-      : parseFloat(props.profitability || 0);
+  const useCompound = props.settings?.profitability_calculation_type === 'compound';
 
-  const salePrice = cost * (1 + perc / 100);
-  return item.iva == 1 ? salePrice * 1.16 : salePrice;
+  if (isMinimarket.value || useCompound) {
+    const isLocked = item.profitability?.is_locked == "1";
+    const shipping = isLocked && item.profitability?.shipping_cost !== null ? parseFloat(item.profitability.shipping_cost) : parseFloat(props.settings?.shipping_cost || 0);
+    const packaging = isLocked && item.profitability?.packaging_cost !== null ? parseFloat(item.profitability.packaging_cost) : parseFloat(props.settings?.packaging_cost || 0);
+    const expense = isLocked && item.profitability?.expense_margin !== null ? parseFloat(item.profitability.expense_margin) : parseFloat(props.settings?.expense_margin || 0);
+    const profit = isLocked && item.profitability?.profit_margin !== null ? parseFloat(item.profitability.profit_margin) : parseFloat(props.settings?.profit_margin || 0);
+    const tax = isLocked && item.profitability?.tax_usa !== null ? parseFloat(item.profitability.tax_usa) : parseFloat(props.settings?.tax_usa || 0);
+
+    const costWithTax = cost * (1 + tax / 100);
+    const fixedExpenseAmount = costWithTax * (expense / 100);
+    const profitDenominator = 1 - (profit / 100);
+    if (profitDenominator <= 0) return 9999.99;
+    const salePrice = (costWithTax + shipping + packaging + fixedExpenseAmount) / profitDenominator;
+    return item.iva == 1 ? salePrice * 1.16 : salePrice;
+  } else {
+    const perc =
+      item.profitability?.is_locked == "1"
+        ? parseFloat(item.profitability.profitability_percentage || 0)
+        : parseFloat(props.profitability || 0);
+
+    const salePrice = cost * (1 + perc / 100);
+    return item.iva == 1 ? salePrice * 1.16 : salePrice;
+  }
 };
 
 const getProfitabilityPercentage = (item) => {
@@ -287,6 +230,36 @@ const getProfitabilityPercentage = (item) => {
           </div>
         </template>
 
+        <template #item.tax_usa="{ item }">
+          <span>
+            {{ item.profitability?.is_locked == '1' && item.profitability?.tax_usa !== null ? item.profitability.tax_usa : props.settings?.tax_usa || 0 }}%
+          </span>
+        </template>
+
+        <template #item.shipping_cost="{ item }">
+          <span>
+            {{ formatPrice(item.profitability?.is_locked == '1' && item.profitability?.shipping_cost !== null ? item.profitability.shipping_cost : props.settings?.shipping_cost || 0) }}
+          </span>
+        </template>
+
+        <template #item.packaging_cost="{ item }">
+          <span>
+            {{ formatPrice(item.profitability?.is_locked == '1' && item.profitability?.packaging_cost !== null ? item.profitability.packaging_cost : props.settings?.packaging_cost || 0) }}
+          </span>
+        </template>
+
+        <template #item.expense_margin="{ item }">
+          <span class="font-weight-bold">
+            {{ item.profitability?.is_locked == '1' && item.profitability?.expense_margin !== null ? item.profitability.expense_margin : props.settings?.expense_margin || 0 }}%
+          </span>
+        </template>
+
+        <template #item.profit_margin="{ item }">
+          <span class="font-weight-bold text-primary">
+            {{ item.profitability?.is_locked == '1' && item.profitability?.profit_margin !== null ? item.profitability.profit_margin : props.settings?.profit_margin || 0 }}%
+          </span>
+        </template>
+
         <template #item.profitability="{ item }">
           <div class="d-flex align-center gap-2">
             <VProgressCircular
@@ -323,10 +296,7 @@ const getProfitabilityPercentage = (item) => {
               @click="
                 emit(
                   'editProduct',
-                  item.profitability?.id,
-                  item.profitability?.profitability_percentage,
-                  item.id,
-                  item.profitability?.is_locked,
+                  item,
                 )
               "
             >
@@ -340,12 +310,12 @@ const getProfitabilityPercentage = (item) => {
               "
               variant="tonal"
               class="rounded-lg"
+              :loading="!!loadingLocks[item.id]"
+              :disabled="!!loadingLocks[item.id]"
               @click="
-                productExistProfitability(
+                toggleLock(
                   item.id,
-                  item.profitability?.id,
                   props.profitability,
-                  item.profitability?.is_locked,
                 )
               "
             >
@@ -468,10 +438,7 @@ const getProfitabilityPercentage = (item) => {
               @click="
                 emit(
                   'editProduct',
-                  item.profitability?.id,
-                  item.profitability?.profitability_percentage,
-                  item.id,
-                  item.profitability?.is_locked,
+                  item,
                 )
               "
             >
@@ -483,12 +450,12 @@ const getProfitabilityPercentage = (item) => {
                 item.profitability?.is_locked == '1' ? 'error' : 'secondary'
               "
               class="rounded-lg px-4"
+              :loading="!!loadingLocks[item.id]"
+              :disabled="!!loadingLocks[item.id]"
               @click="
-                productExistProfitability(
+                toggleLock(
                   item.id,
-                  item.profitability?.id,
                   props.profitability,
-                  item.profitability?.is_locked,
                 )
               "
             >

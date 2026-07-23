@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\Furniture;
 
 use App\Models\Furniture;
@@ -14,8 +16,7 @@ class FurnitureQueryService
      */
     public function calculateTotalValue(): float
     {
-        $furniture = Furniture::all();
-        return (float) $furniture->sum('cost');
+        return (float) Furniture::sum('cost');
     }
 
     /**
@@ -25,7 +26,7 @@ class FurnitureQueryService
      */
     public function getDetailedValues(): array
     {
-        $furniture = Furniture::all();
+        $furniture = Furniture::select(['id', 'name', 'cost', 'acquisition_year', 'annual_depreciation_rate'])->get();
         $details = [];
 
         foreach ($furniture as $item) {
@@ -49,7 +50,7 @@ class FurnitureQueryService
      */
     public function getFurnitureStats(): array
     {
-        $furniture = Furniture::all();
+        $furniture = Furniture::select(['id', 'cost', 'acquisition_year', 'annual_depreciation_rate'])->get();
 
         $totalOriginalCost = $furniture->sum('cost');
         $totalCurrentValue = $this->calculateTotalValue();
@@ -130,16 +131,19 @@ class FurnitureQueryService
     }
     public function calculateTotalDepreciation(): float
     {
-        $furniture = Furniture::all();
+        $furniture = Furniture::select(['id', 'cost', 'acquisition_year', 'annual_depreciation_rate'])->get();
         $totalDepreciation = 0;
+        $currentYear = \Carbon\Carbon::now()->year;
 
         foreach ($furniture as $item) {
-            $originalCost = $item->cost;
-            $currentValue = $item->getCurrentValue();
-            $depreciationAmount = $originalCost - $currentValue;
-            $totalDepreciation += $depreciationAmount;
+            $cost = (float) $item->cost;
+            $rateAsDecimal = (float) ($item->annual_depreciation_rate / 100);
+            $yearsDepreciated = max(0, $currentYear - (int) $item->acquisition_year);
+            $cumulativeDepreciationFactor = min(1.0, $rateAsDecimal * $yearsDepreciated);
+            
+            $totalDepreciation += $cost * $cumulativeDepreciationFactor;
         }
 
-        return (float) $totalDepreciation;
+        return (float) round($totalDepreciation, 2);
     }
 }

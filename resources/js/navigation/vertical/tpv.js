@@ -17,7 +17,11 @@ export default [
         title: 'Punto de Venta',
         to: 'tpv-order-user',
       },
-       {
+      {
+        title: 'Créditos',
+        to: 'tpv-credit',
+      },
+      {
         title: 'Pedidos',
         to: 'tpv-order-general',
         action: 'manage',
@@ -30,16 +34,48 @@ export default [
         subject: 'admin',
       },
       {
+        title: 'Ecommerce',
+        to: 'tova-store',
+      },
+      {
         title: 'Promociones',
         action: 'manage',
         subject: 'admin',
         children: [
           {
-            title: 'Individual',
-            to: 'tpv-individual-offer',
+            title: 'Oferta General',
+            to: { path: '/tpv/generalOffer' },
           },
-        ],
-      },
+          {
+            title: 'Oferta Individual',
+            to: { path: '/tpv/individualOffer' },
+          },
+          {
+            title: 'Oferta por Categoría',
+            to: { path: '/tpv/categoryOffer' },
+          },
+          {
+            title: 'Oferta de Combos / Packs',
+            to: { path: '/tpv/packOffer' },
+          },
+          {
+            title: 'Oferta por Convenio',
+            to: { path: '/tpv/companyOffer' },
+          },
+          {
+            title: 'Oferta por Médico',
+            to: { path: '/tpv/doctorOffer' },
+          },
+          {
+            title: 'Oferta por Receta / Récipe',
+            to: { path: '/tpv/prescriptionOffer' },
+          },
+          {
+            title: 'Oferta por Caducidad',
+            to: { path: '/tpv/expirationOffer' },
+          },
+        ]
+      }
     ],
   },
 ]

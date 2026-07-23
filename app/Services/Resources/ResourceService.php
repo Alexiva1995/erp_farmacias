@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\Resources;
 
 use App\Models\Category;
@@ -10,6 +12,7 @@ use App\Models\ExchangeRate;
 use App\Models\Product;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class ResourceService
@@ -19,9 +22,6 @@ class ResourceService
      */
     public function getLaboratories(): Collection
     {
-        // 'Cache::remember' revisa si la clave 'resources.laboratories' existe en la caché.
-        // Si existe, la devuelve.
-        // Si no, ejecuta la función, guarda el resultado en la caché por 24 horas y lo devuelve.
         return Cache::remember('resources.laboratories', now()->addDay(), function () {
             return Laboratory::orderBy('name')->get(['id', 'name']);
         });
@@ -72,14 +72,26 @@ class ResourceService
             return Product::orderBy('name')->get();
         });
     }
+
     /**
      * Obtiene una sola tasa, utilizando caché y una estrategia robusta de recuperación (Fallback Cache).
      */
     public function getExchangeRate(string $currencyCode): float
     {
         if ($currencyCode === 'BS' || $currencyCode === 'VES') {
-            $isRestaurant = \App\Models\GeneralSetting::first()?->business_type === 'restaurant';
-            $currencyCode = $isRestaurant ? 'BINANCE' : 'EUR';
+            $setting = \App\Models\GeneralSetting::first();
+            $tpvRateType = $setting?->tpv_rate_type;
+
+            if ($tpvRateType === 'binance') {
+                $currencyCode = 'BINANCE';
+            } elseif ($tpvRateType === 'eur') {
+                $currencyCode = 'EUR';
+            } elseif ($tpvRateType === 'bcv') {
+                $currencyCode = 'BCV';
+            } else {
+                $isRestaurant = $setting?->business_type === 'restaurant';
+                $currencyCode = $isRestaurant ? 'BINANCE' : 'EUR';
+            }
         }
 
         $cacheKey = "resources.exchange_rate.{$currencyCode}";
@@ -89,6 +101,9 @@ class ResourceService
             // Intentar obtener la tasa fresca o desde la caché con expiración
             $rate = Cache::remember($cacheKey, now()->addHours(1), function () use ($currencyCode, $fallbackKey) {
                 $exchangeRate = ExchangeRate::where('currency_code', $currencyCode)->first();
+                if (!$exchangeRate && ($currencyCode === 'BCV' || $currencyCode === 'BS')) {
+                    $exchangeRate = ExchangeRate::whereIn('currency_code', ['BS', 'BCV', 'VES'])->first();
+                }
                 if ($exchangeRate) {
                     $val = (float) $exchangeRate->rate;
                     // Almacenar en caché persistente (sin expiración) como fallback de seguridad
@@ -131,7 +146,6 @@ class ResourceService
         });
     }
 
-
     /**
      * Obtiene una lista de todas las categorías, utilizando caché.
      */
@@ -159,5 +173,4 @@ class ResourceService
         $product->loadSum('lots', 'quantity');
         return $product;
     }
-
 }

@@ -4,7 +4,7 @@ import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { formatDateSimple } from "@/utils/formatters";
 import Swal from "sweetalert2";
-import { onMounted, reactive, ref, watch, computed } from "vue";
+import { onMounted, onUnmounted, reactive, ref, watch, computed } from "vue";
 
 const counts = ref([]);
 const totalCounts = ref(0);
@@ -105,6 +105,8 @@ onMounted(() => {
   fetchData();
   fetchCycleStatus();
 });
+
+onUnmounted(() => clearTimeout(debounceTimer));
 
 let debounceTimer;
 watch(

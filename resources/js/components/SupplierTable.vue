@@ -2,6 +2,7 @@
 import { useAuthStore } from "@/stores/auth";
 import { useBrandingStore } from "@/stores/useBrandingStore";
 import { computed } from "vue";
+import AppEmptyState from "@/components/AppEmptyState.vue";
 const authStore = useAuthStore();
 const brandingStore = useBrandingStore();
 
@@ -26,8 +27,7 @@ import AppMobilePagination from "@/components/AppMobilePagination.vue";
 
 const { mobile } = useDisplay();
 
-// Tipo de negocio es restaurante
-const isRestaurant = computed(() => brandingStore.settings?.business_type === "restaurant");
+const isRestaurant = computed(() => false);
 
 const emit = defineEmits([
   "update:options",
@@ -63,6 +63,18 @@ const headers = [
         class="text-no-wrap premium-data-table"
         @update:options="(options) => emit('update:options', options)"
       >
+        <template #no-data>
+          <AppEmptyState
+            title="No hay proveedores"
+            message="No se encontraron proveedores registrados en el sistema."
+            icon="tabler-truck-off"
+          />
+        </template>
+        <!-- Skeleton Loader para Carga en Desktop -->
+        <template #loading>
+          <VSkeletonLoader type="table-row-divider@5" />
+        </template>
+
         <!-- Columnas personalizadas existentes -->
         <template #item.id="{ item }">
           <span class="text-sm font-weight-black text-primary">{{ item.id }}</span>
@@ -204,8 +216,13 @@ const headers = [
 
     <!-- Vista de Tarjetas para Móvil -->
     <div v-else class="mobile-supplier-cards d-flex flex-column gap-4">
-      <div v-if="loading" class="d-flex justify-center py-10">
-        <VProgressCircular indeterminate color="primary" />
+      <div v-if="loading" class="d-flex flex-column gap-4">
+        <VSkeletonLoader
+          v-for="n in 3"
+          :key="n"
+          type="card-avatar, article"
+          class="rounded-lg border shadow-sm pa-4"
+        />
       </div>
 
       <template v-else>

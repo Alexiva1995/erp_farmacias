@@ -81,12 +81,14 @@ function limpiarErroresFormulario(){
   formularioError.specialty_id=""
 }
 
+const isSubmitting = ref(false)
+
 function cargarErrores(errores){
-  formularioError.id=(errores.id)?errores.id.join(", "):""
-  formularioError.identification=(errores.identification)?errores.identification.join(", "):""
-  formularioError.name=(errores.name)?errores.name.join(", "):""
-  formularioError.address=(errores.address)?errores.address.join(", "):""
-  formularioError.specialty_id=(errores.specialty_id)?errores.specialty_id.join(", "):""
+  formularioError.id = (errores.id) ? (Array.isArray(errores.id) ? errores.id.join(", ") : errores.id) : ""
+  formularioError.identification = (errores.identification) ? (Array.isArray(errores.identification) ? errores.identification.join(", ") : errores.identification) : ""
+  formularioError.name = (errores.name) ? (Array.isArray(errores.name) ? errores.name.join(", ") : errores.name) : ""
+  formularioError.address = (errores.address) ? (Array.isArray(errores.address) ? errores.address.join(", ") : errores.address) : ""
+  formularioError.specialty_id = (errores.specialty_id) ? (Array.isArray(errores.specialty_id) ? errores.specialty_id.join(", ") : errores.specialty_id) : ""
 }
 
 function mostarModal(){

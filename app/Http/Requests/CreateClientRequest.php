@@ -55,6 +55,20 @@ class CreateClientRequest extends FormRequest
         ];
     }
 
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator) {
+            if ($this->identification_type === Client::IDENTIFICATION_TYPE_JURIDICO) {
+                if (!empty($this->last_name)) {
+                    $validator->errors()->add('last_name', 'Si el usuario es una entidad jurídica, el apellido no es necesario.');
+                }
+                if (!empty($this->company_id)) {
+                    $validator->errors()->add('company_id', 'Si el usuario es una entidad jurídica, la compañía no es necesaria.');
+                }
+            }
+        });
+    }
+
     public function messages()
     {
         return [

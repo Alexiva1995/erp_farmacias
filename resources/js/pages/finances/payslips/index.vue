@@ -20,6 +20,9 @@ const selectedPayslip = ref(null);
 const showFinalizeDialog = ref(false);
 const showGenerateDialog = ref(false);
 const isGenerating = ref(false);
+const isInitialized = ref(false);
+const downloadingExcel = ref({});
+const downloadingPdf = ref({});
 
 const fetchPayslips = async () => {
   loading.value = true;
@@ -46,6 +49,7 @@ const fetchPayslips = async () => {
 watch(
   [page, itemsPerPage, searchQuery, startDate, endDate, selectedStatus],
   () => {
+    if (!isInitialized.value) return;
     fetchPayslips();
   },
 );
@@ -58,7 +62,10 @@ const handleClearFilters = () => {
   page.value = 1;
 };
 
-onMounted(() => fetchPayslips());
+onMounted(async () => {
+  await fetchPayslips();
+  isInitialized.value = true;
+});
 
 const handleFinalizePayslip = (payslip) => {
   selectedPayslip.value = payslip;
@@ -71,6 +78,7 @@ const handleClosePayslip = () => {
 };
 
 const handleDownloadExcel = async (id) => {
+  downloadingExcel.value[id] = true;
   try {
     const response = await axios.get(
       `/finances/payslips/${id}/download/excel`,
@@ -101,10 +109,13 @@ const handleDownloadExcel = async (id) => {
     toast.success("Se ha descargado la nómina exitosamente");
   } catch (error) {
     toast.error("Hubo un error al descargar la nómina");
+  } finally {
+    downloadingExcel.value[id] = false;
   }
 };
 
 const handleDownloadPdf = async (id, type) => {
+  downloadingPdf.value[id] = true;
   try {
     const response = await axios.get(`/finances/payslips/${id}/download/pdf`, {
       params: { type },
@@ -133,6 +144,8 @@ const handleDownloadPdf = async (id, type) => {
     toast.success("PDF descargado exitosamente");
   } catch (error) {
     toast.error("Hubo un error al descargar el PDF");
+  } finally {
+    downloadingPdf.value[id] = false;
   }
 };
 
@@ -250,6 +263,8 @@ const handleRegenerateHistory = async () => {
         :total="totalPayslips"
         :items="payslips"
         :loading="loading"
+        :downloading-excel="downloadingExcel"
+        :downloading-pdf="downloadingPdf"
         @update:options="
           (options) => {
             page = options.page;

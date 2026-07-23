@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Contracts\Resignation as ResignationContract;
 use App\Models\Employee;
+use App\Http\Requests\Employee\GenerateResignationRequest;
+use App\Http\Requests\Resignation\ToggleEmployeeStatusRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -14,20 +16,9 @@ class ResignationController extends Controller
         private ResignationContract $resignationServices
     ) {}
 
-    public function generateResignation(Request $request)
+    public function generateResignation(GenerateResignationRequest $request)
     {
         try {
-            $request->validate([
-                'employee_id' => 'required|integer',
-                'employee_name' => 'required|string',
-                'employee_identification' => 'required|string',
-                'employee_position' => 'nullable|string',
-                'start_date' => 'required|date',
-                'resignation_type' => 'required|in:voluntary,unjustified_dismissal',
-                'request_date' => 'required_if:is_edit,false|nullable|date',
-                'effective_date' => 'required|date',
-                'is_edit' => 'nullable|boolean',
-            ]);
             $resignationData = $request->all();
 
             // Eliminada la restricción de fecha efectiva anterior a solicitud
@@ -179,14 +170,9 @@ class ResignationController extends Controller
     /**
      * Cambiar estado del empleado (is_active)
      */
-    public function toggleEmployeeStatus(Request $request)
+    public function toggleEmployeeStatus(ToggleEmployeeStatusRequest $request)
     {
         try {
-            $request->validate([
-                'employee_id' => 'required|integer|exists:employees,id',
-                'is_active' => 'required|boolean'
-            ]);
-
             $employee = Employee::findOrFail($request->employee_id);
             $employee->update(['is_active' => $request->is_active]);
 

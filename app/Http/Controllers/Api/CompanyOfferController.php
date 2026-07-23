@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\CompanyOffer;
 use App\Models\CompanyOfferScale;
+use App\Http\Requests\Offers\StoreCompanyOfferRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -96,20 +97,11 @@ class CompanyOfferController extends Controller
         }
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreCompanyOfferRequest $request): JsonResponse
     {
         DB::beginTransaction();
         try {
-            $validated = $request->validate([
-                'company_id' => 'required|exists:companies,id',
-                'start_date' => 'required|date',
-                'end_date' => 'required|date|after_or_equal:start_date',
-                'is_active' => 'required|boolean',
-                'scales' => 'required|array|min:1',
-                'scales.*.min_amount' => 'required|numeric|min:0',
-                'scales.*.max_amount' => 'required|numeric|min:0|gt:scales.*.min_amount',
-                'scales.*.discount_percentage' => 'required|numeric|min:0|max:100',
-            ]);
+            $validated = $request->validated();
 
             // Create the main offer
             $offer = CompanyOffer::create([
@@ -151,7 +143,7 @@ class CompanyOfferController extends Controller
     }
 
 
-    public function update(Request $request, $id): JsonResponse
+    public function update(StoreCompanyOfferRequest $request, $id): JsonResponse
     {
         DB::beginTransaction();
         try {
@@ -166,16 +158,7 @@ class CompanyOfferController extends Controller
                 ], 404);
             }
 
-            $validated = $request->validate([
-                'company_id' => 'required|exists:companies,id',
-                'start_date' => 'required|date',
-                'end_date' => 'required|date|after_or_equal:start_date',
-                'is_active' => 'required|boolean',
-                'scales' => 'required|array|min:1',
-                'scales.*.min_amount' => 'required|numeric|min:0',
-                'scales.*.max_amount' => 'required|numeric|min:0|gt:scales.*.min_amount',
-                'scales.*.discount_percentage' => 'required|numeric|min:0|max:100',
-            ]);
+            $validated = $request->validated();
 
             // Actualizando la oferta principal
             $updated = $companyOffer->update([

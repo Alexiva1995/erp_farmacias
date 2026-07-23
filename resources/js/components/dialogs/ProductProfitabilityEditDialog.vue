@@ -1,23 +1,54 @@
-﻿<script setup>
+<script setup>
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { ref, watch } from "vue";
+import { ref, watch, computed } from "vue";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 
 const props = defineProps({
   dialog: { type: Boolean, required: true },
   product: { type: Object, required: true },
+  settings: { type: Object, default: () => ({}) },
 });
 
 const emit = defineEmits(["refresh", "close-modal"]);
 
 const percentage = ref(0);
+const shippingCost = ref(0);
+const packagingCost = ref(0);
+const expenseMargin = ref(0);
+const profitMargin = ref(0);
+const taxUsa = ref(0);
 const loading = ref(false);
+
+const brandingStore = useBrandingStore();
+const isMinimarket = computed(() => {
+  return brandingStore.settings?.business_type === 'minimarket' || props.settings?.profitability_calculation_type === 'compound';
+});
+const isMiniMarket = isMinimarket;
+
+const previewSalePrice = computed(() => {
+  const cost = Number(props.product.unit_cost || 0);
+  if (isMinimarket.value) {
+    const costWithTax = cost * (1 + Number(taxUsa.value) / 100);
+    const fixedExpenseAmount = costWithTax * (Number(expenseMargin.value) / 100);
+    const profitDenominator = 1 - (Number(profitMargin.value) / 100);
+    if (profitDenominator <= 0) return "9999.99";
+    return ((costWithTax + Number(shippingCost.value) + Number(packagingCost.value) + fixedExpenseAmount) / profitDenominator).toFixed(2);
+  } else {
+    return (cost * (1 + Number(percentage.value) / 100)).toFixed(2);
+  }
+});
 
 watch(
   () => props.product,
   (val) => {
     if (val) {
       percentage.value = val.percentage || 0;
+      shippingCost.value = val.shipping_cost || 0;
+      packagingCost.value = val.packaging_cost || 0;
+      expenseMargin.value = val.expense_margin || 0;
+      profitMargin.value = val.profit_margin || 0;
+      taxUsa.value = val.tax_usa || 0;
     }
   },
   { immediate: true, deep: true }
@@ -30,11 +61,20 @@ async function saveProfitability() {
     ? "/finances/profitability/product/update" 
     : "/finances/profitability/product/store";
   
+  const percentageValue = isMinimarket.value 
+    ? (Number(expenseMargin.value) + Number(profitMargin.value)) 
+    : Number(percentage.value);
+
   const data = {
     id: props.product.id,
     product_id: props.product.product_id,
-    profitability_percentage: percentage.value,
+    profitability_percentage: percentageValue,
     is_locked: 1,
+    shipping_cost: shippingCost.value,
+    packaging_cost: packagingCost.value,
+    expense_margin: expenseMargin.value,
+    profit_margin: profitMargin.value,
+    tax_usa: taxUsa.value,
   };
 
   try {
@@ -121,7 +161,7 @@ const checkExistenceAndSave = async () => {
         </div>
       </VCardTitle>
 
-      <VCardText class="pa-4 pa-sm-6 bg-light d-flex flex-column gap-4">
+      <VCardText class="pa-4 pa-sm-6 bg-light d-flex flex-column gap-4" style="max-height: 65vh; overflow-y: auto;">
         <!-- Perfil del Producto -->
         <VCard
           variant="flat"
@@ -159,7 +199,78 @@ const checkExistenceAndSave = async () => {
           variant="flat"
           class="pa-5 bg-white rounded-xl border shadow-sm"
         >
-          <VRow dense>
+          <VRow dense v-if="isMinimarket">
+            <VCol cols="12">
+              <AppTextField
+                v-slot:default
+                v-model="taxUsa"
+                label="TAX (USA) (%)"
+                placeholder="Ej: 7"
+                type="number"
+                suffix="%"
+                prepend-inner-icon="tabler-receipt-tax"
+                density="comfortable"
+                hide-details="auto"
+              />
+            </VCol>
+            <VCol cols="12" sm="6">
+              <AppTextField
+                v-slot:default
+                v-model="shippingCost"
+                label="Envío por Unidad (USD)"
+                placeholder="Ej: 0.90"
+                type="number"
+                prepend-inner-icon="tabler-truck-delivery"
+                density="comfortable"
+                hide-details="auto"
+              />
+            </VCol>
+            <VCol cols="12" sm="6">
+              <AppTextField
+                v-slot:default
+                v-model="packagingCost"
+                label="Embalaje por Unidad (USD)"
+                placeholder="Ej: 1.20"
+                type="number"
+                prepend-inner-icon="tabler-box"
+                density="comfortable"
+                hide-details="auto"
+              />
+            </VCol>
+            <VCol cols="12" sm="6">
+              <AppTextField
+                v-slot:default
+                v-model="expenseMargin"
+                label="Margen Gasto Fijo (%)"
+                placeholder="Ej: 26"
+                type="number"
+                suffix="%"
+                prepend-inner-icon="tabler-percentage"
+                density="comfortable"
+                hide-details="auto"
+              />
+            </VCol>
+            <VCol cols="12" sm="6">
+              <AppTextField
+                v-slot:default
+                v-model="profitMargin"
+                label="Margen Ganancia Deseada (%)"
+                placeholder="Ej: 30"
+                type="number"
+                suffix="%"
+                prepend-inner-icon="tabler-trending-up"
+                density="comfortable"
+                hide-details="auto"
+              />
+            </VCol>
+            <VCol cols="12" class="mt-4">
+              <div class="pa-4 rounded-lg text-center" style="background-color: var(--v-theme-background); border: 1px solid rgba(var(--v-border-color), 0.12);">
+                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Precio de Venta Sugerido</span>
+                <span class="text-h4 font-weight-950 text-success">${{ previewSalePrice }} USD</span>
+              </div>
+            </VCol>
+          </VRow>
+          <VRow dense v-else>
             <VCol cols="12">
               <div class="text-center py-4">
                 <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block letter-spacing-1">Porcentaje de Rentabilidad Objetivo</span>
@@ -239,7 +350,7 @@ const checkExistenceAndSave = async () => {
               block
               class="font-weight-black rounded-lg shadow-primary text-button uppercase"
               :loading="loading"
-              :disabled="loading || !percentage"
+              :disabled="loading || (!isMinimarket && !percentage)"
               @click="checkExistenceAndSave"
             >
               <VIcon

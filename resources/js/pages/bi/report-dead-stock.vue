@@ -5,6 +5,7 @@ import { formatCurrency } from '@/utils/currencyFormatter';
 import ProductStatsDialog from "@/components/dialogs/ProductStatsDialog.vue";
 
 const loading = ref(false);
+const error = ref(null);
 const items = ref([]);
 const totalItems = ref(0);
 
@@ -31,8 +32,19 @@ const page = ref(1);
 const itemsPerPage = ref(10);
 const sortBy = ref([{ key: 'inventory_value', order: 'desc' }]); // Ordenar por capital inmovilizado por defecto
 
-// Búsqueda global y KPIs
+// Búsqueda global y KPIs (Debounced search value)
 const search = ref('');
+const debouncedSearch = ref('');
+let searchTimeout = null;
+
+watch(search, (newVal) => {
+  if (searchTimeout) clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    debouncedSearch.value = newVal;
+    page.value = 1; // Reiniciar a la primera página al buscar
+  }, 400);
+});
+
 const summaryStats = ref({
   total_volume: 0,
   aax_products: 0,
@@ -127,7 +139,9 @@ const fetchCatalogs = async () => {
 };
 
 const fetchReport = async () => {
+  if (loading.value) return;
   loading.value = true;
+  error.value = null;
   try {
     const dates = getDateRange(selectedDateRange.value);
     
@@ -142,6 +156,7 @@ const fetchReport = async () => {
       final_classification: selectedFinalClassification.value,
       analysis_type: 'dead_stock', // Forzar filtro de stock muerto en backend
       min_gmroi: minGmroi.value,
+      search: debouncedSearch.value, // Envío correcto del término de búsqueda debounced
     };
 
     const response = await axios.get('/bi/abc', { params });
@@ -165,8 +180,9 @@ const fetchReport = async () => {
       };
     }
     
-  } catch (error) {
-    console.error('Error al obtener reporte de stock muerto:', error);
+  } catch (err) {
+    console.error('Error al obtener reporte de stock muerto:', err);
+    error.value = 'Ocurrió un error al cargar el reporte de stock inmovilizado. Por favor, reintente la consulta.';
   } finally {
     loading.value = false;
   }
@@ -182,17 +198,19 @@ const getColorClass = (classification) => {
   return 'secondary';
 };
 
-watch([page, itemsPerPage, sortBy, selectedDateRange, selectedLaboratories, selectedFinalClassification, minGmroi], () => {
+// Observar cambios en filtros, ordenamiento, paginación y búsqueda con debounce
+watch([page, itemsPerPage, sortBy, selectedDateRange, selectedLaboratories, selectedFinalClassification, minGmroi, debouncedSearch], () => {
   fetchReport();
 }, { deep: true });
 
-onMounted(() => {
-  fetchCatalogs();
-  fetchReport();
+onMounted(async () => {
+  await fetchCatalogs();
+  await fetchReport();
 });
 
 const handleClearFilters = () => {
   search.value = '';
+  debouncedSearch.value = '';
   selectedDateRange.value = '30 days';
   selectedLaboratories.value = [];
   selectedFinalClassification.value = null;
@@ -204,6 +222,19 @@ const handleClearFilters = () => {
 <template>
   <div class="report-dead-stock pb-12">
     <div class="d-flex flex-column gap-1 mt-1">
+      <!-- Mensaje de Error de API -->
+      <VAlert
+        v-if="error"
+        type="error"
+        title="Error de Conexión"
+        variant="tonal"
+        closable
+        class="mb-4"
+        @click:close="error = null"
+      >
+        {{ error }}
+      </VAlert>
+
       <!-- Filtros Estandarizados -->
       <VCard class="mb-4 rounded-lg border shadow-sm overflow-hidden bg-surface">
         <VCardText class="pa-3">

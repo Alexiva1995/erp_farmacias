@@ -9,17 +9,22 @@ import SellerCashFilters from "@/components/SellerCashFilters.vue";
 import CashAverage from "@/components/cards/CashAverage.vue";
 import ClosingModal from "@/components/dialogs/ClosingModal.vue";
 import DailyCashModal from "@/components/dialogs/DailyCashModal.vue";
-import DeliveryModal from "@/components/dialogs/DeliveryModal.vue";
+import MismatchesModal from "@/components/dialogs/MismatchesModal.vue";
+
 import MonthlyCashModal from "@/components/dialogs/MonthlyCashModal.vue";
 import ConsolidationReferenceModal from "@/components/dialogs/ReferenceModal.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { nextTick, onMounted, ref } from "vue";
+import { nextTick, onMounted, ref, computed } from "vue";
 import { useDisplay } from "vuetify";
 import { useAuthStore } from "@/stores/auth";
 
 const authStore = useAuthStore();
 const { mobile } = useDisplay();
+const isInitialized = ref(false);
+
+const isSupervisor = computed(() => authStore.user?.role_id === 2);
+const activeTab = ref(authStore.user?.role_id === 2 ? "daily" : "sellers");
 
 const sellerCash = ref([]);
 const totalSellerCash = ref(0);
@@ -60,6 +65,7 @@ const isPrinting = ref(false);
 
 const viewModalDaily = ref(false);
 const dailyCashData = ref({});
+const viewModalMismatch = ref(false);
 
 const referenceData = ref([]);
 const viewModalReference = ref(false);
@@ -67,10 +73,9 @@ const viewModalReference = ref(false);
 const monthlyCashDataSellers = ref(null);
 const isDownloadCashDataSellers = ref(false);
 
-const delivery = ref(null);
-const viewModalDelivery = ref(false);
 
 const viewModalClosing = ref(false);
+const tpvPaymentMethods = ref({ COP: [], USD: [], BS: [] });
 
 const summaryData = ref({
   current_month_average: "0.00",
@@ -80,6 +85,17 @@ const summaryData = ref({
 });
 
 const filterSearchQuery = ref("");
+
+const fetchTpvSettings = async () => {
+  try {
+    const { data } = await axios.get("/general-settings");
+    if (data.data && data.data.tpv_payment_methods) {
+      tpvPaymentMethods.value = data.data.tpv_payment_methods;
+    }
+  } catch (error) {
+    console.error("Error al obtener métodos de pago del TPV:", error);
+  }
+};
 
 const fetchSummaryData = async () => {
   try {
@@ -115,6 +131,14 @@ const fetchDailyCashData = async () => {
         // No llamamos a referenceDaily directamente para evitar re-abrir modal
         // solo recalculamos las referencias
         syncReferenceData(updatedDaily);
+      }
+    }
+
+    // Sincronización automática de descuadres si el modal está abierto
+    if (viewModalMismatch.value && dailyCashData.value.id) {
+      const updatedDaily = dailyCash.value.find(d => d.id === dailyCashData.value.id);
+      if (updatedDaily) {
+        dailyCashData.value = updatedDaily;
       }
     }
   } catch (error) {
@@ -185,17 +209,26 @@ const fetchSellerCashData = async () => {
   }
 };
 
-onMounted(() => {
-  fetchSummaryData();
-  fetchDailyCashData();
-  fetchMonthlyCashData();
-  fetchSellerCashData();
+const refreshAllData = async () => {
+  await Promise.all([
+    fetchTpvSettings(),
+    fetchSummaryData(),
+    fetchDailyCashData(),
+    fetchMonthlyCashData(),
+    fetchSellerCashData()
+  ]);
+};
+
+onMounted(async () => {
+  await refreshAllData();
+  isInitialized.value = true;
 });
 
 let debounceTimerDaily;
 watch(
   [pageDailyCash, itemsPerPageDailyCash, sortByDailyCash, orderByDailyCash],
   () => {
+    if (!isInitialized.value) return;
     clearTimeout(debounceTimerDaily);
     debounceTimerDaily = setTimeout(() => {
       fetchDailyCashData();
@@ -213,6 +246,7 @@ watch(
     orderByMonthlyCash,
   ],
   () => {
+    if (!isInitialized.value) return;
     clearTimeout(debounceTimerMonthly);
     debounceTimerMonthly = setTimeout(() => {
       fetchMonthlyCashData();
@@ -233,6 +267,7 @@ watch(
     filterSearchQuery,
   ],
   () => {
+    if (!isInitialized.value) return;
     clearTimeout(debounceTimerSellerCashData);
     debounceTimerSellerCashData = setTimeout(() => {
       fetchSellerCashData();
@@ -297,7 +332,21 @@ const viewMonthlyCash = async (cash) => {
       "/finances/cash-closure/monthlyCashclosing",
       { params },
     );
-    monthlyCashData.value = response.data.data;
+    const serverData = response.data.data;
+    
+    // Sincronizar totales generales con la fila de la tabla cliqueada
+    serverData.totalSalesUsd = cash.amount_usd;
+    serverData.totalSalesBs = cash.amount_bs;
+    serverData.totalSalesCop = cash.amount_cop;
+    serverData.totalSalesGlobal = cash.total_usd_equivalent;
+    serverData.totalSalesCredits = cash.amount_credits;
+    
+    // Calcular conversiones a USD para subetiquetas usando tasas de la fila
+    const firstClosing = serverData.summary && serverData.summary[0];
+    serverData.totalSalesBsInUSD = cash.total_bs_in_usd ?? (firstClosing ? firstClosing.total_bs_in_usd : '0,00');
+    serverData.totalSalesGlobalCopInUsd = cash.total_cop_in_usd ?? (firstClosing ? firstClosing.total_cop_in_usd : '0,00');
+
+    monthlyCashData.value = serverData;
     viewModal.value = true;
   } catch (error) {
     console.error("Error al obtener los detalles del cierre:", error);
@@ -364,8 +413,12 @@ hr { border: none; border-top: 1px dashed #000; margin: 5px 0; }
 
 const downloadcash = async (cash) => {
   try {
-    const orderToDownload = cash.orders;
-    const cashToDownload = cash;
+    toast.info("Obteniendo detalles del cierre de caja...");
+    const detailsResponse = await axios.get(`/finances/cash-closure/${cash.id}`);
+    const cashDetailed = detailsResponse.data.data;
+
+    const orderToDownload = cashDetailed.orders;
+    const cashToDownload = cashDetailed;
     orderDataHistory.value = orderToDownload;
     cashData.value = cashToDownload;
     isDownload.value = true;
@@ -381,7 +434,7 @@ const downloadcash = async (cash) => {
       "/finances/cash-closure/generate-pdf",
       {
         html: `<style>${ticketStyles}</style>${htmlContent}`,
-        filename: `historico-${cash.id}.pdf`,
+        filename: `historico-${cashDetailed.id}.pdf`,
       },
       {
         responseType: "blob",
@@ -390,7 +443,7 @@ const downloadcash = async (cash) => {
     const url = window.URL.createObjectURL(new Blob([response.data]));
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", `Cierre-Caja-${cash.id}.pdf`);
+    link.setAttribute("download", `Cierre-Caja-${cashDetailed.id}.pdf`);
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -407,8 +460,12 @@ const downloadcash = async (cash) => {
 };
 const printCash = async (cash) => {
   try {
+    toast.info("Obteniendo detalles del cierre de caja...");
+    const detailsResponse = await axios.get(`/finances/cash-closure/${cash.id}`);
+    const cashDetailed = detailsResponse.data.data;
+
     isDownloadingPdf.value = false;
-    const cashToPrint = cash;
+    const cashToPrint = cashDetailed;
     cashData.value = cashToPrint;
     isPrinting.value = true;
     await nextTick();
@@ -472,13 +529,14 @@ const handleCloseViewModalDaily = () => {
   viewModalDaily.value = false;
 };
 
+const handleCloseViewModalMismatch = () => {
+  viewModalMismatch.value = false;
+};
+
 const handleCloseViewModalReference = () => {
   viewModalReference.value = false;
 };
 
-const handleCloseViewModalDelivery = () => {
-  viewModalDelivery.value = false;
-};
 
 const handleCloseViewModalClosing = () => {
   viewModalClosing.value = false;
@@ -492,6 +550,15 @@ const viewDailyCash = async (daily) => {
   } catch (error) {
     console.error("Error al obtener los detalles del cierre diario:", error);
     toast.error("Error al obtener los detalles del cierre diario.");
+  }
+};
+
+const mismatchDaily = async (daily) => {
+  try {
+    dailyCashData.value = daily;
+    viewModalMismatch.value = true;
+  } catch (error) {
+    console.error("Error al disparar el modal de descuadres:", error);
   }
 };
 
@@ -582,23 +649,6 @@ const referenceDaily = async (daily) => {
   }
 };
 
-const deliveryDaily = async (daily) => {
-  try {
-    if (!daily || !daily.cash_closings || daily.cash_closings.length === 0) {
-      console.warn("No hay cierres de caja para procesar.");
-      return [];
-    }
-    const cash = daily;
-    dailyCashData.value = cash;
-    viewModalDelivery.value = true;
-  } catch (error) {
-    console.error(
-      "Error al obtener las tipos de entrega del cierre diario:",
-      error,
-    );
-    toast.error("Error al obtener las tipos de entrega  del cierre diario.");
-  }
-};
 
 const closingCashAllSellers = async (cash) => {
   try {
@@ -704,53 +754,71 @@ const closingDaily = async (daily) => {
         :showDateFilters="true"
         :showStateFilters="true"
         @clear="handleClearFilters"
-        @refresh="
-          onMounted(() => {
-            fetchSummaryData();
-            fetchDailyCashData();
-            fetchMonthlyCashData();
-            fetchSellerCashData();
-          })
-        "
+        @refresh="refreshAllData"
       />
 
-      <SellerBoxTable
-        :sellerCash="sellerCash"
-        :loading="loadingSellerCash"
-        :total-sellerCash="totalSellerCash"
-        :items-per-page="itemsPerPageSellerCash"
-        :page="pageSellerCash"
-        @update:options="updateTableOptionsSellerCash"
-        @print-cash="printCash"
-        @download-cash="downloadcash"
-        class="mb-6"
-      />
+      <VTabs v-model="activeTab" class="mb-6 rounded-lg border bg-surface" color="primary" grow>
+        <VTab v-if="!isSupervisor" value="sellers">
+          <VIcon start icon="tabler-users" />
+          Historial Vendedores
+        </VTab>
+        <VTab value="daily">
+          <VIcon start icon="tabler-calendar-stats" />
+          Cierres Diarios
+        </VTab>
+        <VTab v-if="authStore.isAdmin" value="monthly">
+          <VIcon start icon="tabler-calendar-due" />
+          Cierres Mensuales
+        </VTab>
+      </VTabs>
 
-      <DailyCashClosingTable
-        :dailyCash="dailyCash"
-        :loading="loadingDailyCash"
-        :total-dailyCash="totalDailyCash"
-        :items-per-page="itemsPerPageDailyCash"
-        :page="pageDailyCash"
-        :loading-id="loadingRefId"
-        @update:options="updateTableOptionsDailyCash"
-        @view-cash="viewDailyCash"
-        @delivery="deliveryDaily"
-        @reference="referenceDaily"
-        @closing-daily="closingDaily"
-        class="mb-2"
-      />
+      <VWindow v-model="activeTab">
+        <VWindowItem v-if="!isSupervisor" value="sellers">
+          <SellerBoxTable
+            :sellerCash="sellerCash"
+            :loading="loadingSellerCash"
+            :total-sellerCash="totalSellerCash"
+            :items-per-page="itemsPerPageSellerCash"
+            :page="pageSellerCash"
+            :tpv-payment-methods="tpvPaymentMethods"
+            @update:options="updateTableOptionsSellerCash"
+            @print-cash="printCash"
+            @download-cash="downloadcash"
+            class="mb-6"
+          />
+        </VWindowItem>
 
-      <MonthlyCashClosingTable
-        v-if="authStore.isAdmin"
-        :monthlyCash="monthlyCash"
-        :loading="loadingMonthlyCash"
-        :total-monthlyCash="totalMonthlyCash"
-        :items-per-page="itemsPerPageMonthlyCash"
-        :page="pageMonthlyCash"
-        @update:options="updateTableOptionsMonthlyCash"
-        @view-cash="viewMonthlyCash"
-      />
+        <VWindowItem value="daily">
+          <DailyCashClosingTable
+            :dailyCash="dailyCash"
+            :loading="loadingDailyCash"
+            :total-dailyCash="totalDailyCash"
+            :items-per-page="itemsPerPageDailyCash"
+            :page="pageDailyCash"
+            :loading-id="loadingRefId"
+            :tpv-payment-methods="tpvPaymentMethods"
+            @update:options="updateTableOptionsDailyCash"
+            @view-cash="viewDailyCash"
+            @reference="referenceDaily"
+            @closing-daily="closingDaily"
+            @mismatch="mismatchDaily"
+            class="mb-2"
+          />
+        </VWindowItem>
+
+        <VWindowItem v-if="authStore.isAdmin" value="monthly">
+          <MonthlyCashClosingTable
+            :monthlyCash="monthlyCash"
+            :loading="loadingMonthlyCash"
+            :total-monthlyCash="totalMonthlyCash"
+            :items-per-page="itemsPerPageMonthlyCash"
+            :page="pageMonthlyCash"
+            :tpv-payment-methods="tpvPaymentMethods"
+            @update:options="updateTableOptionsMonthlyCash"
+            @view-cash="viewMonthlyCash"
+          />
+        </VWindowItem>
+      </VWindow>
     </div>
 
     <!-- Modales -->
@@ -758,6 +826,7 @@ const closingDaily = async (daily) => {
       v-model:isDialogVisible="viewModal"
       :monthlyCash-data="monthlyCashData"
       :original-ids="originalMonthlyIds"
+      :tpvPaymentMethods="tpvPaymentMethods"
       @close="handleCloseViewModal"
     />
 
@@ -765,7 +834,16 @@ const closingDaily = async (daily) => {
       ref="dailyCashModalRef"
       v-model:isDialogVisible="viewModalDaily"
       :cashData="dailyCashData"
+      :tpvPaymentMethods="tpvPaymentMethods"
       @close="handleCloseViewModalDaily"
+    />
+
+    <MismatchesModal
+      v-if="viewModalMismatch"
+      v-model:isDialogVisible="viewModalMismatch"
+      :cashData="dailyCashData"
+      @refresh="fetchDailyCashData"
+      @close="handleCloseViewModalMismatch"
     />
 
     <ConsolidationReferenceModal
@@ -777,13 +855,6 @@ const closingDaily = async (daily) => {
       @close="handleCloseViewModalReference"
     />
 
-    <DeliveryModal
-      ref="deliveryModalRef"
-      v-model:isDialogVisible="viewModalDelivery"
-      :cashData="dailyCashData"
-      @refresh="fetchDailyCashData"
-      @close="handleCloseViewModalDelivery"
-    />
 
     <ClosingModal
       v-model:isDialogVisible="viewModalClosing"

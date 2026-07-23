@@ -270,6 +270,7 @@ declare global {
   const useIntersectionObserver: typeof import('@vueuse/core')['useIntersectionObserver']
   const useInterval: typeof import('@vueuse/core')['useInterval']
   const useIntervalFn: typeof import('@vueuse/core')['useIntervalFn']
+  const useInvoiceSettings: typeof import('./resources/js/composables/useInvoiceSettings.js')['useInvoiceSettings']
   const useKeyModifier: typeof import('@vueuse/core')['useKeyModifier']
   const useLastChanged: typeof import('@vueuse/core')['useLastChanged']
   const useLocalStorage: typeof import('@vueuse/core')['useLocalStorage']
@@ -310,6 +311,7 @@ declare global {
   const usePreferredReducedMotion: typeof import('@vueuse/core')['usePreferredReducedMotion']
   const usePrevious: typeof import('@vueuse/core')['usePrevious']
   const useProjection: typeof import('@vueuse/math')['useProjection']
+  const useQuotationClient: typeof import('./resources/js/composables/useQuotationClient.js')['useQuotationClient']
   const useRafFn: typeof import('@vueuse/core')['useRafFn']
   const useRefHistory: typeof import('@vueuse/core')['useRefHistory']
   const useResizeObserver: typeof import('@vueuse/core')['useResizeObserver']
@@ -661,6 +663,7 @@ declare module 'vue' {
     readonly useIntersectionObserver: UnwrapRef<typeof import('@vueuse/core')['useIntersectionObserver']>
     readonly useInterval: UnwrapRef<typeof import('@vueuse/core')['useInterval']>
     readonly useIntervalFn: UnwrapRef<typeof import('@vueuse/core')['useIntervalFn']>
+    readonly useInvoiceSettings: UnwrapRef<typeof import('./resources/js/composables/useInvoiceSettings.js')['useInvoiceSettings']>
     readonly useKeyModifier: UnwrapRef<typeof import('@vueuse/core')['useKeyModifier']>
     readonly useLastChanged: UnwrapRef<typeof import('@vueuse/core')['useLastChanged']>
     readonly useLocalStorage: UnwrapRef<typeof import('@vueuse/core')['useLocalStorage']>
@@ -701,6 +704,7 @@ declare module 'vue' {
     readonly usePreferredReducedMotion: UnwrapRef<typeof import('@vueuse/core')['usePreferredReducedMotion']>
     readonly usePrevious: UnwrapRef<typeof import('@vueuse/core')['usePrevious']>
     readonly useProjection: UnwrapRef<typeof import('@vueuse/math')['useProjection']>
+    readonly useQuotationClient: UnwrapRef<typeof import('./resources/js/composables/useQuotationClient.js')['useQuotationClient']>
     readonly useRafFn: UnwrapRef<typeof import('@vueuse/core')['useRafFn']>
     readonly useRefHistory: UnwrapRef<typeof import('@vueuse/core')['useRefHistory']>
     readonly useResizeObserver: UnwrapRef<typeof import('@vueuse/core')['useResizeObserver']>

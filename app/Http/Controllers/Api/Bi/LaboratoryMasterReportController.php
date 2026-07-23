@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Services\Bi\LaboratoryMasterReportService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use App\Http\Requests\Bi\BenchmarkingRequest;
 
 class LaboratoryMasterReportController extends Controller
 {
@@ -40,17 +41,12 @@ class LaboratoryMasterReportController extends Controller
         return response()->json($data);
     }
 
-    public function getBenchmarking(Request $request): JsonResponse
+    public function getBenchmarking(BenchmarkingRequest $request): JsonResponse
     {
-        $request->validate([
-            'lab_a' => 'required|integer',
-            'lab_b' => 'required|integer',
-        ]);
-
-        $filters = $request->all();
+        $filters = $request->validated();
         $data = $this->service->getBenchmarking(
-            (int)$request->lab_a, 
-            (int)$request->lab_b, 
+            (int)$filters['lab_a'], 
+            (int)$filters['lab_b'], 
             $filters
         );
         

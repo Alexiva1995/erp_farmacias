@@ -2,7 +2,7 @@
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import Swal from "sweetalert2";
-import { onMounted, ref, watch } from "vue";
+import { onMounted, onUnmounted, ref, watch } from "vue";
 import ProductLotsFilters from "@/components/ProductsLotsFilters.vue";
 import ProductLotsTable from "@/components/ProductsLotsTable.vue";
 import ProductLotCreateDialog from "@/components/dialogs/ProductLotDialog.vue";
@@ -125,6 +125,8 @@ onMounted(() => {
   fetchProducts();
 });
 
+onUnmounted(() => clearTimeout(debounceTimer));
+
 const updateTableOptions = (options) => {
   page.value = options.page;
   itemsPerPage.value = options.itemsPerPage;
@@ -139,8 +141,9 @@ const handleSort = (sortOptions) => {
 const handleAddLot = async () => {
   isLoadingDialogData.value = true;
   try {
+    // Limite de 500 para evitar cargar todo el catálogo en memoria del cliente
     const [productsResponse, suppliersResponse] = await Promise.all([
-      axios.get("/products"),
+      axios.get("/products", { params: { itemsPerPage: 500, page: 1 } }),
       axios.get("/available-suppliers"),
     ]);
     availableProducts.value = productsResponse.data.data;
@@ -263,6 +266,16 @@ const handleCleanZeroQuantity = async () => {
 
 <template>
   <div>
+    <!-- Banner de contexto: diferencia esta vista de la lista general de Lotes -->
+    <VAlert
+      type="info"
+      variant="tonal"
+      density="compact"
+      class="mb-4 rounded-lg"
+      icon="tabler-package"
+    >
+      <strong>Lotificación:</strong> Muestra productos con stock registrado que aún no tienen lotes asignados. Crea o asigna lotes para completar su trazabilidad.
+    </VAlert>
     <ProductLotsFilters
       v-model:searchQuery="searchQuery"
       v-model:itemsPerPage="itemsPerPage"

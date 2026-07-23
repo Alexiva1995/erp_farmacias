@@ -23,7 +23,12 @@ class ProductSupplier extends Model
         "quantity",
         "unit_cost_with_discount",
         "unit_cost_usd_with_discount",
-        "active_ingredient"
+        "active_ingredient",
+        "is_ai_matched"
+    ];
+
+    protected $casts = [
+        "is_ai_matched" => "boolean"
     ];
 
     public function product()

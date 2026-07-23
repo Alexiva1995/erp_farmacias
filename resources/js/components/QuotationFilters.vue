@@ -2,7 +2,10 @@
 // Filtros de Cotizaciones
 import AppFilterBase from "@/components/AppFilterBase.vue";
 import { useAuthStore } from "@/stores/auth";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 import { computed, onMounted, ref, watch } from "vue";
+
+const brandingStore = useBrandingStore();
 
 const props = defineProps({
   searchQuery:        String,
@@ -135,15 +138,19 @@ const handleClearAndSort = () => {
         <VAutocomplete
           :model-value="props.selectedLaboratory"
           :items="props.laboratories"
-          placeholder="Laboratorio"
+          :placeholder="brandingStore.settings?.quotation_style === 'cosmetic' ? 'Marca / Cosmético' : 'Laboratorio'"
           item-title="name"
           item-value="id"
           clearable
           density="compact"
           hide-details
-          prepend-inner-icon="tabler-flask"
           @update:model-value="emit('update:selectedLaboratory', $event)"
-        />
+        >
+          <template #prepend-inner>
+            <span v-if="brandingStore.settings?.quotation_style === 'cosmetic'" style="font-size: 16px; margin-right: 4px; line-height: 1;">🧴</span>
+            <VIcon v-else icon="tabler-flask" size="19" />
+          </template>
+        </VAutocomplete>
       </VCol>
 
       <!-- Origen -->

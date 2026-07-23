@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Public;
 use App\Http\Controllers\Controller;
 use App\Models\Supplier;
 use App\Jobs\ProcessSupplierConnectionJob;
+use App\Http\Requests\Suppliers\SupplierPublicUploadRequest;
 use Illuminate\Http\Request;
 use App\Helpers\ApiResponse;
 use Illuminate\Support\Facades\Storage;
@@ -32,18 +33,13 @@ class SupplierPublicUploadController extends Controller
     /**
      * Procesar la carga del archivo Excel desde el portal público.
      */
-    public function upload(Request $request, $token)
+    public function upload(SupplierPublicUploadRequest $request, $token)
     {
         $supplier = Supplier::where('public_token', $token)->first();
 
         if (!$supplier) {
             return ApiResponse::error('Enlace no válido.', 404);
         }
-
-        $request->validate([
-            'file' => 'required|file|mimes:xlsx,xls,csv|max:10240',
-            'exchange_rate' => 'required|numeric|min:0.01',
-        ]);
 
         $connection = $supplier->connections()->first();
 

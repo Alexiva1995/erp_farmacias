@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\Order;
 
 use App\Models\Order;
@@ -25,7 +27,7 @@ class OrderQueryService
     {
         if ($valor == 'Completed') {
             $query = Order::query()->where('orders.status', $valor)->with('client', 'seller');
-            // Si no hay rango de fechas, usar solo el día actual (comportamiento por defecto)
+            // Si no hay rango de fechas, usar solo el d├¡a actual (comportamiento por defecto)
             if (empty($startDate) && empty($endDate)) {
                 $start = now()->startOfDay();
                 $end = now()->endOfDay();
@@ -50,12 +52,12 @@ class OrderQueryService
             $searchTerm = "%{$filters['q']}%";
 
             $query->where(function ($subQuery) use ($searchTerm) {
-                // Búsqueda en la relación 'client' por identificación
+                // B├║squeda en la relaci├│n 'client' por identificaci├│n
                 $subQuery->whereHas('client', function ($clientQuery) use ($searchTerm) {
                     $clientQuery->where('identification', 'like', $searchTerm);
                 });
 
-                // Búsqueda en la relación 'seller' por username
+                // B├║squeda en la relaci├│n 'seller' por username
                 $subQuery->orWhereHas('seller', function ($sellerQuery) use ($searchTerm) {
                     $sellerQuery->where('username', 'like', $searchTerm);
                 });
@@ -175,6 +177,7 @@ class OrderQueryService
                 DB::raw("ROUND(products.sale_price * {$tasaCop}, 2) as price_cop"),
                 'products.active_ingredient',
                 'products.laboratory_id',
+                'products.category_id',
                 'products.group_id',
                 'products.origin_id',
                 'products.sales_average',
@@ -204,6 +207,7 @@ class OrderQueryService
                 DB::raw("ROUND(product_packs.total_price * {$tasaCop}, 2) as price_cop"),
                 DB::raw("(SELECT GROUP_CONCAT(CONCAT(p.name, ' [', COALESCE(p.active_ingredient, 'S/I'), ' - ', COALESCE(l.name, 'S/L'), ']') SEPARATOR ' ') FROM products p LEFT JOIN laboratories l ON p.laboratory_id = l.id WHERE JSON_CONTAINS(JSON_KEYS(product_packs.pack_config), CAST(JSON_QUOTE(CAST(p.id AS CHAR)) AS JSON))) as active_ingredient"),
                 DB::raw('NULL as laboratory_id'),
+                DB::raw('NULL as category_id'),
                 DB::raw('NULL as group_id'),
                 DB::raw('NULL as origin_id'),
                 DB::raw('NULL as sales_average'),
@@ -236,13 +240,14 @@ class OrderQueryService
                     DB::raw("ROUND(dishes.designated_price * {$tasaCop}, 2) as price_cop"),
                     DB::raw("'PLATILLO' as active_ingredient"),
                     DB::raw('NULL as laboratory_id'),
+                    'dishes.category_id',
                     DB::raw('NULL as group_id'),
                     DB::raw('NULL as origin_id'),
                     DB::raw('NULL as sales_average'),
                     DB::raw('0 as iva'),
                     DB::raw('0 as is_colombian_origin'),
                     DB::raw('0 as psychotropic'),
-                    DB::raw("'MENÚ' as laboratory_name"),
+                    DB::raw("'MEN├Ü' as laboratory_name"),
                     DB::raw('NULL as pack_config'),
                     DB::raw("'dish' as item_type"),
                     DB::raw('NULL as next_expiration'),
@@ -258,11 +263,11 @@ class OrderQueryService
             $searchTermLower = strtolower(trim($searchTerm));
             $isStrictSearch = $filters['isStrictSearch'] ?? false;
 
-            // Detectar búsquedas especiales por "col" o "(g)"
+            // Detectar b├║squedas especiales por "col" o "(g)"
             $isColombianSearch = in_array($searchTermLower, ['col', '(col)', 'colombiano', 'colombianos']);
             $isIvaSearch = in_array($searchTermLower, ['g', '(g)', 'iva', 'gravado']);
 
-            // Si es búsqueda especial por "col" o "(g)", excluir packs y platos
+            // Si es b├║squeda especial por "col" o "(g)", excluir packs y platos
             if ($isColombianSearch || $isIvaSearch) {
                 $packsQuery->whereRaw('1 = 0');
                 if ($dishesQuery) {
@@ -272,15 +277,15 @@ class OrderQueryService
 
             // Filtro para PRODUCTOS
             $productsQuery->where(function ($subQuery) use ($searchTerm, $isStrictSearch, $isColombianSearch, $isIvaSearch) {
-                // Si es búsqueda por colombianos
+                // Si es b├║squeda por colombianos
                 if ($isColombianSearch) {
                     $subQuery->where('products.is_colombian_origin', 1);
                 }
-                // Si es búsqueda por IVA
+                // Si es b├║squeda por IVA
                 elseif ($isIvaSearch) {
                     $subQuery->where('products.iva', 1);
                 }
-                // Búsqueda normal
+                // B├║squeda normal
                 else {
                     if ($isStrictSearch) {
                         $subQuery->where('products.name', 'like', "%{$searchTerm}%")
@@ -298,7 +303,7 @@ class OrderQueryService
                 }
             });
 
-            // Filtro para PACKS (solo si no es búsqueda especial)
+            // Filtro para PACKS (solo si no es b├║squeda especial)
             if (!$isColombianSearch && !$isIvaSearch) {
                 $packsQuery->where(function ($subQuery) use ($searchTerm, $isStrictSearch) {
                     if ($isStrictSearch) {
@@ -312,7 +317,7 @@ class OrderQueryService
                 });
             }
 
-            // Filtro para PLATILLOS (solo si no es búsqueda especial)
+            // Filtro para PLATILLOS (solo si no es b├║squeda especial)
             if ($dishesQuery && !$isColombianSearch && !$isIvaSearch) {
                 $dishesQuery->where(function ($subQuery) use ($searchTerm, $isStrictSearch) {
                     if ($isStrictSearch) {
@@ -414,12 +419,12 @@ class OrderQueryService
              'product_packs.total_price as sale_price',
              DB::raw("ROUND(product_packs.total_price * {$tasaBs}, 2) as price_bs"),
              DB::raw("ROUND(product_packs.total_price * {$tasaCop}, 2) as price_cop"),
-             DB::raw("'' as active_ingredient"), // Los packs no suelen tener este campo, lo enviamos vacío
+             DB::raw("'' as active_ingredient"), // Los packs no suelen tener este campo, lo enviamos vac├¡o
              DB::raw('NULL as laboratory_id'),
              DB::raw('NULL as group_id'),
              DB::raw("'Pack Promocional' as laboratory_name"),
              DB::raw("'pack' as item_type"), // Diferenciador
-             DB::raw('999 as valid_stock_sum') // Stock ficticio o lógica de stock de packs
+             DB::raw('999 as valid_stock_sum') // Stock ficticio o l├│gica de stock de packs
          ])
          ->whereNull('product_packs.max_sale_date');
 
@@ -525,7 +530,7 @@ class OrderQueryService
             });
         }
 
-        // Lógica de Stock
+        // L├│gica de Stock
         $hasStock = $filters['hasStock'] ?? null;
         if ($hasStock === true) {
             $query->where('valid_stock_sum', '>', 0);
@@ -536,7 +541,7 @@ class OrderQueryService
         if (!empty($filters['groupId'])) {
             $query->where(function ($q) use ($filters) {
                 $q->where('group_id', $filters['groupId']);
-                // Si quieres que los packs desaparezcan al filtrar grupos, quita la línea de abajo
+                // Si quieres que los packs desaparezcan al filtrar grupos, quita la l├¡nea de abajo
                 //->orWhere('item_type', 'pack'); 
             });
         }
@@ -546,14 +551,14 @@ class OrderQueryService
 
     private function applySortingProduct($query, ?string $sortBy, string $orderBy)
     {
-        // Prioridad de visualización: Packs > Productos con Oferta > Resto
+        // Prioridad de visualizaci├│n: Packs > Productos con Oferta > Resto
         $query->orderByRaw("CASE 
             WHEN item_type = 'pack' THEN 0 
             WHEN discount_percentage > 0 THEN 1 
             ELSE 2 
         END ASC");
 
-        // Dentro de cada grupo, priorizar el porcentaje de descuento más alto
+        // Dentro de cada grupo, priorizar el porcentaje de descuento m├ís alto
         $query->orderBy('discount_percentage', 'desc');
 
         // Si no hay orden especificado, ordenamos por el nombre normalizado
@@ -618,7 +623,7 @@ class OrderQueryService
        }*/
 
     /**
-     * Retorna el query UNION base (sin ORDER BY) para ser usado en el conteo de paginación.
+     * Retorna el query UNION base (sin ORDER BY) para ser usado en el conteo de paginaci├│n.
      * El UNION puro sin ORDER BY es compatible con COUNT(*) de MySQL.
      */
     public function getCountQueryProduct(Request $request): QueryBuilder
@@ -659,7 +664,7 @@ class OrderQueryService
         $unionQuery = $this->getBaseQueryProduct($filters);
 
         // En MySQL, aplicar ORDER BY con CASE WHEN sobre columnas alias de un UNION multi-parte
-        // genera SQL inválido. Solución: envolver el UNION en un subquery (fromSub) y ordenar el wrapper.
+        // genera SQL inv├ílido. Soluci├│n: envolver el UNION en un subquery (fromSub) y ordenar el wrapper.
         $query = DB::table(DB::raw("({$unionQuery->toSql()}) as tpv_items"))
             ->mergeBindings($unionQuery)
             ->select('*');
@@ -685,10 +690,10 @@ class OrderQueryService
             $totalIvaAmount = $fiscalRecords->sum('iva_amount');
             $totalSpeAmount = $fiscalRecords->sum('spe_amount') ?? 0;
 
-            // El débito fiscal es la suma del IVA cobrado en ventas
+            // El d├®bito fiscal es la suma del IVA cobrado en ventas
             $totalDebito = $totalIvaAmount + $totalSpeAmount;
 
-            // IGTF: ventas marcadas como SPE — el 3% se aplica sobre el total_amount de la venta
+            // IGTF: ventas marcadas como SPE ÔÇö el 3% se aplica sobre el total_amount de la venta
             $speRecords = DB::table('fiscal_history')
                 ->where('spe', 1)
                 ->where('invoice_date', '>=', '2026-01-01')
@@ -697,7 +702,7 @@ class OrderQueryService
             $totalSpeSalesAmount = $speRecords->sum('total_amount');
             $totalSpeCount       = $speRecords->count();
 
-            Log::info('Cálculo débito fiscal:', [
+            Log::info('C├ílculo d├®bito fiscal:', [
                 'periodo' => [$startDate, $endDate],
                 'total_records' => $fiscalRecords->count(),
                 'total_iva_amount' => $totalIvaAmount,
@@ -730,7 +735,7 @@ class OrderQueryService
                 ->where('invoice_date', '>=', '2026-01-01')
                 ->whereBetween('invoice_date', [$startDate, $endDate]);
 
-            // Aplicar ordenamiento dinámico
+            // Aplicar ordenamiento din├ímico
             $validSortColumns = ['order_id', 'invoice_number', 'identification', 'business_name', 'exempt_amount', 'taxable_base', 'iva_amount', 'total_amount', 'invoice_date'];
             $sort = in_array($sortBy, $validSortColumns) ? $sortBy : 'invoice_date';
             $direction = in_array(strtolower($orderBy), ['asc', 'desc']) ? $orderBy : 'desc';
@@ -745,7 +750,7 @@ class OrderQueryService
             $totalQuery = clone $query;
             $totalRecords = $totalQuery->count();
 
-            // Aplicar paginación
+            // Aplicar paginaci├│n
             $offset = ($page - 1) * $itemsPerPage;
             $records = $query
                 ->skip($offset)
@@ -772,7 +777,7 @@ class OrderQueryService
                 ];
             });
 
-            // Calcular totales para la página actual
+            // Calcular totales para la p├ígina actual
             $pageTotals = [
                 'total_exempt' => $formattedRecords->sum('exempt_amount'),
                 'total_iva' => $formattedRecords->sum('iva_amount'),
@@ -820,7 +825,7 @@ class OrderQueryService
                 ->whereBetween('orders.order_date', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
                 ->sum('order_details.quantity');
 
-            // Fuente auditada única: Cierres de Caja (CashClosing)
+            // Fuente auditada ├║nica: Cierres de Caja (CashClosing)
             $sales = DB::table('cash_closing')
                 ->whereBetween('closing_date', [$startDate, $endDate])
                 ->where('status', 'closed')
@@ -847,7 +852,7 @@ class OrderQueryService
     }
 
     /**
-     * Obtiene el total de unidades vendidas de órdenes completadas en un rango de fechas.
+     * Obtiene el total de unidades vendidas de ├│rdenes completadas en un rango de fechas.
      *
      * @param string $startDate
      * @param string $endDate
@@ -855,7 +860,7 @@ class OrderQueryService
      */
     public function getUnitsSold(string $startDate, string $endDate): int
     {
-        // Sumar cantidades directamente desde los detalles de órdenes completadas
+        // Sumar cantidades directamente desde los detalles de ├│rdenes completadas
         return (int) DB::table('order_details')
             ->join('orders', 'order_details.order_id', '=', 'orders.id')
             ->where('orders.status', Order::COMPLETED)
@@ -864,7 +869,7 @@ class OrderQueryService
     }
 
     /**
-     * Obtiene la ganancia bruta acumulada en USD de órdenes completadas en un rango de fechas.
+     * Obtiene la ganancia bruta acumulada en USD de ├│rdenes completadas en un rango de fechas.
      *
      * @param string $startDate
      * @param string $endDate
@@ -881,7 +886,7 @@ class OrderQueryService
             unset($exchangeRates['BS']);
         }
 
-        // Obtener órdenes completadas
+        // Obtener ├│rdenes completadas
         $orders = Order::where('status', Order::COMPLETED)
             ->whereBetween('order_date', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->get(['total_amount', 'total_cost', 'currency', 'total_amount_usd']);
@@ -889,7 +894,7 @@ class OrderQueryService
         $totalProfit = 0.00;
 
         foreach ($orders as $order) {
-            // Conversión de ventas totales de la orden a USD
+            // Conversi├│n de ventas totales de la orden a USD
             $amountUsd = $order->total_amount_usd ?: $this->convertToUsdHelper((float) $order->total_amount, $order->currency, $exchangeRates);
             
             // El costo total de la orden ya se calcula y almacena directamente en USD en la base de datos
@@ -903,7 +908,7 @@ class OrderQueryService
     }
 
     /**
-     * Helper para convertir un monto a USD según tasas de cambio dinámicas.
+     * Helper para convertir un monto a USD seg├║n tasas de cambio din├ímicas.
      *
      * @param float $amount
      * @param string $currencyCode
@@ -929,7 +934,7 @@ class OrderQueryService
     }
 
     /**
-     * Obtiene los productos más vendidos en unidades en lo que va del mes actual.
+     * Obtiene los productos m├ís vendidos en unidades en lo que va del mes actual.
      *
      * @param int $limit
      * @return \Illuminate\Support\Collection
@@ -1015,7 +1020,7 @@ class OrderQueryService
             ];
         }
 
-        // Retornar la colección reordenada por monto de mayor a menor
+        // Retornar la colecci├│n reordenada por monto de mayor a menor
         return collect(array_values($processed))->sortByDesc('sales_amount')->values();
     }
 
@@ -1074,7 +1079,7 @@ class OrderQueryService
             ];
         }
 
-        // Retornar la colección reordenada por unidades vendidas de mayor a menor
+        // Retornar la colecci├│n reordenada por unidades vendidas de mayor a menor
         return collect(array_values($processed))->sortByDesc('units_sold')->values();
     }
 }

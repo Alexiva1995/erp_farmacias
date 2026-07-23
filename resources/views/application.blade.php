@@ -14,10 +14,37 @@
   <link rel="icon" type="image/png" sizes="512x512" href="{{ asset('android-chrome-512x512.png') }}" />
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Tova - Cerebro Operativo</title>
+  <title>{{ $seoTitle ?? 'Tova - Cerebro Operativo' }}</title>
+  <meta name="description" content="{{ $seoDescription ?? 'Explora nuestro catálogo de productos y gestiona tu inventario con la plataforma inteligente Tova.' }}" />
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="{{ $seoTitle ?? 'Tova - Cerebro Operativo' }}" />
+  <meta property="og:description" content="{{ $seoDescription ?? 'Explora nuestro catálogo de productos y gestiona tu inventario con la plataforma inteligente Tova.' }}" />
+  <meta property="og:image" content="{{ asset('favicon-512x512.png') }}" />
+
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image" />
+  <meta property="twitter:title" content="{{ $seoTitle ?? 'Tova - Cerebro Operativo' }}" />
+  <meta property="twitter:description" content="{{ $seoDescription ?? 'Explora nuestro catálogo de productos y gestiona tu inventario con la plataforma inteligente Tova.' }}" />
+  <meta property="twitter:image" content="{{ asset('favicon-512x512.png') }}" />
+  <?php
+    $settings = \Illuminate\Support\Facades\Schema::hasTable('general_settings')
+      ? \DB::table('general_settings')->first()
+      : null;
+    $primary = $settings->primary_color ?? '#FAFAFA';
+    $secondary = $settings->secondary_color ?? '#1E1614';
+    $tertiary = $settings->tertiary_color ?? '#E8C5C8';
+  ?>
   <style>
     html {
       touch-action: manipulation;
+    }
+    .tova-editorial-root {
+      --editorial-black: {{ $secondary }} !important;
+      --editorial-nude-dark: {{ $tertiary }} !important;
+      --editorial-terracotta-light: {{ $tertiary }} !important;
+      --editorial-grey-bg: {{ $primary }} !important;
     }
   </style>
   <link rel="stylesheet" type="text/css" href="{{ asset('loader.css') }}" />

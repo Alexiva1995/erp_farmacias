@@ -12,6 +12,8 @@ use App\Http\Requests\Order\StoreOrderRequest;
 use App\Http\Requests\Order\UpdateOrderTotalsRequest;
 use App\Http\Requests\Order\AddOrderItemRequest;
 use App\Http\Requests\Order\CompleteOrderRequest;
+use App\Http\Requests\Order\GetFiscalReportRequest;
+use App\Http\Requests\Order\GetFiscalHistoryRequest;
 use App\Models\Order;
 use App\Models\OrderDetail;
 use Illuminate\Support\Facades\Auth;
@@ -47,11 +49,15 @@ class OrderController extends Controller
 
         if ($perPage < 1) {
             $items = $dataQuery->get();
+            app(\App\Services\Order\OrderActionService::class)->applyGeneralPromotionsToProducts($items);
             return response()->json(['data' => $items, 'total' => $items->count()]);
         }
 
         $offset = ($page - 1) * $perPage;
         $items = $dataQuery->skip($offset)->take($perPage)->get();
+
+        // Aplicar promociones generales activas
+        app(\App\Services\Order\OrderActionService::class)->applyGeneralPromotionsToProducts($items);
 
         return response()->json([
             'data' => $items,
@@ -63,12 +69,37 @@ class OrderController extends Controller
     public function consultByIdentification(Request $request)
     {
         $buscarPorIdentificaion = $this->client->consultByIdentification($request->Identification);
+        
+        // Si no se encuentra y la identificacion es el cliente generico, crearlo
+        if (!$buscarPorIdentificaion && $request->Identification === '99999999') {
+            try {
+                $buscarPorIdentificaion = \App\Models\Client::create([
+                    'identification' => '99999999',
+                    'identification_type' => 'V-',
+                    'name' => 'Consumidor',
+                    'last_name' => 'Final',
+                    'email' => 'consumidorfinal@tova.com',
+                    'phone' => '0000000000',
+                    'address' => 'Consumidor Final',
+                ]);
+            } catch (\Exception $e) {
+                Log::error("Error al crear cliente genérico automático: " . $e->getMessage());
+            }
+        }
+
         if (!$buscarPorIdentificaion) {
             return ApiResponse::success([
                 'found' => false,
                 'identification_searched' => $request->Identification
             ], "the client not found", 200);
         }
+
+        // Si es el cliente generico, forzar el nombre a Consumidor Final
+        if ($request->Identification === '99999999') {
+            $buscarPorIdentificaion->name = "Consumidor";
+            $buscarPorIdentificaion->last_name = "Final";
+        }
+
         return ApiResponse::success([
             'found' => true,
             'client' => $buscarPorIdentificaion,
@@ -358,14 +389,9 @@ class OrderController extends Controller
             return ApiResponse::error('No se pudo agregar la orden: ' . $e->getMessage(), 500);
         }
     }
-    public function getDebitoFiscal(Request $request): JsonResponse
+    public function getDebitoFiscal(GetFiscalReportRequest $request): JsonResponse
     {
         try {
-            $request->validate([
-                'start_date' => 'nullable|date',
-                'end_date' => 'nullable|date'
-            ]);
-
             $startDate = $request->start_date ?? now()->startOfMonth()->format('Y-m-d');
             $endDate = $request->end_date ?? now()->endOfMonth()->format('Y-m-d');
 
@@ -396,18 +422,9 @@ class OrderController extends Controller
             return ApiResponse::error('Error al obtener débito fiscal: ' . $e->getMessage(), 500);
         }
     }
-    public function getFiscalHistoryData(Request $request): JsonResponse
+    public function getFiscalHistoryData(GetFiscalHistoryRequest $request): JsonResponse
     {
         try {
-            $request->validate([
-                'start_date' => 'nullable|date',
-                'end_date' => 'nullable|date',
-                'page' => 'nullable|integer',
-                'itemsPerPage' => 'nullable|integer',
-                'sortBy' => 'nullable|string',
-                'orderBy' => 'nullable|string'
-            ]);
-
             $startDate = $request->start_date ?? now()->startOfMonth()->format('Y-m-d');
             $endDate = $request->end_date ?? now()->endOfMonth()->format('Y-m-d');
 
@@ -442,15 +459,15 @@ class OrderController extends Controller
 
     public function cancelledOrder(Order $order)
     {
-        if ($order->status !== Order::COMPLETED) {
-            return ApiResponse::error('Solo se pueden cancelar órdenes completadas.', 400);
+        if (in_array(strtolower($order->status), ['cancelled', 'abandoned'])) {
+            return ApiResponse::error('La orden ya se encuentra cancelada o abandonada.', 400);
         }
         try {
             $abandonedOrder = $this->orderActionService->cancelledOrder($order);
-            return ApiResponse::success('Orden cancelada exitosamente.', ['order' => $abandonedOrder]);
+            return ApiResponse::success(['order' => $abandonedOrder], 'Orden cancelada exitosamente.');
         } catch (\Exception $e) {
-            Log::error('Error al cancelada la orden:', ['error' => $e->getMessage(), 'order_id' => $order->id]);
-            return ApiResponse::error('No se pudo cancelada la orden: ' . $e->getMessage(), 500);
+            Log::error('Error al cancelar la orden:', ['error' => $e->getMessage(), 'order_id' => $order->id]);
+            return ApiResponse::error('No se pudo cancelar la orden: ' . $e->getMessage(), 500);
         }
     }
 

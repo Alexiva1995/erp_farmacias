@@ -1,11 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Contracts\PurchaseOrder;
 use App\Models\AutoOrder;
-use App\Repository\AutoOrderDetailsRepository;
-use App\Repository\AutoOrdersRepository;
+use App\Repositories\AutoOrderDetailsRepository;
+use App\Repositories\AutoOrdersRepository;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Database\Eloquent\Builder;

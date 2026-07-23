@@ -59,7 +59,7 @@ const isPasswordVisible = ref(false);
             <RouterLink to="/">
               <div class="app-logo">
                 <img
-                  :src="brandingStore.settings.app_logo || '/logo.svg'"
+                  src="/logo.svg"
                   alt="logo"
                   style="max-height: 80px; max-width: 100%; object-fit: contain;"
                 >

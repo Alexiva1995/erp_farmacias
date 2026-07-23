@@ -15,7 +15,7 @@ function recursiveLayouts(route) {
 }
 
 const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL),
+  history: createWebHistory('/'),
   scrollBehavior(to) {
     if (to.hash)
       return { el: to.hash, behavior: 'smooth', top: 60 }
@@ -24,7 +24,7 @@ const router = createRouter({
   },
 
   extendRoutes: pages => {
-    const publicRoutes = ['/login', '/p/suppliers/upload/:token', '/reservar', '/tova-store']
+    const publicRoutes = ['/', '/login', '/p/suppliers/upload/:token', '/p/orders/confirm/:hash', '/reservar', '/tova-store', '/restaurant-store']
 
     function addAuthMeta(routes) {
       return routes.map(route => {
@@ -40,17 +40,19 @@ const router = createRouter({
       })
     }
 
-    const filteredPages = pages.filter(p => p.path !== '/public/booking' && p.path !== '/tova-store')
+    const filteredPages = pages.filter(p => p.path !== '/public/booking' && p.path !== '/tova-store' && p.path !== '/restaurant-store')
+    
+    // Cambiar la raíz '/' para usar el componente de tova-store con layout blank
+    const indexRoute = filteredPages.find(p => p.path === '/')
+    if (indexRoute) {
+      indexRoute.component = () => import('@/pages/tova-store.vue')
+      indexRoute.meta = { ...indexRoute.meta, requiresAuth: false, layout: 'blank' }
+    }
+
     const pagesWithAuth = addAuthMeta(filteredPages)
     
-    // Agregar ruta manual para renuncias (siguiendo el patrón del proyecto)
+    // Agregar rutas manuales no auto-generadas por unplugin-vue-router
     const manualRoutes = [
-      {
-        path: '/rrhh/resignations',
-        name: 'rrhh-resignations',
-        component: () => import('@/pages/rrhh/resignations/index.vue'),
-        meta: { requiresAuth: true }
-      },
       {
         path: '/restaurant/process-audit',
         name: 'restaurant-process-audit',
@@ -61,6 +63,15 @@ const router = createRouter({
         path: '/p/suppliers/upload/:token',
         name: 'public-supplier-upload',
         component: () => import('@/pages/public/SupplierUpload.vue'),
+        meta: { 
+          requiresAuth: false,
+          layout: 'blank'
+        }
+      },
+      {
+        path: '/p/orders/confirm/:hash',
+        name: 'public-order-confirm',
+        component: () => import('@/pages/public/OrderConfirmation.vue'),
         meta: { 
           requiresAuth: false,
           layout: 'blank'
@@ -79,6 +90,15 @@ const router = createRouter({
         path: '/tova-store',
         name: 'tova-store',
         component: () => import('@/pages/tova-store.vue'),
+        meta: {
+          requiresAuth: false,
+          layout: 'blank'
+        }
+      },
+      {
+        path: '/restaurant-store',
+        name: 'restaurant-store',
+        component: () => import('@/pages/restaurant-store.vue'),
         meta: {
           requiresAuth: false,
           layout: 'blank'
@@ -113,11 +133,22 @@ router.beforeEach(async (to, from, next) => {
   
   try {
     const authStore = useAuthStore()
+    const brandingStore = useBrandingStore()
+    const requiresAuth = to.meta?.requiresAuth
+
+    // Cargar settings del backend para tener el business_type real antes de evaluar rutas
+    if (!brandingStore.settings.app_rif) {
+      try {
+        await brandingStore.fetchSettings()
+      } catch (brandingError) {
+        console.warn('[ROUTER] Error al cargar configuración de marca:', brandingError)
+      }
+    }
+
     console.log('[ROUTER] AuthStore estado:', { isLoaded: authStore.isLoaded, hasUser: !!authStore.user })
     
-    // Solo intentar obtener el usuario si la ruta requiere autenticación y no está cargado aún
-    const requiresAuth = to.meta?.requiresAuth
-    if (requiresAuth && !authStore.isLoaded && !authStore.user && !isFetchingUser) {
+    // Intentar obtener el usuario en la carga inicial si no está cargado aún
+    if (!authStore.isLoaded && !authStore.user && !isFetchingUser) {
       console.log('[ROUTER] Intentando obtener usuario...')
       isFetchingUser = true
       
@@ -145,12 +176,43 @@ router.beforeEach(async (to, from, next) => {
     }
     
     clearTimeout(safetyTimeout)
-    
+    // La raíz '/' siempre renderiza la tienda directamente (tova-store.vue) sin redirecciones
+    if (to.path === '/') {
+      console.log('[ROUTER] Raíz /: Sirviendo la tienda directamente por defecto')
+      return safeNext()
+    }
+
+    const isFarmacia = brandingStore.settings.business_type === 'farmacia' || brandingStore.settings.business_type === 'pharmacy'
+
+    if (isFarmacia && (to.path === '/tova-store' || to.path === '/restaurant-store' || to.path === '/')) {
+      const isAuthenticated = authStore.isAuthenticated
+      if (isAuthenticated) {
+        if (authStore.isAdmin) {
+          console.log('[ROUTER] Farmacia: Redirigiendo a /dashboard')
+          return safeNext({ path: '/dashboard' })
+        } else {
+          console.log('[ROUTER] Farmacia: Redirigiendo a /tpv/orderUser')
+          return safeNext({ path: '/tpv/orderUser' })
+        }
+      } else {
+        console.log('[ROUTER] Farmacia: Redirigiendo a /login')
+        return safeNext({ path: '/login' })
+      }
+    }
+
     if (to.path === '/tova-store') {
       const brandingStore = useBrandingStore()
-      if (brandingStore.settings?.business_type === 'restaurant') {
-        console.log('[ROUTER] Ecommerce no disponible para restaurante, redirigiendo a Home')
-        return safeNext({ path: '/' })
+      if (brandingStore.settings.business_type === 'restaurant') {
+        console.log('[ROUTER] Ecommerce no disponible para restaurante, redirigiendo a restaurant-store')
+        return safeNext({ path: '/restaurant-store' })
+      }
+    }
+
+    if (to.path === '/restaurant-store') {
+      const brandingStore = useBrandingStore()
+      if (brandingStore.settings.business_type !== 'restaurant') {
+        console.log('[ROUTER] Restaurant store no disponible, redirigiendo a tova-store')
+        return safeNext({ path: '/tova-store' })
       }
     }
 
@@ -172,21 +234,49 @@ router.beforeEach(async (to, from, next) => {
       }
       
       if (authStore.isAdmin) {
-        return safeNext({ path: '/' })
+        return safeNext({ path: '/dashboard' })
       } else {
         return safeNext({ path: '/tpv/orderUser' })
       }
     }
     
+    // Para minimarket, permitir navegación en raíz / sin redirigir
+    if (to.path === '/') {
+      const brandingStore = useBrandingStore()
+      if (brandingStore.settings?.business_type === 'minimarket') {
+        console.log('[ROUTER] Minimarket: Sirviendo tienda en / directamente')
+        return safeNext()
+      }
+    }
+
+    if (to.path === '/' && !isAuthenticated) {
+      const brandingStore = useBrandingStore()
+      if (brandingStore.settings.business_type === 'restaurant') {
+        console.log('[ROUTER] Redirigiendo cliente de restaurante a restaurant-store')
+        return safeNext({ path: '/restaurant-store' })
+      } else if (brandingStore.settings.business_type === 'farmacia' || brandingStore.settings.business_type === 'pharmacy') {
+        console.log('[ROUTER] Redirigiendo cliente de farmacia a login')
+        return safeNext({ path: '/login' })
+      }
+    }
+
     if (to.path === '/' && isAuthenticated) {
       const brandingStore = useBrandingStore()
+
+      if (brandingStore.settings?.business_type === 'minimarket') {
+        console.log('[ROUTER] Minimarket: Manteniendo en raíz / para usuario logueado')
+        return safeNext()
+      }
+
       const isSportsRental = brandingStore.settings?.business_type === 'sports_rental'
       
       if (isSportsRental) {
         return safeNext({ path: '/reservations' })
       }
       
-      if (!authStore.isAdmin) {
+      if (authStore.isAdmin) {
+        return safeNext({ path: '/dashboard' })
+      } else {
         return safeNext({ path: '/tpv/orderUser' })
       }
     }
@@ -194,6 +284,24 @@ router.beforeEach(async (to, from, next) => {
     if ((to.path.startsWith('/finances/pending-payments') || to.path.startsWith('/finances/cashout')) && authStore.isVendedor) {
       console.log('[ROUTER] Empleado intentó acceder a sección financiera restringida, redirigiendo')
       return safeNext({ path: '/invoice/invoices' })
+    }
+    
+    const isMiniMarket = brandingStore.settings?.business_type === 'minimarket'
+    if (isMiniMarket) {
+      const path = to.path.toLowerCase()
+      if (
+        path.startsWith('/fiscal') ||
+        path.startsWith('/iva') ||
+        path.startsWith('/islr') ||
+        path.startsWith('/restaurant') ||
+        path.includes('-offer') ||
+        path === '/bi/discounts' ||
+        path === '/crm/doctors' ||
+        path === '/crm/companies'
+      ) {
+        console.log('[ROUTER] Ruta no disponible para minimarket, redirigiendo a Home')
+        return safeNext({ path: '/' })
+      }
     }
     
     console.log('[ROUTER] Permitiendo navegación')

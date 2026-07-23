@@ -4,17 +4,17 @@ import PurchaseOrdersFilter from "@/components/PurchaseOrdersFilter.vue";
 import PurchaseOrdersTable from "@/components/PurchaseOrdersTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { useDisplay } from "vuetify";
 import { useAuthStore } from "@/stores/auth";
+import Swal from "sweetalert2";
 
+const { mobile } = useDisplay();
 const authStore = useAuthStore();
 const searchQuery = ref("");
 const startDate = ref("");
 const endDate = ref("");
-const activeTab = ref(0); // Cambiado a entero para coincidir con el diseño común
-
-// Convierte el valor del tab al entero que espera el backend
-const tabStatusMap = { 0: 0, 1: 1, 2: 2 };
+const activeTab = ref(0);
 
 const tabItems = [
   {
@@ -115,11 +115,17 @@ const handleManage = (purchaseOrder) => {
 };
 
 const handleDeleteOrder = async (id) => {
-  if (
-    confirm(
-      "¿Estás seguro de eliminar esta orden? No podrás deshacer esta acción.",
-    )
-  ) {
+  const result = await Swal.fire({
+    title: "¿Estás seguro?",
+    text: "No podrás deshacer la eliminación de esta orden de compra.",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonText: "Sí, eliminar",
+    cancelButtonText: "Cancelar",
+    reverseButtons: true,
+  });
+
+  if (result.isConfirmed) {
     try {
       await axios.delete(`/suppliers/purchase-orders/${id}`);
       toast.success("Orden eliminada correctamente.");
@@ -148,16 +154,33 @@ onMounted(() => {
   fetchStats();
 });
 
-// Cambiar de pestaña o filtro => reset a página 1 y recargar
+let debounceTimer = null;
+let ignoreNextPageWatch = false;
+
+// Cambiar de pestaña o filtro => reset a página 1 y recargar con debounce
 watch([selectedSupplier, activeTab, searchQuery, startDate, endDate], () => {
-  page.value = 1;
-  fetchPurchaseOrders();
-  fetchStats();
+  if (page.value !== 1) {
+    ignoreNextPageWatch = true;
+    page.value = 1;
+  }
+  if (debounceTimer) clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => {
+    fetchPurchaseOrders();
+    fetchStats();
+  }, 300);
 });
 
 // Paginar sin resetear la página
 watch([page, itemsPerPage], () => {
+  if (ignoreNextPageWatch) {
+    ignoreNextPageWatch = false;
+    return;
+  }
   fetchPurchaseOrders();
+});
+
+onUnmounted(() => {
+  if (debounceTimer) clearTimeout(debounceTimer);
 });
 
 const updateTableOptions = (options) => {
@@ -255,7 +278,12 @@ const handleClearFilters = () => {
                     >{{ kpi.title }}</span
                   >
                   <h4 class="font-weight-black mt-1" :class="mobile ? 'text-sm' : 'text-h4'">
-                    {{ kpi.value }}
+                    <template v-if="loading">
+                      <div class="skeleton-loader d-inline-block rounded" style="block-size: 24px; inline-size: 70px;"></div>
+                    </template>
+                    <template v-else>
+                      {{ kpi.value }}
+                    </template>
                   </h4>
                 </div>
               </div>
@@ -346,6 +374,16 @@ const handleClearFilters = () => {
 </template>
 
 <style scoped>
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.skeleton-loader {
+  animation: pulse 1.5s infinite ease-in-out;
+  background-color: rgba(var(--v-border-color), 0.12);
+}
+
 .stats-card:hover {
   box-shadow: 0 8px 25px 0 rgba(0, 0, 0, 8%) !important;
   transform: translateY(-5px);

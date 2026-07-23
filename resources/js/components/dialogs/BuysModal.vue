@@ -8,6 +8,7 @@ import CheckoutPaymentMethods from "@/components/dialogs/checkout/CheckoutPaymen
 import CheckoutProductList from "@/components/dialogs/checkout/CheckoutProductList.vue";
 import CheckoutReceipt from "@/components/dialogs/checkout/CheckoutReceipt.vue";
 import CheckoutSummary from "@/components/dialogs/checkout/CheckoutSummary.vue";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 import {
   computed,
   defineEmits,
@@ -17,6 +18,8 @@ import {
   ref,
   watch,
 } from "vue";
+
+const brandingStore = useBrandingStore();
 
 const chipColor = "primary";
 
@@ -135,6 +138,15 @@ const selectedCurrencyTab = ref(props.selectedCurrency); // Pestaña de moneda s
 const ratesLoaded = ref(false);
 
 const issubmitting = ref(false);
+const receiptOrderData = ref(null);
+const receiptOrderProducts = ref([]);
+const receiptPayments = ref([]);
+
+watch(() => props.orderData, (newVal) => {
+  if (newVal && Object.keys(newVal).length > 0 && currentProgress.value === 100) {
+    receiptOrderData.value = JSON.parse(JSON.stringify(newVal));
+  }
+}, { deep: true });
 
 const payments = ref([
   {
@@ -153,13 +165,51 @@ const payments = ref([
   },
 ]);
 
-const currencies = [
+watch(
+  payments,
+  (newPayments) => {
+    newPayments.forEach((p) => {
+      if (
+        p.reference &&
+        p.currency === "BS" &&
+        ["debit_card", "credit_card", "card"].includes(p.method)
+      ) {
+        const cleanRef = p.reference.toString().trim();
+        if (cleanRef) {
+          localStorage.setItem("tpv_last_card_reference_bs", cleanRef);
+        }
+      }
+    });
+  },
+  { deep: true },
+);
+
+const allCurrenciesList = [
   { label: "Pesos Colombianos (COP)", value: "COP" },
   { label: "Bolívares (BS)", value: "BS" },
   { label: "Dólares (USD)", value: "USD" },
 ];
 
-const paymentMethodsByCurrency = {
+const currencies = computed(() => {
+  const configured = brandingStore.settings?.tpv_payment_methods;
+  if (!configured) return allCurrenciesList;
+
+  const enabled = allCurrenciesList.filter((c) => {
+    const curObj = configured[c.value];
+    if (!curObj) return false;
+    if (typeof curObj === "object" && !Array.isArray(curObj) && curObj.enabled !== undefined) {
+      return !!curObj.enabled;
+    }
+    if (Array.isArray(curObj)) {
+      return curObj.length > 0 && curObj.some((m) => m.enabled !== false);
+    }
+    return true;
+  });
+
+  return enabled.length > 0 ? enabled : allCurrenciesList;
+});
+
+const fallbackPaymentMethods = {
   COP: [
     { label: "Efectivo", value: "cash_cop" },
     { label: "Transferencia", value: "bank_transfer" },
@@ -180,6 +230,54 @@ const paymentMethodsByCurrency = {
   ],
 };
 
+const normalizeMethodValue = (val, currencyKey) => {
+  if (val === "cash") {
+    if (currencyKey === "USD") return "cash_usd";
+    if (currencyKey === "BS") return "cash_bs";
+    if (currencyKey === "COP") return "cash_cop";
+  }
+  if (val === "bank_transfer" && currencyKey === "BS") {
+    return "bank_transfer_bs";
+  }
+  return val;
+};
+
+const paymentMethodsByCurrency = computed(() => {
+  const configured = brandingStore.settings?.tpv_payment_methods;
+  if (!configured) return fallbackPaymentMethods;
+
+  const result = {};
+  ["COP", "BS", "USD"].forEach((currencyKey) => {
+    const curObj = configured[currencyKey];
+    let rawMethods = [];
+    if (Array.isArray(curObj)) {
+      rawMethods = curObj;
+    } else if (curObj && Array.isArray(curObj.methods)) {
+      rawMethods = curObj.methods;
+    } else {
+      rawMethods = fallbackPaymentMethods[currencyKey] || [];
+    }
+
+    const enabledMethods = rawMethods
+      .filter((m) => m.enabled !== false)
+      .map((m) => ({
+        ...m,
+        value: normalizeMethodValue(m.value, currencyKey),
+      }));
+
+    // Si el cliente tiene saldo a favor y la moneda es USD, agregar método Saldo automáticamente
+    if (currencyKey === "USD" && props.orderData?.client?.balance > 0) {
+      if (!enabledMethods.some((m) => m.value === "balance")) {
+        enabledMethods.push({ label: "Saldo", value: "balance", enabled: true });
+      }
+    }
+
+    result[currencyKey] = enabledMethods;
+  });
+
+  return result;
+});
+
 const exchangeRates = ref({});
 
 const isCredit = (value) => value === "credit";
@@ -195,7 +293,8 @@ const isTransferMethod = (method) =>
 
 // Función para verificar si un método es de efectivo (permite vuelto)
 const isCashMethod = (method) => {
-  return ["cash_bs", "cash_usd", "cash_cop"].includes(method);
+  if (!method) return false;
+  return method === "cash" || method.startsWith("cash_");
 };
 
 // Función para verificar si un método requiere referencia
@@ -240,21 +339,29 @@ const specialTaxAmount = computed(() => {
   return tax;
 });
 
+watch([currencies, () => props.selectedCurrency], ([newCurrencies, newSelectedCurrency]) => {
+  const isSelectedActive = newCurrencies.some(c => c.value === selectedCurrencyTab.value);
+  if (!isSelectedActive && newCurrencies.length > 0) {
+    const propActive = newCurrencies.find(c => c.value === newSelectedCurrency);
+    selectedCurrencyTab.value = propActive ? propActive.value : newCurrencies[0].value;
+  }
+}, { immediate: true });
+
 const getPaymentMethodLabel = (methodValue, currency) => {
   if (methodValue === "balance") {
     return "Saldo";
   }
 
   if (!methodValue) return "N/A";
-  const methodsForCurrency = paymentMethodsByCurrency[currency];
+  const methodsForCurrency = paymentMethodsByCurrency.value[currency];
   if (methodsForCurrency) {
     const foundMethod = methodsForCurrency.find((m) => m.value === methodValue);
     if (foundMethod) {
       return foundMethod.label;
     }
   }
-  for (const key in paymentMethodsByCurrency) {
-    const methods = paymentMethodsByCurrency[key];
+  for (const key in paymentMethodsByCurrency.value) {
+    const methods = paymentMethodsByCurrency.value[key];
     const foundMethod = methods.find((m) => m.value === methodValue);
     if (foundMethod) {
       return foundMethod.label;
@@ -296,7 +403,7 @@ const totalPaidAmount = computed(() => {
 const totalPaidAmountNonCash = computed(() => {
   let currentSum = 0;
   payments.value.forEach((payment) => {
-    if (!payment.method || !payment.method.startsWith("cash_")) {
+    if (payment.method && !isCashMethod(payment.method)) {
       let amount = Number(payment.amount) || 0;
       const rate = getEffectiveRate(payment.currency, props.selectedCurrency);
       if (rate > 0 || payment.currency === props.selectedCurrency) {
@@ -346,6 +453,30 @@ const fetchExchangeRates = async () => {
         );
       }
     });
+
+    const tpvRateType = brandingStore.settings?.tpv_rate_type;
+    if (formattedRates["USD"]) {
+      if (tpvRateType === "binance" && formattedRates["USD"]["BINANCE"]) {
+        formattedRates["USD"]["BS"] = formattedRates["USD"]["BINANCE"];
+      } else if (tpvRateType === "eur" && formattedRates["USD"]["EUR"]) {
+        formattedRates["USD"]["BS"] = formattedRates["USD"]["EUR"];
+      } else if (tpvRateType === "bcv" && formattedRates["USD"]["BCV"]) {
+        formattedRates["USD"]["BS"] = formattedRates["USD"]["BCV"];
+      } else if (!tpvRateType && formattedRates["USD"]["EUR"]) {
+        formattedRates["USD"]["BS"] = formattedRates["USD"]["EUR"];
+      }
+      if (formattedRates["BS"]) {
+        formattedRates["BS"]["USD"] = 1 / formattedRates["USD"]["BS"];
+      }
+      if (formattedRates["COP"]) {
+        formattedRates["COP"]["BS"] =
+          parseFloat(formattedRates["USD"]["BS"]) /
+          parseFloat(formattedRates["USD"]["COP"]);
+        formattedRates["BS"]["COP"] =
+          parseFloat(formattedRates["USD"]["COP"]) /
+          parseFloat(formattedRates["USD"]["BS"]);
+      }
+    }
 
     exchangeRates.value = formattedRates;
     ratesLoaded.value = true;
@@ -478,16 +609,7 @@ const hasMissingReferences = () => {
 };
 
 const closeModal = () => {
-  // Validar referencias antes de cerrar
-  if (hasMissingReferences()) {
-    toast.error(
-      "Por favor complete todas las referencias de pago antes de cerrar.",
-    );
-    return;
-  }
-
   emit("update:isDialogVisible", false);
-  emit("modal-closed");
   resetProgress();
 };
 
@@ -580,17 +702,15 @@ const handleCompletePurchase = () => {
     const uniqueCurrencies = new Set(usedCurrencies);
     const numberOfCurrencies = uniqueCurrencies.size;
 
-    let tolerance = 0;
+    let tolerance = 0.5;
 
     if (numberOfCurrencies > 2) {
-      tolerance = 0.6;
-    } else {
-      tolerance = 0.01;
+      tolerance = 1.0;
     }
 
     let finalRemainingAmount = remainingAmount.value;
 
-    if (totalPaidAmountNonCash.value > totalToPayCalculated + tolerance) {
+    if (remainingAmount.value > tolerance && totalPaidAmountNonCash.value > totalToPayCalculated + tolerance) {
       toast.error(
         "El monto total de los pagos no en efectivo (Transferencia, Binance, PayPal, etc.) excede el monto total de la compra. Estos métodos no generan vuelto.",
       );
@@ -694,6 +814,11 @@ const handleCompletePurchase = () => {
       } else {
         currentProgress.value = 100;
       }
+
+      // Tomar snapshot de la orden, productos y pagos para el comprobante
+      receiptOrderData.value = props.orderData ? JSON.parse(JSON.stringify(props.orderData)) : null;
+      receiptOrderProducts.value = props.orderProducts ? JSON.parse(JSON.stringify(props.orderProducts)) : [];
+      receiptPayments.value = payments.value ? JSON.parse(JSON.stringify(payments.value)) : [];
 
       const validPayments = payments.value.filter(
         (p) => p.amount > 0 && p.method !== null,
@@ -1268,10 +1393,15 @@ const selectPaymentMethod = (methodValue, currency = null) => {
     availablePayment._isInputActive = false;
     availablePayment._isReferenceActive = false; // Crédito en USD no requiere referencia
   } else {
-    // Para otros métodos, dejar el input vacío para que el usuario escriba
-    availablePayment.inputAmount = "";
-    availablePayment.amount = null; // No confirmar hasta que el usuario lo haga
+    // Para métodos no-efectivo, precargar el monto restante a cobrar
+    const defaultAmount = !isCashMethod(methodValue)
+      ? getConvertedRemainingAmount(targetCurrency)
+      : null;
+
+    availablePayment.inputAmount = defaultAmount !== null && defaultAmount > 0 ? defaultAmount : "";
+    availablePayment.amount = defaultAmount !== null && defaultAmount > 0 ? defaultAmount : null;
     availablePayment._isInputActive = true;
+    
     // Usar nextTick para asegurar que el DOM esté actualizado
     nextTick(() => {
       const paymentIndex = payments.value.indexOf(availablePayment);
@@ -1280,13 +1410,40 @@ const selectPaymentMethod = (methodValue, currency = null) => {
       );
       if (input) {
         input.focus();
+        if (defaultAmount !== null && defaultAmount > 0) {
+          input.select();
+        }
       }
     });
   }
 
   // Inicializar referencia según si requiere o no
+  const isCard = ["debit_card", "credit_card", "card"].includes(methodValue);
   if (!requiresReference(methodValue, targetCurrency)) {
     availablePayment.reference = null;
+  } else {
+    availablePayment._isReferenceActive = true;
+    if (isCard && targetCurrency === "BS") {
+      let lastRef = localStorage.getItem("tpv_last_card_reference_bs");
+      if (!lastRef) {
+        const prevPayment = payments.value.find(
+          (p) => isCard && p.currency === "BS" && p.reference
+        );
+        if (prevPayment && prevPayment.reference) {
+          lastRef = prevPayment.reference;
+        }
+      }
+      if (lastRef) {
+        const cleanLastRef = lastRef.trim();
+        const parsed = parseInt(cleanLastRef, 10);
+        if (!isNaN(parsed)) {
+          const nextRef = (parsed + 1).toString().padStart(cleanLastRef.length, "0");
+          availablePayment.reference = nextRef;
+        } else {
+          availablePayment.reference = cleanLastRef;
+        }
+      }
+    }
   }
 };
 
@@ -1453,6 +1610,12 @@ const confirmPaymentComplete = (payment) => {
       return;
     }
     payment._referenceError = false;
+    if (payment.reference && (payment.method === "debit_card" || payment.method === "credit_card" || payment.method === "card") && payment.currency === "BS") {
+      const cleanRef = payment.reference.trim();
+      if (cleanRef) {
+        localStorage.setItem("tpv_last_card_reference_bs", cleanRef);
+      }
+    }
   }
 
   // 4. Si todo está bien, cerrar estados
@@ -1584,16 +1747,20 @@ const removePaymentFromSummary = (paymentIndex) => {
 // Función para obtener el icono del método de pago
 const getPaymentMethodIcon = (methodValue) => {
   const icons = {
+    cash: "tabler-cash",
     cash_bs: "tabler-cash",
     cash_cop: "tabler-cash",
     cash_usd: "tabler-cash",
     mobile_payment: "tabler-device-mobile",
-    bank_transfer: "tabler-transfer",
-    bank_transfer_bs: "tabler-transfer",
+    bank_transfer: "tabler-building-bank",
+    bank_transfer_bs: "tabler-building-bank",
+    bank_transfer_usd: "tabler-building-bank",
     debit_card: "tabler-credit-card",
     credit_card: "tabler-credit-card",
+    card: "tabler-credit-card",
     binance: "tabler-currency-bitcoin",
     paypal: "tabler-brand-paypal",
+    zelle: "tabler-send",
     credit: "tabler-file-invoice",
     balance: "tabler-wallet",
   };
@@ -1636,7 +1803,7 @@ const isLastPaymentAdded = (payment) => {
 
 // Función para obtener métodos disponibles para una moneda
 const getAvailableMethodsForCurrency = (currency) => {
-  const methods = paymentMethodsByCurrency[currency] || [];
+  const methods = paymentMethodsByCurrency.value[currency] || [];
   return methods.filter((m) => {
     // El método 'credit' está disponible en USD
     if (m.value === "balance") {
@@ -1753,11 +1920,11 @@ const getAvailableMethodsForCurrency = (currency) => {
       <VCardText v-else class="pa-0">
         <CheckoutReceipt 
           :exchange-rates="exchangeRates"
-          :order-data="orderData"
-          :order-products="orderProducts"
+          :order-data="receiptOrderData || orderData"
+          :order-products="receiptOrderProducts.length > 0 ? receiptOrderProducts : orderProducts"
           :selected-currency="selectedCurrency"
           :get-payment-method-label="getPaymentMethodLabel"
-          :payments="payments"
+          :payments="receiptPayments.length > 0 ? receiptPayments : payments"
           :get-product-price="getProductPrice"
           :active-discount-display="activeDiscountDisplay"
           :expiration-discount-total="expirationDiscountTotal"

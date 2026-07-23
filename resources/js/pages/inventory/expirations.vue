@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { generateDonationPDF } from "@/utils/donationPdfGenerator";
@@ -9,7 +9,8 @@ import { useAbility } from "@casl/vue";
 
 const { can } = useAbility();
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
+const isRestaurant = computed(() => false);
+const enableDonations = computed(() => brandingStore.settings.enable_donations ?? true);
 
 import PriceAdjustmentDialog from "@/components/dialogs/PriceAdjustmentDialog.vue";
 import DonationLetterDialog from "@/components/DonationLetterDialog.vue";
@@ -681,7 +682,7 @@ onMounted(() => {
                       </IconBtn>
                     </template>
                   </VTooltip>
-                  <VTooltip v-if="!isRestaurant" text="Imprimir Carta(s) de Donación">
+                  <VTooltip v-if="enableDonations" text="Imprimir Carta(s) de Donación">
                     <template #activator="{ props: tooltipProps }">
                       <div v-bind="tooltipProps" class="d-inline-block">
                         <IconBtn
@@ -736,7 +737,25 @@ onMounted(() => {
 
             <!-- Vista de Móvil (Tarjetas de Resumen) -->
             <div class="d-block d-md-none pa-4">
-              <div v-if="monthlySummaries.length > 0" class="d-flex flex-column gap-3">
+              <!-- Loader esqueleto en móvil -->
+              <div v-if="loadingReports" class="d-flex flex-column gap-3">
+                <VCard v-for="i in 3" :key="i" variant="flat" class="border mb-1 rounded-lg">
+                  <div class="pa-4">
+                    <div class="d-flex justify-space-between align-center mb-4">
+                      <VSkeletonLoader type="text" width="40%" />
+                      <VSkeletonLoader type="avatar" size="24" />
+                    </div>
+                    <VSkeletonLoader type="text" width="100%" class="mb-4" />
+                    <div class="d-flex gap-1 border-t pt-2">
+                      <VSkeletonLoader type="avatar" size="32" class="rounded" />
+                      <VSkeletonLoader type="avatar" size="32" class="rounded" />
+                      <VSkeletonLoader type="avatar" size="32" class="rounded" />
+                    </div>
+                  </div>
+                </VCard>
+              </div>
+
+              <div v-else-if="monthlySummaries.length > 0" class="d-flex flex-column gap-3">
                 <VCard
                   v-for="item in monthlySummaries"
                   :key="item.month"
@@ -762,7 +781,7 @@ onMounted(() => {
                     </div>
 
                     <VRow no-gutters class="border-t">
-                      <VCol :cols="isRestaurant ? 6 : 4" class="border-e">
+                      <VCol :cols="enableDonations ? 4 : 6" class="border-e">
                         <VBtn
                           block
                           variant="text"
@@ -774,7 +793,7 @@ onMounted(() => {
                           <VIcon icon="tabler-eye" size="22" />
                         </VBtn>
                       </VCol>
-                      <VCol v-if="!isRestaurant" cols="4" class="border-e">
+                      <VCol v-if="enableDonations" cols="4" class="border-e">
                         <VBtn
                           block
                           variant="text"
@@ -787,7 +806,7 @@ onMounted(() => {
                           <VIcon icon="tabler-printer" size="22" />
                         </VBtn>
                       </VCol>
-                      <VCol :cols="isRestaurant ? 6 : 4">
+                      <VCol :cols="enableDonations ? 4 : 6">
                         <VBtn
                           block
                           variant="text"
@@ -807,10 +826,16 @@ onMounted(() => {
               </div>
             </div>
 
-            <div v-if="monthlySummaries.length === 0 && !loadingReports" class="pa-6">
-              <VAlert type="info" variant="tonal">
-                No se encontraron registros de lotes caducados.
-              </VAlert>
+            <div v-if="monthlySummaries.length === 0 && !loadingReports" class="d-flex flex-column align-center justify-center pa-8 text-center">
+              <VAvatar size="64" color="primary" variant="tonal" class="mb-4">
+                <VIcon icon="tabler-alert-circle" size="32" />
+              </VAvatar>
+              <h3 class="text-h6 font-weight-bold mb-1">
+                Sin registros de mermas o caducados
+              </h3>
+              <p class="text-caption text-medium-emphasis mb-4" style="max-width: 380px;">
+                Aquí verás las pérdidas mensuales y mermas desincorporadas. Puedes marcar lotes por vencer como caducados arriba para generar bajas en el sistema.
+              </p>
             </div>
 
             <VProgressLinear

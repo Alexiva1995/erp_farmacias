@@ -57,15 +57,25 @@ return new class extends Migration {
             });
             DB::statement('PRAGMA foreign_keys = ON;');
         } else {
-            if ($hasIndex) {
+            try {
                 Schema::table('product_counts', function (Blueprint $table) {
-                    $table->dropIndex('product_counts_product_lot_id_index');
+                    $table->dropForeign(['product_lot_id']);
                 });
+            } catch (\Exception $e) {}
+
+            if ($hasIndex) {
+                try {
+                    Schema::table('product_counts', function (Blueprint $table) {
+                        $table->dropIndex('product_counts_product_lot_id_index');
+                    });
+                } catch (\Exception $e) {}
             }
-            Schema::table('product_counts', function (Blueprint $table) {
-                $table->dropForeign(['product_lot_id']);
-                $table->dropColumn('product_lot_id');
-            });
+
+            try {
+                Schema::table('product_counts', function (Blueprint $table) {
+                    $table->dropColumn('product_lot_id');
+                });
+            } catch (\Exception $e) {}
         }
     }
 

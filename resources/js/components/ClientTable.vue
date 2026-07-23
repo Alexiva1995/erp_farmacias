@@ -2,6 +2,8 @@
 import day from "dayjs";
 import { computed } from "vue";
 
+import AppEmptyState from "@/components/AppEmptyState.vue";
+
 const props = defineProps({
   clients: { type: Array, required: true },
   loading: { type: Boolean, default: false },
@@ -77,6 +79,13 @@ const handleMobilePageChange = (newPage) => {
           :sort-by="sortByModel"
           @update:options="(options) => emit('update:options', options)"
         >
+          <template #no-data>
+            <AppEmptyState
+              title="No hay clientes"
+              message="No se encontraron clientes registrados en el sistema."
+              icon="tabler-users-minus"
+            />
+          </template>
           <template #item.id="{ item }">
             <span class="font-weight-black text-primary">{{ item.id }}</span>
           </template>
@@ -134,9 +143,12 @@ const handleMobilePageChange = (newPage) => {
     <div class="d-block d-md-none pa-2 bg-light">
       <VProgressLinear v-if="props.loading" indeterminate color="primary" class="mb-2" />
       
-      <div v-if="props.clients.length === 0 && !props.loading" class="text-center py-8 text-disabled font-weight-bold uppercase">
-        No se encontraron clientes registrados.
-      </div>
+      <AppEmptyState
+        v-if="props.clients.length === 0 && !props.loading"
+        title="No hay clientes"
+        message="No se encontraron clientes registrados en el sistema."
+        icon="tabler-users-minus"
+      />
 
       <div class="d-flex flex-column gap-3">
         <VCard

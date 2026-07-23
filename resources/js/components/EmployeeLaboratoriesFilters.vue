@@ -1,5 +1,5 @@
 <script setup>
-// Filtros para laboratorios asignados a empleados de productividad
+// Filtros para marcas asignadas a empleados de productividad
 import AppFilterBase from "@/components/AppFilterBase.vue";
 import { computed } from "vue";
 import { useAbility } from "@casl/vue";
@@ -24,8 +24,8 @@ const emit = defineEmits([
 const sortOptions = [
   { title: "Empleado A-Z",      icon: "tabler-sort-ascending-letters",  key: "employee_name",      order: "asc"  },
   { title: "Empleado Z-A",      icon: "tabler-sort-descending-letters", key: "employee_name",      order: "desc" },
-  { title: "Más Laboratorios",  icon: "tabler-sort-descending",         key: "laboratories_count", order: "desc" },
-  { title: "Menos Laboratorios",icon: "tabler-sort-ascending",          key: "laboratories_count", order: "asc"  },
+  { title: "Más Marcas",  icon: "tabler-sort-descending",         key: "laboratories_count", order: "desc" },
+  { title: "Menos Marcas",icon: "tabler-sort-ascending",          key: "laboratories_count", order: "asc"  },
   { title: "Más Recientes",     icon: "tabler-clock",                   key: "created_at",         order: "desc" },
 ];
 
@@ -39,7 +39,7 @@ const hasAdvancedFilters = computed(() => !!props.selectedLaboratory);
     :show-sort="true"
     :sort-options="sortOptions"
     :show-add="can('manage', 'admin')"
-    add-button-text="Asignar Laboratorio"
+    add-button-text="Asignar Marca"
     search-placeholder="Buscar por nombre de empleado..."
     @update:search="emit('update:searchQuery', $event)"
     @clear="emit('clear')"
@@ -47,13 +47,13 @@ const hasAdvancedFilters = computed(() => !!props.selectedLaboratory);
     @sort="emit('sort', $event)"
   >
     <template #advanced-filters>
-      <!-- Laboratorio -->
+      <!-- Marca -->
       <VCol cols="12" sm="6" md="4">
         <VAutocomplete
           :model-value="props.selectedLaboratory"
           :items="props.laboratories"
           :loading="props.loading"
-          placeholder="Laboratorio"
+          placeholder="Marca"
           clearable
           density="compact"
           hide-details

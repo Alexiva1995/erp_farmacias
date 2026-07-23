@@ -21,7 +21,20 @@ class Category extends Authenticatable
         'name',
     ];
 
-     public function offers()
+    protected static function booted()
+    {
+        static::saved(function () {
+            \Illuminate\Support\Facades\Cache::forget('resources.categories');
+            \Illuminate\Support\Facades\Cache::forget('resources.categories.dishes');
+        });
+
+        static::deleted(function () {
+            \Illuminate\Support\Facades\Cache::forget('resources.categories');
+            \Illuminate\Support\Facades\Cache::forget('resources.categories.dishes');
+        });
+    }
+
+    public function offers()
     {
         return $this->hasMany(CategoryOffer::class);
     }

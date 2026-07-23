@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\FireEmployeeRequest;
+use App\Http\Requests\SocialBenefit\UploadSignedSettlementRequest;
 use App\Models\Employee;
 use App\Services\SocialBenefitServices;
 use Illuminate\Http\Request;
@@ -85,13 +86,9 @@ class SocialBenefitController extends Controller
         }
     }
 
-    public function uploadSignedSettlement(Employee $employee, Request $request)
+    public function uploadSignedSettlement(Employee $employee, UploadSignedSettlementRequest $request)
     {
         try {
-            $request->validate([
-                'file' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
-            ]);
-
             $settlement = $employee->settlement;
             if (!$settlement) {
                 return ApiResponse::error('No se encontró un registro de liquidación para este empleado.', 404);

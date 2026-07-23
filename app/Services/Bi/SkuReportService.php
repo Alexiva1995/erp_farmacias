@@ -1,9 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\Bi;
 
 use App\Contracts\Repositories\SkuReportRepositoryInterface;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class SkuReportService
 {
@@ -15,144 +18,219 @@ class SkuReportService
     }
 
     /**
-     * Genera el reporte de Margen Real calculando las 4 capas
+     * Genera el reporte de Margen Real calculando las capas en SQL.
      */
     public function generateReport(array $filters, $perPage = 15)
     {
-        // Traer base query paginada
-        $query = $this->skuReportRepository->getBaseQuery($filters);
+        $baseQuery = $this->skuReportRepository->getBaseQuery($filters);
 
-        // Opcional: Sorting
+        $minDate = '2026-04-01 00:00:00';
+        $startDate = !empty($filters['start_date']) ? $filters['start_date'] . ' 00:00:00' : $minDate;
+        if ($startDate < $minDate) {
+            $startDate = $minDate;
+        }
+
+        $expiredQuery = DB::table('expired_logs')
+            ->select('product_id', DB::raw('SUM(total_lost_value) as total_expired_cost'))
+            ->where('created_at', '>=', $startDate);
+        if (!empty($filters['end_date'])) {
+            $expiredQuery->where('created_at', '<=', $filters['end_date'] . ' 23:59:59');
+        }
+        $expiredQuery->groupBy('product_id');
+
+        $wrappedQuery = DB::table(DB::raw("({$baseQuery->toSql()}) as sub"))
+            ->select([
+                'sub.*',
+                DB::raw('COALESCE(expired.total_expired_cost, 0) as loss_value'),
+                DB::raw('(sub.total_revenue - sub.total_historical_cost) as net_margin_value'),
+                DB::raw('(sub.total_revenue - sub.total_historical_cost - COALESCE(expired.total_expired_cost, 0)) as real_margin_value'),
+                DB::raw('CASE WHEN sub.total_revenue > 0 THEN ((sub.total_revenue - sub.total_historical_cost) / sub.total_revenue) * 100 ELSE 0 END as net_margin_percent'),
+                DB::raw('CASE WHEN sub.total_revenue > 0 THEN ((sub.total_revenue - sub.total_historical_cost - COALESCE(expired.total_expired_cost, 0)) / sub.total_revenue) * 100 ELSE 0 END as real_margin_percent'),
+            ])
+            ->leftJoinSub($expiredQuery, 'expired', 'sub.product_id', '=', 'expired.product_id');
+
+        // Extraer los bindings originales de cada query
+        $baseBindings = $baseQuery->getBindings();
+        $expiredBindings = $expiredQuery->getBindings();
+
+        // Limpiar todas las claves de bindings para evitar que Laravel arrastre duplicados en 'where' o 'union'
+        $ref = new \ReflectionClass($wrappedQuery);
+        $prop = $ref->getProperty('bindings');
+        $prop->setAccessible(true);
+        
+        $rawBindings = [
+            'select' => [],
+            'from' => [],
+            'join' => array_merge($baseBindings, $expiredBindings),
+            'where' => [],
+            'groupBy' => [],
+            'having' => [],
+            'order' => [],
+            'union' => [],
+            'unionOrder' => [],
+        ];
+        
+        $prop->setValue($wrappedQuery, $rawBindings);
+
+        if (!empty($filters['semaphore'])) {
+            $wrappedQuery->where(function ($q) use ($filters) {
+                if ($filters['semaphore'] === 'verde') {
+                    $q->whereRaw('CASE WHEN sub.total_revenue > 0 THEN ((sub.total_revenue - sub.total_historical_cost - COALESCE(expired.total_expired_cost, 0)) / sub.total_revenue) * 100 ELSE 0 END > 25');
+                } elseif ($filters['semaphore'] === 'amarillo') {
+                    $q->whereRaw('CASE WHEN sub.total_revenue > 0 THEN ((sub.total_revenue - sub.total_historical_cost - COALESCE(expired.total_expired_cost, 0)) / sub.total_revenue) * 100 ELSE 0 END BETWEEN 10 AND 25');
+                } elseif ($filters['semaphore'] === 'rojo') {
+                    $q->whereRaw('CASE WHEN sub.total_revenue > 0 THEN ((sub.total_revenue - sub.total_historical_cost - COALESCE(expired.total_expired_cost, 0)) / sub.total_revenue) * 100 ELSE 0 END BETWEEN 0 AND 9.9999');
+                } elseif ($filters['semaphore'] === 'negro') {
+                    $q->whereRaw('CASE WHEN sub.total_revenue > 0 THEN ((sub.total_revenue - sub.total_historical_cost - COALESCE(expired.total_expired_cost, 0)) / sub.total_revenue) * 100 ELSE 0 END < 0')
+                      ->orWhere('sub.total_revenue', '<=', 0);
+                }
+            });
+        }
+
         if (!empty($filters['sortBy']) && !empty($filters['orderBy'])) {
-             // Si el sort es por un campo calculado (como real_margin), no se puede hacer en SQL directo de esta forma sencilla,
-             // habría que ordenar la colección después. Pero soportamos orden SQL básico:
-             $allowedDbSorts = ['total_sold', 'product_name'];
-             if(in_array($filters['sortBy'], $allowedDbSorts)) {
-                 $query->orderBy($filters['sortBy'], $filters['orderBy']);
-             }
+            $allowedSorts = ['total_sold', 'product_name', 'real_margin_percent', 'gross_margin_percent', 'net_margin_percent'];
+            if (in_array($filters['sortBy'], $allowedSorts)) {
+                $wrappedQuery->orderBy($filters['sortBy'], $filters['orderBy']);
+            }
         } else {
-             $query->orderBy('total_revenue', 'desc');
+            $wrappedQuery->orderBy('total_revenue', 'desc');
         }
 
-        $paginated = $query->paginate($perPage);
+        // Obtener el conteo total envolviendo el SQL para evitar que Laravel genere count(*) incorrecto
+        $totalCountResult = DB::select("select count(*) as cnt from (" . $wrappedQuery->toSql() . ") as tmp", $wrappedQuery->getBindings());
+        $total = $totalCountResult[0]->cnt ?? 0;
 
-        // Traer datos de pérdidas (Capa 3) solo para los períodos
-        // Nota: para que sea exacto y rápido, filtramos por los IDs recolectados
-        $productIds = collect($paginated->items())->pluck('product_id')->toArray();
-        if(empty($productIds)) {
-            return $paginated;
-        }
+        // Paginación manual para evitar que Laravel intente compilar count(*) directamente
+        $page = \Illuminate\Pagination\Paginator::resolveCurrentPage() ?: 1;
+        $offset = ($page - 1) * $perPage;
+        $paginatedSql = $wrappedQuery->toSql() . " LIMIT " . (int)$perPage . " OFFSET " . (int)$offset;
+        $itemsData = DB::select($paginatedSql, $wrappedQuery->getBindings());
 
-        $filters['product_ids'] = $productIds;
-        $expiredData = $this->skuReportRepository->getExpiredProducts($filters);
-        // $returnedData = $this->skuReportRepository->getReturnedProducts($filters);
+        $items = collect($itemsData)->map(function ($item) {
+            $realMarginPercent = (float) $item->real_margin_percent;
+            $totalRevenue = (float) $item->total_revenue;
 
-        // Procesar y calcular capas
-        $calculatedItems = collect($paginated->items())->map(function ($item) use ($expiredData) {
-            
-            // --- CAPA 1: MARGEN BRUTO ---
+            if ($totalRevenue <= 0 || $realMarginPercent < 0) {
+                $semaphoreColor = 'negro';
+            } elseif ($realMarginPercent > 25) {
+                $semaphoreColor = 'verde';
+            } elseif ($realMarginPercent >= 10) {
+                $semaphoreColor = 'amarillo';
+            } else {
+                $semaphoreColor = 'rojo';
+            }
+
             $unitCost = (float) $item->current_cost;
             $listPrice = (float) $item->list_price;
             $totalSoldQty = (float) $item->total_sold;
             
             $grossMarginUnit = $listPrice - $unitCost;
-            $grossMarginTotal = $grossMarginUnit * $totalSoldQty;
-            $grossMarginPercent = $listPrice > 0 ? ($grossMarginUnit / $listPrice) * 100 : 0;
+            $item->gross_margin_value = $grossMarginUnit * $totalSoldQty;
+            $item->gross_margin_percent = $listPrice > 0 ? ($grossMarginUnit / $listPrice) * 100 : 0;
 
-            // --- CAPA 2: MARGEN NETO DE VENTA ---
-            $totalRevenue = (float) $item->total_revenue; // Real cobrado
-            // Aquí la magia principal: usamos el costo histórico del momento exacto de la venta (order_details), 
-            // no el current_cost del maestro de productos de hoy.
-            $totalCost = (float) $item->total_historical_cost;
-            
-            $netMarginTotal = $totalRevenue - $totalCost;
-            $netMarginPercent = $totalRevenue > 0 ? ($netMarginTotal / $totalRevenue) * 100 : 0;
-            
-            // Descuento promedio aplicado
             $discountAvgAmount = $item->total_discount_amount > 0 && $totalSoldQty > 0 
                 ? ($item->total_discount_amount / $totalSoldQty) : 0;
-            $discountAvgPercent = $listPrice > 0 ? ($discountAvgAmount / $listPrice) * 100 : 0;
+            $item->discount_avg_percent = $listPrice > 0 ? ($discountAvgAmount / $listPrice) * 100 : 0;
 
-            // --- CAPA 3: MARGEN OPERATIVO (Perdidas SKU) ---
-            $expiredInfo = $expiredData->get($item->product_id);
-            $lossValue = $expiredInfo ? (float) $expiredInfo->total_expired_cost : 0;
-            
-            $realMarginTotal = $netMarginTotal - $lossValue;
-            $realMarginPercent = $totalRevenue > 0 ? ($realMarginTotal / $totalRevenue) * 100 : 0;
-
-            // --- CAPA 4: SEMÁFORO DEL MARGEN REAL ---
-            $semaphoreColor = 'negro'; // Default negativo
-            if ($realMarginPercent > 25) {
-                $semaphoreColor = 'verde';
-            } elseif ($realMarginPercent >= 10 && $realMarginPercent <= 25) {
-                $semaphoreColor = 'amarillo';
-            } elseif ($realMarginPercent >= 0 && $realMarginPercent < 10) {
-                $semaphoreColor = 'rojo';
-            }
-
-            // Inyectar datos calculados al item para devolver
-            $item->gross_margin_value = $grossMarginTotal;
-            $item->gross_margin_percent = $grossMarginPercent;
-            
-            $item->discount_avg_percent = $discountAvgPercent;
-
-            $item->net_margin_value = $netMarginTotal;
-            $item->net_margin_percent = $netMarginPercent;
-
-            $item->loss_value = $lossValue;
-
-            $item->real_margin_value = $realMarginTotal;
-            $item->real_margin_percent = $realMarginPercent;
-            
             $item->semaphore = $semaphoreColor;
 
             return $item;
         });
 
-        // Ordenamiento en memoria si se solicitó un campo calculado
-        if (!empty($filters['sortBy']) && in_array($filters['sortBy'], ['real_margin_percent', 'gross_margin_percent'])) {
-            $descending = ($filters['orderBy'] ?? 'desc') === 'desc';
-            $calculatedItems = $calculatedItems->sortBy($filters['sortBy'], SORT_REGULAR, $descending)->values();
-        }
-
-        // Reconstruimos la paginación con los nuevos ítems
-        $paginated->setCollection($calculatedItems);
+        $paginated = new \Illuminate\Pagination\LengthAwarePaginator(
+            $items,
+            $total,
+            $perPage,
+            $page,
+            ['path' => \Illuminate\Pagination\Paginator::resolveCurrentPath()]
+        );
 
         return $paginated;
     }
 
     /**
-     * Calcula los resúmenes financieros globales de toda la consulta (sin paginar)
+     * Calcula los resúmenes financieros globales de toda la consulta (sin paginar) de manera optimizada.
      */
     public function getGlobalSummary(array $filters): array
     {
-        // 1. Obtener la consulta base 
-        // Nota: para un reporte real con muchísimos datos esto podría optimizarse con SUMs en BD, 
-        // pero la complejidad de los % obliga a procesarlos en memoria.
-        $allData = $this->generateReport($filters, 999999);
-        $items = collect($allData->items());
+        $baseQuery = $this->skuReportRepository->getBaseQuery($filters);
+        
+        $totals = DB::table(DB::raw("({$baseQuery->toSql()}) as sub"))
+            ->mergeBindings($baseQuery->getQuery())
+            ->select([
+                DB::raw('SUM(total_revenue) as total_revenue'),
+                DB::raw('SUM(total_historical_cost) as total_historical_cost'),
+                DB::raw('SUM(total_discount_amount) as total_discounts'),
+            ])
+            ->first();
 
-        // Aplicamos el filtro semáforo si está presente (ya que se aplica post-query)
-        if (!empty($filters['semaphore'])) {
-            $items = $items->where('semaphore', $filters['semaphore'])->values();
+        $totalRevenue = $totals ? (float) $totals->total_revenue : 0.0;
+        $totalHistoricalCost = $totals ? (float) $totals->total_historical_cost : 0.0;
+        $totalDiscountAmount = $totals ? (float) $totals->total_discounts : 0.0;
+
+        $minDate = '2026-04-01 00:00:00';
+        $startDate = !empty($filters['start_date']) ? $filters['start_date'] . ' 00:00:00' : $minDate;
+        if ($startDate < $minDate) {
+            $startDate = $minDate;
         }
 
-        $totalRevenue = $items->sum('total_revenue');
-        $totalHistoricalCost = $items->sum('total_historical_cost');
-        $totalLosses = $items->sum('loss_value');
-        $totalDiscountAmount = $items->sum('total_discount_amount');
+        $expiredQuery = DB::table('expired_logs')
+            ->select('product_id', DB::raw('SUM(total_lost_value) as total_expired_cost'))
+            ->where('created_at', '>=', $startDate);
+        if (!empty($filters['end_date'])) {
+            $expiredQuery->where('created_at', '<=', $filters['end_date'] . ' 23:59:59');
+        }
+        $expiredQuery->groupBy('product_id');
 
-        // Productos en alertas rojas / negras (Pérdidas o riesgo)
-        $criticalSkus = $items->filter(function($i) {
-            return in_array($i->semaphore, ['rojo', 'negro']);
-        })->count();
-        
+        $totalLosses = DB::table('expired_logs')
+            ->where('created_at', '>=', $startDate);
+        if (!empty($filters['end_date'])) {
+            $totalLosses->where('created_at', '<=', $filters['end_date'] . ' 23:59:59');
+        }
+        $totalLosses = (float) $totalLosses->sum('total_lost_value');
+
         $netMarginTotal = $totalRevenue - $totalHistoricalCost;
         $globalMarginNet = $totalRevenue > 0 ? ($netMarginTotal / $totalRevenue) * 100 : 0;
         
-        // El Margen Real Global es (Revenue - Costo Histórico - Mermas)
         $realMarginTotal = $netMarginTotal - $totalLosses;
         $globalMarginReal = $totalRevenue > 0 ? ($realMarginTotal / $totalRevenue) * 100 : 0;
+
+        // Contar SKUs críticos en pérdida directa de forma 100% optimizada en BD
+        $criticalQuery = DB::table(DB::raw("({$baseQuery->toSql()}) as sub"))
+            ->select([
+                'sub.*',
+                DB::raw('COALESCE(expired.total_expired_cost, 0) as loss_value'),
+            ])
+            ->leftJoinSub($expiredQuery, 'expired', 'sub.product_id', '=', 'expired.product_id')
+            ->where(function ($q) {
+                $q->whereRaw('((sub.total_revenue - sub.total_historical_cost - COALESCE(expired.total_expired_cost, 0)) / NULLIF(sub.total_revenue, 0)) * 100 < 10')
+                  ->orWhere('sub.total_revenue', '<=', 0);
+            });
+
+        // Extraer los bindings originales
+        $baseBindings = $baseQuery->getBindings();
+        $expiredBindings = $expiredQuery->getBindings();
+
+        // Limpiar todas las claves de bindings para evitar que Laravel arrastre duplicados en 'where' o 'union'
+        $ref = new \ReflectionClass($criticalQuery);
+        $prop = $ref->getProperty('bindings');
+        $prop->setAccessible(true);
+        
+        $rawBindings = [
+            'select' => [],
+            'from' => [],
+            'join' => array_merge($baseBindings, $expiredBindings),
+            'where' => [0],
+            'groupBy' => [],
+            'having' => [],
+            'order' => [],
+            'union' => [],
+            'unionOrder' => [],
+        ];
+        
+        $prop->setValue($criticalQuery, $rawBindings);
+
+        $criticalSkus = $criticalQuery->count();
 
         return [
             'total_revenue' => $totalRevenue,

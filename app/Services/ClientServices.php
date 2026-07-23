@@ -1,13 +1,15 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Contracts\Client;
 use App\Data\CreateClientData;
 use App\Data\EditClientData;
 use App\Exports\ClientsExport;
-use App\Repository\ClientRepository;
-use App\Repository\CompanyRepository;
+use App\Repositories\ClientRepository;
+use App\Repositories\CompanyRepository;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Pagination\LengthAwarePaginator;

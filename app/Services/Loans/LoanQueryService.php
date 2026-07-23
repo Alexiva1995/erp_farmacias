@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\Loans;
 
 use App\Models\Loan;
@@ -13,13 +15,17 @@ class LoanQueryService
      */
     public function calculateTotalBalance(): float
     {
-        $loans = Loan::all();
-        $totalBalance = 0;
+        $loans = Loan::withSum(['payments' => function ($q) {
+            $q->where('status', \App\Models\Expense::STATUS_APPROVED);
+        }], 'amount')->get();
+
+        $totalBalance = 0.0;
 
         foreach ($loans as $loan) {
-            if (!$loan->isPaidOff()) {
-                $totalBalance += $loan->getRemainingBalance();
-            }
+            $totalAmount = (float) ($loan->monthly_payment * $loan->total_installments);
+            $totalPaid = (float) ($loan->payments_sum_amount ?? 0.0);
+            $remaining = max(0.0, $totalAmount - $totalPaid);
+            $totalBalance += $remaining;
         }
 
         return (float) $totalBalance;
@@ -32,18 +38,25 @@ class LoanQueryService
      */
     public function getDetailedBalances(): array
     {
-        $loans = Loan::all();
+        $loans = Loan::withSum(['payments' => function ($q) {
+            $q->where('status', \App\Models\Expense::STATUS_APPROVED);
+        }], 'amount')->get();
+
         $details = [];
 
         foreach ($loans as $loan) {
+            $totalAmount = (float) ($loan->monthly_payment * $loan->total_installments);
+            $totalPaid = (float) ($loan->payments_sum_amount ?? 0.0);
+            $remaining = max(0.0, $totalAmount - $totalPaid);
+
             $details[] = [
                 'id' => $loan->id,
                 'loan_date' => $loan->loan_date->format('Y-m-d'),
-                'monthly_payment' => $loan->monthly_payment,
-                'total_installments' => $loan->total_installments,
-                'total_amount' => $loan->getTotalAmount(),
-                'remaining_balance' => $loan->getRemainingBalance(),
-                'is_paid_off' => $loan->isPaidOff(),
+                'monthly_payment' => (float) $loan->monthly_payment,
+                'total_installments' => (int) $loan->total_installments,
+                'total_amount' => $totalAmount,
+                'remaining_balance' => $remaining,
+                'is_paid_off' => $remaining <= 0.0,
             ];
         }
 
@@ -57,7 +70,7 @@ class LoanQueryService
      */
     public function calculateMonthlyPayments(): float
     {
-        return Loan::whereRaw('? < DATE_ADD(loan_date, INTERVAL total_installments MONTH)', [now()])
+        return (float) Loan::whereRaw('? < DATE_ADD(loan_date, INTERVAL total_installments MONTH)', [now()])
             ->sum('monthly_payment');
     }
 
@@ -68,18 +81,37 @@ class LoanQueryService
      */
     public function getLoansStats(): array
     {
-        $loans = Loan::all();
+        $loans = Loan::withSum(['payments' => function ($q) {
+            $q->where('status', \App\Models\Expense::STATUS_APPROVED);
+        }], 'amount')->get();
 
-        $activeLoans = $loans->filter(fn($loan) => !$loan->isPaidOff());
-        $paidOffLoans = $loans->filter(fn($loan) => $loan->isPaidOff());
+        $activeLoansCount = 0;
+        $paidOffLoansCount = 0;
+        $totalBalance = 0.0;
+        $totalOriginalAmount = 0.0;
+
+        foreach ($loans as $loan) {
+            $totalAmount = (float) ($loan->monthly_payment * $loan->total_installments);
+            $totalPaid = (float) ($loan->payments_sum_amount ?? 0.0);
+            $remaining = max(0.0, $totalAmount - $totalPaid);
+
+            if ($remaining <= 0.0) {
+                $paidOffLoansCount++;
+            } else {
+                $activeLoansCount++;
+            }
+
+            $totalBalance += $remaining;
+            $totalOriginalAmount += $totalAmount;
+        }
 
         return [
             'total_loans' => $loans->count(),
-            'active_loans' => $activeLoans->count(),
-            'paid_off_loans' => $paidOffLoans->count(),
-            'total_balance' => $this->calculateTotalBalance(),
+            'active_loans' => $activeLoansCount,
+            'paid_off_loans' => $paidOffLoansCount,
+            'total_balance' => (float) $totalBalance,
             'monthly_payments' => $this->calculateMonthlyPayments(),
-            'total_original_amount' => $loans->sum(fn($loan) => $loan->getTotalAmount()),
+            'total_original_amount' => (float) $totalOriginalAmount,
         ];
     }
 
@@ -91,7 +123,9 @@ class LoanQueryService
      */
     public function getFilteredQuery($request)
     {
-        $query = Loan::query();
+        $query = Loan::query()->withSum(['payments' => function ($q) {
+            $q->where('status', \App\Models\Expense::STATUS_APPROVED);
+        }], 'amount');
 
         // Filtro por año del préstamo
         if ($request->filled('loanYear')) {

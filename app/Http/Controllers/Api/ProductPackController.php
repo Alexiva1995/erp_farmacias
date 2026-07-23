@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\ProductPack;
+use App\Http\Requests\Offers\StoreProductPackRequest;
+use App\Http\Requests\Offers\UpdateProductPackRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -73,37 +75,10 @@ class ProductPackController extends Controller
         }
     }
 
-    /**
-     * Crear un nuevo pack.
-     */
-    public function store(Request $request): JsonResponse
+    public function store(StoreProductPackRequest $request): JsonResponse
     {
         DB::beginTransaction();
         try {
-            $validator = Validator::make($request->all(), [
-                'name' => 'required|string|max:100',
-                'pack_config' => 'required|array',
-                'total_price' => 'required|numeric|min:0',
-                'max_quantity' => 'nullable|integer|min:1',
-                'max_sale_date' => 'nullable|date|after_or_equal:today',
-                'is_active' => 'boolean',
-            ], [
-                'name.required' => 'El nombre del pack es obligatorio.',
-                'pack_config.required' => 'La configuración del pack es obligatoria.',
-                'total_price.required' => 'El precio total es obligatorio.',
-                'total_price.min' => 'El precio total no puede ser negativo.',
-                'max_quantity.min' => 'La cantidad máxima debe ser al menos 1.',
-                'max_sale_date.after_or_equal' => 'La fecha máxima de venta debe ser hoy o una fecha posterior.',
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Error de validación',
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-
             // Validar la estructura de pack_config
             $configErrors = $this->validatePackConfig($request->pack_config);
             if (!empty($configErrors)) {
@@ -171,7 +146,7 @@ class ProductPackController extends Controller
     /**
      * Actualizar el pack.
      */
-    public function update(Request $request, $id): JsonResponse
+    public function update(UpdateProductPackRequest $request, $id): JsonResponse
     {
         DB::beginTransaction();
         try {
@@ -182,23 +157,6 @@ class ProductPackController extends Controller
                     'success' => false,
                     'message' => 'Pack no encontrado'
                 ], 404);
-            }
-
-            $validator = Validator::make($request->all(), [
-                'name' => 'sometimes|required|string|max:100',
-                'pack_config' => 'sometimes|required|array',
-                'total_price' => 'sometimes|required|numeric|min:0',
-                'max_quantity' => 'nullable|integer|min:1',
-                'max_sale_date' => 'nullable|date|after_or_equal:today',
-                'is_active' => 'boolean',
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Error de validación',
-                    'errors' => $validator->errors()
-                ], 422);
             }
 
             // Validar pack_config si se está actualizando

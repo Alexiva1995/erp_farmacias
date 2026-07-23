@@ -228,6 +228,27 @@ const handleRemoveItem = (productId) => {
   }
 };
 
+const handleRejectAiMatch = (productId) => {
+  if (tipo_de_vista.value) {
+    gruposData.grupos = gruposData.grupos.map(g => {
+      const nuevosProductos = g.productos.map(p => {
+        if (p.id === productId) {
+          return { ...p, best_supplier: null, best_supplier_price: null };
+        }
+        return p;
+      });
+      return { ...g, productos: nuevosProductos };
+    });
+  } else {
+    statuModule.items = statuModule.items.map(p => {
+      if (p.id === productId) {
+        return { ...p, best_supplier: null, best_supplier_price: null };
+      }
+      return p;
+    });
+  }
+};
+
 let filterTimeout = null;
 watch(
   [
@@ -588,6 +609,7 @@ onMounted(async () => {
           @product-scarce-toggled="handleProductScarceToggled"
           @open-comparator="handleOpenComparator"
           @remove-item="handleRemoveItem"
+          @reject-ai-match="handleRejectAiMatch"
         />
         <!-- Vista Individual: tabla estándar paginada -->
         <SupplierIaOrderAssistantIndividualTable
@@ -607,6 +629,7 @@ onMounted(async () => {
           @product-scarce-toggled="handleProductScarceToggled"
           @open-comparator="handleOpenComparator"
           @remove-item="handleRemoveItem"
+          @reject-ai-match="handleRejectAiMatch"
         />
       </div>
     </div>

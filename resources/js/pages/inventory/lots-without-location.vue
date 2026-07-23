@@ -3,7 +3,7 @@ import LotsWithoutLocationTable from "@/components/LotsWithoutLocationTable.vue"
 import ProductFilters from "@/components/ProductFilters.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { onMounted, ref, watch } from "vue";
+import { onMounted, onUnmounted, ref, watch } from "vue";
 
 const lots = ref([]);
 const totalLots = ref(0);
@@ -84,6 +84,8 @@ const fetchLots = async () => {
     startDate: startDate.value,
     endDate: endDate.value,
     isStrictSearch: isStrictSearch.value,
+    // Filtro de stock — antes no se enviaba al API aunque existía el selector
+    ...(stockStatusFilter.value !== null && { hasStock: stockStatusFilter.value }),
   };
 
   Object.keys(params).forEach(
@@ -92,13 +94,10 @@ const fetchLots = async () => {
 
   try {
     const response = await axios.get("/product-lots/without-location", { params });
-    if (response.data?.data) {
-      lots.value = response.data.data.data || response.data.data || [];
-      totalLots.value = response.data.data.total || 0;
-    } else {
-      lots.value = [];
-      totalLots.value = 0;
-    }
+    // La API retorna { data: { data: [...], total: N } }
+    const payload = response.data?.data;
+    lots.value = payload?.data || payload || [];
+    totalLots.value = payload?.total || 0;
   } catch (error) {
     console.error("Hubo un error al obtener los lotes:", error);
     toast.error("Error al obtener los lotes sin ubicación.");
@@ -106,6 +105,8 @@ const fetchLots = async () => {
     loading.value = false;
   }
 };
+
+onUnmounted(() => clearTimeout(debounceTimer));
 
 let debounceTimer;
 watch(

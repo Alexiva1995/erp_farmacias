@@ -12,7 +12,15 @@ export const useBrandingStore = defineStore('branding', () => {
     secondary_color: '#7A0099',
     tertiary_color: '#F5C842',
     footer_text: 'Todos los derechos reservados de Tova',
-    business_type: 'pharmacy',
+    business_type: localStorage.getItem('business_type') || 'pharmacy',
+    default_currency: 'USD',
+    enable_product_types: true,
+    enabled_product_types: ['redundantes', 'col', 'iva', 'exento', 'novaventa', 'eliminados', 'pvp', 'ingredients', 'mixed'],
+    enable_favorites:  true,
+    enable_variations: true,
+    enable_merge:      false,
+    enable_groups:     true,
+    enabled_modules: ['pharmacy'],
     ecommerce_menu: [],
     hero_title: 'YOUR NEW BOMB NUDES',
     hero_subtitle: 'Tonos sofisticados, texturas sedosas y fórmulas de alta gama diseñadas para realzar tu belleza natural con un acabado impecable de pasarela.',
@@ -31,35 +39,71 @@ export const useBrandingStore = defineStore('branding', () => {
     section3_button_text: 'COMPRAR BRONCEADOR',
     cyclic_inventory_mode: 'double',
     cyclic_inventory_barcode_required: true,
+    tpv_payment_methods: null,
+    expense_mode: 'real',
+    expense_auto_approve: false,
+    enable_invoices: true,
+    enable_invoice_locations: true,
   })
 
   const isLoading = ref(false)
+  const isLoaded = ref(false)
   const exchangeRates = ref([])
+  let fetchPromise = null
 
-  const fetchSettings = async () => {
-    isLoading.value = true
-    try {
-      const response = await axios.get('/public/general-settings')
-      settings.value = { ...settings.value, ...response.data.data }
-
-      // Obtener tasas de cambio desde el API público
-      try {
-        const ratesResponse = await axios.get('/public/exchange-rates')
-        exchangeRates.value = ratesResponse.data
-      } catch (e) {
-        console.warn('Error fetching exchange rates in branding store:', e)
-      }
-
-      // Aplicar colores dinámicamente al DOM
-      applyThemeColors()
-    } catch (error) {
-      // Silenciamos el 401 (Unauthorized) ya que es normal en accesos públicos / antes del login
-      if (error?.response?.status !== 401) {
-        console.error('Error fetching branding settings:', error)
-      }
-    } finally {
-      isLoading.value = false
+  const fetchSettings = async (force = false) => {
+    if (!force && isLoaded.value && settings.value.app_rif) {
+      return
     }
+    
+    if (fetchPromise) {
+      return fetchPromise
+    }
+
+    fetchPromise = (async () => {
+      isLoading.value = true
+      try {
+        const response = await axios.get('/public/general-settings')
+        settings.value = { ...settings.value, ...response.data.data }
+        if (response.data?.data?.business_type) {
+          localStorage.setItem('business_type', response.data.data.business_type)
+        }
+
+        // Obtener configuración de arranque de módulos
+        try {
+          const bootstrapResponse = await axios.get('/public/bootstrap-config')
+          if (bootstrapResponse.data?.data) {
+            settings.value.business_type = bootstrapResponse.data.data.business_type
+            settings.value.enabled_modules = bootstrapResponse.data.data.enabled_modules
+            localStorage.setItem('business_type', bootstrapResponse.data.data.business_type)
+          }
+        } catch (e) {
+          console.warn('Error fetching bootstrap config:', e)
+        }
+
+        // Obtener tasas de cambio desde el API público
+        try {
+          const ratesResponse = await axios.get('/public/exchange-rates')
+          exchangeRates.value = ratesResponse.data
+        } catch (e) {
+          console.warn('Error fetching exchange rates in branding store:', e)
+        }
+
+        // Aplicar colores dinámicamente al DOM
+        applyThemeColors()
+        isLoaded.value = true
+      } catch (error) {
+        // Silenciamos el 401 (Unauthorized) ya que es normal en accesos públicos / antes del login
+        if (error?.response?.status !== 401) {
+          console.error('Error fetching branding settings:', error)
+        }
+      } finally {
+        isLoading.value = false
+        fetchPromise = null
+      }
+    })()
+
+    return fetchPromise
   }
 
   const applyThemeColors = () => {
@@ -106,11 +150,20 @@ export const useBrandingStore = defineStore('branding', () => {
     return `${r}, ${g}, ${b}`
   }
 
+  // Actualiza solo el campo tpv_payment_methods de forma reactiva
+  const updatePaymentMethods = (methods) => {
+    // Mutación directa de la propiedad para que los computed que dependen de
+    // settings.tpv_payment_methods detecten el cambio sin reemplazar el objeto raíz
+    settings.value.tpv_payment_methods = methods
+  }
+
   return {
     settings,
     exchangeRates,
     isLoading,
+    isLoaded,
     fetchSettings,
+    updatePaymentMethods,
     hexToRgb,
   }
 })

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Repositories\Bi;
 
 use Illuminate\Support\Facades\DB;
@@ -49,13 +51,18 @@ class InventoryCyclicReportRepository
      */
     public function getTrends(array $filters): array
     {
+        $startDate = $filters['start_date'] ?? now()->startOfMonth()->format('Y-m-d');
+        $endDate = $filters['end_date'] ?? now()->format('Y-m-d');
+
         $results = DB::table('product_counts')
-            ->whereIn('status', ['approved', 'pending'])
+            ->join('products', 'products.id', '=', 'product_counts.product_id')
+            ->whereIn('product_counts.status', ['approved', 'pending'])
+            ->whereBetween('product_counts.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->select(
-                DB::raw('DATE_FORMAT(created_at, "%Y-%m") as month'),
+                DB::raw('DATE_FORMAT(product_counts.created_at, "%Y-%m") as month'),
                 DB::raw('SUM(CASE WHEN discrepancy < 0 THEN ABS(discrepancy) ELSE 0 END) as missing'),
                 DB::raw('SUM(CASE WHEN discrepancy > 0 THEN discrepancy ELSE 0 END) as surplus'),
-                DB::raw('SUM(discrepancy * -1 * (SELECT unit_cost FROM products WHERE products.id = product_counts.product_id)) as financial_impact')
+                DB::raw('SUM(discrepancy * -1 * products.unit_cost) as financial_impact')
             )
             ->groupBy('month')
             ->orderBy('month')

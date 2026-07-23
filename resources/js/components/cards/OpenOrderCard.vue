@@ -4,7 +4,11 @@ import { toast } from "@/plugins/sweetalert";
 import { formatCurrency } from "@/utils/currencyFormatter";
 import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
 import Swal from "sweetalert2";
-import { computed, defineProps, ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
+import { useBrandingStore } from "@/stores/useBrandingStore";
+
+const brandingStore = useBrandingStore();
+const enableFlashCheckout = computed(() => !!brandingStore.settings?.enable_flash_checkout);
 
 const props = defineProps({
   orderProducts: {
@@ -130,29 +134,46 @@ const emit = defineEmits([
   "flash-checkout",
 ]);
 
-const paymentMethodsByCurrency = {
-  COP: [
-    { label: 'Efectivo', value: 'cash' }
-  ],
-  USD: [
-    { label: 'Efectivo', value: 'cash' },
-    { label: 'Binance', value: 'binance' }
-  ],
-  BS: [
-    { label: 'Pago Móvil', value: 'mobile_payment' }
-  ]
-};
+// Métodos de pago dinámicos leídos de la configuración del sistema
+const paymentMethodsByCurrency = computed(() => {
+  const fallback = {
+    COP: [{ label: 'Efectivo', value: 'cash', enabled: true }],
+    USD: [
+      { label: 'Efectivo', value: 'cash', enabled: true },
+      { label: 'Binance', value: 'binance', enabled: true }
+    ],
+    BS: [{ label: 'Pago Móvil', value: 'mobile_payment', enabled: true }]
+  };
+
+  const configured = brandingStore.settings?.tpv_payment_methods || fallback;
+
+  // Filtrar por cada moneda únicamente los métodos que estén habilitados
+  const filtered = {};
+  Object.keys(configured).forEach(currency => {
+    filtered[currency] = (configured[currency] || []).filter(method => method.enabled !== false);
+  });
+
+  return filtered;
+});
 
 const selectedPaymentMethod = ref('cash');
 
 watch(() => props.selectedDisplayCurrency, (newCurrency) => {
-  const methods = paymentMethodsByCurrency[newCurrency] || [];
+  const methods = paymentMethodsByCurrency.value[newCurrency] || [];
   if (methods.length > 0) {
     selectedPaymentMethod.value = methods[0].value;
   } else {
     selectedPaymentMethod.value = 'cash';
   }
 }, { immediate: true });
+
+// Watcher adicional para actualizar selectedPaymentMethod si cambian los metodos de pago activos en caliente
+watch(paymentMethodsByCurrency, (newVal) => {
+  const methods = newVal[props.selectedDisplayCurrency] || [];
+  if (methods.length > 0 && !methods.some(m => m.value === selectedPaymentMethod.value)) {
+    selectedPaymentMethod.value = methods[0].value;
+  }
+}, { deep: true });
 
 const handleFlashCheckout = () => {
   emit('flash-checkout', {
@@ -162,8 +183,12 @@ const handleFlashCheckout = () => {
 };
 
 const discountOptions = computed(() => {
-  const options = ["Medico", "Recipe"];
+  const enabledOffers = brandingStore.settings?.enabled_offer_types || ['general', 'individual', 'category', 'pack', 'company', 'doctor', 'prescription', 'expiration'];
+  const options = [];
+  if (enabledOffers.includes('doctor')) options.push("Medico");
+  if (enabledOffers.includes('prescription')) options.push("Recipe");
   if (
+    enabledOffers.includes('company') &&
     props.cliente &&
     props.cliente.company_id !== null &&
     props.cliente.company_id !== undefined
@@ -245,7 +270,22 @@ const Identidad = computed(() => {
     : "";
 });
 
-const availableCurrency = ref(["USD", "BS", "COP"]);
+const availableCurrency = computed(() => {
+  const defaults = ["USD", "BS", "COP"];
+  const configured = brandingStore.settings?.tpv_payment_methods;
+  
+  if (!configured) return defaults;
+  
+  const filtered = defaults.filter(currency => {
+    const methods = configured[currency];
+    if (Array.isArray(methods)) {
+      return methods.length > 0 && methods.some(m => m.enabled !== false);
+    }
+    return methods && methods.enabled !== false;
+  });
+
+  return filtered.length > 0 ? filtered : defaults;
+});
 
 const getEffectiveRate = (fromCurrency, toCurrency) => {
   if (fromCurrency === toCurrency) return 1;
@@ -817,7 +857,7 @@ const getIva = (product, currency) => {
           </VMenu>
 
           <!-- Métodos de Pago Rápidos para la moneda activa -->
-          <div class="d-flex align-center gap-1 border rounded-lg pa-1 bg-white shadow-sm me-1 me-sm-2 flex-wrap">
+          <div v-if="enableFlashCheckout" class="d-flex align-center gap-1 border rounded-lg pa-1 bg-white shadow-sm me-1 me-sm-2 flex-wrap">
             <span class="text-super-xs font-weight-black text-uppercase text-disabled px-1">Pago:</span>
             <VBtn
               v-for="method in (paymentMethodsByCurrency[props.selectedDisplayCurrency] || [])"
@@ -838,11 +878,12 @@ const getIva = (product, currency) => {
             <template #activator="{ props: menuProps }">
               <VBtn
                 v-bind="menuProps"
-                variant="tonal"
+                variant="flat"
                 color="primary"
                 size="small"
-                class="rounded-lg font-weight-black"
+                class="rounded-lg font-weight-black px-3"
               >
+                <VIcon start icon="tabler-currency-dollar" size="16" />
                 <span>{{ props.selectedDisplayCurrency }}</span>
                 <VIcon end icon="tabler-chevron-down" size="14" />
               </VBtn>
@@ -861,13 +902,19 @@ const getIva = (product, currency) => {
             </VList>
           </VMenu>
 
-          <VBtn
-            icon="tabler-trash"
-            variant="tonal"
-            color="error"
-            size="x-small"
-            @click="handleCancelarOrder"
-          />
+          <VTooltip text="Cancelar Orden" location="bottom">
+            <template #activator="{ props: tooltipProps }">
+              <VBtn
+                v-bind="tooltipProps"
+                icon="tabler-x"
+                variant="tonal"
+                color="error"
+                size="small"
+                class="ms-1 font-weight-black"
+                @click="handleCancelarOrder"
+              />
+            </template>
+          </VTooltip>
         </div>
       </div>
       
@@ -926,16 +973,16 @@ const getIva = (product, currency) => {
     </VCardItem>
 
     <VCardText class="pa-3">
-      <!-- Barra de búsqueda compacta: Visible siempre -->
+      <!-- Barra de búsqueda compacta con Selectores a la derecha -->
       <div class="d-flex align-center justify-space-between mb-4 flex-wrap gap-2 px-1">
          <div class="d-flex align-center gap-2">
             <VIcon icon="tabler-list-details" color="primary" size="18" class="opacity-80" />
             <span class="text-caption font-weight-950 text-primary uppercase letter-spacing-1">Ítems</span>
-            <VChip size="x-small" variant="tonal" color="primary" class="font-weight-black px-2">{{ totalSelectedQuantity }}</VChip>
+            <VChip size="x-small" variant="tonal" color="primary" class="font-weight-black px-2 me-1">{{ totalSelectedQuantity }}</VChip>
          </div>
 
-         <!-- Buscador Refinado y Compacto (Ampliado para mejor visibilidad) -->
-         <div class="d-flex align-center gap-2 flex-grow-1" style="min-inline-size: 280px; max-inline-size: 100%;">
+         <!-- Buscador Refinado y Compacto -->
+         <div class="d-flex align-center gap-2 flex-grow-1" style="min-inline-size: 240px;">
             <AppTextField
               v-model="internalSearchQuery"
               placeholder="Escanear código o ingresar cotización..."
@@ -960,6 +1007,73 @@ const getIva = (product, currency) => {
                  />
               </template>
             </AppTextField>
+         </div>
+
+         <!-- Selectores a la Derecha: Ofertas / Descuentos + Moneda -->
+         <div class="d-flex align-center gap-2 flex-wrap ms-auto">
+            <!-- Selector de Descuentos / Ofertas -->
+            <VMenu v-if="!props.isSportsRental">
+              <template #activator="{ props: menuProps }">
+                <VBtn
+                  v-bind="menuProps"
+                  variant="tonal"
+                  color="primary"
+                  size="small"
+                  class="rounded-lg font-weight-black text-uppercase"
+                  height="36"
+                >
+                  <VIcon start icon="tabler-discount-2" size="16" />
+                  <span>{{ props.selectedDiscountType || 'Ofertas' }}</span>
+                  <VIcon end icon="tabler-chevron-down" size="14" />
+                </VBtn>
+              </template>
+              <VList density="compact" class="rounded-lg shadow-lg">
+                <VListItem
+                  v-for="option in discountOptions"
+                  :key="option"
+                  :value="option"
+                  :active="props.selectedDiscountType === option"
+                  color="primary"
+                  @click="emit('update:selectedDiscountType', option)"
+                >
+                  <VListItemTitle class="font-weight-bold text-uppercase text-caption">{{ option }}</VListItemTitle>
+                </VListItem>
+                <VDivider v-if="props.selectedDiscountType" />
+                <VListItem v-if="props.selectedDiscountType" color="error" @click="emit('update:selectedDiscountType', null)">
+                  <VListItemTitle class="font-weight-bold text-uppercase text-caption text-error">Quitar</VListItemTitle>
+                </VListItem>
+              </VList>
+            </VMenu>
+
+            <!-- Selector de Moneda -->
+            <VMenu>
+              <template #activator="{ props: menuProps }">
+                <VBtn
+                  v-bind="menuProps"
+                  variant="flat"
+                  color="primary"
+                  size="small"
+                  class="rounded-lg font-weight-black px-3"
+                  height="36"
+                >
+                  <VIcon start icon="tabler-currency-dollar" size="16" />
+                  <span>{{ props.selectedDisplayCurrency }}</span>
+                  <VIcon end icon="tabler-chevron-down" size="14" />
+                </VBtn>
+              </template>
+              <VList density="compact" class="rounded-lg shadow-lg">
+                <VListItem
+                  v-for="currencyOption in availableCurrency"
+                  :key="currencyOption"
+                  :value="currencyOption"
+                  :active="props.selectedDisplayCurrency === currencyOption"
+                  color="primary"
+                  @click="selectCurrency(currencyOption)"
+                >
+                  <VListItemTitle class="font-weight-bold text-caption">{{ currencyOption }}</VListItemTitle>
+                </VListItem>
+              </VList>
+            </VMenu>
          </div>
       </div>
 
@@ -1167,7 +1281,7 @@ const getIva = (product, currency) => {
                   <VIcon icon="tabler-circle-check" size="18" class="me-0 me-sm-2" />
                   <span class="d-none d-sm-inline">COBRAR / CERRAR</span>
                 </VBtn>
-                <VTooltip text="Cobro Rápido Flash (Método seleccionado)" location="top">
+                <VTooltip v-if="enableFlashCheckout" text="Cobro Rápido Flash (Método seleccionado)" location="top">
                   <template #activator="{ props: tooltipProps }">
                     <VBtn
                       v-bind="tooltipProps"
@@ -1185,7 +1299,18 @@ const getIva = (product, currency) => {
               </template>
               <template v-else>
                 <VBtn
-                  v-if="!props.orderReserved"
+                  color="error"
+                  variant="tonal"
+                  height="40"
+                  min-inline-size="0"
+                  class="rounded-lg font-weight-950 px-3 px-sm-4 me-1"
+                  @click="handleCancelarOrder"
+                >
+                  <VIcon icon="tabler-trash" size="18" class="me-0 me-sm-1" />
+                  <span class="d-none d-sm-inline">CANCELAR</span>
+                </VBtn>
+
+                <VBtn
                   color="warning"
                   variant="tonal"
                   height="40"
@@ -1208,7 +1333,7 @@ const getIva = (product, currency) => {
                   <VIcon icon="tabler-circle-check" size="20" class="me-0 me-sm-2" />
                   <span class="d-none d-sm-inline">COBRAR AHORA</span>
                 </VBtn>
-                <VTooltip text="Cobro Rápido Flash (Método seleccionado)" location="top">
+                <VTooltip v-if="enableFlashCheckout" text="Cobro Rápido Flash (Método seleccionado)" location="top">
                   <template #activator="{ props: tooltipProps }">
                     <VBtn
                       v-bind="tooltipProps"

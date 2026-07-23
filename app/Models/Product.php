@@ -41,6 +41,7 @@ class Product extends Model
      */
     protected $fillable = [
         'name',
+        'description',
         'active_ingredient',
         'laboratory_id',
         'supplier_id',
@@ -70,6 +71,7 @@ class Product extends Model
         'presentation',
         'unit_of_measure',
         'is_favorite',
+        'price_lock_baseline',
     ];
 
     /**
@@ -101,6 +103,7 @@ class Product extends Model
         'no_pvp' => 'boolean',
         'stock' => 'float',
         'is_favorite' => 'boolean',
+        'price_lock_baseline' => 'float',
     ];
 
 

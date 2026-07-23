@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\Telegram;
 
 use App\Models\Reservation;
@@ -58,6 +60,14 @@ class TelegramWebhookService
 
         // Verificar que el mensaje venga del administrador autorizado
         $adminChatId = config('services.telegram.admin_chat_id');
+        
+        \Log::info('[TelegramWebhook] Mensaje recibido para validar remitente', [
+            'from_id' => $fromId,
+            'admin_chat_id' => $adminChatId,
+            'chat_id' => $chatId,
+            'text' => $text
+        ]);
+
         if (!$adminChatId || (string)$fromId !== (string)$adminChatId) {
             return;
         }
@@ -202,7 +212,7 @@ class TelegramWebhookService
 
             // Caso H: Comando para consultar pagos pendientes de los próximos 7 días
             if ($cleanText === 'pagos pendientes' || $cleanText === '/pagos_pendientes' || $cleanText === 'pagos_pendientes') {
-                $this->sendUpcoming7DaysPayments($chatId);
+                $this->sendOverduePayments($chatId);
                 return;
             }
 
@@ -520,6 +530,11 @@ class TelegramWebhookService
 
         if (str_starts_with($callbackData, 'stockout_auto_')) {
             $this->handleStockoutAutoCallback($callbackData, $callbackQueryId, $messageId, $chatId);
+            return;
+        }
+
+        if (str_starts_with($callbackData, 'falla_aprobar_')) {
+            $this->handleFallaAprobarCallback($callbackData, $callbackQueryId, $messageId, $chatId);
             return;
         }
 
@@ -1405,7 +1420,9 @@ class TelegramWebhookService
 
             // Ordenar proveedores por la fecha de pago más antigua (los que vencen antes van primero)
             usort($suppliersWithDebt, function ($a, $b) {
-                return strcmp($a['earliest_payment_date'], $b['earliest_payment_date']);
+                $dateA = $a['earliest_payment_date'] instanceof \Carbon\Carbon ? $a['earliest_payment_date'] : \Carbon\Carbon::parse($a['earliest_payment_date']);
+                $dateB = $b['earliest_payment_date'] instanceof \Carbon\Carbon ? $b['earliest_payment_date'] : \Carbon\Carbon::parse($b['earliest_payment_date']);
+                return $dateA->timestamp <=> $dateB->timestamp;
             });
 
             // Guardar en la cola y empezar
@@ -1451,7 +1468,7 @@ class TelegramWebhookService
         // Construir el listado detallado de facturas
         $invoicesText = "";
         foreach ($supplier['invoices'] as $inv) {
-            $invoicesText .= "• `{$inv['invoice_number']}` - {$inv['payment_date_formatted']} - " . number_format($inv['remaining_amount'], 2) . " {$inv['currency']}\n";
+            $invoicesText .= "• `{$inv['invoice_number']}` - {$inv['payment_date_formatted']} - " . number_format((float) $inv['remaining_amount'], 2) . " {$inv['currency']}\n";
         }
 
         $msg = "💳 *[PAGO DE PROVEEDOR]*\n\n"
@@ -2132,25 +2149,7 @@ class TelegramWebhookService
      */
     protected function getBotType(): string
     {
-        // 1. Prioridad: Variable de entorno explícita en el .env de cada despliegue
-        $envType = env('TELEGRAM_BOT_TYPE');
-        if ($envType) {
-            return strtolower(trim($envType));
-        }
-
-        // 2. Detección automática por nombre de base de datos activa
-        $dbName = config('database.connections.mysql.database');
-        if (str_contains($dbName, 'farmacia')) {
-            return 'farmacia';
-        }
-        if (str_contains($dbName, 'toffle') || str_contains($dbName, 'minimarket') || str_contains($dbName, 'restaurant')) {
-            return 'restaurante';
-        }
-        if (str_contains($dbName, 'golclub') || str_contains($dbName, 'cancha') || str_contains($dbName, 'reserva')) {
-            return 'canchas';
-        }
-
-        // Permitir todo si no se puede determinar
+        // Habilitar todos los comandos de Telegram sin importar el tipo de negocio
         return 'all';
     }
 
@@ -2830,6 +2829,115 @@ class TelegramWebhookService
     }
 
     /**
+     * Procesar la aprobación de falla de producto y crear la AutoOrder.
+     */
+    protected function handleFallaAprobarCallback(string $callbackData, string $callbackQueryId, ?int $messageId, ?int $chatId): void
+    {
+        // Formato: falla_aprobar_{productId}_{supplierId}_{qty}_{productSupplierId}
+        $parts = explode('_', $callbackData);
+        $productId = (int)$parts[2];
+        $supplierId = (int)$parts[3];
+        $qty = (float)$parts[4];
+        $productSupplierId = isset($parts[5]) ? (int)$parts[5] : null;
+
+        $product = \App\Models\Product::find($productId);
+        $supplier = \App\Models\Supplier::find($supplierId);
+
+        if (!$product || !$supplier) {
+            $this->answerCallback($callbackQueryId, 'Producto o Proveedor no encontrado.');
+            return;
+        }
+
+        try {
+            \Illuminate\Support\Facades\DB::beginTransaction();
+
+            $offer = \App\Models\ProductSupplier::find($productSupplierId);
+            $costoProveedor = (float)($offer ? ($offer->unit_cost_usd_with_discount > 0 ? $offer->unit_cost_usd_with_discount : $offer->unit_cost_usd) : $product->unit_cost);
+
+            // Crear o buscar la AutoOrder pendiente
+            $autoOrder = \App\Models\AutoOrder::firstOrCreate(
+                [
+                    'supplier_id' => $supplierId,
+                    'status' => \App\Enums\AutoOrderStatus::PENDING,
+                ],
+                [
+                    'order_date' => now(),
+                    'total_items' => 0,
+                    'total_quantity' => 0,
+                    'total_amount' => 0,
+                ]
+            );
+
+            // Crear o actualizar detalle
+            $detail = \App\Models\AutoOrderDetail::where('order_id', $autoOrder->id)
+                ->where('product_id', $productId)
+                ->first();
+
+            if ($detail) {
+                $detail->quantity += $qty;
+                $detail->unit_cost = $costoProveedor;
+                $detail->subtotal = (float)$detail->quantity * $costoProveedor;
+                if ($productSupplierId) {
+                    $detail->product_suppliers_id = $productSupplierId;
+                }
+                $detail->save();
+            } else {
+                \App\Models\AutoOrderDetail::create([
+                    'order_id' => $autoOrder->id,
+                    'product_id' => $productId,
+                    'product_suppliers_id' => $productSupplierId,
+                    'quantity' => $qty,
+                    'unit_cost' => $costoProveedor,
+                    'subtotal' => $qty * $costoProveedor,
+                ]);
+            }
+
+            // Recalcular totales de la orden
+            $details = \App\Models\AutoOrderDetail::where('order_id', $autoOrder->id)->get();
+            $autoOrder->update([
+                'total_items' => $details->count(),
+                'total_quantity' => $details->sum('quantity'),
+                'total_amount' => $details->sum('subtotal'),
+            ]);
+
+            \Illuminate\Support\Facades\DB::commit();
+            $this->answerCallback($callbackQueryId, '🛒 Pedido de falla confirmado exitosamente.');
+
+            // Crear mensaje para el proveedor
+            $supplierCode = $offer->cod_supplier ?? 'N/A';
+            $copiaMensaje = "Estimado proveedor *{$supplier->name}*,\n\n";
+            $copiaMensaje .= "Deseo solicitar el siguiente producto:\n";
+            $copiaMensaje .= "• *Producto:* {$product->name}\n";
+            $copiaMensaje .= "• *Código Proveedor:* {$supplierCode}\n";
+            $copiaMensaje .= "• *Cantidad:* {$qty} unidades\n";
+            $copiaMensaje .= "• *Costo:* " . number_format($costoProveedor, 2) . " USD/unid.\n\n";
+            $copiaMensaje .= "Quedo atento a la confirmación de la orden.";
+
+            if ($messageId) {
+                $token = config('services.telegram.bot_token');
+                Http::post("https://api.telegram.org/bot{$token}/editMessageText", [
+                    'chat_id' => $chatId,
+                    'message_id' => $messageId,
+                    'text' => "✅ *[SOLICITUD DE FALLA APROBADA]*\n\n" .
+                              "📦 *Producto:* {$product->name}\n" .
+                              "🏢 *Proveedor:* {$supplier->name}\n" .
+                              "🔢 *Cantidad:* {$qty} unidades\n" .
+                              "💵 *Costo:* " . number_format($costoProveedor, 2) . " USD/unid.\n\n" .
+                              "Se ha agregado exitosamente a la auto-orden de compra en el ERP.\n\n" .
+                              "-------------------------------\n" .
+                              "📋 *Mensaje para enviar al proveedor:*\n\n" .
+                              "```\n" . $copiaMensaje . "\n```",
+                    'parse_mode' => 'Markdown',
+                ]);
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            Log::error("Error procesando falla aprobar callback: " . $e->getMessage());
+            $this->answerCallback($callbackQueryId, '❌ Error al procesar la aprobación.');
+        }
+    }
+
+    /**
      * Activar flujo conversacional para editar la cantidad a pedir.
      */
     protected function handleStockoutEditCallback(string $callbackData, $fromId, string $callbackQueryId, ?int $messageId, ?int $chatId): void
@@ -2959,6 +3067,141 @@ class TelegramWebhookService
             \Illuminate\Support\Facades\DB::rollBack();
             Log::error("Error al procesar unidades personalizadas de stockout: " . $e->getMessage());
             $this->telegramService->sendMessage("❌ Error al registrar el pedido personalizado: " . $e->getMessage(), $chatId);
+        }
+    }
+
+    /**
+     * Consultar y listar deudas vencidas agrupadas por proveedor para Telegram.
+     */
+    public function sendOverduePayments($chatId): void
+    {
+        try {
+            $today = \Carbon\Carbon::today()->toDateString();
+
+            $invoices = \App\Models\Invoice::with(['supplier'])
+                ->where(function ($q) {
+                    $q->whereNull('status_payment')
+                      ->orWhere('status_payment', '!=', 1);
+                })
+                ->where(function ($q) use ($today) {
+                    $q->whereDate('payment_date', '<=', $today)
+                      ->orWhereDate('exp_date', '<', \Carbon\Carbon::today());
+                })
+                ->orderBy('payment_date', 'asc')
+                ->get();
+
+            if ($invoices->isEmpty()) {
+                $this->telegramService->sendMessage("✅ *[PAGOS VENCIDOS]*\n\nNo hay pagos vencidos actualmente en el sistema.", $chatId);
+                return;
+            }
+
+            // Agrupar por proveedor
+            $groupedBySupplier = $invoices->groupBy('supplier_id');
+
+            $msgBlocks = [];
+            $currentBlock = "⚠️ *[REPORTE DE PAGOS VENCIDOS]* ⚠️\n\n";
+
+            foreach ($groupedBySupplier as $supplierId => $group) {
+                $firstInvoice = $group->first();
+                $supplierName = $firstInvoice->supplier->name ?? 'Desconocido';
+                
+                // Obtener fecha de vencimiento más antigua
+                $earliestDate = $group->min('payment_date');
+                $earliestDateFormatted = $earliestDate ? \Carbon\Carbon::parse($earliestDate)->format('d/m/Y') : 'Sin Fecha';
+                
+                $currency = $firstInvoice->currency;
+                $supplierTotalOriginal = 0;
+                $supplierTotalUSD = 0;
+                $facturasCount = 0;
+
+                foreach ($group as $invoice) {
+                    // Calcular saldo restante
+                    $invoicePayments = \App\Models\InvoicePayment::whereHas('invoices', function ($query) use ($invoice) {
+                        $query->where('id', $invoice->id);
+                    })->get();
+
+                    $invoicePaidUSD = 0;
+                    foreach ($invoicePayments as $p) {
+                        if ($p->payment_method === 'USD') {
+                            $invoicePaidUSD += $p->amount;
+                            $rateCurrency = ($p->payment_method === 'COP') ? 'COPC' : $p->payment_method;
+                            $exRate = \App\Models\ExchangeRate::where('currency_code', $rateCurrency)->first();
+                            if ($exRate) {
+                                $invoicePaidUSD += round($p->amount / $exRate->rate, 2);
+                            }
+                        }
+                    }
+
+                    $invoiceRemainingUSD = max(0, $invoice->total_usd - $invoicePaidUSD);
+                    
+                    if ($invoiceRemainingUSD <= 0.01) {
+                        continue;
+                    }
+
+                    if ($invoice->is_indexed && $invoice->currency === 'Bs') {
+                        $bcvRate = \App\Models\ExchangeRate::where('currency_code', 'BS')->first()?->rate ?? 1.00;
+                        $invoiceRemainingOriginal = round($invoice->total_usd * $bcvRate, 2);
+                    } else {
+                        $invoiceRemainingOriginal = $invoice->total_amount;
+
+                        if ($invoicePaidUSD > 0) {
+                            $invoiceRemainingUSD = max(0, $invoice->total_usd - $invoicePaidUSD);
+                            if ($invoice->currency === 'Bs') {
+                                $exchangeRate = \App\Models\ExchangeRate::where('currency_code', 'VES')->first();
+                                if ($exchangeRate) {
+                                    $invoiceRemainingOriginal = round($invoiceRemainingUSD * $exchangeRate->rate, 2);
+                                }
+                            } elseif ($invoice->currency === 'COP') {
+                                $exchangeRate = \App\Models\ExchangeRate::where('currency_code', 'COPC')->first();
+                                if ($exchangeRate) {
+                                    $invoiceRemainingOriginal = round($invoiceRemainingUSD * $exchangeRate->rate, 2);
+                                }
+                            } else {
+                                $invoiceRemainingOriginal = $invoiceRemainingUSD;
+                            }
+                        }
+                    }
+
+                    $supplierTotalOriginal += (float) $invoiceRemainingOriginal;
+                    $supplierTotalUSD += (float) $invoiceRemainingUSD;
+                    $facturasCount++;
+                }
+
+                if ($facturasCount === 0) {
+                    continue;
+                }
+
+                $formattedDebt = number_format($supplierTotalOriginal, 2) . ' ' . $currency;
+                if ($currency !== 'USD') {
+                    $formattedDebt .= " (≈ " . number_format($supplierTotalUSD, 2) . " USD)";
+                }
+
+                $supplierText = "🏢 *{$supplierName}*\n" .
+                                "📅 *Vencimiento más antiguo:* `{$earliestDateFormatted}`\n" .
+                                "📄 *Facturas vencidas:* `{$facturasCount}`\n" .
+                                "💰 *Total vencido:* `{$formattedDebt}`\n" .
+                                "───────────────────\n";
+
+                // Si añadir este proveedor supera el limite de tamaño, guardar bloque anterior y empezar uno nuevo
+                if (strlen($currentBlock) + strlen($supplierText) > 3500) {
+                    $msgBlocks[] = $currentBlock;
+                    $currentBlock = "⚠️ *[REPORTE DE PAGOS VENCIDOS - CONTINUACIÓN]* ⚠️\n\n";
+                }
+                $currentBlock .= $supplierText;
+            }
+
+            if (strlen($currentBlock) > 0 && $currentBlock !== "⚠️ *[REPORTE DE PAGOS VENCIDOS - CONTINUACIÓN]* ⚠️\n\n") {
+                $msgBlocks[] = $currentBlock;
+            }
+
+            // Enviar todos los bloques secuencialmente
+            foreach ($msgBlocks as $block) {
+                $this->telegramService->sendMessage($block, $chatId);
+            }
+
+        } catch (\Exception $e) {
+            \Log::error('[TelegramWebhook] Error al enviar pagos vencidos: ' . $e->getMessage());
+            $this->telegramService->sendMessage("❌ Error al obtener los pagos vencidos: " . $e->getMessage(), $chatId);
         }
     }
 }

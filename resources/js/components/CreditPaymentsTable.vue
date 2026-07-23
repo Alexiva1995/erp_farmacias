@@ -113,14 +113,16 @@ const headers = [
       height="auto"
       @update:options="(options) => emit('update:options', options)"
     >
-      <!-- Skeleton Loader -->
       <template v-slot:loading>
-        <VSkeletonLoader
-          v-for="n in 5"
-          :key="n"
-          type="table-row"
-          class="border-b"
-        />
+        <tr v-for="n in 5" :key="n" class="border-b">
+          <td><VSkeletonLoader type="text" class="mx-auto" style="max-inline-size: 80px;" /></td>
+          <td><VSkeletonLoader type="text" class="mx-auto" style="max-inline-size: 140px;" /></td>
+          <td><VSkeletonLoader type="text" class="mx-auto" style="max-inline-size: 100px;" /></td>
+          <td><VSkeletonLoader type="text" class="mx-auto" style="max-inline-size: 70px;" /></td>
+          <td><VSkeletonLoader type="text" class="mx-auto" style="max-inline-size: 80px;" /></td>
+          <td><VSkeletonLoader type="text" class="mx-auto" style="max-inline-size: 40px;" /></td>
+          <td><VSkeletonLoader type="text" class="mx-auto" style="max-inline-size: 90px;" /></td>
+        </tr>
       </template>
 
       <template v-slot:item.date="{ item }">

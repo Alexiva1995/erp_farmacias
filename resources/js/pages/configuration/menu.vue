@@ -1,11 +1,12 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useBrandingStore } from '@/stores/useBrandingStore'
 import axios from '@axios'
 import { toast } from '@/plugins/sweetalert'
 
 const brandingStore = useBrandingStore()
 const isLoading = ref(false)
+const isCategoriesLoading = ref(false)
 const categories = ref([])
 
 // Enlaces que se pueden agregar
@@ -15,13 +16,21 @@ const menuItems = ref([])
 const customLabel = ref('')
 const customUrl = ref('')
 
+// Validar enlace personalizado
+const isCustomLinkValid = computed(() => {
+  return customLabel.value.trim().length > 0
+})
+
 const fetchCategories = async () => {
+  isCategoriesLoading.value = true
   try {
     const { data } = await axios.get('/categories')
-    // Asumimos que data es un array o viene envuelto
     categories.value = Array.isArray(data) ? data : (data.data || [])
   } catch (e) {
     console.error('Error al obtener categorías:', e)
+    toast.error('Error al obtener las categorías')
+  } finally {
+    isCategoriesLoading.value = false
   }
 }
 
@@ -38,7 +47,7 @@ const addCategoryToMenu = (category) => {
 
 // Agregar enlace personalizado
 const addCustomLink = () => {
-  if (!customLabel.value.trim()) return
+  if (!isCustomLinkValid.value) return
   menuItems.value.push({
     id: 'custom_' + Date.now(),
     label: customLabel.value.trim().toUpperCase(),
@@ -50,40 +59,69 @@ const addCustomLink = () => {
   customUrl.value = ''
 }
 
-// Eliminar un elemento del menú
+// Eliminar un elemento principal del menú con confirmación
 const removeItem = (index) => {
-  menuItems.value.splice(index, 1)
+  const item = menuItems.value[index]
+  toast.confirm(`¿Eliminar "${item.label}" del menú?`, () => {
+    const updated = [...menuItems.value]
+    updated.splice(index, 1)
+    menuItems.value = updated
+    toast.success('Elemento eliminado del menú')
+  })
+}
+
+// Eliminar un elemento hijo con confirmación
+const removeChildItem = (parentIndex, childIndex) => {
+  const parent = menuItems.value[parentIndex]
+  const child = parent.children[childIndex]
+  toast.confirm(`¿Eliminar "${child.label}" de los submenús de "${parent.label}"?`, () => {
+    const updated = [...menuItems.value]
+    updated[parentIndex].children.splice(childIndex, 1)
+    menuItems.value = updated
+    toast.success('Submenú eliminado')
+  })
 }
 
 // Mover elemento arriba
 const moveUp = (index) => {
   if (index === 0) return
-  const temp = menuItems.value[index]
-  menuItems.value[index] = menuItems.value[index - 1]
-  menuItems.value[index - 1] = temp
+  const updated = [...menuItems.value]
+  const temp = updated[index]
+  updated[index] = updated[index - 1]
+  updated[index - 1] = temp
+  menuItems.value = updated
 }
 
 // Mover elemento abajo
 const moveDown = (index) => {
   if (index === menuItems.value.length - 1) return
-  const temp = menuItems.value[index]
-  menuItems.value[index] = menuItems.value[index + 1]
-  menuItems.value[index + 1] = temp
+  const updated = [...menuItems.value]
+  const temp = updated[index]
+  updated[index] = updated[index + 1]
+  updated[index + 1] = temp
+  menuItems.value = updated
 }
 
 // Anidar elemento (WordPress style: hacerlo hijo del elemento anterior)
 const makeChild = (index) => {
   if (index === 0) return
-  const item = menuItems.value[index]
-  menuItems.value[index - 1].children.push(item)
-  menuItems.value.splice(index, 1)
+  const updated = [...menuItems.value]
+  const item = updated[index]
+  if (!updated[index - 1].children) {
+    updated[index - 1].children = []
+  }
+  updated[index - 1].children.push(item)
+  updated.splice(index, 1)
+  menuItems.value = updated
 }
 
 // Desanidar (sacar al nivel principal)
 const extractChild = (parentIndex, childIndex) => {
-  const child = menuItems.value[parentIndex].children[childIndex]
-  menuItems.value.splice(parentIndex + 1, 0, child)
-  menuItems.value[parentIndex].children.splice(childIndex, 1)
+  const updated = [...menuItems.value]
+  const child = updated[parentIndex].children[childIndex]
+  updated.splice(parentIndex + 1, 0, child)
+  updated[parentIndex].children.splice(childIndex, 1)
+  menuItems.value = updated
 }
 
 // Guardar el menú en el backend
@@ -134,12 +172,18 @@ onMounted(async () => {
                   Categorías
                 </h3>
                 <p class="text-caption text-muted mb-4">Selecciona categorías de productos para añadirlas directamente a tu menú principal.</p>
-                <div class="d-flex flex-column gap-2 max-h-60 overflow-y-auto pr-1">
+                
+                <div v-if="isCategoriesLoading" class="d-flex flex-column gap-2 py-4">
+                  <VSkeletonLoader type="list-item" v-for="n in 3" :key="n" class="border" />
+                </div>
+                
+                <div v-else class="d-flex flex-column gap-2 max-h-60 overflow-y-auto pr-1">
                   <div
                     v-for="cat in categories"
                     :key="cat.id"
-                    class="d-flex align-center justify-space-between border pa-2 hover-bg-light cursor-pointer"
-                    @click="addCategoryToMenu(cat)"
+                    class="d-flex align-center justify-space-between border pa-2 hover-bg-light cursor-pointer transition-all"
+                    :class="{ 'opacity-50 pointer-events-none': isLoading }"
+                    @click="!isLoading && addCategoryToMenu(cat)"
                   >
                     <span class="text-body-2 font-weight-medium">{{ cat.name }}</span>
                     <VIcon icon="tabler-plus" size="16" class="text-primary" />
@@ -164,6 +208,7 @@ onMounted(async () => {
                     variant="outlined"
                     density="comfortable"
                     hide-details
+                    :disabled="isLoading"
                   />
                   <VTextField
                     v-model="customUrl"
@@ -172,6 +217,7 @@ onMounted(async () => {
                     variant="outlined"
                     density="comfortable"
                     hide-details
+                    :disabled="isLoading"
                   />
                   <VBtn
                     type="submit"
@@ -179,6 +225,7 @@ onMounted(async () => {
                     color="primary"
                     class="rounded-0 mt-2 text-uppercase tracking-wider"
                     block
+                    :disabled="!isCustomLinkValid || isLoading"
                   >
                     Añadir al Menú
                   </VBtn>
@@ -194,7 +241,7 @@ onMounted(async () => {
                   Estructura del Menú
                 </h3>
                 <p class="text-caption text-muted mb-6">
-                  Ordena tus enlaces arrastrándolos o usando los controles. Puedes anidarlos para crear submenús desplegables de alta gama.
+                  Organiza y estructura tus enlaces de navegación. Puedes cambiar el orden y anidarlos para crear submenús desplegables de alta gama.
                 </p>
 
                 <!-- Lista de Enlaces -->
@@ -203,11 +250,11 @@ onMounted(async () => {
                     <span class="text-caption text-muted text-uppercase tracking-wider">El menú está vacío. Agrega elementos desde el panel izquierdo.</span>
                   </div>
 
-                  <!-- Iteración de items principales -->
-                  <template v-for="(item, idx) in menuItems" :key="item.id">
-                    <div class="d-flex flex-column gap-2">
+                  <TransitionGroup name="list" tag="div" class="d-flex flex-column gap-3">
+                    <!-- Iteración de items principales -->
+                    <div v-for="(item, idx) in menuItems" :key="item.id" class="d-flex flex-column gap-2 transition-all">
                       <!-- Item Principal -->
-                      <div class="border pa-3 bg-white d-flex align-center justify-space-between">
+                      <div class="border pa-3 bg-white d-flex align-center justify-space-between hover-shadow">
                         <div class="d-flex align-center gap-3">
                           <VIcon icon="tabler-menu-2" class="text-muted cursor-move" size="18" />
                           <div>
@@ -220,16 +267,16 @@ onMounted(async () => {
 
                         <!-- Acciones -->
                         <div class="d-flex align-center gap-1">
-                          <VBtn icon variant="text" size="small" :disabled="idx === 0" @click="moveUp(idx)">
+                          <VBtn icon variant="text" size="small" :disabled="idx === 0 || isLoading" @click="moveUp(idx)">
                             <VIcon icon="tabler-arrow-up" size="16" />
                           </VBtn>
-                          <VBtn icon variant="text" size="small" :disabled="idx === menuItems.length - 1" @click="moveDown(idx)">
+                          <VBtn icon variant="text" size="small" :disabled="idx === menuItems.length - 1 || isLoading" @click="moveDown(idx)">
                             <VIcon icon="tabler-arrow-down" size="16" />
                           </VBtn>
-                          <VBtn icon variant="text" size="small" :disabled="idx === 0" @click="makeChild(idx)" title="Anidar en el anterior">
+                          <VBtn icon variant="text" size="small" :disabled="idx === 0 || isLoading" @click="makeChild(idx)" title="Anidar en el anterior">
                             <VIcon icon="tabler-indent-increase" size="16" />
                           </VBtn>
-                          <VBtn icon variant="text" size="small" color="error" @click="removeItem(idx)">
+                          <VBtn icon variant="text" size="small" color="error" :disabled="isLoading" @click="removeItem(idx)">
                             <VIcon icon="tabler-trash" size="16" />
                           </VBtn>
                         </div>
@@ -237,34 +284,36 @@ onMounted(async () => {
 
                       <!-- Items Hijos (Submenús) -->
                       <div v-if="item.children && item.children.length" class="pl-8 d-flex flex-column gap-2 border-left ml-4 py-1">
-                        <div
-                          v-for="(child, childIdx) in item.children"
-                          :key="child.id"
-                          class="border pa-3 bg-grey-lighten-5 d-flex align-center justify-space-between"
-                        >
-                          <div class="d-flex align-center gap-3">
-                            <VIcon icon="tabler-corner-down-right" class="text-muted" size="18" />
-                            <div>
-                              <span class="text-body-2 font-weight-medium tracking-wide">{{ child.label }}</span>
-                              <span class="text-xxs text-uppercase px-2 py-0.5 ml-2 border bg-white text-muted">
-                                {{ child.type === 'category' ? 'Categoría' : 'Enlace' }}
-                              </span>
+                        <TransitionGroup name="list" tag="div" class="d-flex flex-column gap-2">
+                          <div
+                            v-for="(child, childIdx) in item.children"
+                            :key="child.id"
+                            class="border pa-3 bg-grey-lighten-5 d-flex align-center justify-space-between hover-shadow transition-all"
+                          >
+                            <div class="d-flex align-center gap-3">
+                              <VIcon icon="tabler-corner-down-right" class="text-muted" size="18" />
+                              <div>
+                                <span class="text-body-2 font-weight-medium tracking-wide">{{ child.label }}</span>
+                                <span class="text-xxs text-uppercase px-2 py-0.5 ml-2 border bg-white text-muted">
+                                  {{ child.type === 'category' ? 'Categoría' : 'Enlace' }}
+                                </span>
+                              </div>
+                            </div>
+
+                            <!-- Acciones de Hijos -->
+                            <div class="d-flex align-center gap-1">
+                              <VBtn icon variant="text" size="small" :disabled="isLoading" @click="extractChild(idx, childIdx)" title="Mover al menú principal">
+                                <VIcon icon="tabler-indent-decrease" size="16" />
+                              </VBtn>
+                              <VBtn icon variant="text" size="small" color="error" :disabled="isLoading" @click="removeChildItem(idx, childIdx)">
+                                <VIcon icon="tabler-trash" size="16" />
+                              </VBtn>
                             </div>
                           </div>
-
-                          <!-- Acciones de Hijos -->
-                          <div class="d-flex align-center gap-1">
-                            <VBtn icon variant="text" size="small" @click="extractChild(idx, childIdx)" title="Mover al menú principal">
-                              <VIcon icon="tabler-indent-decrease" size="16" />
-                            </VBtn>
-                            <VBtn icon variant="text" size="small" color="error" @click="item.children.splice(childIdx, 1)">
-                              <VIcon icon="tabler-trash" size="16" />
-                            </VBtn>
-                          </div>
-                        </div>
+                        </TransitionGroup>
                       </div>
                     </div>
-                  </template>
+                  </TransitionGroup>
                 </div>
 
                 <!-- Botón Guardar -->
@@ -274,7 +323,7 @@ onMounted(async () => {
                     size="large"
                     class="rounded-0 px-10 text-uppercase tracking-wider"
                     :loading="isLoading"
-                    :disabled="!menuItems.length"
+                    :disabled="!menuItems.length || isLoading"
                     @click="saveMenu"
                   >
                     Guardar Menú
@@ -293,10 +342,29 @@ onMounted(async () => {
 .hover-bg-light:hover {
   background-color: #f8f9fa;
 }
+.hover-shadow:hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+}
 .cursor-move {
   cursor: grab;
 }
 .border-dashed {
   border-style: dashed !important;
+}
+
+/* Transiciones animadas para ordenar elementos */
+.list-move,
+.list-enter-active,
+.list-leave-active {
+  transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+.list-enter-from,
+.list-leave-to {
+  opacity: 0;
+  transform: translateY(10px);
+}
+.list-leave-active {
+  position: absolute;
+  width: 100%;
 }
 </style>

@@ -13,6 +13,11 @@ class ProductProfitability extends Model
         'product_id',
         'profitability_percentage',
         'is_locked',
+        'shipping_cost',
+        'packaging_cost',
+        'expense_margin',
+        'profit_margin',
+        'tax_usa',
     ];
 
     public function product(): BelongsTo

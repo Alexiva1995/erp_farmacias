@@ -32,6 +32,42 @@ export default [
         to: 'configuration-tpv',
       },
       {
+        title: 'CRM',
+        to: 'configuration-crm',
+      },
+      {
+        title: 'RRHH',
+        to: 'configuration-rrhh',
+      },
+      {
+        title: 'Gastos',
+        to: 'configuration-expenses',
+      },
+      {
+        title: 'Finanzas',
+        to: 'configuration-finances',
+      },
+      {
+        title: 'BI',
+        to: 'configuration-bi',
+      },
+      {
+        title: 'IA Assistence',
+        to: 'configuration-ia-assistant',
+      },
+      {
+        title: 'Productos',
+        to: 'configuration-products',
+      },
+      {
+        title: 'Facturas',
+        to: 'configuration-invoices',
+      },
+      {
+        title: 'Proveedores',
+        to: 'configuration-suppliers',
+      },
+      {
         title: 'Importar Datos',
         to: 'configuration-import',
       },

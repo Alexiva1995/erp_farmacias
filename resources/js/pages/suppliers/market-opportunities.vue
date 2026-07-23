@@ -9,6 +9,7 @@ const laboratories = ref([]);
 const productosSelect = ref([]);
 const suppliers = ref([]);
 const loading = ref(false);
+const submittingItems = ref({});
 
 const page = ref(1);
 const itemsPerPage = ref(10);
@@ -27,6 +28,15 @@ const tipoFiltracion = ref("combinado");
 const lapsoTiempo = ref("3 month");
 const stockFilter = ref("all");
 const searchQuery = ref("");
+const searchQueryDebounced = ref("");
+
+let debounceTimeout = null;
+watch(searchQuery, (newValue) => {
+  clearTimeout(debounceTimeout);
+  debounceTimeout = setTimeout(() => {
+    searchQueryDebounced.value = newValue;
+  }, 400);
+});
 
 const hasActiveAdvancedFilters = computed(
   () =>
@@ -66,7 +76,7 @@ async function fetchOpportunities() {
       itemsPerPage: itemsPerPage.value,
       sortBy: sortBy.value[0]?.key,
       orderBy: sortBy.value[0]?.order,
-      q: searchQuery.value,
+      q: searchQueryDebounced.value,
       laboratoryId: selectedLaboratory.value,
       productId: selectProducts.value,
       excludeSupplierIds: excludeSupplierIds.value,
@@ -90,27 +100,21 @@ async function fetchOpportunities() {
 }
 
 async function fetchInitialData() {
-  // Carga de laboratorios
-  axios.get("/laboratories")
-    .then(res => { laboratories.value = res.data; })
-    .catch(err => console.error("Error labs:", err));
-
-  // Carga de productos para el selector
-  axios.get("/suppliers-ia-assistant-report/consult-products")
-    .then(res => {
-      productosSelect.value = (res.data.data || []).map((p) => ({
-        name: `${p.id} - ${p.name}`,
-        id: p.id,
-      }));
-    })
-    .catch(err => console.error("Error products select:", err));
-
-  // Carga de proveedores para exclusion
-  axios.get("/suppliers", { params: { itemsPerPage: 500 } })
-    .then(res => {
-      suppliers.value = res.data?.data || res.data || [];
-    })
-    .catch(err => console.error("Error suppliers select:", err));
+  // Carga paralela de catálogos
+  Promise.all([
+    axios.get("/laboratories"),
+    axios.get("/suppliers-ia-assistant-report/consult-products"),
+    axios.get("/suppliers", { params: { itemsPerPage: 500 } })
+  ]).then(([resLabs, resProds, resSups]) => {
+    laboratories.value = resLabs.data;
+    productosSelect.value = (resProds.data.data || []).map((p) => ({
+      name: `${p.id} - ${p.name}`,
+      id: p.id,
+    }));
+    suppliers.value = resSups.data?.data || resSups.data || [];
+  }).catch(err => {
+    console.error("Error al cargar catálogos iniciales:", err);
+  });
 }
 
 const handleClearFilters = () => {
@@ -118,6 +122,7 @@ const handleClearFilters = () => {
   selectProducts.value = [];
   excludeSupplierIds.value = [];
   searchQuery.value = "";
+  searchQueryDebounced.value = "";
   hideRedundant.value = true;
   hideDuplicates.value = true;
   isColombia.value = null;
@@ -132,7 +137,7 @@ const handleAddUnits = async (item) => {
     return;
   }
 
-  loading.value = true;
+  submittingItems.value[item.id] = true;
   try {
     const data = {
       product_id: item.product_id,
@@ -146,23 +151,58 @@ const handleAddUnits = async (item) => {
     
     toast.success(response.data.message || "Producto añadido a la orden.");
     
-    // Opcional: remover el item de la lista ya que fue "procesado" (el repo lo oculta tras 7 días al recargar)
     items.value = items.value.filter(i => i.id !== item.id);
     totalItems.value -= 1;
   } catch (error) {
     console.error("Error al añadir a la orden:", error);
     toast.error(error.response?.data?.message || "Error al procesar el pedido.");
   } finally {
+    delete submittingItems.value[item.id];
+  }
+};
+
+const exportExcel = async () => {
+  loading.value = true;
+  try {
+    const params = {
+      q: searchQueryDebounced.value,
+      laboratoryId: selectedLaboratory.value,
+      productId: selectProducts.value,
+      excludeSupplierIds: excludeSupplierIds.value,
+      withDiscount: withDiscount.value,
+      hideRedundant: hideRedundant.value,
+      hideDuplicates: hideDuplicates.value,
+      is_colombia: isColombia.value,
+      tipo_filtracion: tipoFiltracion.value,
+      lapso_de_tiempo: lapsoTiempo.value,
+      stock: stockFilter.value,
+    };
+
+    const response = await axios.get("/market-opportunities/export", {
+      params,
+      responseType: "blob",
+    });
+
+    const blob = new Blob([response.data], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `oportunidades_mercado_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+
+    toast.success("Exportación completada con éxito.");
+  } catch (error) {
+    console.error("Error al exportar:", error);
+    toast.error("Ocurrió un error al exportar el archivo.");
+  } finally {
     loading.value = false;
   }
 };
 
-const exportExcel = () => {
-  console.log("Exportando a excel...");
-};
-
 watch(
-  [page, itemsPerPage, sortBy, selectedLaboratory, selectProducts, excludeSupplierIds, searchQuery, withDiscount, hideRedundant, hideDuplicates, isColombia, tipoFiltracion, lapsoTiempo, stockFilter],
+  [page, itemsPerPage, sortBy, selectedLaboratory, selectProducts, excludeSupplierIds, searchQueryDebounced, withDiscount, hideRedundant, hideDuplicates, isColombia, tipoFiltracion, lapsoTiempo, stockFilter],
   () => {
     fetchOpportunities();
   },
@@ -469,14 +509,17 @@ onMounted(() => {
                   variant="outlined"
                   class="quantity-input"
                   style="min-inline-size: 80px;"
+                  :disabled="!!submittingItems[item.id]"
                   @keypress.enter="handleAddUnits(item)"
                 />
                 <VBtn
-                  icon="tabler-plus"
+                  :icon="!submittingItems[item.id] ? 'tabler-plus' : undefined"
                   color="primary"
                   variant="tonal"
                   size="small"
                   class="rounded-circle shadow-sm"
+                  :loading="!!submittingItems[item.id]"
+                  :disabled="!!submittingItems[item.id]"
                   @click="handleAddUnits(item)"
                 />
               </div>
@@ -592,7 +635,7 @@ onMounted(() => {
                     <div class="text-sm font-weight-bold text-success">{{ item.saving_percentage }}%</div>
                   </VCol>
                 </VRow>
-
+                
                 <!-- Acciones -->
                 <div class="d-flex align-center justify-space-between bg-var-theme-background-soft pa-2 rounded-lg border border-dashed">
                   <span class="text-xs font-weight-black text-disabled">AÑADIR A ORDEN:</span>
@@ -605,13 +648,16 @@ onMounted(() => {
                       variant="outlined"
                       class="quantity-input-mobile"
                       bg-color="white"
+                      :disabled="!!submittingItems[item.id]"
                     />
                     <VBtn
-                      icon="tabler-plus"
+                      :icon="!submittingItems[item.id] ? 'tabler-plus' : undefined"
                       color="primary"
                       variant="tonal"
                       size="32"
                       class="rounded-lg shadow-sm"
+                      :loading="!!submittingItems[item.id]"
+                      :disabled="!!submittingItems[item.id]"
                       @click="handleAddUnits(item)"
                     />
                   </div>
@@ -641,7 +687,7 @@ onMounted(() => {
 }
 
 .premium-table :deep(th) {
-  background-color: #fff !important;
+  background-color: rgb(var(--v-theme-surface)) !important;
   color: rgba(
     var(--v-theme-on-surface),
     var(--v-medium-emphasis-opacity)
@@ -654,7 +700,7 @@ onMounted(() => {
 }
 
 .market-opportunities-view {
-  background-color: #f8fafc;
+  background-color: rgb(var(--v-theme-background));
   min-block-size: 100vh;
 }
 
@@ -683,7 +729,7 @@ onMounted(() => {
 }
 
 .bg-light-gray {
-  background-color: #f8f9fa;
+  background-color: rgba(var(--v-theme-on-surface), 0.02);
 }
 
 .quantity-input {

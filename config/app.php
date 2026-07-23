@@ -123,4 +123,7 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    'business_type' => env('BUSINESS_TYPE', 'pharmacy'),
+    'enabled_modules' => env('ENABLED_MODULES', 'pharmacy'),
+
 ];

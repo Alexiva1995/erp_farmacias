@@ -172,14 +172,21 @@ const isAdmin = computed(() => authStore.user?.role_id === 1);
       height="auto"
       @update:options="(options) => emit('update:options', options)"
     >
-      <!-- Skeleton Loader -->
       <template v-slot:loading>
-        <VSkeletonLoader
-          v-for="n in 5"
-          :key="n"
-          type="table-row"
-          class="border-b"
-        />
+        <tr v-for="n in 5" :key="n" class="border-b">
+          <td><VSkeletonLoader type="text" class="mx-auto" style="max-inline-size: 80px;" /></td>
+          <td><VSkeletonLoader type="text" class="mx-auto" style="max-inline-size: 100px;" /></td>
+          <td><VSkeletonLoader type="text" class="mx-auto" style="max-inline-size: 140px;" /></td>
+          <td><VSkeletonLoader type="text" class="mx-auto" style="max-inline-size: 70px;" /></td>
+          <td class="text-center"><VSkeletonLoader type="text" class="mx-auto" style="max-inline-size: 60px;" /></td>
+          <td>
+            <div class="d-flex align-center gap-2">
+              <VSkeletonLoader type="button" style="max-inline-size: 32px; block-size: 32px;" />
+              <VSkeletonLoader type="button" style="max-inline-size: 32px; block-size: 32px;" />
+              <VSkeletonLoader type="button" style="max-inline-size: 32px; block-size: 32px;" />
+            </div>
+          </td>
+        </tr>
       </template>
 
       <template v-slot:item.credit_date="{ item }">

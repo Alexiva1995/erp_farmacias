@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\EmployeeLaboratories;
 
 use App\Models\Employee;

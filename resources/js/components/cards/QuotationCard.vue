@@ -2,6 +2,26 @@
 import { formatCurrency } from "@/utils/currencyFormatter";
 import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
 import { computed, ref } from "vue";
+import { useBrandingStore } from "@/stores/useBrandingStore";
+
+const brandingStore = useBrandingStore();
+
+const availableCurrency = computed(() => {
+  const defaults = ["USD", "BS", "COP"];
+  const configured = brandingStore.settings?.tpv_payment_methods;
+  
+  if (!configured) return defaults;
+  
+  const filtered = defaults.filter(currency => {
+    const methods = configured[currency];
+    if (Array.isArray(methods)) {
+      return methods.length > 0 && methods.some(m => m.enabled !== false);
+    }
+    return methods && methods.enabled !== false;
+  });
+
+  return filtered.length > 0 ? filtered : defaults;
+});
 
 const props = defineProps({
   totalProductsAmount: {
@@ -45,8 +65,6 @@ const props = defineProps({
     default: null,
   },
 });
-
-const availableCurrency = ref(["USD", "BS", "COP"]);
 
 const emit = defineEmits(["currency-changed"]);
 

@@ -1,5 +1,22 @@
 <script setup>
 import { useDisplay } from "vuetify";
+import { toast } from "@/plugins/sweetalert";
+
+const copyConfirmationLink = (hashToken) => {
+  if (!hashToken) {
+    toast.error("Esta orden no posee un token de confirmación válido.");
+    return;
+  }
+  const link = `${window.location.origin}/p/orders/confirm/${hashToken}`;
+  navigator.clipboard.writeText(link)
+    .then(() => {
+      toast.success("Enlace de confirmación copiado al portapapeles.");
+    })
+    .catch(err => {
+      console.error("Error al copiar enlace:", err);
+      toast.error("No se pudo copiar el enlace automáticamente.");
+    });
+};
 
 const props = defineProps({
   purchaseOrders: { type: Array, required: true },
@@ -214,13 +231,52 @@ const formatTime = (dateString) => {
             <VIcon icon="tabler-brand-whatsapp" size="18" />
             <VTooltip activator="parent" location="top">WhatsApp</VTooltip>
           </VBtn>
+
+          <!-- Botón de copiar enlace público de confirmación -->
+          <VBtn
+            icon
+            size="32"
+            variant="tonal"
+            color="info"
+            class="rounded-circle shadow-sm"
+            @click="copyConfirmationLink(item.hash_token)"
+          >
+            <VIcon icon="tabler-link" size="18" />
+            <VTooltip activator="parent" location="top">Copiar Enlace Proveedor</VTooltip>
+          </VBtn>
         </div>
       </template>
     </VDataTableServer>
 
     <!-- Vista Móvil (Cards) -->
     <div v-else class="mobile-cards-view d-flex flex-column gap-4 pa-4 pb-16">
-      <template v-if="props.purchaseOrders.length > 0">
+      <!-- Skeletons de carga -->
+      <template v-if="props.loading">
+        <VCard
+          v-for="n in 3"
+          :key="n"
+          variant="flat"
+          border
+          class="rounded-lg overflow-hidden premium-card pa-4 skeleton-card"
+        >
+          <div class="d-flex justify-space-between mb-4">
+            <div class="skeleton-line rounded" style="inline-size: 30%; block-size: 16px;"></div>
+            <div class="skeleton-line rounded" style="inline-size: 20%; block-size: 16px;"></div>
+          </div>
+          <div class="skeleton-line rounded mb-4" style="inline-size: 70%; block-size: 20px;"></div>
+          <div class="d-flex justify-space-between mb-4">
+            <div class="skeleton-line rounded" style="inline-size: 40%; block-size: 14px;"></div>
+            <div class="skeleton-line rounded" style="inline-size: 25%; block-size: 14px;"></div>
+          </div>
+          <div class="d-flex gap-2 mt-2">
+            <div class="skeleton-line rounded flex-grow-1" style="block-size: 32px;"></div>
+            <div class="skeleton-line rounded" style="inline-size: 32px; block-size: 32px;"></div>
+            <div class="skeleton-line rounded" style="inline-size: 32px; block-size: 32px;"></div>
+          </div>
+        </VCard>
+      </template>
+
+      <template v-else-if="props.purchaseOrders.length > 0">
         <VCard
           v-for="item in props.purchaseOrders"
           :key="item.id"
@@ -310,6 +366,18 @@ const formatTime = (dateString) => {
                 <VIcon icon="tabler-brand-whatsapp" size="18" />
               </VBtn>
 
+              <!-- Enlace proveedor móvil -->
+              <VBtn
+                icon
+                variant="tonal"
+                color="info"
+                class="rounded-lg"
+                size="32"
+                @click="copyConfirmationLink(item.hash_token)"
+              >
+                <VIcon icon="tabler-link" size="18" />
+              </VBtn>
+
               <VBtn
                 v-if="isAdmin"
                 icon
@@ -335,6 +403,19 @@ const formatTime = (dateString) => {
 </template>
 
 <style scoped>
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.skeleton-card {
+  animation: pulse 1.5s infinite ease-in-out;
+}
+
+.skeleton-line {
+  background-color: rgba(var(--v-border-color), 0.12);
+}
+
 .premium-table :deep(th) {
   background-color: white !important;
   block-size: 52px !important;

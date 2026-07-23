@@ -1,6 +1,7 @@
 <script setup>
 // Filtros para renuncias (Resignations)
 import AppFilterBase from "@/components/AppFilterBase.vue";
+import AppDateTimePicker from "@core/components/app-form-elements/AppDateTimePicker.vue";
 import { computed } from "vue";
 
 const props = defineProps({

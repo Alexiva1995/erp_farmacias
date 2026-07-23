@@ -1,9 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Contracts\Laboratory;
-use App\Repository\LaboratoryRepository;
+use App\Repositories\LaboratoryRepository;
 use Illuminate\Database\Eloquent\Collection;
 
 class LaboratoryServices implements Laboratory

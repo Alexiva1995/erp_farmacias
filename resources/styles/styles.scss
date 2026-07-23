@@ -203,17 +203,22 @@ a.text-primary,
 */
 body, 
 .v-application {
+  font-size: 13px !important;
   color: var(--color-dark) !important;
   font-family: 'Outfit', 'Inter', sans-serif !important;
 }
 
-// Títulos y encabezados con fuerte contraste y peso
-// EXCEPCIÓN: .header-gradient anula este color para mostrar texto blanco
-h1, h2, h3, h4, h5, h6,
-.text-h1, .text-h2, .text-h3, .text-h4, .text-h5, .text-h6,
-.v-card-title:not(:has(.header-gradient)) {
-  color: var(--color-dark) !important;
-  font-weight: 800 !important;
+// Títulos y encabezados con fuerte contraste, peso suavizado y escala compacta
+h1, .text-h1 { font-size: 1.65rem !important; font-weight: 600 !important; color: var(--color-dark) !important; }
+h2, .text-h2 { font-size: 1.4rem !important; font-weight: 600 !important; color: var(--color-dark) !important; }
+h3, .text-h3 { font-size: 1.2rem !important; font-weight: 500 !important; color: var(--color-dark) !important; }
+h4, .text-h4 { font-size: 1.05rem !important; font-weight: 500 !important; color: var(--color-dark) !important; }
+h5, .text-h5 { font-size: 0.95rem !important; font-weight: 500 !important; color: var(--color-dark) !important; }
+h6, .text-h6, 
+.v-card-title:not(:has(.header-gradient)) { 
+  font-size: 0.85rem !important; 
+  font-weight: 500 !important; 
+  color: var(--color-dark) !important; 
 }
 
 // Regla global para TODOS los headers de modales del sistema
@@ -233,24 +238,32 @@ p,
 span.text-medium-emphasis,
 .text-body-1, 
 .text-body-2, 
-.v-list-item-subtitle,
+.v-list-item-title,
 .text-medium-emphasis {
+  font-size: 13px !important;
   color: #2b2e4a !important; // Marino intermedio con excelente contraste sobre fondos claros
   opacity: 0.95 !important;
-  font-weight: 500 !important;
+  font-weight: 400 !important;
+}
+
+.text-caption,
+.v-list-item-subtitle,
+.v-list-item-subtitle * {
+  font-size: 11px !important;
+  font-weight: 400 !important;
 }
 
 // Elementos de formulario
 .v-label, 
 .v-field-label {
   color: var(--color-dark) !important;
-  font-weight: 700 !important;
+  font-weight: 500;
   opacity: 0.9 !important;
 }
 
 .v-field__input {
   color: var(--color-dark) !important;
-  font-weight: 600 !important;
+  font-weight: 400;
 }
 
 .v-field__placeholder {
@@ -275,4 +288,24 @@ span.text-medium-emphasis,
   &.rounded-xl {
     border-radius: 9999px !important;
   }
+}
+
+/* Límite estricto de border-radius a 5px en todo el ERP */
+.v-card,
+.v-btn:not(.app-filter-base .v-btn):not([class*="filter"] .v-btn),
+.v-chip,
+.v-avatar,
+.v-field,
+.v-input__control,
+.v-list-item,
+.v-menu .v-list,
+.v-overlay__content,
+.kpi-card {
+  border-radius: 5px !important;
+}
+
+/* Contraste y color en tarjetas primarias del dashboard */
+.bg-primary-gradient,
+.bg-primary-gradient * {
+  color: #ffffff !important;
 }

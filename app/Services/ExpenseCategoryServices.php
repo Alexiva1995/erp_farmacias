@@ -1,10 +1,11 @@
 <?php
 
+declare(strict_types=1);
 
 namespace App\Services;
 
 use App\Contracts\ExpenseCategory;
-use App\Repository\ExpenseCategoryRepository;
+use App\Repositories\ExpenseCategoryRepository;
 use Illuminate\Database\Eloquent\Collection;
 
 class ExpenseCategoryServices implements ExpenseCategory

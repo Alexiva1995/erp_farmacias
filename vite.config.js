@@ -102,6 +102,9 @@ export default defineConfig({
   build: {
     chunkSizeWarningLimit: 5000,
   },
+  esbuild: {
+    drop: ['console', 'debugger'],
+  },
   optimizeDeps: {
     exclude: ['vuetify'],
     entries: [

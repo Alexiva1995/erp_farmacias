@@ -121,12 +121,19 @@ const formatIdentification = (id) => {
 
 const employeesWithVouchers = computed(() => {
   const rows = selectedPayslip.value?.results || [];
+  const payslipDate = selectedPayslip.value?.date;
+  const day = payslipDate ? Number(payslipDate.split('-')[2]) : 15;
+  const isSecondNomina = day > 15;
+
   return rows.map(r => {
     const isFull = tab.value === 'full';
     const rate = Number(selectedPayslip.value.exchange_rate) || 1;
     const totalPackageUsd = Number(r.total_package_usd) || 0;
     
-    const foodVoucher = isFull ? (40 * rate) : (Number(r.food_voucher) || 0);
+    const foodVoucher = isFull 
+      ? (isSecondNomina ? (40 * rate) : 0) 
+      : (Number(r.food_voucher) || 0);
+
     const calculatedSalary = isFull 
       ? Math.round(((totalPackageUsd - 40) / 2) * rate * 100) / 100
       : Number(r.salary_to_pay_voucher) || 0;
@@ -288,7 +295,10 @@ const changeTab = (newTab) => {
 
     <!-- Tabla / Cards de Trabajadores -->
     <div>
-      <VCard class="rounded-lg border-0 shadow-sm overflow-hidden bg-surface mb-6">
+      <VCard 
+        class="rounded-lg border-0 shadow-sm overflow-hidden bg-surface mb-6"
+        :style="loading ? 'opacity: 0.6; pointer-events: none; transition: opacity 0.15s ease;' : 'transition: opacity 0.15s ease;'"
+      >
         <VCardTitle class="pa-4 flex align-center bg-surface-variant-opacity-2">
           <VIcon icon="tabler-users" size="20" class="me-2 text-primary" />
           <span class="text-sm font-weight-black uppercase">Listado de Trabajadores</span>

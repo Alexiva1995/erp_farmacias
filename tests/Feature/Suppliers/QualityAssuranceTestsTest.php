@@ -9,7 +9,7 @@ use App\Models\User;
 use App\Models\AutoOrder;
 use App\Models\AutoOrderDetail;
 use App\Services\Suppliers\SupplierQueryService;
-use App\Repository\AutoOrderDetailsRepository;
+use App\Repositories\AutoOrderDetailsRepository;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\Products;
 
 use App\Models\Product;
@@ -24,6 +26,7 @@ class ProductQueryService
             'group',
             'profitability',
             'productSuppliers',
+            'variants',
             'lots' => function ($query) {
                 $query->where('quantity', '>', 0);
             },
@@ -475,5 +478,52 @@ class ProductQueryService
             ->value('total_value');
 
         return (float) ($totalValue ?? 0);
+    }
+
+    public function getFilteredQueryForProfitability(Request $request): Builder
+    {
+        $query = Product::query()
+            ->select('products.*')
+            ->selectRaw("COALESCE((SELECT SUM(quantity) FROM product_lots WHERE product_lots.product_id = products.id), 0) AS stock_calculado")
+            ->with(['laboratory', 'profitability']);
+
+        $hasStockVal = $request->hasStock;
+        if ($hasStockVal === 'true' || $hasStockVal === '1') {
+            $hasStock = true;
+        } elseif ($hasStockVal === 'false' || $hasStockVal === '0') {
+            $hasStock = false;
+        } else {
+            $hasStock = null;
+        }
+
+        $filters = [
+            'q' => $request->q,
+            'productId' => $request->productId ?? $request->product_id ?? $request->id,
+            'laboratoryId' => $request->laboratoryId,
+            'originId' => $request->originId,
+            'hasStock' => $hasStock,
+            'lockedValue' => $request->lockedValue,
+            'startDate' => $request->startDate,
+            'endDate' => $request->endDate,
+        ];
+
+        $query = $this->applyFilters($query, $filters);
+
+        $sortBy = $request->input('sortBy');
+        $orderBy = $request->input('orderBy', 'asc');
+
+        if (!empty($sortBy)) {
+            if ($sortBy === 'profitability') {
+                $query->leftJoin('product_profitability', 'products.id', '=', 'product_profitability.product_id')
+                    ->orderBy(DB::raw('COALESCE(product_profitability.profitability_percentage, 0)'), $orderBy)
+                    ->select('products.*');
+            } else {
+                $query->orderBy($sortBy, $orderBy);
+            }
+        } else {
+            $query->orderBy('products.id', 'desc');
+        }
+
+        return $query;
     }
 }

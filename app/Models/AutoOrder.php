@@ -12,13 +12,22 @@ class AutoOrder extends Model
 {
     use HasFactory, SoftDeletes;
 
-    protected $fillable = ["supplier_id", "order_date", "total_items", "total_quantity", "total_amount", "status", "sent_at", "tentative_delivery_date"];
+    protected $fillable = ["supplier_id", "order_date", "total_items", "total_quantity", "total_amount", "status", "sent_at", "tentative_delivery_date", "hash_token"];
 
     protected $casts = [
         "status" => AutoOrderStatus::class,
         "sent_at" => "datetime",
         "tentative_delivery_date" => "date",
     ];
+
+    protected static function booted()
+    {
+        static::creating(function ($order) {
+            if (empty($order->hash_token)) {
+                $order->hash_token = md5(uniqid((string)rand(), true)) . \Illuminate\Support\Str::random(16);
+            }
+        });
+    }
 
     public function supplier()
     {

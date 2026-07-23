@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import CreditoFiscalTable from "@/components/CreditoFiscalTable.vue";
 import DebitoFiscalTable from "@/components/DebitoFiscalTable.vue";
 import IvaFiscalFilters from "@/components/IvaFiscalFilters.vue";
@@ -10,7 +10,7 @@ import { useBrandingStore } from "@/stores/useBrandingStore";
 
 const { mobile } = useDisplay();
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => brandingStore.settings?.business_type === 'restaurant');
+const isRestaurant = computed(() => false);
 
 // Estados reactivos para las cards de resumen
 const debitoFiscal = ref(0);

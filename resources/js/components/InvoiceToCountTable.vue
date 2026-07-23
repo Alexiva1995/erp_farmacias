@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { computed } from "vue";
 import { formatPrice, formatDateSimple } from "@/utils/formatters";
 import { useBrandingStore } from "@/stores/useBrandingStore";
@@ -16,7 +16,7 @@ const props = defineProps({
 const emit = defineEmits(["update:options", "count-product"]);
 
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => brandingStore.settings?.business_type === 'restaurant');
+const isRestaurant = computed(() => false);
 
 const headers = computed(() => {
   const baseHeaders = [

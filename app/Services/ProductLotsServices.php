@@ -1,12 +1,13 @@
 <?php
 
+declare(strict_types=1);
 
 namespace App\Services;
 
 use App\Contracts\ProductLots;
 use App\Models\Product;
 use App\Models\Supplier;
-use App\Repository\ProductLotsRepository;
+use App\Repositories\ProductLotsRepository;
 use Illuminate\Database\Eloquent\Model;
 
 class ProductLotsServices implements ProductLots

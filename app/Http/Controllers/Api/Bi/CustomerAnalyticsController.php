@@ -1,11 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api\Bi;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Bi\CustomerAnalyticsRequest;
+use App\Http\Resources\Bi\CustomerAnalyticsResource;
 use App\Services\Bi\CustomerAnalyticsService;
-use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
 
 class CustomerAnalyticsController extends Controller
 {
@@ -13,15 +15,12 @@ class CustomerAnalyticsController extends Controller
         protected CustomerAnalyticsService $service
     ) {}
 
-    public function index(Request $request): JsonResponse
+    public function index(CustomerAnalyticsRequest $request): CustomerAnalyticsResource
     {
-        $filters = [
-            'start_date' => $request->get('start_date'),
-            'end_date' => $request->get('end_date'),
-        ];
+        $filters = $request->validated();
 
         $data = $this->service->getDashboardData($filters);
 
-        return response()->json($data);
+        return new CustomerAnalyticsResource($data);
     }
 }

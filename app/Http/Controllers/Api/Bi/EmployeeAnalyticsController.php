@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Bi;
 
 use App\Http\Controllers\Controller;
 use App\Services\Bi\EmployeeAnalyticsService;
+use App\Http\Requests\Bi\CompareEmployeesRequest;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
@@ -25,13 +26,8 @@ class EmployeeAnalyticsController extends Controller
         return response()->json($data);
     }
 
-    public function compare(Request $request): JsonResponse
+    public function compare(CompareEmployeesRequest $request): JsonResponse
     {
-        $request->validate([
-            'employee_a' => 'required|integer',
-            'employee_b' => 'required|integer',
-        ]);
-
         $filters = [
             'start_date' => $request->get('start_date'),
             'end_date' => $request->get('end_date'),

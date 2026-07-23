@@ -11,6 +11,7 @@ import { computed, onMounted, ref, watch } from "vue";
 const products = ref([]);
 const totalProduct = ref(0);
 const profitability = ref(0);
+const globalSettings = ref({});
 const page = ref(1);
 const itemsPerPage = ref(10);
 const sortBy = ref();
@@ -74,7 +75,7 @@ const fetchProducts = async () => {
   );
 
   try {
-    const response = await axios.get("/products", { params });
+    const response = await axios.get("/finances/profitability/products", { params });
     products.value = response.data.data;
     totalProduct.value = response.data.total;
   } catch (error) {
@@ -87,8 +88,19 @@ const fetchProducts = async () => {
 
 const percentProfitability = async () => {
   try {
-    const response = await axios.get("/finances/profitability");
-    profitability.value = response.data.default_profitability_percentage || 0;
+    const [profitabilityResponse, generalSettingsResponse] = await Promise.all([
+      axios.get("/finances/profitability"),
+      axios.get("/general-settings"),
+    ]);
+
+    const profitData = profitabilityResponse.data || {};
+    const generalData = generalSettingsResponse.data?.data || {};
+
+    globalSettings.value = {
+      ...profitData,
+      profitability_calculation_type: generalData.profitability_calculation_type || 'simple'
+    };
+    profitability.value = profitData.default_profitability_percentage || 0;
   } catch (error) {
     console.error("Hubo un error al obtener la rentabilidad:", error);
   }
@@ -99,18 +111,20 @@ const addProfitability = () => {
   dialog.value = true;
 };
 
-const editProductProfitability = (
-  profitability_id = null,
-  percentage = 0,
-  id_product,
-  is_locked = 1,
-) => {
+const editProductProfitability = (item) => {
   editDialog.value = true;
   productProfitability.value = {
-    id: profitability_id,
-    percentage: percentage,
-    product_id: id_product,
-    is_locked: is_locked,
+    id: item.profitability?.id,
+    percentage: item.profitability?.profitability_percentage || 0,
+    product_id: item.id,
+    is_locked: item.profitability?.is_locked || 0,
+    name: item.name,
+    unit_cost: item.unit_cost,
+    shipping_cost: item.profitability?.shipping_cost,
+    packaging_cost: item.profitability?.packaging_cost,
+    expense_margin: item.profitability?.expense_margin,
+    profit_margin: item.profitability?.profit_margin,
+    tax_usa: item.profitability?.tax_usa,
   };
 };
 
@@ -144,14 +158,10 @@ function reloadTable() {
   percentProfitability();
 }
 
-// Watchers
+// Watchers unificados para evitar race conditions
 let debounceTimer;
 watch(
   [
-    page,
-    itemsPerPage,
-    sortBy,
-    orderBy,
     searchQuery,
     selectedLaboratory,
     selectedOrigin,
@@ -161,25 +171,23 @@ watch(
     lockedValue,
   ],
   () => {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => fetchProducts(), 300);
-  },
-  { deep: true },
+    // Si cambia cualquier filtro, reiniciamos a la primera página.
+    // Esto disparará a su vez el watcher del page.
+    if (page.value !== 1) {
+      page.value = 1;
+    } else {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => fetchProducts(), 300);
+    }
+  }
 );
 
 watch(
-  [
-    searchQuery,
-    selectedLaboratory,
-    selectedOrigin,
-    stockStatusFilter,
-    startDate,
-    endDate,
-    lockedValue,
-  ],
+  [page, itemsPerPage, sortBy, orderBy],
   () => {
-    page.value = 1;
-  },
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => fetchProducts(), 300);
+  }
 );
 
 // Lifecycle
@@ -254,7 +262,7 @@ onMounted(() => {
         </VCol>
 
         <!-- Productos -->
-        <VCol cols="6" md="2" class="pa-1">
+        <VCol cols="4" md="2" class="pa-1">
           <VCard class="stats-card border-0 overflow-hidden">
             <VCardText class="pa-5 relative-content">
               <div class="d-flex flex-column align-center text-center">
@@ -267,7 +275,7 @@ onMounted(() => {
                 >
                   <VIcon icon="tabler-package" size="24" />
                 </VAvatar>
-                <span class="text-overline text-disabled leading-none mb-1"
+                <span class="text-overline text-disabled leading-none mb-1 text-truncate" style="max-width: 100%"
                   >Productos</span
                 >
                 <h4 class="text-h4 font-weight-black">{{ totalProduct }}</h4>
@@ -279,7 +287,7 @@ onMounted(() => {
 
 
         <!-- Bloqueados -->
-        <VCol cols="6" md="2" class="pa-1">
+        <VCol cols="4" md="2" class="pa-1">
           <VCard class="stats-card border-0 overflow-hidden">
             <VCardText class="pa-5 relative-content">
               <div class="d-flex flex-column align-center text-center">
@@ -292,7 +300,7 @@ onMounted(() => {
                 >
                   <VIcon icon="tabler-lock" size="24" />
                 </VAvatar>
-                <span class="text-overline text-disabled leading-none mb-1"
+                <span class="text-overline text-disabled leading-none mb-1 text-truncate" style="max-width: 100%"
                   >Bloqueados</span
                 >
                 <h4 class="text-h4 font-weight-black text-warning">
@@ -308,7 +316,7 @@ onMounted(() => {
         </VCol>
 
         <!-- Última Actualización -->
-        <VCol cols="12" md="2" class="pa-1">
+        <VCol cols="4" md="2" class="pa-1">
           <VCard class="stats-card border-0 overflow-hidden">
             <VCardText class="pa-5 relative-content">
               <div class="d-flex flex-column align-center text-center">
@@ -321,7 +329,7 @@ onMounted(() => {
                 >
                   <VIcon icon="tabler-history" size="24" />
                 </VAvatar>
-                <span class="text-overline text-disabled leading-none mb-1"
+                <span class="text-overline text-disabled leading-none mb-1 text-truncate" style="max-width: 100%"
                   >Última Act.</span
                 >
                 <h4 class="text-h4 font-weight-black text-info">HOY</h4>
@@ -354,6 +362,7 @@ onMounted(() => {
         :products="products"
         :totalProduct="totalProduct"
         :profitability="profitability"
+        :settings="globalSettings"
         :page="page"
         :itemsPerPage="itemsPerPage"
         :sort-by="sortBy"
@@ -369,6 +378,7 @@ onMounted(() => {
     <!-- Diálogos -->
     <addProfitabilityDialog
       :percentage="percentage"
+      :settings="globalSettings"
       :dialog="dialog"
       @close-modal="dialog = false"
       @refresh="reloadTable"
@@ -376,6 +386,7 @@ onMounted(() => {
 
     <ProductProfitabilityEditDialog
       :product="productProfitability"
+      :settings="globalSettings"
       :dialog="editDialog"
       @close-modal="editDialog = false"
       @refresh="reloadTable"

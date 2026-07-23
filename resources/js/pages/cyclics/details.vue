@@ -1,10 +1,10 @@
-<script setup>
+﻿<script setup>
 import AppTextField from "@/@core/components/app-form-elements/AppTextField.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { formatDateSimple, formatPrice } from "@/utils/formatters";
 import { useBrandingStore } from "@/stores/useBrandingStore";
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router/auto";
 
 const route = useRoute();
@@ -24,7 +24,7 @@ const isLoadingFilters = ref(false);
 const isAdvancedFiltersVisible = ref(false);
 
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => brandingStore.settings?.business_type === 'restaurant');
+const isRestaurant = computed(() => false);
 
 // Degradado dinámico igual que el login: secondary (inicio) → primary (fin)
 const headerGradient = computed(() => {
@@ -61,7 +61,10 @@ const headers = computed(() => [
   { title: "Acciones", key: "actions", sortable: false, align: "center" },
 ]);
 
+const isFiltersLoaded = ref(false);
+
 const fetchLaboratories = async () => {
+  if (isFiltersLoaded.value) return;
   isLoadingFilters.value = true;
   try {
     const [labsResponse, usersResponse] = await Promise.all([
@@ -79,6 +82,7 @@ const fetchLaboratories = async () => {
             : user.username || user.email || `Usuario ${user.id}`,
     }));
     supervisorOptions.value = userOptions.value;
+    isFiltersLoaded.value = true;
   } catch (error) {
     console.error("Error al cargar filtros:", error);
   } finally {
@@ -182,6 +186,9 @@ const handleClearFilters = () => {
 
 const toggleAdvancedFilters = () => {
   isAdvancedFiltersVisible.value = !isAdvancedFiltersVisible.value;
+  if (isAdvancedFiltersVisible.value) {
+    fetchLaboratories();
+  }
 };
 
 const hasActiveAdvancedFilters = computed(() => {
@@ -191,9 +198,12 @@ const hasActiveAdvancedFilters = computed(() => {
 const goBack = () => router.back();
 
 onMounted(() => {
-  fetchLaboratories();
   fetchCycleInfo();
   fetchProducts();
+});
+
+onUnmounted(() => {
+  clearTimeout(debounceTimer);
 });
 
 let debounceTimer;
@@ -374,6 +384,50 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
           density="compact"
           @update:options="handleUpdateOptions"
         >
+          <!-- Skeletons dinámicos durante la carga -->
+          <template #loading>
+            <tr v-for="n in 5" :key="n">
+              <td class="text-center"><VSkeletonLoader type="text" class="mx-auto" style="max-inline-size: 20px;" /></td>
+              <td>
+                <div class="d-flex align-center gap-2 py-2">
+                  <VSkeletonLoader type="avatar" size="34" class="rounded" />
+                  <div class="d-flex flex-column gap-1 flex-grow-1">
+                    <VSkeletonLoader type="text" style="max-inline-size: 150px;" />
+                    <VSkeletonLoader type="text" style="max-inline-size: 80px;" />
+                  </div>
+                </div>
+              </td>
+              <td><VSkeletonLoader type="text" class="mx-auto" style="max-inline-size: 30px;" /></td>
+              <td><VSkeletonLoader type="text" class="mx-auto" style="max-inline-size: 30px;" /></td>
+              <td><VSkeletonLoader type="text" class="mx-auto" style="max-inline-size: 40px;" /></td>
+              <td><VSkeletonLoader type="text" class="mx-auto" style="max-inline-size: 50px;" /></td>
+              <td><VSkeletonLoader type="text" class="mx-auto" style="max-inline-size: 60px;" /></td>
+              <td>
+                <div class="d-flex flex-column gap-1">
+                  <VSkeletonLoader type="text" style="max-inline-size: 120px;" />
+                  <VSkeletonLoader type="text" style="max-inline-size: 80px;" />
+                </div>
+              </td>
+              <td><VSkeletonLoader type="button" class="mx-auto" style="max-inline-size: 32px; block-size: 32px;" /></td>
+            </tr>
+          </template>
+
+          <!-- Estado Vacío Premium -->
+          <template #no-data>
+            <div class="d-flex flex-column align-center justify-center py-12 px-4 text-center">
+              <VAvatar color="primary" variant="tonal" size="64" class="mb-4">
+                <VIcon icon="tabler-clipboard-off" size="32" class="text-primary" />
+              </VAvatar>
+              <h3 class="text-base font-weight-black text-high-emphasis mb-1">Sin registros encontrados</h3>
+              <p class="text-xs text-medium-emphasis mb-4" style="max-inline-size: 320px;">
+                No hay productos contados que coincidan con la búsqueda o filtros aplicados en este ciclo.
+              </p>
+              <VBtn v-if="hasActiveAdvancedFilters" color="primary" size="small" variant="tonal" class="rounded-lg font-weight-black text-xs" @click="handleClearFilters">
+                Limpiar Filtros
+              </VBtn>
+            </div>
+          </template>
+
           <template #item.product.name="{ item }">
             <div class="d-flex align-start gap-x-3 py-2" style="max-inline-size: 280px;">
               <VAvatar v-if="item.product?.photo_url" size="34" variant="tonal" rounded :image="item.product.photo_url" />

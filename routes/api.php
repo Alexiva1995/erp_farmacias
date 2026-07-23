@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Api\CleaningActivityController;
+use App\Http\Controllers\Api\SupplierAiMatchController;
+use App\Http\Controllers\Api\AutoReplenishmentConfigController;
 
 use App\Http\Controllers\Api\DonationController;
 use App\Http\Controllers\Api\EmployeeCleaningActivityController;
@@ -66,6 +68,7 @@ use App\Http\Controllers\Api\ProductFailureController;
 use App\Http\Controllers\Api\SpecialtyController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Public\SupplierPublicUploadController;
+use App\Http\Controllers\Public\SupplierOrderResponseController;
 use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\FiscalPrinterController;
 use App\Http\Controllers\Api\IaAssistantActionController;
@@ -93,13 +96,17 @@ Route::prefix('fiscal')->group(function () {
 */
 
 // Rutas de autenticación
-Route::post("/login", [LoginController::class, "login"]);
-Route::post("/two-factor-challenge", [LoginController::class, "verify2FA"]);
+Route::post("/login", [LoginController::class, "login"])->middleware('throttle:login')->name('login');
+Route::post("/two-factor-challenge", [LoginController::class, "verify2FA"])->middleware('throttle:login');
 
 // Rutas públicas (no requieren autenticación ni middleware de estado)
+Route::get("/public/bootstrap-config", [\App\Http\Controllers\Api\BootstrapConfigController::class, "index"]);
 Route::get("/public/exchange-rates", [ResourceController::class, "getExchangeRates"]);
 Route::get("/public/suppliers/upload/{token}", [SupplierPublicUploadController::class, "show"]);
 Route::post("/public/suppliers/upload/{token}", [SupplierPublicUploadController::class, "upload"]);
+Route::get("/public/orders/{hash}", [SupplierOrderResponseController::class, "show"]);
+Route::post("/public/orders/{hash}/respond", [SupplierOrderResponseController::class, "respond"]);
+
 Route::post("/public/reservations/webhook", [\App\Http\Controllers\Api\ReservationController::class, "webhook"]);
 Route::get("/public/reservations/confirm-direct/{id}", [\App\Http\Controllers\Api\ReservationController::class, "confirmDirect"]);
 Route::get("/public/reservations", [\App\Http\Controllers\Api\ReservationController::class, "index"]);
@@ -107,9 +114,10 @@ Route::post("/public/reservations", [\App\Http\Controllers\Api\ReservationContro
 Route::get("/public/reservations/search-to-cancel", [\App\Http\Controllers\Api\ReservationController::class, "searchToCancel"]);
 Route::post("/public/reservations/{id}/request-cancellation", [\App\Http\Controllers\Api\ReservationController::class, "requestCancellation"]);
 Route::get("/public/reservations/{id}/confirm-cancellation", [\App\Http\Controllers\Api\ReservationController::class, "confirmCancellationByAdmin"]);
+Route::patch("/public/reservations/{id}/confirm", [\App\Http\Controllers\Api\ReservationController::class, "publicConfirm"]);
+
 Route::post("/public/telegram/webhook", [\App\Http\Controllers\Api\TelegramWebhookController::class, "handle"]);
 Route::get("/public/clients/identification/{identification}", [\App\Http\Controllers\Api\ClientController::class, "consultByIdentification"]);
-Route::patch("/public/reservations/{id}/confirm", [\App\Http\Controllers\Api\ReservationController::class, "publicConfirm"]);
 Route::post("/public/visits", [\App\Http\Controllers\Api\BookingVisitController::class, "store"]);
 
 // Rutas de E-commerce TOVA
@@ -117,10 +125,12 @@ Route::get("/public/ecommerce/products", [EcommerceController::class, "getProduc
 Route::get("/public/ecommerce/categories", [EcommerceController::class, "getCategories"]);
 Route::post("/public/ecommerce/checkout", [EcommerceController::class, "checkout"]);
 Route::post("/public/ecommerce/products/{id}/toggle-favorite", [EcommerceController::class, "toggleFavorite"]);
+// Consulta CNE pública para autocompletar datos del cliente en la tienda virtual
+Route::post("/public/clients/cne-verify", [\App\Http\Controllers\Api\ClientController::class, "verifyCne"]);
 Route::get("/public/general-settings", [GeneralSettingController::class, "index"]);
 
 // Rutas de administración de órdenes de e-commerce (dentro del bloque auth:sanctum)
-Route::middleware("auth:sanctum")->group(function () {
+Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
     Route::get("/ecommerce/admin/orders", [EcommerceController::class, "getAdminOrders"]);
     Route::post("/ecommerce/admin/orders/{id}/approve", [EcommerceController::class, "approveOrder"]);
     Route::post("/ecommerce/admin/orders/{id}/cancel", [EcommerceController::class, "cancelOrder"]);
@@ -129,7 +139,7 @@ Route::middleware("auth:sanctum")->group(function () {
 });
 
 // Rutas protegidas que requieren autenticación (Sanctum)
-Route::middleware("auth:sanctum")->group(function () {
+Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
     Route::get('/reservations', [\App\Http\Controllers\Api\ReservationController::class, 'index']);
     Route::post('/reservations', [\App\Http\Controllers\Api\ReservationController::class, 'store']);
     Route::patch('/reservations/{id}/status', [\App\Http\Controllers\Api\ReservationController::class, 'updateStatus']);
@@ -183,6 +193,7 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::patch('/products/without-group/{product}', [ProductController::class, 'updateProductGroup']);
     Route::get('/products/{product}/stats', [ProductController::class, 'getStats']);
     Route::get('/products/{product}/next-lot-number', [ProductController::class, 'getNextLotNumber']);
+    Route::post('/products/bulk-actions', [ProductController::class, 'bulkActions']);
     Route::post('/products', [ProductController::class, 'store']);
     Route::delete('/products/{product}', [ProductController::class, 'destroy']);
     Route::post('/products/{id}/restore', [ProductController::class, 'restore']);
@@ -430,6 +441,7 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get('/employee-sales-amount', [DashboardController::class, 'getEmployeeSalesByAmount']);
         Route::get('/employee-sales-units', [DashboardController::class, 'getEmployeeSalesByUnits']);
         Route::get('/expiring-sold-products', [DashboardController::class, 'getSoldExpiringProducts']);
+        Route::get('/minimarket-stats', [DashboardController::class, 'getMinimarketStats']);
     });
 
     // Rutas de Trazabilidad
@@ -443,21 +455,21 @@ Route::middleware("auth:sanctum")->group(function () {
 
     // Rutas de CRM
     Route::prefix("crm")->group(function () {
-        Route::prefix("doctors")->group(function () {
-            Route::post("/", [DoctorController::class, "create"]);
-            Route::post("/edit/{id}", [DoctorController::class, "edit"]);
-            Route::get("/", [DoctorController::class, "consultAll"]);
-            Route::get("/{id}", [DoctorController::class, "consultById"]);
-            Route::delete("/{id}", [DoctorController::class, "deleteById"]);
-            Route::post("/filtrar", [DoctorController::class, "filtrar"]);
-            Route::post("/filtrar-sin-paginar", [DoctorController::class, "filtrarSinPaginar"]);
-            Route::get("/exportar/excel", [DoctorController::class, "exportarExcel"]);
-            Route::get("/help/check", [DoctorController::class, "helpCheck"]);
-        });
+            Route::prefix("doctors")->group(function () {
+                Route::post("/", [DoctorController::class, "create"]);
+                Route::post("/edit/{id}", [DoctorController::class, "edit"]);
+                Route::get("/", [DoctorController::class, "consultAll"]);
+                Route::get("/{id}", [DoctorController::class, "consultById"]);
+                Route::delete("/{id}", [DoctorController::class, "deleteById"]);
+                Route::post("/filtrar", [DoctorController::class, "filtrar"]);
+                Route::post("/filtrar-sin-paginar", [DoctorController::class, "filtrarSinPaginar"]);
+                Route::get("/exportar/excel", [DoctorController::class, "exportarExcel"]);
+                Route::get("/help/check", [DoctorController::class, "helpCheck"]);
+            });
 
-        Route::prefix("specialties")->group(function () {
-            Route::get("/", [SpecialtyController::class, "index"]);
-        });
+            Route::prefix("specialties")->group(function () {
+                Route::get("/", [SpecialtyController::class, "index"]);
+            });
 
         Route::prefix("companies")->group(function () {
             Route::post("/", [CompanyController::class, "create"]);
@@ -482,6 +494,7 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::post("/{id}/update-company/{company_id}", [ClientController::class, "updateCompany"]);
             Route::post("/filtrar", [ClientController::class, "filtrar"]);
             Route::post("/filtrar-sin-paginar", [ClientController::class, "filtrarSinPaginar"]);
+            Route::post("/count", [ClientController::class, "countByDateRange"]);
             Route::get("/exportar/excel", [ClientController::class, "exportarExcel"]);
             Route::post("/bulk-cleanup", [ClientController::class, "bulkCleanup"]);
             Route::post("/cne-verify", [ClientController::class, "verifyCne"]);
@@ -672,6 +685,16 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::post('/clear-ignore-until', [SupplierIaAssistantReportController::class, 'clearIgnoreUntil']);
     });
 
+    // Rutas de feedback para el sistema de matching IA
+    Route::prefix("supplier-ai-match")->group(function () {
+        Route::post('/reject', [SupplierAiMatchController::class, 'reject']);
+        Route::post('/accept', [SupplierAiMatchController::class, 'accept']);
+    });
+
+    // Rutas para configuración de automatización de pedidos (Auto-Replenishment)
+    Route::apiResource('auto-replenishment-configs', AutoReplenishmentConfigController::class);
+    Route::post('auto-replenishment-configs/{config}/run', [AutoReplenishmentConfigController::class, 'run']);
+
     Route::prefix("market-opportunities")->group(function () {
         Route::get("/", [MarketOpportunityController::class, "index"]);
         Route::get("/export", [MarketOpportunityController::class, "export"]);
@@ -728,9 +751,11 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get('/reports/abc-analysis', \App\Http\Controllers\Api\ProductAbcReportController::class);
         Route::prefix("profitability")->group(function () {
             Route::get("/", [ProfitabilityController::class, "consultOne"]);
+            Route::get("/products", [ProfitabilityController::class, "getProductsForProfitability"]);
             Route::post("/store", [ProfitabilityController::class, "store"]);
             Route::post("/{id}", [ProfitabilityController::class, "edit"]);
             Route::prefix("product")->group(function () {
+                Route::post("/toggle-lock", [ProfitabilityController::class, "toggleLock"]);
                 Route::get("/{id}", [ProfitabilityController::class, "getProduct"]);
                 Route::post("/update", [ProfitabilityController::class, "editProfitabilityProduct"]);
                 Route::post("/store", [ProfitabilityController::class, "storeProfitabilityProduct"]);
@@ -812,13 +837,15 @@ Route::middleware("auth:sanctum")->group(function () {
             Route::get('/dailyCash', [CashClosureController::class, 'getDailyCashTable']);
             Route::get('/monthlyCash', [CashClosureController::class, 'getMonthlyCashTable']);
             Route::get('/sellerCash', [CashClosureController::class, 'getSellerCashTable']);
+            Route::get('/sellers', [CashClosureController::class, 'getSellersWithClosures']);
             Route::get('/monthlyCashclosing', [CashClosureController::class, 'getmonthlyCashclosing']);
             Route::post('/downloadReport', [CashClosureController::class, 'downloadReport']);
             Route::post('/PrintReport', [CashClosureController::class, 'printdReport']);
             Route::get('/monthlyCashclosingAllSellers', [CashClosureController::class, 'getmonthlyCashclosingAllSellers']);
-            Route::get('/sellers', [CashClosureController::class, 'getSellersWithClosures']);
             Route::patch('/confirm-reference', [CashClosureController::class, 'confirmReference']);
             Route::patch('/update-blind-amounts', [CashClosureController::class, 'updateBlindAmounts']);
+            Route::post('/mismatches/accept', [\App\Http\Controllers\Api\Finance\MismatchManagementController::class, 'acceptMismatch']);
+            Route::get('/{id}', [CashClosureController::class, 'show']);
         });
 
         Route::prefix("expenses")->group(function () {

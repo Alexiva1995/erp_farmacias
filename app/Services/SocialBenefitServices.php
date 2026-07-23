@@ -1,11 +1,12 @@
 <?php
 
+declare(strict_types=1);
 
 namespace App\Services;
 
 use App\Contracts\SocialBenefit;
 use App\Models\Employee;
-use App\Repository\SocialBenefitRepository;
+use App\Repositories\SocialBenefitRepository;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 class SocialBenefitServices implements SocialBenefit

@@ -147,8 +147,11 @@ class Supplier extends Model
 
     public function getDebtAttribute(): float
     {
-        //return $this->invoices->sum->outstanding_debt;
-        return $this->invoices()
+        if (array_key_exists('invoices_sum_total_usd', $this->attributes)) {
+            return (float) ($this->attributes['invoices_sum_total_usd'] ?? 0);
+        }
+
+        return (float) $this->invoices()
             ->where('status_payment', 0)
             ->sum(DB::raw('COALESCE(total_usd, 0)'));
     }

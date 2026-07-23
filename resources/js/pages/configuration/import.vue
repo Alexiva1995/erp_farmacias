@@ -1,14 +1,17 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, watch } from 'vue'
 import axios from '@axios'
 import { toast } from '@/plugins/sweetalert'
 
+// --- Estado ---
 const activeTab = ref('clientes')
 const selectedFile = ref(null)
 const uploading = ref(false)
 const progress = ref(0)
-const businessType = ref('pharmacy')
+const isDragging = ref(false)
+const fileInputRef = ref(null) // Ref al input nativo, sin tocar el DOM directamente
 
+// --- Definición de tabs y esquemas ---
 const tabs = [
   { title: 'Clientes', value: 'clientes', icon: 'tabler-users', filePattern: 'clientes.csv' },
   { title: 'Proveedores', value: 'proveedores', icon: 'tabler-truck', filePattern: 'proveedores.csv' },
@@ -84,6 +87,48 @@ const fileSchemas = {
   ],
 }
 
+// --- Computed ---
+
+/** Esquema de columnas del tab activo */
+const currentSchema = computed(() => fileSchemas[activeTab.value] ?? [])
+
+/** Patrón de nombre esperado para el tab activo */
+const currentFilePattern = computed(() =>
+  tabs.find(t => t.value === activeTab.value)?.filePattern ?? '',
+)
+
+/** Tamaño del archivo en KB formateado */
+const fileSizeKb = computed(() =>
+  selectedFile.value ? (selectedFile.value.size / 1024).toFixed(2) : '0',
+)
+
+/** Indica si el nombre del archivo coincide con el patrón del tab (advertencia no bloqueante) */
+const fileNameMismatch = computed(() => {
+  if (!selectedFile.value) return false
+
+  return !selectedFile.value.name
+    .toLowerCase()
+    .includes(activeTab.value.toLowerCase())
+})
+
+// --- Watchers ---
+
+/** Resetea el archivo seleccionado al cambiar de tab para evitar inconsistencia de estado */
+watch(activeTab, () => {
+  clearFile()
+})
+
+// --- Métodos ---
+
+/** Limpia el archivo seleccionado y resetea el input via template ref (sin tocar el DOM) */
+const clearFile = () => {
+  selectedFile.value = null
+  if (fileInputRef.value) {
+    fileInputRef.value.value = ''
+  }
+}
+
+/** Selecciona el archivo desde el input nativo */
 const handleFileSelect = (e) => {
   const file = e.target.files[0]
   if (file) {
@@ -91,15 +136,31 @@ const handleFileSelect = (e) => {
   }
 }
 
-const fetchSettings = async () => {
-  try {
-    const response = await axios.get('/general-settings')
-    businessType.value = response.data.data.business_type || 'pharmacy'
-  } catch (error) {
-    console.error('Error al cargar configuración:', error)
+/** Maneja el evento de arrastre sobre la zona de drop */
+const handleDrop = (e) => {
+  isDragging.value = false
+  const file = e.dataTransfer?.files[0]
+  if (file && (file.type === 'text/csv' || file.name.endsWith('.csv') || file.type === 'text/plain')) {
+    selectedFile.value = file
+  } else {
+    toast.error('Solo se admiten archivos CSV.')
   }
 }
 
+/** Genera y descarga un CSV de plantilla con las columnas del tab activo */
+const downloadTemplate = () => {
+  const headers = currentSchema.value.map(col => col.field).join(',')
+  const blob = new Blob([headers + '\n'], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+
+  link.setAttribute('href', url)
+  link.setAttribute('download', currentFilePattern.value)
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
+/** Envía el CSV al servidor con progreso real reportado por axios */
 const triggerImport = async () => {
   if (!selectedFile.value) {
     toast.error('Por favor, selecciona un archivo CSV válido.')
@@ -107,71 +168,125 @@ const triggerImport = async () => {
   }
 
   uploading.value = true
-  progress.value = 10
+  progress.value = 0
 
   const formData = new FormData()
+
   formData.append('type', activeTab.value)
   formData.append('file', selectedFile.value)
 
   try {
-    progress.value = 40
     const response = await axios.post('/import-csv', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
+      headers: { 'Content-Type': 'multipart/form-data' },
+      // Progreso real del upload (no simulado con valores fijos)
+      onUploadProgress: (evt) => {
+        if (evt.lengthComputable) {
+          progress.value = Math.round((evt.loaded / evt.total) * 100)
+        }
       },
     })
-    progress.value = 100
-    toast.success(response.data.message || 'Importación procesada exitosamente.')
-    selectedFile.value = null
-    // Reset file input
-    const fileInput = document.getElementById('csv-file-input')
-    if (fileInput) fileInput.value = ''
+
+    toast.success(response.data.message ?? 'Importación procesada exitosamente.')
+    clearFile()
   } catch (err) {
-    toast.error(err.response?.data?.message || 'Error al procesar el archivo CSV. Verifica la estructura.')
+    const message = err.response?.data?.message ?? 'Error al procesar el archivo CSV. Verifica la estructura.'
+
+    toast.error(message)
   } finally {
     uploading.value = false
-    setTimeout(() => {
-      progress.value = 0
-    }, 1000)
+    setTimeout(() => { progress.value = 0 }, 1500)
   }
 }
-
-onMounted(() => {
-  fetchSettings()
-})
 </script>
 
 <template>
-  <VRow v-if="businessType === 'pharmacy'">
+  <VRow>
     <VCol cols="12">
-      <VCard title="Módulo de Importación de Datos (Onboarding)">
-        <VCardText>
-          Carga de forma masiva la información inicial de tu farmacia en formato de valores separados por coma (CSV).
-        </VCardText>
+      <VCard>
+        <!-- Encabezado semántico con acción secundaria integrada -->
+        <VCardItem>
+          <VCardTitle class="d-flex align-center gap-2">
+            <VIcon
+              icon="tabler-database-import"
+              color="primary"
+            />
+            Módulo de Importación de Datos (Onboarding)
+          </VCardTitle>
+          <VCardSubtitle>
+            Carga de forma masiva la información inicial de tu negocio en formato CSV.
+          </VCardSubtitle>
 
-        <VTabs v-model="activeTab" color="primary" grow>
-          <VTab v-for="tab in tabs" :key="tab.value" :value="tab.value">
-            <VIcon start :icon="tab.icon" />
+          <template #append>
+            <!-- Descarga la plantilla del tab activo dinámicamente -->
+            <VBtn
+              variant="tonal"
+              color="success"
+              size="small"
+              prepend-icon="tabler-download"
+              @click="downloadTemplate"
+            >
+              Descargar Plantilla
+            </VBtn>
+          </template>
+        </VCardItem>
+
+        <!-- Tabs de entidades -->
+        <VTabs
+          v-model="activeTab"
+          color="primary"
+          grow
+        >
+          <VTab
+            v-for="tab in tabs"
+            :key="tab.value"
+            :value="tab.value"
+          >
+            <VIcon
+              start
+              :icon="tab.icon"
+            />
             {{ tab.title }}
           </VTab>
         </VTabs>
 
+        <VDivider />
+
         <VCardText class="mt-4">
+          <!-- Tabla del esquema requerido para el tab activo -->
           <div class="mb-4">
-            <h3 class="text-subtitle-1 font-weight-bold mb-2">Estructura requerida para el archivo:</h3>
-            <VTable density="compact" class="border rounded">
+            <h3 class="text-subtitle-1 font-weight-bold mb-2">
+              Estructura requerida del archivo
+              <code class="text-caption ms-1 pa-1 rounded bg-surface">{{ currentFilePattern }}</code>
+            </h3>
+
+            <VTable
+              density="compact"
+              class="border rounded"
+            >
               <thead>
                 <tr>
-                  <th class="text-left font-weight-bold">Columna (Cabecera)</th>
-                  <th class="text-left font-weight-bold">Requerido</th>
-                  <th class="text-left font-weight-bold">Descripción</th>
+                  <th class="text-left font-weight-bold">
+                    Columna (Cabecera)
+                  </th>
+                  <th class="text-left font-weight-bold">
+                    Requerido
+                  </th>
+                  <th class="text-left font-weight-bold">
+                    Descripción
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="col in fileSchemas[activeTab]" :key="col.field">
+                <tr
+                  v-for="col in currentSchema"
+                  :key="col.field"
+                >
                   <td><code>{{ col.field }}</code></td>
                   <td>
-                    <VChip size="x-small" :color="col.required ? 'error' : 'secondary'">
+                    <VChip
+                      size="x-small"
+                      :color="col.required ? 'error' : 'secondary'"
+                    >
                       {{ col.required ? 'Obligatorio' : 'Opcional' }}
                     </VChip>
                   </td>
@@ -183,33 +298,88 @@ onMounted(() => {
 
           <VDivider class="my-4" />
 
-          <div class="d-flex flex-column align-center justify-center border-dashed rounded p-6 bg-var-theme-background">
-            <VIcon icon="tabler-file-type-csv" size="48" color="primary" class="mb-2" />
-            <span class="text-body-2 font-weight-bold mb-1">
-              {{ selectedFile ? selectedFile.name : 'Selecciona el archivo correspondiente a ' + activeTab }}
-            </span>
-            <span class="text-caption text-disabled mb-4" v-if="selectedFile">
-              Tamaño: {{ (selectedFile.size / 1024).toFixed(2) }} KB
-            </span>
+          <!-- Zona de Drag & Drop con estados visuales reactivos -->
+          <div
+            class="drop-zone d-flex flex-column align-center justify-center rounded"
+            :class="{
+              'drop-zone--active': isDragging,
+              'drop-zone--has-file': selectedFile,
+            }"
+            @dragover.prevent="isDragging = true"
+            @dragleave.prevent="isDragging = false"
+            @drop.prevent="handleDrop"
+          >
+            <VIcon
+              :icon="selectedFile ? 'tabler-file-check' : 'tabler-file-type-csv'"
+              size="52"
+              :color="selectedFile ? 'success' : 'primary'"
+              class="mb-3"
+            />
 
+            <!-- Estado: sin archivo -->
+            <template v-if="!selectedFile">
+              <span class="text-body-1 font-weight-bold mb-1">
+                Arrastra tu archivo aquí
+              </span>
+              <span class="text-caption text-disabled mb-4">
+                o haz clic en "Buscar Archivo" · Solo se admiten archivos .csv
+              </span>
+            </template>
+
+            <!-- Estado: archivo seleccionado -->
+            <template v-else>
+              <span class="text-body-1 font-weight-bold mb-1">
+                {{ selectedFile.name }}
+              </span>
+              <span class="text-caption text-medium-emphasis mb-2">
+                {{ fileSizeKb }} KB
+              </span>
+
+              <!-- Advertencia no bloqueante si el nombre no coincide con el tab -->
+              <VAlert
+                v-if="fileNameMismatch"
+                type="warning"
+                variant="tonal"
+                density="compact"
+                class="mb-3 text-left"
+                style="max-width: 420px"
+              >
+                El nombre del archivo no coincide con el tipo
+                <strong>{{ currentFilePattern }}</strong>. Verifica que cargaste el archivo correcto.
+              </VAlert>
+            </template>
+
+            <!-- Input nativo oculto, controlado exclusivamente via template ref -->
             <input
               id="csv-file-input"
+              ref="fileInputRef"
               type="file"
               accept=".csv, text/plain"
               class="d-none"
               @change="handleFileSelect"
-            />
-            
-            <div class="d-flex gap-4">
+            >
+
+            <div class="d-flex gap-3 flex-wrap justify-center align-center">
               <VBtn
                 color="secondary"
                 variant="tonal"
                 prepend-icon="tabler-upload"
-                @click="() => document.getElementById('csv-file-input').click()"
                 :disabled="uploading"
+                @click="fileInputRef?.click()"
               >
                 Buscar Archivo
               </VBtn>
+
+              <!-- Limpiar selección (solo visible con archivo) -->
+              <VBtn
+                v-if="selectedFile"
+                color="error"
+                variant="text"
+                icon="tabler-x"
+                size="small"
+                :disabled="uploading"
+                @click="clearFile"
+              />
 
               <VBtn
                 color="primary"
@@ -222,27 +392,22 @@ onMounted(() => {
               </VBtn>
             </div>
 
+            <!-- Barra de progreso REAL alimentada por onUploadProgress de axios -->
             <VProgressLinear
               v-if="uploading"
               v-model="progress"
               color="primary"
               height="8"
               striped
-              class="mt-4 w-50 rounded"
+              class="mt-4 rounded progress-bar"
             />
+            <span
+              v-if="uploading"
+              class="text-caption text-medium-emphasis mt-1"
+            >
+              Enviando... {{ progress }}%
+            </span>
           </div>
-        </VCardText>
-      </VCard>
-    </VCol>
-  </VRow>
-
-  <VRow v-else>
-    <VCol cols="12">
-      <VCard title="Acceso Denegado">
-        <VCardText>
-          <VAlert type="warning" variant="tonal">
-            Esta sección solo está disponible para el tipo de negocio de Farmacia.
-          </VAlert>
         </VCardText>
       </VCard>
     </VCol>
@@ -250,10 +415,29 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.border-dashed {
-  border: 2px dashed rgba(var(--v-border-color), 0.3) !important;
+/* Zona de drop con transición de estado */
+.drop-zone {
+  border: 2px dashed rgba(var(--v-border-color), 0.35);
+  padding: 2rem 1.5rem;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+  min-height: 220px;
 }
-.p-6 {
-  padding: 1.5rem;
+
+/* Estado activo durante el arrastre del archivo */
+.drop-zone--active {
+  border-color: rgb(var(--v-theme-primary));
+  background-color: rgba(var(--v-theme-primary), 0.06);
+}
+
+/* Estado con archivo correctamente seleccionado */
+.drop-zone--has-file {
+  border-color: rgb(var(--v-theme-success));
+  background-color: rgba(var(--v-theme-success), 0.04);
+}
+
+/* Barra de progreso con ancho máximo contenido */
+.progress-bar {
+  width: 100%;
+  max-width: 360px;
 }
 </style>

@@ -1,10 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Contracts\Profitability;
 use App\Models\Product;
-use App\Repository\ProfitabilityRepository;
+use App\Repositories\ProfitabilityRepository;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -89,9 +91,34 @@ class ProfitabilityServices implements Profitability
     {
         $product = \App\Models\Product::find($productId);
         if ($product) {
-            // Formula: Price = Cost * (1 + (Percentage / 100))
-            $newPrice = $product->unit_cost * (1 + ($percentage / 100));
-            $product->sale_price = $newPrice;
+            $generalSettings = \Illuminate\Support\Facades\DB::table('general_settings')->first();
+            $isMinimarket = $generalSettings && $generalSettings->business_type === 'minimarket';
+
+            $useCompound = ($generalSettings && $generalSettings->business_type === 'minimarket') || ($generalSettings && isset($generalSettings->profitability_calculation_type) && $generalSettings->profitability_calculation_type === 'compound');
+
+            if ($useCompound) {
+                $settings = $this->consultOne();
+                $productProfitability = \App\Models\ProductProfitability::where('product_id', $productId)->first();
+
+                $shippingCost = $productProfitability && $productProfitability->shipping_cost !== null ? (float)$productProfitability->shipping_cost : ($settings ? (float)$settings->shipping_cost : 0.0);
+                $packagingCost = $productProfitability && $productProfitability->packaging_cost !== null ? (float)$productProfitability->packaging_cost : ($settings ? (float)$settings->packaging_cost : 0.0);
+                $expenseMargin = $productProfitability && $productProfitability->expense_margin !== null ? (float)$productProfitability->expense_margin : ($settings ? (float)$settings->expense_margin : 0.0);
+                $profitMargin = $productProfitability && $productProfitability->profit_margin !== null ? (float)$productProfitability->profit_margin : ($settings ? (float)$settings->profit_margin : 0.0);
+                $taxUsa = $productProfitability && $productProfitability->tax_usa !== null ? (float)$productProfitability->tax_usa : ($settings ? (float)$settings->tax_usa : 0.0);
+
+                $costWithTax = $product->unit_cost * (1.0 + ($taxUsa / 100.0));
+                $fixedExpenseAmount = $costWithTax * ($expenseMargin / 100.0);
+                $profitDenominator = 1.0 - ($profitMargin / 100.0);
+                if ($profitDenominator <= 0.0) {
+                    $profitDenominator = 0.01; // Evitar división por cero
+                }
+
+                $newPrice = ($costWithTax + $shippingCost + $packagingCost + $fixedExpenseAmount) / $profitDenominator;
+            } else {
+                $newPrice = $product->unit_cost * (1 + ($percentage / 100));
+            }
+
+            $product->sale_price = round($newPrice, 2);
             $product->save();
         }
     }

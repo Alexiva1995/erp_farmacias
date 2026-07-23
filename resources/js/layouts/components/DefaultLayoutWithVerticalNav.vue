@@ -20,98 +20,256 @@ const authStore = useAuthStore();
 const brandingStore = useBrandingStore();
 const configStore = useLayoutConfigStore();
 
+const isSupervisor = computed(() => authStore.user?.role_id === 2);
+
 // Procesar el menú dinámicamente según el rol del usuario
 // Usar computed con dependencia específica para evitar re-evaluaciones innecesarias
 const processedNavItems = computed(() => {
   let items = [...navItems];
-  
-  const isRestaurant = brandingStore.settings.business_type === 'restaurant';
-  const isSportsRental = brandingStore.settings.business_type === 'sports_rental';
+  const enabledModules = brandingStore.settings.enabled_modules || ['pharmacy'];
+
+  // Filtrado de alto nivel basado en módulos dinámicos configurados
+  items = items.filter(item => {
+    const title = (item.title || '').toLowerCase();
+    const to = (item.to || '').toLowerCase();
+
+    if (title === 'reservas' || to === 'reservations') {
+      return enabledModules.includes('reservation');
+    }
+    if (title === 'lotería' || to === 'lottery' || title === 'loteria') {
+      return enabledModules.includes('lottery');
+    }
+    if (title === 'operativa' || to === 'restaurant-process-audit' || to === 'inventory-dishes') {
+      return enabledModules.includes('restaurant');
+    }
+    if (title === 'facturas' || to === 'invoice' || to.startsWith('invoice-')) {
+      return brandingStore.settings.enable_invoices ?? true;
+    }
+    return true;
+  });
+
   const isSimpleCyclic = brandingStore.settings.cyclic_inventory_mode === 'simple';
   const enableLots = brandingStore.settings.enable_lots ?? true;
   
-  const filterRestaurantNav = (navItemsList) => {
-    const isMiniMarket = brandingStore.settings.business_type === 'minimarket';
-    
+  const filterNav = (navItemsList) => {
     return navItemsList.map((item) => {
       let copy = { ...item };
-      
-      // Si el item padre es el de IA Assistence, renombrarlo a Pedidos en restaurante
-      if (isRestaurant && copy.title === 'IA Assistence') {
-        copy.title = 'Pedidos';
-        // Asignarle 'to' directo para que redirija inmediatamente al hacer click
-        copy.to = 'suppliers-supplieriaorderassistant';
-        // Eliminar los hijos para evitar el desplegable y que entre directo
-        delete copy.children;
-        return copy;
-      }
 
       if (copy.children && Array.isArray(copy.children)) {
-        // Primero procesamos recursivamente los hijos
-        let childs = filterRestaurantNav([...copy.children]);
+        let childs = filterNav([...copy.children]);
         
+        // Filtrado dinámico de submenús de Promociones según enabled_offer_types
+        if (copy.title === 'Promociones') {
+          const enabledOffers = brandingStore.settings.enabled_offer_types || ['general', 'individual', 'category', 'pack', 'company', 'doctor', 'prescription', 'expiration'];
+          const offerPathMap = {
+            'general': '/tpv/generalOffer',
+            'individual': '/tpv/individualOffer',
+            'category': '/tpv/categoryOffer',
+            'pack': '/tpv/packOffer',
+            'company': '/tpv/companyOffer',
+            'doctor': '/tpv/doctorOffer',
+            'prescription': '/tpv/prescriptionOffer',
+            'expiration': '/tpv/expirationOffer',
+          };
+          childs = childs.filter(c => {
+            const path = typeof c.to === 'object' ? c.to.path : c.to;
+            for (const [type, typePath] of Object.entries(offerPathMap)) {
+              if (path === typePath) {
+                return enabledOffers.includes(type);
+              }
+            }
+            return true;
+          });
+          if (childs.length === 0) return null;
+        }
+
+        // Filtrado dinámico de submenús de CRM según enabled_crm_views
+        if (copy.title === 'CRM') {
+          const enabledCrm = brandingStore.settings.enabled_crm_views || ['clients', 'companies', 'doctors', 'lottery'];
+          const crmRouteMap = {
+            'clients': 'crm-clients',
+            'companies': 'crm-companies',
+            'doctors': 'crm-doctors',
+            'lottery': 'crm-lottery',
+          };
+          childs = childs.filter(c => {
+            for (const [key, name] of Object.entries(crmRouteMap)) {
+              if (c.to === name) {
+                return enabledCrm.includes(key);
+              }
+            }
+            return true;
+          });
+          if (childs.length === 0) return null;
+        }
+
+        // Filtrado dinámico de submenús de RRHH según enabled_rrhh_views
+        if (copy.title === 'RRHH') {
+          const enabledRrhh = brandingStore.settings.enabled_rrhh_views || ['employees', 'social_benefits', 'resignations', 'cleaning', 'laboratory', 'product', 'employee_task', 'employee_month'];
+          const rrhhRouteMap = {
+            'employees': 'rrhh-employees',
+            'social_benefits': 'rrhh-social-benefits',
+            'resignations': 'rrhh-resignations',
+          };
+          const productivityRouteMap = {
+            'cleaning': 'productivity-cleaning',
+            'laboratory': 'productivity-laboratory',
+            'product': 'productivity-product',
+            'employee_task': 'productivity-employee-task',
+            'employee_month': 'productivity-employee-month',
+          };
+
+          childs = childs.filter(c => {
+            for (const [key, name] of Object.entries(rrhhRouteMap)) {
+              if (c.to === name) {
+                return enabledRrhh.includes(key);
+              }
+            }
+            if (c.title === 'Productividad' && Array.isArray(c.children)) {
+              c.children = c.children.filter(sub => {
+                for (const [key, name] of Object.entries(productivityRouteMap)) {
+                  if (sub.to === name) {
+                    return enabledRrhh.includes(key);
+                  }
+                }
+                return true;
+              });
+              return c.children.length > 0;
+            }
+            return true;
+          });
+          if (childs.length === 0) return null;
+        }
+
+        // Filtrado dinámico de submenús de Proveedores según enabled_supplier_views
+        if (copy.title === 'Proveedores') {
+          const enabledSuppliers = brandingStore.settings.enabled_supplier_views || ['list', 'purchase_orders'];
+          const supplierRouteMap = {
+            'list': 'suppliers-list',
+            'purchase_orders': 'suppliers-purchase-orders-list',
+          };
+          childs = childs.filter(c => {
+            for (const [key, name] of Object.entries(supplierRouteMap)) {
+              if (c.to === name) {
+                return enabledSuppliers.includes(key);
+              }
+            }
+            return true;
+          });
+          if (childs.length === 0) return null;
+        }
+
+        // Filtrado dinámico de submenús de IA Assistence según enabled_ia_assistant_views
+        if (copy.title === 'IA Assistence') {
+          const enabledIaAssistant = brandingStore.settings.enabled_ia_assistant_views || ['pedidos', 'reporte', 'oportunidad', 'comparador', 'automatizacion'];
+          const iaAssistantRouteMap = {
+            'pedidos': 'suppliers-supplieriaorderassistant',
+            'reporte': 'suppliers-supplieriaorderassistantreport',
+            'oportunidad': 'suppliers-market-opportunities',
+            'comparador': 'suppliers-product-comparator-list',
+            'automatizacion': 'suppliers-auto-replenishment',
+          };
+          childs = childs.filter(c => {
+            for (const [key, name] of Object.entries(iaAssistantRouteMap)) {
+              if (c.to === name) {
+                return enabledIaAssistant.includes(key);
+              }
+            }
+            return true;
+          });
+          if (childs.length === 0) return null;
+        }
+
+        // Filtrado dinámico de submenús de Finanzas según enabled_finance_views
+        if (copy.title === 'Finanzas') {
+          const enabledFinances = brandingStore.settings.enabled_finance_views || [
+            'profitability', 'exchangerate', 'pending-payments', 'payment-history', 
+            'cashout', 'payslips', 'cash-closure', 'cash-closure-user', 
+            'income-statement', 'expense-expenses', 'balance-general', 
+            'furnitures-list', 'loans-list'
+          ];
+          const financeRouteMap = {
+            'profitability': 'finances-profitability',
+            'exchangerate': 'finances-exchangerate',
+            'pending-payments': 'finances-pending-payments',
+            'payment-history': 'finances-payment-history',
+            'cashout': 'finances-cashout',
+            'payslips': 'finances-payslips',
+            'cash-closure': 'finances-cash-closure',
+            'cash-closure-user': 'finances-cash-closure-user',
+            'income-statement': 'finances-income-statement',
+            'expense-expenses': 'finances-expense-expenses',
+            'balance-general': 'balance-general',
+            'furnitures-list': 'furnitures-list',
+            'loans-list': 'loans-list',
+          };
+          childs = childs.filter(c => {
+            for (const [key, name] of Object.entries(financeRouteMap)) {
+              if (c.to === name) {
+                if (isSupervisor.value && c.to === 'finances-cash-closure-user' && c.subject === 'user') {
+                  return false;
+                }
+                return enabledFinances.includes(key);
+              }
+            }
+            return true;
+          });
+          if (childs.length === 0) return null;
+        }
+
+        // Filtrado dinámico de submenús de BI según enabled_bi_views
+        if (copy.title === 'BI') {
+          const enabledBi = brandingStore.settings.enabled_bi_views || ['abc', 'dead-stock', 'sku', 'products', 'expiry', 'laboratories', 'pos', 'cyclic', 'customer', 'performance'];
+          const biRouteMap = {
+            'abc': 'bi-report-abc',
+            'dead-stock': 'bi-report-dead-stock',
+            'sku': 'bi-report-sku',
+            'products': 'bi-report-products',
+            'expiry': 'bi-report-expiry',
+            'laboratories': 'bi-report-laboratories',
+            'pos': 'bi-analytics-pos',
+            'cyclic': 'bi-inventory-cyclic',
+            'customer': 'bi-customer-analytics',
+            'performance': 'bi-employee-performance',
+          };
+          childs = childs.filter(c => {
+            for (const [key, name] of Object.entries(biRouteMap)) {
+              if (c.to === name) {
+                return enabledBi.includes(key);
+              }
+            }
+            return true;
+          });
+          if (childs.length === 0) return null;
+        }
+
         // Ocultar Pendientes en modo simple
         if (isSimpleCyclic) {
           childs = childs.filter((c) => c.to !== 'cyclics-cyclic');
         }
         
-        if (!isRestaurant && !isMiniMarket) {
+        // Filtrar Platos / Menú usando el setting enable_dishes
+        const enableDishesSetting = brandingStore.settings.enable_dishes ?? true;
+        if (!enableDishesSetting) {
           childs = childs.filter((c) => c.to !== 'inventory-dishes');
-        } else if (isMiniMarket) {
-          // Si es minimarket, ocultar Optimización por completo, Origen, Grupo, Ubicaciones y filtrar platos de restaurante
-          childs = childs.filter((c) => 
-            c.title !== 'Optimización' && 
-            c.to !== 'inventory-dishes' &&
-            c.to !== 'inventory-lots-without-location' &&
-            c.to !== 'inventory-incomplete-products' &&
-            c.to !== 'inventory-products-without-group' &&
-            c.to !== 'inventory-lotificacion' &&
-            c.to !== 'inventory-locations'
-          );
-          childs = childs.map((c) => {
-            if (c.to === 'inventory-laboratories') {
-              return { ...c, title: 'Marcas' };
-            }
-            return { ...c };
-          });
-        } else {
-          childs = childs.filter((c) => 
-            c.title !== 'Devoluciones' && 
-            c.title !== 'Medico' && 
-            c.title !== 'Recipe' && 
-            c.to !== 'crm-doctors' &&
-            c.to !== 'productivity-laboratory' &&
-            c.title !== 'Laboratorios Empleados' &&
-            c.to !== 'fiscal-retenciones'
-          );
-          childs = childs.map((c) => {
-            if (c.to === 'inventory-laboratories') {
-              return { ...c, title: 'Marcas' };
-            }
-            return { ...c };
-          });
         }
-        if (isSportsRental) {
-          childs = childs.filter((c) => 
-            c.to !== 'tpv-ecommerce-orders' && 
-            c.title !== 'Pedidos Eco' &&
-            c.title !== 'Optimización' &&
-            c.to !== 'inventory-group-products' &&
-            c.to !== 'inventory-locations' &&
-            c.to !== 'tpv-quotation'
-          );
-          childs = childs.map((c) => {
-            if (c.to === 'inventory-laboratories') {
-              return { ...c, title: 'Marcas' };
-            }
-            return { ...c };
-          });
+
+        // Renombrar Laboratorios a Marcas de forma universal
+        childs = childs.map((c) => {
+          if (c.to === 'inventory-laboratories') {
+            return { ...c, title: 'Marcas' };
+          }
+          return { ...c };
+        });
+
+        const enableQuotationsSetting = brandingStore.settings.enable_quotations ?? true;
+        if (!enableQuotationsSetting) {
+          childs = childs.filter((c) => c.to !== 'tpv-quotation');
         }
 
         if (!enableLots) {
           childs = childs.filter((c) => 
             c.to !== 'lot-list' &&
-            c.to !== 'inventory-expirations' &&
             c.to !== 'inventory-lotificacion' &&
             c.to !== 'inventory-lots-without-location'
           );
@@ -129,71 +287,60 @@ const processedNavItems = computed(() => {
           });
         }
 
+        // Filtrar Caducidad si está desactivado en la configuración
+        const enableExpirations = brandingStore.settings.enable_expirations ?? true;
+        if (!enableExpirations) {
+          childs = childs.filter((c) => 
+            c.to !== 'inventory-expirations'
+          );
+        }
+
+        // Filtrar Grupos de Productos si está desactivado en la configuración
+        const enableGroups = brandingStore.settings.enable_groups ?? true;
+        if (!enableGroups) {
+          childs = childs.filter((c) => 
+            c.to !== 'inventory-group-products'
+          );
+          childs = childs.map((c) => {
+            if (c.children && Array.isArray(c.children)) {
+              return {
+                ...c,
+                children: c.children.filter((sub) => 
+                  sub.to !== 'inventory-products-without-group'
+                )
+              };
+            }
+            return c;
+          });
+        }
+
+        // Filtrar Control de Stock si está desactivado en la configuración
+        const enableStockControl = brandingStore.settings.enable_stock_control ?? true;
+        if (!enableStockControl) {
+          childs = childs.filter((c) => 
+            c.to !== 'inventory-stock'
+          );
+        }
+
+        // Filtrar Ubicaciones si está desactivado en la configuración
+        const enableLocations = brandingStore.settings.enable_locations ?? true;
+        if (!enableLocations) {
+          childs = childs.filter((c) => c.to !== 'inventory-locations');
+        }
+
+        // Filtrar Optimización si está desactivado en la configuración
+        const enableOptimization = brandingStore.settings.enable_optimization ?? true;
+        if (!enableOptimization) {
+          childs = childs.filter((c) => c.title !== 'Optimización');
+        }
+
         copy.children = childs;
       }
       return copy;
     });
   };
  
-  items = filterRestaurantNav(items);
- 
-  // 2. Si es modo restaurante o alquiler deportivo, ocultar E-commerce
-  items = items.filter(item => {
-    const title = (item.title || '').toLowerCase();
-    const to = (item.to || '').toLowerCase();
-    
-    if (isRestaurant) {
-      return title !== 'reservas' && to !== 'reservations' && title !== 'e-commerce' && title !== 'ecommerce' && to !== 'tova-store';
-    }
-    if (isSportsRental) {
-      return title !== 'e-commerce' && title !== 'ecommerce' && to !== 'tova-store';
-    }
-    return true;
-  });
-
-  if (isRestaurant) {
-    // Y habilitar "Operativa" para Admin y Empleado. Quitamos el subject de CASL dinámicamente
-    // para que no requiera privilegios exclusivos de 'admin' en la evaluación de CASL del layout.
-    items = items.map(item => {
-      if (item.title === 'Operativa') {
-        let copy = { ...item };
-        delete copy.action;
-        delete copy.subject;
-        if (copy.children) {
-          copy.children = copy.children.map(child => {
-            let childCopy = { ...child };
-            delete childCopy.action;
-            delete childCopy.subject;
-            return childCopy;
-          });
-        }
-        return copy;
-      }
-      return item;
-    });
-  }
- 
-  // 3. Si el negocio es de Alquiler de Canchas/Reservas (sports_rental),
-  // reordenamos el menú para colocar 'Reservas' en el primer lugar (arriba del Home)
-  if (isSportsRental) {
-    const reservationsItem = items.find(item => {
-      const title = (item.title || '').toLowerCase();
-      const toVal = item.to;
-      let toStr = '';
-      if (typeof toVal === 'string') {
-        toStr = toVal.toLowerCase();
-      } else if (toVal && typeof toVal === 'object' && toVal.name) {
-        toStr = String(toVal.name).toLowerCase();
-      }
-      return title === 'reservas' || toStr === 'reservations';
-    });
-    if (reservationsItem) {
-      // Filtrar el ítem de su posición original
-      items = items.filter(item => item !== reservationsItem);
-      // Colocarlo al puro principio del array (arriba de Home)
-      items.unshift(reservationsItem);
-    }
-  }
+  items = filterNav(items).filter(Boolean);
  
   // Solo procesar si el usuario está cargado
   if (!authStore.isLoaded || !authStore.user) {
@@ -240,26 +387,20 @@ const processedNavItems = computed(() => {
       <template #vertical-nav-header="{ toggleIsOverlayNavActive }">
         <RouterLink
           to="/"
-          class="app-logo d-flex align-center justify-center w-100 px-2"
+          class="app-logo d-flex align-center justify-start px-2"
+          style="gap: 8px;"
         >
-          <!-- Logo Expandido (SVG de TOVA o Logo personalizado de base de datos) -->
+          <!-- Logo Expandido (SVG de TOVA) -->
           <div class="logo-expanded-wrapper">
-            <img
-              v-if="brandingStore.settings.app_logo"
-              :src="brandingStore.settings.app_logo"
-              alt="logo"
-              class="logo-expanded"
-            >
             <div
-              v-else
               class="logo-expanded-svg text-primary"
               v-html="logoSvg"
             />
           </div>
 
-          <!-- Logo Colapsado (Favicon Isotipo mini) -->
+          <!-- Logo Colapsado (Favicon Isotipo mini de TOVA) -->
           <img
-            :src="brandingStore.settings.app_favicon || '/favicon-96x96.png'"
+            src="/favicon-96x96.png"
             alt="logo-collapsed"
             class="logo-collapsed"
             width="32"
@@ -292,8 +433,6 @@ const processedNavItems = computed(() => {
           >
             <VIcon size="26" icon="tabler-menu-2" />
           </IconBtn>
-
-          <NavbarThemeSwitcher />
 
           <VSpacer />
 
@@ -329,8 +468,8 @@ const processedNavItems = computed(() => {
 .app-logo {
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 100%;
+  justify-content: flex-start;
+  flex: 1;
 }
 
 .logo-expanded-wrapper {

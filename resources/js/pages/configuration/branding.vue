@@ -6,6 +6,7 @@ import { toast } from '@/plugins/sweetalert'
 
 const brandingStore = useBrandingStore()
 const isLoading = ref(false)
+const isPageLoading = ref(true)
 
 const form = ref({
   app_name: '',
@@ -133,7 +134,7 @@ const saveBranding = async () => {
     })
     
     toast.success('Marca y secciones del e-commerce actualizadas correctamente')
-    await brandingStore.fetchSettings()
+    await brandingStore.fetchSettings(true)
   } catch (error) {
     console.error('Error saving branding:', error)
     toast.error('Error al actualizar los datos')
@@ -157,76 +158,110 @@ const fetchAdminOrders = async () => {
   }
 }
 
-const approveOrder = async (orderId) => {
-  actionLoadingId.value = orderId
-  try {
-    const { data } = await axios.post(`/ecommerce/admin/orders/${orderId}/approve`)
-    if (data.success) {
-      toast.success('Pedido aprobado y marcado como pagado exitosamente')
-      await fetchAdminOrders()
+const approveOrder = (orderId) => {
+  toast.confirm('¿Desea aprobar este pedido y confirmar el pago?', async () => {
+    actionLoadingId.value = orderId
+    try {
+      const { data } = await axios.post(`/ecommerce/admin/orders/${orderId}/approve`)
+      if (data.success) {
+        toast.success('Pedido aprobado y marcado como pagado exitosamente')
+        await fetchAdminOrders()
+      }
+    } catch (error) {
+      console.error('Error approving order:', error)
+      toast.error('Error al aprobar el pedido')
+    } finally {
+      actionLoadingId.value = null
     }
-  } catch (error) {
-    console.error('Error approving order:', error)
-    toast.error('Error al aprobar el pedido')
-  } finally {
-    actionLoadingId.value = null
-  }
+  })
 }
 
-const cancelOrder = async (orderId) => {
-  actionLoadingId.value = orderId
-  try {
-    const { data } = await axios.post(`/ecommerce/admin/orders/${orderId}/cancel`)
-    if (data.success) {
-      toast.success('Pedido rechazado y stock devuelto exitosamente')
-      await fetchAdminOrders()
+const cancelOrder = (orderId) => {
+  toast.confirm('¿Desea rechazar este pedido y revertir el inventario?', async () => {
+    actionLoadingId.value = orderId
+    try {
+      const { data } = await axios.post(`/ecommerce/admin/orders/${orderId}/cancel`)
+      if (data.success) {
+        toast.success('Pedido rechazado y stock devuelto exitosamente')
+        await fetchAdminOrders()
+      }
+    } catch (error) {
+      console.error('Error cancelling order:', error)
+      toast.error('Error al rechazar el pedido')
+    } finally {
+      actionLoadingId.value = null
     }
-  } catch (error) {
-    console.error('Error cancelling order:', error)
-    toast.error('Error al rechazar el pedido')
-  } finally {
-    actionLoadingId.value = null
-  }
+  })
 }
 
 onMounted(async () => {
-  await brandingStore.fetchSettings()
-  fetchAdminOrders()
-  form.value = {
-    app_name: brandingStore.settings.app_name,
-    app_rif: brandingStore.settings.app_rif,
-    primary_color: brandingStore.settings.primary_color,
-    secondary_color: brandingStore.settings.secondary_color,
-    tertiary_color: brandingStore.settings.tertiary_color || '#F5C842',
-    footer_text: brandingStore.settings.footer_text,
-    default_currency: brandingStore.settings.default_currency || 'COP',
-    hero_title: brandingStore.settings.hero_title || '',
-    hero_subtitle: brandingStore.settings.hero_subtitle || '',
-    hero_tagline: brandingStore.settings.hero_tagline || '',
-    hero_button_text: brandingStore.settings.hero_button_text || '',
-    section2_title: brandingStore.settings.section2_title || '',
-    section2_subtitle: brandingStore.settings.section2_subtitle || '',
-    section2_tagline: brandingStore.settings.section2_tagline || '',
-    section2_button_text: brandingStore.settings.section2_button_text || '',
-    section3_title: brandingStore.settings.section3_title || '',
-    section3_subtitle: brandingStore.settings.section3_subtitle || '',
-    section3_tagline: brandingStore.settings.section3_tagline || '',
-    section3_button_text: brandingStore.settings.section3_button_text || '',
+  isPageLoading.value = true
+  try {
+    // Forzamos la obtención fresca de datos del backend
+    await brandingStore.fetchSettings(true)
+    await fetchAdminOrders()
+    form.value = {
+      app_name: brandingStore.settings.app_name,
+      app_rif: brandingStore.settings.app_rif,
+      primary_color: brandingStore.settings.primary_color,
+      secondary_color: brandingStore.settings.secondary_color,
+      tertiary_color: brandingStore.settings.tertiary_color || '#F5C842',
+      footer_text: brandingStore.settings.footer_text,
+      default_currency: brandingStore.settings.default_currency || 'COP',
+      hero_title: brandingStore.settings.hero_title || '',
+      hero_subtitle: brandingStore.settings.hero_subtitle || '',
+      hero_tagline: brandingStore.settings.hero_tagline || '',
+      hero_button_text: brandingStore.settings.hero_button_text || '',
+      section2_title: brandingStore.settings.section2_title || '',
+      section2_subtitle: brandingStore.settings.section2_subtitle || '',
+      section2_tagline: brandingStore.settings.section2_tagline || '',
+      section2_button_text: brandingStore.settings.section2_button_text || '',
+      section3_title: brandingStore.settings.section3_title || '',
+      section3_subtitle: brandingStore.settings.section3_subtitle || '',
+      section3_tagline: brandingStore.settings.section3_tagline || '',
+      section3_button_text: brandingStore.settings.section3_button_text || '',
+    }
+    logoPreview.value = brandingStore.settings.app_logo
+    faviconPreview.value = brandingStore.settings.app_favicon
+    heroImagePreview.value = brandingStore.settings.hero_image
+    section2ImagePreview.value = brandingStore.settings.section2_image
+    section3ImagePreview.value = brandingStore.settings.section3_image
+  } catch (error) {
+    console.error('Error loading settings:', error)
+  } finally {
+    isPageLoading.value = false
   }
-  logoPreview.value = brandingStore.settings.app_logo
-  faviconPreview.value = brandingStore.settings.app_favicon
-  heroImagePreview.value = brandingStore.settings.hero_image
-  section2ImagePreview.value = brandingStore.settings.section2_image
-  section3ImagePreview.value = brandingStore.settings.section3_image
 })
 </script>
 
 <template>
   <VRow>
     <VCol cols="12">
-      <VCard class="rounded-0 border-0" variant="flat">
+      <!-- Skeleton Loader Shimmer Efecto Moderno -->
+      <div v-if="isPageLoading" class="shimmer-container border pa-6 rounded-lg bg-white d-flex flex-column gap-6">
+        <div class="shimmer-block h-8 rounded w-25 mb-2"></div>
+        <div class="shimmer-block h-4 rounded w-50 mb-6"></div>
+        <div class="border rounded pa-6 d-flex flex-column gap-4">
+          <div class="shimmer-block h-6 rounded w-33 mb-2"></div>
+          <VRow>
+            <VCol cols="12" md="4"><div class="shimmer-block h-12 rounded"></div></VCol>
+            <VCol cols="12" md="4"><div class="shimmer-block h-12 rounded"></div></VCol>
+            <VCol cols="12" md="4"><div class="shimmer-block h-12 rounded"></div></VCol>
+          </VRow>
+        </div>
+        <div class="border rounded pa-6 d-flex flex-column gap-4">
+          <div class="shimmer-block h-6 rounded w-33 mb-2"></div>
+          <VRow>
+            <VCol cols="12" md="4"><div class="shimmer-block h-12 rounded"></div></VCol>
+            <VCol cols="12" md="4"><div class="shimmer-block h-12 rounded"></div></VCol>
+            <VCol cols="12" md="4"><div class="shimmer-block h-12 rounded"></div></VCol>
+          </VRow>
+        </div>
+      </div>
+
+      <VCard v-else class="rounded-lg shadow-soft border-0" variant="flat">
         <VCardItem class="px-0 pt-0 pb-6">
-          <VCardTitle class="text-h4 font-weight-light text-uppercase tracking-wider">Configuraciones Generales</VCardTitle>
+          <VCardTitle class="text-h4 font-weight-light text-uppercase tracking-wider text-primary-gradient">Configuraciones Generales</VCardTitle>
           <VCardSubtitle class="text-muted text-caption mt-1">
             Gestión de identidad visual, colores y logos exclusivos del e-commerce y reportes PDF de la tienda
           </VCardSubtitle>
@@ -237,11 +272,11 @@ onMounted(async () => {
             <VRow>
               <!-- Contenedor Único y Unificado de Configuración -->
               <VCol cols="12">
-                <div class="border pa-6 rounded-0 bg-white d-flex flex-column gap-2">
+                <div class="border pa-6 rounded-lg bg-white d-flex flex-column gap-4 shadow-sm hover-card transition-all">
                   
                   <!-- Información General -->
                   <div>
-                    <h3 class="text-subtitle-2 font-weight-bold text-uppercase tracking-wider d-flex align-center gap-2" style="margin-bottom: 10px;">
+                    <h3 class="text-subtitle-2 font-weight-bold text-uppercase tracking-wider d-flex align-center gap-2 mb-4">
                       <VIcon icon="tabler-settings" size="18" class="text-primary" />
                       Información de la Tienda
                     </h3>
@@ -254,6 +289,7 @@ onMounted(async () => {
                           variant="outlined"
                           density="comfortable"
                           persistent-placeholder
+                          :disabled="isLoading"
                         />
                       </VCol>
                       <VCol cols="12" sm="6" md="4">
@@ -264,6 +300,7 @@ onMounted(async () => {
                           variant="outlined"
                           density="comfortable"
                           persistent-placeholder
+                          :disabled="isLoading"
                         />
                       </VCol>
                       <VCol cols="12" sm="6" md="4">
@@ -274,14 +311,15 @@ onMounted(async () => {
                           placeholder="Selecciona moneda"
                           variant="outlined"
                           density="comfortable"
+                          :disabled="isLoading"
                         />
                       </VCol>
                     </VRow>
                   </div>
 
                   <!-- Paleta de Colores -->
-                  <div style="border-top: 1px solid rgba(0,0,0,0.08); padding-top: 15px; margin-top: 15px;">
-                    <h3 class="text-subtitle-2 font-weight-bold text-uppercase tracking-wider d-flex align-center gap-2" style="margin-bottom: 20px;">
+                  <div style="border-top: 1px solid rgba(0,0,0,0.08); padding-top: 20px; margin-top: 10px;">
+                    <h3 class="text-subtitle-2 font-weight-bold text-uppercase tracking-wider d-flex align-center gap-2 mb-4">
                       <VIcon icon="tabler-palette" size="18" class="text-primary" />
                       Paleta de Colores (Tienda)
                     </h3>
@@ -293,12 +331,14 @@ onMounted(async () => {
                           density="comfortable"
                           variant="outlined"
                           class="font-mono text-uppercase"
+                          :disabled="isLoading"
                         >
                           <template #prepend-inner>
                             <input
                               v-model="form.primary_color"
                               type="color"
-                              style="width: 28px; height: 28px; border: 1px solid rgba(0,0,0,0.15); border-radius: 4px; cursor: pointer; padding: 0; margin-right: 8px;"
+                              class="color-picker-premium"
+                              :disabled="isLoading"
                             />
                           </template>
                         </VTextField>
@@ -310,12 +350,14 @@ onMounted(async () => {
                           density="comfortable"
                           variant="outlined"
                           class="font-mono text-uppercase"
+                          :disabled="isLoading"
                         >
                           <template #prepend-inner>
                             <input
                               v-model="form.secondary_color"
                               type="color"
-                              style="width: 28px; height: 28px; border: 1px solid rgba(0,0,0,0.15); border-radius: 4px; cursor: pointer; padding: 0; margin-right: 8px;"
+                              class="color-picker-premium"
+                              :disabled="isLoading"
                             />
                           </template>
                         </VTextField>
@@ -327,12 +369,14 @@ onMounted(async () => {
                           density="comfortable"
                           variant="outlined"
                           class="font-mono text-uppercase"
+                          :disabled="isLoading"
                         >
                           <template #prepend-inner>
                             <input
                               v-model="form.tertiary_color"
                               type="color"
-                              style="width: 28px; height: 28px; border: 1px solid rgba(0,0,0,0.15); border-radius: 4px; cursor: pointer; padding: 0; margin-right: 8px;"
+                              class="color-picker-premium"
+                              :disabled="isLoading"
                             />
                           </template>
                         </VTextField>
@@ -341,8 +385,8 @@ onMounted(async () => {
                   </div>
 
                   <!-- Identidad Multimedia e Imagen Corporativa -->
-                  <div style="border-top: 1px solid rgba(0,0,0,0.08); padding-top: 15px; margin-top: 15px;">
-                    <h3 class="text-subtitle-2 font-weight-bold text-uppercase tracking-wider d-flex align-center gap-2" style="margin-bottom: 20px;">
+                  <div style="border-top: 1px solid rgba(0,0,0,0.08); padding-top: 20px; margin-top: 10px;">
+                    <h3 class="text-subtitle-2 font-weight-bold text-uppercase tracking-wider d-flex align-center gap-2 mb-6">
                       <VIcon icon="tabler-photo" size="18" class="text-primary" />
                       Identidad Multimedia e Imagen Corporativa
                     </h3>
@@ -351,7 +395,7 @@ onMounted(async () => {
                       <!-- Logo de la Tienda -->
                       <VCol cols="12" md="6">
                         <div class="d-flex align-start gap-4">
-                          <div class="border rounded-0 bg-light d-flex align-center justify-center border-dashed" style="width: 120px; height: 70px; overflow: hidden; flex-shrink: 0;">
+                          <div class="border rounded-lg bg-light d-flex align-center justify-center border-dashed image-preview-box" style="width: 120px; height: 70px; overflow: hidden; flex-shrink: 0;">
                             <img v-if="logoPreview" :src="logoPreview" style="max-width: 100%; max-height: 100%; object-fit: contain;" />
                             <span v-else class="text-caption text-muted text-uppercase tracking-wider">Sin Logo</span>
                           </div>
@@ -365,6 +409,7 @@ onMounted(async () => {
                               hide-details
                               prepend-icon=""
                               prepend-inner-icon="tabler-upload"
+                              :disabled="isLoading"
                               @change="handleLogoUpload"
                             />
                             <span class="text-xxs text-muted mt-1 d-block">Formatos recomendados: PNG, SVG transparentes.</span>
@@ -375,7 +420,7 @@ onMounted(async () => {
                       <!-- Favicon de la Tienda -->
                       <VCol cols="12" md="6">
                         <div class="d-flex align-start gap-4">
-                          <div class="border rounded-0 bg-light d-flex align-center justify-center border-dashed" style="width: 60px; height: 60px; overflow: hidden; flex-shrink: 0;">
+                          <div class="border rounded-lg bg-light d-flex align-center justify-center border-dashed image-preview-box" style="width: 60px; height: 60px; overflow: hidden; flex-shrink: 0;">
                             <img v-if="faviconPreview" :src="faviconPreview" style="max-width: 32px; max-height: 32px; object-fit: contain;" />
                             <span v-else class="text-caption text-muted text-center text-xxs tracking-tighter">Sin Icono</span>
                           </div>
@@ -389,6 +434,7 @@ onMounted(async () => {
                               hide-details
                               prepend-icon=""
                               prepend-inner-icon="tabler-upload"
+                              :disabled="isLoading"
                               @change="handleFaviconUpload"
                             />
                             <span class="text-xxs text-muted mt-1 d-block">Formatos recomendados: ICO, PNG de 32x32px.</span>
@@ -408,7 +454,7 @@ onMounted(async () => {
                         <!-- Imagen de la Campaña -->
                         <div>
                           <div class="d-flex align-start gap-4">
-                            <div class="border rounded-0 bg-light d-flex align-center justify-center border-dashed" style="width: 120px; height: 70px; overflow: hidden;">
+                            <div class="border rounded-lg bg-light d-flex align-center justify-center border-dashed image-preview-box" style="width: 120px; height: 70px; overflow: hidden;">
                               <img v-if="heroImagePreview" :src="heroImagePreview" style="max-width: 100%; max-height: 100%; object-fit: cover;" />
                               <span v-else class="text-caption text-muted text-uppercase tracking-wider">Sin Imagen</span>
                             </div>
@@ -422,6 +468,7 @@ onMounted(async () => {
                                 hide-details
                                 prepend-icon=""
                                 prepend-inner-icon="tabler-upload"
+                                :disabled="isLoading"
                                 @change="handleHeroImageUpload"
                               />
                               <span class="text-xxs text-muted mt-1 d-block">Formatos: JPG, PNG, WEBP. Recomendada: 800x800px.</span>
@@ -437,6 +484,7 @@ onMounted(async () => {
                           variant="outlined"
                           density="comfortable"
                           persistent-placeholder
+                          :disabled="isLoading"
                         />
 
                         <VTextField
@@ -446,6 +494,7 @@ onMounted(async () => {
                           variant="outlined"
                           density="comfortable"
                           persistent-placeholder
+                          :disabled="isLoading"
                         />
 
                         <VTextarea
@@ -456,6 +505,7 @@ onMounted(async () => {
                           density="comfortable"
                           rows="3"
                           persistent-placeholder
+                          :disabled="isLoading"
                         />
 
                         <VTextField
@@ -465,6 +515,7 @@ onMounted(async () => {
                           variant="outlined"
                           density="comfortable"
                           persistent-placeholder
+                          :disabled="isLoading"
                         />
                       </div>
                     </div>
@@ -480,7 +531,7 @@ onMounted(async () => {
                         <!-- Imagen de la Sección 2 -->
                         <div>
                           <div class="d-flex align-start gap-4">
-                            <div class="border rounded-0 bg-light d-flex align-center justify-center border-dashed" style="width: 120px; height: 70px; overflow: hidden;">
+                            <div class="border rounded-lg bg-light d-flex align-center justify-center border-dashed image-preview-box" style="width: 120px; height: 70px; overflow: hidden;">
                               <img v-if="section2ImagePreview" :src="section2ImagePreview" style="max-width: 100%; max-height: 100%; object-fit: cover;" />
                               <span v-else class="text-caption text-muted text-uppercase tracking-wider">Sin Imagen</span>
                             </div>
@@ -494,6 +545,7 @@ onMounted(async () => {
                                 hide-details
                                 prepend-icon=""
                                 prepend-inner-icon="tabler-upload"
+                                :disabled="isLoading"
                                 @change="handleSection2ImageUpload"
                               />
                               <span class="text-xxs text-muted mt-1 d-block">Formatos: JPG, PNG, WEBP. Recomendada: 800x800px.</span>
@@ -509,6 +561,7 @@ onMounted(async () => {
                           variant="outlined"
                           density="comfortable"
                           persistent-placeholder
+                          :disabled="isLoading"
                         />
 
                         <VTextField
@@ -518,6 +571,7 @@ onMounted(async () => {
                           variant="outlined"
                           density="comfortable"
                           persistent-placeholder
+                          :disabled="isLoading"
                         />
 
                         <VTextarea
@@ -528,6 +582,7 @@ onMounted(async () => {
                           density="comfortable"
                           rows="3"
                           persistent-placeholder
+                          :disabled="isLoading"
                         />
 
                         <VTextField
@@ -537,6 +592,7 @@ onMounted(async () => {
                           variant="outlined"
                           density="comfortable"
                           persistent-placeholder
+                          :disabled="isLoading"
                         />
                       </div>
                     </div>
@@ -552,7 +608,7 @@ onMounted(async () => {
                         <!-- Imagen de la Sección 3 -->
                         <div>
                           <div class="d-flex align-start gap-4">
-                            <div class="border rounded-0 bg-light d-flex align-center justify-center border-dashed" style="width: 120px; height: 70px; overflow: hidden;">
+                            <div class="border rounded-lg bg-light d-flex align-center justify-center border-dashed image-preview-box" style="width: 120px; height: 70px; overflow: hidden;">
                               <img v-if="section3ImagePreview" :src="section3ImagePreview" style="max-width: 100%; max-height: 100%; object-fit: cover;" />
                               <span v-else class="text-caption text-muted text-uppercase tracking-wider">Sin Imagen</span>
                             </div>
@@ -566,6 +622,7 @@ onMounted(async () => {
                                 hide-details
                                 prepend-icon=""
                                 prepend-inner-icon="tabler-upload"
+                                :disabled="isLoading"
                                 @change="handleSection3ImageUpload"
                               />
                               <span class="text-xxs text-muted mt-1 d-block">Formatos: JPG, PNG, WEBP. Recomendada: 800x800px.</span>
@@ -581,6 +638,7 @@ onMounted(async () => {
                           variant="outlined"
                           density="comfortable"
                           persistent-placeholder
+                          :disabled="isLoading"
                         />
 
                         <VTextField
@@ -590,6 +648,7 @@ onMounted(async () => {
                           variant="outlined"
                           density="comfortable"
                           persistent-placeholder
+                          :disabled="isLoading"
                         />
 
                         <VTextarea
@@ -600,6 +659,7 @@ onMounted(async () => {
                           density="comfortable"
                           rows="3"
                           persistent-placeholder
+                          :disabled="isLoading"
                         />
 
                         <VTextField
@@ -609,6 +669,7 @@ onMounted(async () => {
                           variant="outlined"
                           density="comfortable"
                           persistent-placeholder
+                          :disabled="isLoading"
                         />
                       </div>
                     </div>
@@ -618,10 +679,10 @@ onMounted(async () => {
               </VCol>
 
               <!-- Sección de Aprobación de Pedidos de E-commerce -->
-              <VCol cols="12" class="mt-8">
-                <div class="border pa-6 rounded-0 bg-white d-flex flex-column gap-4">
+              <VCol cols="12" class="mt-6">
+                <div class="border pa-6 rounded-lg bg-white d-flex flex-column gap-4 shadow-sm hover-card transition-all">
                   <div>
-                    <h3 class="text-subtitle-2 font-weight-bold text-uppercase tracking-wider d-flex align-center gap-2" style="margin-bottom: 5px;">
+                    <h3 class="text-subtitle-2 font-weight-bold text-uppercase tracking-wider d-flex align-center gap-2 mb-2">
                       <VIcon icon="tabler-shopping-cart" size="18" class="text-primary" />
                       Aprobación de Pedidos E-commerce
                     </h3>
@@ -630,7 +691,7 @@ onMounted(async () => {
                     </p>
 
                     <!-- Tabla de pedidos -->
-                    <div v-if="adminOrders.length" class="border rounded-0 overflow-hidden">
+                    <div v-if="adminOrders.length" class="border rounded-lg overflow-hidden shadow-soft">
                       <v-table class="text-left" style="width: 100%;">
                         <thead>
                           <tr style="background-color: #FAFAFA; border-bottom: 2px solid #E8E8E8;">
@@ -648,24 +709,24 @@ onMounted(async () => {
                             <tr style="border-bottom: 1px solid #E8E8E8;">
                               <td class="py-4 px-4 text-xs font-weight-bold">#{{ order.id }}</td>
                               <td class="py-4 px-4 text-xs">
-                                <div class="font-weight-bold">{{ order.customer_name }}</div>
+                                <div class="font-weight-bold text-dark">{{ order.customer_name }}</div>
                                 <div class="text-xxs text-muted">{{ order.customer_email || 'Sin email' }}</div>
                               </td>
                               <td class="py-4 px-4 text-xs">
                                 <div>{{ order.customer_phone || '-' }}</div>
-                                <div class="text-xxs text-muted" style="max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                <div class="text-xxs text-muted text-truncate" style="max-width: 180px;">
                                   {{ order.shipping_address }}
                                 </div>
                               </td>
                               <td class="py-4 px-4 text-xs font-weight-bold text-uppercase">
                                 <span>{{ order.payment_method === 'pago_movil' ? 'Pago Móvil' : order.payment_method }}</span>
                               </td>
-                              <td class="py-4 px-4 text-xs text-right font-weight-bold">${{ Number(order.total_amount).toFixed(2) }}</td>
+                              <td class="py-4 px-4 text-xs text-right font-weight-bold text-dark">${{ Number(order.total_amount).toFixed(2) }}</td>
                               <td class="py-4 px-4 text-xs">
                                 <VChip
                                   size="x-small"
                                   variant="tonal"
-                                  class="rounded-0 text-uppercase"
+                                  class="rounded-md text-uppercase"
                                   :color="order.status === 'Paid' ? 'success' : (order.status === 'Cancelled' ? 'error' : 'warning')"
                                 >
                                   {{ order.status === 'Pending' ? 'Pendiente' : (order.status === 'Paid' ? 'Aprobado' : 'Cancelado') }}
@@ -677,7 +738,7 @@ onMounted(async () => {
                                     size="x-small"
                                     color="success"
                                     variant="flat"
-                                    class="rounded-0"
+                                    class="rounded-md px-3 font-weight-bold"
                                     :loading="actionLoadingId === order.id"
                                     @click="approveOrder(order.id)"
                                   >
@@ -687,7 +748,7 @@ onMounted(async () => {
                                     size="x-small"
                                     color="error"
                                     variant="outlined"
-                                    class="rounded-0"
+                                    class="rounded-md px-3 font-weight-bold"
                                     :loading="actionLoadingId === order.id"
                                     @click="cancelOrder(order.id)"
                                   >
@@ -699,19 +760,22 @@ onMounted(async () => {
                             </tr>
                             <!-- Detalles de productos comprados en el pedido -->
                             <tr style="background-color: #FCFCFC; border-bottom: 1px solid #E8E8E8;">
-                              <td colspan="7" class="py-2 px-6 text-xxs text-muted">
-                                <span class="font-weight-bold text-uppercase tracking-wider mr-2">Detalles:</span>
-                                <span v-for="(item, index) in order.items" :key="item.id">
-                                  {{ item.product_name }} <span v-if="item.variant_value">({{ item.variant_value }})</span> x{{ item.quantity }} (${{ Number(item.price).toFixed(2) }})<span v-if="index < order.items.length - 1">, </span>
-                                </span>
+                              <td colspan="7" class="py-3 px-6 text-xxs text-muted">
+                                <div class="d-flex align-center gap-2">
+                                  <span class="font-weight-bold text-uppercase tracking-wider text-primary">Detalles del Pedido:</span>
+                                  <span v-for="(item, index) in order.items" :key="item.id">
+                                    {{ item.product_name }} <span v-if="item.variant_value" class="text-primary font-weight-medium">({{ item.variant_value }})</span> x{{ item.quantity }} (${{ Number(item.price).toFixed(2) }})<span v-if="index < order.items.length - 1" class="mx-1">|</span>
+                                  </span>
+                                </div>
                               </td>
                             </tr>
                           </template>
                         </tbody>
                       </v-table>
                     </div>
-                    <div v-else class="text-center py-8 border border-dashed rounded-0 bg-light">
-                      <span class="text-caption text-muted text-uppercase tracking-wider">No hay pedidos registrados en la tienda actualmente</span>
+                    <div v-else class="text-center py-8 border border-dashed rounded-lg bg-light text-muted">
+                      <VIcon icon="tabler-mood-empty" size="24" class="mb-2 d-block mx-auto" />
+                      <span class="text-caption text-uppercase tracking-wider">No hay pedidos registrados en la tienda actualmente</span>
                     </div>
                   </div>
                 </div>
@@ -722,9 +786,10 @@ onMounted(async () => {
                 <VBtn
                   type="submit"
                   :loading="isLoading"
+                  :disabled="isLoading"
                   color="primary"
                   size="large"
-                  class="rounded-0 px-10 tracking-widest text-uppercase"
+                  class="rounded-md px-10 tracking-widest text-uppercase font-weight-bold shadow-md hover-scale"
                   prepend-icon="tabler-device-floppy"
                 >
                   Guardar Configuración
@@ -740,21 +805,76 @@ onMounted(async () => {
 
 <style scoped>
 .color-picker-premium {
-  width: 56px;
-  height: 44px;
-  border: 1px solid rgba(0,0,0,0.12);
-  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  border: 1px solid rgba(0,0,0,0.15);
+  border-radius: 6px;
   cursor: pointer;
   padding: 0;
-  overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-  transition: transform 0.2s;
+  margin-right: 8px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+  transition: transform 0.2s, box-shadow 0.2s;
 }
 .color-picker-premium:hover {
-  transform: scale(1.05);
+  transform: scale(1.1);
+  box-shadow: 0 3px 8px rgba(0,0,0,0.15);
 }
 
 .bg-light {
   background-color: #f8f9fa;
+}
+
+.shadow-soft {
+  box-shadow: 0 4px 18px 0 rgba(0,0,0,0.04) !important;
+}
+
+.hover-card {
+  transition: all 0.3s ease;
+}
+
+.hover-card:hover {
+  box-shadow: 0 8px 24px 0 rgba(0,0,0,0.06) !important;
+}
+
+.hover-scale {
+  transition: transform 0.2s;
+}
+
+.hover-scale:hover {
+  transform: translateY(-2px);
+}
+
+.image-preview-box {
+  transition: transform 0.2s;
+}
+
+.image-preview-box:hover {
+  transform: scale(1.03);
+}
+
+.text-primary-gradient {
+  background: var(--brand-gradient, linear-gradient(135deg, #7a0099, #e20074));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* --- Shimmer Skeleton Loader --- */
+.shimmer-container {
+  overflow: hidden;
+}
+
+.shimmer-block {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e5e5e5 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer-animation 1.5s infinite;
+}
+
+@keyframes shimmer-animation {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 </style>

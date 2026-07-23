@@ -1,9 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Contracts\Specialty;
-use App\Repository\SpecialtyRepository;
+use App\Repositories\SpecialtyRepository;
 use Illuminate\Database\Eloquent\Collection;
 
 class SpecialtyServices implements Specialty

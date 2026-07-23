@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\CategoryOffer;
+use App\Http\Requests\Offers\StoreCategoryOfferRequest;
+use App\Http\Requests\Offers\UpdateCategoryOfferRequest;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -85,25 +87,8 @@ class CategoryOfferController extends Controller
         }
     }
 
-    /**
-     * Crear una nueva oferta por categoría
-     */
-    public function store(Request $request)
+    public function store(StoreCategoryOfferRequest $request)
     {
-        $validator = Validator::make($request->all(), [
-            'category_id' => 'required',
-            'discount_percentage' => 'required|numeric|min:0|max:100',
-            'start_date' => 'required|date',
-            'end_date' => 'required|date|after_or_equal:start_date',
-            'is_active' => 'sometimes|boolean',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'status' => false,
-                'errors' => $validator->errors()
-            ], 422);
-        }
         $categoryId = is_array($request->category_id)
             ? ($request->category_id['id'] ?? $request->category_id)
             : $request->category_id;
@@ -150,25 +135,10 @@ class CategoryOfferController extends Controller
     /**
      * Actualizar una oferta por categoría existente
      */
-    public function update(Request $request, $id)
+    public function update(UpdateCategoryOfferRequest $request, $id)
     {
         try {
             $categoryOffer = CategoryOffer::findOrFail($id);
-
-            $validator = Validator::make($request->all(), [
-                'category_id' => 'sometimes|required|exists:categories,id',
-                'discount_percentage' => 'sometimes|required|numeric|min:0|max:100',
-                'start_date' => 'sometimes|required|date',
-                'end_date' => 'sometimes|required|date|after_or_equal:start_date',
-                'is_active' => 'sometimes|boolean',
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json([
-                    'status' => false,
-                    'errors' => $validator->errors()
-                ], 422);
-            }
 
             // Verificar que no exista otra oferta activa para la misma categoría en las mismas fechas
             if ($request->has('category_id') || $request->has('start_date') || $request->has('end_date')) {

@@ -16,8 +16,8 @@ const brandingStore = useBrandingStore()
 
 const processedNavItems = computed(() => {
   let items = [...navItems]
-  const isRestaurant = brandingStore.settings.business_type === 'restaurant'
-  if (!isRestaurant) {
+  const enableDishes = brandingStore.settings.enable_dishes ?? true
+  if (!enableDishes) {
     items = items.map((item) => {
       if (item.children && Array.isArray(item.children)) {
         return {

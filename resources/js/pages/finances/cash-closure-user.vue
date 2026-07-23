@@ -8,34 +8,46 @@ import HistoryCashClosureTicke from "@/components/HistoryCashClosureTicke.vue";
 import UserCashFilters from "@/components/UserCashFilters.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { computed, nextTick, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, reactive, ref, watch } from "vue";
 
+// Estado de carga y datos principales
 const loading = ref(false);
-const cashClosure = ref([]);
+const cashClosure = ref(null);
 const isCloseCashModalVisible = ref(false);
 
-const closing = ref([]);
-const totalClosing = ref(0);
-const loadingClosing = ref(false);
-const page = ref(1);
-const itemsPerPage = ref(10);
-const sortBy = ref();
-const orderBy = ref();
+// Parámetros y datos del Historial de Cierres (Agrupados en reactivos estructurados)
+const closingState = reactive({
+  items: [],
+  total: 0,
+  loading: false,
+  options: {
+    page: 1,
+    itemsPerPage: 10,
+    sortBy: null,
+    orderBy: null,
+  }
+});
 
+// Parámetros y datos de Órdenes del Turno (Agrupados en reactivos estructurados)
+const ordersState = reactive({
+  items: [],
+  total: 0,
+  loading: false,
+  options: {
+    page: 1,
+    itemsPerPage: 10,
+    sortBy: null,
+    orderBy: null,
+  }
+});
+
+// Estado de impresión y descarga
 const isPrinting = ref(false);
 const cashData = ref(null);
 const isDownload = ref(false);
-
 const isDownloadingPdf = ref(false);
 
-const orders = ref([]);
-const totalOrders = ref(0);
-const loadingOrders = ref(false);
-const pageOrders = ref(1);
-const itemsPerPageOrders = ref(10);
-const sortByOrders = ref();
-const orderByOrders = ref();
-
+// Modal e información de orden para visualización
 const viewModal = ref(false);
 const orderData = ref(null);
 const paymentsForPrint = ref([]);
@@ -45,6 +57,7 @@ const amountForPrint = ref(0);
 const creditForPrint = ref(false);
 const currency = ref("COP");
 const orderItems = ref([]);
+const orderDataHistory = ref(null);
 
 const filters = ref({
   search: "",
@@ -55,8 +68,6 @@ const filters = ref({
 const handleFilterUpdate = (newFilters) => {
   filters.value = { ...newFilters };
 };
-
-const orderDataHistory = ref(null);
 
 const fetchCashClosure = async () => {
   try {
@@ -72,63 +83,99 @@ const fetchCashClosure = async () => {
   }
 };
 
-onMounted(() => {
-  fetchCashClosure();
-  fetchClosingHistory();
-  fetchOrder();
-});
+const fetchClosingHistory = async () => {
+  closingState.loading = true;
+  const params = {
+    page: closingState.options.page,
+    itemsPerPage: closingState.options.itemsPerPage,
+    sortBy: closingState.options.sortBy,
+    orderBy: closingState.options.orderBy,
+    search: filters.value.search,
+    date_start: filters.value.date_start,
+    date_end: filters.value.date_end,
+  };
+  
+  // Limpiar parámetros vacíos
+  Object.keys(params).forEach(
+    (key) => (params[key] === null || params[key] === "") && delete params[key]
+  );
+
+  try {
+    const response = await axios.get("/finances/cash-closure/closingHistory", { params });
+    closingState.items = response.data.data;
+    closingState.total = response.data.total;
+  } catch (error) {
+    console.error("Hubo un error al obtener los cierres:", error);
+    toast.error("Error al obtener los cierres.");
+  } finally {
+    closingState.loading = false;
+  }
+};
+
+const fetchOrders = async () => {
+  ordersState.loading = true;
+  const params = {
+    page: ordersState.options.page,
+    itemsPerPage: ordersState.options.itemsPerPage,
+    sortBy: ordersState.options.sortBy,
+    orderBy: ordersState.options.orderBy,
+    search: filters.value.search,
+    date_start: filters.value.date_start,
+    date_end: filters.value.date_end,
+  };
+
+  Object.keys(params).forEach(
+    (key) => (params[key] === null || params[key] === "") && delete params[key]
+  );
+
+  try {
+    const response = await axios.get("/finances/cash-closure/orders", { params });
+    ordersState.items = response.data.data;
+    ordersState.total = response.data.total;
+  } catch (error) {
+    console.error("Hubo un error al obtener las órdenes:", error);
+    toast.error("Error al obtener las órdenes.");
+  } finally {
+    ordersState.loading = false;
+  }
+};
 
 const handleRequestCloseCash = () => {
   isCloseCashModalVisible.value = true;
 };
 
-const fetchClosingHistory = async () => {
-  loadingClosing.value = true;
-  const params = {
-    page: page.value,
-    itemsPerPage: itemsPerPage.value,
-    sortBy: sortBy.value,
-    orderBy: orderBy.value,
-    search: filters.value.search,
-    date_start: filters.value.date_start,
-    date_end: filters.value.date_end,
-  };
-  Object.keys(params).forEach(
-    (key) => (params[key] === null || params[key] === "") && delete params[key],
-  );
-  try {
-    const response = await axios.get("/finances/cash-closure/closingHistory", {
-      params,
-    });
-    closing.value = response.data.data;
-    totalClosing.value = response.data.total;
-  } catch (error) {
-    console.error("Hubo un error al obtener los cierres:", error);
-    toast.error("Error al obtener los cierres.");
-  } finally {
-    loadingClosing.value = false;
-  }
-};
-
 const updateTableOptions = (options) => {
-  page.value = options.page;
-  itemsPerPage.value = options.itemsPerPage;
+  closingState.options.page = options.page;
+  closingState.options.itemsPerPage = options.itemsPerPage;
   if (options.sortBy && options.sortBy.length > 0) {
-    sortBy.value = options.sortBy[0].key;
-    orderBy.value = options.sortBy[0].order;
+    closingState.options.sortBy = options.sortBy[0].key;
+    closingState.options.orderBy = options.sortBy[0].order;
   } else {
-    sortBy.value = null;
-    orderBy.value = null;
+    closingState.options.sortBy = null;
+    closingState.options.orderBy = null;
   }
 };
 
+const updateTableOptionsOrders = (options) => {
+  ordersState.options.page = options.page;
+  ordersState.options.itemsPerPage = options.itemsPerPage;
+  if (options.sortBy && options.sortBy.length > 0) {
+    ordersState.options.sortBy = options.sortBy[0].key;
+    ordersState.options.orderBy = options.sortBy[0].order;
+  } else {
+    ordersState.options.sortBy = null;
+    ordersState.options.orderBy = null;
+  }
+};
+
+// Impresión segura mediante Iframe oculto para evitar bloqueadores de popups
 const printCash = async (cash) => {
   try {
     isDownloadingPdf.value = false;
-    const cashToPrint = cash;
-    cashData.value = cashToPrint;
+    cashData.value = cash;
     isPrinting.value = true;
     await nextTick();
+    
     const printContents = document.getElementById("CashClosurePrint");
     if (!printContents) {
       console.warn("Elemento #CashClosurePrint no encontrado.");
@@ -136,10 +183,23 @@ const printCash = async (cash) => {
       return;
     }
 
-    const printWindow = window.open("", "", "height=600,width=800");
-    printWindow.document.write(
-      "<html><head><title>Farmacia Barrio Sucre</title>",
-    );
+    // Creación dinámica de un iframe invisible para impresión segura
+    let iframe = document.getElementById("secure-print-iframe");
+    if (!iframe) {
+      iframe = document.createElement("iframe");
+      iframe.id = "secure-print-iframe";
+      iframe.style.position = "absolute";
+      iframe.style.width = "0px";
+      iframe.style.height = "0px";
+      iframe.style.border = "none";
+      document.body.appendChild(iframe);
+    }
+
+    const doc = iframe.contentWindow.document || iframe.contentDocument;
+    doc.open();
+    doc.write("<html><head><title>Imprimir Cierre de Caja</title>");
+    
+    // Inyectar hojas de estilo existentes
     const styleSheets = document.styleSheets;
     for (let i = 0; i < styleSheets.length; i++) {
       const sheet = styleSheets[i];
@@ -149,38 +209,33 @@ const printCash = async (cash) => {
           for (let j = 0; j < sheet.cssRules.length; j++) {
             cssText += sheet.cssRules[j].cssText;
           }
-          printWindow.document.write(`<style>${cssText}</style>`);
+          doc.write(`<style>${cssText}</style>`);
         } else if (sheet.href) {
-          printWindow.document.write(
-            `<link rel="stylesheet" href="${sheet.href}">`,
-          );
+          doc.write(`<link rel="stylesheet" href="${sheet.href}">`);
         }
       } catch (e) {
-        console.warn(
-          "No se pudo acceder a la hoja de estilo:",
-          sheet.href || sheet,
-          e,
-        );
+        // Ignorar hojas de estilo con restricciones CORS
       }
     }
-    printWindow.document.write("</head><body>");
-    printWindow.document.write(printContents.innerHTML);
-    printWindow.document.write("</body></html>");
-    printWindow.document.close();
-    printWindow.focus();
-    printWindow.print();
-    printWindow.close();
+    
+    doc.write("</head><body>");
+    doc.write(printContents.innerHTML);
+    doc.write("</body></html>");
+    doc.close();
+
+    // Esperar a que se carguen recursos e imprimir
+    setTimeout(() => {
+      iframe.contentWindow.focus();
+      iframe.contentWindow.print();
+    }, 250);
+
   } catch (error) {
     console.error("Error al imprimir los detalles del cierre de caja:", error);
     toast.error("No se pudo cargar los detalles del cierre de caja.");
-    isPrinting.value = false;
-    cashData.value = null;
-    isDownloadingPdf.value = false;
   } finally {
     setTimeout(() => {
       isPrinting.value = false;
       cashData.value = null;
-      isDownloadingPdf.value = false;
     }, 500);
   }
 };
@@ -194,10 +249,8 @@ const ticketStyles = `
 
 const downloadcash = async (cash) => {
   try {
-    const orderToDownload = cash.orders;
-    const cashToDownload = cash;
-    orderDataHistory.value = orderToDownload;
-    cashData.value = cashToDownload;
+    orderDataHistory.value = cash.orders;
+    cashData.value = cash;
     isDownload.value = true;
     await nextTick();
     const printContents = document.getElementById("HistoryDownload");
@@ -214,9 +267,7 @@ const downloadcash = async (cash) => {
         html: `<style>${ticketStyles}</style>${htmlContent}`,
         filename: `historico-${cash.id}.pdf`,
       },
-      {
-        responseType: "blob",
-      },
+      { responseType: "blob" }
     );
     const url = window.URL.createObjectURL(new Blob([response.data]));
     const link = document.createElement("a");
@@ -294,13 +345,16 @@ const handleCompleteClosure = async ([closureData, cashClosureData]) => {
     };
 
     const response = await axios.post("/finances/cash-closure/close", payload);
-    toast.success("Cierre de caja completado con éxito:");
+    toast.success("Cierre de caja completado con éxito");
     isCloseCashModalVisible.value = false;
     const completedCashData = response.data.cash_closure_data;
     await printCash(completedCashData);
+    
+    // Actualizar datos
     fetchCashClosure();
     fetchClosingHistory();
-    fetchOrder();
+    fetchOrders();
+    
     isPrinting.value = false;
     cashData.value = null;
     isDownloadingPdf.value = false;
@@ -319,71 +373,28 @@ const handleCompleteClosure = async ([closureData, cashClosureData]) => {
   }
 };
 
-const updateTableOptionsOrders = (options) => {
-  pageOrders.value = options.page;
-  itemsPerPageOrders.value = options.itemsPerPage;
-  if (options.sortBy && options.sortBy.length > 0) {
-    sortByOrders.value = options.sortBy[0].key;
-    orderByOrders.value = options.sortBy[0].order;
-  } else {
-    sortByOrders.value = null;
-    orderByOrders.value = null;
-  }
-};
-
-const fetchOrder = async () => {
-  loadingOrders.value = true;
-  const params = {
-    page: pageOrders.value,
-    itemsPerPage: itemsPerPageOrders.value,
-    sortBy: sortByOrders.value,
-    orderBy: orderByOrders.value,
-    search: filters.value.search,
-    date_start: filters.value.date_start,
-    date_end: filters.value.date_end,
-  };
-  Object.keys(params).forEach(
-    (key) => (params[key] === null || params[key] === "") && delete params[key],
-  );
-  try {
-    const response = await axios.get("/finances/cash-closure/orders", {
-      params,
-    });
-    orders.value = response.data.data;
-    totalOrders.value = response.data.total;
-  } catch (error) {
-    console.error("Hubo un error al obtener las ordenes:", error);
-    toast.error("Error al obtener las ordenes.");
-  } finally {
-    loadingOrders.value = false;
-  }
-};
-
 const handleViewOrder = async (orderId) => {
   try {
     const response = await axios.get(`/tpv/orders/${orderId}/print`);
     if (response.data && response.data.data && response.data.data.order) {
-      orderData.value = response.data.data.order;
-      currency.value = response.data.data.order.currency.toUpperCase();
-      orderItems.value = response.data.data.order.details.map((detail) => ({
+      const order = response.data.data.order;
+      orderData.value = order;
+      currency.value = order.currency.toUpperCase();
+      orderItems.value = order.details.map((detail) => ({
         title: detail.product.name,
         selectedQuantity: detail.quantity,
-        taxRate: 0, // Seteamos a 0 porque el unit_price ya incluye impuestos
+        taxRate: 0,
         unit_price: detail.quantity > 0 ? parseFloat(detail.price) / detail.quantity : parseFloat(detail.price),
         price_bs: parseFloat(detail.price),
         price_cop: parseFloat(detail.price),
         price: parseFloat(detail.price),
         price_before_discount: parseFloat(detail.price_before_discount),
       }));
-      paymentsForPrint.value = response.data.data.order.payment_methods;
-
-      changeAmountForPrint.value = parseFloat(
-        response.data.data.order.money_returns,
-      );
-
-      amountForPrint.value = parseFloat(response.data.data.order.total_amount);
+      paymentsForPrint.value = order.payment_methods;
+      changeAmountForPrint.value = parseFloat(order.money_returns);
+      amountForPrint.value = parseFloat(order.total_amount);
       creditAmountForPrint.value = response.data.data.hasCreditPayment
-        ? parseFloat(response.data.data.order.total_amount)
+        ? parseFloat(order.total_amount)
         : 0;
       creditForPrint.value = response.data.data.hasCreditPayment;
       viewModal.value = true;
@@ -412,12 +423,12 @@ const cancelarOrder = async (orderId) => {
   try {
     await axios.patch(`/tpv/orders/${orderId}/cancelled`);
     toast.success("Orden cancelada exitosamente.");
-    fetchOrder();
+    fetchOrders();
     fetchCashClosure();
   } catch (error) {
     console.error(
       "Error al cancelar la orden:",
-      error.response ? error.response.data : error.message,
+      error.response ? error.response.data : error.message
     );
     const errorMessage =
       error.response?.data?.message ||
@@ -426,29 +437,42 @@ const cancelarOrder = async (orderId) => {
   }
 };
 
-let debounceTimerOrder;
-watch(
-  [pageOrders, itemsPerPageOrders, sortByOrders, orderByOrders],
-  () => {
-    clearTimeout(debounceTimerOrder);
-    debounceTimerOrder = setTimeout(() => {
-      fetchOrder();
-    }, 300);
-  },
-  { deep: true },
-);
-
+// Watcher Unificado para consultas de historial
 let debounceTimer;
 watch(
-  [page, itemsPerPage, sortBy, orderBy, filters],
+  [
+    () => closingState.options.page,
+    () => closingState.options.itemsPerPage,
+    () => closingState.options.sortBy,
+    () => closingState.options.orderBy,
+    filters
+  ],
   () => {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
       fetchClosingHistory();
-      fetchOrder();
     }, 300);
   },
-  { deep: true },
+  { deep: true }
+);
+
+// Watcher Unificado para consultas de órdenes
+let debounceTimerOrder;
+watch(
+  [
+    () => ordersState.options.page,
+    () => ordersState.options.itemsPerPage,
+    () => ordersState.options.sortBy,
+    () => ordersState.options.orderBy,
+    filters
+  ],
+  () => {
+    clearTimeout(debounceTimerOrder);
+    debounceTimerOrder = setTimeout(() => {
+      fetchOrders();
+    }, 300);
+  },
+  { deep: true }
 );
 
 const isSpecialTaxpayer = computed(() => {
@@ -457,14 +481,26 @@ const isSpecialTaxpayer = computed(() => {
   const rate = parseFloat(orderData.value.spe_surcharge_rate || 0);
   return amount > 0 || rate > 0;
 });
+
+onMounted(() => {
+  fetchCashClosure();
+  fetchClosingHistory();
+  fetchOrders();
+});
 </script>
 
 <template>
   <div class="cash-closure-user-page pb-12">
     <div class="d-flex flex-column gap-1 mt-1">
-      <div v-if="loading" class="d-flex justify-center my-8">
-        <VProgressCircular indeterminate color="primary" />
+      
+      <!-- Skeleton Loader de Carga Principal (UX Mejorado) -->
+      <div v-if="loading" class="mb-4">
+        <VSkeletonLoader
+          type="card-avatar, article"
+          class="rounded-lg border shadow-sm"
+        />
       </div>
+      
       <template v-else>
         <!-- Resumen de Caja Superior -->
         <div v-if="cashClosure && Object.keys(cashClosure).length > 0" class="mb-2">
@@ -485,22 +521,22 @@ const isSpecialTaxpayer = computed(() => {
         </VAlert>
 
         <template v-if="cashClosure && Object.keys(cashClosure).length > 0">
-          <!-- Filtros Colapsables -->
+          <!-- Filtros -->
           <div>
             <UserCashFilters
-              :loading="loadingClosing || loadingOrders"
+              :loading="closingState.loading || ordersState.loading"
               @update:filters="handleFilterUpdate"
               @refresh="
                 () => {
                   fetchCashClosure();
                   fetchClosingHistory();
-                  fetchOrder();
+                  fetchOrders();
                 }
               "
             />
           </div>
 
-          <!-- Tablas de Historial y Órdenes -->
+          <!-- Tablas de Historial y Órdenes con Transición Suave -->
           <VRow class="ma-0 mx-n2">
             <!-- Histórico de Cierre -->
             <VCol v-if="!cashClosure.blind_cash_closure" cols="12" md="4" class="pa-2">
@@ -520,11 +556,11 @@ const isSpecialTaxpayer = computed(() => {
                     >
                   </div>
                   <ClosingHistoryTable
-                    :closing="closing"
-                    :loading="loadingClosing"
-                    :total-closing="totalClosing"
-                    :items-per-page="itemsPerPage"
-                    :page="page"
+                    :closing="closingState.items"
+                    :loading="closingState.loading"
+                    :total-closing="closingState.total"
+                    :items-per-page="closingState.options.itemsPerPage"
+                    :page="closingState.options.page"
                     @update:options="updateTableOptions"
                     @print-cash="printCash"
                   />
@@ -550,11 +586,11 @@ const isSpecialTaxpayer = computed(() => {
                     >
                   </div>
                   <OrderCashCloseTable
-                    :orders="orders"
-                    :loading="loadingOrders"
-                    :total-orders="totalOrders"
-                    :items-per-page="itemsPerPageOrders"
-                    :page="pageOrders"
+                    :orders="ordersState.items"
+                    :loading="ordersState.loading"
+                    :total-orders="ordersState.total"
+                    :items-per-page="ordersState.options.itemsPerPage"
+                    :page="ordersState.options.page"
                     :is-blind="cashClosure && cashClosure.blind_cash_closure"
                     @update:options="updateTableOptionsOrders"
                     @view-order="handleViewOrder"
@@ -567,8 +603,6 @@ const isSpecialTaxpayer = computed(() => {
         </template>
       </template>
     </div>
-
-    <!-- Diálogos -->
 
     <!-- Diálogos -->
     <ClosedCashClosure
@@ -615,3 +649,4 @@ const isSpecialTaxpayer = computed(() => {
     />
   </div>
 </template>
+

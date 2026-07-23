@@ -1,9 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Contracts\Role;
-use App\Repository\RoleRepository;
+use App\Repositories\RoleRepository;
 use Illuminate\Database\Eloquent\Collection;
 
 class RoleServices implements Role

@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import AppFilterBase from "@/components/AppFilterBase.vue";
 import { useAuthStore } from "@/stores/auth";
 import { computed, ref } from "vue";
@@ -39,7 +39,7 @@ const emit = defineEmits([
 ]);
 
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => brandingStore.settings?.business_type === 'restaurant');
+const isRestaurant = computed(() => false);
 
 const isAdvancedFiltersVisible = ref(false);
 

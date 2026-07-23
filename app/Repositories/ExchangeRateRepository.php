@@ -1,0 +1,88 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Repositories;
+
+use App\Models\ExchangeRate;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Model;
+
+class ExchangeRateRepository implements \App\Contracts\ExchangeRate
+{
+
+    public function consultAll(): Collection
+    {
+        $exhange = ExchangeRate::all();
+        return $exhange;
+    }
+
+    public function consultOneCOP(): Model|null
+    {
+        $exhange = ExchangeRate::orderBy('created_at', 'desc')->where('currency_code', 'COP')->first();
+
+        return $exhange;
+    }
+
+    public function consultOneBCV(): Model|null
+    {
+        $exhange = ExchangeRate::orderBy('created_at', 'desc')->where('currency_code', 'BS')->first();
+        return $exhange;
+    }
+
+    public function consultOneBINANCE(): Model|null
+    {
+        $exhange = ExchangeRate::orderBy('created_at', 'desc')->where('currency_code', 'BINANCE')->first();
+        return $exhange;
+    }
+
+    public function consultOneEUR(): Model|null
+    {
+        $exhange = ExchangeRate::orderBy('created_at', 'desc')->where('currency_code', 'EUR')->first();
+        return $exhange;
+    }
+
+    public function consultOneCOPC(): Model|null
+    {
+        $exhange = ExchangeRate::orderBy('created_at', 'desc')->where('currency_code', 'COPC')->first();
+        return $exhange;
+    }
+
+    public function updateBCVDollar(array $data): Model
+    {
+        ExchangeRate::where("id", "=", $data["id"])->update($data);
+        return ExchangeRate::find($data["id"]);
+    }
+
+    public function store(array $data): Model
+    {
+        return ExchangeRate::updateOrCreate(
+            ['currency_code' => $data['currency_code']],
+            $data
+        );
+    }
+
+    /*
+    public function consultById(string $id): ?Model
+    {
+        $product = ProductProfitability::query()->where("product_id", "=", $id)->first();
+        return $product;
+    }
+
+
+
+
+    public function editProduct(array $data): Model
+    {
+        ProductProfitability::where("id", "=", $data["id"])->update($data);
+        return ProductProfitability::find($data["id"]);
+    }
+
+    //Debe haber un buscador de los prodcutos que ya tienen un dato guardado
+
+    public function edit(array $data): Model
+    {
+        ProfitabilitySettings::where("id", "=", $data["id"])->update($data);
+        return ProfitabilitySettings::find($data["id"]);
+    }*/
+}

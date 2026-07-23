@@ -6,9 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Models\Loan;
 use App\Services\Loans\LoanActionService;
 use App\Services\Loans\LoanQueryService;
+use App\Http\Requests\StoreLoanRequest;
+use App\Http\Requests\UpdateLoanRequest;
+use App\Http\Requests\StoreLoanPaymentRequest;
+use App\Http\Resources\LoanResource;
 use Illuminate\Http\Request;
-use Illuminate\Validation\ValidationException;
-use Illuminate\Support\Facades\Validator;
 
 class LoanController extends Controller
 {
@@ -24,17 +26,20 @@ class LoanController extends Controller
     public function index(Request $request)
     {
         $query = $this->loanQueryService->getFilteredQuery($request);
-        $perPage = $request->input('itemsPerPage', 10);
+        $perPage = (int) $request->input('itemsPerPage', 10);
 
         if ($perPage < 1) {
             $items = $query->get();
-            return response()->json(['data' => $items, 'total' => $items->count()]);
+            return response()->json([
+                'data' => LoanResource::collection($items),
+                'total' => $items->count()
+            ]);
         }
 
         $paginatedResult = $query->paginate($perPage);
 
         return response()->json([
-            'data' => $paginatedResult->items(),
+            'data' => LoanResource::collection($paginatedResult->items()),
             'total' => $paginatedResult->total()
         ]);
     }
@@ -42,26 +47,14 @@ class LoanController extends Controller
     /**
      * Crea un nuevo préstamo
      */
-    public function store(Request $request)
+    public function store(StoreLoanRequest $request)
     {
-        $rules = [
-            'loan_date' => 'required|date|before_or_equal:today',
-            'monthly_payment' => 'required|numeric|min:0.01',
-            'total_installments' => 'required|integer|min:1|max:600',
-        ];
-
-        $validator = Validator::make($request->all(), $rules);
-
-        if ($validator->fails()) {
-            throw new ValidationException($validator);
-        }
-
         try {
-            $loan = $this->loanActionService->createLoan($validator->validated());
+            $loan = $this->loanActionService->createLoan($request->validated());
 
             return response()->json([
                 'message' => 'Préstamo creado con éxito.',
-                'loan' => $loan
+                'loan' => new LoanResource($loan)
             ], 201);
         } catch (\Exception $e) {
             return response()->json([
@@ -75,35 +68,28 @@ class LoanController extends Controller
      */
     public function show(Loan $loan)
     {
-        return response()->json(['data' => $loan]);
+        // Cargamos la suma de pagos aprobados para evitar N+1 al devolver el detalle
+        $loan->loadSum(['payments' => function ($q) {
+            $q->where('status', \App\Models\Expense::STATUS_APPROVED);
+        }], 'amount');
+
+        return response()->json(['data' => new LoanResource($loan)]);
     }
 
     /**
      * Actualiza un préstamo existente
      */
-    public function update(Request $request, Loan $loan)
+    public function update(UpdateLoanRequest $request, Loan $loan)
     {
-        $rules = [
-            'loan_date' => 'required|date|before_or_equal:today',
-            'monthly_payment' => 'required|numeric|min:0.01',
-            'total_installments' => 'required|integer|min:1|max:600',
-        ];
-
-        $validator = Validator::make($request->all(), $rules);
-
-        if ($validator->fails()) {
-            throw new ValidationException($validator);
-        }
-
         try {
             $updatedLoan = $this->loanActionService->updateLoan(
                 $loan,
-                $validator->validated()
+                $request->validated()
             );
 
             return response()->json([
                 'message' => 'Préstamo actualizado con éxito.',
-                'loan' => $updatedLoan
+                'loan' => new LoanResource($updatedLoan)
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -131,22 +117,10 @@ class LoanController extends Controller
     /**
      * Registra un abono (pago) para un préstamo
      */
-    public function addPayment(Request $request, Loan $loan)
+    public function addPayment(StoreLoanPaymentRequest $request, Loan $loan)
     {
-        $rules = [
-            'amount' => 'required|numeric|min:0.01',
-            'payment_date' => 'required|date|before_or_equal:today',
-            'account' => 'required|string',
-        ];
-
-        $validator = Validator::make($request->all(), $rules);
-
-        if ($validator->fails()) {
-            throw new ValidationException($validator);
-        }
-
         try {
-            $expense = $this->loanActionService->registerPayment($loan, $validator->validated());
+            $expense = $this->loanActionService->registerPayment($loan, $request->validated());
 
             return response()->json([
                 'message' => 'Abono registrado con éxito.',

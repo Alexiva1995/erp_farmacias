@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreReservationRequest;
+use App\Http\Requests\Reservation\UpdateReservationStatusRequest;
 use App\Http\Resources\ReservationResource;
 use App\Services\ReservationServices;
 use Illuminate\Http\JsonResponse;
@@ -185,13 +186,9 @@ class ReservationController extends Controller
     /**
      * Actualizar el estado de una reservación (ej: iniciar, no asistió).
      */
-    public function updateStatus(Request $request, $id): JsonResponse
+    public function updateStatus(UpdateReservationStatusRequest $request, $id): JsonResponse
     {
         try {
-            $request->validate([
-                'status' => 'required|string|in:pending,verified,canceled,in_progress,no_show,completed,pagada,inactiva'
-            ]);
-
             $newStatus = $request->input('status');
             $reservation = null;
 

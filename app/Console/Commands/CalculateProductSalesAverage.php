@@ -21,7 +21,7 @@ class CalculateProductSalesAverage extends Command
      *
      * @var string
      */
-    protected $description = 'Calcula y actualiza el promedio mensual de ventas (sales_average) de todos los productos basándose en las ventas reales desde la creación del producto';
+    protected $description = 'Calcula y actualiza el promedio mensual de ventas (sales_average), timestamps de actualización y factores estacionales por grupo';
 
     /**
      * Execute the console command.
@@ -34,7 +34,7 @@ class CalculateProductSalesAverage extends Command
         $totalProducts = Product::count();
         $processedProducts = 0;
         $updatedProducts = 0;
-        $skippedProducts = 0;
+        $now = Carbon::now();
 
         $this->info("Procesando {$totalProducts} productos en lotes de {$chunkSize}...");
 
@@ -44,17 +44,13 @@ class CalculateProductSalesAverage extends Command
         try {
             DB::beginTransaction();
 
-            Product::chunk($chunkSize, function ($products) use (&$processedProducts, &$updatedProducts, &$skippedProducts, $progressBar) {
+            Product::chunk($chunkSize, function ($products) use (&$processedProducts, &$updatedProducts, $progressBar, $now) {
                 foreach ($products as $product) {
                     $processedProducts++;
-                    $now = Carbon::now();
 
-                    // Ventana de análisis: siempre últimos 12 meses para capturar historial
-                    // independiente de cuándo se creó el registro en esta tabla.
+                    // Ventana de análisis: siempre últimos 12 meses
                     $windowMonths = 12;
-
-                    // Fecha de inicio de la ventana de 12 meses
-                    $windowStart = $now->copy()->subMonths($windowMonths);
+                    $windowStart  = $now->copy()->subMonths($windowMonths);
 
                     // Total de unidades vendidas o consumidas en los últimos 12 meses
                     $isRestaurant = \App\Models\GeneralSetting::first()?->business_type === 'restaurant';
@@ -74,22 +70,29 @@ class CalculateProductSalesAverage extends Command
                             ->sum('order_details.quantity');
                     }
 
-                    // Si no hay ventas/consumo en la ventana, establecer sales_average en 0
+                    // Si no hay ventas en la ventana, establecer promedio en 0
                     if ($totalSold === null || $totalSold == 0) {
                         $salesAverage = 0;
                     } else {
-                        // Promedio mensual = ventas en ventana / meses de la ventana
-                        $salesAverage = round($totalSold / $windowMonths, 2);
+                        // Calcular meses reales de vida del producto (máximo 12 meses)
+                        $createdAt    = $product->created_at ? Carbon::parse($product->created_at) : $now->copy()->subMonths(12);
+                        $monthsOfLife = (int) ceil($createdAt->diffInMonths($now));
+                        $actualMonths = max(1, min(12, $monthsOfLife));
+
+                        // Promedio mensual = ventas en ventana / meses reales transcurridos
+                        $salesAverage = round($totalSold / $actualMonths, 2);
                     }
 
-                    // Actualizar el producto
-                    $product->update(['sales_average' => $salesAverage]);
+                    // Actualizar producto con timestamp de actualización del promedio
+                    $product->update([
+                        'sales_average'            => $salesAverage,
+                        'sales_average_updated_at' => $now, // Feature 3: marcar cuándo se actualizó
+                    ]);
                     $updatedProducts++;
 
                     $this->info(
                         "Producto ID {$product->id} ({$product->name}): " .
                         "Total vendido: {$totalSold}, " .
-                        "Meses base: {$windowMonths}, " .
                         "Promedio mensual: {$salesAverage}",
                         'v'
                     );
@@ -102,8 +105,12 @@ class CalculateProductSalesAverage extends Command
 
             $progressBar->finish();
             $this->newLine(2);
+            $this->info('Promedio de ventas actualizado. Calculando factores estacionales...');
 
-            $this->info('Cálculo del promedio mensual de ventas completado exitosamente!');
+            // Feature 1: Calcular factores estacionales automáticos por grupo
+            $this->calcularFactoresEstacionales($now);
+
+            $this->info('Cálculo completado exitosamente!');
             $this->table(
                 ['Métrica', 'Cantidad'],
                 [
@@ -122,5 +129,87 @@ class CalculateProductSalesAverage extends Command
         }
 
         return Command::SUCCESS;
+    }
+
+    /**
+     * Calcula y persiste factores estacionales por grupo y mes.
+     * Compara el promedio de ventas de cada mes contra el promedio general
+     * de los últimos 2 años para determinar si hay estacionalidad.
+     */
+    private function calcularFactoresEstacionales(Carbon $now): void
+    {
+        $this->info('Calculando factores estacionales automáticos...');
+
+        $dosAnosAtras = $now->copy()->subYears(2)->startOfMonth();
+
+        // Obtener ventas mensuales por grupo de los últimos 2 años
+        $ventasPorGrupoMes = DB::table('order_details')
+            ->join('orders', 'orders.id', '=', 'order_details.order_id')
+            ->join('products', 'products.id', '=', 'order_details.product_id')
+            ->select(
+                'products.group_id',
+                DB::raw('MONTH(orders.created_at) AS mes'),
+                DB::raw('YEAR(orders.created_at)  AS anio'),
+                DB::raw('SUM(order_details.quantity) AS total_ventas')
+            )
+            ->where('orders.status', 'Completed')
+            ->where('orders.created_at', '>=', $dosAnosAtras)
+            ->whereNotNull('products.group_id')
+            ->groupBy('products.group_id', 'mes', 'anio')
+            ->get();
+
+        if ($ventasPorGrupoMes->isEmpty()) {
+            $this->warn('No hay ventas suficientes para calcular estacionalidad.');
+            return;
+        }
+
+        // Agrupar por group_id para calcular promedio global y promedio por mes
+        $porGrupo = $ventasPorGrupoMes->groupBy('group_id');
+
+        $factoresCalculados = 0;
+
+        foreach ($porGrupo as $groupId => $registros) {
+            // Promedio mensual global del grupo (todas las ventas / cantidad de meses distintos)
+            $totalVentas  = $registros->sum('total_ventas');
+            $mesesDistintos = $registros->unique(fn($r) => $r->anio . '-' . $r->mes)->count();
+
+            if ($mesesDistintos === 0 || $totalVentas == 0) continue;
+
+            $promedioGlobal = $totalVentas / $mesesDistintos;
+
+            // Calcular el promedio por cada mes del año (1-12) acumulando años
+            $porMes = $registros->groupBy('mes');
+
+            for ($mes = 1; $mes <= 12; $mes++) {
+                $ventasMes   = $porMes->get($mes);
+                $promedioMes = $ventasMes ? $ventasMes->avg('total_ventas') : 0;
+
+                // Factor = promedio del mes / promedio global
+                // Si el promedio global es 0, factor = 1 (sin ajuste)
+                $factor = $promedioGlobal > 0
+                    ? round($promedioMes / $promedioGlobal, 2)
+                    : 1.00;
+
+                // Limitar factor entre 0.5 y 3.0 para evitar extremos
+                $factor = max(0.50, min(3.00, $factor));
+
+                // Upsert: actualizar si existe, crear si no
+                DB::table('product_seasonal_factors')->upsert(
+                    [
+                        'group_id'   => $groupId,
+                        'month'      => $mes,
+                        'factor'     => $factor,
+                        'updated_at' => $now,
+                        'created_at' => $now,
+                    ],
+                    ['group_id', 'month'], // columnas únicas
+                    ['factor', 'updated_at']
+                );
+
+                $factoresCalculados++;
+            }
+        }
+
+        $this->info("Factores estacionales actualizados: {$factoresCalculados} registros.");
     }
 }

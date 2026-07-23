@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Contracts\Expenses;
@@ -9,7 +11,7 @@ use App\Data\EditExpenseRecurrenceData;
 use App\Enums\ExpenseStatus;
 use App\Exports\ExpenseExport;
 use App\Models\Expense;
-use App\Repository\ExpensesRepository;
+use App\Repositories\ExpensesRepository;
 use DateTime;
 use DateTimeZone;
 use Illuminate\Database\Eloquent\Collection;
@@ -31,7 +33,10 @@ class ExpensesServices implements Expenses
 
     public function create(CreateExpenseData $data): Expense
     {
-        $data->status = ExpenseStatus::PENDING->value;
+        $settings = \App\Models\GeneralSetting::first();
+        $autoApprove = $settings?->expense_auto_approve ?? false;
+
+        $data->status = $autoApprove ? ExpenseStatus::APPROVED->value : ExpenseStatus::PENDING->value;
 
         return $this->expensesRepository->create($data);
     }

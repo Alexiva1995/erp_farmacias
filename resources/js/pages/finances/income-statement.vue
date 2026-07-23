@@ -141,12 +141,25 @@ const formatDate = (date) => {
 };
 
 
+// Debounce para evitar múltiples llamadas en la búsqueda
+let debounceTimeout = null;
+const debouncedLoadData = () => {
+  clearTimeout(debounceTimeout);
+  debounceTimeout = setTimeout(() => {
+    loadData();
+  }, 400);
+};
+
 onMounted(() => {
   loadSummary();
   loadDetails(); // Cargar detalles iniciales también
 });
 
-watch([startDate, endDate, searchQuery, selectedType], () => loadData());
+// Watch para filtros inmediatos
+watch([startDate, endDate, selectedType], () => loadData());
+
+// Watch con debounce para la búsqueda de texto
+watch(searchQuery, () => debouncedLoadData());
 </script>
 
 <template>

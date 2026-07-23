@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\Inventory;
 
 use App\Models\Product;
@@ -21,8 +23,9 @@ class StockoutService
      * @param float $newStock
      * @return void
      */
-    public static function syncStockout(Product $product, float $newStock): void
+    public static function syncStockout(Product $product, float|int|string $newStock): void
     {
+        $newStock = (float) $newStock;
         if ($newStock <= 0) {
             // Si el stock es <= 0, verificar si ya existe un quiebre activo (sin fecha de fin)
             $activeStockout = ProductStockout::where('product_id', $product->id)

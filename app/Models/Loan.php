@@ -17,11 +17,6 @@ class Loan extends Model
         'total_installments',
     ];
 
-    protected $appends = [
-        'remaining_balance',
-        'total_amount',
-    ];
-
     protected $casts = [
         'loan_date' => 'date',
         'monthly_payment' => 'decimal:2',

@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api\Bi;
 
 use App\Http\Controllers\Controller;
 use App\Services\Bi\PosAnalyticsReportService;
-use Illuminate\Http\Request;
+use App\Http\Requests\Bi\PosAnalyticsReportRequest;
 use Illuminate\Http\JsonResponse;
 
 class PosAnalyticsReportController extends Controller
@@ -13,9 +13,9 @@ class PosAnalyticsReportController extends Controller
         protected PosAnalyticsReportService $service
     ) {}
 
-    public function index(Request $request): JsonResponse
+    public function index(PosAnalyticsReportRequest $request): JsonResponse
     {
-        $filters = $request->all();
+        $filters = $request->validated();
         $data = $this->service->getPosDashboard($filters);
         
         return response()->json($data);

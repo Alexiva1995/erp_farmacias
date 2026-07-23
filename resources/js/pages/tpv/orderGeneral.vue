@@ -7,9 +7,10 @@ import OrderTicketThermal54 from "@/components/OrderTicketThermal54.vue";
 import OrderViewModal from "@/components/dialogs/OrderViewModal.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
+import Swal from "sweetalert2";
 import { useAuthStore } from "@/stores/auth";
 import { useRoute } from "vue-router";
-import { computed, nextTick, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 
 const { isVendedor } = useAuthStore();
 const route = useRoute();
@@ -311,13 +312,28 @@ const fetchSellers = async () => {
   }
 };
 
+const fetchAllTabCounts = async () => {
+  await Promise.allSettled([
+    fetchOrderCompleted(),
+    fetchOrderAll(),
+    fetchOrderCancelled(),
+    fetchOrderAbandoned(),
+    fetchQuotations(),
+  ]);
+};
+
+const fetchActiveTabData = () => {
+  const tab = activeTab.value;
+  if (tab === 0) fetchOrderCompleted();
+  else if (tab === 1) fetchOrderAll();
+  else if (tab === 2) fetchOrderCancelled();
+  else if (tab === 3) fetchOrderAbandoned();
+  else if (tab === 4) fetchQuotations();
+};
+
 onMounted(async () => {
   fetchSellers();
-  fetchOrderCompleted();
-  fetchOrderAll();
-  fetchOrderAbandoned();
-  fetchOrderCancelled();
-  fetchQuotations();
+  fetchAllTabCounts();
 
   if (route.query.orderId) {
     const orderId = parseInt(route.query.orderId, 10);
@@ -325,6 +341,18 @@ onMounted(async () => {
       await handleViewOrder(orderId);
     }
   }
+});
+
+onUnmounted(() => {
+  clearTimeout(debounceTimerCompleted);
+  clearTimeout(debounceTimerAll);
+  clearTimeout(debounceTimerAbandoned);
+  clearTimeout(debounceTimerCancelled);
+  clearTimeout(debounceTimerQuotations);
+});
+
+watch(activeTab, () => {
+  fetchActiveTabData();
 });
 
 let debounceTimerCompleted;
@@ -340,6 +368,7 @@ watch(
     orderByOrdersCompleted,
   ],
   () => {
+    if (activeTab.value !== 0) return;
     clearTimeout(debounceTimerCompleted);
     debounceTimerCompleted = setTimeout(() => fetchOrderCompleted(), 300);
   },
@@ -360,6 +389,7 @@ watch(
     orderByOrdersAll,
   ],
   () => {
+    if (activeTab.value !== 1) return;
     clearTimeout(debounceTimerAll);
     debounceTimerAll = setTimeout(() => fetchOrderAll(), 300);
   },
@@ -379,6 +409,7 @@ watch(
     orderByOrdersAbandoned,
   ],
   () => {
+    if (activeTab.value !== 3) return;
     clearTimeout(debounceTimerAbandoned);
     debounceTimerAbandoned = setTimeout(() => fetchOrderAbandoned(), 300);
   },
@@ -398,6 +429,7 @@ watch(
     orderByOrdersCancelled,
   ],
   () => {
+    if (activeTab.value !== 2) return;
     clearTimeout(debounceTimerCancelled);
     debounceTimerCancelled = setTimeout(() => fetchOrderCancelled(), 300);
   },
@@ -429,6 +461,7 @@ let debounceTimerQuotations;
 watch(
   [pageQuotations, itemsPerPageQuotations, filterSearchQuery, globalStartDate, globalEndDate],
   () => {
+    if (activeTab.value !== 4) return;
     clearTimeout(debounceTimerQuotations);
     debounceTimerQuotations = setTimeout(() => fetchQuotations(), 300);
   },
@@ -449,7 +482,7 @@ watch(
 
 watch(
   [filterSearchQuery, currencyFilter, sellerFilter],
-  () => {
+  map => {
     pageOrdersAbandoned.value = 1;
     pageOrdersCancelled.value = 1;
     pageQuotations.value = 1;
@@ -463,11 +496,7 @@ watch([globalStartDate, globalEndDate], () => {
   pageOrdersAbandoned.value = 1;
   pageOrdersCancelled.value = 1;
   pageQuotations.value = 1;
-  fetchOrderCompleted();
-  fetchOrderAll();
-  fetchOrderAbandoned();
-  fetchOrderCancelled();
-  fetchQuotations();
+  fetchAllTabCounts();
 }, { deep: true });
 
 const updateTableOptionsOrdersCompleted = (options) => {
@@ -717,6 +746,37 @@ const handleCloseViewModal = () => {
   amountForPrint.value = 0;
   creditAmountForPrint.value = 0;
   creditForPrint.value = false;
+};
+
+const handleCancelOrder = async (orderId) => {
+  if (!orderId) return;
+  Swal.fire({
+    title: "¿Cancelar Orden?",
+    text: `¿Estás seguro de cancelar la orden #${orderId}?`,
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#d33",
+    cancelButtonColor: "#6e7881",
+    confirmButtonText: "Sí, Cancelar Orden",
+    cancelButtonText: "No, Mantener",
+  }).then(async (result) => {
+    if (result.isConfirmed) {
+      try {
+        await axios.patch(`/tpv/orders/${orderId}/cancelled`);
+        toast.success(`Orden #${orderId} cancelada exitosamente.`);
+        if (viewModal.value) handleCloseViewModal();
+        if (activeTab.value === 0) fetchOrdersCompleted();
+        else if (activeTab.value === 1) fetchOrdersAll();
+        else if (activeTab.value === 2) fetchOrderCancelled();
+        else if (activeTab.value === 3) fetchOrderAbandoned();
+        fetchAllTabCounts();
+      } catch (err) {
+        console.error("Error cancelando orden:", err);
+        const msg = err.response?.data?.message || "No se pudo cancelar la orden.";
+        toast.error(msg);
+      }
+    }
+  });
 };
 
 const handleViewOrder = async (orderId) => {
@@ -1012,72 +1072,63 @@ const sellerDisplayName = (item) => (item?.username ? capitalizeFirstAndLastName
     </VTabs>
 
     <VWindow v-model="activeTab" class="orders-window">
-      <VWindowItem :value="0">
+      <!-- Pestañas unificadas de Órdenes (0 a 3) usando DRY -->
+      <VWindowItem v-if="activeTab >= 0 && activeTab <= 3" :value="activeTab">
         <OrderTable
-          :orders="ordersCompleted"
-          :loading="loadingOrdersCompleted"
-          :total-orders="totalOrdersCompleted"
-          :items-per-page="itemsPerPageOrdersCompleted"
-          :page="pageOrdersCompleted"
-          :headers="headers"
-          :sort-by="sortByOrdersCompleted"
-          :order-by="orderByOrdersCompleted"
+          :orders="
+            activeTab === 0 ? ordersCompleted :
+            activeTab === 1 ? ordersAll :
+            activeTab === 2 ? ordersCancelled :
+            ordersAbandoned
+          "
+          :loading="
+            activeTab === 0 ? loadingOrdersCompleted :
+            activeTab === 1 ? loadingOrdersAll :
+            activeTab === 2 ? loadingOrdersCancelled :
+            loadingOrdersAbandoned
+          "
+          :total-orders="
+            activeTab === 0 ? totalOrdersCompleted :
+            activeTab === 1 ? totalOrdersAll :
+            activeTab === 2 ? totalOrdersCancelled :
+            totalOrdersAbandoned
+          "
+          :items-per-page="
+            activeTab === 0 ? itemsPerPageOrdersCompleted :
+            activeTab === 1 ? itemsPerPageOrdersAll :
+            activeTab === 2 ? itemsPerPageOrdersCancelled :
+            itemsPerPageOrdersAbandoned
+          "
+          :page="
+            activeTab === 0 ? pageOrdersCompleted :
+            activeTab === 1 ? pageOrdersAll :
+            activeTab === 2 ? pageOrdersCancelled :
+            pageOrdersAbandoned
+          "
+          :headers="activeTab === 1 ? headersAll : headers"
+          :sort-by="
+            activeTab === 0 ? sortByOrdersCompleted :
+            activeTab === 1 ? sortByOrdersAll :
+            activeTab === 2 ? sortByOrdersCancelled :
+            sortByOrdersAbandoned
+          "
+          :order-by="
+            activeTab === 0 ? orderByOrdersCompleted :
+            activeTab === 1 ? orderByOrdersAll :
+            activeTab === 2 ? orderByOrdersCancelled :
+            orderByOrdersAbandoned
+          "
           :show-print-actions="false"
-          @update:options="updateTableOptionsOrdersCompleted"
+          @update:options="
+            activeTab === 0 ? updateTableOptionsOrdersCompleted :
+            activeTab === 1 ? updateTableOptionsOrdersAll :
+            activeTab === 2 ? updateTableOptionsOrdersCancelled :
+            updateTableOptionsOrdersAbandoned
+          "
           @print-order="printOrder"
           @print-order-thermal="printOrderThermal54"
           @view-order="handleViewOrder"
-        />
-      </VWindowItem>
-      <VWindowItem :value="1">
-        <OrderTable
-          :orders="ordersAll"
-          :loading="loadingOrdersAll"
-          :total-orders="totalOrdersAll"
-          :items-per-page="itemsPerPageOrdersAll"
-          :page="pageOrdersAll"
-          :headers="headersAll"
-          :sort-by="sortByOrdersAll"
-          :order-by="orderByOrdersAll"
-          :show-print-actions="false"
-          @update:options="updateTableOptionsOrdersAll"
-          @print-order="printOrder"
-          @print-order-thermal="printOrderThermal54"
-          @view-order="handleViewOrder"
-        />
-      </VWindowItem>
-      <VWindowItem :value="2">
-        <OrderTable
-          :orders="ordersCancelled"
-          :loading="loadingOrdersCancelled"
-          :total-orders="totalOrdersCancelled"
-          :items-per-page="itemsPerPageOrdersCancelled"
-          :page="pageOrdersCancelled"
-          :headers="headers"
-          :sort-by="sortByOrdersCancelled"
-          :order-by="orderByOrdersCancelled"
-          :show-print-actions="false"
-          @update:options="updateTableOptionsOrdersCancelled"
-          @print-order="printOrder"
-          @print-order-thermal="printOrderThermal54"
-          @view-order="handleViewOrder"
-        />
-      </VWindowItem>
-      <VWindowItem :value="3">
-        <OrderTable
-          :orders="ordersAbandoned"
-          :loading="loadingOrdersAbandoned"
-          :total-orders="totalOrdersAbandoned"
-          :items-per-page="itemsPerPageOrdersAbandoned"
-          :page="pageOrdersAbandoned"
-          :headers="headers"
-          :sort-by="sortByOrdersAbandoned"
-          :order-by="orderByOrdersAbandoned"
-          :show-print-actions="false"
-          @update:options="updateTableOptionsOrdersAbandoned"
-          @print-order="printOrder"
-          @print-order-thermal="printOrderThermal54"
-          @view-order="handleViewOrder"
+          @cancel-order="handleCancelOrder"
         />
       </VWindowItem>
       <VWindowItem :value="4">
@@ -1171,6 +1222,7 @@ const sellerDisplayName = (item) => (item?.username ? capitalizeFirstAndLastName
       :credit-amount="creditAmountForPrint"
       :credit="creditForPrint"
       @close="handleCloseViewModal"
+      @cancel-order="handleCancelOrder"
       :is-special-taxpayer="isSpecialTaxpayer"
     />
   </div>

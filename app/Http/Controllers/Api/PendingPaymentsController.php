@@ -17,6 +17,14 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use App\Http\Resources\Finances\PendingPaymentGroupResource;
+use App\Http\Resources\Finances\PaymentHistoryResource;
+use App\Http\Requests\PendingPayments\ProcessPaymentRequest;
+use App\Http\Requests\PendingPayments\UploadReceiptRequest;
+use App\Http\Requests\PendingPayments\GetPaidAmountRequest;
+use App\Http\Requests\PendingPayments\GetCreditoFiscalRequest;
+use App\Http\Requests\PendingPayments\GetExpensesHistoryRequest;
+use App\Http\Requests\PendingPayments\UpdatePaymentDateRequest;
 use Carbon\Carbon;
 use Illuminate\Validation\Rule;
 
@@ -78,19 +86,16 @@ class PendingPaymentsController extends Controller
     public function index(Request $request): JsonResponse
     {
         try {
-            // Ampliar consulta: Todas las facturas no pagadas (status_payment != 1 o nulo)
-            // Independientemente de su status (pending, loaded, to_order, ordered, etc.)
-            $query = Invoice::with(['supplier'])
+            // Cargar de forma ansiosa la relación de pagos (payments) y el proveedor (supplier)
+            $query = Invoice::with(['supplier', 'payments'])
                 ->where(function ($q) {
                     $q->whereNull('status_payment')
                         ->orWhere('status_payment', '!=', 1);
                 });
 
-            // Filtrar desde el año en curso (2026) en adelante por defecto
             $currentYearStart = Carbon::now()->startOfYear();
             $query->whereDate('payment_date', '>=', $currentYearStart);
 
-            // ORDENAMIENTO: Prioridad por fecha de pago
             $query->orderBy('payment_date', 'asc');
 
             if ($request->filled('supplier_id')) {
@@ -115,81 +120,63 @@ class PendingPaymentsController extends Controller
                 });
             }
 
-            // Filtro de facturas vencidas
-            // CORRECCIÓN ISSUE #1: Fecha de vencimiento es payment_date - 1 día
             if ($request->filled('show_overdue_only') && $request->boolean('show_overdue_only')) {
                 $query->where(function ($q) {
-                    // Fecha de vencimiento = payment_date - 1 día
-                    $dueDate = Carbon::now()->subDay();
+                    $dueDate = Carbon::now();
                     $q->whereDate('payment_date', '<=', $dueDate)
                         ->orWhereDate('exp_date', '<', Carbon::now());
                 });
-            } else {
             }
 
             $invoices = $query->get();
 
-            // Log removido para pruebas
-
-            // CORRECCIÓN CRÍTICA: No recalcular total_usd, usar el de la BD
-            // $invoices ya tiene el total_usd correcto desde la base de datos
+            // Cachear tasas frecuentes para evitar N+1 adicionales en bucle
+            $exchangeRates = ExchangeRate::all()->keyBy('currency_code');
+            $vesRate = $exchangeRates->get('VES')?->rate ?? 1;
+            $copRate = $exchangeRates->get('COP')?->rate ?? 1;
+            $bcvRateVal = $exchangeRates->get('BS')?->rate ?? 1;
 
             $groupedInvoices = $invoices->groupBy(function ($invoice) {
                 return $invoice->supplier_id . '_' . $invoice->payment_date;
-            })->map(function ($group) {
+            })->map(function ($group) use ($exchangeRates, $vesRate, $copRate, $bcvRateVal) {
                 $firstInvoice = $group->first();
 
-                // Calcular total en USD para el grupo usando el nuevo campo calculado
                 $totalAmountUSD = $group->sum('total_usd');
-
-                // Calcular total en la moneda original del grupo
                 $totalAmountOriginal = $group->sum('total_amount');
 
-                // Calcular monto restante para facturas con pagos parciales
                 $remainingAmountUSD = $totalAmountUSD;
                 $remainingAmountOriginal = $totalAmountOriginal;
 
-                // Verificar si hay pagos parciales para este grupo
-                $invoiceIds = $group->pluck('id');
-                $payments = InvoicePayment::whereHas('invoices', function ($query) use ($invoiceIds) {
-                    $query->whereIn('id', $invoiceIds);
-                })->get();
+                // Obtener pagos del grupo en memoria, sin hacer consultas repetidas a la base de datos
+                $payments = $group->flatMap(function ($invoice) {
+                    return $invoice->payments;
+                })->unique('id');
 
                 $totalPaidUSD = 0;
                 if ($payments->count() > 0) {
-                    // Calcular total pagado en USD
                     foreach ($payments as $payment) {
                         if ($payment->payment_method === 'USD') {
                             $totalPaidUSD += $payment->amount;
                         } else {
                             $rateCurrency = ($payment->payment_method === 'COP') ? 'COPC' : $payment->payment_method;
-                            $exchangeRate = ExchangeRate::where('currency_code', $rateCurrency)->first();
-                            if ($exchangeRate) {
-                                $totalPaidUSD += round($payment->amount / $exchangeRate->rate, 2);
+                            $rateObj = $exchangeRates->get($rateCurrency);
+                            if ($rateObj && $rateObj->rate > 0) {
+                                $totalPaidUSD += round($payment->amount / $rateObj->rate, 2);
                             }
                         }
                     }
 
-                    // Calcular monto restante
                     $remainingAmountUSD = max(0, $totalAmountUSD - $totalPaidUSD);
 
-                    // Convertir monto restante a moneda original
                     if ($firstInvoice->currency === 'Bs') {
-                        $exchangeRate = ExchangeRate::where('currency_code', 'VES')->first();
-                        if ($exchangeRate) {
-                            $remainingAmountOriginal = round($remainingAmountUSD * $exchangeRate->rate, 2);
-                        }
+                        $remainingAmountOriginal = round($remainingAmountUSD * $vesRate, 2);
                     } elseif ($firstInvoice->currency === 'COP') {
-                        $exchangeRate = ExchangeRate::where('currency_code', 'COP')->first();
-                        if ($exchangeRate) {
-                            $remainingAmountOriginal = round($remainingAmountUSD * $exchangeRate->rate, 2);
-                        }
+                        $remainingAmountOriginal = round($remainingAmountUSD * $copRate, 2);
                     } else {
                         $remainingAmountOriginal = $remainingAmountUSD;
                     }
                 }
 
-                // ISSUE #4: Calcular total en moneda del proveedor
                 $supplierPreferredCurrency = $this->getSupplierPreferredCurrency($firstInvoice->supplier);
                 $totalInSupplierCurrency = $this->calculateTotalInSupplierCurrency($group, $supplierPreferredCurrency);
 
@@ -198,37 +185,24 @@ class PendingPaymentsController extends Controller
                     'supplier_name' => $firstInvoice->supplier->name,
                     'payment_date' => $firstInvoice->payment_date,
                     'currency' => $firstInvoice->currency,
-                    'total_amount' => $remainingAmountOriginal, // Monto restante en moneda original
-                    'total_usd' => $totalAmountUSD, // CORRECCIÓN: Usar total original, no restante
-                    'remainingAmountUSD' => $remainingAmountUSD, // Alias para compatibilidad
-                    'total_in_supplier_currency' => $totalInSupplierCurrency, // ISSUE #4: Total en moneda del proveedor
-                    'supplier_preferred_currency' => $supplierPreferredCurrency, // ISSUE #4: Moneda preferida del proveedor
+                    'total_amount' => $remainingAmountOriginal,
+                    'total_usd' => $totalAmountUSD,
+                    'remainingAmountUSD' => $remainingAmountUSD,
+                    'total_in_supplier_currency' => $totalInSupplierCurrency,
+                    'supplier_preferred_currency' => $supplierPreferredCurrency,
                     'invoice_count' => $group->count(),
-                    'invoices' => $group->map(function ($invoice) use ($totalInSupplierCurrency, $totalAmountUSD) {
-                        // ISSUE #3: Calcular montos indexados si aplica
+                    'invoices' => $group->map(function ($invoice) use ($totalInSupplierCurrency, $totalAmountUSD, $exchangeRates, $vesRate, $copRate, $bcvRateVal) {
                         $indexedData = $this->calculateIndexedAmount($invoice);
 
-                        // CORRECCIÓN CRÍTICA: Para facturas indexadas, mantener USD fijo y calcular Bs dinámicamente
                         if ($invoice->is_indexed && $invoice->currency === 'Bs') {
-                            // Para facturas indexadas: USD siempre fijo, Bs se calcula dinámicamente
-                            $invoiceRemainingUSD = $invoice->total_usd; // USD fijo
-    
-                            // Calcular Bs usando la tasa BCV actual
-                            $bcvRate = ExchangeRate::where('currency_code', 'BS')->first();
-                            if ($bcvRate) {
-                                $invoiceRemainingOriginal = round($invoice->total_usd * $bcvRate->rate, 2);
-                            } else {
-                                $invoiceRemainingOriginal = $invoice->total_amount; // Fallback
-                            }
+                            $invoiceRemainingUSD = $invoice->total_usd;
+                            $invoiceRemainingOriginal = round($invoice->total_usd * $bcvRateVal, 2);
                         } else {
-                            // Para facturas no indexadas: cálculo normal
                             $invoiceRemainingUSD = $invoice->total_usd;
                             $invoiceRemainingOriginal = $invoice->total_amount;
 
-                            // Si hay pagos parciales, calcular el monto restante individual
-                            $invoicePayments = InvoicePayment::whereHas('invoices', function ($query) use ($invoice) {
-                                $query->where('id', $invoice->id);
-                            })->get();
+                            // Mapear pagos de la factura en memoria
+                            $invoicePayments = $invoice->payments;
 
                             if ($invoicePayments->count() > 0) {
                                 $totalPaidUSD = 0;
@@ -237,49 +211,41 @@ class PendingPaymentsController extends Controller
                                         $totalPaidUSD += $payment->amount;
                                     } else {
                                         $rateCurrency = ($payment->payment_method === 'COP') ? 'COPC' : $payment->payment_method;
-                                        $exchangeRate = ExchangeRate::where('currency_code', $rateCurrency)->first();
-                                        if ($exchangeRate) {
-                                            $totalPaidUSD += round($payment->amount / $exchangeRate->rate, 2);
+                                        $rateObj = $exchangeRates->get($rateCurrency);
+                                        if ($rateObj && $rateObj->rate > 0) {
+                                            $totalPaidUSD += round($payment->amount / $rateObj->rate, 2);
                                         }
                                     }
                                 }
 
                                 $invoiceRemainingUSD = max(0, $invoice->total_usd - $totalPaidUSD);
 
-                                // Convertir a moneda original
                                 if ($invoice->currency === 'Bs') {
-                                    $exchangeRate = ExchangeRate::where('currency_code', 'VES')->first();
-                                    if ($exchangeRate) {
-                                        $invoiceRemainingOriginal = round($invoiceRemainingUSD * $exchangeRate->rate, 2);
-                                    }
+                                    $invoiceRemainingOriginal = round($invoiceRemainingUSD * $vesRate, 2);
                                 } elseif ($invoice->currency === 'COP') {
-                                    $exchangeRate = ExchangeRate::where('currency_code', 'COP')->first();
-                                    if ($exchangeRate) {
-                                        $invoiceRemainingOriginal = round($invoiceRemainingUSD * $exchangeRate->rate, 2);
-                                    }
+                                    $invoiceRemainingOriginal = round($invoiceRemainingUSD * $copRate, 2);
                                 } else {
                                     $invoiceRemainingOriginal = $invoiceRemainingUSD;
                                 }
                             }
                         }
 
-                        // ISSUE #3: Si la factura está indexada, usar el monto indexado para mostrar
                         $displayAmount = $indexedData['is_indexed'] ? $indexedData['indexed_amount'] : $invoiceRemainingOriginal;
                         $displayOriginalAmount = $indexedData['is_indexed'] ? $indexedData['indexed_amount'] : $invoice->total_amount;
 
                         return [
                             'id' => $invoice->id,
                             'invoice_number' => $invoice->invoice_number,
-                            'total_amount' => $displayAmount, // Monto restante (indexado si aplica)
-                            'total_usd' => $invoice->total_usd, // CORRECCIÓN: Mantener USD original fijo
-                            'invoiceRemainingUSD' => $invoiceRemainingUSD, // Alias para compatibilidad
-                            'remaining_amount' => $this->calculateRemainingAmountForInvoice($invoice), // Monto restante real
-                            'remaining_amount_usd' => $this->calculateRemainingAmountUSDForInvoice($invoice), // Monto restante USD real
-                            'original_amount' => $displayOriginalAmount, // Monto original (indexado si aplica)
-                            'original_amount_usd' => $invoice->total_usd, // Monto original en USD
+                            'total_amount' => $displayAmount,
+                            'total_usd' => $invoice->total_usd,
+                            'invoiceRemainingUSD' => $invoiceRemainingUSD,
+                            'remaining_amount' => $this->calculateRemainingAmountForInvoice($invoice),
+                            'remaining_amount_usd' => $this->calculateRemainingAmountUSDForInvoice($invoice),
+                            'original_amount' => $displayOriginalAmount,
+                            'original_amount_usd' => $invoice->total_usd,
                             'currency' => $invoice->currency,
-                            'is_indexed' => $invoice->is_indexed ?? false, // ISSUE #3: Campo para facturas indexadas
-                            'indexed_data' => $indexedData, // ISSUE #3: Datos completos de indexación
+                            'is_indexed' => $invoice->is_indexed ?? false,
+                            'indexed_data' => $indexedData,
                             'exchange_rate' => $invoice->exchange_rate,
                             'exp_date' => $invoice->exp_date,
                             'supplier_total_bs' => $totalInSupplierCurrency,
@@ -289,7 +255,6 @@ class PendingPaymentsController extends Controller
                 ];
             })->values();
 
-            // Calcular totales por moneda
             $invoicesBs = $invoices->where('currency', 'Bs');
             $invoicesUsd = $invoices->where('currency', 'USD');
             $invoicesCop = $invoices->where('currency', 'COP');
@@ -300,7 +265,7 @@ class PendingPaymentsController extends Controller
             $totalUsdConverted = $invoices->sum('total_usd');
 
             return ApiResponse::success([
-                'pending_payments' => $groupedInvoices,
+                'pending_payments' => PendingPaymentGroupResource::collection($groupedInvoices),
                 'total_groups' => $groupedInvoices->count(),
                 'total_suppliers' => $groupedInvoices->unique('supplier_id')->count(),
                 'total_amount' => $totalUsdConverted,
@@ -321,7 +286,7 @@ class PendingPaymentsController extends Controller
                 ]
             ], 'Facturas pendientes obtenidas exitosamente');
         } catch (\Exception $e) {
-            \Log::info('Pending payments', [$e->getMessage()]);
+            \Log::info('Pending payments exception', [$e->getMessage()]);
             return ApiResponse::error('Error al obtener las facturas pendientes: ' . $e->getMessage(), 500);
         }
     }
@@ -368,43 +333,8 @@ class PendingPaymentsController extends Controller
         }
     }
 
-    /**
-     * Procesar pago de facturas
-     */
-    public function processPayment(Request $request): JsonResponse
+    public function processPayment(ProcessPaymentRequest $request): JsonResponse
     {
-        try {
-            $allowedMethods = match ($request->payment_currency) {
-                'USD' => ['CASH', 'BINANCE', 'PAYPAL', 'CREDIT'],
-                'VES', 'BS' => ['CASH', 'CARD', 'MOBILE', 'TRANSFER'],
-                'COP' => ['CASH', 'TRANSFER'],
-                default => [],
-            };
-
-            $request->validate([
-                'invoice_ids' => 'required|array',
-                'invoice_ids.*' => 'exists:invoices,id',
-                'payment_type' => 'required|in:full,partial', // Nuevo campo
-                'payment_currency' => 'required|in:VES,USD,COP',
-                'payment_amount' => 'required|numeric|min:0.01',
-                'payment_date' => 'required|date',
-                'payment_method' => ['required', Rule::in($allowedMethods)],
-                'reference' => 'nullable|string|max:100',
-                'photo_url' => 'nullable|string',
-                'notes' => 'nullable|string|max:500',
-                'has_iva' => 'nullable|boolean',
-            ], [
-                'payment_method.required' => 'El método de pago es necesario',
-                'payment_method.in' => 'El método de pago seleccionado no es válido para la moneda seleccionada',
-            ]);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            Log::error('ProcessPayment - Validation Error:', [
-                'errors' => $e->errors(),
-                'data' => $request->all()
-            ]);
-            return ApiResponse::error('Datos de validación incorrectos', 400, $e->errors());
-        }
-
         // Validación adicional específica para payment_type
         if (empty($request->payment_type) || !in_array($request->payment_type, ['full', 'partial'])) {
             Log::error('ProcessPayment - Payment Type Missing:', [
@@ -607,7 +537,6 @@ class PendingPaymentsController extends Controller
             $query = InvoicePayment::with(['invoices.supplier', 'user'])
                 ->orderBy('created_at', 'desc');
 
-            // Aplicar filtros si existen
             if ($request->filled('supplier_id')) {
                 $query->whereHas('invoices', function ($q) use ($request) {
                     $q->where('supplier_id', $request->supplier_id);
@@ -649,48 +578,35 @@ class PendingPaymentsController extends Controller
 
             $payments = $query->paginate($perPage);
 
-            // Agregar información adicional a cada pago
-            $payments->getCollection()->transform(function ($payment) {
+            // Obtener todas las tasas de cambio de una vez para evitar N+1
+            $exchangeRates = ExchangeRate::all()->keyBy('currency_code');
+
+            $payments->getCollection()->transform(function ($payment) use ($exchangeRates) {
                 $firstInvoice = $payment->invoices->first();
-                // Usar la moneda del pago (payment_method) en lugar de la moneda de la factura
                 $payment->currency = $payment->payment_method;
 
-                // Calcular el equivalente en USD usando la tasa de cambio
                 if ($payment->payment_method === 'USD') {
                     $payment->amount_usd = $payment->amount;
                 } else {
-                    // Para otras monedas, necesitamos obtener la tasa de cambio
-                    $exchangeRate = ExchangeRate::where('currency_code', $payment->payment_method)->first();
-                    if ($exchangeRate) {
-                        $payment->amount_usd = round($payment->amount / $exchangeRate->rate, 2);
+                    $rateObj = $exchangeRates->get($payment->payment_method);
+                    if ($rateObj && $rateObj->rate > 0) {
+                        $payment->amount_usd = round($payment->amount / $rateObj->rate, 2);
                     } else {
                         $payment->amount_usd = 0;
                     }
                 }
 
-                // Determinar si es pago completo o parcial basado en el monto
                 $totalInvoiceAmount = 0;
                 foreach ($payment->invoices as $invoice) {
-                    // CORRECCIÓN CRÍTICA: Usar total_usd de la BD en lugar de recalcular
                     $totalInvoiceAmount += $invoice->total_usd;
                 }
                 $payment->payment_type = $payment->amount_usd >= $totalInvoiceAmount ? 'full' : 'partial';
-
-                // Agregar el total de la factura en USD
                 $payment->invoice_total_usd = $totalInvoiceAmount;
 
-                // CORRECCIÓN CRÍTICA: No recalcular total_usd, usar el de la BD
-                $payment->invoices->transform(function ($invoice) {
-                    // Mantener el total_usd original de la base de datos
-                    // $invoice->total_usd ya está correcto desde la BD
-                    return $invoice;
-                });
-
-                // Calcular información de pagos para facturas con pagos parciales
                 if ($payment->payment_type === 'partial') {
                     $invoiceIds = $payment->invoices->pluck('id');
 
-                    // Obtener todos los pagos para estas facturas
+                    // Cargar pagos asociados precargando las tasas
                     $allPayments = InvoicePayment::whereHas('invoices', function ($query) use ($invoiceIds) {
                         $query->whereIn('id', $invoiceIds);
                     })->get();
@@ -700,9 +616,9 @@ class PendingPaymentsController extends Controller
                         if ($p->payment_method === 'USD') {
                             $totalPaidUSD += $p->amount;
                         } else {
-                            $exchangeRate = ExchangeRate::where('currency_code', $p->payment_method)->first();
-                            if ($exchangeRate) {
-                                $totalPaidUSD += round($p->amount / $exchangeRate->rate, 2);
+                            $rateObj = $exchangeRates->get($p->payment_method);
+                            if ($rateObj && $rateObj->rate > 0) {
+                                $totalPaidUSD += round($p->amount / $rateObj->rate, 2);
                             }
                         }
                     }
@@ -712,12 +628,12 @@ class PendingPaymentsController extends Controller
                     $payment->payment_percentage = $totalInvoiceAmount > 0 ? round(($totalPaidUSD / $totalInvoiceAmount) * 100, 2) : 0;
                 }
 
-                // El campo reference ya está disponible directamente
-
                 return $payment;
             });
 
-            return ApiResponse::success($payments);
+            // Retornar paginado con estructura estandarizada
+            $resourceCollection = PaymentHistoryResource::collection($payments);
+            return ApiResponse::success($resourceCollection->response()->getData(true));
         } catch (\Exception $e) {
             Log::error('Error al obtener historial de pagos: ' . $e->getMessage());
             return ApiResponse::error('Error al obtener el historial de pagos', 500);
@@ -812,12 +728,8 @@ class PendingPaymentsController extends Controller
     /**
      * Subir comprobante de pago
      */
-    public function uploadReceipt(Request $request): JsonResponse
+    public function uploadReceipt(UploadReceiptRequest $request): JsonResponse
     {
-        $request->validate([
-            'file' => 'required|image|max:2048'
-        ]);
-
         try {
             $file = $request->file('file');
             $filename = 'payment_receipt_' . time() . '.' . $file->getClientOriginalExtension();
@@ -1001,14 +913,9 @@ class PendingPaymentsController extends Controller
     /**
      * Obtener monto ya pagado de facturas específicas
      */
-    public function getPaidAmount(Request $request): JsonResponse
+    public function getPaidAmount(GetPaidAmountRequest $request): JsonResponse
     {
         try {
-            $request->validate([
-                'invoice_ids' => 'required|array',
-                'invoice_ids.*' => 'exists:invoices,id'
-            ]);
-
             $invoiceIds = $request->invoice_ids;
 
             // Obtener el total ya pagado en USD para estas facturas
@@ -1180,14 +1087,9 @@ class PendingPaymentsController extends Controller
 
         return round($totalUSD * $exchangeRate->rate, 2);
     }
-    public function getCreditoFiscal(Request $request): JsonResponse
+    public function getCreditoFiscal(GetCreditoFiscalRequest $request): JsonResponse
     {
         try {
-            $request->validate([
-                'start_date' => 'nullable|date',
-                'end_date' => 'nullable|date'
-            ]);
-
             $startDate = $request->start_date ?? now()->startOfMonth()->format('Y-m-d');
             $endDate = $request->end_date ?? now()->endOfMonth()->format('Y-m-d');
 
@@ -1250,16 +1152,9 @@ class PendingPaymentsController extends Controller
         }
     }
 
-    public function getExpensesHistory(Request $request): JsonResponse
+    public function getExpensesHistory(GetExpensesHistoryRequest $request): JsonResponse
     {
         try {
-            $request->validate([
-                'start_date' => 'nullable|date',
-                'end_date' => 'nullable|date',
-                'page' => 'integer|min:1',
-                'itemsPerPage' => 'integer|min:1|max:100'
-            ]);
-
             $startDate = $request->start_date ?? now()->startOfMonth()->format('Y-m-d');
             $endDate = $request->end_date ?? now()->endOfMonth()->format('Y-m-d');
             $page = $request->page ?? 1;
@@ -1449,13 +1344,9 @@ class PendingPaymentsController extends Controller
     /**
      * Actualizar la fecha de pago de una factura
      */
-    public function updatePaymentDate(Request $request, int $invoiceId): JsonResponse
+    public function updatePaymentDate(UpdatePaymentDateRequest $request, int $invoiceId): JsonResponse
     {
         try {
-            $request->validate([
-                'payment_date' => 'required|date'
-            ]);
-
             $invoice = Invoice::findOrFail($invoiceId);
             $invoice->update([
                 'payment_date' => $request->payment_date

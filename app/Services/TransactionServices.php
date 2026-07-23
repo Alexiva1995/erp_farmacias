@@ -1,12 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Contracts\Transaction;
 use App\Data\CreateTransactionData;
 use App\Models\Expense;
 use App\Models\Transaction as ModelsTransaction;
-use App\Repository\TransactionRepository;
+use App\Repositories\TransactionRepository;
 use DateTime;
 use DateTimeZone;
 

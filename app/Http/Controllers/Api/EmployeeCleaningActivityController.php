@@ -5,6 +5,11 @@ namespace App\Http\Controllers\Api;
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\EmployeeCleaningActivity\StoreEmployeeCleaningActivityRequest;
+use App\Http\Requests\EmployeeCleaningActivity\UpdateActivityStatusRequest;
+use App\Http\Requests\EmployeeCleaningActivity\UpdateMyActivityStatusRequest;
+use App\Http\Requests\EmployeeCleaningActivity\ApproveExecutionRequest;
+use App\Http\Requests\EmployeeCleaningActivity\RejectExecutionRequest;
+use App\Http\Requests\EmployeeCleaningActivity\CancelExecutionRequest;
 use App\Models\Employee;
 use App\Services\EmployeeCleaningActivities\EmployeeCleaningActivityActionService;
 use App\Services\EmployeeCleaningActivities\EmployeeCleaningActivityQueryService;
@@ -94,14 +99,10 @@ class EmployeeCleaningActivityController extends Controller
     /**
      * Actualizar el estado de una actividad asignada
      */
-    public function updateStatus(Request $request, Employee $employee, int $activityId)
+    public function updateStatus(UpdateActivityStatusRequest $request, Employee $employee, int $activityId)
     {
         try {
-            $validated = $request->validate([
-                'status' => 'required|in:Pendiente,Completada,Cancelada',
-                'completed_date' => 'nullable|date',
-                'notes' => 'nullable|string|max:500',
-            ]);
+            $validated = $request->validated();
 
             $result = $this->actionService->updateActivityStatus(
                 $employee->id,
@@ -151,14 +152,10 @@ class EmployeeCleaningActivityController extends Controller
     /**
      * Actualizar el estado de una ejecución del empleado logueado
      */
-    public function updateMyActivityStatus(Request $request, int $executionId)
+    public function updateMyActivityStatus(UpdateMyActivityStatusRequest $request, int $executionId)
     {
         try {
-            $validated = $request->validate([
-                'status' => 'required|in:Pendiente,Procesada',
-                'photo' => 'required_if:status,Procesada|image|mimes:jpeg,png,jpg|max:5120',
-                'notes' => 'nullable|string|max:500',
-            ]);
+            $validated = $request->validated();
 
             $user = auth()->user();
             $employee = $user->employee;
@@ -211,12 +208,10 @@ class EmployeeCleaningActivityController extends Controller
     /**
      * Aprobar una ejecución (supervisor)
      */
-    public function approveExecution(Request $request, int $executionId)
+    public function approveExecution(ApproveExecutionRequest $request, int $executionId)
     {
         try {
-            $validated = $request->validate([
-                'notes' => 'nullable|string|max:500',
-            ]);
+            $validated = $request->validated();
 
             $user = auth()->user();
 
@@ -238,12 +233,10 @@ class EmployeeCleaningActivityController extends Controller
     /**
      * Rechazar una ejecución y devolverla a pendiente (supervisor)
      */
-    public function rejectExecution(Request $request, int $executionId)
+    public function rejectExecution(RejectExecutionRequest $request, int $executionId)
     {
         try {
-            $validated = $request->validate([
-                'rejection_reason' => 'required|string|max:500',
-            ]);
+            $validated = $request->validated();
 
             $user = auth()->user();
 
@@ -265,12 +258,10 @@ class EmployeeCleaningActivityController extends Controller
     /**
      * Cancelar una ejecución (supervisor)
      */
-    public function cancelExecution(Request $request, int $executionId)
+    public function cancelExecution(CancelExecutionRequest $request, int $executionId)
     {
         try {
-            $validated = $request->validate([
-                'cancellation_reason' => 'required|string|max:500',
-            ]);
+            $validated = $request->validated();
 
             $user = auth()->user();
 

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Contracts\ExchangeRate;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ExchangeRateCreateRequest;
+use App\Http\Resources\Finances\ExchangeRateResource;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
@@ -19,7 +20,8 @@ class ExchangeRateController extends Controller
 
     public function consultAll(Request $request)
     {
-        return $this->exchangeRate->consultAll();
+        $rates = $this->exchangeRate->consultAll();
+        return ExchangeRateResource::collection($rates);
     }
 
     public function store(ExchangeRateCreateRequest $request)

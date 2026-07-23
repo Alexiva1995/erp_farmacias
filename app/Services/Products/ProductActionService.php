@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\Products;
 
 use App\Models\Product;
@@ -95,11 +97,31 @@ class ProductActionService
             $supplierIds[] = $singleSupplierId;
             $supplierIds = array_unique($supplierIds);
         }
+        // Eliminar supplier_id de los datos a guardar (no existe como columna directa)
+        if (isset($validatedData['supplier_id'])) {
+            unset($validatedData['supplier_id']);
+        }
 
         // Extraer variantes antes de guardar
         $variantsData = request()->input('variants') ? json_decode(request()->input('variants'), true) : [];
 
+        $initialStock = (float)($validatedData['initial_stock'] ?? 0);
+        if (isset($validatedData['initial_stock'])) {
+            unset($validatedData['initial_stock']);
+        }
+
         $product = Product::create($validatedData);
+
+        if ($initialStock > 0) {
+            $product->lots()->create([
+                'lot_number'      => 'LOTE-INICIAL',
+                'quantity'        => $initialStock,
+                'unit_cost'       => $product->unit_cost ?? 0,
+                'expiration_date' => now()->addYears(5)->format('Y-m-d'),
+                'created_at'      => now(),
+                'updated_at'      => now(),
+            ]);
+        }
 
         if (!empty($supplierIds)) {
             foreach ($supplierIds as $supplierId) {
@@ -112,11 +134,15 @@ class ProductActionService
         }
 
         // Crear/Guardar las variantes
-        if (!empty($variantsData)) {
+        if (request()->has('variants')) {
+            $variantsInput = request()->input('variants');
+            $variantsData = is_string($variantsInput) ? json_decode($variantsInput, true) : $variantsInput;
+            $variantsData = is_array($variantsData) ? $variantsData : [];
+
             foreach ($variantsData as $v) {
                 $product->variants()->create([
                     'attribute_type' => 'shade',
-                    'attribute_value' => $v['attribute_value'],
+                    'attribute_value' => $v['attribute_value'] ?? '',
                     'color_hex' => $v['color_hex'] ?? '#E20074',
                     'price_modifier' => (float)($v['price_modifier'] ?? 0),
                     'stock' => (int)($v['stock'] ?? 0)
@@ -204,15 +230,19 @@ class ProductActionService
             }
         }
 
-        // Sincronizar las variantes
-        if (!empty($variantsData)) {
+        // Sincronizar las variantes solo si están presentes en la request
+        if (request()->has('variants')) {
+            $variantsInput = request()->input('variants');
+            $variantsData = is_string($variantsInput) ? json_decode($variantsInput, true) : $variantsInput;
+            $variantsData = is_array($variantsData) ? $variantsData : [];
+
             $keepVariantIds = [];
             foreach ($variantsData as $v) {
                 if (!empty($v['id'])) {
                     $variant = $product->variants()->find($v['id']);
                     if ($variant) {
                         $variant->update([
-                            'attribute_value' => $v['attribute_value'],
+                            'attribute_value' => $v['attribute_value'] ?? '',
                             'color_hex' => $v['color_hex'] ?? '#E20074',
                             'price_modifier' => (float)($v['price_modifier'] ?? 0)
                         ]);
@@ -221,7 +251,7 @@ class ProductActionService
                 } else {
                     $newVariant = $product->variants()->create([
                         'attribute_type' => 'shade',
-                        'attribute_value' => $v['attribute_value'],
+                        'attribute_value' => $v['attribute_value'] ?? '',
                         'color_hex' => $v['color_hex'] ?? '#E20074',
                         'price_modifier' => (float)($v['price_modifier'] ?? 0),
                         'stock' => 0
@@ -231,8 +261,6 @@ class ProductActionService
             }
             // Eliminar variantes viejas que ya no se pasaron en el payload
             $product->variants()->whereNotIn('id', $keepVariantIds)->delete();
-        } else {
-            $product->variants()->delete();
         }
 
         $product->load(['category', 'laboratory', 'origin', 'lots', 'group', 'productSuppliers', 'variants']);

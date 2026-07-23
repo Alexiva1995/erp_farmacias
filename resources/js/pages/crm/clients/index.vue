@@ -168,107 +168,96 @@ function enviar(payload){
   }
 }
 
+const isSubmitting = ref(false)
+
 async function crear(data){
+  isSubmitting.value = true
   try {
-    let respuesApi=await axios.post("/crm/clients",data)
-    if(respuesApi.status==200){
-        toast.success("El cliente se ha guardado correctamente")
-        cerrarModal(false)
-        await actualizarTabla()
+    let respuesApi = await axios.post("/crm/clients", data)
+    if (respuesApi.status === 200 || respuesApi.status === 201) {
+      toast.success("El cliente se ha guardado correctamente")
+      cerrarModal(false)
+      await actualizarTabla()
     }
   } catch (error) {
-    toast.error("Error al crear el cliente")
-    console.log("error en el servidor => ",error)
-    let errores={...error.response.data.data.errors}
+    let msg = error?.response?.data?.message || "Error al crear el cliente"
+    toast.error(msg)
+    console.error("Error en el servidor =>", error)
+    let errores = error?.response?.data?.data?.errors || error?.response?.data?.errors || {}
     cargarErrores(errores)
+  } finally {
+    isSubmitting.value = false
   }
 }
 
 async function actualizar(data){
+  isSubmitting.value = true
   try {
-    let config={
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+    let config = {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
     }
-    let respuesApi=await axios.post(`/crm/clients/edit/${data.get("id")}`,data,config)
-    if(respuesApi.status==200){
-        toast.success("Se guardaron los cambios correctamente")
-        cerrarModal(false)
-        await actualizarTabla()
+    let respuesApi = await axios.post(`/crm/clients/edit/${data.get("id")}`, data, config)
+    if (respuesApi.status === 200) {
+      toast.success("Se guardaron los cambios correctamente")
+      cerrarModal(false)
+      await actualizarTabla()
     }
   } catch (error) {
-    toast.error("Error al guardar los cambios del cliente")
-    console.log("error en el servidor => ",error)
-    let errores={...error.response.data.data.errors}
+    let msg = error?.response?.data?.message || "Error al guardar los cambios del cliente"
+    toast.error(msg)
+    console.error("Error en el servidor =>", error)
+    let errores = error?.response?.data?.data?.errors || error?.response?.data?.errors || {}
     cargarErrores(errores)
+  } finally {
+    isSubmitting.value = false
   }
 }
 
 function cargarErrores(errores) {
-  formularioError.id = (errores.id) ? errores.id.join(", ") : ""
-  formularioError.identification = (errores.identification) ? errores.identification.join(", ") : ""
-  formularioError.identification_type = (errores.identification_type) ? errores.identification_type.join(", ") : ""
-  formularioError.name = (errores.name) ? errores.name.join(", ") : ""
-  formularioError.last_name = (errores.last_name) ? errores.last_name.join(", ") : ""
-  formularioError.email = (errores.email) ? errores.email.join(", ") : ""
-  formularioError.phone = (errores.phone) ? errores.phone.join(", ") : ""
-  formularioError.address = (errores.address) ? errores.address.join(", ") : ""
-  formularioError.birthdate = (errores.birthdate) ? errores.birthdate.join(", ") : ""
-  formularioError.company_id = (errores.company_id) ? errores.company_id.join(", ") : ""
-  formularioError.is_spe = (errores.is_spe) ? errores.is_spe.join(", ") : ""
+  formularioError.id = (errores.id) ? (Array.isArray(errores.id) ? errores.id.join(", ") : errores.id) : ""
+  formularioError.identification = (errores.identification) ? (Array.isArray(errores.identification) ? errores.identification.join(", ") : errores.identification) : ""
+  formularioError.identification_type = (errores.identification_type) ? (Array.isArray(errores.identification_type) ? errores.identification_type.join(", ") : errores.identification_type) : ""
+  formularioError.name = (errores.name) ? (Array.isArray(errores.name) ? errores.name.join(", ") : errores.name) : ""
+  formularioError.last_name = (errores.last_name) ? (Array.isArray(errores.last_name) ? errores.last_name.join(", ") : errores.last_name) : ""
+  formularioError.email = (errores.email) ? (Array.isArray(errores.email) ? errores.email.join(", ") : errores.email) : ""
+  formularioError.phone = (errores.phone) ? (Array.isArray(errores.phone) ? errores.phone.join(", ") : errores.phone) : ""
+  formularioError.address = (errores.address) ? (Array.isArray(errores.address) ? errores.address.join(", ") : errores.address) : ""
+  formularioError.birthdate = (errores.birthdate) ? (Array.isArray(errores.birthdate) ? errores.birthdate.join(", ") : errores.birthdate) : ""
+  formularioError.company_id = (errores.company_id) ? (Array.isArray(errores.company_id) ? errores.company_id.join(", ") : errores.company_id) : ""
+  formularioError.is_spe = (errores.is_spe) ? (Array.isArray(errores.is_spe) ? errores.is_spe.join(", ") : errores.is_spe) : ""
 }
 
 async function actualizarTabla(){
   loading.value = true;
-
-  let filtroNaturales={
-    page:page.value,
-    itemsPerPage:itemsPerPage.value,
-    orderBy:orderBy.value,
-    sortBy:sortBy.value,
-
-    buscardor_filtro:buscardor_filtro.value,
-    tipo_identificacion_filtro:tipo_identificacion_filtro.value,
-    company_id:company_id_filtro.value,
-    client_type:client_type_filtro.value,
-    fechaDesde_filtro:fechaDesde_filtro.value,
-    fechaHasta_filtro:fechaHasta_filtro.value,
-    has_phone: has_phone_filtro.value,
+  try {
+    let filtroNaturales = {
+      page: page.value,
+      itemsPerPage: itemsPerPage.value,
+      orderBy: orderBy.value,
+      sortBy: sortBy.value,
+      buscardor_filtro: buscardor_filtro.value,
+      tipo_identificacion_filtro: tipo_identificacion_filtro.value,
+      company_id: company_id_filtro.value,
+      client_type: client_type_filtro.value,
+      fechaDesde_filtro: fechaDesde_filtro.value,
+      fechaHasta_filtro: fechaHasta_filtro.value,
+      has_phone: has_phone_filtro.value,
+    }
+    let respuestaApiNaturles = await filtrar(filtroNaturales)
+    statuModule.itemsClientes = respuestaApiNaturles.data || []
+    statuModule.totalClientes = respuestaApiNaturles.total || 0
+    statuModule.items = [...(respuestaApiNaturles.data || [])]
+  } catch (err) {
+    console.error("Error cargando tabla de clientes:", err)
+  } finally {
+    loading.value = false;
   }
-  let respuestaApiNaturles= await filtrar(filtroNaturales)
-  statuModule.itemsClientes=respuestaApiNaturles.data
-  statuModule.totalClientes=respuestaApiNaturles.total
-
-  statuModule.items=[...respuestaApiNaturles.data]
-
-  loading.value = false;
 }
 
 async function actualizarTablaTablaClientes(){
-  loading.value = true;
-
-  let filtroNaturales={
-    page:page.value,
-    itemsPerPage:itemsPerPage.value,
-    orderBy:orderBy.value,
-    sortBy:sortBy.value,
-
-    buscardor_filtro:buscardor_filtro.value,
-    tipo_identificacion_filtro:tipo_identificacion_filtro.value,
-    company_id:company_id_filtro.value,
-    client_type:client_type_filtro.value,
-    fechaDesde_filtro:fechaDesde_filtro.value,
-    fechaHasta_filtro:fechaHasta_filtro.value,
-    has_phone: has_phone_filtro.value,
-  }
-  let respuestaApiNaturles= await filtrar(filtroNaturales)
-  statuModule.itemsClientes=respuestaApiNaturles.data
-  statuModule.totalClientes=respuestaApiNaturles.total
-
-  statuModule.items=[...respuestaApiNaturles.data]
-
-  loading.value = false;
+  await actualizarTabla()
 }
 
 async function confirmarEliminarCliente(payload){

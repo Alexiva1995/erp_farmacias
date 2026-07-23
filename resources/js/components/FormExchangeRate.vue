@@ -5,36 +5,18 @@ import { useBrandingStore } from "@/stores/useBrandingStore";
 import { computed, ref } from "vue";
 
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => brandingStore.settings?.business_type === 'restaurant');
+const isRestaurant = computed(() => false);
 
 const props = defineProps({
-  dollar: { type: Number, required: true },
-  pesos: { type: Number, required: true },
-  euros: { type: Number, required: false, default: 0 },
-  binance: { type: Number, required: false, default: 0 },
-  copc: { type: Number, required: false, default: 0 },
-  idDollar: { type: Number, required: false },
-  idPesos: { type: Number, required: false },
-  idEuros: { type: Number, required: false },
-  idBinance: { type: Number, required: false },
-  idCopc: { type: Number, required: false },
-  dateUpdateDollar: { type: String, required: false },
-  dateUpdatePesos: { type: String, required: false },
-  dateUpdateEuros: { type: String, required: false },
-  dateUpdateBinance: { type: String, required: false },
-  dateUpdateCopc: { type: String, required: false },
-  dateColorDollar: { type: String, required: true },
-  dateColorPesos: { type: String, required: true },
-  dateColorEuros: { type: String, default: "success" },
-  dateColorBinance: { type: String, default: "success" },
-  dateColorCopc: { type: String, default: "success" },
+  rates: { type: Object, required: true },
 });
 
 const emit = defineEmits(["refresh"]);
 
-const pesosInput = ref();
-const eurosInput = ref();
-const copcInput = ref();
+const pesosInput = ref("");
+const eurosInput = ref("");
+const copcInput = ref("");
+const loadingButtons = ref({});
 
 const submitPesos = async () => {
   if (!pesosInput.value) {
@@ -46,6 +28,7 @@ const submitPesos = async () => {
     return;
   }
 
+  loadingButtons.value['COP'] = true;
   let data = {
     currency_code: "COP",
     rate: parseFloat(pesosInput.value),
@@ -54,14 +37,17 @@ const submitPesos = async () => {
   try {
     await axios.post("/finances/exchange-rates/store", data);
     Swal.fire("Tasa de peso procesada");
-    setTimeout(() => { emit("refresh"); }, 150);
+    emit("refresh");
     pesosInput.value = "";
   } catch (error) {
     console.error("Error al enviar:", error);
+  } finally {
+    loadingButtons.value['COP'] = false;
   }
 };
 
 const submitEuros = async () => {
+  loadingButtons.value['EUR_manual'] = true;
   let data = {
     currency_code: "EUR",
     rate: eurosInput.value ? parseFloat(eurosInput.value) : null,
@@ -70,14 +56,17 @@ const submitEuros = async () => {
   try {
     await axios.post("/finances/exchange-rates/store", data);
     Swal.fire("Tasa de euro procesada");
-    setTimeout(() => { emit("refresh"); }, 150);
+    emit("refresh");
     eurosInput.value = "";
   } catch (error) {
     console.error("Error al enviar:", error);
+  } finally {
+    loadingButtons.value['EUR_manual'] = false;
   }
 };
 
 const updateRate = async (currency) => {
+  loadingButtons.value[currency] = true;
   let data = {
     currency_code: currency,
     rate: null,
@@ -85,11 +74,13 @@ const updateRate = async (currency) => {
 
   try {
     await axios.post("/finances/exchange-rates/store", data);
-    const sourceText = currency === "BINANCE" ? "Binance P2P" : "BCV";
+    const sourceText = currency === "BINANCE" ? "Binance P2P" : (currency === "EUR" ? "Euro Oficial" : "BCV");
     Swal.fire(`Tasa actualizada desde ${sourceText}`);
-    setTimeout(() => { emit("refresh"); }, 150);
+    emit("refresh");
   } catch (error) {
     console.error("Error al enviar:", error);
+  } finally {
+    loadingButtons.value[currency] = false;
   }
 };
 
@@ -103,6 +94,7 @@ const submitCOPC = async () => {
     return;
   }
 
+  loadingButtons.value['COPC'] = true;
   let data = {
     currency_code: "COPC",
     rate: parseFloat(copcInput.value),
@@ -111,10 +103,12 @@ const submitCOPC = async () => {
   try {
     await axios.post("/finances/exchange-rates/store", data);
     Swal.fire("Tasa de COPC procesada");
-    setTimeout(() => { emit("refresh"); }, 150);
+    emit("refresh");
     copcInput.value = "";
   } catch (error) {
     console.error("Error al enviar:", error);
+  } finally {
+    loadingButtons.value['COPC'] = false;
   }
 };
 </script>
@@ -143,16 +137,16 @@ const submitCOPC = async () => {
           </div>
 
           <div class="mb-4">
-            <div class="text-h4 font-weight-black text-primary">Bs. {{ Number(props.dollar).toFixed(4) }}</div>
+            <div class="text-h4 font-weight-black text-primary">Bs. {{ Number(props.rates.BS.rate).toFixed(4) }}</div>
           </div>
 
           <VDivider class="mb-4 opacity-20" />
 
           <div class="d-flex flex-column gap-3 mt-auto">
             <div class="d-flex align-center justify-space-between mb-2">
-              <VChip :color="dateColorDollar" size="x-small" class="font-weight-black rounded uppercase">
+              <VChip :color="props.rates.BS.dateColor" size="x-small" class="font-weight-black rounded uppercase">
                 <VIcon start icon="tabler-calendar-stats" size="14"></VIcon>
-                {{ dateUpdateDollar || 'Cargando...' }}
+                {{ props.rates.BS.dateUpdate || 'Cargando...' }}
               </VChip>
             </div>
 
@@ -160,6 +154,8 @@ const submitCOPC = async () => {
               color="primary" 
               variant="flat" 
               block 
+              :loading="!!loadingButtons['BS']"
+              :disabled="!!loadingButtons['BS']"
               @click="updateRate('BS')" 
               prepend-icon="tabler-refresh"
               class="rounded-lg font-weight-black text-xs shadow-sm"
@@ -173,7 +169,7 @@ const submitCOPC = async () => {
       </VCard>
     </VCol>
 
-    <!-- Dólar Binance (Nuevo) -->
+    <!-- Dólar Binance -->
     <VCol cols="12" sm="6" md="3" class="pa-1">
       <VCard class="stats-card h-100 border-0 overflow-hidden shadow-sm" :class="{'restaurant-selected-card': isRestaurant}">
         <div
@@ -197,16 +193,16 @@ const submitCOPC = async () => {
           </div>
 
           <div class="mb-4">
-            <div class="text-h4 font-weight-black text-error">Bs. {{ Number(props.binance).toFixed(4) }}</div>
+            <div class="text-h4 font-weight-black text-error">Bs. {{ Number(props.rates.BINANCE.rate).toFixed(4) }}</div>
           </div>
 
           <VDivider class="mb-4 opacity-20" />
 
           <div class="d-flex flex-column gap-3 mt-auto">
             <div class="d-flex align-center justify-space-between mb-2">
-              <VChip :color="dateColorBinance" size="x-small" class="font-weight-black rounded uppercase">
+              <VChip :color="props.rates.BINANCE.dateColor" size="x-small" class="font-weight-black rounded uppercase">
                 <VIcon start icon="tabler-calendar-stats" size="14"></VIcon>
-                {{ dateUpdateBinance || 'Cargando...' }}
+                {{ props.rates.BINANCE.dateUpdate || 'Cargando...' }}
               </VChip>
             </div>
 
@@ -214,6 +210,8 @@ const submitCOPC = async () => {
               color="error" 
               variant="flat" 
               block 
+              :loading="!!loadingButtons['BINANCE']"
+              :disabled="!!loadingButtons['BINANCE']"
               @click="updateRate('BINANCE')" 
               prepend-icon="tabler-refresh"
               class="rounded-lg font-weight-black text-xs shadow-sm"
@@ -249,7 +247,7 @@ const submitCOPC = async () => {
           </div>
 
           <div class="mb-4">
-            <div class="text-h4 font-weight-black text-info">{{ props.pesos }}</div>
+            <div class="text-h4 font-weight-black text-info">{{ Number(props.rates.COP.rate) }}</div>
             <div class="text-super-xs text-medium-emphasis uppercase font-weight-bold">Tasa Actual de Venta</div>
           </div>
 
@@ -257,9 +255,9 @@ const submitCOPC = async () => {
 
           <div class="d-flex flex-column gap-3 mt-auto">
             <div class="d-flex align-center justify-space-between mb-2">
-              <VChip :color="dateColorPesos" size="x-small" class="font-weight-black rounded uppercase">
+              <VChip :color="props.rates.COP.dateColor" size="x-small" class="font-weight-black rounded uppercase">
                 <VIcon start icon="tabler-calendar-stats" size="14"></VIcon>
-                {{ dateUpdatePesos || 'Cargando...' }}
+                {{ props.rates.COP.dateUpdate || 'Cargando...' }}
               </VChip>
             </div>
 
@@ -272,12 +270,15 @@ const submitCOPC = async () => {
                 variant="outlined"
                 hide-details
                 type="number"
+                :disabled="!!loadingButtons['COP']"
                 class="flex-grow-1 rounded-lg custom-input-rate"
               />
               <VBtn 
                 color="info" 
                 icon="tabler-check" 
                 variant="flat" 
+                :loading="!!loadingButtons['COP']"
+                :disabled="!!loadingButtons['COP']"
                 @click="submitPesos" 
                 size="small"
                 class="rounded-lg shadow-sm"
@@ -311,16 +312,16 @@ const submitCOPC = async () => {
           </div>
 
           <div class="mb-4">
-            <div class="text-h4 font-weight-black text-warning">Bs. {{ Number(props.euros).toFixed(4) }}</div>
+            <div class="text-h4 font-weight-black text-warning">Bs. {{ Number(props.rates.EUR.rate).toFixed(4) }}</div>
           </div>
 
           <VDivider class="mb-4 opacity-20" />
 
           <div class="d-flex flex-column gap-3 mt-auto">
             <div class="d-flex align-center justify-space-between mb-2">
-              <VChip :color="dateColorEuros" size="x-small" class="font-weight-black rounded uppercase">
+              <VChip :color="props.rates.EUR.dateColor" size="x-small" class="font-weight-black rounded uppercase">
                 <VIcon start icon="tabler-calendar-stats" size="14"></VIcon>
-                {{ dateUpdateEuros || 'Cargando...' }}
+                {{ props.rates.EUR.dateUpdate || 'Cargando...' }}
               </VChip>
             </div>
 
@@ -328,6 +329,8 @@ const submitCOPC = async () => {
               color="warning" 
               variant="flat" 
               block 
+              :loading="!!loadingButtons['EUR']"
+              :disabled="!!loadingButtons['EUR']"
               @click="updateRate('EUR')" 
               prepend-icon="tabler-refresh"
               class="rounded-lg font-weight-black text-xs shadow-sm"
@@ -363,7 +366,7 @@ const submitCOPC = async () => {
           </div>
 
           <div class="mb-4">
-            <div class="text-h4 font-weight-black text-success">{{ props.copc }}</div>
+            <div class="text-h4 font-weight-black text-success">{{ Number(props.rates.COPC.rate) }}</div>
             <div class="text-super-xs text-medium-emphasis uppercase font-weight-bold">Tasa para Compras</div>
           </div>
 
@@ -371,9 +374,9 @@ const submitCOPC = async () => {
 
           <div class="d-flex flex-column gap-3 mt-auto">
             <div class="d-flex align-center justify-space-between mb-2">
-              <VChip :color="dateColorCopc" size="x-small" class="font-weight-black rounded uppercase">
+              <VChip :color="props.rates.COPC.dateColor" size="x-small" class="font-weight-black rounded uppercase">
                 <VIcon start icon="tabler-calendar-stats" size="14"></VIcon>
-                {{ dateUpdateCopc || 'Cargando...' }}
+                {{ props.rates.COPC.dateUpdate || 'Cargando...' }}
               </VChip>
             </div>
 
@@ -386,12 +389,15 @@ const submitCOPC = async () => {
                 variant="outlined"
                 hide-details
                 type="number"
+                :disabled="!!loadingButtons['COPC']"
                 class="flex-grow-1 rounded-lg custom-input-rate"
               />
               <VBtn 
                 color="success" 
                 icon="tabler-check" 
                 variant="flat" 
+                :loading="!!loadingButtons['COPC']"
+                :disabled="!!loadingButtons['COPC']"
                 @click="submitCOPC" 
                 size="small"
                 class="rounded-lg shadow-sm"

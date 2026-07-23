@@ -20,6 +20,10 @@ const props = defineProps({
     type: Object,
     default: () => ({}),
   },
+  tpvPaymentMethods: {
+    type: Object,
+    default: () => ({ COP: [], USD: [], BS: [] })
+  }
 });
 
 const emit = defineEmits(["update:isDialogVisible", "modal-closed"]);
@@ -124,6 +128,115 @@ const display = (val, currency = "USD") => {
   return `${val} ${currency}`;
 };
 
+const formatUsername = (username) => {
+  if (!username) return "—";
+  const parts = username
+    .replace(/[._]/g, " ")
+    .split(" ")
+    .filter(word => word.length > 0);
+  
+  // Tomar solo los dos primeros elementos (Primer Nombre y Primer Apellido)
+  return parts.slice(0, 2)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+};
+
+const fmtUsd = (val) => {
+  const num = parseFloat(val);
+  if (isNaN(num)) return "0,00 USD";
+  return new Intl.NumberFormat("es-VE", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(num) + " USD";
+};
+
+const fmtCop = (val) => {
+  const num = parseFloat(val);
+  if (isNaN(num)) return "0 COP";
+  return Math.round(num)
+    .toString()
+    .replace(/\B(?=(\d{3})+(?!\d))/g, ".") + " COP";
+};
+
+const fmtBs = (val) => {
+  const num = parseFloat(val);
+  if (isNaN(num)) return "0,00 Bs.";
+  return new Intl.NumberFormat("es-VE", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(num) + " Bs.";
+};
+
+const getPaymentDetail = (item, currency) => {
+  if (!item) return [];
+  const details = [];
+  
+  let rawMethods = props.tpvPaymentMethods;
+  if (typeof rawMethods === 'string') {
+    try {
+      rawMethods = JSON.parse(rawMethods);
+    } catch (e) {
+      rawMethods = {};
+    }
+  }
+  const methods = rawMethods || {};
+  
+  if (currency === 'USD') {
+    const currencyObj = methods.USD || {};
+    const activeMethods = Array.isArray(currencyObj.methods) ? currencyObj.methods : [];
+    
+    activeMethods.forEach(m => {
+      let val = 0;
+      if (m.value === 'cash') val = parseFloat(item.usd_cash || 0);
+      else if (m.value === 'bank_transfer') val = parseFloat(item.usd_transfer || 0);
+      else if (m.value === 'paypal') val = parseFloat(item.usd_paypal || 0);
+      else if (m.value === 'binance') val = parseFloat(item.usd_binance || 0);
+      else if (m.value === 'credit') val = parseFloat(item.usd_credit || 0);
+      
+      if (val > 0) {
+        details.push({ label: m.label || m.value, value: fmtUsd(val) });
+      }
+    });
+  } else if (currency === 'COP') {
+    const currencyObj = methods.COP || {};
+    const activeMethods = Array.isArray(currencyObj.methods) ? currencyObj.methods : [];
+    
+    activeMethods.forEach(m => {
+      let val = 0;
+      if (m.value === 'cash') val = parseFloat(item.cop_cash || 0);
+      else if (m.value === 'bank_transfer') val = parseFloat(item.cop_transfer || 0);
+      
+      if (val > 0) {
+        details.push({ label: m.label || m.value, value: fmtCop(val) });
+      }
+    });
+
+    if (parseFloat(item.cop_cash_payment_credit || 0) > 0) {
+      details.push({ label: "Abono Crédito", value: fmtCop(item.cop_cash_payment_credit) });
+    }
+    if (parseFloat(item.cop_spare || 0) > 0) {
+      details.push({ label: "Sobrante", value: fmtCop(item.cop_spare) });
+    }
+  } else if (currency === 'BS') {
+    const currencyObj = methods.BS || {};
+    const activeMethods = Array.isArray(currencyObj.methods) ? currencyObj.methods : [];
+    
+    activeMethods.forEach(m => {
+      let val = 0;
+      if (m.value === 'cash_bs') val = parseFloat(item.bs_cash || 0);
+      else if (m.value === 'mobile_payment') val = parseFloat(item.bs_mobile || 0);
+      else if (m.value === 'debit_card') val = parseFloat(item.bs_card_debito || 0);
+      else if (m.value === 'credit_card') val = parseFloat(item.bs_card_credit || 0);
+      else if (m.value === 'bank_transfer_bs') val = parseFloat(item.bs_transfer || 0);
+      
+      if (val > 0) {
+        details.push({ label: m.label || m.value, value: fmtBs(val) });
+      }
+    });
+  }
+  return details;
+};
+
 </script>
 <template>
   <VDialog
@@ -213,9 +326,89 @@ const display = (val, currency = "USD") => {
           <VIcon icon="tabler-users" size="20" color="primary" /> Desglose por Vendedores
         </h4>
 
-        <!-- LISTA DE VENDEDORES -->
-        <VRow>
-          <VCol cols="12" md="6" v-for="cashData in props.monthlyCashData.summary" :key="cashData.seller_name">
+        <!-- LISTA DE VENDEDORES (ESCRITORIO: TABLA) -->
+        <VCard variant="flat" class="rounded-xl border shadow-sm mb-5 overflow-hidden d-none d-sm-block">
+          <VTable density="compact" class="text-no-wrap premium-table">
+            <thead>
+              <tr class="bg-grey-lighten-4">
+                <th class="text-uppercase text-caption font-weight-black text-disabled">Vendedor</th>
+                <th class="text-uppercase text-caption font-weight-black text-disabled text-end">Crédito</th>
+                <th class="text-uppercase text-caption font-weight-black text-disabled text-end">USD</th>
+                <th class="text-uppercase text-caption font-weight-black text-disabled text-end">COP</th>
+                <th class="text-uppercase text-caption font-weight-black text-disabled text-end">Bs.</th>
+                <th class="text-uppercase text-caption font-weight-black text-disabled text-end">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-if="!props.monthlyCashData.summary || props.monthlyCashData.summary.length === 0">
+                <td colspan="6" class="text-center text-caption text-disabled py-4">No hay ventas consolidadas por vendedor</td>
+              </tr>
+              <tr v-for="cashData in props.monthlyCashData.summary" :key="cashData.seller_name" class="seller-row">
+                <td class="py-2">
+                  <div class="d-flex align-center gap-3">
+                    <VAvatar size="32" color="secondary" variant="tonal" class="rounded-lg font-weight-black text-xs">
+                      {{ (cashData.seller_name || '?').charAt(0).toUpperCase() }}
+                    </VAvatar>
+                    <div class="d-flex flex-column leading-none">
+                      <span class="text-sm font-weight-black text-primary">{{ formatUsername(cashData.seller_name) }}</span>
+                      <span class="text-super-xs text-disabled font-weight-bold uppercase">Consolidado</span>
+                    </div>
+                  </div>
+                </td>
+                <td class="text-end">
+                  <span class="text-sm font-weight-bold text-error">{{ display(cashData.total_credits, 'USD') }}</span>
+                </td>
+                <td class="text-end">
+                  <div class="d-flex align-center justify-end gap-1">
+                    <span class="text-sm font-weight-bold">{{ display(cashData.total_usd, 'USD') }}</span>
+                  </div>
+                </td>
+                <td class="text-end">
+                  <div class="d-flex align-center justify-end gap-1">
+                    <span class="text-sm font-weight-bold text-success">{{ display(cashData.total_cop, 'COP') }}</span>
+                  </div>
+                </td>
+                <td class="text-end">
+                  <div class="d-flex align-center justify-end gap-1">
+                    <span class="text-sm font-weight-bold text-warning">{{ display(cashData.total_bs, 'Bs.') }}</span>
+                  </div>
+                </td>
+                <td class="text-end">
+                  <VChip size="x-small" variant="flat" color="primary" class="font-weight-black rounded px-2">
+                    {{ display(cashData.total_sales, 'USD') }}
+                  </VChip>
+                </td>
+              </tr>
+              <!-- FILA TOTAL GENERAL CONSOLIDADO -->
+              <tr class="bg-grey-lighten-3 font-weight-black" style="border-top: 2px solid #bbb;">
+                <td class="py-3 pl-4">
+                  <div class="d-flex align-center gap-3">
+                    <VAvatar size="32" color="primary" variant="flat" class="rounded-lg font-weight-black text-xs">
+                      <VIcon icon="tabler-sum" size="16" />
+                    </VAvatar>
+                    <div class="d-flex flex-column leading-none">
+                      <span class="text-sm font-weight-black text-high-emphasis">TOTAL GENERAL</span>
+                      <span class="text-super-xs text-primary font-weight-black uppercase">Consolidado</span>
+                    </div>
+                  </div>
+                </td>
+                <td class="text-end text-sm text-error font-weight-black">{{ display(props.monthlyCashData.totalSalesCredits, 'USD') }}</td>
+                <td class="text-end text-sm text-primary font-weight-black">{{ display(props.monthlyCashData.totalSalesUsd, 'USD') }}</td>
+                <td class="text-end text-sm text-success font-weight-black">{{ display(props.monthlyCashData.totalSalesCop, 'COP') }}</td>
+                <td class="text-end text-sm text-warning font-weight-black">{{ display(props.monthlyCashData.totalSalesBs, 'Bs.') }}</td>
+                <td class="text-end py-2">
+                  <VChip size="small" variant="flat" color="primary" class="font-weight-black rounded px-3">
+                    {{ display(props.monthlyCashData.totalSalesGlobal, 'USD') }}
+                  </VChip>
+                </td>
+              </tr>
+            </tbody>
+          </VTable>
+        </VCard>
+
+        <!-- LISTA DE VENDEDORES (MÓVIL: TARJETAS) -->
+        <VRow class="d-flex d-sm-none">
+          <VCol cols="12" v-for="cashData in props.monthlyCashData.summary" :key="cashData.seller_name">
             <VCard variant="outlined" class="bg-white rounded-lg border h-100" v-if="parseFloat(cashData.total_sales) > 0">
               <VCardItem class="pa-4 pb-0 border-b">
                 <div class="d-flex justify-space-between align-start mb-3">
@@ -238,22 +431,24 @@ const display = (val, currency = "USD") => {
                 <VTable density="compact" class="text-caption bg-transparent w-100 table-sm">
                   <tbody>
                     <tr>
+                      <td class="font-weight-medium text-medium-emphasis py-2 pl-4">Crédito:</td>
+                      <td class="text-right font-weight-bold py-2 pr-4 text-error">{{ display(cashData.total_credits, 'USD') }}</td>
+                    </tr>
+                    <tr>
                       <td class="font-weight-medium text-medium-emphasis py-2 pl-4">USD:</td>
-                      <td class="text-right font-weight-bold py-2 pr-4 text-primary">
-                        {{ display(cashData.total_usd, 'USD') }}
-                      </td>
+                      <td class="text-right font-weight-bold py-2 pr-4 text-primary">{{ display(cashData.total_usd, 'USD') }}</td>
                     </tr>
                     <tr>
                       <td class="font-weight-medium text-medium-emphasis py-2 pl-4">BS:</td>
                       <td class="text-right font-weight-bold py-2 pr-4 text-warning">
-                        {{ display(cashData.total_bs, 'BS') }} 
+                        <span>{{ display(cashData.total_bs, 'BS') }}</span>
                         <span class="text-medium-emphasis font-weight-regular ml-1">(&asymp; {{ display(cashData.total_bs_in_usd, 'USD') }})</span>
                       </td>
                     </tr>
                     <tr>
                       <td class="font-weight-medium text-medium-emphasis py-2 pl-4">COP:</td>
                       <td class="text-right font-weight-bold py-2 pr-4 text-info">
-                        {{ display(cashData.total_cop, 'COP') }}
+                        <span>{{ display(cashData.total_cop, 'COP') }}</span>
                         <span class="text-medium-emphasis font-weight-regular ml-1">(&asymp; {{ display(cashData.total_cop_in_usd, 'USD') }})</span>
                       </td>
                     </tr>
@@ -275,14 +470,16 @@ const display = (val, currency = "USD") => {
 
           <div class="info-section">
             <table class="info-table">
-              <tr>
-                <td style="inline-size: 50%;"><strong>REPORTE:</strong> CONSOLIDADO MENSUAL</td>
-                <td style="inline-size: 50%; text-align: end;"><strong>EMISIÓN:</strong> {{ formatDateTime(new Date(), 'date') }}</td>
-              </tr>
-              <tr>
-                <td><strong>VENTA TOTAL:</strong> {{ display(props.monthlyCashData.totalSalesGlobal, 'USD') }}</td>
-                <td style="text-align: end;"><strong>HORA:</strong> {{ getCurrentTime() }}</td>
-              </tr>
+              <tbody>
+                <tr>
+                  <td style="inline-size: 50%;"><strong>REPORTE:</strong> CONSOLIDADO MENSUAL</td>
+                  <td style="inline-size: 50%; text-align: end;"><strong>EMISIÓN:</strong> {{ formatDateTime(new Date(), 'date') }}</td>
+                </tr>
+                <tr>
+                  <td><strong>VENTA TOTAL:</strong> {{ display(props.monthlyCashData.totalSalesGlobal, 'USD') }}</td>
+                  <td style="text-align: end;"><strong>HORA:</strong> {{ getCurrentTime() }}</td>
+                </tr>
+              </tbody>
             </table>
           </div>
 
@@ -292,28 +489,106 @@ const display = (val, currency = "USD") => {
             <thead>
               <tr>
                 <th style="font-size: 8pt;">RESPONSABLE</th>
-                <th style="font-size: 8pt; text-align: end;">BS</th>
-                <th style="font-size: 8pt; text-align: end;">COP</th>
+                <th style="font-size: 8pt; text-align: end;">CRÉDITO</th>
                 <th style="font-size: 8pt; text-align: end;">USD</th>
+                <th style="font-size: 8pt; text-align: end;">COP</th>
+                <th style="font-size: 8pt; text-align: end;">BS</th>
                 <th style="font-size: 8pt; text-align: end;">TOTAL USD</th>
               </tr>
             </thead>
             <tbody>
               <template v-for="cashData in props.monthlyCashData.summary" :key="cashData.seller_name">
                 <tr v-if="parseFloat(cashData.total_sales) > 0">
-                  <td style="font-size: 8pt;">{{ (cashData.seller_name || 'Sin Nombre').toUpperCase() }}</td>
-                  <td style="font-size: 8pt; text-align: end;">{{ display(cashData.total_bs, 'BS') }}</td>
-                  <td style="font-size: 8pt; text-align: end;">{{ display(cashData.total_cop, 'COP') }}</td>
+                  <td style="font-size: 8pt;">{{ formatUsername(cashData.seller_name).toUpperCase() }}</td>
+                  <td style="font-size: 8pt; text-align: end; color: #d32f2f;">{{ display(cashData.total_credits, 'USD') }}</td>
                   <td style="font-size: 8pt; text-align: end;">{{ display(cashData.total_usd, 'USD') }}</td>
+                  <td style="font-size: 8pt; text-align: end;">{{ display(cashData.total_cop, 'COP') }}</td>
+                  <td style="font-size: 8pt; text-align: end;">{{ display(cashData.total_bs, 'BS') }}</td>
                   <td style="font-size: 8pt; font-weight: bold; text-align: end;">{{ display(cashData.total_sales, 'USD') }}</td>
                 </tr>
               </template>
               <tr style="background-color: #2c3e50; color: white; font-weight: bold;">
                 <td style="font-size: 9pt;">TOTAL GENERAL</td>
-                <td style="font-size: 9pt; text-align: end;">{{ display(props.monthlyCashData.totalSalesBs, 'BS') }}</td>
-                <td style="font-size: 9pt; text-align: end;">{{ display(props.monthlyCashData.totalSalesCop, 'COP') }}</td>
+                <td style="font-size: 9pt; text-align: end;">{{ display(props.monthlyCashData.totalSalesCredits, 'USD') }}</td>
                 <td style="font-size: 9pt; text-align: end;">{{ display(props.monthlyCashData.totalSalesUsd, 'USD') }}</td>
+                <td style="font-size: 9pt; text-align: end;">{{ display(props.monthlyCashData.totalSalesCop, 'COP') }}</td>
+                <td style="font-size: 9pt; text-align: end;">{{ display(props.monthlyCashData.totalSalesBs, 'BS') }}</td>
                 <td style="font-size: 9pt; text-align: end;">{{ display(props.monthlyCashData.totalSalesGlobal, 'USD') }}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="section-header">DESGLOSE CONSOLIDADO POR MONEDAS Y MÉTODOS</div>
+
+          <table class="data-table" style="margin-top: 5px; width: 100%;">
+            <!-- DÓLARES -->
+            <thead>
+              <tr style="background-color: #2c3e50; color: white;">
+                <th colspan="2" style="font-size: 8pt; text-align: center; font-weight: bold; background-color: #34495e; color: white;">DÓLARES (USD)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="font-size: 8pt; width: 70%;">Efectivo (Físico)</td>
+                <td style="font-size: 8pt; text-align: right; font-weight: bold; width: 30%;">{{ fmtUsd(props.monthlyCashData.usd_cash) }}</td>
+              </tr>
+              <tr>
+                <td style="font-size: 8pt;">Transferencia / PayPal / Binance</td>
+                <td style="font-size: 8pt; text-align: right; font-weight: bold;">{{ fmtUsd(parseFloat(props.monthlyCashData.usd_transfer || 0) + parseFloat(props.monthlyCashData.usd_paypal || 0) + parseFloat(props.monthlyCashData.usd_binance || 0)) }}</td>
+              </tr>
+              <tr style="background-color: #f8f9fa; font-weight: bold;">
+                <td style="font-size: 8pt; padding-left: 10px;">Total Entregado</td>
+                <td style="font-size: 8pt; text-align: right; color: #2c3e50;">{{ display(props.monthlyCashData.totalSalesUsd, 'USD') }}</td>
+              </tr>
+            </tbody>
+
+            <!-- PESOS -->
+            <thead>
+              <tr style="background-color: #27ae60; color: white;">
+                <th colspan="2" style="font-size: 8pt; text-align: center; font-weight: bold; background-color: #27ae60; color: white;">PESOS (COP)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="font-size: 8pt; width: 70%;">Efectivo (Físico)</td>
+                <td style="font-size: 8pt; text-align: right; font-weight: bold; width: 30%;">{{ fmtCop(props.monthlyCashData.cop_cash) }}</td>
+              </tr>
+              <tr>
+                <td style="font-size: 8pt;">Transferencia Bancaria</td>
+                <td style="font-size: 8pt; text-align: right; font-weight: bold;">{{ fmtCop(props.monthlyCashData.cop_transfer) }}</td>
+              </tr>
+              <tr v-if="parseFloat(props.monthlyCashData.cop_spare || 0) > 0">
+                <td style="font-size: 8pt;">Sobrante (Ajuste Caja)</td>
+                <td style="font-size: 8pt; text-align: right; font-weight: bold;">{{ fmtCop(props.monthlyCashData.cop_spare) }}</td>
+              </tr>
+              <tr style="background-color: #e8f8f5; font-weight: bold;">
+                <td style="font-size: 8pt; padding-left: 10px;">Total Entregado</td>
+                <td style="font-size: 8pt; text-align: right; color: #27ae60;">{{ display(props.monthlyCashData.totalSalesCop, 'COP') }}</td>
+              </tr>
+            </tbody>
+
+            <!-- BOLÍVARES -->
+            <thead>
+              <tr style="background-color: #d35400; color: white;">
+                <th colspan="2" style="font-size: 8pt; text-align: center; font-weight: bold; background-color: #d35400; color: white;">BOLÍVARES (BS)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="font-size: 8pt; width: 70%;">Efectivo (Físico)</td>
+                <td style="font-size: 8pt; text-align: right; font-weight: bold; width: 30%;">{{ fmtBs(props.monthlyCashData.bs_cash) }}</td>
+              </tr>
+              <tr>
+                <td style="font-size: 8pt;">Puntos POS (Débito / Crédito)</td>
+                <td style="font-size: 8pt; text-align: right; font-weight: bold;">{{ fmtBs(parseFloat(props.monthlyCashData.bs_card_debito || 0) + parseFloat(props.monthlyCashData.bs_card_credit || 0)) }}</td>
+              </tr>
+              <tr>
+                <td style="font-size: 8pt;">Pago Móvil / Transferencia</td>
+                <td style="font-size: 8pt; text-align: right; font-weight: bold;">{{ fmtBs(parseFloat(props.monthlyCashData.bs_mobile || 0) + parseFloat(props.monthlyCashData.bs_transfer || 0)) }}</td>
+              </tr>
+              <tr style="background-color: #fdf2e9; font-weight: bold;">
+                <td style="font-size: 8pt; padding-left: 10px;">Total Reportado</td>
+                <td style="font-size: 8pt; text-align: right; color: #d35400;">{{ display(props.monthlyCashData.totalSalesBs, 'Bs.') }}</td>
               </tr>
             </tbody>
           </table>

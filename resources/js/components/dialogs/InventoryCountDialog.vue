@@ -17,9 +17,10 @@ const barcodeRequiredGlobal = computed(
   () => brandingStore.settings?.cyclic_inventory_barcode_required ?? true
 );
 
-// Modo restaurante: se muestra el conteo dual (paquetes + destapado)
-const isRestaurantMode = computed(
-  () => brandingStore.settings?.business_type === 'restaurant'
+// Modo consumo: se muestra el conteo dual (paquetes completos + contenido parcial)
+// Se activa cuando la configuración de trazabilidad es 'consumption' (no depende del tipo de negocio)
+const isConsumptionMode = computed(
+  () => brandingStore.settings?.traceability_mode === 'consumption'
 );
 
 const props = defineProps({
@@ -40,13 +41,16 @@ const isScannerVisible = ref(false);
 const barcodeError = ref("");
 const allowWithoutBarcode = ref(false);
 
-// Variables para el modo de conteo dual (restaurante)
+// Variables para el modo de conteo dual (consumo)
 const packagesCount = ref("");
 const openedQuantity = ref("");
 
 // Contenido por envase del producto (presentation) y unidad de medida
 const productPresentation = computed(() => Number(props.product?.presentation) || 0);
 const productUnit = computed(() => props.product?.unit_of_measure || 'und');
+
+// Modo dual solo cuando trazabilidad es por consumo Y el producto tiene presentación configurada
+const isDualCountMode = computed(() => isConsumptionMode.value && productPresentation.value > 0);
 
 // Total calculado en modo restaurante
 const dualTotalQuantity = computed(() => {
@@ -56,8 +60,8 @@ const dualTotalQuantity = computed(() => {
 });
 
 const canSave = computed(() => {
-  // En modo restaurante se valida el modo dual
-  if (isRestaurantMode.value) {
+  // En modo restaurante/minimarket se valida el modo dual solo si el producto tiene presentación
+  if (isDualCountMode.value) {
     const hasValidDual = dualTotalQuantity.value >= 0 &&
       (packagesCount.value !== "" || openedQuantity.value !== "");
     if (allowWithoutBarcode.value) return hasValidDual;
@@ -173,12 +177,12 @@ const onBarcodeScanned = (scannedBarcode) => {
 const handleSave = async () => {
   if (!canSave.value) return;
 
-  // En modo restaurante el total se calcula del modo dual
-  const quantity = isRestaurantMode.value
+  // En modo restaurante el total se calcula del modo dual si el producto tiene presentación
+  const quantity = isDualCountMode.value
     ? dualTotalQuantity.value
     : Number(countedQuantity.value);
 
-  const confirmText = isRestaurantMode.value
+  const confirmText = isDualCountMode.value
     ? `${Number(packagesCount.value) || 0} paquete(s) completo(s) + ${Number(openedQuantity.value) || 0} ${productUnit.value} abierto(s) = ${quantity} ${productUnit.value} en total`
     : `Confirma que está contando la cantidad de ${quantity} ${quantity === 1 ? "unidad" : "unidades"}`;
 
@@ -321,7 +325,7 @@ const handleSave = async () => {
             </div>
 
             <!-- Modo Dual (Restaurante): Paquetes Completos + Contenido Destapado -->
-            <template v-if="isRestaurantMode && productPresentation > 0">
+            <template v-if="isDualCountMode">
               <div class="d-flex flex-column gap-2">
                 <!-- Paquetes completos sin destapar -->
                 <div class="bg-light rounded border-dashed-2 pa-1">

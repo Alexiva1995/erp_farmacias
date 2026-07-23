@@ -103,7 +103,7 @@ const handleLogin = async () => {
   }
 };
 const on2FAVerified = () => {
-  window.location.href = "/";
+  window.location.href = "/dashboard";
 };
 </script>
 
@@ -131,7 +131,7 @@ const on2FAVerified = () => {
             <RouterLink to="/">
               <div class="app-logo">
                 <img
-                  :src="(brandingStore.settings.app_logo && brandingStore.settings.app_logo !== 'null') ? brandingStore.settings.app_logo : '/logo.png'"
+                  src="/logo.png"
                   alt="logo"
                   style="max-height: 80px; max-width: 100%; object-fit: contain;"
                 >

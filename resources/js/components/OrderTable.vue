@@ -3,6 +3,7 @@ import { computed } from "vue";
 import { capitalizeFirstAndLastName } from "@/@core/utils/formatters";
 import { formatAmountOnly } from "@/utils/currencyFormatter";
 import { useDisplay } from "vuetify";
+import AppEmptyState from "@/components/AppEmptyState.vue";
 
 const props = defineProps({
   orders: { type: Array, required: true },
@@ -25,7 +26,7 @@ const sortByModel = computed(() => {
   return key ? [{ key, order: props.orderBy || "desc" }] : [];
 });
 
-const emit = defineEmits(["update:options", "print-order", "print-order-thermal", "view-order"]);
+const emit = defineEmits(["update:options", "print-order", "print-order-thermal", "view-order", "cancel-order"]);
 
 const date = (order) => {
   const time = new Date(order);
@@ -211,6 +212,13 @@ const renderSellerName = (item) => {
       @update:options="(options) => emit('update:options', options)"
       :expanded="expandedRows"
     >
+      <template #no-data>
+        <AppEmptyState
+          title="No se encontraron pedidos"
+          message="No hay pedidos registrados con los filtros seleccionados."
+          icon="tabler-shopping-cart-off"
+        />
+      </template>
       <!-- Skeleton Loader -->
       <template v-slot:loading>
         <VSkeletonLoader
@@ -293,9 +301,16 @@ const renderSellerName = (item) => {
 
       <template #item.actions="{ item }">
         <div class="d-flex align-center gap-2">
-          <IconBtn @click="handleView(item.id)" color="primary">
+          <IconBtn @click="handleView(item.id)" color="primary" title="Ver Detalle">
             <VIcon icon="tabler-eye" />
           </IconBtn>
+          <VTooltip v-if="item.status !== 'Cancelled' && item.status !== 'cancelled' && item.status !== 'Abandonada' && item.status !== 'Abandoned'" text="Cancelar Orden" location="top">
+            <template #activator="{ props: tooltipProps }">
+              <IconBtn v-bind="tooltipProps" color="error" @click="$emit('cancel-order', item.id)">
+                <VIcon icon="tabler-circle-x" />
+              </IconBtn>
+            </template>
+          </VTooltip>
           <template v-if="showPrintActions">
             <IconBtn @click="$emit('print-order', item.id)">
               <VIcon icon="tabler-printer" />

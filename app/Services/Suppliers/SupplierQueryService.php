@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\Suppliers;
 
 use App\Models\AutoOrder;
@@ -29,12 +31,16 @@ class SupplierQueryService
     public function __construct(
         private SupplierRepositoryInterface $supplierRepository
     ) {}
+
     /**
      * Prepares the base query for suppliers.
      */
     private function getBaseQuery(): Builder
     {
-        return $this->supplierRepository->getQuery()->with('paymentRules');
+        return $this->supplierRepository->getQuery()
+            ->withSum(['invoices as invoices_sum_total_usd' => function ($q) {
+                $q->where('status_payment', 0);
+            }], 'total_usd');
     }
 
     /**
@@ -60,9 +66,6 @@ class SupplierQueryService
         return $query;
     }
 
-    /**
-     * Applies sorting to the supplier query.
-     */
     private function applySorting(Builder $query, ?string $sortBy, string $orderBy): Builder
     {
         if (empty($sortBy)) {
@@ -603,7 +606,7 @@ class SupplierQueryService
         $supplierId = $request->query("supplierId");
         $perPage = $request->query("perPage", 10) ?? 10;
 
-        $search = trim($request->query('q'));
+        $search = trim($request->query('q') ?? '');
 
         $originId = $request->query("originId");
 
@@ -630,6 +633,7 @@ class SupplierQueryService
         $laboratory = Laboratory::where("id", $laboratoryId)->first();
 
         $results = ProductSupplier::query()
+            ->with(['product', 'supplier'])
             ->select([
                 "product_suppliers.id as id",
                 DB::raw("product_suppliers.name as name"),

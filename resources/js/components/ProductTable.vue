@@ -1,8 +1,10 @@
 <script setup>
 import { useAuthStore } from "@/stores/auth";
 import { formatDateSimple } from "@/utils/formatters";
+import { formatCurrency } from "@/utils/currencyFormatter";
 import ProductMergeDialog from "@/components/dialogs/ProductMergeDialog.vue";
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
+import AppEmptyState from "@/components/AppEmptyState.vue";
 import { computed, ref } from "vue";
 import { useBrandingStore } from "@/stores/useBrandingStore";
 import axios from "@/plugins/axios";
@@ -14,6 +16,77 @@ const isRestaurant = computed(() => brandingStore.settings.business_type === 're
 const isMiniMarket = computed(() => brandingStore.settings.business_type === 'minimarket');
 const isSportsRental = computed(() => brandingStore.settings.business_type === 'sports_rental');
 
+const isFieldEnabled = (fieldKey) => {
+  return !brandingStore.settings.product_form_fields || brandingStore.settings.product_form_fields.includes(fieldKey);
+};
+
+// Selección reactiva para acciones en bloque
+const selectedProducts = ref([]);
+const isBulkCategoryMenuOpen = ref(false);
+
+// Emits adicionales para acciones masivas
+const emit = defineEmits([
+  "update:options",
+  "edit-product",
+  "delete-product",
+  "count-product",
+  "add-product-to-invoice",
+  "product-merged",
+  "view-stats",
+  "restore-product",
+  "bulk-action-completed"
+]);
+
+// Manejadores de acciones masivas
+const handleBulkDelete = async () => {
+  const ids = selectedProducts.value;
+  if (!ids.length) return;
+
+  const result = await Swal.fire({
+    title: "¿Eliminar seleccionados?",
+    text: `Se eliminarán permanentemente ${ids.length} productos seleccionados.`,
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonText: "Eliminar todos",
+    cancelButtonText: "Cancelar",
+    reverseButtons: true
+  });
+
+  if (result.isConfirmed) {
+    try {
+      await axios.post("/products/bulk-actions", {
+        ids,
+        action: "delete"
+      });
+      toast.success("Productos eliminados correctamente.");
+      selectedProducts.value = [];
+      emit("product-merged"); // refresca lista principal
+    } catch (e) {
+      toast.error("Ocurrió un error al eliminar los productos.");
+    }
+  }
+};
+
+const handleBulkChangeCategory = async (categoryId) => {
+  const ids = selectedProducts.value;
+  if (!ids.length || !categoryId) return;
+
+  try {
+    await axios.post("/products/bulk-actions", {
+      ids,
+      action: "change-category",
+      value: categoryId
+    });
+    toast.success("Categoría actualizada correctamente.");
+    selectedProducts.value = [];
+    isBulkCategoryMenuOpen.value = false;
+    emit("product-merged");
+  } catch (e) {
+    toast.error("Error al actualizar la categoría.");
+  }
+};
+
+// Props de Vuetify
 const props = defineProps({
   products: { type: Array, required: true },
   loading: { type: Boolean, default: false },
@@ -25,18 +98,8 @@ const props = defineProps({
   mode: { type: String, default: "products" },
   title: { type: String, default: "" },
   onlyDeleted: { type: Boolean, default: false },
+  categories: { type: Array, default: () => [] }
 });
-
-const emit = defineEmits([
-  "update:options",
-  "edit-product",
-  "delete-product",
-  "count-product",
-  "add-product-to-invoice",
-  "product-merged",
-  "view-stats",
-  "restore-product",
-]);
 
 const headers = computed(() => [
   { 
@@ -148,7 +211,7 @@ const handleMobilePageChange = (newPage) => {
 
 const formatStock = (item) => {
   const stock = Number(item.stock_calculado ?? 0);
-  if (isSportsRental.value) {
+  if (isSportsRental.value || isMiniMarket.value) {
     return Math.round(stock).toString();
   }
   if (!isRestaurant.value) {
@@ -194,18 +257,12 @@ const formatStock = (item) => {
   return `${formatted} UNDS`;
 };
 
+// Formatea precio respetando la moneda configurada en los ajustes del negocio
 const formatPriceWithCurrency = (price) => {
   const numPrice = Number(price);
-  if (isNaN(numPrice)) return "$ 0,00";
-  if (!isRestaurant.value) {
-    return `$ ${numPrice.toFixed(2).replace('.', ',')}`;
-  }
-  return new Intl.NumberFormat("es-CO", {
-    style: "currency",
-    currency: "COP",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(numPrice);
+  if (isNaN(numPrice)) return '—';
+  const currency = brandingStore.settings.default_currency || 'USD';
+  return formatCurrency(numPrice, currency);
 };
 
 const toggleFavorite = async (item) => {
@@ -234,6 +291,7 @@ const toggleFavorite = async (item) => {
     <!-- Vista de Escritorio (Tabla) -->
     <div class="d-none d-md-block">
       <VDataTableServer
+        v-model="selectedProducts"
         :items-per-page="props.itemsPerPage"
         :page="props.page"
         :headers="visibleHeaders"
@@ -243,8 +301,18 @@ const toggleFavorite = async (item) => {
         :sort-by="props.sortBy ? [{ key: props.sortBy, order: props.orderBy || 'asc' }] : []"
         class="text-no-wrap"
         density="compact"
+        show-select
+        item-value="id"
         @update:options="(options) => emit('update:options', options)"
       >
+        <template #no-data>
+          <AppEmptyState
+            title="No se encontraron productos"
+            message="No hay productos disponibles con los filtros actuales o la tabla está vacía."
+            icon="tabler-box-off"
+          />
+        </template>
+
         <template #item.id="{ item }">
           <a
             :href="'/inventory/traceability?q=' + item.id"
@@ -259,7 +327,8 @@ const toggleFavorite = async (item) => {
           <div class="d-flex align-center gap-x-3 py-2">
             <!-- Corazón interactivo de favorito para administración -->
             <VBtn
-              v-if="!isRestaurant && !isSportsRental"
+              v-slot:default
+              v-if="((!isRestaurant && !isSportsRental) || isMiniMarket) && brandingStore.settings.enable_favorites"
               icon
               variant="text"
               density="compact"
@@ -289,12 +358,12 @@ const toggleFavorite = async (item) => {
               <div class="d-flex align-center gap-1 text-super-xs">
                 <span v-if="!isRestaurant" class="text-disabled truncate" style="max-inline-size: 200px;">{{ item.active_ingredient }}</span>
                 <span v-if="!isRestaurant" class="text-disabled mx-1">|</span>
-                <span v-if="isRestaurant && item.presentation" class="text-disabled truncate" style="max-inline-size: 200px;">
-                  {{ item.presentation }} {{ item.unit_of_measure ? `(${item.unit_of_measure})` : '' }}
+                <span v-if="isRestaurant && item.presentation && isFieldEnabled('presentation')" class="text-disabled truncate" style="max-inline-size: 200px;">
+                  {{ item.presentation }} {{ (item.unit_of_measure && isFieldEnabled('unit_of_measure')) ? `(${item.unit_of_measure})` : '' }}
                 </span>
-                <span v-if="isRestaurant && item.presentation" class="text-disabled mx-1">|</span>
+                <span v-if="isRestaurant && item.presentation && isFieldEnabled('presentation')" class="text-disabled mx-1">|</span>
                 <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 150px;">
-                  {{ item.laboratory?.name || 'S/L' }}
+                  {{ isMiniMarket ? (item.category?.name || 'SIN CATEGORÍA') : (item.laboratory?.name || 'S/L') }}
                 </span>
               </div>
             </div>
@@ -303,7 +372,51 @@ const toggleFavorite = async (item) => {
 
         <template #item.stock_calculado="{ item }">
           <div class="text-end">
+            <!-- Menú flotante interactivo para ver desglose de lotes -->
+            <VMenu
+              open-on-hover
+              location="bottom end"
+              offset="8px"
+              v-if="item.lots && item.lots.length > 0 && brandingStore.settings.enable_lots"
+            >
+              <template #activator="{ props }">
+                <VChip
+                  v-bind="props"
+                  :color="item.stock_calculado > 0 ? 'success' : 'error'"
+                  label
+                  size="x-small"
+                  variant="tonal"
+                  class="font-weight-black cursor-pointer hover-chip"
+                >
+                  {{ formatStock(item) }}
+                  <VIcon icon="tabler-info-circle" size="12" class="ms-1" />
+                </VChip>
+              </template>
+              <VCard min-width="280" class="rounded-xl border shadow-lg pa-3">
+                <div class="text-xs font-weight-black text-primary uppercase letter-spacing-1 mb-2 d-flex align-center gap-1">
+                  <VIcon icon="tabler-clipboard-list" size="14" />
+                  Desglose de Lotes
+                </div>
+                <VDivider class="mb-2" />
+                <div style="max-height: 180px; overflow-y: auto;">
+                  <div 
+                    v-for="lot in item.lots" 
+                    :key="lot.id"
+                    class="d-flex align-center justify-space-between py-1 border-bottom-light"
+                  >
+                    <div class="d-flex flex-column text-left">
+                      <span class="text-xs font-weight-bold text-high-emphasis">Lote: {{ lot.lot_number }}</span>
+                      <span class="text-super-xs text-disabled">Exp: {{ formatDateSimple(lot.expiration_date) }}</span>
+                    </div>
+                    <VChip size="x-small" label color="secondary" variant="flat" class="font-weight-black">
+                      {{ lot.quantity }}
+                    </VChip>
+                  </div>
+                </div>
+              </VCard>
+            </VMenu>
             <VChip
+              v-else
               :color="item.stock_calculado > 0 ? 'success' : 'error'"
               label
               size="x-small"
@@ -321,7 +434,7 @@ const toggleFavorite = async (item) => {
 
         <template #item.unit_cost="{ item }">
           <span class="text-sm font-weight-medium text-high-emphasis">
-            {{ formatPriceWithCurrency(isRestaurant ? item.unit_cost_cop : item.unit_cost) }}
+            {{ formatPriceWithCurrency(item.unit_cost) }}
           </span>
         </template>
 
@@ -357,7 +470,7 @@ const toggleFavorite = async (item) => {
                 <VTooltip activator="parent">Restaurar</VTooltip>
               </IconBtn>
               <IconBtn
-                v-if="authStore.isAdmin && !isMiniMarket && !isRestaurant && !isSportsRental"
+                v-if="authStore.isAdmin && brandingStore.settings.enable_merge"
                 color="info"
                 size="small"
                 @click="openMergeModal(item)"
@@ -423,7 +536,7 @@ const toggleFavorite = async (item) => {
             <div class="d-flex gap-3 align-start">
               <!-- Corazón interactivo de favorito para móvil -->
               <VBtn
-                v-if="!isRestaurant && !isSportsRental"
+                v-if="((!isRestaurant && !isSportsRental) || isMiniMarket) && brandingStore.settings.enable_favorites"
                 icon
                 variant="text"
                 density="compact"
@@ -456,7 +569,9 @@ const toggleFavorite = async (item) => {
                     {{ item.presentation }} {{ item.unit_of_measure ? `(${item.unit_of_measure})` : '' }}
                   </span>
                   <span v-if="isRestaurant && item.presentation" class="text-disabled">|</span>
-                  <span class="text-primary font-weight-bold text-truncate" style="max-inline-size: 120px;">{{ item.laboratory?.name || 'S/L' }}</span>
+                  <span class="text-primary font-weight-bold text-truncate" style="max-inline-size: 120px;">
+                    {{ isMiniMarket ? (item.category?.name || 'SIN CATEGORÍA') : (item.laboratory?.name || 'S/L') }}
+                  </span>
                 </div>
               </div>
             </div>
@@ -509,9 +624,9 @@ const toggleFavorite = async (item) => {
                 icon="tabler-rotate-clockwise" 
                 @click="emit('restore-product', item.id)"
               />
-              <VDivider v-if="authStore.isAdmin && !isMiniMarket && !isRestaurant && !isSportsRental" vertical class="border-opacity-10" />
+              <VDivider v-if="authStore.isAdmin && brandingStore.settings.enable_merge" vertical class="border-opacity-10" />
               <VBtn 
-                v-if="authStore.isAdmin && !isMiniMarket && !isRestaurant && !isSportsRental" 
+                v-if="authStore.isAdmin && brandingStore.settings.enable_merge" 
                 color="info" 
                 variant="text" 
                 class="flex-grow-1 rounded-0" 
@@ -577,10 +692,118 @@ const toggleFavorite = async (item) => {
       :selected-product="selectedProductForMerge"
       @merged="emit('product-merged')"
     />
+
+    <!-- Barra de Acciones Masivas Flotante (Glassmorphism) -->
+    <Transition name="fade-slide">
+      <div v-if="selectedProducts.length > 0" class="bulk-actions-wrapper">
+        <VCard class="bulk-actions-bar px-6 py-3 d-flex align-center justify-space-between rounded-pill elevation-10">
+          <div class="d-flex align-center gap-3">
+            <VChip color="primary" class="font-weight-black">{{ selectedProducts.length }}</VChip>
+            <span class="text-subtitle-2 font-weight-black text-high-emphasis">Productos seleccionados</span>
+          </div>
+
+          <div class="d-flex align-center gap-2">
+            <!-- Cambiar Categoría Masivo -->
+            <VMenu v-model="isBulkCategoryMenuOpen" :close-on-content-click="false" location="top center" offset="12px">
+              <template #activator="{ props: menuProps }">
+                <VBtn
+                  v-bind="menuProps"
+                  color="secondary"
+                  variant="outlined"
+                  class="rounded-pill font-weight-black"
+                  size="small"
+                  prepend-icon="tabler-category"
+                >
+                  Cambiar Categoría
+                </VBtn>
+              </template>
+              <VCard class="rounded-xl border shadow-lg pa-3" min-width="240">
+                <div class="text-xs font-weight-bold text-high-emphasis mb-2">Seleccionar Categoría:</div>
+                <VList density="compact">
+                  <VListItem
+                    v-for="cat in props.categories"
+                    :key="cat.id"
+                    :title="cat.name"
+                    @click="handleBulkChangeCategory(cat.id)"
+                    class="rounded-lg"
+                  />
+                </VList>
+              </VCard>
+            </VMenu>
+
+            <!-- Eliminar Masivo -->
+            <VBtn
+              color="error"
+              class="rounded-pill font-weight-black"
+              size="small"
+              prepend-icon="tabler-trash"
+              @click="handleBulkDelete"
+            >
+              Eliminar
+            </VBtn>
+
+            <VDivider vertical class="mx-2 border-opacity-20" />
+
+            <!-- Deseleccionar Todo -->
+            <VBtn
+              icon="tabler-x"
+              variant="text"
+              density="compact"
+              color="secondary"
+              @click="selectedProducts = []"
+            />
+          </div>
+        </VCard>
+      </div>
+    </Transition>
   </VCard>
 </template>
 
 <style scoped>
+.bulk-actions-wrapper {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  width: 100%;
+  max-width: 680px;
+  padding: 0 16px;
+}
+
+.bulk-actions-bar {
+  background: rgba(var(--v-theme-surface), 0.85) !important;
+  backdrop-filter: blur(12px) saturate(190%);
+  border: 1px solid rgba(var(--v-border-color), 0.24) !important;
+}
+
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: all 0.3s ease;
+}
+
+.fade-slide-enter-from {
+  opacity: 0;
+  transform: translate(-50%, 30px);
+}
+
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translate(-50%, 30px);
+}
+
+.hover-chip:hover {
+  filter: brightness(0.95);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+}
+
+.border-bottom-light {
+  border-bottom: 1px solid rgba(var(--v-border-color), 0.08);
+}
+.border-bottom-light:last-child {
+  border-bottom: none;
+}
+
 .product-mobile-card {
   overflow: hidden;
   border-radius: 8px !important;

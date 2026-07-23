@@ -6,7 +6,7 @@ import GroupTable from "@/components/GroupTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import Swal from "sweetalert2";
-import { onMounted, ref, watch } from "vue";
+import { onMounted, onUnmounted, ref, watch } from "vue";
 
 const groups = ref([]);
 const totalGroups = ref(0);
@@ -68,6 +68,8 @@ watch([searchQuery], () => {
 onMounted(() => {
   fetchGroups();
 });
+
+onUnmounted(() => clearTimeout(debounceTimer));
 
 const updateTableOptions = (options) => {
   page.value = options.page;
@@ -175,6 +177,7 @@ const clearFormErrors = () => {
         @add-products="handleAddProducts"
         @edit-group="handleEditGroup"
         @delete-group="handleDeleteGroup"
+        @refresh="fetchGroups"
       />
 
       <!-- Diálogos -->

@@ -1,31 +1,42 @@
 <script setup>
-import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue';
+import { ref, onUnmounted, watch, nextTick } from 'vue';
 import Cropper from 'cropperjs';
+import 'cropperjs/dist/cropper.css';
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
   imageSource: { type: String, default: '' },
-  aspectRatio: { type: Number, default: 1 }, // 1 para cuadrado (avatar)
 });
 
-const emit = defineEmits(['update:modelValue', 'confirm', 'cancel']);
+const emit = defineEmits(['update:modelValue', 'confirm']);
 
 const imageElement = ref(null);
-const cropper = ref(null);
-const loading = ref(false);
+const cropper     = ref(null);
+const loading     = ref(false);
+const ratioMode   = ref('1'); // 1:1 = proporción exacta del ecommerce
+
+const ratios = [
+  { label: '1:1 · Ecommerce', value: '1'    },
+  { label: 'Libre',           value: 'free' },
+  { label: '4:3',             value: '4/3'  },
+  { label: '16:9',            value: '16/9' },
+];
+
+const getAspectRatio = () => {
+  if (ratioMode.value === '1')   return 1;
+  if (ratioMode.value === '4/3') return 4 / 3;
+  if (ratioMode.value === '16/9') return 16 / 9;
+  return NaN;
+};
 
 const initCropper = () => {
-  if (cropper.value) {
-    cropper.value.destroy();
-  }
-
+  if (cropper.value) { cropper.value.destroy(); cropper.value = null; }
   if (!imageElement.value) return;
-
   cropper.value = new Cropper(imageElement.value, {
-    aspectRatio: props.aspectRatio,
-    viewMode: 1, // Restrict the crop box to not exceed the size of the canvas.
+    aspectRatio: getAspectRatio(),
+    viewMode: 1,
     dragMode: 'move',
-    autoCropArea: 1,
+    autoCropArea: 0.85,
     restore: false,
     guides: true,
     center: true,
@@ -37,35 +48,9 @@ const initCropper = () => {
   });
 };
 
-const handleConfirm = () => {
-  if (!cropper.value) return;
-
-  loading.value = true;
-  
-  // Obtener el canvas recortado
-  const canvas = cropper.value.getCroppedCanvas({
-    width: 800, // Tamaño sugerido para avatar
-    height: 800,
-    fillColor: '#fff',
-    imageSmoothingEnabled: true,
-    imageSmoothingQuality: 'high',
-  });
-
-  canvas.toBlob((blob) => {
-    loading.value = false;
-    emit('confirm', blob);
-    closeDialog();
-  }, 'image/jpeg', 0.9);
-};
-
-const closeDialog = () => {
-  emit('update:modelValue', false);
-};
-
 watch(() => props.modelValue, async (val) => {
   if (val) {
     await nextTick();
-    // Darle un pequeño tiempo extra para que el modal se anime y el DOM esté listo
     setTimeout(initCropper, 300);
   } else if (cropper.value) {
     cropper.value.destroy();
@@ -73,18 +58,36 @@ watch(() => props.modelValue, async (val) => {
   }
 });
 
-onUnmounted(() => {
-  if (cropper.value) {
-    cropper.value.destroy();
-  }
+watch(ratioMode, () => {
+  cropper.value?.setAspectRatio(getAspectRatio());
 });
 
-const rotateLeft = () => cropper.value?.rotate(-90);
-const rotateRight = () => cropper.value?.rotate(90);
-const zoomIn = () => cropper.value?.zoom(0.1);
-const zoomOut = () => cropper.value?.zoom(-0.1);
-const reset = () => cropper.value?.reset();
+onUnmounted(() => { if (cropper.value) cropper.value.destroy(); });
 
+const rotateLeft  = () => cropper.value?.rotate(-90);
+const rotateRight = () => cropper.value?.rotate(90);
+const zoomIn      = () => cropper.value?.zoom(0.1);
+const zoomOut     = () => cropper.value?.zoom(-0.1);
+const reset       = () => cropper.value?.reset();
+
+const handleConfirm = () => {
+  if (!cropper.value) return;
+  loading.value = true;
+  const canvas = cropper.value.getCroppedCanvas({
+    maxWidth: 1400, maxHeight: 1400,
+    fillColor: '#fff',
+    imageSmoothingEnabled: true,
+    imageSmoothingQuality: 'high',
+  });
+  canvas.toBlob((blob) => {
+    loading.value = false;
+    const file = new File([blob], 'product-image.jpg', { type: 'image/jpeg', lastModified: Date.now() });
+    emit('confirm', file);
+    emit('update:modelValue', false);
+  }, 'image/jpeg', 0.92);
+};
+
+const closeDialog = () => emit('update:modelValue', false);
 </script>
 
 <template>
@@ -118,17 +121,30 @@ const reset = () => cropper.value?.reset();
           />
         </div>
 
-        <!-- Controles de Edición -->
+        <!-- Selector de relación de aspecto -->
         <div class="d-flex justify-center gap-2 mt-4 flex-wrap">
-          <VBtn icon="tabler-zoom-in" variant="tonal" color="primary" size="small" @click="zoomIn" title="Aumentar" />
-          <VBtn icon="tabler-zoom-out" variant="tonal" color="primary" size="small" @click="zoomOut" title="Disminuir" />
-          <VBtn icon="tabler-rotate-clockwise-2" variant="tonal" color="secondary" size="small" @click="rotateLeft" title="Rotar Izquierda" />
-          <VBtn icon="tabler-rotate-clockwise" variant="tonal" color="secondary" size="small" @click="rotateRight" title="Rotar Derecha" />
-          <VBtn icon="tabler-refresh" variant="tonal" color="warning" size="small" @click="reset" title="Restablecer" />
+          <VChip
+            v-for="r in ratios"
+            :key="r.value"
+            :color="ratioMode === r.value ? 'primary' : 'default'"
+            size="small"
+            density="comfortable"
+            class="font-weight-bold cursor-pointer"
+            @click="ratioMode = r.value"
+          >{{ r.label }}</VChip>
+        </div>
+
+        <!-- Controles de transformación -->
+        <div class="d-flex justify-center gap-2 mt-3 flex-wrap">
+          <VBtn icon="tabler-zoom-in"              variant="tonal" color="primary"   size="small" @click="zoomIn"      title="Acercar" />
+          <VBtn icon="tabler-zoom-out"             variant="tonal" color="primary"   size="small" @click="zoomOut"     title="Alejar" />
+          <VBtn icon="tabler-rotate-2"             variant="tonal" color="secondary" size="small" @click="rotateLeft"  title="Rotar izquierda" />
+          <VBtn icon="tabler-rotate-clockwise"     variant="tonal" color="secondary" size="small" @click="rotateRight" title="Rotar derecha" />
+          <VBtn icon="tabler-refresh"              variant="tonal" color="warning"   size="small" @click="reset"       title="Restablecer" />
         </div>
 
         <div class="text-center mt-3 text-caption text-disabled font-weight-bold uppercase letter-spacing-1">
-          Ajusta el cuadro sobre el rostro del empleado
+          Arrastra para mover · Ajusta las esquinas para recortar
         </div>
       </VCardText>
 

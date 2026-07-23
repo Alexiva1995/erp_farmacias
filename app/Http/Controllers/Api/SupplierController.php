@@ -15,6 +15,9 @@ use App\Http\Requests\StoreSupplierLaboratoryRequest;
 use App\Http\Requests\UpdatePaymentRuleSupplierRequest;
 use App\Http\Requests\StoreDiscountsRequest;
 use App\Http\Requests\StoreProductIntoAutoOrderRequest;
+use App\Http\Requests\Supplier\ApplyGlobalDiscountRequest;
+use App\Http\Requests\Supplier\DeleteOldProductsRequest;
+use App\Http\Requests\Supplier\SaveConnectionConfigRequest;
 use App\Jobs\ProcessSupplierConnectionJob;
 use App\Models\Supplier;
 use App\Http\Resources\SupplierResource;
@@ -451,12 +454,8 @@ class SupplierController extends Controller
             'data' => $result
         ]);
     }
-    public function applyGlobalDiscount(Request $request, Supplier $supplier)
+    public function applyGlobalDiscount(ApplyGlobalDiscountRequest $request, Supplier $supplier)
     {
-        $request->validate([
-            'percentage' => 'required|numeric|min:0.01|max:100',
-        ]);
-
         $affectedRows = $this->supplierActionService->applyGlobalDiscount(
             $supplier,
             $request->percentage
@@ -467,11 +466,9 @@ class SupplierController extends Controller
             'affected_rows' => $affectedRows
         ]);
     }
-    public function deleteOldProducts(Request $request)
+    public function deleteOldProducts(DeleteOldProductsRequest $request)
     {
-        $validated = $request->validate([
-            'date' => 'required|date|before_or_equal:today',
-        ]);
+        $validated = $request->validated();
 
         try {
             $deletedCount = $this->supplierActionService->deleteProductsOlderThan($validated['date']);
@@ -541,19 +538,9 @@ class SupplierController extends Controller
      * Guarda o actualiza la configuración de conexión FTP/API.
      * La contraseña se cifra con AES-256 antes de persistirse.
      */
-    public function saveConnectionConfig(\Illuminate\Http\Request $request, Supplier $supplier)
+    public function saveConnectionConfig(SaveConnectionConfigRequest $request, Supplier $supplier)
     {
-        $validated = $request->validate([
-            'type'          => 'required|in:ftp,sftp,http,api',
-            'host'          => 'required|string|max:500',
-            'port'          => 'nullable|numeric|min:1|max:65535',
-            'username'      => 'nullable|string|max:255',
-            'password'      => 'nullable|string',
-            'path'          => 'nullable|string|max:500',
-            'pasv'          => 'boolean',
-            'has_header'    => 'boolean',
-            'invoice_path'  => 'nullable|string|max:500',
-        ]);
+        $validated = $request->validated();
 
         // Construir el payload que se persiste
         $data = [

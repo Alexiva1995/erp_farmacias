@@ -14,6 +14,8 @@ const props = defineProps({
   selectedSupplierId: [Number, String],
   globalDiscountPercent: [Number, String],
   stock: { type: String, default: "all" },
+  generatingPdf: { type: Boolean, default: false },
+  exportingExcel: { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
@@ -117,7 +119,7 @@ const stockOpciones = [
           </VBtn>
 
           <!-- Exportar (Menú Icono) -->
-          <VMenu>
+          <VMenu :disabled="props.generatingPdf || props.exportingExcel">
             <template #activator="{ props: menuProps }">
               <VBtn
                 v-bind="menuProps"
@@ -125,20 +127,22 @@ const stockOpciones = [
                 color="success"
                 variant="tonal"
                 size="38"
+                :loading="props.generatingPdf || props.exportingExcel"
+                :disabled="props.generatingPdf || props.exportingExcel"
               >
                 <VIcon icon="tabler-file-download" />
                 <VTooltip activator="parent" location="top">Exportar Reporte</VTooltip>
               </VBtn>
             </template>
             <VList density="compact" class="rounded-lg shadow-lg border">
-              <VListItem @click="emit('export-excel', 'xlsx')" class="py-2">
+              <VListItem @click="emit('export-excel', 'xlsx')" class="py-2" :disabled="props.generatingPdf || props.exportingExcel">
                 <template #prepend>
                   <VIcon icon="tabler-file-spreadsheet" class="me-2" color="success" />
                 </template>
                 <VListItemTitle class="font-weight-bold text-success">Excel (.xlsx)</VListItemTitle>
               </VListItem>
               <VDivider />
-              <VListItem @click="emit('export-pdf')" class="py-2">
+              <VListItem @click="emit('export-pdf')" class="py-2" :disabled="props.generatingPdf || props.exportingExcel">
                 <template #prepend>
                   <VIcon icon="tabler-file-type-pdf" class="me-2" color="error" />
                 </template>

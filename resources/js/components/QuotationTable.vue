@@ -1,5 +1,6 @@
 <script setup>
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
+import AppEmptyState from "@/components/AppEmptyState.vue";
 import { formatCurrency } from "@/utils/currencyFormatter";
 import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
 import { ref, watch, computed } from "vue";
@@ -155,6 +156,13 @@ const handleMobilePageChange = (newPage) => {
         @update:options="handleUpdateOptions"
         hover
       >
+        <template #no-data>
+          <AppEmptyState
+            title="No se encontraron productos"
+            message="No hay productos o platos disponibles para cotizar en este momento."
+            icon="tabler-search-off"
+          />
+        </template>
         <template #item.id="{ item }">
           <span class="font-weight-black text-primary">{{ item.id }}</span>
         </template>

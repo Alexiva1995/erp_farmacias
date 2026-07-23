@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AutoOrder;
 use App\Models\AutoOrderDetail;
-use App\Repository\AutoOrderDetailsRepository;
+use App\Repositories\AutoOrderDetailsRepository;
 use Illuminate\Http\Request;
 
 class PurchaseOrderDetailController extends Controller

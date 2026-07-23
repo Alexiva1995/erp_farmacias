@@ -65,3 +65,30 @@
 .swal2-container {
   z-index: 9999 !important;
 }
+
+/* Estilo refinado y compacto para Toasts de SweetAlert2 */
+.swal2-popup.swal2-toast {
+  padding: 8px 12px !important;
+  border-radius: 5px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+  border: 1px solid rgba(var(--v-border-color), 0.05) !important;
+
+  .swal2-title {
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    color: rgb(var(--v-theme-on-surface)) !important;
+    margin: 0 8px !important;
+    line-height: 1.4 !important;
+  }
+
+  .swal2-icon {
+    transform: scale(0.6) !important;
+    margin: 0 -4px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .swal2-timer-progress-bar {
+    background: rgba(var(--v-theme-primary), 0.2) !important;
+    height: 2px !important;
+  }
+}

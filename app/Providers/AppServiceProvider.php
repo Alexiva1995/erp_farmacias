@@ -76,6 +76,8 @@ use App\Repositories\Eloquent\LocationRepository;
 use App\Http\Controllers\Api\Accounting\BalanceController;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Support\Facades\RateLimiter;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -84,6 +86,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->when(\App\Http\Controllers\Api\ProductFailureController::class)
+            ->needs(\App\Contracts\ProductFailure::class)
+            ->give(\App\Services\ProductFailureServices::class);
+
         $this->app->when(ProfitabilityController::class)
             ->needs(Profitability::class)
             ->give(ProfitabilityServices::class);
@@ -95,8 +101,8 @@ class AppServiceProvider extends ServiceProvider
             ->needs(Client::class)
             ->give(ClientServices::class);
 
-        $this->app->when(OrderController::class) // Cuando el OrderController
-            ->needs(Client::class)               // necesite una instancia de Client
+        $this->app->when(OrderController::class)
+            ->needs(Client::class)
             ->give(ClientServices::class);
 
         $this->app->when(CompanyController::class)
@@ -107,25 +113,7 @@ class AppServiceProvider extends ServiceProvider
             ->needs(Client::class)
             ->give(ClientServices::class);
 
-        $this->app->when(DoctorController::class)
-            ->needs(Doctor::class)
-            ->give(DoctorServices::class);
 
-        $this->app->when(DoctorController::class)
-            ->needs(Specialty::class)
-            ->give(SpecialtyServices::class);
-
-        $this->app->when(SpecialtyController::class)
-            ->needs(Specialty::class)
-            ->give(SpecialtyServices::class);
-
-        $this->app->when(LotteryController::class)
-            ->needs(Lottery::class)
-            ->give(LotteryServices::class);
-
-        $this->app->when(LaboratoryController::class)
-            ->needs(Laboratory::class)
-            ->give(LaboratoryServices::class);
 
         $this->app->when(OrderController::class)
             ->needs(Order::class)
@@ -231,10 +219,7 @@ class AppServiceProvider extends ServiceProvider
 
         $this->app->bind(LocationContract::class, LocationRepository::class);
 
-        $this->app->bind(
-            \App\Contracts\Repositories\ReservationRepositoryInterface::class,
-            \App\Repository\ReservationRepository::class
-        );
+
 
         $this->app->bind(
             \App\Contracts\CustomerAnalytics::class,
@@ -248,7 +233,7 @@ class AppServiceProvider extends ServiceProvider
 
         $this->app->bind(Expenses::class, ExpensesServices::class);
         $this->app->bind(ExpenseCategory::class, ExpenseCategoryServices::class);
-        $this->app->bind(\App\Contracts\Dish::class, \App\Services\DishServices::class);
+
 
         $this->app->bind(
             \App\Contracts\ProductVariantRepositoryInterface::class,
@@ -274,5 +259,15 @@ class AppServiceProvider extends ServiceProvider
         if ($this->app->environment('production') || str_starts_with(config('app.url'), 'https')) {
             URL::forceScheme('https');
         }
+
+        // Configurar rate limiter para la API (1000 peticiones por minuto para TPV y uso intensivo)
+        RateLimiter::for('api', function (\Illuminate\Http\Request $request) {
+            return Limit::perMinute(1000)->by($request->user()?->id ?: $request->ip());
+        });
+
+        // Configurar rate limiter restrictivo para login (5 intentos por minuto por IP)
+        RateLimiter::for('login', function (\Illuminate\Http\Request $request) {
+            return Limit::perMinute(5)->by($request->ip());
+        });
     }
 }

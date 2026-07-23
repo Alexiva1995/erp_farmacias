@@ -21,8 +21,8 @@ class UpdateGeneralPromotionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'type' => ['sometimes', 'string', 'in:2x1,3x2,50_second,fixed_price'],
-            'fixed_price' => ['required_if:type,fixed_price', 'nullable', 'numeric', 'min:0'],
+            'type' => ['sometimes', 'string', 'in:2x1,3x2,50_second,fixed_price,general'],
+            'fixed_price' => ['required_if:type,fixed_price,general', 'nullable', 'numeric', 'min:0'],
             'is_active' => ['sometimes', 'boolean'],
             'categories' => ['nullable', 'array'],
             'categories.*' => ['required', 'integer', 'exists:categories,id'],

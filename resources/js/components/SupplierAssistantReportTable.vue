@@ -174,6 +174,15 @@ const handleManualOrder = async (item) => {
           class="premium-table text-no-wrap"
           @update:options="(options) => emit('update:options', options)"
         >
+          <!-- Slot de Sin Datos -->
+          <template #no-data>
+            <div class="d-flex flex-column align-center py-12 text-disabled text-center">
+              <VIcon icon="tabler-package-off" size="48" class="mb-3" color="secondary" />
+              <h4 class="text-sm font-weight-bold mb-1 text-high-emphasis">No se encontraron productos</h4>
+              <span class="text-xs text-disabled">Selecciona otro laboratorio o intenta ajustar tus filtros de búsqueda.</span>
+            </div>
+          </template>
+
           <!-- Producto -->
           <template #item.name="{ item }">
             <div class="d-flex align-center py-2">
@@ -397,9 +406,10 @@ const handleManualOrder = async (item) => {
           </div>
         </template>
 
-        <div v-else class="d-flex flex-column align-center py-12 text-disabled text-center">
-          <VIcon icon="tabler-package-off" size="48" class="mb-3" />
-          <span class="text-body-1 font-weight-medium">No hay productos filtrados</span>
+        <div v-else class="d-flex flex-column align-center py-12 text-disabled text-center px-4">
+          <VIcon icon="tabler-package-off" size="48" class="mb-3" color="secondary" />
+          <h4 class="text-sm font-weight-bold mb-1 text-high-emphasis">No se encontraron productos</h4>
+          <span class="text-xs text-disabled">Selecciona otro laboratorio o intenta ajustar tus filtros de búsqueda.</span>
         </div>
       </div>
     </VCard>

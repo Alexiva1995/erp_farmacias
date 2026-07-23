@@ -87,16 +87,96 @@ const barSeries = computed(() => [
 ]);
 
 const isMounted = ref(false);
+const errorOccurred = ref(false);
+const errorMessage = ref("");
+
+const loadData = async () => {
+  errorOccurred.value = false;
+  try {
+    await fetchBalance();
+  } catch (err) {
+    errorOccurred.value = true;
+    errorMessage.value = err?.message || "No se pudo recuperar la información del balance general.";
+  }
+};
 
 onMounted(() => {
   isMounted.value = true;
-  fetchBalance();
+  loadData();
 });
 </script>
 
 <template>
   <div class="balance-premium pb-12">
-    <div class="d-flex flex-column gap-1 mt-1">
+    <!-- CABECERA PREMIUM -->
+    <div class="d-flex flex-wrap align-center justify-space-between gap-4 mb-6 mt-2 px-1">
+      <div class="d-flex align-center gap-3">
+        <VAvatar color="primary" variant="tonal" size="48" class="rounded-xl">
+          <VIcon icon="tabler-chart-pie" size="26" />
+        </VAvatar>
+        <div>
+          <h1 class="text-h4 font-weight-black text-high-emphasis mb-1">
+            Balance General
+          </h1>
+          <p class="text-caption text-disabled mb-0 font-weight-medium">
+            Estado de situación financiera acumulado al día de hoy
+          </p>
+        </div>
+      </div>
+      <div class="d-flex align-center gap-3">
+        <div v-if="balance.calculated_at" class="text-end d-none d-sm-block">
+          <p class="text-super-xs text-disabled font-weight-bold uppercase mb-0">Último Cálculo</p>
+          <p class="text-caption font-weight-black mb-0">{{ new Date(balance.calculated_at).toLocaleString('es-ES') }}</p>
+        </div>
+        <VBtn
+          color="primary"
+          variant="elevated"
+          prepend-icon="tabler-refresh"
+          :loading="loading"
+          @click="loadData"
+          class="rounded-lg font-weight-bold"
+        >
+          Recargar
+        </VBtn>
+      </div>
+    </div>
+
+    <!-- ERROR STATE -->
+    <VAlert
+      v-if="errorOccurred"
+      type="error"
+      variant="tonal"
+      closable
+      class="mb-6 rounded-lg border-opacity-25"
+      @click:close="errorOccurred = false"
+    >
+      {{ errorMessage }}
+    </VAlert>
+
+    <!-- LOADING / SKELETON STATE -->
+    <div v-if="loading" class="d-flex flex-column gap-5">
+      <VRow class="ma-0 mx-n1" dense>
+        <VCol cols="12" sm="4" class="pa-1" v-for="i in 3" :key="i">
+          <VCard class="rounded-xl shadow-premium pa-4">
+            <VSkeletonLoader type="list-item-avatar, heading" />
+          </VCard>
+        </VCol>
+      </VRow>
+      <VRow class="ma-0 mx-n1" dense>
+        <VCol cols="12" md="6" class="pa-1">
+          <VCard class="rounded-xl shadow-premium pa-4 h-100">
+            <VSkeletonLoader type="card-avatar, article" />
+          </VCard>
+        </VCol>
+        <VCol cols="12" md="6" class="pa-1">
+          <VCard class="rounded-xl shadow-premium pa-4 h-100">
+            <VSkeletonLoader type="article, actions" />
+          </VCard>
+        </VCol>
+      </VRow>
+    </div>
+
+    <div v-else class="d-flex flex-column gap-1 mt-1">
       <!-- CARDS DE RATIOS -->
       <VRow class="ma-0 mx-n1 mb-5" dense>
         <VCol cols="12" sm="4" class="pa-1">

@@ -4,6 +4,11 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\PrescriptionOffer;
+use App\Http\Requests\Offers\StorePrescriptionOfferRequest;
+use App\Http\Requests\Offers\UpdatePrescriptionOfferRequest;
+use App\Http\Requests\Offers\AddProductToPrescriptionOfferRequest;
+use App\Http\Requests\Offers\UpdateProductQuantityRequest;
+use App\Http\Requests\Offers\RemoveProductFromOfferRequest;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -92,15 +97,9 @@ class PrescriptionOfferController extends Controller
     /**
      * Creacion de la nueva oferta.
      */
-    public function store(Request $request): JsonResponse
+    public function store(StorePrescriptionOfferRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'discount_percentage' => 'required|numeric|min:0|max:100',
-            'start_date' => 'required|date',
-            'end_date' => 'required|date|after_or_equal:start_date',
-            'is_active' => 'boolean',
-        ]);
+        $validated = $request->validated();
 
         try {
             DB::beginTransaction();
@@ -112,7 +111,7 @@ class PrescriptionOfferController extends Controller
                 'end_date' => $validated['end_date'],
                 'is_active' => $validated['is_active'] ?? true,
             ]);
-
+            
             DB::commit();
 
             return response()->json([
@@ -121,6 +120,13 @@ class PrescriptionOfferController extends Controller
                 'data' => $offer
             ], 201);
 
+        } catch (ValidationException $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Error de validación',
+                'errors' => $e->errors()
+            ], 422);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
@@ -131,35 +137,18 @@ class PrescriptionOfferController extends Controller
     }
 
     /**
-     * Mostrar oferta especifica.
+     * Obtener una oferta de receta específica.
      */
     public function show(string $id): JsonResponse
     {
         try {
             $offer = PrescriptionOffer::findOrFail($id);
 
-            $salesCount = (int) \App\Models\OrderDetail::whereIn('discount_type', ['prescription', 'recipe'])
-                ->where('discount_source_id', $offer->id)
-                ->whereHas('order', function ($q) {
-                    $q->where('status', \App\Models\Order::COMPLETED);
-                })
-                ->sum('quantity');
-
             return response()->json([
                 'success' => true,
-                'data' => [
-                    'id' => $offer->id,
-                    'name' => $offer->name,
-                    'discount_percentage' => $offer->discount_percentage,
-                    'start_date' => $offer->start_date,
-                    'end_date' => $offer->end_date,
-                    'is_active' => $offer->is_active,
-                    'is_currently_active' => $offer->is_currently_active,
-                    'sales_count' => $salesCount,
-                    'created_at' => $offer->created_at,
-                    'updated_at' => $offer->updated_at,
-                ]
+                'data' => $offer
             ]);
+
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,
@@ -176,20 +165,14 @@ class PrescriptionOfferController extends Controller
     /**
      * Actualización de una oferta específica.
      */
-    public function update(Request $request, string $id): JsonResponse
+    public function update(UpdatePrescriptionOfferRequest $request, string $id): JsonResponse
     {
         DB::beginTransaction();
 
         try {
             $offer = PrescriptionOffer::findOrFail($id);
 
-            $validated = $request->validate([
-                'name' => 'sometimes|required|string|max:255',
-                'discount_percentage' => 'sometimes|required|numeric|min:0|max:100',
-                'start_date' => 'sometimes|required|date',
-                'end_date' => 'sometimes|required|date|after_or_equal:start_date',
-                'is_active' => 'boolean',
-            ]);
+            $validated = $request->validated();
 
             $offer->update($validated);
 
@@ -255,21 +238,14 @@ class PrescriptionOfferController extends Controller
         }
     }
 
-    /**
-     * Agregar producto a una oferta existente
-     */
-    public function addProductToOffer(Request $request, string $id): JsonResponse
+    public function addProductToOffer(AddProductToPrescriptionOfferRequest $request, string $id): JsonResponse
     {
         DB::beginTransaction();
 
         try {
             $offer = PrescriptionOffer::findOrFail($id);
 
-            $validated = $request->validate([
-                'product_id' => 'required|exists:products,id',
-                'sale_price' => 'required|numeric|min:0',
-                'quantity' => 'required|integer|min:1',
-            ]);
+            $validated = $request->validated();
 
             $offer->addProduct(
                 $validated['product_id'],
@@ -316,17 +292,14 @@ class PrescriptionOfferController extends Controller
     /**
      * Actualizar cantidad de un producto en la oferta
      */
-    public function updateProductQuantity(Request $request, string $id): JsonResponse
+    public function updateProductQuantity(UpdateProductQuantityRequest $request, string $id): JsonResponse
     {
         DB::beginTransaction();
 
         try {
             $offer = PrescriptionOffer::findOrFail($id);
 
-            $validated = $request->validate([
-                'product_id' => 'required|exists:products,id',
-                'quantity' => 'required|integer|min:1',
-            ]);
+            $validated = $request->validated();
 
             $updated = $offer->updateProductQuantity(
                 $validated['product_id'],
@@ -379,16 +352,14 @@ class PrescriptionOfferController extends Controller
     /**
      * Remover producto de una oferta existente
      */
-    public function removeProductFromOffer(Request $request, string $id): JsonResponse
+    public function removeProductFromOffer(RemoveProductFromOfferRequest $request, string $id): JsonResponse
     {
         DB::beginTransaction();
 
         try {
             $offer = PrescriptionOffer::findOrFail($id);
 
-            $validated = $request->validate([
-                'product_id' => 'required|exists:products,id',
-            ]);
+            $validated = $request->validated();
 
             $removed = $offer->removeProduct($validated['product_id']);
 
@@ -435,3 +406,4 @@ class PrescriptionOfferController extends Controller
         }
     }
 }
+

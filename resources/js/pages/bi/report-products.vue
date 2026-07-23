@@ -147,11 +147,13 @@ onMounted(() => {
   fetchCatalogs();
   fetchDashboard();
   fetchTrends();
+  fetchCrossSelling(1);
 });
 
 watch([search, startDate, endDate, selectedLaboratory, selectedGroup], () => {
   fetchDashboard();
   fetchTrends();
+  fetchCrossSelling(1);
   crossSellingPage.value = 1;
   volumePage.value = 1;
   revenuePage.value = 1;
@@ -444,7 +446,26 @@ const resetFilters = () => {
               <span class="text-h6 font-weight-bold text-high-emphasis">TOP Productos (Volumen)</span>
             </VCardTitle>
             <VCardText class="pa-0">
-              <div :class="{ 'opacity-50 transition-opacity': loadingVolume }">
+              <!-- Skeleton Loader elegante -->
+              <div v-if="loadingVolume" class="skeleton-pulse pa-4">
+                <div v-for="i in 5" :key="i" class="d-flex align-center mb-4">
+                  <div class="skeleton-avatar me-3"></div>
+                  <div class="flex-grow-1">
+                    <div class="skeleton-line w-75 mb-2"></div>
+                    <div class="skeleton-line w-50"></div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Estado Vacío -->
+              <div v-else-if="!safeTopVolume.length" class="text-center pa-8 text-medium-emphasis">
+                <VIcon icon="tabler-package-off" size="40" class="mb-2 opacity-30" />
+                <div class="text-sm font-weight-bold">Sin registros de volumen</div>
+                <div class="text-xs text-disabled">No hay ventas registradas en este periodo.</div>
+              </div>
+
+              <!-- Lista de Datos -->
+              <div v-else>
                 <VList lines="one" class="px-0">
                   <VListItem 
                     v-for="(item, idx) in safeTopVolume" 
@@ -495,7 +516,26 @@ const resetFilters = () => {
               <span class="text-h6 font-weight-bold text-high-emphasis">TOP Productos (Venta Bruta)</span>
             </VCardTitle>
             <VCardText class="pa-0">
-              <div :class="{ 'opacity-50 transition-opacity': loadingRevenue }">
+              <!-- Skeleton Loader elegante -->
+              <div v-if="loadingRevenue" class="skeleton-pulse pa-4">
+                <div v-for="i in 5" :key="i" class="d-flex align-center mb-4">
+                  <div class="skeleton-avatar me-3"></div>
+                  <div class="flex-grow-1">
+                    <div class="skeleton-line w-75 mb-2"></div>
+                    <div class="skeleton-line w-50"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Estado Vacío -->
+              <div v-else-if="!safeTopRevenue.length" class="text-center pa-8 text-medium-emphasis">
+                <VIcon icon="tabler-package-off" size="40" class="mb-2 opacity-30" />
+                <div class="text-sm font-weight-bold">Sin registros de venta bruta</div>
+                <div class="text-xs text-disabled">No hay ventas registradas en este periodo.</div>
+              </div>
+
+              <!-- Lista de Datos -->
+              <div v-else>
                 <VList lines="one" class="px-0">
                   <VListItem 
                     v-for="(item, idx) in safeTopRevenue" 
@@ -569,14 +609,42 @@ const resetFilters = () => {
               <VChip color="success" size="x-small" label class="ms-2">Parejas Frecuentes</VChip>
             </VCardTitle>
             <VCardText class="pa-0">
-              <VTable v-if="safeCrossSelling.length" density="compact" class="cross-selling-table">
+              <!-- Skeletons para la tabla de cross-selling -->
+              <div v-if="loadingCrossSelling" class="skeleton-pulse pa-4">
+                <div v-for="i in 4" :key="i" class="d-flex align-center justify-space-between mb-4 pb-2 border-b">
+                  <div class="d-flex gap-3 align-center flex-grow-1">
+                    <div style="flex: 1;">
+                      <div class="skeleton-line w-75 mb-2"></div>
+                      <div class="skeleton-line w-50"></div>
+                    </div>
+                    <div class="skeleton-avatar d-flex align-center justify-center" style="width: 24px; height: 24px;">
+                      <VIcon icon="tabler-plus" size="14" class="opacity-30" />
+                    </div>
+                    <div style="flex: 1;">
+                      <div class="skeleton-line w-75 mb-2"></div>
+                      <div class="skeleton-line w-50"></div>
+                    </div>
+                  </div>
+                  <div class="skeleton-line ms-4" style="width: 40px; height: 24px; border-radius: 4px;"></div>
+                </div>
+              </div>
+
+              <!-- Estado vacío -->
+              <div v-else-if="!safeCrossSelling.length" class="text-center pa-10 text-medium-emphasis">
+                <VIcon icon="tabler-arrows-left-right" size="40" class="mb-2 opacity-30" />
+                <div class="text-sm font-weight-bold">No se han detectado asociaciones frecuentes</div>
+                <div class="text-xs text-disabled">No hay coincidencias de productos vendidos juntos en este periodo.</div>
+              </div>
+
+              <!-- Tabla de Venta Cruzada -->
+              <VTable v-else density="compact" class="cross-selling-table">
                 <thead>
                   <tr>
                     <th class="text-left font-weight-black uppercase">Vínculo de Productos (A + B)</th>
                     <th class="text-right font-weight-black uppercase">Frecuencia</th>
                   </tr>
                 </thead>
-                <tbody :class="{ 'opacity-50 transition-opacity': loadingCrossSelling }">
+                <tbody>
                   <tr v-for="(pair, idx) in safeCrossSelling" :key="idx">
                     <td class="py-3 px-2">
                       <div class="d-flex align-center gap-3">
@@ -616,7 +684,6 @@ const resetFilters = () => {
                   </tr>
                 </tbody>
               </VTable>
-              <div v-else class="pa-10 text-center text-medium-emphasis">No se han detectado asociaciones frecuentes en este periodo</div>
               
               <VDivider />
               <div class="pa-2 d-flex align-center justify-space-between bg-light-primary">
@@ -827,6 +894,30 @@ const resetFilters = () => {
 :deep(.apexcharts-tooltip-text-y-label) {
   color: #fff !important;
   font-weight: 600 !important;
+}
+
+/* Estilos de Skeletons Loaders elegantes */
+.skeleton-pulse {
+  animation: pulse 1.5s infinite ease-in-out;
+}
+
+@keyframes pulse {
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
+}
+
+.skeleton-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: rgba(var(--v-theme-on-surface), 0.1);
+}
+
+.skeleton-line {
+  height: 12px;
+  background-color: rgba(var(--v-theme-on-surface), 0.1);
+  border-radius: 4px;
 }
 </style>
 

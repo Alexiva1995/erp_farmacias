@@ -10,6 +10,8 @@ const props = defineProps({
   total: { type: Number, required: true },
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
+  downloadingExcel: { type: Object, default: () => ({}) },
+  downloadingPdf: { type: Object, default: () => ({}) },
 });
 
 const emit = defineEmits([
@@ -140,8 +142,8 @@ const getAvatarColor = (id) => {
         </template>
 
         <template #item.total="{ item }">
-          <span class="text-sm font-weight-bold">{{
-            formatCurrency(item.total, item.currency)
+          <span class="text-sm font-weight-bold text-high-emphasis">{{
+            formatCurrency(item.total_full_cop, 'COP')
           }}</span>
         </template>
 
@@ -218,11 +220,13 @@ const getAvatarColor = (id) => {
               text="Descargar PDF Legal"
               location="top"
             >
-              <template #activator="{ props }">
+              <template #activator="{ props: tooltipProps }">
                 <IconBtn
-                  v-bind="props"
+                  v-bind="tooltipProps"
                   color="primary"
                   size="32"
+                  :loading="!!props.downloadingPdf[item.id]"
+                  :disabled="!!props.downloadingPdf[item.id]"
                   @click="emit('download-pdf', item.id, 'legal')"
                 >
                   <VIcon icon="tabler-file-type-pdf" size="18" />
@@ -318,7 +322,7 @@ const getAvatarColor = (id) => {
                   >Total Bruto</span
                 >
                 <span class="text-sm font-weight-black">{{
-                  formatCurrency(item.total, item.currency)
+                  formatCurrency(item.total_full_cop, 'COP')
                 }}</span>
               </div>
               <div
@@ -352,6 +356,8 @@ const getAvatarColor = (id) => {
                 class="rounded-lg"
                 size="40"
                 min-width="40"
+                :loading="!!props.downloadingPdf[item.id]"
+                :disabled="!!props.downloadingPdf[item.id]"
                 @click="emit('download-pdf', item.id, 'legal')"
               />
               <VBtn

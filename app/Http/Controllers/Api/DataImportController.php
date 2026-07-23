@@ -14,26 +14,27 @@ use App\Models\Expense;
 use App\Models\ExpenseCategory;
 use App\Models\DailyClosure;
 use Illuminate\Http\JsonResponse;
+use App\Http\Requests\Configuration\ImportCsvRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class DataImportController extends Controller
 {
-    public function importCsv(Request $request): JsonResponse
+    public function importCsv(ImportCsvRequest $request): JsonResponse
     {
-        $request->validate([
-            'type' => 'required|string|in:clientes,proveedores,productos,inventariolot,gastos,cierres',
-            'file' => 'required|file|mimes:csv,txt',
-        ]);
-
         $type = $request->input('type');
         $file = $request->file('file');
         
         $path = $file->getRealPath();
-        $data = array_map(function($line) {
-            return str_getcsv($line, ',');
-        }, file($path));
+
+        // Carga el CSV línea a línea para evitar consumo excesivo de memoria en archivos grandes
+        $handle = fopen($path, 'r');
+        $data = [];
+        while (($line = fgetcsv($handle)) !== false) {
+            $data[] = $line;
+        }
+        fclose($handle);
 
         if (count($data) < 2) {
             return response()->json(['message' => 'El archivo está vacío o no contiene filas de datos.'], 422);
@@ -85,9 +86,15 @@ class DataImportController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error("Error al importar {$type}: " . $e->getMessage());
+
+            // El detalle técnico se registra solo en el log, nunca se expone al cliente
+            Log::error("Error al importar {$type}: " . $e->getMessage(), [
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+
             return response()->json([
-                'message' => "Error en la línea del archivo: " . $e->getMessage()
+                'message' => 'Error al procesar el archivo. Verifica la estructura y los datos requeridos.',
             ], 422);
         }
     }
@@ -124,21 +131,44 @@ class DataImportController extends Controller
         );
     }
 
+    /**
+     * Caché en memoria para relaciones de categoría, laboratorio y origen.
+     * Evita N+1 queries: firstOrCreate se llama una sola vez por valor único.
+     */
+    private array $categoryCache = [];
+    private array $laboratoryCache = [];
+    private array $originCache = [];
+
     private function importProducto(array $row): void
     {
-        $category = null;
+        // Categoría: se reutiliza el ID cacheado si el nombre ya fue resuelto en esta importación
+        $categoryId = null;
         if (!empty($row['category_name'])) {
-            $category = Category::firstOrCreate(['name' => $row['category_name']]);
+            $key = mb_strtolower(trim($row['category_name']));
+            if (!isset($this->categoryCache[$key])) {
+                $this->categoryCache[$key] = Category::firstOrCreate(['name' => trim($row['category_name'])])->id;
+            }
+            $categoryId = $this->categoryCache[$key];
         }
 
-        $laboratory = null;
+        // Laboratorio: mismo patrón de caché
+        $laboratoryId = null;
         if (!empty($row['laboratory_name'])) {
-            $laboratory = Laboratory::firstOrCreate(['name' => $row['laboratory_name']]);
+            $key = mb_strtolower(trim($row['laboratory_name']));
+            if (!isset($this->laboratoryCache[$key])) {
+                $this->laboratoryCache[$key] = Laboratory::firstOrCreate(['name' => trim($row['laboratory_name'])])->id;
+            }
+            $laboratoryId = $this->laboratoryCache[$key];
         }
 
-        $origin = null;
+        // Origen: mismo patrón de caché
+        $originId = null;
         if (!empty($row['origin_name'])) {
-            $origin = Origin::firstOrCreate(['name' => $row['origin_name']]);
+            $key = mb_strtolower(trim($row['origin_name']));
+            if (!isset($this->originCache[$key])) {
+                $this->originCache[$key] = Origin::firstOrCreate(['name' => trim($row['origin_name'])])->id;
+            }
+            $originId = $this->originCache[$key];
         }
 
         Product::updateOrCreate(
@@ -146,9 +176,9 @@ class DataImportController extends Controller
             [
                 'name' => $row['name'],
                 'active_ingredient' => $row['active_ingredient'] ?? null,
-                'category_id' => $category?->id,
-                'laboratory_id' => $laboratory?->id,
-                'origin_id' => $origin?->id,
+                'category_id' => $categoryId,
+                'laboratory_id' => $laboratoryId,
+                'origin_id' => $originId,
                 'cost_price' => (float)$row['cost_price'],
                 'sale_price' => (float)$row['sale_price'],
                 'iva' => (bool)($row['iva'] ?? false),
@@ -200,8 +230,9 @@ class DataImportController extends Controller
 
     private function importCierre(array $row): void
     {
+        // Upsert sobre la columna 'date' (columna de negocio), no sobre created_at (columna de auditoría)
         DailyClosure::updateOrCreate(
-            ['created_at' => $row['date'] . ' 00:00:00'],
+            ['date' => $row['date']],
             [
                 'total_usd' => (float)($row['total_usd'] ?? 0),
                 'total_cop' => (float)($row['total_cop'] ?? 0),

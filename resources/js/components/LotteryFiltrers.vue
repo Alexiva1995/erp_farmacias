@@ -28,7 +28,7 @@ const emit = defineEmits([
 ]);
 
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
+const isRestaurant = computed(() => false);
 
 const hasActiveAdvancedFilters = computed(() => {
   return (
@@ -51,7 +51,7 @@ const hasActiveAdvancedFilters = computed(() => {
       <div class="d-flex align-center gap-3 w-100 flex-wrap flex-sm-nowrap">
         <VAutocomplete
           :model-value="props.laboratory_id"
-          :placeholder="isRestaurant ? 'Seleccionar marcas...' : 'Seleccionar laboratorios...'"
+          :placeholder="'Seleccionar marcas / laboratorios...'"
           variant="outlined"
           density="compact"
           hide-details

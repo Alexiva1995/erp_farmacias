@@ -1,33 +1,29 @@
-<script setup lang="js">
+﻿<script setup>
 import InventoryStockFilters from "@/components/InventoryStockFilters.vue";
 import InventoryStockTable from "@/components/InventoryStockTable.vue";
 import InventoryStockGrupoTable from "@/components/InventoryStockGrupoTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import pdfStockProductsGenerator from "@/utils/pdfStockProductsGenerator";
-import { onMounted, reactive, watch, ref, computed } from 'vue';
+import { onMounted, onUnmounted, reactive, watch, ref, computed } from 'vue';
 import { useRouter } from "vue-router";
 import { useBrandingStore } from "@/stores/useBrandingStore";
 
 const route = useRouter();
-
-const modal = reactive({
-  statu: false,
-  titulo: "Nuevo",
-});
-
-const modulo = reactive({
-  items: [],
-  totalItems: 0,
-});
 
 // Contador de solicitudes para evitar race conditions
 let requestId = 0;
 let debounceTimer = null;
 let skipPaginationWatch = false;
 
+// Estado de la tabla — separado de los filtros para claridad
+const modulo = reactive({
+  items: [],
+  totalItems: 0,
+});
+
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
+const isRestaurant = computed(() => false);
 
 const searchQuery = ref("");
 const selectedLaboratory = ref(null);
@@ -82,17 +78,10 @@ const fetchProducts = async () => {
   loading.value = true;
   try {
     const respuesApi = await axios.post("/inventory/stock/filter", data);
-    if (respuesApi.status == 200) {
-      console.log("productos consultados correctamente");
-    } else {
-      toast.error("error al consultar");
-      console.log("error en el servidor => ", respuesApi);
-    }
     loading.value = false;
     return { ...respuesApi.data.data };
   } catch (error) {
-    toast.error("error al consultar");
-    console.log("error en el servidor => ", error);
+    toast.error("Error al consultar el stock.");
     loading.value = false;
     return { data: [], total: 0 };
   }
@@ -171,14 +160,9 @@ async function actualizarTabla() {
   const currentRequestId = ++requestId;
   const dataTabla = await fetchProducts();
 
-  // Si hubo otra solicitud más reciente mientras esta estaba en curso,
-  // descartamos esta respuesta obsoleta para evitar sobrescribir datos correctos
-  if (currentRequestId !== requestId) {
-    console.log("Respuesta descartada (solicitud obsoleta)");
-    return;
-  }
+  // Si hubo otra solicitud más reciente, descartamos esta respuesta obsoleta
+  if (currentRequestId !== requestId) return;
 
-  console.log("=> ", dataTabla);
   modulo.items = dataTabla.data;
   modulo.totalItems = dataTabla.total;
 }
@@ -200,9 +184,12 @@ const updateTableOptions = (options) => {
 onMounted(async () => {
   await fetchSelectOptions();
   const dataTabla = await fetchProducts();
-  console.log("=> ", dataTabla);
   modulo.items = dataTabla.data;
   modulo.totalItems = dataTabla.total;
+});
+
+onUnmounted(() => {
+  clearTimeout(debounceTimer);
 });
 
 async function filtrarSinPaginar(dataFiltro) {
@@ -210,10 +197,9 @@ async function filtrarSinPaginar(dataFiltro) {
     `/inventory/stock/filter-without-paginate`,
     dataFiltro,
   );
-  if (respuestaApi.status != 200) {
-    toast.success("Error al filtrar los datos");
+  if (respuestaApi.status !== 200) {
+    toast.error("Error al filtrar los datos");
   }
-
   return [...respuestaApi.data.data];
 }
 
@@ -233,9 +219,8 @@ async function exportarPdf() {
     isColombian: isColombian.value,
   };
   const respuestaApi = await filtrarSinPaginar(filtros);
-  console.log("respuesta => ", respuestaApi);
 
-  if (respuestaApi.length == 0) {
+  if (respuestaApi.length === 0) {
     toast.info("No hay productos para poder generar un reporte");
     return null;
   }
@@ -266,16 +251,12 @@ async function exportarExcel(formato) {
       params,
       {
         responseType: "blob",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
       },
     );
 
-    console.log("res => ", respuestaApi);
-
-    if (respuestaApi.status != 200) {
-      toast.success("Error al filtrar los datos");
+    if (respuestaApi.status !== 200) {
+      toast.error("Error al exportar los datos");
     }
     const url = window.URL.createObjectURL(new Blob([respuestaApi.data]));
     const link = document.createElement("a");

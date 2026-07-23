@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import axios from '@axios'
 import VueApexCharts from 'vue3-apexcharts'
 import { formatCurrency } from '@/utils/currencyFormatter'
@@ -7,14 +7,24 @@ import { formatCurrency } from '@/utils/currencyFormatter'
 const dashboardData = ref(null)
 const loading = ref(false)
 const chartKey = ref(0)
+const errorState = ref(null)
+
+// Helper para obtener fecha local en formato YYYY-MM-DD
+const getLocalDateString = (date) => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
 
 const filters = ref({
-  startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().substr(0, 10),
-  endDate: new Date().toISOString().substr(0, 10)
+  startDate: getLocalDateString(new Date(new Date().getFullYear(), new Date().getMonth(), 1)),
+  endDate: getLocalDateString(new Date())
 })
 
 const fetchDashboardData = async () => {
   loading.value = true
+  errorState.value = null
   try {
     const response = await axios.get('/bi/inventory-cyclic', {
       params: { 
@@ -22,18 +32,23 @@ const fetchDashboardData = async () => {
         end_date: filters.value.endDate
       }
     })
-    dashboardData.value = response.data
+    // Laravel 12 API Resource envuelve los datos en un objeto 'data'
+    dashboardData.value = response.data.data || response.data
     chartKey.value++
   } catch (error) {
     console.error('Error fetching inventory dashboard:', error)
+    errorState.value = 'Ocurrió un error al cargar la información del inventario cíclico. Por favor, reintente.'
+    if (window.toast) {
+      window.toast.error('Error al cargar datos de inventario cíclico.')
+    }
   } finally {
     loading.value = false
   }
 }
 
 const handleClearFilters = () => {
-  filters.value.startDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().substr(0, 10)
-  filters.value.endDate = new Date().toISOString().substr(0, 10)
+  filters.value.startDate = getLocalDateString(new Date(new Date().getFullYear(), new Date().getMonth(), 1))
+  filters.value.endDate = getLocalDateString(new Date())
   fetchDashboardData()
 }
 
@@ -151,6 +166,7 @@ const topSurplusOptions = computed(() => ({
               placeholder="Fecha Inicio"
               density="compact"
               hide-details
+              :disabled="loading"
               class="premium-input-compact"
               prepend-inner-icon="tabler-calendar"
             />
@@ -162,6 +178,7 @@ const topSurplusOptions = computed(() => ({
               placeholder="Fecha Fin"
               density="compact"
               hide-details
+              :disabled="loading"
               class="premium-input-compact"
               prepend-inner-icon="tabler-calendar-check"
             />
@@ -177,6 +194,7 @@ const topSurplusOptions = computed(() => ({
               size="38"
               class="rounded-circle shadow-sm"
               :loading="loading"
+              :disabled="loading"
               @click="fetchDashboardData"
             >
               <VIcon icon="tabler-player-play" size="20" />
@@ -189,6 +207,7 @@ const topSurplusOptions = computed(() => ({
               color="secondary"
               size="38"
               class="rounded-circle shadow-sm"
+              :disabled="loading"
               @click="handleClearFilters"
             >
               <VIcon icon="tabler-eraser" size="20" />
@@ -201,6 +220,24 @@ const topSurplusOptions = computed(() => ({
 
     <div v-if="loading" class="d-flex justify-center align-center" style="height: 400px;">
       <VProgressCircular indeterminate color="primary" size="64" />
+    </div>
+
+    <div v-else-if="errorState" class="mb-6">
+      <VAlert
+        type="error"
+        variant="tonal"
+        closable
+        icon="tabler-alert-circle"
+        title="Error de Conexión"
+        @click:close="errorState = null"
+      >
+        {{ errorState }}
+        <template #append>
+          <VBtn size="small" color="error" class="ms-4" @click="fetchDashboardData">
+            Reintentar
+          </VBtn>
+        </template>
+      </VAlert>
     </div>
 
     <div v-else-if="dashboardData">
@@ -383,39 +420,41 @@ const topSurplusOptions = computed(() => ({
               </VCardTitle>
               <VCardSubtitle>Detección automática de errores de despacho vs pérdidas reales</VCardSubtitle>
             </VCardItem>
-            <VTable class="premium-table density-compact">
-              <thead>
-                <tr>
-                  <th class="text-uppercase">Categoría</th>
-                  <th class="text-uppercase">Producto A (Faltante)</th>
-                  <th class="text-uppercase text-center">Cant. A</th>
-                  <th class="text-center">-</th>
-                  <th class="text-uppercase">Producto B (Sobrante)</th>
-                  <th class="text-uppercase text-center">Cant. B</th>
-                  <th class="text-uppercase text-right">Confianza</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="(sub, idx) in dashboardData.substitutions" :key="idx">
-                  <td class="text-primary font-weight-bold">{{ sub.category }}</td>
-                  <td class="text-error font-weight-medium">{{ sub.product_a }}</td>
-                  <td class="text-center font-weight-black text-error">{{ sub.discrepancy_a }}</td>
-                  <td class="text-center">
-                    <VIcon icon="tabler-arrows-exchange-2" color="warning" size="20" />
-                  </td>
-                  <td class="text-success font-weight-medium">{{ sub.product_b }}</td>
-                  <td class="text-center font-weight-black text-success">{{ sub.discrepancy_b }}</td>
-                  <td class="text-right">
-                    <VChip size="small" color="primary" label class="font-weight-black">{{ sub.confidence }}</VChip>
-                  </td>
-                </tr>
-                <tr v-if="dashboardData.substitutions.length === 0">
-                  <td colspan="7" class="text-center py-10 text-muted">
-                    No se detectaron cruces de códigos directos en este periodo.
-                  </td>
-                </tr>
-              </tbody>
-            </VTable>
+            <div class="overflow-x-auto w-full">
+              <VTable class="premium-table density-compact" style="min-width: 800px;">
+                <thead>
+                  <tr>
+                    <th class="text-uppercase">Categoría</th>
+                    <th class="text-uppercase">Producto A (Faltante)</th>
+                    <th class="text-uppercase text-center">Cant. A</th>
+                    <th class="text-center">-</th>
+                    <th class="text-uppercase">Producto B (Sobrante)</th>
+                    <th class="text-uppercase text-center">Cant. B</th>
+                    <th class="text-uppercase text-right">Confianza</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(sub, idx) in dashboardData.substitutions" :key="idx">
+                    <td class="text-primary font-weight-bold">{{ sub.category }}</td>
+                    <td class="text-error font-weight-medium">{{ sub.product_a }}</td>
+                    <td class="text-center font-weight-black text-error">{{ sub.discrepancy_a }}</td>
+                    <td class="text-center">
+                      <VIcon icon="tabler-arrows-exchange-2" color="warning" size="20" />
+                    </td>
+                    <td class="text-success font-weight-medium">{{ sub.product_b }}</td>
+                    <td class="text-center font-weight-black text-success">{{ sub.discrepancy_b }}</td>
+                    <td class="text-right">
+                      <VChip size="small" color="primary" label class="font-weight-black">{{ sub.confidence }}</VChip>
+                    </td>
+                  </tr>
+                  <tr v-if="dashboardData.substitutions.length === 0">
+                    <td colspan="7" class="text-center py-10 text-muted">
+                      No se detectaron cruces de códigos directos en este periodo.
+                    </td>
+                  </tr>
+                </tbody>
+              </VTable>
+            </div>
           </VCard>
         </VCol>
       </VRow>

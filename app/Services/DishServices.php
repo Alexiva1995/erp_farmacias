@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Contracts\Dish as DishContract;
@@ -34,9 +36,9 @@ class DishServices implements DishContract
             $query->where('category_id', $filters['category_id']);
         }
 
-        $itemsPerPage = $filters['itemsPerPage'] ?? 1000;
-        if ($itemsPerPage == -1) {
-            $itemsPerPage = 10000;
+        $itemsPerPage = (int) ($filters['itemsPerPage'] ?? 15);
+        if ($itemsPerPage <= 0 || $itemsPerPage > 500) {
+            $itemsPerPage = 100;
         }
         
         // Ordenar

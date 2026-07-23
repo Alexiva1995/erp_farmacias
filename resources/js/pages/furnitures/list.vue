@@ -27,10 +27,9 @@ const acquisitionYears = ref([]);
 
 const isEditDialogVisible = ref(false);
 const currentFurniture = ref({});
-
 const furnitureFormErrors = ref({});
-
 const isLoadingFilters = ref(false);
+const loadingSubmit = ref(false);
 
 const fetchSelectOptions = async () => {
   isLoadingFilters.value = true;
@@ -71,7 +70,7 @@ const fetchFurniture = async () => {
   try {
     const response = await axios.get("/furniture", { params });
     furniture.value = response.data.data;
-    totalFurniture.value = response.data.total;
+    totalFurniture.value = response.data.meta?.total ?? response.data.total;
   } catch (error) {
     console.error("Hubo un error al obtener el mobiliario:", error);
     toast.error("Error al obtener el mobiliario.");
@@ -170,6 +169,7 @@ const handleSaveFurniture = async (furnitureFormData) => {
     ? "/furniture"
     : `/furniture/${currentFurniture.value.id}`;
 
+  loadingSubmit.value = true;
   try {
     if (isNewFurniture) {
       await axios.post(url, furnitureFormData);
@@ -190,6 +190,8 @@ const handleSaveFurniture = async (furnitureFormData) => {
       console.error("Error al guardar/crear el mobiliario:", error);
       toast.error("Hubo un error al guardar el mobiliario.");
     }
+  } finally {
+    loadingSubmit.value = false;
   }
 };
 
@@ -255,6 +257,7 @@ const handleSort = (sortOptions) => {
         :furniture="currentFurniture"
         :acquisition-years="acquisitionYears"
         :errors="furnitureFormErrors"
+        :loading="loadingSubmit"
         @save="handleSaveFurniture"
         @clear-errors="clearFormErrors"
       />

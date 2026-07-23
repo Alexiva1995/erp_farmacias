@@ -5,6 +5,9 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Services\Islr\IslrQueryService;
 use App\Services\Islr\IslrActionService;
+use App\Http\Requests\Islr\UpdateTaxUnitRequest;
+use App\Http\Requests\Islr\StoreIslrDeclarationRequest;
+use App\Http\Requests\Islr\UpdateIslrDeclarationRequest;
 use Illuminate\Http\Request;
 
 class IslrController extends Controller
@@ -112,13 +115,9 @@ class IslrController extends Controller
     /**
      * Actualiza o crea una nueva unidad tributaria
      */
-    public function updateTaxUnit(Request $request)
+    public function updateTaxUnit(UpdateTaxUnitRequest $request)
     {
-        $validated = $request->validate([
-            'value' => 'required|numeric|min:0',
-            'effective_date' => 'nullable|date',
-            'notes' => 'nullable|string|max:500'
-        ]);
+        $validated = $request->validated();
 
         $taxUnit = $this->islrActionService->createOrUpdateTaxUnit($validated);
 
@@ -192,14 +191,9 @@ class IslrController extends Controller
     /**
      * Crea una nueva declaración
      */
-    public function createDeclaration(Request $request)
+    public function createDeclaration(StoreIslrDeclarationRequest $request)
     {
-        $validated = $request->validate([
-            'year' => 'required|integer|min:2000|max:' . (now()->year + 1),
-            'amount' => 'required|numeric|min:0',
-            'status' => 'nullable|in:paid,unpaid',
-            'declaration_date' => 'nullable|date',
-        ]);
+        $validated = $request->validated();
 
         try {
             $declaration = $this->islrActionService->createDeclaration($validated);
@@ -225,14 +219,9 @@ class IslrController extends Controller
     /**
      * Actualiza una declaración existente
      */
-    public function updateDeclaration(Request $request, $id)
+    public function updateDeclaration(UpdateIslrDeclarationRequest $request, $id)
     {
-        $validated = $request->validate([
-            'year' => 'nullable|integer|min:2000|max:' . (now()->year + 1),
-            'amount' => 'nullable|numeric|min:0',
-            'status' => 'nullable|in:paid,unpaid',
-            'declaration_date' => 'nullable|date',
-        ]);
+        $validated = $request->validated();
 
         try {
             $declaration = $this->islrActionService->updateDeclaration($id, $validated);

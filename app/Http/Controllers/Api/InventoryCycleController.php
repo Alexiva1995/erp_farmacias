@@ -16,6 +16,10 @@ use App\Models\ProductDistribution;
 use App\Models\InvoiceCountDistribution;
 use App\Models\SaleCountDistribution;
 use App\Models\InventoryCycle;
+use App\Http\Requests\InventoryCycle\StoreProductCountRequest;
+use App\Http\Requests\InventoryCycle\StoreInvoiceCountRequest;
+use App\Http\Requests\InventoryCycle\ProcessCountActionRequest;
+use App\Http\Requests\InventoryCycle\UpdateDiscrepancyRequest;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -83,34 +87,10 @@ class InventoryCycleController extends Controller
         return response()->json(['data' => $data, 'total' => $paginatedResult->total()]);
     }
 
-    public function storeProductCount(Request $request, $productId)
+    public function storeProductCount(StoreProductCountRequest $request, $productId)
     {
         $allowWithoutBarcode = $request->boolean('allow_without_barcode');
         $isSimple = \App\Models\GeneralSetting::first()?->cyclic_inventory_mode === 'simple';
-
-        $validationRules = [
-            'counted_quantity' => 'required|numeric|min:0',
-            'system_quantity' => 'required|numeric|min:0',
-            'discrepancy' => 'required|numeric'
-        ];
-
-        // Solo requerir barcode si no se permite sin código de barras
-        if (!$allowWithoutBarcode) {
-            $validationRules['barcode'] = 'required|string';
-        }
-
-        // Si es verificación simple, validar distribución de lotes
-        if ($isSimple) {
-            $validationRules['updated_lots'] = 'nullable|array';
-            $validationRules['updated_lots.*.id'] = 'required_with:updated_lots|integer|exists:product_lots,id';
-            $validationRules['updated_lots.*.quantity'] = 'required_with:updated_lots|numeric|min:0';
-            $validationRules['new_lots'] = 'nullable|array';
-            $validationRules['new_lots.*.lot_number'] = 'required_with:new_lots|string|max:255';
-            $validationRules['new_lots.*.expiration_date'] = 'required_with:new_lots|date';
-            $validationRules['new_lots.*.quantity'] = 'required_with:new_lots|numeric|min:0';
-        }
-
-        $request->validate($validationRules);
 
         try {
             $data = [
@@ -234,20 +214,8 @@ class InventoryCycleController extends Controller
         })->all();
     }
 
-    public function processCountAction(Request $request, $countId)
+    public function processCountAction(ProcessCountActionRequest $request, $countId)
     {
-        $request->validate([
-            'action' => 'required|in:approve,reject',
-            'corrected_quantity' => 'nullable|numeric',
-            'updated_lots' => 'nullable|array',
-            'updated_lots.*.id' => 'required_with:updated_lots|integer|exists:product_lots,id',
-            'updated_lots.*.quantity' => 'required_with:updated_lots|integer|min:0',
-            'new_lots' => 'nullable|array',
-            'new_lots.*.lot_number' => 'required_with:new_lots|string|max:255',
-            'new_lots.*.expiration_date' => 'required_with:new_lots|date',
-            'new_lots.*.quantity' => 'required_with:new_lots|integer|min:0',
-        ]);
-
         try {
             $productCount = ProductCount::findOrFail($countId);
             $action = $request->input('action');

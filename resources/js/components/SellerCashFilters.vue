@@ -28,16 +28,24 @@ const fetchSellers = async () => {
   loadingSellers.value = true;
   try {
     const response = await axios.get("/finances/cash-closure/sellers");
-    sellers.value = response.data.map((seller) => ({
-      ...seller,
-      username: seller.username
-        .replace(/[._]/g, " ")
-        .split(" ")
-        .map(
-          (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase(),
-        )
-        .join(" "),
-    }));
+    const rawData = Array.isArray(response.data) 
+      ? response.data 
+      : (Array.isArray(response.data?.data) ? response.data.data : []);
+
+    sellers.value = rawData.map((seller) => {
+      const name = seller.username || "";
+      return {
+        ...seller,
+        username: name
+          .replace(/[._]/g, " ")
+          .split(" ")
+          .filter(word => word.length > 0)
+          .map(
+            (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase(),
+          )
+          .join(" ") || "Usuario sin nombre",
+      };
+    });
   } catch (error) {
     console.error("Error cargando vendedores", error);
   } finally {

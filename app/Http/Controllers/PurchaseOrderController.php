@@ -79,18 +79,18 @@ class PurchaseOrderController extends Controller
 
     public function finish(AutoOrder $autoOrder)
     {
-        $repo = new \App\Repository\AutoOrdersRepository();
+        $repo = new \App\Repositories\AutoOrdersRepository();
         return response()->json($repo->finish($autoOrder));
     }
     public function rejectPendingDetails(AutoOrder $autoOrder)
     {
-        $repo = new \App\Repository\AutoOrdersRepository();
+        $repo = new \App\Repositories\AutoOrdersRepository();
         $repo->rejectPendingDetails($autoOrder);
         return response()->json(['status' => 'ok', 'message' => 'Productos pendientes marcados como rechazados.']);
     }
     public function revertToSent(AutoOrder $autoOrder)
     {
-        $repo = new \App\Repository\AutoOrdersRepository();
+        $repo = new \App\Repositories\AutoOrdersRepository();
         return response()->json(['success' => $repo->revertToSent($autoOrder)]);
     }
 }

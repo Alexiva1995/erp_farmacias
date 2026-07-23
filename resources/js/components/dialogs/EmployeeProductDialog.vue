@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import axios from "@/plugins/axios";
 import { computed, ref, watch } from "vue";
 import { useDisplay } from "vuetify";
@@ -14,7 +14,7 @@ const props = defineProps({
 const emit = defineEmits(["update:modelValue", "save", "clear-errors"]);
 
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => brandingStore.settings?.business_type === 'restaurant');
+const isRestaurant = computed(() => false);
 
 const isEditMode = computed(() => !!props.employee?.employee_id);
 const { mobile } = useDisplay();

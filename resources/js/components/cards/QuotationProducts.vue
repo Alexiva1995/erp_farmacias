@@ -1,9 +1,12 @@
 <script setup>
 import axiosInstance from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 import { formatCurrency } from "@/utils/currencyFormatter";
 import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
 import { computed, onMounted, ref, watch } from "vue";
+
+const brandingStore = useBrandingStore();
 
 // --- PROPS ---
 const props = defineProps({
@@ -292,8 +295,15 @@ const generateWhatsappMessage = () => {
 
     priceWithIvaCop = roundUpToNearestHundred(priceWithIvaCop);
 
+    let emojiPrefix = "💊 ";
+    if (brandingStore.settings?.quotation_style === 'cosmetic') {
+      emojiPrefix = "🧴 ";
+    } else if (brandingStore.settings?.quotation_style === 'restaurant') {
+      emojiPrefix = "🍔 ";
+    }
+
     let rows =
-      "💊 " +
+      emojiPrefix +
       product.title +
       (product.laboratory && product.laboratory !== "N/A"
         ? " (" + product.laboratory + ")"

@@ -59,7 +59,7 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(["update:isDialogVisible"]);
+const emit = defineEmits(["update:isDialogVisible", "modal-closed", "cancel-order"]);
 
 const dialogVisible = computed({
   get() {
@@ -73,6 +73,10 @@ const dialogVisible = computed({
 const closeModal = () => {
   emit("update:isDialogVisible", false);
   emit("modal-closed");
+};
+
+const handleCancel = () => {
+  emit("cancel-order", props.orderData?.id);
 };
 
 const formattedOrderDate = computed(() => {
@@ -270,22 +274,23 @@ const productLineLabel = (product) => {
     v-model="dialogVisible"
     max-width="700"
     persistent
+    scrollable
     content-class="order-view-dialog"
     :fullscreen="mobile"
     :transition="mobile ? 'dialog-bottom-transition' : 'dialog-transition'"
   >
-    <VCard class="order-view-card rounded-xl border-0 shadow-lg overflow-hidden d-flex flex-column">
+    <VCard class="order-view-card rounded-xl border-0 shadow-lg overflow-hidden d-flex flex-column" style="max-block-size: 85vh;">
       <!-- Cabecera Premium Estilo Trazabilidad -->
-      <VCardTitle class="pa-0">
+      <VCardTitle class="pa-0 flex-shrink-0">
         <div class="header-gradient pa-4 d-flex align-center" style="background: linear-gradient(135deg, #7A0099, #E20074) !important;">
           <div class="d-flex align-center">
             <VAvatar color="white" variant="flat" size="40" class="me-3 elevation-2">
-              <VIcon icon="tabler-receipt" color="primary" size="22" />
+              <VIcon color="primary" size="22">tabler-receipt</VIcon>
             </VAvatar>
             <div>
               <h2 class="text-h6 font-weight-black text-white leading-tight mb-0" style="color: white !important;">Orden #{{ orderData.id }}</h2>
               <div class="d-flex align-center gap-1 mt-1">
-                <VIcon icon="tabler-calendar-time" size="12" color="white" class="opacity-75" />
+                <VIcon size="14" color="white" class="opacity-75">tabler-calendar-time</VIcon>
                 <span class="text-caption text-white opacity-75 uppercase font-weight-medium" style="color: white !important;">
                   {{ formattedOrderDate }}
                 </span>
@@ -299,51 +304,51 @@ const productLineLabel = (product) => {
         </div>
       </VCardTitle>
 
-      <VCardText class="pa-0 bg-light">
-        <div class="pa-4 pb-6">
+      <VCardText class="pa-0 bg-light flex-grow-1 overflow-y-auto" style="max-block-size: calc(85vh - 120px);">
+        <div class="pa-3">
           <!-- Document Info -->
-          <div class="d-flex align-center gap-2 mb-3">
-            <div class="header-indicator" />
-            <span class="text-xs font-weight-black text-uppercase text-primary" style="letter-spacing: 0.5px;">Información General</span>
+          <div class="d-flex align-center gap-2 mb-2">
+            <div class="header-indicator" style="background-color: #E20074; width: 4px; height: 16px; border-radius: 2px;" />
+            <span class="text-xs font-weight-black text-uppercase" style="letter-spacing: 0.5px; color: #E20074 !important; font-size: 12px;">INFORMACIÓN GENERAL</span>
           </div>
 
-          <VCard variant="flat" class="rounded border shadow-sm mb-4 bg-white overflow-hidden">
-            <VCardText class="pa-4">
+          <VCard variant="flat" class="rounded border shadow-sm mb-2 bg-white overflow-hidden">
+            <VCardText class="pa-2.5">
               <VRow dense>
-                <VCol cols="12" sm="6" class="py-2">
+                <VCol cols="12" sm="6" class="py-1">
                   <div class="d-flex flex-column">
-                    <span class="text-xs text-disabled font-weight-bold text-uppercase mb-1">Fecha de Emisión</span>
-                    <span class="text-body-1 font-weight-bold text-high-emphasis">{{ formattedOrderDate }}</span>
+                    <span class="text-uppercase mb-0.5" style="color: #444; font-weight: 700; font-size: 10px; letter-spacing: 0.5px;">FECHA DE EMISIÓN</span>
+                    <span class="text-body-2 font-weight-bold text-high-emphasis">{{ formattedOrderDate }}</span>
                   </div>
                 </VCol>
-                <VCol cols="12" sm="6" class="py-2">
+                <VCol cols="12" sm="6" class="py-1">
                   <div class="d-flex flex-column align-sm-end">
-                    <span class="text-xs text-disabled font-weight-bold text-uppercase mb-1">Método de Pago</span>
-                    <VChip :color="paymentBadge.color" size="small" variant="flat" class="font-weight-black">
+                    <span class="text-uppercase mb-0.5" style="color: #444; font-weight: 700; font-size: 10px; letter-spacing: 0.5px;">MÉTODO DE PAGO</span>
+                    <VChip :color="paymentBadge.color" size="x-small" variant="flat" class="font-weight-black">
                       {{ paymentBadge.label }}
                     </VChip>
                   </div>
                 </VCol>
 
-                <VCol cols="12" class="my-1">
+                <VCol cols="12" class="my-0.5">
                   <VDivider class="opacity-10" />
                 </VCol>
 
-                <VCol cols="12" sm="6" class="py-2">
+                <VCol cols="12" sm="6" class="py-1">
                   <div class="d-flex flex-column">
-                    <span class="text-xs text-disabled font-weight-bold text-uppercase mb-1">Cajero / Vendedor</span>
-                    <span class="text-body-1 font-weight-black text-primary">
+                    <span class="text-uppercase mb-0.5" style="color: #444; font-weight: 700; font-size: 10px; letter-spacing: 0.5px;">CAJERO / VENDEDOR</span>
+                    <span class="text-body-2 font-weight-bold text-high-emphasis">
                       {{ orderData.seller?.username ? capitalizeFirstAndLastName(orderData.seller.username) : "—" }}
                     </span>
                   </div>
                 </VCol>
-                <VCol cols="12" sm="6" class="py-2">
+                <VCol cols="12" sm="6" class="py-1">
                   <div class="d-flex flex-column align-sm-end">
-                    <span class="text-xs text-disabled font-weight-bold text-uppercase mb-1">Cliente</span>
-                    <span class="text-body-1 font-weight-bold text-high-emphasis text-truncate" style="max-width: 100%;">
+                    <span class="text-uppercase mb-0.5" style="color: #444; font-weight: 700; font-size: 10px; letter-spacing: 0.5px;">CLIENTE</span>
+                    <span class="text-body-2 font-weight-bold text-high-emphasis text-truncate" style="max-width: 100%;">
                       {{ orderData.client?.name || "Sin Identificar" }} {{ orderData.client?.last_name || "" }}
                     </span>
-                    <span v-if="orderData.client?.identification" class="text-caption text-medium-emphasis font-weight-bold mt-1">
+                    <span v-if="orderData.client?.identification" class="text-caption text-medium-emphasis font-weight-bold">
                       {{ orderData.client.identification_type || "" }} {{ orderData.client.identification }}
                     </span>
                   </div>
@@ -353,40 +358,40 @@ const productLineLabel = (product) => {
           </VCard>
 
           <!-- Products Table -->
-          <div class="d-flex align-center gap-2 mb-3">
-            <div class="header-indicator" />
-            <span class="text-xs font-weight-black text-uppercase text-primary" style="letter-spacing: 0.5px;">Detalle</span>
+          <div class="d-flex align-center gap-2 mb-2">
+            <div class="header-indicator" style="background-color: #E20074; width: 4px; height: 16px; border-radius: 2px;" />
+            <span class="text-xs font-weight-black text-uppercase" style="letter-spacing: 0.5px; color: #E20074 !important; font-size: 12px;">DETALLE</span>
           </div>
 
-          <VCard variant="flat" class="rounded border shadow-sm mb-4 bg-white overflow-hidden">
+          <VCard variant="flat" class="rounded border shadow-sm mb-2 bg-white overflow-hidden">
             <div class="products-table-wrapper table-responsive">
               <table class="products-table">
                 <thead>
                   <tr>
-                    <th class="ps-4 py-3 text-left">Item</th>
-                    <th v-if="!isBlind" class="text-end py-3">P.U</th>
-                    <th class="text-center py-3">Cant</th>
-                    <th v-if="!isBlind" class="text-end pe-4 py-3">Total</th>
+                    <th class="ps-3 py-1.5 text-left" style="color: #444; font-weight: 700; font-size: 10px;">ITEM</th>
+                    <th v-if="!isBlind" class="text-end py-1.5" style="color: #444; font-weight: 700; font-size: 10px;">P.U</th>
+                    <th class="text-center py-1.5" style="color: #444; font-weight: 700; font-size: 10px;">CANT</th>
+                    <th v-if="!isBlind" class="text-end pe-3 py-1.5" style="color: #444; font-weight: 700; font-size: 10px;">TOTAL</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr v-for="(product, idx) in orderProducts" :key="product.id || product.product_id || idx" class="products-table-row">
-                    <td class="product-cell ps-4 py-3">
+                    <td class="product-cell ps-3 py-1.5">
                       <div class="d-flex flex-column">
                         <div class="d-flex align-center flex-wrap gap-1">
-                          <span class="text-primary font-weight-black text-body-2">#{{ productId(product) }}</span>
-                          <span class="text-body-2 font-weight-black text-high-emphasis text-uppercase truncate-text">{{ product.title }}</span>
+                          <span class="text-primary font-weight-black text-caption">#{{ productId(product) }}</span>
+                          <span class="text-caption font-weight-black text-high-emphasis text-uppercase truncate-text">{{ product.title }}</span>
                         </div>
-                        <span v-if="product.product?.laboratory?.name || product.laboratory" class="text-caption text-disabled text-uppercase mt-0.5">
+                        <span v-if="product.product?.laboratory?.name || product.laboratory" class="text-tiny text-disabled text-uppercase">
                           {{ product.product?.laboratory?.name || product.laboratory }}
                         </span>
                       </div>
                     </td>
-                    <td v-if="!isBlind" class="text-end table-amount text-body-2 font-weight-bold text-medium-emphasis">{{ formatAmountOnly(getItemPriceByCurrency(product, selectedCurrency), selectedCurrency) }}</td>
-                    <td class="text-center">
-                      <VChip size="small" variant="tonal" color="primary" class="font-weight-black">{{ product.selectedQuantity }}</VChip>
+                    <td v-if="!isBlind" class="text-end table-amount text-caption font-weight-bold text-medium-emphasis py-1.5">{{ formatAmountOnly(getItemPriceByCurrency(product, selectedCurrency), selectedCurrency) }}</td>
+                    <td class="text-center py-1.5">
+                      <VChip size="x-small" variant="tonal" color="primary" class="font-weight-black">{{ product.selectedQuantity }}</VChip>
                     </td>
-                    <td v-if="!isBlind" class="text-end table-amount text-body-2 font-weight-black pe-4">{{ formatAmountOnly(getLineTotal(product), selectedCurrency) }}</td>
+                    <td v-if="!isBlind" class="text-end table-amount text-caption font-weight-black pe-3 py-1.5">{{ formatAmountOnly(getLineTotal(product), selectedCurrency) }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -394,9 +399,9 @@ const productLineLabel = (product) => {
           </VCard>
 
           <!-- Summary -->
-          <VCard v-if="!isBlind" variant="flat" class="rounded border shadow-sm bg-white overflow-hidden mb-4">
-            <VCardText class="pa-4">
-              <div class="summary-list d-flex flex-column gap-2">
+          <VCard v-if="!isBlind" variant="flat" class="rounded border shadow-sm bg-white overflow-hidden mb-2">
+            <VCardText class="pa-2.5">
+              <div class="summary-list d-flex flex-column gap-1">
                 <div v-if="activeDiscount" class="summary-row">
                   <span class="summary-label">Desc.</span>
                   <span class="summary-value text-error font-weight-bold">- {{ formatCurrency(activeDiscount.amount, selectedCurrency) }}</span>
@@ -426,34 +431,43 @@ const productLineLabel = (product) => {
                   <span class="summary-value text-success font-weight-black">{{ formatCurrency(changeAmount, "COP") }}</span>
                 </div>
 
-                <VDivider class="my-2 opacity-10" />
+                <VDivider class="my-1 opacity-10" />
 
-                <div class="d-flex align-center justify-space-between pt-1">
-                  <span class="text-h6 font-weight-black text-primary">TOTAL</span>
+                <div class="d-flex align-center justify-space-between pt-0.5">
+                  <span class="text-subtitle-1 font-weight-black text-primary">TOTAL</span>
                   <div class="d-flex flex-column align-end">
-                    <span class="text-h4 font-weight-black text-primary leading-none">{{ formatCurrency(totalAmount, selectedCurrency) }}</span>
-                    <span class="text-super-xs font-weight-black text-disabled uppercase mt-1">Sujeto a cambios del día</span>
+                    <span class="text-h5 font-weight-black text-primary leading-none">{{ formatCurrency(totalAmount, selectedCurrency) }}</span>
                   </div>
                 </div>
               </div>
             </VCardText>
           </VCard>
         </div>
-
-        <!-- Action Buttons -->
-        <div class="pa-4 pt-0">
-          <VBtn
-            block
-            color="secondary"
-            variant="tonal"
-            class="rounded-lg font-weight-black text-xs"
-            height="44"
-            @click="closeModal"
-          >
-            CERRAR DETALLES
-          </VBtn>
-        </div>
       </VCardText>
+
+      <!-- Action Buttons Fijos abajo -->
+      <VCardActions class="pa-2.5 bg-white border-t flex-shrink-0 d-flex gap-2">
+        <VBtn
+          v-if="orderData?.status !== 'Cancelled' && orderData?.status !== 'cancelled' && orderData?.status !== 'Abandonada' && orderData?.status !== 'Abandoned'"
+          color="error"
+          variant="tonal"
+          class="rounded-lg font-weight-black text-xs flex-grow-1"
+          height="38"
+          @click="handleCancel"
+        >
+          <VIcon class="me-1">tabler-circle-x</VIcon>
+          CANCELAR ORDEN
+        </VBtn>
+        <VBtn
+          color="secondary"
+          variant="tonal"
+          class="rounded-lg font-weight-black text-xs flex-grow-1"
+          height="38"
+          @click="closeModal"
+        >
+          CERRAR DETALLES
+        </VBtn>
+      </VCardActions>
     </VCard>
   </VDialog>
 </template>
@@ -484,10 +498,10 @@ const productLineLabel = (product) => {
 }
 
 .header-indicator {
-  inline-size: 4px;
-  block-size: 18px;
-  background-color: #3b82f6;
-  border-radius: 4px;
+  inline-size: 3px;
+  block-size: 14px;
+  background-color: rgba(var(--v-theme-on-surface), 0.7);
+  border-radius: 2px;
 }
 
 .h-50 {

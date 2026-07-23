@@ -173,6 +173,7 @@ module.exports = {
     // -- Extension Rules
     'vue/no-irregular-whitespace': 'error',
     'vue/template-curly-spacing': 'error',
+    'vue/no-static-inline-styles': ['error', { allowBinding: true }],
 
     // -- Sonarlint
     'sonarjs/no-duplicate-string': 'off',

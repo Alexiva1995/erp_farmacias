@@ -9,6 +9,8 @@ use App\Http\Requests\StoreEmployeeRequest;
 use App\Http\Requests\StoreEmployeeVoucherRequest;
 use App\Http\Requests\UpdateEmployeeRequest;
 use App\Http\Requests\UpdatePayrollSettingsRequest;
+use App\Http\Requests\Employee\StorePaymentCalculationRequest;
+use App\Http\Requests\Employee\SetHealthConsumptionRequest;
 use App\Http\Resources\EmployeeResource;
 use App\Http\Resources\VoucherResource;
 use App\Models\Employee;
@@ -141,13 +143,9 @@ class EmployeeController extends Controller
         return ApiResponse::success($results);
     }
 
-    public function storePaymentCalculation(Employee $employee, Request $request)
+    public function storePaymentCalculation(Employee $employee, StorePaymentCalculationRequest $request)
     {
-        $data = $request->validate([
-            'month' => 'required|integer|min:1|max:12',
-            'year' => 'required|integer|min:2020|max:2100',
-            'consumo_farmacia_actual' => 'nullable|numeric|min:0',
-        ]);
+        $data = $request->validated();
         try {
             $results = $this->employeeServices->runPaymentCalculation($employee, $data);
             return ApiResponse::success($results);
@@ -156,13 +154,9 @@ class EmployeeController extends Controller
         }
     }
 
-    public function setHealthConsumption(Employee $employee, Request $request)
+    public function setHealthConsumption(Employee $employee, SetHealthConsumptionRequest $request)
     {
-        $data = $request->validate([
-            'year' => 'required|integer|min:2020|max:2100',
-            'month' => 'required|integer|min:1|max:12',
-            'amount' => 'required|numeric|min:0',
-        ]);
+        $data = $request->validated();
         $this->employeeServices->setHealthConsumption($employee, $data['year'], $data['month'], (float) $data['amount']);
         return ApiResponse::success(['message' => 'Consumo salud registrado.']);
     }

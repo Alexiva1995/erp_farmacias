@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Repositories;
 
 use App\Contracts\Repositories\ProductMasterReportRepositoryInterface;
@@ -9,7 +11,7 @@ use Illuminate\Support\Facades\DB;
 
 class ProductMasterReportRepository implements ProductMasterReportRepositoryInterface
 {
-    public function getPerformanceData(array $filters): Collection
+    public function getPerformanceData(array $filters, ?int $limit = null, ?string $sortBy = null): Collection
     {
         $startDate = $filters['start_date'] ?? '2026-04-01';
         $endDate = $filters['end_date'] ?? now()->format('Y-m-d');
@@ -57,7 +59,7 @@ class ProductMasterReportRepository implements ProductMasterReportRepositoryInte
                 'dishes.id',
                 'dishes.name',
                 DB::raw('NULL as active_ingredient'),
-                'categories.name as laboratory_name', // Usamos categoría como laboratorio para platos
+                'categories.name as laboratory_name',
                 DB::raw('SUM(CASE 
                     WHEN order_details.unit_price_usd > 0 OR order_details.price > 0 
                     THEN order_details.quantity 
@@ -80,7 +82,94 @@ class ProductMasterReportRepository implements ProductMasterReportRepositoryInte
             ->when($filters['search'] ?? null, fn($q, $s) => $q->where('dishes.name', 'like', "%{$s}%"))
             ->groupBy('dishes.id', 'dishes.name', 'categories.name');
 
-        return $productsQuery->unionAll($dishesQuery)->get();
+        // Si se aplican filtros específicos de farmacia, omitir platos
+        if (isset($filters['laboratory_id']) || isset($filters['group_id'])) {
+            $combined = $productsQuery;
+        } else {
+            $combined = $productsQuery->unionAll($dishesQuery);
+        }
+
+        $query = DB::table(DB::raw("({$combined->toSql()}) as combined"))
+            ->mergeBindings($combined);
+
+        if ($sortBy) {
+            $query->orderByDesc($sortBy);
+        }
+
+        if ($limit) {
+            $query->limit($limit);
+        }
+
+        return $query->get();
+    }
+
+    public function getParetoStats(array $filters): array
+    {
+        $startDate = $filters['start_date'] ?? '2026-04-01';
+        $endDate = $filters['end_date'] ?? now()->format('Y-m-d');
+
+        $productsMargin = DB::table('order_details')
+            ->join('orders', 'order_details.order_id', '=', 'orders.id')
+            ->join('products', 'order_details.product_id', '=', 'products.id')
+            ->select(
+                DB::raw('SUM(order_details.quantity * (COALESCE(
+                    NULLIF(order_details.unit_price_usd, 0), 
+                    CASE WHEN orders.currency = \'USD\' THEN order_details.price ELSE (order_details.price / NULLIF(orders.usd_conversion, 0)) END,
+                    0
+                ) - COALESCE(order_details.unit_cost, 0))) as total_margin')
+            )
+            ->where('orders.status', 'Completed')
+            ->whereBetween('orders.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+            ->when($filters['laboratory_id'] ?? null, fn($q, $id) => $q->where('products.laboratory_id', $id))
+            ->when($filters['group_id'] ?? null, fn($q, $id) => $q->where('products.group_id', $id))
+            ->groupBy('products.id');
+
+        $dishesMargin = DB::table('order_details')
+            ->join('orders', 'order_details.order_id', '=', 'orders.id')
+            ->join('dishes', 'order_details.dish_id', '=', 'dishes.id')
+            ->select(
+                DB::raw('SUM(order_details.quantity * (COALESCE(
+                    NULLIF(order_details.unit_price_usd, 0), 
+                    CASE WHEN orders.currency = \'USD\' THEN order_details.price ELSE (order_details.price / NULLIF(orders.usd_conversion, 0)) END,
+                    0
+                ) - COALESCE(order_details.unit_cost, 0))) as total_margin')
+            )
+            ->where('orders.status', 'Completed')
+            ->whereBetween('orders.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+            ->groupBy('dishes.id');
+
+        if (isset($filters['laboratory_id']) || isset($filters['group_id'])) {
+            $combined = $productsMargin;
+        } else {
+            $combined = $productsMargin->unionAll($dishesMargin);
+        }
+
+        $margins = DB::table(DB::raw("({$combined->toSql()}) as margins_combined"))
+            ->mergeBindings($combined)
+            ->orderByDesc('total_margin')
+            ->pluck('total_margin')
+            ->map(fn($v) => (float) $v);
+
+        $totalMargin = $margins->sum();
+        $marginRunningSum = 0;
+        $paretoCount = 0;
+        $totalItems = $margins->count();
+
+        foreach ($margins as $margin) {
+            $marginRunningSum += $margin;
+            $paretoCount++;
+            if ($totalMargin > 0 && ($marginRunningSum / $totalMargin) >= 0.8) {
+                break;
+            }
+        }
+
+        $paretoPercent = $totalItems > 0 ? ($paretoCount / $totalItems) * 100 : 0;
+
+        return [
+            'count' => $paretoCount,
+            'percent' => round($paretoPercent, 2),
+            'total_items' => $totalItems
+        ];
     }
 
     public function getLaboratoryRanking(array $filters): Collection
@@ -88,7 +177,6 @@ class ProductMasterReportRepository implements ProductMasterReportRepositoryInte
         $startDate = $filters['start_date'] ?? '2026-04-01';
         $endDate = $filters['end_date'] ?? now()->format('Y-m-d');
 
-        // Combinamos rankings de laboratorios (productos) y categorías (platos)
         $productsRank = DB::table('order_details')
             ->join('orders', 'order_details.order_id', '=', 'orders.id')
             ->join('products', 'order_details.product_id', '=', 'products.id')
@@ -129,8 +217,6 @@ class ProductMasterReportRepository implements ProductMasterReportRepositoryInte
 
     public function getAbcSummary(array $filters): Collection
     {
-        // El ABC Summary suele basarse en inventario actual. Platos no tienen stock directo,
-        // por lo que este reporte se mantiene enfocado en productos de inventario.
         $query = DB::table('products')
             ->select(
                 'id',
@@ -171,8 +257,6 @@ class ProductMasterReportRepository implements ProductMasterReportRepositoryInte
         $endDate = $filters['end_date'] ?? now()->format('Y-m-d');
         $page = $filters['page'] ?? 1;
 
-        // Por complejidad de joins triples (product-product, dish-dish, product-dish), 
-        // mantenemos el cross-selling en productos por ahora o simplificamos a nivel de order_details.
         return DB::table('order_details as od1')
             ->join('order_details as od2', function($join) {
                 $join->on('od1.order_id', '=', 'od2.order_id')
@@ -191,21 +275,27 @@ class ProductMasterReportRepository implements ProductMasterReportRepositoryInte
             ->paginate(8, ['*'], 'page', $page);
     }
 
-    public function getSupplyIntelligence(array $filters): Collection
+    public function getSupplyStats(array $filters): array
     {
-        // Out of stock y Días de inventario
-        return DB::table('products')
+        $stats = DB::table('products')
             ->select(
-                'id',
-                'name',
-                'stock',
-                'sales_average',
-                DB::raw('CASE WHEN sales_average > 0 THEN stock / sales_average ELSE 999 END as days_remaining')
+                DB::raw('SUM(CASE WHEN stock <= 0 THEN 1 ELSE 0 END) as out_of_stock'),
+                DB::raw('SUM(CASE WHEN sales_average > 0 AND (stock / sales_average) < 7 THEN 1 ELSE 0 END) as critical_stock'),
+                DB::raw('AVG(CASE WHEN sales_average > 0 THEN stock / sales_average ELSE 999 END) as avg_inventory_days')
             )
             ->where('is_active', true)
             ->where('is_deleted', false)
-            ->get();
+            ->when($filters['laboratory_id'] ?? null, fn($q, $id) => $q->where('laboratory_id', $id))
+            ->when($filters['group_id'] ?? null, fn($q, $id) => $q->where('group_id', $id))
+            ->first();
+
+        return [
+            'out_of_stock' => (int) ($stats->out_of_stock ?? 0),
+            'critical_stock' => (int) ($stats->critical_stock ?? 0),
+            'avg_inventory_days' => (float) ($stats->avg_inventory_days ?? 0)
+        ];
     }
+
 
     public function getTrendComparison(array $filters): Collection
     {

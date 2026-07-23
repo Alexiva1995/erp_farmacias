@@ -101,11 +101,21 @@ async function filtrarSinPaginar(filtros){
 
 
 async function filtrarConPaginacion(filtros){
-  let respuestaApi = await axios.post(`/crm/lottery/filtrar-ordenes?page=${filtros.page}`,filtros)
-  if(respuestaApi.status!=200){
-    toast.error("Error al filtrar los datos")
+  try {
+    let respuestaApi = await axios.post(`/crm/lottery/filtrar-ordenes?page=${filtros.page}`, filtros)
+    if (respuestaApi.status !== 200) {
+      toast.error("Error al filtrar los datos")
+      return { data: [], total: 0 }
+    }
+    let res = respuestaApi.data.data
+    if (Array.isArray(res)) {
+      return { data: res, total: res.length }
+    }
+    return { data: res?.data || [], total: res?.total || 0 }
+  } catch (err) {
+    console.error("Error en filtrarConPaginacion:", err)
+    return { data: [], total: 0 }
   }
-  return {...respuestaApi.data.data}
 }
 
 async function filtrar(){

@@ -12,6 +12,7 @@ use App\Models\Employee;
 use App\Models\InvoiceCount;
 use App\Models\ProductCount;
 use App\Models\InventoryCycle;
+use App\Http\Requests\Employee\LockPerformanceMonthRequest;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -50,13 +51,8 @@ class EmployeePerformanceController extends Controller
     /**
      * Lock/Snapshot the performance data for a given month and year.
      */
-    public function lockMonth(Request $request)
+    public function lockMonth(LockPerformanceMonthRequest $request)
     {
-        $request->validate([
-            'month' => 'required|integer|between:1,12',
-            'year' => 'required|integer',
-        ]);
-
         try {
             $success = $this->performanceQueryService->captureSnapshot(
                 $request->month,

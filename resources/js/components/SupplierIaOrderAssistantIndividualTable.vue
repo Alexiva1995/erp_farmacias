@@ -6,12 +6,13 @@ import { useDisplay } from 'vuetify';
 import VueApexCharts from 'vue3-apexcharts';
 import { roundIaAnalysis } from "@/utils/iaAnalysisRounding";
 import { ref, computed, watch } from 'vue';
-import axios from 'axios';
+import axios from "@/plugins/axios";
 import { useDebounceFn } from '@vueuse/core';
 import Swal from 'sweetalert2';
+import { toast } from "@/plugins/sweetalert";
 
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
+const isRestaurant = computed(() => false);
 
 const props = defineProps({
   products: { type: Array, required: true },
@@ -26,7 +27,7 @@ const props = defineProps({
   selectedSupplierId: { type: [Number, String], default: null },
 });
 
-const emit = defineEmits(["update:options", "update:page", "refresh", "product-scarce-toggled", "open-comparator", "remove-item"]);
+const emit = defineEmits(["update:options", "update:page", "refresh", "product-scarce-toggled", "open-comparator", "remove-item", "reject-ai-match"]);
 
 // Track edited pedido values per item id
 const editedValues = ref({});
@@ -45,11 +46,12 @@ const updateInputValue = (item, val) => {
 // Función para persistir en BD con debounce
 const persistManualQuantity = useDebounceFn(async (productId, quantity) => {
   try {
-    await axios.post(`/api/suppliers-ia-order-assistant/products/${productId}/update-manual-quantity`, {
+    await axios.post(`/suppliers-ia-order-assistant/products/${productId}/update-manual-quantity`, {
       quantity: quantity
     });
   } catch (error) {
     console.error("Error persisting manual quantity:", error);
+    toast.error("Error al guardar la cantidad manual.");
   }
 }, 800);
 
@@ -72,10 +74,12 @@ const handleToggleScarce = async (product) => {
   
   togglingScarce.value = product.id;
   try {
-    await axios.post(`/api/products/${product.id}/toggle-scarce`);
+    await axios.post(`/suppliers-ia-order-assistant/products-without-supplier/${product.id}/toggle-scarce`);
     emit('product-scarce-toggled', product.id);
+    toast.success("Estado de escasez actualizado.");
   } catch (error) {
     console.error("Error toggling scarce status:", error);
+    toast.error("Error al cambiar estado de escasez.");
   } finally {
     togglingScarce.value = null;
   }
@@ -83,6 +87,22 @@ const handleToggleScarce = async (product) => {
 
 // Acciones Directas
 const isProcessing = ref({});
+
+// Rechazar un match sugerido por IA para que el sistema aprenda
+const rejectAiMatch = async (item) => {
+  if (!item.best_supplier?.is_ai_matched || !item.best_supplier?.id) return;
+  try {
+    await axios.post('/supplier-ai-match/reject', {
+      product_id:          item.id,
+      product_supplier_id: item.best_supplier.id,
+    });
+    emit('reject-ai-match', item.id);
+    toast.success("Sugerencia de IA rechazada correctamente.");
+  } catch (error) {
+    console.error('Error rechazando match IA:', error);
+    toast.error("Error al rechazar la sugerencia de la IA.");
+  }
+};
 
 const onActionClick = async (item, action) => {
   if (isProcessing.value[item.id]) return;
@@ -93,6 +113,18 @@ const onActionClick = async (item, action) => {
       // Si no hay proveedor seleccionado ni proveedor más barato, abrir modal de comparación
       emit('open-comparator', { item, quantity });
       return;
+    }
+
+    if (item.best_supplier?.is_ai_matched) {
+      const { isConfirmed } = await Swal.fire({
+        title: "Coincidencia por IA",
+        html: `Por IA se sugiere que este producto corresponde a:<br><strong>${item.best_supplier.matched_name || item.best_supplier.name}</strong> del proveedor.<br><br>¿Deseas confirmar esta coincidencia y agregarlo a la orden?`,
+        icon: "info",
+        showCancelButton: true,
+        confirmButtonText: "Sí, agregar",
+        cancelButtonText: "Cancelar",
+      });
+      if (!isConfirmed) return;
     }
     
     // Validar código de barras diferente y preguntar por reemplazo si el listado tiene uno
@@ -111,11 +143,12 @@ const onActionClick = async (item, action) => {
 
       if (isConfirmed) {
         try {
-          await axios.post(`/api/suppliers-ia-order-assistant/products/${item.id}/update-barcode`, {
+          await axios.post(`/suppliers-ia-order-assistant/products/${item.id}/update-barcode`, {
             barcode: cheapestBarcode
           });
           // Actualizamos la propiedad barcode localmente
           item.barcode = cheapestBarcode;
+          toast.success("Código de barras actualizado.");
         } catch (updateError) {
           console.error("Error updating barcode:", updateError);
           if (updateError.response?.status === 409 && updateError.response?.data?.conflict) {
@@ -124,30 +157,24 @@ const onActionClick = async (item, action) => {
               text: updateError.response.data.message,
               icon: "warning",
               showCancelButton: true,
-              confirmButtonText: "Sí, desvincular y asignar",
+              confirmButtonText: "Sí, desvincular and asignar",
               cancelButtonText: "Cancelar",
             });
             if (confirmForce) {
               try {
-                await axios.post(`/api/suppliers-ia-order-assistant/products/${item.id}/update-barcode`, {
+                await axios.post(`/suppliers-ia-order-assistant/products/${item.id}/update-barcode`, {
                   barcode: cheapestBarcode,
                   force: true
                 });
                 item.barcode = cheapestBarcode;
-                Swal.fire({
-                  title: "Éxito",
-                  text: "Código de barras asignado y desvinculado del producto anterior.",
-                  icon: "success",
-                  timer: 2000,
-                  showConfirmButton: false,
-                });
+                toast.success("Código de barras asignado y desvinculado.");
               } catch (forceError) {
                 console.error("Error forcing barcode update:", forceError);
-                Swal.fire("Error", "No se pudo forzar el reajuste del código de barras.", "error");
+                toast.error("No se pudo forzar el reajuste del código de barras.");
               }
             }
           } else {
-            Swal.fire("Error", "No se pudo actualizar el código de barras.", "error");
+            toast.error("No se pudo actualizar el código de barras.");
           }
         }
       }
@@ -172,21 +199,24 @@ const onActionClick = async (item, action) => {
         }
       }
 
-      await axios.post('/api/suppliers-ia-order-assistant/add-to-order', payload);
+      await axios.post('/suppliers-ia-order-assistant/add-to-order', payload);
+      toast.success("Producto añadido a la orden.");
       emit('remove-item', item.id);
     } catch (error) {
        console.error("Error adding to order:", error);
+       toast.error("Error al añadir producto a la orden.");
     } finally {
       delete isProcessing.value[item.id];
     }
   } else if (action === 'ignore') {
     isProcessing.value[item.id] = 'ignoring';
     try {
-      await axios.post(`/api/suppliers-ia-order-assistant/products/${item.id}/ignore`);
+      await axios.post(`/suppliers-ia-order-assistant/products/${item.id}/ignore`);
+      toast.success("Producto ignorado.");
       emit('remove-item', item.id);
     } catch (error) {
       console.error("Error ignoring product:", error);
-      Swal.fire("Error", "No se pudo ignorar el producto.", "error");
+      toast.error("No se pudo ignorar el producto.");
     } finally {
       delete isProcessing.value[item.id];
     }
@@ -313,18 +343,32 @@ function rowClass(item) {
 
           <template #item.name="{ item }">
             <div class="d-flex flex-column py-1">
-              <span
-                class="text-sm font-weight-black text-high-emphasis text-uppercase text-wrap cursor-pointer hover-opacity"
-                :class="{ 
-                  'text-primary': item.psychotropic == 1,
-                  'opacity-50': togglingScarce === item.id 
-                }"
-                :title="item.name + ' - Clic para marcar como escaso'"
-                @click="handleToggleScarce(item)"
-              >
-                <VIcon v-if="togglingScarce === item.id" size="small" class="mr-1 rotate-spinner">tabler-loader-2</VIcon>
-                {{ item.name.toUpperCase() }}
-              </span>
+              <div class="d-flex align-center gap-1">
+                <span
+                  class="text-sm font-weight-black text-high-emphasis text-uppercase text-wrap cursor-pointer hover-opacity"
+                  :class="{ 
+                    'text-primary': item.psychotropic == 1,
+                    'opacity-50': togglingScarce === item.id 
+                  }"
+                  :title="item.name + ' - Clic para marcar como escaso'"
+                  @click="handleToggleScarce(item)"
+                >
+                  <VIcon v-if="togglingScarce === item.id" size="small" class="mr-1 rotate-spinner">tabler-loader-2</VIcon>
+                  {{ item.name.toUpperCase() }}
+                </span>
+                <!-- Badge: producto nuevo sin historial de ventas -->
+                <VChip
+                  v-if="item.is_new_without_history"
+                  color="secondary"
+                  size="x-small"
+                  variant="tonal"
+                  class="ml-1"
+                  title="Producto nuevo sin historial de ventas (< 90 días). Se sugiere revisar."
+                >
+                  <VIcon start size="10">tabler-sparkles</VIcon>
+                  NUEVO
+                </VChip>
+              </div>
               <div class="d-flex align-center gap-1 text-super-xs flex-wrap">
                 <span class="text-disabled">{{ item.active_ingredient }}</span>
                 <span class="text-disabled mx-1">|</span>
@@ -335,6 +379,19 @@ function rowClass(item) {
                   </span>
                 </span>
                 <span v-if="item.is_colombian_origin == 1" class="text-info font-weight-bold ml-1">(COL)</span>
+                <!-- Advertencia: promedio desactualizado (> 48h) -->
+                <VTooltip v-if="item.is_stale_average" location="top">
+                  <template #activator="{ props: tooltipProps }">
+                    <VIcon
+                      v-bind="tooltipProps"
+                      icon="tabler-alert-triangle"
+                      color="warning"
+                      size="13"
+                      class="ml-1"
+                    />
+                  </template>
+                  <span>Promedio de ventas desactualizado (más de 48h). Ejecuta el cálculo para mayor precisión.</span>
+                </VTooltip>
               </div>
             </div>
           </template>
@@ -352,6 +409,20 @@ function rowClass(item) {
               />
               <div v-else class="chart-placeholder"></div>
             </div>
+          </template>
+
+          <!-- Ventas -->
+          <template #item.total_sold_completed="{ item }">
+            <span class="font-weight-medium">
+              {{ item.total_sold_completed ? Math.round(item.total_sold_completed) : 0 }}
+            </span>
+          </template>
+
+          <!-- Stock -->
+          <template #item.lote_quantity="{ item }">
+            <span class="font-weight-medium">
+              {{ item.lote_quantity ? Math.round(item.lote_quantity) : 0 }}
+            </span>
           </template>
 
           <!-- Costo -->
@@ -425,29 +496,51 @@ function rowClass(item) {
           <!-- Acciones -->
           <template #item.actions="{ item }">
             <div class="d-flex align-center justify-end ga-1">
-              <VBtn
-                v-if="!isRestaurant"
-                icon
-                variant="tonal"
-                color="error"
-                size="32"
-                :loading="isProcessing[item.id] === 'ignoring'"
-                @click.stop="onActionClick(item, 'ignore')"
-              >
-                <VIcon icon="tabler-trash-x" size="18" />
-                <VTooltip activator="parent" location="top">Rechazar / Ignorar</VTooltip>
-              </VBtn>
-              <VBtn
-                icon
-                variant="tonal"
-                color="success"
-                size="32"
-                :loading="isProcessing[item.id] === 'adding'"
-                @click.stop="onActionClick(item, 'add')"
-              >
-                <VIcon icon="tabler-shopping-cart-plus" size="18" />
-                <VTooltip activator="parent" location="top">Añadir a Orden</VTooltip>
-              </VBtn>
+              <!-- Indicador de Matching en Progreso -->
+              <div v-if="item.ia_matching_in_progress" class="d-flex align-center ga-1 pr-2">
+                <VProgressCircular indeterminate size="16" width="2" color="info" />
+                <span class="text-xs font-weight-black text-info text-uppercase">Buscando Proveedor...</span>
+              </div>
+              <template v-else>
+                <VBtn
+                  v-if="!isRestaurant"
+                  icon
+                  variant="tonal"
+                  color="error"
+                  size="32"
+                  :loading="isProcessing[item.id] === 'ignoring'"
+                  @click.stop="onActionClick(item, 'ignore')"
+                >
+                  <VIcon icon="tabler-trash-x" size="18" />
+                  <VTooltip activator="parent" location="top">Rechazar / Ignorar</VTooltip>
+                </VBtn>
+                <!-- Botón rechazar match IA: solo visible si el proveedor fue sugerido por IA -->
+                <VBtn
+                  v-if="item.best_supplier?.is_ai_matched"
+                  icon
+                  variant="tonal"
+                  color="warning"
+                  size="32"
+                  title="Rechazar match IA (aprendizaje)"
+                  @click.stop="rejectAiMatch(item)"
+                >
+                  <VIcon icon="tabler-brain-off" size="18" />
+                  <VTooltip activator="parent" location="top">Rechazar sugerencia de IA</VTooltip>
+                </VBtn>
+                <VBtn
+                  icon
+                  variant="tonal"
+                  :color="item.best_supplier?.is_ai_matched ? 'info' : 'success'"
+                  size="32"
+                  :loading="isProcessing[item.id] === 'adding'"
+                  @click.stop="onActionClick(item, 'add')"
+                >
+                  <VIcon :icon="item.best_supplier?.is_ai_matched ? 'tabler-brain' : 'tabler-shopping-cart-plus'" size="18" />
+                  <VTooltip activator="parent" location="top">
+                    {{ item.best_supplier?.is_ai_matched ? 'Coincidencia sugerida por IA' : 'Añadir a Orden' }}
+                  </VTooltip>
+                </VBtn>
+              </template>
             </div>
           </template>
         </VDataTableServer>
@@ -500,12 +593,22 @@ function rowClass(item) {
                     </div>
                     <!-- Acciones Móvil -->
                     <div class="d-flex ga-1 justify-end mt-2">
-                       <VBtn v-if="!isRestaurant" icon variant="tonal" color="error" size="32" :loading="isProcessing[item.id] === 'ignoring'" @click.stop="onActionClick(item, 'ignore')">
-                         <VIcon icon="tabler-trash-x" size="18" />
-                       </VBtn>
-                       <VBtn icon variant="tonal" color="success" size="32" :loading="isProcessing[item.id] === 'adding'" @click.stop="onActionClick(item, 'add')">
-                         <VIcon icon="tabler-shopping-cart-plus" size="18" />
-                       </VBtn>
+                       <div v-if="item.ia_matching_in_progress" class="d-flex align-center ga-1">
+                         <VProgressCircular indeterminate size="14" width="2" color="info" />
+                         <span class="text-xs font-weight-bold text-info">Buscando Proveedor...</span>
+                       </div>
+                       <template v-else>
+                         <VBtn v-if="!isRestaurant" icon variant="tonal" color="error" size="32" :loading="isProcessing[item.id] === 'ignoring'" @click.stop="onActionClick(item, 'ignore')">
+                           <VIcon icon="tabler-trash-x" size="18" />
+                         </VBtn>
+                         <!-- Rechazar match IA en móvil -->
+                         <VBtn v-if="item.best_supplier?.is_ai_matched" icon variant="tonal" color="warning" size="32" @click.stop="rejectAiMatch(item)">
+                           <VIcon icon="tabler-brain-off" size="18" />
+                         </VBtn>
+                          <VBtn icon variant="tonal" :color="item.best_supplier?.is_ai_matched ? 'info' : 'success'" size="32" :loading="isProcessing[item.id] === 'adding'" @click.stop="onActionClick(item, 'add')">
+                            <VIcon :icon="item.best_supplier?.is_ai_matched ? 'tabler-brain' : 'tabler-shopping-cart-plus'" size="18" />
+                         </VBtn>
+                       </template>
                     </div>
                   </div>
                 </div>

@@ -13,7 +13,7 @@ class AjusteBalanceRequest extends FormRequest
      */
     public function authorize()
     {
-        return true;
+        return auth()->check() && auth()->user()->role_id === 1;
     }
 
     /**

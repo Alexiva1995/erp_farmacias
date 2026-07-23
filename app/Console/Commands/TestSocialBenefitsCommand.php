@@ -3,7 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Employee;
-use App\Repository\SocialBenefitRepository;
+use App\Repositories\SocialBenefitRepository;
 use Illuminate\Console\Command;
 
 class TestSocialBenefitsCommand extends Command
