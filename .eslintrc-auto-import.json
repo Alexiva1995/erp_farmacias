@@ -392,6 +392,7 @@
     "watchTriggerable": true,
     "watchWithFilter": true,
     "whenever": true,
-    "useQuotationClient": true
+    "useQuotationClient": true,
+    "useInvoiceSettings": true
   }
 }

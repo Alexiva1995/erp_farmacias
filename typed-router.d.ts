@@ -34,6 +34,7 @@ declare module 'vue-router/auto-routes' {
     'bi-report-products': RouteRecordInfo<'bi-report-products', '/bi/report-products', Record<never, never>, Record<never, never>>,
     'bi-report-sku': RouteRecordInfo<'bi-report-sku', '/bi/report-sku', Record<never, never>, Record<never, never>>,
     'configuration': RouteRecordInfo<'configuration', '/configuration', Record<never, never>, Record<never, never>>,
+    'configuration-bi': RouteRecordInfo<'configuration-bi', '/configuration/bi', Record<never, never>, Record<never, never>>,
     'configuration-branding': RouteRecordInfo<'configuration-branding', '/configuration/branding', Record<never, never>, Record<never, never>>,
     'configuration-crm': RouteRecordInfo<'configuration-crm', '/configuration/crm', Record<never, never>, Record<never, never>>,
     'configuration-expenses': RouteRecordInfo<'configuration-expenses', '/configuration/expenses', Record<never, never>, Record<never, never>>,

@@ -79,6 +79,7 @@ class GeneralSetting extends Model
         'enabled_ia_assistant_views',
         'enable_invoices',
         'enable_invoice_locations',
+        'enabled_bi_views',
     ];
 
     protected $casts = [
@@ -122,5 +123,6 @@ class GeneralSetting extends Model
         'enabled_ia_assistant_views' => 'array',
         'enable_invoices' => 'boolean',
         'enable_invoice_locations' => 'boolean',
+        'enabled_bi_views' => 'array',
     ];
 }

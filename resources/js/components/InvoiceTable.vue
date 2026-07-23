@@ -3,6 +3,7 @@ import { computed, ref } from "vue";
 import { useDisplay } from "vuetify";
 import { formatCurrency as globalFormatCurrency } from "@/utils/currencyFormatter";
 import axios from "@/plugins/axios";
+import AppEmptyState from "@/components/AppEmptyState.vue";
 import { toast } from "@/plugins/sweetalert";
 
 const props = defineProps({
@@ -150,6 +151,13 @@ const processedInvoices = computed(() => {
       "
       @update:options="(options) => emit('update:options', options)"
     >
+      <template #no-data>
+        <AppEmptyState
+          title="No hay facturas"
+          message="No se encontraron facturas en el sistema para los filtros aplicados."
+          icon="tabler-file-off"
+        />
+      </template>
       <template #item.id="{ item }">
         <span class="text-sm font-weight-black text-primary">{{ item.id }}</span>
       </template>

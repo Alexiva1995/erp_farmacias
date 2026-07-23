@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api\Inventory;
 use App\Http\Controllers\Controller;
 use App\Models\Laboratory;
 use App\Models\GroupsLaboratory;
+use App\Http\Requests\Inventory\StoreLaboratoryRequest;
+use App\Http\Requests\Inventory\StoreLaboratoryGroupRequest;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
@@ -44,14 +46,8 @@ class LaboratoryManagementController extends Controller
     /**
      * Guardar o actualizar laboratorio
      */
-    public function store(Request $request): JsonResponse
+    public function store(StoreLaboratoryRequest $request): JsonResponse
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'group_id' => 'nullable|exists:groups_laboratories,id',
-            'parent_id' => 'nullable|exists:laboratories,id'
-        ]);
-
         $lab = Laboratory::updateOrCreate(
             ['id' => $request->id],
             $request->only(['name', 'group_id', 'parent_id'])
@@ -66,14 +62,8 @@ class LaboratoryManagementController extends Controller
     /**
      * Crear grupo y asignar laboratorios
      */
-    public function storeGroup(Request $request): JsonResponse
+    public function storeGroup(StoreLaboratoryGroupRequest $request): JsonResponse
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'laboratory_ids' => 'nullable|array',
-            'laboratory_ids.*' => 'exists:laboratories,id'
-        ]);
-
         $group = GroupsLaboratory::updateOrCreate(
             ['id' => $request->id],
             ['name' => $request->name]

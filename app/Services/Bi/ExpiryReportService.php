@@ -18,13 +18,15 @@ class ExpiryReportService
 
     public function getDashboardData(array $filters): array
     {
+        $lossAnalysis = $this->repository->getRealLossAnalysis($filters);
+
         return [
             'horizon' => $this->repository->getExpiryHorizon($filters),
             'annual_trend' => $this->repository->getAnnualTrend($filters),
-            'loss_analysis' => $this->repository->getRealLossAnalysis($filters),
+            'loss_analysis' => $lossAnalysis,
             'risk_inventory' => $this->repository->getRiskInventory($filters),
             'overstock' => $this->processOverstockData($this->repository->getOverstockWarning($filters)),
-            'kpis' => $this->calculateKpis($filters)
+            'kpis' => $this->calculateKpis($filters, $lossAnalysis)
         ];
     }
 
@@ -62,9 +64,8 @@ class ExpiryReportService
         return $processed;
     }
 
-    private function calculateKpis(array $filters): array
+    private function calculateKpis(array $filters, array $lossData): array
     {
-        $lossData = $this->repository->getRealLossAnalysis($filters);
         $currentMonth = Carbon::now()->format('Y-m');
         $historicalLoss = collect($lossData)->firstWhere('month', $currentMonth);
         

@@ -7,6 +7,10 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Product\StoreProductRequest;
 use App\Http\Requests\Product\UpdateIncompleteProductRequest;
 use App\Http\Requests\Product\UpdateProductRequest;
+use App\Http\Requests\Product\UpdateProductGroupRequest;
+use App\Http\Requests\Product\BulkActionsProductRequest;
+use App\Http\Requests\Product\SearchBarcodeProductRequest;
+use App\Http\Requests\Product\MergeProductsRequest;
 use App\Models\Product;
 use App\Services\Products\ProductActionService;
 use App\Services\Products\ProductQueryService;
@@ -107,12 +111,8 @@ class ProductController extends Controller
         ], 200);
     }
 
-    public function updateProductGroup(Request $request, Product $product)
+    public function updateProductGroup(UpdateProductGroupRequest $request, Product $product)
     {
-        $request->validate([
-            'group_id' => 'nullable|integer|exists:groups_products,id'
-        ]);
-
         $this->productActionService->updateProductGroup($product, $request->integer('group_id'));
 
         return response()->json([
@@ -120,15 +120,8 @@ class ProductController extends Controller
         ], 200);
     }
 
-    public function bulkActions(Request $request): JsonResponse
+    public function bulkActions(BulkActionsProductRequest $request): JsonResponse
     {
-        $request->validate([
-            'ids' => 'required|array',
-            'ids.*' => 'integer|exists:products,id',
-            'action' => 'required|string|in:delete,change-category,change-laboratory',
-            'value' => 'nullable|integer'
-        ]);
-
         $ids = $request->input('ids');
         $action = $request->input('action');
         $value = $request->input('value');
@@ -244,11 +237,8 @@ class ProductController extends Controller
         $paginatedResult = $query->paginate($perPage);
         return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
     }
-    public function searchByBarcode(Request $request)
+    public function searchByBarcode(SearchBarcodeProductRequest $request)
     {
-        $request->validate([
-            'barcode' => 'required|string'
-        ]);
         $query = $this->productQueryService->searchBarcodeProduct($request);
         if ($query) {
             return response()->json([
@@ -595,14 +585,8 @@ class ProductController extends Controller
         ], 200);
     }
 
-    public function merge(Request $request)
+    public function merge(MergeProductsRequest $request)
     {
-        $request->validate([
-            'product_id_1' => 'required|integer|exists:products,id',
-            'product_id_2' => 'required|integer|exists:products,id',
-            'keep_product_id' => 'required|integer|in:' . $request->integer('product_id_1') . ',' . $request->integer('product_id_2'),
-        ]);
-
         try {
             $result = $this->productActionService->mergeProducts(
                 $request->integer('product_id_1'),

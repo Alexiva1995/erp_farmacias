@@ -54,7 +54,7 @@ class GeneralSettingResource extends JsonResource
             $paymentMethods = $defaultPaymentMethods;
         }
 
-        return [
+        $data = [
             'id' => $this->id,
             'fiscal_mode' => $this->fiscal_mode,
             'special_taxpayer_status' => $this->special_taxpayer_status,
@@ -125,8 +125,16 @@ class GeneralSettingResource extends JsonResource
             'enabled_ia_assistant_views' => $this->enabled_ia_assistant_views ?? ['pedidos', 'reporte', 'oportunidad', 'comparador', 'automatizacion'],
             'enable_invoices' => (bool) ($this->enable_invoices ?? true),
             'enable_invoice_locations' => (bool) ($this->enable_invoice_locations ?? true),
+            'enabled_bi_views' => $this->enabled_bi_views ?? ['abc', 'dead-stock', 'sku', 'products', 'expiry', 'laboratories', 'pos', 'cyclic', 'customer', 'performance'],
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];
+
+        if ($request->has('only')) {
+            $fields = explode(',', $request->query('only'));
+            return array_intersect_key($data, array_flip($fields));
+        }
+
+        return $data;
     }
 }

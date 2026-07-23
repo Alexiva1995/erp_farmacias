@@ -91,6 +91,7 @@ class UpdateGeneralSettingRequest extends FormRequest
             'enabled_ia_assistant_views' => 'nullable|array',
             'enable_invoices' => 'nullable|boolean',
             'enable_invoice_locations' => 'nullable|boolean',
+            'enabled_bi_views' => 'nullable|array',
         ];
     }
 }

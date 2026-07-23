@@ -10,6 +10,8 @@ use App\Services\Credits\CreditsActionService;
 use App\Models\Credit;
 use App\Helpers\ApiResponse;
 use App\Http\Requests\Credits\UpdateCreditStatusRequest;
+use App\Http\Requests\Credits\CreditIdsRequest;
+use App\Http\Requests\Credits\GetPaymentHistoryRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
@@ -43,13 +45,8 @@ class CreditsController extends Controller
         ]);
     }
 
-    public function destroy(Request $request)
+    public function destroy(CreditIdsRequest $request)
     {
-        $request->validate([
-            'credit_ids' => 'required|array',
-            'credit_ids.*' => 'integer|exists:credits,id',
-        ]);
-
         if (Auth::id() && \App\Models\User::find(Auth::id())?->role_id !== 1) {
             return ApiResponse::error('No autorizado. Solo administradores pueden eliminar créditos.', 403);
         }
@@ -94,13 +91,8 @@ class CreditsController extends Controller
         }
     }
 
-    public function showDetails(Request $request)
+    public function showDetails(CreditIdsRequest $request)
     {
-        $request->validate([
-            'credit_ids' => 'required|array',
-            'credit_ids.*' => 'integer|exists:credits,id',
-        ]);
-
         $credits = Credit::with('client', 'order.details.product')
             ->whereIn('id', $request->input('credit_ids'))
             ->get();
@@ -108,12 +100,8 @@ class CreditsController extends Controller
         return response()->json($credits);
     }
 
-    public function getPaymentHistory(Request $request)
+    public function getPaymentHistory(GetPaymentHistoryRequest $request)
     {
-        $request->validate([
-            'client_id' => 'required|integer|exists:clients,id',
-        ]);
-
         $creditPayments = \App\Models\CreditPayment::with('seller')
             ->where('client_id', $request->input('client_id'))
             ->orderBy('payment_date', 'desc')

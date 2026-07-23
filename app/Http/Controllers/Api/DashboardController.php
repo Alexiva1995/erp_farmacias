@@ -31,11 +31,13 @@ class DashboardController extends Controller
         $startDate = Carbon::create($year, 1, 1)->startOfDay();
         $endDate = Carbon::create($year, 12, 31)->endOfDay();
 
-        $fiscalHistory = FiscalHistory::whereBetween('invoice_date', [$startDate, $endDate])->get();
+        $sums = FiscalHistory::whereBetween('invoice_date', [$startDate, $endDate])
+            ->selectRaw('SUM(total_amount) as total, SUM(exempt_amount) as exempt, SUM(taxable_amount) as taxable')
+            ->first();
 
-        $totalIncome = $fiscalHistory->sum('total_amount');
-        $exemptAmount = $fiscalHistory->sum('exempt_amount');
-        $taxableAmount = $fiscalHistory->sum('taxable_amount');
+        $totalIncome = (float) ($sums->total ?? 0);
+        $exemptAmount = (float) ($sums->exempt ?? 0);
+        $taxableAmount = (float) ($sums->taxable ?? 0);
 
         $taxablePercentage = $totalIncome > 0 ? ($taxableAmount / $totalIncome) * 100 : 0;
         $exemptPercentage = $totalIncome > 0 ? ($exemptAmount / $totalIncome) * 100 : 0;
@@ -57,24 +59,20 @@ class DashboardController extends Controller
         $startDate = Carbon::create($year, 1, 1)->startOfDay();
         $endDate = Carbon::create($year, 12, 31)->endOfDay();
 
-        $expensesQuery = Expense::where('status', Expense::STATUS_APPROVED)
+        $categories = Expense::where('status', Expense::STATUS_APPROVED)
             ->where('is_deductible', true)
             ->whereIn('currency', ['BS', 'VES'])
-            ->whereBetween('expense_date', [$startDate, $endDate]);
+            ->whereBetween('expense_date', [$startDate, $endDate])
+            ->join('expense_categories', 'expenses.category_id', '=', 'expense_categories.id')
+            ->selectRaw('expenses.category_id, expense_categories.name as category_name, SUM(expenses.amount) as total_amount')
+            ->groupBy('expenses.category_id', 'expense_categories.name')
+            ->get();
 
-        $expenses = $expensesQuery->with('category')->get();
-
-        $categories = $expenses->groupBy('category_id')->map(function ($group) {
-            return [
-                'category_id' => $group->first()->category_id,
-                'category_name' => $group->first()->category?->name ?? 'Sin Categoría',
-                'total_amount' => $group->sum('amount'),
-            ];
-        })->values();
+        $totalDeductible = $categories->sum('total_amount');
 
         return response()->json([
             'data' => [
-                'total_deductible' => $expenses->sum('amount'),
+                'total_deductible' => (float) $totalDeductible,
                 'categories' => $categories
             ]
         ]);
@@ -86,24 +84,20 @@ class DashboardController extends Controller
         $startDate = Carbon::create($year, 1, 1)->startOfDay();
         $endDate = Carbon::create($year, 12, 31)->endOfDay();
 
-        $expensesQuery = Expense::where('status', Expense::STATUS_APPROVED)
+        $categories = Expense::where('status', Expense::STATUS_APPROVED)
             ->where('is_deductible', false)
             ->whereIn('currency', ['BS', 'VES'])
-            ->whereBetween('expense_date', [$startDate, $endDate]);
+            ->whereBetween('expense_date', [$startDate, $endDate])
+            ->join('expense_categories', 'expenses.category_id', '=', 'expense_categories.id')
+            ->selectRaw('expenses.category_id, expense_categories.name as category_name, SUM(expenses.amount) as total_amount')
+            ->groupBy('expenses.category_id', 'expense_categories.name')
+            ->get();
 
-        $expenses = $expensesQuery->with('category')->get();
-
-        $categories = $expenses->groupBy('category_id')->map(function ($group) {
-            return [
-                'category_id' => $group->first()->category_id,
-                'category_name' => $group->first()->category?->name ?? 'Sin Categoría',
-                'total_amount' => $group->sum('amount'),
-            ];
-        })->values();
+        $totalNonDeductible = $categories->sum('total_amount');
 
         return response()->json([
             'data' => [
-                'total_non_deductible' => $expenses->sum('amount'),
+                'total_non_deductible' => (float) $totalNonDeductible,
                 'categories' => $categories
             ]
         ]);
@@ -583,11 +577,11 @@ class DashboardController extends Controller
                 else $query->where('order_details.discount_type', $p['type']);
                 return ['name' => $p['name'], 'orders' => $query->distinct('order_details.order_id')->count()];
             }),
-            'packs_summary' => DB::table('product_packs')->where('is_active', true)->get()->map(function($pack) use ($currentMonthStart, $currentMonthEnd) {
+            'packs_summary' => DB::table('product_packs')->where('is_active', true)->select(['id', 'name'])->get()->map(function($pack) use ($currentMonthStart, $currentMonthEnd) {
                 return ['name' => $pack->name, 'units' => DB::table('order_details')->join('orders', 'order_details.order_id', '=', 'orders.id')->where('order_details.pack_id', $pack->id)->where('orders.status', 'Completed')->whereBetween('orders.order_date', [$currentMonthStart->startOfDay(), $currentMonthEnd->endOfDay()])->count()];
             })->sortByDesc('units')->values(),
             'sellers_ranking' => $sellers,
-            'exchange_rates' => DB::table('exchange_rates')->get()->map(fn($r) => ['id' => $r->id ?? 0, 'currency' => $r->currency_code, 'rate' => round($r->rate, 2)]),
+            'exchange_rates' => DB::table('exchange_rates')->select(['id', 'currency_code', 'rate'])->get()->map(fn($r) => ['id' => $r->id ?? 0, 'currency' => $r->currency_code, 'rate' => round($r->rate, 2)]),
             'system_profitability' => 25.2
         ]);
     }

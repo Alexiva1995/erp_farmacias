@@ -15,6 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use App\Models\Product as ModelsProduct;
+use App\Http\Requests\Suppliers\DirectOrderRequest;
 use Maatwebsite\Excel\Facades\Excel;
 
 class SuppliersIaOrderAssistantController extends Controller
@@ -534,13 +535,8 @@ class SuppliersIaOrderAssistantController extends Controller
 
 
 
-    public function directOrder(Request $request)
+    public function directOrder(DirectOrderRequest $request)
     {
-        $request->validate([
-            'productId' => 'required',
-            'quantity' => 'required|numeric|min:1',
-        ]);
-
         $productId = $request->productId;
         $quantity = $request->quantity;
 

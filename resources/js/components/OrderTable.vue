@@ -3,6 +3,7 @@ import { computed } from "vue";
 import { capitalizeFirstAndLastName } from "@/@core/utils/formatters";
 import { formatAmountOnly } from "@/utils/currencyFormatter";
 import { useDisplay } from "vuetify";
+import AppEmptyState from "@/components/AppEmptyState.vue";
 
 const props = defineProps({
   orders: { type: Array, required: true },
@@ -211,6 +212,13 @@ const renderSellerName = (item) => {
       @update:options="(options) => emit('update:options', options)"
       :expanded="expandedRows"
     >
+      <template #no-data>
+        <AppEmptyState
+          title="No se encontraron pedidos"
+          message="No hay pedidos registrados con los filtros seleccionados."
+          icon="tabler-shopping-cart-off"
+        />
+      </template>
       <!-- Skeleton Loader -->
       <template v-slot:loading>
         <VSkeletonLoader

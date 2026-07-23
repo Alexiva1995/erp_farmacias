@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\IndividualOffer;
+use App\Http\Requests\Offers\StoreIndividualOfferRequest;
+use App\Http\Requests\Offers\UpdateIndividualOfferRequest;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -70,24 +72,8 @@ class IndividualOfferController extends Controller
         ], 200);
     }
 
-    /** Creacion de una nueva oferta individual */
-
-    public function store(Request $request)
+    public function store(StoreIndividualOfferRequest $request)
     {
-        $validator = Validator::make($request->all(), [
-            'product_id' => 'required',
-            'discount_percent' => 'required|numeric',
-            'start_date' => 'required|date',
-            'end_date' => 'required|date|after_or_equal:start_date',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'status' => false,
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
         // Verificar que no exista una oferta activa para el mismo producto
         $existingOffer = IndividualOffer::where('product_id', $request->product_id)
             ->where(function ($query) use ($request) {
@@ -114,24 +100,10 @@ class IndividualOfferController extends Controller
         ], 201);
     }
 
-    public function update(Request $request, $id)
+    public function update(UpdateIndividualOfferRequest $request, $id)
     {
         try {
             $indvOffer = IndividualOffer::findOrFail($id);
-
-            $validator = Validator::make($request->all(), [
-                'product_id' => 'sometimes|required|exists:products,id',
-                'discount_percent' => 'sometimes|required|numeric|min:0|max:100',
-                'start_date' => 'sometimes|required|date',
-                'end_date' => 'sometimes|required|date|after_or_equal:start_date',
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json([
-                    'status' => false,
-                    'errors' => $validator->errors()
-                ], 422);
-            }
 
             // Verificar que no exista otra oferta activa para el mismo producto en las mismas fechas
             if ($request->has('product_id') || $request->has('start_date') || $request->has('end_date')) {

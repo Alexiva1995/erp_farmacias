@@ -8,6 +8,7 @@ use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ProfitabilityProductCreateRequest;
 use App\Http\Requests\ProfitabilityProductEditRequest;
+use App\Http\Requests\Finances\ToggleProfitabilityLockRequest;
 use App\Models\Product;
 use App\Models\ProductProfitability;
 use App\Services\Products\ProductQueryService;
@@ -42,13 +43,8 @@ class ProfitabilityController extends Controller
         ]);
     }
 
-    public function toggleLock(Request $request)
+    public function toggleLock(ToggleProfitabilityLockRequest $request)
     {
-        $request->validate([
-            'product_id' => 'required|exists:products,id',
-            'profitability_percentage' => 'nullable|numeric',
-        ]);
-
         $productId = $request->input('product_id');
         $percentage = $request->input('profitability_percentage', 0);
 

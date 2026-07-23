@@ -502,14 +502,16 @@ class ClientController extends Controller
      * Proceso masivo para corregir nombres usando el CNE.
      * Solo para cédulas V- (Venezolanos).
      */
-    public function bulkVerifyCne(): JsonResponse
+    public function countByDateRange(Request $request): JsonResponse
     {
-        try {
-            $results = $this->cneService->verifyBatch(100);
+        $fechaDesde = $request->input('fechaDesde_filtro') ?: now()->startOfMonth()->toDateString();
+        $fechaHasta = $request->input('fechaHasta_filtro') ?: now()->endOfMonth()->toDateString();
 
-            return ApiResponse::success($results, "Verificación CNE completada: {$results['updated']} corregidos, {$results['not_found']} no encontrados.", 200);
-        } catch (\Throwable $e) {
-            return ApiResponse::error("Error en verificación masiva: " . $e->getMessage(), 500);
-        }
+        $count = ClientModel::whereBetween('created_at', [
+            Carbon::parse($fechaDesde)->startOfDay(),
+            Carbon::parse($fechaHasta)->endOfDay()
+        ])->count();
+
+        return ApiResponse::success(['count' => $count], "Conteo de clientes exitoso", 200);
     }
 }

@@ -4,6 +4,7 @@ import { storeToRefs } from "pinia";
 import Swal from "sweetalert2";
 import { ref } from "vue";
 import { useDisplay } from "vuetify";
+import AppEmptyState from "@/components/AppEmptyState.vue";
 import ResignationIntroDialog from "@/components/dialogs/ResignationIntroDialog.vue";
 
 const props = defineProps({
@@ -82,6 +83,13 @@ const handleIntroDownload = (employee) => {
       class="rounded-lg border shadow-sm overflow-hidden premium-table"
       @update:options="(options) => emit('update:options', options)"
     >
+      <template #no-data>
+        <AppEmptyState
+          title="No hay empleados"
+          message="No se encontraron registros de empleados."
+          icon="tabler-users-minus"
+        />
+      </template>
       <template #item.id="{ item }">
         <span class="font-weight-black text-primary">{{ item.id }}</span>
       </template>

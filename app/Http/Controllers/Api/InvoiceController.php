@@ -13,6 +13,10 @@ use Illuminate\Support\Facades\Log;
 use App\Http\Requests\Invoices\StoreInvoiceRequest;
 use App\Http\Requests\Invoices\UpdateInvoiceDataRequest;
 use App\Http\Requests\Invoices\SaveInvoiceDetailsRequest;
+use App\Http\Requests\Invoice\MatchBarcodeRequest;
+use App\Http\Requests\Invoice\UploadInvoicePhotoRequest;
+use App\Http\Requests\Invoice\NextSequenceRequest;
+use App\Http\Requests\Invoices\ApproveInvoiceRequest;
 
 class InvoiceController extends Controller
 {
@@ -82,22 +86,12 @@ class InvoiceController extends Controller
         }
     }
 
-    public function approve(Request $request, Invoice $invoice)
+    public function approve(ApproveInvoiceRequest $request, Invoice $invoice)
     {
-        $rules = [
-            'payment_rule_id' => 'nullable|exists:payment_rules,id',
-        ];
-
-        $validator = Validator::make($request->all(), $rules);
-
-        if ($validator->fails()) {
-            throw new ValidationException($validator);
-        }
-
         try {
             $approvedInvoice = $this->invoiceActionService->approveInvoice(
                 $invoice,
-                $validator->validated()
+                $request->validated()
             );
 
             return response()->json([
@@ -232,19 +226,13 @@ class InvoiceController extends Controller
         ], 200);
     }
 
-    public function matchBarcode(Request $request)
+    public function matchBarcode(MatchBarcodeRequest $request)
     {
-        $validated = $request->validate([
-            'barcode' => 'required|string',
-            'supplier_id' => 'required|integer|exists:suppliers,id',
-            'auto_order_id' => 'nullable|integer|exists:auto_orders,id',
-        ]);
-
         try {
             $result = $this->invoiceQueryService->matchBarcodeWithAutoOrder(
-                $validated['barcode'],
-                $validated['supplier_id'],
-                $validated['auto_order_id'] ?? null
+                $request->barcode,
+                $request->supplier_id,
+                $request->auto_order_id ?? null
             );
 
             if (!$result) {
@@ -272,12 +260,8 @@ class InvoiceController extends Controller
         }
     }
 
-    public function uploadPhoto(Request $request, Invoice $invoice)
+    public function uploadPhoto(UploadInvoicePhotoRequest $request, Invoice $invoice)
     {
-        $request->validate([
-            'file' => 'required|image|mimes:jpeg,png,jpg|max:5120',
-        ]);
-
         try {
             $updatedInvoice = $this->invoiceActionService->uploadInvoicePhoto($invoice, $request->file('file'));
 
@@ -291,12 +275,8 @@ class InvoiceController extends Controller
         }
     }
 
-    public function nextSequence(Request $request)
+    public function nextSequence(NextSequenceRequest $request)
     {
-        $request->validate([
-            'supplier_id' => 'required|integer|exists:suppliers,id',
-        ]);
-
         $supplierId = $request->input('supplier_id');
 
         // Buscar la factura con el número de factura más alto para este proveedor que comience con 'INF-'

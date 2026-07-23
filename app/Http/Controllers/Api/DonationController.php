@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Services\Donation\DonationService;
+use App\Http\Requests\Donation\CreateDonationRequest;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -14,22 +15,9 @@ class DonationController extends Controller
     {
     }
 
-    public function create(Request $request)
+    public function create(CreateDonationRequest $request)
     {
-        $validated = $request->validate([
-            'institution_name' => 'required|string|max:255',
-            'expired_log_ids' => 'required|array|min:1',
-            'expired_log_ids.*' => [
-                'integer',
-                Rule::exists('expired_logs', 'id')->where(function ($query) {
-                    $query->whereNotIn('id', function ($subQuery) {
-                        $subQuery->select('expired_log_id')->from('donative_logs');
-                    });
-                }),
-            ],
-        ], [
-            'expired_log_ids.*.exists' => 'Uno o más productos seleccionados ya han sido donados o no son válidos.'
-        ]);
+        $validated = $request->validated();
 
         try {
             $this->donationService->recordDonation($validated);

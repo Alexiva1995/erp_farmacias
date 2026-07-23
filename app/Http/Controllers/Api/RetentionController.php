@@ -7,6 +7,9 @@ use App\Http\Resources\InvoiceResource;
 use App\Http\Resources\RetentionResource;
 use App\Models\Invoice;
 use App\Services\Retention\RetentionService;
+use App\Http\Requests\Retention\BulkGenerateRequest;
+use App\Http\Requests\Retention\BatchGenerateAllRequest;
+use App\Http\Requests\Retention\UpdateRetentionRequest;
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
 
@@ -47,13 +50,8 @@ class RetentionController extends Controller
     /**
      * Generar retenciones en lote.
      */
-    public function bulkGenerate(Request $request)
+    public function bulkGenerate(BulkGenerateRequest $request)
     {
-        $request->validate([
-            'ids' => 'required|array',
-            'ids.*' => 'exists:invoices,id'
-        ]);
-
         try {
             $retention = $this->retentionService->generateRetentions($request->ids);
 
@@ -70,13 +68,8 @@ class RetentionController extends Controller
     /**
      * Generar todas las retenciones pendientes por rango de fecha.
      */
-    public function batchGenerateAll(Request $request)
+    public function batchGenerateAll(BatchGenerateAllRequest $request)
     {
-        $request->validate([
-            'start_date' => 'required|date',
-            'end_date' => 'required|date'
-        ]);
-
         try {
             $count = $this->retentionService->generateAllPendingInRange(
                 $request->start_date,
@@ -140,21 +133,8 @@ class RetentionController extends Controller
     /**
      * Actualizar número de retención.
      */
-    public function update(Request $request, int $id)
+    public function update(UpdateRetentionRequest $request, int $id)
     {
-        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
-            'number' => 'required|string|max:50|unique:retentions,number,' . $id
-        ], [
-            'number.unique' => 'El número de comprobante ingresado ya se encuentra asignado a otra retención.'
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'status' => 'error',
-                'message' => $validator->errors()->first()
-            ], 422);
-        }
-
         try {
             $retention = $this->retentionService->updateRetention($id, ['number' => $request->number]);
             return response()->json([

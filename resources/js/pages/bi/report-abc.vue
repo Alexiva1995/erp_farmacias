@@ -1,8 +1,9 @@
 <script setup>
-import { ref, watch, onMounted } from 'vue';
+import { ref, watch, onMounted, computed } from 'vue';
 import axios from '@/plugins/axios';
 import { formatCurrency } from '@/utils/currencyFormatter';
 const loading = ref(false);
+const errorMessage = ref(null);
 const items = ref([]);
 const totalItems = ref(0);
 
@@ -105,6 +106,7 @@ const fetchCatalogs = async () => {
 
 const fetchReport = async () => {
   loading.value = true;
+  errorMessage.value = null;
   try {
     const dates = getDateRange(selectedDateRange.value);
     
@@ -146,6 +148,7 @@ const fetchReport = async () => {
     
   } catch (error) {
     console.error('Error fetching ABC report:', error);
+    errorMessage.value = 'No se pudo cargar el reporte ABC. Verifique la conexión de datos e intente nuevamente.';
   } finally {
     loading.value = false;
   }
@@ -207,6 +210,7 @@ const handleClearFilters = () => {
               density="compact"
               hide-details
               variant="outlined"
+              :disabled="loading"
             />
           </VCol>
 
@@ -220,6 +224,7 @@ const handleClearFilters = () => {
               hide-details
               variant="outlined"
               prepend-inner-icon="tabler-calendar-stats"
+              :disabled="loading"
             />
           </VCol>
 
@@ -233,6 +238,7 @@ const handleClearFilters = () => {
               hide-details
               variant="outlined"
               prepend-inner-icon="tabler-analyze"
+              :disabled="loading"
             />
           </VCol>
 
@@ -245,6 +251,7 @@ const handleClearFilters = () => {
               :color="isAdvancedFiltersVisible ? 'primary' : 'secondary'"
               size="36"
               class="rounded-circle"
+              :disabled="loading"
               @click="toggleAdvancedFilters"
             >
               <VBadge
@@ -262,13 +269,13 @@ const handleClearFilters = () => {
             <VDivider vertical class="mx-1 my-2 border-opacity-10" />
 
             <!-- Ejecutar -->
-            <VBtn icon variant="flat" color="primary" size="36" class="rounded-circle" :loading="loading" @click="fetchReport">
+            <VBtn icon variant="flat" color="primary" size="36" class="rounded-circle" :loading="loading" :disabled="loading" @click="fetchReport">
               <VIcon icon="tabler-player-play" size="18" />
               <VTooltip activator="parent" location="top">Aplicar Filtros</VTooltip>
             </VBtn>
 
             <!-- Limpiar -->
-            <VBtn icon variant="text" color="secondary" size="36" class="rounded-circle" @click="handleClearFilters">
+            <VBtn icon variant="text" color="secondary" size="36" class="rounded-circle" :disabled="loading" @click="handleClearFilters">
               <VIcon icon="tabler-eraser" size="18" />
               <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
             </VBtn>
@@ -297,6 +304,7 @@ const handleClearFilters = () => {
                   hide-details
                   variant="outlined"
                   prepend-inner-icon="tabler-flask"
+                  :disabled="loading"
                 />
               </VCol>
 
@@ -313,8 +321,9 @@ const handleClearFilters = () => {
                     variant="outlined"
                     prepend-inner-icon="tabler-tags"
                     class="flex-grow-1"
+                    :disabled="loading"
                   />
-                  <VBtn icon variant="text" size="28" color="info" class="flex-shrink-0">
+                  <VBtn icon variant="text" size="28" color="info" class="flex-shrink-0" :disabled="loading">
                     <VIcon icon="tabler-info-circle" size="18" />
                     <VTooltip activator="parent" location="right" max-width="310">
                       <div style="line-height: 1.8">
@@ -326,8 +335,8 @@ const handleClearFilters = () => {
                         <div class="text-caption mb-1"><span style="color:#FF9800;font-weight:bold">Y</span> — Demanda moderada con variaciones</div>
                         <div class="text-caption mb-2"><span style="color:#F44336;font-weight:bold">Z</span> — Demanda irregular o esporádica</div>
                         <div class="text-caption" style="opacity:.6;border-top:1px solid rgba(255,255,255,.1);padding-top:6px">
-                          <span style="color:#4CAF50">●</span> AAX = Producto Estrella<br>
-                          <span style="color:#9E9E9E">●</span> CCZ = Prescindible
+                           <span style="color:#4CAF50">●</span> AAX = Producto Estrella<br>
+                           <span style="color:#9E9E9E">●</span> CCZ = Prescindible
                         </div>
                       </div>
                     </VTooltip>
@@ -345,6 +354,7 @@ const handleClearFilters = () => {
                   hide-details
                   variant="outlined"
                   prepend-inner-icon="tabler-chart-line"
+                  :disabled="loading"
                 />
               </VCol>
 
@@ -362,118 +372,152 @@ const handleClearFilters = () => {
                   hide-details
                   variant="outlined"
                   prepend-inner-icon="tabler-package"
+                  :disabled="loading"
                 />
               </VCol>
 
             </VRow>
           </div>
         </VExpandTransition>
-
       </VCardText>
     </VCard>
+    </div>    <!-- Banner de error si la carga falla -->
+    <VAlert
+      v-if="errorMessage"
+      type="error"
+      variant="tonal"
+      class="mb-4 rounded-lg"
+      closable
+      @click:close="errorMessage = null"
+    >
+      <div class="d-flex align-center justify-space-between flex-wrap gap-2">
+        <span>{{ errorMessage }}</span>
+        <VBtn size="small" color="error" variant="flat" @click="fetchReport">
+          <VIcon icon="tabler-refresh" size="14" class="me-1" />
+          Reintentar
+        </VBtn>
+      </div>
+    </VAlert>
 
     <!-- Dashboard KPIs Estilo Premium -->
     <VRow class="ma-0 mx-n1 mb-5 mt-2" dense>
-      <VCol v-for="(kpi, index) in [
-        {
-          title: selectedAnalysisType === 'dead_stock' ? 'Capital Inmovilizado' : 'Ventas Globales',
-          value: formatCurrency(selectedAnalysisType === 'dead_stock' ? summaryStats.frozen_capital : summaryStats.total_volume),
-          color: selectedAnalysisType === 'dead_stock' ? 'error' : 'primary',
-          icon: selectedAnalysisType === 'dead_stock' ? 'tabler-lock-square' : 'tabler-coin',
-          desc: selectedAnalysisType === 'dead_stock' ? 'Dinero atrapado en stock' : 'Total facturado en el periodo'
-        },
-        {
-          title: 'Prod. Estrella',
-          value: summaryStats.aax_products,
-          color: 'success',
-          icon: 'tabler-star',
-          desc: 'Clasificación AAX/AAY'
-        },
-        {
-          title: 'Margen Global',
-          value: summaryStats.avg_margin.toFixed(2) + '%',
-          color: summaryStats.avg_margin > 0 ? 'primary' : 'error',
-          icon: 'tabler-percentage',
-          desc: 'Rentabilidad promedio'
-        },
-        {
-          title: 'Quiebre Crítico',
-          value: summaryStats.critical_stockouts,
-          color: summaryStats.critical_stockouts > 0 ? 'error' : 'success',
-          icon: 'tabler-alert-triangle',
-          desc: 'Productos A/B sin stock'
-        }
-      ]" :key="index" cols="6" class="pa-1 abc-kpi-col">
-        <VCard class="stats-card rounded-lg border shadow-sm overflow-hidden h-full position-relative">
-          <div class="card-bg-decoration" :style="{ background: `linear-gradient(45deg, rgba(var(--v-theme-${kpi.color}), 0.1), transparent)` }"></div>
-          <VCardText class="pa-5 relative-content">
-            <div class="d-flex align-center justify-space-between mb-4">
-              <VAvatar :color="kpi.color" variant="tonal" size="48" rounded="lg" class="elevation-1">
-                <VIcon :icon="kpi.icon" size="26" />
-              </VAvatar>
-              <div class="text-right">
-                <span class="text-overline font-weight-bold text-disabled" style="letter-spacing: 1px !important">{{ kpi.title }}</span>
-                <h4 class="text-h4 font-weight-black mt-1">{{ kpi.value }}</h4>
+      <!-- Skeletons durante carga -->
+      <template v-if="loading">
+        <VCol v-for="n in 4" :key="'skeleton-kpi-' + n" cols="6" class="pa-1 abc-kpi-col">
+          <VCard class="stats-card rounded-lg border shadow-sm overflow-hidden h-full pa-5">
+            <VSkeletonLoader type="list-item-avatar-two-line" class="bg-transparent" />
+          </VCard>
+        </VCol>
+        <VCol cols="12" class="pa-1 abc-kpi-col-dist">
+          <VCard class="stats-card rounded-lg border shadow-sm overflow-hidden h-full pa-5">
+            <VSkeletonLoader type="list-item-two-line" class="bg-transparent" />
+          </VCard>
+        </VCol>
+      </template>
+
+      <!-- KPIs reales -->
+      <template v-else>
+        <VCol v-for="(kpi, index) in [
+          {
+            title: selectedAnalysisType === 'dead_stock' ? 'Capital Inmovilizado' : 'Ventas Globales',
+            value: formatCurrency(selectedAnalysisType === 'dead_stock' ? summaryStats.frozen_capital : summaryStats.total_volume),
+            color: selectedAnalysisType === 'dead_stock' ? 'error' : 'primary',
+            icon: selectedAnalysisType === 'dead_stock' ? 'tabler-lock-square' : 'tabler-coin',
+            desc: selectedAnalysisType === 'dead_stock' ? 'Dinero atrapado en stock' : 'Total facturado en el periodo'
+          },
+          {
+            title: 'Prod. Estrella',
+            value: summaryStats.aax_products,
+            color: 'success',
+            icon: 'tabler-star',
+            desc: 'Clasificación AAX/AAY'
+          },
+          {
+            title: 'Margen Global',
+            value: summaryStats.avg_margin.toFixed(2) + '%',
+            color: summaryStats.avg_margin > 0 ? 'primary' : 'error',
+            icon: 'tabler-percentage',
+            desc: 'Rentabilidad promedio'
+          },
+          {
+            title: 'Quiebre Crítico',
+            value: summaryStats.critical_stockouts,
+            color: summaryStats.critical_stockouts > 0 ? 'error' : 'success',
+            icon: 'tabler-alert-triangle',
+            desc: 'Productos A/B sin stock'
+          }
+        ]" :key="index" cols="6" class="pa-1 abc-kpi-col">
+          <VCard class="stats-card rounded-lg border shadow-sm overflow-hidden h-full position-relative">
+            <div class="card-bg-decoration" :style="{ background: `linear-gradient(45deg, rgba(var(--v-theme-${kpi.color}), 0.1), transparent)` }"></div>
+            <VCardText class="pa-5 relative-content">
+              <div class="d-flex align-center justify-space-between mb-4">
+                <VAvatar :color="kpi.color" variant="tonal" size="48" rounded="lg" class="elevation-1">
+                  <VIcon :icon="kpi.icon" size="26" />
+                </VAvatar>
+                <div class="text-right">
+                  <span class="text-overline font-weight-bold text-disabled" style="letter-spacing: 1px !important">{{ kpi.title }}</span>
+                  <h4 class="text-h4 font-weight-black mt-1">{{ kpi.value }}</h4>
+                </div>
               </div>
-            </div>
-            <VDivider class="mb-3 opacity-20" />
-            <div class="d-flex align-center justify-space-between">
-              <span class="text-caption font-weight-medium text-medium-emphasis">{{ kpi.desc }}</span>
-              <VIcon icon="tabler-chart-pie" size="16" :color="kpi.color" class="opacity-50" />
-            </div>
-          </VCardText>
-          <div class="accent-border" :style="{ backgroundColor: `rgb(var(--v-theme-${kpi.color}))` }"></div>
-        </VCard>
-      </VCol>
-
-      <!-- KPI: Distribución A/B/C -->
-      <VCol cols="6" class="pa-1 abc-kpi-col">
-        <VCard class="stats-card rounded-lg border shadow-sm overflow-hidden h-full position-relative">
-          <div class="card-bg-decoration" style="background: linear-gradient(45deg, rgba(var(--v-theme-secondary), 0.08), transparent)"></div>
-          <VCardText class="pa-5 relative-content">
-            <div class="d-flex align-center justify-space-between mb-3">
-              <VAvatar color="secondary" variant="tonal" size="48" rounded="lg" class="elevation-1">
-                <VIcon icon="tabler-chart-bar" size="26" />
-              </VAvatar>
-              <div class="text-right">
-                <span class="text-overline font-weight-bold text-disabled" style="letter-spacing: 1px !important">Distribución</span>
-                <h4 class="text-h4 font-weight-black mt-1">{{ summaryStats.total_products }}</h4>
+              <VDivider class="mb-3 opacity-20" />
+              <div class="d-flex align-center justify-space-between">
+                <span class="text-caption font-weight-medium text-medium-emphasis">{{ kpi.desc }}</span>
+                <VIcon icon="tabler-chart-pie" size="16" :color="kpi.color" class="opacity-50" />
               </div>
-            </div>
+            </VCardText>
+            <div class="accent-border" :style="{ backgroundColor: `rgb(var(--v-theme-${kpi.color}))` }"></div>
+          </VCard>
+        </VCol>
 
-            <!-- Barra de distribución A/B/C -->
-            <div class="d-flex rounded overflow-hidden mb-2" style="height:8px;gap:2px">
-              <div
-                :style="{ width: summaryStats.total_products > 0 ? (summaryStats.count_a / summaryStats.total_products * 100) + '%' : '0%', background: '#4CAF50' }"
-                class="rounded-s"
-              />
-              <div
-                :style="{ width: summaryStats.total_products > 0 ? (summaryStats.count_b / summaryStats.total_products * 100) + '%' : '0%', background: '#FF9800' }"
-              />
-              <div
-                :style="{ width: summaryStats.total_products > 0 ? (summaryStats.count_c / summaryStats.total_products * 100) + '%' : '0%', background: '#9E9E9E' }"
-                class="rounded-e flex-grow-1"
-              />
-            </div>
+        <!-- KPI: Distribución A/B/C -->
+        <VCol cols="12" class="pa-1 abc-kpi-col-dist">
+          <VCard class="stats-card rounded-lg border shadow-sm overflow-hidden h-full position-relative">
+            <div class="card-bg-decoration" style="background: linear-gradient(45deg, rgba(var(--v-theme-secondary), 0.08), transparent)"></div>
+            <VCardText class="pa-5 relative-content">
+              <div class="d-flex align-center justify-space-between mb-3">
+                <VAvatar color="secondary" variant="tonal" size="48" rounded="lg" class="elevation-1">
+                  <VIcon icon="tabler-chart-bar" size="26" />
+                </VAvatar>
+                <div class="text-right">
+                  <span class="text-overline font-weight-bold text-disabled" style="letter-spacing: 1px !important">Distribución</span>
+                  <h4 class="text-h4 font-weight-black mt-1">{{ summaryStats.total_products }}</h4>
+                </div>
+              </div>
 
-            <div class="d-flex justify-space-between">
-              <span class="text-caption d-flex align-center gap-1">
-                <span style="width:8px;height:8px;background:#4CAF50;border-radius:50%;display:inline-block"></span>
-                A: <b>{{ summaryStats.count_a }}</b>
-              </span>
-              <span class="text-caption d-flex align-center gap-1">
-                <span style="width:8px;height:8px;background:#FF9800;border-radius:50%;display:inline-block"></span>
-                B: <b>{{ summaryStats.count_b }}</b>
-              </span>
-              <span class="text-caption d-flex align-center gap-1">
-                <span style="width:8px;height:8px;background:#9E9E9E;border-radius:50%;display:inline-block"></span>
-                C: <b>{{ summaryStats.count_c }}</b>
-              </span>
-            </div>
-          </VCardText>
-          <div class="accent-border" style="background-color: rgb(var(--v-theme-secondary))"></div>
-        </VCard>
-      </VCol>
+              <!-- Barra de distribución A/B/C -->
+              <div class="d-flex rounded overflow-hidden mb-2" style="height:8px;gap:2px">
+                <div
+                  :style="{ width: summaryStats.total_products > 0 ? (summaryStats.count_a / summaryStats.total_products * 100) + '%' : '0%', background: '#4CAF50' }"
+                  class="rounded-s"
+                />
+                <div
+                  :style="{ width: summaryStats.total_products > 0 ? (summaryStats.count_b / summaryStats.total_products * 100) + '%' : '0%', background: '#FF9800' }"
+                />
+                <div
+                  :style="{ width: summaryStats.total_products > 0 ? (summaryStats.count_c / summaryStats.total_products * 100) + '%' : '0%', background: '#9E9E9E' }"
+                  class="rounded-e flex-grow-1"
+                />
+              </div>
+
+              <div class="d-flex justify-space-between">
+                <span class="text-caption d-flex align-center gap-1">
+                  <span style="width:8px;height:8px;background:#4CAF50;border-radius:50%;display:inline-block"></span>
+                  A: <b>{{ summaryStats.count_a }}</b>
+                </span>
+                <span class="text-caption d-flex align-center gap-1">
+                  <span style="width:8px;height:8px;background:#FF9800;border-radius:50%;display:inline-block"></span>
+                  B: <b>{{ summaryStats.count_b }}</b>
+                </span>
+                <span class="text-caption d-flex align-center gap-1">
+                  <span style="width:8px;height:8px;background:#9E9E9E;border-radius:50%;display:inline-block"></span>
+                  C: <b>{{ summaryStats.count_c }}</b>
+                </span>
+              </div>
+            </VCardText>
+            <div class="accent-border" style="background-color: rgb(var(--v-theme-secondary))"></div>
+          </VCard>
+        </VCol>
+      </template>
     </VRow>
 
     <VCard class="mb-6 rounded-lg border shadow-sm overflow-hidden bg-surface">
@@ -710,7 +754,6 @@ const handleClearFilters = () => {
       </div>
 
     </VCard>
-    </div>
   </div>
 </template>
 
@@ -738,8 +781,17 @@ const handleClearFilters = () => {
   max-width: 50%;
 }
 
+.abc-kpi-col-dist {
+  flex: 0 0 100%;
+  max-width: 100%;
+}
+
 @media (min-width: 960px) {
   .abc-kpi-col {
+    flex: 0 0 20% !important;
+    max-width: 20% !important;
+  }
+  .abc-kpi-col-dist {
     flex: 0 0 20% !important;
     max-width: 20% !important;
   }

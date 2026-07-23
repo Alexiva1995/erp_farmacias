@@ -5,6 +5,10 @@ import VueApexCharts from 'vue3-apexcharts';
 
 // --- ESTADO ---
 const loading = ref(false);
+const detailLoading = ref(false);
+const compareLoading = ref(false);
+const errorAlert = ref({ show: false, text: '' });
+
 const startDate = ref(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().substr(0, 10));
 const endDate = ref(new Date().toISOString().substr(0, 10));
 const dashboardData = ref(null);
@@ -21,6 +25,14 @@ const comparisonData = ref(null);
 const formatCurrency = (value) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
 const formatNumber = (value) => new Intl.NumberFormat('en-US').format(value);
 
+// --- MOSTRAR ERROR ---
+const showError = (msg) => {
+  errorAlert.value = { show: true, text: msg };
+  setTimeout(() => {
+    errorAlert.value.show = false;
+  }, 4000);
+};
+
 // --- CARGA DE DATOS ---
 const fetchDashboard = async () => {
   loading.value = true;
@@ -29,6 +41,7 @@ const fetchDashboard = async () => {
     const { data } = await axios.get('/bi/employees/dashboard', { params });
     dashboardData.value = data;
   } catch (error) {
+    showError("No se pudo cargar el Balanced Scorecard. Intente nuevamente.");
     console.error("Error al cargar Balanced Scorecard:", error);
   } finally {
     loading.value = false;
@@ -36,22 +49,23 @@ const fetchDashboard = async () => {
 };
 
 const fetchDetail = async (id) => {
-  loading.value = true;
+  detailLoading.value = true;
+  selectedEmployee.value = id;
   try {
     const params = { start_date: startDate.value, end_date: endDate.value };
     const { data } = await axios.get(`/bi/employees/${id}/detail`, { params });
     employeeDetail.value = data;
-    selectedEmployee.value = id;
   } catch (error) {
+    showError("No se pudo cargar el detalle del vendedor.");
     console.error("Error al cargar detalle de empleado:", error);
   } finally {
-    loading.value = false;
+    detailLoading.value = false;
   }
 };
 
 const fetchComparison = async () => {
   if (!employeeA.value || !employeeB.value) return;
-  loading.value = true;
+  compareLoading.value = true;
   try {
     const params = { 
         start_date: startDate.value, 
@@ -62,14 +76,25 @@ const fetchComparison = async () => {
     const { data } = await axios.get('/bi/employees/compare', { params });
     comparisonData.value = data;
   } catch (error) {
+    showError("Error al generar la comparación.");
     console.error("Error al cargar comparativa:", error);
   } finally {
-    loading.value = false;
+    compareLoading.value = false;
   }
 };
 
 onMounted(fetchDashboard);
-watch([startDate, endDate], fetchDashboard);
+
+// Watcher unificado para refrescar Dashboard y Detalle si está abierto al cambiar fechas
+watch([startDate, endDate], () => {
+  fetchDashboard();
+  if (selectedEmployee.value) {
+    fetchDetail(selectedEmployee.value);
+  }
+  if (employeeA.value && employeeB.value && compareMode.value) {
+    fetchComparison();
+  }
+});
 
 // --- GRÁFICOS ---
 
@@ -110,28 +135,34 @@ const radarChartSeries = computed(() => {
   const empA = comparisonData.value.employee_a;
   const empB = comparisonData.value.employee_b;
 
-  // Normalización simple para el radar
-  const maxVals = { sales: 5000, units: 500, tasks: 50, inv: 100, strat: 100 };
+  // Normalización dinámica basada en los valores máximos del conjunto o un mínimo base
+  const maxVals = {
+    sales: Math.max(empA.sales, empB.sales, 100),
+    units: Math.max(empA.units, empB.units, 10),
+    tasks: Math.max(empA.tasks_completed, empB.tasks_completed, 5),
+    inv: Math.max(empA.inventory_counted, empB.inventory_counted, 10),
+    strat: Math.max(empA.strategic_units, empB.strategic_units, 5)
+  };
 
   return [
     {
       name: `${empA.name}`,
       data: [
-        (empA.sales / maxVals.sales) * 100,
-        (empA.units / maxVals.units) * 100,
-        (empA.tasks_completed / maxVals.tasks) * 100,
-        (empA.inventory_counted / maxVals.inv) * 100,
-        (empA.strategic_units / maxVals.strat) * 100
+        ((empA.sales / maxVals.sales) * 100).toFixed(0),
+        ((empA.units / maxVals.units) * 100).toFixed(0),
+        ((empA.tasks_completed / maxVals.tasks) * 100).toFixed(0),
+        ((empA.inventory_counted / maxVals.inv) * 100).toFixed(0),
+        ((empA.strategic_units / maxVals.strat) * 100).toFixed(0)
       ]
     },
     {
       name: `${empB.name}`,
       data: [
-        (empB.sales / maxVals.sales) * 100,
-        (empB.units / maxVals.units) * 100,
-        (empB.tasks_completed / maxVals.tasks) * 100,
-        (empB.inventory_counted / maxVals.inv) * 100,
-        (empB.strategic_units / maxVals.strat) * 100
+        ((empB.sales / maxVals.sales) * 100).toFixed(0),
+        ((empB.units / maxVals.units) * 100).toFixed(0),
+        ((empB.tasks_completed / maxVals.tasks) * 100).toFixed(0),
+        ((empB.inventory_counted / maxVals.inv) * 100).toFixed(0),
+        ((empB.strategic_units / maxVals.strat) * 100).toFixed(0)
       ]
     }
   ];
@@ -189,8 +220,14 @@ const getStatusColor = (val, target) => {
       </VCardText>
     </VCard>
 
-    <div v-if="loading && !dashboardData" class="d-flex justify-center align-center h-[60vh]">
+    <!-- Alerta de Errores de la API -->
+    <VAlert v-if="errorAlert.show" type="error" variant="tonal" closable class="mb-4 mx-1" @click:close="errorAlert.show = false">
+      {{ errorAlert.text }}
+    </VAlert>
+
+    <div v-if="loading && !dashboardData" class="d-flex flex-column justify-center align-center h-[60vh] gap-3">
       <VProgressCircular indeterminate color="primary" size="40" />
+      <span class="text-disabled text-xs">Cargando Balanced Scorecard...</span>
     </div>
 
     <!-- VISTA COMPARATIVA (FACE-OFF / CARA A CARA) -->
@@ -224,7 +261,7 @@ const getStatusColor = (val, target) => {
                                 />
                             </VCol>
                         </VRow>
-                        <VBtn block color="primary" prepend-icon="tabler-swords" class="mt-4 font-weight-black" :disabled="!employeeA || !employeeB" @click="fetchComparison">
+                        <VBtn block color="primary" prepend-icon="tabler-swords" class="mt-4 font-weight-black" :loading="compareLoading" :disabled="!employeeA || !employeeB" @click="fetchComparison">
                             Comparar Rendimiento
                         </VBtn>
                     </VCardText>
@@ -232,18 +269,19 @@ const getStatusColor = (val, target) => {
             </VCol>
             
             <VCol cols="12" md="6">
-                <VCard class="rounded-lg border shadow-sm h-100" v-if="comparisonData">
+                <VCard class="rounded-lg border shadow-sm h-100" v-if="comparisonData || compareLoading">
                     <VCardItem class="py-3 border-b">
                         <VCardTitle class="text-subtitle-2 font-weight-black uppercase">Radar de Rendimiento</VCardTitle>
                     </VCardItem>
-                    <VCardText class="pa-4 d-flex justify-center">
-                        <VueApexCharts height="300" width="100%" type="radar" :options="radarChartOptions" :series="radarChartSeries" />
+                    <VCardText class="pa-4 d-flex justify-center align-center min-h-[300px]">
+                        <VProgressCircular v-if="compareLoading" indeterminate color="primary" />
+                        <VueApexCharts v-else height="300" width="100%" type="radar" :options="radarChartOptions" :series="radarChartSeries" />
                     </VCardText>
                 </VCard>
             </VCol>
         </VRow>
 
-        <VCard v-if="comparisonData" class="rounded-lg border shadow-sm overflow-hidden mb-6">
+        <VCard v-if="comparisonData && !compareLoading" class="rounded-lg border shadow-sm overflow-hidden mb-6">
             <VTable class="comparison-table">
                 <thead>
                     <tr class="bg-light">
@@ -338,12 +376,16 @@ const getStatusColor = (val, target) => {
 
         <!-- Drill-Down Detail -->
         <VCol cols="12" md="7">
-            <div v-if="!employeeDetail" class="d-flex flex-column justify-center align-center h-100 border rounded-lg border-dashed opacity-40">
+            <div v-if="!employeeDetail && !detailLoading" class="d-flex flex-column justify-center align-center h-100 border rounded-lg border-dashed opacity-40 py-10">
                 <VIcon icon="tabler-click" size="48" class="mb-2" />
-                <p class="font-weight-bold">Selecciona un vendedor para ver su ficha detallada</p>
+                <p class="font-weight-bold text-center px-4">Selecciona un vendedor para ver su ficha detallada</p>
             </div>
             
-            <div v-else>
+            <div v-else-if="detailLoading" class="d-flex flex-column gap-4">
+                <VSkeletonLoader type="card, article" />
+            </div>
+
+            <div v-else-if="employeeDetail">
                 <!-- Detail Scorecard -->
                 <VRow class="mb-4" dense>
                     <VCol cols="12" sm="4" v-for="(kpi, idx) in [

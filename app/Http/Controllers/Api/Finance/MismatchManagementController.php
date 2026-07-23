@@ -6,26 +6,15 @@ use App\Http\Controllers\Controller;
 use App\Models\CashClosing;
 use App\Models\Transaction;
 use App\Models\CashFlow;
+use App\Http\Requests\Finances\AcceptMismatchRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class MismatchManagementController extends Controller
 {
-    public function acceptMismatch(Request $request)
+    public function acceptMismatch(AcceptMismatchRequest $request)
     {
-        // Solo administradores o supervisores
-        if (!in_array($request->user()->role_id, [1, 2])) {
-            return response()->json(['message' => 'Acceso denegado. Solo administradores y supervisores pueden aceptar descuadres.'], 403);
-        }
-
-        $request->validate([
-            'cash_closing_id' => 'required|exists:cash_closing,id',
-            'currency' => 'required|in:USD,COP,BS',
-            'mismatch_type' => 'required|string', // usd, cop, bs_card, bs_mobile, credit, cop_transfer
-            'difference' => 'required|numeric', // Puede ser positivo (sobrante) o negativo (faltante)
-        ]);
-
         $closing = CashClosing::findOrFail($request->cash_closing_id);
         $diff = (float) $request->difference;
         $currency = $request->currency;

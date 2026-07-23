@@ -70,11 +70,18 @@ class EcommerceOrderService
                         $unitPrice += (float) $variant->price_modifier;
                     }
 
-                    // Validar y descontar siempre del stock principal del producto
-                    if ($product->stock < $item['quantity']) {
-                        throw new Exception("Stock insuficiente para el producto '{$product->name}'.");
+                    // Validar y descontar stock
+                    if ($variant) {
+                        if ($variant->stock < $item['quantity']) {
+                            throw new Exception("Stock insuficiente para la variante del producto '{$product->name}'.");
+                        }
+                        $variant->decrement('stock', $item['quantity']);
+                    } else {
+                        if ($product->stock < $item['quantity']) {
+                            throw new Exception("Stock insuficiente para el producto '{$product->name}'.");
+                        }
+                        $product->decrement('stock', $item['quantity']);
                     }
-                    $product->decrement('stock', $item['quantity']);
 
                     $subtotal    = $unitPrice * $item['quantity'];
                     $totalAmount += $subtotal;

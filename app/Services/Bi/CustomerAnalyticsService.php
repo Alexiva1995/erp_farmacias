@@ -144,14 +144,7 @@ class CustomerAnalyticsService
 
     private function calculateAtRisk(array $rfm): array
     {
-        // Clientes "En Riesgo": Alta frecuencia o alto monto, pero recencia > 60 días
-        return collect($rfm)
-            ->filter(function($client) {
-                return $client->recency_days > 60 && ($client->frequency > 5 || $client->monetary > 100);
-            })
-            ->sortByDesc('monetary')
-            ->take(10)
-            ->values()
-            ->toArray();
+        // La consulta de la base de datos ya viene filtrada, ordenada y limitada.
+        return $rfm;
     }
 }

@@ -2,6 +2,7 @@
 import dayjs from 'dayjs';
 import { computed } from 'vue';
 import { useAuthStore } from "@/stores/auth";
+import AppEmptyState from "@/components/AppEmptyState.vue";
 
 const authStore = useAuthStore();
 
@@ -52,6 +53,13 @@ const headers = computed(() => {
       class="premium-table"
       @update:options="(options) => emit('update:options', options)"
     >
+      <template #no-data>
+        <AppEmptyState
+          title="No hay gastos"
+          message="No se encontraron registros de gastos en este momento."
+          icon="tabler-currency-dollar-off"
+        />
+      </template>
       <!-- ID -->
       <template #[`item.id`]="{ item }">
         <span class="font-weight-black text-primary text-sm">{{ item.id }}</span>

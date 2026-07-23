@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\Category;
 use App\Services\Ecommerce\EcommerceOrderService;
+use App\Http\Requests\Ecommerce\EcommerceCheckoutRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -173,31 +174,8 @@ class EcommerceController extends Controller
      * Procesar la compra/orden del e-commerce.
      * Crea la ecommerce_order, sube el comprobante y genera la orden TPV inmediatamente.
      */
-    public function checkout(Request $request): JsonResponse
+    public function checkout(EcommerceCheckoutRequest $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'customer_name'            => 'required|string|max:255',
-            'customer_email'           => 'nullable|email|max:255',
-            'customer_phone'           => 'required|string|max:30',
-            'shipping_address'         => 'nullable|string|max:500',
-            'notes'                    => 'nullable|string|max:1000',
-            'payment_method'           => 'nullable|string|max:50',
-            'payment_currency'         => 'nullable|string|max:10',  // Moneda elegida por el cliente
-            'customer_document_type'   => 'nullable|string|max:5',
-            'customer_document_number' => 'nullable|string|max:50',
-            'payment_proof'            => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
-            'items'                    => 'required|array|min:1',
-            'items.*.product_id'       => 'required|integer',
-            'items.*.variant_id'       => 'nullable|integer',
-            'items.*.quantity'         => 'required|integer|min:1',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors'  => $validator->errors(),
-            ], 422);
-        }
 
         try {
             // 1. Crear la orden de e-commerce con moneda y monto en moneda del cliente

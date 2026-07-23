@@ -27,11 +27,11 @@ class PosAnalyticsReportRepository
             ->count();
 
         // Ticket Promedio
-        $avgTicket = $completedSales > 0 ? $totalRevenue / $completedSales : 0;
+        $avgTicket = $completedSales > 0 ? (float)$totalRevenue / $completedSales : 0.0;
 
         // Promedio Venta Diario
         $diffDays = Carbon::parse($startDate)->diffInDays(Carbon::parse($endDate)) + 1;
-        $avgDailySales = $totalRevenue / $diffDays;
+        $avgDailySales = (float)$totalRevenue / $diffDays;
 
         // Tasa Conversión (Simplificada: Monto y Cliente coincidente en el periodo)
         // Nota: Esta es una aproximación ya que no hay FK directa.
@@ -63,15 +63,15 @@ class PosAnalyticsReportRepository
         $crossSellingRate = $completedSales > 0 ? ($crossSellingCount / $completedSales) * 100 : 0;
 
         return [
-            'completed_sales' => $completedSales,
-            'abandoned_sales' => $abandonedSales,
-            'quotations_generated' => $quotationsCount,
-            'conversion_rate' => round($conversionRate, 2),
-            'avg_ticket' => round($avgTicket, 2),
-            'avg_daily_sales' => round($avgDailySales, 2),
-            'total_revenue' => round($totalRevenue, 2),
-            'cross_selling_count' => $crossSellingCount,
-            'cross_selling_rate' => round($crossSellingRate, 2)
+            'completed_sales' => (int)$completedSales,
+            'abandoned_sales' => (int)$abandonedSales,
+            'quotations_generated' => (int)$quotationsCount,
+            'conversion_rate' => round((float)$conversionRate, 2),
+            'avg_ticket' => round((float)$avgTicket, 2),
+            'avg_daily_sales' => round((float)$avgDailySales, 2),
+            'total_revenue' => round((float)$totalRevenue, 2),
+            'cross_selling_count' => (int)$crossSellingCount,
+            'cross_selling_rate' => round((float)$crossSellingRate, 2)
         ];
     }
 
@@ -136,35 +136,50 @@ class PosAnalyticsReportRepository
         $startDate = $filters['start_date'] ?? now()->startOfMonth()->format('Y-m-d');
         $endDate = $filters['end_date'] ?? now()->format('Y-m-d');
 
-        // 1. Unidades por ticket
-        $byUnits = DB::table('orders')
+        // 1. Unidades por ticket (Agregados y agrupados directamente en la consulta)
+        $unitsQuery = DB::table('orders')
             ->join('order_details', 'orders.id', '=', 'order_details.order_id')
             ->where('orders.status', 'Completed')
             ->whereBetween('orders.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->select('orders.id', DB::raw('SUM(order_details.quantity) as total_qty'))
-            ->groupBy('orders.id')
-            ->get();
+            ->groupBy('orders.id');
+
+        $unitStats = DB::table(DB::raw("({$unitsQuery->toSql()}) as order_qtys"))
+            ->mergeBindings($unitsQuery)
+            ->select(
+                DB::raw("COUNT(CASE WHEN total_qty = 1 THEN 1 END) as qty_1"),
+                DB::raw("COUNT(CASE WHEN total_qty BETWEEN 2 AND 3 THEN 1 END) as qty_2_3"),
+                DB::raw("COUNT(CASE WHEN total_qty BETWEEN 4 AND 6 THEN 1 END) as qty_4_6"),
+                DB::raw("COUNT(CASE WHEN total_qty > 6 THEN 1 END) as qty_above_6")
+            )
+            ->first();
 
         $unitRanges = [
-            '1 Producto' => $byUnits->where('total_qty', 1)->count(),
-            '2-3 Productos' => $byUnits->whereBetween('total_qty', [2, 3])->count(),
-            '4-6 Productos' => $byUnits->whereBetween('total_qty', [4, 6])->count(),
-            '> 6 Productos' => $byUnits->where('total_qty', '>', 6)->count(),
+            '1 Producto' => (int)($unitStats->qty_1 ?? 0),
+            '2-3 Productos' => (int)($unitStats->qty_2_3 ?? 0),
+            '4-6 Productos' => (int)($unitStats->qty_4_6 ?? 0),
+            '> 6 Productos' => (int)($unitStats->qty_above_6 ?? 0),
         ];
 
-        // 2. Valor monetario ($)
-        $byValue = DB::table('orders')
+        // 2. Valor monetario ($) (Calculado directamente con condicionales CASE)
+        $valueStats = DB::table('orders')
             ->where('status', 'Completed')
             ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
-            ->select('total_amount_usd')
-            ->get();
+            ->select(
+                DB::raw("COUNT(CASE WHEN total_amount_usd <= 2 THEN 1 END) as val_0_2"),
+                DB::raw("COUNT(CASE WHEN total_amount_usd > 2 AND total_amount_usd <= 5 THEN 1 END) as val_2_5"),
+                DB::raw("COUNT(CASE WHEN total_amount_usd > 5 AND total_amount_usd <= 10 THEN 1 END) as val_5_10"),
+                DB::raw("COUNT(CASE WHEN total_amount_usd > 10 AND total_amount_usd <= 15 THEN 1 END) as val_10_15"),
+                DB::raw("COUNT(CASE WHEN total_amount_usd > 15 THEN 1 END) as val_above_15")
+            )
+            ->first();
 
         $valueRanges = [
-            '0-2'   => $byValue->where('total_amount_usd', '<=', 2)->count(),
-            '2-5'   => $byValue->whereBetween('total_amount_usd', [2.01, 5])->count(),
-            '5-10'  => $byValue->whereBetween('total_amount_usd', [5.01, 10])->count(),
-            '10-15' => $byValue->whereBetween('total_amount_usd', [10.01, 15])->count(),
-            '+15'   => $byValue->where('total_amount_usd', '>', 15)->count(),
+            '0-2'   => (int)($valueStats->val_0_2 ?? 0),
+            '2-5'   => (int)($valueStats->val_2_5 ?? 0),
+            '5-10'  => (int)($valueStats->val_5_10 ?? 0),
+            '10-15' => (int)($valueStats->val_10_15 ?? 0),
+            '+15'   => (int)($valueStats->val_above_15 ?? 0),
         ];
 
         return [

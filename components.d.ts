@@ -25,6 +25,7 @@ declare module 'vue' {
     AppCombobox: typeof import('./resources/js/@core/components/app-form-elements/AppCombobox.vue')['default']
     AppDateTimePicker: typeof import('./resources/js/@core/components/app-form-elements/AppDateTimePicker.vue')['default']
     AppDrawerHeaderSection: typeof import('./resources/js/@core/components/AppDrawerHeaderSection.vue')['default']
+    AppEmptyState: typeof import('./resources/js/components/AppEmptyState.vue')['default']
     AppFilterBase: typeof import('./resources/js/components/AppFilterBase.vue')['default']
     AppLoadingIndicator: typeof import('./resources/js/components/AppLoadingIndicator.vue')['default']
     ApplyDiscountDialog: typeof import('./resources/js/components/dialogs/ApplyDiscountDialog.vue')['default']

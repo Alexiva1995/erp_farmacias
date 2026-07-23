@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AutoOrder;
 use App\Models\AutoOrderDetail;
 use App\Enums\AutoOrderStatus;
+use App\Http\Requests\Suppliers\RespondAutoOrderRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -58,20 +59,13 @@ class SupplierOrderResponseController extends Controller
     /**
      * Procesa la respuesta del proveedor (aprobar / rechazar ítems).
      */
-    public function respond(Request $request, string $hash): JsonResponse
+    public function respond(RespondAutoOrderRequest $request, string $hash): JsonResponse
     {
         $order = AutoOrder::where('hash_token', $hash)->first();
 
         if (!$order) {
             return response()->json(['message' => 'Orden de compra no encontrada.'], 404);
         }
-
-        $request->validate([
-            'items'                             => 'required|array',
-            'items.*.id'                        => 'required|integer|exists:auto_order_details,id',
-            'items.*.supplier_confirmed'        => 'required|boolean',
-            'items.*.supplier_rejected_reason'  => 'nullable|string|max:255',
-        ]);
 
         DB::beginTransaction();
         try {

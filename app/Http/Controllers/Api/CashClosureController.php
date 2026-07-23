@@ -10,6 +10,9 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\CashClosureExport;
 use App\Http\Requests\CashClosure\CloseCashClosureRequest;
+use App\Http\Requests\CashClosure\ConfirmReferenceRequest;
+use App\Http\Requests\CashClosure\GeneratePdfReportRequest;
+use App\Http\Requests\CashClosure\UpdateBlindAmountsRequest;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Pagination\LengthAwarePaginator;
 use App\Models\Order;
@@ -74,12 +77,8 @@ class CashClosureController extends Controller
         return $pdf;
     }
 
-    public function generate(Request $request)
+    public function generate(GeneratePdfReportRequest $request)
     {
-        $request->validate([
-            'html' => 'required|string',
-            'filename' => 'required|string'
-        ]);
         $pdf = $this->pdf($request->input('html'));
         return $pdf->download($request->input('filename'));
     }
@@ -211,13 +210,8 @@ class CashClosureController extends Controller
         return response()->json($sellers);
     }
 
-    public function confirmReference(Request $request)
+    public function confirmReference(ConfirmReferenceRequest $request)
     {
-        $request->validate([
-            'order_id' => 'required|exists:orders,id',
-            'reference_code' => 'required',
-        ]);
-
         $order = Order::findOrFail($request->order_id);
         // Obtenemos los métodos de pago crudos (sin filtros del accessor)
         $rawPaymentMethods = $order->getRawOriginal('payment_methods');
@@ -261,23 +255,8 @@ class CashClosureController extends Controller
         ], 404);
     }
 
-    public function updateBlindAmounts(Request $request)
+    public function updateBlindAmounts(UpdateBlindAmountsRequest $request)
     {
-        // Solo administradores (role_id = 1)
-        if ($request->user()->role_id !== 1) {
-            return response()->json(['message' => 'Acceso denegado. Solo administradores pueden realizar esta acción.'], 403);
-        }
-
-        $request->validate([
-            'id' => 'required|exists:cash_closing,id',
-            'declared_cop' => 'nullable|numeric',
-            'declared_cop_transfer' => 'nullable|numeric',
-            'declared_usd' => 'nullable|numeric',
-            'declared_credit' => 'nullable|numeric',
-            'declared_bs_mobile' => 'nullable|numeric',
-            'declared_bs_card' => 'nullable|numeric',
-        ]);
-
         $cashClosing = \App\Models\CashClosing::findOrFail($request->id);
 
         $decCop = (float) ($request->declared_cop ?? 0);

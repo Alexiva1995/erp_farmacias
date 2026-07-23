@@ -30,14 +30,6 @@ class SkuReportController extends Controller
         
         $paginatedReport = $this->skuReportService->generateReport($filters, (int) $perPage);
 
-        // Si hay filtrado por Semáforo después de calculado
-        if (!empty($filters['semaphore'])) {
-             $filteredItems = collect($paginatedReport->items())
-                ->where('semaphore', $filters['semaphore'])
-                ->values();
-             $paginatedReport->setCollection($filteredItems);
-        }
-
         return response()->json([
             'data' => SkuReportResource::collection($paginatedReport->getCollection())->resolve(),
             'total' => $paginatedReport->total(),

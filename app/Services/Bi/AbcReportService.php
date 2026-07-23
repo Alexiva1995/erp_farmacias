@@ -6,6 +6,7 @@ namespace App\Services\Bi;
 
 use App\Contracts\Repositories\AbcReportRepositoryInterface;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Carbon\Carbon;
 
 /**
@@ -29,119 +30,124 @@ class AbcReportService
      */
     public function getCalculatedAbcReport(array $filtros): Collection
     {
-        $data = $this->repository->getAggregatedData($filtros);
+        // Generar una clave de caché única basada en los filtros aplicados
+        $cacheKey = 'abc_report_' . md5(json_encode($filtros));
 
-        if ($data->isEmpty()) {
-            return collect([]);
-        }
+        return Cache::remember($cacheKey, 600, function () use ($filtros) {
+            $data = $this->repository->getAggregatedData($filtros);
 
-        // Configuración de Fechas para días de cálculo
-        $start = Carbon::parse($filtros['start_date'] ?? now()->subDays(90)->startOfDay());
-        $end = Carbon::parse($filtros['end_date'] ?? now()->endOfDay());
-        $daysInPeriod = max(1, $start->diffInDays($end));
-
-        // 1. Preparar campos bases (Márgenes, Variaciones, GMROI)
-        $data->transform(function ($item) use ($daysInPeriod) {
-            $item->total_sales = (float) $item->total_sales;
-            $item->total_cost = (float) $item->total_cost;
-            $item->sold_units = (float) $item->sold_units;
-            $item->current_stock = (float) $item->current_stock;
-            $item->last_cost = (float) $item->last_cost;
-            
-            // Margen absolutos y relativos
-            $item->margin_amount = $item->total_sales - $item->total_cost;
-            $item->margin_percentage = $item->total_sales > 0 
-                ? ($item->margin_amount / $item->total_sales) * 100 
-                : 0;
-
-            // Valor de Inventario Actual (Capital Atrapado)
-            $item->inventory_value = $item->current_stock * $item->last_cost;
-
-            // GMROI Anualizado (%)
-            // Proyectamos la rentabilidad del periodo a 365 días para una métrica estándar
-            $item->gmroi = $item->inventory_value > 0 
-                ? ($item->margin_amount / $item->inventory_value) * (365 / $daysInPeriod) * 100
-                : ($item->margin_amount > 0 ? 9999 : 0);
-
-            // Días de Inventario usando el promedio mensual precalculado del producto (sales_average / 30)
-            // Este campo es independiente del filtro de fechas y refleja el comportamiento real histórico
-            $monthlyAvg = (float) ($item->sales_average ?? 0);
-            $dailyAvgFromProduct = $monthlyAvg / 30;
-            $item->inventory_days = $dailyAvgFromProduct > 0
-                ? (float) $item->current_stock / $dailyAvgFromProduct
-                : ($item->current_stock > 0 ? 9999 : 0);
-
-            // Coeficiente de Variación (CV)
-            $item->cv = $item->avg_daily_sales > 0 
-                ? (float) ($item->std_dev_sales / $item->avg_daily_sales) 
-                : 999; 
-
-            // Determinar XYZ
-            // Regla de Relevancia: Menos de 3 unidades se considera impredecible (Z) por falta de muestra
-            if ($item->sold_units < 3) {
-                $item->class_rotation = 'Z';
-            } elseif ($item->cv < 0.5) {
-                $item->class_rotation = 'X';
-            } elseif ($item->cv <= 1.0) {
-                $item->class_rotation = 'Y';
-            } else {
-                $item->class_rotation = 'Z';
+            if ($data->isEmpty()) {
+                return collect([]);
             }
 
-            return $item;
-        });
+            // Configuración de Fechas para días de cálculo
+            $start = Carbon::parse($filtros['start_date'] ?? now()->subDays(90)->startOfDay());
+            $end = Carbon::parse($filtros['end_date'] ?? now()->endOfDay());
+            $daysInPeriod = max(1, $start->diffInDays($end));
 
-        // 2. Clasificación ABC por Ventas (Dimensión 1)
-        $data = $this->applyAbcClassification($data, 'total_sales', 'class_sales');
+            // 1. Preparar campos bases (Márgenes, Variaciones, GMROI)
+            $data->transform(function ($item) use ($daysInPeriod) {
+                $item->total_sales = (float) $item->total_sales;
+                $item->total_cost = (float) $item->total_cost;
+                $item->sold_units = (float) $item->sold_units;
+                $item->current_stock = (float) $item->current_stock;
+                $item->last_cost = (float) $item->last_cost;
+                
+                // Margen absolutos y relativos
+                $item->margin_amount = $item->total_sales - $item->total_cost;
+                $item->margin_percentage = $item->total_sales > 0 
+                    ? ($item->margin_amount / $item->total_sales) * 100 
+                    : 0;
 
-        // 3. Clasificación ABC por Margen (Dimensión 2)
-        $data = $this->applyAbcClassification($data, 'margin_amount', 'class_margin');
+                // Valor de Inventario Actual (Capital Atrapado)
+                $item->inventory_value = $item->current_stock * $item->last_cost;
 
-        // 4. Determinar Letra Final Combinada
-        $data->transform(function ($item) {
-            $item->final_classification = $item->class_sales . $item->class_margin . $item->class_rotation;
-            return $item;
-        });
+                // GMROI Anualizado (%)
+                // Proyectamos la rentabilidad del periodo a 365 días para una métrica estándar
+                $item->gmroi = $item->inventory_value > 0 
+                    ? ($item->margin_amount / $item->inventory_value) * (365 / $daysInPeriod) * 100
+                    : ($item->margin_amount > 0 ? 9999 : 0);
 
-        // Aplicar filtro de Letra Final si existe
-        if (!empty($filtros['final_classification'])) {
-            $filterLetter = strtoupper($filtros['final_classification']);
-            $data = $data->filter(function ($item) use ($filterLetter) {
-                return $item->final_classification === $filterLetter;
+                // Días de Inventario usando el promedio mensual precalculado del producto (sales_average / 30)
+                // Este campo es independiente del filtro de fechas y refleja el comportamiento real histórico
+                $monthlyAvg = (float) ($item->sales_average ?? 0);
+                $dailyAvgFromProduct = $monthlyAvg / 30;
+                $item->inventory_days = $dailyAvgFromProduct > 0
+                    ? (float) $item->current_stock / $dailyAvgFromProduct
+                    : ($item->current_stock > 0 ? 9999 : 0);
+
+                // Coeficiente de Variación (CV)
+                $item->cv = $item->avg_daily_sales > 0 
+                    ? (float) ($item->std_dev_sales / $item->avg_daily_sales) 
+                    : 999; 
+
+                // Determinar XYZ
+                // Regla de Relevancia: Menos de 3 unidades se considera impredecible (Z) por falta de muestra
+                if ($item->sold_units < 3) {
+                    $item->class_rotation = 'Z';
+                } elseif ($item->cv < 0.5) {
+                    $item->class_rotation = 'X';
+                } elseif ($item->cv <= 1.0) {
+                    $item->class_rotation = 'Y';
+                } else {
+                    $item->class_rotation = 'Z';
+                }
+
+                return $item;
             });
-        }
 
-        // 5. Aplicar Filtros de Análisis Especializados
-        $analysisType = $filtros['analysis_type'] ?? 'all';
-        if ($analysisType === 'dead_stock') {
-            // Stock Muerto: Tiene stock pero no se vendió nada en el periodo
-            $data = $data->filter(function ($item) {
-                return $item->sold_units <= 0 && $item->current_stock > 0;
+            // 2. Clasificación ABC por Ventas (Dimensión 1)
+            $data = $this->applyAbcClassification($data, 'total_sales', 'class_sales');
+
+            // 3. Clasificación ABC por Margen (Dimensión 2)
+            $data = $this->applyAbcClassification($data, 'margin_amount', 'class_margin');
+
+            // 4. Determinar Letra Final Combinada
+            $data->transform(function ($item) {
+                $item->final_classification = $item->class_sales . $item->class_margin . $item->class_rotation;
+                return $item;
             });
-        } elseif ($analysisType === 'star_products') {
-            // Productos Estrella: Ventas A y Margen A
-            $data = $data->filter(function ($item) {
-                return $item->class_sales === 'A' && $item->class_margin === 'A';
-            });
-        }
 
-        // 6. Aplicar Filtros Ad-hoc (ROI y Stock)
-        if (isset($filtros['min_gmroi'])) {
-            $minRoi = (float) $filtros['min_gmroi'];
-            $data = $data->filter(fn($item) => $item->gmroi >= $minRoi);
-        }
-
-        if (isset($filtros['stock_filter']) && $filtros['stock_filter'] !== 'all') {
-            if ($filtros['stock_filter'] === 'with_stock') {
-                // Solo productos con existencias
-                $data = $data->filter(fn($item) => $item->current_stock > 0);
-            } elseif ($filtros['stock_filter'] === 'out_of_stock') {
-                // Solo productos agotados
-                $data = $data->filter(fn($item) => $item->current_stock <= 0);
+            // Aplicar filtro de Letra Final si existe
+            if (!empty($filtros['final_classification'])) {
+                $filterLetter = strtoupper($filtros['final_classification']);
+                $data = $data->filter(function ($item) use ($filterLetter) {
+                    return $item->final_classification === $filterLetter;
+                });
             }
-        }
 
-        return $data->values();
+            // 5. Aplicar Filtros de Análisis Especializados
+            $analysisType = $filtros['analysis_type'] ?? 'all';
+            if ($analysisType === 'dead_stock') {
+                // Stock Muerto: Tiene stock pero no se vendió nada en el periodo
+                $data = $data->filter(function ($item) {
+                    return $item->sold_units <= 0 && $item->current_stock > 0;
+                });
+            } elseif ($analysisType === 'star_products') {
+                // Productos Estrella: Ventas A y Margen A
+                $data = $data->filter(function ($item) {
+                    return $item->class_sales === 'A' && $item->class_margin === 'A';
+                });
+            }
+
+            // 6. Aplicar Filtros Ad-hoc (ROI y Stock)
+            if (isset($filtros['min_gmroi'])) {
+                $minRoi = (float) $filtros['min_gmroi'];
+                $data = $data->filter(fn($item) => $item->gmroi >= $minRoi);
+            }
+
+            if (isset($filtros['stock_filter']) && $filtros['stock_filter'] !== 'all') {
+                if ($filtros['stock_filter'] === 'with_stock') {
+                    // Solo productos con existencias
+                    $data = $data->filter(fn($item) => $item->current_stock > 0);
+                } elseif ($filtros['stock_filter'] === 'out_of_stock') {
+                    // Solo productos agotados
+                    $data = $data->filter(fn($item) => $item->current_stock <= 0);
+                }
+            }
+
+            return $data->values();
+        });
     }
 
     /**

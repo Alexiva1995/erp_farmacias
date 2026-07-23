@@ -19,6 +19,12 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use App\Http\Resources\Finances\PendingPaymentGroupResource;
 use App\Http\Resources\Finances\PaymentHistoryResource;
+use App\Http\Requests\PendingPayments\ProcessPaymentRequest;
+use App\Http\Requests\PendingPayments\UploadReceiptRequest;
+use App\Http\Requests\PendingPayments\GetPaidAmountRequest;
+use App\Http\Requests\PendingPayments\GetCreditoFiscalRequest;
+use App\Http\Requests\PendingPayments\GetExpensesHistoryRequest;
+use App\Http\Requests\PendingPayments\UpdatePaymentDateRequest;
 use Carbon\Carbon;
 use Illuminate\Validation\Rule;
 
@@ -327,43 +333,8 @@ class PendingPaymentsController extends Controller
         }
     }
 
-    /**
-     * Procesar pago de facturas
-     */
-    public function processPayment(Request $request): JsonResponse
+    public function processPayment(ProcessPaymentRequest $request): JsonResponse
     {
-        try {
-            $allowedMethods = match ($request->payment_currency) {
-                'USD' => ['CASH', 'BINANCE', 'PAYPAL', 'CREDIT'],
-                'VES', 'BS' => ['CASH', 'CARD', 'MOBILE', 'TRANSFER'],
-                'COP' => ['CASH', 'TRANSFER'],
-                default => [],
-            };
-
-            $request->validate([
-                'invoice_ids' => 'required|array',
-                'invoice_ids.*' => 'exists:invoices,id',
-                'payment_type' => 'required|in:full,partial', // Nuevo campo
-                'payment_currency' => 'required|in:VES,USD,COP',
-                'payment_amount' => 'required|numeric|min:0.01',
-                'payment_date' => 'required|date',
-                'payment_method' => ['required', Rule::in($allowedMethods)],
-                'reference' => 'nullable|string|max:100',
-                'photo_url' => 'nullable|string',
-                'notes' => 'nullable|string|max:500',
-                'has_iva' => 'nullable|boolean',
-            ], [
-                'payment_method.required' => 'El método de pago es necesario',
-                'payment_method.in' => 'El método de pago seleccionado no es válido para la moneda seleccionada',
-            ]);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            Log::error('ProcessPayment - Validation Error:', [
-                'errors' => $e->errors(),
-                'data' => $request->all()
-            ]);
-            return ApiResponse::error('Datos de validación incorrectos', 400, $e->errors());
-        }
-
         // Validación adicional específica para payment_type
         if (empty($request->payment_type) || !in_array($request->payment_type, ['full', 'partial'])) {
             Log::error('ProcessPayment - Payment Type Missing:', [
@@ -757,12 +728,8 @@ class PendingPaymentsController extends Controller
     /**
      * Subir comprobante de pago
      */
-    public function uploadReceipt(Request $request): JsonResponse
+    public function uploadReceipt(UploadReceiptRequest $request): JsonResponse
     {
-        $request->validate([
-            'file' => 'required|image|max:2048'
-        ]);
-
         try {
             $file = $request->file('file');
             $filename = 'payment_receipt_' . time() . '.' . $file->getClientOriginalExtension();
@@ -946,14 +913,9 @@ class PendingPaymentsController extends Controller
     /**
      * Obtener monto ya pagado de facturas específicas
      */
-    public function getPaidAmount(Request $request): JsonResponse
+    public function getPaidAmount(GetPaidAmountRequest $request): JsonResponse
     {
         try {
-            $request->validate([
-                'invoice_ids' => 'required|array',
-                'invoice_ids.*' => 'exists:invoices,id'
-            ]);
-
             $invoiceIds = $request->invoice_ids;
 
             // Obtener el total ya pagado en USD para estas facturas
@@ -1125,14 +1087,9 @@ class PendingPaymentsController extends Controller
 
         return round($totalUSD * $exchangeRate->rate, 2);
     }
-    public function getCreditoFiscal(Request $request): JsonResponse
+    public function getCreditoFiscal(GetCreditoFiscalRequest $request): JsonResponse
     {
         try {
-            $request->validate([
-                'start_date' => 'nullable|date',
-                'end_date' => 'nullable|date'
-            ]);
-
             $startDate = $request->start_date ?? now()->startOfMonth()->format('Y-m-d');
             $endDate = $request->end_date ?? now()->endOfMonth()->format('Y-m-d');
 
@@ -1195,16 +1152,9 @@ class PendingPaymentsController extends Controller
         }
     }
 
-    public function getExpensesHistory(Request $request): JsonResponse
+    public function getExpensesHistory(GetExpensesHistoryRequest $request): JsonResponse
     {
         try {
-            $request->validate([
-                'start_date' => 'nullable|date',
-                'end_date' => 'nullable|date',
-                'page' => 'integer|min:1',
-                'itemsPerPage' => 'integer|min:1|max:100'
-            ]);
-
             $startDate = $request->start_date ?? now()->startOfMonth()->format('Y-m-d');
             $endDate = $request->end_date ?? now()->endOfMonth()->format('Y-m-d');
             $page = $request->page ?? 1;
@@ -1394,13 +1344,9 @@ class PendingPaymentsController extends Controller
     /**
      * Actualizar la fecha de pago de una factura
      */
-    public function updatePaymentDate(Request $request, int $invoiceId): JsonResponse
+    public function updatePaymentDate(UpdatePaymentDateRequest $request, int $invoiceId): JsonResponse
     {
         try {
-            $request->validate([
-                'payment_date' => 'required|date'
-            ]);
-
             $invoice = Invoice::findOrFail($invoiceId);
             $invoice->update([
                 'payment_date' => $request->payment_date

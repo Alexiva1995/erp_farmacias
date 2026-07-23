@@ -5,9 +5,12 @@ import VueApexCharts from 'vue3-apexcharts';
 
 // --- ESTADO ---
 const loading = ref(false);
-const startDate = ref(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().substr(0, 10));
-const endDate = ref(new Date().toISOString().substr(0, 10));
+const error = ref(null);
+const startDate = ref(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().substring(0, 10));
+const endDate = ref(new Date().toISOString().substring(0, 10));
 const analyticsData = ref(null);
+
+let abortController = null;
 
 // --- FORMATEO ---
 const formatCurrency = (value) => {
@@ -30,16 +33,29 @@ const translateSegment = (key) => {
 
 // --- CARGA DE DATOS ---
 const fetchAnalytics = async () => {
+  if (abortController) {
+    abortController.abort();
+  }
+  abortController = new AbortController();
+
   loading.value = true;
+  error.value = null;
+
   try {
     const params = {
       start_date: startDate.value,
       end_date: endDate.value
     };
-    const { data } = await axios.get('/bi/customers/dashboard', { params });
+    const { data } = await axios.get('/bi/customers/dashboard', { 
+      params,
+      signal: abortController.signal
+    });
     analyticsData.value = data;
-  } catch (error) {
-    console.error("Error al cargar analítica de clientes:", error);
+  } catch (err) {
+    if (err.name !== 'CanceledError') {
+      error.value = "Error al cargar la analítica de clientes. Inténtalo de nuevo más tarde.";
+      console.error("Error al cargar analítica de clientes:", err);
+    }
   } finally {
     loading.value = false;
   }
@@ -167,11 +183,11 @@ const getTextColor = (percentage) => {
           <VSpacer />
 
           <div class="d-flex align-center gap-2">
-            <AppTextField v-model="startDate" type="date" density="compact" hide-details class="premium-input" />
+            <AppTextField v-model="startDate" type="date" density="compact" hide-details class="premium-input" :disabled="loading" />
             <span class="text-disabled">a</span>
-            <AppTextField v-model="endDate" type="date" density="compact" hide-details class="premium-input" />
+            <AppTextField v-model="endDate" type="date" density="compact" hide-details class="premium-input" :disabled="loading" />
             
-            <VBtn icon variant="flat" color="primary" size="38" :loading="loading" @click="fetchAnalytics">
+            <VBtn icon variant="flat" color="primary" size="38" :loading="loading" :disabled="loading" @click="fetchAnalytics">
               <VIcon icon="tabler-refresh" size="20" />
             </VBtn>
           </div>
@@ -179,33 +195,45 @@ const getTextColor = (percentage) => {
       </VCardText>
     </VCard>
 
-    <div v-if="loading && !analyticsData" class="d-flex justify-center align-center h-[60vh]">
-      <VProgressCircular indeterminate color="primary" size="40" />
-    </div>
+    <!-- Alerta de Errores -->
+    <VAlert v-if="error" type="error" variant="tonal" closable class="mb-6 rounded-lg" @click:close="error = null">
+      {{ error }}
+    </VAlert>
 
-    <div v-else-if="analyticsData" class="px-1">
+    <div class="px-1">
       
       <!-- Fila 1: Métricas de Oro -->
       <VRow class="mb-6" dense>
-        <VCol cols="12" md="3" sm="6" v-for="(kpi, idx) in [
-          { title: 'Tasa de Retención (CRR)', value: analyticsData.kpis.crr + '%', icon: 'tabler-user-check', color: 'primary', desc: 'Fidelidad del periodo' },
-          { title: 'Tasa de Recompra', value: analyticsData.kpis.repurchase_rate.toFixed(1) + '%', icon: 'tabler-repeat', color: 'success', desc: 'Clientes recurrentes' },
-          { title: 'Tasa de Abandono (Churn)', value: analyticsData.kpis.churn_rate.toFixed(1) + '%', icon: 'tabler-user-minus', color: 'error', desc: 'Inactivos > 90 días' },
-          { title: 'LTV Promedio (Valor de Vida)', value: formatCurrency(analyticsData.kpis.avg_ltv), icon: 'tabler-coin', color: 'warning', desc: 'Valor de vida promedio del cliente' }
-        ]" :key="idx">
-          <VCard border class="rounded-lg shadow-sm h-100 kpi-card">
-            <VCardText class="pa-4 d-flex align-center">
-              <VAvatar :color="kpi.color" variant="tonal" size="48" rounded="lg" class="me-4">
-                <VIcon :icon="kpi.icon" size="24" />
-              </VAvatar>
-              <div>
-                <p class="text-[12px] text-disabled mb-0 font-weight-bold">{{ kpi.title }}</p>
-                <h3 class="text-h5 font-weight-black mb-0">{{ kpi.value }}</h3>
-                <p class="text-[10px] text-medium-emphasis mb-0 opacity-60">{{ kpi.desc }}</p>
-              </div>
-            </VCardText>
-          </VCard>
-        </VCol>
+        <template v-if="loading && !analyticsData">
+          <VCol cols="12" md="3" sm="6" v-for="i in 4" :key="i">
+            <VCard border class="rounded-lg shadow-sm h-100">
+              <VCardText class="pa-4">
+                <VSkeletonLoader type="list-item-avatar-two-line" />
+              </VCardText>
+            </VCard>
+          </VCol>
+        </template>
+        <template v-else-if="analyticsData">
+          <VCol cols="12" md="3" sm="6" v-for="(kpi, idx) in [
+            { title: 'Tasa de Retención (CRR)', value: analyticsData.kpis.crr + '%', icon: 'tabler-user-check', color: 'primary', desc: 'Fidelidad del periodo' },
+            { title: 'Tasa de Recompra', value: analyticsData.kpis.repurchase_rate.toFixed(1) + '%', icon: 'tabler-repeat', color: 'success', desc: 'Clientes recurrentes' },
+            { title: 'Tasa de Abandono (Churn)', value: analyticsData.kpis.churn_rate.toFixed(1) + '%', icon: 'tabler-user-minus', color: 'error', desc: 'Inactivos > 90 días' },
+            { title: 'LTV Promedio (Valor de Vida)', value: formatCurrency(analyticsData.kpis.avg_ltv), icon: 'tabler-coin', color: 'warning', desc: 'Valor de vida promedio del cliente' }
+          ]" :key="idx">
+            <VCard border class="rounded-lg shadow-sm h-100 kpi-card">
+              <VCardText class="pa-4 d-flex align-center">
+                <VAvatar :color="kpi.color" variant="tonal" size="48" rounded="lg" class="me-4">
+                  <VIcon :icon="kpi.icon" size="24" />
+                </VAvatar>
+                <div>
+                  <p class="text-[12px] text-disabled mb-0 font-weight-bold">{{ kpi.title }}</p>
+                  <h3 class="text-h5 font-weight-black mb-0">{{ kpi.value }}</h3>
+                  <p class="text-[10px] text-medium-emphasis mb-0 opacity-60">{{ kpi.desc }}</p>
+                </div>
+              </VCardText>
+            </VCard>
+          </VCol>
+        </template>
       </VRow>
 
       <!-- Fila 2: Crecimiento y Frecuencia -->
@@ -219,7 +247,8 @@ const getTextColor = (percentage) => {
               </VCardTitle>
             </VCardItem>
             <VCardText class="pa-4">
-              <VueApexCharts height="300" :options="acquisitionChartOptions" :series="[{ name: 'Nuevos Clientes', data: analyticsData.growth.new_customers_daily.map(d => d.count) }]" />
+              <VSkeletonLoader v-if="loading && !analyticsData" type="image" height="300" />
+              <VueApexCharts v-else-if="analyticsData" height="300" :options="acquisitionChartOptions" :series="[{ name: 'Nuevos Clientes', data: analyticsData.growth.new_customers_daily.map(d => d.count) }]" />
             </VCardText>
           </VCard>
         </VCol>
@@ -233,7 +262,8 @@ const getTextColor = (percentage) => {
               </VCardTitle>
             </VCardItem>
             <VCardText class="pa-4">
-              <VueApexCharts height="300" :options="frequencyDonutOptions" :series="Object.values(analyticsData.frequency)" type="donut" />
+              <VSkeletonLoader v-if="loading && !analyticsData" type="image" height="300" />
+              <VueApexCharts v-else-if="analyticsData" height="300" :options="frequencyDonutOptions" :series="Object.values(analyticsData.frequency)" type="donut" />
             </VCardText>
           </VCard>
         </VCol>
@@ -249,7 +279,10 @@ const getTextColor = (percentage) => {
                 Análisis de Cohortes (Retención Mensual %)
               </VCardTitle>
             </VCardItem>
-            <div class="overflow-x-auto">
+            <VCardText v-if="loading && !analyticsData" class="pa-4">
+              <VSkeletonLoader type="table-heading, table-tbody" />
+            </VCardText>
+            <div v-else-if="analyticsData" class="overflow-x-auto">
               <VTable class="cohort-table">
                 <thead>
                   <tr>
@@ -289,21 +322,24 @@ const getTextColor = (percentage) => {
               </VCardTitle>
             </VCardItem>
             <VCardText class="pa-4">
-              <VueApexCharts height="300" :options="valueTreemapOptions" :series="valueTreemapSeries" type="treemap" />
-              <div class="mt-4">
-                <VRow dense>
-                  <VCol cols="6" v-for="(val, key) in analyticsData.segmentation" :key="key" v-if="typeof val === 'object'">
-                    <div class="d-flex align-center mb-2 pa-2 rounded border border-opacity-10">
-                      <div class="segment-indicator me-2" :class="key"></div>
-                      <div>
-                        <div class="text-[10px] font-weight-black uppercase opacity-60">{{ translateSegment(key) }}</div>
-                        <div class="text-subtitle-2 font-weight-black">{{ formatCurrency(val.revenue) }}</div>
-                        <div class="text-[9px] text-disabled">{{ val.count }} clientes | Prom: {{ formatCurrency(val.avg_per_client) }}</div>
+              <VSkeletonLoader v-if="loading && !analyticsData" type="image" height="300" />
+              <template v-else-if="analyticsData">
+                <VueApexCharts height="300" :options="valueTreemapOptions" :series="valueTreemapSeries" type="treemap" />
+                <div class="mt-4">
+                  <VRow dense>
+                    <VCol cols="6" v-for="(val, key) in analyticsData.segmentation" :key="key" v-if="typeof val === 'object'">
+                      <div class="d-flex align-center mb-2 pa-2 rounded border border-opacity-10">
+                        <div class="segment-indicator me-2" :class="key"></div>
+                        <div>
+                          <div class="text-[10px] font-weight-black uppercase opacity-60">{{ translateSegment(key) }}</div>
+                          <div class="text-subtitle-2 font-weight-black">{{ formatCurrency(val.revenue) }}</div>
+                          <div class="text-[9px] text-disabled">{{ val.count }} clientes | Prom: {{ formatCurrency(val.avg_per_client) }}</div>
+                        </div>
                       </div>
-                    </div>
-                  </VCol>
-                </VRow>
-              </div>
+                    </VCol>
+                  </VRow>
+                </div>
+              </template>
             </VCardText>
           </VCard>
         </VCol>
@@ -316,32 +352,37 @@ const getTextColor = (percentage) => {
                 Clientes Críticos en Riesgo (RFM)
               </VCardTitle>
             </VCardItem>
-            <VTable density="compact" class="analytics-table">
-              <thead>
-                <tr>
-                  <th class="text-uppercase text-[10px] font-weight-black">Cliente</th>
-                  <th class="text-uppercase text-[10px] font-weight-black text-right">Gasto USD</th>
-                  <th class="text-uppercase text-[10px] font-weight-black text-center">Última Compra</th>
-                  <th class="text-uppercase text-[10px] font-weight-black text-center">Días</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="client in analyticsData.at_risk" :key="client.id">
-                  <td>
-                    <div class="font-weight-black text-primary text-[11px]">{{ client.name }} {{ client.last_name }}</div>
-                    <div class="text-[10px] text-disabled">{{ client.phone }}</div>
-                  </td>
-                  <td class="text-right font-weight-black text-error">{{ formatCurrency(client.monetary) }}</td>
-                  <td class="text-center text-[10px]">{{ client.last_order_date }}</td>
-                  <td class="text-center">
-                    <VChip size="x-small" label color="error" variant="tonal" class="font-weight-black">{{ client.recency_days }}d</VChip>
-                  </td>
-                </tr>
-              </tbody>
-            </VTable>
-            <VCardText v-if="analyticsData.at_risk.length === 0" class="text-center pa-10 text-disabled">
-              No hay clientes críticos identificados actualmente.
+            <VCardText v-if="loading && !analyticsData" class="pa-4">
+              <VSkeletonLoader type="table-thead, table-tbody" />
             </VCardText>
+            <template v-else-if="analyticsData">
+              <VTable density="compact" class="analytics-table">
+                <thead>
+                  <tr>
+                    <th class="text-uppercase text-[10px] font-weight-black">Cliente</th>
+                    <th class="text-uppercase text-[10px] font-weight-black text-right">Gasto USD</th>
+                    <th class="text-uppercase text-[10px] font-weight-black text-center">Última Compra</th>
+                    <th class="text-uppercase text-[10px] font-weight-black text-center">Días</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="client in analyticsData.at_risk" :key="client.id">
+                    <td>
+                      <div class="font-weight-black text-primary text-[11px]">{{ client.name }} {{ client.last_name }}</div>
+                      <div class="text-[10px] text-disabled">{{ client.phone }}</div>
+                    </td>
+                    <td class="text-right font-weight-black text-error">{{ formatCurrency(client.monetary) }}</td>
+                    <td class="text-center text-[10px]">{{ client.last_order_date }}</td>
+                    <td class="text-center">
+                      <VChip size="x-small" label color="error" variant="tonal" class="font-weight-black">{{ client.recency_days }}d</VChip>
+                    </td>
+                  </tr>
+                </tbody>
+              </VTable>
+              <VCardText v-if="analyticsData.at_risk.length === 0" class="text-center pa-10 text-disabled">
+                No hay clientes críticos identificados actualmente.
+              </VCardText>
+            </template>
           </VCard>
         </VCol>
       </VRow>

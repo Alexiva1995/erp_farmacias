@@ -24,6 +24,9 @@ return new class extends Migration
             if (!Schema::hasColumn('ecommerce_orders', 'total_in_currency')) {
                 $table->decimal('total_in_currency', 12, 2)->nullable()->after('currency');
             }
+            if (!Schema::hasColumn('ecommerce_orders', 'tpv_order_id')) {
+                $table->unsignedBigInteger('tpv_order_id')->nullable()->after('total_in_currency');
+            }
         });
     }
 

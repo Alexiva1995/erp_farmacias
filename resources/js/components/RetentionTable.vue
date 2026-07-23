@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from "vue";
 import { useDisplay } from "vuetify";
+import AppEmptyState from "@/components/AppEmptyState.vue";
 import { useAuthStore } from "@/stores/auth";
 
 const props = defineProps({
@@ -95,6 +96,13 @@ const toggleSelection = (id) => {
         class="text-no-wrap premium-table"
         @update:options="(options) => emit('update:options', options)"
       >
+        <template #no-data>
+          <AppEmptyState
+            :title="props.currentTab === 'pending' ? 'No hay retenciones pendientes' : 'No hay retenciones generadas'"
+            :message="props.currentTab === 'pending' ? 'No se encontraron facturas sujetas a retención en este periodo.' : 'No se han emitido comprobantes de retención aún.'"
+            icon="tabler-receipt-off"
+          />
+        </template>
         <!-- Custom Items Desktop -->
         <template #item.created_invoice_date="{ item }">
           <span class="text-xs font-weight-medium text-disabled uppercase">{{ formatDate(item.created_invoice_date) }}</span>

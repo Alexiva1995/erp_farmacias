@@ -5,6 +5,7 @@ import { toast } from "@/plugins/sweetalert";
 
 const skus = ref([]);
 const loading = ref(false);
+const exporting = ref(false);
 const totalItems = ref(0);
 
 const page = ref(1);
@@ -106,7 +107,7 @@ const handleClearFilters = () => {
 };
 
 const handleExport = async () => {
-  loading.value = true;
+  exporting.value = true;
   const params = {
     search: search.value,
     start_date: startDate.value,
@@ -149,7 +150,7 @@ const handleExport = async () => {
     console.error('Error exportando reporte:', error);
     toast.error('Hubo un error exportando el reporte.');
   } finally {
-    loading.value = false;
+    exporting.value = false;
   }
 };
 
@@ -181,23 +182,30 @@ const updateTableOptions = (options) => {
 };
 
 let debounceTimer;
+const debouncedFetchReport = (delay = 300) => {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => {
+    fetchReport();
+  }, delay);
+};
 
-// Watch para filtros pesados (reinician a la página 1)
+// Watch para filtros pesados (reinician a la página 1 sin duplicar peticiones)
 watch(
   [search, startDate, endDate, selectedLaboratory, selectedGroup, semaphoreFilter, statusFilter],
   () => {
-    page.value = 1;
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => fetchReport(), 400);
+    if (page.value !== 1) {
+      page.value = 1;
+    } else {
+      debouncedFetchReport(400);
+    }
   }
 );
 
-// Watch para paginación y orden (sin reiniciar página)
+// Watch para paginación y orden
 watch(
   [page, itemsPerPage, sortBy, orderBy],
   () => {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => fetchReport(), 100);
+    debouncedFetchReport(100);
   }
 );
 
@@ -326,7 +334,8 @@ const formatMoney = (val) => {
               color="success"
               size="38"
               class="rounded-circle shadow-sm"
-              :loading="loading"
+              :loading="exporting"
+              :disabled="loading || exporting"
               @click="handleExport"
             >
               <VIcon icon="tabler-download" size="20" />
@@ -558,6 +567,13 @@ const formatMoney = (val) => {
             {{ getSemaphoreLabel(item.semaphore) }}
           </VChip>
         </template>
+        
+        <template #no-data>
+          <div class="text-center pa-8 text-medium-emphasis">
+            <VIcon icon="tabler-database-off" size="48" class="mb-3 opacity-40" />
+            <p>Sin resultados para los filtros aplicados</p>
+          </div>
+        </template>
       </VDataTableServer>
       </div>
 
@@ -666,7 +682,7 @@ const formatMoney = (val) => {
 
 <style scoped>
 .premium-table :deep(th) {
-  background-color: #fff !important;
+  background-color: rgb(var(--v-theme-surface)) !important;
   color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
   font-size: 0.75rem !important;
   font-weight: 700 !important;

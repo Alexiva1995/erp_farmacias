@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Inventory;
 
 use App\Http\Controllers\Controller;
 use App\Models\Category;
+use App\Http\Requests\Inventory\StoreCategoryRequest;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
@@ -45,12 +46,8 @@ class CategoryManagementController extends Controller
      * @param Request $request
      * @return JsonResponse
      */
-    public function store(Request $request): JsonResponse
+    public function store(StoreCategoryRequest $request): JsonResponse
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-        ]);
-
         $category = Category::updateOrCreate(
             ['id' => $request->id],
             ['name' => $request->name]

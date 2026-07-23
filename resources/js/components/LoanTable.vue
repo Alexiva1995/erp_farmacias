@@ -1,5 +1,6 @@
 <script setup>
 import { useDisplay } from "vuetify";
+import AppEmptyState from "@/components/AppEmptyState.vue";
 
 const props = defineProps({
   loans: { type: Array, required: true },
@@ -59,9 +60,17 @@ const formatDate = (dateString) => {
       :items="props.loans"
       :items-length="props.totalLoans"
       :loading="props.loading"
-      class="premium-table rounded-lg border shadow-sm"
+      class="text-no-wrap premium-table-loan"
       @update:options="(options) => emit('update:options', options)"
     >
+      <template #no-data>
+        <AppEmptyState
+          title="No hay préstamos"
+          message="No se encontraron préstamos asignados a este empleado."
+          icon="tabler-coin-off"
+        />
+      </template>
+
       <template #item.id="{ item }">
         <span class="font-weight-black text-primary">{{ item.id }}</span>
       </template>

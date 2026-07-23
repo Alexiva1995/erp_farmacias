@@ -48,6 +48,10 @@ export default [
         to: 'configuration-finances',
       },
       {
+        title: 'BI',
+        to: 'configuration-bi',
+      },
+      {
         title: 'IA Assistence',
         to: 'configuration-ia-assistant',
       },

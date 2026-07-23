@@ -2,6 +2,7 @@
 import { useAuthStore } from "@/stores/auth";
 import { useBrandingStore } from "@/stores/useBrandingStore";
 import { computed } from "vue";
+import AppEmptyState from "@/components/AppEmptyState.vue";
 const authStore = useAuthStore();
 const brandingStore = useBrandingStore();
 
@@ -62,6 +63,13 @@ const headers = [
         class="text-no-wrap premium-data-table"
         @update:options="(options) => emit('update:options', options)"
       >
+        <template #no-data>
+          <AppEmptyState
+            title="No hay proveedores"
+            message="No se encontraron proveedores registrados en el sistema."
+            icon="tabler-truck-off"
+          />
+        </template>
         <!-- Skeleton Loader para Carga en Desktop -->
         <template #loading>
           <VSkeletonLoader type="table-row-divider@5" />

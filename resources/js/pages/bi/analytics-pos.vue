@@ -8,7 +8,7 @@ const loading = ref(false);
 const startDate = ref(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().substr(0, 10));
 const endDate = ref(new Date().toISOString().substr(0, 10));
 const dashboardData = ref(null);
-const isAdvancedFiltersVisible = ref(false);
+const errorMessage = ref('');
 
 // --- FORMATEO ---
 const formatCurrency = (value) => {
@@ -21,7 +21,9 @@ const formatNumber = (value) => {
 
 // --- CARGA DE DATOS ---
 const fetchDashboard = async () => {
+  if (loading.value) return;
   loading.value = true;
+  errorMessage.value = '';
   try {
     const params = {
       start_date: startDate.value,
@@ -31,6 +33,7 @@ const fetchDashboard = async () => {
     dashboardData.value = data;
   } catch (error) {
     console.error("Error al cargar dashboard de TPV:", error);
+    errorMessage.value = 'Error al cargar los datos del dashboard. Por favor intente de nuevo.';
   } finally {
     loading.value = false;
   }
@@ -51,7 +54,54 @@ watch([startDate, endDate], () => {
   fetchDashboard();
 });
 
-// --- CONFIGURACIÓN DE GRÁFICOS ---
+// --- PROPIEDADES COMPUTADAS Y CONFIGURACIÓN DE GRÁFICOS ---
+
+const hasData = computed(() => {
+  return dashboardData.value && dashboardData.value.kpis && dashboardData.value.kpis.completed_sales > 0;
+});
+
+const kpisList = computed(() => {
+  if (!dashboardData.value?.kpis) return [];
+  const k = dashboardData.value.kpis;
+  return [
+    { 
+      title: 'Ventas Exitosas', 
+      mainValue: formatNumber(k.completed_sales || 0), 
+      subValue: formatCurrency((k.avg_ticket || 0) * (k.completed_sales || 0)),
+      icon: 'tabler-shopping-cart-check', color: 'primary', desc: 'Volumen total' 
+    },
+    { 
+      title: 'Tks. Abandonados', 
+      mainValue: formatNumber(k.abandoned_sales || 0), 
+      subValue: 'Bajas en caja',
+      icon: 'tabler-shopping-cart-off', color: 'error', desc: 'Pérdida operativa' 
+    },
+    { 
+      title: 'Ventas Cruzadas', 
+      mainValue: (k.cross_selling_rate || 0) + '%', 
+      subValue: formatNumber(k.cross_selling_count || 0) + ' tickets',
+      icon: 'tabler-arrows-cross', color: 'info', desc: 'Penetración' 
+    },
+    { 
+      title: 'Cotizaciones', 
+      mainValue: formatNumber(k.quotations_generated || 0), 
+      subValue: 'Tasa: ' + (k.conversion_rate || 0) + '%',
+      icon: 'tabler-file-invoice', color: 'warning', desc: 'Conversión' 
+    },
+    { 
+      title: 'Ticket Medio', 
+      mainValue: formatCurrency(k.avg_ticket || 0), 
+      subValue: 'Valor por factura',
+      icon: 'tabler-cash', color: 'success', desc: 'Ticket Medio' 
+    },
+    { 
+      title: 'Venta Diaria', 
+      mainValue: formatCurrency(k.avg_daily_sales || 0), 
+      subValue: 'Ticket estimado',
+      icon: 'tabler-calendar-stats', color: 'info', desc: 'Ingreso Diario' 
+    }
+  ];
+});
 
 // 1. Foco de Venta Diario (Barras)
 const dailyChartOptions = computed(() => ({
@@ -165,6 +215,21 @@ const monetaryChartOptions = computed(() => ({
   tooltip: { theme: 'dark' }
 }));
 
+const trafficHourlyData = computed(() => {
+  const data = dashboardData.value?.charts?.hourly_distribution?.series?.[0]?.data || [];
+  return [...data].sort((a, b) => b.y - a.y);
+});
+
+const revenueHourlyData = computed(() => {
+  const data = dashboardData.value?.charts?.hourly_distribution?.series?.[0]?.data || [];
+  return [...data].sort((a, b) => b.revenue - a.revenue);
+});
+
+const sellersHourlyData = computed(() => {
+  const data = dashboardData.value?.charts?.hourly_distribution?.series?.[0]?.data || [];
+  return [...data].sort((a, b) => parseInt(a.x) - parseInt(b.x));
+});
+
 </script>
 
 <template>
@@ -178,11 +243,11 @@ const monetaryChartOptions = computed(() => ({
           <VCol cols="12" md="6">
              <VRow dense align="center">
                 <VCol cols="4">
-                   <AppTextField v-model="startDate" type="date" density="compact" hide-details prepend-inner-icon="tabler-calendar" class="premium-input-compact" />
+                   <AppTextField v-model="startDate" type="date" :disabled="loading" density="compact" hide-details prepend-inner-icon="tabler-calendar" class="premium-input-compact" />
                 </VCol>
                 <VCol cols="1" class="text-center text-disabled font-weight-bold">al</VCol>
                 <VCol cols="4">
-                   <AppTextField v-model="endDate" type="date" density="compact" hide-details prepend-inner-icon="tabler-calendar" class="premium-input-compact" />
+                   <AppTextField v-model="endDate" type="date" :disabled="loading" density="compact" hide-details prepend-inner-icon="tabler-calendar" class="premium-input-compact" />
                 </VCol>
              </VRow>
           </VCol>
@@ -198,6 +263,7 @@ const monetaryChartOptions = computed(() => ({
               size="38"
               class="rounded-circle shadow-sm"
               :loading="loading"
+              :disabled="loading"
               @click="fetchDashboard"
             >
               <VIcon icon="tabler-refresh" size="20" />
@@ -213,6 +279,7 @@ const monetaryChartOptions = computed(() => ({
               color="secondary"
               size="38"
               class="rounded-circle shadow-sm"
+              :disabled="loading"
               @click="resetFilters"
             >
               <VIcon icon="tabler-eraser" size="20" />
@@ -223,51 +290,43 @@ const monetaryChartOptions = computed(() => ({
       </VCardText>
     </VCard>
 
-    <div v-if="loading && !dashboardData" class="d-flex justify-center align-center h-[60vh]">
-      <VProgressCircular indeterminate color="primary" size="40" />
+    <!-- Error State -->
+    <VAlert v-if="errorMessage" type="error" variant="tonal" class="mb-6 rounded-lg">
+      {{ errorMessage }}
+    </VAlert>
+
+    <!-- Loading Skeleton State -->
+    <div v-if="loading && !dashboardData" class="px-1">
+      <VRow class="mb-6" dense>
+        <VCol cols="12" md="2" sm="6" v-for="i in 6" :key="i">
+          <VSkeletonLoader type="card" height="90" class="border rounded-lg" />
+        </VCol>
+      </VRow>
+      <VRow class="mb-6" dense>
+        <VCol cols="12" md="6" v-for="i in 2" :key="i">
+          <VSkeletonLoader type="card" height="350" class="border rounded-lg" />
+        </VCol>
+      </VRow>
+      <VRow dense>
+        <VCol cols="12" md="4" v-for="i in 3" :key="i">
+          <VSkeletonLoader type="table" height="250" class="border rounded-lg" />
+        </VCol>
+      </VRow>
     </div>
 
+    <!-- Empty State -->
+    <VCard v-else-if="!loading && !hasData" class="rounded-lg border shadow-sm text-center pa-10 bg-surface mb-6">
+      <VAvatar color="warning" variant="tonal" size="64" class="mb-4">
+        <VIcon icon="tabler-shopping-cart-off" size="32" />
+      </VAvatar>
+      <h3 class="text-h6 font-weight-black mb-2">No se encontraron ventas</h3>
+      <p class="text-disabled text-subtitle-2 mb-0">No existen registros de ventas completadas para el rango de fechas seleccionado.</p>
+    </VCard>
+
     <div v-else-if="dashboardData" class="px-1">
-      <!-- Row 1: KPI Cards (Estilo report-expiry con títulos más grandes) -->
+      <!-- Row 1: KPI Cards -->
       <VRow class="mb-6" dense>
-        <VCol cols="12" md="2" sm="6" v-for="(kpi, idx) in [
-          { 
-            title: 'Ventas Exitosas', 
-            mainValue: formatNumber(dashboardData?.kpis?.completed_sales || 0), 
-            subValue: formatCurrency((dashboardData?.kpis?.avg_ticket || 0) * (dashboardData?.kpis?.completed_sales || 0)),
-            icon: 'tabler-shopping-cart-check', color: 'primary', desc: 'Volumen total' 
-          },
-          { 
-            title: 'Tks. Abandonados', 
-            mainValue: formatNumber(dashboardData?.kpis?.abandoned_sales || 0), 
-            subValue: 'Bajas en caja',
-            icon: 'tabler-shopping-cart-off', color: 'error', desc: 'Pérdida operativa' 
-          },
-          { 
-            title: 'Ventas Cruzadas', 
-            mainValue: (dashboardData?.kpis?.cross_selling_rate || 0) + '%', 
-            subValue: formatNumber(dashboardData?.kpis?.cross_selling_count || 0) + ' tickets',
-            icon: 'tabler-arrows-cross', color: 'info', desc: 'Penetración' 
-          },
-          { 
-            title: 'Cotizaciones', 
-            mainValue: formatNumber(dashboardData?.kpis?.quotations_generated || 0), 
-            subValue: 'Tasa: ' + (dashboardData?.kpis?.conversion_rate || 0) + '%',
-            icon: 'tabler-file-invoice', color: 'warning', desc: 'Conversión' 
-          },
-          { 
-            title: 'Ticket Medio', 
-            mainValue: formatCurrency(dashboardData?.kpis?.avg_ticket || 0), 
-            subValue: 'Valor por factura',
-            icon: 'tabler-cash', color: 'success', desc: 'Ticket Medio' 
-          },
-          { 
-            title: 'Venta Diaria', 
-            mainValue: formatCurrency(dashboardData?.kpis?.avg_daily_sales || 0), 
-            subValue: 'Ticket estimado',
-            icon: 'tabler-calendar-stats', color: 'info', desc: 'Ingreso Diario' 
-          }
-        ]" :key="idx">
+        <VCol cols="12" md="2" sm="6" v-for="(kpi, idx) in kpisList" :key="idx">
           <VCard border class="rounded-lg shadow-sm h-100 bg-surface">
             <VCardText class="pa-4 d-flex align-center">
               <VAvatar :color="kpi.color" variant="tonal" size="38" rounded="lg" class="me-3 font-weight-bold">
@@ -296,7 +355,7 @@ const monetaryChartOptions = computed(() => ({
               </VCardTitle>
             </VCardItem>
             <VCardText class="pa-4">
-              <VueApexCharts height="300" :options="dailyChartOptions" :series="dashboardData?.charts?.daily_focus?.series || []" />
+              <VueApexCharts height="300" :options="dailyChartOptions" :series="dashboardData.charts?.daily_focus?.series || []" />
             </VCardText>
           </VCard>
         </VCol>
@@ -310,7 +369,7 @@ const monetaryChartOptions = computed(() => ({
               </VCardTitle>
             </VCardItem>
             <VCardText class="pa-4">
-              <VueApexCharts height="300" :options="hourlyChartOptions" :series="dashboardData?.charts?.hourly_distribution?.series || []" />
+              <VueApexCharts height="300" :options="hourlyChartOptions" :series="dashboardData.charts?.hourly_distribution?.series || []" />
             </VCardText>
           </VCard>
         </VCol>
@@ -328,7 +387,7 @@ const monetaryChartOptions = computed(() => ({
             </VCardItem>
             <VRow no-gutters class="pa-4 align-center">
               <VCol cols="12" sm="7">
-                <VueApexCharts height="260" :options="unitsDonutOptions" :series="dashboardData?.segmentation?.units?.series || []" type="donut" />
+                <VueApexCharts height="260" :options="unitsDonutOptions" :series="dashboardData.segmentation?.units?.series || []" type="donut" />
               </VCol>
               <VCol cols="12" sm="5" class="ps-4">
                 <div class="mb-4">
@@ -336,13 +395,13 @@ const monetaryChartOptions = computed(() => ({
                       <VIcon icon="tabler-arrows-cross" size="14" class="me-1 text-info" />
                       <span class="text-[11px] font-weight-black uppercase">Penetración V. Cruzada</span>
                    </div>
-                   <h4 class="text-h6 font-weight-black text-info">{{ dashboardData?.kpis?.cross_selling_rate || 0 }}%</h4>
-                   <VProgressLinear :model-value="dashboardData?.kpis?.cross_selling_rate || 0" color="info" height="6" rounded class="mt-1" />
+                   <h4 class="text-h6 font-weight-black text-info">{{ dashboardData.kpis?.cross_selling_rate || 0 }}%</h4>
+                   <VProgressLinear :model-value="dashboardData.kpis?.cross_selling_rate || 0" color="info" height="6" rounded class="mt-1" />
                 </div>
 
-                <div v-for="(label, idx) in (dashboardData?.segmentation?.units?.labels || [])" :key="label" class="d-flex justify-space-between align-center py-1 border-b">
+                <div v-for="(label, idx) in (dashboardData.segmentation?.units?.labels || [])" :key="label" class="d-flex justify-space-between align-center py-1 border-b">
                    <span class="text-[10px] font-weight-bold uppercase opacity-60">{{ label }}</span>
-                   <VChip density="comfortable" size="x-small" variant="tonal" color="primary" class="font-weight-black">{{ dashboardData?.segmentation?.units?.series?.[idx] || 0 }} Tks</VChip>
+                   <VChip density="comfortable" size="x-small" variant="tonal" color="primary" class="font-weight-black">{{ dashboardData.segmentation?.units?.series?.[idx] || 0 }} Tks</VChip>
                 </div>
               </VCol>
             </VRow>
@@ -358,7 +417,7 @@ const monetaryChartOptions = computed(() => ({
               </VCardTitle>
             </VCardItem>
             <VCardText class="pa-4">
-              <VueApexCharts height="220" :options="monetaryChartOptions" :series="[{ data: dashboardData?.segmentation?.monetary?.series || [] }]" />
+              <VueApexCharts height="220" :options="monetaryChartOptions" :series="[{ data: dashboardData.segmentation?.monetary?.series || [] }]" />
               
               <!-- Refactorizado Estilo Expiry Insight con Venta Cruzada -->
               <div class="mt-4 p-3 bg-light-info rounded-lg border border-info border-opacity-10 d-flex align-top">
@@ -368,7 +427,7 @@ const monetaryChartOptions = computed(() => ({
                 <div>
                    <div class="text-[11px] font-weight-black text-info uppercase">Oportunidad de Venta Cruzada</div>
                    <div class="text-[10px] text-info font-weight-bold opacity-80">
-                     Un incremento al 40% en esta métrica generaría un ingreso adicional estimado de {{ formatCurrency((dashboardData?.kpis?.total_revenue || 0) * 0.15) }}.
+                     Un incremento al 40% en esta métrica generaría un ingreso adicional estimado de {{ formatCurrency((dashboardData.kpis?.total_revenue || 0) * 0.15) }}.
                    </div>
                 </div>
               </div>
@@ -397,9 +456,9 @@ const monetaryChartOptions = computed(() => ({
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="slot in [...(dashboardData?.charts?.hourly_distribution?.series[0]?.data || [])].sort((a, b) => b.y - a.y)" :key="slot.x">
+                <tr v-for="slot in trafficHourlyData" :key="slot.x">
                   <td class="font-weight-black text-primary">{{ slot.x }}</td>
-                  <td class="text-center font-weight-bold">{{ Math.round((slot.y * (dashboardData?.kpis?.completed_sales || 0)) / 100) }}</td>
+                  <td class="text-center font-weight-bold">{{ Math.round((slot.y * (dashboardData.kpis?.completed_sales || 0)) / 100) }}</td>
                   <td class="text-center">
                     <VChip size="x-small" label color="primary" variant="tonal" class="font-weight-black">{{ slot.y }}%</VChip>
                   </td>
@@ -427,12 +486,12 @@ const monetaryChartOptions = computed(() => ({
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="slot in [...(dashboardData?.charts?.hourly_distribution?.series[0]?.data || [])].sort((a, b) => b.revenue - a.revenue)" :key="slot.x">
+                <tr v-for="slot in revenueHourlyData" :key="slot.x">
                   <td class="font-weight-black text-success">{{ slot.x }}</td>
                   <td class="text-right font-weight-black text-success">{{ formatCurrency(slot.revenue) }}</td>
                   <td class="text-center">
                     <VChip size="x-small" label color="success" variant="tonal" class="font-weight-black">
-                      {{ ((slot.revenue / (dashboardData?.kpis?.total_revenue || 1)) * 100).toFixed(1) }}%
+                      {{ ((slot.revenue / (dashboardData.kpis?.total_revenue || 1)) * 100).toFixed(1) }}%
                     </VChip>
                   </td>
                 </tr>
@@ -459,7 +518,7 @@ const monetaryChartOptions = computed(() => ({
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="slot in [...(dashboardData?.charts?.hourly_distribution?.series[0]?.data || [])].sort((a, b) => parseInt(a.x) - parseInt(b.x))" :key="slot.x">
+                <tr v-for="slot in sellersHourlyData" :key="slot.x">
                   <td class="font-weight-black text-info">{{ slot.x }}</td>
                   <td>
                     <div class="d-flex align-center" v-if="slot.top_seller">
@@ -553,3 +612,4 @@ const monetaryChartOptions = computed(() => ({
   border-bottom: 1px solid #f1f5f9 !important;
 }
 </style>
+

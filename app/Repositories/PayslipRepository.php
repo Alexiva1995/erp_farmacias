@@ -273,7 +273,7 @@ class PayslipRepository
     $total_bs = round($payslip->total * $bs_exchange_rate->rate, 2);
 
     Expense::create([
-      'name' => 'N├│mina',
+      'name' => 'Nómina',
       'category_id' => 1,
       'amount' => $total,
       'total_usd' => $payslip->total,
@@ -289,7 +289,7 @@ class PayslipRepository
     $type = match ($count) {
       'Efectivo' => 'CASH',
       'Tarjeta' => 'CARD',
-      'Pago m├│vil' => 'MOBILE',
+      'Pago móvil' => 'MOBILE',
       'Transferencia' => 'TRANSFER',
       'Binance' => 'BINANCE',
       'Paypal' => 'PAYPAL'
@@ -305,7 +305,7 @@ class PayslipRepository
       'user_id' => auth()->user()->id,
       'category_id' => 1,
       'exchange_rate_id' => $exchange_rate_id,
-      'description' => 'Pago de n├│mina',
+      'description' => 'Pago de nómina',
       'currency' => $currency,
       'type' => $type,
       'amount' => $total,

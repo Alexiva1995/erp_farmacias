@@ -4,6 +4,7 @@ import { formatDateSimple } from "@/utils/formatters";
 import { formatCurrency } from "@/utils/currencyFormatter";
 import ProductMergeDialog from "@/components/dialogs/ProductMergeDialog.vue";
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
+import AppEmptyState from "@/components/AppEmptyState.vue";
 import { computed, ref } from "vue";
 import { useBrandingStore } from "@/stores/useBrandingStore";
 import axios from "@/plugins/axios";
@@ -11,9 +12,9 @@ import { toast } from "@/plugins/sweetalert";
 
 const authStore = useAuthStore();
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => false);
-const isMiniMarket = computed(() => false);
-const isSportsRental = computed(() => false);
+const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
+const isMiniMarket = computed(() => brandingStore.settings.business_type === 'minimarket');
+const isSportsRental = computed(() => brandingStore.settings.business_type === 'sports_rental');
 
 const isFieldEnabled = (fieldKey) => {
   return !brandingStore.settings.product_form_fields || brandingStore.settings.product_form_fields.includes(fieldKey);
@@ -304,6 +305,14 @@ const toggleFavorite = async (item) => {
         item-value="id"
         @update:options="(options) => emit('update:options', options)"
       >
+        <template #no-data>
+          <AppEmptyState
+            title="No se encontraron productos"
+            message="No hay productos disponibles con los filtros actuales o la tabla está vacía."
+            icon="tabler-box-off"
+          />
+        </template>
+
         <template #item.id="{ item }">
           <a
             :href="'/inventory/traceability?q=' + item.id"

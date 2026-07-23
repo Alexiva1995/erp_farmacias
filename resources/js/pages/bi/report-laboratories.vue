@@ -1,10 +1,11 @@
 <script setup>
 import AppFilterBase from '@/components/AppFilterBase.vue';
 import { useCurrencyConverter } from '@/components/useCurrencyConverter';
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, reactive, watch } from 'vue';
 import axios from '@/plugins/axios';
 import { formatPrice, formatDateSimple } from "@/utils/formatters";
 import VueApexCharts from 'vue3-apexcharts';
+import { toast } from "@/plugins/sweetalert";
 
 const { formatCurrency } = useCurrencyConverter();
 
@@ -12,8 +13,12 @@ const { formatCurrency } = useCurrencyConverter();
 const loading = ref(false);
 const groupByCorporate = ref(false);
 
-const dashboardData = ref({
-  rankings: { by_units: { data: [] }, by_revenue: { data: [] }, by_stock: { data: [] } },
+const dashboardData = reactive({
+  rankings: { 
+    by_units: { data: [] }, 
+    by_revenue: { data: [] }, 
+    by_stock: { data: [] } 
+  },
   trends: [],
   stock_on_hand: [],
   profitability: []
@@ -23,7 +28,7 @@ const startDate = ref('2026-04-01');
 const endDate = ref(new Date().toISOString().split('T')[0]);
 
 // Catálogos
-const laboratories = ref([]);
+const laboratories = reactive([]);
 
 // Paginación Rankings
 const pageUnits = ref(1);
@@ -36,12 +41,20 @@ const loadingStock = ref(false);
 // Benchmarking (Lab A vs Lab B)
 const labA = ref(null);
 const labB = ref(null);
-const benchmarkingData = ref(null);
+const benchmarkingData = reactive({
+  lab_a: null,
+  lab_b: null,
+  shared_groups: []
+});
 const loadingBenchmarking = ref(false);
 
 // Deep Dive
 const selectedLabId = ref(null);
-const deepDiveData = ref(null);
+const deepDiveData = reactive({
+  top_products: [],
+  group_performance: [],
+  stats: null
+});
 const loadingDeepDive = ref(false);
 
 // --- CARGA DE DATOS ---
@@ -50,15 +63,15 @@ const fetchCatalogs = async () => {
     const { data } = await axios.get('/bi/laboratories/catalogs', {
       params: { group_by_corporate: groupByCorporate.value }
     });
-    laboratories.value = Array.isArray(data) ? data : [];
+    laboratories.splice(0, laboratories.length, ...(Array.isArray(data) ? data : []));
   } catch (error) {
     console.error("Error cargando catálogos:", error);
+    toast.error("Error cargando catálogos de laboratorios");
   }
 };
 
 const fetchDashboard = async () => {
   loading.value = true;
-  fetchCatalogs(); // Refresh catalogs when toggle changes
   try {
     const params = {
       start_date: startDate.value,
@@ -66,9 +79,13 @@ const fetchDashboard = async () => {
       group_by_corporate: groupByCorporate.value
     };
     const { data } = await axios.get('/bi/laboratories/dashboard', { params });
-    dashboardData.value = data;
+    dashboardData.rankings = data.rankings || { by_units: { data: [] }, by_revenue: { data: [] }, by_stock: { data: [] } };
+    dashboardData.trends = data.trends || [];
+    dashboardData.stock_on_hand = data.stock_on_hand || [];
+    dashboardData.profitability = data.profitability || [];
   } catch (error) {
     console.error("Error al cargar dashboard:", error);
+    toast.error("Error al cargar los datos del dashboard");
   } finally {
     loading.value = false;
   }
@@ -101,10 +118,11 @@ const fetchRankings = async (metric = 'total_units', page = 1) => {
       group_by_corporate: groupByCorporate.value
     };
     const { data } = await axios.get('/bi/laboratories/rankings', { params });
-    dashboardData.value.rankings[dataKey] = data;
+    dashboardData.rankings[dataKey] = data;
     pageRef.value = page;
   } catch (error) {
     console.error(`Error cargando ranking ${metric}:`, error);
+    toast.error("Error al cargar los rankings");
   } finally {
     isLoading.value = false;
   }
@@ -123,9 +141,12 @@ const fetchBenchmarking = async () => {
       group_by_corporate: groupByCorporate.value
     };
     const { data } = await axios.get('/bi/laboratories/benchmarking', { params });
-    benchmarkingData.value = data;
+    benchmarkingData.lab_a = data.lab_a;
+    benchmarkingData.lab_b = data.lab_b;
+    benchmarkingData.shared_groups = data.shared_groups || [];
   } catch (error) {
     console.error("Error en benchmarking:", error);
+    toast.error("Error al realizar la comparativa de laboratorios");
   } finally {
     loadingBenchmarking.value = false;
   }
@@ -140,10 +161,13 @@ const fetchDeepDive = async (id) => {
       end_date: endDate.value
     };
     const { data } = await axios.get(`/bi/laboratories/${id}/deep-dive`, { params });
-    deepDiveData.value = data;
+    deepDiveData.top_products = data.top_products || [];
+    deepDiveData.group_performance = data.group_performance || [];
+    deepDiveData.stats = data.stats || null;
     selectedLabId.value = id;
   } catch (error) {
     console.error("Error en deep dive:", error);
+    toast.error("Error al obtener detalle del laboratorio");
   } finally {
     loadingDeepDive.value = false;
   }
@@ -151,7 +175,7 @@ const fetchDeepDive = async (id) => {
 
 // --- CONFIGURACIÓN DE GRÁFICOS ---
 const trendChartOptions = computed(() => {
-  const months = [...new Set(dashboardData.value.trends.map(t => t.month))].sort();
+  const months = [...new Set(dashboardData.trends.map(t => t.month))].sort();
   
   return {
     chart: { 
@@ -182,13 +206,13 @@ const trendChartOptions = computed(() => {
 });
 
 const trendSeries = computed(() => {
-  const months = [...new Set(dashboardData.value.trends.map(t => t.month))].sort();
-  const seriesNames = [...new Set(dashboardData.value.trends.map(t => t.lab_name))];
+  const months = [...new Set(dashboardData.trends.map(t => t.month))].sort();
+  const seriesNames = [...new Set(dashboardData.trends.map(t => t.lab_name))];
 
   return seriesNames.map(name => ({
     name,
     data: months.map(m => {
-      const match = dashboardData.value.trends.find(t => t.lab_name === name && t.month === m);
+      const match = dashboardData.trends.find(t => t.lab_name === name && t.month === m);
       return match ? parseFloat(match.revenue) : 0;
     })
   }));
@@ -197,14 +221,14 @@ const trendSeries = computed(() => {
 // Gráfico de Ventas (Pie Chart)
 const marketShareChartOptions = computed(() => ({
   chart: { type: 'donut' },
-  labels: dashboardData.value.rankings.by_revenue.data.map(l => l.name),
+  labels: (dashboardData.rankings.by_revenue?.data || []).map(l => l.name),
   colors: ['#7367f0', '#28c76f', '#ea5455', '#ff9f43', '#00cfe8', '#00bbd4', '#607d8b', '#9c27b0', '#3f51b5', '#e91e63'],
   legend: { position: 'bottom' },
   dataLabels: { enabled: true, formatter: (val) => `${val.toFixed(1)}%` },
-  plotOptions: { pie: { donut: { labels: { show: true, total: { show: true, label: 'TOTAL USD', formatter: () => formatCurrency(dashboardData.value.rankings.by_revenue.data.reduce((a, b) => a + parseFloat(b.total_revenue), 0)) } } } } }
+  plotOptions: { pie: { donut: { labels: { show: true, total: { show: true, label: 'TOTAL USD', formatter: () => formatCurrency((dashboardData.rankings.by_revenue?.data || []).reduce((a, b) => a + parseFloat(b.total_revenue), 0)) } } } } }
 }));
 
-const marketShareSeries = computed(() => dashboardData.value.rankings.by_revenue.data.map(l => parseFloat(l.total_revenue)));
+const marketShareSeries = computed(() => (dashboardData.rankings.by_revenue?.data || []).map(l => parseFloat(l.total_revenue)));
 
 // Gráfico de Rentabilidad (Mixed Chart: Bar Revenue + Line Margin %)
 const profitabilityChartOptions = computed(() => ({
@@ -218,8 +242,8 @@ const profitabilityChartOptions = computed(() => ({
     formatter: (val, opts) => opts.seriesIndex === 0 ? formatCurrency(val) : `${val.toFixed(1)}%`,
     style: { fontSize: '10px' }
   },
-  labels: dashboardData.value.profitability.map(l => l.name),
-  xaxis: { categories: dashboardData.value.profitability.map(l => l.name) },
+  labels: dashboardData.profitability.map(l => l.name),
+  xaxis: { categories: dashboardData.profitability.map(l => l.name) },
   yaxis: [
     {
       title: { text: 'Venta Bruta', style: { color: '#7367f0' } },
@@ -245,12 +269,12 @@ const profitabilitySeries = computed(() => [
   {
     name: 'Venta Bruta',
     type: 'column',
-    data: dashboardData.value.profitability.map(l => parseFloat(l.total_revenue))
+    data: dashboardData.profitability.map(l => parseFloat(l.total_revenue))
   },
   {
     name: 'Margen %',
     type: 'line',
-    data: dashboardData.value.profitability.map(l => parseFloat(l.margin_percent))
+    data: dashboardData.profitability.map(l => parseFloat(l.margin_percent))
   }
 ]);
 
@@ -271,14 +295,24 @@ const stockTreemapOptions = computed(() => ({
 }));
 
 const stockSeries = computed(() => ([{
-  data: dashboardData.value.stock_on_hand.map(item => ({
+  data: dashboardData.stock_on_hand.map(item => ({
     x: item.name,
     y: parseFloat(item.inventory_value)
   }))
 }]));
 
 // --- WATCHERS ---
-watch([startDate, endDate, groupByCorporate], () => {
+watch(groupByCorporate, () => {
+  labA.value = null;
+  labB.value = null;
+  benchmarkingData.lab_a = null;
+  benchmarkingData.lab_b = null;
+  benchmarkingData.shared_groups = [];
+  fetchCatalogs();
+  fetchDashboard();
+});
+
+watch([startDate, endDate], () => {
   fetchDashboard();
   if (labA.value && labB.value) fetchBenchmarking();
   if (selectedLabId.value) fetchDeepDive(selectedLabId.value);
@@ -305,23 +339,25 @@ const formatPercent = (val) => `${parseFloat(val || 0).toFixed(1)}%`;
                 variant="tonal" 
                 @click="groupByCorporate = false"
                 class="flex-grow-1"
+                :disabled="loading"
               >Individual</VBtn>
               <VBtn 
                 :color="groupByCorporate ? 'primary' : 'secondary'" 
                 variant="tonal" 
                 @click="groupByCorporate = true"
                 class="flex-grow-1"
+                :disabled="loading"
               >Corporativo</VBtn>
             </VCol>
             <VSpacer />
             <VCol cols="12" md="3">
-              <AppTextField v-model="startDate" type="date" label="Desde" density="compact" hide-details />
+              <AppTextField v-model="startDate" type="date" label="Desde" density="compact" hide-details :disabled="loading" />
             </VCol>
             <VCol cols="12" md="3">
-              <AppTextField v-model="endDate" type="date" label="Hasta" density="compact" hide-details />
+              <AppTextField v-model="endDate" type="date" label="Hasta" density="compact" hide-details :disabled="loading" />
             </VCol>
             <VCol cols="12" md="1" class="text-right">
-              <VBtn icon variant="tonal" color="primary" @click="fetchDashboard" :loading="loading">
+              <VBtn icon variant="tonal" color="primary" @click="fetchDashboard" :loading="loading" :disabled="loading">
                 <VIcon icon="tabler-refresh" />
               </VBtn>
             </VCol>
@@ -339,26 +375,29 @@ const formatPercent = (val) => `${parseFloat(val || 0).toFixed(1)}%`;
               <span class="text-subtitle-2 font-weight-black">Top Ventas (Units)</span>
             </VCardTitle>
             <VCardText class="pa-0">
-              <VList lines="one" v-if="dashboardData.rankings.by_units?.data?.length" :class="{ 'opacity-50': loadingUnits }">
-                <VListItem v-for="(lab, idx) in dashboardData.rankings.by_units.data" :key="idx" class="border-b px-3 hover-bg" @click="fetchDeepDive(lab.aggregation_id)">
-                  <template #prepend>
-                    <VAvatar color="primary" variant="tonal" size="28" class="font-weight-black text-xs">{{ ((pageUnits - 1) * 10) + idx + 1 }}</VAvatar>
-                  </template>
-                  <VListItemTitle class="font-weight-bold text-[11px] text-uppercase">{{ lab.name }}</VListItemTitle>
-                  <template #append>
-                    <div class="text-right">
-                      <div class="text-[11px] font-weight-black text-primary">{{ lab.total_units }} Unds</div>
-                    </div>
-                  </template>
-                </VListItem>
-              </VList>
-              <div v-else class="pa-10 text-center opacity-50 text-xs">Sin datos</div>
+              <VSkeletonLoader v-if="loading || loadingUnits" type="list-item-avatar-two-line@5" />
+              <template v-else>
+                <VList lines="one" v-if="dashboardData.rankings.by_units?.data?.length">
+                  <VListItem v-for="(lab, idx) in dashboardData.rankings.by_units.data" :key="idx" class="border-b px-3 hover-bg" @click="fetchDeepDive(lab.aggregation_id)">
+                    <template #prepend>
+                      <VAvatar color="primary" variant="tonal" size="28" class="font-weight-black text-xs">{{ ((pageUnits - 1) * 10) + idx + 1 }}</VAvatar>
+                    </template>
+                    <VListItemTitle class="font-weight-bold text-[11px] text-uppercase">{{ lab.name }}</VListItemTitle>
+                    <template #append>
+                      <div class="text-right">
+                        <div class="text-[11px] font-weight-black text-primary">{{ Math.round(lab.total_units) }} Unds</div>
+                      </div>
+                    </template>
+                  </VListItem>
+                </VList>
+                <div v-else class="pa-10 text-center opacity-50 text-xs">Sin datos</div>
+              </template>
 
               <div class="pa-2 d-flex justify-space-between align-center bg-light-primary border-t">
                 <span class="text-[10px] font-weight-black opacity-60">PÁG {{ pageUnits }}</span>
                 <div class="d-flex gap-1">
-                  <VBtn icon="tabler-chevron-left" variant="text" size="x-small" :disabled="pageUnits <= 1 || loadingUnits" @click="fetchRankings('total_units', pageUnits - 1)" />
-                  <VBtn icon="tabler-chevron-right" variant="text" size="x-small" :disabled="dashboardData.rankings.by_units?.data?.length < 10 || loadingUnits" @click="fetchRankings('total_units', pageUnits + 1)" />
+                  <VBtn icon="tabler-chevron-left" variant="text" size="x-small" :disabled="pageUnits <= 1 || loading || loadingUnits" @click="fetchRankings('total_units', pageUnits - 1)" />
+                  <VBtn icon="tabler-chevron-right" variant="text" size="x-small" :disabled="(dashboardData.rankings.by_units?.data?.length || 0) < 10 || loading || loadingUnits" @click="fetchRankings('total_units', pageUnits + 1)" />
                 </div>
               </div>
             </VCardText>
@@ -373,26 +412,29 @@ const formatPercent = (val) => `${parseFloat(val || 0).toFixed(1)}%`;
               <span class="text-subtitle-2 font-weight-black">Top Ventas (USD)</span>
             </VCardTitle>
             <VCardText class="pa-0">
-              <VList lines="one" v-if="dashboardData.rankings.by_revenue?.data?.length" :class="{ 'opacity-50': loadingRevenue }">
-                <VListItem v-for="(lab, idx) in dashboardData.rankings.by_revenue.data" :key="idx" class="border-b px-3 hover-bg" @click="fetchDeepDive(lab.aggregation_id)">
-                  <template #prepend>
-                    <VAvatar color="success" variant="tonal" size="28" class="font-weight-black text-xs">{{ ((pageRevenue - 1) * 10) + idx + 1 }}</VAvatar>
-                  </template>
-                  <VListItemTitle class="font-weight-bold text-[11px] text-uppercase">{{ lab.name }}</VListItemTitle>
-                  <template #append>
-                    <div class="text-right">
-                      <div class="text-[11px] font-weight-black text-success">{{ formatCurrency(lab.total_revenue) }}</div>
-                    </div>
-                  </template>
-                </VListItem>
-              </VList>
-              <div v-else class="pa-10 text-center opacity-50 text-xs">Sin datos</div>
+              <VSkeletonLoader v-if="loading || loadingRevenue" type="list-item-avatar-two-line@5" />
+              <template v-else>
+                <VList lines="one" v-slot:default v-if="dashboardData.rankings.by_revenue?.data?.length">
+                  <VListItem v-for="(lab, idx) in dashboardData.rankings.by_revenue.data" :key="idx" class="border-b px-3 hover-bg" @click="fetchDeepDive(lab.aggregation_id)">
+                    <template #prepend>
+                      <VAvatar color="success" variant="tonal" size="28" class="font-weight-black text-xs">{{ ((pageRevenue - 1) * 10) + idx + 1 }}</VAvatar>
+                    </template>
+                    <VListItemTitle class="font-weight-bold text-[11px] text-uppercase">{{ lab.name }}</VListItemTitle>
+                    <template #append>
+                      <div class="text-right">
+                        <div class="text-[11px] font-weight-black text-success">{{ formatCurrency(lab.total_revenue) }}</div>
+                      </div>
+                    </template>
+                  </VListItem>
+                </VList>
+                <div v-else class="pa-10 text-center opacity-50 text-xs">Sin datos</div>
+              </template>
 
               <div class="pa-2 d-flex justify-space-between align-center bg-light-success border-t">
                 <span class="text-[10px] font-weight-black opacity-60">PÁG {{ pageRevenue }}</span>
                 <div class="d-flex gap-1">
-                  <VBtn icon="tabler-chevron-left" variant="text" size="x-small" :disabled="pageRevenue <= 1 || loadingRevenue" @click="fetchRankings('total_revenue', pageRevenue - 1)" />
-                  <VBtn icon="tabler-chevron-right" variant="text" size="x-small" :disabled="dashboardData.rankings.by_revenue?.data?.length < 10 || loadingRevenue" @click="fetchRankings('total_revenue', pageRevenue + 1)" />
+                  <VBtn icon="tabler-chevron-left" variant="text" size="x-small" :disabled="pageRevenue <= 1 || loading || loadingRevenue" @click="fetchRankings('total_revenue', pageRevenue - 1)" />
+                  <VBtn icon="tabler-chevron-right" variant="text" size="x-small" :disabled="(dashboardData.rankings.by_revenue?.data?.length || 0) < 10 || loading || loadingRevenue" @click="fetchRankings('total_revenue', pageRevenue + 1)" />
                 </div>
               </div>
             </VCardText>
@@ -407,26 +449,29 @@ const formatPercent = (val) => `${parseFloat(val || 0).toFixed(1)}%`;
               <span class="text-subtitle-2 font-weight-black">Top Unidades en Stock</span>
             </VCardTitle>
             <VCardText class="pa-0">
-              <VList lines="one" v-if="dashboardData.rankings.by_stock?.data?.length" :class="{ 'opacity-50': loadingStock }">
-                <VListItem v-for="(lab, idx) in dashboardData.rankings.by_stock.data" :key="idx" class="border-b px-3 hover-bg" @click="fetchDeepDive(lab.aggregation_id)">
-                  <template #prepend>
-                    <VAvatar color="warning" variant="tonal" size="28" class="font-weight-black text-xs">{{ ((pageStock - 1) * 10) + idx + 1 }}</VAvatar>
-                  </template>
-                  <VListItemTitle class="font-weight-bold text-[11px] text-uppercase">{{ lab.name }}</VListItemTitle>
-                  <template #append>
-                    <div class="text-right">
-                      <div class="text-[11px] font-weight-black text-warning">{{ lab.total_units }} Unds</div>
-                    </div>
-                  </template>
-                </VListItem>
-              </VList>
-              <div v-else class="pa-10 text-center opacity-50 text-xs">Sin datos</div>
+              <VSkeletonLoader v-if="loading || loadingStock" type="list-item-avatar-two-line@5" />
+              <template v-else>
+                <VList lines="one" v-slot:default v-if="dashboardData.rankings.by_stock?.data?.length">
+                  <VListItem v-for="(lab, idx) in dashboardData.rankings.by_stock.data" :key="idx" class="border-b px-3 hover-bg" @click="fetchDeepDive(lab.aggregation_id)">
+                    <template #prepend>
+                      <VAvatar color="warning" variant="tonal" size="28" class="font-weight-black text-xs">{{ ((pageStock - 1) * 10) + idx + 1 }}</VAvatar>
+                    </template>
+                    <VListItemTitle class="font-weight-bold text-[11px] text-uppercase">{{ lab.name }}</VListItemTitle>
+                    <template #append>
+                      <div class="text-right">
+                        <div class="text-[11px] font-weight-black text-warning">{{ Math.round(lab.total_units) }} Unds</div>
+                      </div>
+                    </template>
+                  </VListItem>
+                </VList>
+                <div v-else class="pa-10 text-center opacity-50 text-xs">Sin datos</div>
+              </template>
 
               <div class="pa-2 d-flex justify-space-between align-center bg-light-warning border-t">
                 <span class="text-[10px] font-weight-black opacity-60">PÁG {{ pageStock }}</span>
                 <div class="d-flex gap-1">
-                  <VBtn icon="tabler-chevron-left" variant="text" size="x-small" :disabled="pageStock <= 1 || loadingStock" @click="fetchRankings('total_stock', pageStock - 1)" />
-                  <VBtn icon="tabler-chevron-right" variant="text" size="x-small" :disabled="dashboardData.rankings.by_stock?.data?.length < 10 || loadingStock" @click="fetchRankings('total_stock', pageStock + 1)" />
+                  <VBtn icon="tabler-chevron-left" variant="text" size="x-small" :disabled="pageStock <= 1 || loading || loadingStock" @click="fetchRankings('total_stock', pageStock - 1)" />
+                  <VBtn icon="tabler-chevron-right" variant="text" size="x-small" :disabled="(dashboardData.rankings.by_stock?.data?.length || 0) < 10 || loading || loadingStock" @click="fetchRankings('total_stock', pageStock + 1)" />
                 </div>
               </div>
             </VCardText>
@@ -440,7 +485,8 @@ const formatPercent = (val) => `${parseFloat(val || 0).toFixed(1)}%`;
           <VCard border class="rounded-lg shadow-sm h-100">
             <VCardTitle class="pa-4 border-b">Tendencia de Venta Bruta (Top 5)</VCardTitle>
             <VCardText class="pa-4">
-              <VueApexCharts height="320" :options="trendChartOptions" :series="trendSeries" />
+              <VSkeletonLoader v-if="loading" type="card" height="320" />
+              <VueApexCharts v-else height="320" :options="trendChartOptions" :series="trendSeries" />
             </VCardText>
           </VCard>
         </VCol>
@@ -448,7 +494,8 @@ const formatPercent = (val) => `${parseFloat(val || 0).toFixed(1)}%`;
           <VCard border class="rounded-lg shadow-sm h-100">
             <VCardTitle class="pa-4 border-b">Cuota de Mercado (% Ventas)</VCardTitle>
             <VCardText class="pa-4">
-              <VueApexCharts height="320" :options="marketShareChartOptions" :series="marketShareSeries" />
+              <VSkeletonLoader v-if="loading" type="card" height="320" />
+              <VueApexCharts v-else height="320" :options="marketShareChartOptions" :series="marketShareSeries" />
             </VCardText>
           </VCard>
         </VCol>
@@ -463,7 +510,8 @@ const formatPercent = (val) => `${parseFloat(val || 0).toFixed(1)}%`;
               <span>Eficiencia vs Volumen (Profit)</span>
             </VCardTitle>
             <VCardText class="pa-4">
-              <VueApexCharts height="380" :options="profitabilityChartOptions" :series="profitabilitySeries" />
+              <VSkeletonLoader v-if="loading" type="card" height="380" />
+              <VueApexCharts v-else height="380" :options="profitabilityChartOptions" :series="profitabilitySeries" />
             </VCardText>
           </VCard>
         </VCol>
@@ -474,7 +522,8 @@ const formatPercent = (val) => `${parseFloat(val || 0).toFixed(1)}%`;
               <span>Inversión en Stock (Por Lab)</span>
             </VCardTitle>
             <VCardText class="pa-4">
-              <VueApexCharts height="380" :options="stockTreemapOptions" :series="stockSeries" />
+              <VSkeletonLoader v-if="loading" type="card" height="380" />
+              <VueApexCharts v-else height="380" :options="stockTreemapOptions" :series="stockSeries" />
             </VCardText>
           </VCard>
         </VCol>
@@ -489,17 +538,20 @@ const formatPercent = (val) => `${parseFloat(val || 0).toFixed(1)}%`;
         <VCardText class="pa-4">
           <VRow>
             <VCol cols="12" md="5">
-              <AppAutocomplete v-model="labA" :items="laboratories" item-title="name" item-value="id" placeholder="Seleccionar Laboratorio A" density="compact" hide-details @update:model-value="fetchBenchmarking" />
+              <AppAutocomplete v-model="labA" :items="laboratories" item-title="name" item-value="id" placeholder="Seleccionar Laboratorio A" density="compact" hide-details @update:model-value="fetchBenchmarking" :disabled="loading || loadingBenchmarking" />
             </VCol>
             <VCol cols="12" md="2" class="text-center">
               <VChip color="primary" class="font-weight-black mt-2">VS</VChip>
             </VCol>
             <VCol cols="12" md="5">
-              <AppAutocomplete v-model="labB" :items="laboratories" item-title="name" item-value="id" placeholder="Seleccionar Laboratorio B" density="compact" hide-details @update:model-value="fetchBenchmarking" />
+              <AppAutocomplete v-model="labB" :items="laboratories" item-title="name" item-value="id" placeholder="Seleccionar Laboratorio B" density="compact" hide-details @update:model-value="fetchBenchmarking" :disabled="loading || loadingBenchmarking" />
             </VCol>
           </VRow>
 
-          <VRow v-if="benchmarkingData" class="mt-6 border-t pt-6">
+          <div v-if="loadingBenchmarking" class="pa-10">
+            <VSkeletonLoader type="card" height="250" />
+          </div>
+          <VRow v-else-if="benchmarkingData.lab_a" class="mt-6 border-t pt-6">
             <!-- Lab A -->
             <VCol cols="12" md="6" class="border-e">
               <div class="px-4">
@@ -518,11 +570,11 @@ const formatPercent = (val) => `${parseFloat(val || 0).toFixed(1)}%`;
                   </div>
                   <div class="d-flex justify-space-between align-center p-2 border-b px-3">
                     <span class="text-xs opacity-70">TICKET PROMEDIO</span>
-                    <span class="text-sm font-weight-bold">{{ formatCurrency(benchmarkingData.lab_a.details.stats.avg_ticket) }}</span>
+                    <span class="text-sm font-weight-bold">{{ formatCurrency(benchmarkingData.lab_a.details?.stats?.avg_ticket) }}</span>
                   </div>
                   <div class="d-flex justify-space-between align-center p-2 border-b px-3">
                     <span class="text-xs opacity-70">MARGEN ESTIMADO</span>
-                    <VChip size="small" color="success" class="font-weight-bold">{{ formatPercent(benchmarkingData.lab_a.details.stats.avg_margin_percent) }}</VChip>
+                    <VChip size="small" color="success" class="font-weight-bold">{{ formatPercent(benchmarkingData.lab_a.details?.stats?.avg_margin_percent) }}</VChip>
                   </div>
                 </div>
               </div>
@@ -546,11 +598,11 @@ const formatPercent = (val) => `${parseFloat(val || 0).toFixed(1)}%`;
                   </div>
                   <div class="d-flex justify-space-between align-center p-2 border-b px-3">
                     <span class="text-xs opacity-70">TICKET PROMEDIO</span>
-                    <span class="text-sm font-weight-bold">{{ formatCurrency(benchmarkingData.lab_b.details.stats.avg_ticket) }}</span>
+                    <span class="text-sm font-weight-bold">{{ formatCurrency(benchmarkingData.lab_b.details?.stats?.avg_ticket) }}</span>
                   </div>
                   <div class="d-flex justify-space-between align-center p-2 border-b px-3">
                     <span class="text-xs opacity-70">MARGEN ESTIMADO</span>
-                    <VChip size="small" color="success" class="font-weight-bold">{{ formatPercent(benchmarkingData.lab_b.details.stats.avg_margin_percent) }}</VChip>
+                    <VChip size="small" color="success" class="font-weight-bold">{{ formatPercent(benchmarkingData.lab_b.details?.stats?.avg_margin_percent) }}</VChip>
                   </div>
                 </div>
               </div>
@@ -598,18 +650,18 @@ const formatPercent = (val) => `${parseFloat(val || 0).toFixed(1)}%`;
                       </div>
                     </div>
 
-                    <!-- Listado de Productos Competidores -->
-                    <div class="d-flex justify-space-between mt-4 gap-0">
+                    <!-- Listado de Productos Competidores (Responsivo) -->
+                    <div class="d-flex flex-column flex-sm-row justify-space-between mt-4 gap-2">
                       <!-- Lab A Products -->
-                      <div class="flex-1 border-e pe-2 overflow-hidden" style="width: 50%;">
-                         <div v-for="p in group.products_a" :key="p.id" class="text-[8px] font-weight-bold text-uppercase text-truncate mb-1 d-flex justify-space-between gap-1" style="color: rgb(5, 77, 149); line-height: 1;">
+                      <div class="flex-grow-1 flex-shrink-1 overflow-hidden" style="min-width: 120px;">
+                         <div v-for="p in group.products_a" :key="p.id" class="text-[10px] font-weight-bold text-uppercase text-truncate mb-1 d-flex justify-space-between gap-1" style="color: rgb(5, 77, 149); line-height: 1.2;">
                             <span class="text-truncate flex-grow-1">{{ p.name }}</span>
                             <span class="font-weight-black opacity-80 me-1">{{ p.units }}U</span>
                          </div>
                       </div>
                       <!-- Lab B Products -->
-                      <div class="flex-1 text-right ps-2 overflow-hidden" style="width: 50%;">
-                         <div v-for="p in group.products_b" :key="p.id" class="text-[8px] font-weight-bold text-uppercase text-truncate text-success mb-1 d-flex justify-space-between gap-1" style="line-height:1;">
+                      <div class="flex-grow-1 flex-shrink-1 text-right overflow-hidden" style="min-width: 120px;">
+                         <div v-for="p in group.products_b" :key="p.id" class="text-[10px] font-weight-bold text-uppercase text-truncate text-success mb-1 d-flex justify-space-between gap-1" style="line-height: 1.2;">
                             <span class="font-weight-black opacity-80 ms-1">{{ p.units }}U</span>
                             <span class="text-truncate flex-grow-1">{{ p.name }}</span>
                          </div>
@@ -625,32 +677,38 @@ const formatPercent = (val) => `${parseFloat(val || 0).toFixed(1)}%`;
       </VCard>
 
       <!-- DEEP DIVE SECCION -->
-      <VCard v-if="deepDiveData" border class="mt-4 rounded-lg shadow-sm">
+      <VCard v-if="selectedLabId" border class="mt-4 rounded-lg shadow-sm">
         <VCardTitle class="pa-4 border-b d-flex align-center bg-light-warning">
           <VIcon icon="tabler-zoom-in" class="me-2 text-warning" />
           <span class="font-weight-bold text-uppercase">Productos Vendidos de {{ laboratories.find(l => l.id === selectedLabId)?.name }}</span>
         </VCardTitle>
         <VCardText class="pa-0">
-          <VTable density="compact">
-            <thead>
-              <tr>
-                <th class="text-left font-weight-black">PRODUCTO</th>
-                <th class="text-center font-weight-black">UNIDADES</th>
-                <th class="text-right font-weight-black">VENTA BRUTA</th>
-                <th class="text-right font-weight-black">MARGEN EST.</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="product in deepDiveData.top_products" :key="product.id">
-                <td class="text-xs font-weight-bold text-uppercase px-2 pa-2">{{ product.name }}</td>
-                <td class="text-center font-weight-black">{{ product.units }}</td>
-                <td class="text-right font-weight-bold text-success">{{ formatCurrency(product.revenue) }}</td>
-                <td class="text-right">
-                  <VChip size="x-small" color="primary" variant="flat">{{ formatCurrency(product.estimated_margin) }}</VChip>
-                </td>
-              </tr>
-            </tbody>
-          </VTable>
+          <div v-if="loadingDeepDive" class="pa-10">
+            <VSkeletonLoader type="table" />
+          </div>
+          <template v-else>
+            <VTable v-slot:default v-if="deepDiveData.top_products.length" density="compact">
+              <thead>
+                <tr>
+                  <th class="text-left font-weight-black">PRODUCTO</th>
+                  <th class="text-center font-weight-black">UNIDADES</th>
+                  <th class="text-right font-weight-black">VENTA BRUTA</th>
+                  <th class="text-right font-weight-black">MARGEN EST.</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="product in deepDiveData.top_products" :key="product.id">
+                  <td class="text-xs font-weight-bold text-uppercase px-2 pa-2">{{ product.name }}</td>
+                  <td class="text-center font-weight-black">{{ product.units }}</td>
+                  <td class="text-right font-weight-bold text-success">{{ formatCurrency(product.revenue) }}</td>
+                  <td class="text-right">
+                    <VChip size="x-small" color="primary" variant="flat">{{ formatCurrency(product.estimated_margin) }}</VChip>
+                  </td>
+                </tr>
+              </tbody>
+            </VTable>
+            <div v-else class="pa-10 text-center text-medium-emphasis">No hay productos vendidos en el periodo seleccionado</div>
+          </template>
         </VCardText>
       </VCard>
     </div>

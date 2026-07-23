@@ -494,6 +494,7 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
             Route::post("/{id}/update-company/{company_id}", [ClientController::class, "updateCompany"]);
             Route::post("/filtrar", [ClientController::class, "filtrar"]);
             Route::post("/filtrar-sin-paginar", [ClientController::class, "filtrarSinPaginar"]);
+            Route::post("/count", [ClientController::class, "countByDateRange"]);
             Route::get("/exportar/excel", [ClientController::class, "exportarExcel"]);
             Route::post("/bulk-cleanup", [ClientController::class, "bulkCleanup"]);
             Route::post("/cne-verify", [ClientController::class, "verifyCne"]);

@@ -4,6 +4,8 @@
       <VProgressCircular indeterminate color="primary" />
     </div>
     <div v-else>
+        <!-- Título Semántico para SEO y accesibilidad -->
+        <h1 class="d-none">Panel de Control - ERP Farmacias</h1>
 
         <!-- Fila 1: Felicitaciones y Estadísticas -->
         <VRow class="mb-6 match-height">
@@ -37,50 +39,58 @@
           <VCol cols="12" md="8">
             <VCard class="h-100">
               <VCardTitle class="pt-4 px-4 d-flex justify-space-between align-center">
-                <span>Estadísticas</span>
-                <span class="text-caption text-medium-emphasis">Actualizado hace 1 mes</span>
+                <span>Estadísticas Mensuales</span>
+                <span class="text-caption text-medium-emphasis">Actualizado hoy</span>
               </VCardTitle>
               <VCardText class="pa-4 d-flex align-center justify-space-around flex-wrap">
-                <!-- Ventas -->
-                <div class="d-flex align-center mb-4 mr-4">
-                  <VAvatar color="primary-lighten-5" size="44" class="mr-3" rounded="lg">
-                    <VIcon icon="tabler-chart-bar" color="primary" size="24" />
-                  </VAvatar>
-                  <div>
-                    <div class="text-h6 font-weight-bold">{{ stats.sales }}</div>
-                    <div class="text-caption text-medium-emphasis">Ventas</div>
+                <VSkeletonLoader
+                  v-if="loadingStats"
+                  type="text"
+                  class="w-100"
+                  height="44"
+                />
+                <template v-else>
+                  <!-- Ventas -->
+                  <div class="d-flex align-center mb-4 mr-4">
+                    <VAvatar color="primary-lighten-5" size="44" class="mr-3" rounded="lg">
+                      <VIcon icon="tabler-chart-bar" color="primary" size="24" />
+                    </VAvatar>
+                    <div>
+                      <div class="text-h6 font-weight-bold">{{ stats.sales }}</div>
+                      <div class="text-caption text-medium-emphasis">Ventas</div>
+                    </div>
                   </div>
-                </div>
-                <!-- Clientes -->
-                <div class="d-flex align-center mb-4 mr-4">
-                  <VAvatar color="info-lighten-5" size="44" class="mr-3" rounded="lg">
-                    <VIcon icon="tabler-users" color="info" size="24" />
-                  </VAvatar>
-                  <div>
-                    <div class="text-h6 font-weight-bold">{{ stats.clients }}</div>
-                    <div class="text-caption text-medium-emphasis">Clientes Nuevos</div>
+                  <!-- Clientes -->
+                  <div class="d-flex align-center mb-4 mr-4">
+                    <VAvatar color="info-lighten-5" size="44" class="mr-3" rounded="lg">
+                      <VIcon icon="tabler-users" color="info" size="24" />
+                    </VAvatar>
+                    <div>
+                      <div class="text-h6 font-weight-bold">{{ stats.clients }}</div>
+                      <div class="text-caption text-medium-emphasis">Clientes Nuevos</div>
+                    </div>
                   </div>
-                </div>
-                <!-- Productos -->
-                <div class="d-flex align-center mb-4 mr-4">
-                  <VAvatar color="error-lighten-5" size="44" class="mr-3" rounded="lg">
-                    <VIcon icon="tabler-box" color="error" size="24" />
-                  </VAvatar>
-                  <div>
-                    <div class="text-h6 font-weight-bold">{{ stats.products }}</div>
-                    <div class="text-caption text-medium-emphasis">Productos (Unidades)</div>
+                  <!-- Productos -->
+                  <div class="d-flex align-center mb-4 mr-4">
+                    <VAvatar color="error-lighten-5" size="44" class="mr-3" rounded="lg">
+                      <VIcon icon="tabler-box" color="error" size="24" />
+                    </VAvatar>
+                    <div>
+                      <div class="text-h6 font-weight-bold">{{ stats.products }}</div>
+                      <div class="text-caption text-medium-emphasis">Productos (Unidades)</div>
+                    </div>
                   </div>
-                </div>
-                <!-- Ingresos -->
-                <div class="d-flex align-center mb-4">
-                  <VAvatar color="success-lighten-5" size="44" class="mr-3" rounded="lg">
-                    <VIcon icon="tabler-currency-dollar" color="success" size="24" />
-                  </VAvatar>
-                  <div>
-                    <div class="text-h6 font-weight-bold">{{ stats.revenue }}</div>
-                    <div class="text-caption text-medium-emphasis">Ganancia</div>
+                  <!-- Ingresos -->
+                  <div class="d-flex align-center mb-4">
+                    <VAvatar color="success-lighten-5" size="44" class="mr-3" rounded="lg">
+                      <VIcon icon="tabler-currency-dollar" color="success" size="24" />
+                    </VAvatar>
+                    <div>
+                      <div class="text-h6 font-weight-bold">{{ stats.revenue }}</div>
+                      <div class="text-caption text-medium-emphasis">Ganancia</div>
+                    </div>
                   </div>
-                </div>
+                </template>
               </VCardText>
             </VCard>
           </VCol>
@@ -448,6 +458,7 @@ import customLightbulb from '@images/svg/lightbulb.svg'
 
 import { useBrandingStore } from "@/stores/useBrandingStore";
 import MinimarketDashboard from "@/components/MinimarketDashboard.vue";
+import { toast } from "@/plugins/sweetalert";
 
 const authStore = useAuthStore();
 const router = useRouter();
@@ -620,7 +631,10 @@ const stats = ref({
   revenue: '$0.00',
 });
 
+const loadingStats = ref(true);
+
 const fetchStats = async () => {
+  loadingStats.value = true;
   try {
     const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
     const endOfMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0];
@@ -628,7 +642,6 @@ const fetchStats = async () => {
     // 1. Ventas desde Cierre de Caja (Monto unificado en USD)
     const cashResponse = await axios.get("/finances/cash-closure/monthlyCash");
     if (cashResponse.data && cashResponse.data.data && cashResponse.data.data.length > 0) {
-      // Buscamos el mes actual en los datos (por nombre o tomamos el primero si no se encuentra)
       const monthsEn = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
       const monthsEs = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
       
@@ -641,7 +654,7 @@ const fetchStats = async () => {
       const currentMonthData = cashResponse.data.data.find(item => 
         (item.period.includes(currentMonthNameEn) || item.period.includes(currentMonthNameEs)) && 
         item.period.includes(currentYear)
-      ) || cashResponse.data.data[0]; // Si no lo encuentra, usa el más reciente (primero)
+      ) || cashResponse.data.data[0];
       
       stats.value.sales = `${currentMonthData.total_usd_equivalent} USD`;
     }
@@ -658,12 +671,12 @@ const fetchStats = async () => {
     }
     
     // 3. Clientes Nuevos
-    const clientsResponse = await axios.post("/crm/clients/filtrar-sin-paginar", {
+    const clientsResponse = await axios.post("/crm/clients/count", {
       fechaDesde_filtro: startOfMonth,
       fechaHasta_filtro: endOfMonth,
     });
-    if (clientsResponse.data && clientsResponse.data.data) {
-      stats.value.clients = clientsResponse.data.data.length.toString();
+    if (clientsResponse.data && clientsResponse.data.status && clientsResponse.data.data) {
+      stats.value.clients = clientsResponse.data.data.count.toString();
     }
 
     // 4. Productos (Unidades Vendidas)
@@ -678,6 +691,9 @@ const fetchStats = async () => {
     }
   } catch (error) {
     console.error("Error fetching stats:", error);
+    toast.error("Ocurrió un error al cargar las estadísticas mensuales.");
+  } finally {
+    loadingStats.value = false;
   }
 };
 
@@ -792,18 +808,6 @@ const fetchTransactionsSummary = async () => {
     console.error("Error al obtener el resumen de transacciones:", error);
   }
 };
-
-onMounted(() => {
-  if (authStore.isLoaded) {
-    fetchLeader();
-    fetchStats();
-    fetchRecentClosures();
-    fetchPopularProducts();
-    fetchTransactionsSummary();
-    fetchAnalyticsData();
-    fetchLoadedInvoices();
-  }
-});
 
 watch(() => authStore.user, (newUser) => {
   if (newUser) {

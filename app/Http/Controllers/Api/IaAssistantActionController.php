@@ -8,6 +8,10 @@ use App\Models\ProductSupplier;
 use App\Models\Supplier;
 use App\Models\AutoOrder;
 use App\Models\AutoOrderDetail;
+use App\Http\Requests\IaAssistant\AddToOrderRequest;
+use App\Http\Requests\IaAssistant\AddMultipleToOrderRequest;
+use App\Http\Requests\IaAssistant\UpdateManualQuantityRequest;
+use App\Http\Requests\IaAssistant\UpdateBarcodeRequest;
 use App\Services\Products\ProductActionService;
 use App\Enums\AutoOrderStatus;
 use Illuminate\Http\Request;
@@ -24,16 +28,8 @@ class IaAssistantActionController extends Controller
      * Añade un producto a la auto-orden de un proveedor.
      * Si no tiene proveedor enlazado y se proporciona uno, se crea el enlace.
      */
-    public function addToOrder(Request $request): JsonResponse
+    public function addToOrder(AddToOrderRequest $request): JsonResponse
     {
-        $request->validate([
-            'product_id' => 'required|exists:products,id',
-            'quantity' => 'required|numeric|min:0.01',
-            'supplier_id' => 'nullable|exists:suppliers,id',
-            'product_supplier_id' => 'nullable|exists:product_suppliers,id',
-            'unit_cost' => 'nullable|numeric|min:0',
-        ]);
-
         $productId = $request->product_id;
         $quantity = $request->quantity;
         $supplierId = $request->supplier_id;
@@ -155,17 +151,8 @@ class IaAssistantActionController extends Controller
     /**
      * Añade múltiples productos a las auto-órdenes de sus respectivos proveedores en una sola transacción.
      */
-    public function addMultipleToOrder(Request $request): JsonResponse
+    public function addMultipleToOrder(AddMultipleToOrderRequest $request): JsonResponse
     {
-        $request->validate([
-            'items' => 'required|array',
-            'items.*.product_id' => 'required|exists:products,id',
-            'items.*.quantity' => 'required|numeric|min:0.01',
-            'items.*.supplier_id' => 'required|exists:suppliers,id',
-            'items.*.product_supplier_id' => 'required|exists:product_suppliers,id',
-            'items.*.unit_cost' => 'nullable|numeric|min:0',
-        ]);
-
         $items = $request->items;
         $ordersToUpdate = [];
 
@@ -273,12 +260,8 @@ class IaAssistantActionController extends Controller
     /**
      * Actualiza la cantidad manual sugerida para un producto.
      */
-    public function updateManualQuantity(Request $request, Product $product): JsonResponse
+    public function updateManualQuantity(UpdateManualQuantityRequest $request, Product $product): JsonResponse
     {
-        $request->validate([
-            'quantity' => 'nullable|numeric|min:-999999|max:999999',
-        ]);
-
         $product->update([
             'manual_solicitar' => $request->quantity,
         ]);
@@ -293,13 +276,8 @@ class IaAssistantActionController extends Controller
     /**
      * Actualiza el código de barras de un producto.
      */
-    public function updateBarcode(Request $request, Product $product): JsonResponse
+    public function updateBarcode(UpdateBarcodeRequest $request, Product $product): JsonResponse
     {
-        $request->validate([
-            'barcode' => 'required|string|max:255',
-            'force' => 'nullable|boolean',
-        ]);
-
         $barcode = $request->barcode;
         $force = filter_var($request->input('force'), FILTER_VALIDATE_BOOLEAN);
 

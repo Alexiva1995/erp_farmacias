@@ -7,9 +7,14 @@ use Illuminate\Support\Collection;
 interface ProductMasterReportRepositoryInterface
 {
     /**
-     * Obtiene el rendimiento de productos (Top Volumen y Margen)
+     * Obtiene el rendimiento de productos (opcionalmente ordenado y limitado)
      */
-    public function getPerformanceData(array $filters): Collection;
+    public function getPerformanceData(array $filters, ?int $limit = null, ?string $sortBy = null): Collection;
+
+    /**
+     * Obtiene estadísticas de Pareto de utilidad de forma eficiente
+     */
+    public function getParetoStats(array $filters): array;
 
     /**
      * Obtiene el ranking de laboratorios por rentabilidad
@@ -27,9 +32,9 @@ interface ProductMasterReportRepositoryInterface
     public function getCrossSellingData(array $filters);
 
     /**
-     * Obtiene métricas de abastecimiento (Out of stock y Días de inventario)
+     * Obtiene métricas agregadas de abastecimiento (Out of stock y Días de inventario)
      */
-    public function getSupplyIntelligence(array $filters): Collection;
+    public function getSupplyStats(array $filters): array;
 
     /**
      * Obtiene tendencias de Ventas vs Compras para comparación
@@ -41,3 +46,4 @@ interface ProductMasterReportRepositoryInterface
      */
     public function getRankingsData(array $filters);
 }
+

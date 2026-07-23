@@ -9,6 +9,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use App\Http\Requests\Supplier\RejectAiMatchRequest;
+use App\Http\Requests\Supplier\AcceptAiMatchRequest;
 use App\Models\ProductSupplier;
 
 class SupplierAiMatchController extends Controller
@@ -17,14 +19,8 @@ class SupplierAiMatchController extends Controller
      * Rechaza un match sugerido por IA.
      * Guarda el rechazo en la tabla de aprendizaje y desvincula el product_supplier.
      */
-    public function reject(Request $request): JsonResponse
+    public function reject(RejectAiMatchRequest $request): JsonResponse
     {
-        $request->validate([
-            'product_id'          => 'required|integer|exists:products,id',
-            'product_supplier_id' => 'required|integer|exists:product_suppliers,id',
-            'reason'              => 'nullable|string|max:255',
-        ]);
-
         // Registrar el rechazo para el aprendizaje del sistema
         DB::table('supplier_ai_match_rejections')->updateOrInsert(
             [
@@ -69,13 +65,8 @@ class SupplierAiMatchController extends Controller
     /**
      * Acepta manualmente un match IA (confirma la vinculación como correcta).
      */
-    public function accept(Request $request): JsonResponse
+    public function accept(AcceptAiMatchRequest $request): JsonResponse
     {
-        $request->validate([
-            'product_id'          => 'required|integer|exists:products,id',
-            'product_supplier_id' => 'required|integer|exists:product_suppliers,id',
-        ]);
-
         // Asegurar que está vinculado correctamente
         ProductSupplier::where('id', $request->product_supplier_id)->update([
             'product_id'    => $request->product_id,

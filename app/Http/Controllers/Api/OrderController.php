@@ -12,6 +12,8 @@ use App\Http\Requests\Order\StoreOrderRequest;
 use App\Http\Requests\Order\UpdateOrderTotalsRequest;
 use App\Http\Requests\Order\AddOrderItemRequest;
 use App\Http\Requests\Order\CompleteOrderRequest;
+use App\Http\Requests\Order\GetFiscalReportRequest;
+use App\Http\Requests\Order\GetFiscalHistoryRequest;
 use App\Models\Order;
 use App\Models\OrderDetail;
 use Illuminate\Support\Facades\Auth;
@@ -387,14 +389,9 @@ class OrderController extends Controller
             return ApiResponse::error('No se pudo agregar la orden: ' . $e->getMessage(), 500);
         }
     }
-    public function getDebitoFiscal(Request $request): JsonResponse
+    public function getDebitoFiscal(GetFiscalReportRequest $request): JsonResponse
     {
         try {
-            $request->validate([
-                'start_date' => 'nullable|date',
-                'end_date' => 'nullable|date'
-            ]);
-
             $startDate = $request->start_date ?? now()->startOfMonth()->format('Y-m-d');
             $endDate = $request->end_date ?? now()->endOfMonth()->format('Y-m-d');
 
@@ -425,18 +422,9 @@ class OrderController extends Controller
             return ApiResponse::error('Error al obtener débito fiscal: ' . $e->getMessage(), 500);
         }
     }
-    public function getFiscalHistoryData(Request $request): JsonResponse
+    public function getFiscalHistoryData(GetFiscalHistoryRequest $request): JsonResponse
     {
         try {
-            $request->validate([
-                'start_date' => 'nullable|date',
-                'end_date' => 'nullable|date',
-                'page' => 'nullable|integer',
-                'itemsPerPage' => 'nullable|integer',
-                'sortBy' => 'nullable|string',
-                'orderBy' => 'nullable|string'
-            ]);
-
             $startDate = $request->start_date ?? now()->startOfMonth()->format('Y-m-d');
             $endDate = $request->end_date ?? now()->endOfMonth()->format('Y-m-d');
 

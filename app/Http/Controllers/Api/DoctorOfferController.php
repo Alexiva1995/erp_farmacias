@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\DoctorOffer;
 use App\Models\DoctorOfferScale;
+use App\Http\Requests\Offers\StoreDoctorOfferRequest;
+use App\Http\Requests\Offers\UpdateDoctorOfferRequest;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -63,15 +65,9 @@ class DoctorOfferController extends Controller
     /**
      * Creacion de la oferta.
      */
-    public function store(Request $request): JsonResponse
+    public function store(StoreDoctorOfferRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'doctor_id' => 'required|exists:doctors,id',
-            'start_date' => 'required|date',
-            'end_date' => 'required|date|after:start_date',
-            'is_active' => 'required|boolean',
-            'discount' => 'required|numeric|min:0|max:100',
-        ]);
+        $validated = $request->validated();
 
         try {
 
@@ -101,7 +97,7 @@ class DoctorOfferController extends Controller
      * Actualizacion de una oferta.
      */
 
-    public function update(Request $request, $id): JsonResponse
+    public function update(UpdateDoctorOfferRequest $request, $id): JsonResponse
     {
         $doctorOffer = DoctorOffer::find($id);
 
@@ -112,13 +108,7 @@ class DoctorOfferController extends Controller
             ], 404);
         }
 
-        $validated = $request->validate([
-            'doctor_id' => 'required|exists:doctors,id',
-            'start_date' => 'required|date',
-            'end_date' => 'required|date|after_or_equal:start_date',
-            'is_active' => 'required|boolean',
-            'discount' => 'required|numeric|min:0|max:100',
-        ]);
+        $validated = $request->validated();
 
         try {
             DB::beginTransaction();

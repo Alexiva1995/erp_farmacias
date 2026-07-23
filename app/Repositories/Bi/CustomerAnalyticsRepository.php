@@ -186,8 +186,8 @@ class CustomerAnalyticsRepository implements CustomerAnalytics
     public function getRfmData(array $filters): array
     {
         $recencyExpr = DB::connection()->getDriverName() === 'sqlite'
-            ? "CAST(julianday('now') - julianday(MAX(orders.order_date)) AS INTEGER) as recency_days"
-            : "DATEDIFF(NOW(), MAX(orders.order_date)) as recency_days";
+            ? "CAST(julianday('now') - julianday(MAX(orders.order_date)) AS INTEGER)"
+            : "DATEDIFF(NOW(), MAX(orders.order_date))";
 
         return DB::table('orders')
             ->where('orders.status', 'Completed')
@@ -200,9 +200,16 @@ class CustomerAnalyticsRepository implements CustomerAnalytics
                 DB::raw('MAX(orders.order_date) as last_order_date'),
                 DB::raw('COUNT(*) as frequency'),
                 DB::raw('SUM(orders.total_amount_usd) as monetary'),
-                DB::raw($recencyExpr)
+                DB::raw($recencyExpr . ' as recency_days')
             )
             ->groupBy('clients.id', 'clients.name', 'clients.last_name', 'clients.phone')
+            ->having(DB::raw($recencyExpr), '>', 60)
+            ->having(function($query) {
+                $query->having(DB::raw('COUNT(*)'), '>', 5)
+                      ->orHaving(DB::raw('SUM(orders.total_amount_usd)'), '>', 100);
+            })
+            ->orderByDesc(DB::raw('SUM(orders.total_amount_usd)'))
+            ->limit(10)
             ->get()
             ->toArray();
     }

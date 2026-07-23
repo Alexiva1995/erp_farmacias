@@ -217,6 +217,32 @@ const processedNavItems = computed(() => {
           if (childs.length === 0) return null;
         }
 
+        // Filtrado dinámico de submenús de BI según enabled_bi_views
+        if (copy.title === 'BI') {
+          const enabledBi = brandingStore.settings.enabled_bi_views || ['abc', 'dead-stock', 'sku', 'products', 'expiry', 'laboratories', 'pos', 'cyclic', 'customer', 'performance'];
+          const biRouteMap = {
+            'abc': 'bi-report-abc',
+            'dead-stock': 'bi-report-dead-stock',
+            'sku': 'bi-report-sku',
+            'products': 'bi-report-products',
+            'expiry': 'bi-report-expiry',
+            'laboratories': 'bi-report-laboratories',
+            'pos': 'bi-analytics-pos',
+            'cyclic': 'bi-inventory-cyclic',
+            'customer': 'bi-customer-analytics',
+            'performance': 'bi-employee-performance',
+          };
+          childs = childs.filter(c => {
+            for (const [key, name] of Object.entries(biRouteMap)) {
+              if (c.to === name) {
+                return enabledBi.includes(key);
+              }
+            }
+            return true;
+          });
+          if (childs.length === 0) return null;
+        }
+
         // Ocultar Pendientes en modo simple
         if (isSimpleCyclic) {
           childs = childs.filter((c) => c.to !== 'cyclics-cyclic');
