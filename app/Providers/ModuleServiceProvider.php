@@ -37,15 +37,13 @@ class ModuleServiceProvider extends ServiceProvider
     /**
      * Obtiene los módulos habilitados de la configuración o variables de entorno.
      */
-    private function getEnabledModules(): array
+    public static function getEnabledModules(): array
     {
         $modulesString = env('ENABLED_MODULES');
-        if (empty($modulesString)) {
+        if (empty($modulesString) || app()->environment('testing')) {
             $modulesString = 'pharmacy,restaurant,lottery,reservation,sports_rental,minimarket';
-        } else {
-            $modulesString .= ',pharmacy,restaurant,lottery,reservation,sports_rental,minimarket';
         }
-        return array_unique(array_map('trim', explode(',', strtolower($modulesString))));
+        return array_values(array_unique(array_map('trim', explode(',', strtolower((string)$modulesString)))));
     }
 
     /**

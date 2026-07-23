@@ -53,7 +53,6 @@
 # Configurar Expiración de Caché (mod_expires)
 <IfModule mod_expires.c>
     ExpiresActive On
-    ExpiresDefault "access plus 1 month"
     
     # CSS y JavaScript
     ExpiresByType text/css "access plus 1 year"

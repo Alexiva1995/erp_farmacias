@@ -93,7 +93,11 @@ class SupplierOrderResponseController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['message' => 'Error al registrar respuesta: ' . $e->getMessage()], 500);
+            \Illuminate\Support\Facades\Log::error('Error al registrar respuesta de proveedor: ' . $e->getMessage(), [
+                'exception' => $e,
+                'hash' => $hash,
+            ]);
+            return response()->json(['message' => 'Error al registrar respuesta.'], 500);
         }
     }
 

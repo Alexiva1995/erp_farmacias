@@ -12,11 +12,14 @@ class BootstrapConfigController extends Controller
      */
     public function index(): JsonResponse
     {
+        $businessType = \App\Models\GeneralSetting::first()?->business_type ?? env('BUSINESS_TYPE', 'pharmacy');
+        $enabledModules = \App\Providers\ModuleServiceProvider::getEnabledModules();
+
         return response()->json([
             'status' => 'success',
             'data' => [
-                'business_type' => 'pharmacy',
-                'enabled_modules' => ['pharmacy'],
+                'business_type' => $businessType,
+                'enabled_modules' => $enabledModules,
             ]
         ]);
     }

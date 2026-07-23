@@ -42,7 +42,5 @@ return Application::configure(basePath: dirname(__DIR__))
                 'line' => $e->getLine(),
                 'userId' => auth()->id(),
             ]);
-
-            return false; // Evita el reporte por defecto con el stack trace masivo de Laravel
         });
     })->create();
