@@ -3,6 +3,7 @@ import configuration from './configuration'
 import crm from './crm'
 import cyclicInventory from './cyclicInventory'
 import finances from './finances'
+import fiscal from './fiscal'
 import home from './home'
 import inventory from './inventory'
 import invoice from './invoice'
@@ -12,5 +13,5 @@ import suppliers from './suppliers'
 import tpv from './tpv'
 import reservations from './reservations'
 
-export default [...home, ...inventory, ...cyclicInventory, ...tpv, ...crm, ...rrhh, ...finances,...suppliers, ...invoice, ...productivity, ...bi, ...configuration, ...reservations]
+export default [...home, ...inventory, ...cyclicInventory, ...tpv, ...crm, ...rrhh, ...finances, ...fiscal, ...suppliers, ...invoice, ...productivity, ...bi, ...configuration, ...reservations]
 

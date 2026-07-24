@@ -64,7 +64,7 @@ class RetentionRepository implements \App\Contracts\Retention
                     ->select('invoices.*');
             }
         } else {
-            $query->orderBy($sortBy, $orderBy);
+            $query->orderBy("invoices.{$sortBy}", $orderBy);
         }
 
         return $query->paginate($perPage);
@@ -231,7 +231,7 @@ class RetentionRepository implements \App\Contracts\Retention
                     ->select('retentions.*');
             }
         } else {
-            $query->orderBy($sortBy, $orderBy);
+            $query->orderBy("retentions.{$sortBy}", $orderBy);
         }
 
         return $query->paginate($perPage);

@@ -24,27 +24,41 @@ class RetentionController extends Controller
      */
     public function index(Request $request)
     {
-        $filters = $request->only(['start_date', 'end_date', 'supplier_id', 'search', 'is_generated', 'sortBy', 'orderBy']);
-        $isGenerated = filter_var($request->input('is_generated', false), FILTER_VALIDATE_BOOLEAN);
-        $perPage = $request->input('itemsPerPage', 10);
+        try {
+            $filters = $request->only(['start_date', 'end_date', 'supplier_id', 'search', 'is_generated', 'sortBy', 'orderBy']);
+            $isGenerated = filter_var($request->input('is_generated', false), FILTER_VALIDATE_BOOLEAN);
+            $perPage = (int) $request->input('itemsPerPage', 10);
+            if ($perPage <= 0) {
+                $perPage = 10;
+            }
 
-        if ($isGenerated) {
-            $data = $this->retentionService->getGeneratedRetentions($filters, $perPage);
-            $items = RetentionResource::collection($data);
-        } else {
-            $data = $this->retentionService->getInvoicesWithTax($filters, $perPage);
-            $items = InvoiceResource::collection($data);
+            if ($isGenerated) {
+                $data = $this->retentionService->getGeneratedRetentions($filters, $perPage);
+                $items = RetentionResource::collection($data);
+            } else {
+                $data = $this->retentionService->getInvoicesWithTax($filters, $perPage);
+                $items = InvoiceResource::collection($data);
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'data' => $items,
+                'pagination' => [
+                    'total' => $data->total(),
+                    'current_page' => $data->currentPage(),
+                    'last_page' => $data->lastPage(),
+                ]
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Error en RetentionController@index: " . $e->getMessage(), [
+                'exception' => $e
+            ]);
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Error al cargar los datos de retenciones.',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        return response()->json([
-            'status' => 'success',
-            'data' => $items,
-            'pagination' => [
-                'total' => $data->total(),
-                'current_page' => $data->currentPage(),
-                'last_page' => $data->lastPage(),
-            ]
-        ]);
     }
 
     /**
