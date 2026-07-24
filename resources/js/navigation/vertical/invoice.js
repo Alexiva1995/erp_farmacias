@@ -18,6 +18,10 @@ export default [
         to: 'invoice-invoices',
       },
       {
+        title: 'Cargadas',
+        to: 'invoice-invoice-loaded',
+      },
+      {
         title: 'Ordenadas',
         to: 'invoice-invoice-ordered',
       },
