@@ -220,7 +220,7 @@ const getProfitabilityPercentage = (item) => {
                   : 'text-success',
               ]"
             >
-              {{ formatPrice(getCalculatedSalePrice(item)) }}
+              {{ formatPrice(item.sale_price) }}
             </span>
             <span
               v-if="item.iva == 1"
@@ -414,7 +414,7 @@ const getProfitabilityPercentage = (item) => {
                     : 'text-success',
                 ]"
               >
-                {{ formatPrice(getCalculatedSalePrice(item)) }}
+                {{ formatPrice(item.sale_price) }}
               </span>
             </div>
             <div class="text-right d-flex flex-column">

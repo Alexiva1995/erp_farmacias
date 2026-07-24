@@ -31,14 +31,12 @@ class UpdateAllSuppliersJob implements ShouldQueue
     public function handle(SupplierConnectionService $connectionService, SupplierQueryService $queryService): void
     {
         // 1. Log de inicio general del Job
-        Log::info("Iniciando Job de Actualización Masiva de Proveedores", ['triggered_by_user_id' => $this->userId]);
 
         $suppliers = Supplier::whereHas('connections')->get();
 
         foreach ($suppliers as $supplier) {
 
             // 2. Log de inicio por proveedor (útil si el job se pega, sabes en cuál fue)
-            Log::info("Procesando proveedor: {$supplier->name}", ['supplier_id' => $supplier->id]);
 
             $status = SupplierConnectionStatus::create([
                 "supplier_id" => $supplier->id,
@@ -94,11 +92,6 @@ class UpdateAllSuppliersJob implements ShouldQueue
                 ]);
 
                 // 3. Log de éxito con métricas básicas
-                Log::info("Proveedor actualizado exitosamente", [
-                    'supplier_id' => $supplier->id,
-                    'products_count' => $prodCount,
-                    'invoices_count' => $invCount
-                ]);
 
             } catch (\Throwable $e) {
                 // 4. Log de error con contexto completo (Excepción y ID)
@@ -117,6 +110,5 @@ class UpdateAllSuppliersJob implements ShouldQueue
         }
 
         // 5. Log de finalización del Job completo
-        Log::info("Job de Actualización Masiva finalizado.", ['triggered_by_user_id' => $this->userId]);
     }
 }

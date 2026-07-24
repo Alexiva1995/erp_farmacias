@@ -104,8 +104,6 @@ class InvoiceActionService
     }
     public function saveInvoiceDetails(Invoice $invoice, array $data): Invoice
     {
-        Log::info('Starts saveInvoiceDetails', ['invoice_id' => $invoice->id, 'details_count' => count($data['details'])]);
-
         if ($invoice->status !== 'pending') {
             throw new Exception("Solo se puede guardar el progreso en facturas con estado 'pendiente'.");
         }
@@ -171,7 +169,6 @@ class InvoiceActionService
                 }
 
                 $productId = $detail['product']['id'];
-                Log::info('Processing detail', ['product_id' => $productId, 'quantity' => $detail['quantity']]);
                 $quantity = (float) $detail['quantity'];
                 $unitCostInInvoiceCurrency = (float) $detail['unit_cost'];
                 $taxEnabled = isset($detail['tax_enabled']) && $detail['tax_enabled'] === true;
@@ -227,8 +224,6 @@ class InvoiceActionService
                         'supplier_discount_percentage' => $discountPercentage,
                         'display_order' => $displayOrder,
                     ]);
-
-                    Log::info('Detail created', ['product_id' => $productId, 'auto_order_detail_id' => $autoOrderDetailId]);
 
                     if ($autoOrderDetailId) {
                         $autoOrderDetailsToUpdate[$autoOrderDetailId] = $autoOrderDetailId;

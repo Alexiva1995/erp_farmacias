@@ -48,7 +48,6 @@ class SupplierConnectionService
         $pass = FtpCrypt::decrypt($connection->password);
 
         // Valida la conexión en texto plano
-        Log::info("Intentando conexión FTP", ['host' => $host, 'port' => $port, 'user' => $user]);
         $ftp = @ftp_connect($host, $port, 10);
         if ($ftp === false) {
             Log::error("Fallo ftp_connect", ['host' => $host]);
@@ -72,7 +71,6 @@ class SupplierConnectionService
                 throw new Exception('Credenciales inválidas');
             }
         }
-        Log::info("Conexión FTP exitosa", ['host' => $host]);
 
         ftp_pasv($ftp, $connection->pasv); // Modo pasivo
 
@@ -276,11 +274,9 @@ class SupplierConnectionService
                     $invoicesRaw = $invoiceResponse['facturas'];
                 }
 
-                Log::info("Facturas raw recibidas de la API", ['count' => count($invoicesRaw)]);
 
                 foreach ($invoicesRaw as $invoice) {
                     $cod_invoice = $invoice['fact_num'] ?? $invoice['InvoiceCode'] ?? null;
-                    Log::info("Procesando factura individual", ['cod_invoice' => $cod_invoice]);
 
                     if (!$cod_invoice || in_array($cod_invoice, $seenInvoiceNumbers)) {
                         Log::warning("Factura ignorada (sin código o duplicada en este lote)", ['cod_invoice' => $cod_invoice]);
@@ -289,10 +285,8 @@ class SupplierConnectionService
 
                     // Si la factura ya trae los artículos (caso Cristmedicals y otros)
                     if (isset($invoice['articulos']) && is_array($invoice['articulos'])) {
-                        Log::info("Factura con artículos detectada", ['cod_invoice' => $cod_invoice, 'articulos_count' => count($invoice['articulos'] ?? [])]);
                         $parsed = $this->parseNestedInvoice($invoice, $connection);
                         if (!empty($parsed)) {
-                            Log::info("Factura parseada correctamente", ['invoice_number' => $parsed['header']['invoice_number'] ?? 'N/A']);
                             $invoiceResults[] = $parsed;
                             $seenInvoiceNumbers[] = $cod_invoice;
                         } else {
@@ -411,7 +405,6 @@ class SupplierConnectionService
             $headerLine = preg_replace('/^\xEF\xBB\xBF/', '', $headerLine);
             $headers = explode(';', $headerLine);
             $headerMap = array_flip(array_map('trim', $headers));
-            Log::info("Header Map for supplier $supplierId", $headerMap);
         }
 
         // Helper para obtener el índice de la columna basado en el mapeo y los encabezados
@@ -450,9 +443,7 @@ class SupplierConnectionService
         }
 
         $barcodes = array_unique(array_filter($barcodes));
-        Log::info("Found " . count($barcodes) . " barcodes for supplier $supplierId");
         $products = Product::with("laboratory")->whereIn("barcode", $barcodes)->get()->keyBy("barcode");
-        Log::info("Found " . $products->count() . " matching products in DB for supplier $supplierId");
 
         $result = collect($lines)->map(function (string $line, $key) use ($normalizedStructure, $now, $usdCurrency, $supplierId, $products, $structure_for_parsing, $headerMap, $getIdx) {
             if (!empty($structure_for_parsing)) {
@@ -606,7 +597,6 @@ class SupplierConnectionService
         });
 
 
-        Log::info("Total results parsed for supplier $supplierId: " . $result->count());
         return $result->toArray();
     }
 
@@ -693,8 +683,7 @@ class SupplierConnectionService
 
                 foreach ($structure['lines'] as $index => $meta) {
                     $raw = $cols[$index] ?? '';
-                    //Log::info('$raw'.$raw);
-                    //$lineData[$meta['field']] = $this->castValue($raw, $meta);
+                    //                    //$lineData[$meta['field']] = $this->castValue($raw, $meta);
                     $value = $this->castValue($raw, $meta);
                     $lineData[$meta['field']] = $value;
 
@@ -895,13 +884,7 @@ class SupplierConnectionService
                 'is_deleted' => true, // Pending approval
             ]);
 
-            // Log::info('✅ Producto creado desde factura', [
-            //     'supplier_id' => $supplierId,
-            //     'barcode' => $barcode,
-            //     'product_id' => $newProduct->id,
-            //     'name' => $newProduct->name
-            // ]);
-
+            //
             return $newProduct;
         } catch (\Exception $e) {
             Log::error('❌ Error al crear producto desde factura', [

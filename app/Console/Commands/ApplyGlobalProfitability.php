@@ -28,13 +28,11 @@ class ApplyGlobalProfitability extends Command
     public function handle(ProfitabilityServices $profitabilityServices): int
     {
         $this->info('Iniciando aplicación de rentabilidad global...');
-        Log::info('Comando app:apply-global-profitability iniciado.');
 
         try {
             $profitabilityServices->applyGlobalProfitabilityToAllProducts();
             
             $this->info('Proceso completado exitosamente.');
-            Log::info('Comando app:apply-global-profitability completado con éxito.');
             
             return Command::SUCCESS;
         } catch (\Exception $e) {

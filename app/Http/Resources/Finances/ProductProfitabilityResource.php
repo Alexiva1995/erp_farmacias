@@ -19,6 +19,7 @@ class ProductProfitabilityResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'unit_cost' => (float)$this->unit_cost,
+            'sale_price' => (float)$this->sale_price,
             'active_ingredient' => $this->active_ingredient,
             'psychotropic' => (bool)$this->psychotropic,
             'is_colombian_origin' => (bool)$this->is_colombian_origin,

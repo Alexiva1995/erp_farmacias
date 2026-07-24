@@ -29,10 +29,6 @@ class GenerateAutomaticSocialBenefitsJob implements ShouldQueue
 
     public function handle()
     {
-        Log::info('Automatic Social Benefits Job', [
-            'message' => 'Iniciando generación automática de prestaciones sociales',
-            'type' => $this->type
-        ]);
 
         switch ($this->type) {
             case 'vacations':
@@ -48,10 +44,6 @@ class GenerateAutomaticSocialBenefitsJob implements ShouldQueue
                 break;
         }
 
-        Log::info('Automatic Social Benefits Job', [
-            'message' => 'Generación automática completada',
-            'type' => $this->type
-        ]);
     }
 
     private function generateVacationBenefits()
@@ -62,19 +54,10 @@ class GenerateAutomaticSocialBenefitsJob implements ShouldQueue
             ->whereRaw('DATEDIFF(NOW(), created_at) <= 380') // Últimos 15 días
             ->get();
 
-        Log::info('Automatic Social Benefits Job', [
-            'message' => 'Empleados encontrados para vacaciones',
-            'count' => $employees->count()
-        ]);
 
         foreach ($employees as $employee) {
             try {
                 $this->generateEmployeeVacationBenefits($employee);
-                Log::info('Automatic Social Benefits Job', [
-                    'message' => 'Vacaciones generadas exitosamente',
-                    'employee_id' => $employee->id,
-                    'employee_name' => "{$employee->name} {$employee->last_name}"
-                ]);
             } catch (\Exception $e) {
                 Log::error('Automatic Social Benefits Job', [
                     'message' => 'Error generando vacaciones',
@@ -89,9 +72,6 @@ class GenerateAutomaticSocialBenefitsJob implements ShouldQueue
     {
         // Solo generar el 16 de diciembre
         if (Carbon::now()->format('m-d') !== '12-16') {
-            Log::info('Automatic Social Benefits Job', [
-                'message' => 'No es 16 de diciembre, saltando generación de utilidades'
-            ]);
             return;
         }
 
@@ -100,19 +80,10 @@ class GenerateAutomaticSocialBenefitsJob implements ShouldQueue
             ->whereRaw('DATEDIFF(NOW(), created_at) >= 365')
             ->get();
 
-        Log::info('Automatic Social Benefits Job', [
-            'message' => 'Empleados encontrados para utilidades',
-            'count' => $employees->count()
-        ]);
 
         foreach ($employees as $employee) {
             try {
                 $this->generateEmployeeUtilitiesBenefits($employee);
-                Log::info('Automatic Social Benefits Job', [
-                    'message' => 'Utilidades generadas exitosamente',
-                    'employee_id' => $employee->id,
-                    'employee_name' => "{$employee->name} {$employee->last_name}"
-                ]);
             } catch (\Exception $e) {
                 Log::error('Automatic Social Benefits Job', [
                     'message' => 'Error generando utilidades',
@@ -136,10 +107,6 @@ class GenerateAutomaticSocialBenefitsJob implements ShouldQueue
             ->first();
 
         if ($existingVacation) {
-            Log::info('Automatic Social Benefits Job', [
-                'message' => 'Vacaciones ya generadas este año',
-                'employee_id' => $employee->id
-            ]);
             return;
         }
 
@@ -190,10 +157,6 @@ class GenerateAutomaticSocialBenefitsJob implements ShouldQueue
             ->first();
 
         if ($existingBonus) {
-            Log::info('Automatic Social Benefits Job', [
-                'message' => 'Bono vacacional ya generado este año',
-                'employee_id' => $employee->id
-            ]);
             return;
         }
 
@@ -230,10 +193,6 @@ class GenerateAutomaticSocialBenefitsJob implements ShouldQueue
             ->first();
 
         if ($existingUtilities) {
-            Log::info('Automatic Social Benefits Job', [
-                'message' => 'Utilidades ya generadas este año',
-                'employee_id' => $employee->id
-            ]);
             return;
         }
 
@@ -335,13 +294,6 @@ class GenerateAutomaticSocialBenefitsJob implements ShouldQueue
             $totalAmount = PayslipDetails::where('payslip_id', $payslip->id)->sum('amount');
             $payslip->update(['total' => $totalAmount]);
 
-            Log::info('Automatic Social Benefits Job', [
-                'message' => 'Payslip detail generado automáticamente',
-                'payslip_id' => $payslip->id,
-                'salary_detail_id' => $salaryDetail->id,
-                'amount' => $amount,
-                'concept' => $conceptName
-            ]);
         } catch (\Exception $e) {
             Log::error('Automatic Social Benefits Job', [
                 'message' => 'Error generando payslip detail automáticamente',

@@ -173,12 +173,6 @@ class SupplierQueryService
         $logMessage = "[" . date('Y-m-d H:i:s') . "] 🚨 storeSupplierConnectionData INICIADO - Supplier ID: {$supplier->id}, Name: {$supplier->name}, Products: " . count($data["products"] ?? []) . ", Invoices: " . count($data["invoices"] ?? []) . "\n";
         file_put_contents($logFile, $logMessage, FILE_APPEND);
         error_log($logMessage);
-        \Log::info("🚀 [SINC] storeSupplierConnectionData INICIADO", [
-            'supplier_id' => $supplier->id,
-            'supplier_name' => $supplier->name,
-            'products_count' => count($data["products"] ?? []),
-            'invoices_count' => count($data["invoices"] ?? []),
-        ]);
 
         try {
             $products = $data["products"] ?? [];
@@ -195,10 +189,6 @@ class SupplierQueryService
             $logMessage = "[" . date('Y-m-d H:i:s') . "] ✅ Limpieza completada. Productos eliminados: {$deletedCount}\n";
             file_put_contents($logFile, $logMessage, FILE_APPEND);
 
-            Log::info("Analizando facturas para persistencia", [
-                'total_recibidas' => count($invoices),
-                'numeros_recibidos' => collect($invoices)->pluck('header.invoice_number')->toArray()
-            ]);
 
             // No filtramos por grupo para permitir que suban todos los registros (duplicados incluidos si no tienen ID)
             $uniqueProducts = $products;
@@ -208,10 +198,6 @@ class SupplierQueryService
             file_put_contents($logFile, $logMessage, FILE_APPEND);
             error_log($logMessage);
 
-            \Log::info("📦 [SINC] Productos recibidos para procesar", [
-                'supplier_id' => $supplier->id,
-                'total_productos' => count($uniqueProducts)
-            ]);
 
             $invoiceNumbersToFilter = collect($invoices)->pluck('header.invoice_number')->filter()->unique()->toArray();
             
@@ -229,7 +215,6 @@ class SupplierQueryService
                     return $isNew;
                 })->values()->toArray();
 
-            Log::info("Facturas tras filtrado", ['total' => count($filteredInvoices)]);
 
             // Procesar productos FUERA de la transacción para evitar rollback si uno falla
             // NO eliminar ningún producto existente
@@ -290,10 +275,6 @@ class SupplierQueryService
                 error_log($logMessage);
             }
 
-            \Log::info("💾 [SINC] Iniciando inserción de productos", [
-                'supplier_id' => $supplier->id,
-                'total_productos' => $totalProductos
-            ]);
 
             foreach ($uniqueProducts as $index => $productData) {
                 $logFile = storage_path('logs/supplier_debug_' . date('Y-m-d') . '.log');
@@ -304,11 +285,6 @@ class SupplierQueryService
 
                 // Log por producto eliminado por ser demasiado ruidoso
                 /*
-                \Log::info("🚨 [FORZADO] Procesando producto #{$index}", [
-                    'supplier_id' => $supplier->id,
-                    'product_id' => $productData['product_id'] ?? 'NULL',
-                    'name' => $productData['name'] ?? 'NULL',
-                ]);
                 */
 
                 try {
@@ -356,10 +332,6 @@ class SupplierQueryService
 
                     // Log por producto eliminado por ser demasiado ruidoso
                 /*
-                    \Log::info("🚨 [FORZADO] Insertado producto #{$index} exitosamente", [
-                        'supplier_id' => $supplier->id,
-                        'product_id' => $productData['product_id'] ?? 'NULL',
-                    ]);
                 */
 
                     $insertados++;
@@ -429,12 +401,6 @@ class SupplierQueryService
             file_put_contents($logFile, $logMessage, FILE_APPEND);
             error_log($logMessage);
 
-            \Log::info("✅ [SINC] Finalizada inserción de productos", [
-                'supplier_id' => $supplier->id,
-                'total_productos' => $totalProductos,
-                'insertados' => $insertados,
-                'errores' => $errores
-            ]);
 
             // Procesar facturas en su propia transacción
             DB::transaction(function () use ($supplier, $filteredInvoices) {

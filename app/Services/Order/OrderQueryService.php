@@ -702,13 +702,6 @@ class OrderQueryService
             $totalSpeSalesAmount = $speRecords->sum('total_amount');
             $totalSpeCount       = $speRecords->count();
 
-            Log::info('C├ílculo d├®bito fiscal:', [
-                'periodo' => [$startDate, $endDate],
-                'total_records' => $fiscalRecords->count(),
-                'total_iva_amount' => $totalIvaAmount,
-                'total_spe_amount' => $totalSpeAmount,
-                'total_debito' => $totalDebito
-            ]);
 
             return [
                 'total_records'          => $fiscalRecords->count(),
@@ -784,14 +777,6 @@ class OrderQueryService
                 'total_amount' => $formattedRecords->sum('total_amount')
             ];
 
-            Log::info('Registros de fiscal history obtenidos:', [
-                'periodo' => [$startDate, $endDate],
-                'page' => $page,
-                'items_per_page' => $itemsPerPage,
-                'total_records' => $totalRecords,
-                'records_in_page' => $formattedRecords->count(),
-                'page_totals' => $pageTotals
-            ]);
 
             return [
                 'data' => $formattedRecords->toArray(),

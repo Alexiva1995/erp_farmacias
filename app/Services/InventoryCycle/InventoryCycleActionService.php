@@ -645,7 +645,6 @@ class InventoryCycleActionService
             $activeCycle->end_date = now();
             $activeCycle->save();
 
-            Log::info("Ciclo de inventario cerrado exitosamente.", ['cycle_id' => $activeCycle->id, 'closed_by' => Auth::id()]);
 
             return ['success' => true, 'message' => 'El ciclo de inventario ha sido cerrado exitosamente.'];
         });
@@ -664,7 +663,6 @@ class InventoryCycleActionService
             'created_by_id' => Auth::id(),
         ]);
 
-        Log::info("Nuevo ciclo de inventario creado.", ['cycle_id' => $newCycle->id, 'created_by' => Auth::id()]);
 
         return ['success' => true, 'message' => 'Nuevo ciclo de inventario creado y activado.'];
     }

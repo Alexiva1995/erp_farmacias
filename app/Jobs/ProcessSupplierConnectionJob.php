@@ -138,7 +138,6 @@ class ProcessSupplierConnectionJob implements ShouldQueue
                 $logMessage = "[" . date('Y-m-d H:i:s') . "] 🌐 [JOB] Procesando conexión FTP/API\n";
                 file_put_contents($logFile, $logMessage, FILE_APPEND);
                 error_log($logMessage);
-                Log::info("🌐 [JOB] Iniciando conexión FTP/API para proveedor: {$this->supplier->name} (ID: {$this->supplier->id})");
                 
                 $supplierConnection = \App\Models\SupplierConnection::where('supplier_id', $this->supplier->id)->first();
                 if ($supplierConnection) {
@@ -162,7 +161,6 @@ class ProcessSupplierConnectionJob implements ShouldQueue
                 file_put_contents($logFile, $logMessage, FILE_APPEND);
                 error_log($logMessage);
                 
-                Log::info("✅ [JOB] Resultados API para proveedor {$this->supplier->id}: {$invoiceCount} facturas y {$productCount} productos.");
 
                 if ($invoiceCount === 0) {
                     $logMessage = "[" . date('Y-m-d H:i:s') . "] ⚠️ [JOB] ADVERTENCIA: API retornó 0 facturas\n";
@@ -201,13 +199,11 @@ class ProcessSupplierConnectionJob implements ShouldQueue
 
             $queryService->addDiscountsToProducts($this->supplier);
 
-            \Illuminate\Support\Facades\Log::info("🚨 [JOB] Intentando actualizar last_connection", ['supplier_id' => $this->supplier->id, 'has_connection' => !is_null($supplierConnection)]);
             
             \Illuminate\Support\Facades\DB::table('supplier_connections')
                 ->where('supplier_id', $this->supplier->id)
                 ->update(['last_connection' => now()->toDateString()]);
             
-            \Illuminate\Support\Facades\Log::info("✅ [JOB] last_connection actualizado en DB", ['supplier_id' => $this->supplier->id]);
 
             $status->update([
                 "status" => "completed",

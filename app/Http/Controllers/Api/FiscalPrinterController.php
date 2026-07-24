@@ -63,7 +63,6 @@ class FiscalPrinterController extends Controller
     public function confirmReplica(ConfirmFiscalPrintRequest $request, $id)
     {
         try {
-            Log::info("Fiscal Bridge Replica - Confirmando Factura #{$id}", $request->all());
 
             $fiscal = FiscalHistory::findOrFail($id);
             

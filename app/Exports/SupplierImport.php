@@ -53,7 +53,6 @@ class SupplierImport implements ToCollection, WithStartRow, WithCalculatedFormul
             $this->startRow === "null" ||
             $this->nameCol === "null"
         ) {
-            Log::info('Supplier import', ['Fields supplierId, startRow or name not defined']);
             throw new \Exception("Los campos fila de inicio y nombre no se encuentran definidos");
         }
 

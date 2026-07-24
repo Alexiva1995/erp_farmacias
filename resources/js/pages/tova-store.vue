@@ -777,7 +777,7 @@ onMounted(async () => {
           <!-- Info -->
           <div class="editorial-product-info" style="margin-top: 15px;">
             <h3 class="editorial-product-name" @click="openQuickView(product)" style="cursor: pointer; margin-bottom: 4px;">{{ product.name.toUpperCase() }}</h3>
-            <span class="editorial-product-brand" style="display: block; margin-bottom: 8px;">{{ product.brand || 'TOVA' }}</span>
+            <span v-if="product.brand" class="editorial-product-brand" style="display: block; margin-bottom: 8px;">{{ product.brand }}</span>
             <div class="editorial-product-footer" style="display: flex; gap: 8px; align-items: baseline;">
               <span v-if="product.original_price" class="editorial-product-price-original" style="text-decoration: line-through; color: #888888; font-size: 13px; font-weight: 500;">{{ formatPrice(product.original_price) }}</span>
               <span class="editorial-product-price" style="font-weight: 700;">{{ formatPrice(product.sale_price) }}</span>
@@ -933,7 +933,7 @@ onMounted(async () => {
             
             <!-- Tonos / Marca -->
             <div style="font-size: 12px; color: #555555; margin-bottom: 6px; font-weight: 500;">
-              <span style="margin-right: 10px; text-transform: uppercase; font-size: 10px; font-weight: 700; color: var(--editorial-nude-dark); letter-spacing: 1px;">{{ product.brand || 'TOVA' }}</span>
+              <span v-if="product.brand" style="margin-right: 10px; text-transform: uppercase; font-size: 10px; font-weight: 700; color: var(--editorial-nude-dark); letter-spacing: 1px;">{{ product.brand }}</span>
               <span style="text-decoration: underline; cursor: pointer;">{{ product.variants_count || 23 }} Shades</span>
             </div>
             
@@ -1055,9 +1055,9 @@ onMounted(async () => {
               <div v-else class="editorial-qv-fallback">TOVA</div>
             </div>
             <div class="editorial-qv-details">
-              <span class="qv-brand-tag">{{ selectedProduct.brand || 'TOVA' }}</span>
+              <span v-if="selectedProduct.brand" class="qv-brand-tag">{{ selectedProduct.brand }}</span>
               <h2 class="qv-title-serif">{{ selectedProduct.name.toUpperCase() }}</h2>
-              <p class="qv-desc-light">{{ selectedProduct.description || 'Producto de alta gama formulado con los mejores ingredientes de la colección TOVA.' }}</p>
+              <p class="qv-desc-light">{{ selectedProduct.description || 'Producto de alta gama formulado con los mejores ingredientes.' }}</p>
               <p class="qv-price-bold">{{ formatPrice(productPrice(selectedProduct, selectedVariant)) }}</p>
 
                <!-- Variantes de Tonos / Tamaños con Círculos de Color Hexadecimal -->
@@ -1330,7 +1330,7 @@ onMounted(async () => {
    ESTÉTICA EDITORIAL DE ALTA GAMA — TOVA BEAUTY & GEMS (INSPIRADO EN FENTY)
    ========================================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Montserrat:wght@200;300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Cinzel:wght@400;700;900&family=Montserrat:wght@200;300;400;500;600;700&display=swap');
 
 .tova-editorial-root {
   /* Variables de Color e Identidad */
@@ -1342,8 +1342,8 @@ onMounted(async () => {
   --editorial-nude-light: #FAFAFA;
   --editorial-terracotta-light: #E8C5C8;
   --editorial-text-muted: #666666;
-  --editorial-font-serif: 'Cinzel', Georgia, serif;
-  --editorial-font-sans: 'Montserrat', sans-serif;
+  --editorial-font-serif: 'Abril Fatface', 'Cinzel', Georgia, serif;
+  --editorial-font-sans: 'Abril Fatface', 'Montserrat', sans-serif;
 
   min-height: 100vh;
   background-color: var(--editorial-white);
@@ -1352,6 +1352,11 @@ onMounted(async () => {
   overflow-x: hidden;
   display: flex;
   flex-direction: column;
+}
+
+.tova-editorial-root,
+.tova-editorial-root *:not(.v-icon):not([class*="tabler-"]):not([class*="fa-"]):not(i) {
+  font-family: 'Abril Fatface', cursive, serif !important;
 }
 
 /* ——— Tipografía General ——— */

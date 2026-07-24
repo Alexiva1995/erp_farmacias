@@ -18,7 +18,7 @@ class RetentionService implements RetentionContract
 
     public function getInvoicesWithTax($filters = [], $perPage = 10): LengthAwarePaginator
     {
-        return $this->retentionRepository->getInvoicesWithTax($filters, $perPage);
+        return $this->retentionRepository->getInvoicesWithTax($filters, (int) $perPage);
     }
 
     public function generateRetentions(array $invoiceIds): Retention
@@ -28,7 +28,7 @@ class RetentionService implements RetentionContract
 
     public function getGeneratedRetentions($filters = [], $perPage = 10): LengthAwarePaginator
     {
-        return $this->retentionRepository->getGeneratedRetentions($filters, $perPage);
+        return $this->retentionRepository->getGeneratedRetentions($filters, (int) $perPage);
     }
 
     public function prepareRetentionData($source): array

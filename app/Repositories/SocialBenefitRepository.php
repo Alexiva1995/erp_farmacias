@@ -170,11 +170,6 @@ class SocialBenefitRepository implements \App\Contracts\SocialBenefit
     // Generar automáticamente el payslip_detail para que aparezca en deducciones
     $this->generatePayslipDetailForPayment($salaryDetail, $data['amount']);
 
-    Log::info('Repository', [
-      'message' => "Pago de {$conceptName} registrado exitosamente",
-      'employee_id' => $employee->id,
-      'amount' => $data['amount']
-    ]);
 
     return true;
   }
@@ -210,12 +205,6 @@ class SocialBenefitRepository implements \App\Contracts\SocialBenefit
       $totalAmount = PayslipDetails::where('payslip_id', $payslip->id)->sum('amount');
       $payslip->update(['total' => $totalAmount]);
 
-      Log::info('Repository', [
-        'message' => 'Payslip detail generado automáticamente',
-        'payslip_id' => $payslip->id,
-        'salary_detail_id' => $salaryDetail->id,
-        'amount' => $amount
-      ]);
     } catch (\Exception $e) {
       Log::error('Repository', [
         'message' => 'Error generando payslip detail automáticamente',
@@ -230,7 +219,6 @@ class SocialBenefitRepository implements \App\Contracts\SocialBenefit
     $currency = round(ExchangeRate::orderByDesc('created_at')
       ->where('currency_code', 'BS')
       ->value('rate') ?? 1, 2);
-    Log::info('Repository', ['currency' => $currency, 'overrides' => $overrides]);
 
     // Obtener datos de renuncia si existen
     $resignation = $employee->resignation;
@@ -283,7 +271,6 @@ class SocialBenefitRepository implements \App\Contracts\SocialBenefit
       ->limit(6)
       ->first();
 
-    Log::info('Repository', ['settlement' => $settlement]);
     $amount = round((float) $settlement?->amount ?? 0, 2);
     // Usar el cálculo de Carbon en lugar del SQL que puede fallar
     // $activeYears = (int) $settlement?->active_years ?? 1;
@@ -304,7 +291,6 @@ class SocialBenefitRepository implements \App\Contracts\SocialBenefit
         ];
     }
 
-    Log::info('Repository', ['average_salary_data' => $averageSalaryData]);
 
     // Usar el salario promedio si está disponible, sino usar el amount calculado
     $baseSalary = $averageSalaryData['average_salary'] > 0 ? $averageSalaryData['average_salary'] : $amount;
@@ -313,15 +299,6 @@ class SocialBenefitRepository implements \App\Contracts\SocialBenefit
     // Calcular salario integral según fórmula: Salario Diario + [(30 × Salario Diario) ÷ 360] + [(15 × Salario Diario) ÷ 360]
     $integralSalary = $dailyWage + (30 * $dailyWage / 360) + (15 * $dailyWage / 360);
 
-    Log::info('Repository', [
-      'amount' => $amount,
-      'activeYears' => $activeYears,
-      'dailyWage' => $dailyWage,
-      'baseSalary' => $baseSalary,
-      'integralSalary' => $integralSalary,
-      'averageSalaryData' => $averageSalaryData,
-      'hireDate' => $hireDate->toDateString()
-    ]);
 
     $sub = DB::table('employees')
       ->leftJoin('users as u', 'u.id', '=', 'employees.user_id')
@@ -335,7 +312,6 @@ class SocialBenefitRepository implements \App\Contracts\SocialBenefit
         'sc.name as concept_name',
         DB::raw('pd.amount * ps.exchange_rate AS amount_usd')
       );
-    Log::info('Repository', ['sub-query' => $sub]);
 
     $deductions = DB::query()
       ->fromSub($sub, 'x')
@@ -346,7 +322,6 @@ class SocialBenefitRepository implements \App\Contracts\SocialBenefit
     ', ['Vacaciones', 'Bono Vacacional', 'Utilidades'])
       ->first();
 
-    Log::info('Repository', ['deductions' => $deductions]);
 
     // Aplicar overrides a las deducciones automáticas si se proporcionan
     $vacationDeduction = isset($overrides['vacation_deduction_bs']) && $overrides['vacation_deduction_bs'] !== null
@@ -396,11 +371,6 @@ class SocialBenefitRepository implements \App\Contracts\SocialBenefit
     // UTILIDADES: Fórmula base con fracciones (sin bonificación)
     $earningsVoucherDays = round(30 * $activeYears); // Redondear a entero
 
-    Log::info('Repository', [
-      'socialBenefitsDays' => $socialBenefitsDays,
-      'vacationVoucherDays' => $vacationVoucherDays,
-      'earningsVoucherDays' => $earningsVoucherDays
-    ]);
 
     // Usar salario integral para cálculos de prestaciones sociales
     $socialBenefitsAmount = round($socialBenefitsDays * $integralSalary, 2);
@@ -408,29 +378,17 @@ class SocialBenefitRepository implements \App\Contracts\SocialBenefit
     $vacBonusVoucherAmount = round($vacBonusVoucherDays * $integralSalary, 2);
     $earningsVoucherAmount = round($earningsVoucherDays * $integralSalary, 2);
 
-    Log::info('Repository', [
-      'socialBenefitsAmount' => $socialBenefitsAmount,
-      'vacationVoucherAmount' => $vacationVoucherAmount,
-      'vacBonusVoucherAmount' => $vacBonusVoucherAmount,
-      'earningsVoucherAmount' => $earningsVoucherAmount
-    ]);
 
     $totalSettlementAmount = round($socialBenefitsAmount
       + $vacationVoucherAmount
       + $vacBonusVoucherAmount
       + $earningsVoucherAmount, 2);
 
-    Log::info('Repository', [
-      'totalSettlementAmount' => $totalSettlementAmount,
-    ]);
 
     $totalDeductions = round($vacationDeduction
       + $vacationBonusDeduction
       + $earningsDeduction, 2);
 
-    Log::info('Repository', [
-      'totalDeductions' => $totalDeductions,
-    ]);
 
     $totalSettlementUsd = round($totalSettlementAmount / $currency, 2);
     $totalDeductionsUsd = round($totalDeductions / $currency, 2);
@@ -446,13 +404,6 @@ class SocialBenefitRepository implements \App\Contracts\SocialBenefit
     $resignationDateFormatted = $this->parseDate($resignationDateStr)->format('d/m/Y');
     $hireDateFormatted = $hireDate->format('d/m/Y');
 
-    Log::info('Repository', [
-      'totalSettlementUsd' => $totalSettlementUsd,
-      'totalDeductionsUsd' => $totalDeductionsUsd,
-      'finalUsd' => $finalUsd,
-      'startDate' => $hireDateFormatted,
-      'employee resignation date' => $employee->resignation?->effective_date,
-    ]);
 
     return [
       'amount' => $amount,
@@ -579,7 +530,6 @@ class SocialBenefitRepository implements \App\Contracts\SocialBenefit
         // Actualizar estado del empleado al final (si todo sale bien)
         $employee->update(['is_active' => false]);
         
-        Log::info('Repository', ['employee_fired_successfully' => $employee->id]);
         return true;
       } catch (\Exception $e) {
         Log::error('Repository', [
@@ -666,12 +616,6 @@ class SocialBenefitRepository implements \App\Contracts\SocialBenefit
       // Si los montos son muy bajos (< 50) y hay tasas USD, probablemente están en USD
       if ($avgAmount < 50 && $hasUsdRates) {
         // Mantener conversión USD->Bs
-        Log::info('Repository', [
-          'message' => 'Salarios detectados como USD, aplicando conversión',
-          'employee_id' => $employee->id,
-          'avg_amount' => $avgAmount,
-          'has_usd_rates' => $hasUsdRates
-        ]);
       } else {
         // Los montos son altos o no hay tasas USD, probablemente están en Bs
         $salaries = $salaries->map(function ($salary) {
@@ -684,12 +628,6 @@ class SocialBenefitRepository implements \App\Contracts\SocialBenefit
           ];
         });
 
-        Log::info('Repository', [
-          'message' => 'Salarios detectados como Bs, usando montos directos',
-          'employee_id' => $employee->id,
-          'avg_amount' => $avgAmount,
-          'has_usd_rates' => $hasUsdRates
-        ]);
       }
     }
 

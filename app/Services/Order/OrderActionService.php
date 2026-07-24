@@ -57,7 +57,6 @@ class OrderActionService
                         'status' => CashClosing::OPEN,
                         'opening_date' => Carbon::now(),
                     ]);
-                    Log::info("Caja auto-abierta para el vendedor {$data['seller_id']} al intentar ingresar orden.");
                 }
 
                 $data['cash_closing_id'] = $openCashRegisterClosing->id;
@@ -581,7 +580,6 @@ class OrderActionService
             $order->status = Order::ABANDONED;
             $order->save();
             DB::commit();
-            Log::info("Orden abandonada exitosamente.", ['order_id' => $order->id]);
             return $order;
         } catch (\Throwable $e) {
             DB::rollBack();
@@ -1352,7 +1350,6 @@ class OrderActionService
             $order->load('seller', 'client', 'details.product');
 
             DB::commit();
-            Log::info("Orden reservada exitosamente.", ['order_id' => $order->id]);
             return [
                 'reserved_order' => $order,
             ];
@@ -1392,7 +1389,6 @@ class OrderActionService
                     $previouslyReserved->load('seller', 'client', 'details.product');
                 }
 
-                Log::info("Orden reservada exitosamente.", ['order_id' => $order->id]);
 
                 return [
                     'reserved_order' => $order,
@@ -1427,7 +1423,6 @@ class OrderActionService
             $order->load('seller', 'client', 'details.product');
 
             DB::commit();
-            Log::info("Orden agregada exitosamente.", ['order_id' => $order->id]);
             return [
                 'reserved_order' => $orderOpen,
                 'pending_order' => $order,
@@ -1558,7 +1553,6 @@ class OrderActionService
             }
 
             DB::commit();
-            Log::info("Orden cancelada exitosamente.", ['order_id' => $order->id]);
             return $order;
         } catch (\Throwable $e) {
             DB::rollBack();

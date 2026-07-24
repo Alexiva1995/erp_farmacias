@@ -32,7 +32,6 @@ class CloseCash extends Command
         foreach ($sellers as $seller) {
             try {
                 $cashClosureService->closeDailyCashClosure($seller);
-                Log::info("Cierre de caja diario completado para el vendedor: {$seller->name}");
             } catch (\Exception $e) {
                 Log::error("Error al cerrar la caja para el vendedor: {$seller->name}. Mensaje: {$e->getMessage()}");
             }
@@ -41,7 +40,6 @@ class CloseCash extends Command
         $cashClosureService = app(\App\Services\CashClosure\CashClosureActionService::class);
         try {
             $cashClosureService->closeDailyCashClosure(); 
-            Log::info("Cierre de caja diario completado para todos los vendedores.");
         } catch (\Exception $e) {
             Log::error("Error al realizar el cierre de caja diario. Mensaje: {$e->getMessage()}");
         }
