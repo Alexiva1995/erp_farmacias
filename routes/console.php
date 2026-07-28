@@ -13,21 +13,6 @@ Artisan::command('inspire', function () {
 Schedule::command('app:update-exchange-rate')->dailyAt('00:01');
 Schedule::command('app:update-exchange-rate')->dailyAt('03:00');
 Schedule::command('app:close-cash')->dailyAt('23:59');
-<?php
-
-use App\Jobs\ExecuteRecurringExpensesJob;
-use App\Jobs\GeneratePayslipJob;
-use Illuminate\Foundation\Inspiring;
-use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\Schedule;
-
-Artisan::command('inspire', function () {
-    $this->comment(Inspiring::quote());
-})->purpose('Display an inspiring quote');
-
-Schedule::command('app:update-exchange-rate')->dailyAt('00:01');
-Schedule::command('app:update-exchange-rate')->dailyAt('03:00');
-Schedule::command('app:close-cash')->dailyAt('23:59');
 Schedule::command('app:clear-expired-reservations')->everyMinute();
 Schedule::command('telegram:send-daily-reservations')->dailyAt('12:00');
 Schedule::command('telegram:send-upcoming-payments')->dailyAt('09:30');
