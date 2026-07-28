@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 import { formatDateSimple, formatPrice as formatCurrency } from "@/utils/formatters";
 import { computed } from "vue";
 import { useBrandingStore } from "@/stores/useBrandingStore";
@@ -133,7 +133,7 @@ const toggleSelection = (id) => {
 
         <template #item.expired_quantity="{ item }">
           <VChip size="small" label variant="tonal" color="error" class="font-weight-bold">
-            {{ item.expired_quantity }} UNDS
+            {{ Math.trunc(item.expired_quantity ?? 0) }} UNDS
           </VChip>
         </template>
       </VDataTableServer>
@@ -196,7 +196,7 @@ const toggleSelection = (id) => {
               <div class="d-flex flex-column text-right">
                 <span class="text-super-xs text-disabled text-uppercase font-weight-black">Cant. Final</span>
                 <span class="text-base font-weight-black text-error">
-                  {{ item.expired_quantity }} <small class="text-super-xs">UNDS</small>
+                  {{ Math.trunc(item.expired_quantity ?? 0) }} <small class="text-super-xs">UNDS</small>
                 </span>
               </div>
             </div>

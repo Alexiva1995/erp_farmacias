@@ -14,8 +14,8 @@ const loading = ref(false);
 
 const page = ref(1);
 const itemsPerPage = ref(10);
-const sortBy = ref();
-const orderBy = ref();
+const sortBy = ref("name");
+const orderBy = ref("asc");
 const isLoadingFilters = ref(false);
 const isStrictSearch = ref(false);
 const searchQuery = ref("");
@@ -28,16 +28,13 @@ const groupFormErrors = ref({});
 const fetchGroups = async () => {
   loading.value = true;
   const params = {
-    q: searchQuery.value,
+    q: searchQuery.value || undefined,
     page: page.value,
     itemsPerPage: itemsPerPage.value,
-    sortBy: sortBy.value,
-    orderBy: orderBy.value,
-    isStrictSearch: isStrictSearch.value,
+    sortBy: sortBy.value || undefined,
+    orderBy: orderBy.value || undefined,
+    isStrictSearch: isStrictSearch.value || undefined,
   };
-  Object.keys(params).forEach(
-    (key) => (params[key] === null || params[key] === "") && delete params[key]
-  );
 
   try {
     const response = await axios.get("/groups", { params });
@@ -52,17 +49,20 @@ const fetchGroups = async () => {
 };
 
 let debounceTimer;
+
+// Watcher unificado para filtros con debounce y reseteo a página 1
 watch(
-  [page, itemsPerPage, sortBy, orderBy, searchQuery, isStrictSearch],
+  [searchQuery, isStrictSearch],
   () => {
+    page.value = 1;
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => fetchGroups(), 300);
-  },
-  { deep: true }
+  }
 );
 
-watch([searchQuery], () => {
-  page.value = 1;
+// Watcher directo para paginación y ordenamiento
+watch([page, itemsPerPage, sortBy, orderBy], () => {
+  fetchGroups();
 });
 
 onMounted(() => {
@@ -74,8 +74,10 @@ onUnmounted(() => clearTimeout(debounceTimer));
 const updateTableOptions = (options) => {
   page.value = options.page;
   itemsPerPage.value = options.itemsPerPage;
-  sortBy.value = options.sortBy[0]?.key;
-  orderBy.value = options.sortBy[0]?.order;
+  if (options.sortBy && options.sortBy.length > 0) {
+    sortBy.value = options.sortBy[0]?.key;
+    orderBy.value = options.sortBy[0]?.order;
+  }
 };
 
 const handleEditGroup = (group) => {
@@ -98,10 +100,6 @@ const handleDeleteGroup = async (id) => {
     cancelButtonText: "Cancelar",
     confirmButtonText: "Eliminar",
     reverseButtons: true,
-    customClass: {
-      confirmButton: 'v-btn v-btn--variant-flat v-theme--default bg-error text-white h-auto py-2 px-6 rounded-lg font-weight-black uppercase',
-      cancelButton: 'v-btn v-btn--variant-tonal v-theme--default text-secondary h-auto py-2 px-6 rounded-lg font-weight-black uppercase'
-    }
   });
 
   if (result.isConfirmed) {
@@ -166,7 +164,7 @@ const clearFormErrors = () => {
         @add-group="handleAddGroup"
       />
 
-      <!-- Nuevo Sistema de Acordeones Premium -->
+      <!-- Sistema de Acordeones Premium -->
       <GroupTable
         :groups="groups"
         :loading="loading"

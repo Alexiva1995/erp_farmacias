@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import axios from '@/plugins/axios'
 import { toast } from "@/plugins/sweetalert";
 import { useBrandingStore } from "@/stores/useBrandingStore";
@@ -56,7 +56,6 @@ const formFieldsOptions = [
   { label: "Imagen / Foto",              value: "photo_url"          },
 ]
 
-// Alternar el Modo de Trazabilidad sin mutar arrays dentro de un computed
 const toggleTraceabilityMode = (val) => {
   traceabilityMode.value = val ? 'consumption' : 'units'
   
@@ -98,34 +97,38 @@ const fetchSettings = async () => {
   }
 }
 
-const updateSettings = async () => {
-  if (isSaving.value) return
+let saveDebounceTimer = null
+const updateSettings = () => {
   isSaving.value = true
-  try {
-    await axios.post('/general-settings', {
-      enable_product_types:  enableProductTypes.value,
-      enabled_product_types: enabledProductTypes.value,
-      enable_favorites:      enableFavorites.value,
-      enable_variations:     enableVariations.value,
-      enable_merge:          enableMerge.value,
-      enable_groups:         enableGroups.value,
-      enable_expirations:    enableExpirations.value,
-      enable_brand_groups:   enableBrandGroups.value,
-      enable_donations:      enableDonations.value,
-      enable_locations:      enableLocations.value,
-      enable_optimization:   enableOptimization.value,
-      enable_dishes:         enableDishes.value,
-      traceability_mode:     traceabilityMode.value,
-      product_form_fields:   productFormFields.value,
-    })
-    await brandingStore.fetchSettings()
-    toast.success("Configuración de productos actualizada exitosamente")
-  } catch (error) {
-    console.error("Error al guardar configuración de productos:", error)
-    toast.error("Error al actualizar la configuración")
-  } finally {
-    isSaving.value = false
-  }
+  if (saveDebounceTimer) clearTimeout(saveDebounceTimer)
+
+  saveDebounceTimer = setTimeout(async () => {
+    try {
+      await axios.post('/general-settings', {
+        enable_product_types:  enableProductTypes.value,
+        enabled_product_types: enabledProductTypes.value,
+        enable_favorites:      enableFavorites.value,
+        enable_variations:     enableVariations.value,
+        enable_merge:          enableMerge.value,
+        enable_groups:         enableGroups.value,
+        enable_expirations:    enableExpirations.value,
+        enable_brand_groups:   enableBrandGroups.value,
+        enable_donations:      enableDonations.value,
+        enable_locations:      enableLocations.value,
+        enable_optimization:   enableOptimization.value,
+        enable_dishes:         enableDishes.value,
+        traceability_mode:     traceabilityMode.value,
+        product_form_fields:   productFormFields.value,
+      })
+      await brandingStore.fetchSettings()
+      toast.success("Configuración de productos actualizada exitosamente")
+    } catch (error) {
+      console.error("Error al guardar configuración de productos:", error)
+      toast.error("Error al actualizar la configuración")
+    } finally {
+      isSaving.value = false
+    }
+  }, 300)
 }
 
 onMounted(() => fetchSettings())
@@ -165,12 +168,11 @@ onMounted(() => fetchSettings())
 
         <VDivider />
 
-        <!-- Switches en fila responsiva -->
         <VCardItem class="py-5">
           <VRow class="match-height">
             <!-- Tipos de Productos -->
             <VCol cols="12" sm="6" md="4" lg="3">
-              <div class="d-flex flex-column justify-space-between h-100 p-4 rounded-lg border border-opacity-50 hover-bg-light transition-all">
+              <div class="d-flex flex-column justify-space-between h-100 pa-4 rounded-lg module-item-box transition-all">
                 <div>
                   <span class="text-subtitle-2 font-weight-bold text-high-emphasis">Tipos de Productos</span>
                   <p class="text-caption text-medium-emphasis mt-1 mb-4">
@@ -183,7 +185,6 @@ onMounted(() => fetchSettings())
                   color="primary"
                   density="compact"
                   hide-details
-                  :disabled="isSaving"
                   @update:model-value="updateSettings"
                 />
               </div>
@@ -191,7 +192,7 @@ onMounted(() => fetchSettings())
 
             <!-- Productos Favoritos -->
             <VCol cols="12" sm="6" md="4" lg="3">
-              <div class="d-flex flex-column justify-space-between h-100 p-4 rounded-lg border border-opacity-50 hover-bg-light transition-all">
+              <div class="d-flex flex-column justify-space-between h-100 pa-4 rounded-lg module-item-box transition-all">
                 <div>
                   <span class="text-subtitle-2 font-weight-bold text-high-emphasis">Productos Favoritos</span>
                   <p class="text-caption text-medium-emphasis mt-1 mb-4">
@@ -204,7 +205,6 @@ onMounted(() => fetchSettings())
                   color="primary"
                   density="compact"
                   hide-details
-                  :disabled="isSaving"
                   @update:model-value="updateSettings"
                 />
               </div>
@@ -212,7 +212,7 @@ onMounted(() => fetchSettings())
 
             <!-- Variaciones de Productos -->
             <VCol cols="12" sm="6" md="4" lg="3">
-              <div class="d-flex flex-column justify-space-between h-100 p-4 rounded-lg border border-opacity-50 hover-bg-light transition-all">
+              <div class="d-flex flex-column justify-space-between h-100 pa-4 rounded-lg module-item-box transition-all">
                 <div>
                   <span class="text-subtitle-2 font-weight-bold text-high-emphasis">Variaciones de Productos</span>
                   <p class="text-caption text-medium-emphasis mt-1 mb-4">
@@ -225,7 +225,6 @@ onMounted(() => fetchSettings())
                   color="primary"
                   density="compact"
                   hide-details
-                  :disabled="isSaving"
                   @update:model-value="updateSettings"
                 />
               </div>
@@ -233,7 +232,7 @@ onMounted(() => fetchSettings())
 
             <!-- Fusión de Productos -->
             <VCol cols="12" sm="6" md="4" lg="3">
-              <div class="d-flex flex-column justify-space-between h-100 p-4 rounded-lg border border-opacity-50 hover-bg-light transition-all">
+              <div class="d-flex flex-column justify-space-between h-100 pa-4 rounded-lg module-item-box transition-all">
                 <div>
                   <span class="text-subtitle-2 font-weight-bold text-high-emphasis">Fusión de Productos</span>
                   <p class="text-caption text-medium-emphasis mt-1 mb-4">
@@ -246,7 +245,6 @@ onMounted(() => fetchSettings())
                   color="primary"
                   density="compact"
                   hide-details
-                  :disabled="isSaving"
                   @update:model-value="updateSettings"
                 />
               </div>
@@ -254,7 +252,7 @@ onMounted(() => fetchSettings())
 
             <!-- Grupos de Productos -->
             <VCol cols="12" sm="6" md="4" lg="3">
-              <div class="d-flex flex-column justify-space-between h-100 p-4 rounded-lg border border-opacity-50 hover-bg-light transition-all">
+              <div class="d-flex flex-column justify-space-between h-100 pa-4 rounded-lg module-item-box transition-all">
                 <div>
                   <span class="text-subtitle-2 font-weight-bold text-high-emphasis">Grupos de Productos</span>
                   <p class="text-caption text-medium-emphasis mt-1 mb-4">
@@ -267,7 +265,6 @@ onMounted(() => fetchSettings())
                   color="primary"
                   density="compact"
                   hide-details
-                  :disabled="isSaving"
                   @update:model-value="updateSettings"
                 />
               </div>
@@ -275,7 +272,7 @@ onMounted(() => fetchSettings())
 
             <!-- Módulo de Caducidad -->
             <VCol cols="12" sm="6" md="4" lg="3">
-              <div class="d-flex flex-column justify-space-between h-100 p-4 rounded-lg border border-opacity-50 hover-bg-light transition-all">
+              <div class="d-flex flex-column justify-space-between h-100 pa-4 rounded-lg module-item-box transition-all">
                 <div>
                   <span class="text-subtitle-2 font-weight-bold text-high-emphasis">Módulo de Caducidad</span>
                   <p class="text-caption text-medium-emphasis mt-1 mb-4">
@@ -288,7 +285,6 @@ onMounted(() => fetchSettings())
                   color="primary"
                   density="compact"
                   hide-details
-                  :disabled="isSaving"
                   @update:model-value="updateSettings"
                 />
               </div>
@@ -296,7 +292,7 @@ onMounted(() => fetchSettings())
 
             <!-- Donaciones de Productos -->
             <VCol cols="12" sm="6" md="4" lg="3">
-              <div class="d-flex flex-column justify-space-between h-100 p-4 rounded-lg border border-opacity-50 hover-bg-light transition-all">
+              <div class="d-flex flex-column justify-space-between h-100 pa-4 rounded-lg module-item-box transition-all">
                 <div>
                   <span class="text-subtitle-2 font-weight-bold text-high-emphasis">Donación de Productos</span>
                   <p class="text-caption text-medium-emphasis mt-1 mb-4">
@@ -309,7 +305,6 @@ onMounted(() => fetchSettings())
                   color="primary"
                   density="compact"
                   hide-details
-                  :disabled="isSaving"
                   @update:model-value="updateSettings"
                 />
               </div>
@@ -317,7 +312,7 @@ onMounted(() => fetchSettings())
 
             <!-- Grupos de Marcas -->
             <VCol cols="12" sm="6" md="4" lg="3">
-              <div class="d-flex flex-column justify-space-between h-100 p-4 rounded-lg border border-opacity-50 hover-bg-light transition-all">
+              <div class="d-flex flex-column justify-space-between h-100 pa-4 rounded-lg module-item-box transition-all">
                 <div>
                   <span class="text-subtitle-2 font-weight-bold text-high-emphasis">Grupos de Marcas</span>
                   <p class="text-caption text-medium-emphasis mt-1 mb-4">
@@ -330,7 +325,6 @@ onMounted(() => fetchSettings())
                   color="primary"
                   density="compact"
                   hide-details
-                  :disabled="isSaving"
                   @update:model-value="updateSettings"
                 />
               </div>
@@ -338,7 +332,7 @@ onMounted(() => fetchSettings())
 
             <!-- Ubicaciones de Inventario -->
             <VCol cols="12" sm="6" md="4" lg="3">
-              <div class="d-flex flex-column justify-space-between h-100 p-4 rounded-lg border border-opacity-50 hover-bg-light transition-all">
+              <div class="d-flex flex-column justify-space-between h-100 pa-4 rounded-lg module-item-box transition-all">
                 <div>
                   <span class="text-subtitle-2 font-weight-bold text-high-emphasis">Ubicaciones</span>
                   <p class="text-caption text-medium-emphasis mt-1 mb-4">
@@ -351,7 +345,6 @@ onMounted(() => fetchSettings())
                   color="primary"
                   density="compact"
                   hide-details
-                  :disabled="isSaving"
                   @update:model-value="updateSettings"
                 />
               </div>
@@ -359,7 +352,7 @@ onMounted(() => fetchSettings())
 
             <!-- Menú de Optimización -->
             <VCol cols="12" sm="6" md="4" lg="3">
-              <div class="d-flex flex-column justify-space-between h-100 p-4 rounded-lg border border-opacity-50 hover-bg-light transition-all">
+              <div class="d-flex flex-column justify-space-between h-100 pa-4 rounded-lg module-item-box transition-all">
                 <div>
                   <span class="text-subtitle-2 font-weight-bold text-high-emphasis">Optimización</span>
                   <p class="text-caption text-medium-emphasis mt-1 mb-4">
@@ -372,7 +365,6 @@ onMounted(() => fetchSettings())
                   color="primary"
                   density="compact"
                   hide-details
-                  :disabled="isSaving"
                   @update:model-value="updateSettings"
                 />
               </div>
@@ -380,7 +372,7 @@ onMounted(() => fetchSettings())
 
             <!-- Habilitar Platos/Menú -->
             <VCol cols="12" sm="6" md="4" lg="3">
-              <div class="d-flex flex-column justify-space-between h-100 p-4 rounded-lg border border-opacity-50 hover-bg-light transition-all">
+              <div class="d-flex flex-column justify-space-between h-100 pa-4 rounded-lg module-item-box transition-all">
                 <div>
                   <span class="text-subtitle-2 font-weight-bold text-high-emphasis">Platos / Menú</span>
                   <p class="text-caption text-medium-emphasis mt-1 mb-4">
@@ -393,7 +385,6 @@ onMounted(() => fetchSettings())
                   color="primary"
                   density="compact"
                   hide-details
-                  :disabled="isSaving"
                   @update:model-value="updateSettings"
                 />
               </div>
@@ -401,7 +392,7 @@ onMounted(() => fetchSettings())
 
             <!-- Modo de Trazabilidad -->
             <VCol cols="12" sm="6" md="4" lg="3">
-              <div class="d-flex flex-column justify-space-between h-100 p-4 rounded-lg border border-opacity-50 hover-bg-light transition-all">
+              <div class="d-flex flex-column justify-space-between h-100 pa-4 rounded-lg module-item-box transition-all">
                 <div>
                   <span class="text-subtitle-2 font-weight-bold text-high-emphasis">Trazabilidad</span>
                   <p class="text-caption text-medium-emphasis mt-1 mb-4">
@@ -414,7 +405,6 @@ onMounted(() => fetchSettings())
                   color="primary"
                   density="compact"
                   hide-details
-                  :disabled="isSaving"
                   @update:model-value="toggleTraceabilityMode"
                 />
               </div>
@@ -444,7 +434,6 @@ onMounted(() => fetchSettings())
                   :label="item.label"
                   color="primary"
                   density="compact"
-                  :disabled="isSaving"
                   @update:model-value="updateSettings"
                 />
               </VCol>
@@ -489,7 +478,6 @@ onMounted(() => fetchSettings())
                 :label="field.label"
                 color="primary"
                 density="compact"
-                :disabled="isSaving"
                 @update:model-value="updateSettings"
               />
             </VCol>
@@ -502,12 +490,15 @@ onMounted(() => fetchSettings())
 </template>
 
 <style scoped>
-.hover-bg-light:hover {
-  background-color: rgba(var(--v-theme-primary), 0.03) !important;
-  border-color: rgba(var(--v-theme-primary), 0.25) !important;
+.module-item-box {
+  background-color: rgba(var(--v-theme-on-surface), 0.02);
+}
+.module-item-box:hover {
+  background-color: rgba(var(--v-theme-primary), 0.04);
 }
 .transition-all {
-  transition: all 0.25s ease-in-out;
+  transition: all 0.2s ease-in-out;
 }
 </style>
+
 

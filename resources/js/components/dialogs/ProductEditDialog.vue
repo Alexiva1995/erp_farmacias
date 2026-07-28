@@ -27,6 +27,7 @@ const props = defineProps({
   origins: { type: Array, default: () => [] },
   categories: { type: Array, default: () => [] },
   suppliers: { type: Array, default: () => [] },
+  groups: { type: Array, default: () => [] },
   allProducts: { type: Array, default: () => [] },
   errors: { type: Object, default: () => ({}) },
 });

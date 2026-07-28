@@ -27,6 +27,7 @@ const isStrictSearch = ref(false);
 
 const laboratories = ref([]);
 const origins = ref([]);
+const categories = ref([]);
 
 const isLoadingFilters = ref(false);
 
@@ -56,13 +57,13 @@ const getSuccessMessage = (payload) => {
   if (payload.origin_id) updatedFields.push("origen");
 
   if (updatedFields.length === 3) {
-    return "Datos faltantes asignados";
+    return "Datos faltantes asignados con éxito";
   } else if (updatedFields.length === 1) {
     return `Se asignó el ${updatedFields[0]} al producto`;
   } else if (updatedFields.length === 2) {
     return `Se asignaron ${updatedFields.join(" y ")}`;
   }
-  return "Producto actualizado";
+  return "Producto actualizado correctamente";
 };
 
 const handleUpdateProduct = async (payload) => {
@@ -76,7 +77,7 @@ const handleUpdateProduct = async (payload) => {
     toast.success(getSuccessMessage(payload));
     await fetchProducts();
   } catch (err) {
-    toast.error("Error al actualizar");
+    toast.error("Error al actualizar los datos del producto");
 
     if (err.response?.status === 422) {
       productWithError.value = payload.id;
@@ -93,23 +94,19 @@ const handleUpdateProduct = async (payload) => {
 const fetchProducts = async () => {
   loading.value = true;
   const params = {
-    q: searchQuery.value,
+    q: searchQuery.value || undefined,
     page: page.value,
     itemsPerPage: itemsPerPage.value,
-    sortBy: sortBy.value,
-    orderBy: orderBy.value,
-    laboratoryId: selectedLaboratory.value,
-    originId: selectedOrigin.value,
-    startDate: startDate.value,
-    endDate: endDate.value,
-    isStrictSearch: isStrictSearch.value,
-    hasStock: stockStatusFilter.value,
+    sortBy: sortBy.value || undefined,
+    orderBy: orderBy.value || undefined,
+    laboratoryId: selectedLaboratory.value || undefined,
+    originId: selectedOrigin.value || undefined,
+    startDate: startDate.value || undefined,
+    endDate: endDate.value || undefined,
+    isStrictSearch: isStrictSearch.value || undefined,
+    hasStock: stockStatusFilter.value !== null ? stockStatusFilter.value : undefined,
     ...(productTypeFilter.value && { productType: productTypeFilter.value }),
   };
-
-  Object.keys(params).forEach(
-    (key) => (params[key] === null || params[key] === "") && delete params[key],
-  );
 
   try {
     const response = await axios.get("/products/incomplete", { params });
@@ -117,19 +114,17 @@ const fetchProducts = async () => {
     totalProduct.value = response.data.total;
   } catch (error) {
     console.error("Hubo un error al obtener los productos:", error);
-    toast.error("Error al obtener los productos.");
+    toast.error("Error al obtener los productos incompletos.");
   } finally {
     loading.value = false;
   }
 };
 
 let debounceTimer;
+
+// Watcher unificado para filtros con debounce y reseteo a página 1
 watch(
   [
-    page,
-    itemsPerPage,
-    sortBy,
-    orderBy,
     searchQuery,
     selectedLaboratory,
     selectedOrigin,
@@ -140,28 +135,18 @@ watch(
     isStrictSearch,
   ],
   () => {
+    page.value = 1;
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => fetchProducts(), 300);
-  },
-  { deep: true },
+  }
 );
 
-watch(
-  [
-    searchQuery,
-    selectedLaboratory,
-    selectedOrigin,
-    stockStatusFilter,
-    productTypeFilter,
-    startDate,
-    endDate,
-  ],
-  () => {
-    page.value = 1;
-  },
-);
+// Watcher para paginación y ordenamiento directo
+watch([page, itemsPerPage, sortBy, orderBy], () => {
+  fetchProducts();
+});
 
-onMounted(async () => {
+onMounted(() => {
   fetchSelectOptions();
   fetchProducts();
 });
@@ -169,16 +154,12 @@ onMounted(async () => {
 onUnmounted(() => clearTimeout(debounceTimer));
 
 const updateTableOptions = (options) => {
-  const newPage = options.page
-  const newItemsPerPage = options.itemsPerPage
-  
+  page.value = options.page;
+  itemsPerPage.value = options.itemsPerPage;
   if (options.sortBy && options.sortBy.length > 0) {
-    sortBy.value = options.sortBy[0]?.key
-    orderBy.value = options.sortBy[0]?.order
+    sortBy.value = options.sortBy[0]?.key;
+    orderBy.value = options.sortBy[0]?.order;
   }
-
-  page.value = newPage
-  itemsPerPage.value = newItemsPerPage
 };
 
 const handleClearFilters = () => {

@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 import { computed, ref, watch } from "vue";
 import axios from "@/plugins/axios";
 import { formatPrice, formatDateSimple } from "@/utils/formatters";
@@ -8,7 +8,7 @@ import { useBrandingStore } from "@/stores/useBrandingStore";
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
-  product: { type: Object, required: true },
+  product: { type: Object, default: null },
 });
 
 const emit = defineEmits(["update:modelValue"]);
@@ -288,7 +288,7 @@ const closeDialog = () => {
             Analítica de Producto
           </h2>
           <span class="text-white opacity-75 font-weight-bold text-super-xs uppercase tracking-tighter truncate" style="max-inline-size: 600px;">
-            {{ props.product.name }}
+            {{ props.product.name }} {{ (props.product.laboratory?.name || props.product.laboratory_name || props.product.laboratory) ? `(${props.product.laboratory?.name || props.product.laboratory_name || props.product.laboratory})` : '' }}
           </span>
         </div>
         <VSpacer />
@@ -408,7 +408,7 @@ const closeDialog = () => {
                     </div>
                     <div v-if="!isIngredient" class="d-flex flex-column align-end">
                       <span class="text-super-xs text-disabled uppercase font-weight-black">Precio</span>
-                      <span class="text-xs font-weight-black text-primary">{{ formatPrice(stats.last_sale.price) }}</span>
+                      <span class="text-xs font-weight-black text-primary">{{ formatPrice(stats.last_sale.price, stats.last_sale.currency) }}</span>
                     </div>
                     <div class="d-flex flex-column align-end">
                       <span class="text-super-xs text-disabled uppercase font-weight-black">Cantidad</span>

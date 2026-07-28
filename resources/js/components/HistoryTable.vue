@@ -1,4 +1,6 @@
 <script setup>
+import AppEmptyState from "@/components/AppEmptyState.vue";
+
 const props = defineProps({
   histories: { type: Array, required: true },
   loading: { type: Boolean, default: false },
@@ -14,7 +16,7 @@ const headers = [
     title: "ID", 
     key: "fiscal_id", 
     sortable: true,
-    value: item => item.fiscal_id ? `#${item.fiscal_id}` : '',
+    value: item => item.fiscal_id ? `#${item.fiscal_id}` : (item.id ? `#${item.id}` : ''),
     cellProps: { class: 'text-sm font-weight-black text-primary' }
   },
   { 
@@ -90,10 +92,20 @@ const formatCurrency = (value) => {
           class="text-no-wrap premium-table"
           @update:options="(options) => emit('update:options', options)"
         >
+          <!-- Estado Vacío -->
+          <template #no-data>
+            <AppEmptyState
+              icon="tabler-receipt-off"
+              title="No se encontraron registros fiscales"
+              description="Intenta ajustando los filtros de búsqueda o el rango de fechas."
+              class="py-6"
+            />
+          </template>
+
           <template #item.is_audit_valid="{ item }">
             <VTooltip location="top" :text="item.is_audit_valid === null ? 'Sin datos de auditoría (Venta antigua)' : (item.is_audit_valid ? 'Integridad Verificada' : 'Hash no coincide o datos alterados')">
-              <template #activator="{ props }">
-                <div v-bind="props" class="d-flex justify-center">
+              <template #activator="{ props: tooltipProps }">
+                <div v-bind="tooltipProps" class="d-flex justify-center">
                   <VIcon 
                     :icon="item.is_audit_valid === null ? 'tabler-shield-off' : (item.is_audit_valid ? 'tabler-shield-check' : 'tabler-shield-x')" 
                     :color="item.is_audit_valid === null ? 'disabled' : (item.is_audit_valid ? 'success' : 'error')" 
@@ -122,12 +134,16 @@ const formatCurrency = (value) => {
       </VCard>
     </div>
 
-    <!-- Vista Móvil (Premium Cards) -->
+    <!-- Vista Móvil (Cards) -->
     <div class="d-block d-md-none pa-2 bg-light">
       <VProgressLinear v-if="props.loading" indeterminate color="primary" class="mb-2" />
       
-      <div v-if="props.histories.length === 0 && !props.loading" class="text-center py-8 text-disabled font-weight-bold uppercase">
-        No se encontraron registros fiscales.
+      <div v-if="props.histories.length === 0 && !props.loading" class="py-4">
+        <AppEmptyState
+          icon="tabler-receipt-off"
+          title="Sin datos disponibles"
+          description="No existen facturas o ventas fiscales registradas para el rango seleccionado."
+        />
       </div>
 
       <div class="d-flex flex-column gap-3">
@@ -162,7 +178,7 @@ const formatCurrency = (value) => {
                     />
                   </div>
                   <h3 class="text-sm font-weight-black text-high-emphasis leading-tight truncate">
-                    #{{ item.invoice_number }}
+                    #{{ item.invoice_number || item.fiscal_id || item.id }}
                   </h3>
                 </div>
               </div>
@@ -182,7 +198,7 @@ const formatCurrency = (value) => {
                  <span class="text-xs font-weight-black text-primary">{{ item.identification || 'N/A' }}</span>
               </div>
               <span class="text-sm font-weight-black text-high-emphasis d-block leading-tight text-uppercase mb-1">
-                {{ item.business_name }}
+                {{ item.business_name || 'N/A' }}
               </span>
               <span class="text-xs text-medium-emphasis leading-tight truncate-2-lines uppercase">{{ item.address || "Dirección no registrada" }}</span>
             </div>
@@ -206,7 +222,7 @@ const formatCurrency = (value) => {
       </div>
 
       <!-- Mobile Pagination -->
-      <div class="d-flex justify-center mt-4 pb-2">
+      <div v-if="props.histories.length > 0" class="d-flex justify-center mt-4 pb-2">
          <AppMobilePagination
             :page="props.page"
             :items-per-page="props.itemsPerPage"
@@ -240,7 +256,6 @@ const formatCurrency = (value) => {
   background-color: rgba(var(--v-theme-primary), 0.02) !important;
 }
 
-/* Eliminar bordes verticales */
 .premium-table :deep(table) {
   border-spacing: 0;
   border-collapse: collapse;

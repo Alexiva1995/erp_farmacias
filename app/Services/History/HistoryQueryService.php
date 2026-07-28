@@ -7,16 +7,33 @@ namespace App\Services\History;
 use App\Models\FiscalHistory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class HistoryQueryService
 {
     /**
-     * Prepara la consulta base para FiscarHistory.
+     * Prepara la consulta base para FiscalHistory.
      */
     private function getBaseQuery(): Builder
     {
-        return FiscalHistory::with(['user', 'details']);
+        return FiscalHistory::select([
+            'id',
+            'fiscal_id',
+            'order_id',
+            'invoice_number',
+            'identification',
+            'business_name',
+            'address',
+            'invoice_date',
+            'exempt_amount',
+            'taxable_amount',
+            'iva_amount',
+            'total_amount',
+            'audit_hash',
+            'user_id',
+        ])->with([
+            'user:id,username,name',
+            'details:id,fiscal_history_id,product_id,product_name,quantity,exempt_amount,vat_status,total_amount',
+        ]);
     }
 
     /**
@@ -52,7 +69,6 @@ class HistoryQueryService
      */
     private function applySorting(Builder $query, ?string $sortBy, string $orderBy): Builder
     {
-        // Columnas válidas para ordenar
         $validSortColumns = [
             'id',
             'fiscal_id',
@@ -69,7 +85,6 @@ class HistoryQueryService
             return $query->orderBy($sortBy, $orderBy);
         }
 
-        // Orden predeterminado
         return $query->orderBy('invoice_date', 'desc');
     }
 
@@ -93,8 +108,7 @@ class HistoryQueryService
     }
 
     /**
-     * Verifica la integridad de un registro comparando su hash almacenado
-     * con uno generado a partir de los datos actuales.
+     * Verifica la integridad de un registro comparando su hash almacenado.
      */
     public function verifyAuditHash($history): ?bool
     {
@@ -104,27 +118,21 @@ class HistoryQueryService
 
         $detailsForHash = [];
         foreach ($history->details as $detail) {
-            // Reconstruir el priceBs neto usado en el hash original
-            // En gravados (vat_status=1), el hash usó priceBs = total_unitario / 1.16
-            // En exentos, usó el precio directamente
             $priceBs = $detail->vat_status == 1 
                 ? ($detail->total_amount / 1.16) 
                 : $detail->exempt_amount;
 
-            $detailsForHash[] = "{$detail->product_id}:{$detail->quantity}:" . number_format($priceBs, 4, '.', '');
+            $detailsForHash[] = "{$detail->product_id}:{$detail->quantity}:" . number_format((float)$priceBs, 4, '.', '');
         }
 
-        // Reconstruir el auditString original
-        // Importante: El hash original usaba la identificación del cliente (solo número)
-        // mientras que en fiscal_history guardamos Tipo+Número. Intentamos extraer solo el número.
-        $identOnly = preg_replace('/[^0-9]/', '', $history->identification);
+        $identOnly = preg_replace('/[^0-9]/', '', (string)$history->identification);
 
         $auditString = implode('|', [
             $identOnly,
-            number_format($history->exempt_amount, 2, '.', ''),
-            number_format($history->taxable_amount, 2, '.', ''),
-            number_format($history->iva_amount, 2, '.', ''),
-            number_format($history->total_amount, 2, '.', ''),
+            number_format((float)$history->exempt_amount, 2, '.', ''),
+            number_format((float)$history->taxable_amount, 2, '.', ''),
+            number_format((float)$history->iva_amount, 2, '.', ''),
+            number_format((float)$history->total_amount, 2, '.', ''),
             $history->order_id,
             implode('|', $detailsForHash)
         ]);

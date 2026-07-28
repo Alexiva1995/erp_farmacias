@@ -267,6 +267,11 @@ const processedNavItems = computed(() => {
           childs = childs.filter((c) => c.to !== 'tpv-quotation');
         }
 
+        const enableReservationsSetting = brandingStore.settings.enable_reservations ?? true;
+        if (!enableReservationsSetting) {
+          childs = childs.filter((c) => c.to !== 'reservations');
+        }
+
         if (!enableLots) {
           childs = childs.filter((c) => 
             c.to !== 'lot-list' &&

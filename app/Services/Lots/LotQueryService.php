@@ -233,9 +233,22 @@ class LotQueryService
     public function getLotsWithoutLocationQuery(Request $request)
     {
         $query = ProductLot::query()
-            ->select('product_lots.*')
+            ->select([
+                'product_lots.id',
+                'product_lots.product_id',
+                'product_lots.supplier_id',
+                'product_lots.lot_number',
+                'product_lots.expiration_date',
+                'product_lots.quantity',
+                'product_lots.location',
+            ])
             ->whereHas('product')
-            ->with(['product.laboratory', 'product.origin', 'supplier'])
+            ->with([
+                'product:id,name,active_ingredient,presentation,unit_of_measure,photo_url,psychotropic,iva,is_colombian_origin,laboratory_id,origin_id',
+                'product.laboratory:id,name',
+                'product.origin:id,name',
+                'supplier:id,name',
+            ])
             ->where(function ($q) {
                 $q->whereNull('product_lots.location')
                     ->orWhere('product_lots.location', '');
@@ -326,10 +339,16 @@ class LotQueryService
             ->leftJoinSub($subQuery, 'lot_sums', function ($join) {
                 $join->on('products.id', '=', 'lot_sums.product_id');
             })
-            ->select('products.*')
-            // Añadir el stock calculado desde la subconsulta
-            ->addSelect(DB::raw('COALESCE(lot_sums.total_quantity, 0) as stock_calculado'))
-            ->with(['laboratory', 'origin', 'category', 'lots'])
+            ->select(['products.id', 'products.name', 'products.active_ingredient', 'products.presentation', 'products.unit_of_measure', 'products.photo_url', 'products.laboratory_id', 'products.origin_id', 'products.category_id'])
+            ->addSelect(DB::raw('CAST(COALESCE(lot_sums.total_quantity, 0) AS UNSIGNED) as stock_calculado'))
+            ->with([
+                'laboratory:id,name',
+                'origin:id,name',
+                'category:id,name',
+                'lots' => function ($query) {
+                    $query->select(['id', 'product_id', 'expiration_date', 'quantity', 'location']);
+                }
+            ])
             ->where('products.lotification_completed', false)
             ->where('products.is_deleted', false)
             ->where('products.is_active', true);

@@ -5,33 +5,32 @@ declare(strict_types=1);
 namespace App\Services\Traceability;
 
 use App\Models\InventoryMovement;
-use App\Models\Sale;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 
 class TraceabilityQueryService
 {
     /**
-     *
+     * Obtener consulta filtrada y optimizada para el reporte de trazabilidad.
      *
      * @param Request $request
      * @return Builder
      */
     public function getFilteredQuery(Request $request): Builder
     {
-
         $query = InventoryMovement::query()
             ->select('inventory_movements.*')
             ->selectRaw('SUM(inventory_movements.quantity) OVER (PARTITION BY inventory_movements.product_id ORDER BY inventory_movements.id ASC) as global_stock_after')
             ->selectRaw('(SUM(inventory_movements.quantity) OVER (PARTITION BY inventory_movements.product_id ORDER BY inventory_movements.id ASC) - inventory_movements.quantity) as global_stock_before')
             ->with([
+                'user:id,username,email',
                 'user.employee',
-                'order.seller.employee',
-                'order',
-                'invoice.supplier',
-                'supplier',
-                'product',
-                'dish'
+                'order:id',
+                'invoice:id,invoice_number,supplier_id',
+                'invoice.supplier:id,name',
+                'product:id,name,photo_url,psychotropic,iva,is_colombian_origin,active_ingredient,presentation,unit_of_measure,laboratory_id',
+                'product.laboratory:id,name',
+                'dish:id,name'
             ]);
 
         if ($request->filled('q')) {
@@ -49,23 +48,23 @@ class TraceabilityQueryService
             $query->whereDate('movement_date', '>=', $request->input('startDate'));
         }
 
+        if ($request->filled('endDate')) {
+            $query->whereDate('movement_date', '<=', $request->input('endDate'));
+        }
+
         if ($request->filled('movement_type')) {
             $query->where('movement_type', $request->input('movement_type'));
         }
 
         if ($request->filled('is_psychotropic')) {
             $query->whereHas('product', function ($product) use ($request) {
-                $product->where('psychotropic', "=", $request->is_psychotropic);
+                $product->where('psychotropic', '=', $request->input('is_psychotropic'));
             });
-        }
-
-        if ($request->filled('endDate')) {
-            $query->whereDate('movement_date', '<=', $request->input('endDate'));
         }
 
         if ($request->filled('sortBy') && $request->filled('orderBy')) {
             $sortBy = $request->input('sortBy');
-            $orderBy = $request->input('orderBy');
+            $orderBy = strtolower($request->input('orderBy')) === 'asc' ? 'asc' : 'desc';
 
             if ($sortBy === 'reference') {
                 $query->orderBy('order_id', $orderBy)
@@ -80,30 +79,34 @@ class TraceabilityQueryService
                     ->select('inventory_movements.*')
                     ->orderBy('users.email', $orderBy);
             } else {
-                $query->orderBy($sortBy, $orderBy);
+                $query->orderBy("inventory_movements.{$sortBy}", $orderBy);
             }
         } else {
-            // Ordenar por id de creación del movimiento (más nuevo primero)
             $query->orderBy('inventory_movements.id', 'desc');
         }
 
         return $query;
     }
 
+    /**
+     * Obtener consulta filtrada para psicotrópicos.
+     *
+     * @param Request $request
+     * @return Builder
+     */
     public function getFilteredQueryByPsychotropics(Request $request): Builder
     {
-
         $hasStock = $request->has('hasStock') ? filter_var($request->hasStock, FILTER_VALIDATE_BOOLEAN) : null;
 
-
         $query = InventoryMovement::query()->with([
+            'user:id,username,email',
             'user.employee',
-            'order.seller.employee',
-            'order',
-            'invoice.supplier',
-            'supplier',
-            'product',
-            'dish'
+            'order:id',
+            'invoice:id,invoice_number,supplier_id',
+            'invoice.supplier:id,name',
+            'product:id,name,photo_url,psychotropic,iva,is_colombian_origin,active_ingredient,presentation,unit_of_measure,laboratory_id',
+            'product.laboratory:id,name',
+            'dish:id,name'
         ]);
 
         if ($request->filled('q')) {
@@ -117,14 +120,14 @@ class TraceabilityQueryService
             });
         }
 
-        if ($request->filled("laboratoryId")) {
-            $query->whereHas('product', function ($productQuery) use ($request, $hasStock) {
+        if ($request->filled('laboratoryId')) {
+            $query->whereHas('product', function ($productQuery) use ($request) {
                 $productQuery->where('laboratory_id', $request->laboratoryId);
             });
         }
 
-        $query->whereHas('product', function ($product) use ($request) {
-            $product->where('psychotropic', "=", 1);
+        $query->whereHas('product', function ($product) {
+            $product->where('psychotropic', '=', 1);
         });
 
         if ($hasStock === false) {
@@ -132,7 +135,7 @@ class TraceabilityQueryService
                 $lotQuery->where('expiration_date', '>=', now()->startOfDay())
                     ->where('quantity', '>', 0);
             });
-        } elseif ($hasStock === true || $request->filled("startDate") || $request->filled("endDate")) {
+        } elseif ($hasStock === true || $request->filled('startDate') || $request->filled('endDate')) {
             $query->whereHas('product.lots', function ($lotQuery) use ($request, $hasStock) {
                 $lotQuery->where('quantity', '>', 0);
 
@@ -150,7 +153,7 @@ class TraceabilityQueryService
 
         if ($request->filled('sortBy') && $request->filled('orderBy')) {
             $sortBy = $request->input('sortBy');
-            $orderBy = $request->input('orderBy');
+            $orderBy = strtolower($request->input('orderBy')) === 'asc' ? 'asc' : 'desc';
 
             if ($sortBy === 'reference') {
                 $query->orderBy('order_id', $orderBy)
@@ -165,10 +168,9 @@ class TraceabilityQueryService
                     ->select('inventory_movements.*')
                     ->orderBy('users.email', $orderBy);
             } else {
-                $query->orderBy($sortBy, $orderBy);
+                $query->orderBy("inventory_movements.{$sortBy}", $orderBy);
             }
         } else {
-            // Ordenar por id de creación del movimiento (más nuevo primero)
             $query->orderBy('inventory_movements.id', 'desc');
         }
 

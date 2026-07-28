@@ -9,6 +9,7 @@ const tpvModeComplete = ref(true)
 const tpvStyle = ref('pharmacy')
 const enableFlashCheckout = ref(false)
 const enableQuotations = ref(true)
+const enableReservations = ref(true)
 const quotationStyle = ref('pharmacy')
 const tpvRateType = ref('bcv')
 const defaultCurrency = ref('USD')
@@ -69,6 +70,7 @@ const fetchSettings = async () => {
     tpvStyle.value = settings.tpv_style || 'pharmacy'
     enableFlashCheckout.value = !!settings.enable_flash_checkout
     enableQuotations.value = settings.enable_quotations !== undefined ? settings.enable_quotations : true
+    enableReservations.value = settings.enable_reservations !== undefined ? settings.enable_reservations : true
     quotationStyle.value = settings.quotation_style || 'pharmacy'
     tpvRateType.value = settings.tpv_rate_type || 'bcv'
     defaultCurrency.value = settings.default_currency || 'USD'
@@ -100,6 +102,7 @@ const updateSettings = async () => {
       tpv_style: tpvStyle.value,
       enable_flash_checkout: enableFlashCheckout.value,
       enable_quotations: enableQuotations.value,
+      enable_reservations: enableReservations.value,
       quotation_style: quotationStyle.value,
       tpv_rate_type: tpvRateType.value,
       tpv_payment_methods: tpvPaymentMethods.value,
@@ -107,12 +110,10 @@ const updateSettings = async () => {
     }
 
     const response = await axios.post('/general-settings', updatedData)
-    // Sincronizar el estado local con la respuesta del servidor
     if (response.data && response.data.data) {
       rawSettings.value = response.data.data
     }
 
-    // Actualizar el store reactivamente usando la acción dedicada
     brandingStore.settings = {
       ...brandingStore.settings,
       default_currency: defaultCurrency.value,
@@ -120,11 +121,11 @@ const updateSettings = async () => {
       tpv_style: tpvStyle.value,
       enable_flash_checkout: enableFlashCheckout.value,
       enable_quotations: enableQuotations.value,
+      enable_reservations: enableReservations.value,
       quotation_style: quotationStyle.value,
       tpv_rate_type: tpvRateType.value,
       enabled_offer_types: enabledOfferTypes.value
     }
-    // Actualiza tpv_payment_methods por separado para forzar reactividad en computeds
     brandingStore.updatePaymentMethods(tpvPaymentMethods.value)
 
     toast.success("Configuración del TPV actualizada exitosamente")
@@ -312,6 +313,26 @@ onMounted(() => {
                 <VSwitch
                   v-model="enableQuotations"
                   label="Habilitar Cotizaciones"
+                  color="primary"
+                  inset
+                  :disabled="isSaving"
+                  @update:model-value="updateSettings"
+                />
+              </div>
+            </VCol>
+
+            <!-- Columna 6: Módulo de Reservas (Alquileres Deportivos / Canchas) -->
+            <VCol cols="12" md="3" class="d-flex flex-column justify-space-between mb-6" style="min-block-size: 150px;">
+              <div>
+                <div class="font-weight-bold text-subtitle-2 mb-1">Módulo de Reservas</div>
+                <div class="text-caption text-medium-emphasis mb-3 leading-tight" style="min-block-size: 40px;">
+                  Muestra u oculta la opción "Reservas" en el menú de navegación lateral del sistema.
+                </div>
+              </div>
+              <div>
+                <VSwitch
+                  v-model="enableReservations"
+                  label="Habilitar Reservas"
                   color="primary"
                   inset
                   :disabled="isSaving"

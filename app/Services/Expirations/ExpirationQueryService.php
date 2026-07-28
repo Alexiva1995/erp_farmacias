@@ -104,18 +104,48 @@ class ExpirationQueryService
             ->orderBy('month', 'desc')
             ->get();
 
-        foreach ($summaries as $summary) {
-            $summary->donation_count = DB::table('donative_logs')
-                ->join('expired_logs', 'donative_logs.expired_log_id', '=', 'expired_logs.id')
-                ->whereRaw("DATE_FORMAT(expired_logs.created_at, '%Y-%m') = ?", [$summary->month])
-                ->distinct('donative_logs.donation_id')
-                ->count('donative_logs.donation_id');
+        $donationCounts = DB::table('donative_logs')
+            ->join('expired_logs', 'donative_logs.expired_log_id', '=', 'expired_logs.id')
+            ->select([
+                DB::raw("DATE_FORMAT(expired_logs.created_at, '%Y-%m') as month"),
+                DB::raw('COUNT(DISTINCT donative_logs.donation_id) as donation_count')
+            ])
+            ->groupBy(DB::raw("DATE_FORMAT(expired_logs.created_at, '%Y-%m')"))
+            ->pluck('donation_count', 'month');
 
-            // El usuario solicita poder usar el reajuste las veces que desee, por lo que nunca se considera inhabilitado
+        foreach ($summaries as $summary) {
+            $summary->donation_count = (int) ($donationCounts[$summary->month] ?? 0);
+            $summary->total_cost = (float) $summary->total_cost;
             $summary->has_price_adjustment = false;
         }
 
         return $summaries;
+    }
+
+    /**
+     * Obtiene la consulta filtrada de registros de lotes caducados (ExpiredLog).
+     */
+    public function getExpiredLotsLogQuery(Request $request)
+    {
+        $query = \App\Models\ExpiredLog::with(['product.laboratory', 'donativeLog']);
+
+        if ($request->has('month') && $request->input('month')) {
+            $month = $request->input('month');
+            $query->whereRaw("DATE_FORMAT(created_at, '%Y-%m') = ?", [$month]);
+        }
+
+        if ($request->has('q') && $request->input('q')) {
+            $search = $request->input('q');
+            $query->where(function ($q) use ($search) {
+                $q->where('product_name', 'like', "%{$search}%")
+                  ->orWhere('lot_number', 'like', "%{$search}%");
+            });
+        }
+
+        $sortBy = $request->input('sortBy', 'created_at');
+        $orderBy = $request->input('orderBy', 'desc');
+
+        return $query->orderBy($sortBy, $orderBy);
     }
 
     /**

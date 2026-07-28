@@ -74,27 +74,21 @@ const handleUpdateLot = async (payload) => {
 const fetchLots = async () => {
   loading.value = true;
   const params = {
-    search: searchQuery.value,
+    search: searchQuery.value || undefined,
     page: page.value,
     itemsPerPage: itemsPerPage.value,
-    sortBy: sortBy.value,
-    orderBy: orderBy.value,
-    laboratoryId: selectedLaboratory.value,
-    originId: selectedOrigin.value,
-    startDate: startDate.value,
-    endDate: endDate.value,
-    isStrictSearch: isStrictSearch.value,
-    // Filtro de stock — antes no se enviaba al API aunque existía el selector
+    sortBy: sortBy.value || undefined,
+    orderBy: orderBy.value || undefined,
+    laboratoryId: selectedLaboratory.value || undefined,
+    originId: selectedOrigin.value || undefined,
+    startDate: startDate.value || undefined,
+    endDate: endDate.value || undefined,
+    isStrictSearch: isStrictSearch.value || undefined,
     ...(stockStatusFilter.value !== null && { hasStock: stockStatusFilter.value }),
   };
 
-  Object.keys(params).forEach(
-    (key) => (params[key] === null || params[key] === "") && delete params[key],
-  );
-
   try {
     const response = await axios.get("/product-lots/without-location", { params });
-    // La API retorna { data: { data: [...], total: N } }
     const payload = response.data?.data;
     lots.value = payload?.data || payload || [];
     totalLots.value = payload?.total || 0;
@@ -106,15 +100,11 @@ const fetchLots = async () => {
   }
 };
 
-onUnmounted(() => clearTimeout(debounceTimer));
-
 let debounceTimer;
+
+// Watcher unificado para filtros con debounce y reseteo a página 1
 watch(
   [
-    page,
-    itemsPerPage,
-    sortBy,
-    orderBy,
     searchQuery,
     selectedLaboratory,
     selectedOrigin,
@@ -124,36 +114,31 @@ watch(
     isStrictSearch,
   ],
   () => {
+    page.value = 1;
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => fetchLots(), 300);
-  },
-  { deep: true },
+  }
 );
 
-watch(
-  [
-    searchQuery,
-    selectedLaboratory,
-    selectedOrigin,
-    stockStatusFilter,
-    startDate,
-    endDate,
-  ],
-  () => {
-    page.value = 1;
-  },
-);
+// Watcher para paginación y ordenamiento directo
+watch([page, itemsPerPage, sortBy, orderBy], () => {
+  fetchLots();
+});
 
-onMounted(async () => {
+onMounted(() => {
   fetchSelectOptions();
   fetchLots();
 });
 
+onUnmounted(() => clearTimeout(debounceTimer));
+
 const updateTableOptions = (options) => {
   page.value = options.page;
   itemsPerPage.value = options.itemsPerPage;
-  sortBy.value = options.sortBy[0]?.key;
-  orderBy.value = options.sortBy[0]?.order;
+  if (options.sortBy && options.sortBy.length > 0) {
+    sortBy.value = options.sortBy[0]?.key;
+    orderBy.value = options.sortBy[0]?.order;
+  }
 };
 
 const handleClearFilters = () => {

@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 import CreditoFiscalTable from "@/components/CreditoFiscalTable.vue";
 import DebitoFiscalTable from "@/components/DebitoFiscalTable.vue";
 import IvaFiscalFilters from "@/components/IvaFiscalFilters.vue";
@@ -6,11 +6,8 @@ import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { computed, onMounted, ref } from "vue";
 import { useDisplay } from "vuetify";
-import { useBrandingStore } from "@/stores/useBrandingStore";
 
 const { mobile } = useDisplay();
-const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => false);
 
 // Estados reactivos para las cards de resumen
 const debitoFiscal = ref(0);
@@ -43,12 +40,21 @@ const expensesPage = ref(1);
 const expensesItemsPerPage = ref(10);
 const expensesTableLoading = ref(false);
 
+// Formateador de moneda (Bolívares)
+const formatCurrency = (amount) => {
+  const number = parseFloat(amount) || 0;
+  return number.toLocaleString("es-VE", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+};
+
 // Cálculo automático del IVA a pagar (Débito Fiscal - Crédito Fiscal)
 const ivaAPagar = computed(() => {
   return debitoFiscal.value - creditoFiscal.value;
 });
 
-// IGTF: 3% del total de ventas marcadas como SPE (no del IVA)
+// IGTF: 3% del total de ventas marcadas como SPE
 const igtfAmount = computed(() => {
   const speSalesTotal = parseFloat(detalleDebito.value.total_spe_sales_amount ?? 0);
   return speSalesTotal * 0.03;
@@ -66,13 +72,13 @@ const fetchCreditoFiscal = async () => {
       { params },
     );
 
-    if (response.data.status === "success") {
-      const data = response.data.data;
-      creditoFiscal.value = data.credito_fiscal;
-      retenciones.value = data.retenciones ?? creditoFiscal.value * 0.75;
-      detalleCredito.value = data.detalle_credito;
+    if (response.data?.status === "success") {
+      const data = response.data.data || {};
+      creditoFiscal.value = data.credito_fiscal || 0;
+      retenciones.value = data.retenciones ?? (creditoFiscal.value * 0.75);
+      detalleCredito.value = data.detalle_credito || {};
       if (!periodo.value.start_date) {
-        periodo.value = data.periodo;
+        periodo.value = data.periodo || {};
       }
     }
   } catch (error) {
@@ -89,12 +95,12 @@ const fetchDebitoFiscal = async () => {
 
     const response = await axios.get("/debito-fiscal", { params });
 
-    if (response.data.status === "success") {
-      const data = response.data.data;
-      debitoFiscal.value = data.debito_fiscal;
-      detalleDebito.value = data.detalle_debito;
+    if (response.data?.status === "success") {
+      const data = response.data.data || {};
+      debitoFiscal.value = data.debito_fiscal || 0;
+      detalleDebito.value = data.detalle_debito || {};
       if (!periodo.value.start_date) {
-        periodo.value = data.periodo;
+        periodo.value = data.periodo || {};
       }
     }
   } catch (error) {
@@ -121,10 +127,10 @@ const fetchFiscalHistoryData = async () => {
 
     const response = await axios.get("/fiscal-history", { params });
 
-    if (response.data.status === "success") {
-      const data = response.data.data;
-      fiscalData.value = data.data;
-      totalRecords.value = data.pagination.total;
+    if (response.data?.status === "success") {
+      const data = response.data.data || {};
+      fiscalData.value = data.data || [];
+      totalRecords.value = data.pagination?.total || 0;
     }
   } catch (error) {
     console.error("Error al obtener datos fiscales:", error);
@@ -150,10 +156,10 @@ const fetchExpensesData = async () => {
       { params },
     );
 
-    if (response.data.status === "success") {
-      const data = response.data.data;
-      expensesData.value = data.data;
-      totalExpensesRecords.value = data.pagination.total;
+    if (response.data?.status === "success") {
+      const data = response.data.data || {};
+      expensesData.value = data.data || [];
+      totalExpensesRecords.value = data.pagination?.total || 0;
     }
   } catch (error) {
     console.error("Error al obtener datos de gastos:", error);
@@ -162,7 +168,7 @@ const fetchExpensesData = async () => {
   }
 };
 
-// Función para cargar todos los datos
+// Función para cargar todos los datos en paralelo
 const fetchAllData = async () => {
   loading.value = true;
   try {
@@ -180,50 +186,25 @@ const fetchAllData = async () => {
   }
 };
 
-// Función para formatear moneda venezolana (Bolívares)
-const formatCurrency = (amount) => {
-  const number = parseFloat(amount) || 0;
-  return number.toLocaleString("es-VE", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-};
-
-// Formatear fecha para mostrar
-const formatDate = (dateString, format = "long") => {
-  if (!dateString) return "";
-  const options =
-    format === "long"
-      ? { year: "numeric", month: "long", day: "numeric" }
-      : { month: "short", day: "numeric" };
-  return new Date(dateString).toLocaleDateString("es-VE", options);
-};
-
-// Determinar color y estado según el resultado
+// Estado visual del IVA acumulado
 const getIvaStatus = computed(() => {
   if (ivaAPagar.value > 0) {
     return {
       color: "error",
       icon: "tabler-trending-up",
       message: "Saldo a Pagar",
-      chipColor: "error",
-      gradient: "linear-gradient(135deg, #FF4C51 0%, #B23539 100%)",
     };
   } else if (ivaAPagar.value < 0) {
     return {
       color: "success",
       icon: "tabler-trending-down",
       message: "Saldo a Favor",
-      chipColor: "success",
-      gradient: "linear-gradient(135deg, #28C76F 0%, #1C8B4E 100%)",
     };
   } else {
     return {
       color: "info",
       icon: "tabler-equal",
       message: "Equilibrado",
-      chipColor: "info",
-      gradient: "linear-gradient(135deg, #00CFE8 0%, #0091A2 100%)",
     };
   }
 });
@@ -256,14 +237,20 @@ const handleExpensesTableOptionsUpdate = (options) => {
   fetchExpensesData();
 };
 
-// Inicializar con mes actual
+// Inicializar rango con el mes actual
 const initializeDefaults = () => {
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
-  startDate.value = startOfMonth.toISOString().split("T")[0];
-  endDate.value = endOfMonth.toISOString().split("T")[0];
+  const formatOffsetDate = (d) => {
+    const dateCopy = new Date(d);
+    dateCopy.setMinutes(dateCopy.getMinutes() - dateCopy.getTimezoneOffset());
+    return dateCopy.toISOString().split("T")[0];
+  };
+
+  startDate.value = formatOffsetDate(startOfMonth);
+  endDate.value = formatOffsetDate(endOfMonth);
 };
 
 onMounted(() => {
@@ -274,149 +261,146 @@ onMounted(() => {
 
 <template>
   <div class="iva-general-page pb-12">
-    <div class="d-flex flex-column gap-1 mt-1">
-      <!-- KPI Cards: una sola fila -->
-      <VRow dense class="mb-2 flex-nowrap">
-        <!-- Cargando -->
-        <VCol v-if="loading" cols="12" class="text-center pa-8">
-          <VProgressCircular indeterminate color="primary" size="40" />
-          <div class="text-xs font-weight-black text-disabled mt-3 uppercase">Sincronizando datos fiscales...</div>
+    <div class="d-flex flex-column gap-3 mt-1">
+      <!-- KPI Cards Responsivas sin Layout Shift -->
+      <VRow dense class="mb-1">
+        <!-- Débito Fiscal -->
+        <VCol cols="12" sm="6" md="4" lg="2-4" class="flex-grow-1">
+          <VSkeletonLoader v-if="loading" type="card" height="130" class="rounded-lg border-0" />
+          <VCard v-else class="stats-card border-0 overflow-hidden h-100">
+            <div class="card-bg-decoration" :style="{ background: 'linear-gradient(45deg, rgba(var(--v-theme-warning), 0.12), transparent)' }"></div>
+            <VCardText class="pa-5 relative-content">
+              <div class="d-flex align-center justify-space-between mb-3">
+                <VAvatar color="warning" variant="tonal" size="44" rounded="lg">
+                  <VIcon icon="tabler-receipt-tax" size="24" />
+                </VAvatar>
+                <div class="text-right">
+                  <span class="text-overline font-weight-bold text-disabled">Débito Fiscal</span>
+                  <h4 class="text-h5 font-weight-black mt-1">
+                    <span class="text-xs font-weight-medium me-1">Bs.</span>{{ formatCurrency(debitoFiscal) }}
+                  </h4>
+                </div>
+              </div>
+              <VDivider class="mb-2 opacity-20" />
+              <div class="d-flex align-center justify-space-between">
+                <span class="text-caption font-weight-medium text-medium-emphasis">{{ detalleDebito.total_orders_with_iva || 0 }} ventas con IVA</span>
+                <VIcon icon="tabler-trending-up" size="16" color="warning" class="opacity-70" />
+              </div>
+            </VCardText>
+            <div class="accent-border" style="background-color: rgb(var(--v-theme-warning));"></div>
+          </VCard>
         </VCol>
 
-        <template v-else>
-          <!-- Débito Fiscal -->
-          <VCol cols="auto" class="flex-grow-1">
-            <VCard class="stats-card border-0 overflow-hidden mb-2">
-              <div class="card-bg-decoration" :style="{ background: 'linear-gradient(45deg, rgba(var(--v-theme-warning), 0.1), transparent)' }"></div>
-              <VCardText class="pa-5 relative-content">
-                <div class="d-flex align-center justify-space-between mb-4">
-                  <VAvatar color="warning" variant="tonal" size="48" rounded="lg" class="elevation-1">
-                    <VIcon icon="tabler-receipt-tax" size="26" />
-                  </VAvatar>
-                  <div class="text-right">
-                    <span class="text-overline font-weight-bold text-disabled" style="letter-spacing: 1px !important;">Débito Fiscal</span>
-                    <h4 class="text-h5 font-weight-black mt-1">
-                      <span class="text-xs font-weight-medium me-1">Bs.</span>{{ formatCurrency(debitoFiscal) }}
-                    </h4>
-                  </div>
+        <!-- Crédito Fiscal -->
+        <VCol cols="12" sm="6" md="4" lg="2-4" class="flex-grow-1">
+          <VSkeletonLoader v-if="loading" type="card" height="130" class="rounded-lg border-0" />
+          <VCard v-else class="stats-card border-0 overflow-hidden h-100">
+            <div class="card-bg-decoration" :style="{ background: 'linear-gradient(45deg, rgba(var(--v-theme-info), 0.12), transparent)' }"></div>
+            <VCardText class="pa-5 relative-content">
+              <div class="d-flex align-center justify-space-between mb-3">
+                <VAvatar color="info" variant="tonal" size="44" rounded="lg">
+                  <VIcon icon="tabler-receipt-refund" size="24" />
+                </VAvatar>
+                <div class="text-right">
+                  <span class="text-overline font-weight-bold text-disabled">Crédito Fiscal</span>
+                  <h4 class="text-h5 font-weight-black mt-1">
+                    <span class="text-xs font-weight-medium me-1">Bs.</span>{{ formatCurrency(creditoFiscal) }}
+                  </h4>
                 </div>
-                <VDivider class="mb-3 opacity-20" />
-                <div class="d-flex align-center justify-space-between">
-                  <span class="text-caption font-weight-medium text-medium-emphasis">{{ detalleDebito.total_orders_with_iva || 0 }} ventas con IVA</span>
-                  <VIcon icon="tabler-trending-up" size="16" color="warning" class="opacity-50" />
-                </div>
-              </VCardText>
-              <div class="accent-border" style="background-color: rgb(var(--v-theme-warning));"></div>
-            </VCard>
-          </VCol>
+              </div>
+              <VDivider class="mb-2 opacity-20" />
+              <div class="d-flex align-center justify-space-between">
+                <span class="text-caption font-weight-medium text-medium-emphasis">{{ detalleCredito.total_expenses_with_iva || 0 }} gastos con IVA</span>
+                <VIcon icon="tabler-trending-down" size="16" color="info" class="opacity-70" />
+              </div>
+            </VCardText>
+            <div class="accent-border" style="background-color: rgb(var(--v-theme-info));"></div>
+          </VCard>
+        </VCol>
 
-          <!-- Crédito Fiscal -->
-          <VCol cols="auto" class="flex-grow-1">
-            <VCard class="stats-card border-0 overflow-hidden mb-2">
-              <div class="card-bg-decoration" :style="{ background: 'linear-gradient(45deg, rgba(var(--v-theme-info), 0.1), transparent)' }"></div>
-              <VCardText class="pa-5 relative-content">
-                <div class="d-flex align-center justify-space-between mb-4">
-                  <VAvatar color="info" variant="tonal" size="48" rounded="lg" class="elevation-1">
-                    <VIcon icon="tabler-receipt-refund" size="26" />
-                  </VAvatar>
-                  <div class="text-right">
-                    <span class="text-overline font-weight-bold text-disabled" style="letter-spacing: 1px !important;">Crédito Fiscal</span>
-                    <h4 class="text-h5 font-weight-black mt-1">
-                      <span class="text-xs font-weight-medium me-1">Bs.</span>{{ formatCurrency(creditoFiscal) }}
-                    </h4>
-                  </div>
+        <!-- Saldo IVA -->
+        <VCol cols="12" sm="6" md="4" lg="2-4" class="flex-grow-1">
+          <VSkeletonLoader v-if="loading" type="card" height="130" class="rounded-lg border-0" />
+          <VCard v-else class="stats-card border-0 overflow-hidden h-100">
+            <div class="card-bg-decoration" :style="{ background: `linear-gradient(45deg, rgba(var(--v-theme-${getIvaStatus.color}), 0.12), transparent)` }"></div>
+            <VCardText class="pa-5 relative-content">
+              <div class="d-flex align-center justify-space-between mb-3">
+                <VAvatar :color="getIvaStatus.color" variant="tonal" size="44" rounded="lg">
+                  <VIcon :icon="getIvaStatus.icon" size="24" />
+                </VAvatar>
+                <div class="text-right">
+                  <span class="text-overline font-weight-bold text-disabled">Saldo IVA</span>
+                  <h4 class="text-h5 font-weight-black mt-1">
+                    <span class="text-xs font-weight-medium me-1">Bs.</span>{{ formatCurrency(Math.abs(ivaAPagar)) }}
+                  </h4>
                 </div>
-                <VDivider class="mb-3 opacity-20" />
-                <div class="d-flex align-center justify-space-between">
-                  <span class="text-caption font-weight-medium text-medium-emphasis">{{ detalleCredito.total_expenses_with_iva || 0 }} gastos con IVA</span>
-                  <VIcon icon="tabler-trending-down" size="16" color="info" class="opacity-50" />
-                </div>
-              </VCardText>
-              <div class="accent-border" style="background-color: rgb(var(--v-theme-info));"></div>
-            </VCard>
-          </VCol>
+              </div>
+              <VDivider class="mb-2 opacity-20" />
+              <div class="d-flex align-center justify-space-between">
+                <span class="text-caption font-weight-medium text-medium-emphasis">{{ getIvaStatus.message }}</span>
+                <VIcon :icon="getIvaStatus.icon" size="16" :color="getIvaStatus.color" class="opacity-70" />
+              </div>
+            </VCardText>
+            <div class="accent-border" :style="{ backgroundColor: `rgb(var(--v-theme-${getIvaStatus.color}))` }"></div>
+          </VCard>
+        </VCol>
 
-          <!-- Saldo IVA -->
-          <VCol cols="auto" class="flex-grow-1">
-            <VCard class="stats-card border-0 overflow-hidden mb-2">
-              <div class="card-bg-decoration" :style="{ background: `linear-gradient(45deg, rgba(var(--v-theme-${getIvaStatus.color}), 0.1), transparent)` }"></div>
-              <VCardText class="pa-5 relative-content">
-                <div class="d-flex align-center justify-space-between mb-4">
-                  <VAvatar :color="getIvaStatus.color" variant="tonal" size="48" rounded="lg" class="elevation-1">
-                    <VIcon :icon="getIvaStatus.icon" size="26" />
-                  </VAvatar>
-                  <div class="text-right">
-                    <span class="text-overline font-weight-bold text-disabled" style="letter-spacing: 1px !important;">Saldo IVA</span>
-                    <h4 class="text-h5 font-weight-black mt-1">
-                      <span class="text-xs font-weight-medium me-1">Bs.</span>{{ formatCurrency(Math.abs(ivaAPagar)) }}
-                    </h4>
-                  </div>
+        <!-- Retenciones (75% del Crédito Fiscal) -->
+        <VCol cols="12" sm="6" md="4" lg="2-4" class="flex-grow-1">
+          <VSkeletonLoader v-if="loading" type="card" height="130" class="rounded-lg border-0" />
+          <VCard v-else class="stats-card border-0 overflow-hidden h-100">
+            <div class="card-bg-decoration" :style="{ background: 'linear-gradient(45deg, rgba(var(--v-theme-secondary), 0.12), transparent)' }"></div>
+            <VCardText class="pa-5 relative-content">
+              <div class="d-flex align-center justify-space-between mb-3">
+                <VAvatar color="secondary" variant="tonal" size="44" rounded="lg">
+                  <VIcon icon="tabler-percentage" size="24" />
+                </VAvatar>
+                <div class="text-right">
+                  <span class="text-overline font-weight-bold text-disabled">Retenciones</span>
+                  <h4 class="text-h5 font-weight-black mt-1">
+                    <span class="text-xs font-weight-medium me-1">Bs.</span>{{ formatCurrency(retenciones) }}
+                  </h4>
                 </div>
-                <VDivider class="mb-3 opacity-20" />
-                <div class="d-flex align-center justify-space-between">
-                  <span class="text-caption font-weight-medium text-medium-emphasis">{{ getIvaStatus.message }}</span>
-                  <VIcon :icon="getIvaStatus.icon" size="16" :color="getIvaStatus.color" class="opacity-50" />
-                </div>
-              </VCardText>
-              <div class="accent-border" :style="{ backgroundColor: `rgb(var(--v-theme-${getIvaStatus.color}))` }"></div>
-            </VCard>
-          </VCol>
+              </div>
+              <VDivider class="mb-2 opacity-20" />
+              <div class="d-flex align-center justify-space-between">
+                <span class="text-caption font-weight-medium text-medium-emphasis">75% Estimado Crédito</span>
+                <VIcon icon="tabler-percentage" size="16" color="secondary" class="opacity-70" />
+              </div>
+            </VCardText>
+            <div class="accent-border" style="background-color: rgb(var(--v-theme-secondary));"></div>
+          </VCard>
+        </VCol>
 
-          <!-- Retenciones (75% del Crédito Fiscal) -->
-          <VCol v-if="!isRestaurant" cols="auto" class="flex-grow-1">
-            <VCard class="stats-card border-0 overflow-hidden mb-2">
-              <div class="card-bg-decoration" :style="{ background: 'linear-gradient(45deg, rgba(var(--v-theme-secondary), 0.1), transparent)' }"></div>
-              <VCardText class="pa-5 relative-content">
-                <div class="d-flex align-center justify-space-between mb-4">
-                  <VAvatar color="secondary" variant="tonal" size="48" rounded="lg" class="elevation-1">
-                    <VIcon icon="tabler-percentage" size="26" />
-                  </VAvatar>
-                  <div class="text-right">
-                    <span class="text-overline font-weight-bold text-disabled" style="letter-spacing: 1px !important;">Retenciones</span>
-                    <h4 class="text-h5 font-weight-black mt-1">
-                      <span class="text-xs font-weight-medium me-1">Bs.</span>{{ formatCurrency(retenciones) }}
-                    </h4>
-                  </div>
+        <!-- IGTF (3% de ventas SPE) -->
+        <VCol cols="12" sm="6" md="4" lg="2-4" class="flex-grow-1">
+          <VSkeletonLoader v-if="loading" type="card" height="130" class="rounded-lg border-0" />
+          <VCard v-else class="stats-card border-0 overflow-hidden h-100">
+            <div class="card-bg-decoration" :style="{ background: 'linear-gradient(45deg, rgba(var(--v-theme-error), 0.1), transparent)' }"></div>
+            <VCardText class="pa-5 relative-content">
+              <div class="d-flex align-center justify-space-between mb-3">
+                <VAvatar color="error" variant="tonal" size="44" rounded="lg">
+                  <VIcon icon="tabler-building-bank" size="24" />
+                </VAvatar>
+                <div class="text-right">
+                  <span class="text-overline font-weight-bold text-disabled">IGTF (3%)</span>
+                  <h4 class="text-h5 font-weight-black mt-1">
+                    <span class="text-xs font-weight-medium me-1">Bs.</span>{{ formatCurrency(igtfAmount) }}
+                  </h4>
                 </div>
-                <VDivider class="mb-3 opacity-20" />
-                <div class="d-flex align-center justify-space-between">
-                  <span class="text-caption font-weight-medium text-medium-emphasis">75% del Crédito Fiscal</span>
-                  <VIcon icon="tabler-percentage" size="16" color="secondary" class="opacity-50" />
-                </div>
-              </VCardText>
-              <div class="accent-border" style="background-color: rgb(var(--v-theme-secondary));"></div>
-            </VCard>
-          </VCol>
-
-          <!-- IGTF (3% de compras SPE) -->
-          <VCol cols="auto" class="flex-grow-1">
-            <VCard class="stats-card border-0 overflow-hidden mb-2">
-              <div class="card-bg-decoration" :style="{ background: 'linear-gradient(45deg, rgba(var(--v-theme-error), 0.08), transparent)' }"></div>
-              <VCardText class="pa-5 relative-content">
-                <div class="d-flex align-center justify-space-between mb-4">
-                  <VAvatar color="error" variant="tonal" size="48" rounded="lg" class="elevation-1">
-                    <VIcon icon="tabler-building-bank" size="26" />
-                  </VAvatar>
-                  <div class="text-right">
-                    <span class="text-overline font-weight-bold text-disabled" style="letter-spacing: 1px !important;">IGTF</span>
-                    <h4 class="text-h5 font-weight-black mt-1">
-                      <span class="text-xs font-weight-medium me-1">Bs.</span>{{ formatCurrency(igtfAmount) }}
-                    </h4>
-                  </div>
-                </div>
-                <VDivider class="mb-3 opacity-20" />
-                <div class="d-flex align-center justify-space-between">
-                  <span class="text-caption font-weight-medium text-medium-emphasis">3% del total — {{ detalleDebito.total_spe_count || 0 }} ventas con IGTF</span>
-                  <VIcon icon="tabler-building-bank" size="16" color="error" class="opacity-50" />
-                </div>
-              </VCardText>
-              <div class="accent-border" style="background-color: rgb(var(--v-theme-error));"></div>
-            </VCard>
-          </VCol>
-        </template>
+              </div>
+              <VDivider class="mb-2 opacity-20" />
+              <div class="d-flex align-center justify-space-between">
+                <span class="text-caption font-weight-medium text-medium-emphasis">{{ detalleDebito.total_spe_count || 0 }} ventas SPE</span>
+                <VIcon icon="tabler-building-bank" size="16" color="error" class="opacity-70" />
+              </div>
+            </VCardText>
+            <div class="accent-border" style="background-color: rgb(var(--v-theme-error));"></div>
+          </VCard>
+        </VCol>
       </VRow>
 
-      <!-- Filtros Mejorados -->
+      <!-- Filtros de Fecha -->
       <IvaFiscalFilters
         v-model:start-date="startDate"
         v-model:end-date="endDate"
@@ -427,9 +411,9 @@ onMounted(() => {
         class="mb-0"
       />
 
-      <!-- Tablas de Historial -->
-      <VRow class="ma-0 mt-5 mb-n1 mx-n1">
-        <VCol cols="12" class="pa-1 mb-7">
+      <!-- Tablas de Débito y Crédito Fiscal -->
+      <VRow class="ma-0 mt-3">
+        <VCol cols="12" class="pa-0 mb-6">
           <DebitoFiscalTable
             :fiscal-data="fiscalData"
             :loading="tableLoading"
@@ -439,7 +423,7 @@ onMounted(() => {
             @update:options="handleTableOptionsUpdate"
           />
         </VCol>
-        <VCol cols="12" class="pa-1">
+        <VCol cols="12" class="pa-0">
           <CreditoFiscalTable
             :expenses-data="expensesData"
             :loading="expensesTableLoading"
@@ -455,29 +439,28 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* Estilos portados de SupplierStatsCards — paridad visual total */
 .stats-card {
-  border-radius: 8px !important;
+  border-radius: 10px !important;
   backdrop-filter: blur(8px);
-  background: rgba(var(--v-theme-surface), 80%) !important;
-  box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 5%) !important;
-  transition: all 0.3s ease;
+  background: rgba(var(--v-theme-surface), 90%) !important;
+  box-shadow: 0 4px 18px 0 rgba(0, 0, 0, 4%) !important;
+  transition: all 0.25s ease-in-out;
 }
 
 .stats-card:hover {
-  box-shadow: 0 8px 25px 0 rgba(0, 0, 0, 8%) !important;
-  transform: translateY(-5px);
+  box-shadow: 0 6px 22px 0 rgba(0, 0, 0, 8%) !important;
+  transform: translateY(-3px);
 }
 
 .card-bg-decoration {
   position: absolute;
   z-index: 0;
   border-radius: 50%;
-  block-size: 100px;
-  filter: blur(40px);
-  inline-size: 100px;
-  inset-block-start: -20px;
-  inset-inline-end: -20px;
+  block-size: 90px;
+  filter: blur(35px);
+  inline-size: 90px;
+  inset-block-start: -15px;
+  inset-inline-end: -15px;
   pointer-events: none;
 }
 
@@ -488,22 +471,17 @@ onMounted(() => {
 
 .accent-border {
   position: absolute;
-  block-size: 70%;
+  block-size: 65%;
   border-end-end-radius: 4px;
   border-start-end-radius: 4px;
   inline-size: 4px;
-  inset-block-start: 15%;
+  inset-block-start: 17.5%;
   inset-inline-start: 0;
-  opacity: 0.8;
+  opacity: 0.85;
 }
 
 .text-h5 {
   color: rgb(var(--v-theme-on-surface));
   letter-spacing: -0.5px !important;
-}
-
-.text-super-xs {
-  font-size: 0.65rem !important;
-  letter-spacing: 0.05em !important;
 }
 </style>

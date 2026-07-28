@@ -5,19 +5,24 @@ namespace App\Observers;
 use App\Models\Product;
 use App\Models\ProductLot;
 use App\Models\InventoryMovement;
+use App\Models\ExpiredLog;
+use App\Models\ProductCount;
+use App\Models\ProductDistribution;
 use Illuminate\Support\Facades\Auth;
 
 class ProductLotObserver
 {
     /**
+     * Flag estático para indicar cuando una modificación de lote proviene explícitamente del proceso de caducidad.
+     */
+    public static bool $isExpiringLot = false;
+
+    /**
      * Handle the ProductLot "created" event.
      */
     public function created(ProductLot $productLot)
     {
-        // Verificar si ya existe un movimiento reciente (dentro de 2 minutos) para este producto y lote
-        // Esto evita crear movimientos duplicados cuando se ordena una factura
-        // (handleInvoiceMovement crea los movimientos con invoice_id)
-        $recentMovement = \App\Models\InventoryMovement::where('product_id', $productLot->product_id)
+        $recentMovement = InventoryMovement::where('product_id', $productLot->product_id)
             ->where('movement_type', 'purchase')
             ->where('created_at', '>=', now()->subMinutes(2))
             ->where(function ($query) use ($productLot) {
@@ -39,14 +44,11 @@ class ProductLotObserver
     public function updated(ProductLot $productLot)
     {
         if ($productLot->isDirty('quantity')) {
-            $originalQuantity = $productLot->getOriginal('quantity') ?? 0;
-            $newQuantity = $productLot->quantity ?? 0;
+            $originalQuantity = (float) ($productLot->getOriginal('quantity') ?? 0);
+            $newQuantity = (float) ($productLot->quantity ?? 0);
 
-            // Check if there's a sale movement created recently (within 2 minutes) for this product
-            // This indicates the lot quantity change is part of a sale, not an expiration
-            // The sale movement is created by ProductObserver::handleOrderMovement after lot updates
-            // We check by product_id since product_lot_id might be null in sale movements
-            $recentSaleMovement = \App\Models\InventoryMovement::where('product_id', $productLot->product_id)
+            // Si hay un movimiento de venta reciente (en los últimos 2 minutos), no duplicar movimiento
+            $recentSaleMovement = InventoryMovement::where('product_id', $productLot->product_id)
                 ->where('movement_type', 'sale')
                 ->where(function ($query) use ($productLot) {
                     $query->where('product_lot_id', $productLot->id)
@@ -56,16 +58,22 @@ class ProductLotObserver
                 ->exists();
 
             if ($recentSaleMovement) {
-                // If there's a recent sale movement, don't create expired/adjustment movements
-                // Just update the product stock and price
                 $this->updateProductStockAndPrice($productLot->product);
                 return;
             }
 
+            // Si ya existe un movimiento reciente de caducidad o ajuste para este lote, omitir duplicación
+            $recentExpiredMovement = InventoryMovement::where('product_lot_id', $productLot->id)
+                ->where('movement_type', 'expired')
+                ->where('created_at', '>=', now()->subMinutes(2))
+                ->exists();
+
+            if ($recentExpiredMovement) {
+                $this->updateProductStockAndPrice($productLot->product);
+                return;
+            }
 
             if ($originalQuantity > 0 && $newQuantity === 0) {
-                // Solo crear movimiento de caducado si viene de inventory/expirations
-                // Si no, crear movimiento de pérdida o ajuste según el origen
                 $this->handleZeroQuantityMovement($productLot, $originalQuantity);
             } elseif ($originalQuantity !== $newQuantity) {
                 $this->createAdjustmentMovement($productLot, $originalQuantity, $newQuantity);
@@ -183,63 +191,45 @@ class ProductLotObserver
     }
 
     /**
-     * Manejar movimiento cuando un lote pasa de tener cantidad a 0
-     * Solo se registra como 'expired' (caducado) si viene de inventory/expirations
-     * Si viene de inventario cíclico, se registra como 'loss' (pérdida)
-     * Si no viene de ninguno, se registra como 'loss' (pérdida) por defecto
+     * Manejar movimiento cuando un lote pasa de tener cantidad a 0.
      */
-    protected function handleZeroQuantityMovement(ProductLot $productLot, int $expiredQuantity)
+    protected function handleZeroQuantityMovement(ProductLot $productLot, float $expiredQuantity)
     {
         $product = $productLot->product;
 
-        // Verificar si viene de inventory/expirations (ExpiredLog reciente)
-        $recentExpiredLog = \App\Models\ExpiredLog::where('lot_id', $productLot->id)
-            ->where('created_at', '>=', now()->subMinutes(2))
-            ->first();
+        $isExpiring = static::$isExpiringLot;
 
-        // Verificar si viene de un inventario cíclico
-        // Buscamos un ProductCount que está siendo procesado (pending o approved) para el mismo producto
-        $recentProductCount = \App\Models\ProductCount::where('product_id', $product->id)
+        if (!$isExpiring) {
+            $isExpiring = ExpiredLog::where(function ($query) use ($productLot) {
+                    $query->where('lot_id', $productLot->id)
+                        ->orWhere('product_id', $productLot->product_id);
+                })
+                ->where('created_at', '>=', now()->subMinutes(15))
+                ->exists();
+        }
+
+        $recentProductCount = ProductCount::where('product_id', $product->id)
             ->whereIn('status', ['pending', 'approved'])
             ->where('updated_at', '>=', now()->subMinutes(5))
             ->orderBy('updated_at', 'desc')
             ->first();
 
-        // Si encontramos un ProductCount reciente, verificamos si tiene un ProductDistribution para este lote
-        $isFromInventoryCycle = false;
-        if ($recentProductCount) {
-            // Verificar si ya existe el ProductDistribution
-            $productDistribution = \App\Models\ProductDistribution::where('product_count_id', $recentProductCount->id)
-                ->where('product_lot_id', $productLot->id)
-                ->first();
-
-            // Si existe el ProductDistribution o el ProductCount es reciente, asumimos que viene del inventario cíclico
-            if ($productDistribution || $recentProductCount->updated_at >= now()->subMinutes(2)) {
-                $isFromInventoryCycle = true;
-            }
-        }
-
-        // Solo usar 'expired' (caducado) si viene específicamente de inventory/expirations
-        // Si viene de inventario cíclico o de otro lugar, usar 'loss' (pérdida)
-        if ($recentExpiredLog) {
-            $movementType = 'expired';
-        } else {
-            // Por defecto, si no viene de expirations, es pérdida (no caducado)
-            $movementType = 'loss';
-        }
+        $movementType = $isExpiring ? 'expired' : 'loss';
 
         $existingMovement = InventoryMovement::where('product_lot_id', $productLot->id)
-            ->where('movement_type', $movementType)
-            ->where('quantity', -$expiredQuantity)
+            ->whereIn('movement_type', ['expired', 'loss'])
             ->where('created_at', '>=', now()->subMinute())
             ->first();
 
         if ($existingMovement) {
+            if ($isExpiring && $existingMovement->getRawOriginal('movement_type') !== 'expired') {
+                $existingMovement->update(['movement_type' => 'expired']);
+            }
             return;
         }
 
         $stockBefore = $product->lots()->sum('quantity') + ($expiredQuantity - $productLot->quantity);
-        $stockAfter = $stockBefore - $expiredQuantity;
+        $stockAfter = max(0, $stockBefore - $expiredQuantity);
 
         InventoryMovement::create([
             'product_id' => $product->id,
@@ -258,29 +248,23 @@ class ProductLotObserver
     }
 
     /**
-     * Crear movimiento de ajuste para otros cambios de cantidad
-     * Si viene de un inventario cíclico y es negativo, siempre es 'loss' (pérdida)
-     * Si la diferencia es negativa (hace falta), se registra como 'loss' (pérdida)
-     * Si la diferencia es positiva, se registra como 'adjustment' (ajuste)
+     * Crear movimiento de ajuste para otros cambios de cantidad.
      */
-    protected function createAdjustmentMovement(ProductLot $productLot, int $originalQuantity, int $newQuantity)
+    protected function createAdjustmentMovement(ProductLot $productLot, float $originalQuantity, float $newQuantity)
     {
         $product = $productLot->product;
 
         $stockBefore = $product->lots()->sum('quantity') + ($originalQuantity - $productLot->quantity);
         $quantityDifference = $newQuantity - $originalQuantity;
-        $stockAfter = $stockBefore + $quantityDifference;
+        $stockAfter = max(0, $stockBefore + $quantityDifference);
 
-        // Verificar si viene de un inventario cíclico (ProductCount aprobado)
-        $recentProductDistribution = \App\Models\ProductDistribution::where('product_lot_id', $productLot->id)
+        $recentProductDistribution = ProductDistribution::where('product_lot_id', $productLot->id)
             ->whereHas('productCount', function ($query) {
                 $query->where('status', 'approved');
             })
             ->where('created_at', '>=', now()->subMinutes(2))
             ->first();
 
-        // Si viene de inventario cíclico y es negativo, siempre es pérdida
-        // Si no viene de inventario cíclico: negativo = pérdida, positivo = ajuste
         if ($recentProductDistribution && $quantityDifference < 0) {
             $movementType = 'loss';
         } else {
@@ -305,12 +289,10 @@ class ProductLotObserver
 
     /**
      * Recalcula y actualiza el stock total del producto desde la suma de lotes.
-     * NO recalcula ni actualiza unit_cost (eso solo en rentabilidad o aprobación de factura).
      */
     protected function updateProductStockAndPrice(Product $product)
     {
-        // Verificar si hay algún movimiento de inventario reciente relacionado con una factura en estado 'ordered'
-        $recentOrderedInvoice = \App\Models\InventoryMovement::where('product_id', $product->id)
+        $recentOrderedInvoice = InventoryMovement::where('product_id', $product->id)
             ->whereNotNull('invoice_id')
             ->whereHas('invoice', function ($query) {
                 $query->where('status', 'ordered');
@@ -318,7 +300,6 @@ class ProductLotObserver
             ->where('created_at', '>=', now()->subMinutes(5))
             ->exists();
 
-        // Si hay una factura en estado 'ordered', solo actualizar stock
         if ($recentOrderedInvoice) {
             $totalStock = $product->lots()->sum('quantity');
             $product->updateQuietly(['stock' => $totalStock]);
@@ -327,22 +308,8 @@ class ProductLotObserver
         }
 
         $product->load('lots');
-
         $totalStock = $product->lots()->sum('quantity');
 
-        $lots = $product->lots()
-            ->where('quantity', '>', 0)
-            ->whereNotNull('unit_cost')
-            ->where('unit_cost', '>', 0)
-            ->get();
-
-        if ($lots->isEmpty()) {
-            $product->updateQuietly(['stock' => $totalStock]);
-            \App\Services\Inventory\StockoutService::syncStockout($product, $totalStock);
-            return;
-        }
-
-        // Solo actualizar stock (igual que antes). NO tocar unit_cost.
         $product->updateQuietly(['stock' => $totalStock]);
         \App\Services\Inventory\StockoutService::syncStockout($product, $totalStock);
     }

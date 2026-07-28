@@ -33,6 +33,7 @@ const favoriteProducts = ref([])
 const categories = ref([])
 const selectedCategory = ref(null)
 const searchQuery = ref('')
+const showMobileSearch = ref(false)
 const loading = ref(false)
 const orderDialog = ref(false)
 const orderSubmitting = ref(false)
@@ -627,7 +628,7 @@ onMounted(async () => {
 
         <!-- Elementos del lado derecho -->
         <div class="nav-actions-right">
-          <!-- Input de búsqueda súper minimalista tipo Fenty -->
+          <!-- Input de búsqueda súper minimalista tipo Fenty en desktop -->
           <div class="search-editorial-wrap d-none d-sm-block">
             <input
               v-model="searchQuery"
@@ -637,6 +638,16 @@ onMounted(async () => {
             />
             <span class="search-line-effect"></span>
           </div>
+
+          <!-- Botón de Búsqueda para Móvil (xs) -->
+          <button
+            class="d-flex d-sm-none align-center justify-center bg-transparent border-0 px-2 py-1 cursor-pointer mr-1"
+            style="color: var(--editorial-black);"
+            @click="showMobileSearch = !showMobileSearch"
+            title="Buscar productos"
+          >
+            <VIcon :icon="showMobileSearch ? 'tabler-x' : 'tabler-search'" size="20" />
+          </button>
 
           <!-- Selector de Moneda -->
           <VMenu transition="slide-y-transition" location="bottom end">
@@ -665,6 +676,25 @@ onMounted(async () => {
           </button>
         </div>
       </div>
+
+      <!-- Input de búsqueda desplegable en móvil -->
+      <VExpandTransition>
+        <div v-if="showMobileSearch" class="mobile-search-bar-wrap d-block d-sm-none">
+          <div class="mobile-search-bar-inner">
+            <VIcon icon="tabler-search" size="18" class="text-muted mr-2" />
+            <input
+              v-model="searchQuery"
+              type="text"
+              placeholder="BUSCAR PRODUCTOS..."
+              class="mobile-search-input"
+              @keyup.enter="scrollToCatalog()"
+            />
+            <button v-if="searchQuery" class="bg-transparent border-0 p-1" @click="searchQuery = ''">
+              <VIcon icon="tabler-x" size="16" />
+            </button>
+          </div>
+        </div>
+      </VExpandTransition>
     </nav>
 
     <!-- 1. HERO BANNER EDITORIAL (CAMPAÑA INSPIRADA EN FENTY BEAUTY) -->
@@ -705,7 +735,7 @@ onMounted(async () => {
 
 
     <!-- 3. EXPLORAR VICTORIA DORE & CATÁLOGO GENERAL EN GRILLA DE DOS FILAS (4x2) CON PAGINACIÓN -->
-    <section id="catalog" class="editorial-products-section reveal-on-scroll" style="padding: 80px 40px; background-color: #FFFFFF; border-bottom: 1px solid var(--editorial-border);">
+    <section id="catalog" class="editorial-products-section reveal-on-scroll" style="background-color: #FFFFFF; border-bottom: 1px solid var(--editorial-border);">
       <div class="section-title-wrap" style="text-align: center; margin-bottom: 30px;">
         <h2 class="editorial-title-serif">EXPLORAR VICTORIA DORE</h2>
         <div class="title-decor-line"></div>
@@ -725,7 +755,7 @@ onMounted(async () => {
       </div>
 
       <!-- Grid de Productos (Cargando inicial cuando está vacío) -->
-      <div v-if="loading && products.length === 0" class="editorial-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 30px;">
+      <div v-if="loading && products.length === 0" class="editorial-grid">
         <div v-for="n in 8" :key="n" class="editorial-product-skeleton">
           <div class="skeleton-img-flat"></div>
           <div class="skeleton-text-flat line-1"></div>
@@ -734,7 +764,7 @@ onMounted(async () => {
       </div>
 
       <!-- Grid de Productos (Catálogo Paginado / Transición de Opacidad) -->
-      <div v-else-if="products.length" class="editorial-grid" :class="{ 'grid-loading': loading }" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 30px;">
+      <div v-else-if="products.length" class="editorial-grid" :class="{ 'grid-loading': loading }">
         <div
           v-for="product in products"
           :key="product.id"
@@ -851,8 +881,8 @@ onMounted(async () => {
     </section>
 
     <!-- 2. NUESTROS FAVORITOS - DESLIZADOR HORIZONTAL EXCLUSIVO (ESTILO FENTY - ORIGINALMENTE EN MEDIO DE LAS HÍBRIDAS) -->
-    <section v-if="favoriteProducts.length" class="editorial-products-section" style="padding: 80px 0; border-top: 1px solid var(--editorial-border); border-bottom: 1px solid var(--editorial-border); background-color: var(--editorial-white);">
-      <div class="catalog-header-editorial" style="padding: 0 40px; margin-bottom: 35px; display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 1px solid var(--editorial-border); padding-bottom: 15px;">
+    <section v-if="favoriteProducts.length" class="editorial-products-section favorites-section-wrap" style="border-top: 1px solid var(--editorial-border); border-bottom: 1px solid var(--editorial-border); background-color: var(--editorial-white);">
+      <div class="catalog-header-editorial favorites-header-editorial">
         <div style="display: flex; align-items: baseline; gap: 30px; flex-wrap: wrap;">
           <h2 class="editorial-title-serif" style="margin: 0; font-size: 24px; letter-spacing: 2px;">ICONIC PICKS FOR BOMB LIPS</h2>
           <div class="fenty-sub-links d-none d-md-flex" style="display: flex; gap: 20px; font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: #000;">
@@ -875,12 +905,11 @@ onMounted(async () => {
         </div>
       </div>
 
-      <div ref="carouselContainer" class="fenty-horizontal-row" style="padding: 0 40px; display: flex; gap: 24px; overflow-x: auto; scroll-behavior: smooth; -webkit-overflow-scrolling: touch;">
+      <div ref="carouselContainer" class="fenty-horizontal-row">
         <div
           v-for="product in favoriteProducts"
           :key="product.id"
           class="editorial-product-card fav-carousel-card"
-          style="flex: 0 0 23%; min-width: 260px; display: flex; flex-direction: column;"
         >
           <!-- Contenedor de Imagen -->
           <div class="editorial-product-img-wrap" @click="openQuickView(product)" style="aspect-ratio: 0.95; background-color: #F3F3F3; border: none; position: relative;">
@@ -1772,15 +1801,67 @@ onMounted(async () => {
   .reverse-split .split-row { flex-direction: column-reverse; }
 }
 
+.tova-editorial-root {
+  overflow-x: hidden;
+  width: 100%;
+  position: relative;
+}
+
+/* Buscador desplegable móvil */
+.mobile-search-bar-wrap {
+  background: var(--editorial-white);
+  border-bottom: 1px solid var(--editorial-border);
+  padding: 10px 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+.mobile-search-bar-inner {
+  display: flex;
+  align-items: center;
+  background: #F4F4F4;
+  border-radius: 20px;
+  padding: 8px 14px;
+}
+.mobile-search-input {
+  border: none;
+  background: transparent;
+  outline: none;
+  width: 100%;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--editorial-black);
+}
+
 /* ——— 3. Grilla de Productos Editorial (Product Grid) ——— */
 .editorial-products-section {
   max-width: 1440px;
   margin: 0 auto;
   padding: 80px 40px;
+  box-sizing: border-box;
 }
 @media (max-width: 768px) {
-  .editorial-products-section { padding: 40px 20px; }
+  .editorial-products-section { padding: 40px 16px !important; }
 }
+
+.favorites-header-editorial {
+  padding: 0 40px;
+  margin-bottom: 25px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--editorial-border);
+  padding-bottom: 15px;
+}
+@media (max-width: 768px) {
+  .favorites-header-editorial {
+    padding: 0 16px !important;
+    margin-bottom: 16px !important;
+  }
+  .favorites-header-editorial .editorial-title-serif {
+    font-size: 18px !important;
+    letter-spacing: 1px !important;
+  }
+}
+
 .catalog-header-editorial {
   display: flex;
   align-items: baseline;
@@ -1800,8 +1881,8 @@ onMounted(async () => {
 
 .editorial-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 36px 20px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 30px;
   transition: opacity 0.3s ease-in-out;
 }
 .editorial-grid.grid-loading {
@@ -1809,13 +1890,58 @@ onMounted(async () => {
   pointer-events: none;
 }
 @media (max-width: 1200px) {
-  .editorial-grid { grid-template-columns: repeat(3, 1fr) !important; }
+  .editorial-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 24px !important; }
 }
 @media (max-width: 768px) {
-  .editorial-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  .editorial-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 16px !important; }
 }
 @media (max-width: 480px) {
-  .editorial-grid { grid-template-columns: 1fr !important; }
+  .editorial-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 12px !important; }
+}
+
+/* Carrusel Horizontal de Favoritos Habilitado Táctil para Móvil */
+.fenty-horizontal-row {
+  display: flex;
+  gap: 24px;
+  padding: 0 40px 20px 40px;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE y Edge */
+}
+.fenty-horizontal-row::-webkit-scrollbar {
+  display: none; /* Chrome, Safari y Opera */
+}
+@media (max-width: 768px) {
+  .fenty-horizontal-row {
+    padding: 0 16px 16px 16px !important;
+    gap: 14px !important;
+  }
+}
+
+.fav-carousel-card {
+  flex: 0 0 280px;
+  min-width: 280px;
+  scroll-snap-align: start;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+}
+@media (max-width: 768px) {
+  .fav-carousel-card {
+    flex: 0 0 220px !important;
+    min-width: 220px !important;
+  }
+}
+@media (max-width: 480px) {
+  .fav-carousel-card {
+    flex: 0 0 72vw !important;
+    min-width: 210px !important;
+  }
 }
 
 /* Fila Horizontal de Favoritos Estilo Fenty */

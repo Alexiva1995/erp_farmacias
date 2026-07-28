@@ -20,17 +20,16 @@ class ProductQueryService
             ->select('products.*')
             ->selectRaw("COALESCE((SELECT SUM(quantity) FROM product_lots WHERE product_lots.product_id = products.id), 0) AS stock_calculado")
             ->with([
-            'category',
-            'laboratory',
-            'origin',
-            'group',
-            'profitability',
-            'productSuppliers',
-            'variants',
-            'lots' => function ($query) {
-                $query->where('quantity', '>', 0);
-            },
-        ]);
+                'category:id,name',
+                'laboratory:id,name',
+                'origin:id,name',
+                'group:id,name',
+                'profitability:id,product_id,profitability_percentage,is_locked',
+                'lots' => function ($query) {
+                    $query->select(['id', 'product_id', 'expiration_date', 'quantity'])
+                          ->where('quantity', '>', 0);
+                },
+            ]);
     }
 
     /**
@@ -351,7 +350,18 @@ class ProductQueryService
 
     public function getIncompleteProductsQuery(Request $request): Builder
     {
-        $query = $this->getBaseQuery();
+        $query = Product::query()
+            ->select(['id', 'name', 'barcode', 'active_ingredient', 'presentation', 'unit_of_measure', 'photo_url', 'psychotropic', 'iva', 'is_colombian_origin', 'laboratory_id', 'origin_id', 'category_id'])
+            ->selectRaw("COALESCE((SELECT SUM(quantity) FROM product_lots WHERE product_lots.product_id = products.id), 0) AS stock_calculado")
+            ->with([
+                'laboratory:id,name',
+                'origin:id,name',
+                'category:id,name',
+                'lots' => function ($query) {
+                    $query->select(['id', 'product_id', 'expiration_date', 'quantity'])
+                          ->where('quantity', '>', 0);
+                },
+            ]);
 
         $isRestaurant = \App\Models\GeneralSetting::first()?->business_type === 'restaurant';
 
@@ -438,7 +448,17 @@ class ProductQueryService
 
     public function getProductsWithoutGroupQuery(Request $request): Builder
     {
-        $query = $this->getBaseQuery();
+        $query = Product::query()
+            ->select(['id', 'name', 'active_ingredient', 'presentation', 'unit_of_measure', 'photo_url', 'psychotropic', 'iva', 'is_colombian_origin', 'laboratory_id', 'group_id'])
+            ->selectRaw("COALESCE((SELECT SUM(quantity) FROM product_lots WHERE product_lots.product_id = products.id), 0) AS stock_calculado")
+            ->with([
+                'laboratory:id,name',
+                'group:id,name',
+                'lots' => function ($query) {
+                    $query->select(['id', 'product_id', 'expiration_date', 'quantity'])
+                          ->where('quantity', '>', 0);
+                },
+            ]);
 
         $filters = [
             'q' => $request->q,

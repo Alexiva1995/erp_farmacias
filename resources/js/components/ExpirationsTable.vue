@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
 import { formatDateSimple } from "@/utils/formatters";
 import { computed } from "vue";
@@ -170,13 +170,13 @@ const formatDate = (dateString) => {
         <template #item.quantity="{ item }">
           <div class="text-center">
             <VChip
-              :color="item.quantity > 0 ? 'success' : 'error'"
+              :color="(item.quantity ?? 0) > 0 ? 'success' : 'error'"
               label
               size="x-small"
               variant="tonal"
               class="font-weight-black"
             >
-              {{ item.quantity }}
+              {{ Math.trunc(item.quantity ?? 0) }}
             </VChip>
           </div>
         </template>
@@ -258,7 +258,7 @@ const formatDate = (dateString) => {
               <div class="d-flex flex-column text-right">
                 <span class="text-super-xs text-disabled text-uppercase font-weight-black text-xs">Stock Lote</span>
                 <span :class="(item.quantity ?? 0) > 0 ? 'text-success' : 'text-error'" class="text-base font-weight-black">
-                  {{ item.quantity ?? 0 }} <small class="text-super-xs">UNDS</small>
+                  {{ Math.trunc(item.quantity ?? 0) }} <small class="text-super-xs">UNDS</small>
                 </span>
               </div>
             </div>

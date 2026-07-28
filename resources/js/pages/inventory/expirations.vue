@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { generateDonationPDF } from "@/utils/donationPdfGenerator";
@@ -400,7 +400,7 @@ const handleGeneratePriceAdjustment = async (adjustmentData) => {
           </div>
           <div style="display: flex; justify-content: space-between;">
             <span>Total de unidades activas:</span>
-            <strong>${preview.total_active_stock.toLocaleString(
+            <strong>${Math.trunc(preview.total_active_stock ?? 0).toLocaleString(
               "es-CO"
             )} unidades</strong>
           </div>

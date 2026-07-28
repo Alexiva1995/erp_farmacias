@@ -77,28 +77,25 @@ const fetchSelectOptions = async () => {
 const fetchProducts = async () => {
   loading.value = true;
   const params = {
-    q: searchQuery.value,
-    laboratoryId: selectedLaboratory.value,
-    originId: selectedOrigin.value,
-    groupId: selectedGroup.value,
-    supplierId: selectedSupplier.value,
-    categoryId: selectedCategory.value,
+    q: searchQuery.value || undefined,
+    laboratoryId: selectedLaboratory.value || undefined,
+    originId: selectedOrigin.value || undefined,
+    groupId: selectedGroup.value || undefined,
+    supplierId: selectedSupplier.value || undefined,
+    categoryId: selectedCategory.value || undefined,
     ...(stockStatusFilter.value !== null && {
       hasStock: stockStatusFilter.value,
     }),
     page: page.value,
     itemsPerPage: itemsPerPage.value,
-    sortBy: sortBy.value,
-    orderBy: orderBy.value,
-    startDate: startDate.value,
-    endDate: endDate.value,
-    isStrictSearch: isStrictSearch.value,
+    sortBy: sortBy.value || undefined,
+    orderBy: orderBy.value || undefined,
+    startDate: startDate.value || undefined,
+    endDate: endDate.value || undefined,
+    isStrictSearch: isStrictSearch.value || undefined,
     ...(productTypeFilter.value && { productType: productTypeFilter.value }),
     ...(selectedRestaurantType.value && { restaurantType: selectedRestaurantType.value }),
   };
-  Object.keys(params).forEach(
-    key => (params[key] === null || params[key] === "") && delete params[key],
-  );
 
   try {
     const response = await axios.get("/products", { params });
@@ -113,12 +110,10 @@ const fetchProducts = async () => {
 };
 
 let debounceTimer;
+
+// Watcher unificado para filtros: reinicia página a 1 y hace debounce
 watch(
   [
-    page,
-    itemsPerPage,
-    sortBy,
-    orderBy,
     searchQuery,
     selectedLaboratory,
     selectedOrigin,
@@ -133,20 +128,18 @@ watch(
     isStrictSearch,
   ],
   () => {
+    page.value = 1;
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => fetchProducts(), 300);
-  },
-  { deep: true },
+  }
 );
 
-watch(
-  [searchQuery, selectedLaboratory, selectedOrigin, selectedGroup, selectedSupplier, selectedCategory, stockStatusFilter, productTypeFilter, selectedRestaurantType, startDate, endDate],
-  () => {
-    page.value = 1;
-  },
-);
+// Watcher directo para paginación y ordenamiento
+watch([page, itemsPerPage, sortBy, orderBy], () => {
+  fetchProducts();
+});
 
-onMounted(async () => {
+onMounted(() => {
   if (route.query.laboratoryId) {
     selectedLaboratory.value = Number(route.query.laboratoryId);
   }
@@ -160,14 +153,9 @@ const updateTableOptions = options => {
   page.value = options.page;
   itemsPerPage.value = options.itemsPerPage;
 
-  // Solo actualizar sortBy si hay una intención clara de ordenar desde la tabla
   if (options.sortBy && options.sortBy.length > 0) {
     sortBy.value = options.sortBy[0]?.key;
     orderBy.value = options.sortBy[0]?.order;
-  } else if (!options.sortBy || options.sortBy.length === 0) {
-    // Si la tabla no envía sortBy pero ya teníamos uno (ej: vía filtros), lo preservamos
-    // a menos que estemos en un flujo donde realmente queramos limpiar.
-    // En Vuetify, al paginar, si no se clickeó cabecera, sortBy puede venir vacío.
   }
 };
 
@@ -191,22 +179,6 @@ const handleDeleteProduct = async id => {
     cancelButtonText: "Cancelar",
     confirmButtonText: "Eliminar",
     reverseButtons: true,
-    didOpen: () => {
-      const actions = Swal.getActions();
-      const confirmButton = Swal.getConfirmButton();
-      const cancelButton = Swal.getCancelButton();
-
-      actions.style.display = "flex";
-      actions.style.gap = "10px";
-      actions.style.width = "100%";
-      actions.style.padding = "0 20px";
-
-      confirmButton.style.flex = "1";
-      confirmButton.style.width = "50%";
-
-      cancelButton.style.flex = "1";
-      cancelButton.style.width = "50%";
-    },
   });
 
   if (result.isConfirmed) {
@@ -311,23 +283,18 @@ const clearFormErrors = () => {
 
 const handleExport = async format => {
   const params = {
-    q: searchQuery.value,
-    laboratoryId: selectedLaboratory.value,
-    originId: selectedOrigin.value,
-    groupId: selectedGroup.value,
-    categoryId: selectedCategory.value,
+    q: searchQuery.value || undefined,
+    laboratoryId: selectedLaboratory.value || undefined,
+    originId: selectedOrigin.value || undefined,
+    groupId: selectedGroup.value || undefined,
+    categoryId: selectedCategory.value || undefined,
     ...(stockStatusFilter.value !== null && {
       hasStock: stockStatusFilter.value,
     }),
-    startDate: startDate.value,
-    endDate: endDate.value,
+    startDate: startDate.value || undefined,
+    endDate: endDate.value || undefined,
     format,
   };
-
-  Object.keys(params).forEach(key => {
-    if (params[key] === null || params[key] === "")
-      delete params[key];
-  });
 
   try {
     const response = await axios.get("/products/export", {
@@ -355,6 +322,7 @@ const handleExport = async format => {
     window.URL.revokeObjectURL(url);
   } catch (error) {
     console.error("Error al exportar los datos:", error);
+    toast.error("Error al generar el archivo de exportación.");
   }
 };
 

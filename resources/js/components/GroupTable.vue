@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 import { ref, computed } from "vue";
 import { useAbility } from "@casl/vue";
 import { useBrandingStore } from "@/stores/useBrandingStore";
@@ -263,7 +263,7 @@ const handleItemsPerPageChange = (val) => {
                       size="x-small"
                       class="font-weight-black"
                     >
-                      {{ product.stock_calculado || 0 }} UNID
+                      {{ Math.round(product.stock_calculado || 0) }} UNID
                     </VChip>
                   </td>
                   <td class="text-center">
@@ -300,7 +300,7 @@ const handleItemsPerPageChange = (val) => {
                    <div class="d-flex justify-space-between align-center">
                       <span class="text-super-xs font-weight-bold text-primary">#{{ product.id }}</span>
                       <span class="text-super-xs font-weight-black" :class="(product.stock_calculado || 0) > 0 ? 'text-info' : 'text-error'">
-                        {{ product.stock_calculado || 0 }} UNID
+                        {{ Math.round(product.stock_calculado || 0) }} UNID
                       </span>
                    </div>
                    <h4 class="text-xs font-weight-black uppercase truncate leading-none mt-1">{{ product.name }}</h4>

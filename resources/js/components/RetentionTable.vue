@@ -7,6 +7,7 @@ import { useAuthStore } from "@/stores/auth";
 const props = defineProps({
   invoices: { type: Array, required: true },
   loading: { type: Boolean, default: false },
+  downloadingPdf: { type: Object, default: () => ({}) },
   totalRecords: { type: Number, required: true },
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
@@ -25,7 +26,6 @@ const selectedModel = computed({
 });
 
 const pendingHeaders = [
-  { title: "S", key: "select", sortable: false, width: "40px" },
   { title: "Fecha Factura", key: "created_invoice_date", sortable: true },
   { title: "Proveedor / Razón Social", key: "supplier.name", sortable: true, width: "30%" },
   { title: "Nº Factura", key: "invoice_number", sortable: true },
@@ -58,7 +58,7 @@ const formatDate = (date) => {
 
 const getAvatarColor = (id) => {
   const colors = ["primary", "secondary", "success", "info", "warning", "error"];
-  return colors[id % colors.length];
+  return colors[(id || 0) % colors.length];
 };
 
 const getInitials = (name) => {
@@ -81,9 +81,9 @@ const toggleSelection = (id) => {
 </script>
 
 <template>
-  <div class="mt-4">
+  <div class="mt-0">
     <!-- Vista de Escritorio -->
-    <VCard v-if="!mobile" class="rounded-lg border shadow-sm overflow-hidden bg-surface">
+    <VCard v-if="!mobile" class="rounded-lg border-0 shadow-none overflow-hidden bg-surface">
       <VDataTableServer
         v-model="selectedModel"
         :items-per-page="props.itemsPerPage"
@@ -103,7 +103,7 @@ const toggleSelection = (id) => {
             icon="tabler-receipt-off"
           />
         </template>
-        <!-- Custom Items Desktop -->
+
         <template #item.created_invoice_date="{ item }">
           <span class="text-xs font-weight-medium text-disabled uppercase">{{ formatDate(item.created_invoice_date) }}</span>
         </template>
@@ -175,6 +175,7 @@ const toggleSelection = (id) => {
               size="32"
               color="primary"
               class="rounded-lg shadow-sm"
+              :loading="props.downloadingPdf[item.id]"
               @click="emit('download-pdf', item.id)"
             >
               <VIcon icon="tabler-file-download" size="20" />
@@ -226,7 +227,7 @@ const toggleSelection = (id) => {
             </div>
             <VPagination
                :model-value="props.page"
-               :length="Math.ceil(props.totalRecords / props.itemsPerPage)"
+               :length="Math.ceil(props.totalRecords / props.itemsPerPage) || 1"
                size="small"
                class="premium-pagination"
                @update:model-value="(newPage) => emit('update:options', { ...props, page: newPage })"
@@ -237,7 +238,7 @@ const toggleSelection = (id) => {
     </VCard>
 
     <!-- Vista Móvil Premium Cards -->
-    <div v-else class="d-flex flex-column gap-4">
+    <div v-else class="d-flex flex-column gap-4 pa-2">
       <div v-if="props.loading" class="d-flex justify-center pa-8">
         <VProgressCircular indeterminate color="primary" />
       </div>
@@ -339,6 +340,7 @@ const toggleSelection = (id) => {
                 variant="flat"
                 block
                 class="rounded-lg text-xs font-weight-black shadow-sm"
+                :loading="props.downloadingPdf[item.id]"
                 @click.stop="emit('download-pdf', item.id)"
               >
                 <VIcon start icon="tabler-file-download" size="18" />
@@ -367,19 +369,19 @@ const toggleSelection = (id) => {
             </div>
           </VCardText>
         </VCard>
+      </VCard>
 
-        <!-- Paginación Móvil -->
-        <div class="d-flex justify-center mt-2 pb-4">
-          <VPagination
-            :model-value="props.page"
-            :length="Math.ceil(props.totalRecords / props.itemsPerPage)"
-            size="small"
-            rounded="circle"
-            class="premium-pagination"
-            @update:model-value="(newPage) => emit('update:options', { ...props, page: newPage })"
-          />
-        </div>
-      </template>
+      <!-- Paginación Móvil -->
+      <div v-if="props.invoices.length > 0" class="d-flex justify-center mt-2 pb-4">
+        <VPagination
+          :model-value="props.page"
+          :length="Math.ceil(props.totalRecords / props.itemsPerPage) || 1"
+          size="small"
+          rounded="circle"
+          class="premium-pagination"
+          @update:model-value="(newPage) => emit('update:options', { ...props, page: newPage })"
+        />
+      </div>
 
       <VAlert v-else type="info" variant="tonal" class="rounded-lg">
         {{ props.currentTab === 'pending' ? 'No hay facturas pendientes de retención.' : 'No se han generado comprobantes para este período.' }}
@@ -389,10 +391,6 @@ const toggleSelection = (id) => {
 </template>
 
 <style scoped>
-.premium-table :deep(.v-data-table-header) {
-  background-color: rgba(var(--v-theme-on-surface), 0.02) !important;
-}
-
 .premium-table :deep(.v-data-table-header th) {
   background: white !important;
   color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)) !important;
@@ -411,10 +409,6 @@ const toggleSelection = (id) => {
 .text-super-xs {
   font-size: 0.65rem !important;
   letter-spacing: 0.05em !important;
-}
-
-.leading-tight {
-  line-height: 1.25;
 }
 
 .truncate {
@@ -475,9 +469,5 @@ const toggleSelection = (id) => {
   background: rgb(var(--v-theme-primary)) !important;
   color: white !important;
   border: 0 !important;
-}
-
-.premium-checkbox-wrapper :deep(.v-checkbox-btn .v-selection-control) {
-  min-height: auto;
 }
 </style>

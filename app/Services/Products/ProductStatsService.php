@@ -72,7 +72,7 @@ class ProductStatsService
                 ->join('orders', 'order_details.order_id', '=', 'orders.id')
                 ->where('order_details.product_id', $product->id)
                 ->where('orders.status', 'Completed')
-                ->select('orders.order_date', 'order_details.price', 'order_details.quantity')
+                ->select('orders.order_date', 'order_details.price', 'order_details.quantity', 'orders.currency')
                 ->orderBy('orders.order_date', 'desc')
                 ->first();
 
@@ -105,12 +105,15 @@ class ProductStatsService
         // 5. Tendencia Histórica
         $chartData = $this->getHistoricalGroupTrend($product);
 
+        $defaultCurrency = \App\Models\GeneralSetting::first()?->default_currency ?? 'COP';
+
         return [
             'total_units_sold' => (float) $totalUnitsSold,
             'last_sale' => $lastSale ? [
                 'date' => $lastSale->order_date,
                 'price' => (float) $lastSale->price,
                 'quantity' => (float) $lastSale->quantity,
+                'currency' => $lastSale->currency ?? $defaultCurrency,
             ] : null,
             'monthly_average' => round((float) $monthlyAverage, 2),
             'market_share' => round((float) $marketShare, 2),
@@ -180,8 +183,11 @@ class ProductStatsService
         $series = [];
 
         // 1. Serie del Producto Principal
+        $product->loadMissing('laboratory');
+        $mainName = $product->laboratory ? "{$product->name} ({$product->laboratory->name})" : $product->name;
+
         $series[] = [
-            'name' => $product->name,
+            'name' => $mainName,
             'data' => $this->getMonthlyDataSeries($product->id, $periods, $isIngredient),
             'is_main' => true
         ];
@@ -190,33 +196,36 @@ class ProductStatsService
         if ($groupId) {
             if ($isIngredient) {
                 $competitors = DB::table('products')
+                    ->leftJoin('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
                     ->join('inventory_movements', 'products.id', '=', 'inventory_movements.product_id')
                     ->where('products.group_id', $groupId)
                     ->where('products.id', '!=', $product->id)
                     ->where('inventory_movements.movement_type', 'sale')
                     ->where('inventory_movements.quantity', '<', 0)
-                    ->select('products.id', 'products.name', DB::raw('SUM(ABS(inventory_movements.quantity)) as total'))
-                    ->groupBy('products.id', 'products.name')
+                    ->select('products.id', 'products.name', 'laboratories.name as lab_name', DB::raw('SUM(ABS(inventory_movements.quantity)) as total'))
+                    ->groupBy('products.id', 'products.name', 'laboratories.name')
                     ->orderBy('total', 'desc')
                     ->limit(5)
                     ->get();
             } else {
                 $competitors = DB::table('products')
+                    ->leftJoin('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
                     ->join('order_details', 'products.id', '=', 'order_details.product_id')
                     ->join('orders', 'order_details.order_id', '=', 'orders.id')
                     ->where('products.group_id', $groupId)
                     ->where('products.id', '!=', $product->id)
                     ->where('orders.status', 'Completed')
-                    ->select('products.id', 'products.name', DB::raw('SUM(order_details.quantity) as total'))
-                    ->groupBy('products.id', 'products.name')
+                    ->select('products.id', 'products.name', 'laboratories.name as lab_name', DB::raw('SUM(order_details.quantity) as total'))
+                    ->groupBy('products.id', 'products.name', 'laboratories.name')
                     ->orderBy('total', 'desc')
                     ->limit(5)
                     ->get();
             }
 
             foreach ($competitors as $competitor) {
+                $compName = $competitor->lab_name ? "{$competitor->name} ({$competitor->lab_name})" : $competitor->name;
                 $series[] = [
-                    'name' => $competitor->name,
+                    'name' => $compName,
                     'data' => $this->getMonthlyDataSeries($competitor->id, $periods, $isIngredient),
                     'is_main' => false
                 ];

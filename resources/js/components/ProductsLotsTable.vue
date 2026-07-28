@@ -1,5 +1,6 @@
-﻿<script setup>
+<script setup>
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
+import AppEmptyState from "@/components/AppEmptyState.vue";
 import { formatDateSimple } from "@/utils/formatters";
 import { useBrandingStore } from "@/stores/useBrandingStore";
 import { computed } from "vue";
@@ -14,7 +15,6 @@ const props = defineProps({
 
 const emit = defineEmits(["update:options", "adjust-lots"]);
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => false);
 
 const headers = computed(() => [
   { 
@@ -25,21 +25,20 @@ const headers = computed(() => [
   },
   { title: "Producto", key: "name", sortable: true },
   { 
-    title: "Stock Total", 
-    key: "stock", 
+    title: "Stock Calculado", 
+    key: "stock_calculado", 
     sortable: true, 
     align: "center" 
   },
   { 
-    title: isRestaurant.value ? "Marca" : "Laboratorio", 
+    title: "Laboratorio", 
     key: "laboratory.name", 
     sortable: true,
-    visible: false,
     cellClass: "d-none d-md-table-cell",
     headerClass: "d-none d-md-table-cell"
   },
   { 
-    title: "Lotes", 
+    title: "Lotes Activos", 
     key: "lots_count", 
     sortable: false, 
     align: "center",
@@ -47,7 +46,7 @@ const headers = computed(() => [
     headerClass: "d-none d-lg-table-cell"
   },
   { 
-    title: "EXP.", 
+    title: "Próx. Exp.", 
     key: "next_expiration", 
     sortable: false,
     cellClass: "d-none d-sm-table-cell",
@@ -67,7 +66,7 @@ const getNextExpiration = (lots) => {
 </script>
 
 <template>
-  <VCard>
+  <VCard class="rounded-lg border shadow-sm overflow-hidden bg-surface">
     <!-- Desktop Table -->
     <div class="d-none d-sm-block">
       <VDataTableServer
@@ -77,88 +76,86 @@ const getNextExpiration = (lots) => {
         :items="props.products"
         :items-length="props.totalProducts"
         :loading="props.loading"
-        class="text-no-wrap"
+        class="text-no-wrap premium-table"
         @update:options="(options) => emit('update:options', options)"
       >
+        <template #no-data>
+          <AppEmptyState
+            title="¡Todo Lotificado!"
+            message="No hay productos pendientes de asignación de lotes en el catálogo."
+            icon="tabler-package-off"
+          />
+        </template>
+
         <template #item.id="{ item }">
           <a
             :href="'/inventory/traceability?q=' + item.id"
             target="_blank"
             class="text-decoration-none font-weight-black text-primary"
           >
-            {{ item.id }}
+            #{{ item.id }}
           </a>
         </template>
 
         <template #item.name="{ item }">
-          <div class="d-flex align-center gap-x-4 py-2">
+          <div class="d-flex align-center gap-x-3 py-1">
             <VAvatar
               v-if="item.photo_url"
-              size="44"
+              size="38"
               variant="tonal"
               rounded
               :image="item.photo_url"
-              class="border elevation-1"
             />
             <div class="d-flex flex-column">
               <span
-                class="text-sm font-weight-black text-high-emphasis text-uppercase truncate"
-                style="max-inline-size: 300px;"
-                :class="{
-                  'text-warning': item.psychotropic == 1 || item.psychotropic === true,
-                }"
+                class="text-sm font-weight-bold text-high-emphasis truncate"
+                style="max-inline-size: 320px;"
+                :class="{ 'text-warning': item.psychotropic == 1 || item.psychotropic === true }"
               >
-                {{ item.name || "—" }}
-                <span v-if="item.iva == 1 || item.iva === true"> (G)</span>
-                <span v-if="item.is_colombian_origin == 1 || item.is_colombian_origin === true"> (COL)</span>
+                {{ item.name?.toUpperCase() || "—" }}
+                <span v-if="item.iva == 1 || item.iva === true" class="text-xs text-info ms-1">(G)</span>
+                <span v-if="item.is_colombian_origin == 1 || item.is_colombian_origin === true" class="text-xs text-success ms-1">(COL)</span>
               </span>
-              <div class="d-flex align-center gap-1 text-super-xs">
-                <span v-if="!isRestaurant" class="text-disabled truncate" style="max-inline-size: 180px;">{{ item.active_ingredient || "" }}</span>
-                <span v-if="!isRestaurant" class="text-disabled mx-1">|</span>
-                <span v-if="isRestaurant && item.presentation" class="text-disabled truncate" style="max-inline-size: 180px;">
-                  {{ item.presentation }} {{ item.unit_of_measure ? `(${item.unit_of_measure})` : '' }}
-                </span>
-                <span v-if="isRestaurant && item.presentation" class="text-disabled mx-1">|</span>
-                <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 120px;">
-                  {{ item.laboratory?.name || 'S/L' }}
-                </span>
-              </div>
+              <span class="text-xs text-disabled truncate" style="max-inline-size: 280px;">
+                {{ item.active_ingredient || item.presentation || 'Sin Especificación' }}
+                <template v-if="item.laboratory?.name">
+                  • <strong class="text-primary">{{ item.laboratory.name }}</strong>
+                </template>
+              </span>
             </div>
           </div>
         </template>
 
-        <template #item.stock="{ item }">
-          <VChip
-            :color="item.stock > 0 ? 'success' : 'error'"
-            label
-            size="x-small"
-            variant="tonal"
-            class="font-weight-black"
-          >
-            {{ item.stock }}
-          </VChip>
+        <template #item.laboratory.name="{ item }">
+          <span class="text-xs font-weight-medium text-capitalize">{{ item.laboratory?.name || "—" }}</span>
+        </template>
+
+        <template #item.stock_calculado="{ item }">
+          <span class="text-xs font-weight-black" :class="(item.stock_calculado ?? 0) > 0 ? 'text-success' : 'text-error'">
+            {{ Math.round(item.stock_calculado ?? 0) }} <small>UNDS</small>
+          </span>
         </template>
 
         <template #item.lots_count="{ item }">
-          <span class="font-weight-medium">{{ item.lots?.length || 0 }}</span>
+          <span class="text-xs font-weight-bold">{{ item.lots?.length || 0 }}</span>
         </template>
 
         <template #item.next_expiration="{ item }">
-          <div class="d-flex flex-column">
-            <span class="font-weight-medium">{{ formatDateSimple(getNextExpiration(item.lots)) || 'N/A' }}</span>
-          </div>
+          <span class="text-xs font-weight-medium">{{ formatDateSimple(getNextExpiration(item.lots)) || 'N/A' }}</span>
         </template>
 
         <template #item.actions="{ item }">
-          <div class="d-flex justify-center gap-2">
+          <div class="d-flex justify-center gap-1">
             <VBtn
               icon
-              variant="text"
+              size="32"
               color="primary"
+              variant="tonal"
+              class="rounded-lg shadow-sm"
               @click.stop="emit('adjust-lots', item)"
             >
-              <VIcon icon="tabler-package" />
-              <VTooltip activator="parent" location="top">Ajustar Lotes</VTooltip>
+              <VIcon icon="tabler-package" size="18" />
+              <VTooltip activator="parent" location="top">Crear / Ajustar Lotes</VTooltip>
             </VBtn>
           </div>
         </template>
@@ -171,88 +168,78 @@ const getNextExpiration = (lots) => {
         <VProgressCircular indeterminate color="primary" />
       </div>
 
-      <div class="pa-2">
+      <div v-else-if="products.length > 0" class="pa-3 d-flex flex-column gap-3">
         <VCard
           v-for="item in products"
           :key="item.id"
-          variant="flat"
-          class="lot-list-mobile-card border mb-2 overflow-hidden"
+          class="border shadow-sm rounded-lg overflow-hidden"
         >
-          <div class="pa-3">
+          <div class="pa-4">
             <div class="d-flex gap-3 align-start mb-2">
               <VAvatar
                 v-if="item.photo_url"
-                size="44"
+                size="42"
                 variant="tonal"
                 rounded
                 :image="item.photo_url"
-                class="flex-shrink-0 mt-1 border"
+                class="flex-shrink-0"
               />
               <div class="flex-grow-1 min-width-0">
-                <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight truncate-2-lines">
+                <h3 class="text-xs font-weight-black text-high-emphasis text-uppercase leading-tight">
                   <a
                     :href="'/inventory/traceability?q=' + item.id"
                     target="_blank"
-                    class="text-decoration-none text-primary text-xs font-weight-black"
+                    class="text-decoration-none text-primary me-1"
                   >
                     #{{ item.id }}
                   </a>
-                  <span class="mx-1 text-disabled">|</span>
-                  {{ item.name || 'S/N' }}
+                  <span class="text-disabled me-1">|</span>
+                  {{ item.name }}
                 </h3>
-                <div class="d-flex align-center flex-wrap gap-x-2 text-super-xs mt-1">
-                  <span v-if="!isRestaurant" class="text-medium-emphasis font-weight-medium text-truncate" style="max-inline-size: 150px;">{{ item.active_ingredient || '' }}</span>
-                  <span v-if="!isRestaurant" class="text-disabled">|</span>
-                  <span v-if="isRestaurant && item.presentation" class="text-medium-emphasis font-weight-medium text-truncate" style="max-inline-size: 150px;">
-                    {{ item.presentation }} {{ item.unit_of_measure ? `(${item.unit_of_measure})` : '' }}
-                  </span>
-                  <span v-if="isRestaurant && item.presentation" class="text-disabled">|</span>
-                  <span class="text-primary font-weight-black text-uppercase text-truncate" style="max-inline-size: 120px;">{{ item.laboratory?.name || 'S/L' }}</span>
-                </div>
-              </div>
-            </div>
- 
-            <VDivider class="my-2 border-opacity-10" />
- 
-            <div class="d-flex justify-space-between align-center bg-var-theme-background-light px-3 py-2 rounded border-dashed-thin mb-2">
-              <div class="d-flex flex-column text-center">
-                <span class="text-super-xs text-disabled text-uppercase font-weight-black text-xs">Stock Total</span>
-                <span class="text-base font-weight-black" :class="item.stock > 0 ? 'text-success' : 'text-error'">
-                  {{ item.stock || 0 }} <small class="text-super-xs">UNDS</small>
+                <span class="text-super-xs text-disabled truncate d-block mt-1">
+                  {{ item.active_ingredient || 'Sin Especificación' }} • <strong class="text-primary">{{ item.laboratory?.name || 'S/L' }}</strong>
                 </span>
-              </div>
-              <div class="d-flex flex-column text-right">
-                <span class="text-super-xs text-disabled text-uppercase font-weight-black text-xs">Próx. Venc.</span>
-                <span class="text-base font-weight-black text-warning">{{ formatDateSimple(getNextExpiration(item.lots)) || 'N/A' }}</span>
               </div>
             </div>
 
-            <div class="mt-2 bg-var-theme-background rounded pa-2 d-flex justify-space-between align-center border-s-4 border-primary">
+            <VDivider class="my-3 opacity-10" />
+
+            <div class="d-flex justify-space-between align-center mb-3">
               <div class="d-flex flex-column">
-                <span class="text-super-xs text-disabled text-uppercase font-weight-black">Lotes Activos</span>
-                <span class="text-sm font-weight-black text-primary">{{ item.lots?.length || 0 }} Registros</span>
+                <span class="text-super-xs text-disabled text-uppercase font-weight-bold">Stock Registrado</span>
+                <span class="text-xs font-weight-black" :class="(item.stock_calculado ?? 0) > 0 ? 'text-success' : 'text-error'">
+                  {{ Math.round(item.stock_calculado ?? 0) }} <small>UNDS</small>
+                </span>
+              </div>
+              <div class="d-flex flex-column text-right">
+                <span class="text-super-xs text-disabled text-uppercase font-weight-bold">Próx. Venc.</span>
+                <span class="text-xs font-weight-bold">{{ formatDateSimple(getNextExpiration(item.lots)) || 'N/A' }}</span>
               </div>
             </div>
+
+            <div class="pa-2 rounded-lg bg-surface-variant-opacity border d-flex justify-space-between align-center">
+              <span class="text-super-xs text-disabled text-uppercase font-weight-bold">Lotes Físicos:</span>
+              <span class="text-xs font-weight-black text-primary">{{ item.lots?.length || 0 }} Registrados</span>
+            </div>
           </div>
- 
-          <!-- Acciones Rectangulares Movil -->
-          <div class="d-flex border-t border-opacity-10">
+
+          <div class="border-t">
             <VBtn
               block
               color="primary"
-              variant="flat"
-              class="rounded-0 font-weight-black"
-              height="44"
+              variant="text"
+              class="rounded-0 text-xs font-weight-black"
+              height="40"
               prepend-icon="tabler-package"
               @click="emit('adjust-lots', item)"
             >
-              AJUSTAR LOTES
+              ASIGNAR LOTES
             </VBtn>
           </div>
         </VCard>
- 
+
         <!-- Paginación Móvil -->
-        <div class="d-flex justify-center mt-4 pb-2">
+        <div class="d-flex justify-center mt-2">
            <AppMobilePagination
             :page="props.page"
             :items-per-page="props.itemsPerPage"
@@ -262,47 +249,45 @@ const getNextExpiration = (lots) => {
           />
         </div>
       </div>
+
+      <div v-else class="pa-4">
+        <AppEmptyState
+          title="¡Todo Lotificado!"
+          message="No hay productos pendientes de asignación de lotes en el catálogo."
+          icon="tabler-package-off"
+        />
+      </div>
     </div>
   </VCard>
 </template>
 
 <style scoped>
-.lot-list-mobile-card {
-  border-radius: 8px !important;
-  background: rgb(var(--v-theme-surface));
+.premium-table :deep(.v-data-table-header th) {
+  background: white !important;
+  color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)) !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05rem !important;
+  border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.05) !important;
 }
 
-.truncate-2-lines {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
+.premium-table :deep(.v-data-table__td) {
+  padding-block: 10px !important;
+  border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.03) !important;
 }
 
 .text-super-xs {
   font-size: 0.65rem !important;
-  line-height: 1;
 }
 
-.bg-var-theme-background {
-  background-color: rgba(var(--v-theme-primary), 0.05);
+.bg-surface-variant-opacity {
+  background-color: rgba(var(--v-theme-on-surface), 0.03) !important;
 }
 
-.bg-var-theme-background-light {
-  background-color: rgba(var(--v-border-color), 0.05);
-}
-
-.border-dashed-thin {
-  border: 1px dashed rgba(var(--v-border-color), 0.3) !important;
-}
-
-.gap-1 { gap: 4px !important; }
-
-:deep(.v-data-table th) {
-  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
-  font-size: 0.75rem !important;
-  font-weight: 700 !important;
-  text-transform: uppercase;
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>

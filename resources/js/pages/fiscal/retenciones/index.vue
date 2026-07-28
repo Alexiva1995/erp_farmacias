@@ -8,6 +8,7 @@ import { useDisplay } from "vuetify";
 
 const { mobile } = useDisplay();
 const loading = ref(false);
+const downloadingPdf = ref({}); // Estado de descarga independiente por comprobante
 const invoices = ref([]);
 const suppliers = ref([]);
 const totalRecords = ref(0);
@@ -16,7 +17,7 @@ const itemsPerPage = ref(10);
 const selected = ref([]);
 const currentTab = ref("pending");
 
-// Filtros
+// Filtros de búsqueda y fechas
 const search = ref("");
 const supplierId = ref(null);
 const startDate = ref("");
@@ -24,18 +25,22 @@ const endDate = ref("");
 const sortBy = ref("created_invoice_date");
 const orderBy = ref("desc");
 
+// Establece el rango de fechas al inicio del año actual (dinámico)
 const setYearPreset = () => {
   const now = new Date();
-  startDate.value = `2026-03-01`;
-  endDate.value = `${now.getFullYear()}-12-31`;
+  const currentYear = now.getFullYear();
+  startDate.value = `${currentYear}-01-01`;
+  endDate.value = `${currentYear}-12-31`;
 };
 
 const fetchSuppliers = async () => {
   try {
-    const response = await axios.get("/suppliers", { params: { itemsPerPage: -1 } });
-    suppliers.value = response.data.data || response.data;
+    const response = await axios.get("/suppliers", { 
+      params: { itemsPerPage: -1, select_minimal: true } 
+    });
+    suppliers.value = response.data?.data || response.data || [];
   } catch (error) {
-    console.error("Error al cargar proveedores", error);
+    console.error("Error al cargar lista de proveedores:", error);
   }
 };
 
@@ -46,20 +51,20 @@ const fetchRetentions = async () => {
       params: {
         page: page.value,
         itemsPerPage: itemsPerPage.value,
-        search: search.value,
-        start_date: startDate.value,
-        end_date: endDate.value,
-        supplier_id: supplierId.value,
+        search: search.value || undefined,
+        start_date: startDate.value || undefined,
+        end_date: endDate.value || undefined,
+        supplier_id: supplierId.value || undefined,
         is_generated: currentTab.value === "generated",
         sortBy: sortBy.value,
         orderBy: orderBy.value,
       },
     });
-    invoices.value = response.data.data;
-    totalRecords.value = response.data.pagination.total;
+    invoices.value = response.data?.data || [];
+    totalRecords.value = response.data?.pagination?.total || 0;
   } catch (error) {
-    console.error("Error al cargar retenciones:", error);
-    toast.error("Error al cargar datos del servidor");
+    console.error("Error al cargar retenciones fiscales:", error);
+    toast.error("Error al sincronizar datos de retenciones.");
   } finally {
     loading.value = false;
   }
@@ -85,51 +90,55 @@ const handleBulkGenerate = async () => {
       ids: idsToProcess,
     });
     
-    toast.success(response.data.message);
+    toast.success(response.data?.message || "Retención generada exitosamente.");
     
-    if (response.data.retention_id) {
-        await downloadPdf(response.data.retention_id, true);
+    if (response.data?.retention_id) {
+      await downloadPdf(response.data.retention_id, true);
     }
     
     selected.value = [];
     fetchRetentions();
+  } catch (error) {
+    console.error("Error al generar retención masiva:", error);
+    toast.error(error.response?.data?.message || "Ocurrió un error al procesar las retenciones.");
   } finally {
     loading.value = false;
   }
 };
 
 const handleBatchGenerateAll = async () => {
-    const result = await Swal.fire({
-        title: '¿Generar todas las retenciones?',
-        text: `Se procesarán todas las facturas pendientes entre el ${startDate.value} y el ${endDate.value}. Esta acción creará un comprobante por cada proveedor.`,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#fb8c00',
-        cancelButtonColor: '#9e9e9e',
-        confirmButtonText: 'SÍ, GENERAR TODO',
-        cancelButtonText: 'CANCELAR'
+  const result = await Swal.fire({
+    title: '¿Generar todas las retenciones?',
+    text: `Se procesarán las facturas pendientes entre ${startDate.value} y ${endDate.value}. Esta acción creará un comprobante por cada proveedor.`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#fb8c00',
+    cancelButtonColor: '#9e9e9e',
+    confirmButtonText: 'SÍ, GENERAR TODO',
+    cancelButtonText: 'CANCELAR'
+  });
+
+  if (!result.isConfirmed) return;
+
+  try {
+    loading.value = true;
+    const response = await axios.post("/retentions/batch-generate-all", {
+      start_date: startDate.value,
+      end_date: endDate.value,
     });
-
-    if (!result.isConfirmed) return;
-
-    try {
-        loading.value = true;
-        const response = await axios.post("/retentions/batch-generate-all", {
-            start_date: startDate.value,
-            end_date: endDate.value,
-        });
-        
-        toast.success(response.data.message);
-        fetchRetentions();
-    } catch (error) {
-        console.error("Error en generación masiva:", error);
-        toast.error(error.response?.data?.message || "Ocurrió un error al procesar la solicitud.");
-    } finally {
-        loading.value = false;
-    }
+    
+    toast.success(response.data?.message || "Retenciones procesadas correctamente.");
+    fetchRetentions();
+  } catch (error) {
+    console.error("Error en generación masiva:", error);
+    toast.error(error.response?.data?.message || "Ocurrió un error al procesar la solicitud.");
+  } finally {
+    loading.value = false;
+  }
 };
 
 const downloadPdf = async (id, isRetention = true) => {
+  downloadingPdf.value[id] = true;
   try {
     const params = isRetention ? { retention_id: id } : { ids: id };
     const response = await axios.get("/retentions/download", {
@@ -140,14 +149,17 @@ const downloadPdf = async (id, isRetention = true) => {
     const url = window.URL.createObjectURL(new Blob([response.data]));
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", `retencion_${id}.pdf`);
+    link.setAttribute("download", `comprobante_retencion_${id}.pdf`);
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
-    toast.success("Comprobante descargado.");
+    link.remove();
+    window.URL.revokeObjectURL(url);
+    toast.success("Comprobante PDF descargado.");
   } catch (error) {
     console.error("Error al descargar PDF:", error);
     toast.error("Error al obtener el archivo PDF.");
+  } finally {
+    downloadingPdf.value[id] = false;
   }
 };
 
@@ -161,8 +173,8 @@ const clearFilters = () => {
 
 const handleDeleteRetention = async (id) => {
   const result = await Swal.fire({
-    title: '¿Eliminar retención?',
-    text: 'Esta acción eliminará el comprobante y devolverá las facturas a estado pendiente.',
+    title: '¿Eliminar comprobante?',
+    text: 'Esta acción desvinculará las facturas y volverán a estado pendiente.',
     icon: 'warning',
     showCancelButton: true,
     confirmButtonColor: '#e53935',
@@ -176,11 +188,11 @@ const handleDeleteRetention = async (id) => {
   try {
     loading.value = true;
     const response = await axios.delete(`/retentions/${id}`);
-    toast.success(response.data.message);
+    toast.success(response.data?.message || "Retención eliminada correctamente.");
     fetchRetentions();
   } catch (error) {
     console.error("Error al eliminar retención:", error);
-    toast.error(error.response?.data?.message || "Ocurrió un error al eliminar.");
+    toast.error(error.response?.data?.message || "Error al eliminar la retención.");
   } finally {
     loading.value = false;
   }
@@ -188,7 +200,7 @@ const handleDeleteRetention = async (id) => {
 
 const handleEditRetention = async (retention) => {
   const { value: newNumber } = await Swal.fire({
-    title: 'Editar Número de Retención',
+    title: 'Editar Número de Comprobante',
     input: 'text',
     inputLabel: 'Número de Comprobante',
     inputValue: retention.number,
@@ -199,7 +211,7 @@ const handleEditRetention = async (retention) => {
     cancelButtonText: 'CANCELAR',
     inputValidator: (value) => {
       if (!value) {
-        return '¡Debes ingresar un número!';
+        return '¡Debes ingresar un número válido!';
       }
     }
   });
@@ -209,21 +221,27 @@ const handleEditRetention = async (retention) => {
   try {
     loading.value = true;
     const response = await axios.put(`/retentions/${retention.id}`, { number: newNumber });
-    toast.success(response.data.message);
+    toast.success(response.data?.message || "Número actualizado correctamente.");
     fetchRetentions();
   } catch (error) {
-    console.error("Error al editar retención:", error);
-    toast.error(error.response?.data?.message || "Ocurrió un error al actualizar.");
+    console.error("Error al editar comprobante:", error);
+    toast.error(error.response?.data?.message || "Error al actualizar el número.");
   } finally {
     loading.value = false;
   }
+};
+
+const handleSort = (sortOptions) => {
+  sortBy.value = sortOptions.key;
+  orderBy.value = sortOptions.order;
+  page.value = 1;
+  fetchRetentions();
 };
 
 watch(currentTab, (newTab) => {
   page.value = 1;
   selected.value = [];
   
-  // Ajustar el ordenamiento según la pestaña
   if (newTab === "generated") {
     sortBy.value = "date";
     orderBy.value = "desc";
@@ -235,7 +253,7 @@ watch(currentTab, (newTab) => {
   fetchRetentions();
 });
 
-let debounceTimer;
+let debounceTimer = null;
 watch([search, supplierId, startDate, endDate], () => {
   clearTimeout(debounceTimer);
   debounceTimer = setTimeout(() => {
@@ -254,7 +272,7 @@ onMounted(() => {
 <template>
   <div class="retenciones-index-page pb-12">
     <div class="d-flex flex-column gap-1 mt-1">
-      <!-- Filtros Premium Colapsables -->
+      <!-- Filtros Premium -->
       <RetentionFilters
         v-model:search="search"
         v-model:supplier-id="supplierId"
@@ -267,22 +285,26 @@ onMounted(() => {
         @clear="clearFilters"
         @bulk-generate="handleBulkGenerate"
         @batch-generate-all="handleBatchGenerateAll"
+        @sort="handleSort"
         class="mb-0"
       />
 
       <!-- Gestión de Retenciones con Pestañas -->
       <VCard class="ma-0 rounded-lg border shadow-sm overflow-hidden bg-surface">
-        <VCardTitle class="pa-4 px-6 d-flex align-center">
-          <VAvatar color="primary" variant="tonal" size="32" class="me-3 rounded-lg">
-            <VIcon icon="tabler-file-analytics" size="18" />
-          </VAvatar>
-          <span class="text-sm font-weight-black uppercase">Gestión de Retenciones IVA</span>
+        <VCardTitle class="pa-4 px-6 d-flex align-center flex-wrap gap-2">
+          <div class="d-flex align-center">
+            <VAvatar color="primary" variant="tonal" size="32" class="me-3 rounded-lg">
+              <VIcon icon="tabler-file-analytics" size="18" />
+            </VAvatar>
+            <span class="text-sm font-weight-black uppercase">Gestión de Retenciones IVA</span>
+          </div>
           <VSpacer />
           <VBtn
             v-if="selected.length > 0 && currentTab === 'pending'"
             color="success"
             variant="flat"
             class="rounded-lg text-xs font-weight-black px-4 shadow-sm"
+            :loading="loading"
             @click="handleBulkGenerate"
           >
             <VIcon start icon="tabler-check" size="18" />
@@ -314,6 +336,7 @@ onMounted(() => {
             v-model:selected="selected"
             :invoices="invoices"
             :loading="loading"
+            :downloading-pdf="downloadingPdf"
             :total-records="totalRecords"
             :page="page"
             :items-per-page="itemsPerPage"
@@ -330,11 +353,6 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.text-super-xs {
-  font-size: 0.65rem !important;
-  letter-spacing: 0.05em !important;
-}
-
 .premium-tabs :deep(.v-tab) {
   letter-spacing: 0.05em !important;
   opacity: 0.6;
@@ -347,9 +365,5 @@ onMounted(() => {
 
 .bg-surface-variant-opacity-2 {
   background-color: rgba(var(--v-theme-on-surface), 0.02) !important;
-}
-
-:deep(.v-btn.bg-success) {
-  --v-theme-overlay: 255, 255, 255;
 }
 </style>
