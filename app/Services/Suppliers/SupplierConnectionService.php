@@ -39,11 +39,10 @@ class SupplierConnectionService
         }
     }
 
-
     public function fetchFromFtp(SupplierConnection $connection)
     {
         $host = $connection->host;
-        $port = $connection->port ?? 21;
+        $port = (int) ($connection->port ?? 21);
         $user = $connection->username;
         $pass = FtpCrypt::decrypt($connection->password);
 
@@ -91,7 +90,6 @@ class SupplierConnectionService
                 throw new Exception("No se pudo obtener el listado de archivos del servidor FTP");
             }
 
-            // Filtrar solo los que parecen inventario
             $inventoryFiles = array_filter($files, function ($file) {
                 $name = basename($file);
                 return str_starts_with($name, 'inventario') && str_ends_with($name, '.txt');
@@ -886,37 +884,67 @@ class SupplierConnectionService
 
             //
             return $newProduct;
-        } catch (\Exception $e) {
-            Log::error('❌ Error al crear producto desde factura', [
-                'supplier_id' => $supplierId,
-                'barcode' => $barcode,
-                'error' => $e->getMessage(),
-            ]);
-            return null;
+                if ($existingProduct->trashed()) {
+                    $existingProduct->restore();
+                }
+                return $existingProduct;
+            }
+
+            try {
+                $productName = $lineData['descripcion_producto'] ?? $lineData['name'] ?? $lineData['descripcion'] ?? 'Producto desde factura';
+
+                $newProduct = Product::create([
+                    'barcode' => $barcode,
+                    'name' => $productName,
+                    'active_ingredient' => 'N/A',
+                    'laboratory_id' => null,
+                    'origin_id' => null,
+                    'category_id' => null,
+                    'group_id' => null,
+                    'unit_cost' => floatval($lineData['unit_cost'] ?? 0),
+                    'sale_price' => floatval($lineData['unit_cost'] ?? 0),
+                    'iva' => isset($lineData['tax_enabled']) && $lineData['tax_enabled'] == 1 ? 1 : 0,
+                    'is_colombian_origin' => false,
+                    'psychotropic' => false,
+                    'stock' => 0,
+                    'sales_average' => 0,
+                    // 'is_active' => false, // Column missing in DB
+                    'is_deleted' => true, // Pending approval
+                ]);
+
+                //
+                return $newProduct;
+            } catch (\Exception $e) {
+                Log::error('❌ Error al crear producto desde factura', [
+                    'supplier_id' => $supplierId,
+                    'barcode' => $barcode,
+                    'error' => $e->getMessage(),
+                ]);
+                return null;
+            }
         }
-    }
 
-    private function castValue(string|null $raw, array $meta): mixed
-    {
-        if ($raw === null) return null;
-        $value = trim(str_replace('"', '', $raw));
+        private function castValue(mixed $raw, array $meta): mixed
+        {
+            if ($raw === null) return null;
+            $value = is_string($raw) ? trim(str_replace('"', '', $raw)) : (string) $raw;
 
-        return match ($meta["type"]) {
-            "string" => $value,
-            "integer" => is_numeric($value) ? (int) $value : null,
-            "decimal" => is_numeric($value)
-            ? number_format(
-                (float) $value / (isset($meta['decimals']) && $meta['decimals'] ? 100 : 1),
-                2,
-                ".",
-                ""
-            )
-            : null,
-            "date" => $this->parseDate($value, preferredFormat: $meta["format"] ?? null),
-            "boolean" => is_numeric($value) && floatval($value) > 0 ? true : false,
-            default => $value,
-        };
-    }
+            return match ($meta["type"]) {
+                "string" => $value,
+                "integer" => is_numeric($value) ? (int) $value : null,
+                "decimal" => is_numeric($value)
+                ? number_format(
+                    (float) $value / (isset($meta['decimals']) && $meta['decimals'] ? 100 : 1),
+                    2,
+                    ".",
+                    ""
+                )
+                : null,
+                "date" => $this->parseDate($value, preferredFormat: $meta["format"] ?? null),
+                "boolean" => is_numeric($value) && floatval($value) > 0 ? true : false,
+                default => $value,
+            };
+        }
 
     private function parseDate(string $value, ?string $preferredFormat = null): ?string
     {

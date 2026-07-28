@@ -822,16 +822,9 @@ onMounted(async () => {
               {{ product.name }}
             </h3>
             
-            <!-- Valoración por Estrellas Estilo Fenty -->
-            <div class="product-rating-stars" style="display: flex; gap: 2px; color: #000000; font-size: 10px; margin-bottom: 4px;">
-              <span>★</span><span>★</span><span>★</span><span>★</span><span>★</span>
-              <span style="font-size: 10px; color: #888888; margin-left: 4px; font-weight: 500;">(4.8)</span>
-            </div>
-            
-            <!-- Tonos / Marca -->
-            <div style="font-size: 12px; color: #555555; margin-bottom: 6px; font-weight: 500;">
-              <span v-if="product.brand" style="margin-right: 10px; text-transform: uppercase; font-size: 10px; font-weight: 700; color: var(--editorial-nude-dark); letter-spacing: 1px;">{{ product.brand }}</span>
-              <span style="text-decoration: underline; cursor: pointer;">{{ product.variants_count || 23 }} Shades</span>
+            <!-- Marca -->
+            <div v-if="product.brand" style="font-size: 12px; color: #555555; margin-bottom: 6px; font-weight: 500;">
+              <span style="text-transform: uppercase; font-size: 10px; font-weight: 700; color: var(--editorial-nude-dark); letter-spacing: 1px;">{{ product.brand }}</span>
             </div>
             
              <!-- Precio con empuje automático al fondo si es necesario -->

@@ -41,8 +41,9 @@ class InventoryCycleQueryService
      * Construye un query con la unión de product_counts, invoice_counts y sale_counts
      * filtrado por ciclo y estado según sea necesario.
      */
-    private function buildDiscrepanciesUnionQuery(?int $cycleId = null, bool $includePending = false)
+    private function buildDiscrepanciesUnionQuery(int|string|null $cycleId = null, bool $includePending = false)
     {
+        $cycleId = $cycleId !== null ? (int) $cycleId : null;
         $productCounts = ProductCount::query()
             ->from('product_counts as pc')
             ->select([

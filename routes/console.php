@@ -13,6 +13,21 @@ Artisan::command('inspire', function () {
 Schedule::command('app:update-exchange-rate')->dailyAt('00:01');
 Schedule::command('app:update-exchange-rate')->dailyAt('03:00');
 Schedule::command('app:close-cash')->dailyAt('23:59');
+<?php
+
+use App\Jobs\ExecuteRecurringExpensesJob;
+use App\Jobs\GeneratePayslipJob;
+use Illuminate\Foundation\Inspiring;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Schedule;
+
+Artisan::command('inspire', function () {
+    $this->comment(Inspiring::quote());
+})->purpose('Display an inspiring quote');
+
+Schedule::command('app:update-exchange-rate')->dailyAt('00:01');
+Schedule::command('app:update-exchange-rate')->dailyAt('03:00');
+Schedule::command('app:close-cash')->dailyAt('23:59');
 Schedule::command('app:clear-expired-reservations')->everyMinute();
 Schedule::command('telegram:send-daily-reservations')->dailyAt('12:00');
 Schedule::command('telegram:send-upcoming-payments')->dailyAt('09:30');
@@ -23,9 +38,6 @@ Schedule::command('cleaning:generate-executions --days=0')
     ->dailyAt('00:01')
     ->withoutOverlapping()
     ->runInBackground()
-    ->onSuccess(function () {
-        \Log::info('Ejecuciones de limpieza generadas exitosamente');
-    })
     ->onFailure(function () {
         \Log::error('Fallo al generar ejecuciones de limpieza');
     });
@@ -88,14 +100,10 @@ try {
             ->cron($config->schedule_expression)
             ->withoutOverlapping()
             ->runInBackground()
-            ->onSuccess(function () use ($config) {
-                \Log::info("[AutoReplenishment] Config '{$config->name}' ejecutada exitosamente.");
-            })
             ->onFailure(function () use ($config) {
                 \Log::error("[AutoReplenishment] Fallo en config '{$config->name}'.");
             });
     }
 } catch (\Exception $e) {
     // Silenciar si la tabla no existe aún (primera migración)
-    \Log::warning('[AutoReplenishment] No se pudo cargar configs: ' . $e->getMessage());
 }

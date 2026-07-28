@@ -778,7 +778,14 @@ class OrderActionService
     {
         $resourceService = app(ResourceService::class);
         $orderCurrency = strtoupper($order->currency ?? 'USD');
-        $orderTotal = (float) $order->total_amount;
+        $orderTotal = (float) $order->total_amount + (float) ($order->spe_surcharge_amount ?? 0);
+
+        $rates = [
+            'USD' => (float) ($resourceService->getExchangeRate('USD') ?: 1),
+            'COP' => (float) ($resourceService->getExchangeRate('COP') ?: 1),
+            'BS'  => (float) ($resourceService->getExchangeRate('BS') ?: 1),
+        ];
+
         $isMulticurrency = false;
         if (count($payments) > 1) {
             $currencies = collect($payments)->pluck('currency')->map(fn($c) => strtoupper($c))->unique();
@@ -789,16 +796,10 @@ class OrderActionService
 
         if ($isMulticurrency) {
             $bcvRate = $rates['BS'] ?? 1.0;
-            $tolerance = ($orderCurrency === 'COP') ? 12000.0 : (3.0 * $bcvRate); // Equivalente a 3 USD de margen para absorber diferencias de tasa cruzada
+            $tolerance = ($orderCurrency === 'COP') ? 12000.0 : (3.0 * $bcvRate); // Margen para absorber diferencias de tasa cruzada
         } else {
-            $tolerance = ($orderCurrency === 'COP') ? 100.0 : 0.5;
+            $tolerance = ($orderCurrency === 'COP') ? 1000.0 : 0.5;
         }
-
-        $rates = [
-            'USD' => $resourceService->getExchangeRate('USD') ?: 1,
-            'COP' => $resourceService->getExchangeRate('COP') ?: 1,
-            'BS' => $resourceService->getExchangeRate('BS') ?: 1,
-        ];
 
         $sumInOrderCurrency = 0;
         foreach ($payments as $p) {
@@ -1119,9 +1120,6 @@ class OrderActionService
                 return ($d->unit_price_usd ?? 0) * ($d->quantity ?? 0);
             });
 
-            // Validación de integridad financiera: el neto (pagos - vuelto) debe ser igual al total
-            $this->validatePaymentsCoverOrderTotal($orderId, $request->payments, (float) ($request->changeAmount ?? 0));
-
             // Determinar si aplica Recargo Sujeto Pasivo Especial (SPE)
             $currency = strtoupper($orderId->currency);
             $isForeignCurrency = in_array($currency, ['USD', 'COP']);
@@ -1144,6 +1142,10 @@ class OrderActionService
                 $orderId->spe_surcharge_rate = 0.00;
                 $orderId->spe_surcharge_amount = 0.00;
             }
+
+            // Validación de integridad financiera: el neto (pagos - vuelto) debe ser igual al total (incluyendo recargos)
+            $this->validatePaymentsCoverOrderTotal($orderId, $request->payments, (float) ($request->changeAmount ?? 0));
+
             $orderId->taxable_base = $orderId->total_amount;
             $orderId->order_date = Carbon::now();
 

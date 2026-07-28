@@ -31,12 +31,10 @@ return new class extends Migration {
                 // MySQL 1075 error correction: Force PRIMARY KEY and AUTO_INCREMENT together
                 // We use BIGINT UNSIGNED as it's the standard for modern Laravel migrations
                 DB::statement("ALTER TABLE `{$tableName}` MODIFY `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY");
-                Log::info("AUTO_INCREMENT y PRIMARY KEY restaurados en: {$tableName}");
             } catch (\Exception $e) {
                 // If it fails because PK already exists, try only AUTO_INCREMENT
                 try {
                     DB::statement("ALTER TABLE `{$tableName}` MODIFY `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT");
-                    Log::info("AUTO_INCREMENT restaurado en: {$tableName} (PK ya existía)");
                 } catch (\Exception $e2) {
                     Log::error("Error crítico al aplicar fix en {$tableName}: " . $e2->getMessage());
                 }
