@@ -369,19 +369,19 @@ const toggleSelection = (id) => {
             </div>
           </VCardText>
         </VCard>
-      </VCard>
 
-      <!-- Paginación Móvil -->
-      <div v-if="props.invoices.length > 0" class="d-flex justify-center mt-2 pb-4">
-        <VPagination
-          :model-value="props.page"
-          :length="Math.ceil(props.totalRecords / props.itemsPerPage) || 1"
-          size="small"
-          rounded="circle"
-          class="premium-pagination"
-          @update:model-value="(newPage) => emit('update:options', { ...props, page: newPage })"
-        />
-      </div>
+        <!-- Paginación Móvil -->
+        <div v-if="props.invoices.length > 0" class="d-flex justify-center mt-2 pb-4">
+          <VPagination
+            :model-value="props.page"
+            :length="Math.ceil(props.totalRecords / props.itemsPerPage) || 1"
+            size="small"
+            rounded="circle"
+            class="premium-pagination"
+            @update:model-value="(newPage) => emit('update:options', { ...props, page: newPage })"
+          />
+        </div>
+      </template>
 
       <VAlert v-else type="info" variant="tonal" class="rounded-lg">
         {{ props.currentTab === 'pending' ? 'No hay facturas pendientes de retención.' : 'No se han generado comprobantes para este período.' }}
