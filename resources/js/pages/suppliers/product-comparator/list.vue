@@ -550,17 +550,21 @@ const handleCheckSupplierApi = async (supplier) => {
     );
     await axios.get(`/suppliers/${supplier.id}/connection`);
     
-    // Al ser dispatchSync, llega aquí cuando ya terminó
-    await handleRefreshAll();
-    
     supplierConnectionStore.startConnection();
     startPolling();
   } catch (error) {
     const errorDetail = error?.response?.data?.message || error?.message || "";
     toast.error(`No se pudo iniciar la conexión con ${supplier.name}${errorDetail ? `: ${errorDetail}` : ""}`);
     pollingSupplierId.value = null;
+    return;
   } finally {
     checkingApiSupplierId.value = null;
+  }
+
+  try {
+    await handleRefreshAll();
+  } catch (error) {
+    console.error("Error al refrescar tablas tras iniciar conexión:", error);
   }
 };
 
