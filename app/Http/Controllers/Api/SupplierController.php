@@ -129,17 +129,14 @@ class SupplierController extends Controller
         $logMessage .= "[" . date('Y-m-d H:i:s') . "] 🔄 [CONTROLLER] Despachando Job FTP (SÍNCRONO para ver logs inmediatos)\n";
         file_put_contents($logFile, $logMessage, FILE_APPEND);
         
-        // Ejecutar SÍNCRONO para ver todos los logs de inmediato
-        ProcessSupplierConnectionJob::dispatchSync($supplier, $userId);
-        
-        // Para producción, cambiar de vuelta a asíncrono:
-        // ProcessSupplierConnectionJob::dispatch($supplier, $userId);
+        // Despachar de forma asíncrona para evitar timeouts en la interfaz web
+        ProcessSupplierConnectionJob::dispatch($supplier, $userId);
 
-        $logMessage = "[" . date('Y-m-d H:i:s') . "] ✅ [CONTROLLER] Job FTP completado\n";
-        $logMessage .= "[" . date('Y-m-d H:i:s') . "] ========== 🏁 FIN CONEXIÓN FTP ==========\n";
+        $logMessage = "[" . date('Y-m-d H:i:s') . "] ✅ [CONTROLLER] Job FTP despachado en segundo plano\n";
+        $logMessage .= "[" . date('Y-m-d H:i:s') . "] ========== 🏁 FIN DISPATCH CONEXIÓN FTP ==========\n";
         file_put_contents($logFile, $logMessage, FILE_APPEND);
 
-        return response()->json(["status" => "completed"]);
+        return response()->json(["status" => "processing"]);
     }
     public function dispatchUpdateAllJob()
     {
