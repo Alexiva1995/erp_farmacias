@@ -7,10 +7,10 @@ use Illuminate\Contracts\Encryption\DecryptException;
 
 class FtpCrypt
 {
-    protected static function getEncrypter(): Encrypter
+    protected static function getEncrypter(?string $rawKey = null): Encrypter
     {
-        $rawKey = env('FTP_SECRET_KEY', config('app.key'));
-        $key = substr(hash('sha256', (string) $rawKey), 0, 32); // AES-256 requiere 32 bytes
+        $rawKey = $rawKey ?? env('FTP_SECRET_KEY', '');
+        $key = substr(hash('sha256', (string) $rawKey), 0, 32);
         return new Encrypter($key, 'AES-256-CBC');
     }
 
@@ -25,12 +25,16 @@ class FtpCrypt
         if (empty($encrypted)) return '';
 
         try {
-            return self::getEncrypter()->decryptString($encrypted);
-        } catch (DecryptException $e) {
-            // Si la clave no se puede desencriptar (ej: estaba en texto plano o cambio FTP_SECRET_KEY), devolver texto crudo
-            return $encrypted;
+            // 1. Intentar con la clave previa original
+            return self::getEncrypter(env('FTP_SECRET_KEY', ''))->decryptString($encrypted);
         } catch (\Throwable $e) {
-            return $encrypted;
+            try {
+                // 2. Intentar con APP_KEY
+                return self::getEncrypter(config('app.key'))->decryptString($encrypted);
+            } catch (\Throwable $ex) {
+                // 3. Fallback a texto crudo
+                return $encrypted;
+            }
         }
     }
 }

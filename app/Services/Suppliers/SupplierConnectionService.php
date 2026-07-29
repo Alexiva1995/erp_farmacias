@@ -43,8 +43,12 @@ class SupplierConnectionService
     {
         $host = $connection->host;
         $port = (int) ($connection->port ?? 21);
-        $user = $connection->username;
-        $pass = FtpCrypt::decrypt($connection->password);
+        $user = (string) ($connection->username ?? '');
+        $pass = (string) FtpCrypt::decrypt($connection->password ?? '');
+
+        if (trim($user) === '' || trim($pass) === '') {
+            throw new Exception("Faltan el usuario o la contraseña de FTP para la conexión. Por favor edite el proveedor para agregar las credenciales.");
+        }
 
         // Valida la conexión en texto plano
         $ftp = @ftp_connect($host, $port, 10);
@@ -55,19 +59,29 @@ class SupplierConnectionService
 
         $login = @ftp_login($ftp, $user, $pass);
         if ($login === false) {
-            Log::warning("Fallo ftp_login inicial, intentando SSL", ['host' => $host]);
+            Log::warning("Fallo ftp_login inicial para {$user}@{$host}, intentando SSL...");
             @ftp_close($ftp);
 
-            // Si el inicio fallo usa ssl para intentar conectarse de nuevo
-            $ftp = @ftp_ssl_connect($host, $port, 90);
-            if ($ftp === false) {
-                Log::error("Fallo ftp_ssl_connect", ['host' => $host]);
-                throw new Exception('No se pudo conectar al servidor FTP');
+            // Reintento seguro con SSL tolerante a politicas locales de servidores que deniegan TLS
+            $sslSuccess = false;
+            try {
+                $sslFtp = @ftp_ssl_connect($host, $port, 15);
+                if ($sslFtp !== false) {
+                    $sslLogin = @ftp_login($sslFtp, $user, $pass);
+                    if ($sslLogin !== false) {
+                        $ftp = $sslFtp;
+                        $login = true;
+                        $sslSuccess = true;
+                    } else {
+                        @ftp_close($sslFtp);
+                    }
+                }
+            } catch (\Throwable $e) {
+                Log::warning("El servidor FTP {$host} no admite conexiones SSL/TLS: " . $e->getMessage());
             }
-            $login = ftp_login($ftp, $user, $pass);
-            if ($login === false) {
-                Log::error("Fallo ftp_login SSL", ['host' => $host]);
-                throw new Exception('Credenciales inválidas');
+
+            if (!$sslSuccess) {
+                throw new Exception("No se pudo iniciar sesión en el servidor FTP {$host}. Verifique que el usuario '{$user}' y la contraseña sean correctos.");
             }
         }
 
