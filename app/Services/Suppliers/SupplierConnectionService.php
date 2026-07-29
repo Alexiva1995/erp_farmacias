@@ -896,6 +896,7 @@ class SupplierConnectionService
     private function castValue(mixed $raw, array $meta): mixed
     {
         if ($raw === null) return null;
+        if (is_array($raw) || is_object($raw)) return null;
         $value = is_string($raw) ? trim(str_replace('"', '', $raw)) : (string) $raw;
 
         return match ($meta["type"]) {
