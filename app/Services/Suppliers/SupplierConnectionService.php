@@ -915,8 +915,10 @@ class SupplierConnectionService
         };
     }
 
-    private function parseDate(string $value, ?string $preferredFormat = null): ?string
+    private function parseDate(mixed $value, ?string $preferredFormat = null): ?string
     {
+        if ($value === null) return null;
+        $value = (string) $value;
         if ($value === "" || $value === "0000-00-00" || strtoupper($value) === "NULL") {
             return null;
         }
