@@ -122,7 +122,7 @@ class SupplierController extends Controller
         $logMessage .= "[" . date('Y-m-d H:i:s') . "] 📡 [CONTROLLER] connectionServiceSupplier() llamado - Supplier ID: {$supplier->id}, Name: {$supplier->name}\n";
         file_put_contents($logFile, $logMessage, FILE_APPEND);
         error_log($logMessage);
-        \Log::error("🚀 [INICIO] Conexión FTP iniciada", ['supplier_id' => $supplier->id, 'supplier_name' => $supplier->name]);
+        \Log::info("🚀 [INICIO] Conexión FTP iniciada", ['supplier_id' => $supplier->id, 'supplier_name' => $supplier->name]);
         
         $userId = auth()->id() ?? 1;
         $logMessage = "[" . date('Y-m-d H:i:s') . "] 👤 User ID: {$userId}\n";

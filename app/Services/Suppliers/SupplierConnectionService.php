@@ -262,9 +262,9 @@ class SupplierConnectionService
                 $invoiceUrl = $payloadInvoice['url'] ?? $connection->invoice_path;
                 $requestDataInv = isset($payloadInvoice['payload']) ? $payloadInvoice['payload'] : (isset($payloadInvoice['url']) ? [] : $payloadInvoice);
                 
-                Log::error("🔎 [FACTURAS] buildPayload result", ['payloadInvoice' => $payloadInvoice, 'invoiceUrl' => $invoiceUrl, 'method' => $payloadInvoice['method'] ?? 'post']);
+                Log::info("🔎 [FACTURAS] buildPayload result", ['payloadInvoice' => $payloadInvoice, 'invoiceUrl' => $invoiceUrl, 'method' => $payloadInvoice['method'] ?? 'post']);
                 $invoiceResponse = $this->fetchFromAPI($token, $requestDataInv, $client, $invoiceUrl, $payloadInvoice['method'] ?? 'post');
-                Log::error("🔎 [FACTURAS] fetchFromAPI result", ['count' => count($invoiceResponse)]);
+                Log::info("🔎 [FACTURAS] fetchFromAPI result", ['count' => count($invoiceResponse)]);
 
                 // Detectar si las facturas vienen en una clave específica (ej: 'facturas')
                 $invoicesRaw = $invoiceResponse;

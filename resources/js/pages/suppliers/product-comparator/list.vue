@@ -556,7 +556,8 @@ const handleCheckSupplierApi = async (supplier) => {
     supplierConnectionStore.startConnection();
     startPolling();
   } catch (error) {
-    toast.error(`No se pudo iniciar la conexión con ${supplier.name}`);
+    const errorDetail = error?.response?.data?.message || error?.message || "";
+    toast.error(`No se pudo iniciar la conexión con ${supplier.name}${errorDetail ? `: ${errorDetail}` : ""}`);
     pollingSupplierId.value = null;
   } finally {
     checkingApiSupplierId.value = null;

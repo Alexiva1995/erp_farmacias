@@ -47,7 +47,7 @@ class ProcessSupplierConnectionJob implements ShouldQueue
         $logMessage .= "[" . date('Y-m-d H:i:s') . "] 🗺️ Column Map: " . json_encode($this->columnMap) . "\n";
         file_put_contents($logFile, $logMessage, FILE_APPEND);
         error_log($logMessage);
-        Log::error("🔧 [JOB] INICIO handle()", [
+        Log::info("🔧 [JOB] INICIO handle()", [
             'supplier_id' => $this->supplier->id,
             'supplier_name' => $this->supplier->name,
             'tipo' => $tipo,
@@ -124,7 +124,7 @@ class ProcessSupplierConnectionJob implements ShouldQueue
                 
                 $logMessage = "[" . date('Y-m-d H:i:s') . "] 🚨 [JOB] DESPUÉS Excel::import - Productos obtenidos: {$productsCount}\n";
                 file_put_contents($logFile, $logMessage, FILE_APPEND);
-                Log::error("🚨 [JOB] Productos importados", ['count' => $productsCount]);
+                Log::info("🚨 [JOB] Productos importados", ['count' => $productsCount]);
                 
                 $results = [
                     "products" => $productsArray,
@@ -177,7 +177,7 @@ class ProcessSupplierConnectionJob implements ShouldQueue
             }
 
             // Log ANTES de llamar a storeSupplierConnectionData
-            Log::error("🚨 [JOB] ANTES de llamar storeSupplierConnectionData", [
+            Log::info("🚨 [JOB] ANTES de llamar storeSupplierConnectionData", [
                 'supplier_id' => $this->supplier->id,
                 'products_count' => count($results["products"] ?? []),
                 'invoices_count' => count($results["invoices"] ?? []),
@@ -190,7 +190,7 @@ class ProcessSupplierConnectionJob implements ShouldQueue
             $queryService->storeSupplierConnectionData($this->supplier, $results);
             
             // Log DESPUÉS de llamar a storeSupplierConnectionData
-            Log::error("🚨 [JOB] DESPUÉS de llamar storeSupplierConnectionData", [
+            Log::info("🚨 [JOB] DESPUÉS de llamar storeSupplierConnectionData", [
                 'supplier_id' => $this->supplier->id,
             ]);
             
