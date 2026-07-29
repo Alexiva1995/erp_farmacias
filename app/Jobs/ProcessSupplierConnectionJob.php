@@ -140,13 +140,14 @@ class ProcessSupplierConnectionJob implements ShouldQueue
                 error_log($logMessage);
                 
                 $supplierConnection = \App\Models\SupplierConnection::where('supplier_id', $this->supplier->id)->first();
-                if ($supplierConnection) {
-                    $logMessage = "[" . date('Y-m-d H:i:s') . "] 🔗 [JOB] Conexión encontrada - Host: {$supplierConnection->host}\n";
+                if (!$supplierConnection) {
+                    $logMessage = "[" . date('Y-m-d H:i:s') . "] ⚠️ [JOB] No se encontró conexión configurada para {$this->supplier->name}\n";
                     file_put_contents($logFile, $logMessage, FILE_APPEND);
-                } else {
-                    $logMessage = "[" . date('Y-m-d H:i:s') . "] ⚠️ [JOB] No se encontró conexión configurada\n";
-                    file_put_contents($logFile, $logMessage, FILE_APPEND);
+                    throw new \Exception("El proveedor {$this->supplier->name} no tiene una conexión FTP/API configurada.");
                 }
+
+                $logMessage = "[" . date('Y-m-d H:i:s') . "] 🔗 [JOB] Conexión encontrada - Host: {$supplierConnection->host}\n";
+                file_put_contents($logFile, $logMessage, FILE_APPEND);
                 
                 $logMessage = "[" . date('Y-m-d H:i:s') . "] 📡 [JOB] Ejecutando fetchData()...\n";
                 file_put_contents($logFile, $logMessage, FILE_APPEND);
