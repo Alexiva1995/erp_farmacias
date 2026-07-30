@@ -29,7 +29,7 @@ class IaAssistantReportService
 
         $esVistaGrupal = filter_var($filtros['tipo_vista'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
-        // 1. Obtener todos los IDs (de productos o grupos) que coinciden con los filtros (Cacheado)
+        // 1. Obtener todos los IDs (de productos o grupos) que coinciden con los filtros
         $allIds = $this->getFilteredIds($filtros, $esVistaGrupal);
         $total = count($allIds);
 
@@ -44,16 +44,11 @@ class IaAssistantReportService
         // 3. Hidratar los modelos
         $filtrosHidratacion = $filtros;
         if ($esVistaGrupal) {
-            // Si es vista grupal, los IDs son de GRUPOS
             $filtrosHidratacion['groups'] = $currentPageIds;
-            // Quitamos q para que traiga todos los productos del grupo una vez filtrados los grupos
-            // Nota: Si se requiere que los productos dentro del grupo también respeten q, se puede mantener q
         } else {
-            // Si es vista individual, los IDs son de PRODUCTOS
             $filtrosHidratacion['ids_in'] = $currentPageIds;
         }
         
-        // Ejecutamos la consulta base según el tipo
         if ($tipo === 'sales') {
             $resultado = $this->productRepository->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtrosHidratacion);
         } else {
@@ -67,7 +62,15 @@ class IaAssistantReportService
             $procesado = $this->processRegularReport($resultado, $tipo, $filtros);
         }
 
-        // 5. ORDENAMIENTO FINAL DINÁMICO (Garantiza coherencia total en la página actual)
+        // Filtrar por estado de stock pos-procesamiento (fallas / exceso)
+        $stockFilter = $filtros['stock'] ?? 'all';
+        if ($stockFilter === 'fallas') {
+            $procesado = $procesado->filter(fn($p) => (float)($p->solicitar ?? 0) > 0);
+        } elseif ($stockFilter === 'exceso') {
+            $procesado = $procesado->filter(fn($p) => (float)($p->solicitar ?? 0) < 0);
+        }
+
+        // 5. ORDENAMIENTO FINAL DINÁMICO
         $shortBy = $filtros['sortBy'] ?? 'solicitar';
         $orderDir = strtolower($filtros['orderBy'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
 
@@ -95,45 +98,6 @@ class IaAssistantReportService
             'path' => request()->url(),
             'query' => request()->query(),
         ]);
-    }
-
-    /**
-     * Devuelve grupos paginados con sus productos anidados (para vista de acordeón)
-     */
-    public function getGroupedReportWithPaginate(array $filtros): array
-    {
-        $filtros = $this->prepareDateFilters($filtros);
-        $tipo = $filtros['tipo_filtracion'] ?? 'average';
-        $page = (int) ($filtros['page'] ?? 1);
-        $perPage = (int) ($filtros['itemsPerPage'] ?? 25);
-        if ($perPage <= 0) $perPage = 999999;
-
-        // 1. Obtener todos los group_ids ordenados alfabéticamente
-        $allGroupIds = $this->getFilteredIds($filtros, true);
-        $totalGroups = count($allGroupIds);
-
-        // 2. Paginar los group_ids en memoria (ESTO sí limita a 25 grupos)
-        $offset = ($page - 1) * $perPage;
-        $currentGroupIds = array_slice($allGroupIds, $offset, $perPage);
-
-        if (empty($currentGroupIds)) {
-            return [
-                'grupos' => [],
-                'total_grupos' => $totalGroups,
-                'per_page' => $perPage,
-                'current_page' => $page,
-                'last_page' => (int) ceil($totalGroups / $perPage),
-            ];
-        }
-
-        // 3. Pre-cargar los nombres de grupos de esta página en una sola query
-        $grupoNombres = \App\Models\GroupsProduct::whereIn('id', $currentGroupIds)
-            ->pluck('name', 'id');
-
-        // 4. Para cada grupo de esta página, traer sus productos
-        $filtrosBase = $filtros;
-        unset($filtrosBase['page'], $filtrosBase['itemsPerPage']);
-
         $grupos = [];
         foreach ($currentGroupIds as $groupId) {
             $filtrosGrupo = $filtrosBase;
