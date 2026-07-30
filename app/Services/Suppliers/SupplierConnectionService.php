@@ -409,12 +409,35 @@ class SupplierConnectionService
 
         $structure_for_parsing = json_decode($connection->parse_using ?? '');
 
-        $splitLine = function (string $l) {
+        // Calcular offsets de columna desde la cabecera si el archivo es de ancho fijo/espaciado
+        $headerOffsets = [];
+        if ($has_header && !empty($headerLine) && !str_contains($headerLine, ';') && !str_contains($headerLine, "\t")) {
+            preg_match_all('/\S+/', $headerLine, $matches, PREG_OFFSET_CAPTURE);
+            if (!empty($matches[0]) && count($matches[0]) > 1) {
+                $headerOffsets = array_map(fn($m) => $m[1], $matches[0]);
+            }
+        }
+
+        $splitLine = function (string $l) use ($headerOffsets) {
             if (str_contains($l, ';')) {
                 return explode(';', $l);
             }
             if (str_contains($l, "\t")) {
                 return explode("\t", $l);
+            }
+            if (!empty($headerOffsets)) {
+                $cols = [];
+                $count = count($headerOffsets);
+                for ($i = 0; $i < $count; $i++) {
+                    $start = $headerOffsets[$i];
+                    $length = isset($headerOffsets[$i + 1]) ? ($headerOffsets[$i + 1] - $start) : null;
+                    if ($start < strlen($l)) {
+                        $cols[] = trim($length !== null ? substr($l, $start, $length) : substr($l, $start));
+                    } else {
+                        $cols[] = '';
+                    }
+                }
+                return $cols;
             }
             return preg_split('/\s{2,}/', trim($l)) ?: [$l];
         };
@@ -508,10 +531,19 @@ class SupplierConnectionService
 
                     case "decimal":
                         $trimmedVal = trim($value);
-                        if (str_contains($trimmedVal, '.') && str_contains($trimmedVal, ',')) {
+                        $trimmedVal = preg_replace('/[^\d.,-]/', '', $trimmedVal);
+                        if (empty($trimmedVal)) {
+                            $cleanValue = "0.00";
+                        } elseif (str_contains($trimmedVal, '.') && str_contains($trimmedVal, ',')) {
                             $cleanValue = str_replace(',', '.', str_replace('.', '', $trimmedVal));
-                        } else {
+                        } elseif (str_contains($trimmedVal, ',')) {
                             $cleanValue = str_replace(',', '.', $trimmedVal);
+                        } else {
+                            if (preg_match('/^\d{1,3}\.\d{3}$/', $trimmedVal)) {
+                                $cleanValue = str_replace('.', '', $trimmedVal);
+                            } else {
+                                $cleanValue = $trimmedVal;
+                            }
                         }
                         if (is_numeric($cleanValue)) {
                             $newValue = number_format((float) $cleanValue, 2, ".", "");
