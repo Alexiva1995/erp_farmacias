@@ -57,6 +57,14 @@ const displayedItems = computed(() => {
   return statuModule.items;
 });
 
+// Total que se muestra en la paginación: cuando hay filtro cliente, usa la longitud filtrada
+const displayedTotal = computed(() => {
+  if (soloConCoincidencias.value) {
+    return displayedItems.value.length;
+  }
+  return statuModule.total;
+});
+
 const handleClearFilters = () => {
   withSuppliers.value = false;
   soloConCoincidencias.value = false;
@@ -660,7 +668,7 @@ onMounted(async () => {
         <SupplierIaOrderAssistantIndividualTable
           v-else
           :products="displayedItems"
-          :total-product="statuModule.total"
+          :total-product="displayedTotal"
           :loading="loading"
           :items-per-page="itemsPerPage"
           :page="page"
