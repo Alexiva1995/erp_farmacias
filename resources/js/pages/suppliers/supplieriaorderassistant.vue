@@ -313,6 +313,7 @@ watch(
       await actualizarTabla();
     }, 400); // 400ms de retraso para evitar peticiones masivas
   },
+  { deep: true }
 );
 
 watch(ordenarAhorro, (nuevoValor) => {
