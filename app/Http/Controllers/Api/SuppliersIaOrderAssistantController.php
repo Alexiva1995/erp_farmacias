@@ -46,7 +46,7 @@ class SuppliersIaOrderAssistantController extends Controller
         $esVistaGrupal = filter_var($filtros['tipo_vista'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
         // Clave única de caché basada en el hash de los filtros
-        $cacheKey = 'ia_assistant_paginate_v7_' . md5(json_encode($filtros));
+        $cacheKey = 'ia_assistant_paginate_v8_' . md5(json_encode($filtros));
 
         $respuesta["paginate"] = Cache::remember($cacheKey, 60, function () use ($filtros, $esVistaGrupal) {
             if ($esVistaGrupal) {
@@ -100,6 +100,7 @@ class SuppliersIaOrderAssistantController extends Controller
             "skip_ai_match" => filter_var($request->skip_ai_match, FILTER_VALIDATE_BOOLEAN),
             "con_descuento" => filter_var($request->con_descuento, FILTER_VALIDATE_BOOLEAN),
             "with_trend" => filter_var($request->with_trend, FILTER_VALIDATE_BOOLEAN),
+            "show_ignored" => filter_var($request->show_ignored, FILTER_VALIDATE_BOOLEAN),
         ];
 
         if ($request->filled("orderBy") && $request->filled("sortBy")) {
