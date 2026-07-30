@@ -397,6 +397,8 @@ class InventoryCycleQueryService
             $filters['status'] = null;
         } else {
             $filters['status'] = 'pending';
+            // Excluir conteos sin discrepancia: no tienen relevancia para verificación
+            $query->where('discrepancy', '!=', 0);
         }
 
         $query = $this->applyFiltersToCount($query, $filters);

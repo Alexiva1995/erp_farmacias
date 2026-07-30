@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 import AppTextField from "@/@core/components/app-form-elements/AppTextField.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
@@ -20,6 +20,7 @@ const laboratories = ref([]);
 const userOptions = ref([]);
 const supervisorOptions = ref([]);
 const loading = ref(false);
+const hasError = ref(false);
 const isLoadingFilters = ref(false);
 const isAdvancedFiltersVisible = ref(false);
 
@@ -37,7 +38,7 @@ const page = ref(1);
 const itemsPerPage = ref(10);
 const searchQuery = ref("");
 const selectedLaboratory = ref(null);
-const discrepancyFilter = ref(null);
+const discrepancyFilter = ref("with_discrepancy");
 const selectedUserId = ref(null);
 const selectedSupervisorId = ref(null);
 const sortBy = ref("product.name");
@@ -55,8 +56,8 @@ const headers = computed(() => [
   { title: "Sistema", key: "system_quantity", value: "system_quantity", sortable: true, align: "center" },
   { title: "Físico", key: "final_quantity", sortable: true, align: "center" },
   { title: "Discrepancia", key: "discrepancy", sortable: true, align: "center" },
-  { title: "Costo", key: "product.unit_cost", value: "product.unit_cost", sortable: true, align: "right" },
-  { title: "Monto", key: "amount", sortable: true, align: "right" },
+  { title: "P. Venta", key: "product.sale_price", value: "product.sale_price", sortable: true, align: "right" },
+  { title: "Monto (PVP)", key: "amount", sortable: true, align: "right" },
   { title: "Usuario / Supervisor", key: "user.email", value: "user.email", sortable: true },
   { title: "Acciones", key: "actions", sortable: false, align: "center" },
 ]);
@@ -105,6 +106,7 @@ const fetchProducts = async () => {
   if (!cycleId.value) return;
 
   loading.value = true;
+  hasError.value = false;
   const params = {
     cycleId: cycleId.value,
     page: page.value,
@@ -128,10 +130,15 @@ const fetchProducts = async () => {
     totalProducts.value = response.data.total || 0;
   } catch (error) {
     console.error("Error al obtener productos:", error);
-    toast.error("Error al cargar productos.");
+    hasError.value = true;
+    toast.error("Error al cargar productos del ciclo.");
   } finally {
     loading.value = false;
   }
+};
+
+const reloadAllData = async () => {
+  await Promise.all([fetchCycleInfo(), fetchProducts()]);
 };
 
 const openEditModal = (item) => {
@@ -197,20 +204,20 @@ const hasActiveAdvancedFilters = computed(() => {
 
 const goBack = () => router.back();
 
+let debounceTimer = null;
+
 onMounted(() => {
-  fetchCycleInfo();
-  fetchProducts();
+  Promise.all([fetchCycleInfo(), fetchProducts()]);
 });
 
 onUnmounted(() => {
-  clearTimeout(debounceTimer);
+  if (debounceTimer) clearTimeout(debounceTimer);
 });
 
-let debounceTimer;
 watch(
   [page, itemsPerPage, searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selectedSupervisorId, sortBy, orderBy],
   () => {
-    clearTimeout(debounceTimer);
+    if (debounceTimer) clearTimeout(debounceTimer);
     debounceTimer = setTimeout(fetchProducts, 200);
   },
 );
@@ -226,19 +233,6 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
       <VCardText class="pa-3">
         <!-- Fila de Búsqueda y Acciones (Limpia) -->
         <div class="d-flex align-center gap-3 mb-2">
-          <!-- Información de Ciclo Compacta -->
-          <div v-if="cycleInfo" class="d-none d-sm-flex align-center me-2">
-            <VIcon
-              :icon="cycleInfo.status === 'active' ? 'tabler-refresh' : 'tabler-circle-check'"
-              :color="cycleInfo.status === 'active' ? 'primary' : 'success'"
-              size="20"
-              class="me-2"
-            />
-            <span class="text-xs font-weight-black text-high-emphasis text-uppercase letter-spacing-05 truncate-1-line" style="max-inline-size: 150px;">
-              {{ cycleInfo.status === 'active' ? 'Ciclo Activo' : 'Cerrado' }} ({{ formatDateSimple(cycleInfo.start_date) }})
-            </span>
-          </div>
-
           <!-- Buscador Central -->
           <div class="flex-grow-1">
             <AppTextField
@@ -253,43 +247,54 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
             />
           </div>
 
-          <!-- Botones de Acción (Estilo Inventario) -->
+          <!-- Botones de Acción (Estilo Limpio y Redondeado del Sistema) -->
           <div class="d-flex align-center gap-1">
-            <VBtn
-              icon variant="tonal"
+            <IconBtn
+              variant="tonal"
               :color="isAdvancedFiltersVisible ? 'primary' : 'secondary'"
               size="38"
-              class="rounded-circle shadow-sm"
+              class="rounded-circle"
               @click="toggleAdvancedFilters"
             >
-              <VIcon :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" size="22" />
+              <VIcon :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" />
               <VTooltip activator="parent">Filtros Avanzados</VTooltip>
               <VBadge v-if="hasActiveAdvancedFilters && !isAdvancedFiltersVisible" color="error" dot offset-x="3" offset-y="-3" />
-            </VBtn>
+            </IconBtn>
 
-            <VBtn icon variant="tonal" color="secondary" size="38" class="rounded-circle shadow-sm" @click="goBack">
-              <VIcon icon="tabler-arrow-left" size="22" />
-              <VTooltip activator="parent">Volver</VTooltip>
-            </VBtn>
-
-            <VBtn
-              v-if="cycleInfo?.status === 'active'"
-              icon
-              color="success"
-              variant="flat"
+            <IconBtn
+              variant="tonal"
+              color="secondary"
               size="38"
-              class="rounded-circle shadow-sm"
+              class="rounded-circle"
+              @click="goBack"
             >
-              <VIcon icon="tabler-lock" size="22" />
+              <VIcon icon="tabler-arrow-left" />
+              <VTooltip activator="parent">Volver</VTooltip>
+            </IconBtn>
+
+            <IconBtn
+              v-if="cycleInfo?.status === 'active'"
+              variant="tonal"
+              color="success"
+              size="38"
+              class="rounded-circle"
+            >
+              <VIcon icon="tabler-lock" />
               <VTooltip activator="parent">Cerrar Ciclo</VTooltip>
-            </VBtn>
+            </IconBtn>
 
             <VDivider vertical class="mx-1 my-2" />
 
-            <VBtn icon variant="text" color="secondary" size="38" class="rounded-circle" @click="handleClearFilters">
-              <VIcon icon="tabler-eraser" size="22" />
+            <IconBtn
+              variant="text"
+              color="secondary"
+              size="38"
+              class="rounded-circle"
+              @click="handleClearFilters"
+            >
+              <VIcon icon="tabler-eraser" />
               <VTooltip activator="parent">Limpiar Filtros</VTooltip>
-            </VBtn>
+            </IconBtn>
           </div>
         </div>
 
@@ -343,32 +348,31 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
             </VRow>
           </div>
         </VExpandTransition>
-
-        <!-- Métricas Integradas (Solo montos) -->
-        <div v-if="cycleTotals" class="d-flex align-center justify-space-around py-1 mt-1">
-          <div class="d-flex align-center gap-1 px-3 flex-grow-1 justify-center">
-            <span class="text-super-xs font-weight-bold text-disabled uppercase text-no-wrap">Sobrante:</span>
-            <span class="text-xs font-weight-black text-success">{{ formatPrice(cycleTotals.total_surplus || 0) }}</span>
-          </div>
-          
-          <VDivider vertical class="mx-1" />
-
-          <div class="d-flex align-center gap-1 px-3 flex-grow-1 justify-center">
-            <span class="text-super-xs font-weight-bold text-disabled uppercase text-no-wrap">Faltante:</span>
-            <span class="text-xs font-weight-black text-error">{{ formatPrice(cycleTotals.total_shortage || 0) }}</span>
-          </div>
-          
-          <VDivider vertical class="mx-1" />
-
-          <div class="d-flex align-center gap-2 px-3 flex-grow-1 justify-center">
-            <span class="text-super-xs font-weight-bold text-disabled uppercase text-no-wrap">Balance:</span>
-            <span class="text-xs font-weight-black" :class="(cycleTotals.net_total || 0) >= 0 ? 'text-primary' : 'text-warning'">
-              {{ formatPrice(cycleTotals.net_total || 0) }}
-            </span>
-          </div>
-        </div>
       </VCardText>
     </VCard>
+
+    <!-- Alerta de Error de Red con Reintento -->
+    <VAlert
+      v-if="hasError"
+      type="error"
+      variant="tonal"
+      class="mb-4"
+      closable
+      title="Error de Comunicación"
+      text="No se pudieron cargar los detalles del ciclo de inventario. Verifique su conexión de red."
+    >
+      <template #append>
+        <VBtn
+          color="error"
+          size="small"
+          variant="outlined"
+          prepend-icon="tabler-refresh"
+          @click="reloadAllData"
+        >
+          Reintentar
+        </VBtn>
+      </template>
+    </VAlert>
 
     <VCard>
       <div class="d-none d-md-block">
@@ -457,13 +461,13 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
             <span v-else class="text-xs text-disabled">Sin diferencias</span>
           </template>
 
-          <template #item.product.unit_cost="{ item }">
-            <span class="text-sm font-weight-medium text-secondary">{{ formatPrice(item.product?.unit_cost || 0) }}</span>
+          <template #item.product.sale_price="{ item }">
+            <span class="text-sm font-weight-medium text-secondary">{{ formatPrice(item.product?.sale_price || 0) }}</span>
           </template>
 
           <template #item.amount="{ item }">
             <span class="text-sm font-weight-black" :class="item.discrepancy >= 0 ? 'text-success' : 'text-error'">
-              {{ formatPrice((item.discrepancy || 0) * (item.product?.unit_cost || 0)) }}
+              {{ formatPrice((item.discrepancy || 0) * (item.product?.sale_price || 0)) }}
             </span>
           </template>
 
@@ -516,7 +520,7 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
                 <div class="d-flex flex-column text-right">
                   <span class="text-super-xs text-disabled text-uppercase font-weight-black">MONTO</span>
                   <span class="text-sm font-weight-black" :class="item.discrepancy >= 0 ? 'text-success' : 'text-error'">
-                    {{ formatPrice((item.discrepancy || 0) * (item.product?.unit_cost || 0)) }}
+                    {{ formatPrice((item.discrepancy || 0) * (item.product?.sale_price || 0)) }}
                   </span>
                 </div>
               </div>
@@ -607,7 +611,7 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
           </VCard>
 
           <!-- Input de Discrepancia Premium -->
-          <VCard variant="flat" class="pa-6 rounded-xl border-dashed-2 bg-white text-center shadow-sm">
+          <VCard variant="flat" class="pa-6 rounded-xl border bg-white text-center shadow-sm">
             <div class="d-flex align-center justify-center gap-2 mb-4">
               <VAvatar color="primary" size="28" variant="tonal" class="rounded-lg">
                 <VIcon icon="tabler-adjustments-alt" size="16" />
@@ -630,7 +634,7 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
               />
             </div>
 
-            <div class="mt-4 pt-4 border-t border-dashed d-flex flex-column align-center gap-2">
+            <div class="mt-4 pt-4 border-t d-flex flex-column align-center gap-2">
               <span class="text-super-xs font-weight-black text-disabled uppercase letter-spacing-1">
                 {{ newDiscrepancy === 0 ? "✓ Sincronizar stock (Sin diferencia)" : newDiscrepancy > 0 ? "⚠ Se registrará como sobrante de inventario" : "⚠ Se registrará como faltante de inventario" }}
               </span>
@@ -707,4 +711,10 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
 
 :deep(.v-data-table) { font-size: 0.8125rem; }
 :deep(.v-data-table th) { color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important; font-size: 0.75rem !important; font-weight: 700 !important; text-transform: uppercase; }
+
+/* Forzar botones 100% circulares de la barra de acciones */
+:deep(.v-btn.rounded-circle),
+:deep(.v-btn.v-btn--icon) {
+  border-radius: 50% !important;
+}
 </style>

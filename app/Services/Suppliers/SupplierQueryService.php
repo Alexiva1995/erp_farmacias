@@ -277,16 +277,6 @@ class SupplierQueryService
 
 
             foreach ($uniqueProducts as $index => $productData) {
-                $logFile = storage_path('logs/supplier_debug_' . date('Y-m-d') . '.log');
-                $productId = $productData['product_id'] ?? 'NULL';
-                $productName = substr($productData['name'] ?? 'NULL', 0, 50);
-                $logMessage = "[" . date('Y-m-d H:i:s') . "] 🚨 Procesando producto #{$index} - product_id: {$productId}, name: {$productName}\n";
-                file_put_contents($logFile, $logMessage, FILE_APPEND);
-
-                // Log por producto eliminado por ser demasiado ruidoso
-                /*
-                */
-
                 try {
                     // Asegurar campos obligatorios
                     if (!isset($productData['supplier_id'])) {
@@ -326,19 +316,10 @@ class SupplierQueryService
                     // Insertar directamente SIN transacción anidada
                     DB::table('product_suppliers')->insert($productData);
 
-                    $logMessage = "[" . date('Y-m-d H:i:s') . "] ✅ Insertado producto #{$index} exitosamente - product_id: " . ($productData['product_id'] ?? 'NULL') . ", name: " . substr($productData['name'] ?? 'NULL', 0, 50) . "\n";
-                    file_put_contents($logFile, $logMessage, FILE_APPEND);
-                    error_log($logMessage);
-
-                    // Log por producto eliminado por ser demasiado ruidoso
-                /*
-                */
-
                     $insertados++;
                 } catch (\Throwable $e) {
                     $errores++;
 
-                    $logFile = storage_path('logs/supplier_debug_' . date('Y-m-d') . '.log');
                     $errorMsg = $e->getMessage();
                     $errorCode = $e->getCode();
 
@@ -851,7 +832,6 @@ class SupplierQueryService
     public function getRecentConnectionStatusesForUser(int $userId, int $minutes = 10): Collection
     {
         return SupplierConnectionStatus::with('supplier')
-            ->where('user_id', $userId)
             ->whereIn('status', ['completed', 'failed'])
             ->where('created_at', '>=', now()->subMinutes($minutes))
             ->latest()

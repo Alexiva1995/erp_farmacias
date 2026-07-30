@@ -301,7 +301,7 @@ const toggleFavorite = async (item) => {
         :sort-by="props.sortBy ? [{ key: props.sortBy, order: props.orderBy || 'asc' }] : []"
         class="text-no-wrap"
         density="compact"
-        show-select
+        :show-select="props.mode === 'products'"
         item-value="id"
         @update:options="(options) => emit('update:options', options)"
       >
@@ -693,9 +693,9 @@ const toggleFavorite = async (item) => {
       @merged="emit('product-merged')"
     />
 
-    <!-- Barra de Acciones Masivas Flotante (Glassmorphism) -->
+    <!-- Barra de Acciones Masivas Flotante (Glassmorphism) — Solo en modo products -->
     <Transition name="fade-slide">
-      <div v-if="selectedProducts.length > 0" class="bulk-actions-wrapper">
+      <div v-if="selectedProducts.length > 0 && props.mode === 'products'" class="bulk-actions-wrapper">
         <VCard class="bulk-actions-bar px-6 py-3 d-flex align-center justify-space-between rounded-pill elevation-10">
           <div class="d-flex align-center gap-3">
             <VChip color="primary" class="font-weight-black">{{ selectedProducts.length }}</VChip>

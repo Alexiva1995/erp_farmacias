@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
 import { formatPrice, formatDateSimple } from "@/utils/formatters";
 import { useBrandingStore } from "@/stores/useBrandingStore";
@@ -232,11 +232,11 @@ const formatDifference = (val, item) => {
         </template>
 
         <template #item.preferencia_product="{ item }">
-          <span class="font-weight-bold">{{ parseFloat(item.preferencia_product || 0).toFixed(1) }}%</span>
+          <span class="font-weight-bold">{{ parseFloat(item.preferencia_product || 0).toFixed(2) }}%</span>
         </template>
 
         <template #item.promedio_calculado="{ item }">
-          <span class="font-weight-bold text-disabled">{{ formatQuantity(item.promedio_calculado, item) }}</span>
+          <span class="font-weight-bold text-disabled">{{ parseFloat(item.promedio_calculado || 0).toFixed(2) }}%</span>
         </template>
 
         <template #item.diferencia_product="{ item }">

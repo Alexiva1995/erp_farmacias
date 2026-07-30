@@ -1,16 +1,20 @@
 <script setup>
 import InventoryCountDialog from "@/components/dialogs/InventoryCountDialog.vue";
+import LotDistributionModal from "@/components/dialogs/LotDistributionModal.vue";
+import ProductFilters from "@/components/ProductFilters.vue";
 import InvoiceToCountTable from "@/components/InvoiceToCountTable.vue";
 import SalesToCountTable from "@/components/SalesToCountTable.vue";
-import ProductFilters from "@/components/ProductFilters.vue";
 import ProductTable from "@/components/ProductTable.vue";
-import LotDistributionModal from "@/components/dialogs/LotDistributionModal.vue";
 import { useDataTable } from "@/composables/useDataTable";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { onMounted, onUnmounted, reactive, ref, computed } from "vue";
+import { onMounted, reactive, ref, computed } from "vue";
 import { useBrandingStore } from "@/stores/useBrandingStore";
 
+// ── Pestaña activa ──────────────────────────────────────────────────────────
+const activeTab = ref("products");
+
+// ── Filtros compartidos entre las 3 tablas ──────────────────────────────────
 const filters = reactive({
   q: "",
   laboratoryId: null,
@@ -21,6 +25,7 @@ const filters = reactive({
   isStrictSearch: false,
 });
 
+// ── Fuentes de datos ────────────────────────────────────────────────────────
 const {
   items: products,
   totalItems: totalProduct,
@@ -31,126 +36,135 @@ const {
 } = useDataTable("/inventory/products", filters);
 
 const {
-  items: invoiceProductsToCount,
-  totalItems: totalInvoiceProductsToCount,
-  loading: invoiceProductsLoading,
-  options: invoiceProductsOptions,
-  fetchData: fetchInvoiceProductsToCount,
-  updateTableOptions: updateInvoiceProductsTableOptions,
+  items: invoiceProducts,
+  totalItems: totalInvoiceProducts,
+  loading: invoiceLoading,
+  options: invoiceOptions,
+  fetchData: fetchInvoiceProducts,
+  updateTableOptions: updateInvoiceTableOptions,
 } = useDataTable("/inventory/count/invoice-details-to-count", filters);
 
 const {
-  items: salesProductsToCount,
-  totalItems: totalSalesProductsToCount,
-  loading: salesProductsLoading,
-  options: salesProductsOptions,
-  fetchData: fetchSalesProductsToCount,
-  updateTableOptions: updateSalesProductsTableOptions,
+  items: salesProducts,
+  totalItems: totalSalesProducts,
+  loading: salesLoading,
+  options: salesOptions,
+  fetchData: fetchSalesProducts,
+  updateTableOptions: updateSalesTableOptions,
 } = useDataTable("/inventory/count/sales-details-to-count", filters);
 
-const laboratories = ref([]);
-const origins = ref([]);
-const locations = ref([]);
+// ── Datos auxiliares ────────────────────────────────────────────────────────
+const laboratories  = ref([]);
+const origins       = ref([]);
+const locations     = ref([]);
 const isLoadingFilters = ref(false);
+const hasActiveCycle   = ref(false);
 
-const isCountDialogVisible = ref(false);
-const currentProduct = ref({});
-const hasActiveCycle = ref(false);
-const countType = ref("product");
+// ── Modal de conteo — compartido para las 3 pestañas ───────────────────────
+const isCountDialogVisible        = ref(false);
+const currentProduct              = ref({});
+const countType                   = ref("product");
 
-// Variables para el modal de lotes en Verificación Simple
-const showLotDistributionModal = ref(false);
-const itemForLotDistribution = ref(null);
+// ── Modal de lotes — compartido (modo simple) ───────────────────────────────
+const showLotDistributionModal    = ref(false);
+const itemForLotDistribution      = ref(null);
 const targetQuantityForDistribution = ref(0);
-const pendingCountData = ref(null);
+const pendingCountData            = ref(null);
 
+// ── Store ───────────────────────────────────────────────────────────────────
 const brandingStore = useBrandingStore();
-const isSimpleMode = computed(() => brandingStore.settings?.cyclic_inventory_mode === 'simple');
+const isSimpleMode  = computed(() => brandingStore.settings?.cyclic_inventory_mode === "simple");
 
+// ── Carga de selects y ciclo activo ────────────────────────────────────────
 const fetchSelectOptions = async () => {
   isLoadingFilters.value = true;
   try {
-    const [labResponse, originResponse, cycleResponse, locationResponse] = await Promise.all([
+    const [labRes, originRes, cycleRes, locRes] = await Promise.all([
       axios.get("/laboratories"),
       axios.get("/origins"),
       axios.get("/inventory/cycle/active"),
       axios.get("/locations"),
     ]);
 
-    laboratories.value = labResponse.data;
-    origins.value = originResponse.data;
-    locations.value = locationResponse.data.data || locationResponse.data || [];
+    laboratories.value = labRes.data;
+    origins.value      = originRes.data;
+    locations.value    = locRes.data?.data ?? locRes.data ?? [];
 
-    if (cycleResponse.data.success) {
-      hasActiveCycle.value = cycleResponse.data.has_active_cycle;
+    if (cycleRes.data.success) {
+      hasActiveCycle.value = cycleRes.data.has_active_cycle;
       if (!hasActiveCycle.value) {
-        toast.warning(
-          "No existe un ciclo de inventario activo. Los conteos no podrán ser registrados."
-        );
+        toast.warning("No existe un ciclo de inventario activo. Los conteos no podrán ser registrados.");
       }
     }
-  } catch (error) {
-    console.error("Error al cargar opciones de los selects:", error);
+  } catch {
     toast.error("No se pudieron cargar los filtros.");
   } finally {
     isLoadingFilters.value = false;
   }
 };
 
-onMounted(async () => {
-  try {
-    await Promise.all([
-      fetchSelectOptions(),
-      fetchProducts(),
-      fetchInvoiceProductsToCount(),
-      fetchSalesProductsToCount()
-    ]);
-  } catch (error) {
-    console.error("Error al inicializar la vista de usuario:", error);
-  }
-});
+onMounted(() => Promise.all([
+  fetchSelectOptions(),
+  fetchProducts(),
+  fetchInvoiceProducts(),
+  fetchSalesProducts(),
+]));
 
-onUnmounted(() => {
-  // Para futuras expansiones con timers
-});
+// ── Limpiar filtros ─────────────────────────────────────────────────────────
+const handleClearFilters = () => {
+  filters.q             = "";
+  filters.laboratoryId  = null;
+  filters.originId      = null;
+  filters.hasStock      = null;
+  filters.startDate     = null;
+  filters.endDate       = null;
+  filters.isStrictSearch = false;
+  [productOptions, invoiceOptions, salesOptions].forEach(opt => {
+    opt.sortBy  = undefined;
+    opt.orderBy = undefined;
+  });
+};
 
+// ── Ordenamiento global ─────────────────────────────────────────────────────
+const handleSort = ({ key, order }) => {
+  [productOptions, invoiceOptions, salesOptions].forEach(opt => {
+    opt.sortBy  = key;
+    opt.orderBy = order;
+  });
+};
+
+// ── Abrir modal de conteo ───────────────────────────────────────────────────
 const handleCountProduct = (product, type) => {
   if (!hasActiveCycle.value) {
-    toast.error(
-      "No se puede realizar el conteo. No existe un ciclo de inventario activo."
-    );
+    toast.error("No se puede realizar el conteo. No existe un ciclo de inventario activo.");
     return;
   }
-
-  countType.value = type;
+  countType.value    = type;
   currentProduct.value = { ...product };
   isCountDialogVisible.value = true;
 };
 
+// ── Envío del conteo ────────────────────────────────────────────────────────
+const refetchByType = () => {
+  if (countType.value === "invoice") return fetchInvoiceProducts();
+  if (countType.value === "sales")   return fetchSalesProducts();
+  return fetchProducts();
+};
+
 const sendCountRequest = async (endpoint, payload) => {
   try {
-    const response = await axios.post(endpoint, payload);
-
-    if (response.data.success) {
-      toast.success(response.data.message || "Conteo registrado exitosamente");
+    const { data } = await axios.post(endpoint, payload);
+    if (data.success) {
+      toast.success(data.message || "Conteo registrado exitosamente");
       isCountDialogVisible.value = false;
-
-      if (countType.value === "invoice") {
-        await fetchInvoiceProductsToCount();
-      } else if (countType.value === "sales") {
-        await fetchSalesProductsToCount();
-      } else {
-        await fetchProducts();
-      }
+      await refetchByType();
     } else {
-      toast.error(response.data.message || "Error al registrar el conteo");
+      toast.error(data.message || "Error al registrar el conteo");
     }
   } catch (error) {
-    console.error("Error al registrar el conteo:", error);
     if (error.response?.status === 422) {
-      const errors = error.response.data.errors;
-      const errorMessages = Object.values(errors).flat().join(", ");
-      toast.error(`Errores de validación: ${errorMessages}`);
+      const msgs = Object.values(error.response.data.errors).flat().join(", ");
+      toast.error(`Errores de validación: ${msgs}`);
     } else if (error.response?.status === 400) {
       toast.error(error.response.data.message);
     } else {
@@ -159,101 +173,60 @@ const sendCountRequest = async (endpoint, payload) => {
   }
 };
 
+// ── Guardar conteo desde el diálogo ────────────────────────────────────────
 const handleSaveCount = async (countData) => {
   const productId = currentProduct.value.id;
   const endpoint =
-    countType.value === "invoice"
-      ? `/inventory/count/invoice-count/${productId}`
-      : countType.value === "sales"
-        ? `/inventory/count/sales-count/${productId}`
-        : `/inventory/count/${productId}`;
+    countType.value === "invoice" ? `/inventory/count/invoice-count/${productId}` :
+    countType.value === "sales"   ? `/inventory/count/sales-count/${productId}`   :
+                                    `/inventory/count/${productId}`;
 
-  // Calcular system_quantity y discrepancy
-  const systemQuantity = Number(currentProduct.value.stock_calculado || currentProduct.value.stock || 0);
-  const discrepancy = countData.countedQuantity - systemQuantity;
-
+  const systemQuantity = Number(currentProduct.value.stock_calculado ?? currentProduct.value.stock ?? 0);
   const payload = {
     counted_quantity: countData.countedQuantity,
-    system_quantity: systemQuantity,
-    discrepancy: discrepancy,
+    system_quantity:  systemQuantity,
+    discrepancy:      countData.countedQuantity - systemQuantity,
+    ...(countData.allowWithoutBarcode
+      ? { allow_without_barcode: true }
+      : { barcode: countData.barcode }),
   };
 
-  // Solo incluir barcode si no se permite sin código de barras
-  if (!countData.allowWithoutBarcode) {
-    payload.barcode = countData.barcode;
-  } else {
-    payload.allow_without_barcode = true;
-  }
-
-  // Si es modo simple, tipo de conteo producto y los lotes están activos, desviar al modal de lotes
+  // Modo simple con lotes → derivar al modal de distribución
   const enableLots = brandingStore.settings?.enable_lots ?? true;
   if (enableLots && isSimpleMode.value && countType.value === "product") {
-    isCountDialogVisible.value = false;
-    pendingCountData.value = {
-      endpoint,
-      payload
-    };
-    itemForLotDistribution.value = currentProduct.value;
+    isCountDialogVisible.value      = false;
+    pendingCountData.value          = { endpoint, payload };
+    itemForLotDistribution.value    = currentProduct.value;
     targetQuantityForDistribution.value = countData.countedQuantity;
-    showLotDistributionModal.value = true;
+    showLotDistributionModal.value  = true;
     return;
   }
 
   await sendCountRequest(endpoint, payload);
 };
 
-const handleLotsDistributed = async (distributionData) => {
+// ── Confirmación de distribución de lotes ─────────────────────────────────
+const handleLotsDistributed = async ({ updatedLots, newLots }) => {
   if (!pendingCountData.value) {
     toast.error("Error: no hay datos de conteo pendientes.");
     return;
   }
   const { endpoint, payload } = pendingCountData.value;
-  const finalPayload = {
-    ...payload,
-    updated_lots: distributionData.updatedLots,
-    new_lots: distributionData.newLots,
-  };
-
   try {
-    await sendCountRequest(endpoint, finalPayload);
+    await sendCountRequest(endpoint, { ...payload, updated_lots: updatedLots, new_lots: newLots });
   } finally {
-    showLotDistributionModal.value = false;
-    itemForLotDistribution.value = null;
-    pendingCountData.value = null;
+    showLotDistributionModal.value  = false;
+    itemForLotDistribution.value    = null;
+    pendingCountData.value          = null;
   }
 };
-
-const handleClearFilters = () => {
-  filters.q = "";
-  filters.laboratoryId = null;
-  filters.originId = null;
-  filters.hasStock = null;
-  filters.startDate = null;
-  filters.endDate = null;
-  filters.isStrictSearch = false;
-  productOptions.sortBy = undefined;
-  productOptions.orderBy = undefined;
-  invoiceProductsOptions.sortBy = undefined;
-  invoiceProductsOptions.orderBy = undefined;
-  salesProductsOptions.sortBy = undefined;
-  salesProductsOptions.orderBy = undefined;
-};
-
-
-const handleSort = (sortData) => {
-  productOptions.sortBy = sortData.key;
-  productOptions.orderBy = sortData.order; 
-  invoiceProductsOptions.sortBy = sortData.key;
-  invoiceProductsOptions.orderBy = sortData.order;
-  salesProductsOptions.sortBy = sortData.key;
-  salesProductsOptions.orderBy = sortData.order;
-};
-
 </script>
 
 <template>
   <div class="inventory-users-view pb-12">
-    <div class="d-flex flex-column mt-1">
+    <div class="d-flex flex-column gap-1 mt-1">
+
+      <!-- Filtros -->
       <ProductFilters
         v-model:searchQuery="filters.q"
         v-model:selectedLaboratory="filters.laboratoryId"
@@ -266,56 +239,100 @@ const handleSort = (sortData) => {
         :origins="origins"
         :loading="isLoadingFilters"
         mode="inventory"
+        class="py-1"
         @clear="handleClearFilters"
         @sort="handleSort"
-        class="mb-1"
       />
 
-      <ProductTable
-        :products="products"
-        :loading="productLoading"
-        :total-product="totalProduct"
-        :items-per-page="productOptions.itemsPerPage"
-        :page="productOptions.page"
-        mode="inventory"
-        title="Productos por Contar"
-        @update:options="updateProductTableOptions"
-        @count-product="(product) => handleCountProduct(product, 'product')"
-      />
+      <!-- Card con pestañas — mismo patrón que cyclic.vue -->
+      <VCard variant="outlined" class="rounded-lg bg-surface">
+        <VTabs v-model="activeTab" color="primary" align-tabs="start">
 
-      <InvoiceToCountTable
-        :products="invoiceProductsToCount"
-        :loading="invoiceProductsLoading"
-        :total-product="totalInvoiceProductsToCount"
-        :items-per-page="invoiceProductsOptions.itemsPerPage"
-        :page="invoiceProductsOptions.page"
-        mode="inventory"
-        title="Productos de Factura por Contar"
-        class="mt-4"
-        @update:options="updateInvoiceProductsTableOptions"
-        @count-product="(product) => handleCountProduct(product, 'invoice')"
-      />
+          <VTab value="products" class="text-none font-weight-medium">
+            <VIcon start icon="mdi-package-variant-closed" />
+            Productos por Contar
+            <VChip size="x-small" class="ml-2" color="primary" variant="tonal">
+              {{ totalProduct }}
+            </VChip>
+          </VTab>
 
-      <SalesToCountTable
-        :products="salesProductsToCount"
-        :loading="salesProductsLoading"
-        :total-product="totalSalesProductsToCount"
-        :items-per-page="salesProductsOptions.itemsPerPage"
-        :page="salesProductsOptions.page"
-        mode="inventory"
-        title="Productos de Punto de Venta por Contar"
-        class="mt-4"
-        @update:options="updateSalesProductsTableOptions"
-        @count-product="(product) => handleCountProduct(product, 'sales')"
-      />
+          <VTab value="invoices" class="text-none font-weight-medium">
+            <VIcon start icon="mdi-file-document-outline" />
+            Por Factura
+            <VChip size="x-small" class="ml-2" color="info" variant="tonal">
+              {{ totalInvoiceProducts }}
+            </VChip>
+          </VTab>
+
+          <VTab value="sales" class="text-none font-weight-medium">
+            <VIcon start icon="mdi-cart-outline" />
+            Por Punto de Venta
+            <VChip size="x-small" class="ml-2" color="success" variant="tonal">
+              {{ totalSalesProducts }}
+            </VChip>
+          </VTab>
+
+        </VTabs>
+
+        <VDivider />
+
+        <VWindow v-model="activeTab">
+
+          <!-- Pestaña: Productos -->
+          <VWindowItem value="products">
+            <ProductTable
+              :products="products"
+              :loading="productLoading"
+              :total-product="totalProduct"
+              :items-per-page="productOptions.itemsPerPage"
+              :page="productOptions.page"
+              mode="inventory"
+              @update:options="updateProductTableOptions"
+              @count-product="(p) => handleCountProduct(p, 'product')"
+            />
+          </VWindowItem>
+
+          <!-- Pestaña: Facturas -->
+          <VWindowItem value="invoices">
+            <InvoiceToCountTable
+              :products="invoiceProducts"
+              :loading="invoiceLoading"
+              :total-product="totalInvoiceProducts"
+              :items-per-page="invoiceOptions.itemsPerPage"
+              :page="invoiceOptions.page"
+              mode="inventory"
+              @update:options="updateInvoiceTableOptions"
+              @count-product="(p) => handleCountProduct(p, 'invoice')"
+            />
+          </VWindowItem>
+
+          <!-- Pestaña: Punto de Venta -->
+          <VWindowItem value="sales">
+            <SalesToCountTable
+              :products="salesProducts"
+              :loading="salesLoading"
+              :total-product="totalSalesProducts"
+              :items-per-page="salesOptions.itemsPerPage"
+              :page="salesOptions.page"
+              mode="inventory"
+              @update:options="updateSalesTableOptions"
+              @count-product="(p) => handleCountProduct(p, 'sales')"
+            />
+          </VWindowItem>
+
+        </VWindow>
+      </VCard>
+
     </div>
 
+    <!-- Modal de conteo — único, compartido entre las 3 pestañas -->
     <InventoryCountDialog
       v-model="isCountDialogVisible"
       :product="currentProduct"
       @save="handleSaveCount"
     />
 
+    <!-- Modal de lotes — único, solo en modo simple -->
     <LotDistributionModal
       v-model="showLotDistributionModal"
       :product-name="itemForLotDistribution?.name || 'Producto'"

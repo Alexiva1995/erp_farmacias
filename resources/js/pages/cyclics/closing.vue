@@ -2,13 +2,14 @@
 import CashCloseTable from "@/components/CashCloseTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { formatDateSimple } from "@/utils/formatters";
+import { formatDateSimple, formatPrice } from "@/utils/formatters";
 import Swal from "sweetalert2";
 import { onMounted, onUnmounted, reactive, ref, watch, computed } from "vue";
 
+let debounceTimer;
 const counts = ref([]);
 const totalCounts = ref(0);
-const loading = ref(false);
+const loading = ref(true);
 const isClosing = ref(false);
 const page = ref(1);
 const itemsPerPage = ref(10);
@@ -94,21 +95,22 @@ const fetchData = async () => {
 const fetchCycleStatus = async () => {
   try {
     const response = await axios.get("/inventory/cycle/active");
-    hasActiveCycle.value = response.data.has_active_cycle;
-    activeCycle.value = response.data.data;
+    hasActiveCycle.value = !!response.data.has_active_cycle;
+    activeCycle.value = response.data.data || null;
   } catch (error) {
     console.error("Error al obtener estado del ciclo:", error);
+    hasActiveCycle.value = false;
+    activeCycle.value = null;
   }
 };
 
-onMounted(() => {
-  fetchData();
-  fetchCycleStatus();
+onMounted(async () => {
+  loading.value = true;
+  await Promise.all([fetchCycleStatus(), fetchData()]);
 });
 
 onUnmounted(() => clearTimeout(debounceTimer));
 
-let debounceTimer;
 watch(
   [filters, page, itemsPerPage, sortBy, orderBy],
   () => {

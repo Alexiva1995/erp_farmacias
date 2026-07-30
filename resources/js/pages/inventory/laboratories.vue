@@ -95,6 +95,9 @@ const fetchGroups = async () => {
   } catch (error) { console.error(error) }
 }
 
+const isSavingLab = ref(false)
+const isSavingGroup = ref(false)
+
 const openLabEdit = (lab = null) => {
   labForm.value = lab ? { id: lab.id, name: lab.name, group_id: lab.group_id } : { id: null, name: '', group_id: null }
   isLabDialogOpen.value = true
@@ -125,7 +128,9 @@ const deleteLab = async (id) => {
       await axios.delete(`/inventory/laboratories-manage/${id}`)
       toast.success(isRestaurant.value ? "Marca eliminada. Productos desvinculados." : "Laboratorio eliminado. Productos desvinculados.")
       fetchLabs()
-    } catch (error) { toast.error("Error al eliminar") }
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Error al eliminar")
+    }
   }
 }
 
@@ -147,7 +152,9 @@ const deleteGroup = async (id) => {
       await axios.delete(`/inventory/laboratories-manage/groups/${id}`)
       toast.success("Grupo eliminado")
       fetchGroups(); fetchLabs()
-    } catch (error) { toast.error("Error al eliminar") }
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Error al eliminar el grupo")
+    }
   }
 }
 
@@ -159,21 +166,39 @@ const openGroupEdit = (group = null) => {
 }
 
 const saveLab = async () => {
+  if (!labForm.value.name.trim()) {
+    toast.error("El nombre es obligatorio")
+    return
+  }
+  isSavingLab.value = true
   try {
     await axios.post('/inventory/laboratories-manage', labForm.value)
-    toast.success("Guardado")
+    toast.success("Guardado correctamente")
     isLabDialogOpen.value = false
     fetchLabs()
-  } catch (error) { toast.error('Error') }
+  } catch (error) {
+    toast.error(error.response?.data?.message || 'Error al guardar')
+  } finally {
+    isSavingLab.value = false
+  }
 }
 
 const saveGroup = async () => {
+  if (!groupForm.value.name.trim()) {
+    toast.error("El nombre del grupo es obligatorio")
+    return
+  }
+  isSavingGroup.value = true
   try {
     await axios.post('/inventory/laboratories-manage/groups', groupForm.value)
-    toast.success("Grupo actualizado")
+    toast.success("Grupo actualizado correctamente")
     isGroupDialogOpen.value = false
     fetchLabs(); fetchGroups()
-  } catch (error) { toast.error('Error') }
+  } catch (error) {
+    toast.error(error.response?.data?.message || 'Error al guardar el grupo')
+  } finally {
+    isSavingGroup.value = false
+  }
 }
 
 const updateTableOptions = o => {
@@ -493,6 +518,8 @@ watch([page, itemsPerPage, sortBy, orderBy], () => fetchLabs())
                 size="large"
                 block
                 height="50"
+                :loading="isSavingLab"
+                :disabled="isSavingLab"
                 class="font-weight-black rounded-lg shadow-primary text-button uppercase"
                 @click="saveLab"
               >
@@ -556,6 +583,8 @@ watch([page, itemsPerPage, sortBy, orderBy], () => fetchLabs())
                 size="large"
                 block
                 height="50"
+                :loading="isSavingGroup"
+                :disabled="isSavingGroup"
                 class="font-weight-black rounded-lg shadow-primary text-button uppercase"
                 @click="saveGroup"
               >

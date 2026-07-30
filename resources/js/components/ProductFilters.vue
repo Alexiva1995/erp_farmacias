@@ -90,9 +90,9 @@ const authStore = useAuthStore();
 const currentUser = computed(() => authStore.user);
 const selectedSort = ref(null);
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => false);
-const isMiniMarket = computed(() => false);
-const isSportsRental = computed(() => false);
+const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
+const isMiniMarket = computed(() => brandingStore.settings.business_type === 'minimarket');
+const isSportsRental = computed(() => brandingStore.settings.business_type === 'sports_rental');
 
 const getStorageKey = () => `product_sort_filter_user_${currentUser.value?.id || "anonymous"}`;
 

@@ -100,10 +100,6 @@ class SupplierConnectionService
                 $files = @ftp_nlist($ftp, $connection->path);
             }
 
-            if ($files === false) {
-                throw new Exception("No se pudo obtener el listado de archivos del servidor FTP");
-            }
-
             $inventoryFiles = array_filter($files, function ($file) {
                 $name = basename($file);
                 return str_starts_with($name, 'inventario') && str_ends_with($name, '.txt');
@@ -188,7 +184,11 @@ class SupplierConnectionService
         }
 
         if ($ftp !== false) {
-            @ftp_close($ftp);
+            try {
+                @ftp_close($ftp);
+            } catch (\Throwable $e) {
+                // Silenciar eof inesperado de OpenSSL al cerrar socket
+            }
         }
 
         return [

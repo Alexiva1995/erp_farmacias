@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
 import { formatPrice } from "@/utils/formatters";
 import { useBrandingStore } from "@/stores/useBrandingStore";
@@ -217,9 +217,9 @@ const getDiffColor = (val) => {
                       </div>
                     </td>
                     <td class="text-center text-xs font-weight-bold text-primary">
-                      {{ parseFloat(item.preferencia_product || 0).toFixed(1) }}%
+                      {{ parseFloat(item.preferencia_product || 0).toFixed(2) }}%
                     </td>
-                    <td class="text-center text-xs text-disabled">{{ parseFloat(item.promedio_calculado || 0).toFixed(1) }}</td>
+                    <td class="text-center text-xs text-disabled">{{ parseFloat(item.promedio_calculado || 0).toFixed(2) }}%</td>
                     <td v-if="!isRestaurant" class="text-center">
                       <VChip :color="item.totalQuantityInAutoOrder > 0 ? 'info' : 'default'" variant="tonal" size="x-small">
                         {{ item.totalQuantityInAutoOrder || 0 }}

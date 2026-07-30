@@ -798,7 +798,7 @@ class OrderActionService
             $bcvRate = $rates['BS'] ?? 1.0;
             $tolerance = ($orderCurrency === 'COP') ? 12000.0 : (3.0 * $bcvRate); // Margen para absorber diferencias de tasa cruzada
         } else {
-            $tolerance = ($orderCurrency === 'COP') ? 1000.0 : 0.5;
+            $tolerance = ($orderCurrency === 'COP') ? 2500.0 : 1.0;
         }
 
         $sumInOrderCurrency = 0;

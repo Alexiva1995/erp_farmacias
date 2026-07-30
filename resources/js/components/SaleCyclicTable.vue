@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
 import { useBrandingStore } from "@/stores/useBrandingStore";
 import { computed } from "vue";
@@ -57,6 +57,16 @@ const formatOperatorName = (user) => {
   
   return user.username || '—';
 };
+
+// Muestra entero salvo que el producto tenga unidades de medida (g/ml)
+const formatQuantity = (value, product) => {
+  if (value === null || value === undefined) return '—';
+  const unit = product?.unit_of_measure;
+  if (unit === 'g' || unit === 'ml') {
+    return Number(value).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+  }
+  return Math.trunc(Number(value)).toLocaleString('es-VE');
+};
 </script>
 
 <template>
@@ -111,6 +121,14 @@ const formatOperatorName = (user) => {
               </span>
             </div>
           </div>
+        </template>
+
+        <template #item.system_quantity="{ item }">
+          <span class="font-weight-bold">{{ formatQuantity(item.system_quantity, item.product) }}</span>
+        </template>
+
+        <template #item.counted_quantity="{ item }">
+          <span class="font-weight-bold text-primary">{{ formatQuantity(item.counted_quantity, item.product) }}</span>
         </template>
 
         <template #item.discrepancy="{ item }">
@@ -193,11 +211,17 @@ const formatOperatorName = (user) => {
             <div class="d-grid mobile-stock-grid gap-3 mb-3">
               <div class="stat-box">
                 <span class="label">Sistema</span>
-                <span class="value text-medium-emphasis">{{ item.system_quantity }} <small>UNDS</small></span>
+                <span class="value text-medium-emphasis">
+                  {{ formatQuantity(item.system_quantity, item.product) }}
+                  <small>{{ item.product?.unit_of_measure === 'g' || item.product?.unit_of_measure === 'ml' ? item.product.unit_of_measure.toUpperCase() : 'UNDS' }}</small>
+                </span>
               </div>
               <div class="stat-box text-center">
                 <span class="label">Contado</span>
-                <span class="value text-primary font-weight-black">{{ item.counted_quantity }} <small>UNDS</small></span>
+                <span class="value text-primary font-weight-black">
+                  {{ formatQuantity(item.counted_quantity, item.product) }}
+                  <small>{{ item.product?.unit_of_measure === 'g' || item.product?.unit_of_measure === 'ml' ? item.product.unit_of_measure.toUpperCase() : 'UNDS' }}</small>
+                </span>
               </div>
               <div class="stat-box text-right">
                 <span class="label">Operador</span>

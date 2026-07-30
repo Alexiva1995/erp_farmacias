@@ -17,7 +17,7 @@ class LocationRepository implements LocationContract
      */
     public function getAll(): Collection
     {
-        return Location::orderBy('name')->get();
+        return Location::select(['id', 'name', 'created_at', 'updated_at'])->orderBy('name')->get();
     }
 
     /**
