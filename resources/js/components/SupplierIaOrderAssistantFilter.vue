@@ -29,6 +29,7 @@ const props = defineProps({
   ordenarAhorro:      Boolean,
   isOrderingAhorro:   Boolean,
   isExporting:        Boolean,
+  soloConCoincidencias: { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
@@ -48,6 +49,7 @@ const emit = defineEmits([
   "update:showGraphs",
   "update:selectedSupplier",
   "update:ordenarAhorro",
+  "update:soloConCoincidencias",
   "clear",
   "clear-ignore",
   "pedirAhorro",
@@ -398,6 +400,22 @@ const hasAdvancedFilters = computed(() => (
           <VTooltip activator="parent" location="top">Ordenar por mayor ahorro (descuento/variación de precio)</VTooltip>
         </div>
       </VCol>
-    </template>
+
+      <!-- Solo Coincidencias -->
+      <VCol cols="12" sm="6" md="2">
+        <div class="d-flex align-center h-100 px-3 rounded-lg border bg-var-theme-background">
+          <VSwitch
+            :model-value="props.soloConCoincidencias"
+            label="Coincidencias"
+            color="purple"
+            hide-details
+            density="compact"
+            class="ms-1 font-weight-bold text-xs"
+            @update:model-value="emit('update:soloConCoincidencias', $event)"
+          />
+          <VTooltip activator="parent" location="top">Mostrar solo productos con proveedor encontrado</VTooltip>
+        </div>
+      </VCol>
+    </VRow>
   </AppFilterBase>
 </template>

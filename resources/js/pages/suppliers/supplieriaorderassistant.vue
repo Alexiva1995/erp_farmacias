@@ -40,6 +40,7 @@ const tipoExclusion = ref([]);
 const ordenarAhorro = ref(false);
 const searchQuery = ref("");
 const withSuppliers = ref(false);
+const soloConCoincidencias = ref(false);
 const showIgnored = ref(false);
 const showGraphs = ref(false);
 const selectedSupplier = ref(null);
@@ -50,6 +51,7 @@ const isExporting = ref(false);
 
 const handleClearFilters = () => {
   withSuppliers.value = false;
+  soloConCoincidencias.value = false;
   con_descuento.value = false;
   tipo_de_vista.value = false;
   tipo_de_filtracion.value = "combinado";
@@ -143,7 +145,11 @@ async function actualizarTabla() {
       statuModule.total = 0;
     } else {
       // Vista individual: paginator estándar de Laravel
-      statuModule.items = paginacion.data ?? [];
+      // Si "Solo Coincidencias" está activo, filtra en cliente
+      const rawItems = paginacion.data ?? [];
+      statuModule.items = soloConCoincidencias.value
+        ? rawItems.filter(p => p.best_supplier != null)
+        : rawItems;
       statuModule.total = paginacion.total ?? 0;
       // Limpiar vista grupal
       gruposData.grupos = [];
@@ -609,6 +615,7 @@ onMounted(async () => {
         v-model:tipoExclusion="tipoExclusion"
         v-model:ordenarAhorro="ordenarAhorro"
         v-model:selectedSupplier="selectedSupplier"
+        v-model:soloConCoincidencias="soloConCoincidencias"
         :groups="groups"
         :laboratories="laboratories"
         :suppliers="suppliers"
