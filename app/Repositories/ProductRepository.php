@@ -122,6 +122,7 @@ class ProductRepository
                 'products.is_colombian_origin',
                 'products.presentation',
                 'products.unit_of_measure',
+                'products.ignore_until',
                 DB::raw($subqueryStockLotes . ' AS lote_quantity'),
                 DB::raw($subqueryTotalSold . ' AS total_sold_completed'),
                 DB::raw($prefPorcentajeSql . ' AS preferencia_product'),

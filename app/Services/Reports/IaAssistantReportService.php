@@ -63,6 +63,15 @@ class IaAssistantReportService
             }
         }
 
+        // Safety net: Descartar estrictamente productos ignorados (ignore_until > now()) post-consolidación
+        if (!filter_var($filtros['show_ignored'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
+            $now = now();
+            $procesado = $procesado->filter(function ($p) use ($now) {
+                if (empty($p->ignore_until)) return true;
+                return \Carbon\Carbon::parse($p->ignore_until)->lte($now);
+            });
+        }
+
         // 4. Filtrar strictly por estado de stock pos-procesamiento (Fallas / Exceso)
         $stockFilter = $filtros['stock'] ?? 'all';
         if ($stockFilter === 'fallas') {
