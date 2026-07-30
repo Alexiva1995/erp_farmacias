@@ -13,7 +13,14 @@ use Illuminate\Support\Facades\DB;
 class ProductRepository
 {
 
-    private $subConsultaParaCalcularStockPorLotes = 'COALESCE(products.stock, 0)';
+    private string $subConsultaParaCalcularStockPorLotes;
+
+    public function __construct()
+    {
+        $isSqlite = DB::connection()->getDriverName() === 'sqlite';
+        $curdate = $isSqlite ? 'DATE("now")' : 'CURDATE()';
+        $this->subConsultaParaCalcularStockPorLotes = "COALESCE((SELECT SUM(quantity) FROM product_lots WHERE product_lots.product_id = products.id AND (expiration_date >= {$curdate} OR expiration_date IS NULL)), 0)";
+    }
 
     public function consultProductById(int $id): ?Product
     {
@@ -64,7 +71,7 @@ class ProductRepository
             ->whereNull('aod.deleted_at')
             ->groupBy('aod.product_id');
 
-        $subqueryStockLotes = 'COALESCE(products.stock, 0)';
+        $subqueryStockLotes = $this->subConsultaParaCalcularStockPorLotes;
         $subqueryTotalSold = 'COALESCE(sales_agg.total_sold, 0)';
         $subqueryAO = 'COALESCE(ao_agg.total_ao, 0)';
         $prefPorcentajeSql = '100';
