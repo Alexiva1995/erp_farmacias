@@ -337,6 +337,7 @@ async function pedirTodoAhorro() {
       hasStock: hasStock.value,
       isColombian: isColombian.value,
       isNovaventa: isNovaventa.value,
+      tipo_exclusion: tipoExclusion.value,
       q: searchQuery.value,
       page: 1,
       itemsPerPage: 999999, // Límite alto para obtener todo
