@@ -1399,40 +1399,48 @@ class ProductRepository
                 });
             });
 
-        // Seleccionar solicitar para usar en having
-        $query->select('products.id', 'products.group_id', 'products.name', \Illuminate\Support\Facades\DB::raw("$solicitarCol AS solicitar"));
-
-        // Filtros base
+        // Aplicar filtros directos de producto en la cláusula WHERE (Reducen drásticamente el universo de datos)
         if (!empty($filtros["ids_in"])) {
             $query->whereIn("products.id", $filtros["ids_in"]);
         }
         if (empty($filtros["ids_in"]) && array_key_exists("laboratoryId", $filtros) && !empty($filtros["laboratoryId"])) {
-            $query->whereIn("laboratory_id", $filtros["laboratoryId"]);
+            $query->whereIn("products.laboratory_id", $filtros["laboratoryId"]);
         }
         if (array_key_exists("groups", $filtros) && !empty($filtros["groups"])) {
-            $query->whereIn("group_id", $filtros["groups"]);
+            $query->whereIn("products.group_id", $filtros["groups"]);
         }
         if (array_key_exists("isColombian", $filtros)) {
             if ($filtros["isColombian"] == true || $filtros["isColombian"] === "true") {
-                $query->where("is_colombian_origin", "=", 1);
+                $query->where("products.is_colombian_origin", "=", 1);
             } elseif ($filtros["isColombian"] === false || $filtros["isColombian"] === "false") {
                 $query->where(function ($q) {
-                    $q->where("is_colombian_origin", "=", 0)
-                      ->orWhereNull("is_colombian_origin");
+                    $q->where("products.is_colombian_origin", "=", 0)
+                      ->orWhereNull("products.is_colombian_origin");
                 });
             }
         }
 
         if (array_key_exists("isNovaventa", $filtros)) {
             if ($filtros["isNovaventa"] == true || $filtros["isNovaventa"] === "true") {
-                $query->where("is_novaventa", "=", 1);
+                $query->where("products.is_novaventa", "=", 1);
             } elseif ($filtros["isNovaventa"] === false || $filtros["isNovaventa"] === "false") {
                 $query->where(function ($q) {
-                    $q->where("is_novaventa", "=", 0)
-                      ->orWhereNull("is_novaventa");
+                    $q->where("products.is_novaventa", "=", 0)
+                      ->orWhereNull("products.is_novaventa");
                 });
             }
         }
+
+        if (array_key_exists("q", $filtros) && $filtros["q"] != "") {
+             $query->where(function($q) use ($filtros) {
+                 $q->where("products.name", "like", "%" . $filtros["q"] . "%")
+                   ->orWhere("products.id", "like", "%" . $filtros["q"] . "%");
+             });
+        }
+
+        // Seleccionar solicitar para usar en el teniendo (HAVING) sólo sobre los productos ya filtrados
+        $query->select('products.id', 'products.group_id', 'products.name', \Illuminate\Support\Facades\DB::raw("$solicitarCol AS solicitar"));
+
         if (array_key_exists("hasStock", $filtros)) {
             $hasStockVal = $filtros["hasStock"];
             if ($hasStockVal === true || $hasStockVal === 'true' || $hasStockVal === 1) {
