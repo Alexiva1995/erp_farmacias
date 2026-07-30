@@ -65,6 +65,7 @@ class IaAssistantActionController extends Controller
                     'supplier_id' => $supplierId,
                     'unit_cost' => $product->unit_cost ?? 0,
                     'unit_cost_usd' => $product->unit_cost ?? 0,
+                    'connection_date' => now(),
                 ]);
             }
 
