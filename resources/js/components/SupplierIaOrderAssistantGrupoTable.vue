@@ -104,9 +104,10 @@ const onActionClick = async (item, action) => {
   if (isProcessing.value[item.id]) return;
 
   if (action === 'add') {
-
     const quantity = getInputValue(item);
-    if (!props.selectedSupplierId && !item.best_supplier) {
+    const isColombian = Number(item.is_colombian_origin) === 1;
+
+    if (!props.selectedSupplierId && !item.best_supplier && !isColombian) {
       emit('open-comparator', { item, quantity });
       return;
     }
@@ -153,7 +154,7 @@ const onActionClick = async (item, action) => {
               text: updateError.response.data.message,
               icon: "warning",
               showCancelButton: true,
-              confirmButtonText: "Sí, desvincular and asignar",
+              confirmButtonText: "Sí, desvincular y asignar",
               cancelButtonText: "Cancelar",
             });
             if (confirmForce) {
@@ -183,12 +184,14 @@ const onActionClick = async (item, action) => {
         quantity: quantity,
       };
 
-      if (props.selectedSupplierId) {
+      if (isColombian) {
+        payload.supplier_id = 48;
+      } else if (props.selectedSupplierId) {
         payload.supplier_id = props.selectedSupplierId;
         if (item.best_supplier_price) {
           payload.unit_cost = item.best_supplier_price;
         }
-      } else {
+      } else if (item.best_supplier) {
         payload.product_supplier_id = item.best_supplier.product_suppliers_id;
         if (item.best_supplier_price) {
           payload.unit_cost = item.best_supplier_price;
