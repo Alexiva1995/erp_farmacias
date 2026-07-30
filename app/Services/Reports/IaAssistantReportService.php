@@ -43,7 +43,10 @@ class IaAssistantReportService
             $procesado = $this->processRegularReport($resultado, $tipo, $filtros);
         }
 
-        // 3. Filtrar estrictamente por estado de stock pos-procesamiento (Fallas / Exceso)
+        // 3. Consolidar productos unificados (grupos) para tener el stock, ventas y 'solicitar' real del grupo
+        $procesado = $this->consolidateCollection($procesado, $filtros);
+
+        // 4. Filtrar estrictamente por estado de stock pos-procesamiento (Fallas / Exceso)
         $stockFilter = $filtros['stock'] ?? 'all';
         if ($stockFilter === 'fallas') {
             $procesado = $procesado->filter(fn($p) => (float)($p->solicitar ?? 0) > 0);
@@ -51,7 +54,7 @@ class IaAssistantReportService
             $procesado = $procesado->filter(fn($p) => (float)($p->solicitar ?? 0) < 0);
         }
 
-        // 4. Ordenamiento dinámico sobre el universo completo de fallas
+        // 5. Ordenamiento dinámico sobre el universo completo de fallas
         $shortBy = $filtros['sortBy'] ?? 'solicitar';
         $orderDir = strtolower($filtros['orderBy'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
 
@@ -62,11 +65,11 @@ class IaAssistantReportService
         $procesado = $procesado->values();
         $total = $procesado->count();
 
-        // 5. Aplicar la paginación (Corte exacto de perPage sobre el universo filtrado real)
+        // 6. Aplicar la paginación (Corte exacto de perPage sobre el universo filtrado real)
         $offset = ($page - 1) * $perPage;
         $itemsPagina = $procesado->slice($offset, $perPage)->values();
 
-        // 6. Hidratar tendencia de ventas y proveedores SOLO para los 25 ítems visibles de la página
+        // 7. Hidratar tendencia de ventas y proveedores SOLO para los 25 ítems visibles de la página
         if (filter_var($filtros['with_trend'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
             $this->hydrateSalesTrend($itemsPagina);
         }
@@ -75,10 +78,7 @@ class IaAssistantReportService
             $this->hydrateSuppliers($itemsPagina, $filtros);
         }
 
-        // Consolidar productos unificados de la página
-        $itemsPagina = $this->consolidateCollection($itemsPagina, $filtros);
-
-        // 7. Devolver paginador exacto con la página cortada
+        // 8. Devolver paginador exacto con la página cortada
         return new LengthAwarePaginator($itemsPagina, $total, $perPage, $page, [
             'path' => request()->url(),
             'query' => request()->query(),
