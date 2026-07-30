@@ -361,6 +361,7 @@ class ProductRepository
             "products.is_colombian_origin",
             "products.is_ordered",
             "products.active_ingredient",
+            "products.ignore_until",
             DB::raw('(SELECT TIMESTAMPDIFF(MONTH, CURDATE(), MIN(expiration_date)) 
              FROM product_lots 
              WHERE product_lots.product_id = products.id
