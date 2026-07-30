@@ -62,6 +62,14 @@ class IaAssistantReportService
             $procesado = $this->processRegularReport($resultado, $tipo, $filtros);
         }
 
+        // Filtrar por estado de stock usando el solicitar recalculado en PHP (Fallas / Exceso)
+        $stockFilter = $filtros['stock'] ?? 'all';
+        if ($stockFilter === 'fallas') {
+            $procesado = $procesado->filter(fn($p) => (float)($p->solicitar ?? 0) > 0);
+        } elseif ($stockFilter === 'exceso') {
+            $procesado = $procesado->filter(fn($p) => (float)($p->solicitar ?? 0) < 0);
+        }
+
         // 5. ORDENAMIENTO FINAL DINÁMICO
         $shortBy = $filtros['sortBy'] ?? 'solicitar';
         $orderDir = strtolower($filtros['orderBy'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
