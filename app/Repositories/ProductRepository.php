@@ -312,6 +312,9 @@ class ProductRepository
         
         ';
 
+        $ceilFunc = DB::connection()->getDriverName() === 'sqlite' ? 'ROUND' : 'CEIL';
+        $floorFunc = DB::connection()->getDriverName() === 'sqlite' ? 'ROUND' : 'FLOOR';
+
         $iaSolicitar = 'CASE 
                 WHEN (' . $ventasIndividualDelProducto . ' - ' . $this->subConsultaParaCalcularStockPorLotes . ' - (
                 SELECT COALESCE(SUM(aod.quantity), 0)
@@ -323,7 +326,7 @@ class ProductRepository
                 AND aod.status = 0
                 AND ao.deleted_at IS NULL
                 AND aod.deleted_at IS NULL
-                )) > 0 THEN CEIL(' . $ventasIndividualDelProducto . ' - ' . $this->subConsultaParaCalcularStockPorLotes . ' - (
+                )) > 0 THEN ' . $ceilFunc . '(' . $ventasIndividualDelProducto . ' - ' . $this->subConsultaParaCalcularStockPorLotes . ' - (
                 SELECT COALESCE(SUM(aod.quantity), 0)
                 FROM auto_order_details aod
                 JOIN auto_orders ao ON ao.id = aod.order_id
@@ -334,7 +337,7 @@ class ProductRepository
                 AND ao.deleted_at IS NULL
                 AND aod.deleted_at IS NULL
                 ))
-                ELSE FLOOR(' . $ventasIndividualDelProducto . ' - ' . $this->subConsultaParaCalcularStockPorLotes . ' - (
+                ELSE ' . $floorFunc . '(' . $ventasIndividualDelProducto . ' - ' . $this->subConsultaParaCalcularStockPorLotes . ' - (
                 SELECT COALESCE(SUM(aod.quantity), 0)
                 FROM auto_order_details aod
                 JOIN auto_orders ao ON ao.id = aod.order_id
@@ -362,10 +365,9 @@ class ProductRepository
             "products.is_ordered",
             "products.active_ingredient",
             "products.ignore_until",
-            DB::raw('(SELECT TIMESTAMPDIFF(MONTH, CURDATE(), MIN(expiration_date)) 
-             FROM product_lots 
-             WHERE product_lots.product_id = products.id
-             AND expiration_date >= CURDATE()) AS meses_faltantes'),
+            DB::raw(DB::connection()->getDriverName() === 'sqlite'
+                ? '(SELECT CAST((julianday(MIN(expiration_date)) - julianday("now")) / 30 AS INTEGER) FROM product_lots WHERE product_lots.product_id = products.id AND expiration_date >= DATE("now")) AS meses_faltantes'
+                : '(SELECT TIMESTAMPDIFF(MONTH, CURDATE(), MIN(expiration_date)) FROM product_lots WHERE product_lots.product_id = products.id AND expiration_date >= CURDATE()) AS meses_faltantes'),
             DB::raw('(' . $this->subConsultaParaCalcularStockPorLotes . ') AS lote_quantity'),
             DB::raw('(
                 SELECT COALESCE(SUM(order_details.quantity), 0)
@@ -624,10 +626,10 @@ class ProductRepository
             "products.is_unified_group",
             "products.active_ingredient",
             'products.manual_solicitar',
-            DB::raw('(SELECT TIMESTAMPDIFF(MONTH, CURDATE(), MIN(expiration_date)) 
-             FROM product_lots 
-             WHERE product_lots.product_id = products.id
-             AND expiration_date >= CURDATE()) AS meses_faltantes'),
+            'products.ignore_until',
+            DB::raw(DB::connection()->getDriverName() === 'sqlite'
+                ? '(SELECT CAST((julianday(MIN(expiration_date)) - julianday("now")) / 30 AS INTEGER) FROM product_lots WHERE product_lots.product_id = products.id AND expiration_date >= DATE("now")) AS meses_faltantes'
+                : '(SELECT TIMESTAMPDIFF(MONTH, CURDATE(), MIN(expiration_date)) FROM product_lots WHERE product_lots.product_id = products.id AND expiration_date >= CURDATE()) AS meses_faltantes'),
             DB::raw('(' . $this->subConsultaParaCalcularStockPorLotes . ') AS lote_quantity'),
             DB::raw('(
                 SELECT COALESCE(SUM(order_details.quantity), 0)
@@ -660,7 +662,7 @@ class ProductRepository
                 FROM product_lots 
                 WHERE product_lots.product_id = products.id
                 AND product_lots.quantity > 0
-                AND (product_lots.expiration_date IS NULL OR product_lots.expiration_date >= CURDATE())
+                AND (product_lots.expiration_date IS NULL OR product_lots.expiration_date >= ' . (DB::connection()->getDriverName() === 'sqlite' ? 'DATE("now")' : 'CURDATE()') . ')
             ) AS cost_min'),
             //  cost max solo tiene encuenta los lotes que su quantity sean mayor a 0
             DB::raw('(
@@ -668,7 +670,7 @@ class ProductRepository
                 FROM product_lots 
                 WHERE product_lots.product_id = products.id
                 AND product_lots.quantity > 0
-                AND (product_lots.expiration_date IS NULL OR product_lots.expiration_date >= CURDATE())
+                AND (product_lots.expiration_date IS NULL OR product_lots.expiration_date >= ' . (DB::connection()->getDriverName() === 'sqlite' ? 'DATE("now")' : 'CURDATE()') . ')
             ) AS cost_max'),
             DB::raw('(
                 SELECT COALESCE(SUM(aod.quantity), 0)
@@ -725,11 +727,14 @@ class ProductRepository
                 AND ao.deleted_at IS NULL
                 AND aod.deleted_at IS NULL)';
 
+        $ceilFunc = DB::connection()->getDriverName() === 'sqlite' ? 'ROUND' : 'CEIL';
+        $floorFunc = DB::connection()->getDriverName() === 'sqlite' ? 'ROUND' : 'FLOOR';
+
         // calcular solicitar: demanda - stock - AO
         $calcSolicitar = '((' . $promedio_calculado . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $subqueryAO . ')';
         $columnas[] = DB::raw('CASE 
-            WHEN ' . $calcSolicitar . ' > 0 THEN CEIL(' . $calcSolicitar . ')
-            ELSE FLOOR(' . $calcSolicitar . ')
+            WHEN ' . $calcSolicitar . ' > 0 THEN ' . $ceilFunc . '(' . $calcSolicitar . ')
+            ELSE ' . $floorFunc . '(' . $calcSolicitar . ')
         END AS solicitar');
 
 
@@ -746,6 +751,12 @@ class ProductRepository
                           ->where('u.is_deleted', false)
                           ->where('u.is_scarce', false);
                   });
+            })
+            ->when(!($filtros['show_ignored'] ?? false), function ($q) {
+                $q->where(function ($sq) {
+                    $sq->whereNull('products.ignore_until')
+                       ->orWhere('products.ignore_until', '<=', now());
+                });
             })
             ->with([
             "laboratory",
@@ -937,10 +948,10 @@ class ProductRepository
             "products.is_unified_group",
             "products.active_ingredient",
             'products.manual_solicitar',
-            DB::raw('(SELECT TIMESTAMPDIFF(MONTH, CURDATE(), MIN(expiration_date)) 
-             FROM product_lots 
-             WHERE product_lots.product_id = products.id
-             AND expiration_date >= CURDATE()) AS meses_faltantes'),
+            'products.ignore_until',
+            DB::raw(DB::connection()->getDriverName() === 'sqlite'
+                ? '(SELECT CAST((julianday(MIN(expiration_date)) - julianday("now")) / 30 AS INTEGER) FROM product_lots WHERE product_lots.product_id = products.id AND expiration_date >= DATE("now")) AS meses_faltantes'
+                : '(SELECT TIMESTAMPDIFF(MONTH, CURDATE(), MIN(expiration_date)) FROM product_lots WHERE product_lots.product_id = products.id AND expiration_date >= CURDATE()) AS meses_faltantes'),
             DB::raw('(' . $this->subConsultaParaCalcularStockPorLotes . ') AS lote_quantity'),
             DB::raw('(
                 SELECT COALESCE(SUM(order_details.quantity), 0)
@@ -1000,7 +1011,7 @@ class ProductRepository
                     AND aod.status = 0
                     AND ao.deleted_at IS NULL
                     AND aod.deleted_at IS NULL
-                )) > 0 THEN CEIL((' . $ventasIndividualDelProducto . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - (
+                )) > 0 THEN ' . (DB::connection()->getDriverName() === 'sqlite' ? 'ROUND' : 'CEIL') . '((' . $ventasIndividualDelProducto . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - (
                     SELECT COALESCE(SUM(aod.quantity), 0)
                     FROM auto_order_details aod
                     JOIN auto_orders ao ON ao.id = aod.order_id
@@ -1011,7 +1022,7 @@ class ProductRepository
                     AND ao.deleted_at IS NULL
                     AND aod.deleted_at IS NULL
                 ))
-                ELSE FLOOR((' . $ventasIndividualDelProducto . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - (
+                ELSE ' . (DB::connection()->getDriverName() === 'sqlite' ? 'ROUND' : 'FLOOR') . '((' . $ventasIndividualDelProducto . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - (
                     SELECT COALESCE(SUM(aod.quantity), 0)
                     FROM auto_order_details aod
                     JOIN auto_orders ao ON ao.id = aod.order_id
@@ -1029,7 +1040,7 @@ class ProductRepository
                 FROM product_lots 
                 WHERE product_lots.product_id = products.id
                 AND product_lots.quantity > 0
-                AND (product_lots.expiration_date IS NULL OR product_lots.expiration_date >= CURDATE())
+                AND (product_lots.expiration_date IS NULL OR product_lots.expiration_date >= ' . (DB::connection()->getDriverName() === 'sqlite' ? 'DATE("now")' : 'CURDATE()') . ')
             ) AS cost_min'),
             //  cost max solo tiene encuenta los lotes que su quantity sean mayor a 0
             DB::raw('(
@@ -1037,7 +1048,7 @@ class ProductRepository
                 FROM product_lots 
                 WHERE product_lots.product_id = products.id
                 AND product_lots.quantity > 0
-                AND (product_lots.expiration_date IS NULL OR product_lots.expiration_date >= CURDATE())
+                AND (product_lots.expiration_date IS NULL OR product_lots.expiration_date >= ' . (DB::connection()->getDriverName() === 'sqlite' ? 'DATE("now")' : 'CURDATE()') . ')
             ) AS cost_max'),
         ];
 
@@ -1079,6 +1090,12 @@ class ProductRepository
                           ->where('u.is_deleted', false)
                           ->where('u.is_scarce', false);
                   });
+            })
+            ->when(!($filtros['show_ignored'] ?? false), function ($q) {
+                $q->where(function ($sq) {
+                    $sq->whereNull('products.ignore_until')
+                       ->orWhere('products.ignore_until', '<=', now());
+                });
             })
             ->with([
             "laboratory",
@@ -1392,9 +1409,12 @@ class ProductRepository
             $solicitarRaw = '(' . $promedio_calculado . ' - ' . $subqueryStock . ' - ' . $subqueryAO . ')';
         }
 
+        $ceilFunc = DB::connection()->getDriverName() === 'sqlite' ? 'ROUND' : 'CEIL';
+        $floorFunc = DB::connection()->getDriverName() === 'sqlite' ? 'ROUND' : 'FLOOR';
+
         $solicitarCol = "CASE 
-                WHEN ($solicitarRaw) > 0 THEN CEIL($solicitarRaw) 
-                ELSE FLOOR($solicitarRaw) 
+                WHEN ($solicitarRaw) > 0 THEN $ceilFunc($solicitarRaw) 
+                ELSE $floorFunc($solicitarRaw) 
             END";
 
         // 2. Construir Query

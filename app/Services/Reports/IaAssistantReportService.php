@@ -304,6 +304,9 @@ class IaAssistantReportService
      */
     private function prepareDateFilters(array $filtros): array
     {
+        if (empty($filtros['lapso_de_tiempo'])) {
+            $filtros['lapso_de_tiempo'] = '1 month';
+        }
         if (!empty($filtros['lapso_de_tiempo'])) {
             $timeZone = new \DateTimeZone(config("app.timezone"));
             $dateToday = new \DateTime("now", $timeZone);

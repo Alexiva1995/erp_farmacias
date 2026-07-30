@@ -17,6 +17,7 @@ use App\Enums\AutoOrderStatus;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 
 class IaAssistantActionController extends Controller
 {
@@ -262,6 +263,7 @@ class IaAssistantActionController extends Controller
     {
         $product->update(['manual_solicitar' => null]);
         $this->productActionService->ignoreProduct($product, 7);
+        Cache::flush();
         return response()->json(['message' => 'Producto ignorado por 7 días y cantidad manual restablecida.']);
     }
 
@@ -330,6 +332,7 @@ class IaAssistantActionController extends Controller
     public function clearIgnored(): JsonResponse
     {
         $restoredCount = $this->productActionService->clearIgnoredProducts();
+        Cache::flush();
 
         return response()->json([
             'message' => 'Productos restaurados correctamente.',

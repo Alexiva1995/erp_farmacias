@@ -66,4 +66,62 @@ class IaAssistantIgnoreTest extends TestCase
         // Verificar en la base de datos que todos tengan ignore_until como null
         $this->assertEquals(0, Product::whereNotNull('ignore_until')->count());
     }
+
+    /**
+     * Prueba que productos con ignore_until en el futuro no se listan a menos que show_ignored sea true.
+     */
+    public function test_products_with_future_ignore_until_are_not_listed_unless_show_ignored_is_true(): void
+    {
+        $user = User::create([
+            'username' => 'testuser2',
+            'email' => 'test2@example.com',
+            'password_hash' => bcrypt('password'),
+            'is_active' => true,
+        ]);
+
+        $ignoredProduct = Product::create([
+            'name' => 'Producto Ignorado Futuro',
+            'unit_cost' => 10.0,
+            'sale_price' => 15.0,
+            'sales_average' => 5.0,
+            'stock' => 0,
+            'ignore_until' => now()->addDays(7),
+        ]);
+
+        $activeProduct = Product::create([
+            'name' => 'Producto Activo',
+            'unit_cost' => 20.0,
+            'sale_price' => 30.0,
+            'sales_average' => 5.0,
+            'stock' => 0,
+            'ignore_until' => null,
+        ]);
+
+        // Sin show_ignored (por defecto false)
+        $response = $this->actingAs($user, 'sanctum')
+            ->postJson('/api/suppliers-ia-order-assistant/filtrar-paginate', [
+                'tipo_filtracion' => 'average',
+                'show_ignored' => false,
+            ]);
+
+        $response->assertStatus(200);
+        $data = $response->json('data.paginate.data');
+        $productIds = collect($data)->pluck('id')->toArray();
+
+        $this->assertNotContains($ignoredProduct->id, $productIds);
+        $this->assertContains($activeProduct->id, $productIds);
+
+        // Con show_ignored = true
+        $responseIgnored = $this->actingAs($user, 'sanctum')
+            ->postJson('/api/suppliers-ia-order-assistant/filtrar-paginate', [
+                'tipo_filtracion' => 'average',
+                'show_ignored' => true,
+            ]);
+
+        $responseIgnored->assertStatus(200);
+        $dataIgnored = $responseIgnored->json('data.paginate.data');
+        $productIdsIgnored = collect($dataIgnored)->pluck('id')->toArray();
+
+        $this->assertContains($ignoredProduct->id, $productIdsIgnored);
+    }
 }
