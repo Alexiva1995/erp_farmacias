@@ -104,8 +104,6 @@ async function consultarProductosConPaginacion() {
     lapso_de_tiempo: lapso_de_tiempo.value,
     stock: stock.value,
     hasStock: hasStock.value,
-    isColombian: isColombian.value,
-    isNovaventa: isNovaventa.value,
     tipo_exclusion: tipoExclusion.value,
     q: searchQuery.value,
     page: page.value,
@@ -114,11 +112,15 @@ async function consultarProductosConPaginacion() {
     orderBy: orderBy.value,
     with_suppliers: withSuppliers.value,
     skip_ai_match: skipAiMatch.value,
-    con_descuento: con_descuento.value, // Asegurar que el flag de descuento se pase siempre
+    con_descuento: con_descuento.value,
     show_ignored: showIgnored.value,
     with_trend: showGraphs.value,
     supplier_id: selectedSupplier.value,
   };
+
+  // Solo enviar isColombian/isNovaventa si están activos (switch encendido) para no confundir al backend
+  if (isColombian.value === true) data.isColombian = true;
+  if (isNovaventa.value === true) data.isNovaventa = true;
   const resp = await axios.post(
     `/suppliers-ia-order-assistant/filtrar-paginate?page=${page.value}`,
     data,
