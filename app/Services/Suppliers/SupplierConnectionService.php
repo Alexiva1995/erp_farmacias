@@ -497,11 +497,12 @@ class SupplierConnectionService
                         break;
 
                     case "decimal":
-                        if (is_numeric($value)) {
-                            $newValue = number_format((float) $value, 2, ".", "");
+                        $cleanValue = str_replace(',', '.', trim($value));
+                        if (is_numeric($cleanValue)) {
+                            $newValue = number_format((float) $cleanValue, 2, ".", "");
 
                             if (in_array($meta["target"], ["exisMerida", "exisCaracas", "exisOriente", "quantity"])) {
-                                $quantity += $value;
+                                $quantity += (float) $cleanValue;
                                 break;
                             }
 
