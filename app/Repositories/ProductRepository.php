@@ -166,6 +166,12 @@ class ProductRepository
         $consulta->where(function ($q) {
                 $q->whereNull('is_deleted')->orWhere('is_deleted', 0);
             })
+            ->when(!($filtros['show_ignored'] ?? false), function ($q) {
+                $q->where(function ($sq) {
+                    $sq->whereNull('products.ignore_until')
+                       ->orWhere('products.ignore_until', '<=', now());
+                });
+            })
             ->with(["laboratory", "lots"]);
 
         // Filtros adicionales
@@ -457,7 +463,16 @@ class ProductRepository
         // demanda_ponderada = (promedio + ventas) / 2  (antes de restar stock/AO)
         $columnas[] = DB::raw('((' . $promedio_calculado . ' + ' . $ventasIndividualDelProducto . ') / 2) AS demanda_ponderada');
 
-        $consulta = Product::select($columnas)->with(["laboratory", "lots", "group"])->where('is_deleted', false)->where('is_scarce', false);
+        $consulta = Product::select($columnas)
+            ->with(["laboratory", "lots", "group"])
+            ->where('is_deleted', false)
+            ->where('is_scarce', false)
+            ->when(!($filtros['show_ignored'] ?? false), function ($q) {
+                $q->where(function ($sq) {
+                    $sq->whereNull('products.ignore_until')
+                       ->orWhere('products.ignore_until', '<=', now());
+                });
+            });
 
         if (array_key_exists("ids_in", $filtros) && !empty($filtros["ids_in"])) {
             $consulta->whereIn("products.id", $filtros["ids_in"]);
