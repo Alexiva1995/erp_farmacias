@@ -497,7 +497,12 @@ class SupplierConnectionService
                         break;
 
                     case "decimal":
-                        $cleanValue = str_replace(',', '.', trim($value));
+                        $trimmedVal = trim($value);
+                        if (str_contains($trimmedVal, '.') && str_contains($trimmedVal, ',')) {
+                            $cleanValue = str_replace(',', '.', str_replace('.', '', $trimmedVal));
+                        } else {
+                            $cleanValue = str_replace(',', '.', $trimmedVal);
+                        }
                         if (is_numeric($cleanValue)) {
                             $newValue = number_format((float) $cleanValue, 2, ".", "");
 
