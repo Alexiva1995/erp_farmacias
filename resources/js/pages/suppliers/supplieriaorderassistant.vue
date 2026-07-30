@@ -36,7 +36,7 @@ const hasStock = ref("all");
 const con_descuento = ref(false);
 const isColombian = ref(false);
 const isNovaventa = ref(false);
-const tipoExclusion = ref("none");
+const tipoExclusion = ref([]);
 const ordenarAhorro = ref(false);
 const searchQuery = ref("");
 const withSuppliers = ref(false);
@@ -58,7 +58,7 @@ const handleClearFilters = () => {
   hasStock.value = "all";
   isColombian.value = false;
   isNovaventa.value = false;
-  tipoExclusion.value = "none";
+  tipoExclusion.value = [];
   ordenarAhorro.value = false;
   selectedLaboratory.value = [];
   selectedGroup.value = [];

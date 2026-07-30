@@ -131,7 +131,14 @@ class SuppliersIaOrderAssistantController extends Controller
             $filtros["groups"] = $request->groups;
         }
 
-        if ($request->filled("tipo_exclusion")) {
+        if ($request->filled("tipo_exclusion") && is_array($request->tipo_exclusion)) {
+            if (in_array("colombia", $request->tipo_exclusion)) {
+                $filtros["isColombian"] = false;
+            }
+            if (in_array("novaventa", $request->tipo_exclusion)) {
+                $filtros["isNovaventa"] = false;
+            }
+        } elseif ($request->filled("tipo_exclusion")) {
             if ($request->tipo_exclusion === "colombia") {
                 $filtros["isColombian"] = false;
             } elseif ($request->tipo_exclusion === "novaventa") {

@@ -20,7 +20,7 @@ const props = defineProps({
   groups:             { type: Array,   default: () => [] },
   isColombian:        Boolean,
   isNovaventa:        Boolean,
-  tipoExclusion:      { type: String,  default: "none" },
+  tipoExclusion:      { type: Array,   default: () => [] },
   showIgnored:        { type: Boolean, default: false },
   showGraphs:         { type: Boolean, default: false },
   selectedSupplier:   { type: [Number, String, Object, null], default: null },
@@ -94,7 +94,6 @@ const hasStockOpciones = [
 ];
 
 const tipoExclusionOpciones = [
-  { title: "Ninguna",   value: "none"      },
   { title: "Colombia",  value: "colombia"  },
   { title: "Novaventa", value: "novaventa" },
 ];
@@ -337,12 +336,16 @@ const hasAdvancedFilters = computed(() => (
         />
       </VCol>
 
-      <!-- Exclusión de Productos -->
-      <VCol cols="12" sm="6" md="2">
+      <!-- Exclusión de Productos (Múltiple) -->
+      <VCol cols="12" sm="6" md="3">
         <VSelect
           :model-value="props.tipoExclusion"
           :items="tipoExclusionOpciones"
-          label="Excluir Tipo"
+          label="Excluir Tipos"
+          multiple
+          chips
+          closable-chips
+          clearable
           density="compact"
           hide-details
           color="error"
