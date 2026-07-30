@@ -23,6 +23,13 @@ class ProductSupplierServices implements ProductSupplier
     }
 
 
+    public function getSupplierToReplenishTheProducts(Collection $products, string $conDescuento, bool $skipAiMatch = false): array
+    {
+        return $this->productSupplierRepository->getSupplierToReplenishTheProducts($products, $conDescuento, $skipAiMatch);
+    }
+
+
+
     public function consultSupplierByProductWithBetterPrice(Product $product, string $conDescuento): Collection
     {
         return $this->productSupplierRepository->consultSupplierByProductWithBetterPrice($product->id, $conDescuento);

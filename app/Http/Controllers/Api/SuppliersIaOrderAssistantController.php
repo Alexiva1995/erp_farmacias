@@ -18,6 +18,8 @@ use App\Models\Product as ModelsProduct;
 use App\Http\Requests\Suppliers\DirectOrderRequest;
 use Maatwebsite\Excel\Facades\Excel;
 
+use App\Http\Requests\Suppliers\IaOrderAssistantFilterRequest;
+
 class SuppliersIaOrderAssistantController extends Controller
 {
     //
@@ -31,7 +33,7 @@ class SuppliersIaOrderAssistantController extends Controller
     }
 
 
-    public function filtrarPaginate(Request $request): JsonResponse
+    public function filtrarPaginate(IaOrderAssistantFilterRequest $request): JsonResponse
     {
         $respuesta = [
             "tipo_filtracion" => $request->tipo_filtracion,
@@ -43,13 +45,15 @@ class SuppliersIaOrderAssistantController extends Controller
 
         $esVistaGrupal = filter_var($filtros['tipo_vista'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
-        if ($esVistaGrupal) {
-            // Vista grupal: devolver grupos paginados con productos anidados
-            $respuesta["paginate"] = $this->iaAssistantReportService->getGroupedReportWithPaginate($filtros);
-        } else {
-            // Unificamos todo al servicio para garantizar hidratación de tendencias y AO
-            $respuesta["paginate"] = $this->iaAssistantReportService->getFilteredReportWithPaginate($filtros);
-        }
+        // Clave única de caché basada en el hash de los filtros
+        $cacheKey = 'ia_assistant_paginate_' . md5(json_encode($filtros));
+
+        $respuesta["paginate"] = Cache::remember($cacheKey, 180, function () use ($filtros, $esVistaGrupal) {
+            if ($esVistaGrupal) {
+                return $this->iaAssistantReportService->getGroupedReportWithPaginate($filtros);
+            }
+            return $this->iaAssistantReportService->getFilteredReportWithPaginate($filtros);
+        });
 
         return ApiResponse::success($respuesta, "ok", 200);
     }
@@ -93,6 +97,7 @@ class SuppliersIaOrderAssistantController extends Controller
             "tipo_vista" => filter_var($request->tipo_vista, FILTER_VALIDATE_BOOLEAN),
             "lapso_de_tiempo" => $request->lapso_de_tiempo,
             "with_suppliers" => filter_var($request->with_suppliers, FILTER_VALIDATE_BOOLEAN),
+            "skip_ai_match" => filter_var($request->skip_ai_match, FILTER_VALIDATE_BOOLEAN),
             "con_descuento" => filter_var($request->con_descuento, FILTER_VALIDATE_BOOLEAN),
             "with_trend" => filter_var($request->with_trend, FILTER_VALIDATE_BOOLEAN),
         ];
@@ -126,11 +131,19 @@ class SuppliersIaOrderAssistantController extends Controller
             $filtros["groups"] = $request->groups;
         }
 
-        if ($request->has("isColombian")) {
+        if ($request->filled("tipo_exclusion")) {
+            if ($request->tipo_exclusion === "colombia") {
+                $filtros["isColombian"] = false;
+            } elseif ($request->tipo_exclusion === "novaventa") {
+                $filtros["isNovaventa"] = false;
+            }
+        }
+
+        if ($request->has("isColombian") && !$request->filled("tipo_exclusion")) {
             $filtros["isColombian"] = filter_var($request->isColombian, FILTER_VALIDATE_BOOLEAN);
         }
 
-        if ($request->has("isNovaventa")) {
+        if ($request->has("isNovaventa") && !$request->filled("tipo_exclusion")) {
             $filtros["isNovaventa"] = filter_var($request->isNovaventa, FILTER_VALIDATE_BOOLEAN);
         }
 

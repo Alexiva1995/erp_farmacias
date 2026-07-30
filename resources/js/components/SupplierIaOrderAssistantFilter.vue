@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 // Filtros IA Asistente Pedidos (Proveedores)
 import AppFilterBase from "@/components/AppFilterBase.vue";
 import { useBrandingStore } from "@/stores/useBrandingStore";
@@ -20,12 +20,15 @@ const props = defineProps({
   groups:             { type: Array,   default: () => [] },
   isColombian:        Boolean,
   isNovaventa:        Boolean,
+  tipoExclusion:      { type: String,  default: "none" },
   showIgnored:        { type: Boolean, default: false },
   showGraphs:         { type: Boolean, default: false },
   selectedSupplier:   { type: [Number, String, Object, null], default: null },
   suppliers:          { type: Array,   default: () => [] },
   hasStock:           { type: String,  default: "all" },
   ordenarAhorro:      Boolean,
+  isOrderingAhorro:   Boolean,
+  isExporting:        Boolean,
 });
 
 const emit = defineEmits([
@@ -40,6 +43,7 @@ const emit = defineEmits([
   "update:selectedGroup",
   "update:isColombian",
   "update:isNovaventa",
+  "update:tipoExclusion",
   "update:showIgnored",
   "update:showGraphs",
   "update:selectedSupplier",
@@ -48,6 +52,7 @@ const emit = defineEmits([
   "clear-ignore",
   "pedirAhorro",
   "fetchSuppliers",
+  "fetchAiMatches",
   "exportarColombianos",
 ]);
 
@@ -88,8 +93,14 @@ const hasStockOpciones = [
   { title: "Sin Stock",   value: "without" },
 ];
 
+const tipoExclusionOpciones = [
+  { title: "Ninguna",   value: "none"      },
+  { title: "Colombia",  value: "colombia"  },
+  { title: "Novaventa", value: "novaventa" },
+];
+
 const hasAdvancedFilters = computed(() => (
-  !!(props.selectedGroup?.length || props.isColombian || props.isNovaventa || props.tipo_de_filtracion !== 'combinado' || props.stock !== 'fallas' || props.selectedSupplier || props.hasStock !== 'all')
+  !!(props.selectedGroup?.length || props.isColombian || props.isNovaventa || props.tipoExclusion !== 'none' || props.tipo_de_filtracion !== 'combinado' || props.stock !== 'fallas' || props.selectedSupplier || props.hasStock !== 'all')
 ));
 </script>
 
@@ -134,6 +145,7 @@ const hasAdvancedFilters = computed(() => (
         <VTooltip activator="parent" location="top">Restaurar Ocultos (Ignore)</VTooltip>
       </VBtn>
 
+      <!-- Comparar Precios Más Bajos (Búsqueda directa por costo) -->
       <VBtn
         icon
         color="warning"
@@ -143,7 +155,20 @@ const hasAdvancedFilters = computed(() => (
         @click="emit('fetchSuppliers')"
       >
         <VIcon icon="tabler-currency-dollar" size="20" />
-        <VTooltip activator="parent" location="top">Comparar Precios Mas Bajos</VTooltip>
+        <VTooltip activator="parent" location="top">Comparar Precios Más Bajos (Directo)</VTooltip>
+      </VBtn>
+
+      <!-- Coincidencia Inteligente por IA -->
+      <VBtn
+        icon
+        color="secondary"
+        variant="tonal"
+        size="38"
+        class="ml-1 shadow-sm rounded-circle"
+        @click="emit('fetchAiMatches')"
+      >
+        <VIcon icon="tabler-sparkles" size="20" />
+        <VTooltip activator="parent" location="top">Buscar Coincidencias por IA</VTooltip>
       </VBtn>
 
       <VBtn
@@ -152,6 +177,8 @@ const hasAdvancedFilters = computed(() => (
         variant="flat"
         size="38"
         class="ml-1 shadow-sm rounded-circle"
+        :loading="props.isOrderingAhorro"
+        :disabled="props.isOrderingAhorro"
         @click="emit('pedirAhorro')"
       >
         <VIcon icon="tabler-shopping-cart-plus" size="20" />
@@ -166,6 +193,8 @@ const hasAdvancedFilters = computed(() => (
         variant="flat"
         size="38"
         class="ml-1 shadow-sm rounded-circle"
+        :loading="props.isExporting"
+        :disabled="props.isExporting"
         @click="emit('exportarColombianos')"
       >
         <VIcon icon="tabler-file-spreadsheet" size="20" />
@@ -305,6 +334,20 @@ const hasAdvancedFilters = computed(() => (
           hide-details
           prepend-inner-icon="tabler-package"
           @update:model-value="emit('update:hasStock', $event)"
+        />
+      </VCol>
+
+      <!-- Exclusión de Productos -->
+      <VCol cols="12" sm="6" md="2">
+        <VSelect
+          :model-value="props.tipoExclusion"
+          :items="tipoExclusionOpciones"
+          label="Excluir Tipo"
+          density="compact"
+          hide-details
+          color="error"
+          prepend-inner-icon="tabler-filter-off"
+          @update:model-value="emit('update:tipoExclusion', $event)"
         />
       </VCol>
 

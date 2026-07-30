@@ -98,57 +98,6 @@ class IaAssistantReportService
             'path' => request()->url(),
             'query' => request()->query(),
         ]);
-        $grupos = [];
-        foreach ($currentGroupIds as $groupId) {
-            $filtrosGrupo = $filtrosBase;
-            $filtrosGrupo['groups'] = [$groupId];
-            unset($filtrosGrupo['tipo_vista']);
-
-            // Obtener productos del grupo
-            if ($tipo === 'sales') {
-                $resultado = $this->productRepository->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtrosGrupo);
-            } else {
-                $resultado = $this->productRepository->filtrarIndividualProductForAssistantReportTypeAveragesWithoutPaginate($filtrosGrupo);
-            }
-
-            if ($tipo === 'combinado') {
-                $procesado = $this->processCombinedReport($resultado, $filtrosGrupo);
-            } else {
-                $procesado = $this->processRegularReport($resultado, $tipo);
-            }
-
-            if (filter_var($filtros['with_trend'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
-                $this->hydrateSalesTrend($procesado);
-            }
-
-            // Hidratar proveedores si se solicita
-            if (filter_var($filtros['with_suppliers'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
-                $this->hydrateSuppliers($procesado, $filtros);
-            }
-
-            // Consolidar productos unificados
-            $procesado = $this->consolidateCollection($procesado, $filtros);
-
-            // Serializar a array asociativo profundo (funciona con Eloquent models y stdClass)
-            $productosArray = json_decode(json_encode($procesado), true);
-
-            $grupos[] = [
-                'group_id'   => $groupId,
-                'group_name' => $grupoNombres[$groupId] ?? '',
-                'productos'  => array_values($productosArray),
-                'total_solicitar' => collect($productosArray)->sum(function($p) {
-                    return (float) ($p['solicitar'] ?? 0);
-                })
-            ];
-        }
-
-        return [
-            'grupos'       => $grupos,
-            'total_grupos' => $totalGroups,
-            'per_page'     => $perPage,
-            'current_page' => $page,
-            'last_page'    => (int) ceil($totalGroups / $perPage),
-        ];
     }
 
     public function getFilteredIds(array $filtros, bool $porGrupo = false): array
@@ -159,10 +108,6 @@ class IaAssistantReportService
         return $this->productRepository->getUniqueIdsForIaReport($filtrosLigero, $porGrupo);
     }
 
-    /**
-     * Devuelve el conteo total de productos que coinciden con los filtros del asistente.
-     * Usa la misma fuente que el asistente (getUniqueIdsForIaReport) para garantizar coincidencia.
-     */
     public function countFilteredProducts(array $filtros): int
     {
         $filtros = $this->prepareDateFilters($filtros);
@@ -305,7 +250,8 @@ class IaAssistantReportService
         $items = $items->values();
         $eloquentCollection = new \Illuminate\Database\Eloquent\Collection($items);
         
-        $itemsWithSuppliers = $this->productSupplierRepository->getSupplierToReplenishTheProducts($eloquentCollection, $conDescuento);
+        $skipAiMatch = filter_var($filtros['skip_ai_match'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        $itemsWithSuppliers = $this->productSupplierRepository->getSupplierToReplenishTheProducts($eloquentCollection, $conDescuento, $skipAiMatch);
         $itemsWithSuppliers = $this->productSupplierRepository->checkTolerance($itemsWithSuppliers, $conDescuento);
         
         foreach ($items as $index => $producto) {

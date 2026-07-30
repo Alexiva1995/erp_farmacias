@@ -52,7 +52,7 @@ class ProductSupplierRepository
      * Obtiene el mejor proveedor para una lista de productos de forma masiva (Optimizado)
      * Utilizado en la vista de Asistente de IA para comparativa de precios instantánea.
      */
-    public function getSupplierToReplenishTheProducts(Collection $products, string $conDescuento): array
+    public function getSupplierToReplenishTheProducts(Collection $products, string $conDescuento, bool $skipAiMatch = false): array
     {
         $productIds = $products->pluck('id')->toArray();
         
@@ -104,9 +104,8 @@ class ProductSupplierRepository
                 }
             }
 
-            // Si aún no tiene proveedor: despachar Job asíncrono de matching IA
-            // El request responde inmediatamente; el Job procesa en background sin límite de 3
-            if (!$bestOffer && !$product->no_ai_match_possible) {
+            // Si aún no tiene proveedor y NO se indicó omitir el match por IA: despachar Job asíncrono
+            if (!$bestOffer && !$product->no_ai_match_possible && !$skipAiMatch) {
                 \App\Jobs\MatchSupplierByIaJob::dispatch($product->id);
                 // Marcar para que la UI sepa que está en proceso
                 $product->ia_matching_in_progress = true;

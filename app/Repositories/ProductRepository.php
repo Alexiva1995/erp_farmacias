@@ -216,13 +216,18 @@ class ProductRepository
         if (array_key_exists("isColombian", $filtros)) {
             if ($filtros["isColombian"] == true || $filtros["isColombian"] === "true") {
                 $consulta->where("products.is_colombian_origin", "=", 1);
+            } elseif ($filtros["isColombian"] === false || $filtros["isColombian"] === "false") {
+                $consulta->where(function ($q) {
+                    $q->where("products.is_colombian_origin", "=", 0)
+                      ->orWhereNull("products.is_colombian_origin");
+                });
             }
         }
 
         if (array_key_exists("isNovaventa", $filtros)) {
             if ($filtros["isNovaventa"] == true || $filtros["isNovaventa"] === "true") {
                 $consulta->where("products.is_novaventa", "=", 1);
-            } else {
+            } elseif ($filtros["isNovaventa"] === false || $filtros["isNovaventa"] === "false") {
                 $consulta->where(function ($q) {
                     $q->where("products.is_novaventa", "=", 0)
                       ->orWhereNull("products.is_novaventa");
@@ -1410,13 +1415,18 @@ class ProductRepository
         if (array_key_exists("isColombian", $filtros)) {
             if ($filtros["isColombian"] == true || $filtros["isColombian"] === "true") {
                 $query->where("is_colombian_origin", "=", 1);
+            } elseif ($filtros["isColombian"] === false || $filtros["isColombian"] === "false") {
+                $query->where(function ($q) {
+                    $q->where("is_colombian_origin", "=", 0)
+                      ->orWhereNull("is_colombian_origin");
+                });
             }
         }
 
         if (array_key_exists("isNovaventa", $filtros)) {
             if ($filtros["isNovaventa"] == true || $filtros["isNovaventa"] === "true") {
                 $query->where("is_novaventa", "=", 1);
-            } else {
+            } elseif ($filtros["isNovaventa"] === false || $filtros["isNovaventa"] === "false") {
                 $query->where(function ($q) {
                     $q->where("is_novaventa", "=", 0)
                       ->orWhereNull("is_novaventa");

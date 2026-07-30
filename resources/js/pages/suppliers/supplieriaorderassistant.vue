@@ -36,6 +36,7 @@ const hasStock = ref("all");
 const con_descuento = ref(false);
 const isColombian = ref(false);
 const isNovaventa = ref(false);
+const tipoExclusion = ref("none");
 const ordenarAhorro = ref(false);
 const searchQuery = ref("");
 const withSuppliers = ref(false);
@@ -43,6 +44,9 @@ const showIgnored = ref(false);
 const showGraphs = ref(false);
 const selectedSupplier = ref(null);
 const suppliers = ref([]);
+
+const isOrderingAhorro = ref(false);
+const isExporting = ref(false);
 
 const handleClearFilters = () => {
   withSuppliers.value = false;
@@ -54,6 +58,7 @@ const handleClearFilters = () => {
   hasStock.value = "all";
   isColombian.value = false;
   isNovaventa.value = false;
+  tipoExclusion.value = "none";
   ordenarAhorro.value = false;
   selectedLaboratory.value = [];
   selectedGroup.value = [];
@@ -99,12 +104,14 @@ async function consultarProductosConPaginacion() {
     hasStock: hasStock.value,
     isColombian: isColombian.value,
     isNovaventa: isNovaventa.value,
+    tipo_exclusion: tipoExclusion.value,
     q: searchQuery.value,
     page: page.value,
     itemsPerPage: itemsPerPage.value,
     sortBy: sortBy.value,
     orderBy: orderBy.value,
     with_suppliers: withSuppliers.value,
+    skip_ai_match: skipAiMatch.value,
     con_descuento: con_descuento.value, // Asegurar que el flag de descuento se pase siempre
     show_ignored: showIgnored.value,
     with_trend: showGraphs.value,
@@ -149,8 +156,18 @@ async function actualizarTabla() {
   }
 }
 
+const skipAiMatch = ref(true);
+
 async function handleFetchSuppliers() {
   withSuppliers.value = true;
+  skipAiMatch.value = true; // Solo comparar el costo mas bajo de proveedor (sin IA)
+  await actualizarTabla();
+}
+
+async function handleFetchAiMatches() {
+  withSuppliers.value = true;
+  skipAiMatch.value = false; // Disparar búsqueda de coincidencia por IA
+  toast.info("Iniciando búsqueda de coincidencias con IA...");
   await actualizarTabla();
 }
 
@@ -261,6 +278,7 @@ watch(
     hasStock,
     isColombian,
     isNovaventa,
+    tipoExclusion,
     searchQuery,
     con_descuento,
     showIgnored,
@@ -305,6 +323,8 @@ watch([page, itemsPerPage, orderBy, sortBy], () => {
 });
 
 async function pedirTodoAhorro() {
+  if (isOrderingAhorro.value) return;
+  isOrderingAhorro.value = true;
   toast.info("Analizando oportunidades de ahorro...");
   try {
     const data = {
@@ -387,10 +407,14 @@ async function pedirTodoAhorro() {
   } catch (error) {
     console.error("Error en pedirTodoAhorro:", error);
     toast.error("Ocurrió un error al procesar el pedido masivo.");
+  } finally {
+    isOrderingAhorro.value = false;
   }
 }
 
 async function handleExportarColombianos() {
+  if (isExporting.value) return;
+  isExporting.value = true;
   // Construir los params con los filtros actuales
   const params = new URLSearchParams({
     tipo_filtracion: tipo_de_filtracion.value,
@@ -422,6 +446,8 @@ async function handleExportarColombianos() {
     toast.success('Excel descargado correctamente.');
   } catch (e) {
     toast.error('Error al exportar el archivo Excel.');
+  } finally {
+    isExporting.value = false;
   }
 }
 
@@ -579,15 +605,19 @@ onMounted(async () => {
         v-model:showGraphs="showGraphs"
         v-model:isColombian="isColombian"
         v-model:isNovaventa="isNovaventa"
+        v-model:tipoExclusion="tipoExclusion"
         v-model:ordenarAhorro="ordenarAhorro"
         v-model:selectedSupplier="selectedSupplier"
         :groups="groups"
         :laboratories="laboratories"
         :suppliers="suppliers"
+        :is-ordering-ahorro="isOrderingAhorro"
+        :is-exporting="isExporting"
         @clear="handleClearFilters"
         @clear-ignore="handleClearIgnore"
         @pedirAhorro="pedirTodoAhorro"
         @fetchSuppliers="handleFetchSuppliers"
+        @fetchAiMatches="handleFetchAiMatches"
         @exportarColombianos="handleExportarColombianos"
       />
 
@@ -646,7 +676,7 @@ onMounted(async () => {
               <div class="d-flex flex-column overflow-hidden">
                 <span class="text-h6 font-weight-black text-white leading-tight mb-0">Comparador de Proveedores</span>
                 <span class="text-caption text-white text-opacity-80 d-flex align-center">
-                  Buscando para: <span class="bg-white text-primary px-3 py-1 rounded-pill ml-2 text-truncate font-weight-black" style="box-shadow: 0 2px 4px rgba(0, 0, 0, 10%); font-size: 0.75rem; max-inline-size: 600px;">{{ comparatorProduct?.name }}</span>
+                  Buscando para: <VChip color="surface" size="x-small" class="ml-2 font-weight-black text-truncate text-primary" max-width="600">{{ comparatorProduct?.name }}</VChip>
                 </span>
               </div>
             </div>
