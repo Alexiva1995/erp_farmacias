@@ -6,7 +6,7 @@ import ProductComparisionProductsTable from "@/components/ProductComparisionProd
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import Swal from "sweetalert2";
-import { onMounted, reactive, ref, watch } from "vue";
+import { computed, onMounted, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { roundIaAnalysis } from "@/utils/iaAnalysisRounding";
 
@@ -48,6 +48,14 @@ const suppliers = ref([]);
 
 const isOrderingAhorro = ref(false);
 const isExporting = ref(false);
+
+// Computed reactivo: filtra en tiempo real sin necesidad de recargar la tabla
+const displayedItems = computed(() => {
+  if (soloConCoincidencias.value) {
+    return statuModule.items.filter(p => p.best_supplier != null);
+  }
+  return statuModule.items;
+});
 
 const handleClearFilters = () => {
   withSuppliers.value = false;
@@ -147,11 +155,8 @@ async function actualizarTabla() {
       statuModule.total = 0;
     } else {
       // Vista individual: paginator estándar de Laravel
-      // Si "Solo Coincidencias" está activo, filtra en cliente
-      const rawItems = paginacion.data ?? [];
-      statuModule.items = soloConCoincidencias.value
-        ? rawItems.filter(p => p.best_supplier != null)
-        : rawItems;
+      // Guardar items crudos, displayedItems los filtra reactivamente
+      statuModule.items = paginacion.data ?? [];
       statuModule.total = paginacion.total ?? 0;
       // Limpiar vista grupal
       gruposData.grupos = [];
@@ -654,7 +659,7 @@ onMounted(async () => {
         <!-- Vista Individual: tabla estándar paginada -->
         <SupplierIaOrderAssistantIndividualTable
           v-else
-          :products="statuModule.items"
+          :products="displayedItems"
           :total-product="statuModule.total"
           :loading="loading"
           :items-per-page="itemsPerPage"

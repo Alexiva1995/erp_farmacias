@@ -46,6 +46,15 @@ class IaAssistantReportService
         // 3. Consolidar productos unificados (grupos) para tener el stock, ventas y 'solicitar' real del grupo
         $procesado = $this->consolidateCollection($procesado, $filtros);
 
+        // 3.1 Safety net: forzar exclusión de Colombia/Novaventa post-consolidación
+        // (consolidateCollection puede mezclar productos de grupos sin respetar estos flags)
+        if (array_key_exists('isColombian', $filtros) && $filtros['isColombian'] === false) {
+            $procesado = $procesado->filter(fn($p) => !$p->is_colombian_origin);
+        }
+        if (array_key_exists('isNovaventa', $filtros) && $filtros['isNovaventa'] === false) {
+            $procesado = $procesado->filter(fn($p) => !$p->is_novaventa);
+        }
+
         // 4. Filtrar estrictamente por estado de stock pos-procesamiento (Fallas / Exceso)
         $stockFilter = $filtros['stock'] ?? 'all';
         if ($stockFilter === 'fallas') {
