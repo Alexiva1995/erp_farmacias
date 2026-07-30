@@ -46,7 +46,7 @@ class SuppliersIaOrderAssistantController extends Controller
         $esVistaGrupal = filter_var($filtros['tipo_vista'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
         // Clave única de caché basada en el hash de los filtros
-        $cacheKey = 'ia_assistant_paginate_v2_' . md5(json_encode($filtros));
+        $cacheKey = 'ia_assistant_paginate_v3_' . md5(json_encode($filtros));
 
         $respuesta["paginate"] = Cache::remember($cacheKey, 60, function () use ($filtros, $esVistaGrupal) {
             if ($esVistaGrupal) {
@@ -146,11 +146,11 @@ class SuppliersIaOrderAssistantController extends Controller
             }
         }
 
-        if ($request->has("isColombian") && !$request->filled("tipo_exclusion")) {
+        if (!array_key_exists("isColombian", $filtros) && $request->has("isColombian")) {
             $filtros["isColombian"] = filter_var($request->isColombian, FILTER_VALIDATE_BOOLEAN);
         }
 
-        if ($request->has("isNovaventa") && !$request->filled("tipo_exclusion")) {
+        if (!array_key_exists("isNovaventa", $filtros) && $request->has("isNovaventa")) {
             $filtros["isNovaventa"] = filter_var($request->isNovaventa, FILTER_VALIDATE_BOOLEAN);
         }
 
