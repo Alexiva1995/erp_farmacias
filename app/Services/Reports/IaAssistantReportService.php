@@ -55,10 +55,14 @@ class IaAssistantReportService
             $procesado = $procesado->filter(fn($p) => !$p->is_novaventa);
         }
 
-        // 4. Filtrar estrictamente por estado de stock pos-procesamiento (Fallas / Exceso)
+        // 4. Filtrar strictly por estado de stock pos-procesamiento (Fallas / Exceso)
         $stockFilter = $filtros['stock'] ?? 'all';
         if ($stockFilter === 'fallas') {
-            $procesado = $procesado->filter(fn($p) => (float)($p->solicitar ?? 0) > 0);
+            $procesado = $procesado->filter(function($p) {
+                $solicitarVal = (float)($p->solicitar ?? 0);
+                $loteQuantity = (float)($p->lote_quantity ?? 0);
+                return $solicitarVal > 0 || ($solicitarVal == 0 && $loteQuantity <= 0);
+            });
         } elseif ($stockFilter === 'exceso') {
             $procesado = $procesado->filter(fn($p) => (float)($p->solicitar ?? 0) < 0);
         }
