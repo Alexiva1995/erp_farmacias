@@ -69,12 +69,6 @@ class ProductSupplierServices implements ProductSupplier
         return $percentageIncrease < $maximumPercentageMaximo ? true : false;
     }
 
-    public function getSupplierToReplenishTheProducts(Collection $products, string $conDescuento): array
-    {
-        // Delegamos al repositorio que ya tiene la lógica masiva optimizada y sin restricciones de 'solicitar'
-        return $this->productSupplierRepository->getSupplierToReplenishTheProducts($products, $conDescuento);
-    }
-
     public function getSupplierToReplenishTheProductsWithoutValidateSolicitar(Collection $products, string $conDescuento): array
     {
         $respuesta = [];
