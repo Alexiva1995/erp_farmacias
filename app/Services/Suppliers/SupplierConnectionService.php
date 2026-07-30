@@ -409,13 +409,23 @@ class SupplierConnectionService
 
         $structure_for_parsing = json_decode($connection->parse_using ?? '');
 
+        $splitLine = function (string $l) {
+            if (str_contains($l, ';')) {
+                return explode(';', $l);
+            }
+            if (str_contains($l, "\t")) {
+                return explode("\t", $l);
+            }
+            return preg_split('/\s{2,}/', trim($l)) ?: [$l];
+        };
+
         if ($has_header && !empty($headerLine)) {
             if (!empty($structure_for_parsing)) {
                 $headerLine = $this->parseFixedWidth($headerLine, $structure_for_parsing);
             }
             // Remove BOM if present
             $headerLine = preg_replace('/^\xEF\xBB\xBF/', '', $headerLine);
-            $headers = explode(';', $headerLine);
+            $headers = $splitLine($headerLine);
             $headerMap = array_flip(array_map('trim', $headers));
         }
 
@@ -447,7 +457,7 @@ class SupplierConnectionService
             if (!empty($structure_for_parsing)) {
                 $line = $this->parseFixedWidth($line, $structure_for_parsing);
             }
-            $cols = explode(';', $line);
+            $cols = $splitLine($line);
 
             if ($barcodeIdx !== null && isset($cols[$barcodeIdx])) {
                 $barcodes[] = trim($cols[$barcodeIdx] ?? "");
@@ -457,11 +467,11 @@ class SupplierConnectionService
         $barcodes = array_unique(array_filter($barcodes));
         $products = Product::with("laboratory")->whereIn("barcode", $barcodes)->get()->keyBy("barcode");
 
-        $result = collect($lines)->map(function (string $line, $key) use ($normalizedStructure, $now, $usdCurrency, $supplierId, $products, $structure_for_parsing, $headerMap, $getIdx) {
+        $result = collect($lines)->map(function (string $line, $key) use ($normalizedStructure, $now, $usdCurrency, $supplierId, $products, $structure_for_parsing, $headerMap, $getIdx, $splitLine) {
             if (!empty($structure_for_parsing)) {
                 $line = $this->parseFixedWidth($line, $structure_for_parsing);
             }
-            $cols = explode(";", $line);
+            $cols = $splitLine($line);
             
             $entry = [
                 "supplier_id" => $supplierId,
