@@ -230,150 +230,52 @@ class SupplierQueryService
             $logFile = storage_path('logs/supplier_debug_' . date('Y-m-d') . '.log');
             $logMessage = "[" . date('Y-m-d H:i:s') . "] 🚨 Iniciando inserción de productos - Total: {$totalProductos}\n";
             file_put_contents($logFile, $logMessage, FILE_APPEND);
-            error_log($logMessage);
 
-            // Verificar y eliminar restricción única si existe (para permitir múltiples NULL)
-            try {
-                $indexExists = DB::select("SHOW INDEX FROM product_suppliers WHERE Key_name = 'uniq_product_supplier'");
-                if (!empty($indexExists)) {
-                    $logMessage = "[" . date('Y-m-d H:i:s') . "] ⚠️ Restricción única encontrada. Intentando eliminar...\n";
-                    file_put_contents($logFile, $logMessage, FILE_APPEND);
+            $allowedColumns = [
+                'product_id', 'supplier_id', 'barcode_match', 'name', 'laboratory', 
+                'expiration', 'unit_cost', 'unit_cost_usd', 'connection_date', 
+                'quantity', 'unit_cost_with_discount', 'unit_cost_usd_with_discount', 
+                'cod_supplier', 'active_ingredient', 'created_at', 'updated_at'
+            ];
+            $allowedSet = array_flip($allowedColumns);
+            $nowStr = now()->toDateTimeString();
+            $todayStr = now()->toDateString();
 
-                    // Eliminar foreign key primero
-                    $fks = DB::select("
-                        SELECT CONSTRAINT_NAME 
-                        FROM information_schema.KEY_COLUMN_USAGE 
-                        WHERE TABLE_SCHEMA = DATABASE()
-                        AND TABLE_NAME = 'product_suppliers' 
-                        AND COLUMN_NAME = 'product_id'
-                        AND REFERENCED_TABLE_NAME IS NOT NULL
-                    ");
-
-                    foreach ($fks as $fk) {
-                        DB::statement("ALTER TABLE product_suppliers DROP FOREIGN KEY {$fk->CONSTRAINT_NAME}");
-                        $logMessage = "[" . date('Y-m-d H:i:s') . "] ✅ Foreign key eliminada: {$fk->CONSTRAINT_NAME}\n";
-                        file_put_contents($logFile, $logMessage, FILE_APPEND);
-                    }
-
-                    // Eliminar índice único
-                    DB::statement("ALTER TABLE product_suppliers DROP INDEX uniq_product_supplier");
-                    $logMessage = "[" . date('Y-m-d H:i:s') . "] ✅ Restricción única eliminada\n";
-                    file_put_contents($logFile, $logMessage, FILE_APPEND);
-
-                    // Recrear foreign key
-                    DB::statement("
-                        ALTER TABLE product_suppliers 
-                        ADD CONSTRAINT product_suppliers_product_id_foreign 
-                        FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
-                    ");
-                    $logMessage = "[" . date('Y-m-d H:i:s') . "] ✅ Foreign key recreada\n";
-                    file_put_contents($logFile, $logMessage, FILE_APPEND);
+            $batchRows = [];
+            foreach ($uniqueProducts as $productData) {
+                if (!isset($productData['supplier_id'])) {
+                    $productData['supplier_id'] = $supplier->id;
                 }
-            } catch (\Throwable $e) {
-                $logMessage = "[" . date('Y-m-d H:i:s') . "] ⚠️ Error verificando/eliminando restricción: " . $e->getMessage() . "\n";
-                file_put_contents($logFile, $logMessage, FILE_APPEND);
-                error_log($logMessage);
+                if (!isset($productData['connection_date'])) {
+                    $productData['connection_date'] = $todayStr;
+                }
+                if (!isset($productData['unit_cost'])) {
+                    $productData['unit_cost'] = 0;
+                }
+                if (!isset($productData['unit_cost_usd'])) {
+                    $productData['unit_cost_usd'] = 0;
+                }
+                if (!isset($productData['created_at'])) {
+                    $productData['created_at'] = $nowStr;
+                }
+                if (!isset($productData['updated_at'])) {
+                    $productData['updated_at'] = $nowStr;
+                }
+
+                if (!isset($productData['quantity']) || empty($productData['quantity']) || $productData['quantity'] <= 0) {
+                    $productData['quantity'] = 1000;
+                }
+
+                $batchRows[] = array_intersect_key($productData, $allowedSet);
             }
 
-
-            foreach ($uniqueProducts as $index => $productData) {
+            foreach (array_chunk($batchRows, 500) as $chunk) {
                 try {
-                    // Asegurar campos obligatorios
-                    if (!isset($productData['supplier_id'])) {
-                        $productData['supplier_id'] = $supplier->id;
-                    }
-                    if (!isset($productData['connection_date'])) {
-                        $productData['connection_date'] = now()->toDateString();
-                    }
-                    if (!isset($productData['unit_cost'])) {
-                        $productData['unit_cost'] = 0;
-                    }
-                    if (!isset($productData['unit_cost_usd'])) {
-                        $productData['unit_cost_usd'] = 0;
-                    }
-                    if (!isset($productData['created_at'])) {
-                        $productData['created_at'] = now();
-                    }
-                    if (!isset($productData['updated_at'])) {
-                        $productData['updated_at'] = now();
-                    }
-
-                    // Si la cantidad es 0 o nula, asignar 1000 por defecto (Solicitud Usuario)
-                    if (!isset($productData['quantity']) || empty($productData['quantity']) || $productData['quantity'] <= 0) {
-                        $productData['quantity'] = 1000;
-                    }
-
-                    // Filtrar solo columnas existentes en la tabla para evitar errores de SQL (Capa de seguridad extra)
-                    $allowedColumns = [
-                        'product_id', 'supplier_id', 'barcode_match', 'name', 'laboratory', 
-                        'expiration', 'unit_cost', 'unit_cost_usd', 'connection_date', 
-                        'quantity', 'unit_cost_with_discount', 'unit_cost_usd_with_discount', 
-                        'cod_supplier', 'active_ingredient', 'created_at', 'updated_at'
-                    ];
-                    
-                    $productData = array_intersect_key($productData, array_flip($allowedColumns));
-
-                    // Insertar directamente SIN transacción anidada
-                    DB::table('product_suppliers')->insert($productData);
-
-                    $insertados++;
+                    DB::table('product_suppliers')->insertOrIgnore($chunk);
+                    $insertados += count($chunk);
                 } catch (\Throwable $e) {
-                    $errores++;
-
-                    $errorMsg = $e->getMessage();
-                    $errorCode = $e->getCode();
-
-                    // Verificar si es error de duplicado/restricción única
-                    $isDuplicateError = str_contains($errorMsg, 'Duplicate entry') ||
-                        str_contains($errorMsg, '1062') ||
-                        str_contains($errorMsg, 'uniq_product_supplier');
-
-                    $logMessage = "[" . date('Y-m-d H:i:s') . "] ❌ ERROR insertando producto #{$index} - Error: {$errorMsg} - Code: {$errorCode}";
-                    if ($isDuplicateError) {
-                        $logMessage .= " [DUPLICADO/RESTRICCIÓN ÚNICA]";
-                    }
-                    $logMessage .= "\n";
-
-                    file_put_contents($logFile, $logMessage, FILE_APPEND);
-                    error_log($logMessage);
-
-                    // Si es error de duplicado, intentar con INSERT IGNORE
-                    if ($isDuplicateError) {
-                        try {
-                            $columns = array_keys($productData);
-                            $values = array_values($productData);
-                            $placeholders = str_repeat('?,', count($values) - 1) . '?';
-
-                            $sql = "INSERT IGNORE INTO product_suppliers (" . implode(', ', $columns) . ") VALUES ({$placeholders})";
-                            DB::insert($sql, $values);
-
-                            $insertados++; // Contar como insertado si IGNORE lo permite
-                            $errores--; // No contar como error
-
-                            $logMessage = "[" . date('Y-m-d H:i:s') . "] ⚠️ Insertado con IGNORE producto #{$index} (era duplicado)\n";
-                            file_put_contents($logFile, $logMessage, FILE_APPEND);
-                            error_log($logMessage);
-                        } catch (\Throwable $e2) {
-                            // Si IGNORE también falla, continuar sin insertar
-                            $logMessage = "[" . date('Y-m-d H:i:s') . "] ❌ IGNORE también falló para producto #{$index}: " . $e2->getMessage() . "\n";
-                            file_put_contents($logFile, $logMessage, FILE_APPEND);
-                            error_log($logMessage);
-                        }
-                    }
-
-                    \Log::error("🚨 [FORZADO] ERROR insertando producto #{$index}", [
-                        'supplier_id' => $supplier->id,
-                        'error' => $errorMsg,
-                        'error_code' => $errorCode,
-                        'is_duplicate' => $isDuplicateError,
-                        'product_data' => [
-                            'product_id' => $productData['product_id'] ?? 'NULL',
-                            'name' => $productData['name'] ?? 'NULL',
-                            'barcode_match' => $productData['barcode_match'] ?? 'NULL',
-                        ]
-                    ]);
-                    // Continuar con el siguiente producto aunque falle uno
-                    continue;
+                    $errores += count($chunk);
+                    Log::error("Error insertando lote de productos", ['error' => $e->getMessage()]);
                 }
             }
 
