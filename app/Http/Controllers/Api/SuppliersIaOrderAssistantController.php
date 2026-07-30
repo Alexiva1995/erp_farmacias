@@ -46,9 +46,9 @@ class SuppliersIaOrderAssistantController extends Controller
         $esVistaGrupal = filter_var($filtros['tipo_vista'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
         // Clave única de caché basada en el hash de los filtros
-        $cacheKey = 'ia_assistant_paginate_' . md5(json_encode($filtros));
+        $cacheKey = 'ia_assistant_paginate_v2_' . md5(json_encode($filtros));
 
-        $respuesta["paginate"] = Cache::remember($cacheKey, 180, function () use ($filtros, $esVistaGrupal) {
+        $respuesta["paginate"] = Cache::remember($cacheKey, 60, function () use ($filtros, $esVistaGrupal) {
             if ($esVistaGrupal) {
                 return $this->iaAssistantReportService->getGroupedReportWithPaginate($filtros);
             }

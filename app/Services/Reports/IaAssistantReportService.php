@@ -62,14 +62,6 @@ class IaAssistantReportService
             $procesado = $this->processRegularReport($resultado, $tipo, $filtros);
         }
 
-        // Filtrar por estado de stock pos-procesamiento (fallas / exceso)
-        $stockFilter = $filtros['stock'] ?? 'all';
-        if ($stockFilter === 'fallas') {
-            $procesado = $procesado->filter(fn($p) => (float)($p->solicitar ?? 0) > 0);
-        } elseif ($stockFilter === 'exceso') {
-            $procesado = $procesado->filter(fn($p) => (float)($p->solicitar ?? 0) < 0);
-        }
-
         // 5. ORDENAMIENTO FINAL DINÁMICO
         $shortBy = $filtros['sortBy'] ?? 'solicitar';
         $orderDir = strtolower($filtros['orderBy'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
@@ -93,7 +85,7 @@ class IaAssistantReportService
         // Consolidar productos unificados
         $procesado = $this->consolidateCollection($procesado, $filtros);
 
-        // 6. Devolver paginador manual
+        // 6. Devolver paginador manual con la colección real procesada de la página
         return new LengthAwarePaginator($procesado, $total, $perPage, $page, [
             'path' => request()->url(),
             'query' => request()->query(),
