@@ -96,8 +96,10 @@ const rejectAiMatch = async (item) => {
       product_id:          item.id,
       product_supplier_id: item.best_supplier.id,
     });
-    emit('reject-ai-match', item.id);
-    toast.success("Sugerencia de IA rechazada correctamente.");
+    // Ignorar por 7 días al rechazar coincidencia
+    await axios.post(`/suppliers-ia-order-assistant/products/${item.id}/ignore`);
+    emit('remove-item', item.id);
+    toast.success("Sugerencia rechazada y producto ocultado por 7 días.");
   } catch (error) {
     console.error('Error rechazando match IA:', error);
     toast.error("Error al rechazar la sugerencia de la IA.");

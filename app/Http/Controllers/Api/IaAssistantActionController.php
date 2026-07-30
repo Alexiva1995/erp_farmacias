@@ -40,6 +40,12 @@ class IaAssistantActionController extends Controller
         try {
             $product = Product::findOrFail($productId);
 
+            // Si es origen colombiano (COL), forzar la adición a la orden del proveedor ID 48
+            if ((int)$product->is_colombian_origin === 1) {
+                $supplierId = 48;
+                $productSupplierId = null;
+            }
+
             // 1. Obtener el enlace producto-proveedor
             $ps = null;
             if ($productSupplierId) {

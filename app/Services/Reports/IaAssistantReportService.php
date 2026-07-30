@@ -46,13 +46,21 @@ class IaAssistantReportService
         // 3. Consolidar productos unificados (grupos) para tener el stock, ventas y 'solicitar' real del grupo
         $procesado = $this->consolidateCollection($procesado, $filtros);
 
-        // 3.1 Safety net: forzar exclusión de Colombia/Novaventa post-consolidación
+        // 3.1 Safety net: forzar inclusión o exclusión de Colombia/Novaventa post-consolidación
         // (consolidateCollection puede mezclar productos de grupos sin respetar estos flags)
-        if (array_key_exists('isColombian', $filtros) && $filtros['isColombian'] === false) {
-            $procesado = $procesado->filter(fn($p) => !$p->is_colombian_origin);
+        if (array_key_exists('isColombian', $filtros)) {
+            if ($filtros['isColombian'] === true || $filtros['isColombian'] === 'true') {
+                $procesado = $procesado->filter(fn($p) => (int)($p->is_colombian_origin ?? 0) === 1);
+            } elseif ($filtros['isColombian'] === false || $filtros['isColombian'] === 'false') {
+                $procesado = $procesado->filter(fn($p) => (int)($p->is_colombian_origin ?? 0) !== 1);
+            }
         }
-        if (array_key_exists('isNovaventa', $filtros) && $filtros['isNovaventa'] === false) {
-            $procesado = $procesado->filter(fn($p) => !$p->is_novaventa);
+        if (array_key_exists('isNovaventa', $filtros)) {
+            if ($filtros['isNovaventa'] === true || $filtros['isNovaventa'] === 'true') {
+                $procesado = $procesado->filter(fn($p) => (int)($p->is_novaventa ?? 0) === 1);
+            } elseif ($filtros['isNovaventa'] === false || $filtros['isNovaventa'] === 'false') {
+                $procesado = $procesado->filter(fn($p) => (int)($p->is_novaventa ?? 0) !== 1);
+            }
         }
 
         // 4. Filtrar strictly por estado de stock pos-procesamiento (Fallas / Exceso)
