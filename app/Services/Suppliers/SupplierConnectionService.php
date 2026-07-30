@@ -553,32 +553,33 @@ class SupplierConnectionService
                                 break;
                             }
 
-                            // Si ya tiene el precio en bs y usd
+                            // Si ya tiene la columna especifica unit_cost_usd en el archivo
                             if ($hasUnitCostUsd) {
                                 $entry[$meta["target"]] = $newValue;
                                 break;
                             } else {
-                                // Precio en bs calcula con la tasa  usd del dia
                                 if (isset($meta["currency"]) && $meta["currency"] === "usd") {
                                     $entry[$meta["target"]] = number_format(
-                                        (float) ($newValue * $usdCurrency->rate),
+                                        (float) ($newValue * ($usdCurrency->rate ?? 1)),
                                         2,
                                         ".",
-                                        "",
+                                        ""
                                     );
-                                    $entry["unit_cost_usd"] = $newValue;
-
+                                    if ($meta["target"] === "unit_cost") {
+                                        $entry["unit_cost_usd"] = $newValue;
+                                    }
                                     break;
                                 } else {
-                                    // Obtiene el equivalente de bs en usd
                                     $entry[$meta["target"]] = $newValue;
-                                    $entry["unit_cost_usd"] = number_format(
-                                        (float) ($newValue / $usdCurrency->rate),
-                                        2,
-                                        ".",
-                                        "",
-                                    );
-
+                                    // Solo calcular unit_cost_usd si la columna actual es el costo unitario (unit_cost)
+                                    if ($meta["target"] === "unit_cost") {
+                                        $entry["unit_cost_usd"] = number_format(
+                                            (float) ($newValue / ($usdCurrency->rate ?? 1)),
+                                            2,
+                                            ".",
+                                            ""
+                                        );
+                                    }
                                     break;
                                 }
                             }
