@@ -116,6 +116,7 @@ const processedNavItems = computed(() => {
             'laboratory': 'productivity-laboratory',
             'product': 'productivity-product',
             'employee_task': 'productivity-employee-task',
+            'employee_task_review': 'productivity-supervisor-cleaning-activities',
             'employee_month': 'productivity-employee-month',
           };
 

@@ -33,7 +33,7 @@ export default [
         title: 'Revision de Actividades de Limpieza',
         to: 'productivity-supervisor-cleaning-activities',
         action: 'manage',
-        subject: 'supervisor',
+        subject: 'supervisor-or-admin',
       },
       {
         title: 'Empleado del Mes',
