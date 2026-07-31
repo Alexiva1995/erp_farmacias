@@ -115,8 +115,7 @@ const processedNavItems = computed(() => {
             'cleaning': 'productivity-cleaning',
             'laboratory': 'productivity-laboratory',
             'product': 'productivity-product',
-            'employee_task': 'productivity-employee-task',
-            'employee_task_review': 'productivity-supervisor-cleaning-activities',
+            'employee_task': ['productivity-employee-task', 'productivity-supervisor-cleaning-activities'],
             'employee_month': 'productivity-employee-month',
           };
 
@@ -129,7 +128,8 @@ const processedNavItems = computed(() => {
             if (c.title === 'Productividad' && Array.isArray(c.children)) {
               c.children = c.children.filter(sub => {
                 for (const [key, name] of Object.entries(productivityRouteMap)) {
-                  if (sub.to === name) {
+                  const matches = Array.isArray(name) ? name.includes(sub.to) : sub.to === name;
+                  if (matches) {
                     return enabledRrhh.includes(key);
                   }
                 }
