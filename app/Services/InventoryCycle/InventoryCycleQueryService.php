@@ -633,7 +633,7 @@ class InventoryCycleQueryService
     {
         $activeCycleId = InventoryCycle::where('status', 'active')->value('id');
 
-        $unionQuery = $this->buildDiscrepanciesUnionQuery($activeCycleId);
+        $unionQuery = $this->buildDiscrepanciesUnionQuery($activeCycleId, true);
 
         $query = DB::query()->fromSub($unionQuery, 'discrepancies')
             ->leftJoin('products', 'discrepancies.product_id', '=', 'products.id')
@@ -650,6 +650,7 @@ class InventoryCycleQueryService
                 'discrepancies.id',
                 'discrepancies.product_id',
                 'discrepancies.discrepancy',
+                'discrepancies.status',
                 'discrepancies.source_type',
                 'discrepancies.updated_at as processed_date',
                 'products.name as product_name',

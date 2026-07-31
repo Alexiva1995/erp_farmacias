@@ -54,6 +54,7 @@ const fetchData = async () => {
       id: item.id,
       productId: item.product_id,
       discrepancy: item.discrepancy,
+      status: item.status,
       product: { 
         id: item.product_id,
         name: item.product_name, 
@@ -139,23 +140,27 @@ const updateTableOptions = (options) => {
   }
 };
 
-const handleCashClose = async () => {
-  const result = await Swal.fire({
-    title: "¿Estás seguro?",
-    text: "Esta acción cerrará el ciclo de inventario activo y creará automáticamente un nuevo ciclo. ¿Deseas continuar?",
-    icon: "warning",
-    showCancelButton: true,
-    confirmButtonText: "Sí, cerrar ciclo",
-    cancelButtonText: "Cancelar",
-    reverseButtons: true,
-  });
+const handleCashClose = async (rejectPending = false) => {
+  if (!rejectPending) {
+    const result = await Swal.fire({
+      title: "¿Estás seguro?",
+      text: "Esta acción cerrará el ciclo de inventario activo y creará automáticamente un nuevo ciclo. ¿Deseas continuar?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Sí, cerrar ciclo",
+      cancelButtonText: "Cancelar",
+      reverseButtons: true,
+    });
 
-  if (!result.isConfirmed) return;
+    if (!result.isConfirmed) return;
+  }
 
   isClosing.value = true;
 
   try {
-    const closeResponse = await axios.post("/inventory/cycle/close");
+    const closeResponse = await axios.post("/inventory/cycle/close", {
+      reject_pending: rejectPending,
+    });
     toast.success(closeResponse.data.message);
 
     try {
@@ -172,7 +177,26 @@ const handleCashClose = async () => {
     await Promise.all([fetchData(), fetchCycleStatus()]);
   } catch (closeError) {
     console.error("Error al cerrar el ciclo:", closeError);
-    toast.error(closeError.response?.data?.message || "Error al cerrar el ciclo.");
+    const errorData = closeError.response?.data;
+    if (errorData?.has_pending) {
+      const pendingResult = await Swal.fire({
+        title: "Conteos pendientes detectados",
+        text: "Existen conteos pendientes de aprobación o rechazo. ¿Deseas rechazar automáticamente los conteos pendientes y cerrar el ciclo?",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonText: "Sí, rechazar pendientes y cerrar",
+        cancelButtonText: "Cancelar",
+        confirmButtonColor: "#d33",
+        reverseButtons: true,
+      });
+
+      if (pendingResult.isConfirmed) {
+        await handleCashClose(true);
+        return;
+      }
+    } else {
+      toast.error(errorData?.message || "Error al cerrar el ciclo.");
+    }
   } finally {
     isClosing.value = false;
   }

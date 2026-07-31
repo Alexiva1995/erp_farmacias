@@ -2,6 +2,9 @@
 import { ref, computed } from "vue";
 import { useAbility } from "@casl/vue";
 import { useBrandingStore } from "@/stores/useBrandingStore";
+import axios from "@/plugins/axios";
+import { toast } from "@/plugins/sweetalert";
+import Swal from "sweetalert2";
 
 const brandingStore = useBrandingStore();
 const isRestaurant = computed(() => false);
@@ -42,8 +45,13 @@ const handleUnassign = async (product, group) => {
     try {
       await axios.delete(`/products/${product.id}/unassign-group`);
       toast.success("Producto desvinculado con éxito.");
-      emit("refresh"); // refrescar el listado general
+      if (group && Array.isArray(group.products)) {
+        const idx = group.products.findIndex((p) => p.id === product.id);
+        if (idx !== -1) group.products.splice(idx, 1);
+      }
+      emit("refresh");
     } catch (e) {
+      console.error("Error al desvincular el producto:", e);
       toast.error("Ocurrió un error al desvincular el producto.");
     }
   }

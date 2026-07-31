@@ -578,17 +578,13 @@ class SupplierQueryService
 
         $barcodeWarning = null;
         $mainProduct = $mainProductId ? Product::find($mainProductId) : null;
-        if ($mainProduct && (empty($mainProduct->barcode) || strlen($mainProduct->barcode) < 6) && !empty($product->barcode_match)) {
-            $barcodeExists = Product::where('barcode', $product->barcode_match)->exists();
-            if (!$barcodeExists) {
-                // 2. Solo si no existe en ningún otro lado, lo asignamos
-                $mainProduct->update([
-                    'barcode' => $product->barcode_match
-                ]);
-            } else {
-                // Solo guardamos el mensaje, NO detenemos el proceso
-                $barcodeWarning = "Producto añadido al pedido correctamente. El código {$product->barcode_match} ya existe y no se pudo asignar.";
+        // Si el producto principal no tiene barcode válido, ignorarlo en el asistente
+        // hasta que el usuario le asigne uno manualmente (ignore_until = +1 año)
+        if ($mainProduct && (empty($mainProduct->barcode) || strlen($mainProduct->barcode) < 6)) {
+            if (empty($mainProduct->ignore_until) || \Carbon\Carbon::parse($mainProduct->ignore_until)->isPast()) {
+                $mainProduct->update(['ignore_until' => now()->addDays(7)]);
             }
+            $barcodeWarning = "Producto añadido al pedido. No se muestra en el asistente hasta que se le asigne un código de barras.";
         }
 
         if ($product && $mainProductId && $product->product_id != $mainProductId) {

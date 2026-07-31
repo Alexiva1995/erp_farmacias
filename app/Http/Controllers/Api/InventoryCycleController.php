@@ -540,12 +540,17 @@ class InventoryCycleController extends Controller
     public function closeActiveCycle(Request $request)
     {
         try {
-            $result = $this->inventoryCycleActionService->closeActiveCycle();
+            $rejectPending = $request->boolean('reject_pending');
+            $result = $this->inventoryCycleActionService->closeActiveCycle($rejectPending);
 
             if ($result['success']) {
                 return response()->json(['success' => true, 'message' => $result['message']]);
             } else {
-                return response()->json(['success' => false, 'message' => $result['message']], 400);
+                return response()->json([
+                    'success' => false,
+                    'message' => $result['message'],
+                    'has_pending' => true,
+                ], 400);
             }
         } catch (\Exception $e) {
             Log::error('Error al intentar cerrar el ciclo de inventario activo.', ['error' => $e->getMessage()]);

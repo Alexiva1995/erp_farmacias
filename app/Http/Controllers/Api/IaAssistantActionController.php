@@ -314,7 +314,8 @@ class IaAssistantActionController extends Controller
         }
 
         $product->update([
-            'barcode' => $barcode,
+            'barcode'      => $barcode,
+            'ignore_until' => null, // Limpiar ignorado: el producto vuelve a aparecer en el asistente
         ]);
 
         return response()->json([
