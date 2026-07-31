@@ -17,14 +17,14 @@ const itemsPerPage = ref(10);
 const sortBy = ref(null);
 const orderBy = ref(null);
 
-const startDate = ref(null);
-const endDate = ref(null);
-const searchQuery = ref("");
-const movementType = ref(null);
-
 const route = useRoute();
 const authStore = useAuthStore();
 const isAdmin = computed(() => authStore.user?.role_id === 1);
+
+const startDate = ref(null);
+const endDate = ref(null);
+const searchQuery = ref(route.query.q ? String(route.query.q) : "");
+const movementType = ref(null);
 
 const fetchSales = async () => {
   loading.value = true;
@@ -64,13 +64,17 @@ watch([searchQuery, startDate, endDate, movementType], () => {
   triggerSearch();
 });
 
-onMounted(() => {
-  if (route.query.q) {
-    searchQuery.value = String(route.query.q);
-  } else {
-    fetchSales();
+watch(
+  () => route.query.q,
+  (newQ) => {
+    const val = newQ ? String(newQ) : "";
+    if (val !== searchQuery.value) {
+      searchQuery.value = val;
+      page.value = 1;
+      fetchSales();
+    }
   }
-});
+);
 
 const updateTableOptions = (options) => {
   page.value = options.page;

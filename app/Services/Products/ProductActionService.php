@@ -635,6 +635,7 @@ class ProductActionService
         $generalSettings = DB::table('general_settings')->first();
         $useCompound = $generalSettings && isset($generalSettings->profitability_calculation_type) && $generalSettings->profitability_calculation_type === 'compound';
 
+        $roundUsdUp = $generalSettings && !empty($generalSettings->round_usd_up);
         if ($useCompound) {
             $settings = ProfitabilitySetting::orderBy('id', 'desc')->first();
             $productProfitability = $product ? \App\Models\ProductProfitability::where('product_id', $product->id)->first() : null;
@@ -652,7 +653,8 @@ class ProductActionService
                 $profitDenominator = 0.01;
             }
 
-            return round(($costWithTax + $shippingCost + $packagingCost + $fixedExpenseAmount) / $profitDenominator, 2);
+            $calculatedPrice = ($costWithTax + $shippingCost + $packagingCost + $fixedExpenseAmount) / $profitDenominator;
+            return $roundUsdUp ? (float) ceil(round($calculatedPrice, 4)) : round($calculatedPrice, 2);
         } else {
             if ($product && $product->profitability && $product->profitability->is_locked) {
                 $percentage = (float) $product->profitability->profitability_percentage;
@@ -661,7 +663,8 @@ class ProductActionService
                 $percentage = $setting ? (float) $setting->default_profitability_percentage : 30.0;
             }
 
-            return round($unitCost * (1 + ($percentage / 100)), 2);
+            $calculatedPrice = $unitCost * (1 + ($percentage / 100));
+            return $roundUsdUp ? (float) ceil(round($calculatedPrice, 4)) : round($calculatedPrice, 2);
         }
     }
 }

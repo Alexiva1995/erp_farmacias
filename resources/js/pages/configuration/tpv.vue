@@ -13,6 +13,7 @@ const enableReservations = ref(true)
 const quotationStyle = ref('pharmacy')
 const tpvRateType = ref('bcv')
 const defaultCurrency = ref('USD')
+const roundUsdUp = ref(false)
 
 // Variables para control de estados (UI/UX y Rendimiento)
 const isLoading = ref(true)
@@ -74,6 +75,7 @@ const fetchSettings = async () => {
     quotationStyle.value = settings.quotation_style || 'pharmacy'
     tpvRateType.value = settings.tpv_rate_type || 'bcv'
     defaultCurrency.value = settings.default_currency || 'USD'
+    roundUsdUp.value = !!settings.round_usd_up
 
     // Cargar metodos de pago mapeados del backend
     if (settings.tpv_payment_methods) {
@@ -105,6 +107,7 @@ const updateSettings = async () => {
       enable_reservations: enableReservations.value,
       quotation_style: quotationStyle.value,
       tpv_rate_type: tpvRateType.value,
+      round_usd_up: roundUsdUp.value,
       tpv_payment_methods: tpvPaymentMethods.value,
       enabled_offer_types: enabledOfferTypes.value
     }
@@ -124,6 +127,7 @@ const updateSettings = async () => {
       enable_reservations: enableReservations.value,
       quotation_style: quotationStyle.value,
       tpv_rate_type: tpvRateType.value,
+      round_usd_up: roundUsdUp.value,
       enabled_offer_types: enabledOfferTypes.value
     }
     brandingStore.updatePaymentMethods(tpvPaymentMethods.value)
@@ -368,6 +372,26 @@ onMounted(() => {
               </div>
               <div v-else class="text-caption text-disabled pt-4">
                 Módulo desactivado
+              </div>
+            </VCol>
+
+            <!-- Columna 7: Redondeo USD (Entero Mayor) -->
+            <VCol cols="12" md="3" class="d-flex flex-column justify-space-between mb-6" style="min-block-size: 150px;">
+              <div>
+                <div class="font-weight-bold text-subtitle-2 mb-1">Redondeo en Venta USD</div>
+                <div class="text-caption text-medium-emphasis mb-3 leading-tight" style="min-block-size: 40px;">
+                  Al calcular y guardar la rentabilidad, redondea el precio de venta en USD al número entero mayor.
+                </div>
+              </div>
+              <div>
+                <VSwitch
+                  v-model="roundUsdUp"
+                  label="Habilitar Redondeo USD"
+                  color="primary"
+                  inset
+                  :disabled="isSaving"
+                  @update:model-value="updateSettings"
+                />
               </div>
             </VCol>
           </VRow>

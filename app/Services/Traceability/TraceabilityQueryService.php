@@ -34,13 +34,28 @@ class TraceabilityQueryService
             ]);
 
         if ($request->filled('q')) {
-            $searchTerm = "%{$request->input('q')}%";
-            $query->whereHas('product', function ($product) use ($searchTerm) {
-                $product->where('id', 'like', $searchTerm)
-                    ->orWhere('name', 'like', $searchTerm)
-                    ->orWhereHas('laboratory', function ($laboratory) use ($searchTerm) {
-                        $laboratory->where('name', 'like', $searchTerm);
+            $rawTerm = trim((string) $request->input('q'));
+            $isNumeric = ctype_digit($rawTerm);
+
+            $query->where(function ($subQuery) use ($rawTerm, $isNumeric) {
+                if ($isNumeric) {
+                    $productId = (int) $rawTerm;
+                    $subQuery->where('inventory_movements.product_id', '=', $productId)
+                        ->orWhere('inventory_movements.id', '=', $productId)
+                        ->orWhereHas('product', function ($product) use ($rawTerm) {
+                            $product->where('barcode', '=', $rawTerm)
+                                ->orWhere('name', 'like', "%{$rawTerm}%");
+                        });
+                } else {
+                    $searchTerm = "%{$rawTerm}%";
+                    $subQuery->whereHas('product', function ($product) use ($searchTerm) {
+                        $product->where('id', 'like', $searchTerm)
+                            ->orWhere('name', 'like', $searchTerm)
+                            ->orWhereHas('laboratory', function ($laboratory) use ($searchTerm) {
+                                $laboratory->where('name', 'like', $searchTerm);
+                            });
                     });
+                }
             });
         }
 

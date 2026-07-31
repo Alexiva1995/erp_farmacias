@@ -74,9 +74,26 @@ class CalculateProductSalesAverage extends Command
                     if ($totalSold === null || $totalSold == 0) {
                         $salesAverage = 0;
                     } else {
-                        // Calcular meses reales de vida del producto (máximo 12 meses)
-                        $createdAt    = $product->created_at ? Carbon::parse($product->created_at) : $now->copy()->subMonths(12);
-                        $monthsOfLife = (int) ceil($createdAt->diffInMonths($now));
+                        // Usar la fecha de la PRIMERA VENTA REAL del producto dentro de la ventana
+                        // para no penalizar productos recién comprados con denominadores de 12 meses.
+                        // Si no hay venta dentro de la ventana (no debería ocurrir aquí), caer en created_at.
+                        $firstSaleDate = DB::table('order_details')
+                            ->join('orders', 'order_details.order_id', '=', 'orders.id')
+                            ->where('order_details.product_id', $product->id)
+                            ->where('orders.status', 'Completed')
+                            ->where('orders.created_at', '>=', $windowStart)
+                            ->min('orders.created_at');
+
+                        if ($firstSaleDate) {
+                            $referenceDate = Carbon::parse($firstSaleDate);
+                        } else {
+                            $referenceDate = $product->created_at
+                                ? Carbon::parse($product->created_at)
+                                : $now->copy()->subMonths(12);
+                        }
+
+                        // Meses desde la primera venta real dentro de la ventana (mínimo 1, máximo 12)
+                        $monthsOfLife = (int) ceil($referenceDate->diffInMonths($now));
                         $actualMonths = max(1, min(12, $monthsOfLife));
 
                         // Promedio mensual = ventas en ventana / meses reales transcurridos

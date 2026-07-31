@@ -116,7 +116,12 @@ class ProfitabilityServices implements Profitability
                 $newPrice = $product->unit_cost * (1 + ($percentage / 100));
             }
 
-            $product->sale_price = round($newPrice, 2);
+            $roundUsdUp = $generalSettings && !empty($generalSettings->round_usd_up);
+            if ($roundUsdUp) {
+                $product->sale_price = ceil(round($newPrice, 4));
+            } else {
+                $product->sale_price = round($newPrice, 2);
+            }
             $product->save();
         }
     }
