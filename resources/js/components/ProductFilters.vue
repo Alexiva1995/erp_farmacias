@@ -51,6 +51,8 @@ const emit = defineEmits([
   "export",
   "add-product",
   "sort",
+  "bulk-toggle-active",
+  "bulk-delete",
 ]);
 
 const stockOptions = [
@@ -174,6 +176,34 @@ const showExport = computed(() => props.mode === 'products');
     @add="emit('add-product')"
     @sort="handleSortClick"
   >
+    <template #prepend-actions>
+      <VBtn
+        icon
+        variant="tonal"
+        color="warning"
+        size="38"
+        rounded="circle"
+        @click="emit('bulk-toggle-active')"
+      >
+        <VIcon icon="tabler-power" />
+        <VTooltip activator="parent" location="top">Inhabilitar / Habilitar Seleccionados</VTooltip>
+      </VBtn>
+
+      <!-- Botón Eliminar Seleccionados (Soft Delete) -->
+      <VBtn
+        v-if="authStore.isAdmin"
+        icon
+        variant="tonal"
+        color="error"
+        size="38"
+        rounded="circle"
+        @click="emit('bulk-delete')"
+      >
+        <VIcon icon="tabler-trash" />
+        <VTooltip activator="parent" location="top">Eliminar Seleccionados</VTooltip>
+      </VBtn>
+    </template>
+
     <template #search-extra>
       <!-- Búsqueda Estricta -->
       <VCol cols="auto" class="d-none d-sm-flex">

@@ -462,21 +462,33 @@ onMounted(() => {
                           @update:model-value="updateSettings"
                         />
                       </div>
-                      <!-- Descripción editable colapsable (solo se ve al hacer clic en editar) -->
-                      <VTextarea
-                        v-if="method.showDescription"
-                        v-model="method.description"
-                        :placeholder="`Instrucciones para pago con ${method.label}...`"
-                        density="compact"
-                        variant="outlined"
-                        rows="2"
-                        auto-grow
-                        hide-details
-                        :disabled="!currencyData.enabled || !method.enabled || isSaving"
-                        class="text-caption mt-2"
-                        style="font-size: 11px;"
-                        @update:model-value="updateSettings"
-                      />
+                      <!-- Descripción editable colapsable con botón de guardar manual -->
+                      <div v-if="method.showDescription" class="mt-2">
+                        <div class="d-flex align-center gap-2">
+                          <VTextarea
+                            v-model="method.description"
+                            :placeholder="`Instrucciones para pago con ${method.label}...`"
+                            density="compact"
+                            variant="outlined"
+                            rows="2"
+                            auto-grow
+                            hide-details
+                            :disabled="!currencyData.enabled || !method.enabled || isSaving"
+                            class="text-caption flex-grow-1"
+                            style="font-size: 11px;"
+                          />
+                          <VBtn
+                            icon="tabler-device-floppy"
+                            color="success"
+                            size="small"
+                            variant="flat"
+                            class="rounded-lg flex-shrink-0"
+                            title="Guardar instrucciones de pago"
+                            :disabled="!currencyData.enabled || !method.enabled || isSaving"
+                            @click="updateSettings"
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </VCardText>

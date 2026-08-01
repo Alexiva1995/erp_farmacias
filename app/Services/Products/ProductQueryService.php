@@ -25,6 +25,7 @@ class ProductQueryService
                 'origin:id,name',
                 'group:id,name',
                 'profitability:id,product_id,profitability_percentage,is_locked',
+                'variants',
                 'lots' => function ($query) {
                     $query->select(['id', 'product_id', 'expiration_date', 'quantity'])
                           ->where('quantity', '>', 0);

@@ -120,6 +120,9 @@ const handleClear = () => {
         <!-- ── Grupo de botones de acción ─────────────────────────────── -->
         <div class="d-flex align-center gap-1">
 
+          <!-- Slot para acciones previas a filtros (ej. Inhabilitar/Habilitar masivo) -->
+          <slot name="prepend-actions" />
+
           <!-- Toggle panel avanzado -->
           <VBtn
             v-if="showAdvanced"

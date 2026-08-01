@@ -271,6 +271,78 @@ const handleClearFilters = () => {
   onlyDeleted.value = false;
 };
 
+const productTableRef = ref(null);
+
+const handleBulkToggleActive = async () => {
+  const selectedIds = productTableRef.value?.selectedProducts || [];
+  if (!selectedIds.length) {
+    toast.error("Por favor, selecciona al menos un producto de la lista.");
+    return;
+  }
+
+  const result = await Swal.fire({
+    title: "¿Inhabilitar/Habilitar seleccionados?",
+    text: `Se alternará el estado de activación de ${selectedIds.length} productos seleccionados.`,
+    icon: "question",
+    showCancelButton: true,
+    confirmButtonText: "Sí, cambiar estado",
+    cancelButtonText: "Cancelar",
+    reverseButtons: true
+  });
+
+  if (result.isConfirmed) {
+    try {
+      const response = await axios.post("/products/bulk-actions", {
+        ids: selectedIds,
+        action: "toggle-active"
+      });
+      toast.success(response.data.message || "Estado de productos actualizado.");
+      if (productTableRef.value) {
+        productTableRef.value.selectedProducts = [];
+      }
+      fetchProducts();
+    } catch (e) {
+      console.error("Error en cambio masivo de estado:", e);
+      toast.error("Ocurrió un error al cambiar el estado de los productos.");
+    }
+  }
+};
+
+const handleBulkDelete = async () => {
+  const selectedIds = productTableRef.value?.selectedProducts || [];
+  if (!selectedIds.length) {
+    toast.error("Por favor, selecciona al menos un producto de la lista.");
+    return;
+  }
+
+  const result = await Swal.fire({
+    title: "¿Eliminar seleccionados?",
+    text: `Se enviarán a la papelera (eliminado suave) ${selectedIds.length} productos seleccionados.`,
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonText: "Eliminar",
+    cancelButtonText: "Cancelar",
+    reverseButtons: true
+  });
+
+  if (result.isConfirmed) {
+    try {
+      await axios.post("/products/bulk-actions", {
+        ids: selectedIds,
+        action: "delete"
+      });
+      toast.success("Productos eliminados con éxito.");
+      if (productTableRef.value) {
+        productTableRef.value.selectedProducts = [];
+      }
+      fetchProducts();
+    } catch (e) {
+      console.error("Error en eliminación masiva de productos:", e);
+      toast.error("Ocurrió un error al eliminar los productos.");
+    }
+  }
+};
+
 const handleAddProduct = () => {
   currentProduct.value = {};
   productFormErrors.value = {};
@@ -363,9 +435,12 @@ const handleSort = sortOptions => {
       @export="handleExport"
       @add-product="handleAddProduct"
       @sort="handleSort"
+      @bulk-toggle-active="handleBulkToggleActive"
+      @bulk-delete="handleBulkDelete"
     />
 
     <ProductTable
+      ref="productTableRef"
       :products="products"
       :loading="loading"
       :total-product="totalProduct"

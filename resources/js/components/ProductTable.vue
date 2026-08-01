@@ -34,6 +34,7 @@ const emit = defineEmits([
   "product-merged",
   "view-stats",
   "restore-product",
+  "toggle-active-product",
   "bulk-action-completed"
 ]);
 
@@ -277,6 +278,21 @@ const toggleFavorite = async (item) => {
     toast.error("No se pudo cambiar el estado de favorito.");
   }
 };
+
+const toggleActiveProduct = async (item) => {
+  try {
+    const { data } = await axios.post(`/products/${item.id}/toggle-active`);
+    item.is_active = data.is_active;
+    toast.success(item.is_active ? "Producto habilitado." : "Producto inhabilitado (no se mostrará en e-commerce).");
+  } catch (error) {
+    console.error("Error al cambiar estado activo:", error);
+    toast.error("No se pudo cambiar el estado del producto.");
+  }
+};
+
+defineExpose({
+  selectedProducts,
+});
 </script>
 
 <template>
@@ -452,6 +468,16 @@ const toggleFavorite = async (item) => {
         <template #item.actions="{ item }">
           <div class="d-flex justify-center gap-1">
             <template v-if="mode === 'products'">
+              <IconBtn
+                @click="toggleActiveProduct(item)"
+                :color="item.is_active !== false && item.is_active !== 0 ? 'success' : 'error'"
+                size="small"
+              >
+                <VIcon icon="tabler-power" size="18" />
+                <VTooltip activator="parent">
+                  {{ item.is_active !== false && item.is_active !== 0 ? 'Habilitado (Visible en e-commerce)' : 'Inhabilitado (Oculto en e-commerce)' }}
+                </VTooltip>
+              </IconBtn>
               <IconBtn @click="emit('view-stats', item)" color="primary" size="small">
                 <VIcon icon="tabler-eye" size="18" />
                 <VTooltip activator="parent">Ver Estadísticas</VTooltip>
@@ -597,6 +623,15 @@ const toggleFavorite = async (item) => {
           <!-- Acciones Rectangulares al 100% -->
           <div class="d-flex border-t border-opacity-10">
             <template v-if="mode === 'products'">
+              <VBtn 
+                :color="item.is_active !== false && item.is_active !== 0 ? 'success' : 'error'" 
+                variant="text" 
+                class="flex-grow-1 rounded-0" 
+                height="40"
+                icon="tabler-power" 
+                @click="toggleActiveProduct(item)"
+              />
+              <VDivider vertical class="border-opacity-10" />
               <VBtn 
                 color="primary" 
                 variant="text" 
