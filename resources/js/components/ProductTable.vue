@@ -10,6 +10,8 @@ import { useBrandingStore } from "@/stores/useBrandingStore";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 
+import Swal from "sweetalert2";
+
 const authStore = useAuthStore();
 const brandingStore = useBrandingStore();
 const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
@@ -45,10 +47,10 @@ const handleBulkDelete = async () => {
 
   const result = await Swal.fire({
     title: "¿Eliminar seleccionados?",
-    text: `Se eliminarán permanentemente ${ids.length} productos seleccionados.`,
+    text: `Se enviarán a la papelera (eliminado suave) ${ids.length} productos seleccionados.`,
     icon: "warning",
     showCancelButton: true,
-    confirmButtonText: "Eliminar todos",
+    confirmButtonText: "Eliminar",
     cancelButtonText: "Cancelar",
     reverseButtons: true
   });
@@ -61,7 +63,7 @@ const handleBulkDelete = async () => {
       });
       toast.success("Productos eliminados correctamente.");
       selectedProducts.value = [];
-      emit("product-merged"); // refresca lista principal
+      emit("product-merged"); // refresca lista principal de productos
     } catch (e) {
       toast.error("Ocurrió un error al eliminar los productos.");
     }
