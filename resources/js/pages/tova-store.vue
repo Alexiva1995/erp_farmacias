@@ -2458,10 +2458,23 @@ onMounted(async () => {
 }
 .editorial-qv-img-container {
   background-color: var(--editorial-grey-bg);
+  max-width: 450px;
+  max-height: 450px;
+  width: 100%;
   aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+  overflow: hidden;
 }
 .editorial-qv-img {
-  width: 100%; height: 100%; object-fit: cover; display: block;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  display: block;
 }
 .editorial-qv-fallback {
   width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
