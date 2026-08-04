@@ -24,12 +24,8 @@ class InventoryStockService
         $validated = $request->validated();
         $filtros = [];
 
-        if (isset($validated['itemsPerPage'])) {
-            $filtros['itemsPerPage'] = $validated['itemsPerPage'];
-        }
-        if (isset($validated['page'])) {
-            $filtros['page'] = $validated['page'];
-        }
+        $filtros['itemsPerPage'] = $validated['itemsPerPage'] ?? 10;
+        $filtros['page'] = $validated['page'] ?? 1;
         if (!empty($validated['q'])) {
             $filtros['q'] = $validated['q'];
         }

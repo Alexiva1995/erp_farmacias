@@ -32,8 +32,8 @@ class FtpCrypt
                 // 2. Intentar con APP_KEY
                 return self::getEncrypter(config('app.key'))->decryptString($encrypted);
             } catch (\Throwable $ex) {
-                // 3. Fallback a texto crudo
-                return $encrypted;
+                \Illuminate\Support\Facades\Log::error('[FtpCrypt] Fallo al descifrar la credencial/token de integración. Verifique las llaves de cifrado.');
+                throw new \RuntimeException('No se pudo descifrar la credencial de integración.', 0, $ex);
             }
         }
     }

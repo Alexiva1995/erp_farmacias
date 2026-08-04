@@ -10,8 +10,7 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-Schedule::command('app:update-exchange-rate')->dailyAt('00:01');
-Schedule::command('app:update-exchange-rate')->dailyAt('03:00');
+Schedule::command('app:update-exchange-rate')->dailyAt('00:10');
 Schedule::command('app:close-cash')->dailyAt('23:59');
 Schedule::command('app:clear-expired-reservations')->everyMinute();
 Schedule::command('telegram:send-daily-reservations')->dailyAt('12:00');
@@ -90,5 +89,6 @@ try {
             });
     }
 } catch (\Exception $e) {
-    // Silenciar si la tabla no existe aún (primera migración)
+    // Silenciar advertencia sin interrumpir si la tabla no existe aún (ej. migraciones iniciales)
+    \Log::warning('[AutoReplenishment] No se pudo cargar configs: ' . $e->getMessage());
 }
