@@ -815,6 +815,8 @@ class OrderActionService
             }
         }
 
+        $netPaid = $sumInOrderCurrency - $moneyReturns;
+
         // Si el pago neto cubre el total de la orden (o está dentro de la tolerancia permitida), permitir la transacción.
         // Solo bloquear si lo pagado es estrictamente MENOR al total menos la tolerancia.
         if ($netPaid < ($orderTotal - $tolerance)) {
