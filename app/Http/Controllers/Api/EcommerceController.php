@@ -48,7 +48,7 @@ class EcommerceController extends Controller
                     $query->where('name', 'like', "%{$search}%");
                 }
 
-                $query->latest();
+                $query->orderBy('created_at', 'desc')->orderBy('id', 'desc');
                 // Aumentamos a 100 para restaurantes para poder mostrar todo de forma directa
                 $dishes = $query->paginate(100);
             }
@@ -98,7 +98,7 @@ class EcommerceController extends Controller
                 $query->where('name', 'like', "%{$search}%");
             }
 
-            $query->latest();
+            $query->orderBy('created_at', 'desc')->orderBy('id', 'desc');
             $products = $query->paginate(8); // 8 productos por página para grilla de 4x2
         }
 

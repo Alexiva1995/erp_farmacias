@@ -1,6 +1,6 @@
 <script setup lang="js">
 import dayjs from 'dayjs';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useAuthStore } from "@/stores/auth";
 import AppEmptyState from "@/components/AppEmptyState.vue";
 
@@ -17,8 +17,12 @@ const props = defineProps({
 
 const emit = defineEmits(['update:options', 'approve']);
 
-function verImagne(item) {
-  window.open(item.url_file, "_blank");
+const selectedAuditExpense = ref(null);
+const showAuditModal = ref(false);
+
+function openAuditModal(item) {
+  selectedAuditExpense.value = item;
+  showAuditModal.value = true;
 }
 
 const headers = computed(() => {
@@ -28,14 +32,22 @@ const headers = computed(() => {
     { title: 'Categoría',       key: 'category.name', sortable: false, width: '150px' },
     { title: 'Moneda',          key: 'currency',      sortable: false, width: '100px' },
     { title: 'Monto Total',     key: 'total_usd',     sortable: true,  align: 'end', width: '150px' },
-    { title: 'Estado',          key: 'status',        sortable: false, align: 'center', width: '120px' },
+    { title: 'Estado / Auditoría', key: 'status',      sortable: false, align: 'center', width: '180px' },
     { title: 'Fecha',           key: 'created_at',    sortable: true,  width: '100px' },
   ];
   if (authStore.isAdmin) {
-    h.push({ title: 'Acciones',        key: 'acciones',      sortable: false, align: 'center', width: '100px' });
+    h.push({ title: 'Acciones',        key: 'acciones',      sortable: false, align: 'center', width: '120px' });
   }
   return h;
 });
+
+const actionLabels = {
+  created: 'Creado',
+  created_recurring: 'Creado (Recurrente)',
+  updated: 'Modificado',
+  status_changed: 'Cambio de Estado',
+  invoice_uploaded: 'Factura Subida',
+};
 </script>
 
 <template>
@@ -60,9 +72,10 @@ const headers = computed(() => {
           icon="tabler-currency-dollar-off"
         />
       </template>
+
       <!-- ID -->
       <template #[`item.id`]="{ item }">
-        <span class="font-weight-black text-primary text-sm">{{ item.id }}</span>
+        <span class="font-weight-black text-primary text-sm">#{{ item.id }}</span>
       </template>
 
       <!-- Nombre / Descripción -->
@@ -71,12 +84,11 @@ const headers = computed(() => {
           <span class="text-sm font-weight-black text-high-emphasis leading-tight mb-1">
             {{ item.name }}
           </span>
-          <span v-if="item.description" class="text-xs font-weight-medium text-disabled leading-normal">
-            {{ item.description }}
-          </span>
           <div class="d-flex align-center gap-1 mt-1">
-            <VIcon icon="tabler-user" size="12" class="text-disabled" />
-            <span class="text-super-xs font-weight-black text-disabled uppercase">{{ item.user?.username || 'S/U' }}</span>
+            <VIcon icon="tabler-user-check" size="12" class="text-disabled" />
+            <span class="text-super-xs font-weight-black text-disabled uppercase">
+              Creado por: {{ item.user?.username || 'Sistema' }}
+            </span>
           </div>
         </div>
       </template>
@@ -108,16 +120,26 @@ const headers = computed(() => {
         </div>
       </template>
 
-      <!-- Estado -->
+      <!-- Estado & Metadatos de Auditoría -->
       <template #[`item.status`]="{ item }">
-        <VChip
-          size="small"
-          :color="item.status === 'Approved' ? 'success' : item.status === 'Cancelled' ? 'error' : 'warning'"
-          variant="tonal"
-          class="font-weight-black uppercase px-2"
-        >
-          {{ item.status === 'Pending' ? 'Pendiente' : item.status === 'Approved' ? 'Aprobado' : 'Cancelado' }}
-        </VChip>
+        <div class="d-flex flex-column align-center gap-1">
+          <VChip
+            size="small"
+            :color="item.status === 'Approved' ? 'success' : item.status === 'Cancelled' ? 'error' : 'warning'"
+            variant="tonal"
+            class="font-weight-black uppercase px-2"
+          >
+            {{ item.status === 'Pending' ? 'Pendiente' : item.status === 'Approved' ? 'Aprobado' : 'Cancelado' }}
+          </VChip>
+          
+          <!-- Traza rápida aprobador/cancelador -->
+          <span v-if="item.status === 'Approved' && item.approved_by" class="text-super-xs font-weight-bold text-success">
+            Aprobado por {{ item.approved_by.username }}
+          </span>
+          <span v-else-if="item.status === 'Cancelled' && item.cancelled_by" class="text-super-xs font-weight-bold text-error">
+            Cancelado por {{ item.cancelled_by.username }}
+          </span>
+        </div>
       </template>
 
       <!-- Fecha -->
@@ -125,9 +147,9 @@ const headers = computed(() => {
         <span class="text-xs font-weight-bold text-disabled">{{ dayjs(item.created_at.replace('Z', '')).format('DD/MM/YYYY') }}</span>
       </template>
 
-      <!-- Acciones -->
+      <!-- Acciones & Botón Historial de Auditoría -->
       <template #[`item.acciones`]="{ item }">
-        <div class="d-flex justify-center gap-2">
+        <div class="d-flex justify-center align-center gap-1">
           <VBtn
             v-if="item.status === 'Pending' || item.status === 'Pendiente'"
             variant="text"
@@ -137,8 +159,20 @@ const headers = computed(() => {
             :loading="statuModule.loadingItems.has(item.id)"
             @click="() => emit('approve', item.id)"
           >
-            <VIcon icon="tabler-circle-check" size="22" />
+            <VIcon icon="tabler-circle-check" size="20" />
             <VTooltip activator="parent" location="top">Aprobar Gasto</VTooltip>
+          </VBtn>
+
+          <!-- Ver Auditoría Histórica -->
+          <VBtn
+            variant="text"
+            color="info"
+            size="small"
+            class="rounded-lg"
+            @click="openAuditModal(item)"
+          >
+            <VIcon icon="tabler-history" size="20" />
+            <VTooltip activator="parent" location="top">Ver Historial de Auditoría</VTooltip>
           </VBtn>
         </div>
       </template>
@@ -192,10 +226,8 @@ const headers = computed(() => {
 
             <div class="ml-2 mb-1">
               <div class="text-sm font-weight-black text-high-emphasis">{{ item.name }}</div>
-              <div v-if="item.description" class="text-xs text-disabled mt-1">{{ item.description }}</div>
             </div>
 
-            <!-- Datos adicionales móvil -->
             <div class="ml-2 mb-3 mt-1 d-flex flex-wrap gap-2">
                <span class="text-super-xs font-weight-black text-disabled uppercase">
                  {{ item.count }}
@@ -204,9 +236,6 @@ const headers = computed(() => {
                <span class="text-super-xs font-weight-black text-disabled uppercase">
                  {{ item.currency }}
                </span>
-               <span v-if="item.currency !== 'USD'" class="text-super-xs font-weight-medium text-disabled">
-                 ({{ Number(item.amount).toLocaleString('es-VE') }} original)
-               </span>
             </div>
 
             <div class="d-flex justify-space-between align-center mt-3 pt-3 border-t ml-2">
@@ -214,22 +243,14 @@ const headers = computed(() => {
                 <VIcon icon="tabler-tag" size="14" class="text-disabled" />
                 <span class="text-super-xs font-weight-black uppercase text-disabled">{{ item.category?.name || 'S/C' }}</span>
               </div>
-              <div class="d-flex align-center gap-1">
-                <VIcon icon="tabler-calendar" size="14" class="text-disabled" />
-                <span class="text-super-xs font-weight-black text-disabled">{{ dayjs(item.created_at.replace('Z', '')).format('DD/MM/YYYY') }}</span>
-              </div>
-            </div>
-
-            <div v-if="authStore.isAdmin" class="d-flex justify-end gap-2 mt-4 ml-2">
               <VBtn
-                v-if="item.status === 'Pending' || item.status === 'Pendiente'"
-                color="success"
-                size="small"
-                class="rounded-lg font-weight-black flex-grow-1"
-                :loading="statuModule.loadingItems.has(item.id)"
-                @click="() => emit('approve', item.id)"
+                variant="tonal"
+                color="info"
+                size="x-small"
+                class="rounded-lg font-weight-black"
+                @click="openAuditModal(item)"
               >
-                Aprobar Gasto
+                Historial Auditable
               </VBtn>
             </div>
           </VCard>
@@ -252,6 +273,77 @@ const headers = computed(() => {
         No se encontraron gastos
       </div>
     </div>
+
+    <!-- MODAL HISTORIAL DE AUDITORÍA INMUTABLE -->
+    <VDialog v-model="showAuditModal" max-width="650px">
+      <VCard class="rounded-xl">
+        <VCardTitle class="pa-4 bg-primary text-white d-flex align-center justify-space-between">
+          <div class="d-flex align-center gap-2">
+            <VIcon icon="tabler-shield-check" size="22" />
+            <span class="font-weight-black text-subtitle-1">Historial de Auditoría e Inmutabilidad</span>
+          </div>
+          <VBtn icon="tabler-x" variant="text" color="white" density="compact" @click="showAuditModal = false" />
+        </VCardTitle>
+
+        <VCardText class="pa-6 bg-surface">
+          <div v-if="selectedAuditExpense" class="mb-4">
+            <div class="d-flex align-center justify-space-between mb-2">
+              <span class="font-weight-black text-h6 text-high-emphasis">Gasto #{{ selectedAuditExpense.id }}: {{ selectedAuditExpense.name }}</span>
+              <VChip size="small" color="primary" variant="flat" class="font-weight-black">
+                ${{ Number(selectedAuditExpense.total_usd || 0).toFixed(2) }} USD
+              </VChip>
+            </div>
+            
+            <VDivider class="my-3" />
+
+            <!-- Resumen de Autoría -->
+            <div class="pa-3 bg-light rounded-lg border mb-4">
+              <div class="d-flex flex-wrap gap-4 text-xs font-weight-bold">
+                <div>Registrado por: <span class="text-primary">{{ selectedAuditExpense.user?.username || 'Sistema' }}</span></div>
+                <div v-if="selectedAuditExpense.approved_by">
+                  Aprobado por: <span class="text-success">{{ selectedAuditExpense.approved_by.username }}</span> ({{ selectedAuditExpense.approved_at }})
+                </div>
+                <div v-if="selectedAuditExpense.cancelled_by">
+                  Cancelado por: <span class="text-error">{{ selectedAuditExpense.cancelled_by.username }}</span> ({{ selectedAuditExpense.cancelled_at }})
+                </div>
+              </div>
+            </div>
+
+            <!-- Trazabilidad de Auditoría en Timeline -->
+            <h4 class="text-subtitle-2 font-weight-black text-disabled uppercase mb-3">Trazabilidad de Registro y Modificaciones:</h4>
+            
+            <VTimeline v-if="selectedAuditExpense.audits && selectedAuditExpense.audits.length > 0" density="compact" align="start">
+              <VTimelineItem
+                v-for="audit in selectedAuditExpense.audits"
+                :key="audit.id"
+                dot-color="primary"
+                size="x-small"
+              >
+                <div class="d-flex justify-space-between align-center mb-1">
+                  <span class="font-weight-black text-xs text-high-emphasis uppercase">
+                    {{ actionLabels[audit.action] || audit.action }}
+                  </span>
+                  <span class="text-super-xs text-disabled">{{ audit.created_at }}</span>
+                </div>
+                
+                <div class="text-super-xs font-weight-bold text-primary mb-1">
+                  Usuario: {{ audit.user_name }}
+                </div>
+
+                <div v-if="audit.old_values || audit.new_values" class="bg-surface pa-2 rounded border text-super-xs font-mono">
+                  <div v-if="audit.old_values" class="text-error">Anterior: {{ JSON.stringify(audit.old_values) }}</div>
+                  <div v-if="audit.new_values" class="text-success">Nuevo: {{ JSON.stringify(audit.new_values) }}</div>
+                </div>
+              </VTimelineItem>
+            </VTimeline>
+
+            <div v-else class="text-center py-6 text-disabled text-xs uppercase font-weight-bold border rounded-lg">
+              Sin registros adicionales de auditoría.
+            </div>
+          </div>
+        </VCardText>
+      </VCard>
+    </VDialog>
   </VCard>
 </template>
 
@@ -280,11 +372,6 @@ const headers = computed(() => {
   background: rgba(var(--v-theme-primary), 0.08);
 }
 
-.bg-surface-variant-light {
-  background-color: rgba(var(--v-theme-surface-variant), 5%);
-}
-
 .text-super-xs { font-size: 0.65rem !important; }
-
 .w-1 { width: 4px !important; }
 </style>

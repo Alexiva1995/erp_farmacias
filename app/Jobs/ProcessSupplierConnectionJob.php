@@ -47,7 +47,7 @@ class ProcessSupplierConnectionJob implements ShouldQueue
         $logMessage .= "[" . date('Y-m-d H:i:s') . "] 🗺️ Column Map: " . json_encode($this->columnMap) . "\n";
         file_put_contents($logFile, $logMessage, FILE_APPEND);
         error_log($logMessage);
-        Log::error("🔧 [JOB] INICIO handle()", [
+        Log::info("🔧 [JOB] INICIO handle()", [
             'supplier_id' => $this->supplier->id,
             'supplier_name' => $this->supplier->name,
             'tipo' => $tipo,
@@ -124,7 +124,7 @@ class ProcessSupplierConnectionJob implements ShouldQueue
                 
                 $logMessage = "[" . date('Y-m-d H:i:s') . "] 🚨 [JOB] DESPUÉS Excel::import - Productos obtenidos: {$productsCount}\n";
                 file_put_contents($logFile, $logMessage, FILE_APPEND);
-                Log::error("🚨 [JOB] Productos importados", ['count' => $productsCount]);
+                Log::info("🚨 [JOB] Productos importados", ['count' => $productsCount]);
                 
                 $results = [
                     "products" => $productsArray,
@@ -138,16 +138,16 @@ class ProcessSupplierConnectionJob implements ShouldQueue
                 $logMessage = "[" . date('Y-m-d H:i:s') . "] 🌐 [JOB] Procesando conexión FTP/API\n";
                 file_put_contents($logFile, $logMessage, FILE_APPEND);
                 error_log($logMessage);
-                Log::info("🌐 [JOB] Iniciando conexión FTP/API para proveedor: {$this->supplier->name} (ID: {$this->supplier->id})");
                 
                 $supplierConnection = \App\Models\SupplierConnection::where('supplier_id', $this->supplier->id)->first();
-                if ($supplierConnection) {
-                    $logMessage = "[" . date('Y-m-d H:i:s') . "] 🔗 [JOB] Conexión encontrada - Host: {$supplierConnection->host}\n";
+                if (!$supplierConnection) {
+                    $logMessage = "[" . date('Y-m-d H:i:s') . "] ⚠️ [JOB] No se encontró conexión configurada para {$this->supplier->name}\n";
                     file_put_contents($logFile, $logMessage, FILE_APPEND);
-                } else {
-                    $logMessage = "[" . date('Y-m-d H:i:s') . "] ⚠️ [JOB] No se encontró conexión configurada\n";
-                    file_put_contents($logFile, $logMessage, FILE_APPEND);
+                    throw new \Exception("El proveedor {$this->supplier->name} no tiene una conexión FTP/API configurada.");
                 }
+
+                $logMessage = "[" . date('Y-m-d H:i:s') . "] 🔗 [JOB] Conexión encontrada - Host: {$supplierConnection->host}\n";
+                file_put_contents($logFile, $logMessage, FILE_APPEND);
                 
                 $logMessage = "[" . date('Y-m-d H:i:s') . "] 📡 [JOB] Ejecutando fetchData()...\n";
                 file_put_contents($logFile, $logMessage, FILE_APPEND);
@@ -162,7 +162,6 @@ class ProcessSupplierConnectionJob implements ShouldQueue
                 file_put_contents($logFile, $logMessage, FILE_APPEND);
                 error_log($logMessage);
                 
-                Log::info("✅ [JOB] Resultados API para proveedor {$this->supplier->id}: {$invoiceCount} facturas y {$productCount} productos.");
 
                 if ($invoiceCount === 0) {
                     $logMessage = "[" . date('Y-m-d H:i:s') . "] ⚠️ [JOB] ADVERTENCIA: API retornó 0 facturas\n";
@@ -179,7 +178,7 @@ class ProcessSupplierConnectionJob implements ShouldQueue
             }
 
             // Log ANTES de llamar a storeSupplierConnectionData
-            Log::error("🚨 [JOB] ANTES de llamar storeSupplierConnectionData", [
+            Log::info("🚨 [JOB] ANTES de llamar storeSupplierConnectionData", [
                 'supplier_id' => $this->supplier->id,
                 'products_count' => count($results["products"] ?? []),
                 'invoices_count' => count($results["invoices"] ?? []),
@@ -192,7 +191,7 @@ class ProcessSupplierConnectionJob implements ShouldQueue
             $queryService->storeSupplierConnectionData($this->supplier, $results);
             
             // Log DESPUÉS de llamar a storeSupplierConnectionData
-            Log::error("🚨 [JOB] DESPUÉS de llamar storeSupplierConnectionData", [
+            Log::info("🚨 [JOB] DESPUÉS de llamar storeSupplierConnectionData", [
                 'supplier_id' => $this->supplier->id,
             ]);
             
@@ -201,13 +200,11 @@ class ProcessSupplierConnectionJob implements ShouldQueue
 
             $queryService->addDiscountsToProducts($this->supplier);
 
-            \Illuminate\Support\Facades\Log::info("🚨 [JOB] Intentando actualizar last_connection", ['supplier_id' => $this->supplier->id, 'has_connection' => !is_null($supplierConnection)]);
             
             \Illuminate\Support\Facades\DB::table('supplier_connections')
                 ->where('supplier_id', $this->supplier->id)
                 ->update(['last_connection' => now()->toDateString()]);
             
-            \Illuminate\Support\Facades\Log::info("✅ [JOB] last_connection actualizado en DB", ['supplier_id' => $this->supplier->id]);
 
             $status->update([
                 "status" => "completed",

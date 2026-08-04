@@ -22,10 +22,11 @@ export const formatDateSimple = (dateString) => {
 /**
  * Formatea un precio a formato moneda bolivares/dólares/pesos.
  * @param {number} price 
+ * @param {string|null} currency 
  * @returns {string}
  */
-export const formatPrice = (price) => {
-  return formatCurrency(price, 'USD');
+export const formatPrice = (price, currency = null) => {
+  return formatCurrency(price, currency || 'USD');
 };
 
 /**

@@ -40,7 +40,7 @@ const handleUpdateProduct = async ({ id, group_id }) => {
     toast.success("Se asignó el grupo al producto");
     await fetchProducts();
   } catch (err) {
-    toast.error("Error al actualizar");
+    toast.error("Error al actualizar la asignación de grupo");
 
     if (err.response?.status === 422) {
       productWithError.value = id;
@@ -58,7 +58,6 @@ const fetchSelectOptions = async () => {
     ]);
     laboratories.value = labResponse.data;
     origins.value = originResponse.data;
-    // El endpoint consultAll devuelve los datos en data.data según ApiResponse::success
     groups.value = groupsResponse.data?.data || groupsResponse.data || [];
   } catch (error) {
     console.error("Error al cargar opciones de los selects:", error);
@@ -71,24 +70,21 @@ const fetchSelectOptions = async () => {
 const fetchProducts = async () => {
   loading.value = true;
   const params = {
-    q: searchQuery.value,
-    laboratoryId: selectedLaboratory.value,
-    originId: selectedOrigin.value,
+    q: searchQuery.value || undefined,
+    laboratoryId: selectedLaboratory.value || undefined,
+    originId: selectedOrigin.value || undefined,
     ...(stockStatusFilter.value !== null && {
       hasStock: stockStatusFilter.value,
     }),
     page: page.value,
     itemsPerPage: itemsPerPage.value,
-    sortBy: sortBy.value,
-    orderBy: orderBy.value,
-    startDate: startDate.value,
-    endDate: endDate.value,
-    isStrictSearch: isStrictSearch.value,
+    sortBy: sortBy.value || undefined,
+    orderBy: orderBy.value || undefined,
+    startDate: startDate.value || undefined,
+    endDate: endDate.value || undefined,
+    isStrictSearch: isStrictSearch.value || undefined,
     ...(productTypeFilter.value && { productType: productTypeFilter.value }),
   };
-  Object.keys(params).forEach(
-    (key) => (params[key] === null || params[key] === "") && delete params[key]
-  );
 
   try {
     const response = await axios.get("/products/without-group", { params });
@@ -103,12 +99,10 @@ const fetchProducts = async () => {
 };
 
 let debounceTimer;
+
+// Watcher unificado para filtros: reinicia la página a 1 y dispara fetch con debounce
 watch(
   [
-    page,
-    itemsPerPage,
-    sortBy,
-    orderBy,
     searchQuery,
     selectedLaboratory,
     selectedOrigin,
@@ -119,28 +113,18 @@ watch(
     isStrictSearch,
   ],
   () => {
+    page.value = 1;
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => fetchProducts(), 300);
-  },
-  { deep: true }
-);
-
-watch(
-  [
-    searchQuery,
-    selectedLaboratory,
-    selectedOrigin,
-    stockStatusFilter,
-    productTypeFilter,
-    startDate,
-    endDate,
-  ],
-  () => {
-    page.value = 1;
   }
 );
 
-onMounted(async () => {
+// Watcher para paginación y ordenamiento directo
+watch([page, itemsPerPage, sortBy, orderBy], () => {
+  fetchProducts();
+});
+
+onMounted(() => {
   fetchSelectOptions();
   fetchProducts();
 });
@@ -176,9 +160,7 @@ const handleSort = (sortOptions) => {
 };
 
 const handleGroupCreated = (newGroup) => {
-  // Agregar el nuevo grupo a la lista
   groups.value.push(newGroup);
-  // Ordenar la lista por nombre
   groups.value.sort((a, b) => a.name.localeCompare(b.name));
 };
 </script>

@@ -30,7 +30,6 @@ class ReturnsActionService
     {
         try {
             // Normalizar el término de búsqueda para identificación (quitar guiones y puntos)
-            \Log::info('Buscando devoluciones para:', ['term' => $searchTerm]);
             $normalizedSearch = preg_replace('/[^A-Za-z0-9]/', '', $searchTerm);
 
             // Órdenes de las últimas 48 horas para devoluciones
@@ -70,12 +69,6 @@ class ReturnsActionService
                 $query->orderBy('order_date', 'desc');
             }
 
-            \Log::info('SQL de búsqueda devoluciones:', [
-                'sql' => $query->toSql(),
-                'bindings' => $query->getBindings(),
-                'now' => \Carbon\Carbon::now()->toDateTimeString(),
-                'sub48' => \Carbon\Carbon::now()->subHours(48)->toDateTimeString()
-            ]);
 
             return $query;
         } catch (\Exception $e) {
@@ -190,7 +183,6 @@ class ReturnsActionService
                 $order->save();
             }
             DB::commit();
-            Log::info("Devolución $status exitosamente.", ['returnEntry_id' => $ReturnEntry->id]);
             return $ReturnEntry;
         } catch (\Throwable $e) {
             DB::rollBack();

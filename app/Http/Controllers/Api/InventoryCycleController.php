@@ -18,6 +18,7 @@ use App\Models\SaleCountDistribution;
 use App\Models\InventoryCycle;
 use App\Http\Requests\InventoryCycle\StoreProductCountRequest;
 use App\Http\Requests\InventoryCycle\StoreInvoiceCountRequest;
+use App\Http\Requests\InventoryCycle\StoreSaleCountRequest;
 use App\Http\Requests\InventoryCycle\ProcessCountActionRequest;
 use App\Http\Requests\InventoryCycle\UpdateDiscrepancyRequest;
 use Exception;
@@ -68,7 +69,7 @@ class InventoryCycleController extends Controller
             $query = $this->inventoryCycleQueryService->getFilteredQuery($request);
         }
 
-        $perPage = $request->input('itemsPerPage', 10);
+        $perPage = (int) $request->input('itemsPerPage', 10);
 
         if ($perPage < 1) {
             $items = $query->get();
@@ -76,7 +77,10 @@ class InventoryCycleController extends Controller
                 ? $this->formatCycleDetailItems($items)
                 : $items;
 
-            return response()->json(['data' => $data, 'total' => $items->count()]);
+            return response()->json([
+                'data' => \App\Http\Resources\Inventory\CycleDetailProductResource::collection($data),
+                'total' => $items->count()
+            ]);
         }
 
         $paginatedResult = $query->paginate($perPage);
@@ -84,7 +88,10 @@ class InventoryCycleController extends Controller
             ? $this->formatCycleDetailItems($paginatedResult->items())
             : $paginatedResult->items();
 
-        return response()->json(['data' => $data, 'total' => $paginatedResult->total()]);
+        return response()->json([
+            'data' => \App\Http\Resources\Inventory\CycleDetailProductResource::collection($data),
+            'total' => $paginatedResult->total()
+        ]);
     }
 
     public function storeProductCount(StoreProductCountRequest $request, $productId)
@@ -193,6 +200,7 @@ class InventoryCycleController extends Controller
                     'iva' => $item->product_iva,
                     'psychotropic' => $item->product_psychotropic,
                     'unit_cost' => $item->product_unit_cost,
+                    'sale_price' => $item->product_sale_price,
                     'is_colombian_origin' => $item->product_is_colombian_origin,
                     'laboratory' => [
                         'name' => $item->laboratory_name,
@@ -404,25 +412,13 @@ class InventoryCycleController extends Controller
         }
     }
 
-    public function storeInvoiceCount(Request $request, $productId)
+    public function storeInvoiceCount(StoreInvoiceCountRequest $request, $productId)
     {
+        // La validación es manejada por StoreInvoiceCountRequest
         $allowWithoutBarcode = $request->boolean('allow_without_barcode');
 
-        $validationRules = [
-            'counted_quantity' => 'required|numeric|min:0',
-            'system_quantity' => 'required|numeric|min:0',
-            'discrepancy' => 'required|numeric'
-        ];
-
-        // Solo requerir barcode si no se permite sin código de barras
-        if (!$allowWithoutBarcode) {
-            $validationRules['barcode'] = 'required|string';
-        }
-
-        $request->validate($validationRules);
-
         try {
-            $data = $request->all();
+            $data = $request->validated();
             $data['allow_without_barcode'] = $allowWithoutBarcode;
 
             $result = $this->inventoryCycleActionService->createInvoiceCount($productId, $data);
@@ -433,24 +429,18 @@ class InventoryCycleController extends Controller
                     'message' => $result['message'],
                     'data' => $result['data']
                 ], 201);
-            } else {
-                $statusCode = $result['message'] === 'Producto no encontrado.' ? 404 : 400;
-                return response()->json([
-                    'success' => false,
-                    'message' => $result['message']
-                ], $statusCode);
             }
 
-        } catch (\Illuminate\Validation\ValidationException $e) {
+            $statusCode = $result['message'] === 'Producto no encontrado.' ? 404 : 400;
             return response()->json([
                 'success' => false,
-                'message' => 'Datos de validación incorrectos.',
-                'errors' => $e->errors()
-            ], 422);
+                'message' => $result['message']
+            ], $statusCode);
+
         } catch (\Exception $e) {
             Log::error('Error en controlador al registrar conteo de factura', [
                 'product_id' => $productId,
-                'error' => $e->getMessage()
+                'error'      => $e->getMessage()
             ]);
             return response()->json([
                 'success' => false,
@@ -508,55 +498,59 @@ class InventoryCycleController extends Controller
         $query = $this->inventoryCycleQueryService->getCashCloseItemsQuery($request);
         $perPage = (int) $request->input('itemsPerPage', 10);
 
-        // Calcular totales sobre TODOS los registros (no solo la página actual)
-        $totalsQuery = $this->inventoryCycleQueryService->getCashCloseItemsQuery($request);
-        $allItems = $totalsQuery->get();
+        // Optimización: Calcular totales sobre la BD mediante agregación SQL limpia sin arrastrar columnas individuales del SELECT
+        $totalsQuery = clone $query;
+        $totalsQuery->orders = null; // Eliminar ordenamiento
+        
+        $totalsRaw = $totalsQuery
+            ->select(DB::raw("
+                SUM(CASE WHEN (products.sale_price * discrepancies.discrepancy) > 0 THEN (products.sale_price * discrepancies.discrepancy) ELSE 0 END) as surplus,
+                SUM(CASE WHEN (products.sale_price * discrepancies.discrepancy) < 0 THEN ABS(products.sale_price * discrepancies.discrepancy) ELSE 0 END) as shortage
+            "))
+            ->first();
+
+        $surplus = (float) ($totalsRaw->surplus ?? 0);
+        $shortage = (float) ($totalsRaw->shortage ?? 0);
 
         $totals = [
-            'surplus' => 0,
-            'shortage' => 0,
-            'netTotal' => 0
+            'surplus' => $surplus,
+            'shortage' => $shortage,
+            'netTotal' => $surplus - $shortage,
         ];
 
-        foreach ($allItems as $item) {
-            $amount = ($item->product_sale_price ?? 0) * $item->discrepancy;
-            if ($amount > 0) {
-                $totals['surplus'] += $amount;
-            } else {
-                $totals['shortage'] += abs($amount);
-            }
-        }
-
-        $totals['netTotal'] = $totals['surplus'] - $totals['shortage'];
         if ($perPage < 1) {
             $items = $query->get();
 
             return response()->json([
                 'data' => $items,
                 'total' => $items->count(),
-                'totals' => $this->calculateCashCloseTotals($items),
+                'totals' => $totals,
             ]);
         }
 
         $paginatedResult = $query->paginate($perPage);
-        $totalsItems = $this->inventoryCycleQueryService->getCashCloseItemsQuery($request)->get();
 
         return response()->json([
             'data' => $paginatedResult->items(),
             'total' => $paginatedResult->total(),
-            'totals' => $this->calculateCashCloseTotals($totalsItems),
+            'totals' => $totals,
         ]);
     }
 
     public function closeActiveCycle(Request $request)
     {
         try {
-            $result = $this->inventoryCycleActionService->closeActiveCycle();
+            $rejectPending = $request->boolean('reject_pending');
+            $result = $this->inventoryCycleActionService->closeActiveCycle($rejectPending);
 
             if ($result['success']) {
                 return response()->json(['success' => true, 'message' => $result['message']]);
             } else {
-                return response()->json(['success' => false, 'message' => $result['message']], 400);
+                return response()->json([
+                    'success' => false,
+                    'message' => $result['message'],
+                    'has_pending' => true,
+                ], 400);
             }
         } catch (\Exception $e) {
             Log::error('Error al intentar cerrar el ciclo de inventario activo.', ['error' => $e->getMessage()]);
@@ -572,18 +566,24 @@ class InventoryCycleController extends Controller
         }
         return response()->json(['success' => false, 'message' => $result['message']], 400);
     }
-    public function getCycleSummary(Request $request)
+    public function getCycleSummary(\App\Http\Requests\Inventory\CycleSummaryRequest $request)
     {
         $query = $this->inventoryCycleQueryService->getCycleSummaryQuery($request);
-        $perPage = $request->input('itemsPerPage', 10);
+        $perPage = (int) $request->input('itemsPerPage', 10);
 
         if ($perPage < 1) {
             $items = $query->get();
-            return response()->json(['data' => $items, 'total' => $items->count()]);
+            return response()->json([
+                'data' => \App\Http\Resources\Inventory\CycleSummaryResource::collection($items),
+                'total' => $items->count()
+            ]);
         }
 
         $paginatedResult = $query->paginate($perPage);
-        return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
+        return response()->json([
+            'data' => \App\Http\Resources\Inventory\CycleSummaryResource::collection($paginatedResult->items()),
+            'total' => $paginatedResult->total()
+        ]);
     }
     public function getCycleInfo($cycleId)
     {
@@ -631,25 +631,13 @@ class InventoryCycleController extends Controller
         }
     }
 
-    public function storeSaleCount(Request $request, $productId)
+    public function storeSaleCount(StoreSaleCountRequest $request, $productId)
     {
+        // La validación es manejada por StoreSaleCountRequest
         $allowWithoutBarcode = $request->boolean('allow_without_barcode');
 
-        $validationRules = [
-            'counted_quantity' => 'required|numeric|min:0',
-            'system_quantity' => 'required|numeric|min:0',
-            'discrepancy' => 'required|numeric'
-        ];
-
-        // Solo requerir barcode si no se permite sin código de barras
-        if (!$allowWithoutBarcode) {
-            $validationRules['barcode'] = 'required|string';
-        }
-
-        $request->validate($validationRules);
-
         try {
-            $data = $request->all();
+            $data = $request->validated();
             $data['allow_without_barcode'] = $allowWithoutBarcode;
 
             $result = $this->inventoryCycleActionService->createSaleCount($productId, $data);
@@ -660,24 +648,18 @@ class InventoryCycleController extends Controller
                     'message' => $result['message'],
                     'data' => $result['data']
                 ], 201);
-            } else {
-                $statusCode = $result['message'] === 'Producto no encontrado.' ? 404 : 400;
-                return response()->json([
-                    'success' => false,
-                    'message' => $result['message']
-                ], $statusCode);
             }
 
-        } catch (\Illuminate\Validation\ValidationException $e) {
+            $statusCode = $result['message'] === 'Producto no encontrado.' ? 404 : 400;
             return response()->json([
                 'success' => false,
-                'message' => 'Datos de validación incorrectos.',
-                'errors' => $e->errors()
-            ], 422);
+                'message' => $result['message']
+            ], $statusCode);
+
         } catch (\Exception $e) {
             Log::error('Error en controlador al registrar conteo de venta', [
                 'product_id' => $productId,
-                'error' => $e->getMessage()
+                'error'      => $e->getMessage()
             ]);
             return response()->json([
                 'success' => false,

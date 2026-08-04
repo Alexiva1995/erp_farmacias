@@ -49,12 +49,19 @@ class Expense extends Model
         'url_file',
         'date_upload',
         'loan_id',
+        'approved_by_id',
+        'approved_at',
+        'cancelled_by_id',
+        'cancelled_at',
+        'status_note',
     ];
 
     protected $casts = [
         'is_deductible' => 'boolean',
         'has_invoice' => 'boolean',
         'expense_date' => 'date',
+        'approved_at' => 'datetime',
+        'cancelled_at' => 'datetime',
     ];
 
     public function loan(): BelongsTo
@@ -70,5 +77,20 @@ class Expense extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function approvedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by_id');
+    }
+
+    public function cancelledBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'cancelled_by_id');
+    }
+
+    public function audits()
+    {
+        return $this->hasMany(ExpenseAudit::class)->orderBy('created_at', 'desc');
     }
 }

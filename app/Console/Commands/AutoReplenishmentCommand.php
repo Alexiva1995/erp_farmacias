@@ -45,7 +45,6 @@ class AutoReplenishmentCommand extends Command
         }
 
         $this->info("Iniciando reposición automática — {$configs->count()} configuración(es).");
-        Log::info('[AutoReplenishment] Inicio de ejecución.', ['configs' => $configs->pluck('name')->toArray()]);
 
         foreach ($configs as $config) {
             $this->procesarConfig($config);
@@ -99,7 +98,6 @@ class AutoReplenishmentCommand extends Command
             ]);
 
             $this->info("     ✅ {$aReponer->count()} productos → " . count($ordenesCreadas) . " órdenes creadas/actualizadas.");
-            Log::info("[AutoReplenishment] Config '{$config->name}': {$aReponer->count()} productos, " . count($ordenesCreadas) . " órdenes.");
 
         } catch (\Exception $e) {
             $this->error("     ❌ Error en '{$config->name}': " . $e->getMessage());

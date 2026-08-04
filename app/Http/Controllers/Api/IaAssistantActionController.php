@@ -17,6 +17,7 @@ use App\Enums\AutoOrderStatus;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 
 class IaAssistantActionController extends Controller
 {
@@ -40,6 +41,12 @@ class IaAssistantActionController extends Controller
         try {
             $product = Product::findOrFail($productId);
 
+            // Si es origen colombiano (COL), forzar la adición a la orden del proveedor ID 48
+            if ((int)$product->is_colombian_origin === 1) {
+                $supplierId = 48;
+                $productSupplierId = null;
+            }
+
             // 1. Obtener el enlace producto-proveedor
             $ps = null;
             if ($productSupplierId) {
@@ -57,7 +64,9 @@ class IaAssistantActionController extends Controller
                 $ps = ProductSupplier::create([
                     'product_id' => $productId,
                     'supplier_id' => $supplierId,
-                    'unit_cost_usd' => $product->unit_cost,
+                    'unit_cost' => $product->unit_cost ?? 0,
+                    'unit_cost_usd' => $product->unit_cost ?? 0,
+                    'connection_date' => now(),
                 ]);
             }
 
@@ -254,6 +263,7 @@ class IaAssistantActionController extends Controller
     {
         $product->update(['manual_solicitar' => null]);
         $this->productActionService->ignoreProduct($product, 7);
+        Cache::flush();
         return response()->json(['message' => 'Producto ignorado por 7 días y cantidad manual restablecida.']);
     }
 
@@ -304,7 +314,8 @@ class IaAssistantActionController extends Controller
         }
 
         $product->update([
-            'barcode' => $barcode,
+            'barcode'      => $barcode,
+            'ignore_until' => null, // Limpiar ignorado: el producto vuelve a aparecer en el asistente
         ]);
 
         return response()->json([
@@ -322,6 +333,7 @@ class IaAssistantActionController extends Controller
     public function clearIgnored(): JsonResponse
     {
         $restoredCount = $this->productActionService->clearIgnoredProducts();
+        Cache::flush();
 
         return response()->json([
             'message' => 'Productos restaurados correctamente.',

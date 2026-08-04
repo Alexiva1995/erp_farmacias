@@ -39,16 +39,18 @@ class SupplierConnectionService
         }
     }
 
-
     public function fetchFromFtp(SupplierConnection $connection)
     {
         $host = $connection->host;
-        $port = $connection->port ?? 21;
-        $user = $connection->username;
-        $pass = FtpCrypt::decrypt($connection->password);
+        $port = (int) ($connection->port ?? 21);
+        $user = (string) ($connection->username ?? '');
+        $pass = (string) FtpCrypt::decrypt($connection->password ?? '');
+
+        if (trim($user) === '' || trim($pass) === '') {
+            throw new Exception("Faltan el usuario o la contraseña de FTP para la conexión. Por favor edite el proveedor para agregar las credenciales.");
+        }
 
         // Valida la conexión en texto plano
-        Log::info("Intentando conexión FTP", ['host' => $host, 'port' => $port, 'user' => $user]);
         $ftp = @ftp_connect($host, $port, 10);
         if ($ftp === false) {
             Log::error("Fallo ftp_connect", ['host' => $host]);
@@ -57,22 +59,31 @@ class SupplierConnectionService
 
         $login = @ftp_login($ftp, $user, $pass);
         if ($login === false) {
-            Log::warning("Fallo ftp_login inicial, intentando SSL", ['host' => $host]);
+            Log::warning("Fallo ftp_login inicial para {$user}@{$host}, intentando SSL...");
             @ftp_close($ftp);
 
-            // Si el inicio fallo usa ssl para intentar conectarse de nuevo
-            $ftp = @ftp_ssl_connect($host, $port, 90);
-            if ($ftp === false) {
-                Log::error("Fallo ftp_ssl_connect", ['host' => $host]);
-                throw new Exception('No se pudo conectar al servidor FTP');
+            // Reintento seguro con SSL tolerante a politicas locales de servidores que deniegan TLS
+            $sslSuccess = false;
+            try {
+                $sslFtp = @ftp_ssl_connect($host, $port, 15);
+                if ($sslFtp !== false) {
+                    $sslLogin = @ftp_login($sslFtp, $user, $pass);
+                    if ($sslLogin !== false) {
+                        $ftp = $sslFtp;
+                        $login = true;
+                        $sslSuccess = true;
+                    } else {
+                        @ftp_close($sslFtp);
+                    }
+                }
+            } catch (\Throwable $e) {
+                Log::warning("El servidor FTP {$host} no admite conexiones SSL/TLS: " . $e->getMessage());
             }
-            $login = ftp_login($ftp, $user, $pass);
-            if ($login === false) {
-                Log::error("Fallo ftp_login SSL", ['host' => $host]);
-                throw new Exception('Credenciales inválidas');
+
+            if (!$sslSuccess) {
+                throw new Exception("No se pudo iniciar sesión en el servidor FTP {$host}. Verifique que el usuario '{$user}' y la contraseña sean correctos.");
             }
         }
-        Log::info("Conexión FTP exitosa", ['host' => $host]);
 
         ftp_pasv($ftp, $connection->pasv); // Modo pasivo
 
@@ -89,11 +100,6 @@ class SupplierConnectionService
                 $files = @ftp_nlist($ftp, $connection->path);
             }
 
-            if ($files === false) {
-                throw new Exception("No se pudo obtener el listado de archivos del servidor FTP");
-            }
-
-            // Filtrar solo los que parecen inventario
             $inventoryFiles = array_filter($files, function ($file) {
                 $name = basename($file);
                 return str_starts_with($name, 'inventario') && str_ends_with($name, '.txt');
@@ -178,7 +184,11 @@ class SupplierConnectionService
         }
 
         if ($ftp !== false) {
-            @ftp_close($ftp);
+            try {
+                @ftp_close($ftp);
+            } catch (\Throwable $e) {
+                // Silenciar eof inesperado de OpenSSL al cerrar socket
+            }
         }
 
         return [
@@ -266,9 +276,9 @@ class SupplierConnectionService
                 $invoiceUrl = $payloadInvoice['url'] ?? $connection->invoice_path;
                 $requestDataInv = isset($payloadInvoice['payload']) ? $payloadInvoice['payload'] : (isset($payloadInvoice['url']) ? [] : $payloadInvoice);
                 
-                Log::error("🔎 [FACTURAS] buildPayload result", ['payloadInvoice' => $payloadInvoice, 'invoiceUrl' => $invoiceUrl, 'method' => $payloadInvoice['method'] ?? 'post']);
+                Log::info("🔎 [FACTURAS] buildPayload result", ['payloadInvoice' => $payloadInvoice, 'invoiceUrl' => $invoiceUrl, 'method' => $payloadInvoice['method'] ?? 'post']);
                 $invoiceResponse = $this->fetchFromAPI($token, $requestDataInv, $client, $invoiceUrl, $payloadInvoice['method'] ?? 'post');
-                Log::error("🔎 [FACTURAS] fetchFromAPI result", ['count' => count($invoiceResponse)]);
+                Log::info("🔎 [FACTURAS] fetchFromAPI result", ['count' => count($invoiceResponse)]);
 
                 // Detectar si las facturas vienen en una clave específica (ej: 'facturas')
                 $invoicesRaw = $invoiceResponse;
@@ -276,11 +286,9 @@ class SupplierConnectionService
                     $invoicesRaw = $invoiceResponse['facturas'];
                 }
 
-                Log::info("Facturas raw recibidas de la API", ['count' => count($invoicesRaw)]);
 
                 foreach ($invoicesRaw as $invoice) {
                     $cod_invoice = $invoice['fact_num'] ?? $invoice['InvoiceCode'] ?? null;
-                    Log::info("Procesando factura individual", ['cod_invoice' => $cod_invoice]);
 
                     if (!$cod_invoice || in_array($cod_invoice, $seenInvoiceNumbers)) {
                         Log::warning("Factura ignorada (sin código o duplicada en este lote)", ['cod_invoice' => $cod_invoice]);
@@ -289,10 +297,8 @@ class SupplierConnectionService
 
                     // Si la factura ya trae los artículos (caso Cristmedicals y otros)
                     if (isset($invoice['articulos']) && is_array($invoice['articulos'])) {
-                        Log::info("Factura con artículos detectada", ['cod_invoice' => $cod_invoice, 'articulos_count' => count($invoice['articulos'] ?? [])]);
                         $parsed = $this->parseNestedInvoice($invoice, $connection);
                         if (!empty($parsed)) {
-                            Log::info("Factura parseada correctamente", ['invoice_number' => $parsed['header']['invoice_number'] ?? 'N/A']);
                             $invoiceResults[] = $parsed;
                             $seenInvoiceNumbers[] = $cod_invoice;
                         } else {
@@ -403,15 +409,47 @@ class SupplierConnectionService
 
         $structure_for_parsing = json_decode($connection->parse_using ?? '');
 
+        // Calcular offsets de columna desde la cabecera si el archivo es de ancho fijo/espaciado
+        $headerOffsets = [];
+        if ($has_header && !empty($headerLine) && !str_contains($headerLine, ';') && !str_contains($headerLine, "\t")) {
+            preg_match_all('/\S+/', $headerLine, $matches, PREG_OFFSET_CAPTURE);
+            if (!empty($matches[0]) && count($matches[0]) > 1) {
+                $headerOffsets = array_map(fn($m) => $m[1], $matches[0]);
+            }
+        }
+
+        $splitLine = function (string $l) use ($headerOffsets) {
+            if (str_contains($l, ';')) {
+                return explode(';', $l);
+            }
+            if (str_contains($l, "\t")) {
+                return explode("\t", $l);
+            }
+            if (!empty($headerOffsets)) {
+                $cols = [];
+                $count = count($headerOffsets);
+                for ($i = 0; $i < $count; $i++) {
+                    $start = $headerOffsets[$i];
+                    $length = isset($headerOffsets[$i + 1]) ? ($headerOffsets[$i + 1] - $start) : null;
+                    if ($start < strlen($l)) {
+                        $cols[] = trim($length !== null ? substr($l, $start, $length) : substr($l, $start));
+                    } else {
+                        $cols[] = '';
+                    }
+                }
+                return $cols;
+            }
+            return preg_split('/\s{2,}/', trim($l)) ?: [$l];
+        };
+
         if ($has_header && !empty($headerLine)) {
             if (!empty($structure_for_parsing)) {
                 $headerLine = $this->parseFixedWidth($headerLine, $structure_for_parsing);
             }
             // Remove BOM if present
             $headerLine = preg_replace('/^\xEF\xBB\xBF/', '', $headerLine);
-            $headers = explode(';', $headerLine);
+            $headers = $splitLine($headerLine);
             $headerMap = array_flip(array_map('trim', $headers));
-            Log::info("Header Map for supplier $supplierId", $headerMap);
         }
 
         // Helper para obtener el índice de la columna basado en el mapeo y los encabezados
@@ -442,7 +480,7 @@ class SupplierConnectionService
             if (!empty($structure_for_parsing)) {
                 $line = $this->parseFixedWidth($line, $structure_for_parsing);
             }
-            $cols = explode(';', $line);
+            $cols = $splitLine($line);
 
             if ($barcodeIdx !== null && isset($cols[$barcodeIdx])) {
                 $barcodes[] = trim($cols[$barcodeIdx] ?? "");
@@ -450,15 +488,13 @@ class SupplierConnectionService
         }
 
         $barcodes = array_unique(array_filter($barcodes));
-        Log::info("Found " . count($barcodes) . " barcodes for supplier $supplierId");
         $products = Product::with("laboratory")->whereIn("barcode", $barcodes)->get()->keyBy("barcode");
-        Log::info("Found " . $products->count() . " matching products in DB for supplier $supplierId");
 
-        $result = collect($lines)->map(function (string $line, $key) use ($normalizedStructure, $now, $usdCurrency, $supplierId, $products, $structure_for_parsing, $headerMap, $getIdx) {
+        $result = collect($lines)->map(function (string $line, $key) use ($normalizedStructure, $now, $usdCurrency, $supplierId, $products, $structure_for_parsing, $headerMap, $getIdx, $splitLine) {
             if (!empty($structure_for_parsing)) {
                 $line = $this->parseFixedWidth($line, $structure_for_parsing);
             }
-            $cols = explode(";", $line);
+            $cols = $splitLine($line);
             
             $entry = [
                 "supplier_id" => $supplierId,
@@ -494,46 +530,56 @@ class SupplierConnectionService
                         break;
 
                     case "decimal":
-                        if (is_numeric($value)) {
-                            $newValue = number_format((float) $value, 2, ".", "");
+                        $trimmedVal = trim($value);
+                        $trimmedVal = preg_replace('/[^\d.,-]/', '', $trimmedVal);
+                        if (empty($trimmedVal)) {
+                            $cleanValue = "0.00";
+                        } elseif (str_contains($trimmedVal, '.') && str_contains($trimmedVal, ',')) {
+                            $cleanValue = str_replace(',', '.', str_replace('.', '', $trimmedVal));
+                        } elseif (str_contains($trimmedVal, ',')) {
+                            $cleanValue = str_replace(',', '.', $trimmedVal);
+                        } else {
+                            if (preg_match('/^\d{1,3}\.\d{3}$/', $trimmedVal)) {
+                                $cleanValue = str_replace('.', '', $trimmedVal);
+                            } else {
+                                $cleanValue = $trimmedVal;
+                            }
+                        }
+                        if (is_numeric($cleanValue)) {
+                            $newValue = number_format((float) $cleanValue, 2, ".", "");
 
                             if (in_array($meta["target"], ["exisMerida", "exisCaracas", "exisOriente", "quantity"])) {
-                                $quantity += $value;
+                                $quantity += (float) $cleanValue;
                                 break;
                             }
 
-                            // Si es otra columna decimal (como discount_percentage, margen, etc.), simplemente guardarla y no recalcular el unit_cost_usd
-                            if ($meta["target"] !== "unit_cost") {
-                                $entry[$meta["target"]] = $newValue;
-                                break;
-                            }
-
-                            // Si ya tiene el precio en bs y usd
+                            // Si ya tiene la columna especifica unit_cost_usd en el archivo
                             if ($hasUnitCostUsd) {
                                 $entry[$meta["target"]] = $newValue;
                                 break;
                             } else {
-                                // Precio en bs calcula con la tasa  usd del dia
                                 if (isset($meta["currency"]) && $meta["currency"] === "usd") {
                                     $entry[$meta["target"]] = number_format(
-                                        (float) ($newValue * $usdCurrency->rate),
+                                        (float) ($newValue * ($usdCurrency->rate ?? 1)),
                                         2,
                                         ".",
-                                        "",
+                                        ""
                                     );
-                                    $entry["unit_cost_usd"] = $newValue;
-
+                                    if ($meta["target"] === "unit_cost") {
+                                        $entry["unit_cost_usd"] = $newValue;
+                                    }
                                     break;
                                 } else {
-                                    // Obtiene el equivalente de bs en usd
                                     $entry[$meta["target"]] = $newValue;
-                                    $entry["unit_cost_usd"] = number_format(
-                                        (float) ($newValue / $usdCurrency->rate),
-                                        2,
-                                        ".",
-                                        "",
-                                    );
-
+                                    // Solo calcular unit_cost_usd si la columna actual es el costo unitario (unit_cost)
+                                    if ($meta["target"] === "unit_cost") {
+                                        $entry["unit_cost_usd"] = number_format(
+                                            (float) ($newValue / ($usdCurrency->rate ?? 1)),
+                                            2,
+                                            ".",
+                                            ""
+                                        );
+                                    }
                                     break;
                                 }
                             }
@@ -612,7 +658,6 @@ class SupplierConnectionService
         });
 
 
-        Log::info("Total results parsed for supplier $supplierId: " . $result->count());
         return $result->toArray();
     }
 
@@ -699,8 +744,7 @@ class SupplierConnectionService
 
                 foreach ($structure['lines'] as $index => $meta) {
                     $raw = $cols[$index] ?? '';
-                    //Log::info('$raw'.$raw);
-                    //$lineData[$meta['field']] = $this->castValue($raw, $meta);
+                    //                    //$lineData[$meta['field']] = $this->castValue($raw, $meta);
                     $value = $this->castValue($raw, $meta);
                     $lineData[$meta['field']] = $value;
 
@@ -901,16 +945,9 @@ class SupplierConnectionService
                 'is_deleted' => true, // Pending approval
             ]);
 
-            // Log::info('✅ Producto creado desde factura', [
-            //     'supplier_id' => $supplierId,
-            //     'barcode' => $barcode,
-            //     'product_id' => $newProduct->id,
-            //     'name' => $newProduct->name
-            // ]);
-
             return $newProduct;
         } catch (\Exception $e) {
-            Log::error('❌ Error al crear producto desde factura', [
+            \Log::error('❌ Error al crear producto desde factura', [
                 'supplier_id' => $supplierId,
                 'barcode' => $barcode,
                 'error' => $e->getMessage(),
@@ -919,10 +956,11 @@ class SupplierConnectionService
         }
     }
 
-    private function castValue(string|null $raw, array $meta): mixed
+    private function castValue(mixed $raw, array $meta): mixed
     {
         if ($raw === null) return null;
-        $value = trim(str_replace('"', '', $raw));
+        if (is_array($raw) || is_object($raw)) return null;
+        $value = is_string($raw) ? trim(str_replace('"', '', $raw)) : (string) $raw;
 
         return match ($meta["type"]) {
             "string" => $value,
@@ -941,8 +979,10 @@ class SupplierConnectionService
         };
     }
 
-    private function parseDate(string $value, ?string $preferredFormat = null): ?string
+    private function parseDate(mixed $value, ?string $preferredFormat = null): ?string
     {
+        if ($value === null) return null;
+        $value = (string) $value;
         if ($value === "" || $value === "0000-00-00" || strtoupper($value) === "NULL") {
             return null;
         }

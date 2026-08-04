@@ -1,39 +1,36 @@
-﻿<script setup>
+<script setup>
+import AppMobilePagination from "@/components/AppMobilePagination.vue";
 import { computed } from "vue";
 import { formatPrice, formatDateSimple } from "@/utils/formatters";
-import { useBrandingStore } from "@/stores/useBrandingStore";
 
 const props = defineProps({
-  products: { type: Array, required: true },
-  loading: { type: Boolean, default: false },
-  totalProduct: { type: Number, required: true },
-  itemsPerPage: { type: Number, required: true },
-  page: { type: Number, required: true },
-  mode: { type: String, default: "inventory" },
-  title: { type: String, default: "" },
+  products:     { type: Array,   required: true },
+  loading:      { type: Boolean, default: false },
+  totalProduct: { type: Number,  required: true },
+  itemsPerPage: { type: Number,  required: true },
+  page:         { type: Number,  required: true },
+  mode:         { type: String,  default: "inventory" },
+  title:        { type: String,  default: "" },
 });
 
 const emit = defineEmits(["update:options", "count-product"]);
 
-const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => false);
-
 const headers = computed(() => {
   const baseHeaders = [
-    { title: "ID", key: "id", sortable: true, width: "80px" },
-    { title: "Producto", key: "name", sortable: true, width: "40%" },
-    { title: isRestaurant.value ? "Marca" : "Laboratorio", key: "laboratory.name", sortable: true, width: "15%" },
-    { title: "Expiración", key: "next_expiration", sortable: true, width: "120px" },
-    { title: "Acciones", key: "actions", sortable: false, align: "center", width: "100px" },
+    { title: "ID",           key: "id",               sortable: true,  width: "80px"  },
+    { title: "Producto",     key: "name",              sortable: true,  width: "40%"   },
+    { title: "Laboratorio",  key: "laboratory.name",   sortable: true,  width: "15%"   },
+    { title: "Expiración",   key: "next_expiration",   sortable: true,  width: "120px" },
+    { title: "Acciones",     key: "actions",           sortable: false, align: "center", width: "100px" },
   ];
-  
+
   if (props.mode !== "inventory") {
-    baseHeaders.splice(4, 0, 
-      { title: "Costo", key: "unit_cost", sortable: true, align: "end", width: "120px" },
-      { title: "P. Venta", key: "sale_price", sortable: true, align: "end", width: "120px" }
+    baseHeaders.splice(4, 0,
+      { title: "Costo",    key: "unit_cost",   sortable: true, align: "end", width: "120px" },
+      { title: "P. Venta", key: "sale_price",  sortable: true, align: "end", width: "120px" }
     );
   }
-  
+
   return baseHeaders;
 });
 
@@ -64,13 +61,6 @@ const calculateSalePriceWithIva = (product) => {
   return product.iva == 1 ? basePrice * 1.16 : basePrice;
 };
 
-const handleMobilePageChange = (newPage) => {
-  emit('update:options', {
-    page: newPage,
-    itemsPerPage: props.itemsPerPage,
-    sortBy: [],
-  });
-};
 </script>
 
 <template>
@@ -113,8 +103,8 @@ const handleMobilePageChange = (newPage) => {
                 <span v-if="item.is_colombian_origin == 1" class="text-xs text-disabled"> (COL)</span>
               </span>
               <div class="d-flex align-center gap-1 text-super-xs mt-1">
-                <span v-if="!isRestaurant" class="text-disabled truncate" style="max-inline-size: 200px;">{{ item.active_ingredient }}</span>
-                <span v-if="!isRestaurant" class="text-disabled mx-1">|</span>
+                <span class="text-disabled truncate" style="max-inline-size: 200px;">{{ item.active_ingredient }}</span>
+                <span class="text-disabled mx-1">|</span>
                 <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 150px;">
                   {{ item.laboratory?.name || 'S/L' }}
                 </span>
@@ -192,8 +182,8 @@ const handleMobilePageChange = (newPage) => {
                   </h3>
                 </div>
                 <div class="d-flex align-center flex-wrap gap-x-2 text-super-xs">
-                  <span v-if="!isRestaurant" class="text-medium-emphasis font-weight-medium text-truncate" style="max-inline-size: 150px;">{{ item.active_ingredient }}</span>
-                  <span v-if="!isRestaurant" class="text-disabled">|</span>
+                  <span class="text-medium-emphasis font-weight-medium text-truncate" style="max-inline-size: 150px;">{{ item.active_ingredient }}</span>
+                  <span class="text-disabled">|</span>
                   <span class="text-primary font-weight-bold text-truncate" style="max-inline-size: 120px;">{{ item.laboratory?.name || 'S/L' }}</span>
                 </div>
               </div>
@@ -230,13 +220,12 @@ const handleMobilePageChange = (newPage) => {
       </div>
 
       <div class="d-flex justify-center mt-4">
-        <VPagination
-          :model-value="props.page"
-          :length="Math.ceil(props.totalProduct / props.itemsPerPage)"
-          :total-visible="3"
-          density="compact"
-          size="small"
-          @update:model-value="handleMobilePageChange"
+        <AppMobilePagination
+          :page="props.page"
+          :items-per-page="props.itemsPerPage"
+          :total-items="props.totalProduct"
+          :loading="props.loading"
+          @change="(options) => emit('update:options', { ...options, sortBy: [], groupBy: [] })"
         />
       </div>
     </div>

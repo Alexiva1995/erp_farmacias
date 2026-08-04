@@ -33,6 +33,8 @@ class PendingPaymentGroupResource extends JsonResource
                 return [
                     'id' => $invoice['id'],
                     'invoice_number' => $invoice['invoice_number'],
+                    'control_number' => $invoice['control_number'] ?? 'N/A',
+                    'supplier_rif' => $invoice['supplier_rif'] ?? 'N/A',
                     'total_amount' => (float)$invoice['total_amount'],
                     'total_usd' => (float)$invoice['total_usd'],
                     'invoiceRemainingUSD' => (float)$invoice['invoiceRemainingUSD'],

@@ -30,10 +30,13 @@ class OrderRepository implements \App\Contracts\Order
 
     public function builerFiltrarOrdenesforLottery($filtros): Builder
     {
-        $consulta = Order::query()->with(["client", "seller", "details.product.laboratory"]);
+        $consulta = Order::query()->with([
+            "client:id,name,last_name,identification_type,identification,phone",
+            "seller:id,username"
+        ])->where('orders.status', Order::COMPLETED);
 
-        if (array_key_exists("minimo", $filtros)) {
-            $consulta->where("total_amount_usd", ">", $filtros["minimo"]);
+        if (array_key_exists("minimo", $filtros) && is_numeric($filtros["minimo"])) {
+            $consulta->where("orders.total_amount_usd", ">=", (float)$filtros["minimo"]);
         }
 
         if (array_key_exists("laboratory_id", $filtros) && !empty($filtros["laboratory_id"])) {
@@ -51,10 +54,12 @@ class OrderRepository implements \App\Contracts\Order
         }
 
         if (array_key_exists("fechaDesde_filtro", $filtros) && array_key_exists("fechaHasta_filtro", $filtros)) {
-            if ($filtros["fechaDesde_filtro"] != "" && $filtros["fechaHasta_filtro"] != "") {
+            if (!empty($filtros["fechaDesde_filtro"]) && !empty($filtros["fechaHasta_filtro"])) {
+                $fechaDesde = $filtros["fechaDesde_filtro"] . (strlen($filtros["fechaDesde_filtro"]) === 10 ? ' 00:00:00' : '');
+                $fechaHasta = $filtros["fechaHasta_filtro"] . (strlen($filtros["fechaHasta_filtro"]) === 10 ? ' 23:59:59' : '');
                 $consulta->whereBetween("orders.created_at", [
-                    $filtros["fechaDesde_filtro"],
-                    $filtros["fechaHasta_filtro"]
+                    $fechaDesde,
+                    $fechaHasta
                 ]);
             }
         }
@@ -66,7 +71,7 @@ class OrderRepository implements \App\Contracts\Order
             }
             $consulta->orderBy($sortBy, $filtros["orderBy"]);
         } else {
-            $consulta->orderBy("orders.id", "ASC");
+            $consulta->orderBy("orders.id", "DESC");
         }
 
         return $consulta;

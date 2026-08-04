@@ -266,7 +266,8 @@ const handleCheckSupplierApi = async (supplier) => {
     await axios.get(`/suppliers/${supplier.id}/connection`);
     supplierConnectionStore.startConnection();
   } catch (error) {
-    toast.error(`No se pudo iniciar la conexión con ${supplier.name}`);
+    const errorDetail = error?.response?.data?.message || error?.message || "";
+    toast.error(`No se pudo iniciar la conexión con ${supplier.name}${errorDetail ? `: ${errorDetail}` : ""}`);
   } finally {
     checkingApiSupplierId.value = null;
   }

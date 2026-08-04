@@ -27,14 +27,28 @@ class EmployeeRepository implements EmployeeContract
   public function list(array $data): LengthAwarePaginator
   {
     $search = $data['search'] ?? '';
-    $perPage = $data['perPage'] ?? 10;
+    $perPage = (int) ($data['perPage'] ?? 10);
     $active = filter_var($data['active'] ?? true, FILTER_VALIDATE_BOOLEAN);
 
     return Employee::query()
-      ->with(['user.role', 'resignation'])
+      ->select([
+        'employees.id',
+        'employees.name',
+        'employees.last_name',
+        'employees.identification',
+        'employees.is_active',
+        'employees.photo',
+        'employees.user_id',
+        'employees.total_package_usd',
+        'employees.saldo_deuda',
+        'employees.created_at',
+      ])
+      ->with([
+        'user:id,email,role_id',
+        'user.role:id,name',
+        'resignation:id,employee_id,start_date,effective_date,request_date',
+      ])
       ->leftJoin('users', 'users.id', '=', 'employees.user_id')
-      ->select('employees.*')
-      ->addSelect('users.email as email')
       ->when(!empty($search), function ($query) use ($search) {
         $query->where(function ($q) use ($search) {
           $q->where('employees.name', 'like', "%$search%")
@@ -43,7 +57,7 @@ class EmployeeRepository implements EmployeeContract
             ->orWhere('employees.identification', 'like', "%$search%");
         });
       })
-      ->when(auth()->user()->role_id === 3, function ($query) {
+      ->when(auth()->user()?->role_id === 3, function ($query) {
         $query->where('employees.user_id', auth()->id());
       })
       ->where('employees.is_active', '=', $active)
@@ -131,9 +145,11 @@ class EmployeeRepository implements EmployeeContract
 
   public function profile(Employee $employee): Employee|null
   {
-    $query = $employee->load('user.role');
-
-    return $query;
+    return $employee->load([
+      'user:id,username,email,role_id',
+      'user.role:id,name',
+      'resignation:id,employee_id,start_date,effective_date,request_date',
+    ]);
   }
 
   public function storeVoucher(Employee $employee, array $data): bool

@@ -28,15 +28,18 @@ const isMiniMarket = isMinimarket;
 
 const previewSalePrice = computed(() => {
   const cost = Number(props.product.unit_cost || 0);
+  const roundUp = !!(brandingStore.settings?.round_usd_up || props.settings?.round_usd_up);
+  let price = 0;
   if (isMinimarket.value) {
     const costWithTax = cost * (1 + Number(taxUsa.value) / 100);
     const fixedExpenseAmount = costWithTax * (Number(expenseMargin.value) / 100);
     const profitDenominator = 1 - (Number(profitMargin.value) / 100);
     if (profitDenominator <= 0) return "9999.99";
-    return ((costWithTax + Number(shippingCost.value) + Number(packagingCost.value) + fixedExpenseAmount) / profitDenominator).toFixed(2);
+    price = (costWithTax + Number(shippingCost.value) + Number(packagingCost.value) + fixedExpenseAmount) / profitDenominator;
   } else {
-    return (cost * (1 + Number(percentage.value) / 100)).toFixed(2);
+    price = cost * (1 + Number(percentage.value) / 100);
   }
+  return roundUp ? Math.ceil(price).toFixed(2) : price.toFixed(2);
 });
 
 watch(

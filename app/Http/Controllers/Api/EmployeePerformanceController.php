@@ -81,13 +81,6 @@ class EmployeePerformanceController extends Controller
             $currentYear = Carbon::now()->year;
 
             // Depuración: Verificar datos del empleado
-            \Log::info('Employee Performance Debug', [
-                'employee_id' => $employee->id,
-                'user_id' => $employee->user_id,
-                'employee_name' => $employee->name . ' ' . $employee->last_name,
-                'current_month' => $currentMonth,
-                'current_year' => $currentYear
-            ]);
 
             // Usar la misma lógica que el servicio funcional
             $currentMonthSales = $this->calculateSales($employee->user_id, $currentMonth, $currentYear);
@@ -106,11 +99,6 @@ class EmployeePerformanceController extends Controller
                 ->sum('quantity');
 
             // Depuración: Verificar datos históricos
-            \Log::info('Historical Orders Debug', [
-                'total_orders' => $historicalOrders->count(),
-                'historical_total' => $historicalTotal,
-                'historical_units' => $historicalUnits
-            ]);
 
             $historicalTicketAvg = $historicalOrders->count() > 0 ? 
                 $historicalTotal / $historicalOrders->count() : 0;
@@ -132,11 +120,6 @@ class EmployeePerformanceController extends Controller
                 ->sum('quantity');
 
             // Depuración: Verificar datos del mes actual
-            \Log::info('Current Month Orders Debug', [
-                'total_orders' => $currentMonthOrders->count(),
-                'current_month_sales' => $currentMonthSales,
-                'current_month_units' => $currentMonthUnits
-            ]);
 
             $currentMonthTicketAvg = $currentMonthOrders->count() > 0 ? 
                 $currentMonthSales / $currentMonthOrders->count() : 0;

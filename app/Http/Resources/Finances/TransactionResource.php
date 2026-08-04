@@ -17,7 +17,7 @@ class TransactionResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'user_name' => $this->user ? $this->user->name : ($this->user_name ?? 'Sistema'),
+            'user_name' => $this->user_name ?? ($this->user ? ($this->user->username ?? $this->user->name) : 'Sistema'),
             'description' => $this->description,
             'type' => $this->type ?? $this->movement_type ?? 'OUT',
             'movement_type' => $this->movement_type ?? $this->type ?? 'OUT',

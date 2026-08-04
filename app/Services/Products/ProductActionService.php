@@ -67,14 +67,13 @@ class ProductActionService
         $validatedData['unit_cost'] = (float)($validatedData['unit_cost'] ?? 0);
         
         // sale_price: si no está presente, calcularlo o asignar 0
+        // sale_price: si no está presente, calcularlo o asignar 0
         if (!isset($validatedData['sale_price']) || 
             $validatedData['sale_price'] === null || 
             $validatedData['sale_price'] === '') {
             // Si unit_cost > 0, calcular el precio basado en rentabilidad
             if ($validatedData['unit_cost'] > 0) {
-                $setting = ProfitabilitySetting::orderBy('id', 'desc')->first();
-                $percentage = $setting ? $setting->default_profitability_percentage : 30;
-                $validatedData['sale_price'] = $validatedData['unit_cost'] * (1 + ($percentage / 100));
+                $validatedData['sale_price'] = $this->calculateSalePrice((float) $validatedData['unit_cost']);
             } else {
                 $validatedData['sale_price'] = 0;
             }
@@ -176,14 +175,8 @@ class ProductActionService
             isset($validatedData['unit_cost']) && 
             $validatedData['unit_cost'] !== null && 
             $validatedData['unit_cost'] > 0) {
-            if ($product->profitability && $product->profitability->is_locked) {
-                $percentage = $product->profitability->profitability_percentage;
-            } else {
-                $setting = ProfitabilitySetting::orderBy('id', 'desc')->first();
-                $percentage = $setting ? $setting->default_profitability_percentage : 30;
-            }
 
-            $validatedData['sale_price'] = $validatedData['unit_cost'] * (1 + ($percentage / 100));
+            $validatedData['sale_price'] = $this->calculateSalePrice((float) $validatedData['unit_cost'], $product);
         }
         
         if (!empty($validatedData['barcode'])) {
@@ -629,4 +622,50 @@ class ProductActionService
             }
         }
     }
+
+    /**
+     * Calcula el precio de venta considerando la configuración global de rentabilidad (simple o compuesta).
+     */
+    private function calculateSalePrice(float $unitCost, ?Product $product = null): float
+    {
+        if ($unitCost <= 0) {
+            return 0.0;
+        }
+
+        $generalSettings = DB::table('general_settings')->first();
+        $useCompound = $generalSettings && isset($generalSettings->profitability_calculation_type) && $generalSettings->profitability_calculation_type === 'compound';
+
+        $roundUsdUp = $generalSettings && !empty($generalSettings->round_usd_up);
+        if ($useCompound) {
+            $settings = ProfitabilitySetting::orderBy('id', 'desc')->first();
+            $productProfitability = $product ? \App\Models\ProductProfitability::where('product_id', $product->id)->first() : null;
+
+            $shippingCost = $productProfitability && $productProfitability->shipping_cost !== null ? (float)$productProfitability->shipping_cost : ($settings ? (float)$settings->shipping_cost : 0.0);
+            $packagingCost = $productProfitability && $productProfitability->packaging_cost !== null ? (float)$productProfitability->packaging_cost : ($settings ? (float)$settings->packaging_cost : 0.0);
+            $expenseMargin = $productProfitability && $productProfitability->expense_margin !== null ? (float)$productProfitability->expense_margin : ($settings ? (float)$settings->expense_margin : 0.0);
+            $profitMargin = $productProfitability && $productProfitability->profit_margin !== null ? (float)$productProfitability->profit_margin : ($settings ? (float)$settings->profit_margin : 0.0);
+            $taxUsa = $productProfitability && $productProfitability->tax_usa !== null ? (float)$productProfitability->tax_usa : ($settings ? (float)$settings->tax_usa : 0.0);
+
+            $costWithTax = $unitCost * (1.0 + ($taxUsa / 100.0));
+            $fixedExpenseAmount = $costWithTax * ($expenseMargin / 100.0);
+            $profitDenominator = 1.0 - ($profitMargin / 100.0);
+            if ($profitDenominator <= 0.0) {
+                $profitDenominator = 0.01;
+            }
+
+            $calculatedPrice = ($costWithTax + $shippingCost + $packagingCost + $fixedExpenseAmount) / $profitDenominator;
+            return $roundUsdUp ? (float) ceil(round($calculatedPrice, 4)) : round($calculatedPrice, 2);
+        } else {
+            if ($product && $product->profitability && $product->profitability->is_locked) {
+                $percentage = (float) $product->profitability->profitability_percentage;
+            } else {
+                $setting = ProfitabilitySetting::orderBy('id', 'desc')->first();
+                $percentage = $setting ? (float) $setting->default_profitability_percentage : 30.0;
+            }
+
+            $calculatedPrice = $unitCost * (1 + ($percentage / 100));
+            return $roundUsdUp ? (float) ceil(round($calculatedPrice, 4)) : round($calculatedPrice, 2);
+        }
+    }
 }
+

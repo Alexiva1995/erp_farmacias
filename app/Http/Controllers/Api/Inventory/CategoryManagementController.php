@@ -23,15 +23,30 @@ class CategoryManagementController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Category::withCount(['products', 'dishes']);
+        $enabledTypes = config('branding.enabled_product_types', ['ingredients']);
+        // Verificar si el tipo 'ingredients' está habilitado para cargar el conteo de platos
+        $hasIngredients = in_array('ingredients', (array) $enabledTypes);
 
-        if ($request->search) {
+        $query = Category::query()
+            ->select(['id', 'name'])
+            ->withCount(['products']);
+
+        if ($hasIngredients) {
+            $query->withCount(['dishes']);
+        }
+
+        if ($request->filled('search')) {
             $query->where('name', 'like', "%{$request->search}%");
         }
 
         $sortBy = $request->get('sortBy', 'name');
         $orderBy = $request->get('orderBy', 'asc');
         $itemsPerPage = (int) $request->get('itemsPerPage', 10);
+
+        if (!in_array($sortBy, ['id', 'name', 'products_count', 'dishes_count'])) {
+            $sortBy = 'name';
+        }
+        $orderBy = strtolower($orderBy) === 'desc' ? 'desc' : 'asc';
 
         if ($itemsPerPage === -1) {
             $itemsPerPage = Category::count() ?: 10;

@@ -52,8 +52,8 @@ class FiscalActionService
     {
         $commands = $this->repository->getHistory($limit);
         
-        $invoices = FiscalHistory::where('is_queued', true)
-            ->with('order')
+        $invoices = FiscalHistory::select(['id', 'order_id', 'invoice_number', 'is_queued', 'created_at', 'updated_at'])
+            ->where('is_queued', true)
             ->orderBy('created_at', 'desc')
             ->limit($limit)
             ->get();
@@ -65,13 +65,13 @@ class FiscalActionService
                 'command' => 'PRINT_INVOICE',
                 'payload' => ['order_id' => $inv->order_id, 'invoice_number' => $inv->invoice_number],
                 'status' => $inv->invoice_number ? 'success' : 'pending',
-                'response' => $inv->invoice_number ? "Factura #{$inv->invoice_number}" : "En espera...",
-                'created_at' => $inv->created_at,
-                'updated_at' => $inv->updated_at,
+                'response' => $inv->invoice_number ? "Factura #{$inv->invoice_number}" : "En espera de impresión...",
+                'created_at' => $inv->created_at?->toDateTimeString(),
+                'updated_at' => $inv->updated_at?->toDateTimeString(),
             ];
         });
 
-        // Combinar, ordenar y limitar
+        // Combinar, ordenar y limitar en memoria
         return $commands->concat($mappedInvoices)
             ->sortByDesc('created_at')
             ->take($limit)

@@ -29,45 +29,62 @@ class IaAssistantReportService
 
         $esVistaGrupal = filter_var($filtros['tipo_vista'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
-        // 1. Obtener todos los IDs (de productos o grupos) que coinciden con los filtros (Cacheado)
-        $allIds = $this->getFilteredIds($filtros, $esVistaGrupal);
-        $total = count($allIds);
-
-        // 2. Paginar los IDs en memoria
-        $offset = ($page - 1) * $perPage;
-        $currentPageIds = array_slice($allIds, $offset, $perPage);
-
-        if (empty($currentPageIds)) {
-            return new LengthAwarePaginator([], $total, $perPage, $page);
-        }
-
-        // 3. Hidratar los modelos
-        $filtrosHidratacion = $filtros;
-        if ($esVistaGrupal) {
-            // Si es vista grupal, los IDs son de GRUPOS
-            $filtrosHidratacion['groups'] = $currentPageIds;
-            // Quitamos q para que traiga todos los productos del grupo una vez filtrados los grupos
-            // Nota: Si se requiere que los productos dentro del grupo también respeten q, se puede mantener q
-        } else {
-            // Si es vista individual, los IDs son de PRODUCTOS
-            $filtrosHidratacion['ids_in'] = $currentPageIds;
-        }
-        
-        // Ejecutamos la consulta base según el tipo
+        // 1. Hidratar todos los candidatos devueltos por la consulta base (universo filtrado por SQL)
         if ($tipo === 'sales') {
-            $resultado = $this->productRepository->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtrosHidratacion);
+            $resultado = $this->productRepository->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtros);
         } else {
-            $resultado = $this->productRepository->filtrarIndividualProductForAssistantReportTypeAveragesWithoutPaginate($filtrosHidratacion);
+            $resultado = $this->productRepository->filtrarIndividualProductForAssistantReportTypeAveragesWithoutPaginate($filtros);
         }
 
-        // 4. Procesar cálculos adicionales (AO, Combinado, etc.)
+        // 2. Procesar cálculos adicionales (AO, Combinado, etc.)
         if ($tipo === 'combinado') {
             $procesado = $this->processCombinedReport($resultado, $filtros);
         } else {
             $procesado = $this->processRegularReport($resultado, $tipo, $filtros);
         }
 
-        // 5. ORDENAMIENTO FINAL DINÁMICO (Garantiza coherencia total en la página actual)
+        // 3. Consolidar productos unificados (grupos) para tener el stock, ventas y 'solicitar' real del grupo
+        $procesado = $this->consolidateCollection($procesado, $filtros);
+
+        // 3.1 Safety net: forzar inclusión o exclusión de Colombia/Novaventa post-consolidación
+        // (consolidateCollection puede mezclar productos de grupos sin respetar estos flags)
+        if (array_key_exists('isColombian', $filtros)) {
+            if ($filtros['isColombian'] === true || $filtros['isColombian'] === 'true') {
+                $procesado = $procesado->filter(fn($p) => (int)($p->is_colombian_origin ?? 0) === 1);
+            } elseif ($filtros['isColombian'] === false || $filtros['isColombian'] === 'false') {
+                $procesado = $procesado->filter(fn($p) => (int)($p->is_colombian_origin ?? 0) !== 1);
+            }
+        }
+        if (array_key_exists('isNovaventa', $filtros)) {
+            if ($filtros['isNovaventa'] === true || $filtros['isNovaventa'] === 'true') {
+                $procesado = $procesado->filter(fn($p) => (int)($p->is_novaventa ?? 0) === 1);
+            } elseif ($filtros['isNovaventa'] === false || $filtros['isNovaventa'] === 'false') {
+                $procesado = $procesado->filter(fn($p) => (int)($p->is_novaventa ?? 0) !== 1);
+            }
+        }
+
+        // Safety net: Descartar estrictamente productos ignorados (ignore_until > now()) post-consolidación
+        if (!filter_var($filtros['show_ignored'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
+            $now = now();
+            $procesado = $procesado->filter(function ($p) use ($now) {
+                if (empty($p->ignore_until)) return true;
+                return \Carbon\Carbon::parse($p->ignore_until)->lte($now);
+            });
+        }
+
+        // 4. Filtrar strictly por estado de stock pos-procesamiento (Fallas / Exceso)
+        $stockFilter = $filtros['stock'] ?? 'all';
+        if ($stockFilter === 'fallas') {
+            $procesado = $procesado->filter(function($p) {
+                $solicitarVal = (float)($p->solicitar ?? 0);
+                $loteQuantity = (float)($p->lote_quantity ?? 0);
+                return $solicitarVal > 0 || ($solicitarVal == 0 && $loteQuantity <= 0);
+            });
+        } elseif ($stockFilter === 'exceso') {
+            $procesado = $procesado->filter(fn($p) => (float)($p->solicitar ?? 0) < 0);
+        }
+
+        // 5. Ordenamiento dinámico sobre el universo completo de fallas
         $shortBy = $filtros['sortBy'] ?? 'solicitar';
         $orderDir = strtolower($filtros['orderBy'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
 
@@ -76,115 +93,26 @@ class IaAssistantReportService
             : $procesado->sortBy($shortBy);
         
         $procesado = $procesado->values();
+        $total = $procesado->count();
 
-        // 6. Hidratar tendencia de ventas (Últimos 6 meses) si se solicita
+        // 6. Aplicar la paginación (Corte exacto de perPage sobre el universo filtrado real)
+        $offset = ($page - 1) * $perPage;
+        $itemsPagina = $procesado->slice($offset, $perPage)->values();
+
+        // 7. Hidratar tendencia de ventas y proveedores SOLO para los 25 ítems visibles de la página
         if (filter_var($filtros['with_trend'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
-            $this->hydrateSalesTrend($procesado);
+            $this->hydrateSalesTrend($itemsPagina);
         }
 
-        // 5.1 Hidratar proveedores si se solicita
         if (filter_var($filtros['with_suppliers'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
-            $this->hydrateSuppliers($procesado, $filtros);
+            $this->hydrateSuppliers($itemsPagina, $filtros);
         }
 
-        // Consolidar productos unificados
-        $procesado = $this->consolidateCollection($procesado, $filtros);
-
-        // 6. Devolver paginador manual
-        return new LengthAwarePaginator($procesado, $total, $perPage, $page, [
+        // 8. Devolver paginador exacto con la página cortada
+        return new LengthAwarePaginator($itemsPagina, $total, $perPage, $page, [
             'path' => request()->url(),
             'query' => request()->query(),
         ]);
-    }
-
-    /**
-     * Devuelve grupos paginados con sus productos anidados (para vista de acordeón)
-     */
-    public function getGroupedReportWithPaginate(array $filtros): array
-    {
-        $filtros = $this->prepareDateFilters($filtros);
-        $tipo = $filtros['tipo_filtracion'] ?? 'average';
-        $page = (int) ($filtros['page'] ?? 1);
-        $perPage = (int) ($filtros['itemsPerPage'] ?? 25);
-        if ($perPage <= 0) $perPage = 999999;
-
-        // 1. Obtener todos los group_ids ordenados alfabéticamente
-        $allGroupIds = $this->getFilteredIds($filtros, true);
-        $totalGroups = count($allGroupIds);
-
-        // 2. Paginar los group_ids en memoria (ESTO sí limita a 25 grupos)
-        $offset = ($page - 1) * $perPage;
-        $currentGroupIds = array_slice($allGroupIds, $offset, $perPage);
-
-        if (empty($currentGroupIds)) {
-            return [
-                'grupos' => [],
-                'total_grupos' => $totalGroups,
-                'per_page' => $perPage,
-                'current_page' => $page,
-                'last_page' => (int) ceil($totalGroups / $perPage),
-            ];
-        }
-
-        // 3. Pre-cargar los nombres de grupos de esta página en una sola query
-        $grupoNombres = \App\Models\GroupsProduct::whereIn('id', $currentGroupIds)
-            ->pluck('name', 'id');
-
-        // 4. Para cada grupo de esta página, traer sus productos
-        $filtrosBase = $filtros;
-        unset($filtrosBase['page'], $filtrosBase['itemsPerPage']);
-
-        $grupos = [];
-        foreach ($currentGroupIds as $groupId) {
-            $filtrosGrupo = $filtrosBase;
-            $filtrosGrupo['groups'] = [$groupId];
-            unset($filtrosGrupo['tipo_vista']);
-
-            // Obtener productos del grupo
-            if ($tipo === 'sales') {
-                $resultado = $this->productRepository->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtrosGrupo);
-            } else {
-                $resultado = $this->productRepository->filtrarIndividualProductForAssistantReportTypeAveragesWithoutPaginate($filtrosGrupo);
-            }
-
-            if ($tipo === 'combinado') {
-                $procesado = $this->processCombinedReport($resultado, $filtrosGrupo);
-            } else {
-                $procesado = $this->processRegularReport($resultado, $tipo);
-            }
-
-            if (filter_var($filtros['with_trend'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
-                $this->hydrateSalesTrend($procesado);
-            }
-
-            // Hidratar proveedores si se solicita
-            if (filter_var($filtros['with_suppliers'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
-                $this->hydrateSuppliers($procesado, $filtros);
-            }
-
-            // Consolidar productos unificados
-            $procesado = $this->consolidateCollection($procesado, $filtros);
-
-            // Serializar a array asociativo profundo (funciona con Eloquent models y stdClass)
-            $productosArray = json_decode(json_encode($procesado), true);
-
-            $grupos[] = [
-                'group_id'   => $groupId,
-                'group_name' => $grupoNombres[$groupId] ?? '',
-                'productos'  => array_values($productosArray),
-                'total_solicitar' => collect($productosArray)->sum(function($p) {
-                    return (float) ($p['solicitar'] ?? 0);
-                })
-            ];
-        }
-
-        return [
-            'grupos'       => $grupos,
-            'total_grupos' => $totalGroups,
-            'per_page'     => $perPage,
-            'current_page' => $page,
-            'last_page'    => (int) ceil($totalGroups / $perPage),
-        ];
     }
 
     public function getFilteredIds(array $filtros, bool $porGrupo = false): array
@@ -195,10 +123,6 @@ class IaAssistantReportService
         return $this->productRepository->getUniqueIdsForIaReport($filtrosLigero, $porGrupo);
     }
 
-    /**
-     * Devuelve el conteo total de productos que coinciden con los filtros del asistente.
-     * Usa la misma fuente que el asistente (getUniqueIdsForIaReport) para garantizar coincidencia.
-     */
     public function countFilteredProducts(array $filtros): int
     {
         $filtros = $this->prepareDateFilters($filtros);
@@ -341,7 +265,8 @@ class IaAssistantReportService
         $items = $items->values();
         $eloquentCollection = new \Illuminate\Database\Eloquent\Collection($items);
         
-        $itemsWithSuppliers = $this->productSupplierRepository->getSupplierToReplenishTheProducts($eloquentCollection, $conDescuento);
+        $skipAiMatch = filter_var($filtros['skip_ai_match'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        $itemsWithSuppliers = $this->productSupplierRepository->getSupplierToReplenishTheProducts($eloquentCollection, $conDescuento, $skipAiMatch);
         $itemsWithSuppliers = $this->productSupplierRepository->checkTolerance($itemsWithSuppliers, $conDescuento);
         
         foreach ($items as $index => $producto) {
@@ -379,6 +304,9 @@ class IaAssistantReportService
      */
     private function prepareDateFilters(array $filtros): array
     {
+        if (empty($filtros['lapso_de_tiempo'])) {
+            $filtros['lapso_de_tiempo'] = '1 month';
+        }
         if (!empty($filtros['lapso_de_tiempo'])) {
             $timeZone = new \DateTimeZone(config("app.timezone"));
             $dateToday = new \DateTime("now", $timeZone);

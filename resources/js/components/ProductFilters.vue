@@ -51,6 +51,8 @@ const emit = defineEmits([
   "export",
   "add-product",
   "sort",
+  "bulk-toggle-active",
+  "bulk-delete",
 ]);
 
 const stockOptions = [
@@ -90,9 +92,9 @@ const authStore = useAuthStore();
 const currentUser = computed(() => authStore.user);
 const selectedSort = ref(null);
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => false);
-const isMiniMarket = computed(() => false);
-const isSportsRental = computed(() => false);
+const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
+const isMiniMarket = computed(() => brandingStore.settings.business_type === 'minimarket');
+const isSportsRental = computed(() => brandingStore.settings.business_type === 'sports_rental');
 
 const getStorageKey = () => `product_sort_filter_user_${currentUser.value?.id || "anonymous"}`;
 
@@ -174,6 +176,34 @@ const showExport = computed(() => props.mode === 'products');
     @add="emit('add-product')"
     @sort="handleSortClick"
   >
+    <template #prepend-actions>
+      <VBtn
+        icon
+        variant="tonal"
+        color="warning"
+        size="38"
+        rounded="circle"
+        @click="emit('bulk-toggle-active')"
+      >
+        <VIcon icon="tabler-power" />
+        <VTooltip activator="parent" location="top">Inhabilitar / Habilitar Seleccionados</VTooltip>
+      </VBtn>
+
+      <!-- Botón Eliminar Seleccionados (Soft Delete) -->
+      <VBtn
+        v-if="authStore.isAdmin"
+        icon
+        variant="tonal"
+        color="error"
+        size="38"
+        rounded="circle"
+        @click="emit('bulk-delete')"
+      >
+        <VIcon icon="tabler-trash" />
+        <VTooltip activator="parent" location="top">Eliminar Seleccionados</VTooltip>
+      </VBtn>
+    </template>
+
     <template #search-extra>
       <!-- Búsqueda Estricta -->
       <VCol cols="auto" class="d-none d-sm-flex">

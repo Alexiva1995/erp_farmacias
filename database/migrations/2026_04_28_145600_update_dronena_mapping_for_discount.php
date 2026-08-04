@@ -30,8 +30,6 @@ return new class extends Migration
             DB::table('supplier_connections')
                 ->where('supplier_id', 27)
                 ->update(['structure' => json_encode($structure)]);
-            
-            Log::info("Migración: Mapeo de Dronena actualizado con columna de descuento.");
         }
     }
 

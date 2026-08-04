@@ -155,6 +155,10 @@ class AppServiceProvider extends ServiceProvider
             ->needs(Product::class)
             ->give(ProductServices::class);
 
+        $this->app->when(\App\Services\InventoryStockService::class)
+            ->needs(Product::class)
+            ->give(ProductServices::class);
+
         $this->app->when(TransactionController::class)
             ->needs(Transaction::class)
             ->give(TransactionServices::class);

@@ -199,6 +199,7 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
     Route::post('/products/{id}/restore', [ProductController::class, 'restore']);
     Route::get('/products/export', [ProductController::class, 'export']);
     Route::post('/products/{product}/toggle-scarce', [ProductController::class, 'toggleScarce']);
+    Route::post('/products/{product}/toggle-active', [ProductController::class, 'toggleActive']);
     Route::delete('/products/{product}/unassign-group', [ProductController::class, 'unassignProductFromGroup']);
     Route::get('/products/search-by-barcode', [ProductController::class, 'searchByBarcode']);
     Route::get('/products/inventory/value', [ProductController::class, 'getInventoryValue']);

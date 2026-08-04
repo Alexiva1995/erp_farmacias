@@ -27,6 +27,7 @@ const props = defineProps({
   origins: { type: Array, default: () => [] },
   categories: { type: Array, default: () => [] },
   suppliers: { type: Array, default: () => [] },
+  groups: { type: Array, default: () => [] },
   allProducts: { type: Array, default: () => [] },
   errors: { type: Object, default: () => ({}) },
 });
@@ -399,7 +400,7 @@ const submitForm = () => {
             class="me-3 elevation-1"
           >
             <VIcon
-              :icon="isNewProduct ? 'tabler-circle-plus' : 'tabler-edit'"
+              :icon="isNewProduct ? 'tabler-circle-plus' : 'tabler-pencil'"
               size="24"
               color="primary"
             />

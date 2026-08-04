@@ -176,14 +176,11 @@ class ExpensesServices implements Expenses
     public function executeRecurringExpensesOfToday(): void
     {
         $expenses = $this->expensesRepository->getAllRecurringExpensesOfToday();
-        Log::info("ejecutar gastos recurrentes");
         for ($index = 0; $index < count($expenses); $index++) {
             $expense = $expenses[$index];
             $timeZone = new DateTimeZone(config("app.timezone"));
             $hoy = new DateTime('now', $timeZone);
 
-            Log::info("gastos programdo");
-            Log::info($expense);
 
             $expenseNormalData = CreateExpenseData::from([
                 "name" => $expense->name,
@@ -202,8 +199,6 @@ class ExpensesServices implements Expenses
                 "amount_bs" => $expense->amount_bs,
             ]);
             $expenseNormal = $this->create($expenseNormalData);
-            Log::info("gastos normal creado del recurrente");
-            Log::info($expenseNormal);
 
             $next_expense_date = null;
             if ($expense->recurrence === Expense::RECURRENCE_MENSUAL) {
@@ -233,8 +228,6 @@ class ExpensesServices implements Expenses
                 "amount_bs" => $expense->amount_bs,
             ]);
             $expenseRecurrenteEdit = $this->expensesRepository->editExpenseRecurring($expenseRecurenteData);
-            Log::info("actualización del gastos recurrente");
-            Log::info($expenseRecurrenteEdit);
         }
     }
 

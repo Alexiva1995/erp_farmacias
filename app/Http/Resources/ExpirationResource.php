@@ -18,7 +18,7 @@ class ExpirationResource extends JsonResource
             'id' => $this->id,
             'lot_number' => $this->lot_number,
             'expiration_date' => $this->expiration_date,
-            'quantity' => $this->quantity,
+            'quantity' => (int) $this->quantity,
             'unit_cost' => $this->unit_cost,
             'product_id' => $this->product_id,
             'product' => $this->product ? [

@@ -144,11 +144,27 @@ class ProductController extends Controller
                 Product::whereIn('id', $ids)->update(['laboratory_id' => $value]);
                 $message = 'Marca/Laboratorio de productos actualizada en lote correctamente.';
                 break;
+            case 'toggle-active':
+                $productsToToggle = Product::whereIn('id', $ids)->get();
+                foreach ($productsToToggle as $p) {
+                    $p->update(['is_active' => !$p->is_active]);
+                }
+                $message = 'Estado de productos alternado correctamente.';
+                break;
             default:
                 return response()->json(['message' => 'Acción masiva no soportada.'], 400);
         }
 
         return response()->json(['message' => $message]);
+    }
+
+    public function toggleActive(Product $product): JsonResponse
+    {
+        $product->update(['is_active' => !$product->is_active]);
+        return response()->json([
+            'message' => 'Estado del producto actualizado con éxito.',
+            'is_active' => $product->is_active
+        ]);
     }
 
     public function destroy(Product $product)

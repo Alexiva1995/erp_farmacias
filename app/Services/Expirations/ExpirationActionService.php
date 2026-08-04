@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Services\Expirations;
 
 use App\Models\ExpiredLog;
+use App\Models\InventoryMovement;
 use App\Models\PriceAdjustmentLog;
 use App\Models\ProductLot;
+use App\Observers\ProductLotObserver;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -15,8 +17,7 @@ use Exception;
 class ExpirationActionService
 {
     /**
-     * Marca un lote como caducado y registra la acción.
-     *
+     * Marca un lote como caducado y registra la acción de trazabilidad explícita.
      *
      * @param ProductLot $lot
      * @throws Exception
@@ -30,30 +31,50 @@ class ExpirationActionService
         DB::beginTransaction();
 
         try {
-            // Load product relationship if not already loaded
+            ProductLotObserver::$isExpiringLot = true;
+
             if (!$lot->relationLoaded('product')) {
                 $lot->load('product');
             }
 
-            $quantityToExpire = $lot->quantity;
-            // Use product unit_cost if lot unit_cost is null or 0
+            $product = $lot->product;
+            $quantityToExpire = (float) $lot->quantity;
             $costPerUnit = $lot->unit_cost && $lot->unit_cost > 0 
-                ? $lot->unit_cost 
-                : ($lot->product->unit_cost ?? 0);
+                ? (float) $lot->unit_cost 
+                : (float) ($product->unit_cost ?? 0);
             $totalLostValue = $quantityToExpire * $costPerUnit;
 
-            $lot->quantity = 0;
+            $stockBefore = (float) $product->lots()->sum('quantity');
+            $stockAfter = max(0, $stockBefore - $quantityToExpire);
 
+            // 1. Registrar el Log de Caducidad
             ExpiredLog::create([
                 'lot_id' => $lot->id,
                 'product_id' => $lot->product_id,
-                'product_name' => $lot->product->name,
+                'product_name' => $product->name,
                 'lot_number' => $lot->lot_number ?? null,
                 'expired_quantity' => $quantityToExpire,
                 'cost_per_unit' => $costPerUnit,
                 'total_lost_value' => $totalLostValue,
             ]);
 
+            // 2. Registrar explícitamente el movimiento de trazabilidad como 'expired' (Caducado)
+            InventoryMovement::create([
+                'product_id' => $product->id,
+                'product_lot_id' => $lot->id,
+                'movement_type' => 'expired',
+                'quantity' => -$quantityToExpire,
+                'invoice_id' => null,
+                'supplier_id' => null,
+                'order_id' => null,
+                'user_id' => Auth::id(),
+                'stock_before' => $stockBefore,
+                'stock_after' => $stockAfter,
+                'movement_date' => now(),
+            ]);
+
+            // 3. Poner la cantidad del lote en 0 y guardar
+            $lot->quantity = 0;
             $lot->save();
 
             DB::commit();
@@ -62,8 +83,11 @@ class ExpirationActionService
             DB::rollBack();
             Log::error('Error al procesar la caducidad del lote: ' . $e->getMessage());
             throw new Exception('Error al procesar la caducidad del lote.', 500, $e);
+        } finally {
+            ProductLotObserver::$isExpiringLot = false;
         }
     }
+
     public function getAdjustmentPreview(string $month, array $excludedProductIds = []): array
     {
         if ($this->hasMonthPriceAdjustment($month)) {
@@ -118,10 +142,10 @@ class ExpirationActionService
             'affected_products_count' => $affectedProductsCount,
         ];
     }
+
     /**
      * Reajusta los precios de TODOS los productos caducados de un mes,
      *
-     * 
      * @param string $month Formato Y-m
      * @param array $excludedProductIds Array de IDs de productos a excluir
      * @return array
@@ -196,7 +220,7 @@ class ExpirationActionService
 
                     $newUnitCost = $currentUnitCost + $costAdjustmentPerUnit;
 
-                    $updated = DB::table('products')
+                    DB::table('products')
                         ->where('id', $productId)
                         ->update(['unit_cost' => $newUnitCost]);
                 }
@@ -253,7 +277,6 @@ class ExpirationActionService
      */
     public function hasMonthPriceAdjustment(string $month): bool
     {
-        // El usuario solicita poder usar el botón de reajustar precio las veces que quiera sin inhabilitarlo
         return false;
     }
 
@@ -300,10 +323,6 @@ class ExpirationActionService
         ];
     }
 
-    /**
-     * Método original para compatibilidad hacia atrás (DEPRECATED)
-     * @deprecated Use adjustExpiredProductsPricesWithExclusions instead
-     */
     public function adjustExpiredProductsPrices(string $month, array $expiredLogIds): array
     {
         $formatField = DB::getDriverName() === 'sqlite' 
@@ -323,18 +342,5 @@ class ExpirationActionService
         $excludedProductIds = array_diff($allLogsInMonth, $processedProductIds);
 
         return $this->adjustExpiredProductsPricesWithExclusions($month, $excludedProductIds);
-    }
-
-    /**
-     * @deprecated
-     */
-    public function adjustLotPrice(ProductLot $lot): void
-    {
-        throw new Exception('Esta funcionalidad ha sido deshabilitada.', 400);
-    }
-
-    public function adjustMultipleLotsPrices(array $lotIds): array
-    {
-        throw new Exception('Esta funcionalidad ha sido deshabilitada.', 400);
     }
 }

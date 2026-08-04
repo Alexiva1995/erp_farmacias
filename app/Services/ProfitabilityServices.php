@@ -92,9 +92,7 @@ class ProfitabilityServices implements Profitability
         $product = \App\Models\Product::find($productId);
         if ($product) {
             $generalSettings = \Illuminate\Support\Facades\DB::table('general_settings')->first();
-            $isMinimarket = $generalSettings && $generalSettings->business_type === 'minimarket';
-
-            $useCompound = ($generalSettings && $generalSettings->business_type === 'minimarket') || ($generalSettings && isset($generalSettings->profitability_calculation_type) && $generalSettings->profitability_calculation_type === 'compound');
+            $useCompound = $generalSettings && isset($generalSettings->profitability_calculation_type) && $generalSettings->profitability_calculation_type === 'compound';
 
             if ($useCompound) {
                 $settings = $this->consultOne();
@@ -118,7 +116,12 @@ class ProfitabilityServices implements Profitability
                 $newPrice = $product->unit_cost * (1 + ($percentage / 100));
             }
 
-            $product->sale_price = round($newPrice, 2);
+            $roundUsdUp = $generalSettings && !empty($generalSettings->round_usd_up);
+            if ($roundUsdUp) {
+                $product->sale_price = ceil(round($newPrice, 4));
+            } else {
+                $product->sale_price = round($newPrice, 2);
+            }
             $product->save();
         }
     }

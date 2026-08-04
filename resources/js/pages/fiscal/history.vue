@@ -5,154 +5,120 @@ import DetailHistoryShowDialog from "@/components/dialogs/DetailHistoryShowDialo
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { onMounted, ref, watch } from "vue";
-import { useDisplay } from "vuetify";
 
-const { mobile } = useDisplay();
+// --- Estados ---
 const histories = ref([]);
 const totalHistories = ref(0);
 const loading = ref(false);
+const exportLoading = ref(false);
 const page = ref(1);
 const itemsPerPage = ref(10);
-const sortBy = ref();
-const orderBy = ref();
+const sortBy = ref(undefined);
+const orderBy = ref(undefined);
 const searchQuery = ref("");
-const selectedLaboratory = ref(null);
-const selectedOrigin = ref(null);
-const stockStatusFilter = ref(null);
-const startDate = ref(
-  new Date(new Date().getFullYear(), 0, 1).toISOString().split("T")[0],
-);
-const endDate = ref(
-  new Date(new Date().getFullYear(), 11, 31).toISOString().split("T")[0],
-);
-const origins = ref([]);
-const historyNameToEdit = ref("");
-const historyIdToEdit = ref(null);
+
+// Fechas predeterminadas: Año actual
+const currentYear = new Date().getFullYear();
+const startDate = ref(`${currentYear}-01-01`);
+const endDate = ref(`${currentYear}-12-31`);
+
+// Diálogo de detalle
 const isEditDialogVisible = ref(false);
 const currentProduct = ref({});
-const productFormErrors = ref({});
 const currentHistoryDetails = ref([]);
 const currentHistoryUser = ref({});
-const isLoadingFilters = ref(false);
+const historyIdToEdit = ref(null);
+const historyNameToEdit = ref("");
 
-const fetchHistorys = async () => {
+// --- Métodos ---
+const fetchHistories = async () => {
   loading.value = true;
   const params = {
-    q: searchQuery.value,
+    q: searchQuery.value || undefined,
     page: page.value,
     itemsPerPage: itemsPerPage.value,
-    sortBy: sortBy.value,
-    orderBy: orderBy.value,
-    startDate: startDate.value,
-    endDate: endDate.value,
+    sortBy: sortBy.value || undefined,
+    orderBy: orderBy.value || undefined,
+    startDate: startDate.value || undefined,
+    endDate: endDate.value || undefined,
   };
-  Object.keys(params).forEach(
-    (key) => (params[key] === null || params[key] === "") && delete params[key],
-  );
 
   try {
     const response = await axios.get("/history", { params });
-    histories.value = response.data.data;
-    totalHistories.value = response.data.total;
+    histories.value = response.data.data || [];
+    totalHistories.value = response.data.total || 0;
   } catch (error) {
-    console.error("Hubo un error al obtener el historial fiscal:", error);
-    toast.error("Error al obtener el historial.");
+    console.error("Error al obtener el historial fiscal:", error);
+    toast.error("Error al cargar el historial fiscal.");
   } finally {
     loading.value = false;
   }
 };
 
-let debounceTimer;
-watch(
-  [
-    page,
-    itemsPerPage,
-    sortBy,
-    orderBy,
-    searchQuery,
-    selectedLaboratory,
-    selectedOrigin,
-    stockStatusFilter,
-    startDate,
-    endDate,
-  ],
-  () => {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => fetchHistorys(), 300);
-  },
-  { deep: true },
-);
+// Debounce para evitar llamadas repetitivas al escribir en los filtros
+let debounceTimer = null;
+const triggerDebouncedFetch = () => {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => {
+    fetchHistories();
+  }, 300);
+};
 
-watch(
-  [
-    searchQuery,
-    selectedLaboratory,
-    selectedOrigin,
-    stockStatusFilter,
-    startDate,
-    endDate,
-  ],
-  () => {
-    page.value = 1;
-  },
-);
+// Reajuste de página al cambiar filtros de búsqueda o fecha
+watch([searchQuery, startDate, endDate], () => {
+  page.value = 1;
+  triggerDebouncedFetch();
+});
 
-onMounted(async () => {
-  await fetchHistorys();
+// Reactividad a paginación y ordenamiento
+watch([page, itemsPerPage, sortBy, orderBy], () => {
+  triggerDebouncedFetch();
+});
+
+onMounted(() => {
+  fetchHistories();
 });
 
 const updateTableOptions = (options) => {
   page.value = options.page;
   itemsPerPage.value = options.itemsPerPage;
-  sortBy.value = options.sortBy[0]?.key;
-  orderBy.value = options.sortBy[0]?.order;
+  if (options.sortBy && options.sortBy.length > 0) {
+    sortBy.value = options.sortBy[0].key;
+    orderBy.value = options.sortBy[0].order;
+  } else {
+    sortBy.value = undefined;
+    orderBy.value = undefined;
+  }
 };
 
 const handleShowDetailHistory = (history) => {
   currentProduct.value = { ...history };
   currentHistoryDetails.value = history.details || [];
   currentHistoryUser.value = history.user || {};
-  productFormErrors.value = {};
   isEditDialogVisible.value = true;
   historyIdToEdit.value = history.id;
-  historyNameToEdit.value = history.business_name;
+  historyNameToEdit.value = history.business_name || "";
 };
 
 const handleClearFilters = () => {
   searchQuery.value = "";
-  startDate.value = new Date(new Date().getFullYear(), 0, 1)
-    .toISOString()
-    .split("T")[0];
-  endDate.value = new Date(new Date().getFullYear(), 11, 31)
-    .toISOString()
-    .split("T")[0];
+  startDate.value = `${currentYear}-01-01`;
+  endDate.value = `${currentYear}-12-31`;
   sortBy.value = undefined;
   orderBy.value = undefined;
-};
-
-const handleAddProduct = () => {
-  currentProduct.value = {};
-  productFormErrors.value = {};
-  isEditDialogVisible.value = true;
-};
-
-const clearFormErrors = () => {
-  productFormErrors.value = {};
+  page.value = 1;
 };
 
 const handleExport = async (format) => {
+  if (exportLoading.value) return;
+
+  exportLoading.value = true;
   const params = {
-    q: searchQuery.value,
-    startDate: startDate.value,
-    endDate: endDate.value,
+    q: searchQuery.value || undefined,
+    startDate: startDate.value || undefined,
+    endDate: endDate.value || undefined,
     format: format,
   };
-
-  Object.keys(params).forEach((key) => {
-    if (params[key] === null || params[key] === "") {
-      delete params[key];
-    }
-  });
 
   try {
     const response = await axios.get("/history/export", {
@@ -165,23 +131,26 @@ const handleExport = async (format) => {
     link.href = url;
 
     const contentDisposition = response.headers["content-disposition"];
-    let fileName = `historias.${format}`;
+    let fileName = `HistoriaFiscal_${startDate.value}_${endDate.value}.${format}`;
     if (contentDisposition) {
-      const fileNameMatch = contentDisposition.match(/filename="(.+)"/);
-      if (fileNameMatch && fileNameMatch.length === 2)
+      const fileNameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+      if (fileNameMatch && fileNameMatch[1]) {
         fileName = fileNameMatch[1];
+      }
     }
 
     link.setAttribute("download", fileName);
     document.body.appendChild(link);
     link.click();
-
     link.remove();
     window.URL.revokeObjectURL(url);
+
     toast.success("Archivo exportado con éxito.");
   } catch (error) {
-    console.error("Error al exportar los datos:", error);
-    toast.error("Hubo un error al exportar el archivo.");
+    console.error("Error al exportar el historial fiscal:", error);
+    toast.error("No se pudo exportar el reporte fiscal.");
+  } finally {
+    exportLoading.value = false;
   }
 };
 
@@ -193,16 +162,14 @@ const handleSort = (sortOptions) => {
 
 <template>
   <div class="fiscal-history-page pb-12">
-    <div class="d-flex flex-column gap-1 mt-1">
+    <div class="d-flex flex-column gap-2 mt-1">
       <HistoryFilters
         v-model:searchQuery="searchQuery"
         v-model:startDate="startDate"
         v-model:endDate="endDate"
-        :origins="origins"
-        :loading="isLoadingFilters"
+        :loading="loading || exportLoading"
         @clear="handleClearFilters"
         @export="handleExport"
-        @add-product="handleAddProduct"
         @sort="handleSort"
       />
 
@@ -222,9 +189,7 @@ const handleSort = (sortOptions) => {
         :history-id="historyIdToEdit"
         :details="currentHistoryDetails"
         :user="currentHistoryUser"
-        :errors="productFormErrors"
         :histories="currentProduct"
-        @clear-errors="clearFormErrors"
       />
     </div>
   </div>

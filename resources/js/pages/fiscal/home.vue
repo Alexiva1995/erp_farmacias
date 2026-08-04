@@ -1,5 +1,38 @@
 <template>
-  <div>
+  <div class="fiscal-home-container pb-6">
+    <!-- Encabezado con Filtro de Año Fiscal -->
+    <VCard class="mb-6">
+      <VCardText class="d-flex flex-wrap align-center justify-space-between gap-4">
+        <div>
+          <h4 class="text-h4 font-weight-bold mb-1">
+            Panel de Control Fiscal (ISLR)
+          </h4>
+          <p class="text-body-2 text-medium-emphasis mb-0">
+            Resumen financiero, estimaciones de impuestos y gestión de declaraciones fiscales.
+          </p>
+        </div>
+        <div class="d-flex align-center gap-3">
+          <VSelect
+            v-model="selectedYear"
+            :items="availableYears"
+            label="Año Fiscal"
+            density="compact"
+            variant="outlined"
+            style="width: 140px"
+            hide-details
+            @update:model-value="loadDashboardData"
+          />
+          <VBtn
+            color="primary"
+            variant="tonal"
+            icon="tabler-refresh"
+            :loading="loading"
+            @click="loadDashboardData"
+          />
+        </div>
+      </VCardText>
+    </VCard>
+
     <!-- Stats Cards Row -->
     <VRow class="mb-6 match-height">
       <!-- Card 1: Utilidad Gravable Estimada -->
@@ -55,7 +88,7 @@
       <!-- Card 3: Estado Última Declaración -->
       <VCol cols="12" md="4">
         <VCard :loading="loadingDeclaration" class="h-100">
-          <VCardText class="d-flex flex-column" style="min-height: 160px">
+          <VCardText class="d-flex flex-column justify-center" style="min-height: 160px">
             <template v-if="latestDeclaration">
               <div class="d-flex align-center mb-2">
                 <VAvatar
@@ -86,7 +119,7 @@
                 </span>
               </div>
               <div class="text-body-2 text-medium-emphasis mb-1">
-                Estado Última Declaración
+                Estado Última Declaración ({{ latestDeclaration.year }})
               </div>
               <div class="d-flex align-center text-caption">
                 <span class="text-medium-emphasis mr-1">Declarada el</span>
@@ -109,11 +142,11 @@
                 <VIcon
                   icon="tabler-file-x"
                   size="40"
-                  color="error"
+                  color="warning"
                   class="mb-2"
                 />
                 <div class="text-body-2 text-medium-emphasis mb-3 text-center">
-                  No hay declaración para {{ selectedYear }}
+                  No hay declaración registrada para {{ selectedYear }}
                 </div>
                 <VBtn
                   color="primary"
@@ -137,7 +170,7 @@
       </VCol>
     </VRow>
 
-    <!-- Nueva sección: Cálculo de Utilidades -->
+    <!-- Sección: Cálculo de Utilidades -->
     <VRow class="mb-6 match-height">
       <!-- Ingresos Totales -->
       <VCol cols="12" md="6">
@@ -269,7 +302,7 @@
     <!-- Estado de Resultados y Gastos No Deducibles -->
     <VRow class="mb-6">
       <!-- Estado de Resultados -->
-      <VCol cols="12" md="8" order="2" order-md="1">
+      <VCol cols="12" md="8">
         <VCard class="h-100" :loading="loading">
           <VCardText>
             <div class="d-flex justify-space-between align-center mb-6">
@@ -298,7 +331,7 @@
                           size="14"
                           class="mr-1"
                         />
-                        Fiscal History
+                        Historial Fiscal
                       </VChip>
                     </div>
                   </VCardText>
@@ -317,7 +350,7 @@
                       </div>
                       <VChip size="small" color="warning" variant="tonal">
                         <VIcon icon="tabler-receipt" size="14" class="mr-1" />
-                        Expenses
+                        Gastos Registrados
                       </VChip>
                     </div>
                   </VCardText>
@@ -331,6 +364,7 @@
                 color="primary"
                 variant="tonal"
                 prepend-icon="tabler-file-download"
+                @click="handleDownloadReport"
               >
                 Descargar Reporte
               </VBtn>
@@ -338,6 +372,7 @@
                 color="secondary"
                 variant="outlined"
                 prepend-icon="tabler-printer"
+                @click="handlePrintReport"
               >
                 Imprimir
               </VBtn>
@@ -347,7 +382,7 @@
       </VCol>
 
       <!-- Gastos No Deducibles -->
-      <VCol cols="12" md="4" order="1" order-md="2">
+      <VCol cols="12" md="4">
         <VCard
           color="error-lighten-5"
           variant="tonal"
@@ -408,7 +443,7 @@
     </VRow>
 
     <!-- Dialog para crear declaración -->
-    <VDialog v-model="showCreateDialog" max-width="600">
+    <VDialog v-model="showCreateDialog" max-width="600" persistent>
       <VCard>
         <VCardTitle class="d-flex align-center bg-primary text-white">
           <VIcon icon="tabler-file-plus" class="mr-2" />
@@ -421,7 +456,7 @@
               <VCol cols="12">
                 <VTextField
                   v-model="declarationForm.year"
-                  label="Año"
+                  label="Año Fiscal"
                   type="number"
                   variant="outlined"
                   :rules="[(v) => !!v || 'El año es requerido']"
@@ -437,6 +472,7 @@
                   type="number"
                   variant="outlined"
                   prefix="Bs."
+                  :disabled="savingDeclaration"
                   :rules="[
                     (v) => !!v || 'El monto es requerido',
                     (v) => v >= 0 || 'El monto debe ser mayor o igual a 0',
@@ -453,6 +489,7 @@
                     { title: 'No Pagado', value: 'unpaid' },
                   ]"
                   variant="outlined"
+                  :disabled="savingDeclaration"
                   :rules="[(v) => !!v || 'El estado es requerido']"
                 />
               </VCol>
@@ -463,6 +500,7 @@
                   label="Fecha de Declaración"
                   type="date"
                   variant="outlined"
+                  :disabled="savingDeclaration"
                   :rules="[(v) => !!v || 'La fecha es requerida']"
                 />
               </VCol>
@@ -475,6 +513,7 @@
           <VBtn
             color="secondary"
             variant="outlined"
+            :disabled="savingDeclaration"
             @click="showCreateDialog = false"
           >
             Cancelar
@@ -482,6 +521,7 @@
           <VBtn
             color="primary"
             :loading="savingDeclaration"
+            :disabled="savingDeclaration"
             @click="createDeclaration"
           >
             Crear Declaración
@@ -504,18 +544,29 @@ const savingDeclaration = ref(false);
 const showCreateDialog = ref(false);
 const formRef = ref(null);
 
+const currentYear = new Date().getFullYear();
+const selectedYear = ref(currentYear);
+
+const availableYears = computed(() => {
+  const years = [];
+  for (let i = 0; i < 5; i++) {
+    years.push(currentYear - i);
+  }
+  return years;
+});
+
 const islrData = ref({
   gross_income: 0,
   deductions: 0,
   net_income: 0,
   ibg: 0,
   costs: 0,
-  year: new Date().getFullYear(),
+  year: currentYear,
 });
 
 const latestDeclaration = ref(null);
-const selectedYear = ref(new Date().getFullYear());
 const unidadesTributarias = ref(0);
+
 const totalIncomeData = ref({
   total_income: 0,
   exempt_amount: 0,
@@ -541,15 +592,13 @@ const nonDeductibleExpensesData = ref({
 });
 
 const declarationForm = ref({
-  year: new Date().getFullYear(),
+  year: currentYear,
   amount: 0,
   status: "unpaid",
   declaration_date: new Date().toISOString().split("T")[0],
 });
 
 const rentaBruta = computed(() => islrData.value.gross_income || 0);
-const deducciones = computed(() => islrData.value.deductions || 0);
-const montoConDeducciones = computed(() => islrData.value.net_income || 0);
 
 const impuestoISLR = computed(() => {
   if (unidadesTributarias.value === 0) return 0;
@@ -589,10 +638,11 @@ const formatCurrency = (amount) => {
     currency: "VES",
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(amount);
+  }).format(amount || 0);
 };
 
 const formatDate = (date) => {
+  if (!date) return "N/A";
   return new Date(date).toLocaleDateString("es-VE", {
     year: "numeric",
     month: "2-digit",
@@ -600,114 +650,69 @@ const formatDate = (date) => {
   });
 };
 
-const fetchIslrData = async () => {
-  loading.value = true;
-  try {
-    const { data } = await axios.get("/islr/summary", {
-      params: { year: selectedYear.value },
-    });
-    islrData.value = data.data || {
-      gross_income: 0,
-      deductions: 0,
-      net_income: 0,
-      ibg: 0,
-      costs: 0,
-      year: selectedYear.value,
-    };
-
-    await fetchTaxUnit();
-  } catch (error) {
-    console.error("Error al cargar datos del ISLR:", error);
-  } finally {
-    loading.value = false;
-  }
-};
-
 const fetchTaxUnit = async () => {
   try {
     const { data } = await axios.get("/islr/tax-unit");
-    unidadesTributarias.value = data.data.value || 0;
+    unidadesTributarias.value = data?.data?.value || 0;
   } catch (error) {
     console.error("Error al cargar Unidades Tributarias:", error);
     unidadesTributarias.value = 0;
   }
 };
 
-const fetchTotalIncome = async () => {
-  try {
-    const { data } = await axios.get("/dashboard/total-income", {
-      params: { year: selectedYear.value },
-    });
-    totalIncomeData.value = data.data || {
-      total_income: 0,
-      exempt_amount: 0,
-      taxable_amount: 0,
-      exempt_percentage: 0,
-      taxable_percentage: 0,
-    };
-  } catch (error) {
-    console.error("Error al cargar ingresos totales:", error);
-  }
-};
-
-const fetchDeductibleExpenses = async () => {
-  try {
-    const { data } = await axios.get("/dashboard/deductible-expenses", {
-      params: { year: selectedYear.value },
-    });
-    deductibleExpensesData.value = data.data || {
-      total_deductible: 0,
-      categories: [],
-    };
-  } catch (error) {
-    console.error("Error al cargar gastos deducibles:", error);
-  }
-};
-
-const fetchRevenueStats = async () => {
-  try {
-    const { data } = await axios.get("/dashboard/revenue-report", {
-      params: { year: selectedYear.value },
-    });
-    revenueStats.value = data.data?.summary || {
-      total_income: 0,
-      total_expenses: 0,
-      net_revenue: 0,
-    };
-  } catch (error) {
-    console.error("Error al cargar estadísticas de ingresos:", error);
-  }
-};
-
-const fetchNonDeductibleExpenses = async () => {
-  try {
-    const { data } = await axios.get("/dashboard/non-deductible-expenses", {
-      params: { year: selectedYear.value },
-    });
-    nonDeductibleExpensesData.value = data.data || {
-      total_non_deductible: 0,
-      categories: [],
-    };
-  } catch (error) {
-    console.error("Error al cargar gastos no deducibles:", error);
-  }
-};
-
-const fetchLatestDeclaration = async () => {
+const loadDashboardData = async () => {
+  loading.value = true;
   loadingDeclaration.value = true;
+
   try {
-    const { data } = await axios.get("/islr/declarations", {
-      params: { year: selectedYear.value },
-    });
-    latestDeclaration.value = data.data;
-  } catch (error) {
-    if (error.response?.status === 404) {
-      latestDeclaration.value = null;
-    } else {
-      console.error("Error al cargar declaración:", error);
-      toast.error("Error al cargar la declaración");
+    await fetchTaxUnit();
+
+    const [
+      summaryRes,
+      declarationRes,
+      incomeRes,
+      deductibleRes,
+      revenueRes,
+      nonDeductibleRes,
+    ] = await Promise.allSettled([
+      axios.get("/islr/summary", { params: { year: selectedYear.value } }),
+      axios.get("/islr/declarations", { params: { year: selectedYear.value } }),
+      axios.get("/dashboard/total-income", { params: { year: selectedYear.value } }),
+      axios.get("/dashboard/deductible-expenses", { params: { year: selectedYear.value } }),
+      axios.get("/dashboard/revenue-report", { params: { year: selectedYear.value } }),
+      axios.get("/dashboard/non-deductible-expenses", { params: { year: selectedYear.value } }),
+    ]);
+
+    if (summaryRes.status === "fulfilled") {
+      islrData.value = summaryRes.value.data?.data || { gross_income: 0 };
     }
+
+    if (declarationRes.status === "fulfilled") {
+      latestDeclaration.value = declarationRes.value.data?.data || null;
+    } else {
+      latestDeclaration.value = null;
+    }
+
+    if (incomeRes.status === "fulfilled") {
+      totalIncomeData.value = incomeRes.value.data?.data || {};
+    }
+
+    if (deductibleRes.status === "fulfilled") {
+      deductibleExpensesData.value = deductibleRes.value.data?.data || {};
+    }
+
+    if (revenueRes.status === "fulfilled") {
+      revenueStats.value = revenueRes.value.data?.data?.summary || {};
+    }
+
+    if (nonDeductibleRes.status === "fulfilled") {
+      nonDeductibleExpensesData.value = nonDeductibleRes.value.data?.data || {};
+    }
+  } catch (error) {
+    console.error("Error al cargar los datos del dashboard fiscal:", error);
+    toast.error("Ocurrió un error al cargar la información fiscal.");
   } finally {
+    loading.value = false;
     loadingDeclaration.value = false;
   }
 };
@@ -731,7 +736,7 @@ const createDeclaration = async () => {
     await axios.post("/islr/declarations", declarationForm.value);
     toast.success("Declaración creada exitosamente");
     showCreateDialog.value = false;
-    await fetchLatestDeclaration();
+    await loadDashboardData();
   } catch (error) {
     console.error("Error al crear declaración:", error);
     toast.error(
@@ -742,13 +747,16 @@ const createDeclaration = async () => {
   }
 };
 
+const handleDownloadReport = () => {
+  toast.info("Generando reporte fiscal en PDF...");
+};
+
+const handlePrintReport = () => {
+  window.print();
+};
+
 onMounted(() => {
-  fetchIslrData();
-  fetchLatestDeclaration();
-  fetchTotalIncome();
-  fetchDeductibleExpenses();
-  fetchRevenueStats();
-  fetchNonDeductibleExpenses();
+  loadDashboardData();
 });
 </script>
 
@@ -761,3 +769,4 @@ onMounted(() => {
   width: 100%;
 }
 </style>
+

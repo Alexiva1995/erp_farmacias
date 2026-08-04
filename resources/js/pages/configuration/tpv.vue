@@ -9,9 +9,11 @@ const tpvModeComplete = ref(true)
 const tpvStyle = ref('pharmacy')
 const enableFlashCheckout = ref(false)
 const enableQuotations = ref(true)
+const enableReservations = ref(true)
 const quotationStyle = ref('pharmacy')
 const tpvRateType = ref('bcv')
 const defaultCurrency = ref('USD')
+const roundUsdUp = ref(false)
 
 // Variables para control de estados (UI/UX y Rendimiento)
 const isLoading = ref(true)
@@ -69,9 +71,11 @@ const fetchSettings = async () => {
     tpvStyle.value = settings.tpv_style || 'pharmacy'
     enableFlashCheckout.value = !!settings.enable_flash_checkout
     enableQuotations.value = settings.enable_quotations !== undefined ? settings.enable_quotations : true
+    enableReservations.value = settings.enable_reservations !== undefined ? settings.enable_reservations : true
     quotationStyle.value = settings.quotation_style || 'pharmacy'
     tpvRateType.value = settings.tpv_rate_type || 'bcv'
     defaultCurrency.value = settings.default_currency || 'USD'
+    roundUsdUp.value = !!settings.round_usd_up
 
     // Cargar metodos de pago mapeados del backend
     if (settings.tpv_payment_methods) {
@@ -100,19 +104,19 @@ const updateSettings = async () => {
       tpv_style: tpvStyle.value,
       enable_flash_checkout: enableFlashCheckout.value,
       enable_quotations: enableQuotations.value,
+      enable_reservations: enableReservations.value,
       quotation_style: quotationStyle.value,
       tpv_rate_type: tpvRateType.value,
+      round_usd_up: roundUsdUp.value,
       tpv_payment_methods: tpvPaymentMethods.value,
       enabled_offer_types: enabledOfferTypes.value
     }
 
     const response = await axios.post('/general-settings', updatedData)
-    // Sincronizar el estado local con la respuesta del servidor
     if (response.data && response.data.data) {
       rawSettings.value = response.data.data
     }
 
-    // Actualizar el store reactivamente usando la acción dedicada
     brandingStore.settings = {
       ...brandingStore.settings,
       default_currency: defaultCurrency.value,
@@ -120,11 +124,12 @@ const updateSettings = async () => {
       tpv_style: tpvStyle.value,
       enable_flash_checkout: enableFlashCheckout.value,
       enable_quotations: enableQuotations.value,
+      enable_reservations: enableReservations.value,
       quotation_style: quotationStyle.value,
       tpv_rate_type: tpvRateType.value,
+      round_usd_up: roundUsdUp.value,
       enabled_offer_types: enabledOfferTypes.value
     }
-    // Actualiza tpv_payment_methods por separado para forzar reactividad en computeds
     brandingStore.updatePaymentMethods(tpvPaymentMethods.value)
 
     toast.success("Configuración del TPV actualizada exitosamente")
@@ -320,6 +325,26 @@ onMounted(() => {
               </div>
             </VCol>
 
+            <!-- Columna 6: Módulo de Reservas (Alquileres Deportivos / Canchas) -->
+            <VCol cols="12" md="3" class="d-flex flex-column justify-space-between mb-6" style="min-block-size: 150px;">
+              <div>
+                <div class="font-weight-bold text-subtitle-2 mb-1">Módulo de Reservas</div>
+                <div class="text-caption text-medium-emphasis mb-3 leading-tight" style="min-block-size: 40px;">
+                  Muestra u oculta la opción "Reservas" en el menú de navegación lateral del sistema.
+                </div>
+              </div>
+              <div>
+                <VSwitch
+                  v-model="enableReservations"
+                  label="Habilitar Reservas"
+                  color="primary"
+                  inset
+                  :disabled="isSaving"
+                  @update:model-value="updateSettings"
+                />
+              </div>
+            </VCol>
+
             <!-- Columna 6: Estilo de Cotización -->
             <VCol cols="12" md="3" class="d-flex flex-column justify-space-between mb-6" style="min-block-size: 150px;">
               <div>
@@ -347,6 +372,26 @@ onMounted(() => {
               </div>
               <div v-else class="text-caption text-disabled pt-4">
                 Módulo desactivado
+              </div>
+            </VCol>
+
+            <!-- Columna 7: Redondeo USD (Entero Mayor) -->
+            <VCol cols="12" md="3" class="d-flex flex-column justify-space-between mb-6" style="min-block-size: 150px;">
+              <div>
+                <div class="font-weight-bold text-subtitle-2 mb-1">Redondeo en Venta USD</div>
+                <div class="text-caption text-medium-emphasis mb-3 leading-tight" style="min-block-size: 40px;">
+                  Al calcular y guardar la rentabilidad, redondea el precio de venta en USD al número entero mayor.
+                </div>
+              </div>
+              <div>
+                <VSwitch
+                  v-model="roundUsdUp"
+                  label="Habilitar Redondeo USD"
+                  color="primary"
+                  inset
+                  :disabled="isSaving"
+                  @update:model-value="updateSettings"
+                />
               </div>
             </VCol>
           </VRow>
@@ -417,21 +462,33 @@ onMounted(() => {
                           @update:model-value="updateSettings"
                         />
                       </div>
-                      <!-- Descripción editable colapsable (solo se ve al hacer clic en editar) -->
-                      <VTextarea
-                        v-if="method.showDescription"
-                        v-model="method.description"
-                        :placeholder="`Instrucciones para pago con ${method.label}...`"
-                        density="compact"
-                        variant="outlined"
-                        rows="2"
-                        auto-grow
-                        hide-details
-                        :disabled="!currencyData.enabled || !method.enabled || isSaving"
-                        class="text-caption mt-2"
-                        style="font-size: 11px;"
-                        @update:model-value="updateSettings"
-                      />
+                      <!-- Descripción editable colapsable con botón de guardar manual -->
+                      <div v-if="method.showDescription" class="mt-2">
+                        <div class="d-flex align-center gap-2">
+                          <VTextarea
+                            v-model="method.description"
+                            :placeholder="`Instrucciones para pago con ${method.label}...`"
+                            density="compact"
+                            variant="outlined"
+                            rows="2"
+                            auto-grow
+                            hide-details
+                            :disabled="!currencyData.enabled || !method.enabled || isSaving"
+                            class="text-caption flex-grow-1"
+                            style="font-size: 11px;"
+                          />
+                          <VBtn
+                            icon="tabler-device-floppy"
+                            color="success"
+                            size="small"
+                            variant="flat"
+                            class="rounded-lg flex-shrink-0"
+                            title="Guardar instrucciones de pago"
+                            :disabled="!currencyData.enabled || !method.enabled || isSaving"
+                            @click="updateSettings"
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </VCardText>

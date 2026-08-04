@@ -17,6 +17,11 @@
   <title>{{ $seoTitle ?? 'Tova - Cerebro Operativo' }}</title>
   <meta name="description" content="{{ $seoDescription ?? 'Explora nuestro catálogo de productos y gestiona tu inventario con la plataforma inteligente Tova.' }}" />
 
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Abril+Fatface&display=swap" rel="stylesheet">
+
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="website" />
   <meta property="og:title" content="{{ $seoTitle ?? 'Tova - Cerebro Operativo' }}" />

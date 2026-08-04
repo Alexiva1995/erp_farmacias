@@ -1,8 +1,7 @@
-﻿<script setup>
+<script setup>
 import AppFilterBase from "@/components/AppFilterBase.vue";
 import { useAuthStore } from "@/stores/auth";
 import { computed, ref } from "vue";
-
 import { useBrandingStore } from "@/stores/useBrandingStore";
 
 const props = defineProps({
@@ -18,6 +17,8 @@ const props = defineProps({
   isStrictSearch: { type: Boolean, default: false },
   tipoFiltracion: { type: String, default: "average" },
   isColombian: { type: Boolean, default: false },
+  isExportingPdf: { type: Boolean, default: false },
+  isExportingExcel: { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
@@ -86,6 +87,7 @@ const handleClear = () => {
     :search="props.searchQuery"
     :has-advanced-filters="isAdvancedFiltersVisible || !!(props.selectedLaboratory || props.stockStatusFilter !== null || props.stock || props.days || props.tipoFiltracion !== 'average' || props.expProd || props.isColombian)"
     :show-export="true"
+    :export-loading="props.isExportingPdf || props.isExportingExcel"
     search-placeholder="ID, Producto, C. Activo..."
     class="py-1"
     @update:search="emit('update:searchQuery', $event)"
@@ -150,7 +152,7 @@ const handleClear = () => {
         />
       </VCol>
 
-      <!-- Filtros Segunda Fila: Vista al lado de Días Proyección -->
+      <!-- Filtros Segunda Fila -->
       <VCol cols="12" sm="6" md="3">
         <VSelect
           :model-value="props.viewType"

@@ -4,12 +4,16 @@ namespace App\Http\Controllers\Api;
 
 use App\Exports\TraceabilityExport;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Traceability\TraceabilityIndexRequest;
+use App\Http\Resources\Traceability\TraceabilityResource;
 use App\Models\InventoryMovement;
+use App\Models\InvoiceDetail;
 use App\Models\Product;
-use App\Models\ProductDistribution;
 use App\Models\ReturnEntry;
+use App\Models\User;
 use App\Services\Traceability\TraceabilityQueryService;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -20,19 +24,25 @@ class TraceabilityController extends Controller
     public function __construct(
         private TraceabilityQueryService $salesReportQueryService
     ) {}
-    public function index(Request $request)
+
+    /**
+     * Listado paginado de movimientos de trazabilidad.
+     */
+    public function index(TraceabilityIndexRequest $request): JsonResponse
     {
         $query = $this->salesReportQueryService->getFilteredQuery($request);
 
-        $perPage = $request->input('itemsPerPage', 10);
+        $perPage = (int) $request->input('itemsPerPage', 10);
         $paginatedResult = $query->paginate($perPage);
 
         $items = collect($paginatedResult->items());
 
+        // Carga diferida optimizada para compras sin invoice_id directo
         $purchaseItems = $items->filter(function ($item) {
-            return ($item->movement_type === 'Compra' || $item->getAttributes()['movement_type'] === 'purchase') 
-                && !$item->invoice_id 
-                && $item->product_lot_id 
+            $rawType = $item->getAttributes()['movement_type'] ?? null;
+            return ($item->movement_type === 'Compra' || $rawType === 'purchase')
+                && !$item->invoice_id
+                && $item->product_lot_id
                 && !$item->relationLoaded('invoice');
         });
 
@@ -51,19 +61,17 @@ class TraceabilityController extends Controller
             }
 
             if (!empty($queryConditions)) {
-                $invoiceDetailsQuery = \App\Models\InvoiceDetail::query()->with('invoice.supplier');
-
-                $invoiceDetailsQuery->where(function ($q) use ($queryConditions) {
-                    foreach ($queryConditions as $cond) {
-                        $q->orWhere(function ($subQ) use ($cond) {
-                            $subQ->where('product_id', $cond['product_id'])
-                                 ->where('lot_number', $cond['lot_number'])
-                                 ->where('expiration_date', $cond['expiration_date']);
-                        });
-                    }
-                });
-
-                $invoiceDetails = $invoiceDetailsQuery->get();
+                $invoiceDetails = InvoiceDetail::query()
+                    ->with('invoice.supplier')
+                    ->where(function ($q) use ($queryConditions) {
+                        foreach ($queryConditions as $cond) {
+                            $q->orWhere(function ($subQ) use ($cond) {
+                                $subQ->where('product_id', $cond['product_id'])
+                                     ->where('lot_number', $cond['lot_number'])
+                                     ->where('expiration_date', $cond['expiration_date']);
+                            });
+                        }
+                    })->get();
 
                 foreach ($purchaseItems as $item) {
                     if ($item->productLot) {
@@ -82,50 +90,59 @@ class TraceabilityController extends Controller
         }
 
         return response()->json([
-            'data' => $items->all(),
+            'data' => TraceabilityResource::collection($items),
             'total' => $paginatedResult->total(),
         ]);
     }
 
-    public function filterByPsychotropics(Request $request)
+    /**
+     * Listado filtrado por psicotrópicos.
+     */
+    public function filterByPsychotropics(TraceabilityIndexRequest $request): JsonResponse
     {
         $query = $this->salesReportQueryService->getFilteredQueryByPsychotropics($request);
 
-        $perPage = $request->input('itemsPerPage', 10);
+        $perPage = (int) $request->input('itemsPerPage', 10);
         $paginatedResult = $query->paginate($perPage);
 
         return response()->json([
-            'data' => $paginatedResult->items(),
+            'data' => TraceabilityResource::collection($paginatedResult->items()),
             'total' => $paginatedResult->total(),
         ]);
     }
 
-    public function export(Request $request)
+    /**
+     * Exportación de reporte a Excel/CSV.
+     */
+    public function export(TraceabilityIndexRequest $request)
     {
         $query = $this->salesReportQueryService->getFilteredQuery($request);
 
         $format = $request->input('format', 'xlsx');
-        $fileName = 'reporte-ventas-' . now()->format('Y-m-d') . '.' . $format;
+        $fileName = 'reporte-trazabilidad-' . now()->format('Y-m-d') . '.' . $format;
 
         return Excel::download(new TraceabilityExport($query), $fileName);
     }
 
-    public function getMovementDetails(InventoryMovement $movement)
+    /**
+     * Detalles extendidos de un movimiento específico.
+     */
+    public function getMovementDetails(InventoryMovement $movement): JsonResponse
     {
-        $movement->load(['product', 'user.employee', 'order.seller.employee', 'order.client', 'order' => function($query) {
+        $movement->load(['product', 'user.employee', 'order.seller.employee', 'order.client', 'order' => function ($query) {
             $query->select('id', 'url_recipe', 'seller_id', 'client_id');
         }, 'invoice.supplier', 'supplier']);
 
+        $rawType = $movement->getAttributes()['movement_type'] ?? null;
+
         $details = [
             'movement' => $movement,
-            'type' => $movement->getAttributes()['movement_type'], // Get raw value
-            'display_type' => $movement->movement_type, // Get formatted value
+            'type' => $rawType,
+            'display_type' => $movement->movement_type,
         ];
 
-        // Handle different movement types
-        switch ($movement->getAttributes()['movement_type']) {
+        switch ($rawType) {
             case 'return':
-                // For returns, get the ReturnEntry related to the order
                 $returnEntry = ReturnEntry::where('order_id', $movement->order_id)
                     ->where('product_id', $movement->product_id)
                     ->with(['order.seller', 'order.client'])
@@ -134,43 +151,34 @@ class TraceabilityController extends Controller
                 if ($returnEntry) {
                     $details['return_entry'] = $returnEntry;
                     $details['original_order'] = $returnEntry->order;
-                    $processedBy = $returnEntry->generated_by_id ? \App\Models\User::with('employee')->find($returnEntry->generated_by_id) : null;
+                    $processedBy = $returnEntry->generated_by_id ? User::with('employee')->find($returnEntry->generated_by_id) : null;
                     $details['processed_by'] = $processedBy;
                     $details['status'] = $returnEntry->status;
                 }
                 break;
 
             case 'sale':
-                // For sales, the order and seller are already loaded
                 $details['order'] = $movement->order;
                 $details['seller'] = $movement->order?->seller;
                 break;
 
             case 'purchase':
-                // For purchases, load invoice with supplier relationship
                 $invoice = null;
-                
                 if ($movement->invoice_id) {
-                    // Load invoice directly if invoice_id exists
                     $invoice = \App\Models\Invoice::with('supplier')->find($movement->invoice_id);
-                } elseif ($movement->product_lot_id) {
-                    // If no invoice_id but has product_lot_id, try to find invoice through the lot
+                } elseif ($movement->product_lot_id && $movement->productLot) {
                     $productLot = $movement->productLot;
-                    if ($productLot) {
-                        // Try to find invoice through InvoiceDetail matching product and lot
-                        $invoiceDetail = \App\Models\InvoiceDetail::where('product_id', $movement->product_id)
-                            ->where('lot_number', $productLot->lot_number)
-                            ->where('expiration_date', $productLot->expiration_date)
-                            ->with('invoice.supplier')
-                            ->first();
-                        
-                        if ($invoiceDetail && $invoiceDetail->invoice) {
-                            $invoice = $invoiceDetail->invoice;
-                            $invoice->load('supplier');
-                        }
+                    $invoiceDetail = InvoiceDetail::where('product_id', $movement->product_id)
+                        ->where('lot_number', $productLot->lot_number)
+                        ->where('expiration_date', $productLot->expiration_date)
+                        ->with('invoice.supplier')
+                        ->first();
+
+                    if ($invoiceDetail && $invoiceDetail->invoice) {
+                        $invoice = $invoiceDetail->invoice;
                     }
                 }
-                
+
                 $details['invoice'] = $invoice;
                 $details['supplier'] = $invoice?->supplier ?? $movement->supplier;
                 break;
@@ -178,38 +186,25 @@ class TraceabilityController extends Controller
             case 'adjustment':
             case 'loss':
                 $productCount = null;
-
-                // 1. Vínculo directo y exacto (Garantía de precisión 100%)
                 if ($movement->product_count_id) {
-                    $productCount = \App\Models\ProductCount::with(['user', 'supervisor'])->find($movement->product_count_id);
+                    $productCount = \App\Models\ProductCount::with(['user.employee', 'supervisor.employee'])->find($movement->product_count_id);
                 }
 
-                // 2. Asignación de Responsables (Solo si hay vínculo exacto)
                 if ($productCount) {
-                    // El que contó originalmente
-                    $countedBy = $productCount->user;
-                    if ($countedBy) $countedBy->load('employee');
-                    $details['counted_by'] = $countedBy;
-
-                    // El que aprobó
-                    $approvedBy = $productCount->supervisor ?? $movement->user;
-                    if ($approvedBy instanceof \App\Models\User) {
-                        $approvedBy->load('employee');
-                    }
-                    $details['approved_by'] = $approvedBy;
-                    
+                    $details['counted_by'] = $productCount->user;
+                    $details['approved_by'] = $productCount->supervisor ?? $movement->user;
                     $details['product_count'] = $productCount;
                 } else {
-                    // Para registros antiguos o ajustes que no pasaron por ciclo de conteo, 
-                    // no mostramos "Auditado" ni "Aprobado" para evitar datos incorrectos
-                    $details['counted_by'] = null;
-                    $details['approved_by'] = null;
+                    // Si el movimiento no devino de un ciclo de conteo, la persona responsable es el operador que ejecutó el movimiento
+                    $details['counted_by'] = $movement->user;
+                    $details['approved_by'] = $movement->user;
                 }
                 break;
 
             case 'expired':
-                // For expired products, the user_id in the movement is who expired it
                 $details['expired_by'] = $movement->user;
+                $details['counted_by'] = $movement->user;
+                $details['approved_by'] = $movement->user;
                 break;
         }
 
@@ -217,10 +212,9 @@ class TraceabilityController extends Controller
     }
 
     /**
-     * Registra un ajuste inicial por producto para trazabilidad: Stock A = 0, Stock F = suma de lotes.
-     * Un registro por producto, realizado por el admin. Para dejar la trazabilidad lista con el stock actual.
+     * Registra un ajuste inicial por producto para trazabilidad.
      */
-    public function registerBaselineAdjustments(Request $request)
+    public function registerBaselineAdjustments(Request $request): JsonResponse
     {
         $user = Auth::user();
         if (!$user || (int) $user->role_id !== 1) {

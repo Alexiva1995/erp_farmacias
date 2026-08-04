@@ -290,11 +290,11 @@ span.text-medium-emphasis,
   }
 }
 
-/* Límite estricto de border-radius a 5px en todo el ERP */
+/* Límite estricto de border-radius a 5px en todo el ERP (excepto botones circulares explícitos) */
 .v-card,
-.v-btn:not(.app-filter-base .v-btn):not([class*="filter"] .v-btn),
+.v-btn:not(.app-filter-base .v-btn):not([class*="filter"] .v-btn):not(.rounded-circle):not(.v-btn--icon),
 .v-chip,
-.v-avatar,
+.v-avatar:not(.rounded-circle),
 .v-field,
 .v-input__control,
 .v-list-item,

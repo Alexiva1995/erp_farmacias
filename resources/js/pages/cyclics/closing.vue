@@ -2,13 +2,14 @@
 import CashCloseTable from "@/components/CashCloseTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { formatDateSimple } from "@/utils/formatters";
+import { formatDateSimple, formatPrice } from "@/utils/formatters";
 import Swal from "sweetalert2";
 import { onMounted, onUnmounted, reactive, ref, watch, computed } from "vue";
 
+let debounceTimer;
 const counts = ref([]);
 const totalCounts = ref(0);
-const loading = ref(false);
+const loading = ref(true);
 const isClosing = ref(false);
 const page = ref(1);
 const itemsPerPage = ref(10);
@@ -53,6 +54,7 @@ const fetchData = async () => {
       id: item.id,
       productId: item.product_id,
       discrepancy: item.discrepancy,
+      status: item.status,
       product: { 
         id: item.product_id,
         name: item.product_name, 
@@ -94,21 +96,22 @@ const fetchData = async () => {
 const fetchCycleStatus = async () => {
   try {
     const response = await axios.get("/inventory/cycle/active");
-    hasActiveCycle.value = response.data.has_active_cycle;
-    activeCycle.value = response.data.data;
+    hasActiveCycle.value = !!response.data.has_active_cycle;
+    activeCycle.value = response.data.data || null;
   } catch (error) {
     console.error("Error al obtener estado del ciclo:", error);
+    hasActiveCycle.value = false;
+    activeCycle.value = null;
   }
 };
 
-onMounted(() => {
-  fetchData();
-  fetchCycleStatus();
+onMounted(async () => {
+  loading.value = true;
+  await Promise.all([fetchCycleStatus(), fetchData()]);
 });
 
 onUnmounted(() => clearTimeout(debounceTimer));
 
-let debounceTimer;
 watch(
   [filters, page, itemsPerPage, sortBy, orderBy],
   () => {
@@ -137,23 +140,27 @@ const updateTableOptions = (options) => {
   }
 };
 
-const handleCashClose = async () => {
-  const result = await Swal.fire({
-    title: "¿Estás seguro?",
-    text: "Esta acción cerrará el ciclo de inventario activo y creará automáticamente un nuevo ciclo. ¿Deseas continuar?",
-    icon: "warning",
-    showCancelButton: true,
-    confirmButtonText: "Sí, cerrar ciclo",
-    cancelButtonText: "Cancelar",
-    reverseButtons: true,
-  });
+const handleCashClose = async (rejectPending = false) => {
+  if (!rejectPending) {
+    const result = await Swal.fire({
+      title: "¿Estás seguro?",
+      text: "Esta acción cerrará el ciclo de inventario activo y creará automáticamente un nuevo ciclo. ¿Deseas continuar?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Sí, cerrar ciclo",
+      cancelButtonText: "Cancelar",
+      reverseButtons: true,
+    });
 
-  if (!result.isConfirmed) return;
+    if (!result.isConfirmed) return;
+  }
 
   isClosing.value = true;
 
   try {
-    const closeResponse = await axios.post("/inventory/cycle/close");
+    const closeResponse = await axios.post("/inventory/cycle/close", {
+      reject_pending: rejectPending,
+    });
     toast.success(closeResponse.data.message);
 
     try {
@@ -170,7 +177,26 @@ const handleCashClose = async () => {
     await Promise.all([fetchData(), fetchCycleStatus()]);
   } catch (closeError) {
     console.error("Error al cerrar el ciclo:", closeError);
-    toast.error(closeError.response?.data?.message || "Error al cerrar el ciclo.");
+    const errorData = closeError.response?.data;
+    if (errorData?.has_pending) {
+      const pendingResult = await Swal.fire({
+        title: "Conteos pendientes detectados",
+        text: "Existen conteos pendientes de aprobación o rechazo. ¿Deseas rechazar automáticamente los conteos pendientes y cerrar el ciclo?",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonText: "Sí, rechazar pendientes y cerrar",
+        cancelButtonText: "Cancelar",
+        confirmButtonColor: "#d33",
+        reverseButtons: true,
+      });
+
+      if (pendingResult.isConfirmed) {
+        await handleCashClose(true);
+        return;
+      }
+    } else {
+      toast.error(errorData?.message || "Error al cerrar el ciclo.");
+    }
   } finally {
     isClosing.value = false;
   }

@@ -55,7 +55,6 @@ class MatchSupplierByIaJob implements ShouldQueue
         // Contar rechazos: si >= 3 registros, marcar como sin match posible
         if (count($rechazadosIds) >= 3) {
             $product->update(['no_ai_match_possible' => true]);
-            Log::info("[MatchSupplierByIaJob] Producto {$this->productId} marcado como sin match posible (>= 3 rechazos).");
             return;
         }
 
@@ -63,7 +62,6 @@ class MatchSupplierByIaJob implements ShouldQueue
         $candidates = $this->buscarCandidatosMultiEstrategia($product, $rechazadosIds);
 
         if ($candidates->isEmpty()) {
-            Log::info("[MatchSupplierByIaJob] No se encontraron candidatos para producto {$this->productId}.");
             return;
         }
 
@@ -93,7 +91,6 @@ class MatchSupplierByIaJob implements ShouldQueue
         $aiResponse = $gemini->matchProduct($productData, $candidatesData, $rejections);
 
         if (!$aiResponse || empty($aiResponse['matched']) || empty($aiResponse['product_supplier_id'])) {
-            Log::info("[MatchSupplierByIaJob] Gemini no encontró match para producto {$this->productId}. Razón: " . ($aiResponse['reason'] ?? 'sin respuesta'));
             return;
         }
 
@@ -116,7 +113,6 @@ class MatchSupplierByIaJob implements ShouldQueue
             );
 
             if (!$concentracionValida) {
-                Log::info("[MatchSupplierByIaJob] Concentración inválida para producto {$this->productId} → candidato {$supplierProductId}. Omitido.");
                 return;
             }
         }
@@ -127,7 +123,6 @@ class MatchSupplierByIaJob implements ShouldQueue
             'is_ai_matched' => 1,
         ]);
 
-        Log::info("[MatchSupplierByIaJob] ✅ Match IA exitoso: producto {$this->productId} → supplier product {$supplierProductId} (confianza: {$confidenceScore})");
     }
 
     /**

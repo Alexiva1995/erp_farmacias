@@ -1,13 +1,13 @@
-﻿<script setup>
+<script setup>
 import AppFilterBase from "@/components/AppFilterBase.vue";
-import { useBrandingStore } from "@/stores/useBrandingStore";
 import { computed } from "vue";
 
 const props = defineProps({
-  searchQuery:          [String, null],
-  startDate:            [String, null],
-  endDate:              [String, null],
-  selectedMovementType: [String, null],
+  searchQuery: { type: [String, null], default: "" },
+  startDate: { type: [String, null], default: null },
+  endDate: { type: [String, null], default: null },
+  selectedMovementType: { type: [String, null], default: null },
+  isExporting: { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
@@ -19,16 +19,13 @@ const emit = defineEmits([
   "export",
 ]);
 
-const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => false);
-
 const movementTypes = [
-  { title: "Venta",      value: "sale"       },
-  { title: "Compra",     value: "purchase"   },
-  { title: "Devolución", value: "return"     },
-  { title: "Ajuste",     value: "adjustment" },
-  { title: "Pérdida",    value: "loss"       },
-  { title: "Caducado",   value: "expired"    },
+  { title: "Venta", value: "sale" },
+  { title: "Compra", value: "purchase" },
+  { title: "Devolución", value: "return" },
+  { title: "Ajuste", value: "adjustment" },
+  { title: "Pérdida", value: "loss" },
+  { title: "Caducado", value: "expired" },
 ];
 
 const hasAdvancedFilters = computed(() =>
@@ -41,7 +38,8 @@ const hasAdvancedFilters = computed(() =>
     :search="props.searchQuery"
     :has-advanced-filters="hasAdvancedFilters"
     :show-export="true"
-    :search-placeholder="isRestaurant ? 'Buscar por ID, Producto, Marca...' : 'Buscar por ID, Producto, Laboratorio...'"
+    :export-loading="props.isExporting"
+    search-placeholder="Buscar por ID, Producto, Laboratorio..."
     class="py-1"
     @update:search="emit('update:searchQuery', $event)"
     @clear="emit('clear')"

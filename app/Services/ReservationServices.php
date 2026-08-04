@@ -356,7 +356,6 @@ class ReservationServices
      */
     public function sendWhatsAppMessage(string $whatsapp, string $message): void
     {
-        Log::info("Enviando WhatsApp a {$whatsapp}: {$message}");
 
         try {
             // Ejemplo de llamada a Evolution API u otro servicio externo

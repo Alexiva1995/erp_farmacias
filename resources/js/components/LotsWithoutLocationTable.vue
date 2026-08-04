@@ -1,13 +1,10 @@
-﻿<script setup>
+<script setup>
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
+import AppEmptyState from "@/components/AppEmptyState.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { ref, computed, onMounted } from "vue";
 import { formatDateSimple } from "@/utils/formatters";
-import { useBrandingStore } from "@/stores/useBrandingStore";
-
-const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => false);
 
 const props = defineProps({
   lots: { type: Array, required: true },
@@ -25,6 +22,7 @@ const editingLotId = ref(null);
 const editingLocation = ref("");
 const searchInput = ref("");
 const currentEditingLot = ref(null);
+const isSavingLocation = ref(false);
 
 const locationsList = ref([]);
 const loadingLocations = ref(false);
@@ -54,14 +52,6 @@ const headers = computed(() => [
     cellClass: "font-weight-black text-primary",
   },
   { title: "Producto", key: "product.name", sortable: true },
-  { 
-    title: isRestaurant.value ? "Marca" : "Laboratorio", 
-    key: "product.laboratory.name", 
-    sortable: true,
-    visible: false,
-    cellClass: "d-none d-md-table-cell",
-    headerClass: "d-none d-md-table-cell"
-  },
   { title: "# Lote", key: "lot_number", sortable: true },
   { 
     title: "Stock", 
@@ -78,7 +68,7 @@ const headers = computed(() => [
     headerClass: "d-none d-sm-table-cell"
   },
   { title: "Ubicación", key: "location", sortable: false },
-  { title: "Acciones", key: "actions", sortable: false },
+  { title: "Acciones", key: "actions", sortable: false, align: "center" },
 ]);
 
 const saveInlineEdit = async (lot) => {
@@ -87,13 +77,17 @@ const saveInlineEdit = async (lot) => {
     return;
   }
 
+  isSavingLocation.value = true;
   try {
-    emit("update-lot", {
+    await emit("update-lot", {
       lot_id: lot.id,
       location: editingLocation.value.trim(),
     });
+    cancelEdit();
   } catch (err) {
     console.error(err);
+  } finally {
+    isSavingLocation.value = false;
   }
 };
 
@@ -109,6 +103,7 @@ const cancelEdit = () => {
   editingLocation.value = "";
   currentEditingLot.value = null;
   searchInput.value = "";
+  isSavingLocation.value = false;
 };
 
 const handleLocationSearch = (search) => {
@@ -117,7 +112,7 @@ const handleLocationSearch = (search) => {
 </script>
 
 <template>
-  <VCard class="pa-0">
+  <VCard class="rounded-lg border shadow-sm overflow-hidden bg-surface">
     <!-- Desktop Table -->
     <div class="d-none d-md-block">
       <VDataTableServer
@@ -127,77 +122,68 @@ const handleLocationSearch = (search) => {
         :items-per-page="itemsPerPage"
         :page="page"
         :loading="loading"
+        class="text-no-wrap premium-table"
         @update:options="(opts) => emit('update:options', opts)"
       >
+        <template #no-data>
+          <AppEmptyState
+            title="¡Todo Ubicado!"
+            message="No se encontraron lotes pendientes de asignación de ubicación en almacén."
+            icon="tabler-map-pin-check"
+          />
+        </template>
+
         <template #item.id="{ item }">
           <a
             :href="'/inventory/traceability?q=' + item.product?.id"
             target="_blank"
             class="text-decoration-none font-weight-black text-primary"
           >
-            {{ item.id }}
+            #{{ item.id }}
           </a>
         </template>
 
         <template #item.product.name="{ item }">
-          <div class="d-flex align-center gap-x-4 py-2">
+          <div class="d-flex align-center gap-x-3 py-1">
             <VAvatar
               v-if="item.product?.photo_url"
-              size="44"
+              size="38"
               variant="tonal"
               rounded
               :image="item.product.photo_url"
-              class="border elevation-1"
             />
             <div class="d-flex flex-column">
               <span
-                class="text-sm font-weight-black text-high-emphasis text-uppercase truncate"
-                style="max-inline-size: 300px;"
-                :class="{
-                  'text-warning': item.product?.psychotropic == 1 || item.product?.psychotropic === true,
-                }"
+                class="text-sm font-weight-bold text-high-emphasis truncate"
+                style="max-inline-size: 320px;"
+                :class="{ 'text-warning': item.product?.psychotropic == 1 || item.product?.psychotropic === true }"
               >
-                {{ item.product?.name || "—" }}
-                <span v-if="item.product?.iva == 1 || item.product?.iva === true"> (G)</span>
-                <span v-if="item.product?.is_colombian_origin == 1 || item.product?.is_colombian_origin === true"> (COL)</span>
+                {{ item.product?.name?.toUpperCase() || "—" }}
+                <span v-if="item.product?.iva == 1 || item.product?.iva === true" class="text-xs text-info ms-1">(G)</span>
+                <span v-if="item.product?.is_colombian_origin == 1 || item.product?.is_colombian_origin === true" class="text-xs text-success ms-1">(COL)</span>
               </span>
-              <div class="d-flex align-center gap-1 text-super-xs">
-                <span v-if="!isRestaurant" class="text-disabled truncate" style="max-inline-size: 180px;">{{ item.product?.active_ingredient || "" }}</span>
-                <span v-if="!isRestaurant" class="text-disabled mx-1">|</span>
-                <span v-if="isRestaurant && item.product?.presentation" class="text-disabled truncate" style="max-inline-size: 180px;">
-                  {{ item.product.presentation }} {{ item.product.unit_of_measure ? `(${item.product.unit_of_measure})` : '' }}
-                </span>
-                <span v-if="isRestaurant && item.product?.presentation" class="text-disabled mx-1">|</span>
-                <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 120px;">
-                  {{ item.product?.laboratory?.name || 'S/L' }}
-                </span>
-              </div>
+              <span class="text-xs text-disabled truncate" style="max-inline-size: 280px;">
+                {{ item.product?.active_ingredient || item.product?.presentation || 'Sin Especificación' }}
+                <template v-if="item.product?.laboratory?.name">
+                  • <strong class="text-primary">{{ item.product.laboratory.name }}</strong>
+                </template>
+              </span>
             </div>
           </div>
         </template>
 
-        <template #item["product.laboratory.name"]="{ item }">
-          <span>{{ item.product?.laboratory?.name || "—" }}</span>
-        </template>
-
         <template #item.lot_number="{ item }">
-          <span class="font-weight-medium">{{ item.lot_number || "—" }}</span>
+          <span class="text-xs font-weight-black text-high-emphasis">{{ item.lot_number || "—" }}</span>
         </template>
 
         <template #item.quantity="{ item }">
-          <VChip
-            :color="(item.quantity ?? 0) > 0 ? 'success' : 'error'"
-            label
-            size="x-small"
-            variant="tonal"
-            class="font-weight-black"
-          >
-            {{ item.quantity || 0 }}
-          </VChip>
+          <span class="text-xs font-weight-black" :class="(item.quantity ?? 0) > 0 ? 'text-success' : 'text-error'">
+            {{ item.quantity || 0 }} <small>UNDS</small>
+          </span>
         </template>
 
         <template #item.expiration_date="{ item }">
-          <span>{{ formatDate(item.expiration_date) }}</span>
+          <span class="text-xs font-weight-medium">{{ formatDateSimple(item.expiration_date) }}</span>
         </template>
 
         <template #item.location="{ item }">
@@ -209,42 +195,63 @@ const handleLocationSearch = (search) => {
               item-value="name"
               density="compact"
               variant="outlined"
-              class="responsive-autocomplete"
-              style=" flex-grow: 1;min-inline-size: 150px;"
-              placeholder="Seleccionar ubicación"
-              :loading="loadingLocations"
+              hide-details
+              style="max-inline-size: 280px; min-inline-size: 180px;"
+              placeholder="Seleccionar ubicación..."
+              :loading="loadingLocations || isSavingLocation"
+              :disabled="isSavingLocation"
               clearable
-              @keydown.enter.prevent="saveInlineEdit(item)"
               autofocus
               :error="props.lotWithError === item.id"
-              :error-messages="
-                props.lotWithError === item.id
-                  ? props.errorMessage || 'Error al asignar ubicación'
-                  : ''
-              "
+              @keydown.enter.prevent="saveInlineEdit(item)"
               @update:search="handleLocationSearch"
             />
           </template>
           <template v-else>
-            <span class="text-error font-weight-medium">Sin ubicación</span>
+            <VChip size="x-small" color="error" variant="tonal" class="font-weight-bold">
+              Sin ubicación
+            </VChip>
           </template>
         </template>
 
         <template #item.actions="{ item }">
-          <div class="d-flex gap-2">
+          <div class="d-flex align-center justify-center gap-1">
             <template v-if="editingLotId === item.id">
               <VBtn
-                icon="tabler-check"
-                size="small"
+                icon
+                size="30"
                 color="success"
+                variant="flat"
+                class="rounded-lg shadow-sm me-1"
+                :loading="isSavingLocation"
                 @click="saveInlineEdit(item)"
-              />
-              <VBtn icon="tabler-x" size="small" color="error" @click="cancelEdit" />
+              >
+                <VIcon icon="tabler-check" size="18" />
+              </VBtn>
+              <VBtn
+                icon
+                size="30"
+                color="secondary"
+                variant="tonal"
+                class="rounded-lg shadow-sm"
+                :disabled="isSavingLocation"
+                @click="cancelEdit"
+              >
+                <VIcon icon="tabler-x" size="18" />
+              </VBtn>
             </template>
             <template v-else>
-              <IconBtn @click="startEdit(item)" color="warning">
-                <VIcon icon="tabler-edit" />
-              </IconBtn>
+              <VBtn
+                icon
+                size="32"
+                color="warning"
+                variant="tonal"
+                class="rounded-lg shadow-sm"
+                @click="startEdit(item)"
+              >
+                <VIcon icon="tabler-map-pin" size="18" />
+                <VTooltip activator="parent" location="top">Asignar Ubicación</VTooltip>
+              </VBtn>
             </template>
           </div>
         </template>
@@ -257,107 +264,98 @@ const handleLocationSearch = (search) => {
         <VProgressCircular indeterminate color="primary" />
       </div>
 
-      <div class="pa-2">
+      <div v-else-if="lots.length > 0" class="pa-3 d-flex flex-column gap-3">
         <VCard
           v-for="item in lots"
           :key="item.id"
-          variant="flat"
-          class="lot-mobile-card border mb-2 overflow-hidden"
+          class="border shadow-sm rounded-lg overflow-hidden"
         >
-          <div class="pa-3">
+          <div class="pa-4">
             <div class="d-flex gap-3 align-start mb-2">
               <VAvatar
                 v-if="item.product?.photo_url"
-                size="44"
+                size="42"
                 variant="tonal"
                 rounded
                 :image="item.product.photo_url"
-                class="flex-shrink-0 mt-1 border"
+                class="flex-shrink-0"
               />
               <div class="flex-grow-1 min-width-0">
-                <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight truncate-2-lines">
+                <h3 class="text-xs font-weight-black text-high-emphasis text-uppercase leading-tight">
                   <a
                     :href="'/inventory/traceability?q=' + item.product?.id"
                     target="_blank"
-                    class="text-decoration-none text-primary text-xs font-weight-black"
+                    class="text-decoration-none text-primary me-1"
                   >
                     #{{ item.id }}
                   </a>
-                  <span class="mx-1 text-disabled">|</span>
-                  {{ item.product?.name || 'S/N' }}
+                  <span class="text-disabled me-1">|</span>
+                  {{ item.product?.name }}
                 </h3>
-                <div class="d-flex align-center flex-wrap gap-x-2 text-super-xs mt-1">
-                  <span v-if="!isRestaurant" class="text-medium-emphasis font-weight-medium text-truncate" style="max-inline-size: 150px;">{{ item.product?.active_ingredient || '' }}</span>
-                  <span v-if="!isRestaurant" class="text-disabled">|</span>
-                  <span v-if="isRestaurant && item.product?.presentation" class="text-medium-emphasis font-weight-medium text-truncate" style="max-inline-size: 150px;">
-                    {{ item.product.presentation }} {{ item.product.unit_of_measure ? `(${item.product.unit_of_measure})` : '' }}
-                  </span>
-                  <span v-if="isRestaurant && item.product?.presentation" class="text-disabled">|</span>
-                  <span class="text-primary font-weight-black text-uppercase text-truncate" style="max-inline-size: 120px;">{{ item.product?.laboratory?.name || 'S/L' }}</span>
-                </div>
-              </div>
-            </div>
- 
-            <VDivider class="my-2 border-opacity-10" />
- 
-            <div class="d-flex justify-space-between align-center bg-var-theme-background-light px-3 py-2 rounded border-dashed-thin mb-2">
-              <div class="d-flex flex-column">
-                <span class="text-super-xs text-disabled text-uppercase font-weight-black text-xs">Vencimiento</span>
-                <span class="text-base font-weight-black">{{ formatDate(item.expiration_date) }}</span>
-              </div>
-              <div class="d-flex flex-column text-center">
-                <span class="text-super-xs text-disabled text-uppercase font-weight-black text-xs">Stock</span>
-                <span class="text-base font-weight-black text-success">{{ item.quantity || 0 }} <small class="text-super-xs">UNDS</small></span>
+                <span class="text-super-xs text-disabled truncate d-block mt-1">
+                  {{ item.product?.active_ingredient || 'Sin Especificación' }} • <strong class="text-primary">{{ item.product?.laboratory?.name || 'S/L' }}</strong>
+                </span>
               </div>
             </div>
 
-            <div class="mt-2 bg-var-theme-background rounded pa-2 d-flex justify-space-between align-center border-s-4 border-warning">
+            <VDivider class="my-3 opacity-10" />
+
+            <div class="d-flex justify-space-between align-center mb-3">
               <div class="d-flex flex-column">
-                <span class="text-super-xs text-disabled text-uppercase font-weight-black">Lote No.</span>
-                <span class="text-sm font-weight-black">{{ item.lot_number || 'S/L' }}</span>
+                <span class="text-super-xs text-disabled text-uppercase font-weight-bold">No. Lote</span>
+                <span class="text-xs font-weight-black text-high-emphasis">{{ item.lot_number || 'S/L' }}</span>
+              </div>
+              <div class="d-flex flex-column text-center">
+                <span class="text-super-xs text-disabled text-uppercase font-weight-bold">Stock</span>
+                <span class="text-xs font-weight-black" :class="(item.quantity ?? 0) > 0 ? 'text-success' : 'text-error'">
+                  {{ item.quantity || 0 }} <small>UNDS</small>
+                </span>
+              </div>
+              <div class="d-flex flex-column text-right">
+                <span class="text-super-xs text-disabled text-uppercase font-weight-bold">Vencimiento</span>
+                <span class="text-xs font-weight-bold">{{ formatDateSimple(item.expiration_date) }}</span>
               </div>
             </div>
- 
-            <div class="mt-3">
-              <!-- Edit Mode inside Card -->
-              <div v-if="editingLotId === item.id">
-                <VAutocomplete
-                  v-model="editingLocation"
-                  :items="locationsList"
-                  item-title="name"
-                  item-value="name"
-                  label="Asignar Ubicación"
-                  density="compact"
-                  variant="outlined"
-                  class="mb-2"
-                  hide-details="auto"
-                  placeholder="Seleccionar..."
-                  :loading="loadingLocations"
-                  @update:search="handleLocationSearch"
-                  @keydown.enter.prevent="saveInlineEdit(item)"
-                />
-                <div class="d-flex gap-2 justify-center mt-2">
-                  <VBtn variant="tonal" color="secondary" size="small" class="flex-grow-1" @click="cancelEdit">Cancelar</VBtn>
-                  <VBtn color="primary" size="small" class="flex-grow-1" @click="saveInlineEdit(item)">Guardar</VBtn>
-                </div>
+
+            <!-- Edición Móvil -->
+            <div v-if="editingLotId === item.id" class="pa-3 bg-surface-variant-opacity rounded-lg border">
+              <VAutocomplete
+                v-model="editingLocation"
+                :items="locationsList"
+                item-title="name"
+                item-value="name"
+                label="Asignar Ubicación"
+                variant="outlined"
+                density="compact"
+                hide-details
+                class="mb-3"
+                placeholder="Seleccionar..."
+                :loading="loadingLocations || isSavingLocation"
+                :disabled="isSavingLocation"
+                @update:search="handleLocationSearch"
+                @keydown.enter.prevent="saveInlineEdit(item)"
+              />
+              <div class="d-flex gap-2 justify-center">
+                <VBtn size="small" variant="tonal" color="secondary" class="flex-grow-1 font-weight-bold" :disabled="isSavingLocation" @click="cancelEdit">Cancelar</VBtn>
+                <VBtn size="small" color="primary" class="flex-grow-1 font-weight-bold" :loading="isSavingLocation" @click="saveInlineEdit(item)">Guardar</VBtn>
               </div>
- 
-              <!-- Display Mode -->
-              <div v-else class="d-flex justify-center align-center py-1">
-                <VIcon icon="tabler-map-pin-off" size="14" color="error" class="me-2" />
-                <span class="text-xs font-weight-black text-error text-uppercase">Sin ubicación asignada</span>
-              </div>
+            </div>
+
+            <div v-else class="d-flex justify-space-between align-center pa-2 rounded-lg bg-surface-variant-opacity border">
+              <span class="text-super-xs text-disabled text-uppercase font-weight-bold">Ubicación:</span>
+              <VChip size="x-small" color="error" variant="flat" class="font-weight-bold">
+                Sin Ubicación Asignada
+              </VChip>
             </div>
           </div>
- 
-          <!-- Acciones Rectangulares Movil -->
-          <div v-if="editingLotId !== item.id" class="d-flex border-t border-opacity-10">
+
+          <div v-if="editingLotId !== item.id" class="border-t">
             <VBtn
               block
               color="warning"
-              variant="flat"
-              class="rounded-0 font-weight-black"
-              height="44"
+              variant="text"
+              class="rounded-0 text-xs font-weight-black"
+              height="40"
               prepend-icon="tabler-map-pin"
               @click="startEdit(item)"
             >
@@ -365,9 +363,9 @@ const handleLocationSearch = (search) => {
             </VBtn>
           </div>
         </VCard>
- 
+
         <!-- Paginación Móvil -->
-        <div class="d-flex justify-center mt-4 pb-2">
+        <div class="d-flex justify-center mt-2">
            <AppMobilePagination
             :page="props.page"
             :items-per-page="props.itemsPerPage"
@@ -377,49 +375,45 @@ const handleLocationSearch = (search) => {
           />
         </div>
       </div>
+
+      <div v-else class="pa-4">
+        <AppEmptyState
+          title="¡Todo Ubicado!"
+          message="No se encontraron lotes pendientes de asignación de ubicación en almacén."
+          icon="tabler-map-pin-check"
+        />
+      </div>
     </div>
   </VCard>
 </template>
 
 <style scoped>
-.lot-mobile-card {
-  border-radius: 8px !important;
-  background: rgb(var(--v-theme-surface));
+.premium-table :deep(.v-data-table-header th) {
+  background: white !important;
+  color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)) !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05rem !important;
+  border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.05) !important;
 }
 
-.truncate-2-lines {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
+.premium-table :deep(.v-data-table__td) {
+  padding-block: 10px !important;
+  border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.03) !important;
 }
 
 .text-super-xs {
   font-size: 0.65rem !important;
-  line-height: 1;
 }
 
-.bg-var-theme-background {
-  background-color: rgba(var(--v-theme-primary), 0.05);
+.bg-surface-variant-opacity {
+  background-color: rgba(var(--v-theme-on-surface), 0.03) !important;
 }
 
-.bg-var-theme-background-light {
-  background-color: rgba(var(--v-border-color), 0.05);
-}
-
-.border-dashed-thin {
-  border: 1px dashed rgba(var(--v-border-color), 0.3) !important;
-}
-
-.gap-1 { gap: 4px !important; }
-.gap-2 { gap: 8px !important; }
-.gap-3 { gap: 12px !important; }
-
-:deep(.v-data-table th) {
-  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
-  font-size: 0.75rem !important;
-  font-weight: 700 !important;
-  text-transform: uppercase;
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>

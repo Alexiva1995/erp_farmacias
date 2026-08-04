@@ -64,6 +64,7 @@ const headers = [
                   v-bind="tooltipProps"
                   color="warning"
                   size="small"
+                  :disabled="props.loading"
                   @click="emit('edit-location', item)"
                 >
                   <VIcon icon="tabler-edit" size="18" />
@@ -77,6 +78,7 @@ const headers = [
                   v-bind="tooltipProps"
                   color="error"
                   size="small"
+                  :disabled="props.loading"
                   @click="emit('delete-location', item.id)"
                 >
                   <VIcon icon="tabler-trash" size="18" />
@@ -87,27 +89,27 @@ const headers = [
         </template>
 
         <template #loading>
-          <div class="py-10 text-center">
-            <VProgressCircular indeterminate color="primary" />
-            <div class="mt-2 text-caption text-primary font-weight-bold">Cargando ubicaciones...</div>
-          </div>
+          <VSkeletonLoader type="table-row@5" />
         </template>
       </VDataTable>
 
       <!-- Vista de Móvil (Tarjetas Estándar) -->
       <div v-else class="pa-2 d-flex flex-column gap-2">
-        <VProgressLinear v-if="props.loading" indeterminate color="primary" class="mb-2" />
+        <template v-if="props.loading">
+          <VSkeletonLoader v-for="i in 3" :key="i" type="list-item-two-line" class="mb-2 rounded-lg border" />
+        </template>
 
-        <div v-if="props.locations.length === 0 && !props.loading" class="text-center py-10 text-disabled">
-          No se encontraron ubicaciones registradas
-        </div>
+        <template v-else>
+          <div v-if="props.locations.length === 0" class="text-center py-10 text-disabled">
+            No se encontraron ubicaciones registradas
+          </div>
 
-        <VCard
-          v-for="location in props.locations"
-          :key="location.id"
-          variant="flat"
-          class="location-mobile-card border mb-1"
-        >
+          <VCard
+            v-for="location in props.locations"
+            :key="location.id"
+            variant="flat"
+            class="location-mobile-card border mb-1"
+          >
           <div class="pa-3">
             <div class="d-flex justify-space-between align-center mb-1">
               <div class="d-flex align-center gap-2">
@@ -139,6 +141,7 @@ const headers = [
             </div>
           </div>
         </VCard>
+        </template>
       </div>
     </VCard>
   </div>

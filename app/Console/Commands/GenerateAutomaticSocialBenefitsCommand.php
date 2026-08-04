@@ -308,13 +308,6 @@ class GenerateAutomaticSocialBenefitsCommand extends Command
             $totalAmount = PayslipDetails::where('payslip_id', $payslip->id)->sum('amount');
             $payslip->update(['total' => $totalAmount]);
 
-            Log::info('Automatic Social Benefits', [
-                'message' => 'Payslip detail generado automáticamente',
-                'payslip_id' => $payslip->id,
-                'salary_detail_id' => $salaryDetail->id,
-                'amount' => $amount,
-                'concept' => $conceptName
-            ]);
         } catch (\Exception $e) {
             Log::error('Automatic Social Benefits', [
                 'message' => 'Error generando payslip detail automáticamente',

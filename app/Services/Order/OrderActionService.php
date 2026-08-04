@@ -57,7 +57,6 @@ class OrderActionService
                         'status' => CashClosing::OPEN,
                         'opening_date' => Carbon::now(),
                     ]);
-                    Log::info("Caja auto-abierta para el vendedor {$data['seller_id']} al intentar ingresar orden.");
                 }
 
                 $data['cash_closing_id'] = $openCashRegisterClosing->id;
@@ -581,7 +580,6 @@ class OrderActionService
             $order->status = Order::ABANDONED;
             $order->save();
             DB::commit();
-            Log::info("Orden abandonada exitosamente.", ['order_id' => $order->id]);
             return $order;
         } catch (\Throwable $e) {
             DB::rollBack();
@@ -780,7 +778,14 @@ class OrderActionService
     {
         $resourceService = app(ResourceService::class);
         $orderCurrency = strtoupper($order->currency ?? 'USD');
-        $orderTotal = (float) $order->total_amount;
+        $orderTotal = (float) $order->total_amount + (float) ($order->spe_surcharge_amount ?? 0);
+
+        $rates = [
+            'USD' => (float) ($resourceService->getExchangeRate('USD') ?: 1),
+            'COP' => (float) ($resourceService->getExchangeRate('COP') ?: 1),
+            'BS'  => (float) ($resourceService->getExchangeRate('BS') ?: 1),
+        ];
+
         $isMulticurrency = false;
         if (count($payments) > 1) {
             $currencies = collect($payments)->pluck('currency')->map(fn($c) => strtoupper($c))->unique();
@@ -791,16 +796,10 @@ class OrderActionService
 
         if ($isMulticurrency) {
             $bcvRate = $rates['BS'] ?? 1.0;
-            $tolerance = ($orderCurrency === 'COP') ? 12000.0 : (3.0 * $bcvRate); // Equivalente a 3 USD de margen para absorber diferencias de tasa cruzada
+            $tolerance = ($orderCurrency === 'COP') ? 12000.0 : (3.0 * $bcvRate); // Margen para absorber diferencias de tasa cruzada
         } else {
-            $tolerance = ($orderCurrency === 'COP') ? 100.0 : 0.5;
+            $tolerance = ($orderCurrency === 'COP') ? 2500.0 : 1.0;
         }
-
-        $rates = [
-            'USD' => $resourceService->getExchangeRate('USD') ?: 1,
-            'COP' => $resourceService->getExchangeRate('COP') ?: 1,
-            'BS' => $resourceService->getExchangeRate('BS') ?: 1,
-        ];
 
         $sumInOrderCurrency = 0;
         foreach ($payments as $p) {
@@ -818,21 +817,23 @@ class OrderActionService
 
         $netPaid = $sumInOrderCurrency - $moneyReturns;
 
-        if (abs($netPaid - $orderTotal) > $tolerance) {
-            Log::warning("Discrepancia de pago bloqueada:", [
+        // Si el pago neto cubre el total de la orden (o está dentro de la tolerancia permitida), permitir la transacción.
+        // Solo bloquear si lo pagado es estrictamente MENOR al total menos la tolerancia.
+        if ($netPaid < ($orderTotal - $tolerance)) {
+            Log::warning("Discrepancia de pago bloqueada (Monto insuficiente):", [
                 'order_id' => $order->id,
                 'total_paid' => $sumInOrderCurrency,
                 'money_returns' => $moneyReturns,
                 'net_paid' => $netPaid,
                 'order_total' => $orderTotal,
-                'diff' => abs($netPaid - $orderTotal)
+                'diff' => $orderTotal - $netPaid
             ]);
 
             throw new \App\Exceptions\PaymentDiscrepancyException(
                 $netPaid,
                 $orderTotal,
                 $orderCurrency,
-                'Discrepancia detectada: El pago neto (' . round($netPaid, 2) . ' ' . $orderCurrency . ') no coincide con el total de la factura (' . round($orderTotal, 2) . ' ' . $orderCurrency . '). Por favor, verifique los montos ingresados.'
+                'Discrepancia detectada: El pago neto (' . round($netPaid, 2) . ' ' . $orderCurrency . ') es menor al total de la factura (' . round($orderTotal, 2) . ' ' . $orderCurrency . '). Por favor, verifique los montos ingresados.'
             );
         }
     }
@@ -1121,9 +1122,6 @@ class OrderActionService
                 return ($d->unit_price_usd ?? 0) * ($d->quantity ?? 0);
             });
 
-            // Validación de integridad financiera: el neto (pagos - vuelto) debe ser igual al total
-            $this->validatePaymentsCoverOrderTotal($orderId, $request->payments, (float) ($request->changeAmount ?? 0));
-
             // Determinar si aplica Recargo Sujeto Pasivo Especial (SPE)
             $currency = strtoupper($orderId->currency);
             $isForeignCurrency = in_array($currency, ['USD', 'COP']);
@@ -1146,6 +1144,10 @@ class OrderActionService
                 $orderId->spe_surcharge_rate = 0.00;
                 $orderId->spe_surcharge_amount = 0.00;
             }
+
+            // Validación de integridad financiera: el neto (pagos - vuelto) debe ser igual al total (incluyendo recargos)
+            $this->validatePaymentsCoverOrderTotal($orderId, $request->payments, (float) ($request->changeAmount ?? 0));
+
             $orderId->taxable_base = $orderId->total_amount;
             $orderId->order_date = Carbon::now();
 
@@ -1269,27 +1271,18 @@ class OrderActionService
 
 
             if (isset($request->changeAmountUSD) && $request->changeAmountUSD > 0) {
-                // Caso cambio moneda cruzada
+                // Único caso de resta física en caja: Vuelto otorgado de USD entregado en COP disponible
                 if (isset($request->changeAmount) && $request->changeAmount > 0) {
-                    // El vuelto se dio físicamente en Pesos (COP)
                     $resourceService = app(\App\Services\Resources\ResourceService::class);
-                                        $copRate = $resourceService->getExchangeRate('COPC') ?: 1;
+                    $copRate = $resourceService->getExchangeRate('COPC') ?: 1;
                     
-                    // Convertir el monto de USD a COP para restar correctamente del fondo en pesos
+                    // Convertir el monto de vuelto USD a COP para descontar del fondo físico en pesos
                     $copChangeAmount = $request->changeAmountUSD * $copRate;
                     
                     $current_cash->cop_cash -= $copChangeAmount;
                     $current_cash->cop_conversion += $copChangeAmount;
-                } else {
-                    // El vuelto se dio físicamente en Dólares (USD)
-                    $current_cash->usd_cash -= $request->changeAmountUSD;
                 }
                 $current_cash->usd_conversion += $request->changeAmountUSD;
-            } else {
-                // Caso misma moneda
-                if (isset($request->changeAmount)) {
-                    $current_cash->cop_cash -= $request->changeAmount;
-                }
             }
 
             // Recalcular todos los totales usando la lógica unificada en el modelo
@@ -1352,7 +1345,6 @@ class OrderActionService
             $order->load('seller', 'client', 'details.product');
 
             DB::commit();
-            Log::info("Orden reservada exitosamente.", ['order_id' => $order->id]);
             return [
                 'reserved_order' => $order,
             ];
@@ -1392,7 +1384,6 @@ class OrderActionService
                     $previouslyReserved->load('seller', 'client', 'details.product');
                 }
 
-                Log::info("Orden reservada exitosamente.", ['order_id' => $order->id]);
 
                 return [
                     'reserved_order' => $order,
@@ -1427,7 +1418,6 @@ class OrderActionService
             $order->load('seller', 'client', 'details.product');
 
             DB::commit();
-            Log::info("Orden agregada exitosamente.", ['order_id' => $order->id]);
             return [
                 'reserved_order' => $orderOpen,
                 'pending_order' => $order,
@@ -1558,7 +1548,6 @@ class OrderActionService
             }
 
             DB::commit();
-            Log::info("Orden cancelada exitosamente.", ['order_id' => $order->id]);
             return $order;
         } catch (\Throwable $e) {
             DB::rollBack();

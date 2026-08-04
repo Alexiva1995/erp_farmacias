@@ -20,11 +20,8 @@ class SupplierEvaluationService
         $suppliers = Supplier::all();
 
         // Calcular gastos totales para el indicador de volumen
-        $totalSystemSpend = \App\Models\Invoice::sum('total_amount_discount');
-        if ($totalSystemSpend <= 0) {
-            $totalSystemSpend = \App\Models\Invoice::sum('total_amount');
-        }
-        $totalSystemSpend = max($totalSystemSpend, 1); // Evitar división por cero
+        $totalSpendRaw = Invoice::sum('total_amount_discount') ?: Invoice::sum('total_amount');
+        $totalSystemSpend = max((float) $totalSpendRaw, 1.0);
 
         foreach ($suppliers as $supplier) {
             $this->evaluate($supplier, $totalSystemSpend);
@@ -34,11 +31,11 @@ class SupplierEvaluationService
     /**
      * Evalúa un proveedor específico y guarda su puntaje en supplier_scores.
      */
-    public function evaluate(Supplier $supplier, float $totalSystemSpend = null): SupplierScore
+    public function evaluate(Supplier $supplier, ?float $totalSystemSpend = null): SupplierScore
     {
         if ($totalSystemSpend === null) {
-            $totalSystemSpend = \App\Models\Invoice::sum('total_amount_discount') ?: \App\Models\Invoice::sum('total_amount');
-            $totalSystemSpend = max($totalSystemSpend, 1);
+            $totalSpendRaw = Invoice::sum('total_amount_discount') ?: Invoice::sum('total_amount');
+            $totalSystemSpend = max((float) $totalSpendRaw, 1.0);
         }
 
         $breakdown = [
@@ -69,7 +66,7 @@ class SupplierEvaluationService
     private function calculateProductArrival(Supplier $supplier): float
     {
         // Órdenes de compra del proveedor
-        $orders = \App\Models\AutoOrder::where('supplier_id', $supplier->id)->get();
+        $orders = AutoOrder::where('supplier_id', $supplier->id)->get();
         if ($orders->isEmpty()) return 0; // Sin órdenes, no gana estos puntos
 
         $totalDetails = 0;
@@ -96,10 +93,10 @@ class SupplierEvaluationService
         $invoices = $supplier->invoices;
         if ($invoices->isEmpty()) return 12.5; // Punto medio si no hay facturas (neutral)
 
-        $totalInvoiced = $invoices->sum('total_amount');
+        $totalInvoiced = (float) $invoices->sum('total_amount');
         if ($totalInvoiced <= 0) return 0;
 
-        $totalReturned = \App\Models\InvoiceReturn::whereIn('invoice_id', $invoices->pluck('id'))->sum('amount_refunded');
+        $totalReturned = (float) InvoiceReturn::whereIn('invoice_id', $invoices->pluck('id'))->sum('amount_refunded');
 
         $returnRatio = min($totalReturned / $totalInvoiced, 1);
         
@@ -113,7 +110,7 @@ class SupplierEvaluationService
      */
     private function calculateVolume(Supplier $supplier, float $totalSystemSpend): float
     {
-        $supplierSpend = $supplier->invoices()->sum('total_amount_discount') ?: $supplier->invoices()->sum('total_amount');
+        $supplierSpend = (float) ($supplier->invoices()->sum('total_amount_discount') ?: $supplier->invoices()->sum('total_amount'));
         
         $volumeRatio = min($supplierSpend / $totalSystemSpend, 1);
 
@@ -139,7 +136,7 @@ class SupplierEvaluationService
      */
     private function calculateConsistency(Supplier $supplier): float
     {
-        $orders = \App\Models\AutoOrder::where('supplier_id', $supplier->id)->get();
+        $orders = AutoOrder::where('supplier_id', $supplier->id)->get();
         if ($orders->isEmpty()) return 0;
 
         $totalRequested = 0;

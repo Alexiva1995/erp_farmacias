@@ -14,12 +14,15 @@ const { can } = useAbility()
 const router = useRouter()
 const brandingStore = useBrandingStore()
 
-const isMiniMarket = computed(() => false)
-const isSportsRental = computed(() => false)
+const hasIngredients = computed(() => {
+  const types = brandingStore.settings.enabled_product_types || []
+  return Array.isArray(types) && types.includes('ingredients')
+})
 
 // --- Estados ---
 const categories = ref([])
 const loading = ref(false)
+const isSaving = ref(false)
 const totalCategories = ref(0)
 const searchQuery = ref('')
 const page = ref(1)
@@ -40,7 +43,7 @@ const headers = computed(() => {
     { title: "Productos", key: "products_count", sortable: true, align: 'center', width: '120px' },
   ]
   
-  if (!isMiniMarket.value && !isSportsRental.value) {
+  if (hasIngredients.value) {
     list.push({ title: "Platos / Menú", key: "dishes_count", sortable: true, align: 'center', width: '140px' })
   }
   
@@ -64,6 +67,7 @@ const fetchCategories = async () => {
     totalCategories.value = data.total
   } catch (error) {
     console.error('Error al cargar categorías:', error)
+    toast.error('Error al cargar las categorías')
   } finally {
     loading.value = false
   }
@@ -81,6 +85,7 @@ const saveCategory = async () => {
     toast.error("El nombre de la categoría es obligatorio")
     return
   }
+  isSaving.value = true
   try {
     await axios.post('/inventory/categories-manage', categoryForm.value)
     toast.success("Categoría guardada correctamente")
@@ -88,6 +93,8 @@ const saveCategory = async () => {
     fetchCategories()
   } catch (error) {
     toast.error('Error al guardar la categoría')
+  } finally {
+    isSaving.value = false
   }
 }
 
@@ -126,6 +133,7 @@ const updateTableOptions = o => {
 }
 
 onMounted(() => {
+  brandingStore.fetchSettings()
   fetchCategories()
 })
 
@@ -206,7 +214,7 @@ onUnmounted(() => clearTimeout(debounceTimer))
               <div class="d-flex align-center justify-space-between bg-var-theme-background px-3 py-2 rounded">
                 <div class="d-flex gap-2">
                   <span class="text-xs font-weight-bold">Prod: <b>{{ item.products_count }}</b></span>
-                  <span v-if="!isMiniMarket" class="text-xs font-weight-bold">Platos: <b>{{ item.dishes_count }}</b></span>
+                  <span v-if="hasIngredients" class="text-xs font-weight-bold">Platos: <b>{{ item.dishes_count }}</b></span>
                 </div>
                 <div class="d-flex gap-1">
                   <VBtn icon="tabler-edit" color="primary" variant="tonal" size="small" @click="openEdit(item)" />
@@ -252,6 +260,7 @@ onUnmounted(() => clearTimeout(debounceTimer))
                 placeholder="Ej: Waffles, Bebidas, Helados..."
                 persistent-placeholder
                 class="mb-4"
+                @keyup.enter="saveCategory"
               />
             </VCol>
           </VRow>
@@ -269,6 +278,7 @@ onUnmounted(() => clearTimeout(debounceTimer))
                 block
                 height="50"
                 class="font-weight-black rounded-lg text-button uppercase"
+                :disabled="isSaving"
                 @click="isDialogOpen = false"
               >
                 Cancelar
@@ -282,6 +292,8 @@ onUnmounted(() => clearTimeout(debounceTimer))
                 block
                 height="50"
                 class="font-weight-black rounded-lg shadow-primary text-button uppercase"
+                :loading="isSaving"
+                :disabled="isSaving"
                 @click="saveCategory"
               >
                 Guardar Categoría

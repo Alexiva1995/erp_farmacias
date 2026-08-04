@@ -38,6 +38,33 @@ class ExpenseResource extends JsonResource
                     'username' => $this->user->username,
                 ];
             }),
+            'approved_by' => $this->whenLoaded('approvedBy', function () {
+                return [
+                    'id' => $this->approvedBy->id,
+                    'username' => $this->approvedBy->username,
+                ];
+            }),
+            'approved_at' => $this->approved_at?->format('Y-m-d H:i:s'),
+            'cancelled_by' => $this->whenLoaded('cancelledBy', function () {
+                return [
+                    'id' => $this->cancelledBy->id,
+                    'username' => $this->cancelledBy->username,
+                ];
+            }),
+            'cancelled_at' => $this->cancelled_at?->format('Y-m-d H:i:s'),
+            'status_note' => $this->status_note,
+            'audits' => $this->whenLoaded('audits', function () {
+                return $this->audits->map(function ($audit) {
+                    return [
+                        'id' => $audit->id,
+                        'action' => $audit->action,
+                        'user_name' => $audit->user?->username ?? 'Sistema',
+                        'old_values' => $audit->old_values,
+                        'new_values' => $audit->new_values,
+                        'created_at' => $audit->created_at->format('Y-m-d H:i:s'),
+                    ];
+                });
+            }),
             'created_at' => $this->created_at->format('Y-m-d H:i:s'),
             'updated_at' => $this->updated_at->format('Y-m-d H:i:s'),
         ];

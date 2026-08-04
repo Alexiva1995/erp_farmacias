@@ -13,9 +13,14 @@ use Illuminate\Support\Facades\DB;
 class ProductRepository
 {
 
-    private $subConsultaParaCalcularStockPorLotes = '(SELECT COALESCE (SUM(quantity), 0) 
-                FROM product_lots 
-                WHERE product_id = products.id)';
+    private string $subConsultaParaCalcularStockPorLotes;
+
+    public function __construct()
+    {
+        $isSqlite = DB::connection()->getDriverName() === 'sqlite';
+        $curdate = $isSqlite ? 'DATE("now")' : 'CURDATE()';
+        $this->subConsultaParaCalcularStockPorLotes = "COALESCE((SELECT SUM(quantity) FROM product_lots WHERE product_lots.product_id = products.id AND (expiration_date >= {$curdate} OR expiration_date IS NULL)), 0)";
+    }
 
     public function consultProductById(int $id): ?Product
     {
@@ -32,7 +37,6 @@ class ProductRepository
         $viewType = $filtros["viewType"] ?? "individual";
         $isGroup = $viewType === "group";
 
-        // Asegurar que previousDate y dateToday estén definidos para cálculos de ventas y combinado
         $days = $filtros["days"] ?? 30;
         $timeZone = new \DateTimeZone(config("app.timezone"));
         $dateToday = new \DateTime("now", $timeZone);
@@ -42,50 +46,36 @@ class ProductRepository
         $dateTodayStr = $filtros["dateToday"] ?? $dateToday->format("Y-m-d H:i:s");
         $previousDateStr = $filtros["previousDate"] ?? $previousDate->format("Y-m-d");
 
-        // Subconsultas Base
-        $subqueryStockLotes = $this->subConsultaParaCalcularStockPorLotes;
         $isRestaurant = \App\Models\GeneralSetting::first()?->business_type === 'restaurant';
         if ($isRestaurant) {
-            $subqueryTotalSold = '(SELECT COALESCE(ABS(SUM(inventory_movements.quantity)), 0)
-                    FROM inventory_movements
-                    WHERE inventory_movements.product_id = products.id
-                    AND inventory_movements.quantity < 0
-                    AND inventory_movements.created_at BETWEEN \'' . $previousDateStr . '\' AND \'' . $dateTodayStr . '\'
-                    )';
+            $salesSubquery = DB::table('inventory_movements')
+                ->select('product_id', DB::raw('COALESCE(ABS(SUM(quantity)), 0) as total_sold'))
+                ->where('quantity', '<', 0)
+                ->whereBetween('created_at', [$previousDateStr, $dateTodayStr])
+                ->groupBy('product_id');
         } else {
-            $subqueryTotalSold = '(SELECT COALESCE(SUM(order_details.quantity), 0)
-                    FROM order_details
-                    JOIN orders ON orders.id = order_details.order_id
-                    WHERE order_details.product_id = products.id
-                    AND orders.created_at BETWEEN \'' . $previousDateStr . '\' AND \'' . $dateTodayStr . '\'
-                    AND orders.status = "Completed")';
+            $salesSubquery = DB::table('order_details')
+                ->join('orders', 'orders.id', '=', 'order_details.order_id')
+                ->select('order_details.product_id', DB::raw('COALESCE(SUM(order_details.quantity), 0) as total_sold'))
+                ->where('orders.status', 'Completed')
+                ->whereBetween('orders.created_at', [$previousDateStr, $dateTodayStr])
+                ->groupBy('order_details.product_id');
         }
 
-        $subqueryAO = '(SELECT COALESCE(SUM(aod.quantity), 0)
-                FROM auto_order_details aod
-                JOIN auto_orders ao ON ao.id = aod.order_id
-                WHERE aod.product_id = products.id
-                AND ao.status IN (0, 1)
-                AND aod.status = 0
-                AND ao.deleted_at IS NULL
-                AND aod.deleted_at IS NULL)';
+        $aoSubquery = DB::table('auto_order_details as aod')
+            ->join('auto_orders as ao', 'ao.id', '=', 'aod.order_id')
+            ->select('aod.product_id', DB::raw('COALESCE(SUM(aod.quantity), 0) as total_ao'))
+            ->whereIn('ao.status', [0, 1])
+            ->where('aod.status', 0)
+            ->whereNull('ao.deleted_at')
+            ->whereNull('aod.deleted_at')
+            ->groupBy('aod.product_id');
 
-        $subqueryTotalSoldGroup = '(SELECT COALESCE(SUM(order_details.quantity), 1)
-                FROM order_details
-                JOIN orders ON orders.id = order_details.order_id
-                JOIN products p2 ON p2.id = order_details.product_id
-                WHERE p2.group_id = products.group_id
-                AND p2.group_id IS NOT NULL
-                AND orders.created_at BETWEEN \'' . $previousDateStr . '\' AND \'' . $dateTodayStr . '\'
-                AND orders.status = "Completed")';
+        $subqueryStockLotes = $this->subConsultaParaCalcularStockPorLotes;
+        $subqueryTotalSold = 'COALESCE(sales_agg.total_sold, 0)';
+        $subqueryAO = 'COALESCE(ao_agg.total_ao, 0)';
+        $prefPorcentajeSql = '100';
 
-        // Cálculo de % de preferencia (participación en el grupo)
-        $prefPorcentajeSql = 'CASE 
-            WHEN products.group_id IS NULL THEN 100
-            ELSE ((' . $subqueryTotalSold . ') / ' . $subqueryTotalSoldGroup . ') * 100
-        END';
-
-        // Cálculo de Promedio
         $lapso = $filtros["lapso_de_tiempo"] ?? $filtros["days"] ?? 30;
         if (!is_string($lapso)) $lapso = $lapso . " days";
 
@@ -111,7 +101,6 @@ class ProductRepository
             $promedioCalculadoSql = $baseAverage;
         }
 
-        // Definición de Columnas
         if ($isGroup) {
             $columnas = [
                 DB::raw('MIN(products.id) as id'),
@@ -120,7 +109,7 @@ class ProductRepository
                 DB::raw('MAX(products.photo_url) as photo_url'),
                 DB::raw('SUM(' . $subqueryStockLotes . ') as lote_quantity'),
                 DB::raw('SUM(' . $subqueryTotalSold . ') as total_sold_completed'),
-                DB::raw('100 as preferencia_product'), // En vista grupal el grupo es el 100% de sí mismo
+                DB::raw('100 as preferencia_product'),
                 DB::raw('SUM(' . $promedioCalculadoSql . ') as promedio_calculado'),
                 DB::raw('SUM(' . $subqueryAO . ') as totalQuantityInAutoOrder'),
                 DB::raw('MAX(products.unit_cost) as unit_cost'),
@@ -140,6 +129,7 @@ class ProductRepository
                 'products.is_colombian_origin',
                 'products.presentation',
                 'products.unit_of_measure',
+                'products.ignore_until',
                 DB::raw($subqueryStockLotes . ' AS lote_quantity'),
                 DB::raw($subqueryTotalSold . ' AS total_sold_completed'),
                 DB::raw($prefPorcentajeSql . ' AS preferencia_product'),
@@ -148,9 +138,8 @@ class ProductRepository
             ];
         }
 
-        // Diferencia de Producto
         $tipoFiltracion = $filtros["tipo_filtracion"] ?? "average";
-        $stockEfectivo = '(COALESCE((' . $subqueryStockLotes . '), 0) + COALESCE((' . $subqueryAO . '), 0))';
+        $stockEfectivo = '(' . $subqueryStockLotes . ' + ' . $subqueryAO . ')';
         
         if ($tipoFiltracion == "sales") {
             $calcDiff = '(' . $stockEfectivo . ') - (' . $subqueryTotalSold . ')';
@@ -173,7 +162,9 @@ class ProductRepository
         }
 
         // Construcción de la Consulta
-        $consulta = Product::select($columnas);
+        $consulta = Product::select($columnas)
+            ->leftJoinSub($salesSubquery, 'sales_agg', 'sales_agg.product_id', '=', 'products.id')
+            ->leftJoinSub($aoSubquery, 'ao_agg', 'ao_agg.product_id', '=', 'products.id');
 
         if ($isGroup) {
             $consulta->leftJoin('groups_products', 'products.group_id', '=', 'groups_products.id')
@@ -182,6 +173,12 @@ class ProductRepository
 
         $consulta->where(function ($q) {
                 $q->whereNull('is_deleted')->orWhere('is_deleted', 0);
+            })
+            ->when(!($filtros['show_ignored'] ?? false), function ($q) {
+                $q->where(function ($sq) {
+                    $sq->whereNull('products.ignore_until')
+                       ->orWhere('products.ignore_until', '<=', now());
+                });
             })
             ->with(["laboratory", "lots"]);
 
@@ -233,13 +230,18 @@ class ProductRepository
         if (array_key_exists("isColombian", $filtros)) {
             if ($filtros["isColombian"] == true || $filtros["isColombian"] === "true") {
                 $consulta->where("products.is_colombian_origin", "=", 1);
+            } elseif ($filtros["isColombian"] === false || $filtros["isColombian"] === "false") {
+                $consulta->where(function ($q) {
+                    $q->where("products.is_colombian_origin", "=", 0)
+                      ->orWhereNull("products.is_colombian_origin");
+                });
             }
         }
 
         if (array_key_exists("isNovaventa", $filtros)) {
             if ($filtros["isNovaventa"] == true || $filtros["isNovaventa"] === "true") {
                 $consulta->where("products.is_novaventa", "=", 1);
-            } else {
+            } elseif ($filtros["isNovaventa"] === false || $filtros["isNovaventa"] === "false") {
                 $consulta->where(function ($q) {
                     $q->where("products.is_novaventa", "=", 0)
                       ->orWhereNull("products.is_novaventa");
@@ -250,10 +252,7 @@ class ProductRepository
         if (array_key_exists("sortBy", $filtros) && array_key_exists("orderBy", $filtros)) {
             $sortCol = $filtros["sortBy"];
             $sortDir = strtolower($filtros["orderBy"]) === 'desc' ? 'desc' : 'asc';
-            
-            // Mapear columnas si es necesario (ej: stock -> lote_quantity)
             if ($sortCol === 'stock') $sortCol = 'lote_quantity';
-            
             $consulta->orderBy($sortCol, $sortDir);
         } else {
             $consulta->orderBy("diferencia_product", "DESC");
@@ -261,17 +260,6 @@ class ProductRepository
 
         return $consulta;
     }
-
-
-    public function filtrarProductforStocktWithoutPaginate($filtros): Collection
-    {
-
-        $consulta = $this->builerFiltrarProductforStock($filtros);
-
-        return $consulta->get();
-    }
-
-
 
     public function filtrarProductforStocktWithPaginate($filtros, $perPage = 10): LengthAwarePaginator
     {
@@ -282,17 +270,14 @@ class ProductRepository
         $paginacion = $consulta->paginate($perPage);
 
         if ($isGroup && $paginacion->count() > 0) {
-            // Para la vista de acordeón, necesitamos los productos hijos de cada grupo en esta página
             $groupIds = $paginacion->pluck('group_id')->filter()->toArray();
             $productIds = $paginacion->whereNull('group_id')->pluck('id')->toArray();
 
-            // Clonamos los filtros pero forzamos vista individual para traer los hijos
             $filtrosHijos = $filtros;
             $filtrosHijos['viewType'] = 'individual';
             
             $consultaHijos = $this->builerFiltrarProductforStock($filtrosHijos);
             
-            // Filtrar solo por los grupos o productos individuales de la página actual
             $consultaHijos->where(function($q) use ($groupIds, $productIds) {
                 if (!empty($groupIds)) $q->whereIn('products.group_id', $groupIds);
                 if (!empty($productIds)) $q->orWhereIn('products.id', $productIds);
@@ -312,281 +297,12 @@ class ProductRepository
         return $paginacion;
     }
 
-    /**
-     * esta consulta calcula la preferencia_product por promedio del grupo al que pertence el porducto 
-     */
-    public function builerFiltrarProductForIaOrderAssistantTypeAverage($filtros): Builder
+    public function filtrarProductforStocktWithoutPaginate($filtros): Collection
     {
-        // solicitar = stock - promedio
-
-        $columnas = [
-            'products.id',
-            'products.name',
-            DB::raw('(SELECT COALESCE(SUM(quantity), 0) FROM product_lots WHERE product_lots.product_id = products.id ) as stock'),
-            'products.group_id',
-            'products.laboratory_id',
-            'products.barcode',
-            "products.sales_average",
-            "products.sale_price",
-            "products.unit_cost",
-            "products.psychotropic",
-            "products.is_colombian_origin",
-            "products.active_ingredient",
-            DB::raw('(SELECT TIMESTAMPDIFF(MONTH, CURDATE(), MIN(expiration_date)) 
-             FROM product_lots 
-             WHERE product_lots.product_id = products.id
-             AND expiration_date >= CURDATE()) AS meses_faltantes'),
-            DB::raw('(' . $this->subConsultaParaCalcularStockPorLotes . ') AS lote_quantity'),
-            DB::raw('(
-                SELECT COALESCE(SUM(order_details.quantity), 0)
-                FROM order_details
-                JOIN orders ON orders.id = order_details.order_id
-                WHERE order_details.product_id = products.id
-                AND orders.created_at BETWEEN \'' . $filtros["previousDate"] . '\' AND \'' . $filtros["dateToday"] . '\'
-                AND orders.status = "Completed"
-            ) AS total_sold_completed'),
-            DB::raw('(
-                SELECT COALESCE(SUM(od.quantity), 0)
-                FROM order_details od
-                JOIN orders o ON o.id = od.order_id
-                JOIN products p ON p.id = od.product_id
-                WHERE p.group_id = products.group_id
-                AND o.status = "Completed"
-                AND p.is_scarce = 0
-                AND o.created_at BETWEEN \'' . $filtros["previousDate"] . '\' AND \'' . $filtros["dateToday"] . '\'
-            ) AS total_group_sales'),
-            // Agregar esta línea para sumar los sales_average por group_id
-            DB::raw('SUM(CASE WHEN is_scarce = 0 THEN sales_average ELSE 0 END) OVER (PARTITION BY group_id) AS group_sales_average_sum'),
-            DB::raw('(CASE 
-                WHEN SUM(CASE WHEN is_scarce = 0 THEN sales_average ELSE 0 END) OVER (PARTITION BY group_id) > 0 
-                THEN sales_average / SUM(CASE WHEN is_scarce = 0 THEN sales_average ELSE 0 END) OVER (PARTITION BY group_id) 
-                ELSE 0 
-                END) * 100 AS preferencia_product'),
-            DB::raw('(
-                SELECT COALESCE(SUM(aod.quantity), 0)
-                FROM auto_order_details aod
-                JOIN auto_orders ao ON ao.id = aod.order_id
-                WHERE aod.product_id = products.id
-                AND ao.status IN (0, 1)
-                AND aod.status = 0
-                AND ao.deleted_at IS NULL
-                AND aod.deleted_at IS NULL
-            ) AS totalQuantityInAutoOrder'),
-            DB::raw('(
-                SELECT ps.barcode_match
-                FROM product_suppliers ps
-                WHERE ps.product_id = products.id
-                  AND ps.barcode_match IS NOT NULL
-                  AND ps.barcode_match != \'\'
-                  AND ps.unit_cost_usd > 0
-                ORDER BY ps.unit_cost_usd ASC
-                LIMIT 1
-            ) AS cheapest_barcode'),
-            'products.unit_cost as current_unit_cost',
-            'products.manual_solicitar',
-            DB::raw('(
-                SELECT ps.unit_cost_usd
-                FROM product_suppliers ps
-                WHERE ps.product_id = products.id
-                  AND ps.barcode_match IS NOT NULL
-                  AND ps.barcode_match != \'\'
-                  AND ps.unit_cost_usd > 0
-                ORDER BY ps.unit_cost_usd ASC
-                LIMIT 1
-            ) AS cheapest_unit_cost'),
-        ];
-
-        // calcular promedio en base a los dias => promedio_calculado
-        $lapso = $filtros["lapso_de_tiempo"] ?? "1 month";
-        if ($lapso == "7 days") {
-            $columnas[] = DB::raw('sales_average / 4 AS promedio_calculado');
-            $promedio_calculado = 'sales_average / 4';
-        } elseif ($lapso == "15 days") {
-            $columnas[] = DB::raw('sales_average / 2 AS promedio_calculado');
-            $promedio_calculado = 'sales_average / 2';
-        } elseif ($lapso == "1 month") {
-            $columnas[] = DB::raw('sales_average AS promedio_calculado');
-            $promedio_calculado = 'sales_average';
-        } elseif ($lapso == "3 month") {
-            $columnas[] = DB::raw('sales_average * 3 AS promedio_calculado');
-            $promedio_calculado = 'sales_average * 3';
-        } elseif ($lapso == "6 month") {
-            $columnas[] = DB::raw('sales_average * 6 AS promedio_calculado');
-            $promedio_calculado = 'sales_average * 6';
-        } elseif ($lapso == "1 year") {
-            $columnas[] = DB::raw('sales_average * 12 AS promedio_calculado');
-            $promedio_calculado = 'sales_average * 12';
-        } else {
-            $columnas[] = DB::raw('sales_average AS promedio_calculado');
-            $promedio_calculado = 'sales_average';
-        }
-
-        // calcular solicitar
-        // Subconsulta para total_sold_completed (reutilizable)
-        $subqueryTotalSold = '(
-                SELECT COALESCE(SUM(order_details.quantity), 0)
-                FROM order_details
-                JOIN orders ON orders.id = order_details.order_id
-                WHERE order_details.product_id = products.id
-                AND orders.created_at BETWEEN \'' . $filtros["previousDate"] . '\' AND \'' . $filtros["dateToday"] . '\'
-                AND orders.status = "Completed"
-            )';
-
-        // Sub-consulta del AO (unidades ya en pedido activo) para incluirla en el cálculo SQL
-        $subqueryAO = '(SELECT COALESCE(SUM(aod.quantity), 0)
-                FROM auto_order_details aod
-                JOIN auto_orders ao ON ao.id = aod.order_id
-                JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id
-                WHERE ps.product_id = products.id
-                AND ao.status IN (0, 1)
-                AND aod.status = 0
-                AND ao.deleted_at IS NULL
-                AND aod.deleted_at IS NULL)';
-
-        // calcular solicitar: demanda - stock - AO  (positivo = falta, negativo = exceso)
-        // Redondear hacia arriba si falta, hacia abajo si sobra (CEIL/FLOOR)
-        $tipo_filtracion = $filtros["tipo_filtracion"] ?? "average";
-        if ($tipo_filtracion == "combinado") {
-            // Demanda combinada: Si hay ventas se pondera (promedio + ventas)/2, si ventas es 0 se usa el promedio directo (igual que la query de IDs)
-            $demandaCombinada = '((' . $promedio_calculado . ' + ' . $subqueryTotalSold . ') / 2)';
-            $iaSolicitar = 'CASE 
-                WHEN ((' . $demandaCombinada . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $subqueryAO . ') > 0 THEN CEIL((' . $demandaCombinada . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $subqueryAO . ')
-                ELSE FLOOR((' . $demandaCombinada . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $subqueryAO . ')
-            END';
-            
-            $columnas[] = DB::raw('(' . $iaSolicitar . ') AS solicitar');
-            // demanda_ponderada = (promedio + ventas) / 2 (antes de restar stock)
-            $columnas[] = DB::raw($demandaCombinada . ' AS demanda_ponderada');
-        } else {
-            // solicitar = promedio - stock - AO
-            $iaSolicitar = 'CASE 
-                WHEN ((' . $promedio_calculado . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $subqueryAO . ') > 0 THEN CEIL((' . $promedio_calculado . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $subqueryAO . ')
-                ELSE FLOOR((' . $promedio_calculado . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $subqueryAO . ')
-            END';
-            
-            $columnas[] = DB::raw('(' . $iaSolicitar . ') AS solicitar');
-            // demanda_ponderada = (promedio + ventas) / 2 (antes de restar stock)
-            $columnas[] = DB::raw('((' . $promedio_calculado . ' + ' . $subqueryTotalSold . ') / 2) AS demanda_ponderada');
-        }
-
-        $consulta = Product::select($columnas)->with(["laboratory", "lots", "group"])->where('is_deleted', false)->where('is_scarce', false);
-
-        if (array_key_exists("ids", $filtros)) {
-            $consulta->whereIn("id", $filtros["ids"]);
-        }
-
-
-        // if (array_key_exists("sin_proveedor", $filtros)) {
-        //     $consulta->doesntHave("productSuppliers");
-        // }
-
-        if (array_key_exists("ids_in", $filtros) && !empty($filtros["ids_in"])) {
-            $consulta->whereIn("products.id", $filtros["ids_in"]);
-        }
-
-        if (array_key_exists("tipo_vista", $filtros)) {
-            if ($filtros["tipo_vista"] == true) {
-                $consulta->join("groups_products", "products.group_id", "=", "groups_products.id")
-                    ->orderBy("groups_products.name", "ASC");
-            }
-        }
-
-
-        if (array_key_exists("q", $filtros)) {
-            if ($filtros["q"] != "") {
-                $consulta->where(function ($query) use ($filtros) {
-                    $query->where("name", "like", "%" . $filtros["q"] . "%")
-                        ->orWhere("id", "like", "%" . $filtros["q"] . "%");
-                });
-            }
-        }
-
-
-        if (array_key_exists("laboratoryId", $filtros)) {
-            if (count($filtros["laboratoryId"]) > 0) {
-                $consulta->whereIn("laboratory_id", $filtros["laboratoryId"]);
-            }
-        }
-
-        if (array_key_exists("groups", $filtros)) {
-            if (count($filtros["groups"]) > 0) {
-                $consulta->whereIn("group_id", $filtros["groups"]);
-            }
-        }
-
-        if (array_key_exists("hasStock", $filtros)) {
-            if ($filtros["hasStock"] == true) {
-                $consulta->having("lote_quantity", ">", 0);
-            } else {
-                $consulta->having("lote_quantity", "=", 0);
-            }
-        }
-
-        if (array_key_exists("stock", $filtros)) {
-
-            if ($filtros["stock"] == "exceso") {
-                // Con la nueva fórmula: demanda - stock - AO < 0 = exceso de cobertura
-                $consulta->having("solicitar", "<", 0);
-            }
-            if ($filtros["stock"] == "fallas") {
-                // Ahora unificado: demanda - stock - AO > 0 = falla (puramente matemático)
-                // Y excepcion: solicitar es 0, y el stock físico también es 0
-                $consulta->havingRaw("solicitar > 0 OR (solicitar = 0 AND (" . $this->subConsultaParaCalcularStockPorLotes . ") <= 0)");
-            }
-        }
-
-        if (array_key_exists("startDate", $filtros) && array_key_exists("endDate", $filtros)) {
-            $consulta->whereHas("lots", function ($query) use ($filtros) {
-                $query->whereBetween("expiration_date", [$filtros["startDate"], $filtros["endDate"]]);
-            });
-        }
-
-        if (array_key_exists("isColombian", $filtros)) {
-            if ($filtros["isColombian"] == true || $filtros["isColombian"] === "true") {
-                $consulta->where("is_colombian_origin", "=", 1);
-            }
-        }
-
-        if (array_key_exists("isNovaventa", $filtros)) {
-            if ($filtros["isNovaventa"] == true || $filtros["isNovaventa"] === "true") {
-                $consulta->where("is_novaventa", "=", 1);
-            } else {
-                $consulta->where(function ($q) {
-                    $q->where("is_novaventa", "=", 0)
-                      ->orWhereNull("is_novaventa");
-                });
-            }
-        }
-
-        if (array_key_exists("sortBy", $filtros) && array_key_exists("orderBy", $filtros)) {
-            $consulta->orderBy($filtros["sortBy"], $filtros["orderBy"]);
-        } else {
-            $consulta->orderBy("solicitar", "DESC");
-        }
-
-
-        return $consulta;
-    }
-
-    public function filtrarProductforIaOrderAssistantTypeAverageWithoutPaginate($filtros): Collection
-    {
-
-        $consulta = $this->builerFiltrarProductForIaOrderAssistantTypeAverage($filtros);
-
+        $consulta = $this->builerFiltrarProductforStock($filtros);
         return $consulta->get();
     }
 
-    public function filtrarProductforIaOrderAssistantTypeAverageWithPaginate($filtros, $perPage = 10): LengthAwarePaginator
-    {
-
-        $consulta = $this->builerFiltrarProductForIaOrderAssistantTypeAverage($filtros);
-
-        return $consulta->paginate($perPage);
-    }
-
-    /**
-     * esta consulta calcula la preferencia_product por ventas del grupo al que pertence el porducto 
-     */
     public function builerFiltrarProductForIaOrderAssistantTypeSales($filtros): Builder
     {
         // solicitar = stock - ventas individuales
@@ -603,6 +319,9 @@ class ProductRepository
         
         ';
 
+        $ceilFunc = DB::connection()->getDriverName() === 'sqlite' ? 'ROUND' : 'CEIL';
+        $floorFunc = DB::connection()->getDriverName() === 'sqlite' ? 'ROUND' : 'FLOOR';
+
         $iaSolicitar = 'CASE 
                 WHEN (' . $ventasIndividualDelProducto . ' - ' . $this->subConsultaParaCalcularStockPorLotes . ' - (
                 SELECT COALESCE(SUM(aod.quantity), 0)
@@ -614,7 +333,7 @@ class ProductRepository
                 AND aod.status = 0
                 AND ao.deleted_at IS NULL
                 AND aod.deleted_at IS NULL
-                )) > 0 THEN CEIL(' . $ventasIndividualDelProducto . ' - ' . $this->subConsultaParaCalcularStockPorLotes . ' - (
+                )) > 0 THEN ' . $ceilFunc . '(' . $ventasIndividualDelProducto . ' - ' . $this->subConsultaParaCalcularStockPorLotes . ' - (
                 SELECT COALESCE(SUM(aod.quantity), 0)
                 FROM auto_order_details aod
                 JOIN auto_orders ao ON ao.id = aod.order_id
@@ -625,7 +344,7 @@ class ProductRepository
                 AND ao.deleted_at IS NULL
                 AND aod.deleted_at IS NULL
                 ))
-                ELSE FLOOR(' . $ventasIndividualDelProducto . ' - ' . $this->subConsultaParaCalcularStockPorLotes . ' - (
+                ELSE ' . $floorFunc . '(' . $ventasIndividualDelProducto . ' - ' . $this->subConsultaParaCalcularStockPorLotes . ' - (
                 SELECT COALESCE(SUM(aod.quantity), 0)
                 FROM auto_order_details aod
                 JOIN auto_orders ao ON ao.id = aod.order_id
@@ -652,10 +371,10 @@ class ProductRepository
             "products.is_colombian_origin",
             "products.is_ordered",
             "products.active_ingredient",
-            DB::raw('(SELECT TIMESTAMPDIFF(MONTH, CURDATE(), MIN(expiration_date)) 
-             FROM product_lots 
-             WHERE product_lots.product_id = products.id
-             AND expiration_date >= CURDATE()) AS meses_faltantes'),
+            "products.ignore_until",
+            DB::raw(DB::connection()->getDriverName() === 'sqlite'
+                ? '(SELECT CAST((julianday(MIN(expiration_date)) - julianday("now")) / 30 AS INTEGER) FROM product_lots WHERE product_lots.product_id = products.id AND expiration_date >= DATE("now")) AS meses_faltantes'
+                : '(SELECT TIMESTAMPDIFF(MONTH, CURDATE(), MIN(expiration_date)) FROM product_lots WHERE product_lots.product_id = products.id AND expiration_date >= CURDATE()) AS meses_faltantes'),
             DB::raw('(' . $this->subConsultaParaCalcularStockPorLotes . ') AS lote_quantity'),
             DB::raw('(
                 SELECT COALESCE(SUM(order_details.quantity), 0)
@@ -755,7 +474,16 @@ class ProductRepository
         // demanda_ponderada = (promedio + ventas) / 2  (antes de restar stock/AO)
         $columnas[] = DB::raw('((' . $promedio_calculado . ' + ' . $ventasIndividualDelProducto . ') / 2) AS demanda_ponderada');
 
-        $consulta = Product::select($columnas)->with(["laboratory", "lots", "group"])->where('is_deleted', false)->where('is_scarce', false);
+        $consulta = Product::select($columnas)
+            ->with(["laboratory", "lots", "group"])
+            ->where('is_deleted', false)
+            ->where('is_scarce', false)
+            ->when(!($filtros['show_ignored'] ?? false), function ($q) {
+                $q->where(function ($sq) {
+                    $sq->whereNull('products.ignore_until')
+                       ->orWhere('products.ignore_until', '<=', now());
+                });
+            });
 
         if (array_key_exists("ids_in", $filtros) && !empty($filtros["ids_in"])) {
             $consulta->whereIn("products.id", $filtros["ids_in"]);
@@ -830,17 +558,22 @@ class ProductRepository
 
         if (array_key_exists("isColombian", $filtros)) {
             if ($filtros["isColombian"] == true || $filtros["isColombian"] === "true") {
-                $consulta->where("is_colombian_origin", "=", 1);
+                $consulta->where("products.is_colombian_origin", "=", 1);
+            } elseif ($filtros["isColombian"] === false || $filtros["isColombian"] === "false") {
+                $consulta->where(function ($q) {
+                    $q->where("products.is_colombian_origin", "=", 0)
+                      ->orWhereNull("products.is_colombian_origin");
+                });
             }
         }
 
         if (array_key_exists("isNovaventa", $filtros)) {
             if ($filtros["isNovaventa"] == true || $filtros["isNovaventa"] === "true") {
-                $consulta->where("is_novaventa", "=", 1);
-            } else {
+                $consulta->where("products.is_novaventa", "=", 1);
+            } elseif ($filtros["isNovaventa"] === false || $filtros["isNovaventa"] === "false") {
                 $consulta->where(function ($q) {
-                    $q->where("is_novaventa", "=", 0)
-                      ->orWhereNull("is_novaventa");
+                    $q->where("products.is_novaventa", "=", 0)
+                      ->orWhereNull("products.is_novaventa");
                 });
             }
         }
@@ -900,10 +633,10 @@ class ProductRepository
             "products.is_unified_group",
             "products.active_ingredient",
             'products.manual_solicitar',
-            DB::raw('(SELECT TIMESTAMPDIFF(MONTH, CURDATE(), MIN(expiration_date)) 
-             FROM product_lots 
-             WHERE product_lots.product_id = products.id
-             AND expiration_date >= CURDATE()) AS meses_faltantes'),
+            'products.ignore_until',
+            DB::raw(DB::connection()->getDriverName() === 'sqlite'
+                ? '(SELECT CAST((julianday(MIN(expiration_date)) - julianday("now")) / 30 AS INTEGER) FROM product_lots WHERE product_lots.product_id = products.id AND expiration_date >= DATE("now")) AS meses_faltantes'
+                : '(SELECT TIMESTAMPDIFF(MONTH, CURDATE(), MIN(expiration_date)) FROM product_lots WHERE product_lots.product_id = products.id AND expiration_date >= CURDATE()) AS meses_faltantes'),
             DB::raw('(' . $this->subConsultaParaCalcularStockPorLotes . ') AS lote_quantity'),
             DB::raw('(
                 SELECT COALESCE(SUM(order_details.quantity), 0)
@@ -936,7 +669,7 @@ class ProductRepository
                 FROM product_lots 
                 WHERE product_lots.product_id = products.id
                 AND product_lots.quantity > 0
-                AND (product_lots.expiration_date IS NULL OR product_lots.expiration_date >= CURDATE())
+                AND (product_lots.expiration_date IS NULL OR product_lots.expiration_date >= ' . (DB::connection()->getDriverName() === 'sqlite' ? 'DATE("now")' : 'CURDATE()') . ')
             ) AS cost_min'),
             //  cost max solo tiene encuenta los lotes que su quantity sean mayor a 0
             DB::raw('(
@@ -944,7 +677,7 @@ class ProductRepository
                 FROM product_lots 
                 WHERE product_lots.product_id = products.id
                 AND product_lots.quantity > 0
-                AND (product_lots.expiration_date IS NULL OR product_lots.expiration_date >= CURDATE())
+                AND (product_lots.expiration_date IS NULL OR product_lots.expiration_date >= ' . (DB::connection()->getDriverName() === 'sqlite' ? 'DATE("now")' : 'CURDATE()') . ')
             ) AS cost_max'),
             DB::raw('(
                 SELECT COALESCE(SUM(aod.quantity), 0)
@@ -1001,11 +734,14 @@ class ProductRepository
                 AND ao.deleted_at IS NULL
                 AND aod.deleted_at IS NULL)';
 
+        $ceilFunc = DB::connection()->getDriverName() === 'sqlite' ? 'ROUND' : 'CEIL';
+        $floorFunc = DB::connection()->getDriverName() === 'sqlite' ? 'ROUND' : 'FLOOR';
+
         // calcular solicitar: demanda - stock - AO
         $calcSolicitar = '((' . $promedio_calculado . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $subqueryAO . ')';
         $columnas[] = DB::raw('CASE 
-            WHEN ' . $calcSolicitar . ' > 0 THEN CEIL(' . $calcSolicitar . ')
-            ELSE FLOOR(' . $calcSolicitar . ')
+            WHEN ' . $calcSolicitar . ' > 0 THEN ' . $ceilFunc . '(' . $calcSolicitar . ')
+            ELSE ' . $floorFunc . '(' . $calcSolicitar . ')
         END AS solicitar');
 
 
@@ -1022,6 +758,12 @@ class ProductRepository
                           ->where('u.is_deleted', false)
                           ->where('u.is_scarce', false);
                   });
+            })
+            ->when(!($filtros['show_ignored'] ?? false), function ($q) {
+                $q->where(function ($sq) {
+                    $sq->whereNull('products.ignore_until')
+                       ->orWhere('products.ignore_until', '<=', now());
+                });
             })
             ->with([
             "laboratory",
@@ -1213,10 +955,10 @@ class ProductRepository
             "products.is_unified_group",
             "products.active_ingredient",
             'products.manual_solicitar',
-            DB::raw('(SELECT TIMESTAMPDIFF(MONTH, CURDATE(), MIN(expiration_date)) 
-             FROM product_lots 
-             WHERE product_lots.product_id = products.id
-             AND expiration_date >= CURDATE()) AS meses_faltantes'),
+            'products.ignore_until',
+            DB::raw(DB::connection()->getDriverName() === 'sqlite'
+                ? '(SELECT CAST((julianday(MIN(expiration_date)) - julianday("now")) / 30 AS INTEGER) FROM product_lots WHERE product_lots.product_id = products.id AND expiration_date >= DATE("now")) AS meses_faltantes'
+                : '(SELECT TIMESTAMPDIFF(MONTH, CURDATE(), MIN(expiration_date)) FROM product_lots WHERE product_lots.product_id = products.id AND expiration_date >= CURDATE()) AS meses_faltantes'),
             DB::raw('(' . $this->subConsultaParaCalcularStockPorLotes . ') AS lote_quantity'),
             DB::raw('(
                 SELECT COALESCE(SUM(order_details.quantity), 0)
@@ -1276,7 +1018,7 @@ class ProductRepository
                     AND aod.status = 0
                     AND ao.deleted_at IS NULL
                     AND aod.deleted_at IS NULL
-                )) > 0 THEN CEIL((' . $ventasIndividualDelProducto . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - (
+                )) > 0 THEN ' . (DB::connection()->getDriverName() === 'sqlite' ? 'ROUND' : 'CEIL') . '((' . $ventasIndividualDelProducto . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - (
                     SELECT COALESCE(SUM(aod.quantity), 0)
                     FROM auto_order_details aod
                     JOIN auto_orders ao ON ao.id = aod.order_id
@@ -1287,7 +1029,7 @@ class ProductRepository
                     AND ao.deleted_at IS NULL
                     AND aod.deleted_at IS NULL
                 ))
-                ELSE FLOOR((' . $ventasIndividualDelProducto . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - (
+                ELSE ' . (DB::connection()->getDriverName() === 'sqlite' ? 'ROUND' : 'FLOOR') . '((' . $ventasIndividualDelProducto . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - (
                     SELECT COALESCE(SUM(aod.quantity), 0)
                     FROM auto_order_details aod
                     JOIN auto_orders ao ON ao.id = aod.order_id
@@ -1305,7 +1047,7 @@ class ProductRepository
                 FROM product_lots 
                 WHERE product_lots.product_id = products.id
                 AND product_lots.quantity > 0
-                AND (product_lots.expiration_date IS NULL OR product_lots.expiration_date >= CURDATE())
+                AND (product_lots.expiration_date IS NULL OR product_lots.expiration_date >= ' . (DB::connection()->getDriverName() === 'sqlite' ? 'DATE("now")' : 'CURDATE()') . ')
             ) AS cost_min'),
             //  cost max solo tiene encuenta los lotes que su quantity sean mayor a 0
             DB::raw('(
@@ -1313,7 +1055,7 @@ class ProductRepository
                 FROM product_lots 
                 WHERE product_lots.product_id = products.id
                 AND product_lots.quantity > 0
-                AND (product_lots.expiration_date IS NULL OR product_lots.expiration_date >= CURDATE())
+                AND (product_lots.expiration_date IS NULL OR product_lots.expiration_date >= ' . (DB::connection()->getDriverName() === 'sqlite' ? 'DATE("now")' : 'CURDATE()') . ')
             ) AS cost_max'),
         ];
 
@@ -1355,6 +1097,12 @@ class ProductRepository
                           ->where('u.is_deleted', false)
                           ->where('u.is_scarce', false);
                   });
+            })
+            ->when(!($filtros['show_ignored'] ?? false), function ($q) {
+                $q->where(function ($sq) {
+                    $sq->whereNull('products.ignore_until')
+                       ->orWhere('products.ignore_until', '<=', now());
+                });
             })
             ->with([
             "laboratory",
@@ -1659,9 +1407,8 @@ class ProductRepository
         // Solicitar según tipo de filtración
         $tipo = $filtros["tipo_filtracion"] ?? "average";
         if ($tipo === "combinado") {
-            // Demanda ponderada combinada: Si hay ventas usamos (ventas + promedio)/2. 
-            // Si subqueryTotalSold es 0, usamos el promedio directamente (igual que PHP).
-            $demanda = '((' . $promedio_calculado . ' + ' . $subqueryTotalSold . ') / 2)';
+            // Demanda ponderada combinada: ((ventas + promedio) / 2) - stock - AO
+            $demanda = '((' . $subqueryTotalSold . ' + ' . $promedio_calculado . ') / 2)';
             $solicitarRaw = '(' . $demanda . ' - ' . $subqueryStock . ' - ' . $subqueryAO . ')';
         } elseif ($tipo === "sales") {
             $solicitarRaw = '(' . $subqueryTotalSold . ' - ' . $subqueryStock . ' - ' . $subqueryAO . ')';
@@ -1669,9 +1416,12 @@ class ProductRepository
             $solicitarRaw = '(' . $promedio_calculado . ' - ' . $subqueryStock . ' - ' . $subqueryAO . ')';
         }
 
+        $ceilFunc = DB::connection()->getDriverName() === 'sqlite' ? 'ROUND' : 'CEIL';
+        $floorFunc = DB::connection()->getDriverName() === 'sqlite' ? 'ROUND' : 'FLOOR';
+
         $solicitarCol = "CASE 
-                WHEN ($solicitarRaw) > 0 THEN CEIL($solicitarRaw) 
-                ELSE FLOOR($solicitarRaw) 
+                WHEN ($solicitarRaw) > 0 THEN $ceilFunc($solicitarRaw) 
+                ELSE $floorFunc($solicitarRaw) 
             END";
 
         // 2. Construir Query
@@ -1695,46 +1445,50 @@ class ProductRepository
                     $sq->whereNull('ignore_until')
                        ->orWhere('ignore_until', '<=', now());
                 });
-            })
-            ->whereNotExists(function ($q) {
-                $q->select(\Illuminate\Support\Facades\DB::raw(1))
-                    ->from('auto_order_details')
-                    ->join('auto_orders', 'auto_orders.id', '=', 'auto_order_details.order_id')
-                    ->whereColumn('auto_order_details.product_id', 'products.id')
-                    ->where('auto_orders.status', 0) // Open
-                    ->whereNull('auto_orders.deleted_at')
-                    ->whereNull('auto_order_details.deleted_at');
             });
 
-        // Seleccionar solicitar para usar en having
-        $query->select('products.id', 'products.group_id', 'products.name', \Illuminate\Support\Facades\DB::raw("$solicitarCol AS solicitar"));
-
-        // Filtros base
+        // Aplicar filtros directos de producto en la cláusula WHERE (Reducen drásticamente el universo de datos)
         if (!empty($filtros["ids_in"])) {
             $query->whereIn("products.id", $filtros["ids_in"]);
         }
         if (empty($filtros["ids_in"]) && array_key_exists("laboratoryId", $filtros) && !empty($filtros["laboratoryId"])) {
-            $query->whereIn("laboratory_id", $filtros["laboratoryId"]);
+            $query->whereIn("products.laboratory_id", $filtros["laboratoryId"]);
         }
         if (array_key_exists("groups", $filtros) && !empty($filtros["groups"])) {
-            $query->whereIn("group_id", $filtros["groups"]);
+            $query->whereIn("products.group_id", $filtros["groups"]);
         }
         if (array_key_exists("isColombian", $filtros)) {
             if ($filtros["isColombian"] == true || $filtros["isColombian"] === "true") {
-                $query->where("is_colombian_origin", "=", 1);
+                $query->where("products.is_colombian_origin", "=", 1);
+            } elseif ($filtros["isColombian"] === false || $filtros["isColombian"] === "false") {
+                $query->where(function ($q) {
+                    $q->where("products.is_colombian_origin", "=", 0)
+                      ->orWhereNull("products.is_colombian_origin");
+                });
             }
         }
 
         if (array_key_exists("isNovaventa", $filtros)) {
             if ($filtros["isNovaventa"] == true || $filtros["isNovaventa"] === "true") {
-                $query->where("is_novaventa", "=", 1);
-            } else {
+                $query->where("products.is_novaventa", "=", 1);
+            } elseif ($filtros["isNovaventa"] === false || $filtros["isNovaventa"] === "false") {
                 $query->where(function ($q) {
-                    $q->where("is_novaventa", "=", 0)
-                      ->orWhereNull("is_novaventa");
+                    $q->where("products.is_novaventa", "=", 0)
+                      ->orWhereNull("products.is_novaventa");
                 });
             }
         }
+
+        if (array_key_exists("q", $filtros) && $filtros["q"] != "") {
+             $query->where(function($q) use ($filtros) {
+                 $q->where("products.name", "like", "%" . $filtros["q"] . "%")
+                   ->orWhere("products.id", "like", "%" . $filtros["q"] . "%");
+             });
+        }
+
+        // Seleccionar solicitar para usar en el teniendo (HAVING) sólo sobre los productos ya filtrados
+        $query->select('products.id', 'products.group_id', 'products.name', \Illuminate\Support\Facades\DB::raw("$solicitarCol AS solicitar"));
+
         if (array_key_exists("hasStock", $filtros)) {
             $hasStockVal = $filtros["hasStock"];
             if ($hasStockVal === true || $hasStockVal === 'true' || $hasStockVal === 1) {

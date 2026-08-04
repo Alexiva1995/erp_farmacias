@@ -17,7 +17,9 @@ class LaboratoryManagementController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Laboratory::with('group')->withCount('products');
+        $query = Laboratory::select(['id', 'name', 'group_id'])
+            ->with(['group:id,name'])
+            ->withCount('products');
 
         if ($request->search) {
             $query->where('name', 'like', "%{$request->search}%");
@@ -32,7 +34,14 @@ class LaboratoryManagementController extends Controller
             $itemsPerPage = Laboratory::count() ?: 10;
         }
 
-        return response()->json($query->orderBy($sortBy, $orderBy)->paginate($itemsPerPage));
+        $laboratories = $query->orderBy($sortBy, $orderBy)->paginate($itemsPerPage);
+
+        return response()->json([
+            'data' => \App\Http\Resources\LaboratoryManageResource::collection($laboratories->items()),
+            'total' => $laboratories->total(),
+            'current_page' => $laboratories->currentPage(),
+            'per_page' => $laboratories->perPage(),
+        ]);
     }
 
     /**
@@ -40,7 +49,11 @@ class LaboratoryManagementController extends Controller
      */
     public function groups(): JsonResponse
     {
-        return response()->json(GroupsLaboratory::with('laboratories')->orderBy('name')->get());
+        $groups = GroupsLaboratory::with(['laboratories:id,name,group_id'])
+            ->orderBy('name')
+            ->get();
+
+        return response()->json($groups);
     }
 
     /**

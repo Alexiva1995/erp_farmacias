@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 // Filtros IA Asistente Pedidos (Proveedores)
 import AppFilterBase from "@/components/AppFilterBase.vue";
 import { useBrandingStore } from "@/stores/useBrandingStore";
@@ -8,24 +8,28 @@ const brandingStore = useBrandingStore();
 const isRestaurant = computed(() => false);
 
 const props = defineProps({
-  searchQuery:        { type: String,  default: "" },
-  selectConDescuento: Boolean,
-  tipo_de_vista:      Boolean,
-  tipo_de_filtracion: String,
-  lapso_de_tiempo:    String,
-  stock:              String,
-  selectedLaboratory: { type: Array,   default: () => [] },
-  selectedGroup:      { type: Array,   default: () => [] },
-  laboratories:       { type: Array,   default: () => [] },
-  groups:             { type: Array,   default: () => [] },
-  isColombian:        Boolean,
-  isNovaventa:        Boolean,
-  showIgnored:        { type: Boolean, default: false },
-  showGraphs:         { type: Boolean, default: false },
-  selectedSupplier:   { type: [Number, String, Object, null], default: null },
-  suppliers:          { type: Array,   default: () => [] },
-  hasStock:           { type: String,  default: "all" },
-  ordenarAhorro:      Boolean,
+  searchQuery:          { type: String,  default: "" },
+  selectConDescuento:   Boolean,
+  tipo_de_vista:        Boolean,
+  tipo_de_filtracion:   String,
+  lapso_de_tiempo:      String,
+  stock:                String,
+  selectedLaboratory:   { type: Array,   default: () => [] },
+  selectedGroup:        { type: Array,   default: () => [] },
+  laboratories:         { type: Array,   default: () => [] },
+  groups:               { type: Array,   default: () => [] },
+  isColombian:          Boolean,
+  isNovaventa:          Boolean,
+  tipoExclusion:        { type: Array,   default: () => [] },
+  showIgnored:          { type: Boolean, default: false },
+  showGraphs:           { type: Boolean, default: false },
+  selectedSupplier:     { type: [Number, String, Object, null], default: null },
+  suppliers:            { type: Array,   default: () => [] },
+  hasStock:             { type: String,  default: "all" },
+  ordenarAhorro:        Boolean,
+  isOrderingAhorro:     Boolean,
+  isExporting:          Boolean,
+  soloConCoincidencias: { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
@@ -40,14 +44,17 @@ const emit = defineEmits([
   "update:selectedGroup",
   "update:isColombian",
   "update:isNovaventa",
+  "update:tipoExclusion",
   "update:showIgnored",
   "update:showGraphs",
   "update:selectedSupplier",
   "update:ordenarAhorro",
+  "update:soloConCoincidencias",
   "clear",
   "clear-ignore",
   "pedirAhorro",
   "fetchSuppliers",
+  "fetchAiMatches",
   "exportarColombianos",
 ]);
 
@@ -88,8 +95,13 @@ const hasStockOpciones = [
   { title: "Sin Stock",   value: "without" },
 ];
 
+const tipoExclusionOpciones = [
+  { title: "Colombia",  value: "colombia"  },
+  { title: "Novaventa", value: "novaventa" },
+];
+
 const hasAdvancedFilters = computed(() => (
-  !!(props.selectedGroup?.length || props.isColombian || props.isNovaventa || props.tipo_de_filtracion !== 'combinado' || props.stock !== 'fallas' || props.selectedSupplier || props.hasStock !== 'all')
+  !!(props.selectedGroup?.length || props.isColombian || props.isNovaventa || props.tipoExclusion?.length || props.tipo_de_filtracion !== 'combinado' || props.stock !== 'fallas' || props.selectedSupplier || props.hasStock !== 'all')
 ));
 </script>
 
@@ -102,7 +114,6 @@ const hasAdvancedFilters = computed(() => (
     @update:search="emit('update:searchQuery', $event)"
     @clear="emit('clear')"
   >
-    <!-- Barra Principal -->
     <template #search-extra>
       <!-- Solo búsqueda en la barra principal -->
     </template>
@@ -134,6 +145,7 @@ const hasAdvancedFilters = computed(() => (
         <VTooltip activator="parent" location="top">Restaurar Ocultos (Ignore)</VTooltip>
       </VBtn>
 
+      <!-- Comparar Precios Más Bajos (Búsqueda directa por costo) -->
       <VBtn
         icon
         color="warning"
@@ -143,7 +155,20 @@ const hasAdvancedFilters = computed(() => (
         @click="emit('fetchSuppliers')"
       >
         <VIcon icon="tabler-currency-dollar" size="20" />
-        <VTooltip activator="parent" location="top">Comparar Precios Mas Bajos</VTooltip>
+        <VTooltip activator="parent" location="top">Comparar Precios Más Bajos (Directo)</VTooltip>
+      </VBtn>
+
+      <!-- Coincidencia Inteligente por IA -->
+      <VBtn
+        icon
+        color="secondary"
+        variant="tonal"
+        size="38"
+        class="ml-1 shadow-sm rounded-circle"
+        @click="emit('fetchAiMatches')"
+      >
+        <VIcon icon="tabler-sparkles" size="20" />
+        <VTooltip activator="parent" location="top">Buscar Coincidencias por IA</VTooltip>
       </VBtn>
 
       <VBtn
@@ -152,6 +177,8 @@ const hasAdvancedFilters = computed(() => (
         variant="flat"
         size="38"
         class="ml-1 shadow-sm rounded-circle"
+        :loading="props.isOrderingAhorro"
+        :disabled="props.isOrderingAhorro"
         @click="emit('pedirAhorro')"
       >
         <VIcon icon="tabler-shopping-cart-plus" size="20" />
@@ -166,13 +193,13 @@ const hasAdvancedFilters = computed(() => (
         variant="flat"
         size="38"
         class="ml-1 shadow-sm rounded-circle"
+        :loading="props.isExporting"
+        :disabled="props.isExporting"
         @click="emit('exportarColombianos')"
       >
         <VIcon icon="tabler-file-spreadsheet" size="20" />
         <VTooltip activator="parent" location="top">Exportar Colombia por Laboratorio (Excel)</VTooltip>
       </VBtn>
-
-
     </template>
 
     <template #advanced-filters>
@@ -308,6 +335,25 @@ const hasAdvancedFilters = computed(() => (
         />
       </VCol>
 
+      <!-- Exclusión de Productos (Múltiple) -->
+      <VCol cols="12" sm="6" md="3">
+        <VSelect
+          :model-value="props.tipoExclusion"
+          :items="tipoExclusionOpciones"
+          label="Excluir Tipos"
+          multiple
+          chips
+          closable-chips
+          clearable
+          density="compact"
+          hide-details
+          color="error"
+          prepend-inner-icon="tabler-filter-off"
+          @update:model-value="emit('update:tipoExclusion', $event)"
+        />
+      </VCol>
+
+      <!-- Switch: Solo Colombia -->
       <VCol cols="12" sm="6" md="2">
         <div class="d-flex align-center h-100 px-3 rounded-lg border bg-var-theme-background">
           <VSwitch
@@ -323,6 +369,7 @@ const hasAdvancedFilters = computed(() => (
         </div>
       </VCol>
 
+      <!-- Switch: Solo Novaventa -->
       <VCol cols="12" sm="6" md="2">
         <div class="d-flex align-center h-100 px-3 rounded-lg border bg-var-theme-background">
           <VSwitch
@@ -338,6 +385,7 @@ const hasAdvancedFilters = computed(() => (
         </div>
       </VCol>
 
+      <!-- Switch: Ordenar Ahorro -->
       <VCol cols="12" sm="6" md="2">
         <div class="d-flex align-center h-100 px-3 rounded-lg border bg-var-theme-background">
           <VSwitch
@@ -350,6 +398,22 @@ const hasAdvancedFilters = computed(() => (
             @update:model-value="emit('update:ordenarAhorro', $event)"
           />
           <VTooltip activator="parent" location="top">Ordenar por mayor ahorro (descuento/variación de precio)</VTooltip>
+        </div>
+      </VCol>
+
+      <!-- Switch: Solo Coincidencias -->
+      <VCol cols="12" sm="6" md="2">
+        <div class="d-flex align-center h-100 px-3 rounded-lg border bg-var-theme-background">
+          <VSwitch
+            :model-value="props.soloConCoincidencias"
+            label="Coincidencias"
+            color="purple"
+            hide-details
+            density="compact"
+            class="ms-1 font-weight-bold text-xs"
+            @update:model-value="emit('update:soloConCoincidencias', $event)"
+          />
+          <VTooltip activator="parent" location="top">Mostrar solo productos con proveedor encontrado</VTooltip>
         </div>
       </VCol>
     </template>

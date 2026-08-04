@@ -1,47 +1,50 @@
-﻿<script setup>
+<script setup>
 import InventoryStockFilters from "@/components/InventoryStockFilters.vue";
 import InventoryStockTable from "@/components/InventoryStockTable.vue";
 import InventoryStockGrupoTable from "@/components/InventoryStockGrupoTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import pdfStockProductsGenerator from "@/utils/pdfStockProductsGenerator";
-import { onMounted, onUnmounted, reactive, watch, ref, computed } from 'vue';
-import { useRouter } from "vue-router";
+import { onMounted, onUnmounted, reactive, watch, ref, computed } from "vue";
 import { useBrandingStore } from "@/stores/useBrandingStore";
-
-const route = useRouter();
 
 // Contador de solicitudes para evitar race conditions
 let requestId = 0;
 let debounceTimer = null;
 let skipPaginationWatch = false;
 
-// Estado de la tabla — separado de los filtros para claridad
+// Estado global de marca
+const brandingStore = useBrandingStore();
+const isRestaurant = computed(() => false);
+
+// Filtros encapsulados en un objeto reactivo estructurado
+const filters = reactive({
+  searchQuery: "",
+  selectedLaboratory: null,
+  stockStatusFilter: null,
+  viewType: "individual",
+  days: 30,
+  stock: isRestaurant.value ? "fallas" : "all",
+  expProd: false,
+  isStrictSearch: false,
+  tipoFiltracion: isRestaurant.value ? "sales" : "average",
+  isColombian: false,
+});
+
+// Estado de la tabla y paginación
 const modulo = reactive({
   items: [],
   totalItems: 0,
 });
 
-const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => false);
-
-const searchQuery = ref("");
-const selectedLaboratory = ref(null);
-const stockStatusFilter = ref(null);
-const viewType = ref("individual");
-const days = ref(30);
-const stock = ref(isRestaurant.value ? "fallas" : "all");
-const expProd = ref(false);
-const isStrictSearch = ref(false);
-const tipoFiltracion = ref(isRestaurant.value ? "sales" : "average");
-const isColombian = ref(false);
-
 const loading = ref(false);
+const isExportingPdf = ref(false);
+const isExportingExcel = ref(false);
 
 const page = ref(1);
 const itemsPerPage = ref(10);
-const sortBy = ref();
-const orderBy = ref();
+const sortBy = ref(undefined);
+const orderBy = ref(undefined);
 
 const laboratories = ref([]);
 
@@ -60,26 +63,26 @@ const fetchSelectOptions = async () => {
 
 const fetchProducts = async () => {
   const data = {
-    q: searchQuery.value,
-    hasStock: stockStatusFilter.value,
-    viewType: viewType.value,
-    laboratoryId: selectedLaboratory.value,
+    q: filters.searchQuery,
+    hasStock: filters.stockStatusFilter,
+    viewType: filters.viewType,
+    laboratoryId: filters.selectedLaboratory,
     page: page.value,
     itemsPerPage: itemsPerPage.value,
     sortBy: sortBy.value,
     orderBy: orderBy.value,
-    days: days.value,
-    stock: stock.value,
-    expProd: expProd.value,
-    isStrictSearch: isStrictSearch.value,
-    tipo_filtracion: tipoFiltracion.value,
-    isColombian: isColombian.value,
+    days: filters.days,
+    stock: filters.stock,
+    expProd: filters.expProd,
+    isStrictSearch: filters.isStrictSearch,
+    tipo_filtracion: filters.tipoFiltracion,
+    isColombian: filters.isColombian,
   };
   loading.value = true;
   try {
-    const respuesApi = await axios.post("/inventory/stock/filter", data);
+    const apiResponse = await axios.post("/inventory/stock/filter", data);
     loading.value = false;
-    return { ...respuesApi.data.data };
+    return { ...apiResponse.data.data };
   } catch (error) {
     toast.error("Error al consultar el stock.");
     loading.value = false;
@@ -88,16 +91,16 @@ const fetchProducts = async () => {
 };
 
 const handleClearFilters = () => {
-  searchQuery.value = "";
-  selectedLaboratory.value = null;
-  stockStatusFilter.value = null;
-  viewType.value = "individual";
-  stock.value = isRestaurant.value ? "fallas" : "all";
-  days.value = 30;
-  expProd.value = false;
-  isStrictSearch.value = false;
-  tipoFiltracion.value = isRestaurant.value ? "sales" : "average";
-  isColombian.value = false;
+  filters.searchQuery = "";
+  filters.selectedLaboratory = null;
+  filters.stockStatusFilter = null;
+  filters.viewType = "individual";
+  filters.stock = isRestaurant.value ? "fallas" : "all";
+  filters.days = 30;
+  filters.expProd = false;
+  filters.isStrictSearch = false;
+  filters.tipoFiltracion = isRestaurant.value ? "sales" : "average";
+  filters.isColombian = false;
 };
 
 const handleSort = (sortOptions) => {
@@ -110,44 +113,39 @@ const handleSort = (sortOptions) => {
   }
 };
 
-// Watch con debounce para filtros que cambian frecuentemente (ej: escribir en búsqueda)
+// Watch con debounce para filtros que cambian frecuentemente
 watch(
-  [
-    expProd,
-    stock,
-    days,
-    searchQuery,
-    selectedLaboratory,
-    stockStatusFilter,
-    viewType,
-    isStrictSearch,
-    tipoFiltracion,
-    isColombian,
+  () => [
+    filters.expProd,
+    filters.stock,
+    filters.days,
+    filters.searchQuery,
+    filters.selectedLaboratory,
+    filters.stockStatusFilter,
+    filters.viewType,
+    filters.isStrictSearch,
+    filters.tipoFiltracion,
+    filters.isColombian,
   ],
   () => {
-    // Cuando cambia un filtro, volver a la página 1
     if (page.value !== 1) {
       skipPaginationWatch = true;
       page.value = 1;
     }
     actualizarTablaDebounced();
   },
+  { deep: true }
 );
 
-// Watch sin debounce para paginación y ordenamiento (respuesta inmediata)
-watch(
-  [page, itemsPerPage, sortBy, orderBy],
-  () => {
-    // Si el cambio de página viene del watch de filtros, no hacer doble llamada
-    if (skipPaginationWatch) {
-      skipPaginationWatch = false;
-      return;
-    }
-    actualizarTabla();
-  },
-);
+// Watch sin debounce para paginación y ordenamiento
+watch([page, itemsPerPage, sortBy, orderBy], () => {
+  if (skipPaginationWatch) {
+    skipPaginationWatch = false;
+    return;
+  }
+  actualizarTabla();
+});
 
-// Versión con debounce para cambios de filtros
 function actualizarTablaDebounced() {
   clearTimeout(debounceTimer);
   debounceTimer = setTimeout(() => {
@@ -155,12 +153,10 @@ function actualizarTablaDebounced() {
   }, 300);
 }
 
-// Versión principal con protección contra race conditions
 async function actualizarTabla() {
   const currentRequestId = ++requestId;
   const dataTabla = await fetchProducts();
 
-  // Si hubo otra solicitud más reciente, descartamos esta respuesta obsoleta
   if (currentRequestId !== requestId) return;
 
   modulo.items = dataTabla.data;
@@ -171,7 +167,6 @@ const updateTableOptions = (options) => {
   const newPage = options.page;
   const newItemsPerPage = options.itemsPerPage;
 
-  // Capturar ordenamiento solo si viene uno nuevo
   if (options.sortBy && options.sortBy.length > 0) {
     sortBy.value = options.sortBy[0]?.key;
     orderBy.value = options.sortBy[0]?.order;
@@ -195,7 +190,7 @@ onUnmounted(() => {
 async function filtrarSinPaginar(dataFiltro) {
   const respuestaApi = await axios.post(
     `/inventory/stock/filter-without-paginate`,
-    dataFiltro,
+    dataFiltro
   );
   if (respuestaApi.status !== 200) {
     toast.error("Error al filtrar los datos");
@@ -204,45 +199,57 @@ async function filtrarSinPaginar(dataFiltro) {
 }
 
 async function exportarPdf() {
-  const filtros = {
-    q: searchQuery.value,
-    hasStock: stockStatusFilter.value,
-    viewType: viewType.value,
-    laboratoryId: selectedLaboratory.value,
-    sortBy: sortBy.value,
-    orderBy: orderBy.value,
-    days: days.value,
-    stock: stock.value,
-    expProd: expProd.value,
-    isStrictSearch: isStrictSearch.value,
-    tipo_filtracion: tipoFiltracion.value,
-    isColombian: isColombian.value,
-  };
-  const respuestaApi = await filtrarSinPaginar(filtros);
+  if (isExportingPdf.value) return;
+  isExportingPdf.value = true;
+  try {
+    const dataFiltros = {
+      q: filters.searchQuery,
+      hasStock: filters.stockStatusFilter,
+      viewType: filters.viewType,
+      laboratoryId: filters.selectedLaboratory,
+      sortBy: sortBy.value,
+      orderBy: orderBy.value,
+      days: filters.days,
+      stock: filters.stock,
+      expProd: filters.expProd,
+      isStrictSearch: filters.isStrictSearch,
+      tipo_filtracion: filters.tipoFiltracion,
+      isColombian: filters.isColombian,
+    };
+    const respuestaApi = await filtrarSinPaginar(dataFiltros);
 
-  if (respuestaApi.length === 0) {
-    toast.info("No hay productos para poder generar un reporte");
-    return null;
+    if (respuestaApi.length === 0) {
+      toast.info("No hay productos para poder generar un reporte");
+      return;
+    }
+
+    pdfStockProductsGenerator(respuestaApi);
+    toast.success("Reporte PDF generado exitosamente.");
+  } catch (error) {
+    console.error("Error al exportar PDF:", error);
+    toast.error("Error al generar el archivo PDF.");
+  } finally {
+    isExportingPdf.value = false;
   }
-
-  pdfStockProductsGenerator(respuestaApi);
 }
 
 async function exportarExcel(formato) {
+  if (isExportingExcel.value) return;
+  isExportingExcel.value = true;
   try {
     const params = {
-      q: searchQuery.value,
-      hasStock: stockStatusFilter.value,
-      viewType: viewType.value,
-      laboratoryId: selectedLaboratory.value,
+      q: filters.searchQuery,
+      hasStock: filters.stockStatusFilter,
+      viewType: filters.viewType,
+      laboratoryId: filters.selectedLaboratory,
       sortBy: sortBy.value,
       orderBy: orderBy.value,
-      days: days.value,
-      stock: stock.value,
-      expProd: expProd.value,
-      isStrictSearch: isStrictSearch.value,
-      tipo_filtracion: tipoFiltracion.value,
-      isColombian: isColombian.value,
+      days: filters.days,
+      stock: filters.stock,
+      expProd: filters.expProd,
+      isStrictSearch: filters.isStrictSearch,
+      tipo_filtracion: filters.tipoFiltracion,
+      isColombian: filters.isColombian,
       formato,
     };
 
@@ -252,11 +259,12 @@ async function exportarExcel(formato) {
       {
         responseType: "blob",
         headers: { "Content-Type": "application/json" },
-      },
+      }
     );
 
     if (respuestaApi.status !== 200) {
       toast.error("Error al exportar los datos");
+      return;
     }
     const url = window.URL.createObjectURL(new Blob([respuestaApi.data]));
     const link = document.createElement("a");
@@ -276,34 +284,42 @@ async function exportarExcel(formato) {
 
     link.remove();
     window.URL.revokeObjectURL(url);
+    toast.success("Archivo Excel exportado exitosamente.");
   } catch (error) {
     console.error("Error al exportar los datos:", error);
+    toast.error("Ocurrió un error al exportar el archivo Excel.");
+  } finally {
+    isExportingExcel.value = false;
   }
 }
 </script>
 
 <template>
   <div>
+
     <InventoryStockFilters
-      v-model:searchQuery="searchQuery"
-      v-model:selectedLaboratory="selectedLaboratory"
-      v-model:stockStatusFilter="stockStatusFilter"
-      v-model:viewType="viewType"
-      v-model:days="days"
-      v-model:stock="stock"
-      v-model:expProd="expProd"
-      v-model:isStrictSearch="isStrictSearch"
-      v-model:tipoFiltracion="tipoFiltracion"
-      v-model:isColombian="isColombian"
+      v-model:searchQuery="filters.searchQuery"
+      v-model:selectedLaboratory="filters.selectedLaboratory"
+      v-model:stockStatusFilter="filters.stockStatusFilter"
+      v-model:viewType="filters.viewType"
+      v-model:days="filters.days"
+      v-model:stock="filters.stock"
+      v-model:expProd="filters.expProd"
+      v-model:isStrictSearch="filters.isStrictSearch"
+      v-model:tipoFiltracion="filters.tipoFiltracion"
+      v-model:isColombian="filters.isColombian"
       :laboratories="laboratories"
       :loading="loading"
+      :is-exporting-pdf="isExportingPdf"
+      :is-exporting-excel="isExportingExcel"
       @clear="handleClearFilters"
       @sort="handleSort"
       @export-pdf="exportarPdf"
       @export-excel="exportarExcel"
     />
+
     <InventoryStockTable
-      v-if="viewType === 'individual'"
+      v-if="filters.viewType === 'individual'"
       :products="modulo.items"
       :loading="loading"
       :total-product="modulo.totalItems"
@@ -311,19 +327,19 @@ async function exportarExcel(formato) {
       :page="page"
       :sort-by="sortBy"
       :order-by="orderBy"
-      :view-type="viewType"
+      :view-type="filters.viewType"
       @update:options="updateTableOptions"
     />
     <InventoryStockGrupoTable
-        v-else
-        :products="modulo.items"
-        :loading="loading"
-        :total-product="modulo.totalItems"
-        :items-per-page="itemsPerPage"
-        :page="page"
-        :sort-by="sortBy"
-        :order-by="orderBy"
-        @update:options="updateTableOptions"
+      v-else
+      :products="modulo.items"
+      :loading="loading"
+      :total-product="modulo.totalItems"
+      :items-per-page="itemsPerPage"
+      :page="page"
+      :sort-by="sortBy"
+      :order-by="orderBy"
+      @update:options="updateTableOptions"
     />
   </div>
 </template>

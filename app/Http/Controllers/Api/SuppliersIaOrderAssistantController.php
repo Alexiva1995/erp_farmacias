@@ -18,6 +18,8 @@ use App\Models\Product as ModelsProduct;
 use App\Http\Requests\Suppliers\DirectOrderRequest;
 use Maatwebsite\Excel\Facades\Excel;
 
+use App\Http\Requests\Suppliers\IaOrderAssistantFilterRequest;
+
 class SuppliersIaOrderAssistantController extends Controller
 {
     //
@@ -31,7 +33,7 @@ class SuppliersIaOrderAssistantController extends Controller
     }
 
 
-    public function filtrarPaginate(Request $request): JsonResponse
+    public function filtrarPaginate(IaOrderAssistantFilterRequest $request): JsonResponse
     {
         $respuesta = [
             "tipo_filtracion" => $request->tipo_filtracion,
@@ -44,10 +46,8 @@ class SuppliersIaOrderAssistantController extends Controller
         $esVistaGrupal = filter_var($filtros['tipo_vista'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
         if ($esVistaGrupal) {
-            // Vista grupal: devolver grupos paginados con productos anidados
             $respuesta["paginate"] = $this->iaAssistantReportService->getGroupedReportWithPaginate($filtros);
         } else {
-            // Unificamos todo al servicio para garantizar hidratación de tendencias y AO
             $respuesta["paginate"] = $this->iaAssistantReportService->getFilteredReportWithPaginate($filtros);
         }
 
@@ -93,8 +93,10 @@ class SuppliersIaOrderAssistantController extends Controller
             "tipo_vista" => filter_var($request->tipo_vista, FILTER_VALIDATE_BOOLEAN),
             "lapso_de_tiempo" => $request->lapso_de_tiempo,
             "with_suppliers" => filter_var($request->with_suppliers, FILTER_VALIDATE_BOOLEAN),
+            "skip_ai_match" => filter_var($request->skip_ai_match, FILTER_VALIDATE_BOOLEAN),
             "con_descuento" => filter_var($request->con_descuento, FILTER_VALIDATE_BOOLEAN),
             "with_trend" => filter_var($request->with_trend, FILTER_VALIDATE_BOOLEAN),
+            "show_ignored" => filter_var($request->show_ignored, FILTER_VALIDATE_BOOLEAN),
         ];
 
         if ($request->filled("orderBy") && $request->filled("sortBy")) {
@@ -126,12 +128,36 @@ class SuppliersIaOrderAssistantController extends Controller
             $filtros["groups"] = $request->groups;
         }
 
-        if ($request->has("isColombian")) {
-            $filtros["isColombian"] = filter_var($request->isColombian, FILTER_VALIDATE_BOOLEAN);
+        // tipo_exclusion: excluir completamente esos tipos del resultado (isColombian/isNovaventa = false)
+        if ($request->filled("tipo_exclusion") && is_array($request->tipo_exclusion)) {
+            if (in_array("colombia", $request->tipo_exclusion)) {
+                $filtros["isColombian"] = false;
+            }
+            if (in_array("novaventa", $request->tipo_exclusion)) {
+                $filtros["isNovaventa"] = false;
+            }
+        } elseif ($request->filled("tipo_exclusion") && is_string($request->tipo_exclusion)) {
+            if ($request->tipo_exclusion === "colombia") {
+                $filtros["isColombian"] = false;
+            } elseif ($request->tipo_exclusion === "novaventa") {
+                $filtros["isNovaventa"] = false;
+            }
         }
 
-        if ($request->has("isNovaventa")) {
-            $filtros["isNovaventa"] = filter_var($request->isNovaventa, FILTER_VALIDATE_BOOLEAN);
+        // isColombian/isNovaventa del request: solo aplicar si vienen como true (filtrar solo ese tipo)
+        // Si vienen como false, no hacer nada (es el estado por defecto que no debe filtrar)
+        if (!array_key_exists("isColombian", $filtros) && $request->has("isColombian")) {
+            $val = filter_var($request->isColombian, FILTER_VALIDATE_BOOLEAN);
+            if ($val === true) {
+                $filtros["isColombian"] = true;
+            }
+        }
+
+        if (!array_key_exists("isNovaventa", $filtros) && $request->has("isNovaventa")) {
+            $val = filter_var($request->isNovaventa, FILTER_VALIDATE_BOOLEAN);
+            if ($val === true) {
+                $filtros["isNovaventa"] = true;
+            }
         }
 
         if ($request->filled("lapso_de_tiempo")) {

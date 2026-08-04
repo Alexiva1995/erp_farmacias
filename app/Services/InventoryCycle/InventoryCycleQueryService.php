@@ -41,8 +41,9 @@ class InventoryCycleQueryService
      * Construye un query con la unión de product_counts, invoice_counts y sale_counts
      * filtrado por ciclo y estado según sea necesario.
      */
-    private function buildDiscrepanciesUnionQuery(?int $cycleId = null, bool $includePending = false)
+    private function buildDiscrepanciesUnionQuery(int|string|null $cycleId = null, bool $includePending = false)
     {
+        $cycleId = $cycleId !== null ? (int) $cycleId : null;
         $productCounts = ProductCount::query()
             ->from('product_counts as pc')
             ->select([
@@ -396,6 +397,8 @@ class InventoryCycleQueryService
             $filters['status'] = null;
         } else {
             $filters['status'] = 'pending';
+            // Excluir conteos sin discrepancia: no tienen relevancia para verificación
+            $query->where('discrepancy', '!=', 0);
         }
 
         $query = $this->applyFiltersToCount($query, $filters);
@@ -630,7 +633,7 @@ class InventoryCycleQueryService
     {
         $activeCycleId = InventoryCycle::where('status', 'active')->value('id');
 
-        $unionQuery = $this->buildDiscrepanciesUnionQuery($activeCycleId);
+        $unionQuery = $this->buildDiscrepanciesUnionQuery($activeCycleId, true);
 
         $query = DB::query()->fromSub($unionQuery, 'discrepancies')
             ->leftJoin('products', 'discrepancies.product_id', '=', 'products.id')
@@ -647,6 +650,7 @@ class InventoryCycleQueryService
                 'discrepancies.id',
                 'discrepancies.product_id',
                 'discrepancies.discrepancy',
+                'discrepancies.status',
                 'discrepancies.source_type',
                 'discrepancies.updated_at as processed_date',
                 'products.name as product_name',

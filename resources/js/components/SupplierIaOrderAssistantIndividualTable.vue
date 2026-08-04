@@ -96,8 +96,10 @@ const rejectAiMatch = async (item) => {
       product_id:          item.id,
       product_supplier_id: item.best_supplier.id,
     });
-    emit('reject-ai-match', item.id);
-    toast.success("Sugerencia de IA rechazada correctamente.");
+    // Ignorar por 7 días al rechazar coincidencia
+    await axios.post(`/suppliers-ia-order-assistant/products/${item.id}/ignore`);
+    emit('remove-item', item.id);
+    toast.success("Sugerencia rechazada y producto ocultado por 7 días.");
   } catch (error) {
     console.error('Error rechazando match IA:', error);
     toast.error("Error al rechazar la sugerencia de la IA.");
@@ -109,8 +111,10 @@ const onActionClick = async (item, action) => {
 
   if (action === 'add') {
     const quantity = getInputValue(item);
-    if (!props.selectedSupplierId && !item.best_supplier) {
-      // Si no hay proveedor seleccionado ni proveedor más barato, abrir modal de comparación
+    const isColombian = Number(item.is_colombian_origin) === 1;
+
+    if (!props.selectedSupplierId && !item.best_supplier && !isColombian) {
+      // Si no hay proveedor seleccionado, ni proveedor más barato, ni es producto COL, abrir modal de comparación
       emit('open-comparator', { item, quantity });
       return;
     }
@@ -157,7 +161,7 @@ const onActionClick = async (item, action) => {
               text: updateError.response.data.message,
               icon: "warning",
               showCancelButton: true,
-              confirmButtonText: "Sí, desvincular and asignar",
+              confirmButtonText: "Sí, desvincular y asignar",
               cancelButtonText: "Cancelar",
             });
             if (confirmForce) {
@@ -187,12 +191,14 @@ const onActionClick = async (item, action) => {
         quantity: quantity,
       };
 
-      if (props.selectedSupplierId) {
+      if (isColombian) {
+        payload.supplier_id = 48;
+      } else if (props.selectedSupplierId) {
         payload.supplier_id = props.selectedSupplierId;
         if (item.best_supplier_price) {
           payload.unit_cost = item.best_supplier_price;
         }
-      } else {
+      } else if (item.best_supplier) {
         payload.product_supplier_id = item.best_supplier.product_suppliers_id;
         if (item.best_supplier_price) {
           payload.unit_cost = item.best_supplier_price;

@@ -25,7 +25,8 @@ class User extends Authenticatable
         'password_hash',
         'is_active',
         'token_login',
-        'remember_token'
+        'remember_token',
+        'ui_preferences',
     ];
 
     /**
@@ -45,7 +46,8 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
-            'password_hash' => 'hashed',
+            'password_hash'  => 'hashed',
+            'ui_preferences' => 'array',
         ];
     }
 

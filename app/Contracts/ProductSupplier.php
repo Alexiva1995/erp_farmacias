@@ -19,7 +19,7 @@ interface ProductSupplier
 
     public function checkPurchaseOpportunity(float $percentageIncrease, float $maximumPercentageMaximo): Bool;
 
-    public function getSupplierToReplenishTheProducts(Collection $products, string $conDescuento): array;
+    public function getSupplierToReplenishTheProducts(Collection $products, string $conDescuento, bool $skipAiMatch = false): array;
 
     public function getSupplierToReplenishTheProductsWithoutValidateSolicitar(Collection $products, string $conDescuento): array;
 

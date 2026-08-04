@@ -286,7 +286,6 @@ class PendingPaymentsController extends Controller
                 ]
             ], 'Facturas pendientes obtenidas exitosamente');
         } catch (\Exception $e) {
-            \Log::info('Pending payments exception', [$e->getMessage()]);
             return ApiResponse::error('Error al obtener las facturas pendientes: ' . $e->getMessage(), 500);
         }
     }

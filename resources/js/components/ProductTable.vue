@@ -10,6 +10,8 @@ import { useBrandingStore } from "@/stores/useBrandingStore";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 
+import Swal from "sweetalert2";
+
 const authStore = useAuthStore();
 const brandingStore = useBrandingStore();
 const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
@@ -34,6 +36,7 @@ const emit = defineEmits([
   "product-merged",
   "view-stats",
   "restore-product",
+  "toggle-active-product",
   "bulk-action-completed"
 ]);
 
@@ -44,10 +47,10 @@ const handleBulkDelete = async () => {
 
   const result = await Swal.fire({
     title: "¿Eliminar seleccionados?",
-    text: `Se eliminarán permanentemente ${ids.length} productos seleccionados.`,
+    text: `Se enviarán a la papelera (eliminado suave) ${ids.length} productos seleccionados.`,
     icon: "warning",
     showCancelButton: true,
-    confirmButtonText: "Eliminar todos",
+    confirmButtonText: "Eliminar",
     cancelButtonText: "Cancelar",
     reverseButtons: true
   });
@@ -60,7 +63,7 @@ const handleBulkDelete = async () => {
       });
       toast.success("Productos eliminados correctamente.");
       selectedProducts.value = [];
-      emit("product-merged"); // refresca lista principal
+      emit("product-merged"); // refresca lista principal de productos
     } catch (e) {
       toast.error("Ocurrió un error al eliminar los productos.");
     }
@@ -277,6 +280,21 @@ const toggleFavorite = async (item) => {
     toast.error("No se pudo cambiar el estado de favorito.");
   }
 };
+
+const toggleActiveProduct = async (item) => {
+  try {
+    const { data } = await axios.post(`/products/${item.id}/toggle-active`);
+    item.is_active = data.is_active;
+    toast.success(item.is_active ? "Producto habilitado." : "Producto inhabilitado (no se mostrará en e-commerce).");
+  } catch (error) {
+    console.error("Error al cambiar estado activo:", error);
+    toast.error("No se pudo cambiar el estado del producto.");
+  }
+};
+
+defineExpose({
+  selectedProducts,
+});
 </script>
 
 <template>
@@ -301,7 +319,7 @@ const toggleFavorite = async (item) => {
         :sort-by="props.sortBy ? [{ key: props.sortBy, order: props.orderBy || 'asc' }] : []"
         class="text-no-wrap"
         density="compact"
-        show-select
+        :show-select="props.mode === 'products'"
         item-value="id"
         @update:options="(options) => emit('update:options', options)"
       >
@@ -452,6 +470,16 @@ const toggleFavorite = async (item) => {
         <template #item.actions="{ item }">
           <div class="d-flex justify-center gap-1">
             <template v-if="mode === 'products'">
+              <IconBtn
+                @click="toggleActiveProduct(item)"
+                :color="item.is_active !== false && item.is_active !== 0 ? 'success' : 'error'"
+                size="small"
+              >
+                <VIcon icon="tabler-power" size="18" />
+                <VTooltip activator="parent">
+                  {{ item.is_active !== false && item.is_active !== 0 ? 'Habilitado (Visible en e-commerce)' : 'Inhabilitado (Oculto en e-commerce)' }}
+                </VTooltip>
+              </IconBtn>
               <IconBtn @click="emit('view-stats', item)" color="primary" size="small">
                 <VIcon icon="tabler-eye" size="18" />
                 <VTooltip activator="parent">Ver Estadísticas</VTooltip>
@@ -598,6 +626,15 @@ const toggleFavorite = async (item) => {
           <div class="d-flex border-t border-opacity-10">
             <template v-if="mode === 'products'">
               <VBtn 
+                :color="item.is_active !== false && item.is_active !== 0 ? 'success' : 'error'" 
+                variant="text" 
+                class="flex-grow-1 rounded-0" 
+                height="40"
+                icon="tabler-power" 
+                @click="toggleActiveProduct(item)"
+              />
+              <VDivider vertical class="border-opacity-10" />
+              <VBtn 
                 color="primary" 
                 variant="text" 
                 class="flex-grow-1 rounded-0" 
@@ -693,9 +730,9 @@ const toggleFavorite = async (item) => {
       @merged="emit('product-merged')"
     />
 
-    <!-- Barra de Acciones Masivas Flotante (Glassmorphism) -->
+    <!-- Barra de Acciones Masivas Flotante (Glassmorphism) — Solo en modo products -->
     <Transition name="fade-slide">
-      <div v-if="selectedProducts.length > 0" class="bulk-actions-wrapper">
+      <div v-if="selectedProducts.length > 0 && props.mode === 'products'" class="bulk-actions-wrapper">
         <VCard class="bulk-actions-bar px-6 py-3 d-flex align-center justify-space-between rounded-pill elevation-10">
           <div class="d-flex align-center gap-3">
             <VChip color="primary" class="font-weight-black">{{ selectedProducts.length }}</VChip>

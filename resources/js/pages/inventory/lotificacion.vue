@@ -62,19 +62,19 @@ const fetchSelectOptions = async () => {
 const fetchProducts = async () => {
   loading.value = true;
   const params = {
-    q: searchQuery.value,
-    laboratory_id: selectedLaboratory.value,
-    origin_id: selectedOrigin.value,
+    q: searchQuery.value || undefined,
+    laboratory_id: selectedLaboratory.value || undefined,
+    origin_id: selectedOrigin.value || undefined,
     ...(stockStatusFilter.value !== null && {
       has_stock: stockStatusFilter.value,
     }),
-    startDate: startDate.value,
-    endDate: endDate.value,
+    startDate: startDate.value || undefined,
+    endDate: endDate.value || undefined,
     page: page.value,
     itemsPerPage: itemsPerPage.value,
-    sortBy: sortBy.value,
-    orderBy: orderBy.value,
-    isStrictSearch: isStrictSearch.value,
+    sortBy: sortBy.value || undefined,
+    orderBy: orderBy.value || undefined,
+    isStrictSearch: isStrictSearch.value || undefined,
   };
 
   try {
@@ -92,12 +92,10 @@ const fetchProducts = async () => {
 };
 
 let debounceTimer;
+
+// Watcher unificado para filtros con debounce y reseteo a página 1
 watch(
   [
-    page,
-    itemsPerPage,
-    sortBy,
-    orderBy,
     searchQuery,
     selectedLaboratory,
     selectedOrigin,
@@ -107,18 +105,16 @@ watch(
     isStrictSearch,
   ],
   () => {
+    page.value = 1;
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => fetchProducts(), 300);
-  },
-  { deep: true }
-);
-
-watch(
-  [searchQuery, selectedLaboratory, selectedOrigin, stockStatusFilter, startDate, endDate],
-  () => {
-    page.value = 1;
   }
 );
+
+// Watcher para paginación y ordenamiento directo
+watch([page, itemsPerPage, sortBy, orderBy], () => {
+  fetchProducts();
+});
 
 onMounted(() => {
   fetchSelectOptions();
@@ -138,10 +134,10 @@ const handleSort = (sortOptions) => {
   sortBy.value = sortOptions.key;
   orderBy.value = sortOptions.order;
 };
+
 const handleAddLot = async () => {
   isLoadingDialogData.value = true;
   try {
-    // Limite de 500 para evitar cargar todo el catálogo en memoria del cliente
     const [productsResponse, suppliersResponse] = await Promise.all([
       axios.get("/products", { params: { itemsPerPage: 500, page: 1 } }),
       axios.get("/available-suppliers"),
@@ -231,22 +227,6 @@ const handleCleanZeroQuantity = async () => {
     confirmButtonText: "Eliminar",
     reverseButtons: true,
     confirmButtonColor: "#d33",
-    didOpen: () => {
-      const actions = Swal.getActions();
-      const confirmButton = Swal.getConfirmButton();
-      const cancelButton = Swal.getCancelButton();
-
-      actions.style.display = "flex";
-      actions.style.gap = "10px";
-      actions.style.width = "100%";
-      actions.style.padding = "0 20px";
-
-      confirmButton.style.flex = "1";
-      confirmButton.style.width = "50%";
-
-      cancelButton.style.flex = "1";
-      cancelButton.style.width = "50%";
-    },
   });
 
   if (result.isConfirmed) {
@@ -266,16 +246,6 @@ const handleCleanZeroQuantity = async () => {
 
 <template>
   <div>
-    <!-- Banner de contexto: diferencia esta vista de la lista general de Lotes -->
-    <VAlert
-      type="info"
-      variant="tonal"
-      density="compact"
-      class="mb-4 rounded-lg"
-      icon="tabler-package"
-    >
-      <strong>Lotificación:</strong> Muestra productos con stock registrado que aún no tienen lotes asignados. Crea o asigna lotes para completar su trazabilidad.
-    </VAlert>
     <ProductLotsFilters
       v-model:searchQuery="searchQuery"
       v-model:itemsPerPage="itemsPerPage"

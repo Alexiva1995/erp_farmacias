@@ -145,23 +145,14 @@ const formatDate = (date) => {
   });
 };
 
-const getStatusLabel = (status) => {
-  const statusMap = {
-    Approved: "Aprobado",
-    Rejected: "Rechazado",
-    pending: "Pendiente",
-    approved: "Aprobado",
-    rejected: "Rechazado",
-  };
-  return statusMap[status] || status;
-};
-
 const getUserDisplayName = (user) => {
   if (!user) return "N/A";
-  if (user.employee?.name && user.employee?.last_name) {
-    return `${user.employee.name} ${user.employee.last_name}`;
+  if (user.employee?.name || user.employee?.last_name) {
+    const name = user.employee.name ? user.employee.name.trim().split(" ")[0] : "";
+    const lastName = user.employee.last_name ? user.employee.last_name.trim().split(" ")[0] : "";
+    return `${name} ${lastName}`.trim() || "N/A";
   }
-  return user.employee?.name || user.username || user.email || "N/A";
+  return user.username || user.email || "N/A";
 };
 </script>
 
@@ -313,7 +304,7 @@ const getUserDisplayName = (user) => {
           <VCard variant="flat" class="border elevation-0 overflow-hidden shadow-sm" v-if="movementDetails.type !== 'general'">
             <div class="bg-primary-lighten-5 pa-3 border-b d-flex align-center">
               <VIcon icon="tabler-link" size="20" class="text-primary me-2" />
-              <span class="text-subtitle-2 font-weight-black text-uppercase">Documento de Referencia</span>
+              <span class="text-subtitle-2 font-weight-black text-uppercase">Documento de Referencia & Responsabilidad</span>
             </div>
 
             <div class="pa-4">
@@ -330,9 +321,10 @@ const getUserDisplayName = (user) => {
                     <p class="text-subtitle-1 font-weight-black mb-0">
                       {{ movementDetails.type === 'sale' ? 'Orden de Venta' : 'Solicitud de Devolución' }}
                     </p>
-                    <span class="text-body-2 text-medium-emphasis" v-if="movementDetails.order || movementDetails.original_order">
-                      Referencia: #{{ movementDetails.order?.id || movementDetails.original_order?.id }}
-                    </span>
+                    <div class="d-flex flex-column text-caption text-medium-emphasis">
+                      <span><strong>N° Orden:</strong> #ORD-{{ movementDetails.order?.id || movementDetails.original_order?.id || movementDetails.movement?.order_id || 'N/A' }}</span>
+                      <span v-if="movementDetails.order?.client?.name"><strong>Cliente:</strong> {{ movementDetails.order.client.name }}</span>
+                    </div>
                   </div>
                 </div>
                 <VBtn 
@@ -341,10 +333,10 @@ const getUserDisplayName = (user) => {
                   size="small" 
                   prepend-icon="tabler-eye"
                   :loading="compactOrderLoading"
-                  @click="handleViewOrder(movementDetails.order?.id || movementDetails.original_order?.id)"
+                  @click="handleViewOrder(movementDetails.order?.id || movementDetails.original_order?.id || movementDetails.movement?.order_id)"
                   class="elevation-1"
                 >
-                  Ver Documento
+                  Ver Orden #{{ movementDetails.order?.id || movementDetails.original_order?.id || movementDetails.movement?.order_id }}
                 </VBtn>
               </div>
 
@@ -354,21 +346,22 @@ const getUserDisplayName = (user) => {
                   <VIcon icon="tabler-receipt" size="40" color="success" class="me-3 opacity-75" />
                   <div>
                     <p class="text-subtitle-1 font-weight-black mb-0">Factura de Compra</p>
-                    <span class="text-body-2 text-medium-emphasis">
-                       Distribuidor: {{ movementDetails.supplier?.name || movementDetails.invoice?.supplier?.name || "N/A" }}
-                    </span>
+                    <div class="d-flex flex-column text-caption text-medium-emphasis">
+                      <span><strong>N° Factura:</strong> {{ movementDetails.invoice?.invoice_number || (movementDetails.movement?.invoice_id ? ('FAC-' + movementDetails.movement.invoice_id) : 'S/N') }}</span>
+                      <span><strong>Proveedor:</strong> {{ movementDetails.supplier?.name || movementDetails.invoice?.supplier?.name || "N/A" }}</span>
+                    </div>
                   </div>
                 </div>
                 <VBtn 
-                  v-if="movementDetails.invoice?.id"
+                  v-if="movementDetails.invoice?.id || movementDetails.movement?.invoice_id"
                   variant="flat" 
                   color="success" 
                   size="small" 
                   prepend-icon="tabler-file-text"
-                  @click="handleViewInvoice(movementDetails.invoice.id)"
+                  @click="handleViewInvoice(movementDetails.invoice?.id || movementDetails.movement?.invoice_id)"
                   class="elevation-1"
                 >
-                  Ver Factura
+                  Ver Factura {{ movementDetails.invoice?.invoice_number ? ('#' + movementDetails.invoice.invoice_number) : '' }}
                 </VBtn>
               </div>
 
@@ -376,11 +369,29 @@ const getUserDisplayName = (user) => {
               <div v-else-if="['adjustment', 'loss'].includes(movementDetails.type)" class="d-flex flex-column gap-2">
                 <div class="d-flex align-center justify-space-between border-b pb-2 mb-2">
                   <span class="text-caption font-weight-bold text-disabled">Auditado por:</span>
-                  <span class="text-body-2 font-weight-black text-primary">{{ getUserDisplayName(movementDetails.counted_by) }}</span>
+                  <span class="text-body-2 font-weight-black text-primary">
+                    {{ getUserDisplayName(movementDetails.counted_by || movementDetails.movement?.user) }}
+                  </span>
                 </div>
                 <div class="d-flex align-center justify-space-between">
                   <span class="text-caption font-weight-bold text-disabled">Aprobado por:</span>
-                  <span class="text-body-2 font-weight-black text-success">{{ getUserDisplayName(movementDetails.approved_by) }}</span>
+                  <span class="text-body-2 font-weight-black text-success">
+                    {{ getUserDisplayName(movementDetails.approved_by || movementDetails.movement?.user) }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Caso Caducado -->
+              <div v-else-if="movementDetails.type === 'expired'" class="d-flex flex-column gap-2">
+                <div class="d-flex align-center justify-space-between border-b pb-2 mb-2">
+                  <span class="text-caption font-weight-bold text-disabled">Desincorporado por:</span>
+                  <span class="text-body-2 font-weight-black text-primary">
+                    {{ getUserDisplayName(movementDetails.expired_by || movementDetails.movement?.user) }}
+                  </span>
+                </div>
+                <div class="d-flex align-center justify-space-between">
+                  <span class="text-caption font-weight-bold text-disabled">Motivo:</span>
+                  <span class="text-body-2 font-weight-black text-error">Vencimiento / Caducidad de Producto</span>
                 </div>
               </div>
             </div>
@@ -468,4 +479,3 @@ const getUserDisplayName = (user) => {
   transition: transform 0.3s ease-in-out;
 }
 </style>
-

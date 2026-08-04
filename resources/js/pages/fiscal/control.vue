@@ -1,73 +1,115 @@
 <script setup>
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { onMounted, onUnmounted, ref } from "vue";
+import { onMounted, onUnmounted, reactive, ref } from "vue";
 import { useDisplay } from "vuetify";
 
+// --- Composables & Estados ---
 const { mobile } = useDisplay();
-const loading = ref(false);
+const fetchingHistory = ref(false);
 const commands = ref([]);
 const invoiceNumber = ref("");
 const zReportNumber = ref("");
-const lastZReport = ref(null);
 let poller = null;
 
-const fetchCommands = async () => {
+// Gestor de estados de carga independientes por cada botón/acción
+const actionLoading = reactive({
+  REPORT_X: false,
+  REPORT_Z: false,
+  REPRINT_REPORT_Z: false,
+  ANNUL_INVOICE: false,
+  REPRINT_INVOICE: false,
+});
+
+// --- Funciones Auxiliares de UI ---
+const getCommandColor = (cmd) => {
+  if (!cmd) return 'secondary';
+  if (cmd.includes('REPORT_Z')) return 'error';
+  if (cmd.includes('REPORT_X')) return 'info';
+  if (cmd.includes('ANNUL')) return 'warning';
+  if (cmd.includes('PRINT_INVOICE')) return 'success';
+  return 'secondary';
+};
+
+const getStatusColor = (status) => {
+  if (status === 'success') return 'success';
+  if (status === 'error') return 'error';
+  return 'warning';
+};
+
+const getStatusIcon = (status) => {
+  if (status === 'success') return 'tabler-circle-check';
+  if (status === 'error') return 'tabler-alert-circle';
+  return 'tabler-clock';
+};
+
+// --- Operaciones API ---
+const fetchCommands = async (isBackground = false) => {
+  if (!isBackground) fetchingHistory.value = true;
   try {
-    const response = await axios.get("/fiscal/commands/history");
-    commands.value = response.data.data || response.data;
+    const response = await axios.get("/commands/history");
+    const result = response.data?.data || response.data || [];
+    commands.value = Array.isArray(result) ? result : [];
   } catch (error) {
-    console.error("Error al obtener historial de comandos:", error);
+    console.error("Error al obtener historial de comandos fiscales:", error);
+  } finally {
+    if (!isBackground) fetchingHistory.value = false;
   }
 };
 
-const sendCommand = async (command, payload = {}) => {
-  loading.value = true;
+const sendCommand = async (commandKey, payload = {}) => {
+  actionLoading[commandKey] = true;
   try {
-    const response = await axios.post("/fiscal/commands", {
-      command,
+    const response = await axios.post("/commands", {
+      command: commandKey,
       payload
     });
-    toast.success(response.data.message || "Comando encolado correctamente.");
-    fetchCommands();
+    
+    toast.success(response.data?.message || "Comando encolado correctamente.");
+    await fetchCommands(true);
   } catch (error) {
-    console.error("Error al enviar comando:", error);
-    toast.error(error.response?.data?.error || "Error al conectar con el servidor.");
+    console.error(`Error al enviar el comando ${commandKey}:`, error);
+    toast.error(error.response?.data?.error || error.response?.data?.message || "Error al conectar con la impresora fiscal.");
   } finally {
-    loading.value = false;
+    actionLoading[commandKey] = false;
   }
+};
+
+// --- Manejadores de Eventos de la Interfaz ---
+const handleReportX = () => {
+  sendCommand('REPORT_X');
 };
 
 const handleReportZ = () => {
-    toast.confirm("¿Seguro que desea generar el Reporte Z? Esto cerrará la jornada fiscal.", () => {
-        sendCommand('REPORT_Z');
-    });
-};
-
-const handleReprintZ = () => {
-    if (!zReportNumber.value) return toast.error("Ingrese un número de Reporte Z.");
-    toast.confirm(`¿Desea reimprimir el Reporte Z #${zReportNumber.value}?`, () => {
-        sendCommand('REPRINT_REPORT_Z', { z_number: zReportNumber.value });
-    });
-};
-
-const handleReportX = () => sendCommand('REPORT_X');
-
-const handleAnnul = () => {
-  if (!invoiceNumber.value) return toast.error("Ingrese un número de factura.");
-  toast.confirm(`¿Seguro que desea ANULAR la factura ${invoiceNumber.value}?`, () => {
-    sendCommand('ANNUL_INVOICE', { invoice_number: invoiceNumber.value });
+  toast.confirm("¿Seguro que desea generar el Reporte Z? Esto cerrará la jornada fiscal actual.", () => {
+    sendCommand('REPORT_Z');
   });
 };
 
-const handleReprint = () => {
-  if (!invoiceNumber.value) return toast.error("Ingrese un número de factura.");
-  sendCommand('REPRINT_INVOICE', { invoice_number: invoiceNumber.value });
+const handleReprintZ = () => {
+  const zNum = zReportNumber.value?.trim();
+  if (!zNum) {
+    return toast.error("Por favor, ingrese un número de Reporte Z.");
+  }
+  toast.confirm(`¿Desea reimprimir el Reporte Z #${zNum}?`, () => {
+    sendCommand('REPRINT_REPORT_Z', { z_number: zNum });
+  });
 };
 
+const handleAnnul = () => {
+  const invNum = invoiceNumber.value?.trim();
+  if (!invNum) {
+    return toast.error("Por favor, ingrese un número de factura válido.");
+  }
+  toast.confirm(`¿Seguro que desea emitir una Nota de Crédito para la factura ${invNum}?`, () => {
+    sendCommand('ANNUL_INVOICE', { invoice_number: invNum });
+  });
+};
+
+// --- Ciclo de Vida ---
 onMounted(() => {
   fetchCommands();
-  poller = setInterval(fetchCommands, 5000);
+  poller = setInterval(() => fetchCommands(true), 5000);
 });
 
 onUnmounted(() => {
@@ -77,9 +119,41 @@ onUnmounted(() => {
 
 <template>
   <VRow :class="mobile ? 'pa-2' : 'pa-4'">
+    <!-- Indicador de Estado del Sistema/Puente -->
+    <VCol cols="12">
+      <VCard border variant="flat" class="rounded-lg bg-surface">
+        <VCardText class="d-flex align-center justify-space-between flex-wrap gap-4 py-3">
+          <div class="d-flex align-center gap-3">
+            <VAvatar color="primary" variant="tonal" size="40">
+              <VIcon icon="tabler-printer" size="22" />
+            </VAvatar>
+            <div>
+              <h4 class="text-subtitle-1 font-weight-black mb-0">Consola de Control Fiscal</h4>
+              <span class="text-caption text-medium-emphasis">Gestión directa de comandos y emisión de cierres fiscales</span>
+            </div>
+          </div>
+          
+          <div class="d-flex align-center gap-2">
+            <VChip color="success" size="small" variant="tonal" class="font-weight-bold">
+              <VIcon start icon="tabler-plug-connected" size="14" />
+              Puente Fiscal Activo
+            </VChip>
+            <VBtn
+              icon="tabler-refresh"
+              variant="text"
+              color="secondary"
+              size="small"
+              :loading="fetchingHistory"
+              @click="fetchCommands(false)"
+            />
+          </div>
+        </VCardText>
+      </VCard>
+    </VCol>
+
     <!-- Card de Reportes Diarios -->
     <VCol cols="12" md="6">
-      <VCard border variant="flat" class="rounded-lg h-100">
+      <VCard border variant="flat" class="rounded-lg h-100 d-flex flex-column">
         <VCardItem>
           <template #prepend>
             <div class="pa-2 bg-info-tonal rounded-lg me-1">
@@ -87,17 +161,17 @@ onUnmounted(() => {
             </div>
           </template>
           <VCardTitle class="font-weight-black">Reportes Diarios</VCardTitle>
-          <VCardSubtitle>Acciones de cierre y lectura fiscal</VCardSubtitle>
+          <VCardSubtitle>Acciones de lectura y cierre de jornada fiscal</VCardSubtitle>
         </VCardItem>
 
-        <VCardText class="pt-4">
-          <div class="d-flex flex-wrap gap-4">
+        <VCardText class="pt-4 flex-grow-1">
+          <div class="d-flex flex-wrap gap-4 mb-4">
             <VBtn
               color="info"
               variant="tonal"
               prepend-icon="tabler-file-report"
               class="flex-grow-1"
-              :loading="loading"
+              :loading="actionLoading.REPORT_X"
               @click="handleReportX"
             >
               Reporte X
@@ -106,7 +180,7 @@ onUnmounted(() => {
               color="error"
               prepend-icon="tabler-lock-access"
               class="flex-grow-1"
-              :loading="loading"
+              :loading="actionLoading.REPORT_Z"
               @click="handleReportZ"
             >
               Reporte Z
@@ -115,7 +189,9 @@ onUnmounted(() => {
 
           <VDivider class="my-6" />
 
-          <VLabel class="mb-2 font-weight-bold text-xs uppercase text-disabled letter-spacing-1">Reimpresión de Reporte Z</VLabel>
+          <VLabel class="mb-2 font-weight-bold text-xs uppercase text-disabled letter-spacing-1">
+            Reimpresión de Reporte Z
+          </VLabel>
           <VTextField
             v-model="zReportNumber"
             label="Número de Reporte Z"
@@ -130,14 +206,14 @@ onUnmounted(() => {
             variant="tonal"
             prepend-icon="tabler-printer"
             block
-            :loading="loading"
+            :loading="actionLoading.REPRINT_REPORT_Z"
             @click="handleReprintZ"
           >
             Reimprimir Reporte Z
           </VBtn>
         </VCardText>
         
-        <VCardText class="bg-light-primary rounded-b-lg py-3">
+        <VCardText class="bg-light-primary rounded-b-lg py-3 mt-auto">
           <div class="d-flex align-center gap-2">
             <VIcon icon="tabler-info-circle" size="16" color="primary" />
             <span class="text-caption text-primary font-weight-medium">
@@ -150,7 +226,7 @@ onUnmounted(() => {
 
     <!-- Card de Acciones por Factura -->
     <VCol cols="12" md="6">
-      <VCard border variant="flat" class="rounded-lg h-100">
+      <VCard border variant="flat" class="rounded-lg h-100 d-flex flex-column">
         <VCardItem>
           <template #prepend>
             <div class="pa-2 bg-warning-tonal rounded-lg me-1">
@@ -161,14 +237,17 @@ onUnmounted(() => {
           <VCardSubtitle>Procesar devoluciones o anulaciones fiscales</VCardSubtitle>
         </VCardItem>
 
-        <VCardText class="pt-4">
-          <p class="text-sm text-medium-emphasis mb-4">Ingrese el número de la factura a la cual se le generará la respectiva nota de crédito.</p>
+        <VCardText class="pt-4 flex-grow-1">
+          <p class="text-sm text-medium-emphasis mb-4">
+            Ingrese el número de la factura a la cual se le generará la respectiva nota de crédito.
+          </p>
           
           <VTextField
             v-model="invoiceNumber"
             label="Número de Factura"
             placeholder="Ej: 00000054"
             variant="outlined"
+            density="compact"
             prepend-inner-icon="tabler-scan"
             class="mb-6"
           />
@@ -177,7 +256,7 @@ onUnmounted(() => {
             color="warning"
             block
             prepend-icon="tabler-circle-x"
-            :loading="loading"
+            :loading="actionLoading.ANNUL_INVOICE"
             @click="handleAnnul"
           >
             Generar Nota de Crédito
@@ -204,8 +283,8 @@ onUnmounted(() => {
               <VIcon icon="tabler-history" color="secondary" size="24" />
             </div>
           </template>
-          <VCardTitle class="font-weight-black">Historial de Acciones</VCardTitle>
-          <VCardSubtitle>Últimos comandos procesados por la impresora</VCardSubtitle>
+          <VCardTitle class="font-weight-black">Historial de Comandos</VCardTitle>
+          <VCardSubtitle>Últimas operaciones enviadas a la impresora fiscal</VCardSubtitle>
         </VCardItem>
 
         <VDivider class="opacity-10" />
@@ -216,8 +295,8 @@ onUnmounted(() => {
             <tr>
               <th class="text-xs uppercase font-weight-black">Comando</th>
               <th class="text-xs uppercase font-weight-black">Estado</th>
-              <th class="text-xs uppercase font-weight-black">Respuesta / Error</th>
-              <th class="text-xs uppercase font-weight-black">Fecha</th>
+              <th class="text-xs uppercase font-weight-black">Respuesta / Detalle</th>
+              <th class="text-xs uppercase font-weight-black">Fecha / Hora</th>
             </tr>
           </thead>
           <tbody>
@@ -229,7 +308,7 @@ onUnmounted(() => {
                   variant="tonal"
                   class="font-weight-black text-super-xs"
                 >
-                  {{ cmd.command.replace('_', ' ') }}
+                  {{ (cmd.command || '').replace('_', ' ') }}
                 </VChip>
               </td>
               <td>
@@ -244,20 +323,20 @@ onUnmounted(() => {
                   </span>
                 </div>
               </td>
-              <td class="text-truncate" style="max-width: 300px;">
+              <td class="text-truncate" style="max-width: 320px;">
                 <span class="text-sm text-medium-emphasis">
-                  {{ cmd.response || (cmd.status === 'pending' ? 'Esperando impresora...' : '-') }}
+                  {{ cmd.response || (cmd.status === 'pending' ? 'Esperando respuesta del puente...' : '-') }}
                 </span>
               </td>
               <td>
-                <span class="text-sm text-medium-emphasis">{{ cmd.created_at }}</span>
+                <span class="text-sm text-medium-emphasis">{{ cmd.created_at || 'Reciente' }}</span>
               </td>
             </tr>
-            <tr v-if="commands.length === 0">
+            <tr v-if="commands.length === 0 && !fetchingHistory">
               <td colspan="4" class="text-center py-8">
                 <div class="d-flex flex-column align-center gap-2">
                   <VIcon icon="tabler-database-off" size="40" class="text-disabled" />
-                  <span class="text-medium-emphasis font-weight-medium">No hay acciones recientes registradas.</span>
+                  <span class="text-medium-emphasis font-weight-medium">No hay comandos registrados en la cola.</span>
                 </div>
               </td>
             </tr>
@@ -278,7 +357,7 @@ onUnmounted(() => {
                 variant="tonal"
                 class="font-weight-black text-super-xs"
               >
-                {{ cmd.command.replace('_', ' ') }}
+                {{ (cmd.command || '').replace('_', ' ') }}
               </VChip>
               <div class="d-flex align-center gap-1">
                 <VIcon 
@@ -301,12 +380,12 @@ onUnmounted(() => {
             <div class="d-flex align-center justify-space-between mt-1">
               <div class="d-flex align-center gap-1 text-disabled">
                 <VIcon icon="tabler-calendar" size="14" />
-                <span class="text-super-xs font-weight-medium">{{ cmd.created_at }}</span>
+                <span class="text-super-xs font-weight-medium">{{ cmd.created_at || 'Reciente' }}</span>
               </div>
             </div>
           </div>
 
-          <div v-if="commands.length === 0" class="text-center py-8 d-flex flex-column align-center gap-2 border rounded-lg border-dashed">
+          <div v-if="commands.length === 0 && !fetchingHistory" class="text-center py-8 d-flex flex-column align-center gap-2 border rounded-lg border-dashed">
             <VIcon icon="tabler-database-off" size="32" class="text-disabled" />
             <span class="text-xs text-medium-emphasis font-weight-medium">No hay historial disponible</span>
           </div>
@@ -324,37 +403,14 @@ onUnmounted(() => {
         closable
         class="rounded-lg"
       >
-        <VAlertTitle class="font-weight-black text-info">Estado del Puente Fiscal</VAlertTitle>
+        <VAlertTitle class="font-weight-black text-info">Estado del Servicio Impresora</VAlertTitle>
         <p class="mb-0 text-sm">
-          Asegúrese de que el servicio <strong>fiscal_bridge.py</strong> esté activo en la estación local para procesar los comandos encolados.
+          Asegúrese de que el script <strong>fiscal_bridge.py</strong> esté ejecutándose en la estación local para procesar automáticamente los comandos encolados.
         </p>
       </VAlert>
     </VCol>
   </VRow>
 </template>
-
-<script>
-// Funciones auxiliares para la UI
-const getCommandColor = (cmd) => {
-  if (cmd.includes('REPORT_Z')) return 'error';
-  if (cmd.includes('REPORT_X')) return 'info';
-  if (cmd.includes('ANNUL')) return 'warning';
-  if (cmd.includes('PRINT_INVOICE')) return 'success';
-  return 'secondary';
-};
-
-const getStatusColor = (status) => {
-  if (status === 'success') return 'success';
-  if (status === 'error') return 'error';
-  return 'warning';
-};
-
-const getStatusIcon = (status) => {
-  if (status === 'success') return 'tabler-circle-check';
-  if (status === 'error') return 'tabler-alert-circle';
-  return 'tabler-clock';
-};
-</script>
 
 <style scoped>
 .premium-table :deep(th) {
@@ -387,5 +443,10 @@ const getStatusIcon = (status) => {
 
 .bg-light-warning {
   background-color: rgba(var(--v-theme-warning), 0.05) !important;
+}
+
+.text-super-xs {
+  font-size: 0.65rem !important;
+  letter-spacing: 0.05em !important;
 }
 </style>

@@ -112,8 +112,6 @@ class GenerateCleaningActivityExecutions extends Command
             // Marcar como vencidas las actividades pendientes del pasado
             $this->markOverdueExecutions();
 
-            Log::info('Comando cleaning:generate-executions ejecutado exitosamente', $stats);
-
             return Command::SUCCESS;
 
         } catch (\Exception $e) {

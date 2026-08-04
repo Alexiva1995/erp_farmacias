@@ -27,7 +27,6 @@ return new class extends Migration {
         ");
 
         if (empty($tables)) {
-            Log::info("No se encontraron tablas que requieran fix de auto-incremento.");
             return;
         }
 
@@ -37,7 +36,6 @@ return new class extends Migration {
             try {
                 // Aplicar el fix de auto-incremento asegurando que sea BIGINT UNSIGNED como es estándar en Laravel
                 DB::statement("ALTER TABLE `{$tableName}` MODIFY `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT");
-                Log::info("Auto-incremento restaurado exitosamente en: {$tableName}");
             } catch (\Exception $e) {
                 Log::error("Error al aplicar AUTO_INCREMENT en {$tableName}: " . $e->getMessage());
             }

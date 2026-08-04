@@ -38,7 +38,6 @@ class ReturnsController extends Controller
     {
         try {
             $identification = $request->input('identification');
-            \Log::info('Controlador searchOrders recibiendo:', ['identification' => $identification, 'type' => gettype($identification)]);
             if (empty($identification) || !is_string($identification)) {
                 return response()->json(['data' => [], 'total' => 0]);
             }

@@ -20,10 +20,6 @@ class ScheduleAutomaticSocialBenefitsCommand extends Command
         if (Carbon::now()->format('m-d') === '12-16') {
             $this->info("💰 Programando generación de utilidades (16 de diciembre)");
             GenerateAutomaticSocialBenefitsJob::dispatch('utilities');
-            Log::info('Automatic Social Benefits Scheduler', [
-                'message' => 'Utilidades programadas para generación automática',
-                'date' => Carbon::now()->format('Y-m-d')
-            ]);
         } else {
             $this->info("⏰ No es 16 de diciembre, saltando generación de utilidades");
         }
@@ -32,10 +28,6 @@ class ScheduleAutomaticSocialBenefitsCommand extends Command
         $this->info("🏖️ Verificando empleados para generación de vacaciones");
         GenerateAutomaticSocialBenefitsJob::dispatch('vacations');
 
-        Log::info('Automatic Social Benefits Scheduler', [
-            'message' => 'Vacaciones programadas para verificación automática',
-            'date' => Carbon::now()->format('Y-m-d')
-        ]);
 
         $this->info("✅ Programación completada");
     }

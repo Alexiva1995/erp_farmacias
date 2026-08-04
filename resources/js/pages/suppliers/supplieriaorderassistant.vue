@@ -6,7 +6,7 @@ import ProductComparisionProductsTable from "@/components/ProductComparisionProd
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import Swal from "sweetalert2";
-import { onMounted, reactive, ref, watch } from "vue";
+import { computed, onMounted, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { roundIaAnalysis } from "@/utils/iaAnalysisRounding";
 
@@ -36,16 +36,38 @@ const hasStock = ref("all");
 const con_descuento = ref(false);
 const isColombian = ref(false);
 const isNovaventa = ref(false);
+const tipoExclusion = ref([]);
 const ordenarAhorro = ref(false);
 const searchQuery = ref("");
 const withSuppliers = ref(false);
+const soloConCoincidencias = ref(false);
 const showIgnored = ref(false);
 const showGraphs = ref(false);
 const selectedSupplier = ref(null);
 const suppliers = ref([]);
 
+const isOrderingAhorro = ref(false);
+const isExporting = ref(false);
+
+// Computed reactivo: filtra en tiempo real sin necesidad de recargar la tabla
+const displayedItems = computed(() => {
+  if (soloConCoincidencias.value) {
+    return statuModule.items.filter(p => p.best_supplier != null);
+  }
+  return statuModule.items;
+});
+
+// Total que se muestra en la paginación: cuando hay filtro cliente, usa la longitud filtrada
+const displayedTotal = computed(() => {
+  if (soloConCoincidencias.value) {
+    return displayedItems.value.length;
+  }
+  return statuModule.total;
+});
+
 const handleClearFilters = () => {
   withSuppliers.value = false;
+  soloConCoincidencias.value = false;
   con_descuento.value = false;
   tipo_de_vista.value = false;
   tipo_de_filtracion.value = "combinado";
@@ -54,6 +76,7 @@ const handleClearFilters = () => {
   hasStock.value = "all";
   isColombian.value = false;
   isNovaventa.value = false;
+  tipoExclusion.value = [];
   ordenarAhorro.value = false;
   selectedLaboratory.value = [];
   selectedGroup.value = [];
@@ -97,19 +120,23 @@ async function consultarProductosConPaginacion() {
     lapso_de_tiempo: lapso_de_tiempo.value,
     stock: stock.value,
     hasStock: hasStock.value,
-    isColombian: isColombian.value,
-    isNovaventa: isNovaventa.value,
+    tipo_exclusion: tipoExclusion.value,
     q: searchQuery.value,
     page: page.value,
     itemsPerPage: itemsPerPage.value,
     sortBy: sortBy.value,
     orderBy: orderBy.value,
     with_suppliers: withSuppliers.value,
-    con_descuento: con_descuento.value, // Asegurar que el flag de descuento se pase siempre
+    skip_ai_match: skipAiMatch.value,
+    con_descuento: con_descuento.value,
     show_ignored: showIgnored.value,
     with_trend: showGraphs.value,
     supplier_id: selectedSupplier.value,
   };
+
+  // Solo enviar isColombian/isNovaventa si están activos (switch encendido) para no confundir al backend
+  if (isColombian.value === true) data.isColombian = true;
+  if (isNovaventa.value === true) data.isNovaventa = true;
   const resp = await axios.post(
     `/suppliers-ia-order-assistant/filtrar-paginate?page=${page.value}`,
     data,
@@ -136,6 +163,7 @@ async function actualizarTabla() {
       statuModule.total = 0;
     } else {
       // Vista individual: paginator estándar de Laravel
+      // Guardar items crudos, displayedItems los filtra reactivamente
       statuModule.items = paginacion.data ?? [];
       statuModule.total = paginacion.total ?? 0;
       // Limpiar vista grupal
@@ -149,8 +177,18 @@ async function actualizarTabla() {
   }
 }
 
+const skipAiMatch = ref(true);
+
 async function handleFetchSuppliers() {
   withSuppliers.value = true;
+  skipAiMatch.value = true; // Solo comparar el costo mas bajo de proveedor (sin IA)
+  await actualizarTabla();
+}
+
+async function handleFetchAiMatches() {
+  withSuppliers.value = true;
+  skipAiMatch.value = false; // Disparar búsqueda de coincidencia por IA
+  toast.info("Iniciando búsqueda de coincidencias con IA...");
   await actualizarTabla();
 }
 
@@ -261,6 +299,7 @@ watch(
     hasStock,
     isColombian,
     isNovaventa,
+    tipoExclusion,
     searchQuery,
     con_descuento,
     showIgnored,
@@ -274,6 +313,7 @@ watch(
       await actualizarTabla();
     }, 400); // 400ms de retraso para evitar peticiones masivas
   },
+  { deep: true }
 );
 
 watch(ordenarAhorro, (nuevoValor) => {
@@ -305,6 +345,8 @@ watch([page, itemsPerPage, orderBy, sortBy], () => {
 });
 
 async function pedirTodoAhorro() {
+  if (isOrderingAhorro.value) return;
+  isOrderingAhorro.value = true;
   toast.info("Analizando oportunidades de ahorro...");
   try {
     const data = {
@@ -317,6 +359,7 @@ async function pedirTodoAhorro() {
       hasStock: hasStock.value,
       isColombian: isColombian.value,
       isNovaventa: isNovaventa.value,
+      tipo_exclusion: tipoExclusion.value,
       q: searchQuery.value,
       page: 1,
       itemsPerPage: 999999, // Límite alto para obtener todo
@@ -387,10 +430,14 @@ async function pedirTodoAhorro() {
   } catch (error) {
     console.error("Error en pedirTodoAhorro:", error);
     toast.error("Ocurrió un error al procesar el pedido masivo.");
+  } finally {
+    isOrderingAhorro.value = false;
   }
 }
 
 async function handleExportarColombianos() {
+  if (isExporting.value) return;
+  isExporting.value = true;
   // Construir los params con los filtros actuales
   const params = new URLSearchParams({
     tipo_filtracion: tipo_de_filtracion.value,
@@ -422,6 +469,8 @@ async function handleExportarColombianos() {
     toast.success('Excel descargado correctamente.');
   } catch (e) {
     toast.error('Error al exportar el archivo Excel.');
+  } finally {
+    isExporting.value = false;
   }
 }
 
@@ -579,15 +628,20 @@ onMounted(async () => {
         v-model:showGraphs="showGraphs"
         v-model:isColombian="isColombian"
         v-model:isNovaventa="isNovaventa"
+        v-model:tipoExclusion="tipoExclusion"
         v-model:ordenarAhorro="ordenarAhorro"
         v-model:selectedSupplier="selectedSupplier"
+        v-model:soloConCoincidencias="soloConCoincidencias"
         :groups="groups"
         :laboratories="laboratories"
         :suppliers="suppliers"
+        :is-ordering-ahorro="isOrderingAhorro"
+        :is-exporting="isExporting"
         @clear="handleClearFilters"
         @clear-ignore="handleClearIgnore"
         @pedirAhorro="pedirTodoAhorro"
         @fetchSuppliers="handleFetchSuppliers"
+        @fetchAiMatches="handleFetchAiMatches"
         @exportarColombianos="handleExportarColombianos"
       />
 
@@ -614,8 +668,8 @@ onMounted(async () => {
         <!-- Vista Individual: tabla estándar paginada -->
         <SupplierIaOrderAssistantIndividualTable
           v-else
-          :products="statuModule.items"
-          :total-product="statuModule.total"
+          :products="displayedItems"
+          :total-product="displayedTotal"
           :loading="loading"
           :items-per-page="itemsPerPage"
           :page="page"
@@ -646,7 +700,7 @@ onMounted(async () => {
               <div class="d-flex flex-column overflow-hidden">
                 <span class="text-h6 font-weight-black text-white leading-tight mb-0">Comparador de Proveedores</span>
                 <span class="text-caption text-white text-opacity-80 d-flex align-center">
-                  Buscando para: <span class="bg-white text-primary px-3 py-1 rounded-pill ml-2 text-truncate font-weight-black" style="box-shadow: 0 2px 4px rgba(0, 0, 0, 10%); font-size: 0.75rem; max-inline-size: 600px;">{{ comparatorProduct?.name }}</span>
+                  Buscando para: <VChip color="surface" size="x-small" class="ml-2 font-weight-black text-truncate text-primary" max-width="600">{{ comparatorProduct?.name }}</VChip>
                 </span>
               </div>
             </div>

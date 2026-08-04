@@ -3,23 +3,38 @@
 namespace App\Helpers;
 
 use Illuminate\Encryption\Encrypter;
+use Illuminate\Contracts\Encryption\DecryptException;
 
 class FtpCrypt
 {
-    protected static function getEncrypter(): Encrypter
+    protected static function getEncrypter(?string $rawKey = null): Encrypter
     {
-        $rawKey = env('FTP_SECRET_KEY');
-        $key = substr(hash('sha256', $rawKey), 0, 32); // AES-256 requiere 32 bytes
+        $rawKey = $rawKey ?? env('FTP_SECRET_KEY', '');
+        $key = substr(hash('sha256', (string) $rawKey), 0, 32);
         return new Encrypter($key, 'AES-256-CBC');
     }
 
-    public static function encrypt(string $plain): string
+    public static function encrypt(?string $plain): string
     {
+        if (empty($plain)) return '';
         return self::getEncrypter()->encryptString($plain);
     }
 
-    public static function decrypt(string $encrypted): string
+    public static function decrypt(?string $encrypted): string
     {
-        return self::getEncrypter()->decryptString($encrypted);
+        if (empty($encrypted)) return '';
+
+        try {
+            // 1. Intentar con la clave previa original
+            return self::getEncrypter(env('FTP_SECRET_KEY', ''))->decryptString($encrypted);
+        } catch (\Throwable $e) {
+            try {
+                // 2. Intentar con APP_KEY
+                return self::getEncrypter(config('app.key'))->decryptString($encrypted);
+            } catch (\Throwable $ex) {
+                \Illuminate\Support\Facades\Log::error('[FtpCrypt] Fallo al descifrar la credencial/token de integración. Verifique las llaves de cifrado.');
+                throw new \RuntimeException('No se pudo descifrar la credencial de integración.', 0, $ex);
+            }
+        }
     }
 }

@@ -86,6 +86,7 @@ class UpdateGeneralSettingRequest extends FormRequest
             'expense_supplier_form_fields' => 'nullable|array',
             'enabled_finance_views' => 'nullable|array',
             'profitability_calculation_type' => 'nullable|string|in:simple,compound',
+            'round_usd_up' => 'nullable|boolean',
             'expense_mode' => 'nullable|string|in:simple,real',
             'expense_auto_approve' => 'nullable|boolean',
             'enabled_ia_assistant_views' => 'nullable|array',

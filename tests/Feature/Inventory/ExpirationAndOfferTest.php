@@ -499,7 +499,7 @@ class ExpirationAndOfferTest extends TestCase
         $lot = ProductLot::create([
             'product_id' => $this->product->id,
             'lot_number' => 'LOT-EXP-2M',
-            'expiration_date' => now()->addMonths(2)->startOfMonth(),
+            'expiration_date' => now()->addMonth()->startOfMonth(),
             'quantity' => 10,
             'unit_cost' => 1.00,
         ]);

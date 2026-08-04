@@ -18,6 +18,10 @@ class InvoicePayment extends Model
         'method'
     ];
 
+    protected $casts = [
+        'payment_date' => 'date',
+    ];
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'payment_by');

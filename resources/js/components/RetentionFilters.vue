@@ -4,14 +4,14 @@ import AppFilterBase from "@/components/AppFilterBase.vue";
 import { computed } from "vue";
 
 const props = defineProps({
-  search:        String,
-  supplierId:    [Number, String, null],
-  startDate:     String,
-  endDate:       String,
-  suppliers:     { type: Array,   default: () => [] },
-  loading:       { type: Boolean, default: false },
-  selectedCount: { type: Number,  default: 0 },
-  currentTab:    { type: String,  default: "pending" },
+  search: String,
+  supplierId: [Number, String, null],
+  startDate: String,
+  endDate: String,
+  suppliers: { type: Array, default: () => [] },
+  loading: { type: Boolean, default: false },
+  selectedCount: { type: Number, default: 0 },
+  currentTab: { type: String, default: "pending" },
 });
 
 const emit = defineEmits([
@@ -22,7 +22,27 @@ const emit = defineEmits([
   "clear",
   "bulk-generate",
   "batch-generate-all",
+  "sort",
 ]);
+
+// Opciones de ordenamiento según el tab activo
+const sortOptionsPending = [
+  { title: "Fecha Reciente", icon: "tabler-calendar-up", key: "created_invoice_date", order: "desc" },
+  { title: "Fecha Antigua", icon: "tabler-calendar-down", key: "created_invoice_date", order: "asc" },
+  { title: "Monto Mayor", icon: "tabler-arrow-up", key: "total_amount", order: "desc" },
+  { title: "Monto Menor", icon: "tabler-arrow-down", key: "total_amount", order: "asc" },
+];
+
+const sortOptionsGenerated = [
+  { title: "Fecha Emisión Reciente", icon: "tabler-calendar-up", key: "date", order: "desc" },
+  { title: "Fecha Emisión Antigua", icon: "tabler-calendar-down", key: "date", order: "asc" },
+  { title: "Monto Retenido Mayor", icon: "tabler-arrow-up", key: "total_withheld_amount", order: "desc" },
+  { title: "Monto Retenido Menor", icon: "tabler-arrow-down", key: "total_withheld_amount", order: "asc" },
+];
+
+const currentSortOptions = computed(() => {
+  return props.currentTab === 'generated' ? sortOptionsGenerated : sortOptionsPending;
+});
 
 const hasAdvancedFilters = computed(() =>
   !!(props.supplierId || props.startDate || props.endDate)
@@ -33,10 +53,13 @@ const hasAdvancedFilters = computed(() =>
   <AppFilterBase
     :search="props.search"
     :has-advanced-filters="hasAdvancedFilters"
+    :show-sort="true"
+    :sort-options="currentSortOptions"
     search-placeholder="Factura o Proveedor..."
     class="py-1"
     @update:search="emit('update:search', $event)"
     @clear="emit('clear')"
+    @sort="emit('sort', $event)"
   >
     <template #actions-extra>
       <!-- Acción Masiva (Generación Batch) -->

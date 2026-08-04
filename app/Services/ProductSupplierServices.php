@@ -23,6 +23,13 @@ class ProductSupplierServices implements ProductSupplier
     }
 
 
+    public function getSupplierToReplenishTheProducts(Collection $products, string $conDescuento, bool $skipAiMatch = false): array
+    {
+        return $this->productSupplierRepository->getSupplierToReplenishTheProducts($products, $conDescuento, $skipAiMatch);
+    }
+
+
+
     public function consultSupplierByProductWithBetterPrice(Product $product, string $conDescuento): Collection
     {
         return $this->productSupplierRepository->consultSupplierByProductWithBetterPrice($product->id, $conDescuento);
@@ -60,12 +67,6 @@ class ProductSupplierServices implements ProductSupplier
     public function checkPurchaseOpportunity(float $percentageIncrease, float $maximumPercentageMaximo): bool
     {
         return $percentageIncrease < $maximumPercentageMaximo ? true : false;
-    }
-
-    public function getSupplierToReplenishTheProducts(Collection $products, string $conDescuento): array
-    {
-        // Delegamos al repositorio que ya tiene la lógica masiva optimizada y sin restricciones de 'solicitar'
-        return $this->productSupplierRepository->getSupplierToReplenishTheProducts($products, $conDescuento);
     }
 
     public function getSupplierToReplenishTheProductsWithoutValidateSolicitar(Collection $products, string $conDescuento): array

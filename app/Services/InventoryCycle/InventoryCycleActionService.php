@@ -617,35 +617,44 @@ class InventoryCycleActionService
         return ['success' => true, 'message' => "Conteo de factura para '{$invoiceCount->product->name}' rechazado.", 'data' => $invoiceCount];
     }
 
-    public function closeActiveCycle(): array
+    public function closeActiveCycle(bool $rejectPending = false): array
     {
-        return DB::transaction(function () {
+        return DB::transaction(function () use ($rejectPending) {
             $activeCycle = $this->getActiveCycle();
 
             if (!$activeCycle) {
                 return ['success' => false, 'message' => 'No se encontró ningún ciclo de inventario activo para cerrar.'];
             }
 
-            $hasPendingProductCounts = ProductCount::where('cycle_id', $activeCycle->id)
-                ->where('status', 'pending')
-                ->exists();
+            if ($rejectPending) {
+                ProductCount::where('cycle_id', $activeCycle->id)
+                    ->where('status', 'pending')
+                    ->update(['status' => 'rejected']);
 
-            $hasPendingInvoiceCounts = InvoiceCount::where('cycle_id', $activeCycle->id)
-                ->where('status', 'pending')
-                ->exists();
+                InvoiceCount::where('cycle_id', $activeCycle->id)
+                    ->where('status', 'pending')
+                    ->update(['status' => 'rejected']);
+            } else {
+                $hasPendingProductCounts = ProductCount::where('cycle_id', $activeCycle->id)
+                    ->where('status', 'pending')
+                    ->exists();
 
-            if ($hasPendingProductCounts || $hasPendingInvoiceCounts) {
-                return [
-                    'success' => false,
-                    'message' => 'No se puede cerrar el ciclo. Aún existen conteos pendientes de aprobación o rechazo.'
-                ];
+                $hasPendingInvoiceCounts = InvoiceCount::where('cycle_id', $activeCycle->id)
+                    ->where('status', 'pending')
+                    ->exists();
+
+                if ($hasPendingProductCounts || $hasPendingInvoiceCounts) {
+                    return [
+                        'success' => false,
+                        'message' => 'No se puede cerrar el ciclo. Aún existen conteos pendientes de aprobación o rechazo.'
+                    ];
+                }
             }
 
             $activeCycle->status = 'closed';
             $activeCycle->end_date = now();
             $activeCycle->save();
 
-            Log::info("Ciclo de inventario cerrado exitosamente.", ['cycle_id' => $activeCycle->id, 'closed_by' => Auth::id()]);
 
             return ['success' => true, 'message' => 'El ciclo de inventario ha sido cerrado exitosamente.'];
         });
@@ -664,7 +673,6 @@ class InventoryCycleActionService
             'created_by_id' => Auth::id(),
         ]);
 
-        Log::info("Nuevo ciclo de inventario creado.", ['cycle_id' => $newCycle->id, 'created_by' => Auth::id()]);
 
         return ['success' => true, 'message' => 'Nuevo ciclo de inventario creado y activado.'];
     }

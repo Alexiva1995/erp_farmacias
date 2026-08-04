@@ -93,6 +93,7 @@ declare module 'vue-router/auto-routes' {
     'inventory-traceability': RouteRecordInfo<'inventory-traceability', '/inventory/traceability', Record<never, never>, Record<never, never>>,
     'invoice-invoice-details': RouteRecordInfo<'invoice-invoice-details', '/invoice/invoiceDetails', Record<never, never>, Record<never, never>>,
     'invoice-invoice-form-edit': RouteRecordInfo<'invoice-invoice-form-edit', '/invoice/InvoiceFormEdit', Record<never, never>, Record<never, never>>,
+    'invoice-invoice-loaded': RouteRecordInfo<'invoice-invoice-loaded', '/invoice/invoiceLoaded', Record<never, never>, Record<never, never>>,
     'invoice-invoice-ordered': RouteRecordInfo<'invoice-invoice-ordered', '/invoice/invoiceOrdered', Record<never, never>, Record<never, never>>,
     'invoice-invoices': RouteRecordInfo<'invoice-invoices', '/invoice/invoices', Record<never, never>, Record<never, never>>,
     'invoice-register': RouteRecordInfo<'invoice-register', '/invoice/register', Record<never, never>, Record<never, never>>,

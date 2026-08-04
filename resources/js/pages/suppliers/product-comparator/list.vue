@@ -346,13 +346,16 @@ const fetchSupplierConnections = async () => {
   }
 };
 
+const pollingStartTime = ref(null);
+
 const fetchStatuses = async () => {
   try {
     const { data } = await axios.get("/suppliers/supplier-connection-statuses");
     const newStatuses = data.statuses;
 
     const currentStatus = newStatuses.find(
-      (s) => s.supplier_id === pollingSupplierId.value,
+      (s) => s.supplier_id === pollingSupplierId.value &&
+        (!pollingStartTime.value || new Date(s.created_at).getTime() >= pollingStartTime.value - 10000)
     );
     if (
       currentStatus &&
@@ -360,6 +363,7 @@ const fetchStatuses = async () => {
     ) {
       stopPolling();
       pollingSupplierId.value = null;
+      pollingStartTime.value = null;
 
       await fetchSupplierConnections();
       await fetchProducts();
@@ -374,6 +378,7 @@ const fetchStatuses = async () => {
     console.error("Error al consultar estados de conexión:", error);
     stopPolling();
     pollingSupplierId.value = null;
+    pollingStartTime.value = null;
   }
 };
 
@@ -543,6 +548,7 @@ const supplierConnectionStore = useSupplierConnectionStore();
 const handleCheckSupplierApi = async (supplier) => {
   checkingApiSupplierId.value = supplier.id;
   pollingSupplierId.value = supplier.id;
+  pollingStartTime.value = Date.now();
 
   try {
     toast.info(
@@ -550,16 +556,22 @@ const handleCheckSupplierApi = async (supplier) => {
     );
     await axios.get(`/suppliers/${supplier.id}/connection`);
     
-    // Al ser dispatchSync, llega aquí cuando ya terminó
-    await handleRefreshAll();
-    
     supplierConnectionStore.startConnection();
     startPolling();
   } catch (error) {
-    toast.error(`No se pudo iniciar la conexión con ${supplier.name}`);
+    const errorDetail = error?.response?.data?.message || error?.message || "";
+    toast.error(`No se pudo iniciar la conexión con ${supplier.name}${errorDetail ? `: ${errorDetail}` : ""}`);
     pollingSupplierId.value = null;
+    pollingStartTime.value = null;
+    return;
   } finally {
     checkingApiSupplierId.value = null;
+  }
+
+  try {
+    await handleRefreshAll();
+  } catch (error) {
+    console.error("Error al refrescar tablas tras iniciar conexión:", error);
   }
 };
 

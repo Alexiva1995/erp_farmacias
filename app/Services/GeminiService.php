@@ -269,5 +269,35 @@ class GeminiService
 
         return null;
     }
+
+    /**
+     * Generar respuesta de texto libre usando Gemini 2.5 Flash.
+     */
+    public function generateText(string $prompt): ?string
+    {
+        $key = $this->apiKey ?: env('GEMINI_API_KEY');
+        if (empty($key)) {
+            return null;
+        }
+
+        try {
+            $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={$key}";
+
+            $response = Http::timeout(25)->post($url, [
+                'contents' => [
+                    ['parts' => [['text' => $prompt]]]
+                ]
+            ]);
+
+            if ($response->successful()) {
+                $result = $response->json();
+                return $result['candidates'][0]['content']['parts'][0]['text'] ?? null;
+            }
+        } catch (\Exception $e) {
+            // Silenciar excepción
+        }
+
+        return null;
+    }
 }
 

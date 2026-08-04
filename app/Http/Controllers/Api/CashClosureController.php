@@ -238,8 +238,6 @@ class CashClosureController extends Controller
             \Illuminate\Support\Facades\DB::table('orders')
                 ->where('id', $order->id)
                 ->update(['payment_methods' => json_encode($paymentMethods)]);
-            
-            \Illuminate\Support\Facades\Log::info("Referencia confirmada y ESCRITA EN DISCO: {$searchRef} en Orden #{$order->id}");
 
             return response()->json([
                 'status' => 'success',

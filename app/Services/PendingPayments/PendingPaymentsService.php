@@ -19,11 +19,6 @@ class PendingPaymentsService
     public function getPendingInvoices(array $filters = []): Collection
     {
         // ­ƒöì LOG DEBUG: Inicio del servicio
-        \Log::info('­ƒöì [DEBUG] PendingPaymentsService::getPendingInvoices - INICIO', [
-            'filters_recibidos' => $filters,
-            'filters_count' => count($filters),
-            'timestamp' => now()->toDateTimeString()
-        ]);
 
         $query = Invoice::with(['supplier'])
             ->whereIn('status', ['pending', 'loaded', 'to_order'])
@@ -33,25 +28,18 @@ class PendingPaymentsService
             });
 
         // ­ƒöì LOG DEBUG: Query base creada
-        \Log::info('­ƒöì [DEBUG] Query base creada', [
-            'query_sql' => $query->toSql(),
-            'query_bindings' => $query->getBindings()
-        ]);
 
         // Aplicar filtros
         if (isset($filters['supplier_id'])) {
             $query->where('supplier_id', $filters['supplier_id']);
-            \Log::info('­ƒöì [DEBUG] Filtro supplier_id aplicado', ['supplier_id' => $filters['supplier_id']]);
         }
 
         if (isset($filters['start_date'])) {
             $query->whereDate('payment_date', '>=', $filters['start_date']);
-            \Log::info('­ƒöì [DEBUG] Filtro start_date aplicado', ['start_date' => $filters['start_date']]);
         }
 
         if (isset($filters['end_date'])) {
             $query->whereDate('payment_date', '<=', $filters['end_date']);
-            \Log::info('­ƒöì [DEBUG] Filtro end_date aplicado', ['end_date' => $filters['end_date']]);
         }
 
         if (isset($filters['show_overdue_only']) && $filters['show_overdue_only']) {
@@ -60,10 +48,6 @@ class PendingPaymentsService
                 $q->whereDate('payment_date', '<=', $dueDate)
                     ->orWhereDate('exp_date', '<', Carbon::now());
             });
-            \Log::info('­ƒöì [DEBUG] Filtro show_overdue_only aplicado', [
-                'show_overdue_only' => $filters['show_overdue_only'],
-                'due_date' => Carbon::now()->toDateString()
-            ]);
         }
 
         // Ordenamiento fijo
@@ -75,27 +59,10 @@ class PendingPaymentsService
             ->orderBy('payment_date', 'asc');
 
         // ­ƒöì LOG DEBUG: Query final antes de ejecutar
-        \Log::info('­ƒöì [DEBUG] Query final antes de ejecutar', [
-            'query_sql_final' => $query->toSql(),
-            'query_bindings_final' => $query->getBindings()
-        ]);
 
         $result = $query->get();
 
         // ­ƒöì LOG DEBUG: Resultado obtenido
-        \Log::info('­ƒöì [DEBUG] Resultado obtenido del servicio', [
-            'total_facturas' => $result->count(),
-            'facturas_ids' => $result->pluck('id')->toArray(),
-            'facturas_detalle' => $result->map(function ($invoice) {
-                return [
-                    'id' => $invoice->id,
-                    'invoice_number' => $invoice->invoice_number,
-                    'status' => $invoice->status,
-                    'status_payment' => $invoice->status_payment,
-                    'supplier_name' => $invoice->supplier->name ?? 'N/A'
-                ];
-            })
-        ]);
 
         return $result;
     }

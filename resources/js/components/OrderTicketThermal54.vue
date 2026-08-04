@@ -1,10 +1,14 @@
 <script setup>
 import { BASE64_LOGO_DATA } from "@/constants/logo.js";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 import { capitalizeFirstAndLastName } from "@/@core/utils/formatters";
 import { formatCurrency } from "@/utils/currencyFormatter";
 import { formatDateTime } from "@/utils/formatDateTime";
 import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
 import { computed } from "vue";
+
+const brandingStore = useBrandingStore();
+const logoSrc = computed(() => brandingStore.settings?.app_logo || BASE64_LOGO_DATA);
 
 const props = defineProps({
   orderData: { type: Object, default: () => ({}) },
@@ -94,14 +98,10 @@ const clientDisplayLine = computed(() => {
 
 <template>
   <div class="thermal-54-ticket">
-    <!-- Encabezado: logo e info fiscal -->
+    <!-- Encabezado: logo e info -->
     <header class="thermal-header">
-      <img class="thermal-logo" :src="BASE64_LOGO_DATA" alt="Logo" />
-      <div class="thermal-rif">J-50540695-7</div>
-      <div class="thermal-company">FARMACIA BARRIO SUCRE 2024, C.A.</div>
-      <div class="thermal-address">CALLE PRINCIPAL LOCAL 05 (L5)</div>
-      <div class="thermal-address">SECTOR BARRIO SUCRE LA FRIA TACHIRA</div>
-      <div class="thermal-address">ZONA POSTAL 5020</div>
+      <img class="thermal-logo" :src="logoSrc" alt="Logo" style="max-height: 50px; object-fit: contain;" />
+      <div class="thermal-company font-weight-black text-uppercase">{{ brandingStore.settings?.app_name || 'TOVA' }}</div>
     </header>
 
     <!-- Datos de venta: orden y fecha -->

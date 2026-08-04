@@ -16,7 +16,7 @@ class BulkActionsProductRequest extends FormRequest
         return [
             'ids' => 'required|array',
             'ids.*' => 'integer|exists:products,id',
-            'action' => 'required|string|in:delete,change-category,change-laboratory',
+            'action' => 'required|string|in:delete,change-category,change-laboratory,toggle-active',
             'value' => 'nullable|integer'
         ];
     }

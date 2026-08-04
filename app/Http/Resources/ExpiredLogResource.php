@@ -20,7 +20,7 @@ class ExpiredLogResource extends JsonResource
             'product_id' => $this->product_id,
             'product_name' => $this->product_name,
             'lot_number' => $this->lot_number,
-            'expired_quantity' => $this->expired_quantity,
+            'expired_quantity' => (int) $this->expired_quantity,
             'cost_per_unit' => $this->cost_per_unit,
             'total_lost_value' => $this->total_lost_value,
             'created_at' => $this->created_at,

@@ -67,7 +67,6 @@ class ClassifyClients extends Command
         }
 
         $this->info("Clasificación completada. {$updated} clientes actualizados de {$clients->count()} totales.");
-        Log::info("ClassifyClients: {$updated} clientes actualizados de {$clients->count()} totales.");
 
         return Command::SUCCESS;
     }

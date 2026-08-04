@@ -10,6 +10,8 @@ import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { onMounted, reactive, ref } from "vue";
 
+const activeTab = ref("products");
+
 const filters = reactive({
   searchQuery: "",
   selectedLaboratory: null,
@@ -159,38 +161,76 @@ const handleExport = async (format) => {
         @sort="handleSort"
       />
 
-      <ProductCyclicTable
-        :products="productCounts"
-        :loading="productLoading"
-        :total-product="totalProductCount"
-        :items-per-page="productOptions.itemsPerPage"
-        :page="productOptions.page"
-        @update:options="updateProductOptions"
-        @verify-product="handleVerifyProduct"
-      />
+      <v-card variant="outlined" class="rounded-lg bg-surface">
+        <v-tabs v-model="activeTab" color="primary" align-tabs="start">
+          <v-tab value="products" class="text-none font-weight-medium">
+            <v-icon start icon="mdi-package-variant-closed" />
+            Conteo por Productos
+            <v-chip size="x-small" class="ml-2" color="primary" variant="tonal">
+              {{ totalProductCount }}
+            </v-chip>
+          </v-tab>
 
-      <InvoiceCyclicTable
-        :products="invoiceCounts"
-        :loading="invoiceLoading"
-        :total-product="totalInvoiceCount"
-        :items-per-page="invoiceOptions.itemsPerPage"
-        :page="invoiceOptions.page"
-        @update:options="updateInvoiceOptions"
-        @verify-product="handleVerifyInvoice"
-      />
+          <v-tab value="invoices" class="text-none font-weight-medium">
+            <v-icon start icon="mdi-file-document-outline" />
+            Conteo por Facturas
+            <v-chip size="x-small" class="ml-2" color="info" variant="tonal">
+              {{ totalInvoiceCount }}
+            </v-chip>
+          </v-tab>
 
-      <SaleCyclicTable
-        :products="saleCounts"
-        :loading="saleLoading"
-        :total-product="totalSaleCount"
-        :items-per-page="saleOptions.itemsPerPage"
-        :page="saleOptions.page"
-        @update:options="updateSaleOptions"
-        @verify-product="handleVerifySale"
-      />
+          <v-tab value="sales" class="text-none font-weight-medium">
+            <v-icon start icon="mdi-cart-outline" />
+            Conteo por Ventas
+            <v-chip size="x-small" class="ml-2" color="success" variant="tonal">
+              {{ totalSaleCount }}
+            </v-chip>
+          </v-tab>
+        </v-tabs>
+
+        <v-divider />
+
+        <v-window v-model="activeTab">
+          <v-window-item value="products">
+            <ProductCyclicTable
+              :products="productCounts"
+              :loading="productLoading"
+              :total-product="totalProductCount"
+              :items-per-page="productOptions.itemsPerPage"
+              :page="productOptions.page"
+              @update:options="updateProductOptions"
+              @verify-product="handleVerifyProduct"
+            />
+          </v-window-item>
+
+          <v-window-item value="invoices">
+            <InvoiceCyclicTable
+              :products="invoiceCounts"
+              :loading="invoiceLoading"
+              :total-product="totalInvoiceCount"
+              :items-per-page="invoiceOptions.itemsPerPage"
+              :page="invoiceOptions.page"
+              @update:options="updateInvoiceOptions"
+              @verify-product="handleVerifyInvoice"
+            />
+          </v-window-item>
+
+          <v-window-item value="sales">
+            <SaleCyclicTable
+              :products="saleCounts"
+              :loading="saleLoading"
+              :total-product="totalSaleCount"
+              :items-per-page="saleOptions.itemsPerPage"
+              :page="saleOptions.page"
+              @update:options="updateSaleOptions"
+              @verify-product="handleVerifySale"
+            />
+          </v-window-item>
+        </v-window>
+      </v-card>
     </div>
 
-    <!-- Modales de Verificación -->
+    <!-- Modales de Verificación y Lotes -->
     <VerifyCountModal
       v-model="showProductVerifyModal"
       :count-record="productForVerification"
@@ -240,3 +280,7 @@ const handleExport = async (format) => {
     />
   </div>
 </template>
+
+
+
+

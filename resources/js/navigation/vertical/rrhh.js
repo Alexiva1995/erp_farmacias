@@ -47,9 +47,13 @@ export default [
             to: 'productivity-employee-task',
           },
           {
-        title: 'Empleado del Mes',
-        to: 'productivity-employee-month',
-      },
+            title: 'Revisión de Tareas Realizadas',
+            to: 'productivity-supervisor-cleaning-activities',
+          },
+          {
+            title: 'Empleado del Mes',
+            to: 'productivity-employee-month',
+          },
         ],
       }
     ],

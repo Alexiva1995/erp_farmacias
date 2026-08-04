@@ -1,9 +1,12 @@
 <script setup>
 import { BASE64_LOGO_DATA } from "@/constants/logo.js";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 import { useAuthStore } from "@/stores/auth";
 import { formatCurrency } from "@/utils/currencyFormatter";
 import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
 import { computed } from "vue";
+
+const brandingStore = useBrandingStore();
 
 const props = defineProps({
   quotationDetails: {
@@ -65,7 +68,7 @@ const formattedTotalQuotation = computed(() => {
 });
 
 const logoSrc = computed(() => {
-  return BASE64_LOGO_DATA;
+  return brandingStore.settings?.app_logo || BASE64_LOGO_DATA;
 });
 
 const formattedDateAndFullTime = computed(() => {
@@ -98,11 +101,7 @@ const formattedDateAndFullTime = computed(() => {
       </div>
 
       <div class="text-center">
-        <div class="thermal-rif">J-50540695-7</div>
-        <div class="thermal-company-name">FARMACIA BARRIO SUCRE 2024, C.A.</div>
-        <div class="thermal-address">CALLE PRINCIPAL LOCAL 05 (L5)</div>
-        <div class="thermal-address">SECTOR BARRIO SUCRE LA FRIA TACHIRA</div>
-        <div class="thermal-address">ZONA POSTAL 5020</div>
+        <div class="thermal-company-name font-weight-black text-uppercase">{{ brandingStore.settings?.app_name || 'TOVA' }}</div>
       </div>
 
       <div class="thermal-quotation-header">

@@ -1,11 +1,14 @@
 <script setup>
 import { BASE64_LOGO_DATA } from "@/constants/logo.js";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 import { capitalizeFirstAndLastName } from "@/@core/utils/formatters";
 import { useAuthStore } from "@/stores/auth";
 import { formatCurrency } from "@/utils/currencyFormatter";
 import { formatDateTime } from "@/utils/formatDateTime";
 import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
 import { computed, onMounted } from "vue";
+
+const brandingStore = useBrandingStore();
 
 const props = defineProps({
   orderData: {
@@ -95,7 +98,7 @@ const getItemPriceByCurrency = (item, currency) => {
 };
 
 const logoSrc = computed(() => {
-  return BASE64_LOGO_DATA;
+  return brandingStore.settings?.app_logo || BASE64_LOGO_DATA;
 });
 
 const getPaymentMethodLabel = (methodValue, currency) => {
@@ -196,23 +199,11 @@ onMounted(() => {
     <VCard variant="outlined" class="pa-2 text-start">
       <div class="text-center pa-2 mb-2">
         <a href="#">
-          <img width="130" :src="logoSrc" alt="Logotipo de la marca" />
+          <img width="130" :src="logoSrc" alt="Logotipo de la marca" style="max-height: 80px; object-fit: contain;" />
         </a>
       </div>
       <div class="text-center">
-        <span class="headerPrint">J-50540695-7</span>
-      </div>
-      <div class="text-center">
-        <span class="headerPrint">FARMACIA BARRIO SUCRE 2024, C.A.</span>
-      </div>
-      <div class="text-center">
-        <span class="headerPrint">CALLE PRINCIPAL LOCAL 05 (L5)</span>
-      </div>
-      <div class="text-center">
-        <span class="headerPrint">SECTOR BARRIO SUCRE LA FRIA TACHIRA</span>
-      </div>
-      <div class="text-center">
-        <span class="headerPrint">ZONA POSTAL 5020</span>
+        <span class="headerPrint font-weight-black text-uppercase">{{ brandingStore.settings?.app_name || 'TOVA' }}</span>
       </div>
       <div class="ticket-header d-flex justify-space-between align-start mt-2">
         <span class="font-weight-bold tituloAzulPrint"
