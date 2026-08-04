@@ -815,23 +815,23 @@ class OrderActionService
             }
         }
 
-        $netPaid = $sumInOrderCurrency - $moneyReturns;
-
-        if (abs($netPaid - $orderTotal) > $tolerance) {
-            Log::warning("Discrepancia de pago bloqueada:", [
+        // Si el pago neto cubre el total de la orden (o está dentro de la tolerancia permitida), permitir la transacción.
+        // Solo bloquear si lo pagado es estrictamente MENOR al total menos la tolerancia.
+        if ($netPaid < ($orderTotal - $tolerance)) {
+            Log::warning("Discrepancia de pago bloqueada (Monto insuficiente):", [
                 'order_id' => $order->id,
                 'total_paid' => $sumInOrderCurrency,
                 'money_returns' => $moneyReturns,
                 'net_paid' => $netPaid,
                 'order_total' => $orderTotal,
-                'diff' => abs($netPaid - $orderTotal)
+                'diff' => $orderTotal - $netPaid
             ]);
 
             throw new \App\Exceptions\PaymentDiscrepancyException(
                 $netPaid,
                 $orderTotal,
                 $orderCurrency,
-                'Discrepancia detectada: El pago neto (' . round($netPaid, 2) . ' ' . $orderCurrency . ') no coincide con el total de la factura (' . round($orderTotal, 2) . ' ' . $orderCurrency . '). Por favor, verifique los montos ingresados.'
+                'Discrepancia detectada: El pago neto (' . round($netPaid, 2) . ' ' . $orderCurrency . ') es menor al total de la factura (' . round($orderTotal, 2) . ' ' . $orderCurrency . '). Por favor, verifique los montos ingresados.'
             );
         }
     }
@@ -1269,27 +1269,18 @@ class OrderActionService
 
 
             if (isset($request->changeAmountUSD) && $request->changeAmountUSD > 0) {
-                // Caso cambio moneda cruzada
+                // Único caso de resta física en caja: Vuelto otorgado de USD entregado en COP disponible
                 if (isset($request->changeAmount) && $request->changeAmount > 0) {
-                    // El vuelto se dio físicamente en Pesos (COP)
                     $resourceService = app(\App\Services\Resources\ResourceService::class);
-                                        $copRate = $resourceService->getExchangeRate('COPC') ?: 1;
+                    $copRate = $resourceService->getExchangeRate('COPC') ?: 1;
                     
-                    // Convertir el monto de USD a COP para restar correctamente del fondo en pesos
+                    // Convertir el monto de vuelto USD a COP para descontar del fondo físico en pesos
                     $copChangeAmount = $request->changeAmountUSD * $copRate;
                     
                     $current_cash->cop_cash -= $copChangeAmount;
                     $current_cash->cop_conversion += $copChangeAmount;
-                } else {
-                    // El vuelto se dio físicamente en Dólares (USD)
-                    $current_cash->usd_cash -= $request->changeAmountUSD;
                 }
                 $current_cash->usd_conversion += $request->changeAmountUSD;
-            } else {
-                // Caso misma moneda
-                if (isset($request->changeAmount)) {
-                    $current_cash->cop_cash -= $request->changeAmount;
-                }
             }
 
             // Recalcular todos los totales usando la lógica unificada en el modelo
