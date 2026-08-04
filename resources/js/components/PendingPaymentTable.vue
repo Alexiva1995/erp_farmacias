@@ -11,6 +11,17 @@ const props = defineProps({
   page: { type: Number, required: true },
   updatingIndexed: { type: Object, default: () => ({}) },
   updatingDates: { type: Object, default: () => ({}) },
+  exchangeRate: { type: Number, default: 1 },
+});
+
+const selectedTotals = computed(() => {
+  const usd = props.selectedTableInvoices.reduce((acc, item) => acc + (parseFloat(item.original_amount_usd) || 0), 0);
+  const bs = usd * (props.exchangeRate || 1);
+  return {
+    count: props.selectedTableInvoices.length,
+    usd: usd.toFixed(2),
+    bs: bs.toFixed(2),
+  };
 });
 
 const emit = defineEmits([
@@ -187,7 +198,10 @@ const getInitials = (name) => {
         </template>
 
         <template #item.invoice_number="{ item }">
-          <span class="text-xs font-weight-black text-primary">{{ item.invoice_number }}</span>
+          <div class="d-flex flex-column">
+            <span class="text-xs font-weight-black text-primary">{{ item.invoice_number }}</span>
+            <span class="text-super-xs text-disabled">Ctrl: {{ item.control_number || 'N/A' }}</span>
+          </div>
         </template>
 
         <template #item.supplier_name="{ item }">
@@ -195,9 +209,12 @@ const getInitials = (name) => {
             <VAvatar :color="getAvatarColor(item.supplier_name)" variant="tonal" size="30" class="rounded-lg">
               <span class="text-super-xs font-weight-black">{{ getInitials(item.supplier_name) }}</span>
             </VAvatar>
-            <span class="text-xs font-weight-bold text-high-emphasis truncate text-capitalize" style="max-width: 180px;">
-              {{ item.supplier_name }}
-            </span>
+            <div class="d-flex flex-column">
+              <span class="text-xs font-weight-bold text-high-emphasis truncate text-capitalize max-w-180">
+                {{ item.supplier_name }}
+              </span>
+              <span class="text-super-xs text-disabled">RIF: {{ item.supplier_rif || 'N/A' }}</span>
+            </div>
           </div>
         </template>
 
@@ -320,6 +337,13 @@ const getInitials = (name) => {
           </div>
         </template>
 
+        <template #loading>
+          <div class="pa-8 text-center bg-white">
+            <VProgressCircular indeterminate color="primary" size="36" class="mb-2" />
+            <div class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Cargando cuentas por pagar...</div>
+          </div>
+        </template>
+
         <template #no-data>
            <div class="text-center py-10 opacity-50">
              <VIcon icon="tabler-receipt-off" size="48" class="mb-2" />
@@ -331,7 +355,13 @@ const getInitials = (name) => {
 
     <!-- Vista Móvil Cards -->
     <div v-else class="d-flex flex-column gap-4 pb-16">
-      <template v-if="props.pendingPayments.length > 0">
+      <template v-if="props.loading">
+        <VCard class="rounded-lg border shadow-sm pa-8 text-center bg-white">
+          <VProgressCircular indeterminate color="primary" size="36" class="mb-2" />
+          <div class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Cargando cuentas por pagar...</div>
+        </VCard>
+      </template>
+      <template v-else-if="props.pendingPayments.length > 0">
         <VCard
           v-for="item in props.pendingPayments"
           :key="item.id"
@@ -356,6 +386,7 @@ const getInitials = (name) => {
                 <div class="d-flex flex-column">
                   <span class="text-xs font-weight-black text-disabled uppercase leading-tight">Factura #</span>
                   <span class="text-sm font-weight-black text-primary leading-tight">{{ item.invoice_number }}</span>
+                  <span class="text-super-xs text-disabled">Ctrl: {{ item.control_number || 'N/A' }}</span>
                 </div>
               </div>
               <div class="d-flex flex-column align-end">
@@ -376,9 +407,14 @@ const getInitials = (name) => {
             <VDivider class="mb-4 opacity-10" />
 
             <!-- Info Proveedor -->
-            <div class="mb-4">
-              <span class="text-super-xs font-weight-black text-disabled uppercase d-block mb-1">Proveedor</span>
-              <span class="text-sm font-weight-bold text-high-emphasis d-block leading-tight text-capitalize">{{ item.supplier_name }}</span>
+            <div class="mb-4 d-flex justify-space-between align-center">
+              <div>
+                <span class="text-super-xs font-weight-black text-disabled uppercase d-block mb-1">Proveedor</span>
+                <span class="text-sm font-weight-bold text-high-emphasis d-block leading-tight text-capitalize">{{ item.supplier_name }}</span>
+              </div>
+              <VChip size="x-small" variant="tonal" color="secondary" class="font-weight-black">
+                RIF: {{ item.supplier_rif || 'N/A' }}
+              </VChip>
             </div>
 
             <!-- Stats Pago -->
@@ -407,7 +443,8 @@ const getInitials = (name) => {
                   color="primary"
                   density="compact"
                   hide-details
-                  @click.stop="emit('toggle-indexed', item)"
+                  :disabled="!!props.updatingIndexed[item.id]"
+                  @change="emit('toggle-indexed', item)"
                 />
               </div>
               <div class="d-flex gap-1">
@@ -485,36 +522,42 @@ const getInitials = (name) => {
       </VAlert>
     </div>
 
-    <!-- Barra de Selección Móvil Flotante -->
+    <!-- Barra de Selección Flotante (Desktop y Móvil) -->
     <VSlideYReverseTransition>
-      <div v-if="mobile && props.selectedTableInvoices.length > 0" class="mobile-action-bar pa-4">
+      <div v-if="props.selectedTableInvoices.length > 0" class="floating-selection-bar pa-4">
         <VCard color="primary" class="rounded-xl shadow-lg pa-3 d-flex align-center justify-space-between border-0">
-          <div class="d-flex align-center gap-3 ms-2">
-            <VAvatar color="white" variant="tonal" size="32" class="rounded-lg">
-              <span class="text-xs font-weight-black text-white">{{ props.selectedTableInvoices.length }}</span>
+          <div class="d-flex align-center gap-4 ms-2">
+            <VAvatar color="white" variant="tonal" size="36" class="rounded-lg">
+              <span class="text-xs font-weight-black text-white">{{ selectedTotals.count }}</span>
             </VAvatar>
-            <span class="text-xs font-weight-black text-white uppercase letter-spacing-1">Seleccionados</span>
+            <div class="d-flex flex-column">
+              <span class="text-super-xs font-weight-black text-white-50 uppercase letter-spacing-1">Resumen Lote Seleccionado</span>
+              <div class="d-flex align-center gap-3">
+                <span class="text-sm font-weight-black text-white">${{ selectedTotals.usd }} USD</span>
+                <span class="text-xs font-weight-bold text-white-50">({{ selectedTotals.bs }} Bs)</span>
+              </div>
+            </div>
           </div>
-          <div class="d-flex gap-2">
+          <div class="d-flex align-center gap-2">
             <VBtn
-              icon
               variant="tonal"
               color="white"
-              size="38"
-              class="rounded-lg"
+              size="small"
+              class="rounded-lg font-weight-black"
               @click="emit('deselect-all')"
             >
-              <VIcon icon="tabler-x" size="20" />
+              <VIcon icon="tabler-x" size="18" class="me-1" />
+              Limpiar
             </VBtn>
             <VBtn
-              icon
               variant="flat"
-              color="white"
-              size="38"
-              class="rounded-lg shadow-sm"
+              color="success"
+              size="small"
+              class="rounded-lg font-weight-black shadow-sm px-4"
               @click="emit('process-multiple')"
             >
-              <VIcon icon="tabler-credit-card" size="20" color="primary" />
+              <VIcon icon="tabler-credit-card" size="18" class="me-1" />
+              PROCESAR PAGO ({{ selectedTotals.count }})
             </VBtn>
           </div>
         </VCard>
@@ -547,6 +590,10 @@ const getInitials = (name) => {
 
 .leading-tight {
   line-height: 1.25;
+}
+
+.max-w-180 {
+  max-width: 180px;
 }
 
 .truncate {
@@ -597,13 +644,13 @@ const getInitials = (name) => {
   background-color: rgba(var(--v-theme-on-surface), 0.03) !important;
 }
 
-.mobile-action-bar {
+.floating-selection-bar {
   position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  max-width: 800px;
   z-index: 100;
-  background: linear-gradient(to top, rgba(var(--v-theme-surface), 0.9), transparent);
-  backdrop-filter: blur(4px);
 }
 </style>

@@ -22,6 +22,10 @@ export default [
         to: 'invoice-invoice-loaded',
       },
       {
+        title: 'Por Ordenar',
+        to: 'invoice-invoice-to-order',
+      },
+      {
         title: 'Ordenadas',
         to: 'invoice-invoice-ordered',
       },

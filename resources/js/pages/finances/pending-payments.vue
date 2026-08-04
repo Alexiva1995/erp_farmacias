@@ -120,11 +120,13 @@ const handleTableUpdate = (options) => {
 const toggleIndexedStatus = async (item) => {
   updatingIndexed.value[item.id] = true;
   try {
-    await axios.put(`/finances/invoices/${item.id}/toggle-indexed`, {
+    const { data } = await axios.put(`/finances/invoices/${item.id}/toggle-indexed`, {
       is_indexed: item.is_indexed,
     });
+    if (data?.data) {
+      item.is_indexed = data.data.is_indexed;
+    }
     toast.success("Estado de indexación actualizado");
-    await fetchPendingPayments();
   } catch (error) {
     item.is_indexed = !item.is_indexed;
     toast.error("Error al actualizar indexación");
@@ -295,6 +297,7 @@ watch(
         :page="page"
         :updating-indexed="updatingIndexed"
         :updating-dates="updatingDates"
+        :exchange-rate="exchangeRate"
         @update:options="handleTableUpdate"
         @toggle-indexed="toggleIndexedStatus"
         @process-payment="processPayment"
