@@ -26,12 +26,12 @@ class CompanyRepository implements \App\Contracts\Company
 
     public function consultAll(): Collection
     {
-        return Company::query()->with("clients")->orderBy("name", "ASC")->get();
+        return Company::query()->select(['id', 'name', 'identification', 'type_company'])->orderBy("name", "ASC")->get();
     }
 
     public function consultById(string $id): ?Model
     {
-        return Company::find($id);
+        return Company::query()->withCount("clients")->find($id);
     }
 
     public function deleteById(string $id): void
@@ -41,7 +41,7 @@ class CompanyRepository implements \App\Contracts\Company
 
     public function builerPaginate($filtros): Builder
     {
-        $consulta = Company::query()->with("clients");
+        $consulta = Company::query()->withCount("clients");
 
         if (array_key_exists("buscardor_filtro", $filtros)) {
             if ($filtros["buscardor_filtro"] != "") {
@@ -76,6 +76,7 @@ class CompanyRepository implements \App\Contracts\Company
 
     public function filtrar($filtros, $perPage = 10): LengthAwarePaginator
     {
+        $perPage = isset($filtros["itemsPerPage"]) ? (int) $filtros["itemsPerPage"] : $perPage;
         $consulta = $this->builerPaginate($filtros);
         return $consulta->paginate($perPage);
     }

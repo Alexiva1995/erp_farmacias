@@ -23,6 +23,7 @@ class PayslipResource extends JsonResource
                 : $this->payslip_date,
             'exchange_rate' => $this->exchange_rate !== null ? (float)$this->exchange_rate : null,
             'total' => (float)$this->total,
+            'total_full_cop' => isset($this->total_full_cop) ? (float)$this->total_full_cop : 0.0,
             'status' => $this->status,
             'created_at' => $this->created_at ? $this->created_at->toDateTimeString() : null,
             'updated_at' => $this->updated_at ? $this->updated_at->toDateTimeString() : null,

@@ -34,7 +34,7 @@ class ClientRepository implements \App\Contracts\Client
         return Client::find($data["id"]);
     }
 
-    public function consultById(string $id): ?Model
+    public function consultById(string|int $id): ?Model
     {
         $client = Client::query()->with("company")->where("id", "=", $id)->first();
         return $client;
@@ -68,11 +68,16 @@ class ClientRepository implements \App\Contracts\Client
     {
         $consulta = Client::query()
             ->select('clients.*')
-            ->addSelect([
-                'days_since_last_purchase' => \DB::table('orders')
-                    ->selectRaw('DATEDIFF(NOW(), MAX(order_date))')
-                    ->whereColumn('client_id', 'clients.id')
-            ])
+            ->leftJoinSub(
+                \DB::table('orders')
+                    ->select('client_id', \DB::raw('DATEDIFF(NOW(), MAX(order_date)) as days_since_last_purchase'))
+                    ->groupBy('client_id'),
+                'last_orders',
+                'last_orders.client_id',
+                '=',
+                'clients.id'
+            )
+            ->addSelect('last_orders.days_since_last_purchase')
             ->with([
                 "company" => function ($query) {
                     $query->withTrashed();
@@ -155,7 +160,7 @@ class ClientRepository implements \App\Contracts\Client
         return Client::query()->get();
     }
 
-    public function deleteById(string $id): void
+    public function deleteById(string|int $id): void
     {
         Client::where("id", "=", $id)->delete();
     }
@@ -168,7 +173,7 @@ class ClientRepository implements \App\Contracts\Client
 
     public function assignCompany(int $client_id, int $company_id): ?Model
     {
-        $client = $this->consultById($client_id);
+        $client = $this->consultById((string) $client_id);
         if (!$client) {
             return null;
         }
@@ -180,7 +185,7 @@ class ClientRepository implements \App\Contracts\Client
 
     public function removerAssignCompany(int $client_id): ?Model
     {
-        $client = $this->consultById($client_id);
+        $client = $this->consultById((string) $client_id);
         if (!$client) {
             return null;
         }

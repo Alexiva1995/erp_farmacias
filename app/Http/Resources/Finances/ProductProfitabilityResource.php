@@ -24,7 +24,6 @@ class ProductProfitabilityResource extends JsonResource
             'psychotropic' => (bool)$this->psychotropic,
             'is_colombian_origin' => (bool)$this->is_colombian_origin,
             'iva' => $this->iva,
-            'stock_calculado' => (float)$this->stock_calculado,
             'laboratory' => $this->relationLoaded('laboratory') && $this->laboratory ? [
                 'id' => $this->laboratory->id,
                 'name' => $this->laboratory->name,

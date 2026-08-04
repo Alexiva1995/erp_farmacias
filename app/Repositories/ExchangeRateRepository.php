@@ -13,39 +13,48 @@ class ExchangeRateRepository implements \App\Contracts\ExchangeRate
 
     public function consultAll(): Collection
     {
-        $exhange = ExchangeRate::all();
-        return $exhange;
+        return ExchangeRate::query()
+            ->whereIn('id', function ($query) {
+                $query->selectRaw('MAX(id)')
+                    ->from('exchange_rates')
+                    ->groupBy('currency_code');
+            })
+            ->get();
     }
 
     public function consultOneCOP(): Model|null
     {
-        $exhange = ExchangeRate::orderBy('created_at', 'desc')->where('currency_code', 'COP')->first();
-
-        return $exhange;
+        return ExchangeRate::orderBy('created_at', 'desc')->where('currency_code', 'COP')->first();
     }
 
     public function consultOneBCV(): Model|null
     {
-        $exhange = ExchangeRate::orderBy('created_at', 'desc')->where('currency_code', 'BS')->first();
-        return $exhange;
+        return ExchangeRate::orderBy('created_at', 'desc')->where('currency_code', 'BS')->first();
     }
 
     public function consultOneBINANCE(): Model|null
     {
-        $exhange = ExchangeRate::orderBy('created_at', 'desc')->where('currency_code', 'BINANCE')->first();
-        return $exhange;
+        return ExchangeRate::orderBy('created_at', 'desc')->where('currency_code', 'BINANCE')->first();
     }
 
     public function consultOneEUR(): Model|null
     {
-        $exhange = ExchangeRate::orderBy('created_at', 'desc')->where('currency_code', 'EUR')->first();
-        return $exhange;
+        return ExchangeRate::orderBy('created_at', 'desc')->where('currency_code', 'EUR')->first();
     }
 
     public function consultOneCOPC(): Model|null
     {
-        $exhange = ExchangeRate::orderBy('created_at', 'desc')->where('currency_code', 'COPC')->first();
-        return $exhange;
+        return ExchangeRate::orderBy('created_at', 'desc')->where('currency_code', 'COPC')->first();
+    }
+
+    public function consultOneBsCOP(): Model|null
+    {
+        return ExchangeRate::orderBy('created_at', 'desc')->where('currency_code', 'BS_COP')->first();
+    }
+
+    public function consultOneCOPS(): Model|null
+    {
+        return ExchangeRate::orderBy('created_at', 'desc')->where('currency_code', 'COPS')->first();
     }
 
     public function updateBCVDollar(array $data): Model
@@ -56,33 +65,6 @@ class ExchangeRateRepository implements \App\Contracts\ExchangeRate
 
     public function store(array $data): Model
     {
-        return ExchangeRate::updateOrCreate(
-            ['currency_code' => $data['currency_code']],
-            $data
-        );
+        return ExchangeRate::create($data);
     }
-
-    /*
-    public function consultById(string $id): ?Model
-    {
-        $product = ProductProfitability::query()->where("product_id", "=", $id)->first();
-        return $product;
-    }
-
-
-
-
-    public function editProduct(array $data): Model
-    {
-        ProductProfitability::where("id", "=", $data["id"])->update($data);
-        return ProductProfitability::find($data["id"]);
-    }
-
-    //Debe haber un buscador de los prodcutos que ya tienen un dato guardado
-
-    public function edit(array $data): Model
-    {
-        ProfitabilitySettings::where("id", "=", $data["id"])->update($data);
-        return ProfitabilitySettings::find($data["id"]);
-    }*/
 }

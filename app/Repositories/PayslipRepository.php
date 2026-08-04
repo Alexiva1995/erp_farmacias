@@ -20,24 +20,25 @@ class PayslipRepository
 {
   public function index(array $data): \Illuminate\Pagination\LengthAwarePaginator
   {
-    $cop_rate = \App\Models\ExchangeRate::where('currency_code', 'COP')->orderByDesc('created_at')->value('rate') ?? 0;
+    $cop_rate = (float) (\App\Models\ExchangeRate::where('currency_code', 'COPS')->orderByDesc('created_at')->value('rate') ?? \App\Models\ExchangeRate::where('currency_code', 'COP')->orderByDesc('created_at')->value('rate') ?? 4000);
 
-    $query = Payslip::with('details.salary.concept')
-      ->select('payslips.*')
-      ->addSelect(DB::raw("(
-          SELECT ROUND(SUM(pd.amount * {$cop_rate}), 2)
-          FROM payslip_details pd
-          WHERE pd.payslip_id = payslips.id
-          AND pd.amount > 0
-      ) as total_full_cop"))
-      ->orderByDesc('id');
+    // Consulta de empleados activos con su paquete total contratado
+    $activeEmployees = Employee::where('is_active', true)->select('id', 'total_package_usd')->get();
+    $totalPackageUsdSum = $activeEmployees->sum('total_package_usd');
 
-    if (isset($data['startDate']) && $data['startDate']) {
+    $query = Payslip::query()
+      ->orderByDesc('payslips.id');
+
+    if (!empty($data['startDate'])) {
       $query->whereDate('payslip_date', '>=', $data['startDate']);
     }
 
-    if (isset($data['endDate']) && $data['endDate']) {
+    if (!empty($data['endDate'])) {
       $query->whereDate('payslip_date', '<=', $data['endDate']);
+    }
+
+    if (isset($data['status']) && $data['status'] !== null && $data['status'] !== '') {
+      $query->where('payslips.status', $data['status']);
     }
 
     if (auth()->check() && auth()->user()->role_id === 2) {
@@ -45,7 +46,31 @@ class PayslipRepository
       $query->whereIn('payslips.id', $latestIds);
     }
 
-    return $query->paginate($data['perPage']);
+    $paginator = $query->paginate($data['perPage']);
+
+    // Calcular en tiempo de respuesta el total exacto en COP según las reglas solicitadas
+    $paginator->getCollection()->transform(function ($payslip) use ($cop_rate, $activeEmployees) {
+      // Si la nómina ya fue FINALIZADA y pagada en COP, se congela y no se recalcula
+      if ($payslip->status === 1 && $payslip->payed > 0 && $payslip->currency === 'COP') {
+        $payslip->total_full_cop = (float) $payslip->payed;
+        return $payslip;
+      }
+
+      $date = Carbon::parse($payslip->payslip_date);
+      $isSecondNomina = $date->day > 15;
+
+      $totalUsd = 0;
+      foreach ($activeEmployees as $emp) {
+        $pkg = (float) $emp->total_package_usd;
+        $baseRem = max(0, $pkg - 40) / 2;
+        $totalUsd += $isSecondNomina ? ($baseRem + 40) : $baseRem;
+      }
+
+      $payslip->total_full_cop = round($totalUsd * $cop_rate, 2);
+      return $payslip;
+    });
+
+    return $paginator;
   }
 
   public function generate(Carbon $date, string $name, Collection $details): bool
@@ -315,9 +340,26 @@ class PayslipRepository
     return $payslip->update(['status' => 1, 'payed' => $total, 'currency' => $currency]);
   }
 
+  public function reopen(Payslip $payslip): bool
+  {
+    return $payslip->update([
+      'status' => 0,
+      'payed' => 0,
+      'currency' => null
+    ]);
+  }
+
+  public function destroy(Payslip $payslip): bool
+  {
+    return DB::transaction(function () use ($payslip) {
+      $payslip->details()->delete();
+      return (bool) $payslip->delete();
+    });
+  }
+
   public function exportableData(Payslip $payslip, string $type)
   {
-    $cop_rate = \App\Models\ExchangeRate::where('currency_code', 'COP')->orderByDesc('created_at')->value('rate') ?? 0;
+    $cop_rate = \App\Models\ExchangeRate::where('currency_code', 'COPS')->orderByDesc('created_at')->value('rate') ?? \App\Models\ExchangeRate::where('currency_code', 'COP')->orderByDesc('created_at')->value('rate') ?? 4000;
     $currency = $type === 'full' ? $cop_rate : $payslip->exchange_rate;
     $now = now();
     $month = (int) $now->format('n');
@@ -405,10 +447,10 @@ class PayslipRepository
       ->where('employees.is_active', 1)
       ->whereExists(function ($query) use ($payslip) {
           $query->select(DB::raw(1))
-                ->from('payslip_details')
-                ->join('users_salary_details', 'users_salary_details.id', '=', 'payslip_details.users_salary_details_id')
-                ->whereColumn('users_salary_details.user_id', 'users.id')
-                ->where('payslip_details.payslip_id', $payslip->id);
+                ->from('payslip_details AS pd_check')
+                ->join('users_salary_details AS usd_check', 'usd_check.id', '=', 'pd_check.users_salary_details_id')
+                ->whereColumn('usd_check.user_id', 'users.id')
+                ->where('pd_check.payslip_id', $payslip->id);
       })
       ->groupBy(
         'employees.id',
@@ -433,7 +475,7 @@ class PayslipRepository
       'date' => $payslip->payslip_date,
       'status' => $payslip->status,
       'period' => $period,
-      'exchange_rate' => $type === 'full' ? (\App\Models\ExchangeRate::where('currency_code', 'COP')->orderByDesc('created_at')->value('rate') ?? 0) : $payslip->exchange_rate,
+      'exchange_rate' => $type === 'full' ? (\App\Models\ExchangeRate::where('currency_code', 'COPS')->orderByDesc('created_at')->value('rate') ?? \App\Models\ExchangeRate::where('currency_code', 'COP')->orderByDesc('created_at')->value('rate') ?? 4000) : $payslip->exchange_rate,
       'currency_code' => $type === 'full' ? 'COP' : 'Bs.'
     ];
   }

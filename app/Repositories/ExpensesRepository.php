@@ -4,27 +4,28 @@ declare(strict_types=1);
 
 namespace App\Repositories;
 
+use App\Contracts\Expenses;
 use App\Data\CreateExpenseData;
 use App\Data\CreateExpenseRecurrenceData;
 use App\Data\EditExpenseRecurrenceData;
+use App\Exports\ExpenseExport;
 use App\Models\ExchangeRate;
 use App\Models\Expense;
+use App\Models\ExpenseAudit;
 use DateTime;
 use DateTimeZone;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
-use PhpOffice\PhpSpreadsheet\Shared\TimeZone;
 
-class ExpensesRepository implements \App\Contracts\Expenses
+class ExpensesRepository implements Expenses
 {
-
     public function create(CreateExpenseData $data): Expense
     {
         $expenseData = $data->toArray();
 
         $exchangeRate = ExchangeRate::where('currency_code', 'BS')->first();
-        $rate = $exchangeRate->rate;
+        $rate = $exchangeRate?->rate ?? 1.0;
 
         $expenseData['amount'] = $expenseData['total_amount'];
         if ($expenseData['currency'] === 'USD') {
@@ -47,8 +48,7 @@ class ExpensesRepository implements \App\Contracts\Expenses
             $expenseData['amount_bs'] = $expenseData['amount_usd'] * $rate;
         }
 
-        // Asegurar que expense_date sea solo la fecha sin hora
-        if (isset($expenseData['expense_date']) && $expenseData['expense_date'] instanceof \DateTime) {
+        if (isset($expenseData['expense_date']) && $expenseData['expense_date'] instanceof DateTime) {
             $expenseData['expense_date'] = $expenseData['expense_date']->format('Y-m-d');
         }
 
@@ -57,7 +57,18 @@ class ExpensesRepository implements \App\Contracts\Expenses
             unset($expenseData['account']);
         }
 
-        return Expense::create($expenseData);
+        $expense = Expense::create($expenseData);
+
+        ExpenseAudit::create([
+            'expense_id' => $expense->id,
+            'user_id' => auth()->id() ?? $expense->user_id,
+            'action' => 'created',
+            'old_values' => null,
+            'new_values' => $expense->only(['name', 'amount', 'total_usd', 'currency', 'status', 'expense_date']),
+            'ip_address' => request()->ip(),
+        ]);
+
+        return $expense;
     }
 
     public function createRecurring(CreateExpenseRecurrenceData $data): Expense
@@ -82,8 +93,18 @@ class ExpensesRepository implements \App\Contracts\Expenses
         $gasto->recurrence = $data->recurrence;
         $gasto->next_expense_date = $data->next_expense_date;
         $gasto->amount_bs = $data->amount_bs;
-        $gasto->status = "Pending";
+        $gasto->status = Expense::STATUS_PENDING;
         $gasto->save();
+
+        ExpenseAudit::create([
+            'expense_id' => $gasto->id,
+            'user_id' => auth()->id() ?? $gasto->user_id,
+            'action' => 'created_recurring',
+            'old_values' => null,
+            'new_values' => $gasto->only(['name', 'amount', 'currency', 'recurrence']),
+            'ip_address' => request()->ip(),
+        ]);
+
         return $gasto;
     }
 
@@ -95,11 +116,12 @@ class ExpensesRepository implements \App\Contracts\Expenses
             throw new \Exception("Gasto no encontrado");
         }
 
-        // Handle file upload
         if (isset($data['file_invoice']) && $data['file_invoice'] instanceof \Illuminate\Http\UploadedFile) {
             $file = $data['file_invoice'];
             $fileName = 'invoice_' . time() . '_' . $gasto->id . '.' . $file->getClientOriginalExtension();
             $path = $file->storeAs('expenses/invoices', $fileName, 'public');
+
+            $oldFile = $gasto->url_file;
 
             $gasto->file_name = $fileName;
             $gasto->extension_file = $file->getClientOriginalExtension();
@@ -108,20 +130,45 @@ class ExpensesRepository implements \App\Contracts\Expenses
             $gasto->has_invoice = true;
 
             $gasto->save();
+
+            ExpenseAudit::create([
+                'expense_id' => $gasto->id,
+                'user_id' => auth()->id(),
+                'action' => 'invoice_uploaded',
+                'old_values' => ['url_file' => $oldFile],
+                'new_values' => ['url_file' => $gasto->url_file, 'file_name' => $fileName],
+                'ip_address' => request()->ip(),
+            ]);
         }
 
         return $gasto;
     }
 
-    public function edit(array $data): Expense|null
+    public function edit(array $data): ?Expense
     {
-        Expense::where("id", "=", $data["id"])->update($data);
-        return Expense::find($data["id"]);
+        $expense = Expense::find($data["id"]);
+        if (!$expense) {
+            return null;
+        }
+
+        $oldValues = $expense->only(['name', 'amount', 'total_usd', 'category_id', 'currency', 'expense_date']);
+        $expense->update($data);
+
+        ExpenseAudit::create([
+            'expense_id' => $expense->id,
+            'user_id' => auth()->id(),
+            'action' => 'updated',
+            'old_values' => $oldValues,
+            'new_values' => $expense->fresh()->only(['name', 'amount', 'total_usd', 'category_id', 'currency', 'expense_date']),
+            'ip_address' => request()->ip(),
+        ]);
+
+        return $expense;
     }
 
-    public function editExpenseRecurring(EditExpenseRecurrenceData $data): Expense|null
+    public function editExpenseRecurring(EditExpenseRecurrenceData $data): ?Expense
     {
-        $expense = $this->consultById($data->id);
+        $expense = $this->findById((string)$data->id);
         if (!$expense) {
             return null;
         }
@@ -146,12 +193,12 @@ class ExpensesRepository implements \App\Contracts\Expenses
 
     public function getAll(): Collection
     {
-        return Expense::query()->with(["user", "category"])->orderBy("name", "ASC")->get();
+        return Expense::query()->with(["user", "category", "approvedBy", "cancelledBy", "audits.user"])->orderBy("name", "ASC")->get();
     }
 
     public function findById(string $id): ?Expense
     {
-        return Expense::find($id);
+        return Expense::with(["user", "category", "approvedBy", "cancelledBy", "audits.user"])->find($id);
     }
 
     public function deleteById(string $id): void
@@ -161,7 +208,7 @@ class ExpensesRepository implements \App\Contracts\Expenses
 
     public function buildFilter(array $filtros): Builder
     {
-        $consulta = Expense::query()->with(["user", "category"]);
+        $consulta = Expense::query()->with(["user", "category", "approvedBy", "cancelledBy", "audits.user"]);
 
         $consulta->orderBy('id', 'desc');
 
@@ -205,7 +252,6 @@ class ExpensesRepository implements \App\Contracts\Expenses
             $consulta->orderBy("name", "ASC");
         }
 
-
         if (array_key_exists("hasInvoice", $filtros)) {
             $value = filter_var($filtros["hasInvoice"], FILTER_VALIDATE_BOOLEAN);
 
@@ -244,13 +290,39 @@ class ExpensesRepository implements \App\Contracts\Expenses
         return $consulta->get();
     }
 
-
     public function updateStatus(int $id, string $status): Expense
     {
-        Expense::where("id", "=", $id)->update([
-            "status" => $status
+        $expense = Expense::find($id);
+        if (!$expense) {
+            throw new \Exception("Gasto no encontrado");
+        }
+
+        $oldStatus = $expense->status;
+        $userId = auth()->id();
+        $now = now();
+
+        $updateData = ["status" => $status];
+
+        if ($status === Expense::STATUS_APPROVED) {
+            $updateData['approved_by_id'] = $userId;
+            $updateData['approved_at'] = $now;
+        } elseif ($status === Expense::STATUS_CANCELLED) {
+            $updateData['cancelled_by_id'] = $userId;
+            $updateData['cancelled_at'] = $now;
+        }
+
+        $expense->update($updateData);
+
+        ExpenseAudit::create([
+            'expense_id' => $expense->id,
+            'user_id' => $userId,
+            'action' => 'status_changed',
+            'old_values' => ['status' => $oldStatus],
+            'new_values' => ['status' => $status],
+            'ip_address' => request()->ip(),
         ]);
-        return Expense::find($id);
+
+        return $expense->fresh();
     }
 
     public function getAllRecurringExpensesOfToday(): Collection
@@ -258,22 +330,19 @@ class ExpensesRepository implements \App\Contracts\Expenses
         $timeZone = new DateTimeZone(config("app.timezone"));
         $hoy = new DateTime('now', $timeZone);
 
-        $consulta = Expense::query()
+        return Expense::query()
             ->where("type_of_expense", "=", "Recurrente")
             ->whereDate("next_expense_date", "=", $hoy->format("Y-m-d"))
             ->get();
-
-        return $consulta;
     }
 
     public function getGlobalStats(array $filters): array
     {
         $baseQuery = $this->buildFilter($filters);
         
-        // Limpiamos la consulta de órdenes y selecciones previas para agrupar limpiamente
         $stats = $baseQuery->selectRaw('status, COUNT(*) as total, SUM(total_usd) as amount')
-            ->setEagerLoads([]) // Quitamos el 'with' que trae buildFilter
-            ->reorder()       // Quitamos el 'orderBy' que trae buildFilter
+            ->setEagerLoads([])
+            ->reorder()
             ->groupBy('status')
             ->get();
 
@@ -292,25 +361,25 @@ class ExpensesRepository implements \App\Contracts\Expenses
         return ($amount === 0.0 ? 0.0 : $amount / $conversion_rate) * $rate;
     }
 
-    public function update(array $data): \App\Models\Expense
+    public function update(array $data): Expense
     {
         return $this->edit($data);
     }
 
-    public function exportToExcel(array $filters): \App\Exports\ExpenseExport
+    public function exportToExcel(array $filters): ExpenseExport
     {
         $build = $this->buildFilter($filters);
-        return new \App\Exports\ExpenseExport($build);
+        return new ExpenseExport($build);
     }
 
     public function executeRecurringExpensesOfToday(): void
     {
         $expenses = $this->getAllRecurringExpensesOfToday();
         foreach ($expenses as $expense) {
-            $timeZone = new \DateTimeZone(config("app.timezone"));
-            $hoy = new \DateTime('now', $timeZone);
+            $timeZone = new DateTimeZone(config("app.timezone"));
+            $hoy = new DateTime('now', $timeZone);
 
-            $expenseNormalData = \App\Data\CreateExpenseData::from([
+            $expenseNormalData = CreateExpenseData::from([
                 "name" => $expense->name,
                 "category_id" => $expense->category_id,
                 "amount" => $expense->amount,
@@ -322,22 +391,22 @@ class ExpensesRepository implements \App\Contracts\Expenses
                 "expense_date" => $hoy->format('Y-m-d'),
                 "user_id" => $expense->user_id,
                 "account" => $expense->count,
-                "type_of_expense" => \App\Enums\ExpenseStatus::PENDING->value,
-                "status" => \App\Enums\ExpenseStatus::PENDING->value,
+                "type_of_expense" => Expense::STATUS_PENDING,
+                "status" => Expense::STATUS_PENDING,
                 "amount_bs" => $expense->amount_bs,
             ]);
-            $expenseNormal = $this->create($expenseNormalData);
+            $this->create($expenseNormalData);
 
             $next_expense_date = null;
             if ($expense->recurrence === Expense::RECURRENCE_MENSUAL) {
-                $next_expense_date = (new \DateTime("now", $timeZone))->modify('+1 month')->format('Y-m-d');
+                $next_expense_date = (new DateTime("now", $timeZone))->modify('+1 month')->format('Y-m-d');
             } elseif ($expense->recurrence === Expense::RECURRENCE_ANUAL) {
-                $next_expense_date = (new \DateTime("now", $timeZone))->modify('+1 year')->format('Y-m-d');
+                $next_expense_date = (new DateTime("now", $timeZone))->modify('+1 year')->format('Y-m-d');
             } elseif ($expense->recurrence === Expense::RECURRENCE_SEMESTRAL) {
-                $next_expense_date = (new \DateTime("now", $timeZone))->modify('+6 months')->format('Y-m-d');
+                $next_expense_date = (new DateTime("now", $timeZone))->modify('+6 months')->format('Y-m-d');
             }
 
-            $expenseRecurenteData = \App\Data\EditExpenseRecurrenceData::from([
+            $expenseRecurenteData = EditExpenseRecurrenceData::from([
                 "id" => $expense->id,
                 "name" => $expense->name,
                 "category_id" => $expense->category_id,

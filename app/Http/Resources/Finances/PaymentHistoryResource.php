@@ -17,8 +17,7 @@ class PaymentHistoryResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'payment_date' => $this->payment_date ? $this->payment_date->toDateString() : null,
-            'payment_method' => $this->payment_method,
+            'payment_date' => $this->payment_date ? ($this->payment_date instanceof \DateTimeInterface ? $this->payment_date->toDateString() : substr((string)$this->payment_date, 0, 10)) : null,
             'currency' => $this->currency ?? $this->payment_method,
             'amount' => (float)$this->amount,
             'amount_usd' => (float)($this->amount_usd ?? 0),
