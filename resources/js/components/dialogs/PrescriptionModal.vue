@@ -1,5 +1,5 @@
-﻿<script setup>
-import { computed, defineEmits, defineProps, ref, watch, nextTick } from "vue";
+<script setup>
+import { computed, ref, watch, nextTick } from "vue";
 import { useDisplay } from "vuetify";
 
 const props = defineProps({

@@ -23,24 +23,24 @@ class QuotationController extends Controller
     public function index(Request $request)
     {
         $perPage = (int) $request->input('itemsPerPage', 10);
-        $page = (int) $request->input('page', 1);
+        $page    = (int) $request->input('page', 1);
 
-        $countQuery = $this->quotationQueryService->getCountQueryProduct($request);
-        $total = $countQuery->count();
-
-        $dataQuery = $this->quotationQueryService->getFilteredQuery($request);
+        // Construir el query filtrado una sola vez; se reutiliza para count y datos.
+        $filteredQuery = $this->quotationQueryService->getFilteredQuery($request);
 
         if ($perPage < 1) {
-            $items = $dataQuery->get();
+            $items = $filteredQuery->get();
             return response()->json(['data' => $items, 'total' => $items->count()]);
         }
 
+        // Clonar para el count sin ORDER BY ni LIMIT (más eficiente)
+        $total  = $this->quotationQueryService->getCountQueryProduct($request)->count();
         $offset = ($page - 1) * $perPage;
-        $items = $dataQuery->skip($offset)->take($perPage)->get();
+        $items  = $filteredQuery->skip($offset)->take($perPage)->get();
 
         return response()->json([
-            'data' => $items,
-            'total' => $total
+            'data'  => $items,
+            'total' => $total,
         ]);
     }
 
@@ -113,8 +113,9 @@ class QuotationController extends Controller
         }
     }
 
-    public function showProducts(int $quotationId)
+    public function showProducts(int|string $quotationId)
     {
+        $quotationId = (int) $quotationId;
         $quotation = $this->quotationActionService->getProducts($quotationId);
 
         if (!$quotation) {

@@ -200,7 +200,7 @@ const getInitials = (name) => {
         <template #item.invoice_number="{ item }">
           <div class="d-flex flex-column">
             <span class="text-xs font-weight-black text-primary">{{ item.invoice_number }}</span>
-            <span class="text-super-xs text-disabled">Ctrl: {{ item.control_number || 'N/A' }}</span>
+            <span class="text-super-xs text-medium-emphasis">Ctrl: {{ (item.control_number && item.control_number !== 'N/A') ? item.control_number : 'N/A' }}</span>
           </div>
         </template>
 
@@ -213,7 +213,7 @@ const getInitials = (name) => {
               <span class="text-xs font-weight-bold text-high-emphasis truncate text-capitalize max-w-180">
                 {{ item.supplier_name }}
               </span>
-              <span class="text-super-xs text-disabled">RIF: {{ item.supplier_rif || 'N/A' }}</span>
+              <span class="text-super-xs text-medium-emphasis">RIF: {{ (item.supplier_rif && item.supplier_rif !== 'N/A') ? item.supplier_rif : 'N/A' }}</span>
             </div>
           </div>
         </template>

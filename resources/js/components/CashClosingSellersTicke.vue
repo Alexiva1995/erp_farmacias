@@ -1,5 +1,5 @@
 <script setup>
-import { defineProps, defineEmits, computed, nextTick } from "vue";
+import { computed, nextTick } from "vue";
 import { BASE64_LOGO_DATA } from "@/constants/logo.js";
 import TicketHeader from "@/components/TicketHeader.vue";
 import { formatCurrency } from "@/utils/currencyFormatter";

@@ -187,31 +187,43 @@ class EmployeeCleaningActivityQueryService
      */
     public function getAssignmentStats(): array
     {
-        $employees = Employee::where('is_active', true)->withCount('cleaningActivities')->get();
+        $totalEmployees = Employee::where('is_active', true)->count();
+        
+        $employeesWithActivities = Employee::where('is_active', true)
+            ->has('cleaningActivities')
+            ->count();
 
-        $employeesWithActivities = $employees->filter(fn($emp) => $emp->cleaning_activities_count > 0);
-        $employeesWithoutActivities = $employees->filter(fn($emp) => $emp->cleaning_activities_count === 0);
+        $employeesWithoutActivities = max(0, $totalEmployees - $employeesWithActivities);
 
-        // Estadísticas por estado
-        $activitiesByStatus = Employee::where('is_active', true)->with([
-            'cleaningActivities' => function ($query) {
-                $query->withPivot('status');
-            }
-        ])->get()->flatMap(function ($employee) {
-            return $employee->cleaningActivities;
-        });
+        $statusCounts = \Illuminate\Support\Facades\DB::table('employee_cleaning_activity')
+            ->join('employees', 'employee_cleaning_activity.employee_id', '=', 'employees.id')
+            ->where('employees.is_active', true)
+            ->select('employee_cleaning_activity.status', \Illuminate\Support\Facades\DB::raw('count(*) as count'))
+            ->groupBy('employee_cleaning_activity.status')
+            ->pluck('count', 'status');
 
-        $pendingCount = $activitiesByStatus->where('pivot.status', 'Pendiente')->count();
-        $completedCount = $activitiesByStatus->where('pivot.status', 'Completada')->count();
-        $cancelledCount = $activitiesByStatus->where('pivot.status', 'Cancelada')->count();
+        $pendingCount = $statusCounts->get('Pendiente', 0);
+        $completedCount = $statusCounts->get('Completada', 0);
+        $cancelledCount = $statusCounts->get('Cancelada', 0);
+        $totalAssignments = $statusCounts->sum();
+
+        $maxAssigned = \Illuminate\Support\Facades\DB::table('employee_cleaning_activity')
+            ->join('employees', 'employee_cleaning_activity.employee_id', '=', 'employees.id')
+            ->where('employees.is_active', true)
+            ->select('employee_id', \Illuminate\Support\Facades\DB::raw('count(*) as total'))
+            ->groupBy('employee_id')
+            ->orderByDesc('total')
+            ->value('total') ?? 0;
+
+        $avgAssigned = $totalEmployees > 0 ? round($totalAssignments / $totalEmployees, 2) : 0;
 
         return [
-            'total_employees' => $employees->count(),
-            'employees_with_activities' => $employeesWithActivities->count(),
-            'employees_without_activities' => $employeesWithoutActivities->count(),
-            'average_activities_per_employee' => round($employees->avg('cleaning_activities_count'), 2),
-            'max_activities_assigned' => $employees->max('cleaning_activities_count'),
-            'total_assignments' => $activitiesByStatus->count(),
+            'total_employees' => $totalEmployees,
+            'employees_with_activities' => $employeesWithActivities,
+            'employees_without_activities' => $employeesWithoutActivities,
+            'average_activities_per_employee' => $avgAssigned,
+            'max_activities_assigned' => (int) $maxAssigned,
+            'total_assignments' => $totalAssignments,
             'activities_by_status' => [
                 'pending' => $pendingCount,
                 'completed' => $completedCount,
@@ -407,10 +419,14 @@ class EmployeeCleaningActivityQueryService
     public function getSupervisorExecutions(array $data): LengthAwarePaginator
     {
         // Obtener ejecuciones con empleado y actividad relacionados (solo empleados activos)
-        $query = \App\Models\CleaningActivityExecution::with(['employee', 'cleaningActivity', 'approvedBy'])
-            ->whereHas('employee', function($q) {
-                $q->where('is_active', true);
-            });
+        $query = \App\Models\CleaningActivityExecution::with([
+            'employee:id,name,last_name,photo,user_id',
+            'cleaningActivity:id,activity,description,frequency',
+            'approvedBy:id,name'
+        ])
+        ->whereHas('employee', function($q) {
+            $q->where('is_active', true);
+        });
 
         // Búsqueda por nombre de empleado o actividad
         if (!empty($data['q'])) {
@@ -482,9 +498,9 @@ class EmployeeCleaningActivityQueryService
                 'employee_name' => $execution->employee ? trim($execution->employee->name . ' ' . $execution->employee->last_name) : 'N/A',
                 'employee_photo' => $execution->employee ? $execution->employee->photo_url : null,
                 'activity_id' => $execution->cleaning_activity_id,
-                'activity_name' => $execution->cleaningActivity->activity,
-                'description' => $execution->cleaningActivity->description,
-                'frequency' => $execution->cleaningActivity->frequency,
+                'activity_name' => $execution->cleaningActivity ? $execution->cleaningActivity->activity : 'N/A',
+                'description' => $execution->cleaningActivity ? $execution->cleaningActivity->description : null,
+                'frequency' => $execution->cleaningActivity ? $execution->cleaningActivity->frequency : null,
                 'status' => $execution->status,
                 'scheduled_date' => $execution->scheduled_date,
                 'due_date' => $execution->due_date,

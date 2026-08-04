@@ -8,7 +8,12 @@ import Swal from "sweetalert2";
 import { onMounted, reactive, ref, watch } from "vue";
 
 // Estados reactivos
-const productDataOffer = ref([]);
+const productDataOffer = ref({
+  data: [],
+  total: 0,
+  per_page: 10,
+  current_page: 1,
+});
 const discount = ref(0);
 const loadingProduct = ref(false);
 const pageProduct = ref(1);
@@ -57,8 +62,7 @@ const formularioError = reactive({
 const handleEditOffer = (indvOffer) => {
   currentOfferToEdit.value = { ...indvOffer };
   Object.assign(currentIndvOffer, indvOffer);
-  // Limpiar errores previos
-  Object.keys(formularioError).forEach(key => formularioError[key] = "");
+  Object.keys(formularioError).forEach(key => (formularioError[key] = ""));
   isOfferDialogVisible.value = true;
   isEditingMode.value = true;
 };
@@ -80,8 +84,7 @@ const handleAddIndividualOfferModal = () => {
     start_date: "",
     end_date: "",
   });
-  // Limpiar errores previos
-  Object.keys(formularioError).forEach(key => formularioError[key] = "");
+  Object.keys(formularioError).forEach(key => (formularioError[key] = ""));
   isEditingMode.value = false;
   currentOfferToEdit.value = null;
   isOfferDialogVisible.value = true;
@@ -151,12 +154,11 @@ function enviar(payload) {
 
 // Crear oferta
 async function crear(data) {
-  // Limpiar errores previos
-  Object.keys(formularioError).forEach(key => formularioError[key] = "");
-  
+  Object.keys(formularioError).forEach(key => (formularioError[key] = ""));
+
   try {
     let respuestaApi = await axios.post("/tpv/promotions/individual", data);
-    if (respuestaApi.status == 201) {
+    if (respuestaApi.status === 201 || respuestaApi.status === 200) {
       toast.success("La oferta se ha guardado correctamente");
       isOfferDialogVisible.value = false;
       await actualizarTabla();
@@ -177,7 +179,7 @@ async function crear(data) {
   }
 }
 
-// Actualizacion de la tabla con las ofertas agregadas
+// Actualización de la tabla con las ofertas agregadas
 async function actualizarTabla() {
   loadingProduct.value = true;
   try {
@@ -187,11 +189,17 @@ async function actualizarTabla() {
       search: filterSearchQueryIndivOffer.value,
       search_id: filterSearchQueryIdIndivOffer.value,
       sort_by: sortByProduct.value,
-      order_by: orderByProduct.value
+      order_by: orderByProduct.value,
     };
 
     let responseApi = await axios.get("/tpv/promotions/individual", { params });
-    productDataOffer.value = responseApi.data.data;
+    const payload = responseApi.data;
+    productDataOffer.value = {
+      data: payload.data || [],
+      total: payload.meta?.total ?? payload.total ?? (payload.data ? payload.data.length : 0),
+      per_page: payload.meta?.per_page ?? payload.per_page ?? itemsPerPageProduct.value,
+      current_page: payload.meta?.current_page ?? payload.current_page ?? pageProduct.value,
+    };
   } catch (error) {
     toast.error("Error al cargar los datos en la tabla");
     console.error("Error al cargar tabla:", error);
@@ -201,15 +209,14 @@ async function actualizarTabla() {
 }
 
 async function actualizar(data) {
-  // Limpiar errores previos
-  Object.keys(formularioError).forEach(key => formularioError[key] = "");
+  Object.keys(formularioError).forEach(key => (formularioError[key] = ""));
 
   try {
     let respuestaApi = await axios.put(
       `/tpv/promotions/individual/${data.id}`,
       data
     );
-    if (respuestaApi.status == 200) {
+    if (respuestaApi.status === 200) {
       toast.success("Se guardaron los cambios correctamente");
       isOfferDialogVisible.value = false;
       await actualizarTabla();
@@ -236,10 +243,6 @@ watch([filterSearchQueryIdIndivOffer, filterSearchQueryIndivOffer], () => {
   actualizarTabla();
 });
 
-watch([sortByProduct, orderByProduct], () => {
-  actualizarTabla();
-});
-
 onMounted(async () => {
   await actualizarTabla();
 });
@@ -255,12 +258,12 @@ onMounted(async () => {
     />
 
     <IndividualOfferTable
-      :products-offer="productDataOffer.data || []"
+      :products-offer="productDataOffer.data"
       :loading="loadingProduct"
-      :total-offer="productDataOffer.total || 0"
+      :total-offer="productDataOffer.total"
       :discount="discount"
-      :items-per-page="productDataOffer.per_page || 10"
-      :page="productDataOffer.current_page || 1"
+      :items-per-page="productDataOffer.per_page"
+      :page="productDataOffer.current_page"
       @update:options="updateTableOptionsOffer"
       @edit-offer="handleEditOffer"
       @delete-offer="handleDeleteOffer"

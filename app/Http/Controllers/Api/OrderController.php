@@ -261,56 +261,80 @@ class OrderController extends Controller
     {
         $this->applySellerFilterForVendedor($request);
         $query = $this->orderQueryService->getFilteredQuery($request, 'Completed');
-        $perPage = $request->input('itemsPerPage', 10);
+        $perPage = (int) $request->input('itemsPerPage', 10);
 
         if ($perPage < 1) {
             $items = $query->get();
-            return response()->json(['data' => $items, 'total' => $items->count()]);
+            return response()->json([
+                'data' => \App\Http\Resources\OrderListItemResource::collection($items),
+                'total' => $items->count()
+            ]);
         }
         $paginatedResult = $query->paginate($perPage);
-        return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
+        return response()->json([
+            'data' => \App\Http\Resources\OrderListItemResource::collection($paginatedResult->items()),
+            'total' => $paginatedResult->total()
+        ]);
     }
 
     public function getAllOrder(Request $request)
     {
         $this->applySellerFilterForVendedor($request);
         $query = $this->orderQueryService->getFilteredQuery($request, 'all');
-        $perPage = $request->input('itemsPerPage', 10);
+        $perPage = (int) $request->input('itemsPerPage', 10);
 
         if ($perPage < 1) {
             $items = $query->get();
-            return response()->json(['data' => $items, 'total' => $items->count()]);
+            return response()->json([
+                'data' => \App\Http\Resources\OrderListItemResource::collection($items),
+                'total' => $items->count()
+            ]);
         }
         $paginatedResult = $query->paginate($perPage);
-        return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
+        return response()->json([
+            'data' => \App\Http\Resources\OrderListItemResource::collection($paginatedResult->items()),
+            'total' => $paginatedResult->total()
+        ]);
     }
 
     public function getAbandonedOrder(Request $request)
     {
         $this->applySellerFilterForVendedor($request);
         $query = $this->orderQueryService->getFilteredQuery($request, 'Abandoned');
-        $perPage = $request->input('itemsPerPage', 10);
+        $perPage = (int) $request->input('itemsPerPage', 10);
 
         if ($perPage < 1) {
             $items = $query->get();
-            return response()->json(['data' => $items, 'total' => $items->count()]);
+            return response()->json([
+                'data' => \App\Http\Resources\OrderListItemResource::collection($items),
+                'total' => $items->count()
+            ]);
         }
         $paginatedResult = $query->paginate($perPage);
-        return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
+        return response()->json([
+            'data' => \App\Http\Resources\OrderListItemResource::collection($paginatedResult->items()),
+            'total' => $paginatedResult->total()
+        ]);
     }
 
     public function getCancelledOrder(Request $request)
     {
         $this->applySellerFilterForVendedor($request);
         $query = $this->orderQueryService->getFilteredQuery($request, 'Cancelled');
-        $perPage = $request->input('itemsPerPage', 10);
+        $perPage = (int) $request->input('itemsPerPage', 10);
 
         if ($perPage < 1) {
             $items = $query->get();
-            return response()->json(['data' => $items, 'total' => $items->count()]);
+            return response()->json([
+                'data' => \App\Http\Resources\OrderListItemResource::collection($items),
+                'total' => $items->count()
+            ]);
         }
         $paginatedResult = $query->paginate($perPage);
-        return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
+        return response()->json([
+            'data' => \App\Http\Resources\OrderListItemResource::collection($paginatedResult->items()),
+            'total' => $paginatedResult->total()
+        ]);
     }
 
 

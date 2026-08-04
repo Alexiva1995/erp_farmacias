@@ -1,6 +1,6 @@
 <script setup>
 import { BASE64_LOGO_DATA } from "@/constants/logo.js";
-import { computed, defineEmits, defineProps } from "vue";
+import { computed } from "vue";
 const props = defineProps({
   creditsData: {
     type: Object,

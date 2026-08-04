@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 import { computed, watch, ref } from "vue";
 import { useDisplay } from "vuetify";
 import axios from "@/plugins/axios";
@@ -72,12 +72,14 @@ const priceInfo = computed(() => {
 
 // Cargar productos con búsqueda (igual que Pack)
 const loadAvailableProducts = async (search = "") => {
+  const trimmedSearch = String(search ?? "").trim();
+  if (trimmedSearch.length > 0 && trimmedSearch.length < 2) return;
+
   loadingProducts.value = true;
   try {
-    const trimmedSearch = String(search ?? "").trim();
     const params = {
       q: trimmedSearch || undefined,
-      itemsPerPage: 100,
+      itemsPerPage: 20,
       isStrictSearch: false,
       sortBy: "name",
       orderBy: "asc",
@@ -389,7 +391,8 @@ watch(
         <VExpandTransition>
           <div
             v-if="priceInfo"
-            class="mt-6 pa-5 rounded-xl bg-primary bg-opacity-10 border-dashed-2 animate__animated animate__fadeIn"
+            class="mt-6 pa-5 rounded-xl bg-var-theme-background border border-dashed rounded-lg animate__animated animate__fadeIn"
+            style="background-color: rgba(var(--v-theme-primary), 0.05);"
           >
             <div class="d-flex align-center justify-space-between mb-4">
               <div class="d-flex align-center gap-2">
@@ -420,8 +423,8 @@ watch(
             <VRow no-gutters>
               <VCol cols="6">
                 <div class="d-flex flex-column leading-none">
-                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">Precio Actual (Lista)</span>
-                  <span class="text-h6 font-weight-bold text-medium-emphasis text-decoration-line-through">
+                  <span class="text-super-xs font-weight-black text-high-emphasis opacity-70 uppercase mb-1">Precio Actual (Lista)</span>
+                  <span class="text-h6 font-weight-bold text-high-emphasis text-decoration-line-through">
                     ${{ priceInfo.salePrice.toFixed(2) }}
                   </span>
                 </div>

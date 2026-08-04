@@ -1,6 +1,6 @@
 <script setup>
 import { formatCurrency } from "@/utils/currencyFormatter";
-import { defineProps, defineEmits } from "vue";
+
 
 const props = defineProps({
   selectedCurrency: String,
@@ -88,13 +88,24 @@ const emit = defineEmits(["complete-purchase", "close-modal", "confirm-payment",
                   <VBtn icon="tabler-trash" size="x-small" color="error" variant="text" density="comfortable" @click="emit('remove-payment', payments.indexOf(payment))" />
                 </div>
                 
-                <div v-if="payment._isReferenceActive" class="d-flex align-center gap-1 justify-end">
-                  <input
-                    v-model="payment.reference"
-                    class="payment-input-compact text-right pa-1 border rounded flex-grow-1"
-                    placeholder="Referencia"
-                    @keydown.enter="emit('confirm-payment', payment)"
-                  />
+                <div v-if="payment._isReferenceActive" class="d-flex align-center gap-1 justify-end mt-1">
+                  <span class="text-caption font-weight-bold text-medium-emphasis">Ref:</span>
+                  <div class="position-relative flex-grow-1 d-flex align-center">
+                    <input
+                      v-model="payment.reference"
+                      class="payment-input-compact text-right pa-1 border rounded flex-grow-1 pe-5"
+                      placeholder="Número de referencia"
+                      @keydown.enter="emit('confirm-payment', payment)"
+                    />
+                    <VIcon 
+                      v-if="payment.reference" 
+                      icon="tabler-x" 
+                      size="12" 
+                      class="cursor-pointer text-disabled position-absolute" 
+                      style="right: 6px;"
+                      @click="payment.reference = ''"
+                    />
+                  </div>
                   <VBtn icon="tabler-check" size="x-small" color="success" variant="text" density="comfortable" @click="emit('confirm-payment', payment)" />
                 </div>
               </div>
@@ -122,14 +133,14 @@ const emit = defineEmits(["complete-purchase", "close-modal", "confirm-payment",
           </span>
         </div>
 
-        <div v-if="showChangeAmount" class="d-flex flex-column mb-3 px-2 border-t pt-2">
-          <div class="d-flex justify-space-between mb-1">
-            <span class="text-caption font-weight-bold">Devolución:</span>
-            <span class="text-caption font-weight-black text-success">{{ formatCurrency(changeAmountInCop, 'COP') }}</span>
+        <div v-if="showChangeAmount" class="d-flex flex-column mb-3 pa-3 rounded-lg bg-success-lighten-5 border border-success">
+          <div class="d-flex justify-space-between align-center">
+            <span class="text-caption font-weight-black text-uppercase text-success-darken-2">CAMBIO / VUELTO:</span>
+            <span class="text-h5 font-weight-950 text-success-darken-3">{{ formatCurrency(changeAmountInCop, 'COP') }}</span>
           </div>
-          <div v-if="selectedCurrency !== 'COP'" class="d-flex justify-space-between">
-            <span class="text-tiny text-medium-emphasis">Vuelto en {{ selectedCurrency }}:</span>
-            <span class="text-tiny font-weight-bold">{{ formatCurrency(changeAmount, selectedCurrency) }}</span>
+          <div v-if="selectedCurrency !== 'COP'" class="d-flex justify-space-between align-center mt-1 pt-1 border-t border-dashed">
+            <span class="text-caption font-weight-bold text-medium-emphasis">Equivalente en {{ selectedCurrency }}:</span>
+            <span class="text-subtitle-1 font-weight-black text-success-darken-2">{{ formatCurrency(changeAmount, selectedCurrency) }}</span>
           </div>
         </div>
 

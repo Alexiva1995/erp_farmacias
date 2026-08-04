@@ -245,7 +245,7 @@ const clearDialogErrors = () => {
 
       <!-- Tarjetas de Estadísticas -->
       <VRow dense class="mb-0">
-        <VCol class="kpi-col">
+        <VCol cols="12" sm="4" md="2.4">
           <VCard class="border shadow-sm rounded-lg overflow-hidden">
             <VCardText class="pa-4 d-flex align-center justify-space-between">
               <div>
@@ -261,7 +261,7 @@ const clearDialogErrors = () => {
           </VCard>
         </VCol>
 
-        <VCol class="kpi-col">
+        <VCol cols="12" sm="4" md="2.4">
           <VCard class="border shadow-sm rounded-lg overflow-hidden">
             <VCardText class="pa-4 d-flex align-center justify-space-between">
               <div>
@@ -277,7 +277,7 @@ const clearDialogErrors = () => {
           </VCard>
         </VCol>
 
-        <VCol class="kpi-col">
+        <VCol cols="12" sm="4" md="2.4">
           <VCard class="border shadow-sm rounded-lg overflow-hidden">
             <VCardText class="pa-4 d-flex align-center justify-space-between">
               <div>
@@ -293,7 +293,7 @@ const clearDialogErrors = () => {
           </VCard>
         </VCol>
 
-        <VCol class="kpi-col">
+        <VCol cols="12" sm="4" md="2.4">
           <VCard class="border shadow-sm rounded-lg overflow-hidden">
             <VCardText class="pa-4 d-flex align-center justify-space-between">
               <div>
@@ -309,7 +309,7 @@ const clearDialogErrors = () => {
           </VCard>
         </VCol>
 
-        <VCol class="kpi-col">
+        <VCol cols="12" sm="4" md="2.4">
           <VCard class="border shadow-sm rounded-lg overflow-hidden">
             <VCardText class="pa-4 d-flex align-center justify-space-between">
               <div>
@@ -351,22 +351,3 @@ const clearDialogErrors = () => {
     </div>
   </div>
 </template>
-
-<style scoped>
-.kpi-col {
-  flex: 0 0 100%;
-  max-width: 100%;
-}
-@media (min-width: 600px) {
-  .kpi-col {
-    flex: 0 0 33.33%;
-    max-width: 33.33%;
-  }
-}
-@media (min-width: 960px) {
-  .kpi-col {
-    flex: 0 0 20%;
-    max-width: 20%;
-  }
-}
-</style>

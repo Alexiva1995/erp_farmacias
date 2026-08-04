@@ -4,7 +4,7 @@ import SectionDivider from "@/components/SectionDivider.vue";
 import TicketHeader from "@/components/TicketHeader.vue";
 import { BASE64_LOGO_DATA } from "@/constants/logo.js";
 import { formatDateTime } from "@/utils/formatDateTime";
-import { computed, defineProps } from "vue";
+import { computed } from "vue";
 
 const props = defineProps({
   cashData: { type: Object, required: true },

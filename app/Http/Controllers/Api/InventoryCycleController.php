@@ -199,8 +199,8 @@ class InventoryCycleController extends Controller
                     'photo_url' => $item->product_photo_url,
                     'iva' => $item->product_iva,
                     'psychotropic' => $item->product_psychotropic,
-                    'unit_cost' => $item->product_unit_cost,
-                    'sale_price' => $item->product_sale_price,
+                    'unit_cost' => $item->product_unit_cost ?? 0,
+                    'sale_price' => $item->product_sale_price ?? 0,
                     'is_colombian_origin' => $item->product_is_colombian_origin,
                     'laboratory' => [
                         'name' => $item->laboratory_name,

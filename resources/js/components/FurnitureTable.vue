@@ -185,15 +185,21 @@ const formatDepreciation = (rate) => {
       </template>
 
       <template #loading>
-        <VSkeletonLoader type="table-row@10" />
+        <div class="pa-8 text-center bg-white">
+          <VProgressCircular indeterminate color="primary" size="36" class="mb-2" />
+          <div class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Cargando mobiliario...</div>
+        </div>
       </template>
     </VDataTableServer>
 
     <!-- Vista Móvil (Cards) -->
     <div v-else class="mobile-cards-container pa-4">
       <VRow v-if="props.loading">
-        <VCol v-for="n in 5" :key="n" cols="12">
-          <VSkeletonLoader type="card" class="rounded-lg" />
+        <VCol cols="12">
+          <VCard class="rounded-lg border shadow-sm pa-8 text-center bg-white">
+            <VProgressCircular indeterminate color="primary" size="36" class="mb-2" />
+            <div class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Cargando mobiliario...</div>
+          </VCard>
         </VCol>
       </VRow>
       <VRow v-else-if="props.furniture.length > 0">

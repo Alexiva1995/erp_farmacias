@@ -2,6 +2,7 @@
 import day from 'dayjs';
 import { computed } from 'vue';
 import { useDisplay } from 'vuetify';
+import AppEmptyState from "@/components/AppEmptyState.vue";
 
 const props= defineProps({
   items: { type: Array, required: true },
@@ -51,6 +52,13 @@ const emit= defineEmits(["update:options"])
         density="compact"
         @update:options="(options) => emit('update:options', options)"
       >
+        <template #no-data>
+          <AppEmptyState
+            title="No hay órdenes disponibles"
+            message="No se encontraron órdenes registradas que cumplan con los filtros seleccionados."
+            icon="tabler-ticket-off"
+          />
+        </template>
         <template #item.id="{ item }">
           <span class="font-weight-black text-primary">{{ item.id }}</span>
         </template>
@@ -101,6 +109,13 @@ const emit= defineEmits(["update:options"])
         :loading="props.loading"
         @update:options="(options) => emit('update:options', options)"
       >
+        <template #no-data>
+          <AppEmptyState
+            title="No hay órdenes disponibles"
+            message="No se encontraron órdenes registradas que cumplan con los filtros seleccionados."
+            icon="tabler-ticket-off"
+          />
+        </template>
         <template #default="{ items }">
           <VRow dense>
             <VCol v-for="item in items" :key="item.id" cols="12" class="mb-4">

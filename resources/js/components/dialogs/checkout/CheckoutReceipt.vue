@@ -2,7 +2,7 @@
 import { BASE64_LOGO_DATA } from "@/constants/logo.js";
 import { formatCurrency } from "@/utils/currencyFormatter";
 import { formatDateTime } from "@/utils/formatDateTime";
-import { defineEmits, defineProps } from "vue";
+
 
 const props = defineProps({
   orderData: Object,
@@ -94,6 +94,11 @@ const formatAsBS = (amount, fromCurrency = "BS") => {
             {{ orderData?.client?.name }} {{ orderData?.client?.last_name }}
             <div v-if="orderData?.client?.is_spe" class="text-success font-weight-bold text-tiny">Beneficio SPE Activo</div>
           </span>
+        </div>
+
+        <div class="d-flex justify-space-between text-caption mb-1">
+          <span class="font-weight-bold">Teléfono:</span>
+          <span class="text-right">{{ orderData?.client?.phone || "N/A" }}</span>
         </div>
 
         <VDivider class="my-2 border-dashed" />

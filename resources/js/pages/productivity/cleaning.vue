@@ -33,6 +33,7 @@ const frequencies = ref([
 const isEditDialogVisible = ref(false);
 const currentActivity = ref({});
 const activityFormErrors = ref({});
+const saving = ref(false);
 
 const fetchActivities = async () => {
   loading.value = true;
@@ -150,6 +151,8 @@ const handleSaveActivity = async (activityData) => {
     ? "/cleaning-activities"
     : `/cleaning-activities/${currentActivity.value.id}`;
 
+  saving.value = true;
+
   try {
     if (isNewActivity) {
       await axios.post(url, activityData);
@@ -170,6 +173,8 @@ const handleSaveActivity = async (activityData) => {
       console.error("Error al guardar la actividad:", error);
       toast.error("Hubo un error al guardar la actividad.");
     }
+  } finally {
+    saving.value = false;
   }
 };
 
@@ -190,6 +195,19 @@ const handleSort = (sortOptions) => {
 
 <template>
   <div class="productivity-cleaning-page pb-12">
+    <!-- Header del Módulo -->
+    <div class="d-flex align-center justify-space-between mb-4 pa-2">
+      <div>
+        <h1 class="text-h5 font-weight-black text-high-emphasis text-uppercase d-flex align-center gap-2">
+          <VIcon icon="tabler-broom" color="primary" size="28" />
+          Actividades de Limpieza
+        </h1>
+        <p class="text-caption text-medium-emphasis mb-0 font-weight-medium">
+          Gestión del catálogo de rutinas de mantenimiento y tareas periódicas
+        </p>
+      </div>
+    </div>
+
     <div class="d-flex flex-column gap-1 mt-1">
       <ActivityFilters
         v-model:searchQuery="searchQuery"
@@ -213,14 +231,15 @@ const handleSort = (sortOptions) => {
         @delete-activity="handleDeleteActivity"
       />
 
-    <ActivityEditDialog
-      v-model="isEditDialogVisible"
-      :activity="currentActivity"
-      :frequencies="frequencies"
-      :errors="activityFormErrors"
-      @save="handleSaveActivity"
-      @clear-errors="clearFormErrors"
-    />
+      <ActivityEditDialog
+        v-model="isEditDialogVisible"
+        :activity="currentActivity"
+        :frequencies="frequencies"
+        :errors="activityFormErrors"
+        :saving="saving"
+        @save="handleSaveActivity"
+        @clear-errors="clearFormErrors"
+      />
     </div>
   </div>
 </template>

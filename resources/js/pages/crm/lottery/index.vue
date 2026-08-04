@@ -203,9 +203,16 @@ async function sortiar(){
     let ganadores=seleccionarGanadores([...ordenesSinPaginar],numeroDePremiosSorteo)
     if(ganadores.length>0){
       modal.statu=true
-      modal.lista=ganadores.map( gan  => {
+      modal.lista = ganadores.map(gan => {
+        let ident = gan.client_identification || ''
+        if (ident && !/^[A-Za-z]-/.test(ident)) {
+          ident = `V-${ident}`
+        }
+        const name = gan.client_name || (gan.client ? `${gan.client.name || ''} ${gan.client.last_name || ''}`.trim() : 'Cliente Genérico')
+
         return {
-          client: `${gan.client.identification_type}${gan.client.identification} ${gan.client.name} ${gan.client.last_name || ''}`,
+          client: `${ident} ${name}`.trim(),
+          phone: gan.client_phone || gan.client?.phone || 'Sin Teléfono',
           order_id: gan.id
         }
       })

@@ -1,13 +1,14 @@
 <script setup>
-import CashClosureTicke from "@/components/CashClosureTicke.vue";
 import CashSummary from "@/components/CashSummary.vue";
 import ClosingHistoryTable from "@/components/ClosingHistoryTable.vue";
+import OrderCashCloseTable from "@/components/OrderCashCloseTable.vue";
 import ClosedCashClosure from "@/components/dialogs/ClosedCashClosure.vue";
 import OrderViewModal from "@/components/dialogs/OrderViewModal.vue";
-import HistoryCashClosureTicke from "@/components/HistoryCashClosureTicke.vue";
+import CashClosurePrintContainers from "@/components/CashClosurePrintContainers.vue";
 import UserCashFilters from "@/components/UserCashFilters.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
+import Swal from "sweetalert2";
 import { computed, nextTick, onMounted, reactive, ref, watch } from "vue";
 
 // Estado de carga y datos principales
@@ -310,24 +311,8 @@ const handleCompleteClosure = async ([closureData, cashClosureData]) => {
     const printContents = document.getElementById("CashClosurePrint");
     const historyContents = document.getElementById("HistoryDownload");
 
-    if (!printContents) {
-      console.error("Elemento 'CashClosurePrint' no encontrado.");
-      toast.error("Hubo un error al generar el PDF. Contenido no disponible.");
-      isPrinting.value = false;
-      cashData.value = null;
-      isDownloadingPdf.value = false;
-      return;
-    }
-
-    if (!historyContents) {
-      console.error("Elemento 'HistoryDownload' no encontrado.");
-      toast.error("No se pudo generar el historial para el correo.");
-      isDownload.value = false;
-      return;
-    }
-
-    const htmlContent = `<style>${ticketStyles}</style>${printContents.innerHTML}`;
-    const historyTicketHtml = `<style>${ticketStyles}</style>${historyContents.innerHTML}`;
+    const htmlContent = printContents ? `<style>${ticketStyles}</style>${printContents.innerHTML}` : '';
+    const historyTicketHtml = historyContents ? `<style>${ticketStyles}</style>${historyContents.innerHTML}` : '';
 
     const payload = {
       id: closureData.cierre_id,
@@ -336,6 +321,7 @@ const handleCompleteClosure = async ([closureData, cashClosureData]) => {
       entregar_efectivo_cop: closureData.entregar_efectivo_cop,
       is_blind: closureData.is_blind ? 1 : 0,
       declared_cop: closureData.declared_cop,
+      declared_cop_transfer: closureData.declared_cop_transfer,
       declared_usd: closureData.declared_usd,
       declared_credit: closureData.declared_credit,
       declared_bs_mobile: closureData.declared_bs_mobile,
@@ -420,21 +406,36 @@ const handleCloseViewModal = () => {
 };
 
 const cancelarOrder = async (orderId) => {
-  try {
-    await axios.patch(`/tpv/orders/${orderId}/cancelled`);
-    toast.success("Orden cancelada exitosamente.");
-    fetchOrders();
-    fetchCashClosure();
-  } catch (error) {
-    console.error(
-      "Error al cancelar la orden:",
-      error.response ? error.response.data : error.message
-    );
-    const errorMessage =
-      error.response?.data?.message ||
-      "Error al cancelar la orden. Inténtalo de nuevo.";
-    toast.error(errorMessage);
-  }
+  if (!orderId) return;
+  Swal.fire({
+    title: "¿Cancelar Orden?",
+    text: `¿Estás seguro de cancelar la orden #${orderId}?`,
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#d33",
+    cancelButtonColor: "#6e7881",
+    confirmButtonText: "Sí, Cancelar Orden",
+    cancelButtonText: "No, Mantener",
+  }).then(async (result) => {
+    if (result.isConfirmed) {
+      try {
+        await axios.patch(`/tpv/orders/${orderId}/cancelled`);
+        toast.success(`Orden #${orderId} cancelada exitosamente.`);
+        if (viewModal.value) handleCloseViewModal();
+        fetchOrders();
+        fetchCashClosure();
+      } catch (error) {
+        console.error(
+          "Error al cancelar la orden:",
+          error.response ? error.response.data : error.message
+        );
+        const errorMessage =
+          error.response?.data?.message ||
+          "Error al cancelar la orden. Inténtalo de nuevo.";
+        toast.error(errorMessage);
+      }
+    }
+  });
 };
 
 // Watcher Unificado para consultas de historial
@@ -622,31 +623,18 @@ onMounted(() => {
       :credit-amount="creditAmountForPrint"
       :credit="creditForPrint"
       @close="handleCloseViewModal"
+      @cancel-order="cancelarOrder"
       :is-special-taxpayer="isSpecialTaxpayer"
       :is-blind="cashClosure && cashClosure.blind_cash_closure"
     />
   </div>
 
-  <div
-    id="CashClosurePrint"
-    :class="{ 'd-none': !isPrinting, 'print-container': true }"
-  >
-    <CashClosureTicke
-      v-if="isPrinting && cashData"
-      :cash-data="cashData"
-      :isPdf="isDownloadingPdf"
-    />
-  </div>
-
-  <div
-    id="HistoryDownload"
-    :class="{ 'd-none': !isDownload, 'print-container': true }"
-  >
-    <HistoryCashClosureTicke
-      v-if="isDownload && orderDataHistory"
-      :order-data="orderDataHistory"
-      :cash-data="cashData"
-    />
-  </div>
+  <CashClosurePrintContainers
+    :is-printing="isPrinting"
+    :is-download="isDownload"
+    :cash-data="cashData"
+    :is-downloading-pdf="isDownloadingPdf"
+    :order-data-history="orderDataHistory"
+  />
 </template>
 

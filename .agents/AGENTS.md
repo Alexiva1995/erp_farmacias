@@ -60,6 +60,7 @@ Esta sección define los criterios mínimos que el agente debe cumplir y verific
 - **Selects explícitos:** Usar `select(['col1', 'col2', ...])` en las consultas Eloquent para evitar traer columnas innecesarias, especialmente en listados con paginación.
 - **API Resources:** Toda respuesta que salga hacia el frontend (Inertia o API pura) debe pasar por un `JsonResource` o `ResourceCollection`. Nunca exponer modelos Eloquent crudos (`->toArray()` o `->all()` directamente en el controlador).
 - **Paginación:** Las colecciones grandes deben paginarse. No usar `->get()` sin límite en listados; usar `->paginate(n)` o `->cursorPaginate(n)`.
+- **Consultas pesadas y Subconsultas:** Prohibido usar subconsultas correlacionadas por fila (`EXISTS`, `TIMESTAMPDIFF`, etc.) en consultas o `UNION` globales si no son estrictamente necesarias para el resultado paginado. Para datos secundarios o trazabilidad, deben ser calculados bajo demanda o mediante campos computados eficientes.
 - **Props mínimas:** Los props que Inertia pasa a Vue deben contener solo los datos que la vista necesita. Evitar serializar objetos completos cuando solo se necesitan 2 o 3 campos.
 
 ### 7.4 Calidad de Código Vue

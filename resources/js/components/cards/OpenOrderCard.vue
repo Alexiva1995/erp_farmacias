@@ -150,7 +150,8 @@ const paymentMethodsByCurrency = computed(() => {
   // Filtrar por cada moneda únicamente los métodos que estén habilitados
   const filtered = {};
   Object.keys(configured).forEach(currency => {
-    filtered[currency] = (configured[currency] || []).filter(method => method.enabled !== false);
+    const list = configured[currency];
+    filtered[currency] = Array.isArray(list) ? list.filter(method => method && method.enabled !== false) : [];
   });
 
   return filtered;
@@ -821,87 +822,6 @@ const getIva = (product, currency) => {
         </div>
 
         <div class="d-flex align-center gap-1 gap-sm-2 flex-shrink-0 ms-auto">
-          <!-- Selector de Descuento (VMenu Style) -->
-          <VMenu v-if="!props.isSportsRental">
-            <template #activator="{ props: menuProps }">
-              <VBtn
-                v-bind="menuProps"
-                variant="tonal"
-                color="primary"
-                size="small"
-                class="rounded-lg font-weight-black text-uppercase"
-              >
-                <span>
-                  <span class="d-inline d-sm-none">{{ props.selectedDiscountType ? props.selectedDiscountType.substring(0, 3) : 'Desc' }}</span>
-                  <span class="d-none d-sm-inline">{{ props.selectedDiscountType || 'Descuento' }}</span>
-                </span>
-                <VIcon end icon="tabler-chevron-down" size="14" />
-              </VBtn>
-            </template>
-            <VList density="compact" class="rounded-lg shadow-lg">
-              <VListItem
-                v-for="option in discountOptions"
-                :key="option"
-                :value="option"
-                :active="props.selectedDiscountType === option"
-                color="primary"
-                @click="emit('update:selectedDiscountType', option)"
-              >
-                <VListItemTitle class="font-weight-bold text-uppercase text-caption">{{ option }}</VListItemTitle>
-              </VListItem>
-              <VDivider v-if="props.selectedDiscountType" />
-              <VListItem v-if="props.selectedDiscountType" color="error" @click="emit('update:selectedDiscountType', null)">
-                <VListItemTitle class="font-weight-bold text-uppercase text-caption text-error">Quitar</VListItemTitle>
-              </VListItem>
-            </VList>
-          </VMenu>
-
-          <!-- Métodos de Pago Rápidos para la moneda activa -->
-          <div v-if="enableFlashCheckout" class="d-flex align-center gap-1 border rounded-lg pa-1 bg-white shadow-sm me-1 me-sm-2 flex-wrap">
-            <span class="text-super-xs font-weight-black text-uppercase text-disabled px-1">Pago:</span>
-            <VBtn
-              v-for="method in (paymentMethodsByCurrency[props.selectedDisplayCurrency] || [])"
-              :key="method.value"
-              :color="selectedPaymentMethod === method.value ? 'primary' : 'grey-lighten-3'"
-              :variant="selectedPaymentMethod === method.value ? 'flat' : 'text'"
-              size="x-small"
-              class="rounded-md font-weight-black text-uppercase px-2"
-              height="24"
-              @click="selectedPaymentMethod = method.value"
-            >
-              {{ method.label }}
-            </VBtn>
-          </div>
-
-          <!-- Selector de Moneda (VMenu Style) -->
-          <VMenu>
-            <template #activator="{ props: menuProps }">
-              <VBtn
-                v-bind="menuProps"
-                variant="flat"
-                color="primary"
-                size="small"
-                class="rounded-lg font-weight-black px-3"
-              >
-                <VIcon start icon="tabler-currency-dollar" size="16" />
-                <span>{{ props.selectedDisplayCurrency }}</span>
-                <VIcon end icon="tabler-chevron-down" size="14" />
-              </VBtn>
-            </template>
-            <VList density="compact" class="rounded-lg shadow-lg">
-              <VListItem
-                v-for="currencyOption in availableCurrency"
-                :key="currencyOption"
-                :value="currencyOption"
-                :active="props.selectedDisplayCurrency === currencyOption"
-                color="primary"
-                @click="selectCurrency(currencyOption)"
-              >
-                <VListItemTitle class="font-weight-bold text-caption">{{ currencyOption }}</VListItemTitle>
-              </VListItem>
-            </VList>
-          </VMenu>
-
           <VTooltip text="Cancelar Orden" location="bottom">
             <template #activator="{ props: tooltipProps }">
               <VBtn
@@ -1046,7 +966,7 @@ const getIva = (product, currency) => {
             </VMenu>
 
             <!-- Selector de Moneda -->
-            <VMenu>
+            <VMenu location="bottom end">
               <template #activator="{ props: menuProps }">
                 <VBtn
                   v-bind="menuProps"

@@ -12,6 +12,9 @@ import { useDisplay } from "vuetify";
 
 const { mobile } = useDisplay();
 
+// Estado de navegación por pestañas
+const activeTab = ref('employees');
+
 // Datos para la tabla de empleados
 const employeeCleanings = ref([]);
 const totalRecords = ref(0);
@@ -58,9 +61,7 @@ const fetchEmployeeCleanings = async () => {
   );
 
   try {
-    const response = await axios.get("/employee-cleaning-activities", {
-      params,
-    });
+    const response = await axios.get("/employee-cleaning-activities", { params });
     employeeCleanings.value = response.data.data.data;
     totalRecords.value = response.data.data.total;
   } catch (error) {
@@ -82,9 +83,7 @@ const fetchAssignments = async () => {
   };
 
   try {
-    const response = await axios.get("/employee-cleaning-activities/assignments", {
-      params,
-    });
+    const response = await axios.get("/employee-cleaning-activities/assignments", { params });
     assignments.value = response.data.data.data;
     totalAssignments.value = response.data.data.total;
   } catch (error) {
@@ -115,7 +114,7 @@ const fetchCleaningActivities = async () => {
 const fetchEmployees = async () => {
   try {
     const response = await axios.get("/rrhh/employees", {
-      params: { itemsPerPage: 1000, active: true },
+      params: { itemsPerPage: 500, active: true },
     });
     employees.value = response.data.data
       .filter((emp) => emp.role_id === 3)
@@ -134,18 +133,22 @@ watch(
   () => {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
-      fetchEmployeeCleanings();
-      fetchAssignments();
+      if (activeTab.value === 'employees') {
+        fetchEmployeeCleanings();
+      } else {
+        fetchAssignments();
+      }
     }, 300);
   },
   { deep: true },
 );
 
-// Watcher específico para los filtros de la tabla de asignaciones
 watch(
   [assignmentPage, assignmentItemsPerPage, hideDaily],
   () => {
-    fetchAssignments();
+    if (activeTab.value === 'assignments') {
+      fetchAssignments();
+    }
   }
 );
 
@@ -194,9 +197,7 @@ const handleDeleteAssignment = async (employeeId, activityId) => {
 
   if (result.isConfirmed) {
     try {
-      await axios.delete(
-        `/employee-cleaning-activities/${employeeId}/${activityId}`,
-      );
+      await axios.delete(`/employee-cleaning-activities/${employeeId}/${activityId}`);
       toast.success("Asignación eliminada con éxito.");
       fetchEmployeeCleanings();
       fetchAssignments();
@@ -271,7 +272,16 @@ const clearDialogErrors = () => {
 
 <template>
   <div class="productivity-employee-task-page pb-12">
-    <div class="d-flex flex-column gap-1 mt-1">
+    <v-row class="mb-2 align-center">
+      <v-col cols="12" md="8">
+        <h1 class="text-h4 font-weight-bold primary--text">Asignaciones de Tareas</h1>
+        <p class="text-subtitle-1 text-medium-emphasis mb-0">
+          Gestión y seguimiento de actividades de limpieza por empleado
+        </p>
+      </v-col>
+    </v-row>
+
+    <div class="d-flex flex-column gap-3">
       <EmployeeCleaningFilters
         v-model:searchQuery="searchQuery"
         v-model:selectedStatus="selectedStatus"
@@ -281,29 +291,49 @@ const clearDialogErrors = () => {
         @sort="handleSort"
       />
 
-      <EmployeeCleaningTable
-        :employee-cleanings="employeeCleanings"
-        :loading="loading"
-        :total-records="totalRecords"
-        :items-per-page="itemsPerPage"
-        :page="page"
-        @update:options="updateTableOptions"
-        @view-activities="handleViewActivities"
-        @edit-assignment="handleEditAssignment"
-        @delete-assignment="handleDeleteAssignment"
-      />
+      <v-card variant="outlined" class="rounded-lg">
+        <v-tabs v-model="activeTab" color="primary" align-tabs="start" active-class="font-weight-bold">
+          <v-tab value="employees" class="text-none">
+            <v-icon start icon="mdi-account-group-outline" />
+            Por Empleado
+          </v-tab>
+          <v-tab value="assignments" class="text-none">
+            <v-icon start icon="mdi-format-list-checks" />
+            Resumen de Asignaciones
+          </v-tab>
+        </v-tabs>
 
-      <!-- Segunda Tabla: Resumen de Asignaciones -->
-      <EmployeeAssignmentsTable
-        v-model:hideDaily="hideDaily"
-        :assignments="assignments"
-        :loading="loadingAssignments"
-        :total-records="totalAssignments"
-        :items-per-page="assignmentItemsPerPage"
-        :page="assignmentPage"
-        @update:options="updateAssignmentOptions"
-        @delete-assignment="handleDeleteAssignment"
-      />
+        <v-divider />
+
+        <v-window v-model="activeTab" class="pa-2">
+          <v-window-item value="employees">
+            <EmployeeCleaningTable
+              :employee-cleanings="employeeCleanings"
+              :loading="loading"
+              :total-records="totalRecords"
+              :items-per-page="itemsPerPage"
+              :page="page"
+              @update:options="updateTableOptions"
+              @view-activities="handleViewActivities"
+              @edit-assignment="handleEditAssignment"
+              @delete-assignment="handleDeleteAssignment"
+            />
+          </v-window-item>
+
+          <v-window-item value="assignments">
+            <EmployeeAssignmentsTable
+              v-model:hideDaily="hideDaily"
+              :assignments="assignments"
+              :loading="loadingAssignments"
+              :total-records="totalAssignments"
+              :items-per-page="assignmentItemsPerPage"
+              :page="assignmentPage"
+              @update:options="updateAssignmentOptions"
+              @delete-assignment="handleDeleteAssignment"
+            />
+          </v-window-item>
+        </v-window>
+      </v-card>
 
       <EmployeeCleaningViewDialog
         v-model="isViewDialogVisible"

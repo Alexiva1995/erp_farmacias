@@ -1,7 +1,7 @@
-﻿<script setup>
+<script setup>
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { computed, defineProps, ref, watch, nextTick } from "vue";
+import { computed, ref, watch, nextTick } from "vue";
 import { useDisplay } from "vuetify";
 
 const props = defineProps({

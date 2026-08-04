@@ -1,6 +1,6 @@
 <script setup lang="js">
-
 import CompaniesClientsFilters from "@/components/CompaniesClientsFilters.vue";
+import CompanyHeaderCard from "@/components/CompanyHeaderCard.vue";
 import CompaniesClientFormDialoge from "@/components/dialogs/CompaniesClientFormDialoge.vue";
 import AddClientToCompanyModal from "@/components/dialogs/AddClientToCompanyModal.vue";
 import axios from "@/plugins/axios";
@@ -10,229 +10,192 @@ import Swal from 'sweetalert2';
 import { onMounted, reactive, ref, watch } from 'vue';
 import { useRoute } from "vue-router";
 
-const router = useRoute()
+const route = useRoute();
+const companyId = route.params.id;
 
-const statuModule= reactive({
-  items:[],
-  itemsClientes:[],
-  totalClientes:0,
-  company:{},
-  comapanies:[],
-})
+const stateModule = reactive({
+  itemsClientes: [],
+  totalClientes: 0,
+  company: {},
+});
 
-const modal= reactive({
-  statu:false,
-  titulo:"Nuevo"
-})
+const modal = reactive({
+  status: false,
+  titulo: "Nuevo",
+});
 
-const isAddClientModalVisible = ref(false)
+const isAddClientModalVisible = ref(false);
+const loading = ref(false);
+const companyLoading = ref(false);
 
-const formulario= reactive({
-  id:null,
-  identification:"",
-  identification_type:"",
-  name:"",
-  last_name:"",
-  email:"",
-  phone:"",
-  address:"",
-  birthdate:"",
-  company_id:router.params.id,
-})
-const formularioError= reactive({
-  id:"",
-  identification:"",
-  identification_type:"",
-  name:"",
-  last_name:"",
-  email:"",
-  phone:"",
-  address:"",
-  birthdate:"",
-})
+const page = ref(1);
+const itemsPerPage = ref(10);
+const sortBy = ref('id');
+const orderBy = ref('desc');
 
-const loading = ref(false)
+const buscadorFiltro = ref("");
+const tipoIdentificacionFiltro = ref(null);
+const fechaDesdeFiltro = ref("");
+const fechaHastaFiltro = ref("");
 
-const page = ref(1)
-const itemsPerPage = ref(10)
-const sortBy = ref('id')
-const orderBy = ref('desc')
+const formulario = reactive({
+  id: null,
+  identification: "",
+  identification_type: "",
+  name: "",
+  last_name: "",
+  email: "",
+  phone: "",
+  address: "",
+  birthdate: "",
+  company_id: companyId,
+});
 
-const buscardor_filtro= ref("");
-const tipo_identificacion_filtro= ref(null);
-const company_id_filtro= ref(router.params.id);
-const fechaDesde_filtro= ref("");
-const fechaHasta_filtro= ref("");
+const formularioError = reactive({
+  id: "",
+  identification: "",
+  identification_type: "",
+  name: "",
+  last_name: "",
+  email: "",
+  phone: "",
+  address: "",
+  birthdate: "",
+});
 
-
-function mostarModal(){
-  modal.statu=true
-  modal.titulo="Nuevo Cliente de "+statuModule.company.name
+function mostarModal() {
+  modal.status = true;
+  modal.titulo = "Nuevo Cliente de " + (stateModule.company.name || '');
 }
 
-function mostarModoEdit(payload){
-  let cliente= statuModule.items.find(client => client.id==payload)
-  modal.statu=true
-  modal.titulo=`${cliente.name} ${cliente.last_name || ''}`
-
-  insertarDatosAlFormulario({...cliente})
+function mostarModoEdit(payload) {
+  let cliente = stateModule.itemsClientes.find(client => client.id == payload);
+  if (!cliente) return;
+  modal.status = true;
+  modal.titulo = `${cliente.name} ${cliente.last_name || ''}`;
+  insertarDatosAlFormulario({ ...cliente });
 }
 
-function cerrarModal(payload){
-  modal.statu=payload
-  limpiarDatosFormulario()
-  limpiarErroresFormulario()
+function cerrarModal(payload) {
+  modal.status = payload;
+  limpiarDatosFormulario();
+  limpiarErroresFormulario();
 }
 
-function insertarDatosAlFormulario(datos){
-  formulario.id=datos.id
-  formulario.identification=datos.identification
-  formulario.identification_type=datos.identification_type
-  formulario.name=datos.name
-  formulario.last_name=datos.last_name
-  formulario.email=(datos.email==null)?"":datos.email
-  formulario.phone=datos.phone
-  formulario.address=datos.address
-  formulario.birthdate=datos.birthdate
+function insertarDatosAlFormulario(datos) {
+  formulario.id = datos.id;
+  formulario.identification = datos.identification;
+  formulario.identification_type = datos.identification_type;
+  formulario.name = datos.name;
+  formulario.last_name = datos.last_name;
+  formulario.email = datos.email ?? "";
+  formulario.phone = datos.phone;
+  formulario.address = datos.address;
+  formulario.birthdate = datos.birthdate;
 }
 
-function limpiarDatosFormulario(){
-  formulario.id=null
-  formulario.identification=""
-  formulario.identification_type=""
-  formulario.name=""
-  formulario.last_name=""
-  formulario.email=""
-  formulario.phone=""
-  formulario.address=""
-  formulario.birthdate=null
+function limpiarDatosFormulario() {
+  formulario.id = null;
+  formulario.identification = "";
+  formulario.identification_type = "";
+  formulario.name = "";
+  formulario.last_name = "";
+  formulario.email = "";
+  formulario.phone = "";
+  formulario.address = "";
+  formulario.birthdate = null;
 }
 
-function limpiarErroresFormulario(){
-  formularioError.id=""
-  formularioError.identification=""
-  formularioError.identification_type=""
-  formularioError.name=""
-  formularioError.last_name=""
-  formularioError.email=""
-  formularioError.phone=""
-  formularioError.address=""
-  formularioError.birthdate=""
+function limpiarErroresFormulario() {
+  Object.keys(formularioError).forEach(key => formularioError[key] = "");
 }
 
-async function consultAllcomapanies(){
-  let res = await axios.get("/crm/companies")
-  if(res.status!=200){
-    console.error("error => ",res)
-    return []
-  }
-
-  return [...res.data.data]
-
-}
-
-function enviar(payload){
-  if(formulario.id==null){
-    crear(payload)
-  }
-  else{
-    actualizar(payload)
+function enviar(payload) {
+  if (formulario.id == null) {
+    crear(payload);
+  } else {
+    actualizar(payload);
   }
 }
 
-async function crear(data){
+async function crear(data) {
   try {
-    let respuesApi=await axios.post("/crm/clients",data)
-    if(respuesApi.status==200){
-        toast.success("El cliente se ha guardado correctamente")
-        cerrarModal(false)
-        await actualizarTabla()
+    let respuesApi = await axios.post("/crm/clients", data);
+    if (respuesApi.status == 200) {
+      toast.success("El cliente se ha guardado correctamente");
+      cerrarModal(false);
+      await actualizarTablaClientes();
     }
   } catch (error) {
-    toast.error("Error al crear el cliente")
-    console.log("error en el servidor => ",error)
-    let errores={...error.response.data.data.errors}
-    cargarErrores(errores)
+    toast.error("Error al crear el cliente");
+    let errores = { ...error.response?.data?.data?.errors };
+    cargarErrores(errores);
   }
 }
 
-async function actualizar(data){
+async function actualizar(data) {
   try {
-    let config={
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-    }
-    let respuesApi=await axios.post(`/crm/clients/edit/${data.get("id")}`,data,config)
-    if(respuesApi.status==200){
-        toast.success("Se guardaron los cambios correctamente")
-        cerrarModal(false)
-        await actualizarTabla()
+    let config = { headers: { 'Content-Type': 'multipart/form-data' } };
+    let respuesApi = await axios.post(`/crm/clients/edit/${data.get("id")}`, data, config);
+    if (respuesApi.status == 200) {
+      toast.success("Se guardaron los cambios correctamente");
+      cerrarModal(false);
+      await actualizarTablaClientes();
     }
   } catch (error) {
-    toast.error("Error al guardar los cambios del cliente")
-    console.log("error en el servidor => ",error)
-    let errores={...error.response.data.data.errors}
-    cargarErrores(errores)
+    toast.error("Error al guardar los cambios del cliente");
+    let errores = { ...error.response?.data?.data?.errors };
+    cargarErrores(errores);
   }
 }
 
-function cargarErrores(errores){
-  formularioError.id=(errores.id)?errores.id.join(", "):""
-  formularioError.identification=(errores.identification)?errores.identification.join(", "):""
-  formularioError.identification_type=(errores.identification_type)?errores.identification_type.join(", "):""
-  formularioError.name=(errores.name)?errores.name.join(", "):""
-  formularioError.last_name=(errores.last_name)?errores.last_name.join(", "):""
-  formularioError.email=(errores.email)?errores.email.join(", "):""
-  formularioError.phone=(errores.phone)?errores.phone.join(", "):""
-  formularioError.address=(errores.address)?errores.address.join(", "):""
-  formularioError.birthdate=(errores.birthdate)?errores.birthdate.join(", "):""
+function cargarErrores(errores) {
+  Object.keys(formularioError).forEach(key => {
+    formularioError[key] = errores[key] ? errores[key].join(", ") : "";
+  });
 }
 
-async function actualizarTabla(){
+async function actualizarTablaClientes() {
   loading.value = true;
-
-  let filtros={
-    page:page.value,
-    itemsPerPage:itemsPerPage.value,
-    orderBy:orderBy.value,
-    sortBy:sortBy.value,
-    company_id:company_id_filtro.value,
+  let filtros = {
+    page: page.value,
+    itemsPerPage: itemsPerPage.value,
+    orderBy: orderBy.value,
+    sortBy: sortBy.value,
+    buscardor_filtro: buscadorFiltro.value,
+    tipo_identificacion_filtro: tipoIdentificacionFiltro.value,
+    company_id: companyId,
+    fechaDesde_filtro: fechaDesdeFiltro.value,
+    fechaHasta_filtro: fechaHastaFiltro.value,
+  };
+  try {
+    let respuestaApi = await axios.post(`/crm/clients/filtrar?page=${filtros.page}`, filtros);
+    if (respuestaApi.status == 200 && respuestaApi.data?.data) {
+      stateModule.itemsClientes = respuestaApi.data.data.data || [];
+      stateModule.totalClientes = respuestaApi.data.data.total || 0;
+    }
+  } catch (err) {
+    toast.error("Error al obtener lista de clientes");
+  } finally {
+    loading.value = false;
   }
-  let respuestaApi= await filtrar(filtros)
-  statuModule.itemsClientes=respuestaApi.data
-  statuModule.totalClientes=respuestaApi.total
-
-  statuModule.items=[...respuestaApi.data]
-
-  loading.value = false;
 }
 
-async function actualizarTablaTablaClientes(){
-  loading.value = true;
-
-  let filtros={
-    page:page.value,
-    itemsPerPage:itemsPerPage.value,
-    orderBy:orderBy.value,
-    sortBy:sortBy.value,
-    // filtros
-    buscardor_filtro:buscardor_filtro.value,
-    tipo_identificacion_filtro:tipo_identificacion_filtro.value,
-    company_id:company_id_filtro.value,
-    fechaDesde_filtro:fechaDesde_filtro.value,
-    fechaHasta_filtro:fechaHasta_filtro.value,
+async function cargarDatosEmpresa() {
+  companyLoading.value = true;
+  try {
+    let respuestaApi = await axios.get(`/crm/companies/${companyId}`);
+    if (respuestaApi.status == 200 && respuestaApi.data?.data) {
+      stateModule.company = respuestaApi.data.data;
+    }
+  } catch (err) {
+    toast.error("Error al consultar información de la empresa");
+  } finally {
+    companyLoading.value = false;
   }
-  let respuestaApi= await filtrar(filtros)
-  statuModule.itemsClientes=respuestaApi.data
-  statuModule.totalClientes=respuestaApi.total
-
-  statuModule.items=[...respuestaApi.data]
-
-  loading.value = false;
 }
 
-async function confirmarEliminarCliente(payload){
+async function confirmarEliminarCliente(payload) {
   const result = await Swal.fire({
     title: '¿Estás seguro?',
     text: '¡No podrás revertir la eliminación de este cliente!',
@@ -249,11 +212,11 @@ async function confirmarEliminarCliente(payload){
   });
 
   if (result.isConfirmed) {
-    await eliminarCliente(payload)
+    await eliminarCliente(payload);
   }
 }
 
-async function confirmarQuitarDeEmpresa(clientId){
+async function confirmarQuitarDeEmpresa(clientId) {
   const result = await Swal.fire({
     title: '¿Quitar cliente de la empresa?',
     text: 'El cliente será desvinculado de esta empresa.',
@@ -270,199 +233,135 @@ async function confirmarQuitarDeEmpresa(clientId){
   });
 
   if (result.isConfirmed) {
-    await removeFromCompany(clientId)
+    await removeFromCompany(clientId);
   }
 }
 
-async function removeFromCompany(clientId){
+async function removeFromCompany(clientId) {
   try {
-    await axios.post(`/crm/clients/${clientId}/update-company/${router.params.id}`, {
+    await axios.post(`/crm/clients/${clientId}/update-company/${companyId}`, {
       client_id: clientId,
-      company_id: parseInt(router.params.id),
+      company_id: parseInt(companyId),
       status: false,
-    })
-    toast.success("Cliente desvinculado de la empresa")
-    await actualizarTabla()
+    });
+    toast.success("Cliente desvinculado de la empresa");
+    await actualizarTablaClientes();
+    await cargarDatosEmpresa();
   } catch (error) {
-    toast.error("Error al desvincular el cliente")
-    console.error("error => ", error)
+    toast.error("Error al desvincular el cliente");
   }
 }
 
-async function eliminarCliente(id){
+async function eliminarCliente(id) {
   try {
-    let respuesApi=await axios.delete(`/crm/clients/${id}`)
-    if(respuesApi.status==200){
-        toast.success("El cliente se ha eliminado correctamente")
-        cerrarModal(false)
-        await actualizarTabla()
+    let respuesApi = await axios.delete(`/crm/clients/${id}`);
+    if (respuesApi.status == 200) {
+      toast.success("El cliente se ha eliminado correctamente");
+      cerrarModal(false);
+      await actualizarTablaClientes();
+      await cargarDatosEmpresa();
     }
   } catch (error) {
-    toast.error("Error al eliminar el cliente")
-    console.log("error en el servidor => ",error)
-    let errores={...error.response.data.data.errors}
-    cargarErrores(errores)
+    toast.error("Error al eliminar el cliente");
   }
 }
 
 const updateTableOptions = options => {
-  page.value = options.page
-  itemsPerPage.value = options.itemsPerPage
-  sortBy.value = options.sortBy[0]?.key
-  orderBy.value = options.sortBy[0]?.order
+  page.value = options.page;
+  itemsPerPage.value = options.itemsPerPage;
+  sortBy.value = options.sortBy[0]?.key;
+  orderBy.value = options.sortBy[0]?.order;
+};
+
+watch(
+  [buscadorFiltro, tipoIdentificacionFiltro, fechaDesdeFiltro, fechaHastaFiltro, page, itemsPerPage, orderBy, sortBy],
+  async () => { await actualizarTablaClientes(); }
+);
+
+function limpiarFiltros() {
+  buscadorFiltro.value = "";
+  tipoIdentificacionFiltro.value = "";
+  fechaDesdeFiltro.value = "";
+  fechaHastaFiltro.value = "";
 }
 
-watch(
-    [
-      buscardor_filtro,
-      tipo_identificacion_filtro,
-      fechaDesde_filtro,
-      fechaHasta_filtro,
-      page,
-      itemsPerPage,
-      orderBy,
-      sortBy
-  ],
-  async () =>{
-    await actualizarTablaTablaClientes()
-  }
-)
-
-watch(
-  () => formulario.identification_type,
-  (value) => {
-    if(value=="J-"){
-      formulario.last_name=""
-      formulario.company_id=""
+async function exportarPdf() {
+  let filtros = {
+    buscardor_filtro: buscadorFiltro.value,
+    tipo_identificacion_filtro: tipoIdentificacionFiltro.value,
+    company_id: companyId,
+    fechaDesde_filtro: fechaDesdeFiltro.value,
+    fechaHasta_filtro: fechaHastaFiltro.value,
+  };
+  try {
+    let respuestaApi = await axios.post(`/crm/clients/filtrar-sin-paginar`, filtros);
+    if (!respuestaApi.data?.data || respuestaApi.data.data.length == 0) {
+      toast.info("No hay clientes para generar reporte");
+      return;
     }
+    pdfClienstGenerator(respuestaApi.data.data);
+  } catch (err) {
+    toast.error("Error al exportar PDF");
   }
-)
-
-
-function limpiarFiltros(){
-  buscardor_filtro.value=""
-  tipo_identificacion_filtro.value=""
-  fechaDesde_filtro.value=""
-  fechaHasta_filtro.value=""
 }
 
-async function filtrar(dataFiltro){
-  let respuestaApi = await axios.post(`/crm/clients/filtrar?page=${dataFiltro.page}`,dataFiltro)
-  if(respuestaApi.status!=200){
-    toast.success("Error al filtrar los datos")
-  }
-
-  return {...respuestaApi.data.data}
-}
-
-async function filtrarSinPaginar(dataFiltro){
-  let respuestaApi = await axios.post(`/crm/clients/filtrar-sin-paginar`,dataFiltro)
-  if(respuestaApi.status!=200){
-    toast.success("Error al filtrar los datos")
-  }
-
-  return [...respuestaApi.data.data]
-}
-
-
-async function exportarPdf(){
-    let filtros={
-      buscardor_filtro:buscardor_filtro.value,
-      tipo_identificacion_filtro:tipo_identificacion_filtro.value,
-      company_id:company_id_filtro.value,
-      fechaDesde_filtro:fechaDesde_filtro.value,
-      fechaHasta_filtro:fechaHasta_filtro.value,
-  }
-  let respuestaApi= await filtrarSinPaginar(filtros)
-
-  if(respuestaApi.length==0){
-    toast.info("No hay clientes para poder genera un reporte")
-    return null;
-  }
-
-  pdfClienstGenerator(respuestaApi)
-
-}
-
-async function exportarExcel(formato){
-
-  try{
-      let params={
-      buscardor_filtro:buscardor_filtro.value,
-      tipo_identificacion_filtro:tipo_identificacion_filtro.value,
-      company_id:company_id_filtro.value,
-      fechaDesde_filtro:fechaDesde_filtro.value,
-      fechaHasta_filtro:fechaHasta_filtro.value,
+async function exportarExcel(formato) {
+  try {
+    let params = {
+      buscardor_filtro: buscadorFiltro.value,
+      tipo_identificacion_filtro: tipoIdentificacionFiltro.value,
+      company_id: companyId,
+      fechaDesde_filtro: fechaDesdeFiltro.value,
+      fechaHasta_filtro: fechaHastaFiltro.value,
       formato,
-    }
-
-    let respuestaApi = await axios.get(`/crm/clients/exportar/excel`,{
-      params,
-      responseType: "blob",
-    })
-
-    if(respuestaApi.status!=200){
-      toast.success("Error al filtrar los datos")
-    }
+    };
+    let respuestaApi = await axios.get(`/crm/clients/exportar/excel`, { params, responseType: "blob" });
     const url = window.URL.createObjectURL(new Blob([respuestaApi.data]));
     const link = document.createElement("a");
     link.href = url;
-
-    const contentDisposition = respuestaApi.headers["content-disposition"];
-    let fileName = `clients.${formato}`;
-    if (contentDisposition) {
-      const fileNameMatch = contentDisposition.match(/filename="(.+)"/);
-      if (fileNameMatch && fileNameMatch.length === 2)
-        fileName = fileNameMatch[1];
-    }
-
-    link.setAttribute("download", fileName);
+    link.setAttribute("download", `clients.${formato}`);
     document.body.appendChild(link);
     link.click();
-
     link.remove();
     window.URL.revokeObjectURL(url);
   } catch (error) {
-    console.error("Error al exportar los datos:", error);
+    toast.error("Error al exportar Excel");
   }
-
 }
 
-async function consultarCompanyById(id){
-
-  let respuestaApi = await axios.get(`/crm/companies/${id}`)
-  if(respuestaApi.status!=200){
-    toast.success("Error al consultar la información de la empresa")
-  }
-
-  return {...respuestaApi.data.data}
+function onClientAssigned() {
+  actualizarTablaClientes();
+  cargarDatosEmpresa();
 }
 
-function onClientAssigned(){
-  actualizarTabla()
-}
-
-function openAddClientModal(){
-  isAddClientModalVisible.value = true
+function openAddClientModal() {
+  isAddClientModalVisible.value = true;
 }
 
 onMounted(async () => {
-  let responseComponies = await consultAllcomapanies()
-  let companyData=await consultarCompanyById(router.params.id)
-  limpiarFiltros()
-  await actualizarTabla()
-
-  statuModule.company=companyData
-  statuModule.comapanies=[...responseComponies]
-})
+  limpiarFiltros();
+  await Promise.all([
+    cargarDatosEmpresa(),
+    actualizarTablaClientes(),
+  ]);
+});
 </script>
+
 <template>
   <div>
+    <!-- Cabecera de Empresa -->
+    <CompanyHeaderCard
+      :company="stateModule.company"
+      :total-clients="stateModule.totalClientes"
+      :loading="companyLoading"
+    />
+
+    <!-- Filtros de Clientes de Empresa -->
     <CompaniesClientsFilters
-      v-model:buscador="buscardor_filtro"
-      v-model:tipo_identificacion_filtro="tipo_identificacion_filtro"
-      v-model:fechaDesde_filtro="fechaDesde_filtro"
-      v-model:fechaHasta_filtro="fechaHasta_filtro"
+      v-model:buscador="buscadorFiltro"
+      v-model:tipo_identificacion_filtro="tipoIdentificacionFiltro"
+      v-model:fechaDesde_filtro="fechaDesdeFiltro"
+      v-model:fechaHasta_filtro="fechaHastaFiltro"
       @clear="limpiarFiltros"
       @add-existing-client="openAddClientModal"
       @export-pdf="exportarPdf"
@@ -470,7 +369,7 @@ onMounted(async () => {
     />
 
     <CompaniesClientFormDialoge
-      :modal-formulario="modal.statu"
+      :modal-formulario="modal.status"
       :titulo="modal.titulo"
       :form-data="formulario"
       :form-error="formularioError"
@@ -481,17 +380,16 @@ onMounted(async () => {
 
     <AddClientToCompanyModal
       v-model="isAddClientModalVisible"
-      :company-id="router.params.id"
-      :company-name="statuModule.company.name || ''"
+      :company-id="companyId"
+      :company-name="stateModule.company.name || ''"
       @client-assigned="onClientAssigned"
     />
 
-    <VCard>
-      <VDivider />
+    <VCard border class="mt-4">
       <ClientOfCompanyTable
-        :companyId="router.params.id"
-        :clients="statuModule.itemsClientes"
-        :total-clients="statuModule.totalClientes"
+        :companyId="companyId"
+        :clients="stateModule.itemsClientes"
+        :total-clients="stateModule.totalClientes"
         :loading="loading"
         :items-per-page="itemsPerPage"
         :page="page"

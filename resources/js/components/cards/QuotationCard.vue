@@ -193,8 +193,8 @@ const formattedTotalQuotation = computed(() => {
         <VListItem
           v-for="item in breakdownItems"
           :key="item.title"
-          class="rounded-lg mb-2 border transition-all"
-          :class="item.isDiscount ? 'bg-error-lighten-5 border-error border-opacity-25' : 'bg-surface border-opacity-10'"
+          class="rounded-lg mb-2 transition-all pa-2"
+          :class="item.isDiscount ? 'bg-error-lighten-5 border border-error border-opacity-25' : 'bg-surface'"
         >
           <VListItemTitle class="text-subtitle-2 font-weight-bold" :class="item.isDiscount ? 'text-error' : 'text-high-emphasis'">
             {{ item.title }}
@@ -214,10 +214,10 @@ const formattedTotalQuotation = computed(() => {
 
       <VSpacer />
       
-      <div class="total-section mt-4 pa-5 rounded-lg shadow-sm transition-all bg-primary">
+      <div class="total-section mt-4 pa-5 rounded-lg shadow-sm transition-all bg-primary text-white">
         <div class="d-flex align-center justify-space-between text-white">
           <div class="d-flex flex-column text-white">
-            <span class="text-super-xs font-weight-bold uppercase letter-spacing-1 opacity-75 text-white">Total a Pagar</span>
+            <span class="text-super-xs font-weight-bold uppercase letter-spacing-1 text-white opacity-90">Total a Pagar</span>
             <h4 class="text-h4 font-weight-black leading-none mt-1 text-white">Total</h4>
           </div>
           <div class="text-h3 font-weight-black text-white">
@@ -249,6 +249,10 @@ const formattedTotalQuotation = computed(() => {
 .total-section {
   position: relative;
   overflow: hidden;
+}
+
+.total-section * {
+  color: #ffffff !important;
 }
 
 .total-section::before {

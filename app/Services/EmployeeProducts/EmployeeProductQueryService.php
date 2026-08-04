@@ -17,8 +17,17 @@ class EmployeeProductQueryService
      */
     public function getFilteredEmployeeProducts(array $data): LengthAwarePaginator
     {
-        $query = Employee::where('is_active', true)
-            ->with(['products', 'dishes'])
+        $query = Employee::query()
+            ->select(['id', 'name', 'last_name', 'photo', 'identification', 'is_active'])
+            ->where('is_active', true)
+            ->with([
+                'products' => function ($q) {
+                    $q->select(['products.id', 'products.name']);
+                },
+                'dishes' => function ($q) {
+                    $q->select(['dishes.id', 'dishes.name']);
+                }
+            ])
             ->withCount(['products', 'dishes'])
             ->orderByRaw('photo IS NOT NULL DESC');
 
@@ -51,7 +60,6 @@ class EmployeeProductQueryService
             if ($sortBy === 'employee_name') {
                 $query->orderBy('name', $orderBy);
             } elseif ($sortBy === 'products_count') {
-                // Para simplificar, ordenamos por la cuenta de la consulta
                 $query->orderBy('products_count', $orderBy);
             } else {
                 $query->orderBy($sortBy, $orderBy);
@@ -61,7 +69,7 @@ class EmployeeProductQueryService
         }
 
         // Paginación
-        $itemsPerPage = $data['itemsPerPage'] ?? 10;
+        $itemsPerPage = isset($data['itemsPerPage']) ? (int)$data['itemsPerPage'] : 10;
         $employees = $query->paginate($itemsPerPage);
 
         // Transformar datos para el frontend
@@ -91,7 +99,7 @@ class EmployeeProductQueryService
                 'identification' => $employee->identification,
                 'is_active' => $employee->is_active,
                 'products' => $combined,
-                'products_count' => $combined->count(),
+                'products_count' => (int) ($employee->products_count + $employee->dishes_count),
             ];
         });
 

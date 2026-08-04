@@ -2,7 +2,7 @@
 // Filtros Revisión de Limpieza (Supervisión)
 import AppFilterBase from "@/components/AppFilterBase.vue";
 import axios from "@/plugins/axios";
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 
 const props = defineProps({
   searchQuery:      String,
@@ -70,8 +70,6 @@ const hasAdvancedFilters = computed(() => {
     (props.selectedStatus && props.selectedStatus !== "Procesada")
   );
 });
-
-import { computed } from "vue";
 </script>
 
 <template>

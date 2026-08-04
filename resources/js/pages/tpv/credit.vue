@@ -1,10 +1,10 @@
 <script setup>
+import CreditHeaderKpi from "@/components/CreditHeaderKpi.vue";
 import CreditFilters from "@/components/CreditFilters.vue";
 import CreditPaymentsFilters from "@/components/CreditPaymentsFilter.vue";
 import CreditPaymentsTable from "@/components/CreditPaymentsTable.vue";
-import CreditsOrderTicketThermal54 from "@/components/CreditsOrderTicketThermal54.vue";
-import CreditsTicket from "@/components/CreditsTicket.vue";
 import CreditTable from "@/components/CreditTable.vue";
+import CreditPrintContainers from "@/components/CreditPrintContainers.vue";
 import { THERMAL_54MM_CSS } from "@/constants/thermalTicket54.js";
 import CreditsModal from "@/components/dialogs/CreditsModal.vue";
 import CreditsViewOrderModal from "@/components/dialogs/CreditsViewOrderModal.vue";
@@ -19,7 +19,6 @@ const { isVendedor } = useAuthStore();
 const { mobile } = useDisplay();
 
 const activeTab = ref(0);
-const isAdvancedFiltersVisible = ref(false);
 
 const credits = ref([]);
 const totalCredits = ref(0);
@@ -51,10 +50,19 @@ const changeAmountForPrint = ref(0);
 const creditAmountForPrint = ref(0);
 
 const selectedClient = ref(null);
-
 const showViewOrderModal = ref(false);
-
 const isPrintingCreditOrder = ref(false);
+
+let debounceTimer = null;
+let paymentsDebouncer = null;
+
+const totalPendingSum = computed(() => {
+  if (!Array.isArray(credits.value)) return 0;
+  return credits.value.reduce(
+    (sum, item) => sum + (parseFloat(item.total_pending_amount) || 0),
+    0
+  );
+});
 
 const fetchCredits = async () => {
   loading.value = true;
@@ -70,8 +78,8 @@ const fetchCredits = async () => {
   );
   try {
     const response = await axios.get("/tpv/credits", { params });
-    credits.value = response.data.data;
-    totalCredits.value = response.data.total;
+    credits.value = response.data.data || [];
+    totalCredits.value = response.data.total || 0;
   } catch (error) {
     console.error("Hubo un error al obtener los créditos:", error);
     toast.error("Error al obtener los créditos.");
@@ -96,9 +104,8 @@ const fetchCreditPayments = async () => {
   );
   try {
     const { data } = await axios.get("/tpv/credits/payments", { params });
-    payments.value = data.data;
-    totalPayments.value = data.total;
-    console.log(data, totalPayments.value);
+    payments.value = data.data || [];
+    totalPayments.value = data.total || 0;
   } catch (error) {
     console.error("Hubo un error al obtener los pagos de créditos:", error);
     toast.error("Error al obtener los pagos de créditos.");
@@ -107,18 +114,34 @@ const fetchCreditPayments = async () => {
   }
 };
 
-let debounceTimer;
 watch(
   [page, itemsPerPage, searchQuery],
   () => {
-    clearTimeout(debounceTimer);
+    if (debounceTimer) clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => fetchCredits(), 300);
   },
   { deep: true }
 );
 
+watch(
+  [
+    paymentsPage,
+    paymentsItemsPerPage,
+    paymentsSortBy,
+    paymentsOrderBy,
+    clientFilter,
+    dateFilter,
+    currencyFilter,
+  ],
+  () => {
+    if (paymentsDebouncer) clearTimeout(paymentsDebouncer);
+    paymentsDebouncer = setTimeout(() => fetchCreditPayments(), 300);
+  }
+);
+
 onUnmounted(() => {
-  clearTimeout(debounceTimer);
+  if (debounceTimer) clearTimeout(debounceTimer);
+  if (paymentsDebouncer) clearTimeout(paymentsDebouncer);
 });
 
 onMounted(() => {
@@ -168,13 +191,16 @@ const viewOrderCreditsModal = async (credit) => {
   if (Array.isArray(credit.credit_ids)) {
     creditIds = credit.credit_ids.map((id) => parseInt(id));
   } else {
-    creditIds = credit.credit_ids.split(",").map((id) => parseInt(id));
+    creditIds = String(credit.credit_ids)
+      .split(",")
+      .map((id) => parseInt(id.trim()))
+      .filter((n) => !isNaN(n));
   }
   try {
     const response = await axios.post("/tpv/credits/details", {
       credit_ids: creditIds,
     });
-    const detailedCredits = response.data;
+    const detailedCredits = response.data.data || response.data;
     creditsData.value = detailedCredits;
     showViewOrderModal.value = true;
   } catch (error) {
@@ -268,48 +294,43 @@ const handleCreditsCompletion = async (
       const printContents = document.getElementById("CreditPrint");
       if (printContents) {
         const printWindow = window.open("", "", "height=600,width=800");
-        printWindow.document.write(
-          "<html><head><title>Farmacia Barrio Sucre</title>"
-        );
-        const styleSheets = document.styleSheets;
-        for (let i = 0; i < styleSheets.length; i++) {
-          const sheet = styleSheets[i];
-          try {
-            if (sheet.cssRules) {
-              let cssText = "";
-              for (let j = 0; j < sheet.cssRules.length; j++) {
-                cssText += sheet.cssRules[j].cssText;
+        if (printWindow) {
+          printWindow.document.write(
+            "<html><head><title>Farmacia Barrio Sucre</title>"
+          );
+          const styleSheets = document.styleSheets;
+          for (let i = 0; i < styleSheets.length; i++) {
+            const sheet = styleSheets[i];
+            try {
+              if (sheet.cssRules) {
+                let cssText = "";
+                for (let j = 0; j < sheet.cssRules.length; j++) {
+                  cssText += sheet.cssRules[j].cssText;
+                }
+                printWindow.document.write(`<style>${cssText}</style>`);
+              } else if (sheet.href) {
+                printWindow.document.write(
+                  `<link rel="stylesheet" href="${sheet.href}">`
+                );
               }
-              printWindow.document.write(`<style>${cssText}</style>`);
-            } else if (sheet.href) {
-              printWindow.document.write(
-                `<link rel="stylesheet" href="${sheet.href}">`
-              );
+            } catch (e) {
+              console.warn("No se pudo acceder a la hoja de estilo:", e);
             }
-          } catch (e) {
-            console.warn(
-              "No se pudo acceder a la hoja de estilo:",
-              sheet.href || sheet,
-              e
-            );
           }
+          printWindow.document.write("</head><body>");
+          printWindow.document.write(printContents.innerHTML);
+          printWindow.document.write("</body></html>");
+          printWindow.document.close();
+          printWindow.focus();
+          printWindow.print();
+          printWindow.close();
         }
-        printWindow.document.write("</head><body>");
-        printWindow.document.write(printContents.innerHTML);
-        printWindow.document.write("</body></html>");
-        printWindow.document.close();
-        printWindow.focus();
-        printWindow.print();
-        printWindow.close();
       } else {
-        console.warn(
-          "Elemento #CreditPrint no encontrado para impresión tipo ticket. Imprimiendo toda la página."
-        );
         window.print();
       }
     } else {
       toast.error(
-        `Error inesperado al finalizar el pago: ${
+        `Error al finalizar el pago: ${
           response.data.message || "Intente de nuevo."
         }`
       );
@@ -326,16 +347,12 @@ const handleCreditsCompletion = async (
 
     fetchCreditPayments();
   } catch (error) {
-    console.error(
-      "Error al finalizar el pago del crédito:",
-      error.response ? error.response.data : error.message
-    );
+    console.error("Error al finalizar el pago del crédito:", error);
     const errorMessage =
       error.response?.data?.message ||
       "Hubo un problema al procesar su pago. Por favor, intente de nuevo.";
     toast.error(errorMessage);
     isPrinting.value = false;
-    paymentsForPrint.value;
     changeAmountForPrint.value = 0;
     creditAmountForPrint.value = 0;
   }
@@ -346,14 +363,17 @@ const printCreditOrders = async (credit) => {
   if (Array.isArray(credit.credit_ids)) {
     creditIds = credit.credit_ids.map((id) => parseInt(id));
   } else {
-    creditIds = credit.credit_ids.split(",").map((id) => parseInt(id));
+    creditIds = String(credit.credit_ids)
+      .split(",")
+      .map((id) => parseInt(id.trim()))
+      .filter((n) => !isNaN(n));
   }
 
   try {
     const response = await axios.post("/tpv/credits/details", {
       credit_ids: creditIds,
     });
-    const detailedCredits = response.data;
+    const detailedCredits = response.data.data || response.data;
     creditsData.value = Array.isArray(detailedCredits) ? detailedCredits : [detailedCredits];
 
     isPrintingCreditOrder.value = true;
@@ -362,15 +382,17 @@ const printCreditOrders = async (credit) => {
 
     if (printContents) {
       const win = window.open("", "", "height=400,width=280");
-      win.document.write("<html><head><title>Ticket 54mm - Crédito Pendiente - Farmacia Barrio Sucre</title>");
-      win.document.write("<style>" + THERMAL_54MM_CSS + "</style>");
-      win.document.write("</head><body>");
-      win.document.write(printContents.innerHTML);
-      win.document.write("</body></html>");
-      win.document.close();
-      win.focus();
-      win.print();
-      win.close();
+      if (win) {
+        win.document.write("<html><head><title>Ticket 54mm - Crédito Pendiente</title>");
+        win.document.write("<style>" + THERMAL_54MM_CSS + "</style>");
+        win.document.write("</head><body>");
+        win.document.write(printContents.innerHTML);
+        win.document.write("</body></html>");
+        win.document.close();
+        win.focus();
+        win.print();
+        win.close();
+      }
     } else {
       toast.error("No se encontró el contenido del ticket térmico.");
     }
@@ -385,141 +407,115 @@ const printCreditOrders = async (credit) => {
     creditsData.value = null;
   }
 };
-
-let paymentsDebouncer;
-watch(
-  [
-    paymentsPage,
-    paymentsItemsPerPage,
-    paymentsSortBy,
-    paymentsOrderBy,
-    clientFilter,
-    dateFilter,
-    currencyFilter,
-  ],
-  () => {
-    clearTimeout(paymentsDebouncer);
-    paymentsDebouncer = setTimeout(() => fetchCreditPayments(), 300);
-  }
-);
 </script>
 
 <template>
-  <!-- Contenedor Premium de Filtros -->
-  <CreditFilters
-    v-if="activeTab === 0"
-    v-model:search-query="searchQuery"
-    @clear="clearFilters"
-  />
-
-  <CreditPaymentsFilters
-    v-if="activeTab === 1 && !isVendedor"
-    v-model:client="clientFilter"
-    v-model:date="dateFilter"
-    v-model:currency="currencyFilter"
-    @clear="clearPaymentFilters"
-  />
-
-  <!-- Pestañas de Navegación -->
-  <VTabs v-model="activeTab" class="mb-4 credits-tabs" density="comfortable">
-    <VTab :value="0">
-      <VIcon start icon="tabler-credit-card" />
-      Créditos Pendientes
-    </VTab>
-    <VTab v-if="!isVendedor" :value="1">
-      <VIcon start icon="tabler-history" />
-      Historial de Pagos
-    </VTab>
-  </VTabs>
-
-  <VWindow v-model="activeTab" class="disable-tab-transition">
-    <!-- Pestaña 0: Créditos -->
-    <VWindowItem :value="0">
-      <CreditTable
-        :credits="credits"
-        :loading="loading"
-        :total-credits="totalCredits"
-        :items-per-page="itemsPerPage"
-        :page="page"
-        :mobile="mobile"
-        @update:options="updateTableOptions"
-        @open-payment-modal="openCreditsModal"
-        @reload="fetchCredits"
-        @view-order-modal="viewOrderCreditsModal"
-        @print-order="printCreditOrders"
-        @delete-credit="handleDeleteCredit"
-      />
-    </VWindowItem>
-
-    <!-- Pestaña 1: Pagos (Solo Admin/Vendedor específico) -->
-    <VWindowItem v-if="!isVendedor" :value="1">
-      <CreditPaymentsTable
-        :payments="payments"
-        :loading="paymentsLoading"
-        :total-payments="totalPayments"
-        :items-per-page="paymentsItemsPerPage"
-        :page="paymentsPage"
-        :mobile="mobile"
-        @update:options="updatePaymentsTableOptions"
-      />
-    </VWindowItem>
-  </VWindow>
-
-  <!-- Modales -->
-  <CreditsModal
-    v-if="showCreditsModal && creditsData"
-    v-model:is-dialog-visible="showCreditsModal"
-    :credits-data="creditsData"
-    @modal-closed="closeCreditsModal"
-    @purchase-completed="handleCreditsCompletion"
-  />
-
-  <CreditsViewOrderModal
-    v-if="showViewOrderModal && creditsData"
-    v-model:is-dialog-visible="showViewOrderModal"
-    :credits-data="creditsData"
-    @modal-closed="closeViewOrderCreditsModal"
-  />
-
-  <!-- Impresión -->
-  <div
-    id="CreditPrint"
-    :class="{ 'd-none': !isPrinting, 'print-container': true }"
-  >
-    <CreditsTicket
-      v-if="isPrinting && creditsData"
-      :credits-data="creditsData"
-      :payments="paymentsForPrint"
-      :change-amount="changeAmountForPrint"
-      :credit-amount="creditAmountForPrint"
+  <div class="credits-module-container">
+    <!-- Encabezado KPI Desacoplado -->
+    <CreditHeaderKpi
+      :total-credits="totalCredits"
+      :total-pending-sum="totalPendingSum"
     />
-  </div>
 
-  <div
-    id="CreditOrderPrintThermal54"
-    :class="{ 'd-none': !isPrintingCreditOrder, 'print-container': true }"
-  >
-    <CreditsOrderTicketThermal54
-      v-if="isPrintingCreditOrder && creditsData"
+    <!-- Contenedor Premium de Filtros -->
+    <CreditFilters
+      v-if="activeTab === 0"
+      v-model:search-query="searchQuery"
+      @clear="clearFilters"
+    />
+
+    <CreditPaymentsFilters
+      v-if="activeTab === 1 && !isVendedor"
+      v-model:client="clientFilter"
+      v-model:date="dateFilter"
+      v-model:currency="currencyFilter"
+      @clear="clearPaymentFilters"
+    />
+
+    <!-- Pestañas de Navegación -->
+    <VTabs v-model="activeTab" class="mb-4 credits-tabs" density="comfortable">
+      <VTab :value="0">
+        <VIcon start icon="tabler-credit-card" />
+        Créditos Pendientes
+      </VTab>
+      <VTab v-if="!isVendedor" :value="1">
+        <VIcon start icon="tabler-history" />
+        Historial de Pagos
+      </VTab>
+    </VTabs>
+
+    <VWindow v-model="activeTab" class="disable-tab-transition">
+      <!-- Pestaña 0: Créditos -->
+      <VWindowItem :value="0">
+        <CreditTable
+          :credits="credits"
+          :loading="loading"
+          :total-credits="totalCredits"
+          :items-per-page="itemsPerPage"
+          :page="page"
+          :mobile="mobile"
+          @update:options="updateTableOptions"
+          @open-payment-modal="openCreditsModal"
+          @reload="fetchCredits"
+          @view-order-modal="viewOrderCreditsModal"
+          @print-order="printCreditOrders"
+          @delete-credit="handleDeleteCredit"
+        />
+      </VWindowItem>
+
+      <!-- Pestaña 1: Pagos (Solo Admin/Vendedor específico) -->
+      <VWindowItem v-if="!isVendedor" :value="1">
+        <CreditPaymentsTable
+          :payments="payments"
+          :loading="paymentsLoading"
+          :total-payments="totalPayments"
+          :items-per-page="paymentsItemsPerPage"
+          :page="paymentsPage"
+          :mobile="mobile"
+          @update:options="updatePaymentsTableOptions"
+        />
+      </VWindowItem>
+    </VWindow>
+
+    <!-- Modales -->
+    <CreditsModal
+      v-if="showCreditsModal && creditsData"
+      v-model:is-dialog-visible="showCreditsModal"
       :credits-data="creditsData"
+      @modal-closed="closeCreditsModal"
+      @purchase-completed="handleCreditsCompletion"
+    />
+
+    <CreditsViewOrderModal
+      v-if="showViewOrderModal && creditsData"
+      v-model:is-dialog-visible="showViewOrderModal"
+      :credits-data="creditsData"
+      @modal-closed="closeViewOrderCreditsModal"
+    />
+
+    <!-- Contenedores de Impresión Desacoplados -->
+    <CreditPrintContainers
+      :is-printing="isPrinting"
+      :is-printing-credit-order="isPrintingCreditOrder"
+      :credits-data="creditsData"
+      :payments-for-print="paymentsForPrint"
+      :change-amount-for-print="changeAmountForPrint"
+      :credit-amount-for-print="creditAmountForPrint"
     />
   </div>
 </template>
 
 <style scoped>
+.credits-module-container {
+  width: 100%;
+}
+
 .credits-tabs :deep(.v-tab) {
   text-transform: uppercase;
   font-weight: 700;
   font-size: 0.8rem;
   letter-spacing: 0.5px;
 }
-
-.filter-search-input :deep(.v-field__input) {
-  font-size: 0.8125rem !important;
-}
-
-.gap-2 { gap: 8px !important; }
-.gap-3 { gap: 12px !important; }
 
 .disable-tab-transition :deep(.v-window__container) {
   transition: none !important;

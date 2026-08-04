@@ -4,172 +4,144 @@ declare(strict_types=1);
 
 namespace App\Services\PendingPayments;
 
-use App\Models\Invoice;
 use App\Models\ExchangeRate;
 use App\Models\InvoicePayment;
-use App\Models\Expense;
-use Carbon\Carbon;
-use Illuminate\Support\Collection;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 
 class PaymentHistoryService
 {
     /**
-     * Obtener historial de pagos con filtros
+     * Construir consulta base con filtros
      */
-    public function getPaymentHistory(array $filters = []): Collection
+    private function buildQuery(array $filters = []): Builder
     {
         $query = InvoicePayment::with(['invoices.supplier', 'user'])
             ->orderBy('created_at', 'desc');
 
-        // Aplicar filtros
-        if (isset($filters['supplier_id'])) {
+        if (!empty($filters['supplier_id'])) {
             $query->whereHas('invoices', function ($q) use ($filters) {
                 $q->where('supplier_id', $filters['supplier_id']);
             });
         }
 
-        if (isset($filters['currency'])) {
+        if (!empty($filters['currency'])) {
             $query->whereHas('invoices', function ($q) use ($filters) {
                 $q->where('currency', $filters['currency']);
             });
         }
 
-        if (isset($filters['start_date'])) {
+        if (!empty($filters['payment_method'])) {
+            $query->where('payment_method', $filters['payment_method']);
+        }
+
+        if (!empty($filters['start_date'])) {
             $query->whereDate('payment_date', '>=', $filters['start_date']);
         }
 
-        if (isset($filters['end_date'])) {
+        if (!empty($filters['end_date'])) {
             $query->whereDate('payment_date', '<=', $filters['end_date']);
         }
 
-        if (isset($filters['search'])) {
+        if (!empty($filters['search'])) {
             $search = $filters['search'];
-            $query->whereHas('invoices', function ($q) use ($search) {
-                $q->where('invoice_number', 'like', "%{$search}%")
-                    ->orWhereHas('supplier', function ($supplierQuery) use ($search) {
-                        $supplierQuery->where('name', 'like', "%{$search}%");
-                    });
+            $query->where(function ($groupedQuery) use ($search) {
+                $groupedQuery->whereHas('invoices', function ($q) use ($search) {
+                    $q->where('invoice_number', 'like', "%{$search}%")
+                        ->orWhere('control_number', 'like', "%{$search}%")
+                        ->orWhereHas('supplier', function ($supplierQuery) use ($search) {
+                            $supplierQuery->where('name', 'like', "%{$search}%");
+                        });
+                })->orWhere('reference', 'like', "%{$search}%");
             });
         }
 
-        return $query->paginate(15);
+        return $query;
     }
 
     /**
-     * Transformar pagos para el frontend
+     * Obtener historial de pagos con filtros y paginación
      */
-    public function transformPayments(Collection $payments): Collection
+    public function getPaymentHistory(array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
-        return $payments->getCollection()->transform(function ($payment) {
-            $firstInvoice = $payment->invoices->first();
+        $query = $this->buildQuery($filters);
+
+        if ($perPage === -1) {
+            $perPage = $query->count() ?: 1;
+        }
+
+        return $query->paginate($perPage);
+    }
+
+    /**
+     * Obtener estadísticas de KPIs de pagos según filtros aplicados
+     */
+    public function getSummaryStats(array $filters = []): array
+    {
+        $payments = $this->buildQuery($filters)->get();
+        $exchangeRates = ExchangeRate::all()->keyBy('currency_code');
+
+        $totalTransactions = $payments->count();
+        $totalUSD = 0.0;
+        $totalVES = 0.0;
+
+        foreach ($payments as $payment) {
+            $method = strtoupper((string)$payment->payment_method);
+            if ($method === 'USD') {
+                $totalUSD += (float)$payment->amount;
+            } elseif ($method === 'VES' || $method === 'BS') {
+                $totalVES += (float)$payment->amount;
+                $rateObj = $exchangeRates->get('VES') ?? $exchangeRates->get('BS');
+                if ($rateObj && $rateObj->rate > 0) {
+                    $totalUSD += round(((float)$payment->amount) / $rateObj->rate, 2);
+                }
+            } else {
+                $rateObj = $exchangeRates->get($method);
+                if ($rateObj && $rateObj->rate > 0) {
+                    $totalUSD += round(((float)$payment->amount) / $rateObj->rate, 2);
+                }
+            }
+        }
+
+        $averageUSD = $totalTransactions > 0 ? round($totalUSD / $totalTransactions, 2) : 0.0;
+
+        return [
+            'total_transactions' => $totalTransactions,
+            'total_usd' => round($totalUSD, 2),
+            'total_ves' => round($totalVES, 2),
+            'average_usd' => $averageUSD,
+        ];
+    }
+
+    /**
+     * Transformar pagos de forma eficiente precargando la tabla de tasas de cambio
+     */
+    public function transformPayments(LengthAwarePaginator $payments): void
+    {
+        $exchangeRates = ExchangeRate::all()->keyBy('currency_code');
+
+        $payments->getCollection()->transform(function ($payment) use ($exchangeRates) {
             $payment->currency = $payment->payment_method;
 
-            // Calcular el equivalente en USD
             if ($payment->payment_method === 'USD') {
-                $payment->amount_usd = $payment->amount;
+                $payment->amount_usd = (float) $payment->amount;
             } else {
-                $exchangeRate = ExchangeRate::where('currency_code', $payment->payment_method)->first();
-                if ($exchangeRate) {
-                    $payment->amount_usd = round($payment->amount / $exchangeRate->rate, 2);
+                $rateObj = $exchangeRates->get($payment->payment_method);
+                if ($rateObj && $rateObj->rate > 0) {
+                    $payment->amount_usd = round($payment->amount / $rateObj->rate, 2);
                 } else {
                     $payment->amount_usd = 0;
                 }
             }
 
-            // Determinar si es pago completo o parcial
             $totalInvoiceAmount = 0;
             foreach ($payment->invoices as $invoice) {
-                $totalInvoiceAmount += $invoice->total_usd;
+                $totalInvoiceAmount += (float) $invoice->total_usd;
             }
             $payment->payment_type = $payment->amount_usd >= $totalInvoiceAmount ? 'full' : 'partial';
             $payment->invoice_total_usd = $totalInvoiceAmount;
 
-            // Calcular información de pagos para facturas con pagos parciales
-            if ($payment->payment_type === 'partial') {
-                $this->calculatePartialPaymentInfo($payment);
-            }
-
             return $payment;
         });
-    }
-
-    /**
-     * Calcular información de pagos parciales
-     */
-    private function calculatePartialPaymentInfo($payment): void
-    {
-        $invoiceIds = $payment->invoices->pluck('id');
-
-        // Obtener todos los pagos para estas facturas
-        $allPayments = InvoicePayment::whereHas('invoices', function ($query) use ($invoiceIds) {
-            $query->whereIn('id', $invoiceIds);
-        })->get();
-
-        $totalPaidUSD = 0;
-        foreach ($allPayments as $p) {
-            if ($p->payment_method === 'USD') {
-                $totalPaidUSD += $p->amount;
-            } else {
-                $exchangeRate = ExchangeRate::where('currency_code', $p->payment_method)->first();
-                if ($exchangeRate) {
-                    $totalPaidUSD += round($p->amount / $exchangeRate->rate, 2);
-                }
-            }
-        }
-
-        $payment->total_paid_usd = $totalPaidUSD;
-        $payment->remaining_amount_usd = max(0, $payment->invoice_total_usd - $totalPaidUSD);
-        $payment->payment_percentage = $payment->invoice_total_usd > 0 ?
-            round(($totalPaidUSD / $payment->invoice_total_usd) * 100, 2) : 0;
-    }
-
-    /**
-     * Obtener información de pagos para facturas específicas
-     */
-    public function getPaidAmountInfo(array $invoiceIds): array
-    {
-        // Obtener el total ya pagado en USD para estas facturas
-        $payments = InvoicePayment::whereHas('invoices', function ($query) use ($invoiceIds) {
-            $query->whereIn('id', $invoiceIds);
-        })->get();
-
-        $totalPaidUSD = 0;
-        foreach ($payments as $payment) {
-            if ($payment->payment_method === 'USD') {
-                $totalPaidUSD += $payment->amount;
-            } else {
-                $exchangeRate = ExchangeRate::where('currency_code', $payment->payment_method)->first();
-                if ($exchangeRate) {
-                    $totalPaidUSD += round($payment->amount / $exchangeRate->rate, 2);
-                }
-            }
-        }
-
-        // Obtener el total de las facturas en USD
-        $invoices = Invoice::whereIn('id', $invoiceIds)->get();
-        $totalInvoiceUSD = $invoices->sum('total_usd');
-
-        // Calcular monto restante
-        $remainingAmount = max(0, $totalInvoiceUSD - $totalPaidUSD);
-
-        // Determinar si hay pagos previos
-        $hasPreviousPayments = $totalPaidUSD > 0;
-
-        // Determinar el estado de pago
-        $paymentStatus = 'unpaid';
-        if ($totalPaidUSD >= $totalInvoiceUSD) {
-            $paymentStatus = 'paid';
-        } elseif ($totalPaidUSD > 0) {
-            $paymentStatus = 'partial';
-        }
-
-        return [
-            'total_invoice_usd' => $totalInvoiceUSD,
-            'total_paid_usd' => $totalPaidUSD,
-            'remaining_amount' => $remainingAmount,
-            'has_previous_payments' => $hasPreviousPayments,
-            'payment_status' => $paymentStatus,
-            'payment_percentage' => $totalInvoiceUSD > 0 ? round(($totalPaidUSD / $totalInvoiceUSD) * 100, 2) : 0
-        ];
     }
 }

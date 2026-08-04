@@ -26,7 +26,6 @@ const headers = computed(() => {
   const list = [
     { title: "#", key: "product_id", sortable: true, width: "70px", align: "center" },
     { title: "Producto", key: "product.name", sortable: true, width: "320px" },
-    { title: "Estado", key: "status", align: "center", sortable: true },
     { title: "Cantidad", key: "discrepancy", align: "center", sortable: true },
     { title: "Costo", key: "product.unit_cost", align: "end", sortable: true },
     { title: "Usuario", key: "user.name", sortable: true },
@@ -135,17 +134,6 @@ const handleMobilePageChange = (newPage) => {
               </span>
             </div>
           </div>
-        </template>
-
-        <template #item.status="{ item }">
-          <VChip
-            :color="item.status === 'approved' ? 'success' : item.status === 'pending' ? 'warning' : 'secondary'"
-            size="x-small"
-            label
-            class="font-weight-black text-capitalize"
-          >
-            {{ item.status === 'approved' ? 'Aprobado' : item.status === 'pending' ? 'Pendiente' : (item.status || '—') }}
-          </VChip>
         </template>
 
         <template #item.discrepancy="{ item }">

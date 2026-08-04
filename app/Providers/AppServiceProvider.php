@@ -179,7 +179,10 @@ class AppServiceProvider extends ServiceProvider
             ->needs(SocialBenefit::class)
             ->give(SocialBenefitServices::class);
 
+        $this->app->bind(Doctor::class, DoctorServices::class);
+        $this->app->bind(Specialty::class, SpecialtyServices::class);
         $this->app->bind(Transaction::class, TransactionServices::class);
+        $this->app->bind(Lottery::class, LotteryServices::class);
 
         $this->app->bind(
             BalanceRepositoryInterface::class,
@@ -247,6 +250,51 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(
             \App\Contracts\Fiscal\FiscalCommandRepositoryInterface::class,
             \App\Repositories\Fiscal\FiscalCommandRepository::class
+        );
+
+        $this->app->bind(
+            \App\Contracts\Repositories\GeneralPromotionRepositoryInterface::class,
+            \App\Repositories\GeneralPromotionRepository::class
+        );
+
+        $this->app->bind(
+            \App\Contracts\Repositories\IndividualOfferRepositoryInterface::class,
+            \App\Repositories\IndividualOfferRepository::class
+        );
+
+        $this->app->bind(
+            \App\Contracts\Repositories\CategoryOfferRepositoryInterface::class,
+            \App\Repositories\CategoryOfferRepository::class
+        );
+
+        $this->app->bind(
+            \App\Contracts\Repositories\ProductPackRepositoryInterface::class,
+            \App\Repositories\ProductPackRepository::class
+        );
+
+        $this->app->bind(
+            \App\Contracts\Repositories\CompanyOfferRepositoryInterface::class,
+            \App\Repositories\CompanyOfferRepository::class
+        );
+
+        $this->app->bind(
+            \App\Contracts\Repositories\DoctorOfferRepositoryInterface::class,
+            \App\Repositories\DoctorOfferRepository::class
+        );
+
+        $this->app->bind(
+            \App\Contracts\Repositories\PrescriptionOfferRepositoryInterface::class,
+            \App\Repositories\PrescriptionOfferRepository::class
+        );
+
+        $this->app->bind(
+            \App\Contracts\Repositories\ExpirationOfferRepositoryInterface::class,
+            \App\Repositories\ExpirationOfferRepository::class
+        );
+
+        $this->app->bind(
+            \App\Contracts\Repositories\FinancialStatementRepositoryInterface::class,
+            \App\Repositories\FinancialStatementRepository::class
         );
 
         $this->app->when(LocationController::class)

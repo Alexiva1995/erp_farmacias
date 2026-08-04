@@ -1,5 +1,6 @@
 <script setup lang="js">
 import day from 'dayjs';
+import AppEmptyState from "@/components/AppEmptyState.vue";
 
 const props = defineProps({
   items: { type: Array, required: true },
@@ -52,6 +53,13 @@ const handleMobilePageChange = (newPage) => {
         :page="props.page"
         @update:options="(options) => emit('update:options', options)"
       >
+        <template #no-data>
+          <AppEmptyState
+            title="No hay doctores"
+            message="No se encontraron especialistas registrados en el sistema."
+            icon="tabler-stethoscope-off"
+          />
+        </template>
         <template #item.id="{ item }">
           <span class="font-weight-black text-primary">{{ item.id }}</span>
         </template>
@@ -90,9 +98,12 @@ const handleMobilePageChange = (newPage) => {
     <div class="d-block d-md-none pa-2 bg-light">
       <VProgressLinear v-if="props.loading" indeterminate color="primary" class="mb-2" />
       
-      <div v-if="props.items.length === 0 && !props.loading" class="text-center py-8 text-disabled font-weight-bold uppercase">
-        No se encontraron especialistas registrados.
-      </div>
+      <AppEmptyState
+        v-if="props.items.length === 0 && !props.loading"
+        title="No hay doctores"
+        message="No se encontraron especialistas registrados en el sistema."
+        icon="tabler-stethoscope-off"
+      />
 
       <div class="d-flex flex-column gap-3">
         <VCard

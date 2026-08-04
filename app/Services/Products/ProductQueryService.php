@@ -505,7 +505,6 @@ class ProductQueryService
     {
         $query = Product::query()
             ->select('products.*')
-            ->selectRaw("COALESCE((SELECT SUM(quantity) FROM product_lots WHERE product_lots.product_id = products.id), 0) AS stock_calculado")
             ->with(['laboratory', 'profitability']);
 
         $hasStockVal = $request->hasStock;

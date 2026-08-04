@@ -81,9 +81,7 @@ class ModuleServiceProvider extends ServiceProvider
      */
     private function registerLotteryModule(): void
     {
-        $this->app->when(\App\Http\Controllers\Api\LotteryController::class)
-            ->needs(\App\Contracts\Lottery::class)
-            ->give(\App\Services\LotteryServices::class);
+        $this->app->bind(\App\Contracts\Lottery::class, \App\Services\LotteryServices::class);
     }
 
     /**

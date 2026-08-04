@@ -183,6 +183,8 @@ watch(
       :items-per-page="itemsPerPage"
       :total="totalEmployees"
       :employees="employees"
+      :loading="loading"
+      @update:options="(options) => { page = options.page; itemsPerPage = options.itemsPerPage; fetchEmployees(); }"
       @fire-employee="handleShowFireEmployeeDialog"
       @download-settlement="handleDownloadSettlement"
       @upload-signed="handleUploadSignedSettlement"

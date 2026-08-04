@@ -1,6 +1,6 @@
 <script setup>
 import { formatCurrency } from "@/utils/currencyFormatter";
-import { computed, defineEmits, defineProps, ref } from "vue";
+import { computed, ref } from "vue";
 import { useDisplay } from "vuetify";
 import Swal from "sweetalert2";
 
@@ -29,20 +29,20 @@ const declaredBsCard = ref("");
 
 const isBlind = computed(() => !!props.cashClosureData?.blind_cash_closure);
 
-// Variables computadas de visibilidad para los inputs ciegos basadas en si hubo al menos una venta real en el TPV
-const showCopCashInput = computed(() => {
+// Variables computadas que determinan si el método de pago tuvo movimiento real en el sistema
+const hasCopCash = computed(() => {
   const cash = parseFloat(props.cashClosureData?.cop_cash || 0);
   const abono = parseFloat(props.cashClosureData?.cop_cash_payment_credit || 0);
   return (cash + abono) > 0;
 });
 
-const showCopTransferInput = computed(() => {
+const hasCopTransfer = computed(() => {
   const trans = parseFloat(props.cashClosureData?.cop_transfer || 0);
   const abono = parseFloat(props.cashClosureData?.cop_transfer_payment_credit || 0);
   return (trans + abono) > 0;
 });
 
-const showUsdInput = computed(() => {
+const hasUsd = computed(() => {
   const cash = parseFloat(props.cashClosureData?.usd_cash || 0);
   const trans = parseFloat(props.cashClosureData?.usd_transfer || 0);
   const pay = parseFloat(props.cashClosureData?.usd_paypal || 0);
@@ -56,12 +56,12 @@ const showUsdInput = computed(() => {
   return (cash + trans + pay + bin + conv + abonoCash + abonoPay + abonoBin) > 0;
 });
 
-const showCreditInput = computed(() => {
+const hasCredit = computed(() => {
   const credit = parseFloat(props.cashClosureData?.usd_credit || 0);
   return credit > 0;
 });
 
-const showBsMobileInput = computed(() => {
+const hasBsMobile = computed(() => {
   const trans = parseFloat(props.cashClosureData?.bs_transfer || 0);
   const mobile = parseFloat(props.cashClosureData?.bs_mobile || 0);
   const abonoMobile = parseFloat(props.cashClosureData?.bs_mobile_payment_credit || 0);
@@ -69,7 +69,7 @@ const showBsMobileInput = computed(() => {
   return (trans + mobile + abonoMobile + abonoTrans) > 0;
 });
 
-const showBsCardInput = computed(() => {
+const hasBsCard = computed(() => {
   const deb = parseFloat(props.cashClosureData?.bs_card_debito || 0);
   const cred = parseFloat(props.cashClosureData?.bs_card_credit || 0);
   const abono = parseFloat(props.cashClosureData?.bs_card_payment_credit || 0);
@@ -249,43 +249,54 @@ const completeClosure = async () => {
             DECLARACIÓN DE VALORES DEL TURNO
           </div>
           <VRow dense>
-            <VCol v-if="showCopCashInput" cols="12" sm="6">
+            <VCol cols="12" sm="6">
               <VCard variant="outlined" class="pa-3 mb-3 bg-white rounded-lg">
                 <div class="text-caption font-weight-bold text-medium-emphasis mb-1">Efectivo (COP)</div>
-                <VTextField v-model="declaredCop" placeholder="0" type="number" density="compact" variant="outlined" hide-details prefix="$" />
+                <VTextField v-model="declaredCop" :disabled="!hasCopCash" placeholder="0" type="number" density="compact" variant="outlined" hide-details prefix="$" />
               </VCard>
             </VCol>
-            <VCol v-if="showCopTransferInput" cols="12" sm="6">
+            <VCol cols="12" sm="6">
               <VCard variant="outlined" class="pa-3 mb-3 bg-white rounded-lg">
                 <div class="text-caption font-weight-bold text-medium-emphasis mb-1">Transferencia (COP)</div>
-                <VTextField v-model="declaredCopTransfer" placeholder="0" type="number" density="compact" variant="outlined" hide-details prefix="$" />
+                <VTextField v-model="declaredCopTransfer" :disabled="!hasCopTransfer" placeholder="0" type="number" density="compact" variant="outlined" hide-details prefix="$" />
               </VCard>
             </VCol>
-            <VCol v-if="showUsdInput" cols="12" sm="6">
+            <VCol cols="12" sm="6">
               <VCard variant="outlined" class="pa-3 mb-3 bg-white rounded-lg">
                 <div class="text-caption font-weight-bold text-medium-emphasis mb-1">Efectivo (USD)</div>
-                <VTextField v-model="declaredUsd" placeholder="0" type="number" density="compact" variant="outlined" hide-details prefix="$" />
+                <VTextField v-model="declaredUsd" :disabled="!hasUsd" placeholder="0" type="number" density="compact" variant="outlined" hide-details prefix="$" />
               </VCard>
             </VCol>
-            <VCol v-if="showCreditInput" cols="12" sm="6">
+            <VCol cols="12" sm="6">
               <VCard variant="outlined" class="pa-3 mb-3 bg-white rounded-lg">
                 <div class="text-caption font-weight-bold text-medium-emphasis mb-1">Crédito (USD)</div>
-                <VTextField v-model="declaredCredit" placeholder="0" type="number" density="compact" variant="outlined" hide-details prefix="$" />
+                <VTextField v-model="declaredCredit" :disabled="!hasCredit" placeholder="0" type="number" density="compact" variant="outlined" hide-details prefix="$" />
               </VCard>
             </VCol>
-            <VCol v-if="showBsMobileInput" cols="12" sm="6">
+            <VCol cols="12" sm="6">
               <VCard variant="outlined" class="pa-3 mb-3 bg-white rounded-lg">
                 <div class="text-caption font-weight-bold text-medium-emphasis mb-1">Pago Móvil / Transferencia (Bs.)</div>
-                <VTextField v-model="declaredBsMobile" placeholder="0" type="number" density="compact" variant="outlined" hide-details prefix="Bs" />
+                <VTextField v-model="declaredBsMobile" :disabled="!hasBsMobile" placeholder="0" type="number" density="compact" variant="outlined" hide-details prefix="Bs" />
               </VCard>
             </VCol>
-            <VCol v-if="showBsCardInput" cols="12" sm="6">
+            <VCol cols="12" sm="6">
               <VCard variant="outlined" class="pa-3 mb-3 bg-white rounded-lg">
                 <div class="text-caption font-weight-bold text-medium-emphasis mb-1">Tarjeta Débito / Crédito (Bs.)</div>
-                <VTextField v-model="declaredBsCard" placeholder="0" type="number" density="compact" variant="outlined" hide-details prefix="Bs" />
+                <VTextField v-model="declaredBsCard" :disabled="!hasBsCard" placeholder="0" type="number" density="compact" variant="outlined" hide-details prefix="Bs" />
               </VCard>
             </VCol>
           </VRow>
+
+          <!-- Resumen de confirmación propia del cajero antes de enviar -->
+          <VCard variant="tonal" color="primary" class="mt-2 rounded-lg pa-4">
+            <div class="text-caption font-weight-bold uppercase mb-2">Tu resumen ingresado para entregar:</div>
+            <div class="d-flex flex-wrap gap-4 text-caption font-weight-black">
+              <span v-if="hasCopCash">COP Efectivo: {{ formatCurrency(parseFloat(declaredCop) || 0, 'COP') }}</span>
+              <span v-if="hasUsd">USD Efectivo: {{ formatCurrency(parseFloat(declaredUsd) || 0, 'USD') }}</span>
+              <span v-if="hasBsMobile">Bs. Pago Móvil: {{ formatCurrency(parseFloat(declaredBsMobile) || 0, 'BS') }}</span>
+              <span v-if="hasBsCard">Bs. Tarjeta: {{ formatCurrency(parseFloat(declaredBsCard) || 0, 'BS') }}</span>
+            </div>
+          </VCard>
         </template>
         <template v-else>
           <!-- Sección USD -->

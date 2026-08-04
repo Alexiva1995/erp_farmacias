@@ -252,6 +252,13 @@ const getEmployeeColor = (employeeId) => {
           </div>
         </template>
 
+        <template #no-data>
+          <div class="text-center pa-8">
+            <VIcon icon="tabler-search-off" size="48" class="text-disabled mb-2 opacity-30" />
+            <p class="text-sm font-weight-black uppercase text-disabled mb-0">No hay actividades para supervisar</p>
+          </div>
+        </template>
+
         <template #bottom>
           <VDivider class="opacity-10" />
           <div class="d-flex align-center justify-space-between pa-2">

@@ -1,4 +1,6 @@
 <script setup>
+import PayslipDetailHeader from "@/components/PayslipDetailHeader.vue";
+import PayslipDetailStats from "@/components/PayslipDetailStats.vue";
 import ShowSalaryFormDialog from "@/components/dialogs/ShowSalaryFormDialog.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
@@ -106,12 +108,6 @@ const formatCurrency = (amount) => {
   }).format(newAmount) + " " + symbol;
 };
 
-const formatRate = (rate) => {
-  return Math.round(Number(rate) || 0)
-    .toString()
-    .replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-};
-
 const formatIdentification = (id) => {
   if (!id) return '-';
   const num = String(id).replace(/\D/g, '');
@@ -135,7 +131,7 @@ const employeesWithVouchers = computed(() => {
       : (Number(r.food_voucher) || 0);
 
     const calculatedSalary = isFull 
-      ? Math.round(((totalPackageUsd - 40) / 2) * rate * 100) / 100
+      ? Math.round((Math.max(0, totalPackageUsd - 40) / 2) * rate * 100) / 100
       : Number(r.salary_to_pay_voucher) || 0;
 
     const data = {
@@ -189,109 +185,19 @@ const changeTab = (newTab) => {
 
 <template>
   <div class="payroll-details-page pa-0">
-    <!-- Header Premium -->
-    <div class="header-premium mb-6 overflow-hidden position-relative rounded-lg" :class="mobile ? 'rounded-0' : ''">
-      <div class="header-overlay pa-6">
-        <div class="d-flex align-center flex-wrap gap-4">
-          <VAvatar color="white" variant="flat" size="64" class="rounded-lg shadow-lg">
-            <VIcon icon="tabler-file-spreadsheet" size="32" color="primary" />
-          </VAvatar>
-          <div class="flex-grow-1">
-            <div class="d-flex align-center gap-2 mb-1">
-              <h1 class="text-h4 font-weight-black text-white leading-tight">
-                {{ selectedPayslip?.name || 'Cargando Detalles...' }}
-              </h1>
-              <VChip
-                v-if="selectedPayslip?.status !== undefined"
-                :color="selectedPayslip?.status === 1 ? 'success' : 'warning'"
-                variant="flat"
-                size="x-small"
-                class="font-weight-black rounded px-3"
-              >
-                {{ selectedPayslip?.status === 1 ? 'FINALIZADA' : 'PENDIENTE' }}
-              </VChip>
-            </div>
-            <div class="d-flex align-center flex-wrap gap-4 text-white opacity-80">
-              <span class="d-flex align-center text-xs font-weight-bold">
-                <VIcon icon="tabler-calendar" size="14" class="me-1" />
-                {{ selectedPayslip?.period }}
-              </span>
-              <span class="d-flex align-center text-xs font-weight-bold">
-                <VIcon icon="tabler-currency-dollar" size="14" class="me-1" />
-                Ref: 1 USD = {{ formatRate(selectedPayslip?.exchange_rate) }} {{ selectedPayslip?.currency_code }}
-              </span>
-            </div>
-          </div>
-          
-          <!-- Selector de Pestañas Premium (Píldora) -->
-          <div class="tab-pill-container bg-white-opacity-20 pa-1 rounded-pill d-flex gap-1">
-            <VBtn
-              size="small"
-              :variant="tab === 'legal' ? 'flat' : 'text'"
-              :color="tab === 'legal' ? 'white' : 'white'"
-              class="rounded-pill font-weight-black px-6"
-              :class="tab === 'legal' ? 'text-primary' : 'text-white'"
-              @click="changeTab('legal')"
-            >
-              LEGAL (Bs)
-            </VBtn>
-            <VBtn
-              size="small"
-              :variant="tab === 'full' ? 'flat' : 'text'"
-              :color="tab === 'full' ? 'white' : 'white'"
-              class="rounded-pill font-weight-black px-6"
-              :class="tab === 'full' ? 'text-primary' : 'text-white'"
-              @click="changeTab('full')"
-            >
-              COMPLETA (COP)
-            </VBtn>
-          </div>
-        </div>
-      </div>
-    </div>
+    <!-- Header Premium Desacoplado -->
+    <PayslipDetailHeader
+      :selected-payslip="selectedPayslip"
+      :tab="tab"
+      :mobile="mobile"
+      @change-tab="changeTab"
+    />
 
-    <!-- Stats Cards Refinadas -->
-    <VRow class="mb-6">
-      <VCol cols="12" sm="4">
-        <VCard class="rounded-lg border-0 shadow-sm stats-card overflow-hidden">
-          <VCardText class="d-flex align-center pa-4">
-            <VAvatar color="success" variant="tonal" size="48" class="rounded-lg me-4">
-              <VIcon icon="tabler-circle-plus" size="24" />
-            </VAvatar>
-            <div>
-              <p class="text-super-xs font-weight-black text-disabled uppercase mb-0">Total Asignaciones</p>
-              <h5 class="text-h5 font-weight-black text-success">{{ formatCurrency(totals.positive_vouchers) }}</h5>
-            </div>
-          </VCardText>
-        </VCard>
-      </VCol>
-      <VCol cols="12" sm="4">
-        <VCard class="rounded-lg border-0 shadow-sm stats-card overflow-hidden">
-          <VCardText class="d-flex align-center pa-4">
-            <VAvatar color="error" variant="tonal" size="48" class="rounded-lg me-4">
-              <VIcon icon="tabler-circle-minus" size="24" />
-            </VAvatar>
-            <div>
-              <p class="text-super-xs font-weight-black text-disabled uppercase mb-0">Total Deducciones</p>
-              <h5 class="text-h5 font-weight-black text-error">{{ formatCurrency(totals.negative_vouchers) }}</h5>
-            </div>
-          </VCardText>
-        </VCard>
-      </VCol>
-      <VCol cols="12" sm="4">
-        <VCard class="rounded-lg border-0 shadow-sm stats-card overflow-hidden bg-primary-gradient shadow-lg">
-          <VCardText class="d-flex align-center pa-4">
-            <VAvatar color="white" variant="flat" size="48" class="rounded-lg me-4 opacity-20">
-              <VIcon icon="tabler-wallet" size="24" color="white" />
-            </VAvatar>
-            <div>
-              <p class="text-super-xs font-weight-black text-white-opacity-60 uppercase mb-0">Neto Consolidado</p>
-              <h5 class="text-h5 font-weight-black text-white">{{ formatCurrency(totals.total) }}</h5>
-            </div>
-          </VCardText>
-        </VCard>
-      </VCol>
-    </VRow>
+    <!-- Stats Cards Refinadas Desacopladas -->
+    <PayslipDetailStats
+      :totals="totals"
+      :format-currency="formatCurrency"
+    />
 
     <!-- Tabla / Cards de Trabajadores -->
     <div>

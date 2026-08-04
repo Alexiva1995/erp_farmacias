@@ -307,29 +307,29 @@ const handleIntroDownload = (employee) => {
 
 <style scoped>
 .premium-table :deep(th) {
-  background-color: white !important;
+  background-color: rgb(var(--v-theme-surface)) !important;
   color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)) !important;
   font-size: 0.75rem !important;
   font-weight: 700 !important;
   letter-spacing: 0.05rem !important;
   text-transform: uppercase !important;
-  border-bottom: 1px solid rgba(var(--v-border-color), 0.1) !important;
+  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)) !important;
 }
 
 .premium-table :deep(td) {
   padding-block: 12px !important;
-  color: #334155 !important;
+  color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)) !important;
 }
 
 .employee-mobile-card {
-  border: 1px solid rgba(var(--v-border-color), 0.05) !important;
-  background: white !important;
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)) !important;
+  background: rgb(var(--v-theme-surface)) !important;
   box-shadow: 0 4px 12px rgba(var(--v-shadow-key-umbra-color), 0.03) !important;
   border-radius: 8px !important;
 }
 
 .border-dashed {
-  border-block-end: 1px dashed rgba(var(--v-border-color), 0.1) !important;
+  border-block-end: 1px dashed rgba(var(--v-border-color), var(--v-border-opacity)) !important;
 }
 
 .leading-tight { line-height: 1.25 !important; }
@@ -338,7 +338,7 @@ const handleIntroDownload = (employee) => {
 .letter-spacing-05 { letter-spacing: 0.5px !important; }
 
 .premium-menu-list {
-  border: 1px solid rgba(var(--v-border-color), 0.08) !important;
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)) !important;
   border-radius: 12px !important;
 }
 </style>

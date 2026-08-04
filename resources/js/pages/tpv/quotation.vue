@@ -29,6 +29,8 @@ const {
 const products = ref([]);
 const totalProduct = ref(0);
 const loading = ref(false);
+const isLoadingFilters = ref(false);
+const isSaving = ref(false);
 
 const selectedDiscountType = ref(null);
 const selectedDoctorOffer = ref(null);
@@ -142,7 +144,8 @@ const getItemPriceByCurrency = (item, currency) => {
   }
 };
 
-const getGlobalDiscountPercentage = () => {
+// Computed: porcentaje de descuento global activo según tipo seleccionado
+const globalDiscountPercentage = computed(() => {
   if (selectedDiscountType.value === "Empresa" && selectedCompanyId.value) {
     const offer = activeCompanyOffers.value.find(
       (o) => o.value === selectedCompanyId.value,
@@ -157,7 +160,10 @@ const getGlobalDiscountPercentage = () => {
     return parseFloat(currentPrescriptionDiscountPercentage.value || 0);
   }
   return 0;
-};
+});
+
+// Compatibilidad con código que llama la función directamente
+const getGlobalDiscountPercentage = () => globalDiscountPercentage.value;
 
 const calculateItemDiscountedPrice = (item, basePrice) => {
   const itemDiscount = parseFloat(item.discount_percentage || 0);
@@ -281,6 +287,40 @@ const totalRecipeDiscountAmount = computed(() => {
     }
   }
   return 0;
+});
+
+// Computed: payload listo para enviar al backend (evita duplicación entre save/print)
+const buildPayload = computed(() => {
+  let productsUsd  = 0;
+  let eligibleBase = 0;
+  let ivaUsd       = 0;
+
+  quotationItems.value.forEach((item) => {
+    const p = item.price || 0;
+    const q = item.selectedQuantity || 0;
+    const t = item.taxRate || 0;
+    productsUsd  += p * q;
+    ivaUsd       += p * q * t;
+    if (item.discount_type !== "expiration") {
+      eligibleBase += p * q;
+    }
+  });
+
+  const discountAmount = eligibleBase * (globalDiscountPercentage.value / 100);
+  const grandTotal     = productsUsd + ivaUsd - discountAmount;
+
+  return {
+    total_amount_usd: productsUsd,
+    total_iva_usd:    ivaUsd,
+    grand_total_usd:  grandTotal,
+    currency:         selectedDisplayCurrency.value,
+    client_id:        selectedClient.value?.id || null,
+    products:         quotationItems.value.map((item) => ({
+      id:       item.id      || null,
+      dish_id:  item.dish_id || null,
+      quantity: item.selectedQuantity,
+    })),
+  };
 });
 
 const totalIVAAmount = computed(() => {
@@ -760,47 +800,16 @@ const saveQuotation = async () => {
     throw new Error("No hay productos en la cotización para guardar.");
   }
 
+  isSaving.value = true;
   try {
-    let productsUsd = 0;
-    let eligibleBaseUsd = 0;
-    let ivaUsd = 0;
-
-    quotationItems.value.forEach((item) => {
-      const p = item.price || 0;
-      const q = item.selectedQuantity || 0;
-      const t = item.taxRate || 0;
-
-      productsUsd += p * q;
-      ivaUsd += p * q * t;
-
-      if (item.discount_type !== "expiration") {
-        eligibleBaseUsd += p * q;
-      }
-    });
-
-    const discountPercent = getGlobalDiscountPercentage();
-    const discountAmountUsd = eligibleBaseUsd * (discountPercent / 100);
-
-    const grandTotalUsd = productsUsd + ivaUsd - discountAmountUsd;
-
-    const payload = {
-      total_amount_usd: productsUsd,
-      total_iva_usd: ivaUsd,
-      grand_total_usd: grandTotalUsd,
-      currency: selectedDisplayCurrency.value,
-      client_id: selectedClient.value?.id || null,
-      products: quotationItems.value.map((item) => ({
-        id: item.id || null,
-        dish_id: item.dish_id || null,
-        quantity: item.selectedQuantity,
-      })),
-    };
-    const response = await axios.post("/tpv/quotations", payload);
+    const response = await axios.post("/tpv/quotations", buildPayload.value);
     quotationDetails.value = response.data.quotation;
     return response.data.quotation;
   } catch (error) {
     console.error("Error al guardar la cotización:", error);
     throw error;
+  } finally {
+    isSaving.value = false;
   }
 };
 
@@ -810,42 +819,9 @@ const saveAndPrintQuotation = async () => {
     return;
   }
 
+  isSaving.value = true;
   try {
-    let productsUsd = 0;
-    let eligibleBaseUsd = 0;
-    let ivaUsd = 0;
-
-    quotationItems.value.forEach((item) => {
-      const p = item.price || 0;
-      const q = item.selectedQuantity || 0;
-      const t = item.taxRate || 0;
-
-      productsUsd += p * q;
-      ivaUsd += p * q * t;
-
-      if (item.discount_type !== "expiration") {
-        eligibleBaseUsd += p * q;
-      }
-    });
-
-    const discountPercent = getGlobalDiscountPercentage();
-    const discountAmountUsd = eligibleBaseUsd * (discountPercent / 100);
-
-    const grandTotalUsd = productsUsd + ivaUsd - discountAmountUsd;
-
-    const payload = {
-      total_amount_usd: productsUsd,
-      total_iva_usd: ivaUsd,
-      grand_total_usd: grandTotalUsd,
-      currency: selectedDisplayCurrency.value,
-      client_id: selectedClient.value?.id || null,
-      products: quotationItems.value.map((item) => ({
-        id: item.id || null,
-        dish_id: item.dish_id || null,
-        quantity: item.selectedQuantity,
-      })),
-    };
-    const response = await axios.post("/tpv/quotations", payload);
+    const response = await axios.post("/tpv/quotations", buildPayload.value);
     quotationDetails.value = response.data.quotation;
     toast.success("Cotización guardada exitosamente. Preparando impresión...");
     isPrinting.value = true;
@@ -980,6 +956,8 @@ const saveAndPrintQuotation = async () => {
       "Error al guardar o imprimir la cotización. Inténtalo de nuevo.",
     );
     isPrinting.value = false;
+  } finally {
+    isSaving.value = false;
   }
 };
 
@@ -1034,6 +1012,13 @@ const handleCleanAfterSave = () => {
   clientIdentification.value = "";
 };
 
+// Handler extraído del template para evitar lógica inline
+const handleClientRegistered = (client) => {
+  selectedClient.value = client;
+  showRegisterClientModal.value = false;
+  toast.success("Cliente registrado exitosamente.");
+};
+
 onUnmounted(() => {
   clearTimeout(barcodeInputTimer);
 });
@@ -1052,7 +1037,6 @@ onUnmounted(() => {
           :company-discount-total="totalCompanyDiscountAmount"
           :doctor-discount-total="totalDoctorDiscountAmount"
           :recipe-discount-total="totalRecipeDiscountAmount"
-          :other-discounts-total="totalOtherDiscountsAmount"
           :selected-discount-type="selectedDiscountType"
           @currency-changed="handleCurrencyChanged"
         />
@@ -1069,13 +1053,12 @@ onUnmounted(() => {
           :total-amount-cop="totalAmountCop"
           :on-save-quotation="saveQuotation"
           :selected-client="selectedClient"
+          :is-saving="isSaving"
           v-model:selected-discount-type="selectedDiscountType"
           :active-doctor-offers="activeDoctorOffers"
-          :prescription-discount-percentage="
-            currentPrescriptionDiscountPercentage
-          "
+          :prescription-discount-percentage="currentPrescriptionDiscountPercentage"
           :active-company-offers="activeCompanyOffers"
-          :global-discount-percentage="getGlobalDiscountPercentage()"
+          :global-discount-percentage="globalDiscountPercentage"
           :is-restaurant="isRestaurant"
           @doctor-discount-selected="handleDoctorDiscountSelected"
           @prescription-file-selected="handlePrescriptionFileSelected"
@@ -1159,11 +1142,7 @@ onUnmounted(() => {
 
     <RegisterClientModal
       v-model="showRegisterClientModal"
-      @client-registered="async (client) => {
-        selectedClient.value = client;
-        showRegisterClientModal.value = false;
-        toast.success('Cliente registrado exitosamente.');
-      }"
+      @client-registered="handleClientRegistered"
     />
   </div>
 </template>

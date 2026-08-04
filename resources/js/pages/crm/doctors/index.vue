@@ -198,22 +198,26 @@ function enviar(payload){
 }
 
 async function crear(data){
+  isSubmitting.value = true
   try {
     let respuesApi=await axios.post("/crm/doctors",data)
-    if(respuesApi.status==200){
-        toast.success("El cliente se ha guardado correctamente")
+    if(respuesApi.status==200 || respuesApi.status==201){
+        toast.success("El doctor se ha guardado correctamente")
         cerrarModal(false)
         await actualizarTabla()
     }
   } catch (error) {
-    toast.error("Error al crear la empresa")
-    console.log("error en el servidor => ",error)
-    let errores={...error.response.data.data.errors}
+    let msg = error?.response?.data?.message || "Error al crear el doctor"
+    toast.error(msg)
+    let errores = error?.response?.data?.data?.errors || error?.response?.data?.errors || {}
     cargarErrores(errores)
+  } finally {
+    isSubmitting.value = false
   }
 }
 
 async function actualizar(data){
+  isSubmitting.value = true
   try {
     let config={
         headers: {
@@ -227,10 +231,12 @@ async function actualizar(data){
         await actualizarTabla()
     }
   } catch (error) {
-    toast.error("Error al guardar los cambios")
-    console.log("error en el servidor => ",error)
-    let errores={...error.response.data.data.errors}
+    let msg = error?.response?.data?.message || "Error al guardar los cambios del doctor"
+    toast.error(msg)
+    let errores = error?.response?.data?.data?.errors || error?.response?.data?.errors || {}
     cargarErrores(errores)
+  } finally {
+    isSubmitting.value = false
   }
 }
 

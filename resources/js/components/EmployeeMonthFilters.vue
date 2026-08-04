@@ -142,6 +142,8 @@ const hasActiveAdvancedFilters = computed(() => {
               color="error"
               variant="flat"
               size="38"
+              :disabled="props.loading"
+              :loading="props.loading"
               @click="emit('lock-month')"
             >
               <VIcon icon="tabler-lock" />
@@ -163,6 +165,8 @@ const hasActiveAdvancedFilters = computed(() => {
               color="warning"
               variant="tonal"
               size="30"
+              :disabled="props.loading"
+              :loading="props.loading"
               @click="emit('lock-month')"
             >
               <VIcon icon="tabler-refresh" size="18" />

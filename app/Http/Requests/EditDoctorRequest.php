@@ -30,7 +30,7 @@ class EditDoctorRequest extends FormRequest
             //
             "id"                     =>    "required|numeric|exists:doctors,id",
             "name"                   =>    "required|string|max:255",
-            "identification"         =>    "required|string",
+            "identification"         =>    ["required", "string", \Illuminate\Validation\Rule::unique("doctors")->ignore($this->id)->whereNull("deleted_at")],
             "address"                =>    "nullable|string",
             "specialty_id"           =>    "required|exists:specialties,id",
         ];

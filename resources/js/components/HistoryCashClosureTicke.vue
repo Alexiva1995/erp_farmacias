@@ -2,7 +2,7 @@
 import { BASE64_LOGO_DATA } from "@/constants/logo.js";
 import { formatCurrency } from "@/utils/currencyFormatter";
 import { formatDateTime } from "@/utils/formatDateTime";
-import { computed, defineProps } from "vue";
+import { computed } from "vue";
 
 const props = defineProps({
   orderData: { type: Object, required: true },

@@ -199,15 +199,19 @@ const formatDate = (dateString) => {
       </template>
 
       <template #loading>
-        <VSkeletonLoader type="table-row@10" />
+        <VRow class="pa-2">
+          <VCol v-for="n in 5" :key="n" cols="12">
+            <VSkeletonLoader type="table-row-divider@2" />
+          </VCol>
+        </VRow>
       </template>
     </VDataTableServer>
 
     <!-- Vista Móvil (Cards) -->
     <div v-else class="mobile-cards-container pa-4">
       <VRow v-if="props.loading">
-        <VCol v-for="n in 5" :key="n" cols="12">
-          <VSkeletonLoader type="card" class="rounded-lg" />
+        <VCol v-for="n in 3" :key="n" cols="12">
+          <VSkeletonLoader type="card, article" class="rounded-lg border shadow-sm" />
         </VCol>
       </VRow>
       <VRow v-else-if="props.loans.length > 0">

@@ -45,13 +45,12 @@ class ClientController extends Controller
 
     public function updateCompany(UpdateCompanyClientFormRequest $request): JsonResponse
     {
-        $client_id = $request->data->client_id;
-        $company_id = $request->data->company_id;
-        $status = $request->data->status;
+        $client_id = (int) $request->input('client_id');
+        $company_id = (int) $request->input('company_id');
+        $status = filter_var($request->input('status'), FILTER_VALIDATE_BOOLEAN);
         $respuestaDB = $this->client->updateCompany($client_id, $company_id, $status);
 
-
-        return ApiResponse::success($respuestaDB, "Cliente editado exitosamente", 200);
+        return ApiResponse::success($respuestaDB, "Cliente actualizado en la empresa exitosamente", 200);
     }
 
     public function consultAll(Request $request)

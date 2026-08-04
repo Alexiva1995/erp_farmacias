@@ -9,6 +9,8 @@ const rates = ref({
   EUR: { rate: 0, id: null, dateUpdate: "", dateColor: "success" },
   COPC: { rate: 0, id: null, dateUpdate: "", dateColor: "success" },
   BINANCE: { rate: 0, id: null, dateUpdate: "", dateColor: "success" },
+  BS_COP: { rate: 0, id: null, dateUpdate: "", dateColor: "success" },
+  COPS: { rate: 0, id: null, dateUpdate: "", dateColor: "success" },
 });
 
 const loading = ref(false);
@@ -42,7 +44,7 @@ async function refresh() {
     const response = await axios.get("/finances/exchange-rates");
     const data = response.data.data || response.data || [];
     
-    const codes = ["BS", "COP", "EUR", "COPC", "BINANCE"];
+    const codes = ["BS", "COP", "EUR", "COPC", "BINANCE", "BS_COP", "COPS"];
     codes.forEach(code => {
       const found = data.find(item => item.currency_code === code);
       if (found) {

@@ -53,6 +53,7 @@ use App\Http\Controllers\Api\ExpensesController;
 use App\Http\Controllers\Api\SupplierIaAssistantReportController;
 use App\Http\Controllers\Api\SuppliersIaOrderAssistantController;
 use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\UserPreferenceController;
 use App\Http\Controllers\Api\ReturnsController;
 use App\Http\Controllers\Api\IndividualOfferController;
 use App\Http\Controllers\Api\CategoryOfferController;
@@ -179,6 +180,8 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
         return $request->user()->load('config');
     });
     Route::post('/user/update-sort-config', [UserController::class, 'updateSortConfig']);
+    Route::get('/user/ui-preferences', [UserPreferenceController::class, 'index']);
+    Route::post('/user/ui-preferences', [UserPreferenceController::class, 'update']);
     Route::post("/logout", [LoginController::class, "logout"]);
 
     // Rutas de Productos
@@ -369,48 +372,48 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
             Route::prefix("individual")->group(function () {
                 Route::get('/', [IndividualOfferController::class, "index"]);
                 Route::post('/', [IndividualOfferController::class, "store"]);
-                Route::put('/{id}', [IndividualOfferController::class, "update"]);
-                Route::delete('/{id}', [IndividualOfferController::class, 'destroy']);
+                Route::put('/{individual}', [IndividualOfferController::class, "update"]);
+                Route::delete('/{individual}', [IndividualOfferController::class, 'destroy']);
             });
             Route::prefix("category")->group(function () {
                 Route::get('/', [CategoryOfferController::class, "index"]);
                 Route::post('/', [CategoryOfferController::class, "store"]);
-                Route::put('/{id}', [CategoryOfferController::class, "update"]);
-                Route::delete('/{id}', [CategoryOfferController::class, 'destroy']);
+                Route::put('/{category}', [CategoryOfferController::class, "update"]);
+                Route::delete('/{category}', [CategoryOfferController::class, 'destroy']);
             });
             Route::prefix("company-offer")->group(function () {
                 Route::get('/', [CompanyOfferController::class, "index"]);
                 Route::post('/', [CompanyOfferController::class, "store"]);
-                Route::put('/{id}', [CompanyOfferController::class, "update"]);
-                Route::delete('/{id}', [CompanyOfferController::class, 'destroy']);
-                Route::post('/{id}/recalculate', [CompanyOfferController::class, "recalculate"]);
+                Route::put('/{companyOffer}', [CompanyOfferController::class, "update"]);
+                Route::delete('/{companyOffer}', [CompanyOfferController::class, 'destroy']);
+                Route::post('/{companyOffer}/recalculate', [CompanyOfferController::class, "recalculate"]);
             });
             Route::prefix("doctor-offer")->group(function () {
                 Route::get('/', [DoctorOfferController::class, "index"]);
                 Route::post('/', [DoctorOfferController::class, "store"]);
-                Route::put('/{id}', [DoctorOfferController::class, "update"]);
-                Route::delete('/{id}', [DoctorOfferController::class, 'destroy']);
+                Route::put('/{doctorOffer}', [DoctorOfferController::class, "update"]);
+                Route::delete('/{doctorOffer}', [DoctorOfferController::class, 'destroy']);
             });
             Route::prefix("expiration-offer")->group(function () {
                 Route::get('/', [ExpirationOfferController::class, "index"]);
                 Route::post('/', [ExpirationOfferController::class, "store"]);
-                Route::put('/{id}', [ExpirationOfferController::class, "update"]);
-                Route::delete('/{id}', [ExpirationOfferController::class, 'destroy']);
+                Route::put('/{expirationOffer}', [ExpirationOfferController::class, "update"]);
+                Route::delete('/{expirationOffer}', [ExpirationOfferController::class, 'destroy']);
                 Route::get('/available-product-lots', [ExpirationOfferController::class, 'getAvailableProductLots']);
             });
             Route::prefix("product-packs")->group(function () {
                 Route::get('/', [ProductPackController::class, "index"]);
                 Route::post('/', [ProductPackController::class, "store"]);
-                Route::get('/{id}', [ProductPackController::class, "show"]);
-                Route::put('/{id}', [ProductPackController::class, "update"]);
-                Route::delete('/{id}', [ProductPackController::class, 'destroy']);
+                Route::get('/{productPack}', [ProductPackController::class, "show"]);
+                Route::put('/{productPack}', [ProductPackController::class, "update"]);
+                Route::delete('/{productPack}', [ProductPackController::class, 'destroy']);
             });
             Route::prefix("prescription-offer")->group(function () {
                 Route::get('/', [PrescriptionOfferController::class, "index"]);
                 Route::post('/', [PrescriptionOfferController::class, "store"]);
-                Route::get('/{id}', [PrescriptionOfferController::class, "show"]);
-                Route::put('/{id}', [PrescriptionOfferController::class, "update"]);
-                Route::delete('/{id}', [PrescriptionOfferController::class, 'destroy']);
+                Route::get('/{prescriptionOffer}', [PrescriptionOfferController::class, "show"]);
+                Route::put('/{prescriptionOffer}', [PrescriptionOfferController::class, "update"]);
+                Route::delete('/{prescriptionOffer}', [PrescriptionOfferController::class, 'destroy']);
             });
             Route::apiResource("general-promotions", \App\Http\Controllers\Api\GeneralPromotionController::class);
         });
@@ -771,6 +774,8 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
             Route::get("/consultOneBINANCE", [ExchangeRateController::class, "consultOneBINANCE"]);
             Route::get("/consultOneEUR", [ExchangeRateController::class, "consultOneEUR"]);
             Route::get("/consultOneCOPC", [ExchangeRateController::class, "consultOneCOPC"]);
+            Route::get("/consultOneBsCOP", [ExchangeRateController::class, "consultOneBsCOP"]);
+            Route::get("/consultOneCOPS", [ExchangeRateController::class, "consultOneCOPS"]);
             Route::post("/updateBCVDollar", [ExchangeRateController::class, "updateBCVDollar"]);
         });
 
@@ -804,6 +809,8 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
             Route::get('/stats', [TransactionController::class, 'getByType']);
             Route::get('/wallets', [TransactionController::class, 'getWallets']);
             Route::get('/income-summary', [TransactionController::class, 'getIncomeSummary']);
+            Route::get('/export/excel', [TransactionController::class, 'exportExcel']);
+            Route::get('/cash-status', [TransactionController::class, 'getCashStatus']);
             Route::post('/adjustment', [TransactionController::class, 'adjustBalance']);
         });
 
@@ -812,6 +819,8 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
             Route::post('', [PayslipController::class, 'store']);
             Route::post('/regenerate-history', [PayslipController::class, 'regenerateHistory']);
             Route::put('/{payslip}/finalize', [PayslipController::class, 'finalize']);
+            Route::put('/{payslip}/reopen', [PayslipController::class, 'reopen']);
+            Route::delete('/{payslip}', [PayslipController::class, 'destroy']);
             Route::get('/{payslip}/download/excel', [PayslipController::class, 'downloadExcel']);
             Route::get('/{payslip}/download/pdf', [PayslipController::class, 'downloadPdf']);
             Route::get('/download-bulk-pdf', [PayslipController::class, 'downloadBulkPdf']);

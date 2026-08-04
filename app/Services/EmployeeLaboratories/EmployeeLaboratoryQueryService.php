@@ -18,7 +18,10 @@ class EmployeeLaboratoryQueryService
     public function getFilteredEmployeeLaboratories(array $data): LengthAwarePaginator
     {
         $query = Employee::query()
-            ->with(['laboratories'])
+            ->select(['employees.id', 'employees.name', 'employees.last_name', 'employees.identification', 'employees.is_active', 'employees.photo'])
+            ->with(['laboratories' => function ($q) {
+                $q->select(['laboratories.id', 'laboratories.name']);
+            }])
             ->withCount('laboratories')
             ->where('employees.is_active', true);
 
@@ -60,27 +63,7 @@ class EmployeeLaboratoryQueryService
 
         // Paginación
         $itemsPerPage = $data['itemsPerPage'] ?? 10;
-        $employees = $query->paginate($itemsPerPage);
-
-        // Transformar datos para el frontend
-        $employees->getCollection()->transform(function ($employee) {
-            return [
-                'employee_id' => $employee->id,
-                'employee_name' => trim($employee->name . ' ' . $employee->last_name),
-                'identification' => $employee->identification,
-                'is_active' => $employee->is_active,
-                'laboratories' => $employee->laboratories->map(function ($lab) {
-                    return [
-                        'id' => $lab->id,
-                        'name' => $lab->name,
-                    ];
-                }),
-                'laboratories_count' => $employee->laboratories_count,
-                'photo_url' => $employee->photo_url,
-            ];
-        });
-
-        return $employees;
+        return $query->paginate($itemsPerPage);
     }
 
     /**
@@ -90,17 +73,19 @@ class EmployeeLaboratoryQueryService
      */
     public function getAssignmentStats(): array
     {
-        $employees = Employee::withCount('laboratories')->get();
-
-        $employeesWithLabs = $employees->filter(fn($emp) => $emp->laboratories_count > 0);
-        $employeesWithoutLabs = $employees->filter(fn($emp) => $emp->laboratories_count === 0);
+        $stats = Employee::query()
+            ->selectRaw('
+                COUNT(*) as total_employees,
+                COUNT(CASE WHEN (SELECT COUNT(*) FROM employee_laboratory WHERE employee_laboratory.employee_id = employees.id) > 0 THEN 1 END) as employees_with_laboratories,
+                COUNT(CASE WHEN (SELECT COUNT(*) FROM employee_laboratory WHERE employee_laboratory.employee_id = employees.id) = 0 THEN 1 END) as employees_without_laboratories
+            ')
+            ->where('is_active', true)
+            ->first();
 
         return [
-            'total_employees' => $employees->count(),
-            'employees_with_laboratories' => $employeesWithLabs->count(),
-            'employees_without_laboratories' => $employeesWithoutLabs->count(),
-            'average_laboratories_per_employee' => $employees->avg('laboratories_count'),
-            'max_laboratories_assigned' => $employees->max('laboratories_count'),
+            'total_employees' => (int) ($stats->total_employees ?? 0),
+            'employees_with_laboratories' => (int) ($stats->employees_with_laboratories ?? 0),
+            'employees_without_laboratories' => (int) ($stats->employees_without_laboratories ?? 0),
         ];
     }
 }

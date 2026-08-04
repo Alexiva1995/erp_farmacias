@@ -21,6 +21,10 @@ interface ExchangeRate
 
     public function consultOneCOPC(): Model|null;
 
+    public function consultOneBsCOP(): Model|null;
+
+    public function consultOneCOPS(): Model|null;
+
     public function updateBCVDollar(array $data): Model;
 
     public function store(array $data): Model;

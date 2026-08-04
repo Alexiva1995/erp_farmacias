@@ -333,7 +333,7 @@ const fetchActiveTabData = () => {
 
 onMounted(async () => {
   fetchSellers();
-  fetchAllTabCounts();
+  await fetchAllTabCounts();
 
   if (route.query.orderId) {
     const orderId = parseInt(route.query.orderId, 10);

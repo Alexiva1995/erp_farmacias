@@ -196,11 +196,11 @@ const isAdmin = computed(() => authStore.user?.role_id === 1);
       </template>
 
       <template v-slot:item.client_identification="{ item }">
-        <span class="text-primary font-weight-black">{{ item.client.identification_type }}{{ item.client.identification }}</span>
+        <span class="text-primary font-weight-black">{{ item.client?.identification_type }}{{ item.client?.identification }}</span>
       </template>
 
       <template v-slot:item.client_full_name="{ item }">
-        {{ item.client.name }} {{ item.client.last_name }}
+        {{ item.client?.name }} {{ item.client?.last_name }}
       </template>
 
       <template v-slot:item.total_pending_amount="{ item }">

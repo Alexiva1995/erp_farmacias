@@ -3,7 +3,7 @@ import { formatCurrency, formatAmountOnly } from "@/utils/currencyFormatter";
 import { formatDateTime } from "@/utils/formatDateTime";
 import { capitalizeFirstAndLastName } from "@/@core/utils/formatters";
 import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
-import { computed, defineEmits, defineProps } from "vue";
+import { computed } from "vue";
 import { useDisplay } from "vuetify";
 
 const { mobile } = useDisplay();

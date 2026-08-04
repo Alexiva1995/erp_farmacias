@@ -3,7 +3,7 @@ import { BASE64_LOGO_DATA } from "@/constants/logo.js";
 import axios from "@/plugins/axios";
 import { formatCurrency } from "@/utils/currencyFormatter";
 import { formatDateTime } from "@/utils/formatDateTime";
-import { computed, defineEmits, defineProps, nextTick } from "vue";
+import { computed, nextTick } from "vue";
 import { useDisplay } from "vuetify";
 
 const { mobile } = useDisplay();

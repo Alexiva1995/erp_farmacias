@@ -3,7 +3,7 @@ import CashoutFilters from "@/components/CashoutFilters.vue";
 import TransactionsTable from "@/components/TransactionsTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { onMounted, ref, watch } from "vue";
+import { onMounted, onUnmounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
 
@@ -11,7 +11,7 @@ const router = useRouter();
 const authStore = useAuthStore();
 
 const transactions = ref([]);
-const transactionsGroupped = ref({});
+const groupedTransactions = ref({});
 const wallets = ref({ sections: [], total_usd: 0 });
 const loading = ref(false);
 const walletsLoading = ref(false);
@@ -26,6 +26,11 @@ const isAdjusting = ref(false);
 const adjustmentValue = ref(0);
 const adjustmentWallet = ref(null);
 const isInitialized = ref(false);
+const isExporting = ref(false);
+
+// Nuevos: tasas y estado de cierres de caja
+const rates = ref({ bcv: { rate: 0 }, cop: { rate: 0 } });
+const cashStatus = ref(null);
 
 const page = ref(1);
 const transactionsTotal = ref(0);
@@ -82,9 +87,10 @@ const fetchTransactionsGroupped = async ({ date, currency, detailed } = {}) => {
     const { data } = await axios.get("/finances/transactions/stats", {
       params,
     });
-    transactionsGroupped.value = data.data;
+    groupedTransactions.value = data.data;
   } catch (error) {
     console.error("Error al obtener stats:", error);
+    toast.error("Error al cargar las estadísticas de transacciones.");
   }
 };
 
@@ -105,8 +111,62 @@ const fetchWallets = async (date) => {
     wallets.value = data.data;
   } catch (error) {
     console.error("Error al obtener wallets:", error);
+    toast.error("Error al cargar las cuentas/wallets.");
   } finally {
     walletsLoading.value = false;
+  }
+};
+
+// ─── Tasas y Estado de Caja ───────────────────────────────────────────────────
+const fetchCashStatus = async () => {
+  try {
+    const { data } = await axios.get("/finances/transactions/cash-status");
+    cashStatus.value = data.data.closing_status;
+    rates.value = data.data.rates;
+  } catch (error) {
+    console.error("Error al obtener estado de caja:", error);
+  }
+};
+
+// ─── Exportar Excel ───────────────────────────────────────────────────────────
+const exportExcel = async () => {
+  isExporting.value = true;
+  try {
+    const params = {};
+    if (dateRange.value) {
+      const parts = dateRange.value.split(" to ");
+      if (parts.length === 2) {
+        params.start_date = parts[0];
+        params.end_date = parts[1];
+      } else {
+        params.start_date = dateRange.value;
+      }
+    }
+    if (selectedCurrency.value) params.currency = selectedCurrency.value;
+    if (dataDetailed.value) {
+      params.detailed = true;
+      params.option = selectedOption.value;
+    }
+
+    const response = await axios.get("/finances/transactions/export/excel", {
+      params,
+      responseType: "blob",
+    });
+
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `flujo-caja-${new Date().toISOString().slice(0, 10)}.xlsx`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+    toast.success("Reporte descargado correctamente.");
+  } catch (error) {
+    console.error("Error al exportar:", error);
+    toast.error("Error al exportar el reporte.");
+  } finally {
+    isExporting.value = false;
   }
 };
 
@@ -135,17 +195,24 @@ watch(
     dataDetailed,
     selectedOption,
   ],
-  ([pg, items, date, currency, detailed, option]) => {
+  ([pg, items, date, currency, detailed, option], [oldPg, oldItems, oldDate, oldCurrency, oldDetailed, oldOption]) => {
     if (!isInitialized.value) return;
+
+    // Si el cambio fue por hacer clic en una tarjeta (currency/option) o paginar, ejecutar de inmediato sin debounce (0ms)
+    const isInstant = currency !== oldCurrency || option !== oldOption || pg !== oldPg || items !== oldItems;
+    const delay = isInstant ? 0 : 300;
 
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
       fetchTransactions({ date, currency, detailed, option });
       if (pg === 1) {
         fetchTransactionsGroupped({ date, currency, detailed });
+      }
+      // Las tarjetas superiores de wallets y estado solo se recargan si cambia la fecha
+      if (date !== oldDate) {
         fetchWallets(date);
       }
-    }, 300);
+    }, delay);
   },
   { deep: true },
 );
@@ -202,9 +269,16 @@ onMounted(async () => {
   await Promise.all([
     fetchTransactions(),
     fetchTransactionsGroupped(),
-    fetchWallets()
+    fetchWallets(),
+    fetchCashStatus(),
   ]);
   isInitialized.value = true;
+});
+
+onUnmounted(() => {
+  if (debounceTimer) {
+    clearTimeout(debounceTimer);
+  }
 });
 </script>
 
@@ -217,11 +291,15 @@ onMounted(async () => {
         v-model:dataDetailed="dataDetailed"
         v-model:selectedCurrency="selectedCurrency"
         v-model:selectedOption="selectedOption"
-        :stats="transactionsGroupped"
+        :stats="groupedTransactions"
         :wallets="wallets"
         :wallets-loading="walletsLoading"
+        :rates="rates"
+        :cash-status="cashStatus"
+        :is-exporting="isExporting"
         @clear="handleClearFilters"
         @adjust="handleAdjustRequest"
+        @export="exportExcel"
         class="mb-0"
       />
 
@@ -235,6 +313,7 @@ onMounted(async () => {
         :page="page"
         :totalTransactions="transactionsTotal"
         @update:options="updateTableOptions"
+        @clear="handleClearFilters"
         class="ma-0"
       />
     </div>

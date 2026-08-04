@@ -46,6 +46,16 @@ class PayslipServices implements Payslip
     return $this->payslipRepository->finalize($payslip, $data);
   }
 
+  public function reopen(MPayslip $payslip): bool
+  {
+    return $this->payslipRepository->reopen($payslip);
+  }
+
+  public function destroy(MPayslip $payslip): bool
+  {
+    return $this->payslipRepository->destroy($payslip);
+  }
+
   public function exportExcel(MPayslip $payslip): PayslipsExport
   {
     $query = $this->payslipRepository->exportableData($payslip, 'legal');
@@ -61,8 +71,13 @@ class PayslipServices implements Payslip
 
   private function generateName(Carbon $date): string
   {
-    $month = $date->locale('es')->monthName;
-    $type = $date->day === 15 ? 'Nomina quincena' : 'Nomina fin de mes';
-    return "$type ($month)";
+    if ($date->day <= 15) {
+      $start = "01/" . $date->format('m/Y');
+      $end   = "15/" . $date->format('m/Y');
+    } else {
+      $start = "16/" . $date->format('m/Y');
+      $end   = $date->endOfMonth()->format('d/m/Y');
+    }
+    return "Nómina ({$start} al {$end})";
   }
 }

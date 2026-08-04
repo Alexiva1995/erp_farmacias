@@ -3,207 +3,88 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Category;
-use App\Models\CategoryOffer;
 use App\Http\Requests\Offers\StoreCategoryOfferRequest;
 use App\Http\Requests\Offers\UpdateCategoryOfferRequest;
-use Illuminate\Support\Facades\Validator;
+use App\Http\Resources\CategoryOfferResource;
+use App\Models\CategoryOffer;
+use App\Services\CategoryOfferService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class CategoryOfferController extends Controller
 {
+    public function __construct(
+        protected CategoryOfferService $offerService
+    ) {}
+
     /**
-     * Mostrar todas las ofertas por categoría con filtros
+     * Muestra la lista paginada y filtrada de ofertas por categoría.
      */
-
-    public function index(Request $request)
+    public function index(Request $request): AnonymousResourceCollection
     {
-        $query = CategoryOffer::with([
-            'category' => function ($query) {
-                $query->select('id', 'name');
-            }
-        ]);
-        // Filtro por ID de oferta
-        if ($request->has('search_id') && !empty($request->search_id)) {
-            $query->where('id', $request->search_id);
+        $filters = $request->only(['search', 'search_id', 'is_active', 'sort_by', 'order_by', 'per_page']);
+        $offers = $this->offerService->listOffers($filters);
+
+        return CategoryOfferResource::collection($offers);
+    }
+
+    /**
+     * Muestra una oferta por categoría específica.
+     */
+    public function show(CategoryOffer $category): CategoryOfferResource
+    {
+        return new CategoryOfferResource($category->load('category'));
+    }
+
+    /**
+     * Almacena una nueva oferta por categoría.
+     */
+    public function store(StoreCategoryOfferRequest $request): JsonResponse
+    {
+        try {
+            $offer = $this->offerService->createOffer($request->validated());
+
+            return (new CategoryOfferResource($offer->load('category')))
+                ->response()
+                ->setStatusCode(201);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => $e->getMessage()
+            ], $e->getCode() >= 400 && $e->getCode() < 500 ? $e->getCode() : 400);
         }
+    }
 
-        // Filtro por nombre de categoría o ID de categoría
-        if ($request->has('search') && !empty($request->search)) {
-            $query->whereHas('category', function ($q) use ($request) {
-                $q->where('name', 'like', '%' . $request->search . '%')
-                    ->orWhere('id', 'like', '%' . $request->search . '%');
-            });
+    /**
+     * Actualiza una oferta por categoría existente.
+     */
+    public function update(UpdateCategoryOfferRequest $request, CategoryOffer $category): JsonResponse
+    {
+        try {
+            $updatedOffer = $this->offerService->updateOffer($category, $request->validated());
+
+            return (new CategoryOfferResource($updatedOffer->load('category')))
+                ->response()
+                ->setStatusCode(200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => $e->getMessage()
+            ], $e->getCode() >= 400 && $e->getCode() < 500 ? $e->getCode() : 400);
         }
+    }
 
-        // Filtro por estado activo
-        if ($request->has('is_active') && $request->is_active != '' && $request->is_active != null) {
-            $query->where('is_active', $request->is_active);
-        }
-
-        // Ordenamiento
-        if ($request->has('sort_by') && !empty($request->sort_by)) {
-            $order = $request->get('order_by', 'asc');
-
-            // Si el ordenamiento es por categoría, ordenar por nombre de la categoría
-            if ($request->sort_by === 'category.name') {
-                $query->join('categories', 'category_offers.category_id', '=', 'categories.id')
-                    ->orderBy('categories.name', $order)
-                    ->select('category_offers.*');
-            } else {
-                $query->orderBy($request->sort_by, $order);
-            }
-        } else {
-            $query->orderBy('id', 'desc');
-        }
-
-        $perPage = $request->get('per_page', 10);
-        $categoryOffers = $query->paginate($perPage);
+    /**
+     * Elimina una oferta por categoría.
+     */
+    public function destroy(CategoryOffer $category): JsonResponse
+    {
+        $this->offerService->deleteOffer($category);
 
         return response()->json([
             'status' => true,
-            'data' => $categoryOffers,
+            'message' => 'Oferta por categoría eliminada correctamente'
         ], 200);
-    }
-
-    /**
-     * Mostrar una oferta por categoría específica
-     */
-    public function show($id)
-    {
-        try {
-            $categoryOffer = CategoryOffer::with('category')->findOrFail($id);
-
-            return response()->json([
-                'status' => true,
-                'data' => $categoryOffer,
-            ], 200);
-        } catch (ModelNotFoundException $e) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Oferta por categoría no encontrada'
-            ], 404);
-        }
-    }
-
-    public function store(StoreCategoryOfferRequest $request)
-    {
-        $categoryId = is_array($request->category_id)
-            ? ($request->category_id['id'] ?? $request->category_id)
-            : $request->category_id;
-        $category = Category::find($categoryId);
-        if (!$category) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Categoría no encontrada'
-            ], 404);
-        }
-        // Verificar que no exista una oferta activa para la misma categoría en las mismas fechas
-        $existingOffer = CategoryOffer::where('category_id', $category->id)
-            ->where(function ($query) use ($request) {
-                $query->whereBetween('start_date', [$request->start_date, $request->end_date])
-                    ->orWhereBetween('end_date', [$request->start_date, $request->end_date])
-                    ->orWhere(function ($q) use ($request) {
-                        $q->where('start_date', '<=', $request->start_date)
-                            ->where('end_date', '>=', $request->end_date);
-                    });
-            })
-            ->first();
-
-        if ($existingOffer) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Ya existe una oferta activa para esta categoría en las fechas seleccionadas'
-            ], 409);
-        }
-        $categoryOffer = CategoryOffer::create([
-            'category_id' => $category->id,
-            'discount_percentage' => $request->discount_percentage,
-            'start_date' => $request->start_date,
-            'end_date' => $request->end_date,
-            'is_active' => $request->is_active ?? true,
-        ]);
-
-        return response()->json([
-            'status' => true,
-            'message' => 'Oferta por categoría creada correctamente',
-            'data' => $categoryOffer->load('category')
-        ], 201);
-    }
-
-    /**
-     * Actualizar una oferta por categoría existente
-     */
-    public function update(UpdateCategoryOfferRequest $request, $id)
-    {
-        try {
-            $categoryOffer = CategoryOffer::findOrFail($id);
-
-            // Verificar que no exista otra oferta activa para la misma categoría en las mismas fechas
-            if ($request->has('category_id') || $request->has('start_date') || $request->has('end_date')) {
-                $existingOffer = CategoryOffer::where('category_id', $request->category_id ?? $categoryOffer->category_id)
-                    ->where('id', '!=', $id)
-                    ->where(function ($query) use ($request, $categoryOffer) {
-                        $startDate = $request->start_date ?? $categoryOffer->start_date;
-                        $endDate = $request->end_date ?? $categoryOffer->end_date;
-
-                        $query->whereBetween('start_date', [$startDate, $endDate])
-                            ->orWhereBetween('end_date', [$startDate, $endDate])
-                            ->orWhere(function ($q) use ($startDate, $endDate) {
-                                $q->where('start_date', '<=', $startDate)
-                                    ->where('end_date', '>=', $endDate);
-                            });
-                    })
-                    ->first();
-
-                if ($existingOffer) {
-                    return response()->json([
-                        'status' => false,
-                        'message' => 'Ya existe otra oferta activa para esta categoría en las fechas seleccionadas'
-                    ], 409);
-                }
-            }
-
-            $categoryOffer->update([
-                'category_id' => $request->category_id ?? $categoryOffer->category_id,
-                'discount_percentage' => $request->discount_percentage ?? $categoryOffer->discount_percentage,
-                'start_date' => $request->start_date ?? $categoryOffer->start_date,
-                'end_date' => $request->end_date ?? $categoryOffer->end_date,
-                'is_active' => $request->has('is_active') ? $request->is_active : $categoryOffer->is_active,
-            ]);
-
-            return response()->json([
-                'status' => true,
-                'message' => 'Oferta por categoría actualizada correctamente',
-                'data' => $categoryOffer->load('category')
-            ], 200);
-        } catch (ModelNotFoundException $e) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Oferta por categoría no encontrada'
-            ], 404);
-        }
-    }
-
-    /**
-     * Eliminar una oferta por categoría
-     */
-    public function destroy($id)
-    {
-        try {
-            $categoryOffer = CategoryOffer::findOrFail($id);
-            $categoryOffer->delete();
-
-            return response()->json([
-                'status' => true,
-                'message' => 'Oferta por categoría eliminada correctamente'
-            ], 200);
-        } catch (ModelNotFoundException $e) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Oferta por categoría no encontrada'
-            ], 404);
-        }
     }
 }

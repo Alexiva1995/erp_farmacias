@@ -10,6 +10,7 @@ import { onMounted, ref, watch } from "vue";
 const employeeLaboratories = ref([]);
 const totalRecords = ref(0);
 const loading = ref(false);
+const saving = ref(false);
 
 const page = ref(1);
 const itemsPerPage = ref(10);
@@ -188,6 +189,7 @@ const handleEditAssignment = (employee) => {
 };
 
 const handleSaveAssignment = async (assignmentData) => {
+  saving.value = true;
   try {
     await axios.post("/employee-laboratories", assignmentData);
 
@@ -206,6 +208,8 @@ const handleSaveAssignment = async (assignmentData) => {
       console.error("Error al guardar la asignación:", error);
       toast.error("Hubo un error al guardar la asignación.");
     }
+  } finally {
+    saving.value = false;
   }
 };
 
@@ -243,6 +247,7 @@ const clearDialogErrors = () => {
       :employees="employees"
       :laboratories="laboratories"
       :errors="dialogErrors"
+      :saving="saving"
       @save="handleSaveAssignment"
       @clear-errors="clearDialogErrors"
     />

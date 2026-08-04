@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { computed, ref, watch } from "vue";
@@ -251,7 +251,7 @@ watch(
             </VCol>
 
             <VCol cols="12">
-              <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Confirmar Monto en COP</span>
+              <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Confirmar Monto A Pagar ({{ currency }})</span>
               <VTextField
                 v-model="payedDisplay"
                 placeholder="0"
@@ -259,8 +259,8 @@ watch(
                 density="comfortable"
                 hide-details="auto"
                 prepend-inner-icon="tabler-coin"
-                prefix="$"
-                suffix="COP"
+                :prefix="currency === 'USD' ? '$' : (currency === 'COP' ? '$' : 'Bs.')"
+                :suffix="currency"
                 :error-messages="errors.payed"
                 class="premium-amount-input"
                 @input="handlePayedInput"

@@ -1,7 +1,7 @@
 <script setup>
 import { useDisplay } from "vuetify";
 import { formatCurrency } from "@/utils/currencyFormatter";
-import { computed, defineEmits, defineProps } from "vue";
+import { computed } from "vue";
 
 const props = defineProps({
   isDialogVisible: {

@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 import { formatCurrency } from "@/utils/currencyFormatter";
 import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
 import axios from "@/plugins/axios";
@@ -25,27 +25,24 @@ const props = defineProps({
 const internalAssignedLaboratoryIds = ref([]);
 const internalAssignedProductIds = ref([]);
 
-onMounted(async () => {
+onMounted(() => {
   options.value.page = props.page;
   options.value.itemsPerPage = props.itemsPerPage;
   
-  try {
-    const response = await axios.get('/my-assigned-labs');
-    if (response.data && Array.isArray(response.data)) {
-      internalAssignedLaboratoryIds.value = response.data.map(lab => Number(lab.id));
-    }
-  } catch (error) {
-    console.error("Error fetching assigned labs:", error);
-  }
-
-  try {
-    const response = await axios.get('/my-assigned-products');
-    if (response.data && Array.isArray(response.data)) {
-      internalAssignedProductIds.value = response.data.map(id => Number(id));
-    }
-  } catch (error) {
-    console.error("Error fetching assigned products:", error);
-  }
+  Promise.allSettled([
+    axios.get('/my-assigned-labs').then(response => {
+      if (response.data && Array.isArray(response.data)) {
+        internalAssignedLaboratoryIds.value = response.data.map(lab => Number(lab.id));
+      }
+    }),
+    axios.get('/my-assigned-products').then(response => {
+      if (response.data && Array.isArray(response.data)) {
+        internalAssignedProductIds.value = response.data.map(id => Number(id));
+      }
+    })
+  ]).catch(error => {
+    console.error("Error cargando asignaciones de usuario:", error);
+  });
 });
 
 const inputQuantities = ref(new Map());
@@ -114,8 +111,9 @@ const shouldApplyDiscount = computed(() => {
 const calculatePriceWithDiscount = (basePrice, product = null) => {
   const price = parseFloat(basePrice) || 0;
   const discountPcts = [];
-  if (product?.discount_percentage > 0 && (product?.discount_type === "individual" || product?.discount_type === "category" || product?.discount_type === "expiration")) {
-    discountPcts.push(parseFloat(product.discount_percentage));
+  const prodPct = parseFloat(product?.discount_percentage || product?.discount_percentage_expiration || 0);
+  if (prodPct > 0) {
+    discountPcts.push(prodPct);
   }
   if (shouldApplyDiscount.value && props.currentDiscount > 0) {
     discountPcts.push(parseFloat(props.currentDiscount));
@@ -138,7 +136,9 @@ const calculateAndFormatCopPriceWithIVAAndDiscount = (basePrice, product) => {
 const handleAddProduct = (productId) => {
   const quantityToAdd = inputQuantities.value.get(productId);
   if (quantityToAdd === null || quantityToAdd === undefined || quantityToAdd <= 0) return;
-  emit("add-product", { productId, quantity: quantityToAdd });
+  // Se pasa el objeto completo del producto para evitar un GET extra al agregar
+  const productData = props.products.find((p) => p.id === productId) || null;
+  emit("add-product", { productId, quantity: quantityToAdd, productData });
   inputQuantities.value.set(productId, 1);
 };
 
@@ -192,31 +192,22 @@ const calculateAndFormatCopPriceWithIVA = (basePrice, product) => {
   return formatCurrency(roundUpToNearestHundred(priceWithIVA), "COP");
 };
 
-onMounted(async () => {
-  try {
-    const { data } = await axios.get('/user/config');
-    const config = data.config; 
-    if (config && config.sort_products_orders) {
-      const [key, order] = config.sort_products_orders.split('|');
-      options.value.sortBy = [{ key, order }];
-    }
-  } catch (error) {
-    console.error("Error cargando config inicial");
-  } finally {
-    setTimeout(() => { isInitialLoad.value = false; }, 1000);
-  }
-});
-
 const handleUpdateOptions = (newOptions) => {
+  if (isInitialLoad.value) {
+    isInitialLoad.value = false;
+    // Evita refresco redundante en el montaje inicial cuando coincide con la configuración inicial
+    if (!newOptions.sortBy || newOptions.sortBy.length === 0) return;
+  }
   emit('update:page', newOptions.page);
   emit('update:itemsPerPage', newOptions.itemsPerPage);
   emit('update:options', newOptions);
 };
 
 const getPriceClass = (item) => {
-  const hasDiscount = item.discount_percentage > 0 || (shouldApplyDiscount.value && props.currentDiscount > 0);
+  const prodPct = parseFloat(item.discount_percentage || item.discount_percentage_expiration || 0);
+  const hasDiscount = prodPct > 0 || (shouldApplyDiscount.value && props.currentDiscount > 0);
   if (!hasDiscount) return 'precio-normal';
-  if (item.discount_type === 'expiration') return 'precio-expira';
+  if (item.discount_type === 'expiration' || item.is_expiration_discount) return 'precio-expira';
   return 'precio-oferta';
 };
 
@@ -244,6 +235,8 @@ const getRowClass = (item) => {
       :items="props.products"
       :items-length="props.totalProduct"
       :loading="props.loading"
+      item-key="id"
+      loading-text="Cargando productos..."
       class="premium-table d-none d-md-block"
       :row-props="(data) => ({ class: getRowClass(data.item) })"
       @update:options="handleUpdateOptions"
@@ -286,16 +279,16 @@ const getRowClass = (item) => {
             <VChip v-if="item.iva == 1" size="x-small" color="primary" variant="tonal" class="ms-1 font-weight-bold">IVA</VChip>
             <VChip v-if="item.is_colombian_origin == 1" size="x-small" color="info" variant="tonal" class="ms-1 font-weight-bold">COL</VChip>
             <VChip
-              v-if="item.discount_type === 'expiration' && item.discount_percentage > 0"
+              v-if="(item.discount_type === 'expiration' || item.is_expiration_discount) && (item.discount_percentage > 0 || item.discount_percentage_expiration > 0)"
               color="error"
               size="x-small"
               class="ms-1 font-weight-black uppercase"
               label
             >
-              Expira (-{{ item.discount_percentage }}%)
+              Expira (-{{ item.discount_percentage || item.discount_percentage_expiration }}%)
             </VChip>
             <VChip
-              v-if="item.discount_type && ['individual', 'category'].includes(item.discount_type) && item.discount_percentage > 0"
+              v-else-if="item.discount_percentage > 0"
               color="success"
               size="x-small"
               class="ms-1 font-weight-black uppercase"
@@ -326,7 +319,10 @@ const getRowClass = (item) => {
 
       <template #item.sale_price="{ item }">
         <div class="d-flex flex-column align-end">
-          <del v-if="calculatePriceWithIVA(getDynamicPrice(item, item.sale_price, 'USD'), item) > calculatePriceWithIVAAndDiscount(getDynamicPrice(item, item.sale_price, 'USD'), item)" class="precio-tachado">
+          <del v-if="item.original_price && Number(item.original_price) > Number(item.sale_price)" class="precio-tachado text-caption text-disabled text-decoration-line-through">
+            {{ formatCurrency(calculatePriceWithIVA(getDynamicPrice(item, item.original_price, 'USD'), item)) }}
+          </del>
+          <del v-else-if="calculatePriceWithIVA(getDynamicPrice(item, item.sale_price, 'USD'), item) > calculatePriceWithIVAAndDiscount(getDynamicPrice(item, item.sale_price, 'USD'), item)" class="precio-tachado text-caption text-disabled text-decoration-line-through">
             {{ formatCurrency(calculatePriceWithIVA(getDynamicPrice(item, item.sale_price, 'USD'), item)) }}
           </del>
           <span :class="getPriceClass(item)" class="font-weight-black text-primary">
@@ -337,7 +333,10 @@ const getRowClass = (item) => {
 
       <template #item.price_bs="{ item }">
         <div class="d-flex flex-column align-end">
-          <del v-if="calculatePriceWithIVA(item.price_bs, item) > calculatePriceWithIVAAndDiscount(item.price_bs, item)" class="precio-tachado">
+          <del v-if="item.original_price_bs && Number(item.original_price_bs) > Number(item.price_bs)" class="precio-tachado text-caption text-disabled text-decoration-line-through">
+            {{ formatCurrency(calculatePriceWithIVA(item.original_price_bs, item), "BS") }}
+          </del>
+          <del v-else-if="calculatePriceWithIVA(item.price_bs, item) > calculatePriceWithIVAAndDiscount(item.price_bs, item)" class="precio-tachado text-caption text-disabled text-decoration-line-through">
             {{ formatCurrency(calculatePriceWithIVA(item.price_bs, item), "BS") }}
           </del>
           <span :class="getPriceClass(item)" class="font-weight-bold text-medium-emphasis">
@@ -348,7 +347,10 @@ const getRowClass = (item) => {
 
       <template #item.price_cop="{ item }">
         <div class="d-flex flex-column align-end">
-          <del v-if="calculatePriceWithIVA(item.price_cop, item) > calculatePriceWithIVAAndDiscount(item.price_cop, item)" class="precio-tachado">
+          <del v-if="item.original_price_cop && Number(item.original_price_cop) > Number(item.price_cop)" class="precio-tachado text-caption text-disabled text-decoration-line-through">
+            {{ calculateAndFormatCopPriceWithIVA(item.original_price_cop, item) }}
+          </del>
+          <del v-else-if="calculatePriceWithIVA(item.price_cop, item) > calculatePriceWithIVAAndDiscount(item.price_cop, item)" class="precio-tachado text-caption text-disabled text-decoration-line-through">
             {{ calculateAndFormatCopPriceWithIVA(item.price_cop, item) }}
           </del>
           <span :class="getPriceClass(item)" class="font-weight-bold text-medium-emphasis">
@@ -490,16 +492,16 @@ const getRowClass = (item) => {
               <VChip v-if="item.iva == 1" size="x-small" color="primary" variant="flat" class="font-weight-black">IVA</VChip>
               <VChip v-if="item.is_colombian_origin == 1" size="x-small" color="info" variant="flat" class="font-weight-black">COL</VChip>
               <VChip
-                v-if="item.discount_type === 'expiration' && item.discount_percentage > 0"
+                v-if="(item.discount_type === 'expiration' || item.is_expiration_discount) && (item.discount_percentage > 0 || item.discount_percentage_expiration > 0)"
                 color="error"
                 size="x-small"
                 variant="flat"
                 class="font-weight-black"
               >
-                EXPIRA (-{{ item.discount_percentage }}%)
+                EXPIRA (-{{ item.discount_percentage || item.discount_percentage_expiration }}%)
               </VChip>
               <VChip
-                v-if="item.discount_type && ['individual', 'category'].includes(item.discount_type) && item.discount_percentage > 0"
+                v-else-if="item.discount_percentage > 0"
                 color="success"
                 size="x-small"
                 variant="flat"

@@ -3,10 +3,9 @@ import FurnitureEditDialog from "@/components/dialogs/FurnitureEditDialog.vue";
 import FurnitureFilters from "@/components/FurnitureFilters.vue";
 import FurnitureTable from "@/components/FurnitureTable.vue";
 import axios from "@/plugins/axios";
-import { onMounted, ref, watch } from "vue";
-
 import { toast } from "@/plugins/sweetalert";
 import Swal from "sweetalert2";
+import { onMounted, ref, watch } from "vue";
 
 const furniture = ref([]);
 const totalFurniture = ref(0);
@@ -31,12 +30,12 @@ const furnitureFormErrors = ref({});
 const isLoadingFilters = ref(false);
 const loadingSubmit = ref(false);
 
-const fetchSelectOptions = async () => {
+const fetchSelectOptions = () => {
   isLoadingFilters.value = true;
   try {
     const currentYear = new Date().getFullYear();
     const years = [];
-    for (let year = currentYear; year >= 2010; year--) {
+    for (let year = currentYear; year >= 2000; year--) {
       years.push({ value: year, title: year.toString() });
     }
     acquisitionYears.value = years;
@@ -63,17 +62,18 @@ const fetchFurniture = async () => {
     startDate: startDate.value,
     endDate: endDate.value,
   };
+
   Object.keys(params).forEach(
-    (key) => (params[key] === null || params[key] === "") && delete params[key],
+    (key) => (params[key] === null || params[key] === "" || params[key] === undefined) && delete params[key],
   );
 
   try {
     const response = await axios.get("/furniture", { params });
     furniture.value = response.data.data;
-    totalFurniture.value = response.data.meta?.total ?? response.data.total;
+    totalFurniture.value = response.data.meta?.total ?? response.data.total ?? 0;
   } catch (error) {
-    console.error("Hubo un error al obtener el mobiliario:", error);
-    toast.error("Error al obtener el mobiliario.");
+    console.error("Error al obtener el mobiliario:", error);
+    toast.error("Error al obtener el listado de mobiliario.");
   } finally {
     loading.value = false;
   }
@@ -133,21 +133,9 @@ const handleDeleteFurniture = async (id) => {
     cancelButtonText: "Cancelar",
     confirmButtonText: "Eliminar",
     reverseButtons: true,
-    didOpen: () => {
-      const actions = Swal.getActions();
-      const confirmButton = Swal.getConfirmButton();
-      const cancelButton = Swal.getCancelButton();
-
-      actions.style.display = "flex";
-      actions.style.gap = "10px";
-      actions.style.width = "100%";
-      actions.style.padding = "0 20px";
-
-      confirmButton.style.flex = "1";
-      confirmButton.style.width = "50%";
-
-      cancelButton.style.flex = "1";
-      cancelButton.style.width = "50%";
+    customClass: {
+      confirmButton: "v-btn v-btn--elevated color-error bg-error text-white px-4 py-2 rounded-lg",
+      cancelButton: "v-btn v-btn--outlined color-secondary text-secondary px-4 py-2 rounded-lg mr-2",
     },
   });
 
@@ -170,6 +158,8 @@ const handleSaveFurniture = async (furnitureFormData) => {
     : `/furniture/${currentFurniture.value.id}`;
 
   loadingSubmit.value = true;
+  furnitureFormErrors.value = {};
+
   try {
     if (isNewFurniture) {
       await axios.post(url, furnitureFormData);
@@ -178,17 +168,17 @@ const handleSaveFurniture = async (furnitureFormData) => {
     }
 
     toast.success(
-      `Mobiliario ${isNewFurniture ? "creado" : "actualizado"} con éxito`,
+      `Mobiliario ${isNewFurniture ? "creado" : "actualizado"} con éxito.`,
     );
     isEditDialogVisible.value = false;
     await fetchFurniture();
   } catch (error) {
     if (error.response && error.response.status === 422) {
-      furnitureFormErrors.value = error.response.data.errors;
+      furnitureFormErrors.value = error.response.data.errors || {};
       toast.error("Por favor, corrige los errores en el formulario.");
     } else {
-      console.error("Error al guardar/crear el mobiliario:", error);
-      toast.error("Hubo un error al guardar el mobiliario.");
+      console.error("Error al guardar el mobiliario:", error);
+      toast.error("Hubo un error al procesar la solicitud.");
     }
   } finally {
     loadingSubmit.value = false;
@@ -214,7 +204,7 @@ const clearFormErrors = () => {
 };
 
 const handleSort = (sortOptions) => {
-  if (sortOptions.key === undefined && sortOptions.order === undefined) {
+  if (!sortOptions || (sortOptions.key === undefined && sortOptions.order === undefined)) {
     sortBy.value = undefined;
     orderBy.value = undefined;
   } else {
@@ -269,16 +259,5 @@ const handleSort = (sortOptions) => {
 .furniture-view {
   background-color: #f8fafc;
   min-block-size: 100vh;
-}
-
-.letter-spacing-tight {
-  letter-spacing: -0.02em;
-}
-.letter-spacing-widest {
-  letter-spacing: 0.1em !important;
-}
-
-.shadow-soft {
-  box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 8%) !important;
 }
 </style>

@@ -17,6 +17,7 @@ use App\Models\PayslipDetails;
 use App\Models\SalaryConcept;
 use Illuminate\Support\Facades\DB;
 use App\Http\Resources\Finances\PayslipResource;
+use App\Http\Resources\Finances\PayslipDetailResource;
 
 class PayslipController extends Controller
 {
@@ -29,6 +30,7 @@ class PayslipController extends Controller
             'perPage' => $request->itemsPerPage ?? 10,
             'startDate' => $request->startDate,
             'endDate' => $request->endDate,
+            'status' => $request->status,
         ];
         $results = $this->payslipServices->index($data);
 
@@ -44,6 +46,20 @@ class PayslipController extends Controller
         $result = $this->payslipServices->finalize($payslip, $data);
 
         return ApiResponse::success(['status' => $result]);
+    }
+
+    public function reopen(Payslip $payslip)
+    {
+        $result = $this->payslipServices->reopen($payslip);
+
+        return ApiResponse::success(['status' => $result, 'message' => 'Nómina reabierta para edición']);
+    }
+
+    public function destroy(Payslip $payslip)
+    {
+        $result = $this->payslipServices->destroy($payslip);
+
+        return ApiResponse::success(['status' => $result, 'message' => 'Nómina eliminada exitosamente']);
     }
 
     public function downloadExcel(Payslip $payslip)
