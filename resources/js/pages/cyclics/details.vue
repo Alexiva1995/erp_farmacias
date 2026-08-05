@@ -415,11 +415,11 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
           </template>
 
           <template #item.product.name="{ item }">
-            <div class="d-flex align-start gap-x-3 py-2" style="max-inline-size: 280px;">
-              <VAvatar v-if="item.product?.photo_url" size="34" variant="tonal" rounded :image="item.product.photo_url" />
-              <div class="d-flex flex-column">
-                <span class="text-sm font-weight-black text-high-emphasis truncate-1-line">{{ item.product?.name?.toUpperCase() || 'N/A' }}</span>
-                <span class="text-xs text-primary font-weight-bold">{{ item.product?.laboratory?.name || '—' }}</span>
+            <div class="d-flex align-center gap-x-3 py-2" style="max-inline-size: 320px; min-inline-size: 200px;">
+              <VAvatar v-if="item.product?.photo_url" size="34" variant="tonal" rounded :image="item.product.photo_url" class="flex-shrink-0" />
+              <div class="d-flex flex-column" style="word-break: break-word; line-height: 1.25;">
+                <span class="text-sm font-weight-black text-high-emphasis">{{ item.product?.name?.toUpperCase() || 'N/A' }}</span>
+                <span class="text-xs text-primary font-weight-bold mt-1">{{ item.product?.laboratory?.name || '—' }}</span>
               </div>
             </div>
           </template>
