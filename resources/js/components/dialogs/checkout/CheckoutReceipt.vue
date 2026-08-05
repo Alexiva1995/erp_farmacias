@@ -1,8 +1,11 @@
 <script setup>
 import { BASE64_LOGO_DATA } from "@/constants/logo.js";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 import { formatCurrency } from "@/utils/currencyFormatter";
 import { formatDateTime } from "@/utils/formatDateTime";
+import { computed } from "vue";
 
+const brandingStore = useBrandingStore();
 
 const props = defineProps({
   orderData: Object,
@@ -26,7 +29,7 @@ const props = defineProps({
 
 const emit = defineEmits(["print", "cancel", "print-fiscal"]);
 
-const logoSrc = BASE64_LOGO_DATA;
+const logoSrc = computed(() => brandingStore.settings?.app_logo || BASE64_LOGO_DATA);
 
 /**
  * Convierte un monto a Bolívares (BS) usando las tasas de cambio proporcionadas.

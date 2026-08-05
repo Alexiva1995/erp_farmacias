@@ -321,6 +321,7 @@ declare global {
   const useRefHistory: typeof import('@vueuse/core')['useRefHistory']
   const useResizeObserver: typeof import('@vueuse/core')['useResizeObserver']
   const useResponsiveLeftSidebar: typeof import('./resources/js/@core/composable/useResponsiveSidebar.js')['useResponsiveLeftSidebar']
+  const useRetentionDates: typeof import('./resources/js/composables/useRetentionDates.js')['useRetentionDates']
   const useRound: typeof import('@vueuse/math')['useRound']
   const useRoute: typeof import('vue-router/auto')['useRoute']
   const useRouter: typeof import('vue-router/auto')['useRouter']
@@ -738,6 +739,7 @@ declare module 'vue' {
     readonly useRefHistory: UnwrapRef<typeof import('@vueuse/core')['useRefHistory']>
     readonly useResizeObserver: UnwrapRef<typeof import('@vueuse/core')['useResizeObserver']>
     readonly useResponsiveLeftSidebar: UnwrapRef<typeof import('./resources/js/@core/composable/useResponsiveSidebar.js')['useResponsiveLeftSidebar']>
+    readonly useRetentionDates: UnwrapRef<typeof import('./resources/js/composables/useRetentionDates.js')['useRetentionDates']>
     readonly useRound: UnwrapRef<typeof import('@vueuse/math')['useRound']>
     readonly useRoute: UnwrapRef<typeof import('vue-router/auto')['useRoute']>
     readonly useRouter: UnwrapRef<typeof import('vue-router/auto')['useRouter']>

@@ -417,6 +417,7 @@
     "useTpvCheckoutUI": true,
     "ticketStyles": true,
     "useCashClosurePrint": true,
-    "useOrderPrint": true
+    "useOrderPrint": true,
+    "useRetentionDates": true
   }
 }
