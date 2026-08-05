@@ -47,15 +47,33 @@ class MarketOpportunityRepository implements MarketOpportunityRepositoryInterfac
         $tresMesesAtras = now()->modify('-' . $lapsoStr)->toDateTimeString();
         $hoy = now()->toDateTimeString();
 
-        // Subconsulta para Stock por Lotes (v7 pattern) - SQLite friendly
+        // Subconsultas de agrupación optimizadas para evitar N+1
         $currentDateExpr = DB::connection()->getDriverName() === 'sqlite' ? "DATE('now')" : 'CURDATE()';
-        $subqueryStock = "(SELECT COALESCE(SUM(quantity), 0) FROM product_lots WHERE product_id = products.id AND quantity > 0 AND (expiration_date IS NULL OR expiration_date >= $currentDateExpr))";
 
-        // Subconsulta para Auto Pedidos activos
-        $subqueryAO = '(SELECT COALESCE(SUM(aod.quantity), 0) FROM auto_order_details aod JOIN auto_orders ao ON ao.id = aod.order_id WHERE aod.product_id = products.id AND ao.status IN (0, 1) AND aod.status = 0 AND ao.deleted_at IS NULL AND aod.deleted_at IS NULL)';
+        $stockAggregated = DB::table('product_lots')
+            ->select('product_id', DB::raw('COALESCE(SUM(quantity), 0) as lote_quantity'))
+            ->where('quantity', '>', 0)
+            ->where(function ($q) use ($currentDateExpr) {
+                $q->whereNull('expiration_date')
+                  ->orWhereRaw("expiration_date >= $currentDateExpr");
+            })
+            ->groupBy('product_id');
 
-        // Subconsulta para Ventas Realizadas (3 meses)
-        $subquerySales = "(SELECT COALESCE(SUM(order_details.quantity), 0) FROM order_details JOIN orders ON orders.id = order_details.order_id WHERE order_details.product_id = products.id AND orders.created_at BETWEEN '{$tresMesesAtras}' AND '{$hoy}' AND orders.status = 'Completed')";
+        $autoOrderAggregated = DB::table('auto_order_details as aod')
+            ->join('auto_orders as ao', 'ao.id', '=', 'aod.order_id')
+            ->select('aod.product_id', DB::raw('COALESCE(SUM(aod.quantity), 0) as totalQuantityInAutoOrder'))
+            ->whereIn('ao.status', [0, 1])
+            ->where('aod.status', 0)
+            ->whereNull('ao.deleted_at')
+            ->whereNull('aod.deleted_at')
+            ->groupBy('aod.product_id');
+
+        $salesAggregated = DB::table('order_details')
+            ->join('orders', 'orders.id', '=', 'order_details.order_id')
+            ->select('order_details.product_id', DB::raw('COALESCE(SUM(order_details.quantity), 0) as total_sold_completed'))
+            ->whereBetween('orders.created_at', [$tresMesesAtras, $hoy])
+            ->where('orders.status', 'Completed')
+            ->groupBy('order_details.product_id');
 
         // Subconsulta para el costo mínimo y máximo histórico por producto en los lotes (últimos 12 meses)
         $historicCostSubquery = DB::table('product_lots')
@@ -83,8 +101,8 @@ class MarketOpportunityRepository implements MarketOpportunityRepositoryInterfac
                 'laboratories.name as laboratory_name',
                 'suppliers.name as supplier_name',
                 DB::raw($offerPriceExpression . ' as effective_offer_price'),
-                DB::raw($subquerySales . ' as total_sold_completed'),
-                DB::raw($subqueryStock . ' as lote_quantity'),
+                DB::raw('COALESCE(sales.total_sold_completed, 0) as total_sold_completed'),
+                DB::raw('COALESCE(stock.lote_quantity, 0) as lote_quantity'),
                 DB::raw("CASE 
                     WHEN '$lapsoStr' = '7 days' THEN products.sales_average / 4
                     WHEN '$lapsoStr' = '15 days' THEN products.sales_average / 2
@@ -95,7 +113,7 @@ class MarketOpportunityRepository implements MarketOpportunityRepositoryInterfac
                     WHEN '$lapsoStr' = '1 year' THEN products.sales_average * 12
                     ELSE products.sales_average * 3
                 END as promedio_calculado"),
-                DB::raw($subqueryAO . ' as totalQuantityInAutoOrder')
+                DB::raw('COALESCE(ao.totalQuantityInAutoOrder, 0) as totalQuantityInAutoOrder')
             )
             ->when($hideDuplicates, function ($q) use ($offerPriceExpression) {
                 $q->addSelect(DB::raw('ROW_NUMBER() OVER(PARTITION BY product_suppliers.product_id ORDER BY ' . $offerPriceExpression . ' ASC) as row_num'));
@@ -103,6 +121,9 @@ class MarketOpportunityRepository implements MarketOpportunityRepositoryInterfac
             ->join('products', 'product_suppliers.product_id', '=', 'products.id')
             ->join('suppliers', 'product_suppliers.supplier_id', '=', 'suppliers.id')
             ->leftJoin('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
+            ->leftJoinSub($stockAggregated, 'stock', 'products.id', '=', 'stock.product_id')
+            ->leftJoinSub($autoOrderAggregated, 'ao', 'products.id', '=', 'ao.product_id')
+            ->leftJoinSub($salesAggregated, 'sales', 'products.id', '=', 'sales.product_id')
             ->whereRaw($offerPriceExpression . ' > 0')
             ->where('products.unit_cost', '>', 0)
             ->whereRaw($offerPriceExpression . ' < products.unit_cost')
