@@ -92,10 +92,13 @@ const updateRate = async (currency) => {
       </div>
 
       <VRow class="match-height ma-0 mx-n1">
-        <!-- Skeletons durante la carga inicial -->
+        <!-- Cargador durante la carga inicial -->
         <template v-if="props.loading">
-          <VCol v-for="n in 4" :key="n" cols="12" sm="6" md="3" class="pa-1">
-            <VSkeletonLoader type="card, article, button" class="rounded-lg shadow-sm h-100" />
+          <VCol cols="12" class="pa-1">
+            <VCard class="rounded-lg border shadow-sm pa-8 text-center bg-white">
+              <VProgressCircular indeterminate color="primary" size="36" class="mb-2" />
+              <div class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Cargando tasas en bolívares...</div>
+            </VCard>
           </VCol>
         </template>
 
@@ -107,7 +110,7 @@ const updateRate = async (currency) => {
               badge-text="Tasa Oficial"
               :rate-value="props.rates.BS.rate"
               prefix="Bs."
-              :decimals="4"
+              :decimals="2"
               color="primary"
               icon="tabler-currency-dollar"
               :date-update="props.rates.BS.dateUpdate"
@@ -125,7 +128,7 @@ const updateRate = async (currency) => {
               :badge-text="isRestaurant ? 'Tasa Activa (Rest)' : 'Tasa P2P'"
               :rate-value="props.rates.BINANCE.rate"
               prefix="Bs."
-              :decimals="4"
+              :decimals="2"
               color="error"
               icon="tabler-currency-bitcoin"
               :date-update="props.rates.BINANCE.dateUpdate"
@@ -144,7 +147,7 @@ const updateRate = async (currency) => {
               badge-text="Tasa Oficial"
               :rate-value="props.rates.EUR.rate"
               prefix="Bs."
-              :decimals="4"
+              :decimals="2"
               color="warning"
               icon="tabler-currency-euro"
               :date-update="props.rates.EUR.dateUpdate"
@@ -185,10 +188,13 @@ const updateRate = async (currency) => {
       </div>
 
       <VRow class="match-height ma-0 mx-n1">
-        <!-- Skeletons durante la carga inicial -->
+        <!-- Cargador durante la carga inicial -->
         <template v-if="props.loading">
-          <VCol v-for="n in 3" :key="n" cols="12" sm="6" md="4" class="pa-1">
-            <VSkeletonLoader type="card, article, button" class="rounded-lg shadow-sm h-100" />
+          <VCol cols="12" class="pa-1">
+            <VCard class="rounded-lg border shadow-sm pa-8 text-center bg-white">
+              <VProgressCircular indeterminate color="info" size="36" class="mb-2" />
+              <div class="text-xs font-weight-black text-info uppercase letter-spacing-1">Cargando tasas en pesos...</div>
+            </VCard>
           </VCol>
         </template>
 
@@ -200,7 +206,7 @@ const updateRate = async (currency) => {
               title="Peso (COP)"
               badge-text="Tasa Manual"
               :rate-value="props.rates.COP.rate"
-              :decimals="2"
+              :decimals="0"
               subtext="Tasa Actual de Venta"
               color="info"
               icon="tabler-currency-peso"
@@ -219,7 +225,7 @@ const updateRate = async (currency) => {
               title="COP (COPC)"
               badge-text="Cambio Manual"
               :rate-value="props.rates.COPC.rate"
-              :decimals="2"
+              :decimals="0"
               subtext="Tasa para Compras"
               color="success"
               icon="tabler-arrows-right-left"
@@ -238,7 +244,7 @@ const updateRate = async (currency) => {
               title="COP Sueldo (COPS)"
               badge-text="Tasa Nómina"
               :rate-value="props.rates.COPS.rate"
-              :decimals="2"
+              :decimals="0"
               subtext="Conversión USD a COP en Nómina"
               color="teal"
               icon="tabler-cash"

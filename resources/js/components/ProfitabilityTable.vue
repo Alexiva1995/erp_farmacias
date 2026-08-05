@@ -31,7 +31,7 @@ const sortByModel = computed(() => {
   return [{ key: props.sortBy, order: props.orderBy || 'asc' }];
 });
 
-const emit = defineEmits(["refresh", "update:options", "editProduct"]);
+const emit = defineEmits(["refresh", "update:options", "editProduct", "updateProduct"]);
 
 const headers = computed(() => {
   if (isMinimarket.value) {
@@ -69,9 +69,12 @@ async function toggleLock(productId, percentage) {
       product_id: productId,
       profitability_percentage: percentage
     });
-    console.log("Éxito:", response.data);
     toast.success("Estado de bloqueo actualizado");
-    emit("refresh");
+    if (response.data?.data) {
+      emit("updateProduct", response.data.data);
+    } else {
+      emit("refresh");
+    }
   } catch (error) {
     console.error("Error al actualizar el bloqueo de margen:", error);
     toast.error("Error al cambiar el estado de bloqueo");

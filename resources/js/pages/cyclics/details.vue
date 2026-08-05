@@ -388,31 +388,13 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
           density="compact"
           @update:options="handleUpdateOptions"
         >
-          <!-- Skeletons dinámicos durante la carga -->
+          <!-- Cargador limpio -->
           <template #loading>
-            <tr v-for="n in 5" :key="n">
-              <td class="text-center"><VSkeletonLoader type="text" class="mx-auto" style="max-inline-size: 20px;" /></td>
-              <td>
-                <div class="d-flex align-center gap-2 py-2">
-                  <VSkeletonLoader type="avatar" size="34" class="rounded" />
-                  <div class="d-flex flex-column gap-1 flex-grow-1">
-                    <VSkeletonLoader type="text" style="max-inline-size: 150px;" />
-                    <VSkeletonLoader type="text" style="max-inline-size: 80px;" />
-                  </div>
-                </div>
+            <tr class="bg-white">
+              <td colspan="9" class="pa-8 text-center">
+                <VProgressCircular indeterminate color="primary" size="36" class="mb-2" />
+                <div class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Cargando detalles del inventario...</div>
               </td>
-              <td><VSkeletonLoader type="text" class="mx-auto" style="max-inline-size: 30px;" /></td>
-              <td><VSkeletonLoader type="text" class="mx-auto" style="max-inline-size: 30px;" /></td>
-              <td><VSkeletonLoader type="text" class="mx-auto" style="max-inline-size: 40px;" /></td>
-              <td><VSkeletonLoader type="text" class="mx-auto" style="max-inline-size: 50px;" /></td>
-              <td><VSkeletonLoader type="text" class="mx-auto" style="max-inline-size: 60px;" /></td>
-              <td>
-                <div class="d-flex flex-column gap-1">
-                  <VSkeletonLoader type="text" style="max-inline-size: 120px;" />
-                  <VSkeletonLoader type="text" style="max-inline-size: 80px;" />
-                </div>
-              </td>
-              <td><VSkeletonLoader type="button" class="mx-auto" style="max-inline-size: 32px; block-size: 32px;" /></td>
             </tr>
           </template>
 

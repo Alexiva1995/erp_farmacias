@@ -24,8 +24,8 @@ class ResignationServices implements Resignation
      */
     public function list(array $data): LengthAwarePaginator
     {
-        $page = $data['page'] ?? 1;
-        $perPage = $data['perPage'] ?? 10;
+        $page = (int) ($data['page'] ?? 1);
+        $perPage = (int) ($data['perPage'] ?? 10);
         $filters = array_intersect_key($data, array_flip(['search', 'resignation_type', 'date_from', 'date_to', 'employee_id']));
 
         $result = $this->resignationRepository->getResignationsPaginated($page, $perPage, $filters);

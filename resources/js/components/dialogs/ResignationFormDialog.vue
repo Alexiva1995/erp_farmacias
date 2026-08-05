@@ -183,7 +183,7 @@ const generateResignation = async () => {
     // Llamada a la API para generar PDF
 
     const response = await axios.post(
-      "/api/rrhh/resignations/generate",
+      "/rrhh/resignations/generate",
       resignationData,
       {
         responseType: "blob",
@@ -211,29 +211,37 @@ const generateResignation = async () => {
     emit("resignation-generated", resignationData);
     closeDialog();
   } catch (error) {
-    // Mostrar el contenido completo del error si es un Blob
+    let errorMsg = "No se pudo generar la carta de renuncia";
     if (error.response?.data instanceof Blob) {
-      error.response.data.text().then((text) => {
-        try {
-          const errorData = JSON.parse(text);
-        } catch (e) {}
-      });
-    }
-
-    if (error.response?.status === 409) {
-      // Error de duplicado - mostrar modal de confirmación
-      duplicateResignationData.value = error.response.data.existing_resignation;
-      showDuplicateConfirm.value = true;
-      loading.value = false;
-      return;
-    } else if (error.response?.status === 422) {
-      // Error de validación
-      errors.value = error.response.data.errors;
-      toast.error("Error de validación en los datos");
+      try {
+        const text = await error.response.data.text();
+        const errorData = JSON.parse(text);
+        if (error.response.status === 409) {
+          duplicateResignationData.value = errorData.existing_resignation;
+          showDuplicateConfirm.value = true;
+          loading.value = false;
+          return;
+        } else if (error.response.status === 422) {
+          errors.value = errorData.errors || {};
+          errorMsg = errorData.message || "Error de validación en los datos";
+        } else if (errorData.message || errorData.error) {
+          errorMsg = errorData.message || errorData.error;
+        }
+      } catch (e) {}
     } else {
-      // Otros errores
-      toast.error("No se pudo generar la carta de renuncia");
+      if (error.response?.status === 409) {
+        duplicateResignationData.value = error.response.data.existing_resignation;
+        showDuplicateConfirm.value = true;
+        loading.value = false;
+        return;
+      } else if (error.response?.status === 422) {
+        errors.value = error.response.data.errors || {};
+        errorMsg = error.response.data.message || "Error de validación en los datos";
+      } else if (error.response?.data?.message) {
+        errorMsg = error.response.data.message;
+      }
     }
+    toast.error(errorMsg);
   } finally {
     loading.value = false;
   }

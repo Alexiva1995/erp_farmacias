@@ -216,9 +216,9 @@ class SocialBenefitRepository implements \App\Contracts\SocialBenefit
 
   public function getSettlementData(Employee $employee, array $overrides = []): array
   {
-    $currency = round(ExchangeRate::orderByDesc('created_at')
+    $currency = round((float) (ExchangeRate::orderByDesc('created_at')
       ->where('currency_code', 'BS')
-      ->value('rate') ?? 1, 2);
+      ->value('rate') ?? 1), 2);
 
     // Obtener datos de renuncia si existen
     $resignation = $employee->resignation;

@@ -557,7 +557,7 @@ class TransactionRepository implements TransactionContract
     public function getCashClosingStatus(): array
     {
         $openClosings = CashClosing::where('status', CashClosing::OPEN)
-            ->with('seller:id,name,username')
+            ->with('seller:id,username')
             ->select(['id', 'seller_id', 'closing_date', 'status', 'total_usd'])
             ->get();
 
@@ -570,7 +570,7 @@ class TransactionRepository implements TransactionContract
             'open_closings_count' => $openClosings->count(),
             'open_closings' => $openClosings->map(fn($c) => [
                 'id' => $c->id,
-                'seller_name' => $c->seller?->name ?? $c->seller?->username ?? 'N/A',
+                'seller_name' => $c->seller?->username ?? 'N/A',
                 'closing_date' => $c->closing_date,
                 'total_usd' => (float) $c->total_usd,
             ])->values()->toArray(),

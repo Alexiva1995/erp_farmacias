@@ -141,7 +141,7 @@ const handleDownloadResignation = async (employee) => {
   let url = null;
   let link = null;
   try {
-    const downloadUrl = `/api/rrhh/resignations/${employee.resignation.id}/download-pdf`;
+    const downloadUrl = `/rrhh/resignations/${employee.resignation.id}/download-pdf`;
     
     toast.info("Descargando carta de renuncia...");
     

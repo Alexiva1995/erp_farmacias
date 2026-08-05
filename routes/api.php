@@ -82,6 +82,7 @@ Route::prefix('fiscal')->group(function () {
     Route::patch('/confirm/{id}', [FiscalPrinterController::class, 'confirm']);
     
     // Rutas para comandos generales (Python Bridge)
+    Route::get('/commands/status', [FiscalPrinterController::class, 'checkStatus']);
     Route::get('/commands/history', [FiscalPrinterController::class, 'history']);
     Route::get('/commands/pending', [FiscalPrinterController::class, 'getPendingCommand']);
     Route::patch('/commands/{id}/confirm', [FiscalPrinterController::class, 'confirmCommand']);
@@ -955,9 +956,12 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
         Route::get('/', [\App\Http\Controllers\Api\RetentionController::class, 'index']);
         Route::post('/bulk-generate', [\App\Http\Controllers\Api\RetentionController::class, 'bulkGenerate']);
         Route::post('/batch-generate-all', [\App\Http\Controllers\Api\RetentionController::class, 'batchGenerateAll']);
+        Route::post('/omit-until-date', [\App\Http\Controllers\Api\RetentionController::class, 'omitUntilDate']);
+        Route::post('/restore-omitted', [\App\Http\Controllers\Api\RetentionController::class, 'restoreOmitted']);
         Route::get('/download', [\App\Http\Controllers\Api\RetentionController::class, 'downloadPdf']);
-        Route::delete('/{id}', [\App\Http\Controllers\Api\RetentionController::class, 'destroy']);
+        Route::get('/{id}', [\App\Http\Controllers\Api\RetentionController::class, 'show']);
         Route::put('/{id}', [\App\Http\Controllers\Api\RetentionController::class, 'update']);
+        Route::delete('/{id}', [\App\Http\Controllers\Api\RetentionController::class, 'destroy']);
     });
 });
 

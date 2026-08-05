@@ -40,4 +40,13 @@ class FiscalCommandRepository implements FiscalCommandRepositoryInterface
             ->limit($limit)
             ->get();
     }
+
+    public function getLastInteractionTime(): ?\Illuminate\Support\Carbon
+    {
+        $last = FiscalCommand::whereIn('status', ['success', 'error', 'processing'])
+            ->orderBy('updated_at', 'desc')
+            ->first();
+
+        return $last?->updated_at;
+    }
 }

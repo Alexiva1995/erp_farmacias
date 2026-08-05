@@ -10,6 +10,8 @@ use App\Services\Retention\RetentionService;
 use App\Http\Requests\Retention\BulkGenerateRequest;
 use App\Http\Requests\Retention\BatchGenerateAllRequest;
 use App\Http\Requests\Retention\UpdateRetentionRequest;
+use App\Http\Requests\Retention\UpdateInvoiceControlNumberRequest;
+use App\Http\Requests\Retention\OmitUntilDateRequest;
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
 
@@ -87,7 +89,8 @@ class RetentionController extends Controller
         try {
             $count = $this->retentionService->generateAllPendingInRange(
                 $request->start_date,
-                $request->end_date
+                $request->end_date,
+                $request->input('retention_date')
             );
 
             return response()->json([
@@ -145,19 +148,90 @@ class RetentionController extends Controller
     }
 
     /**
-     * Actualizar número de retención.
+     * Obtener una retención con sus facturas asociadas.
      */
-    public function update(UpdateRetentionRequest $request, int $id)
+    public function show(int $id)
     {
         try {
-            $retention = $this->retentionService->updateRetention($id, ['number' => $request->number]);
+            $retention = $this->retentionService->getRetentionWithInvoices($id);
             return response()->json([
                 'status' => 'success',
-                'message' => 'Número de retención actualizado correctamente.',
-                'data' => new RetentionResource($retention)
+                'data' => new RetentionResource($retention),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()], 404);
+        }
+    }
+
+    /**
+     * Actualizar número, fecha de retención y números de control de facturas vinculadas.
+     */
+    public function update(UpdateInvoiceControlNumberRequest $request, int $id)
+    {
+        try {
+            $data = [];
+            if ($request->filled('number')) {
+                $data['number'] = $request->number;
+            }
+            if ($request->filled('date')) {
+                $data['date'] = $request->date;
+            }
+
+            $retention = $this->retentionService->updateRetentionWithInvoices(
+                $id,
+                $data,
+                $request->input('invoices', [])
+            );
+
+            return response()->json([
+                'status'  => 'success',
+                'message' => 'Retención actualizada correctamente.',
+                'data'    => new RetentionResource($retention),
             ]);
         } catch (\Exception $e) {
             return response()->json(['status' => 'error', 'message' => $e->getMessage()], 400);
+        }
+    }
+
+    /**
+     * Omite todas las facturas pendientes con fecha igual o anterior a una fecha límite.
+     */
+    public function omitUntilDate(OmitUntilDateRequest $request)
+    {
+        try {
+            $count = $this->retentionService->omitInvoicesUntilDate($request->cutoff_date);
+
+            return response()->json([
+                'status' => 'success',
+                'message' => "Se omitieron {$count} facturas pendientes anteriores o iguales a {$request->cutoff_date}.",
+                'count' => $count,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage()
+            ], 400);
+        }
+    }
+
+    /**
+     * Restaura todas las facturas omitidas devolviéndolas a estado pendiente.
+     */
+    public function restoreOmitted()
+    {
+        try {
+            $count = $this->retentionService->restoreOmittedInvoices();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => "Se restauraron {$count} facturas omitidas.",
+                'count' => $count,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage()
+            ], 400);
         }
     }
 }

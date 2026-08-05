@@ -258,11 +258,7 @@ class CashClosureActionService
 
         // $this->generateClosingTransactions($cashClosure);
 
-        CashClosing::create([
-            'seller_id' => $sellerId,
-            'status' => CashClosing::OPEN,
-            'closing_date' => Carbon::now(),
-        ]);
+
 
 
         return response()->json([
@@ -333,16 +329,7 @@ class CashClosureActionService
                 $this->generateClosingTransactions($cashClosing);
             }
 
-            $sellers = User::all();
-            foreach ($sellers as $seller) {
-                CashClosing::firstOrCreate(
-                    [
-                        'seller_id' => $seller->id,
-                        'closing_date' => Carbon::today()->toDateString(),
-                        'status' => CashClosing::OPEN,
-                    ]
-                );
-            }
+
 
             DB::commit();
         } catch (\Exception $e) {

@@ -272,15 +272,6 @@ const clearDialogErrors = () => {
 
 <template>
   <div class="productivity-employee-task-page pb-12">
-    <v-row class="mb-2 align-center">
-      <v-col cols="12" md="8">
-        <h1 class="text-h4 font-weight-bold primary--text">Asignaciones de Tareas</h1>
-        <p class="text-subtitle-1 text-medium-emphasis mb-0">
-          Gestión y seguimiento de actividades de limpieza por empleado
-        </p>
-      </v-col>
-    </v-row>
-
     <div class="d-flex flex-column gap-3">
       <EmployeeCleaningFilters
         v-model:searchQuery="searchQuery"
@@ -291,49 +282,46 @@ const clearDialogErrors = () => {
         @sort="handleSort"
       />
 
-      <v-card variant="outlined" class="rounded-lg">
-        <v-tabs v-model="activeTab" color="primary" align-tabs="start" active-class="font-weight-bold">
-          <v-tab value="employees" class="text-none">
-            <v-icon start icon="mdi-account-group-outline" />
-            Por Empleado
-          </v-tab>
-          <v-tab value="assignments" class="text-none">
-            <v-icon start icon="mdi-format-list-checks" />
-            Resumen de Asignaciones
-          </v-tab>
-        </v-tabs>
+      <!-- Pestañas de Navegación Estándar -->
+      <VTabs v-model="activeTab" class="mb-2" density="comfortable">
+        <VTab value="employees">
+          <VIcon start icon="tabler-users" />
+          Por Empleado
+        </VTab>
+        <VTab value="assignments">
+          <VIcon start icon="tabler-list-check" />
+          Resumen de Asignaciones
+        </VTab>
+      </VTabs>
 
-        <v-divider />
+      <VWindow v-model="activeTab" class="disable-tab-transition">
+        <VWindowItem value="employees">
+          <EmployeeCleaningTable
+            :employee-cleanings="employeeCleanings"
+            :loading="loading"
+            :total-records="totalRecords"
+            :items-per-page="itemsPerPage"
+            :page="page"
+            @update:options="updateTableOptions"
+            @view-activities="handleViewActivities"
+            @edit-assignment="handleEditAssignment"
+            @delete-assignment="handleDeleteAssignment"
+          />
+        </VWindowItem>
 
-        <v-window v-model="activeTab" class="pa-2">
-          <v-window-item value="employees">
-            <EmployeeCleaningTable
-              :employee-cleanings="employeeCleanings"
-              :loading="loading"
-              :total-records="totalRecords"
-              :items-per-page="itemsPerPage"
-              :page="page"
-              @update:options="updateTableOptions"
-              @view-activities="handleViewActivities"
-              @edit-assignment="handleEditAssignment"
-              @delete-assignment="handleDeleteAssignment"
-            />
-          </v-window-item>
-
-          <v-window-item value="assignments">
-            <EmployeeAssignmentsTable
-              v-model:hideDaily="hideDaily"
-              :assignments="assignments"
-              :loading="loadingAssignments"
-              :total-records="totalAssignments"
-              :items-per-page="assignmentItemsPerPage"
-              :page="assignmentPage"
-              @update:options="updateAssignmentOptions"
-              @delete-assignment="handleDeleteAssignment"
-            />
-          </v-window-item>
-        </v-window>
-      </v-card>
+        <VWindowItem value="assignments">
+          <EmployeeAssignmentsTable
+            v-model:hideDaily="hideDaily"
+            :assignments="assignments"
+            :loading="loadingAssignments"
+            :total-records="totalAssignments"
+            :items-per-page="assignmentItemsPerPage"
+            :page="assignmentPage"
+            @update:options="updateAssignmentOptions"
+            @delete-assignment="handleDeleteAssignment"
+          />
+        </VWindowItem>
+      </VWindow>
 
       <EmployeeCleaningViewDialog
         v-model="isViewDialogVisible"

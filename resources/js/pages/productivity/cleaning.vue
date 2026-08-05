@@ -195,19 +195,6 @@ const handleSort = (sortOptions) => {
 
 <template>
   <div class="productivity-cleaning-page pb-12">
-    <!-- Header del Módulo -->
-    <div class="d-flex align-center justify-space-between mb-4 pa-2">
-      <div>
-        <h1 class="text-h5 font-weight-black text-high-emphasis text-uppercase d-flex align-center gap-2">
-          <VIcon icon="tabler-broom" color="primary" size="28" />
-          Actividades de Limpieza
-        </h1>
-        <p class="text-caption text-medium-emphasis mb-0 font-weight-medium">
-          Gestión del catálogo de rutinas de mantenimiento y tareas periódicas
-        </p>
-      </div>
-    </div>
-
     <div class="d-flex flex-column gap-1 mt-1">
       <ActivityFilters
         v-model:searchQuery="searchQuery"

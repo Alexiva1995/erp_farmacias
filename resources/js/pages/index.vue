@@ -266,6 +266,7 @@ const selectCategory = (slug) => {
 
 // ——— Carrito ———
 const addToCart = (product, variant = null) => {
+  if (Number(product.stock) <= 0) return
   const key = variant ? `${product.id}_${variant.id}` : `${product.id}`
   const existing = cart.value.find(i => i.cartKey === key)
   if (existing) {
@@ -640,6 +641,7 @@ onMounted(async () => {
           <!-- Contenedor de Imagen -->
           <div class="editorial-product-img-wrap" @click="openQuickView(product)">
             <div style="position: absolute; top: 12px; left: 12px; display: flex; flex-direction: column; gap: 6px; z-index: 5;">
+              <span v-if="Number(product.stock) <= 0" style="background-color: #000000; color: #FFFFFF; padding: 4px 8px; font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;">AGOTADO</span>
               <span v-if="product.is_favorite && brandingStore.settings.enable_favorites" class="product-badge-editorial" style="position: static; margin-bottom: 0;">FAVORITO</span>
               <span v-if="product.discount_percentage" style="background-color: #E20074; color: #FFFFFF; padding: 4px 8px; font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">-{{ Math.round(product.discount_percentage) }}%</span>
             </div>
@@ -783,6 +785,7 @@ onMounted(async () => {
           <div class="editorial-product-img-wrap" @click="openQuickView(product)" style="aspect-ratio: 0.95; background-color: #F3F3F3; border: none; position: relative;">
              <!-- Badges planos apilados como la referencia -->
              <div style="position: absolute; top: 12px; left: 12px; display: flex; flex-direction: column; gap: 6px; z-index: 5;">
+               <span v-if="Number(product.stock) <= 0" style="background-color: #000000; color: #FFFFFF; padding: 4px 8px; font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;">AGOTADO</span>
                <span style="background-color: #FFFFFF; color: #000000; padding: 4px 8px; font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; border: 1px solid rgba(0,0,0,0.05); box-shadow: 0 2px 4px rgba(0,0,0,0.03);">BESTSELLER</span>
                <span v-if="product.is_favorite" style="background-color: #FFFFFF; color: #000000; padding: 4px 8px; font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; border: 1px solid rgba(0,0,0,0.05); box-shadow: 0 2px 4px rgba(0,0,0,0.03);">FAVORITO</span>
                <span v-if="product.discount_percentage" style="background-color: #E20074; color: #FFFFFF; padding: 4px 8px; font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">-{{ Math.round(product.discount_percentage) }}%</span>
@@ -964,8 +967,13 @@ onMounted(async () => {
                 </div>
               </div>
 
-              <button class="editorial-btn-dark w-100 py-3 mt-4" @click="quickAddToCart">
-                AÑADIR A LA BOLSA
+              <button
+                class="editorial-btn-dark w-100 py-3 mt-4"
+                :disabled="Number(selectedProduct.stock) <= 0"
+                :style="Number(selectedProduct.stock) <= 0 ? 'opacity: 0.5; cursor: not-allowed; background: #888888;' : ''"
+                @click="quickAddToCart"
+              >
+                {{ Number(selectedProduct.stock) <= 0 ? 'AGOTADO' : 'AÑADIR A LA BOLSA' }}
               </button>
             </div>
           </div>

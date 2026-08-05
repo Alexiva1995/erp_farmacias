@@ -100,6 +100,19 @@ class OrderActionService
     public function getMyOpenOrder(int $sellerId): array
     {
         try {
+            // Asegurar que el vendedor tenga un turno de caja abierto al entrar al TPV
+            $openCashClosing = \App\Models\CashClosing::where('seller_id', $sellerId)
+                ->where('status', \App\Models\CashClosing::OPEN)
+                ->first();
+
+            if (!$openCashClosing) {
+                \App\Models\CashClosing::create([
+                    'seller_id' => $sellerId,
+                    'status' => \App\Models\CashClosing::OPEN,
+                    'opening_date' => \Illuminate\Support\Carbon::now(),
+                ]);
+            }
+
             $withRelations = [
                 'client',
                 'seller',

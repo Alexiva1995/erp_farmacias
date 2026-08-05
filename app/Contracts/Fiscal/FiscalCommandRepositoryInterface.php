@@ -26,4 +26,9 @@ interface FiscalCommandRepositoryInterface
      * Get recent history of commands.
      */
     public function getHistory(int $limit = 20): Collection;
+
+    /**
+     * Get timestamp of last bridge interaction.
+     */
+    public function getLastInteractionTime(): ?\Illuminate\Support\Carbon;
 }

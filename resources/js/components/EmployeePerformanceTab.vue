@@ -85,7 +85,7 @@ const historicalCrossSellingRate = computed(() => {
                   {{ kpi.label }}
                 </span>
                 <div :class="mobile ? 'text-h6' : 'text-h5'" class="font-weight-black text-high-emphasis tabular-nums leading-none">
-                  {{ kpi.format === 'currency' ? formatCurrency(kpi.current) : kpi.format === 'percent' ? kpi.current.toFixed(1) + '%' : kpi.current.toLocaleString() }}
+                  {{ kpi.format === 'currency' ? formatCurrency(kpi.current) : kpi.format === 'percent' ? kpi.current.toFixed(1) + '%' : Math.round(Number(kpi.current) || 0).toLocaleString() }}
                 </div>
               </div>
               <VAvatar :color="kpi.color" variant="tonal" :size="mobile ? 36 : 42" class="rounded-lg">
@@ -100,7 +100,7 @@ const historicalCrossSellingRate = computed(() => {
                 {{ kpi.histLabel }}:
               </span>
               <span class="text-super-xs font-weight-black text-high-emphasis tabular-nums">
-                {{ kpi.format === 'currency' ? formatCurrency(kpi.historical) : kpi.format === 'percent' ? kpi.historical.toFixed(1) + '%' : kpi.historical.toLocaleString() }}
+                {{ kpi.format === 'currency' ? formatCurrency(kpi.historical) : kpi.format === 'percent' ? kpi.historical.toFixed(1) + '%' : Math.round(Number(kpi.historical) || 0).toLocaleString() }}
               </span>
             </div>
           </VCardText>

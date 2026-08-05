@@ -124,6 +124,7 @@ const formatCurrency = (value) => {
                 variant="tonal"
                 size="small"
                 rounded="circle"
+                :aria-label="`Ver detalle de factura ${item.invoice_number || item.id}`"
                 @click="emit('show-detailHistory', item)"
               >
                 <VIcon size="18" icon="tabler-eye" />
@@ -134,11 +135,15 @@ const formatCurrency = (value) => {
       </VCard>
     </div>
 
-    <!-- Vista Móvil (Cards) -->
+    <!-- Vista Móvil (Cards + Skeleton Loader) -->
     <div class="d-block d-md-none pa-2 bg-light">
-      <VProgressLinear v-if="props.loading" indeterminate color="primary" class="mb-2" />
+      <div v-if="props.loading" class="d-flex flex-column gap-3">
+        <VCard v-for="n in 3" :key="n" variant="flat" border class="pa-4 rounded-lg bg-white">
+          <VSkeletonLoader type="article" />
+        </VCard>
+      </div>
       
-      <div v-if="props.histories.length === 0 && !props.loading" class="py-4">
+      <div v-else-if="props.histories.length === 0" class="py-4">
         <AppEmptyState
           icon="tabler-receipt-off"
           title="Sin datos disponibles"
@@ -146,7 +151,7 @@ const formatCurrency = (value) => {
         />
       </div>
 
-      <div class="d-flex flex-column gap-3">
+      <div v-else class="d-flex flex-column gap-3">
         <VCard
           v-for="item in props.histories"
           :key="item.id"
@@ -184,7 +189,7 @@ const formatCurrency = (value) => {
               </div>
               <div class="d-flex flex-column align-end">
                 <span class="text-sm font-weight-black text-success leading-none mb-1">
-                  {{ formatCurrency(item.total_amount) }}
+                  Bs. {{ formatCurrency(item.total_amount) }}
                 </span>
                 <span class="text-super-xs font-weight-black text-disabled uppercase">Monto Total</span>
               </div>
@@ -206,11 +211,11 @@ const formatCurrency = (value) => {
             <div class="d-grid mobile-grid gap-3 mb-1">
               <div class="stat-box">
                 <span class="label">Exento</span>
-                <span class="value font-weight-black text-high-emphasis">{{ formatCurrency(item.exempt_amount) }}</span>
+                <span class="value font-weight-black text-high-emphasis">Bs. {{ formatCurrency(item.exempt_amount) }}</span>
               </div>
               <div class="stat-box text-center">
                 <span class="label">IVA</span>
-                <span class="value font-weight-black text-high-emphasis">{{ formatCurrency(item.iva_amount) }}</span>
+                <span class="value font-weight-black text-high-emphasis">Bs. {{ formatCurrency(item.iva_amount) }}</span>
               </div>
               <div class="stat-box text-right">
                 <span class="label">Fecha</span>
@@ -222,7 +227,7 @@ const formatCurrency = (value) => {
       </div>
 
       <!-- Mobile Pagination -->
-      <div v-if="props.histories.length > 0" class="d-flex justify-center mt-4 pb-2">
+      <div v-if="props.histories.length > 0 && !props.loading" class="d-flex justify-center mt-4 pb-2">
          <AppMobilePagination
             :page="props.page"
             :items-per-page="props.itemsPerPage"

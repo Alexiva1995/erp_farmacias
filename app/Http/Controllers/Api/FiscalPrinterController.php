@@ -163,4 +163,18 @@ class FiscalPrinterController extends Controller
             return response()->json(['error' => 'Error al obtener historial'], 500);
         }
     }
+
+    /**
+     * Check actual connectivity status of the Python fiscal bridge.
+     */
+    public function checkStatus()
+    {
+        try {
+            $status = $this->service->isBridgeActive();
+            return response()->json($status);
+        } catch (\Exception $e) {
+            Log::error('Error en FiscalPrinterController@checkStatus: ' . $e->getMessage());
+            return response()->json(['is_connected' => false, 'error' => 'Error al verificar conexión'], 500);
+        }
+    }
 }

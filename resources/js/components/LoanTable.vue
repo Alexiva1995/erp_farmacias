@@ -199,19 +199,21 @@ const formatDate = (dateString) => {
       </template>
 
       <template #loading>
-        <VRow class="pa-2">
-          <VCol v-for="n in 5" :key="n" cols="12">
-            <VSkeletonLoader type="table-row-divider@2" />
-          </VCol>
-        </VRow>
+        <div class="pa-8 text-center bg-white">
+          <VProgressCircular indeterminate color="primary" size="36" class="mb-2" />
+          <div class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Cargando préstamos...</div>
+        </div>
       </template>
     </VDataTableServer>
 
     <!-- Vista Móvil (Cards) -->
     <div v-else class="mobile-cards-container pa-4">
       <VRow v-if="props.loading">
-        <VCol v-for="n in 3" :key="n" cols="12">
-          <VSkeletonLoader type="card, article" class="rounded-lg border shadow-sm" />
+        <VCol cols="12">
+          <VCard class="rounded-lg border shadow-sm pa-8 text-center bg-white">
+            <VProgressCircular indeterminate color="primary" size="36" class="mb-2" />
+            <div class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Cargando préstamos...</div>
+          </VCard>
         </VCol>
       </VRow>
       <VRow v-else-if="props.loans.length > 0">

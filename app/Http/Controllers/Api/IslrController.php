@@ -8,6 +8,8 @@ use App\Services\Islr\IslrActionService;
 use App\Http\Requests\Islr\UpdateTaxUnitRequest;
 use App\Http\Requests\Islr\StoreIslrDeclarationRequest;
 use App\Http\Requests\Islr\UpdateIslrDeclarationRequest;
+use App\Http\Resources\Islr\IslrSummaryResource;
+use App\Http\Resources\Islr\TaxUnitResource;
 use Illuminate\Http\Request;
 
 class IslrController extends Controller
@@ -20,39 +22,17 @@ class IslrController extends Controller
 
     public function getIslrSummary(Request $request)
     {
-        $year = $request->input('year', now()->year);
+        $year = (int) $request->input('year', now()->year);
 
-        $deductions = $this->islrQueryService->calculateDeductions($year);
-        $grossIncome = $this->islrQueryService->calculateGrossIncome($year);
-        $costs = $this->islrQueryService->calculateCosts($year);
+        $summaryData = $this->islrQueryService->getSummaryData($year);
 
-        $startDate = \Carbon\Carbon::create($year, 1, 1)->startOfDay();
-        $endDate = \Carbon\Carbon::create($year, 12, 31)->endOfDay();
-
-        $fiscalTotal = \App\Models\FiscalHistory::whereBetween('invoice_date', [$startDate, $endDate])
-            ->sum('total_amount');
-
-        // Monto con Deducciones: Total Fiscal - Costos - Deducciones
-        $netIncome = $fiscalTotal - $costs - $deductions;
-
-        return response()->json([
-            'data' => [
-                'gross_income' => $grossIncome,
-                'deductions' => $deductions,
-                'net_income' => $netIncome,
-                'ibg' => $fiscalTotal,
-                'costs' => $costs,
-                'year' => $year,
-                'currency' => 'VES',
-                'calculated_at' => now()->toISOString()
-            ],
-            'message' => 'Resumen ISLR calculado con éxito.'
-        ], 200);
+        return (new IslrSummaryResource($summaryData))
+            ->additional(['message' => 'Resumen ISLR calculado con éxito.']);
     }
 
     public function getGrossIncome(Request $request)
     {
-        $year = $request->input('year', now()->year);
+        $year = (int) $request->input('year', now()->year);
         $grossIncome = $this->islrQueryService->calculateGrossIncome($year);
 
         return response()->json([
@@ -68,7 +48,7 @@ class IslrController extends Controller
 
     public function getDeductions(Request $request)
     {
-        $year = $request->input('year', now()->year);
+        $year = (int) $request->input('year', now()->year);
         $deductions = $this->islrQueryService->calculateDeductions($year);
 
         return response()->json([
@@ -94,22 +74,15 @@ class IslrController extends Controller
                 'data' => [
                     'value' => 0,
                     'effective_date' => null,
-                    'message' => 'No hay unidad tributaria configurada'
+                    'notes' => null,
+                    'currency' => 'VES',
                 ],
                 'message' => 'No se encontró unidad tributaria activa.'
             ]);
         }
 
-        return response()->json([
-            'data' => [
-                'id' => $taxUnit->id,
-                'value' => $taxUnit->value,
-                'effective_date' => $taxUnit->effective_date->format('Y-m-d'),
-                'notes' => $taxUnit->notes,
-                'currency' => 'VES'
-            ],
-            'message' => 'Unidad tributaria obtenida con éxito.'
-        ], 200);
+        return (new TaxUnitResource($taxUnit))
+            ->additional(['message' => 'Unidad tributaria obtenida con éxito.']);
     }
 
     /**
@@ -121,15 +94,8 @@ class IslrController extends Controller
 
         $taxUnit = $this->islrActionService->createOrUpdateTaxUnit($validated);
 
-        return response()->json([
-            'data' => [
-                'id' => $taxUnit->id,
-                'value' => $taxUnit->value,
-                'effective_date' => $taxUnit->effective_date->format('Y-m-d'),
-                'notes' => $taxUnit->notes
-            ],
-            'message' => 'Unidad tributaria actualizada con éxito.'
-        ], 200);
+        return (new TaxUnitResource($taxUnit))
+            ->additional(['message' => 'Unidad tributaria actualizada con éxito.']);
     }
     public function getDeclaration(Request $request)
     {

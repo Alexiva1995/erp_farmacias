@@ -151,16 +151,7 @@ const rateTypeLabel = computed(() => {
           <span>Tasa COP/USD · Act: {{ rates.cop?.updated_at ?? 'N/A' }}</span>
         </VTooltip>
 
-        <!-- Estado cierre de caja -->
-        <VTooltip v-if="cashStatus" location="bottom">
-          <template #activator="{ props: tp }">
-            <VChip v-bind="tp" :color="statusColor" variant="tonal" size="small" class="font-weight-black rounded">
-              <template #prepend><VIcon :icon="statusIcon" size="13" class="me-1" /></template>
-              {{ statusLabel }}
-            </VChip>
-          </template>
-          <span>{{ cashStatus?.open_closings_count > 0 ? 'Hay turnos sin cerrar.' : 'Todos los turnos cerrados.' }}</span>
-        </VTooltip>
+
 
         <!-- Total USD -->
         <div class="total-pill">
@@ -181,12 +172,11 @@ const rateTypeLabel = computed(() => {
     <VExpandTransition>
       <div v-show="!isCollapsed">
 
-        <!-- Skeleton -->
-        <VRow v-if="loading">
-          <VCol v-for="i in 6" :key="i" cols="6" sm="4" md="3" lg="2">
-            <VSkeletonLoader type="card" height="108" class="rounded" />
-          </VCol>
-        </VRow>
+        <!-- Cargador durante la carga inicial -->
+        <div v-if="loading" class="pa-8 text-center rounded bg-white border my-2">
+          <VProgressCircular indeterminate color="primary" size="36" class="mb-2" />
+          <div class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Cargando estado de cajas...</div>
+        </div>
 
         <!-- ══ VISTA EXPANDIDA ══ -->
         <div v-else-if="!isCompact" class="d-flex flex-column gap-5">

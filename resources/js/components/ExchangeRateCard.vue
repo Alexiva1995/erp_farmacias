@@ -29,7 +29,7 @@ const inputValue = computed({
 
 const formattedRate = computed(() => {
   const num = Number(props.rateValue) || 0;
-  return props.decimals > 0 ? num.toFixed(props.decimals) : num;
+  return props.decimals >= 0 ? num.toFixed(props.decimals) : num;
 });
 </script>
 

@@ -77,4 +77,19 @@ class FiscalActionService
             ->take($limit)
             ->values();
     }
+
+    /**
+     * Check if the fiscal bridge script is active (interacted in last 60 seconds).
+     */
+    public function isBridgeActive(int $thresholdSeconds = 60): array
+    {
+        $lastInteraction = $this->repository->getLastInteractionTime();
+        $isAlive = $lastInteraction ? $lastInteraction->diffInSeconds(now()) <= $thresholdSeconds : false;
+
+        return [
+            'is_connected' => $isAlive,
+            'last_seen' => $lastInteraction?->toDateTimeString(),
+            'seconds_ago' => $lastInteraction ? $lastInteraction->diffInSeconds(now()) : null,
+        ];
+    }
 }

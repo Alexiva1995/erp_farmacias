@@ -270,15 +270,11 @@ const statistics = computed(() => [
         class="ma-0 mb-0"
       />
 
-      <!-- Skeletons durante Carga -->
-      <VRow v-if="loading" class="ma-0 mt-4 mb-4 mx-n2">
-        <VCol cols="12" md="4" class="pa-2">
-          <VSkeletonLoader type="card" height="130" class="rounded-lg" />
-        </VCol>
-        <VCol v-for="n in 4" :key="n" cols="6" sm="6" md="2" class="pa-2">
-          <VSkeletonLoader type="card" height="130" class="rounded-lg" />
-        </VCol>
-      </VRow>
+      <!-- Carga limpia -->
+      <div v-if="loading" class="pa-12 text-center rounded-lg border bg-white my-4 shadow-sm">
+        <VProgressCircular indeterminate color="primary" size="40" class="mb-3" />
+        <div class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Cargando métricas de empleados...</div>
+      </div>
 
       <!-- Header Summary / Leaderboard -->
       <VRow v-else-if="calculatedEmployees.length" class="ma-0 mt-4 mb-4 mx-n2">

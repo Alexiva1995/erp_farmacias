@@ -158,6 +158,14 @@ function reloadTable() {
   percentProfitability();
 }
 
+function handleProductUpdated(updatedProduct) {
+  if (!updatedProduct || !updatedProduct.id) return;
+  const index = products.value.findIndex((p) => p.id === updatedProduct.id);
+  if (index !== -1) {
+    products.value[index] = { ...products.value[index], ...updatedProduct };
+  }
+}
+
 // Watchers unificados para evitar race conditions
 let debounceTimer;
 watch(
@@ -371,6 +379,7 @@ onMounted(() => {
         @refresh="reloadTable"
         @update:options="updateTableOptions"
         @editProduct="editProductProfitability"
+        @updateProduct="handleProductUpdated"
         class="ma-0 mt-1"
       />
     </div>
@@ -390,6 +399,7 @@ onMounted(() => {
       :dialog="editDialog"
       @close-modal="editDialog = false"
       @refresh="reloadTable"
+      @productUpdated="handleProductUpdated"
     />
   </div>
 </template>

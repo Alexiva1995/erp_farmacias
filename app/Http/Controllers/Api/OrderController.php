@@ -456,10 +456,10 @@ class OrderController extends Controller
             if ($startDate < '2026-01-01') {
                 $startDate = '2026-01-01';
             }
-            $page = $request->page ?? 1;
-            $itemsPerPage = $request->itemsPerPage ?? 10;
+            $page = (int) ($request->page ?? 1);
+            $itemsPerPage = (int) ($request->itemsPerPage ?? 10);
             if ($itemsPerPage == -1) {
-                $itemsPerPage = 1000; // Limite si pide "Todas"
+                $itemsPerPage = 1000; // Límite si pide "Todas"
             }
             $sortBy = $request->sortBy ?? 'invoice_date';
             $orderBy = $request->orderBy ?? 'desc';
@@ -472,6 +472,13 @@ class OrderController extends Controller
                 $sortBy,
                 $orderBy
             );
+
+            // Transformar datos mediante Api Resource para garantizar consistencia arquitectónica
+            if (isset($fiscalData['data']) && is_array($fiscalData['data'])) {
+                $fiscalData['data'] = \App\Http\Resources\Fiscal\FiscalHistoryResource::collection(
+                    collect($fiscalData['data'])
+                );
+            }
 
             return ApiResponse::success($fiscalData, 'Registros de fiscal history obtenidos exitosamente');
 
