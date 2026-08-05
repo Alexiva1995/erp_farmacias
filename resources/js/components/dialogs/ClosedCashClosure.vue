@@ -150,16 +150,16 @@ const completeClosure = async () => {
     // Lista de advertencias para métodos electrónicos si el usuario declara 0 pero tiene ventas registradas en el sistema
     const warnings = [];
     
-    if (showCopTransferInput.value && parseFloat(declaredCopTransfer.value || 0) === 0) {
+    if (hasCopTransfer.value && parseFloat(declaredCopTransfer.value || 0) === 0) {
       warnings.push("Transferencia (COP)");
     }
-    if (showCreditInput.value && parseFloat(declaredCredit.value || 0) === 0) {
+    if (hasCredit.value && parseFloat(declaredCredit.value || 0) === 0) {
       warnings.push("Crédito (USD)");
     }
-    if (showBsMobileInput.value && parseFloat(declaredBsMobile.value || 0) === 0) {
+    if (hasBsMobile.value && parseFloat(declaredBsMobile.value || 0) === 0) {
       warnings.push("Pago Móvil / Transferencia (Bs.)");
     }
-    if (showBsCardInput.value && parseFloat(declaredBsCard.value || 0) === 0) {
+    if (hasBsCard.value && parseFloat(declaredBsCard.value || 0) === 0) {
       warnings.push("Tarjeta Débito / Crédito (Bs.)");
     }
 
