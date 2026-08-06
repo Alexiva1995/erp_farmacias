@@ -127,7 +127,7 @@ const emit = defineEmits([
     </template>
 
     <template #item.promedio_calculado="{ item }">
-      <span class="text-sm font-weight-bold">{{ item.promedio_calculado || 0 }}</span>
+      <span class="text-sm font-weight-bold">{{ item.promedio_calculado != null && item.promedio_calculado !== '' ? parseFloat(item.promedio_calculado).toFixed(2) : '0.00' }}</span>
     </template>
 
     <template #item.saving_percentage="{ item }">

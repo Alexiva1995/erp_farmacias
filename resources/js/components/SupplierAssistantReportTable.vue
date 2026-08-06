@@ -249,7 +249,7 @@ const handleManualOrder = async (item) => {
 
           <template #item.promedio_calculado="{ item }">
             <div class="d-flex flex-column align-end">
-              <span class="font-weight-bold">{{ item.promedio_calculado || 0 }}</span>
+              <span class="font-weight-bold">{{ item.promedio_calculado != null && item.promedio_calculado !== '' ? parseFloat(item.promedio_calculado).toFixed(2) : '0.00' }}</span>
             </div>
           </template>
 

@@ -95,7 +95,7 @@ const pageModel = computed({
             </div>
             <div class="info-item">
               <span class="label">Prom.</span>
-              <span class="text-sm font-weight-bold">{{ item.promedio_calculado || 0 }}</span>
+              <span class="text-sm font-weight-bold">{{ item.promedio_calculado != null && item.promedio_calculado !== '' ? parseFloat(item.promedio_calculado).toFixed(2) : '0.00' }}</span>
             </div>
           </div>
 
