@@ -7,10 +7,11 @@ import { themeConfig } from "@themeConfig";
 
 import { useBrandingStore } from "@/stores/useBrandingStore";
 import axios from "@/plugins/axios";
-import { ref, onMounted } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
 
 const brandingStore = useBrandingStore();
+const logoSrc = computed(() => brandingStore.settings?.app_logo || '/logo.png');
 
 definePage({
   meta: {
@@ -131,7 +132,7 @@ const on2FAVerified = () => {
             <RouterLink to="/">
               <div class="app-logo">
                 <img
-                  src="/logo.png"
+                  :src="logoSrc"
                   alt="logo"
                   style="max-height: 80px; max-width: 100%; object-fit: contain;"
                 >

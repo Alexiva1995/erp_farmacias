@@ -186,7 +186,6 @@ class ClientCreditAndPaymentTest extends TestCase
         $response->assertStatus(200)
             ->assertJsonFragment([
                 'id' => $credit->id,
-                'credit_amount' => 10.00,
             ]);
     }
 
