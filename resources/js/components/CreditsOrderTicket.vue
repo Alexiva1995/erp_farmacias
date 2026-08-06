@@ -1,6 +1,9 @@
 <script setup>
 import { BASE64_LOGO_DATA } from "@/constants/logo.js";
 import { computed } from "vue";
+import { useBrandingStore } from "@/stores/useBrandingStore";
+
+const brandingStore = useBrandingStore();
 const props = defineProps({
   creditsData: {
     type: Object,
@@ -9,7 +12,7 @@ const props = defineProps({
 });
 
 const logoSrc = computed(() => {
-  return BASE64_LOGO_DATA;
+  return brandingStore.settings?.app_logo || BASE64_LOGO_DATA;
 });
 
 const totalCredits = computed(() => {

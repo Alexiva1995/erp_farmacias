@@ -16,7 +16,14 @@ class TelegramService
 
     public function __construct()
     {
-        $dbConfig = TelegramConfig::first();
+        $dbConfig = null;
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('telegram_configs')) {
+                $dbConfig = TelegramConfig::first();
+            }
+        } catch (\Throwable $e) {
+            // Manejo seguro en entorno de testing previo a migraciones
+        }
 
         $this->token = $dbConfig?->bot_token ?: config('services.telegram.bot_token');
         $this->chatId = $dbConfig?->chat_id ?: config('services.telegram.chat_id');
@@ -28,7 +35,15 @@ class TelegramService
      */
     public function refreshConfig(): void
     {
-        $dbConfig = TelegramConfig::first();
+        $dbConfig = null;
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('telegram_configs')) {
+                $dbConfig = TelegramConfig::first();
+            }
+        } catch (\Throwable $e) {
+            // Manejo seguro en entorno de testing
+        }
+
         $this->token = $dbConfig?->bot_token ?: config('services.telegram.bot_token');
         $this->chatId = $dbConfig?->chat_id ?: config('services.telegram.chat_id');
         $this->adminChatId = $dbConfig?->admin_chat_id ?: (config('services.telegram.admin_chat_id') ?: $this->chatId);

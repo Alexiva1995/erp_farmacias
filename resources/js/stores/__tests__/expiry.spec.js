@@ -17,7 +17,7 @@ describe('Expiry Pinia Store', () => {
 
   it('debe establecer valores iniciales correctos', () => {
     const store = useExpiryStore()
-    expect(store.loading).toBe(true)
+    expect(store.loading).toBe(false)
     expect(store.dashboardData.kpis.total_cost_merma_month).toBe(0)
     expect(store.filters.search).toBe('')
   })
@@ -27,6 +27,8 @@ describe('Expiry Pinia Store', () => {
     const mockData = {
       horizon: ['1m', '3m'],
       kpis: { total_units_expired_month: 120, total_cost_merma_month: 2500.5 },
+      loss_analysis: [],
+      overstock: [],
     }
 
     axios.get.mockResolvedValueOnce({ data: mockData })

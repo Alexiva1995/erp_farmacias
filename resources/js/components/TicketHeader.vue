@@ -13,13 +13,7 @@ const props = defineProps({
 const brandingStore = useBrandingStore();
 
 const currentLogo = computed(() => {
-  if (brandingStore.settings?.app_logo) {
-    return brandingStore.settings.app_logo;
-  }
-  if (props.logoSrc) {
-    return props.logoSrc;
-  }
-  return BASE64_LOGO_DATA;
+  return brandingStore.settings?.app_logo || (props.logoSrc && props.logoSrc !== BASE64_LOGO_DATA ? props.logoSrc : BASE64_LOGO_DATA);
 });
 </script>
 

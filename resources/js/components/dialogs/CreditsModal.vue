@@ -852,7 +852,9 @@ const handleCompletePurchase = () => {
   }
 };
 
-const logoSrc = computed(() => BASE64_LOGO_DATA);
+const logoSrc = computed(() => {
+  return brandingStore.settings?.app_logo || BASE64_LOGO_DATA;
+});
 </script>
 
 <template>

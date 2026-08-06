@@ -418,6 +418,7 @@
     "ticketStyles": true,
     "useCashClosurePrint": true,
     "useOrderPrint": true,
-    "useRetentionDates": true
+    "useRetentionDates": true,
+    "useExpiryCharts": true
   }
 }

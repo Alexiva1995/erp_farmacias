@@ -10,7 +10,10 @@ const props = defineProps({
   isPdf: { type: Boolean, default: true },
 });
 
-const logoSrc = computed(() => BASE64_LOGO_DATA);
+import { useBrandingStore } from "@/stores/useBrandingStore";
+
+const brandingStore = useBrandingStore();
+const logoSrc = computed(() => brandingStore.settings?.app_logo || BASE64_LOGO_DATA);
 
 // Calcular totales de la orden sumando sus detalles
 const getOrderTotal = (order) => {

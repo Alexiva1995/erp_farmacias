@@ -11,7 +11,10 @@ const props = defineProps({
   isPdf: { type: Boolean, default: false },
 });
 
-const logoSrc = computed(() => BASE64_LOGO_DATA);
+import { useBrandingStore } from "@/stores/useBrandingStore";
+
+const brandingStore = useBrandingStore();
+const logoSrc = computed(() => brandingStore.settings?.app_logo || BASE64_LOGO_DATA);
 
 const getValue = (key) => parseFloat(props.cashData[key] || 0);
 
