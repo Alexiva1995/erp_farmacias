@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+use App\Enums\InvoiceReturnStatus;
+
 class InvoiceReturn extends Model
 {
     protected $fillable = [
@@ -16,12 +18,14 @@ class InvoiceReturn extends Model
         'return_date',
         'lot_number',
         'expiration_date',
+        'status',
     ];
 
     protected $casts = [
         'return_date' => 'date',
         'quantity' => 'decimal:2',
         'amount_refunded' => 'decimal:2',
+        'status' => InvoiceReturnStatus::class,
     ];
 
     /**

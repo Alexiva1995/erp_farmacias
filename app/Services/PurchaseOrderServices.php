@@ -66,4 +66,19 @@ class PurchaseOrderServices implements PurchaseOrder
   {
     return $this->autoOrdersRepository->confirmSent($autoOrder);
   }
+
+  public function finish(AutoOrder $autoOrder): bool
+  {
+    return $this->autoOrdersRepository->finish($autoOrder);
+  }
+
+  public function rejectPendingDetails(AutoOrder $autoOrder): void
+  {
+    $this->autoOrdersRepository->rejectPendingDetails($autoOrder);
+  }
+
+  public function revertToSent(AutoOrder $autoOrder): bool
+  {
+    return $this->autoOrdersRepository->revertToSent($autoOrder);
+  }
 }

@@ -10,6 +10,8 @@ const props = defineProps({
   endDate: [String, null],
   suppliers: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
+  showAdd: { type: Boolean, default: true },
+  showBulkDelete: { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
@@ -19,6 +21,7 @@ const emit = defineEmits([
   "update:endDate",
   "clear",
   "create-invoice",
+  "bulk-delete",
 ]);
 
 const hasAdvancedFilters = computed(
@@ -30,7 +33,7 @@ const hasAdvancedFilters = computed(
   <AppFilterBase
     :search="props.searchQuery"
     :has-advanced-filters="hasAdvancedFilters"
-    :show-add="true"
+    :show-add="props.showAdd"
     add-button-text="Registrar Factura"
     search-placeholder="Buscar N° Factura, Control..."
     class="py-1"
@@ -38,6 +41,20 @@ const hasAdvancedFilters = computed(
     @clear="emit('clear')"
     @add="emit('create-invoice')"
   >
+    <template #prepend-actions>
+      <VBtn
+        v-if="props.showBulkDelete"
+        icon
+        color="error"
+        variant="tonal"
+        size="38"
+        rounded="circle"
+        @click="emit('bulk-delete')"
+      >
+        <VIcon icon="tabler-trash-x" />
+        <VTooltip activator="parent" location="top">Eliminación Masiva por Fecha</VTooltip>
+      </VBtn>
+    </template>
     <template #advanced-filters>
       <!-- Proveedor -->
       <VCol cols="12" sm="4">

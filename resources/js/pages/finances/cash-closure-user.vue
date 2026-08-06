@@ -494,12 +494,10 @@ onMounted(() => {
   <div class="cash-closure-user-page pb-12">
     <div class="d-flex flex-column gap-1 mt-1">
       
-      <!-- Skeleton Loader de Carga Principal (UX Mejorado) -->
-      <div v-if="loading" class="mb-4">
-        <VSkeletonLoader
-          type="card-avatar, article"
-          class="rounded-lg border shadow-sm"
-        />
+      <!-- Cargador de Carga Principal -->
+      <div v-if="loading" class="pa-12 text-center rounded-lg border bg-white my-4 shadow-sm">
+        <VProgressCircular indeterminate color="primary" size="42" class="mb-3" />
+        <div class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Cargando cierre de caja...</div>
       </div>
       
       <template v-else>

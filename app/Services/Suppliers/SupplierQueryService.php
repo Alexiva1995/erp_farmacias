@@ -37,9 +37,14 @@ class SupplierQueryService
      */
     private function getBaseQuery(): Builder
     {
+        $currentYearStart = \Carbon\Carbon::now()->startOfYear();
+
         return $this->supplierRepository->getQuery()
-            ->withSum(['invoices as invoices_sum_total_usd' => function ($q) {
-                $q->where('status_payment', 0);
+            ->withSum(['invoices as invoices_sum_total_usd' => function ($q) use ($currentYearStart) {
+                $q->where(function ($sq) {
+                    $sq->whereNull('status_payment')
+                        ->orWhere('status_payment', '!=', 1);
+                })->whereDate('payment_date', '>=', $currentYearStart);
             }], 'total_usd');
     }
 
@@ -63,6 +68,25 @@ class SupplierQueryService
             $query->where("suppliers.type", $filters["type"]);
         }
 
+        if (!empty($filters["debtStatus"])) {
+            $currentYearStart = \Carbon\Carbon::now()->startOfYear();
+            if ($filters["debtStatus"] === "with_debt") {
+                $query->whereHas("invoices", function ($q) use ($currentYearStart) {
+                    $q->where(function ($sq) {
+                        $sq->whereNull("status_payment")
+                            ->orWhere("status_payment", "!=", 1);
+                    })->whereDate("payment_date", ">=", $currentYearStart);
+                });
+            } elseif ($filters["debtStatus"] === "no_debt") {
+                $query->whereDoesntHave("invoices", function ($q) use ($currentYearStart) {
+                    $q->where(function ($sq) {
+                        $sq->whereNull("status_payment")
+                            ->orWhere("status_payment", "!=", 1);
+                    })->whereDate("payment_date", ">=", $currentYearStart);
+                });
+            }
+        }
+
         return $query;
     }
 
@@ -83,20 +107,14 @@ class SupplierQueryService
                     ->select("suppliers.*");
 
             case "debt":
-                /*$subDebt = DB::raw('(
-                    SELECT COALESCE(SUM(i.total_amount), 0) - COALESCE(SUM(ip.amount), 0)
-                    FROM invoices i
-                    LEFT JOIN invoice_payment_invoice pivot ON pivot.invoice_id = i.id
-                    LEFT JOIN invoice_payments ip ON ip.id = pivot.payment_id
-                    WHERE i.supplier_id = suppliers.id
-                    AND i.status IN ("loaded", "ordered")
-                )');*/
-                $subDebt = DB::raw('(
+                $currentYearStart = \Carbon\Carbon::now()->startOfYear()->toDateString();
+                $subDebt = DB::raw("(
                     SELECT SUM(COALESCE(i.total_usd, 0)) 
                     FROM invoices i
                     WHERE i.supplier_id = suppliers.id
-                    AND i.status_payment = 0  
-                )');
+                    AND (i.status_payment IS NULL OR i.status_payment != 1)
+                    AND DATE(i.payment_date) >= '{$currentYearStart}'
+                )");
                 return $query->orderBy($subDebt, $orderBy);
 
             case "id":
@@ -117,6 +135,7 @@ class SupplierQueryService
         $filters = [
             "q" => $request->q,
             "type" => $request->type,
+            "debtStatus" => $request->debtStatus,
         ];
 
         $this->applyFilters($query, $filters);
@@ -479,13 +498,15 @@ class SupplierQueryService
 
         $sortColumn = $sortableColumns[$sortBy] ?? 'product_suppliers.name';
 
-        $laboratory = Laboratory::where("id", $laboratoryId)->first();
-
         $results = ProductSupplier::query()
-            ->with(['product', 'supplier'])
+            ->with([
+                'product:id,name,laboratory_id,origin_id,group_id',
+                'supplier:id,name'
+            ])
             ->select([
                 "product_suppliers.id as id",
-                DB::raw("product_suppliers.name as name"),
+                "product_suppliers.product_id as product_id",
+                "product_suppliers.name as name",
                 "suppliers.name as supplier_name",
                 "product_suppliers.unit_cost as unit_cost_bs",
                 "product_suppliers.unit_cost_usd as unit_cost_usd",
@@ -496,7 +517,26 @@ class SupplierQueryService
             ])
             ->leftJoin("products", "products.id", "=", "product_suppliers.product_id")
             ->leftJoin("suppliers", "suppliers.id", "=", "product_suppliers.supplier_id")
-
+            ->when($hasStock !== null, function ($query) {
+                $query->leftJoin('product_lots', function ($join) {
+                    $join->on('product_lots.product_id', '=', 'products.id')
+                         ->where('product_lots.expiration_date', '>=', DB::raw('CURDATE()'))
+                         ->where('product_lots.quantity', '>', 0);
+                })
+                ->groupBy([
+                    'product_suppliers.id',
+                    'product_suppliers.product_id',
+                    'product_suppliers.name',
+                    'suppliers.name',
+                    'product_suppliers.unit_cost',
+                    'product_suppliers.unit_cost_usd',
+                    'product_suppliers.unit_cost_with_discount',
+                    'product_suppliers.unit_cost_usd_with_discount',
+                    'product_suppliers.expiration',
+                    'product_suppliers.active_ingredient',
+                    'products.id'
+                ]);
+            })
             ->when(!empty($search), function ($query) use ($search, $isStrictSearch) {
                 if ($isStrictSearch) {
                     $query->where(function ($q) use ($search) {
@@ -521,8 +561,6 @@ class SupplierQueryService
                     }
                 }
             })
-            // -------------------------------------
-
             ->when(!empty($originId), function ($query) use ($originId) {
                 $query->where('products.origin_id', $originId);
             })
@@ -537,19 +575,10 @@ class SupplierQueryService
                 $groups = Arr::wrap($request->query('groupId'));
                 $query->whereIn("products.group_id", $groups);
             })
-
-            ->orderBy($sortColumn, $sortOrder)
-
             ->when($hasStock !== null, function ($query) use ($hasStock) {
-                $stockSql = 'COALESCE((SELECT SUM(pl.quantity)
-                                    FROM product_lots pl
-                                    WHERE pl.product_id = products.id
-                                      AND pl.expiration_date >= CURDATE()
-                                      AND pl.quantity > 0), 0)';
-
-                $query->havingRaw($hasStock ? "{$stockSql} > 0"
-                    : "{$stockSql} = 0");
+                $query->havingRaw($hasStock ? "COALESCE(SUM(product_lots.quantity), 0) > 0" : "COALESCE(SUM(product_lots.quantity), 0) = 0");
             })
+            ->orderBy($sortColumn, $sortOrder)
             ->paginate($perPage);
 
         return $results;
@@ -754,10 +783,10 @@ class SupplierQueryService
      */
     public function getSupplierSummaryStats(): array
     {
-        // 1. Deuda Total (Status 0 = Pendiente)
-        $totalDebt = Invoice::where('status_payment', 0)
-            ->where('total_usd', '>', 0)
-            ->sum('total_usd');
+        // 1. Deuda Total (Facturas que salen exactamente en la vista Por Pagar)
+        $pendingPaymentsService = app(\App\Services\PendingPayments\PendingPaymentsService::class);
+        $pendingInvoices = $pendingPaymentsService->getPendingInvoices();
+        $totalDebt = (float) $pendingInvoices->sum('total_usd');
 
         // 2. Total de Proveedores Activos (No eliminados)
         $activeSuppliersCount = Supplier::count();

@@ -297,6 +297,16 @@ class AppServiceProvider extends ServiceProvider
             \App\Repositories\FinancialStatementRepository::class
         );
 
+        $this->app->bind(
+            \App\Contracts\AutoReplenishmentRepositoryInterface::class,
+            \App\Repositories\AutoReplenishmentRepository::class
+        );
+
+        $this->app->bind(
+            \App\Contracts\Repositories\InvoiceReturnRepositoryInterface::class,
+            \App\Repositories\InvoiceReturnRepository::class
+        );
+
         $this->app->when(LocationController::class)
             ->needs(LocationContract::class)
             ->give(LocationRepository::class);

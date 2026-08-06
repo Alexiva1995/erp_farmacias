@@ -30,6 +30,8 @@ class StoreAutoReplenishmentConfigRequest extends FormRequest
             'lapso_de_tiempo'     => ['required', 'string', 'in:7 days,15 days,1 month,3 month,6 month,1 year'],
             'min_solicitar'       => ['numeric', 'min:0'],
             'con_descuento'       => ['boolean'],
+            'exclude_colombian'   => ['boolean'],
+            'exclude_novaventa'   => ['boolean'],
             'stock_filter'        => ['string', 'in:fallas,all'],
             'supplier_id'         => ['nullable', 'integer', 'exists:suppliers,id'],
             'group_ids'           => ['nullable', 'array'],

@@ -174,20 +174,12 @@ class SkuReportService
             $startDate = $minDate;
         }
 
-        $expiredQuery = DB::table('expired_logs')
-            ->select('product_id', DB::raw('SUM(total_lost_value) as total_expired_cost'))
+        $totalLossesQuery = DB::table('expired_logs')
             ->where('created_at', '>=', $startDate);
         if (!empty($filters['end_date'])) {
-            $expiredQuery->where('created_at', '<=', $filters['end_date'] . ' 23:59:59');
+            $totalLossesQuery->where('created_at', '<=', $filters['end_date'] . ' 23:59:59');
         }
-        $expiredQuery->groupBy('product_id');
-
-        $totalLosses = DB::table('expired_logs')
-            ->where('created_at', '>=', $startDate);
-        if (!empty($filters['end_date'])) {
-            $totalLosses->where('created_at', '<=', $filters['end_date'] . ' 23:59:59');
-        }
-        $totalLosses = (float) $totalLosses->sum('total_lost_value');
+        $totalLosses = (float) $totalLossesQuery->sum('total_lost_value');
 
         $netMarginTotal = $totalRevenue - $totalHistoricalCost;
         $globalMarginNet = $totalRevenue > 0 ? ($netMarginTotal / $totalRevenue) * 100 : 0;
@@ -195,42 +187,11 @@ class SkuReportService
         $realMarginTotal = $netMarginTotal - $totalLosses;
         $globalMarginReal = $totalRevenue > 0 ? ($realMarginTotal / $totalRevenue) * 100 : 0;
 
-        // Contar SKUs críticos en pérdida directa de forma 100% optimizada en BD
-        $criticalQuery = DB::table(DB::raw("({$baseQuery->toSql()}) as sub"))
-            ->select([
-                'sub.*',
-                DB::raw('COALESCE(expired.total_expired_cost, 0) as loss_value'),
-            ])
-            ->leftJoinSub($expiredQuery, 'expired', 'sub.product_id', '=', 'expired.product_id')
-            ->where(function ($q) {
-                $q->whereRaw('((sub.total_revenue - sub.total_historical_cost - COALESCE(expired.total_expired_cost, 0)) / NULLIF(sub.total_revenue, 0)) * 100 < 10')
-                  ->orWhere('sub.total_revenue', '<=', 0);
-            });
-
-        // Extraer los bindings originales
-        $baseBindings = $baseQuery->getBindings();
-        $expiredBindings = $expiredQuery->getBindings();
-
-        // Limpiar todas las claves de bindings para evitar que Laravel arrastre duplicados en 'where' o 'union'
-        $ref = new \ReflectionClass($criticalQuery);
-        $prop = $ref->getProperty('bindings');
-        $prop->setAccessible(true);
-        
-        $rawBindings = [
-            'select' => [],
-            'from' => [],
-            'join' => array_merge($baseBindings, $expiredBindings),
-            'where' => [0],
-            'groupBy' => [],
-            'having' => [],
-            'order' => [],
-            'union' => [],
-            'unionOrder' => [],
-        ];
-        
-        $prop->setValue($criticalQuery, $rawBindings);
-
-        $criticalSkus = $criticalQuery->count();
+        // Conteo optimizado directamente desde el listado paginado base de datos
+        $criticalSkus = DB::table(DB::raw("({$baseQuery->toSql()}) as sub"))
+            ->mergeBindings($baseQuery->getQuery())
+            ->whereRaw('(total_revenue - total_historical_cost) < 0 OR total_revenue <= 0')
+            ->count();
 
         return [
             'total_revenue' => $totalRevenue,

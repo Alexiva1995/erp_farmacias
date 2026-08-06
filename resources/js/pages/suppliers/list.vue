@@ -38,7 +38,6 @@ const isConnectionDialogVisible = ref(false);
 const connectionSupplier = ref({});
 
 const laboratories = ref([]);
-const pendingInvoices = ref({});
 const discountRules = ref([]);
 const paymentRules = ref([]);
 const supplierDiscount = ref([]);
@@ -49,7 +48,6 @@ const currentSupplier = ref({});
 const supplierFormErrors = ref({});
 const isEditDialogVisible = ref(false);
 const isCommercialPanelVisible = ref(false);
-const isPendingInvoicesDialogVisible = ref(false);
 
 const checkingApiSupplierId = ref(null);
 
@@ -117,20 +115,6 @@ const fetchDiscountRules = async () => {
     discountRules.value = data.discount_rules;
   } catch (error) {
     toast.error("Error al cargar las reglas de descuento");
-  } finally {
-    loading.value = false;
-  }
-};
-
-const fetchPendingInvoices = async () => {
-  loading.value = true;
-  try {
-    const { data } = await axios.get(
-      `/suppliers/${currentSupplier.value.id}/pending-invoices`,
-    );
-    pendingInvoices.value = data.pending_invoices;
-  } catch (error) {
-    toast.error("Error al cargar facturas pendientes");
   } finally {
     loading.value = false;
   }

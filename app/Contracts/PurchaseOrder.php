@@ -18,4 +18,7 @@ interface PurchaseOrder
   public function getExportableData(AutoOrder $autoOrder): Collection;
   public function getStats(array $data): array;
   public function confirmSent(AutoOrder $autoOrder): bool;
+  public function finish(AutoOrder $autoOrder): bool;
+  public function rejectPendingDetails(AutoOrder $autoOrder): void;
+  public function revertToSent(AutoOrder $autoOrder): bool;
 }

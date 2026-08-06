@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Contracts\PurchaseOrder;
 use App\Helpers\ApiResponse;
+use App\Http\Requests\GetPurchaseOrdersRequest;
 use App\Http\Requests\UpdateAutoOrderDetailsRequest;
+use App\Http\Resources\AutoOrderResource;
 use App\Models\AutoOrder;
 use Illuminate\Http\Request;
 
@@ -14,20 +16,20 @@ class PurchaseOrderController extends Controller
     {
     }
 
-    public function getPurchaseOrders(Request $request)
+    public function getPurchaseOrders(GetPurchaseOrdersRequest $request)
     {
-        $filters = $request->query();
+        $filters = $request->validated();
         $paginated = $this->purchaseOrder->getAll($filters);
 
         return ApiResponse::success([
-            "data" => $paginated->items(),
+            "data" => AutoOrderResource::collection($paginated->items()),
             "total" => $paginated->total(),
         ]);
     }
 
-    public function getStats(Request $request)
+    public function getStats(GetPurchaseOrdersRequest $request)
     {
-        $filters = $request->query();
+        $filters = $request->validated();
         $stats = $this->purchaseOrder->getStats($filters);
 
         return ApiResponse::success($stats);
@@ -44,7 +46,7 @@ class PurchaseOrderController extends Controller
 
     public function updateDetails(AutoOrder $autoOrder, UpdateAutoOrderDetailsRequest $request)
     {
-        $data = $request->all();
+        $data = $request->validated();
         if (empty($data)) {
             return ApiResponse::error(["status" => "error"], 'No hay datos proporcionados', 200);
         }
@@ -60,7 +62,7 @@ class PurchaseOrderController extends Controller
         $paginated = $this->purchaseOrder->getHistory($filters);
 
         return response()->json([
-            "data" => $paginated->items(),
+            "data" => AutoOrderResource::collection($paginated->items()),
             "total" => $paginated->total(),
         ]);
     }
@@ -79,18 +81,17 @@ class PurchaseOrderController extends Controller
 
     public function finish(AutoOrder $autoOrder)
     {
-        $repo = new \App\Repositories\AutoOrdersRepository();
-        return response()->json($repo->finish($autoOrder));
+        return response()->json($this->purchaseOrder->finish($autoOrder));
     }
+
     public function rejectPendingDetails(AutoOrder $autoOrder)
     {
-        $repo = new \App\Repositories\AutoOrdersRepository();
-        $repo->rejectPendingDetails($autoOrder);
+        $this->purchaseOrder->rejectPendingDetails($autoOrder);
         return response()->json(['status' => 'ok', 'message' => 'Productos pendientes marcados como rechazados.']);
     }
+
     public function revertToSent(AutoOrder $autoOrder)
     {
-        $repo = new \App\Repositories\AutoOrdersRepository();
-        return response()->json(['success' => $repo->revertToSent($autoOrder)]);
+        return response()->json(['success' => $this->purchaseOrder->revertToSent($autoOrder)]);
     }
 }

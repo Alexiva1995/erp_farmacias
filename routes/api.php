@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\DoctorController;
 use App\Http\Controllers\Api\ExchangeRateController;
 use App\Http\Controllers\Api\InventoryCycleController;
 use App\Http\Controllers\Api\InvoiceController;
+use App\Http\Controllers\Api\InvoiceReturnController;
 use App\Http\Controllers\Api\LoanController;
 use App\Http\Controllers\Api\LotController;
 use App\Http\Controllers\Api\InventoryAdjustmentController;
@@ -599,10 +600,18 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
         Route::get('/{invoice}', 'show')->name('show');
         Route::put('/{invoice}/save-details', 'saveDetails')->name('details.save');
         Route::put('/{invoice}/finalize', 'finalize')->name('finalize');
+        Route::post('/bulk-delete', 'bulkDelete')->name('bulk-delete');
         Route::delete('/{invoice}', 'destroy')->name('destroy');
         Route::put('/{invoice}', 'update')->name('update');
         Route::get('/supplier/debts', [InvoiceController::class, 'getSupplierDebts']);
         Route::post('/{invoice}/photo', 'uploadPhoto')->name('photo.upload');
+    });
+
+    // Devoluciones de Facturas
+    Route::prefix('invoice-returns')->name('invoice-returns.')->controller(InvoiceReturnController::class)->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::patch('/{id}/status', 'updateStatus')->name('updateStatus');
+        Route::patch('/invoice/{invoiceId}/status', 'updateInvoiceStatus')->name('updateInvoiceStatus');
     });
 
     // Rutas de Proveedores

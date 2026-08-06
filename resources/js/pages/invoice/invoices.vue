@@ -178,22 +178,11 @@ const handleEditInvoice = async (invoice) => {
       text: "Por favor editar y completar la factura seleccionada. ¿Desea ir al formulario?",
       icon: "warning",
       showCancelButton: true,
+      confirmButtonColor: "#7367f0",
+      cancelButtonColor: "#a8aaae",
       cancelButtonText: "Rechazar",
       confirmButtonText: "Confirmar",
       reverseButtons: true,
-      didOpen: () => {
-        const actions = Swal.getActions();
-        const confirmButton = Swal.getConfirmButton();
-        const cancelButton = Swal.getCancelButton();
-        actions.style.display = "flex";
-        actions.style.gap = "10px";
-        actions.style.width = "100%";
-        actions.style.padding = "0 20px";
-        confirmButton.style.flex = "1";
-        confirmButton.style.width = "50%";
-        cancelButton.style.flex = "1";
-        cancelButton.style.width = "50%";
-      },
     });
 
     if (result.isConfirmed) {
@@ -235,22 +224,11 @@ const handleDeleteInvoice = async (id) => {
     text: "¡No podrás revertir la eliminación de esta factura!",
     icon: "warning",
     showCancelButton: true,
+    confirmButtonColor: "#ea5455",
+    cancelButtonColor: "#a8aaae",
     cancelButtonText: "Cancelar",
     confirmButtonText: "Sí, eliminar",
     reverseButtons: true,
-    didOpen: () => {
-      const actions = Swal.getActions();
-      const confirmButton = Swal.getConfirmButton();
-      const cancelButton = Swal.getCancelButton();
-      actions.style.display = "flex";
-      actions.style.gap = "10px";
-      actions.style.width = "100%";
-      actions.style.padding = "0 20px";
-      confirmButton.style.flex = "1";
-      confirmButton.style.width = "50%";
-      cancelButton.style.flex = "1";
-      cancelButton.style.width = "50%";
-    },
   });
 
   if (result.isConfirmed) {
@@ -265,6 +243,52 @@ const handleDeleteInvoice = async (id) => {
     }
   }
 };
+
+const isBulkDeleteDialogVisible = ref(false);
+const bulkDeleteBeforeDate = ref(null);
+const isSubmittingBulkDelete = ref(false);
+
+const handleOpenBulkDeleteModal = () => {
+  bulkDeleteBeforeDate.value = null;
+  isBulkDeleteDialogVisible.value = true;
+};
+
+const handleConfirmBulkDelete = async () => {
+  if (!bulkDeleteBeforeDate.value) {
+    toast.error("Por favor selecciona una fecha límite.");
+    return;
+  }
+
+  const result = await Swal.fire({
+    title: "¿Confirmar eliminación masiva?",
+    text: `Todas las facturas registradas hasta el ${bulkDeleteBeforeDate.value} pasarán a estado 'eliminadas' y ya no aparecerán en el sistema.`,
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#ea5455",
+    cancelButtonColor: "#a8aaae",
+    cancelButtonText: "Cancelar",
+    confirmButtonText: "Sí, eliminar masivamente",
+    reverseButtons: true,
+  });
+
+  if (!result.isConfirmed) return;
+
+  isSubmittingBulkDelete.value = true;
+  try {
+    const response = await axios.post("/invoices/bulk-delete", {
+      before_date: bulkDeleteBeforeDate.value,
+    });
+    toast.success(response.data.message || "Eliminación masiva completada.");
+    isBulkDeleteDialogVisible.value = false;
+    fetchInvoices();
+  } catch (error) {
+    toast.error(
+      error.response?.data?.message || "Error al ejecutar la eliminación masiva.",
+    );
+  } finally {
+    isSubmittingBulkDelete.value = false;
+  }
+};
 </script>
 
 <template>
@@ -277,8 +301,10 @@ const handleDeleteInvoice = async (id) => {
         v-model:endDate="endDate"
         :suppliers="suppliers"
         :loading="isLoadingFilters"
+        :show-bulk-delete="true"
         @clear="handleClearFilters"
         @create-invoice="handleCreateInvoice"
+        @bulk-delete="handleOpenBulkDeleteModal"
         class="mb-6"
       />
 
@@ -292,6 +318,7 @@ const handleDeleteInvoice = async (id) => {
         @edit-invoice="handleEditInvoice"
         @edit-invoice-form="handleEditInvoiceForm"
         @delete-invoice="handleDeleteInvoice"
+        @photo-updated="fetchInvoices"
       />
     </div>
 
@@ -320,5 +347,45 @@ const handleDeleteInvoice = async (id) => {
         @invoice-saved="handleReturnToList"
       />
     </div>
+
+    <!-- Diálogo de Eliminación Masiva por Fecha -->
+    <VDialog v-model="isBulkDeleteDialogVisible" max-width="500px">
+      <VCard class="rounded-lg">
+        <VCardTitle class="d-flex justify-space-between align-center py-3 bg-surface">
+          <span class="text-h6 font-weight-bold text-error">Eliminación Masiva por Fecha</span>
+          <VBtn icon="tabler-x" variant="text" size="small" @click="isBulkDeleteDialogVisible = false" />
+        </VCardTitle>
+        <VDivider />
+        <VCardText class="pa-4">
+          <p class="text-sm text-medium-emphasis mb-4">
+            Selecciona la fecha límite. <strong>Todas las facturas registradas o emitidas desde esa fecha hacia atrás</strong> cambiarán su estado a <code>eliminadas</code> y ya no aparecerán en ninguna vista.
+          </p>
+          <AppDateTimePicker
+            v-model="bulkDeleteBeforeDate"
+            placeholder="Fecha Límite (Hasta esta fecha)"
+            clearable
+            density="compact"
+            :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
+            prepend-inner-icon="tabler-calendar-event"
+          />
+        </VCardText>
+        <VDivider />
+        <VCardActions class="pa-3 bg-surface">
+          <VSpacer />
+          <VBtn variant="tonal" color="secondary" class="rounded-lg" @click="isBulkDeleteDialogVisible = false">
+            Cancelar
+          </VBtn>
+          <VBtn
+            color="error"
+            variant="flat"
+            class="rounded-lg"
+            :loading="isSubmittingBulkDelete"
+            @click="handleConfirmBulkDelete"
+          >
+            Confirmar Eliminación
+          </VBtn>
+        </VCardActions>
+      </VCard>
+    </VDialog>
   </div>
 </template>

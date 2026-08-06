@@ -1,4 +1,5 @@
 <script setup lang="js">
+import AutoReplenishmentFormDialog from "@/components/dialogs/AutoReplenishmentFormDialog.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import Swal from "sweetalert2";
@@ -24,6 +25,8 @@ const configForm = ref({
   lapso_de_tiempo: "1 month",
   min_solicitar: 1,
   con_descuento: false,
+  exclude_colombian: false,
+  exclude_novaventa: false,
   stock_filter: "fallas",
   supplier_id: null,
   group_ids: [],
@@ -38,6 +41,8 @@ const defaultForm = () => ({
   lapso_de_tiempo: "1 month",
   min_solicitar: 1,
   con_descuento: false,
+  exclude_colombian: false,
+  exclude_novaventa: false,
   stock_filter: "fallas",
   supplier_id: null,
   group_ids: [],
@@ -199,75 +204,83 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="auto-replenishment-view pa-6">
-    <div class="d-flex align-center justify-space-between mb-6">
-      <div>
-        <h1 class="text-h4 font-weight-bold d-flex align-center gap-2">
-          <VIcon icon="tabler-settings-automation" color="primary" />
-          Automatización de Pedidos
-        </h1>
-        <p class="text-subtitle-1 text-muted">
-          Configure reglas periódicas automáticas para que el sistema genere borradores de órdenes de compra sin intervención humana.
-        </p>
-      </div>
+  <div class="auto-replenishment-view w-100 flex-grow-1 d-flex flex-column pa-0">
+    <div class="d-flex align-center justify-space-between mb-4 flex-wrap gap-4 pa-0">
+      <h1 class="text-h4 font-weight-bold d-flex align-center gap-2 mb-0">
+        <VIcon icon="tabler-settings-automation" color="primary" />
+        Automatización de Pedidos
+      </h1>
       <VBtn color="primary" prepend-icon="tabler-plus" class="shadow-sm" @click="openCreate">
         Nueva Regla
       </VBtn>
     </div>
 
     <!-- Lista de configuraciones -->
-    <VCard class="shadow-md">
-      <!-- Skeleton loader para prevenir Layout Shift brusco -->
-      <div v-if="loading" class="pa-6">
-        <v-skeleton-loader type="table-thead, table-tbody" />
-      </div>
+    <div class="pa-0 flex-grow-1 d-flex flex-column w-100">
+      <VCard class="shadow-md w-100 flex-grow-1 d-flex flex-column overflow-hidden border-0">
+        <!-- Cargador de carga limpio -->
+        <div v-if="loading" class="pa-12 text-center bg-white">
+          <VProgressCircular indeterminate color="primary" size="38" class="mb-3" />
+          <div class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Cargando reglas de automatización...</div>
+        </div>
 
-      <div v-else class="table-responsive">
-        <VTable v-if="configs.length > 0">
+        <div v-else class="table-responsive w-100 flex-grow-1">
+          <VTable v-if="configs.length > 0" class="w-100 auto-replenishment-table">
           <thead>
             <tr>
-              <th>Nombre</th>
-              <th>Análisis</th>
-              <th>Frecuencia de Ejecución</th>
-              <th>Proveedor Destino</th>
-              <th>Estado</th>
-              <th>Última Corrida</th>
-              <th>Acciones</th>
+              <th class="text-start">Nombre</th>
+              <th class="text-start">Análisis</th>
+              <th class="text-start">Frecuencia de Ejecución</th>
+              <th class="text-start">Proveedor Destino</th>
+              <th class="text-center">Estado</th>
+              <th class="text-start">Última Corrida</th>
+              <th class="text-end px-6">Acciones</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="item in configs" :key="item.id">
-              <td class="font-weight-bold">{{ item.name }}</td>
-              <td>
-                <VChip size="small" color="secondary" class="mr-1">
-                  {{ tipoFiltracionOpciones.find(o => o.value === item.tipo_filtracion)?.title }}
-                </VChip>
-                <VChip size="small" variant="outlined">
-                  {{ lapsoDeTiempoOpciones.find(o => o.value === item.lapso_de_tiempo)?.title }}
-                </VChip>
+              <td class="font-weight-bold py-3">{{ item.name }}</td>
+              <td class="py-3">
+                <div class="d-flex align-center gap-1 flex-wrap">
+                  <VChip size="small" color="secondary">
+                    {{ tipoFiltracionOpciones.find(o => o.value === item.tipo_filtracion)?.title }}
+                  </VChip>
+                  <VChip size="small" variant="outlined">
+                    {{ lapsoDeTiempoOpciones.find(o => o.value === item.lapso_de_tiempo)?.title }}
+                  </VChip>
+                  <VChip v-if="item.exclude_colombian" size="small" color="warning" variant="tonal">
+                    Sin Col
+                  </VChip>
+                  <VChip v-if="item.exclude_novaventa" size="small" color="warning" variant="tonal">
+                    Sin Novaventa
+                  </VChip>
+                </div>
               </td>
-              <td>
-                <span class="text-body-2 font-weight-medium mr-2">
-                  {{ translateCron(item.schedule_expression) }}
-                </span>
-                <code class="px-2 py-1 rounded bg-light text-primary font-weight-bold text-xs">
-                  {{ item.schedule_expression }}
-                </code>
+              <td class="py-3">
+                <div class="d-flex align-center gap-2 flex-wrap">
+                  <span class="text-body-2 font-weight-medium">
+                    {{ translateCron(item.schedule_expression) }}
+                  </span>
+                  <code class="px-2 py-1 rounded bg-light text-primary font-weight-bold text-xs">
+                    {{ item.schedule_expression }}
+                  </code>
+                </div>
               </td>
-              <td>
+              <td class="py-3">
                 <span v-if="item.supplier" class="font-weight-medium">{{ item.supplier.name }}</span>
                 <span v-else class="text-muted italic">Todos</span>
               </td>
-              <td>
+              <td class="text-center py-3">
                 <VSwitch
                   v-model="item.is_active"
                   density="compact"
                   hide-details
                   color="success"
+                  class="d-inline-flex"
                   @change="toggleActive(item)"
                 />
               </td>
-              <td>
+              <td class="py-3">
                 <div v-if="item.last_run_at">
                   <div class="text-xs text-muted">{{ new Date(item.last_run_at).toLocaleString() }}</div>
                   <div class="text-xs font-weight-bold text-success">
@@ -276,8 +289,8 @@ onMounted(() => {
                 </div>
                 <span v-else class="text-muted text-xs">—</span>
               </td>
-              <td>
-                <div class="d-flex ga-1 align-center">
+              <td class="text-end px-6 py-3">
+                <div class="d-flex ga-1 align-center justify-end">
                   <VBtn
                     icon
                     size="32"
@@ -325,190 +338,36 @@ onMounted(() => {
         </VCardText>
       </div>
     </VCard>
+  </div>
 
-    <!-- Modal Formulario -->
-    <VDialog
+    <!-- Modal Formulario Desacoplado -->
+    <AutoReplenishmentFormDialog
       v-model="dialogVisible"
-      max-width="680px"
-      persistent
-      scrollable
-    >
-      <VCard class="detail-dialog-card rounded-xl overflow-hidden border-0 shadow-xl bg-surface" :loading="dialogLoading">
-        <!-- Header Premium Institucional -->
-        <VCardTitle class="pa-0">
-          <div class="header-gradient pa-4 d-flex align-center shadow-sm">
-            <VAvatar color="white" variant="flat" size="40" class="me-3 elevation-1">
-              <VIcon icon="tabler-settings-automation" color="primary" size="22" />
-            </VAvatar>
-            <div class="d-flex flex-column leading-none text-white">
-              <h2 class="text-h6 font-weight-black leading-tight mb-0 uppercase text-white">
-                {{ configForm.id ? 'Editar Regla' : 'Nueva Regla' }}
-              </h2>
-              <span class="text-super-xs opacity-75 font-weight-bold uppercase letter-spacing-1">
-                Reposición Automática
-              </span>
-            </div>
-            <VSpacer />
-            <VBtn icon="tabler-x" variant="tonal" color="white" size="small" class="rounded-lg" @click="dialogVisible = false" />
-          </div>
-        </VCardTitle>
-
-        <VCardText class="pa-4 pa-sm-6 bg-light" style="overflow-y: auto;">
-          <VRow>
-            <VCol cols="12">
-              <VTextField
-                v-model="configForm.name"
-                label="Nombre descriptivo de la regla"
-                required
-                placeholder="Ej: Reposición Diaria Urgentes"
-                :error-messages="formErrors.name"
-              />
-            </VCol>
-
-            <VCol cols="12" sm="6">
-              <VSelect
-                v-model="configForm.tipo_filtracion"
-                :items="tipoFiltracionOpciones"
-                label="Método de Análisis"
-                :error-messages="formErrors.tipo_filtracion"
-              />
-            </VCol>
-
-            <VCol cols="12" sm="6">
-              <VSelect
-                v-model="configForm.lapso_de_tiempo"
-                :items="lapsoDeTiempoOpciones"
-                label="Periodo de Ventas"
-                :error-messages="formErrors.lapso_de_tiempo"
-              />
-            </VCol>
-
-            <VCol cols="12" sm="6">
-              <VTextField
-                v-model.number="configForm.min_solicitar"
-                type="number"
-                label="Cantidad mínima a solicitar"
-                min="0"
-                step="any"
-                :error-messages="formErrors.min_solicitar"
-              />
-            </VCol>
-
-            <VCol cols="12" sm="6">
-              <VSelect
-                v-model="configForm.schedule_expression"
-                :items="scheduleOpciones"
-                label="Frecuencia de Ejecución"
-                hint="Expresión cron programada para la automatización"
-                persistent-hint
-                :error-messages="formErrors.schedule_expression"
-              />
-            </VCol>
-
-            <VCol cols="12">
-              <VAutocomplete
-                v-model="configForm.supplier_id"
-                :items="suppliers"
-                label="Proveedor preferido (Opcional)"
-                item-title="name"
-                item-value="id"
-                clearable
-                placeholder="Todos los proveedores"
-                :error-messages="formErrors.supplier_id"
-              />
-            </VCol>
-
-            <VCol cols="12">
-              <VAutocomplete
-                v-model="configForm.group_ids"
-                :items="groups"
-                label="Limitar a Grupos de Producto (Opcional)"
-                item-title="name"
-                item-value="id"
-                multiple
-                chips
-                closable-chips
-                placeholder="Todos los grupos"
-                :error-messages="formErrors.group_ids"
-              />
-            </VCol>
-
-            <VCol cols="12">
-              <VSwitch
-                v-model="configForm.con_descuento"
-                label="Usar precios con descuento del proveedor"
-                color="primary"
-                :error-messages="formErrors.con_descuento"
-              />
-            </VCol>
-          </VRow>
-        </VCardText>
-
-        <VDivider />
-
-        <VCardActions class="pa-4 pa-sm-6 bg-white border-t">
-          <VRow dense class="w-100 ma-0">
-            <VCol cols="6" class="pa-1">
-              <VBtn
-                color="secondary"
-                variant="tonal"
-                height="50"
-                block
-                class="font-weight-black rounded-lg uppercase"
-                @click="dialogVisible = false"
-              >
-                Cancelar
-              </VBtn>
-            </VCol>
-            <VCol cols="6" class="pa-1">
-              <VBtn
-                color="primary"
-                variant="flat"
-                height="50"
-                block
-                class="font-weight-black rounded-lg shadow-primary uppercase"
-                :loading="dialogLoading"
-                @click="saveConfig"
-              >
-                <VIcon start icon="tabler-device-floppy" size="18" />
-                Guardar Regla
-              </VBtn>
-            </VCol>
-          </VRow>
-        </VCardActions>
-      </VCard>
-    </VDialog>
+      :config-form="configForm"
+      :dialog-loading="dialogLoading"
+      :form-errors="formErrors"
+      :suppliers="suppliers"
+      :groups="groups"
+      @save="saveConfig"
+    />
   </div>
 </template>
 
-<style scoped>
-.header-gradient {
-  background: var(--brand-gradient) !important;
+<style lang="scss">
+.auto-replenishment-view {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-height: 100% !important;
+  flex: 1 1 auto;
 }
 
-.detail-dialog-card {
-  border-radius: 12px !important;
-}
-
-.shadow-primary {
-  box-shadow: 0 4px 14px 0 rgba(var(--v-theme-primary), 0.39) !important;
-}
-
-.text-super-xs {
-  font-size: 0.65rem !important;
-  line-height: normal;
-}
-
-.letter-spacing-1 { letter-spacing: 1px !important; }
-.leading-none { line-height: 1 !important; }
-.leading-tight { line-height: 1.25 !important; }
-
-.border-t {
-  border-block-start: 1px solid rgba(var(--v-border-color), 0.08) !important;
+.auto-replenishment-table {
+  width: 100% !important;
 }
 
 .table-responsive {
   width: 100%;
+  flex: 1 1 auto;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }

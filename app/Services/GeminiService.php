@@ -210,10 +210,14 @@ class GeminiService
             . $candidateLines
             . "\nResponde con el ID del candidato que coincide o null si ninguno cumple las reglas.";
 
+        $maxRetries = 3;
+        $retryDelay = 2;
+
         try {
-            $response = Http::withoutHeader('Authorization')->withHeaders([
-                'x-goog-api-key' => $key,
-            ])->timeout(25)->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent", [
+            for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
+                $response = Http::withoutHeader('Authorization')->withHeaders([
+                    'x-goog-api-key' => $key,
+                ])->timeout(25)->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent", [
                     'contents' => [
                         ['parts' => [['text' => $prompt]]]
                     ],

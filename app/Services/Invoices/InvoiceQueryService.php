@@ -18,11 +18,16 @@ class InvoiceQueryService
     {
         // IMPORTANTE: Las facturas se muestran a TODOS los usuarios sin filtrar por usuario
         // No se aplica ningún filtro por uploaded_by, registered_by, ordered_by, etc.
-        $query = Invoice::query()->with(['supplier', 'orderedBy']);
+        $query = Invoice::query()->with([
+            'supplier:id,name,social_reason,rif',
+            'orderedBy:id,username'
+        ]);
 
         if ($request->filled('status')) {
             $statuses = is_array($request->status) ? $request->status : [$request->status];
             $query->whereIn('status', $statuses);
+        } else {
+            $query->where('status', '!=', 'deleted');
         }
 
         if ($request->filled('q')) {
@@ -57,16 +62,20 @@ class InvoiceQueryService
                     ->orderBy('suppliers.name', $request->orderBy)
                     ->select('invoices.*');
             } else {
-                $query->orderBy($request->sortBy, $request->orderBy);
+                $query->select('invoices.*')->orderBy($request->sortBy, $request->orderBy);
             }
         } else {
-            $query->orderBy('invoices.id', 'desc');
+            $query->select('invoices.*')->orderBy('invoices.id', 'desc');
         }
 
         // Si estamos buscando facturas por ordenar, incluir un resumen de las localizaciones
         if ($request->input('status') === 'to_order' || (is_array($request->input('status')) && in_array('to_order', $request->input('status')))) {
-            $query->select('invoices.*')
-                ->selectRaw('(SELECT GROUP_CONCAT(DISTINCT location SEPARATOR ", ") FROM invoice_details WHERE invoice_id = invoices.id AND location != "N/A" AND location != "Por Asignar") as locations_summary');
+            $query->leftJoin('invoice_details', function ($join) {
+                    $join->on('invoices.id', '=', 'invoice_details.invoice_id')
+                         ->whereNotIn('invoice_details.location', ['N/A', 'Por Asignar']);
+                })
+                ->groupBy('invoices.id')
+                ->selectRaw('GROUP_CONCAT(DISTINCT invoice_details.location SEPARATOR ", ") as locations_summary');
         }
 
         return $query;
@@ -81,7 +90,6 @@ class InvoiceQueryService
         ]);
 
         // Obtener todos los precios de autoórdenes activas del proveedor en un solo query (PENDING=0, SENT=1)
-        // Agrupado en base de datos usando subconsulta para traer el costo de la autoorden más reciente por product_id
         $latestAutoOrderDetails = DB::table('auto_order_details as aod')
             ->join('auto_orders as ao', 'aod.order_id', '=', 'ao.id')
             ->join('product_suppliers as ps', 'aod.product_suppliers_id', '=', 'ps.id')
@@ -138,23 +146,23 @@ class InvoiceQueryService
                 'location' => 'N/A',
                 'tax_enabled' => $returnItem->product->iva,
                 'is_return' => true,
-                'auto_order_unit_cost_usd' => null, // Devoluciones no tienen referencia de autoorden
+                'auto_order_unit_cost_usd' => null,
             ];
         });
-
-
-        // LOGIC REMOVED: Auto-hydration from AutoOrder is now handled at creation time.
-        // This ensures that if a user deletes all products, they stay deleted.
 
         if ($normalDetails->isEmpty() && $returnDetails->isEmpty()) {
             $autoOrderDetails = collect();
 
-            $selectableAutoOrders = $invoice->supplier->autoOrders()->where('status', 0)->get();
+            // Optimización con Eager Loading para evitar consulta N+1 en autoOrders y details
+            $selectableAutoOrders = $invoice->supplier->autoOrders()
+                ->where('status', 0)
+                ->with(['details' => function ($query) {
+                    $query->where('status', 0)->with('productSupplier.product');
+                }])
+                ->get();
 
             foreach ($selectableAutoOrders as $autoOrder) {
-                $selectableDetails = $autoOrder->details()->where('status', 0)->get();
-
-                foreach ($selectableDetails as $autoOrderDetail) {
+                foreach ($autoOrder->details as $autoOrderDetail) {
                     if ($autoOrderDetail->productSupplier && $autoOrderDetail->productSupplier->product) {
                         $product = $autoOrderDetail->productSupplier->product;
 
@@ -171,7 +179,7 @@ class InvoiceQueryService
                             'is_return' => false,
                             'expiration_date' => $autoOrderDetail->productSupplier->expiration,
                             'auto_order_detail_id' => $autoOrderDetail->id,
-                            'auto_order_unit_cost_usd' => (float) $autoOrderDetail->unit_cost, // Mismo ítem = su propio precio
+                            'auto_order_unit_cost_usd' => (float) $autoOrderDetail->unit_cost,
                         ]);
                     }
                 }
@@ -184,14 +192,11 @@ class InvoiceQueryService
         return collect($mergedArray);
     }
 
-
     public function getSuggestedAndExistingDetails(Invoice $invoice): Collection
     {
         if ($invoice->details()->exists()) {
-
             return $invoice->details()->with(['product.laboratory'])->get();
         } else {
-
             $configuredProducts = SuppliersConfigProduct::query()
                 ->where('supplier_id', $invoice->supplier_id)
                 ->join('products', 'suppliers_config_products.barcode', '=', 'products.barcode')
@@ -229,6 +234,7 @@ class InvoiceQueryService
 
         return $invoice;
     }
+
     public function calculateSupplierDebts(): float
     {
         $totalDebts = Invoice::where(function ($query) {
@@ -247,7 +253,7 @@ class InvoiceQueryService
         $product = Product::with(['laboratory'])->where('barcode', $barcode)->first();
 
         if (!$product) {
-            return null; // Producto no existe
+            return null;
         }
 
         // 2. Si hay autoOrderId, buscar si el producto pertenece a la orden
@@ -289,7 +295,6 @@ class InvoiceQueryService
             ];
         }
 
-        // 3. Devolver la estructura lista para InvoiceDetails en Frontend
         return (object) [
             'id' => 'auto_' . $autoOrderDetail->auto_order_detail_id,
             'product_id' => $product->id,

@@ -87,8 +87,7 @@ watch(
       clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => fetchInvoices(), 300);
     }
-  },
-  { deep: true },
+  }
 );
 
 watch([searchQuery, selectedSupplier, startDate, endDate], () => {
@@ -226,6 +225,7 @@ const handleReturnInvoice = async (invoiceId) => {
         v-model:endDate="endDate"
         :suppliers="suppliers"
         :loading="isLoadingFilters"
+        :show-add="false"
         @clear="handleClearFilters"
         class="mb-6"
       />

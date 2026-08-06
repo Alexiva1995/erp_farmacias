@@ -430,7 +430,7 @@ const handleSort = sortOptions => {
       :suppliers="suppliers"
       :categories="categories"
       :loading="isLoadingFilters"
-      :showAddButton="authStore.isAdmin"
+      :showAddButton="!!authStore.user"
       @clear="handleClearFilters"
       @export="handleExport"
       @add-product="handleAddProduct"

@@ -29,6 +29,10 @@ export default [
         title: 'Ordenadas',
         to: 'invoice-invoice-ordered',
       },
+      {
+        title: 'Devoluciones',
+        to: 'invoice-returns',
+      },
     ],
   }, 
 ]

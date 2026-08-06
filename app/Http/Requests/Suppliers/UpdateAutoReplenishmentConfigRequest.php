@@ -30,6 +30,8 @@ class UpdateAutoReplenishmentConfigRequest extends FormRequest
             'lapso_de_tiempo'     => ['sometimes', 'string', 'in:7 days,15 days,1 month,3 month,6 month,1 year'],
             'min_solicitar'       => ['sometimes', 'numeric', 'min:0'],
             'con_descuento'       => ['sometimes', 'boolean'],
+            'exclude_colombian'   => ['sometimes', 'boolean'],
+            'exclude_novaventa'   => ['sometimes', 'boolean'],
             'stock_filter'        => ['sometimes', 'string', 'in:fallas,all'],
             'supplier_id'         => ['nullable', 'integer', 'exists:suppliers,id'],
             'group_ids'           => ['nullable', 'array'],

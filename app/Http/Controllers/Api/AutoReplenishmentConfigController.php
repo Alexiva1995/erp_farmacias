@@ -9,21 +9,22 @@ use App\Models\AutoReplenishmentConfig;
 use App\Http\Requests\Suppliers\StoreAutoReplenishmentConfigRequest;
 use App\Http\Requests\Suppliers\UpdateAutoReplenishmentConfigRequest;
 use App\Http\Resources\AutoReplenishmentConfigResource;
+use App\Services\AutoReplenishmentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-use Illuminate\Support\Facades\Artisan;
 
 class AutoReplenishmentConfigController extends Controller
 {
+    public function __construct(
+        protected AutoReplenishmentService $service
+    ) {}
+
     /**
      * Listar todas las configuraciones de reposición automática.
      */
     public function index(): AnonymousResourceCollection
     {
-        $configs = AutoReplenishmentConfig::with('supplier:id,name')
-            ->orderBy('is_active', 'desc')
-            ->orderBy('created_at', 'desc')
-            ->get();
+        $configs = $this->service->listConfigs();
 
         return AutoReplenishmentConfigResource::collection($configs);
     }
@@ -33,9 +34,9 @@ class AutoReplenishmentConfigController extends Controller
      */
     public function store(StoreAutoReplenishmentConfigRequest $request): JsonResponse
     {
-        $config = AutoReplenishmentConfig::create($request->validated());
+        $config = $this->service->createConfig($request->validated());
 
-        return (new AutoReplenishmentConfigResource($config->load('supplier:id,name')))
+        return (new AutoReplenishmentConfigResource($config))
             ->response()
             ->setStatusCode(201);
     }
@@ -45,9 +46,9 @@ class AutoReplenishmentConfigController extends Controller
      */
     public function update(UpdateAutoReplenishmentConfigRequest $request, AutoReplenishmentConfig $config): AutoReplenishmentConfigResource
     {
-        $config->update($request->validated());
+        $updatedConfig = $this->service->updateConfig($config, $request->validated());
 
-        return new AutoReplenishmentConfigResource($config->fresh()->load('supplier:id,name'));
+        return new AutoReplenishmentConfigResource($updatedConfig);
     }
 
     /**
@@ -55,7 +56,8 @@ class AutoReplenishmentConfigController extends Controller
      */
     public function destroy(AutoReplenishmentConfig $config): JsonResponse
     {
-        $config->delete();
+        $this->service->deleteConfig($config);
+
         return response()->json(['message' => 'Configuración eliminada.']);
     }
 
@@ -64,18 +66,13 @@ class AutoReplenishmentConfigController extends Controller
      */
     public function run(AutoReplenishmentConfig $config): JsonResponse
     {
-        // Ejecutar el comando de forma síncrona para obtener el resultado inmediato
-        $exitCode = Artisan::call('replenishment:run', [
-            '--config' => $config->id,
-        ]);
-
-        $config->refresh();
+        $result = $this->service->runConfig($config);
 
         return response()->json([
-            'message'           => $exitCode === 0 ? 'Ejecución completada.' : 'La ejecución terminó con errores. Revisa los logs.',
-            'last_run_at'       => $config->last_run_at,
-            'last_run_products' => $config->last_run_products,
-            'last_run_orders'   => $config->last_run_orders,
-        ], $exitCode === 0 ? 200 : 500);
+            'message'           => $result['message'],
+            'last_run_at'       => $result['last_run_at'],
+            'last_run_products' => $result['last_run_products'],
+            'last_run_orders'   => $result['last_run_orders'],
+        ], $result['success'] ? 200 : 500);
     }
 }

@@ -66,7 +66,23 @@ class InvoiceActionService
         }
 
         DB::transaction(function () use ($invoice) {
-            $invoice->delete();
+            $invoice->update(['status' => 'deleted']);
+        });
+    }
+
+    public function bulkDeleteInvoicesBeforeDate(string $beforeDate): int
+    {
+        return DB::transaction(function () use ($beforeDate) {
+            return Invoice::where(function ($q) use ($beforeDate) {
+                $q->whereDate('created_invoice_date', '<=', $beforeDate)
+                  ->orWhere(function ($sub) use ($beforeDate) {
+                      $sub->whereNull('created_invoice_date')
+                          ->whereDate('created_at', '<=', $beforeDate);
+                  });
+            })
+            ->where('status', '!=', 'deleted')
+            ->whereDoesntHave('payments')
+            ->update(['status' => 'deleted']);
         });
     }
 

@@ -152,7 +152,11 @@ class Supplier extends Model
         }
 
         return (float) $this->invoices()
-            ->where('status_payment', 0)
+            ->where(function ($q) {
+                $q->whereNull('status_payment')
+                    ->orWhere('status_payment', '!=', 1);
+            })
+            ->whereDate('payment_date', '>=', \Carbon\Carbon::now()->startOfYear())
             ->sum(DB::raw('COALESCE(total_usd, 0)'));
     }
 

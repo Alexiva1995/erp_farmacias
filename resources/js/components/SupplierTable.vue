@@ -70,9 +70,12 @@ const headers = [
             icon="tabler-truck-off"
           />
         </template>
-        <!-- Skeleton Loader para Carga en Desktop -->
+        <!-- Loader para Carga en Desktop -->
         <template #loading>
-          <VSkeletonLoader type="table-row-divider@5" />
+          <div class="pa-8 text-center bg-white">
+            <VProgressCircular indeterminate color="primary" size="36" class="mb-2" />
+            <div class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Cargando proveedores...</div>
+          </div>
         </template>
 
         <!-- Columnas personalizadas existentes -->
@@ -132,7 +135,7 @@ const headers = [
               variant="flat"
               class="font-weight-bold rounded-lg"
             >
-              {{ (item.debt ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2 }) }}
+              ${{ (item.debt ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
             </VChip>
             <span v-if="item.debt > 0" class="text-xxs text-error mt-1">Deuda Pendiente</span>
           </div>
@@ -216,13 +219,9 @@ const headers = [
 
     <!-- Vista de Tarjetas para Móvil -->
     <div v-else class="mobile-supplier-cards d-flex flex-column gap-4">
-      <div v-if="loading" class="d-flex flex-column gap-4">
-        <VSkeletonLoader
-          v-for="n in 3"
-          :key="n"
-          type="card-avatar, article"
-          class="rounded-lg border shadow-sm pa-4"
-        />
+      <div v-if="loading" class="pa-8 text-center rounded-lg border shadow-sm bg-white">
+        <VProgressCircular indeterminate color="primary" size="36" class="mb-2" />
+        <div class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Cargando proveedores...</div>
       </div>
 
       <template v-else>
@@ -258,7 +257,7 @@ const headers = [
               <div class="d-flex flex-column">
                 <span class="text-caption text-disabled mb-1">Deuda Actual</span>
                 <span :class="(item.debt ?? 0) > 0 ? 'text-error' : 'text-success'" class="text-h6 font-weight-bold">
-                  {{ (item.debt ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2 }) }} Bs
+                  ${{ (item.debt ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
                 </span>
               </div>
               <div class="d-flex flex-column align-end">
