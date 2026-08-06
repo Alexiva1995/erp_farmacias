@@ -3,10 +3,13 @@
 namespace App\Http\Controllers\Api\Bi;
 
 use App\Http\Controllers\Controller;
-use App\Services\Bi\LaboratoryMasterReportService;
-use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
 use App\Http\Requests\Bi\BenchmarkingRequest;
+use App\Http\Requests\Bi\LaboratoryDeepDiveRequest;
+use App\Http\Requests\Bi\LaboratoryReportRequest;
+use App\Http\Resources\Bi\LaboratoryDeepDiveResource;
+use App\Http\Resources\Bi\LaboratoryRankingResource;
+use App\Services\Bi\LaboratoryMasterReportService;
+use Illuminate\Http\JsonResponse;
 
 class LaboratoryMasterReportController extends Controller
 {
@@ -14,61 +17,81 @@ class LaboratoryMasterReportController extends Controller
         protected LaboratoryMasterReportService $service
     ) {}
 
-    public function index(Request $request): JsonResponse
+    public function index(LaboratoryReportRequest $request): JsonResponse
     {
-        $filters = $request->all();
+        $filters = $request->validated();
         $data = $this->service->getDashboardSummary($filters);
-        
-        return response()->json($data);
+
+        return response()->json([
+            'rankings' => [
+                'by_units' => [
+                    'data' => LaboratoryRankingResource::collection($data['rankings']['by_units']->items()),
+                    'total' => $data['rankings']['by_units']->total(),
+                    'current_page' => $data['rankings']['by_units']->currentPage(),
+                    'per_page' => $data['rankings']['by_units']->perPage(),
+                ],
+                'by_revenue' => [
+                    'data' => LaboratoryRankingResource::collection($data['rankings']['by_revenue']->items()),
+                    'total' => $data['rankings']['by_revenue']->total(),
+                    'current_page' => $data['rankings']['by_revenue']->currentPage(),
+                    'per_page' => $data['rankings']['by_revenue']->perPage(),
+                ],
+                'by_stock' => [
+                    'data' => LaboratoryRankingResource::collection($data['rankings']['by_stock']->items()),
+                    'total' => $data['rankings']['by_stock']->total(),
+                    'current_page' => $data['rankings']['by_stock']->currentPage(),
+                    'per_page' => $data['rankings']['by_stock']->perPage(),
+                ],
+            ],
+            'trends' => $data['trends'],
+            'stock_on_hand' => $data['stock_on_hand'],
+            'profitability' => $data['profitability'],
+        ]);
     }
 
-    public function getRankings(Request $request): JsonResponse
+    public function getRankings(LaboratoryReportRequest $request): JsonResponse
     {
-        $metric = $request->get('metric', 'total_units');
-        $page = $request->get('page', 1);
-        $filters = $request->all();
-        
-        $data = $this->service->getRankings($metric, $page, $filters);
-        
-        return response()->json($data);
+        $validated = $request->validated();
+        $metric = $validated['metric'] ?? 'total_units';
+        $page = (int) ($validated['page'] ?? 1);
+
+        $paginated = $this->service->getRankings($metric, $page, $validated);
+
+        return response()->json([
+            'data' => LaboratoryRankingResource::collection($paginated->items()),
+            'total' => $paginated->total(),
+            'current_page' => $paginated->currentPage(),
+            'per_page' => $paginated->perPage(),
+        ]);
     }
 
-    public function getDeepDive(int $id, Request $request): JsonResponse
+    public function getDeepDive(int $id, LaboratoryDeepDiveRequest $request): JsonResponse
     {
-        $filters = $request->all();
+        $filters = $request->validated();
         $data = $this->service->getLaboratoryDeepDive($id, $filters);
-        
-        return response()->json($data);
+
+        return response()->json(new LaboratoryDeepDiveResource($data));
     }
 
     public function getBenchmarking(BenchmarkingRequest $request): JsonResponse
     {
         $filters = $request->validated();
         $data = $this->service->getBenchmarking(
-            (int)$filters['lab_a'], 
-            (int)$filters['lab_b'], 
+            (int) $filters['lab_a'],
+            (int) $filters['lab_b'],
             $filters
         );
-        
+
         return response()->json($data);
     }
 
-    public function getFilterCatalogs(Request $request): JsonResponse
+    public function getFilterCatalogs(LaboratoryReportRequest $request): JsonResponse
     {
-        $groupByCorporate = filter_var($request->get('group_by_corporate', false), FILTER_VALIDATE_BOOLEAN);
-        
-        if ($groupByCorporate) {
-            $data = \Illuminate\Support\Facades\DB::table('groups_laboratories')
-                ->select('id', 'name')
-                ->orderBy('name')
-                ->get();
-        } else {
-            $data = \Illuminate\Support\Facades\DB::table('laboratories')
-                ->select('id', 'name')
-                ->orderBy('name')
-                ->get();
-        }
-        
-        return response()->json($data);
+        $validated = $request->validated();
+        $groupByCorporate = (bool) ($validated['group_by_corporate'] ?? false);
+
+        $catalogs = $this->service->getCatalogs($groupByCorporate);
+
+        return response()->json($catalogs);
     }
 }

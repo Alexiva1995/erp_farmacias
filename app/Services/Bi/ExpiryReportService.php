@@ -21,12 +21,10 @@ class ExpiryReportService
         $lossAnalysis = $this->repository->getRealLossAnalysis($filters);
 
         return [
-            'horizon' => $this->repository->getExpiryHorizon($filters),
-            'annual_trend' => $this->repository->getAnnualTrend($filters),
+            'horizon'       => $this->repository->getExpiryHorizon($filters),
             'loss_analysis' => $lossAnalysis,
-            'risk_inventory' => $this->repository->getRiskInventory($filters),
-            'overstock' => $this->processOverstockData($this->repository->getOverstockWarning($filters)),
-            'kpis' => $this->calculateKpis($filters, $lossAnalysis)
+            'overstock'     => $this->processOverstockData($this->repository->getOverstockWarning($filters)),
+            'kpis'          => $this->calculateKpis($filters, $lossAnalysis),
         ];
     }
 

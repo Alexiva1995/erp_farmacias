@@ -1,34 +1,40 @@
 <script setup>
 import { useExpiryStore } from '@/stores/expiry-store'
 import { storeToRefs } from 'pinia'
-import { onMounted, ref, computed, watch } from 'vue'
+import { onMounted, onUnmounted, ref, computed, watch } from 'vue'
 import axios from '@/plugins/axios'
 import VueApexCharts from 'vue3-apexcharts'
 
-const expiryStore = useExpiryStore()
-const { dashboardData, loading, filters } = storeToRefs(expiryStore)
+// Componentes desacoplados
+import ExpiryKpiCards from '@/components/bi/ExpiryKpiCards.vue'
+import ExpiryChartOverlay from '@/components/bi/ExpiryChartOverlay.vue'
+import ExpiryOverstockTable from '@/components/bi/ExpiryOverstockTable.vue'
+// Composable que centraliza la configuración de los 4 gráficos ApexCharts
+import { useExpiryCharts } from '@/composables/useExpiryCharts'
 
+const expiryStore = useExpiryStore()
+const { dashboardData, loading, error, filters } = storeToRefs(expiryStore)
+
+// Referencia al componente tabla para acceder al computed de exportación
+const overstockTableRef = ref(null)
+
+// Catálogos de filtros
 const laboratories = ref([])
 const categories = ref([])
 const groups = ref([])
 const isAdvancedFiltersVisible = ref(false)
+const metricType = ref('units') // 'units' | 'value'
 
-// Estado local para notificaciones (Snackbar)
-const snackbar = ref({
-  show: false,
-  message: '',
-  color: 'success'
-})
+// Snackbar de notificaciones
+const snackbar = ref({ show: false, message: '', color: 'success' })
 
 const showMessage = (msg, color = 'success') => {
-  snackbar.value.message = msg
-  snackbar.value.color = color
-  snackbar.value.show = true
+  snackbar.value = { show: true, message: msg, color }
 }
 
-const hasActiveAdvancedFilters = computed(() => {
-  return filters.value.laboratory_id || filters.value.category_id || filters.value.group_id
-})
+const hasActiveAdvancedFilters = computed(() =>
+  filters.value.laboratory_id || filters.value.category_id || filters.value.group_id
+)
 
 const resetFilters = () => {
   expiryStore.resetFilters()
@@ -36,270 +42,126 @@ const resetFilters = () => {
   showMessage('Filtros restablecidos', 'info')
 }
 
-// Carga de catálogos de filtros con resiliencia y desacoplado
+// Reaccionar a errores del store y mostrarlos al usuario
+watch(error, val => {
+  if (val) showMessage(val, 'error')
+})
+
+// Carga de catálogos con resiliencia
 const fetchFilters = async () => {
   try {
     const [labRes, catRes, groupRes] = await Promise.all([
       axios.get('/laboratories').catch(() => ({ data: [] })),
       axios.get('/categories').catch(() => ({ data: [] })),
-      axios.get('/groups/consult-all').catch(() => axios.get('/groups')).catch(() => ({ data: [] }))
+      axios.get('/groups/consult-all').catch(() => axios.get('/groups')).catch(() => ({ data: [] })),
     ])
-    
+
     laboratories.value = Array.isArray(labRes.data) ? labRes.data : []
     categories.value = Array.isArray(catRes.data) ? catRes.data : []
-    
     const grpData = groupRes.data
     groups.value = Array.isArray(grpData) ? grpData : (Array.isArray(grpData?.data) ? grpData.data : [])
-  } catch (error) {
-    console.error('Error cargando catálogos de filtros:', error)
+  } catch (err) {
+    console.error('Error cargando catálogos de filtros:', err)
     showMessage('Error al cargar catálogos de filtros', 'error')
   }
 }
 
-// Búsqueda reactiva con debounce de 500ms
+// Debounce reutilizable para cualquier watch con delay
 let searchDebounceTimer = null
-watch(() => filters.value.search, (newVal) => {
-  if (searchDebounceTimer) clearTimeout(searchDebounceTimer)
+
+const createDebounced = (fn, delay) => {
+  let timer = null
+  const debounced = (...args) => {
+    clearTimeout(timer)
+    timer = setTimeout(() => fn(...args), delay)
+  }
+  debounced.cancel = () => clearTimeout(timer)
+  return debounced
+}
+
+// Búsqueda principal — 500ms
+watch(() => filters.value.search, () => {
+  clearTimeout(searchDebounceTimer)
   searchDebounceTimer = setTimeout(() => {
     expiryStore.fetchDashboardData()
   }, 500)
 })
+
+// Filtros avanzados — auto-apply al cambiar (400ms para mayor fluidez)
+const advancedFetch = createDebounced(() => expiryStore.fetchDashboardData(), 400)
+
+watch(
+  () => [filters.value.laboratory_id, filters.value.category_id, filters.value.group_id],
+  () => advancedFetch(),
+  { deep: false }
+)
 
 onMounted(() => {
   fetchFilters()
   expiryStore.fetchDashboardData()
 })
 
-const metricType = ref('units') // 'units' o 'value' por defecto unidades
-
-const formatValue = (val) => {
-  if (metricType.value === 'value') return `$${Number(val).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
-  return `${Number(val).toLocaleString('en-US')} U.`
-}
-
-const formatMoney = (val) => `$${Number(val).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
-const formatNumber = (val) => Number(val).toLocaleString('en-US')
-
-// --- Configuración de Gráficos ---
-
-// 1. Horizonte de Vencimientos (Barra Apilada)
-const horizonChartConfig = computed(() => {
-  const months = [...new Set(dashboardData.value.horizon.map(i => i.month))].sort()
-  const categoriesList = [...new Set(dashboardData.value.horizon.map(i => i.category_name))]
-  
-  const series = categoriesList.map(cat => ({
-    name: cat,
-    data: months.map(m => {
-      const item = dashboardData.value.horizon.find(i => i.month === m && i.category_name === cat)
-      if (!item) return 0
-      return metricType.value === 'value' ? parseFloat(item.total_value) : parseFloat(item.total_units)
-    })
-  }))
-
-  return {
-    series,
-    options: {
-      chart: { type: 'bar', stacked: true, toolbar: { show: false }, fontFamily: 'Inter, sans-serif' },
-      plotOptions: { bar: { horizontal: false, borderRadius: 4 } },
-      xaxis: { categories: months, labels: { style: { colors: '#a3a3a3' } } },
-      yaxis: { labels: { formatter: (val) => metricType.value === 'value' ? `$${val.toFixed(0)}` : `${val.toFixed(0)}`, style: { colors: '#a3a3a3' } } },
-      legend: { position: 'top', labels: { colors: '#a3a3a3' } },
-      dataLabels: { enabled: false },
-      colors: ['#7367f0', '#28c76f', '#ea5455', '#ff9f43', '#00cfe8'],
-      grid: { borderColor: 'rgba(144, 164, 174, 0.1)' }
-    }
-  }
+// Limpiar timers al desmontar para evitar memory leaks
+onUnmounted(() => {
+  clearTimeout(searchDebounceTimer)
+  advancedFetch.cancel()
 })
 
-// 3. Tendencia Próximos 6 Meses (Gráfico de Área)
-const sixMonthTrendConfig = computed(() => {
-  const months = []
-  const now = new Date()
-  
-  for (let i = 0; i < 6; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() + i, 1)
-    const monthName = d.toLocaleString('es-ES', { month: 'short', year: '2-digit' }).toUpperCase()
-    const sortKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-    months.push({ monthName, sortKey })
-  }
-  
-  const categoriesList = months.map(m => m.monthName)
-  const data = months.map(m => {
-    const items = dashboardData.value.horizon.filter(i => i.month === m.sortKey)
-    return items.reduce((acc, curr) => acc + (metricType.value === 'value' ? parseFloat(curr.total_value) : parseFloat(curr.total_units)), 0)
-  })
+// ─── Configuraciones de Gráficos (composable) ────────────────────────────────
+// dashboardData es un reactive (no Ref), se pasa directamente al composable
+const {
+  horizonChartConfig,
+  sixMonthTrendConfig,
+  riskBarChartConfig,
+  lossHistoryChartConfig,
+  fmtMoney: formatMoney,
+  fmtNum: formatNumber,
+} = useExpiryCharts(dashboardData.value, metricType)
 
-  return {
-    series: [{
-      name: metricType.value === 'value' ? 'Vencimiento (USD)' : 'Vencimiento (Unidades)',
-      data: data
-    }],
-    options: {
-      chart: { type: 'area', toolbar: { show: false }, zoom: { enabled: false } },
-      dataLabels: { enabled: false },
-      stroke: { curve: 'smooth', width: 3 },
-      fill: {
-        type: 'gradient',
-        gradient: { shadeIntensity: 1, opacityFrom: 0.5, opacityTo: 0.1, stops: [0, 90, 100] }
-      },
-      xaxis: { categories: categoriesList, labels: { style: { colors: '#a3a3a3', fontSize: '10px' } } },
-      yaxis: { labels: { formatter: (val) => metricType.value === 'value' ? `$${val.toLocaleString()}` : `${val.toLocaleString()}`, style: { colors: '#a3a3a3' } } },
-      colors: ['#28c76f'],
-      grid: { borderColor: 'rgba(144, 164, 174, 0.1)' },
-      tooltip: { theme: 'dark' }
-    }
-  }
-})
-
-// 4. Ranking de Riesgo (Barra Horizontal)
-const riskBarChartConfig = computed(() => {
-  const aggregatedRisks = dashboardData.value.overstock.reduce((acc, curr) => {
-    const key = curr.product_id
-    if (!acc[key]) {
-      acc[key] = { 
-        name: curr.name, 
-        lab: curr.laboratory_name || 'N/A',
-        id: curr.product_id,
-        costo_excedente: 0 
-      }
-    }
-    acc[key].costo_excedente += parseFloat(curr.costo_excedente)
-    return acc
-  }, {})
-
-  const topRisks = Object.values(aggregatedRisks)
-    .sort((a, b) => b.costo_excedente - a.costo_excedente)
-    .slice(0, 10)
-
-  const categoriesList = topRisks.map(i => `#${i.id} | ${i.name} [${i.lab}]`)
-  const values = topRisks.map(i => i.costo_excedente)
-
-  return {
-    series: [{ name: 'Costo en Riesgo', data: values }],
-    options: {
-      chart: { type: 'bar', toolbar: { show: false }, offsetX: -10 },
-      plotOptions: { bar: { horizontal: true, borderRadius: 4, distributed: true, barHeight: '70%' } },
-      colors: ['#ea5455', '#ff9f43', '#ffc107', '#28c76f', '#00cfe8', '#7367f0', '#4b4b4b', '#82868b', '#212121', '#a8aaae'],
-      xaxis: { categories: categoriesList, labels: { formatter: (val) => formatMoney(val), style: { colors: '#a3a3a3' } } },
-      yaxis: { labels: { style: { fontSize: '10px', fontWeight: 600, colors: '#a3a3a3' }, maxWidth: 350 } },
-      grid: { padding: { left: 20 }, borderColor: 'rgba(144, 164, 174, 0.1)' },
-      dataLabels: { enabled: true, formatter: (val) => formatMoney(val), style: { fontSize: '10px', colors: ['#fff'] } },
-      legend: { show: false },
-      tooltip: { theme: 'dark' }
-    }
-  }
-})
-
-// 5. Historial de Pérdidas Reales (Gráfico de Barra)
-const lossHistoryChartConfig = computed(() => {
-  const categoriesList = [...dashboardData.value.loss_analysis]
-    .reverse()
-    .map(i => {
-      const [year, month] = i.month.split('-')
-      const d = new Date(year, month - 1, 1)
-      return d.toLocaleString('es-ES', { month: 'short' }).toUpperCase()
-    })
-
-  const values = [...dashboardData.value.loss_analysis]
-    .reverse()
-    .map(i => metricType.value === 'value' ? parseFloat(i.total_cost) : parseFloat(i.total_units))
-
-  return {
-    series: [{ name: metricType.value === 'value' ? 'Pérdida ($)' : 'Pérdida (U)', data: values }],
-    options: {
-      chart: { type: 'bar', toolbar: { show: false } },
-      plotOptions: { bar: { borderRadius: 4, dataLabels: { position: 'top' } } },
-      dataLabels: { enabled: true, formatter: (val) => metricType.value === 'value' ? formatMoney(val) : formatNumber(val), offsetY: -20, style: { fontSize: '9px', colors: ['#a3a3a3'] } },
-      colors: ['#ea5455'],
-      xaxis: { categories: categoriesList, labels: { style: { colors: '#a3a3a3', fontSize: '10px' } } },
-      yaxis: { labels: { formatter: (val) => metricType.value === 'value' ? `$${val}` : val, style: { colors: '#a3a3a3' } } },
-      grid: { borderColor: 'rgba(144, 164, 174, 0.1)' },
-      tooltip: { theme: 'dark' }
-    }
-  }
-})
-
-const overstockHeaders = [
-  { title: 'PRODUCTO', key: 'name', align: 'start', sortable: true },
-  { title: 'STOCK ACTUAL', key: 'stock_actual', align: 'end', sortable: true },
-  { title: 'VTA. PROM', key: 'venta_mensual_promedio', align: 'end', sortable: true },
-  { title: 'EXCEDENTE (U)', key: 'excedente_proyectado', align: 'end', sortable: true },
-  { title: 'COSTO RIESGO', key: 'costo_excedente', align: 'end', sortable: true },
-]
-
-// Sobrestock agrupado por SKU
-const aggregatedOverstock = computed(() => {
-  if (!dashboardData.value.overstock) return []
-  
-  const aggregated = dashboardData.value.overstock.reduce((acc, curr) => {
-    const key = curr.product_id
-    if (!acc[key]) {
-      acc[key] = {
-        product_id: curr.product_id,
-        name: curr.name,
-        laboratory_name: curr.laboratory_name,
-        stock_actual: 0,
-        venta_mensual_promedio: parseFloat(curr.venta_mensual_promedio || 0),
-        excedente_proyectado: 0,
-        costo_excedente: 0
-      }
-    }
-    
-    acc[key].stock_actual += parseFloat(curr.stock_actual || 0)
-    acc[key].excedente_proyectado += parseFloat(curr.excedente_proyectado || 0)
-    acc[key].costo_excedente += parseFloat(curr.costo_excedente || 0)
-    
-    return acc
-  }, {})
-
-  return Object.values(aggregated).sort((a, b) => b.costo_excedente - a.costo_excedente)
-})
-
-const itemsPerPage = ref(10)
-
-// Exportación CSV Directa
+// ─── Exportación CSV ────────────────────────────────────────────────────────────
 const handleExport = () => {
   try {
-    if (!aggregatedOverstock.value || aggregatedOverstock.value.length === 0) {
+    const data = overstockTableRef.value?.aggregatedOverstock ?? []
+
+    if (!data.length) {
       showMessage('No hay datos disponibles para exportar', 'warning')
       return
     }
-    
-    const headers = ['ID PRODUCTO', 'PRODUCTO', 'LABORATORIO', 'STOCK ACTUAL', 'VENTA MENSUAL PROM', 'EXCEDENTE PROYECTADO (U)', 'COSTO RIESGO EXCEDENTE']
-    
-    const rows = aggregatedOverstock.value.map(item => [
+
+    const csvHeaders = ['ID PRODUCTO', 'PRODUCTO', 'LABORATORIO', 'STOCK ACTUAL', 'VENTA MENSUAL PROM', 'EXCEDENTE PROYECTADO (U)', 'COSTO RIESGO EXCEDENTE']
+
+    const rows = data.map(item => [
       item.product_id,
       item.name,
-      item.laboratory_name || 'N/A',
+      item.laboratory_name ?? 'N/A',
       item.stock_actual,
       item.venta_mensual_promedio,
       item.excedente_proyectado,
-      item.costo_excedente
+      item.costo_excedente,
     ])
-    
-    // Formato CSV UTF-8 con BOM
-    const csvContent = "\uFEFF" + [
-      headers.join(';'),
-      ...rows.map(row => row.map(val => {
-        const text = String(val ?? '').replace(/"/g, '""')
-        return text.includes(';') || text.includes('\n') || text.includes('"') ? `"${text}"` : text
-      }).join(';'))
-    ].join('\n')
-    
+
+    const escape = val => {
+      const text = String(val ?? '').replace(/"/g, '""')
+      return text.includes(';') || text.includes('\n') || text.includes('"') ? `"${text}"` : text
+    }
+
+    const csvContent = '\uFEFF' + [csvHeaders.join(';'), ...rows.map(r => r.map(escape).join(';'))].join('\n')
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const link = document.createElement("a")
     const url = URL.createObjectURL(blob)
-    
-    link.setAttribute("href", url)
-    link.setAttribute("download", `reporte_sobrestock_vencimiento_${new Date().toISOString().slice(0, 10)}.csv`)
-    link.style.visibility = 'hidden'
+    const link = Object.assign(document.createElement('a'), {
+      href: url,
+      download: `reporte_sobrestock_vencimiento_${new Date().toISOString().slice(0, 10)}.csv`,
+      style: 'visibility:hidden',
+    })
+
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
-    
+    URL.revokeObjectURL(url)
+
     showMessage('Reporte exportado exitosamente en formato CSV', 'success')
-  } catch (error) {
-    console.error('Error al exportar reporte:', error)
+  } catch (err) {
+    console.error('Error al exportar reporte:', err)
     showMessage('Ocurrió un error al exportar el reporte', 'error')
   }
 }
@@ -308,10 +170,10 @@ const handleExport = () => {
 <template>
   <VContainer fluid class="expiry-dashboard pa-0">
 
-    <!-- Filtros Estandarizados -->
+    <!-- ─── Panel de Filtros ─────────────────────────────────────────── -->
     <VCard class="mb-6 rounded-lg border shadow-sm overflow-hidden bg-surface">
       <VCardText class="pa-4">
-        <!-- Barra de Búsqueda Principal -->
+        <!-- Barra principal -->
         <VRow align="center" no-gutters class="gap-2">
           <VCol cols="12" md="4">
             <AppTextField
@@ -328,7 +190,8 @@ const handleExport = () => {
 
           <VSpacer />
 
-          <div class="d-flex align-center gap-2">
+          <!-- flex-wrap para evitar desbordamiento horizontal en móvil -->
+          <div class="d-flex align-center gap-2 flex-wrap justify-end">
             <!-- Selector de Métrica -->
             <VBtnToggle
               v-model="metricType"
@@ -338,18 +201,19 @@ const handleExport = () => {
               color="primary"
               class="premium-toggle"
               :disabled="loading"
+              aria-label="Tipo de métrica"
             >
-              <VBtn value="value" size="small" class="px-2">
+              <VBtn value="value" size="small" class="px-2" aria-label="Ver por valor monetario">
                 <VIcon icon="tabler-currency-dollar" size="20" />
               </VBtn>
-              <VBtn value="units" size="small" class="px-2">
+              <VBtn value="units" size="small" class="px-2" aria-label="Ver por unidades">
                 <VIcon icon="tabler-package" size="20" />
               </VBtn>
             </VBtnToggle>
 
-            <VDivider vertical class="mx-1 my-2 border-opacity-10" />
+            <VDivider vertical class="mx-1 my-2 border-opacity-10 d-none d-sm-block" />
 
-            <!-- Toggle Filtros -->
+            <!-- Filtros Avanzados -->
             <VBtn
               icon
               variant="tonal"
@@ -357,6 +221,7 @@ const handleExport = () => {
               size="38"
               class="rounded-circle shadow-sm"
               :disabled="loading"
+              aria-label="Mostrar filtros avanzados"
               @click="isAdvancedFiltersVisible = !isAdvancedFiltersVisible"
             >
               <VBadge
@@ -381,13 +246,14 @@ const handleExport = () => {
               class="rounded-circle shadow-sm"
               :loading="loading"
               :disabled="loading"
+              aria-label="Aplicar filtros"
               @click="expiryStore.fetchDashboardData()"
             >
               <VIcon icon="tabler-player-play" size="20" />
               <VTooltip activator="parent" location="top">Aplicar Filtros</VTooltip>
             </VBtn>
 
-            <VDivider vertical class="mx-1 my-2 border-opacity-10" />
+            <VDivider vertical class="mx-1 my-2 border-opacity-10 d-none d-sm-block" />
 
             <!-- Limpiar Filtros -->
             <VBtn
@@ -397,13 +263,14 @@ const handleExport = () => {
               size="38"
               class="rounded-circle shadow-sm"
               :disabled="loading"
+              aria-label="Limpiar filtros"
               @click="resetFilters"
             >
               <VIcon icon="tabler-eraser" size="20" />
               <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
             </VBtn>
 
-            <!-- Exportar -->
+            <!-- Exportar CSV -->
             <VBtn
               icon
               variant="tonal"
@@ -411,19 +278,19 @@ const handleExport = () => {
               size="38"
               class="rounded-circle shadow-sm"
               :disabled="loading"
+              aria-label="Exportar reporte CSV"
               @click="handleExport"
             >
               <VIcon icon="tabler-download" size="20" />
-              <VTooltip activator="parent" location="top">Exportar</VTooltip>
+              <VTooltip activator="parent" location="top">Exportar CSV</VTooltip>
             </VBtn>
           </div>
         </VRow>
 
-        <!-- Panel de Filtros Avanzado -->
+        <!-- Filtros Avanzados colapsables -->
         <VExpandTransition>
           <div v-show="isAdvancedFiltersVisible">
             <VDivider class="my-3 border-opacity-10" />
-            
             <VRow>
               <VCol cols="12" sm="6" md="4">
                 <AppAutocomplete
@@ -440,7 +307,6 @@ const handleExport = () => {
                   :disabled="loading"
                 />
               </VCol>
-
               <VCol cols="12" sm="6" md="4">
                 <AppSelect
                   v-model="filters.category_id"
@@ -456,7 +322,6 @@ const handleExport = () => {
                   :disabled="loading"
                 />
               </VCol>
-
               <VCol cols="12" sm="6" md="4">
                 <AppSelect
                   v-model="filters.group_id"
@@ -478,53 +343,13 @@ const handleExport = () => {
       </VCardText>
     </VCard>
 
-    <!-- Row 1: KPI Cards -->
-    <VRow class="mb-4">
-      <VCol cols="12" sm="6" md="3" v-for="(kpi, idx) in [
-        { 
-          title: 'Vencido (Mes)', 
-          mainValue: formatNumber(dashboardData.kpis.total_units_expired_month) + ' U.', 
-          subValue: formatMoney(dashboardData.kpis.total_cost_merma_month),
-          icon: 'tabler-package-off', color: 'error', desc: 'Perdida total' 
-        },
-        { 
-          title: 'Stock Riesgo (<6m)', 
-          mainValue: formatNumber(dashboardData.horizon.reduce((a, b) => a + parseFloat(b.total_units), 0)) + ' U.',
-          subValue: '= ' + formatMoney(dashboardData.horizon.reduce((a, b) => a + parseFloat(b.total_value), 0)),
-          icon: 'tabler-alert-triangle', color: 'warning', desc: 'Fondo próximo' 
-        },
-        { 
-          title: 'Excedente Unidades', 
-          mainValue: formatNumber(dashboardData.overstock.reduce((a, b) => a + b.excedente_proyectado, 0)) + ' U.',
-          subValue: '= ' + formatMoney(dashboardData.overstock.reduce((a, b) => a + b.costo_excedente, 0)),
-          icon: 'tabler-chart-bar-off', color: 'info', desc: 'Sobre existencia' 
-        },
-        { 
-          title: 'Costo Excedente', 
-          mainValue: formatMoney(dashboardData.overstock.reduce((a, b) => a + b.costo_excedente, 0)),
-          subValue: 'Impacto total',
-          icon: 'tabler-cash-off', color: 'secondary', desc: 'Capital estancado' 
-        }
-      ]" :key="idx">
-        <VCard class="rounded-lg border shadow-sm">
-          <VCardText class="pa-4 d-flex align-center">
-            <VAvatar :color="kpi.color" variant="tonal" size="48" rounded="lg" class="me-4 font-weight-bold">
-              <VIcon :icon="kpi.icon" size="24" />
-            </VAvatar>
-            <div>
-              <p class="text-caption text-disabled mb-0 font-weight-bold truncate" style="max-width: 150px">{{ kpi.title }}</p>
-              <h3 class="text-h5 font-weight-black">{{ kpi.mainValue }}</h3>
-              <p class="text-xs font-weight-bold text-medium-emphasis mb-0 mt-0">
-                {{ kpi.subValue }}
-              </p>
-              <p class="text-super-xs text-disabled mb-0">{{ kpi.desc }}</p>
-            </div>
-          </VCardText>
-        </VCard>
-      </VCol>
-    </VRow>
+    <!-- ─── KPI Cards (componente desacoplado) ───────────────────────── -->
+    <ExpiryKpiCards
+      :dashboard-data="dashboardData"
+      :loading="loading"
+    />
 
-    <!-- Row 2: Charts (Horizon & Trend) -->
+    <!-- ─── Gráficos: Horizonte & Tendencia ──────────────────────────── -->
     <VRow class="mb-6">
       <VCol cols="12" md="6">
         <VCard class="rounded-lg border shadow-sm h-full">
@@ -535,9 +360,7 @@ const handleExport = () => {
             </VCardTitle>
           </VCardItem>
           <VCardText class="position-relative" style="min-height: 380px;">
-            <div v-if="loading" class="position-absolute d-flex justify-center align-center" style="top: 0; left: 0; right: 0; bottom: 0; background: rgba(var(--v-theme-surface), 0.75); backdrop-filter: blur(2px); z-index: 5; border-radius: 8px;">
-              <VProgressCircular indeterminate color="primary" />
-            </div>
+            <ExpiryChartOverlay :loading="loading" />
             <VueApexCharts
               :key="`horizon-${metricType}`"
               height="350"
@@ -547,7 +370,7 @@ const handleExport = () => {
           </VCardText>
         </VCard>
       </VCol>
-      
+
       <VCol cols="12" md="6">
         <VCard class="rounded-lg border shadow-sm h-full">
           <VCardItem>
@@ -557,9 +380,7 @@ const handleExport = () => {
             </VCardTitle>
           </VCardItem>
           <VCardText class="position-relative" style="min-height: 380px;">
-            <div v-if="loading" class="position-absolute d-flex justify-center align-center" style="top: 0; left: 0; right: 0; bottom: 0; background: rgba(var(--v-theme-surface), 0.75); backdrop-filter: blur(2px); z-index: 5; border-radius: 8px;">
-              <VProgressCircular indeterminate color="primary" />
-            </div>
+            <ExpiryChartOverlay :loading="loading" />
             <VueApexCharts
               :key="`trend-${metricType}`"
               height="350"
@@ -571,10 +392,10 @@ const handleExport = () => {
       </VCol>
     </VRow>
 
-    <!-- Row 3: Action & Risk (Scatter & Table) -->
+    <!-- ─── Gráfico: Top 10 Riesgo Financiero ───────────────────────── -->
     <VRow>
-      <VCol cols="12" md="12">
-        <VCard class="rounded-lg border shadow-sm h-full">
+      <VCol cols="12">
+        <VCard class="rounded-lg border shadow-sm">
           <VCardItem>
             <VCardTitle class="d-flex align-center">
               <VIcon icon="tabler-alert-triangle" class="me-2 text-error" />
@@ -582,9 +403,7 @@ const handleExport = () => {
             </VCardTitle>
           </VCardItem>
           <VCardText class="position-relative" style="min-height: 380px;">
-            <div v-if="loading" class="position-absolute d-flex justify-center align-center" style="top: 0; left: 0; right: 0; bottom: 0; background: rgba(var(--v-theme-surface), 0.75); backdrop-filter: blur(2px); z-index: 5; border-radius: 8px;">
-              <VProgressCircular indeterminate color="primary" />
-            </div>
+            <ExpiryChartOverlay :loading="loading" />
             <VueApexCharts
               :key="`risk-${metricType}`"
               height="350"
@@ -595,53 +414,17 @@ const handleExport = () => {
         </VCard>
       </VCol>
 
+      <!-- ─── Tabla Sobrestock (componente desacoplado) ─────────────── -->
       <VCol cols="12" md="8">
-        <VCard class="rounded-lg border shadow-sm h-full">
-          <VCardItem>
-            <VCardTitle class="d-flex align-center justify-space-between">
-              <div class="d-flex align-center">
-                <VIcon icon="tabler-alert-square" class="me-2 text-warning" />
-                Alerta de Sobrestock Proyectado
-              </div>
-            </VCardTitle>
-          </VCardItem>
-          <VDivider class="opacity-10" />
-          <VCardText class="pa-0">
-             <VDataTable
-              :headers="overstockHeaders"
-              :items="aggregatedOverstock"
-              :loading="loading"
-              class="premium-table density-compact"
-              :items-per-page="itemsPerPage"
-              no-data-text="No se detectaron riesgos de sobrestock"
-            >
-              <template #item.name="{ item }">
-                <div class="d-flex flex-column py-2">
-                  <span class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate" style="max-inline-size: 350px;">
-                    {{ item.name }}
-                  </span>
-                  <span class="text-super-xs text-disabled">ID: {{ item.product_id }} | {{ item.laboratory_name }}</span>
-                </div>
-              </template>
-              <template #item.venta_mensual_promedio="{ item }">
-                <span class="text-xs">{{ formatNumber(item.venta_mensual_promedio) }}</span>
-              </template>
-              <template #item.stock_actual="{ item }">
-                <span class="font-weight-black">{{ formatNumber(item.stock_actual) }}</span>
-              </template>
-              <template #item.excedente_proyectado="{ item }">
-                <span :class="item.excedente_proyectado > 0 ? 'text-error font-weight-black' : ''">
-                  {{ formatNumber(item.excedente_proyectado) }}
-                </span>
-              </template>
-              <template #item.costo_excedente="{ item }">
-                <span class="font-weight-black">{{ formatMoney(item.costo_excedente) }}</span>
-              </template>
-             </VDataTable>
-          </VCardText>
-        </VCard>
+        <ExpiryOverstockTable
+          ref="overstockTableRef"
+          :items="dashboardData.overstock"
+          :loading="loading"
+          :items-per-page="10"
+        />
       </VCol>
 
+      <!-- ─── Historial de Mermas ───────────────────────────────────── -->
       <VCol cols="12" md="4">
         <VCard class="rounded-lg border shadow-sm h-full">
           <VCardItem>
@@ -651,9 +434,7 @@ const handleExport = () => {
             </VCardTitle>
           </VCardItem>
           <VCardText class="position-relative" style="min-height: 530px;">
-            <div v-if="loading" class="position-absolute d-flex justify-center align-center" style="top: 0; left: 0; right: 0; bottom: 0; background: rgba(var(--v-theme-surface), 0.75); backdrop-filter: blur(2px); z-index: 5; border-radius: 8px;">
-              <VProgressCircular indeterminate color="primary" />
-            </div>
+            <ExpiryChartOverlay :loading="loading" />
             <VueApexCharts
               :key="`history-${metricType}`"
               height="500"
@@ -665,7 +446,7 @@ const handleExport = () => {
       </VCol>
     </VRow>
 
-    <!-- Snackbar de notificaciones -->
+    <!-- ─── Snackbar de notificaciones ───────────────────────────────── -->
     <VSnackbar
       v-model="snackbar.show"
       :color="snackbar.color"
@@ -679,6 +460,7 @@ const handleExport = () => {
         </VBtn>
       </template>
     </VSnackbar>
+
   </VContainer>
 </template>
 
@@ -687,26 +469,9 @@ const handleExport = () => {
   background-color: transparent;
 }
 
-.premium-table :deep(th) {
-  background-color: #fff !important;
-  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
-  font-size: 0.65rem !important;
-  font-weight: 700 !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.5px !important;
+.gap-2 {
+  gap: 8px !important;
 }
-
-.premium-table :deep(td) {
-  font-size: 0.7rem !important;
-  height: 48px !important;
-}
-
-.text-super-xs {
-  font-size: 0.65rem !important;
-  line-height: 1.2;
-}
-
-.gap-2 { gap: 8px !important; }
 
 .premium-toggle {
   background: rgba(var(--v-theme-on-surface), 0.05) !important;
@@ -728,7 +493,7 @@ const handleExport = () => {
   box-shadow: 0 2px 8px rgba(var(--v-theme-primary), 0.4) !important;
 }
 
-/* Efecto de cristal para fondo dark si aplica */
+/* Dark mode — usa token del tema en lugar de #fff hardcodeado */
 .v-theme--dark .bg-surface {
   background-color: rgba(47, 51, 73, 0.7) !important;
   backdrop-filter: blur(10px);

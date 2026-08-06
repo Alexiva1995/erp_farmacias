@@ -14,10 +14,12 @@ class ExpiryReportRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'search'        => 'nullable|string|max:100',
+            'semaphore'     => 'nullable|string|in:vencido,critico,moderado,estable',
             'laboratory_id' => 'nullable|integer|exists:laboratories,id',
-            'category_id' => 'nullable|integer|exists:categories,id',
-            'group_id' => 'nullable|integer|exists:groups_products,id',
-            'location_id' => 'nullable|integer',
+            'category_id'   => 'nullable|integer|exists:categories,id',
+            'group_id'      => 'nullable|integer|exists:groups_products,id',
+            'location_id'   => 'nullable|integer',
         ];
     }
 }

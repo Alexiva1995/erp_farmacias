@@ -13,6 +13,11 @@ class LaboratoryMasterReportService
         protected LaboratoryMasterReportRepository $repository
     ) {}
 
+    public function getCatalogs(bool $groupByCorporate = false): Collection
+    {
+        return $this->repository->getCatalogs($groupByCorporate);
+    }
+
     public function getDashboardSummary(array $filters): array
     {
         return [
@@ -75,8 +80,8 @@ class LaboratoryMasterReportService
         })->values();
 
         // Calcular Market Share Relativo entre los dos (Total)
-        $revA = $dataA['top_products']->sum('revenue');
-        $revB = $dataB['top_products']->sum('revenue');
+        $revA = collect($dataA['top_products'])->sum('revenue');
+        $revB = collect($dataB['top_products'])->sum('revenue');
         $total = $revA + $revB;
 
         return [

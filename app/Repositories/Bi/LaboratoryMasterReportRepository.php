@@ -10,6 +10,24 @@ use Illuminate\Support\Collection;
 class LaboratoryMasterReportRepository
 {
     /**
+     * Obtener catálogo de laboratorios o grupos corporativos.
+     */
+    public function getCatalogs(bool $groupByCorporate = false): Collection
+    {
+        if ($groupByCorporate) {
+            return DB::table('groups_laboratories')
+                ->select('id', 'name')
+                ->orderBy('name')
+                ->get();
+        }
+
+        return DB::table('laboratories')
+            ->select('id', 'name')
+            ->orderBy('name')
+            ->get();
+    }
+
+    /**
      * Obtener Ranking de Laboratorios por Unidades, Valor (Venta Bruta) o Stock
      */
     public function getRankings(string $metric, int $page, array $filters)
@@ -34,14 +52,16 @@ class LaboratoryMasterReportRepository
                 DB::raw('COALESCE(groups_laboratories.id, laboratories.id) as aggregation_id'),
                 DB::raw('COALESCE(groups_laboratories.name, laboratories.name) as name'),
                 DB::raw(($metric === 'total_stock' || $metric === 'inventory_value' ? 'SUM(products.stock)' : 'SUM(order_details.quantity)') . ' as total_units'),
-                DB::raw(($metric === 'total_stock' || $metric === 'inventory_value' ? 'SUM(products.stock * products.unit_cost)' : 'SUM(order_details.quantity * order_details.unit_price_usd)') . ' as total_revenue'))
+                DB::raw(($metric === 'total_stock' || $metric === 'inventory_value' ? 'SUM(products.stock * products.unit_cost)' : 'SUM(order_details.quantity * order_details.unit_price_usd)') . ' as total_revenue')
+            )
             ->groupBy(DB::raw('COALESCE(groups_laboratories.id, laboratories.id)'), DB::raw('COALESCE(groups_laboratories.name, laboratories.name)'));
         } else {
             $baseQuery->select(
                 'laboratories.id as aggregation_id',
                 'laboratories.name',
                 DB::raw(($metric === 'total_stock' || $metric === 'inventory_value' ? 'SUM(products.stock)' : 'SUM(order_details.quantity)') . ' as total_units'),
-                DB::raw(($metric === 'total_stock' || $metric === 'inventory_value' ? 'SUM(products.stock * products.unit_cost)' : 'SUM(order_details.quantity * order_details.unit_price_usd)') . ' as total_revenue'))
+                DB::raw(($metric === 'total_stock' || $metric === 'inventory_value' ? 'SUM(products.stock * products.unit_cost)' : 'SUM(order_details.quantity * order_details.unit_price_usd)') . ' as total_revenue')
+            )
             ->groupBy('laboratories.id', 'laboratories.name');
         }
 
@@ -54,7 +74,7 @@ class LaboratoryMasterReportRepository
     /**
      * Obtener Rentabilidad (Margen %) por Laboratorio
      */
-    public function getProfitability(array $filters)
+    public function getProfitability(array $filters): Collection
     {
         $startDate = $filters['start_date'] ?? now()->startOfMonth()->format('Y-m-d');
         $endDate = $filters['end_date'] ?? now()->format('Y-m-d');
@@ -95,7 +115,7 @@ class LaboratoryMasterReportRepository
     /**
      * Datos de Tendencia para los Top 5 Laboratorios
      */
-    public function getTrendData(array $filters)
+    public function getTrendData(array $filters): Collection
     {
         $startDate = $filters['start_date'] ?? now()->subMonths(6)->startOfMonth()->format('Y-m-d');
         $endDate = $filters['end_date'] ?? now()->format('Y-m-d');
@@ -122,7 +142,9 @@ class LaboratoryMasterReportRepository
             ->limit(5)
             ->pluck('master_id');
 
-        if ($top5Ids->isEmpty()) return collect([]);
+        if ($top5Ids->isEmpty()) {
+            return collect([]);
+        }
 
         // 2. Tendencia
         $query = DB::table('order_details')
@@ -157,7 +179,7 @@ class LaboratoryMasterReportRepository
     /**
      * Stock on Hand por Laboratorio
      */
-    public function getStockOnHand(array $filters)
+    public function getStockOnHand(array $filters): Collection
     {
         $metric = $filters['metric'] ?? 'inventory_value';
         $orderBy = $metric === 'total_stock' ? 'total_stock' : 'inventory_value';
@@ -191,16 +213,14 @@ class LaboratoryMasterReportRepository
     }
 
     /**
-     * Deep Dive de un Laboratorio específico
+     * Deep Dive de un Laboratorio específico (Limitado a Top 50 productos para evitar payload masivo)
      */
-    public function getLaboratoryDetails(int $id, array $filters)
+    public function getLaboratoryDetails(int $id, array $filters): array
     {
         $startDate = $filters['start_date'] ?? now()->startOfMonth()->format('Y-m-d');
         $endDate = $filters['end_date'] ?? now()->format('Y-m-d');
         $groupByCorporate = filter_var($filters['group_by_corporate'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
-        // Si es corporativo, el ID recibido es el group_id (o lab_id si no tiene grupo)
-        // Necesitamos filtrar productos que pertenezcan a ese grupo o a ese laboratorio individual
         $queryBase = DB::table('order_details')
             ->join('orders', 'order_details.order_id', '=', 'orders.id')
             ->join('products', 'order_details.product_id', '=', 'products.id')
@@ -219,7 +239,7 @@ class LaboratoryMasterReportRepository
             $queryBase->where('products.laboratory_id', $id);
         }
 
-        // Todos los productos con ventas en el periodo (para benchmarking completo)
+        // Top 50 productos con ventas en el periodo
         $topProducts = (clone $queryBase)
             ->select(
                 'products.id',
@@ -231,6 +251,7 @@ class LaboratoryMasterReportRepository
             )
             ->groupBy('products.id', 'products.name', 'products.group_id')
             ->orderByDesc('revenue')
+            ->limit(50)
             ->get();
 
         // Ventas por grupo de productos
@@ -248,8 +269,8 @@ class LaboratoryMasterReportRepository
         // KPIs Generales
         $stats = (clone $queryBase)
             ->select(
-                DB::raw('SUM(order_details.quantity * order_details.unit_price_usd) / COUNT(DISTINCT orders.id) as avg_ticket'),
-                DB::raw('SUM(order_details.quantity * (order_details.unit_price_usd - order_details.unit_cost)) / SUM(order_details.quantity * order_details.unit_price_usd) * 100 as avg_margin_percent')
+                DB::raw('SUM(order_details.quantity * order_details.unit_price_usd) / NULLIF(COUNT(DISTINCT orders.id), 0) as avg_ticket'),
+                DB::raw('SUM(order_details.quantity * (order_details.unit_price_usd - order_details.unit_cost)) / NULLIF(SUM(order_details.quantity * order_details.unit_price_usd), 0) * 100 as avg_margin_percent')
             )
             ->first();
 

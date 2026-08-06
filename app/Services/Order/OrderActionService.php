@@ -1176,13 +1176,19 @@ class OrderActionService
                 $client->save();
             }
 
-            if ($request->credit) {
+            $hasCreditInRequest = filter_var($request->credit, FILTER_VALIDATE_BOOLEAN) || 
+                collect($request->payments)->contains(function ($payment) {
+                    $method = is_array($payment) ? ($payment['method'] ?? '') : ($payment->method ?? '');
+                    return strtolower((string) $method) === 'credit';
+                });
+
+            if ($hasCreditInRequest) {
                 // El crédito siempre es por el total de la orden (solo completo)
                 $creditAmount = (float) $orderId->total_amount;
 
                 if ($creditAmount > 0) {
                     Credit::create([
-                        'client_id' => $request->client_id,
+                        'client_id' => $request->client_id ?? $orderId->client_id,
                         'order_id' => $orderId->id,
                         'credit_amount' => $creditAmount,
                         'pending_amount' => $creditAmount,

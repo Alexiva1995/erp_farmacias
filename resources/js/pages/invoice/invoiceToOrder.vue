@@ -240,6 +240,7 @@ const handleReturnInvoice = async (invoiceId) => {
         :highlighted-id="selectedInvoiceId"
         actions-mode="location"
         @update:options="updateTableOptions"
+        @locate-products="handleReviewInvoice"
         @edit-invoice="handleReviewInvoice"
         @return-invoice="handleReturnInvoice"
       />
@@ -251,7 +252,7 @@ const handleReturnInvoice = async (invoiceId) => {
         :initial-invoice="selectedInvoice"
         :payment-rules="availablePaymentRules"
         :is-saving="isApproving"
-        mode="approval"
+        mode="location"
         @back-to-list="handleReturnToList"
         @confirm-approval="handleApprovalApiCall"
         @reject-invoice="handleRejectApiCall"

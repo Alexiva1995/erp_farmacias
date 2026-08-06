@@ -6,7 +6,6 @@ namespace App\Repositories\Bi;
 
 use App\Contracts\CustomerAnalytics;
 use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
 
 class CustomerAnalyticsRepository implements CustomerAnalytics
 {
@@ -15,29 +14,28 @@ class CustomerAnalyticsRepository implements CustomerAnalytics
         $startDate = $filters['start_date'] ?? now()->startOfMonth()->format('Y-m-d');
         $endDate = $filters['end_date'] ?? now()->format('Y-m-d');
 
-        // Clientes Totales que han comprado en el rango de fechas
-        $totalCustomers = DB::table('orders')
+        // 1. Agregado único de Clientes Totales y Ingreso Total en el rango de fechas
+        $stats = DB::table('orders')
             ->where('status', 'Completed')
             ->whereBetween('order_date', [$startDate, $endDate])
-            ->distinct('client_id')
-            ->count('client_id');
+            ->selectRaw('COUNT(DISTINCT client_id) as total_customers, SUM(total_amount_usd) as total_revenue')
+            ->first();
 
-        // Clientes con más de una compra (Recompra) en el rango de fechas
-        $repurchaseCount = DB::table('orders')
-            ->where('status', 'Completed')
-            ->whereBetween('order_date', [$startDate, $endDate])
-            ->select('client_id')
-            ->groupBy('client_id')
-            ->having(DB::raw('count(*)'), '>', 1)
-            ->get()
-            ->count();
+        $totalCustomers = (int) ($stats->total_customers ?? 0);
+        $totalRevenue = (float) ($stats->total_revenue ?? 0);
 
-        // LTV Promedio en el rango de fechas
-        $totalRevenue = DB::table('orders')
-            ->where('status', 'Completed')
-            ->whereBetween('order_date', [$startDate, $endDate])
-            ->sum('total_amount_usd');
-        
+        // 2. Conteo eficiente en SQL de Clientes con más de una compra (Recompra)
+        $repurchaseCount = 0;
+        if ($totalCustomers > 0) {
+            $repurchaseCount = DB::table('orders')
+                ->select('client_id')
+                ->where('status', 'Completed')
+                ->whereBetween('order_date', [$startDate, $endDate])
+                ->groupBy('client_id')
+                ->havingRaw('COUNT(*) > 1')
+                ->count();
+        }
+
         $avgLtv = $totalCustomers > 0 ? $totalRevenue / $totalCustomers : 0;
 
         return [
@@ -53,10 +51,9 @@ class CustomerAnalyticsRepository implements CustomerAnalytics
         $startDate = $filters['start_date'] ?? now()->subMonth()->startOfMonth()->format('Y-m-d');
         $endDate = $filters['end_date'] ?? now()->format('Y-m-d');
 
-        // Clientes nuevos por día en el rango
         $newCustomersDaily = DB::table('clients')
             ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
-            ->select(DB::raw('DATE(created_at) as date'), DB::raw('count(*) as count'))
+            ->select(DB::raw('DATE(created_at) as date'), DB::raw('COUNT(*) as count'))
             ->groupBy('date')
             ->orderBy('date')
             ->get();
@@ -71,16 +68,18 @@ class CustomerAnalyticsRepository implements CustomerAnalytics
         $startDate = $filters['start_date'] ?? now()->subYear()->format('Y-m-d');
         $endDate = $filters['end_date'] ?? now()->format('Y-m-d');
 
-        $distribution = DB::table('orders')
+        // Agregación directa en SQL mediante subconsulta
+        $sub = DB::table('orders')
             ->where('status', 'Completed')
             ->whereBetween('order_date', [$startDate, $endDate])
-            ->select('client_id', DB::raw('count(*) as order_count'))
-            ->groupBy('client_id')
-            ->get()
+            ->select('client_id', DB::raw('COUNT(*) as order_count'))
+            ->groupBy('client_id');
+
+        $distribution = DB::query()
+            ->fromSub($sub, 'user_orders')
+            ->select('order_count', DB::raw('COUNT(*) as total'))
             ->groupBy('order_count')
-            ->map(function ($group) {
-                return $group->count();
-            })
+            ->pluck('total', 'order_count')
             ->toArray();
 
         return $distribution;
@@ -91,7 +90,6 @@ class CustomerAnalyticsRepository implements CustomerAnalytics
         $startDate = $filters['start_date'] ?? now()->startOfMonth()->format('Y-m-d');
         $endDate = $filters['end_date'] ?? now()->format('Y-m-d');
 
-        // Gasto total por cliente en el periodo seleccionado
         $customers = DB::table('orders')
             ->where('status', 'Completed')
             ->whereBetween('order_date', [$startDate, $endDate])
@@ -101,9 +99,11 @@ class CustomerAnalyticsRepository implements CustomerAnalytics
             ->get();
 
         $totalCount = $customers->count();
-        if ($totalCount === 0) return [];
+        if ($totalCount === 0) {
+            return [];
+        }
 
-        $totalRevenue = $customers->sum('total_spent');
+        $totalRevenue = (float) $customers->sum('total_spent');
 
         $platinumCount = max(1, (int) ($totalCount * 0.05));
         $goldCount = max(1, (int) ($totalCount * 0.15));
@@ -117,37 +117,35 @@ class CustomerAnalyticsRepository implements CustomerAnalytics
         return [
             'platinum' => [
                 'count' => $platinum->count(),
-                'revenue' => $platinum->sum('total_spent'),
-                'avg_per_client' => $platinum->avg('total_spent')
+                'revenue' => (float) $platinum->sum('total_spent'),
+                'avg_per_client' => (float) ($platinum->avg('total_spent') ?? 0),
             ],
             'gold' => [
                 'count' => $gold->count(),
-                'revenue' => $gold->sum('total_spent'),
-                'avg_per_client' => $gold->avg('total_spent')
+                'revenue' => (float) $gold->sum('total_spent'),
+                'avg_per_client' => (float) ($gold->avg('total_spent') ?? 0),
             ],
             'silver' => [
                 'count' => $silver->count(),
-                'revenue' => $silver->sum('total_spent'),
-                'avg_per_client' => $silver->avg('total_spent')
+                'revenue' => (float) $silver->sum('total_spent'),
+                'avg_per_client' => (float) ($silver->avg('total_spent') ?? 0),
             ],
             'bronze' => [
                 'count' => $bronze->count(),
-                'revenue' => $bronze->sum('total_spent'),
-                'avg_per_client' => $bronze->avg('total_spent')
+                'revenue' => (float) $bronze->sum('total_spent'),
+                'avg_per_client' => (float) ($bronze->avg('total_spent') ?? 0),
             ],
-            'total_revenue' => $totalRevenue
+            'total_revenue' => $totalRevenue,
         ];
     }
 
     public function getCohortData(array $filters): array
     {
-        // 1. Obtener la fecha de primera compra para cada cliente
         $firstPurchases = DB::table('orders')
             ->where('status', 'Completed')
             ->select('client_id', DB::raw('MIN(order_date) as first_purchase'))
             ->groupBy('client_id');
 
-        // 2. Unir con todas sus compras para ver la retención por mes - SQLite friendly
         if (DB::connection()->getDriverName() === 'sqlite') {
             $cohorts = DB::table('orders')
                 ->joinSub($firstPurchases, 'first_orders', function ($join) {
@@ -204,9 +202,9 @@ class CustomerAnalyticsRepository implements CustomerAnalytics
             )
             ->groupBy('clients.id', 'clients.name', 'clients.last_name', 'clients.phone')
             ->having(DB::raw($recencyExpr), '>', 60)
-            ->having(function($query) {
+            ->having(function ($query) {
                 $query->having(DB::raw('COUNT(*)'), '>', 5)
-                      ->orHaving(DB::raw('SUM(orders.total_amount_usd)'), '>', 100);
+                    ->orHaving(DB::raw('SUM(orders.total_amount_usd)'), '>', 100);
             })
             ->orderByDesc(DB::raw('SUM(orders.total_amount_usd)'))
             ->limit(10)

@@ -93,10 +93,6 @@ const headers = computed(() => {
     { title: "Vencimiento", key: "exp_date", sortable: true },
   ];
 
-  if (props.actionsMode === "location") {
-    baseHeaders.push({ title: "Localización", key: "locations_summary", sortable: true });
-  }
-
   if (props.actionsMode === "ordered") {
     baseHeaders.push({ title: "Operador", key: "ordered_by_user.name", sortable: false });
   }

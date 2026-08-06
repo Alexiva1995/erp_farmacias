@@ -101,15 +101,16 @@ class CustomerAnalyticsService
             ->distinct('client_id')
             ->count('client_id');
 
-        if ($totalActive === 0) return 0;
+        if ($totalActive === 0) {
+            return 0.0;
+        }
 
-        // Clientes que no han comprado en 90 días
+        // Conteo directo en base de datos de clientes que no han comprado en 90 días
         $churned = DB::table('orders')
+            ->select('client_id')
             ->where('status', 'Completed')
-            ->select('client_id', DB::raw('MAX(order_date) as last_order'))
             ->groupBy('client_id')
-            ->having('last_order', '<', $threeMonthsAgo)
-            ->get()
+            ->havingRaw('MAX(order_date) < ?', [$threeMonthsAgo])
             ->count();
 
         return ($churned / $totalActive) * 100;
