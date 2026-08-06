@@ -102,7 +102,7 @@ export function useTpvOrderManager({
           openOrderData.value = null
           reservedOrderData.value = null
           selectedClient.value = null
-          selectedDisplayCurrency.value = defaultCurrency.value
+          selectedDisplayCurrency.value = getLastCurrency()
           orderItems.value = []
         }
         if (foreignOrdersCount) foreignOrdersCount.value = response.data.data.foreign_orders_count || 0
@@ -111,7 +111,7 @@ export function useTpvOrderManager({
         openOrderData.value = null
         reservedOrderData.value = null
         selectedClient.value = null
-        selectedDisplayCurrency.value = defaultCurrency.value
+        selectedDisplayCurrency.value = getLastCurrency()
         orderItems.value = []
         if (foreignOrdersCount) foreignOrdersCount.value = 0
       }
@@ -207,7 +207,7 @@ export function useTpvOrderManager({
       hasOpenOrder.value = false
       openOrderData.value = null
       selectedClient.value = null
-      selectedDisplayCurrency.value = defaultCurrency.value
+      selectedDisplayCurrency.value = getLastCurrency()
       orderItems.value = []
     } catch (error) {
       console.error('Error al abandonar la orden:', error)
@@ -221,7 +221,7 @@ export function useTpvOrderManager({
       hasOpenOrder.value = false
       openOrderData.value = null
       selectedClient.value = null
-      selectedDisplayCurrency.value = defaultCurrency.value
+      selectedDisplayCurrency.value = getLastCurrency()
       orderItems.value = []
       reservedOrderData.value = response.data.data.reserved_order
       toast.success('Orden reservada exitosamente.')
@@ -231,6 +231,21 @@ export function useTpvOrderManager({
     } catch (error) {
       console.error('Error al reservar la orden:', error)
       toast.error('Error al reservar la orden.')
+    }
+  }
+
+  const finalizeAndCheckPending = (options = {}) => {
+    const { clientIdentification, pendingOpenOrder } = options || {}
+    showBuysModal.value = false
+    hasOpenOrder.value = false
+    openOrderData.value = null
+    selectedDisplayCurrency.value = getLastCurrency()
+    orderItems.value = []
+    selectedClient.value = null
+    if (clientIdentification) clientIdentification.value = ''
+    reservedOrderData.value = null
+    if (isRestaurant.value || isSportsRental.value) {
+      fetchPedidosList()
     }
   }
 
