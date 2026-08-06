@@ -12,6 +12,7 @@ use App\Http\Resources\AutoReplenishmentConfigResource;
 use App\Services\AutoReplenishmentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\Log;
 
 class AutoReplenishmentConfigController extends Controller
 {
@@ -34,21 +35,45 @@ class AutoReplenishmentConfigController extends Controller
      */
     public function store(StoreAutoReplenishmentConfigRequest $request): JsonResponse
     {
-        $config = $this->service->createConfig($request->validated());
+        try {
+            $config = $this->service->createConfig($request->validated());
 
-        return (new AutoReplenishmentConfigResource($config))
-            ->response()
-            ->setStatusCode(201);
+            return (new AutoReplenishmentConfigResource($config))
+                ->response()
+                ->setStatusCode(201);
+        } catch (\Throwable $e) {
+            Log::error('Error al guardar AutoReplenishmentConfig: ' . $e->getMessage(), [
+                'exception' => $e,
+                'payload' => $request->all(),
+            ]);
+
+            return response()->json([
+                'message' => 'Error al guardar la configuración.',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
      * Actualizar una configuración existente.
      */
-    public function update(UpdateAutoReplenishmentConfigRequest $request, AutoReplenishmentConfig $config): AutoReplenishmentConfigResource
+    public function update(UpdateAutoReplenishmentConfigRequest $request, AutoReplenishmentConfig $config): JsonResponse
     {
-        $updatedConfig = $this->service->updateConfig($config, $request->validated());
+        try {
+            $updatedConfig = $this->service->updateConfig($config, $request->validated());
 
-        return new AutoReplenishmentConfigResource($updatedConfig);
+            return response()->json(new AutoReplenishmentConfigResource($updatedConfig));
+        } catch (\Throwable $e) {
+            Log::error("Error al actualizar AutoReplenishmentConfig #{$config->id}: " . $e->getMessage(), [
+                'exception' => $e,
+                'payload'   => $request->all(),
+            ]);
+
+            return response()->json([
+                'message' => 'Error al actualizar la configuración.',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
@@ -56,9 +81,20 @@ class AutoReplenishmentConfigController extends Controller
      */
     public function destroy(AutoReplenishmentConfig $config): JsonResponse
     {
-        $this->service->deleteConfig($config);
+        try {
+            $this->service->deleteConfig($config);
 
-        return response()->json(['message' => 'Configuración eliminada.']);
+            return response()->json(['message' => 'Configuración eliminada.']);
+        } catch (\Throwable $e) {
+            Log::error("Error al eliminar AutoReplenishmentConfig #{$config->id}: " . $e->getMessage(), [
+                'exception' => $e,
+            ]);
+
+            return response()->json([
+                'message' => 'Error al eliminar la configuración.',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
@@ -66,13 +102,24 @@ class AutoReplenishmentConfigController extends Controller
      */
     public function run(AutoReplenishmentConfig $config): JsonResponse
     {
-        $result = $this->service->runConfig($config);
+        try {
+            $result = $this->service->runConfig($config);
 
-        return response()->json([
-            'message'           => $result['message'],
-            'last_run_at'       => $result['last_run_at'],
-            'last_run_products' => $result['last_run_products'],
-            'last_run_orders'   => $result['last_run_orders'],
-        ], $result['success'] ? 200 : 500);
+            return response()->json([
+                'message'           => $result['message'],
+                'last_run_at'       => $result['last_run_at'],
+                'last_run_products' => $result['last_run_products'],
+                'last_run_orders'   => $result['last_run_orders'],
+            ], $result['success'] ? 200 : 500);
+        } catch (\Throwable $e) {
+            Log::error("Error al ejecutar AutoReplenishmentConfig #{$config->id}: " . $e->getMessage(), [
+                'exception' => $e,
+            ]);
+
+            return response()->json([
+                'message' => 'Error al ejecutar la configuración.',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
     }
 }

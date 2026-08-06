@@ -706,7 +706,9 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
     });
 
     // Rutas para configuración de automatización de pedidos (Auto-Replenishment)
-    Route::apiResource('auto-replenishment-configs', AutoReplenishmentConfigController::class);
+    Route::apiResource('auto-replenishment-configs', AutoReplenishmentConfigController::class)->parameters([
+        'auto-replenishment-configs' => 'config',
+    ]);
     Route::post('auto-replenishment-configs/{config}/run', [AutoReplenishmentConfigController::class, 'run']);
 
     Route::prefix("market-opportunities")->group(function () {

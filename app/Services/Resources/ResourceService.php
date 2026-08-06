@@ -156,21 +156,28 @@ class ResourceService
             throw new ModelNotFoundException("Producto con código de barras '{$barcode}' no encontrado.");
         }
 
-        $foundProduct->loadMissing('laboratory');
-
-        return $foundProduct;
+        return $this->loadProductDetails($foundProduct);
     }
 
     public function loadProductDetails(Product $product): Product
     {
+        if (!$product) {
+            throw new ModelNotFoundException("Producto no encontrado.");
+        }
+
         $product->load([
             'laboratory',
         ]);
 
-        if (!$product) {
-            throw new ModelNotFoundException("Producto no encontrado.");
-        }
         $product->loadSum('lots', 'quantity');
+
+        $validStockSum = $product->lots()
+            ->where('expiration_date', '>=', now())
+            ->where('quantity', '>', 0)
+            ->sum('quantity');
+
+        $product->setAttribute('valid_stock_sum', (int) ($validStockSum ?? 0));
+
         return $product;
     }
 }

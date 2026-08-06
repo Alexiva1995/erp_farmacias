@@ -50,7 +50,7 @@ class GeminiService
                 . "IMPORTANTE: Si el final de la factura está cortado o no se visualiza el bloque de totales, calcula el total sumando los precios de todos los artículos visibles y asígnalo a 'total_amount'.\n"
                 . "Devuelve exclusivamente el JSON estructurado, sin rodeos, sin markdown block de tipo ```json, solo el objeto plano.";
 
-            $response = Http::withoutHeader('Authorization')->withHeaders([
+            $response = Http::withHeaders([
                 'x-goog-api-key' => $key,
             ])->timeout(30)->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent", [
                 'contents' => [
@@ -125,7 +125,7 @@ class GeminiService
                 . "}\n"
                 . "Devuelve exclusivamente el JSON estructurado, sin rodeos, sin bloques de código, solo el objeto plano.";
 
-            $response = Http::withoutHeader('Authorization')->withHeaders([
+            $response = Http::withHeaders([
                 'x-goog-api-key' => $key,
             ])->timeout(20)->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent", [
                 'contents' => [
@@ -215,7 +215,7 @@ class GeminiService
 
         try {
             for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
-                $response = Http::withoutHeader('Authorization')->withHeaders([
+                $response = Http::withHeaders([
                     'x-goog-api-key' => $key,
                 ])->timeout(25)->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent", [
                     'contents' => [
@@ -281,7 +281,7 @@ class GeminiService
         }
 
         try {
-            $response = Http::withoutHeader('Authorization')->withHeaders([
+            $response = Http::withHeaders([
                 'x-goog-api-key' => $key,
             ])->timeout(25)->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent", [
                 'contents' => [

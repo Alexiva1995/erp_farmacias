@@ -154,12 +154,12 @@ export function useTpvCart({
     try {
       // Si el catálogo ya pasó el objeto completo del producto, no hace falta un GET extra
       let productDetails = productData
-      if (!productDetails) {
+      if (!productDetails || (productDetails.lots_sum_quantity === undefined && productDetails.valid_stock_sum === undefined)) {
         const response = await axios.get(`/product/${productId}`)
         productDetails = response.data
       }
 
-      const availableQuantity = productDetails.lots_sum_quantity ?? productDetails.valid_stock_sum ?? 0
+      const availableQuantity = parseInt(productDetails.valid_stock_sum ?? productDetails.lots_sum_quantity ?? 0)
 
       const currentItemInOrder = orderItems.value.find((item) => item.product_id === productId)
       const currentQuantityInOrder = currentItemInOrder ? currentItemInOrder.selectedQuantity : 0

@@ -35,7 +35,7 @@ class AutoReplenishmentRepository implements AutoReplenishmentRepositoryInterfac
     public function update(AutoReplenishmentConfig $config, array $data): AutoReplenishmentConfig
     {
         $config->update($data);
-        return $config->fresh()->load('supplier:id,name');
+        return $config->fresh()?->load('supplier:id,name') ?? $config;
     }
 
     /**

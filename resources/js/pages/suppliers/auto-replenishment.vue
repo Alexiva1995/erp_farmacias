@@ -122,11 +122,17 @@ async function saveConfig() {
   dialogLoading.value = true;
   formErrors.value = {};
   try {
-    if (configForm.value.id) {
-      await axios.put(`/auto-replenishment-configs/${configForm.value.id}`, configForm.value);
+    const payload = {
+      ...configForm.value,
+      supplier_id: configForm.value.supplier_id ? Number(configForm.value.supplier_id) : null,
+      group_ids: Array.isArray(configForm.value.group_ids) ? configForm.value.group_ids : [],
+    };
+
+    if (payload.id) {
+      await axios.put(`/auto-replenishment-configs/${payload.id}`, payload);
       toast.success("Configuración actualizada correctamente");
     } else {
-      await axios.post("/auto-replenishment-configs", configForm.value);
+      await axios.post("/auto-replenishment-configs", payload);
       toast.success("Configuración creada correctamente");
     }
     dialogVisible.value = false;
@@ -136,7 +142,7 @@ async function saveConfig() {
       formErrors.value = error.response.data.errors || {};
       toast.error("Por favor verifique los campos requeridos.");
     } else {
-      toast.error("Error al guardar la configuración");
+      toast.error(error.response?.data?.message || "Error al guardar la configuración");
     }
   } finally {
     dialogLoading.value = false;

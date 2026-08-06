@@ -353,13 +353,14 @@ class InvoiceActionService
             // Crear lotes al aprobar (sin ubicación todavía, se actualizará después o se setea N/A)
             foreach ($invoice->details as $detail) {
                 // Convertir unit_cost a USD antes de crear el lote
-                $unitCostInInvoiceCurrency = $detail->unit_cost;
+                $unitCostInInvoiceCurrency = (float) $detail->unit_cost;
+                $rate = (float) ($invoice->exchange_rate ?? 1);
                 $unitCostInUSD = $invoice->currency === 'USD'
                     ? $unitCostInInvoiceCurrency
-                    : ($unitCostInInvoiceCurrency / ($invoice->exchange_rate ?? 1));
+                    : ($rate > 0 ? $unitCostInInvoiceCurrency / $rate : $unitCostInInvoiceCurrency);
 
                 // Crear lote
-                $productLot = $this->createProductLot($detail, $unitCostInUSD, $invoice);
+                $productLot = $this->createProductLot($detail, (float) $unitCostInUSD, $invoice);
 
                 if (!$enableInvoiceLocations) {
                     $productLot->update(['location' => 'N/A']);
