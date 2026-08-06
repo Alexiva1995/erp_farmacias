@@ -23,7 +23,7 @@ class InvoiceReturnResource extends JsonResource
             'product_id' => $this->product_id,
             'product_name' => $this->product?->name ?? 'Producto',
             'barcode' => $this->product?->barcode ?? '',
-            'sku' => $this->product?->sku ?? '',
+            'sku' => $this->product?->barcode ?? '',
             'quantity' => (float) $this->quantity,
             'amount_refunded' => (float) $this->amount_refunded,
             'supplier_discount_percentage' => (float) ($this->supplier_discount_percentage ?? 0),

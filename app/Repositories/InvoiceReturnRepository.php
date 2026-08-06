@@ -36,7 +36,7 @@ class InvoiceReturnRepository implements InvoiceReturnRepositoryInterface
                     $q->select(['id', 'name', 'rif']);
                 },
                 'product' => function ($q) {
-                    $q->select(['id', 'name', 'barcode', 'sku', 'iva']);
+                    $q->select(['id', 'name', 'barcode', 'iva']);
                 },
             ]);
 
@@ -97,7 +97,7 @@ class InvoiceReturnRepository implements InvoiceReturnRepositoryInterface
                 $q->select(['id', 'name', 'rif']);
             },
             'product' => function ($q) {
-                $q->select(['id', 'name', 'barcode', 'sku', 'iva']);
+                $q->select(['id', 'name', 'barcode', 'iva']);
             },
         ]);
     }
