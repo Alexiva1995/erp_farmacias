@@ -10,7 +10,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        DB::statement("ALTER TABLE invoices MODIFY COLUMN status ENUM('pending', 'loaded', 'to_order', 'ordered', 'deleted') NOT NULL DEFAULT 'pending'");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE invoices MODIFY COLUMN status ENUM('pending', 'loaded', 'to_order', 'ordered', 'deleted') NOT NULL DEFAULT 'pending'");
+        }
     }
 
     /**
@@ -18,6 +20,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        DB::statement("ALTER TABLE invoices MODIFY COLUMN status ENUM('pending', 'loaded', 'to_order', 'ordered') NOT NULL DEFAULT 'pending'");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE invoices MODIFY COLUMN status ENUM('pending', 'loaded', 'to_order', 'ordered') NOT NULL DEFAULT 'pending'");
+        }
     }
 };
