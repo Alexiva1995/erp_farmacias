@@ -128,7 +128,12 @@ class CashClosureQueryService
 
     private function getBaseQueryDaily(): Builder
     {
-        $query = DailyCashClosure::query()->with('cashClosings.seller');
+        $query = DailyCashClosure::query()->with([
+            'cashClosings.seller',
+            'cashClosings.orders' => function ($q) {
+                $q->where('status', 'Completed');
+            },
+        ]);
         if (Auth::check() && Auth::user()->role_id === 2) {
             $latestIds = DailyCashClosure::orderByDesc('id')->limit(10)->pluck('id');
             $query->whereIn('id', $latestIds);
