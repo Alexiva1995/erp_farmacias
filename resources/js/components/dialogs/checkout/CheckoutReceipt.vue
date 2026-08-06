@@ -3,9 +3,13 @@ import { BASE64_LOGO_DATA } from "@/constants/logo.js";
 import { useBrandingStore } from "@/stores/useBrandingStore";
 import { formatCurrency } from "@/utils/currencyFormatter";
 import { formatDateTime } from "@/utils/formatDateTime";
-import { computed } from "vue";
+import { computed, onMounted } from "vue";
 
 const brandingStore = useBrandingStore();
+
+onMounted(() => {
+  brandingStore.fetchSettings();
+});
 
 const props = defineProps({
   orderData: Object,

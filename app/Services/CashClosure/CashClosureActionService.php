@@ -229,12 +229,20 @@ class CashClosureActionService
                         $msg .= "✨ *Estado:* Cierre cuadrado correctamente sin diferencias.\n";
                     }
 
-                    $msg .= "\n💵 *Declaración realizada:* \n"
-                          . "• Efectivo COP: $" . number_format($decCop, 2) . "\n"
+                    $msg .= "\n📊 *Ventas registradas por el Sistema:*\n"
+                          . "• Efectivo COP: " . number_format($sysCop, 2) . " COP\n"
+                          . "• Efectivo USD: $" . number_format($sysUsd, 2) . "\n"
+                          . "• Pago Móvil / Transf BS: Bs " . number_format($sysBsMobile, 2) . "\n"
+                          . "• Tarjetas BS: Bs " . number_format($sysBsCard, 2) . "\n"
+                          . "• Crédito USD: $" . number_format($sysCredit, 2) . "\n"
+                          . "• Transferencia COP: " . number_format($sysCopTransfer, 2) . " COP\n";
+
+                    $msg .= "\n💵 *Declaración física del cajero:*\n"
+                          . "• Efectivo COP: " . number_format($decCop, 2) . " COP\n"
                           . "• Efectivo USD: $" . number_format($decUsd, 2) . "\n"
                           . "• Pago Móvil / Transf BS: Bs " . number_format($decBsMobile, 2) . "\n"
                           . "• Tarjetas BS: Bs " . number_format($decBsCard, 2) . "\n";
-                    
+
                     $telegram->sendToAdmin($msg);
                 }
             } catch (\Exception $e) {

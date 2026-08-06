@@ -1,4 +1,7 @@
+<script setup>
+import { computed } from "vue";
 import { useBrandingStore } from "@/stores/useBrandingStore";
+import { BASE64_LOGO_DATA } from "@/constants/logo.js";
 
 const brandingStore = useBrandingStore();
 const logoSrc = computed(() => brandingStore.settings?.app_logo || BASE64_LOGO_DATA);
