@@ -10,7 +10,8 @@ class UpdateTelegramConfigRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        // Solo administradores (role_id = 1) pueden modificar la configuración de Telegram.
+        return $this->user()?->role_id === 1;
     }
 
     public function rules(): array

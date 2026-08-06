@@ -75,16 +75,19 @@ class TelegramConfigController extends Controller
     {
         if (TelegramChannel::count() === 0) {
             $config = TelegramConfig::firstOrCreate(['id' => 1]);
-            $defaultChatId = $config->chat_id ?: (config('services.telegram.chat_id') ?: '-100123456789');
+            $defaultChatId = $config->chat_id ?: config('services.telegram.chat_id');
 
-            TelegramChannel::create([
-                'telegram_config_id' => $config->id,
-                'name' => 'Canal General Principal',
-                'chat_id' => $defaultChatId,
-                'module' => 'general',
-                'description' => 'Canal principal asignado a las notificaciones globales del sistema.',
-                'is_active' => true,
-            ]);
+            // Solo auto-crear el canal si existe un chat_id real configurado (no hardcodeado).
+            if ($defaultChatId) {
+                TelegramChannel::create([
+                    'telegram_config_id' => $config->id,
+                    'name'               => 'Canal General Principal',
+                    'chat_id'            => $defaultChatId,
+                    'module'             => 'general',
+                    'description'        => 'Canal principal asignado a las notificaciones globales del sistema.',
+                    'is_active'          => true,
+                ]);
+            }
         }
 
         $channels = TelegramChannel::orderBy('id', 'desc')->get();

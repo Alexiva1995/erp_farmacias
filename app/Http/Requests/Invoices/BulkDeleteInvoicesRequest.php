@@ -11,7 +11,8 @@ class BulkDeleteInvoicesRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return true;
+        // Solo administradores (role_id = 1) pueden ejecutar eliminación masiva de facturas.
+        return $this->user()?->role_id === 1;
     }
 
     /**

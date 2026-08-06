@@ -241,6 +241,7 @@ class InvoiceQueryService
             $query->where('status_payment', 0)
                 ->orWhereNull('status_payment');
         })
+            ->where('status', '!=', 'deleted')  // Excluir facturas eliminadas lógicamente
             ->where('total_usd', '>', 0)
             ->sum('total_usd');
 
