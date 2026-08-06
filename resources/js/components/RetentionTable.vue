@@ -392,7 +392,7 @@ const toggleSelection = (id) => {
 
 <style scoped>
 .premium-table :deep(.v-data-table-header th) {
-  background: white !important;
+  background: rgb(var(--v-theme-surface)) !important;
   color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)) !important;
   font-size: 0.75rem !important;
   font-weight: 700 !important;
@@ -461,7 +461,7 @@ const toggleSelection = (id) => {
 }
 
 .premium-pagination :deep(.v-btn) {
-  background-color: white !important;
+  background-color: rgb(var(--v-theme-surface)) !important;
   border: 1px solid rgba(var(--v-theme-on-surface), 0.05) !important;
 }
 

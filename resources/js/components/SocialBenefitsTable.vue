@@ -118,6 +118,7 @@ const getStatusText = (settlementDate) => settlementDate ? "LIQUIDADO" : "PENDIE
                     variant="tonal"
                     color="primary"
                     size="32"
+                    :disabled="props.loading"
                     class="rounded-circle shadow-sm"
                     @click="emit('download-settlement', item)"
                   />
@@ -132,6 +133,7 @@ const getStatusText = (settlementDate) => settlementDate ? "LIQUIDADO" : "PENDIE
                     variant="tonal"
                     color="warning"
                     size="32"
+                    :disabled="props.loading"
                     class="rounded-circle shadow-sm"
                     @click="emit('upload-signed', item)"
                   />
@@ -146,6 +148,7 @@ const getStatusText = (settlementDate) => settlementDate ? "LIQUIDADO" : "PENDIE
                     variant="tonal"
                     color="success"
                     size="32"
+                    :disabled="props.loading"
                     class="rounded-circle shadow-sm"
                     @click="emit('download-signed', item)"
                   />

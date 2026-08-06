@@ -22,7 +22,7 @@ class EmployeeAnalyticsRepository implements EmployeeAnalytics
         $startDate = $filters['start_date'] ?? now()->startOfMonth()->format('Y-m-d');
         $endDate = $filters['end_date'] ?? now()->format('Y-m-d');
 
-        $employees = Employee::where('is_active', true)->get();
+        $employees = Employee::with(['laboratories:id', 'products:id'])->where('is_active', true)->get();
 
         // 1. Obtener métricas agregadas de Órdenes en lote para evitar N+1
         $salesMetrics = DB::table('orders')
@@ -84,7 +84,7 @@ class EmployeeAnalyticsRepository implements EmployeeAnalytics
             ->get()
             ->keyBy('created_by');
 
-        // 5. Facturas procesadas en lote
+        // 6. Facturas procesadas en lote
         $invoicesMetrics = Invoice::whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->select(
                 DB::raw('COALESCE(registered_by, loaded_by, ordered_by) as user_id'),
@@ -94,7 +94,28 @@ class EmployeeAnalyticsRepository implements EmployeeAnalytics
             ->get()
             ->keyBy('user_id');
 
-        $data = $employees->map(function ($employee) use ($startDate, $endDate, $salesMetrics, $unitsSoldMetrics, $expiringSoldMetrics, $tasksMetrics, $inventoryMetrics, $quotationsMetrics, $invoicesMetrics) {
+        // 7. Unidades Estratégicas en lote (1 sola consulta SQL batch para todos los empleados)
+        $userIds = $employees->pluck('user_id')->filter()->toArray();
+        $strategicBatchMetrics = collect();
+        if (!empty($userIds)) {
+            $strategicBatchMetrics = DB::table('orders')
+                ->join('order_details', 'orders.id', '=', 'order_details.order_id')
+                ->join('products', 'products.id', '=', 'order_details.product_id')
+                ->whereIn('orders.seller_id', $userIds)
+                ->whereBetween('orders.order_date', [$startDate, $endDate])
+                ->where('orders.status', 'Completed')
+                ->select(
+                    'orders.seller_id',
+                    'products.laboratory_id',
+                    'products.id as product_id',
+                    DB::raw('SUM(order_details.quantity) as qty')
+                )
+                ->groupBy('orders.seller_id', 'products.laboratory_id', 'products.id')
+                ->get()
+                ->groupBy('seller_id');
+        }
+
+        $data = $employees->map(function ($employee) use ($startDate, $endDate, $salesMetrics, $unitsSoldMetrics, $expiringSoldMetrics, $tasksMetrics, $inventoryMetrics, $quotationsMetrics, $invoicesMetrics, $strategicBatchMetrics) {
             $userId = $employee->user_id;
             $employeeId = $employee->id;
 
@@ -106,22 +127,16 @@ class EmployeeAnalyticsRepository implements EmployeeAnalytics
             $quotes = $quotationsMetrics->get($userId);
             $invs = $invoicesMetrics->get($userId);
 
-            // Productos Estratégicos (Cálculo individual por asignación específica)
+            // Productos Estratégicos (Cálculo en memoria a partir de la consulta batch)
             $assignedLabIds = $employee->laboratories->pluck('id')->toArray();
             $assignedProdIds = $employee->products->pluck('id')->toArray();
             $strategicUnits = 0;
+            
             if (!empty($assignedLabIds) || !empty($assignedProdIds)) {
-                $strategicUnits = DB::table('orders')
-                    ->join('order_details', 'orders.id', '=', 'order_details.order_id')
-                    ->join('products', 'products.id', '=', 'order_details.product_id')
-                    ->where('orders.seller_id', $userId)
-                    ->whereBetween('orders.order_date', [$startDate, $endDate])
-                    ->where('orders.status', 'Completed')
-                    ->where(function($q) use ($assignedLabIds, $assignedProdIds) {
-                        $q->whereIn('products.laboratory_id', $assignedLabIds)
-                          ->orWhereIn('products.id', $assignedProdIds);
-                    })
-                    ->sum('order_details.quantity');
+                $userStrategicRows = $strategicBatchMetrics->get($userId, collect());
+                $strategicUnits = $userStrategicRows->filter(function ($row) use ($assignedLabIds, $assignedProdIds) {
+                    return in_array($row->laboratory_id, $assignedLabIds) || in_array($row->product_id, $assignedProdIds);
+                })->sum('qty');
             }
 
             return [
@@ -152,8 +167,8 @@ class EmployeeAnalyticsRepository implements EmployeeAnalytics
         $startDate = $filters['start_date'] ?? now()->startOfMonth()->format('Y-m-d');
         $endDate = $filters['end_date'] ?? now()->format('Y-m-d');
 
-        $empA = Employee::findOrFail($employeeAId);
-        $empB = Employee::findOrFail($employeeBId);
+        $empA = Employee::with(['laboratories:id', 'products:id'])->findOrFail($employeeAId);
+        $empB = Employee::with(['laboratories:id', 'products:id'])->findOrFail($employeeBId);
 
         return [
             'employee_a' => $this->getMetricsForEmployee($empA, $startDate, $endDate),
@@ -170,7 +185,7 @@ class EmployeeAnalyticsRepository implements EmployeeAnalytics
     {
         $startDate = $filters['start_date'] ?? now()->startOfMonth()->format('Y-m-d');
         $endDate = $filters['end_date'] ?? now()->format('Y-m-d');
-        $employee = Employee::findOrFail($employeeId);
+        $employee = Employee::with(['laboratories:id', 'products:id'])->findOrFail($employeeId);
 
         $metrics = $this->getMetricsForEmployee($employee, $startDate, $endDate);
         
@@ -210,17 +225,20 @@ class EmployeeAnalyticsRepository implements EmployeeAnalytics
         $assignedLabIds = $employee->laboratories->pluck('id')->toArray();
         $assignedProdIds = $employee->products->pluck('id')->toArray();
 
-        $strategicUnits = DB::table('orders')
-            ->join('order_details', 'orders.id', '=', 'order_details.order_id')
-            ->join('products', 'products.id', '=', 'order_details.product_id')
-            ->where('orders.seller_id', $userId)
-            ->whereBetween('orders.order_date', [$startDate, $endDate])
-            ->where('orders.status', 'Completed')
-            ->where(function($q) use ($assignedLabIds, $assignedProdIds) {
-                $q->whereIn('products.laboratory_id', $assignedLabIds)
-                  ->orWhereIn('products.id', $assignedProdIds);
-            })
-            ->sum('order_details.quantity');
+        $strategicUnits = 0;
+        if (!empty($assignedLabIds) || !empty($assignedProdIds)) {
+            $strategicUnits = DB::table('orders')
+                ->join('order_details', 'orders.id', '=', 'order_details.order_id')
+                ->join('products', 'products.id', '=', 'order_details.product_id')
+                ->where('orders.seller_id', $userId)
+                ->whereBetween('orders.order_date', [$startDate, $endDate])
+                ->where('orders.status', 'Completed')
+                ->where(function($q) use ($assignedLabIds, $assignedProdIds) {
+                    $q->whereIn('products.laboratory_id', $assignedLabIds)
+                      ->orWhereIn('products.id', $assignedProdIds);
+                })
+                ->sum('order_details.quantity');
+        }
 
         // 3. Productos por vencer vendidos (quantity_expiration > 0)
         $expiringSold = DB::table('orders')
@@ -284,33 +302,47 @@ class EmployeeAnalyticsRepository implements EmployeeAnalytics
 
     private function getEmployeeMonthlyHistory(Employee $employee, int $months): array
     {
-        $history = [];
         $userId = $employee->user_id;
+        $startDate = now()->subMonths($months - 1)->startOfMonth();
+        $endDate = now()->endOfMonth();
 
+        // Agrupación directa por año y mes en una única consulta batch SQL
+        $salesByMonth = DB::table('orders')
+            ->where('seller_id', $userId)
+            ->whereBetween('order_date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
+            ->where('status', 'Completed')
+            ->select(
+                DB::raw('YEAR(order_date) as yr'),
+                DB::raw('MONTH(order_date) as mo'),
+                DB::raw('SUM(total_amount_usd) as sales')
+            )
+            ->groupBy('yr', 'mo')
+            ->get()
+            ->keyBy(fn ($item) => sprintf('%04d-%02d', $item->yr, $item->mo));
+
+        $unitsByMonth = DB::table('orders')
+            ->join('order_details', 'orders.id', '=', 'order_details.order_id')
+            ->where('orders.seller_id', $userId)
+            ->whereBetween('orders.order_date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
+            ->where('orders.status', 'Completed')
+            ->select(
+                DB::raw('YEAR(orders.order_date) as yr'),
+                DB::raw('MONTH(orders.order_date) as mo'),
+                DB::raw('SUM(order_details.quantity) as units')
+            )
+            ->groupBy('yr', 'mo')
+            ->get()
+            ->keyBy(fn ($item) => sprintf('%04d-%02d', $item->yr, $item->mo));
+
+        $history = [];
         for ($i = $months - 1; $i >= 0; $i--) {
             $date = now()->subMonths($i);
-            $month = $date->month;
-            $year = $date->year;
-
-            $sales = DB::table('orders')
-                ->where('seller_id', $userId)
-                ->whereMonth('order_date', $month)
-                ->whereYear('order_date', $year)
-                ->where('status', 'Completed')
-                ->sum('total_amount_usd');
-
-            $units = DB::table('orders')
-                ->join('order_details', 'orders.id', '=', 'order_details.order_id')
-                ->where('orders.seller_id', $userId)
-                ->whereMonth('orders.order_date', $month)
-                ->whereYear('orders.order_date', $year)
-                ->where('orders.status', 'Completed')
-                ->sum('order_details.quantity');
+            $key = $date->format('Y-m');
 
             $history[] = [
                 'label' => $date->format('M Y'),
-                'sales' => (float)$sales,
-                'units' => (int)$units
+                'sales' => (float)($salesByMonth->get($key)->sales ?? 0),
+                'units' => (int)($unitsByMonth->get($key)->units ?? 0)
             ];
         }
 

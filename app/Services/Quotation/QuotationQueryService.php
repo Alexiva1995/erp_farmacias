@@ -4,23 +4,120 @@ declare(strict_types=1);
 
 namespace App\Services\Quotation;
 
-use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 
 class QuotationQueryService
 {
+    /**
+     * Caché de configuración general por ciclo de vida del servicio.
+     * Evita múltiples hits a general_settings por request.
+     */
+    private ?object $cachedSettings = null;
+    private ?float  $cachedTasaBs  = null;
+    private ?float  $cachedTasaCop = null;
+
+    // -------------------------------------------------------------------------
+    // Helpers de configuración cacheada
+    // -------------------------------------------------------------------------
+
+    private function getSettings(): object
+    {
+        if ($this->cachedSettings === null) {
+            $this->cachedSettings = DB::table('general_settings')->first() ?? new \stdClass();
+        }
+
+        return $this->cachedSettings;
+    }
+
+    private function getTasaBs(): float
+    {
+        if ($this->cachedTasaBs === null) {
+            $resourceService  = app(\App\Services\Resources\ResourceService::class);
+            $this->cachedTasaBs  = (float) ($resourceService->getExchangeRate('BS')  ?: 1);
+            $this->cachedTasaCop = (float) ($resourceService->getExchangeRate('COP') ?: 1);
+        }
+
+        return $this->cachedTasaBs;
+    }
+
+    private function getTasaCop(): float
+    {
+        // Garantiza que ambas tasas se resuelvan en una sola llamada
+        $this->getTasaBs();
+
+        return $this->cachedTasaCop;
+    }
+
+    // -------------------------------------------------------------------------
+    // Query base — productos + packs + (platillos si aplica)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Construye el UNION base sin paginación ni ordenamiento.
+     * Se llama UNA SOLA VEZ por request; el controlador envuelve
+     * el resultado en un subquery para contar y otro para paginar.
+     */
     private function getBaseQueryProduct(array $filters = []): QueryBuilder
     {
-        $resourceService = app(\App\Services\Resources\ResourceService::class);
-        $tasaBs = $resourceService->getExchangeRate('BS') ?: 1;
-        $tasaCop = $resourceService->getExchangeRate('COP') ?: 1;
+        $tasaBs      = $this->getTasaBs();
+        $tasaCop     = $this->getTasaCop();
+        $isRestaurant = isset($this->getSettings()->business_type)
+            && $this->getSettings()->business_type === 'restaurant';
 
-        $generalSettings = DB::table('general_settings')->first();
-        $isRestaurant = $generalSettings && $generalSettings->business_type === 'restaurant';
+        // ── 1. Subconsultas de descuento extraídas como expresiones reutilizables ──
+        // Se definen como cadenas para evitar repetición en discount_percentage/type.
+        $ioDiscount = "(SELECT io.discount_percent
+                          FROM individual_offers io
+                         WHERE io.product_id = products.id
+                           AND io.start_date <= CURDATE()
+                           AND io.end_date   >= CURDATE()
+                         ORDER BY io.discount_percent DESC LIMIT 1)";
 
-        // 1. Consulta de PRODUCTOS
+        $coDiscount = "(SELECT co.discount_percentage
+                          FROM category_offers co
+                         WHERE co.category_id = products.category_id
+                           AND co.is_active   = 1
+                           AND co.start_date <= CURDATE()
+                           AND co.end_date   >= CURDATE()
+                         ORDER BY co.discount_percentage DESC LIMIT 1)";
+
+        // La oferta por vencimiento se calcula una vez usando un JOIN lateral-style
+        // para evitar repetir el EXISTS doble en discount_percentage y discount_type.
+        $eoDiscount = "(SELECT eo.discount_percentage
+                          FROM expiration_offers eo
+                         WHERE eo.is_active = 1
+                           AND EXISTS (
+                               SELECT 1 FROM product_lots pl
+                                WHERE pl.product_id = products.id
+                                  AND pl.quantity   > 0
+                                  AND (TIMESTAMPDIFF(MONTH, CURDATE(), pl.expiration_date) + 1) <= eo.months_to_expiration
+                           )
+                         ORDER BY eo.discount_percentage DESC LIMIT 1)";
+
+        $discountPercentageRaw = "GREATEST(
+            COALESCE({$ioDiscount}, 0),
+            COALESCE({$coDiscount}, 0),
+            COALESCE({$eoDiscount}, 0)
+        ) as discount_percentage";
+
+        $discountTypeRaw = "CASE
+            WHEN COALESCE({$eoDiscount}, 0) >= GREATEST(
+                    COALESCE({$ioDiscount}, 0),
+                    COALESCE({$coDiscount}, 0)
+                 )
+                 AND COALESCE({$eoDiscount}, 0) > 0
+                 THEN 'expiration'
+            WHEN COALESCE({$ioDiscount}, 0) >= COALESCE({$coDiscount}, 0)
+                 AND COALESCE({$ioDiscount}, 0) > 0
+                 THEN 'individual'
+            WHEN COALESCE({$coDiscount}, 0) > 0
+                 THEN 'category'
+            ELSE NULL
+        END as discount_type";
+
+        // ── 2. Consulta de PRODUCTOS ──
         $productsQuery = DB::table('products')
             ->leftJoin('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
             ->select([
@@ -40,17 +137,26 @@ class QuotationQueryService
                 'laboratories.name as laboratory_name',
                 DB::raw('NULL as pack_config'),
                 DB::raw("'product' as item_type"),
-                DB::raw('(SELECT MIN(expiration_date) FROM product_lots WHERE product_lots.product_id = products.id AND product_lots.quantity > 0) as next_expiration'),
-                DB::raw('COALESCE((SELECT SUM(pl.quantity) FROM product_lots pl WHERE pl.product_id = products.id AND pl.quantity > 0), 0) as valid_stock_sum'),
-                DB::raw("(SELECT GREATEST(COALESCE((SELECT io.discount_percent FROM individual_offers io WHERE io.product_id = products.id AND io.start_date <= CURDATE() AND io.end_date >= CURDATE() ORDER BY io.discount_percent DESC LIMIT 1), 0), COALESCE((SELECT co.discount_percentage FROM category_offers co WHERE co.category_id = products.category_id AND co.is_active = 1 AND co.start_date <= CURDATE() AND co.end_date >= CURDATE() ORDER BY co.discount_percentage DESC LIMIT 1), 0), COALESCE((SELECT eo.discount_percentage FROM expiration_offers eo WHERE eo.is_active = 1 AND EXISTS (SELECT 1 FROM product_lots pl WHERE pl.product_id = products.id AND pl.quantity > 0 AND (TIMESTAMPDIFF(MONTH, CURDATE(), pl.expiration_date) + 1) <= eo.months_to_expiration) ORDER BY eo.discount_percentage DESC LIMIT 1), 0)) ) as discount_percentage"),
-                DB::raw("(SELECT CASE WHEN COALESCE((SELECT eo.discount_percentage FROM expiration_offers eo WHERE eo.is_active = 1 AND EXISTS (SELECT 1 FROM product_lots pl WHERE pl.product_id = products.id AND pl.quantity > 0 AND (TIMESTAMPDIFF(MONTH, CURDATE(), pl.expiration_date) + 1) <= eo.months_to_expiration) ORDER BY eo.discount_percentage DESC LIMIT 1), 0) >= GREATEST(COALESCE((SELECT io.discount_percent FROM individual_offers io WHERE io.product_id = products.id AND io.start_date <= CURDATE() AND io.end_date >= CURDATE() ORDER BY io.discount_percent DESC LIMIT 1), 0), COALESCE((SELECT co.discount_percentage FROM category_offers co WHERE co.category_id = products.category_id AND co.is_active = 1 AND co.start_date <= CURDATE() AND co.end_date >= CURDATE() ORDER BY co.discount_percentage DESC LIMIT 1), 0)) AND (SELECT eo.discount_percentage FROM expiration_offers eo WHERE eo.is_active = 1 AND EXISTS (SELECT 1 FROM product_lots pl WHERE pl.product_id = products.id AND pl.quantity > 0 AND (TIMESTAMPDIFF(MONTH, CURDATE(), pl.expiration_date) + 1) <= eo.months_to_expiration) ORDER BY eo.discount_percentage DESC LIMIT 1) > 0 THEN 'expiration' WHEN COALESCE((SELECT io.discount_percent FROM individual_offers io WHERE io.product_id = products.id AND io.start_date <= CURDATE() AND io.end_date >= CURDATE() ORDER BY io.discount_percent DESC LIMIT 1), 0) >= COALESCE((SELECT co.discount_percentage FROM category_offers co WHERE co.category_id = products.category_id AND co.is_active = 1 AND co.start_date <= CURDATE() AND co.end_date >= CURDATE() ORDER BY co.discount_percentage DESC LIMIT 1), 0) THEN 'individual' WHEN (SELECT co.discount_percentage FROM category_offers co WHERE co.category_id = products.category_id AND co.is_active = 1 AND co.start_date <= CURDATE() AND co.end_date >= CURDATE() ORDER BY co.discount_percentage DESC LIMIT 1) > 0 THEN 'category' ELSE NULL END) as discount_type"),
+                // next_expiration: solo el MIN, sin repetir EXISTS complejos
+                DB::raw('(SELECT MIN(pl.expiration_date)
+                            FROM product_lots pl
+                           WHERE pl.product_id = products.id
+                             AND pl.quantity   > 0) as next_expiration'),
+                // valid_stock_sum: lotes no expirados con cantidad > 0
+                DB::raw('COALESCE((SELECT SUM(pl.quantity)
+                                     FROM product_lots pl
+                                    WHERE pl.product_id = products.id
+                                      AND pl.quantity   > 0
+                                      AND pl.expiration_date >= CURDATE()), 0) as valid_stock_sum'),
+                DB::raw($discountPercentageRaw),
+                DB::raw($discountTypeRaw),
             ])
             ->where(function ($q) {
                 $q->whereNull('products.is_deleted')->orWhere('products.is_deleted', 0);
             })
             ->where('products.no_pvp', $isRestaurant ? 1 : 0);
 
-        // 2. Consulta de PACKS
+        // ── 3. Consulta de PACKS ──
         $packsQuery = DB::table('product_packs')
             ->select([
                 'product_packs.id',
@@ -58,7 +164,11 @@ class QuotationQueryService
                 'product_packs.total_price as sale_price',
                 DB::raw("ROUND(product_packs.total_price * {$tasaBs}, 2) as price_bs"),
                 DB::raw("ROUND(product_packs.total_price * {$tasaCop}, 2) as price_cop"),
-                DB::raw("(SELECT GROUP_CONCAT(CONCAT(p.name, ' [', COALESCE(p.active_ingredient, 'S/I'), ' - ', COALESCE(l.name, 'S/L'), ']') SEPARATOR ' ') FROM products p LEFT JOIN laboratories l ON p.laboratory_id = l.id WHERE JSON_CONTAINS(JSON_KEYS(product_packs.pack_config), CAST(JSON_QUOTE(CAST(p.id AS CHAR)) AS JSON))) as active_ingredient"),
+                DB::raw("(SELECT GROUP_CONCAT(CONCAT(p.name, ' [', COALESCE(p.active_ingredient, 'S/I'), ' - ', COALESCE(l.name, 'S/L'), ']') SEPARATOR ' ')
+                            FROM products p
+                            LEFT JOIN laboratories l ON p.laboratory_id = l.id
+                           WHERE JSON_CONTAINS(JSON_KEYS(product_packs.pack_config), CAST(JSON_QUOTE(CAST(p.id AS CHAR)) AS JSON))
+                          ) as active_ingredient"),
                 DB::raw('NULL as laboratory_id'),
                 DB::raw('NULL as group_id'),
                 DB::raw('NULL as origin_id'),
@@ -67,20 +177,21 @@ class QuotationQueryService
                 DB::raw('0 as is_colombian_origin'),
                 DB::raw('0 as psychotropic'),
                 DB::raw("'' as laboratory_name"),
-                DB::raw("product_packs.pack_config as pack_config"),
+                DB::raw('product_packs.pack_config as pack_config'),
                 DB::raw("'pack' as item_type"),
                 'product_packs.max_sale_date as next_expiration',
                 'product_packs.max_quantity as valid_stock_sum',
                 DB::raw('NULL as discount_percentage'),
                 DB::raw('NULL as discount_type'),
-            ])->where('product_packs.is_active', true)
+            ])
+            ->where('product_packs.is_active', true)
             ->whereNull('product_packs.deleted_at')
             ->where(function ($q) {
                 $q->whereNull('product_packs.max_sale_date')
                     ->orWhere('product_packs.max_sale_date', '>=', DB::raw("'" . now()->toDateString() . "'"));
             });
 
-        // 3. Consulta de PLATILLOS (Solo para restaurantes)
+        // ── 4. Consulta de PLATILLOS (solo restaurante) ──
         $dishesQuery = null;
         if ($isRestaurant) {
             $dishesQuery = DB::table('dishes')
@@ -108,14 +219,14 @@ class QuotationQueryService
                 ])->where('dishes.status', '1');
         }
 
-        // APLICAR BUSCADOR 'Q' A AMBOS LADOS
+        // ── 5. Aplicar filtro de búsqueda ──
         if (!empty($filters['q'])) {
-            $searchTerm = $filters['q'];
+            $searchTerm      = $filters['q'];
             $searchTermLower = strtolower(trim($searchTerm));
-            $isStrictSearch = $filters['isStrictSearch'] ?? false;
+            $isStrictSearch  = $filters['isStrictSearch'] ?? false;
 
             $isColombianSearch = in_array($searchTermLower, ['col', '(col)', 'colombiano', 'colombianos']);
-            $isIvaSearch = in_array($searchTermLower, ['g', '(g)', 'iva', 'gravado']);
+            $isIvaSearch       = in_array($searchTermLower, ['g', '(g)', 'iva', 'gravado']);
 
             if ($isColombianSearch || $isIvaSearch) {
                 $packsQuery->whereRaw('1 = 0');
@@ -124,61 +235,43 @@ class QuotationQueryService
                 }
             }
 
-            // Filtro para PRODUCTOS
-            $productsQuery->where(function ($subQuery) use ($searchTerm, $isStrictSearch, $isColombianSearch, $isIvaSearch) {
+            $productsQuery->where(function ($sub) use ($searchTerm, $isStrictSearch, $isColombianSearch, $isIvaSearch) {
                 if ($isColombianSearch) {
-                    $subQuery->where('products.is_colombian_origin', 1);
-                }
-                elseif ($isIvaSearch) {
-                    $subQuery->where('products.iva', 1);
-                }
-                else {
-                    if ($isStrictSearch) {
-                        $subQuery->where('products.name', 'like', "%{$searchTerm}%")
-                            ->orWhere('products.active_ingredient', 'like', "%{$searchTerm}%");
-                    } else {
-                        $words = explode(' ', $searchTerm);
-                        foreach ($words as $word) {
-                            $subQuery->where(function ($wordQuery) use ($word) {
-                                $wordQuery->where('products.name', 'like', "%{$word}%")
-                                    ->orWhere('products.active_ingredient', 'like', "%{$word}%")
-                                    ->orWhere('laboratories.name', 'like', "%{$word}%");
-                            });
-                        }
+                    $sub->where('products.is_colombian_origin', 1);
+                } elseif ($isIvaSearch) {
+                    $sub->where('products.iva', 1);
+                } else {
+                    $words = $isStrictSearch ? [$searchTerm] : explode(' ', $searchTerm);
+                    foreach ($words as $word) {
+                        $sub->where(function ($wq) use ($word) {
+                            $wq->where('products.name', 'like', "%{$word}%")
+                                ->orWhere('products.active_ingredient', 'like', "%{$word}%")
+                                ->orWhere('laboratories.name', 'like', "%{$word}%");
+                        });
                     }
                 }
             });
 
-            // Filtro para PACKS (solo si no es búsqueda especial)
             if (!$isColombianSearch && !$isIvaSearch) {
-                $packsQuery->where(function ($subQuery) use ($searchTerm, $isStrictSearch) {
-                    if ($isStrictSearch) {
-                        $subQuery->where('product_packs.name', 'like', "%{$searchTerm}%");
-                    } else {
-                        $words = explode(' ', $searchTerm);
-                        foreach ($words as $word) {
-                            $subQuery->where('product_packs.name', 'like', "%{$word}%");
-                        }
+                $packsQuery->where(function ($sub) use ($searchTerm, $isStrictSearch) {
+                    $words = $isStrictSearch ? [$searchTerm] : explode(' ', $searchTerm);
+                    foreach ($words as $word) {
+                        $sub->where('product_packs.name', 'like', "%{$word}%");
                     }
                 });
-            }
 
-            // Filtro para PLATILLOS (solo si no es búsqueda especial)
-            if ($dishesQuery && !$isColombianSearch && !$isIvaSearch) {
-                $dishesQuery->where(function ($subQuery) use ($searchTerm, $isStrictSearch) {
-                    if ($isStrictSearch) {
-                        $subQuery->where('dishes.name', 'like', "%{$searchTerm}%");
-                    } else {
-                        $words = explode(' ', $searchTerm);
+                if ($dishesQuery) {
+                    $dishesQuery->where(function ($sub) use ($searchTerm, $isStrictSearch) {
+                        $words = $isStrictSearch ? [$searchTerm] : explode(' ', $searchTerm);
                         foreach ($words as $word) {
-                            $subQuery->where('dishes.name', 'like', "%{$word}%");
+                            $sub->where('dishes.name', 'like', "%{$word}%");
                         }
-                    }
-                });
+                    });
+                }
             }
         }
 
-        // APLICAR OTROS FILTROS
+        // ── 6. Filtros adicionales ──
         if (!empty($filters['categoryId'])) {
             $productsQuery->where('products.category_id', $filters['categoryId']);
             $packsQuery->whereRaw('1 = 0');
@@ -213,13 +306,17 @@ class QuotationQueryService
 
         $hasStock = $filters['hasStock'] ?? null;
         if ($hasStock === true) {
-            $productsQuery->whereRaw('COALESCE((SELECT SUM(pl.quantity) FROM product_lots pl WHERE pl.product_id = products.id AND pl.quantity > 0), 0) > 0');
+            $productsQuery->whereRaw(
+                'COALESCE((SELECT SUM(pl.quantity) FROM product_lots pl WHERE pl.product_id = products.id AND pl.quantity > 0 AND pl.expiration_date >= CURDATE()), 0) > 0'
+            );
             $packsQuery->where('product_packs.max_quantity', '>', 0);
             if ($dishesQuery) {
                 $dishesQuery->whereRaw('1 = 1');
             }
         } elseif ($hasStock === false) {
-            $productsQuery->whereRaw('COALESCE((SELECT SUM(pl.quantity) FROM product_lots pl WHERE pl.product_id = products.id AND pl.quantity > 0), 0) = 0');
+            $productsQuery->whereRaw(
+                'COALESCE((SELECT SUM(pl.quantity) FROM product_lots pl WHERE pl.product_id = products.id AND pl.quantity > 0 AND pl.expiration_date >= CURDATE()), 0) = 0'
+            );
             $packsQuery->where('product_packs.max_quantity', '=', 0);
             if ($dishesQuery) {
                 $dishesQuery->whereRaw('1 = 0');
@@ -229,15 +326,21 @@ class QuotationQueryService
         if ($dishesQuery) {
             return $productsQuery->unionAll($packsQuery)->unionAll($dishesQuery);
         }
+
         return $productsQuery->unionAll($packsQuery);
     }
 
-    private function applySortingProduct($query, ?string $sortBy, string $orderBy)
+    // -------------------------------------------------------------------------
+    // Ordenamiento
+    // -------------------------------------------------------------------------
+
+    private function applySortingProduct(QueryBuilder $query, ?string $sortBy, string $orderBy): QueryBuilder
     {
-        $query->orderByRaw("CASE 
-            WHEN item_type = 'pack' THEN 0 
-            WHEN discount_percentage > 0 THEN 1 
-            ELSE 2 
+        // Prioridad fija: packs primero, luego items con descuento, luego el resto
+        $query->orderByRaw("CASE
+            WHEN item_type = 'pack' THEN 0
+            WHEN discount_percentage > 0 THEN 1
+            ELSE 2
         END ASC");
 
         $query->orderBy('discount_percentage', 'desc');
@@ -268,45 +371,58 @@ class QuotationQueryService
         }
     }
 
+    // -------------------------------------------------------------------------
+    // API pública — el controlador llama SOLO estas dos funciones
+    // -------------------------------------------------------------------------
+
+    /**
+     * Normaliza los filtros del Request en un array limpio.
+     */
+    private function filtersFromRequest(Request $request): array
+    {
+        return [
+            'q'             => $request->q,
+            'categoryId'    => $request->categoryId,
+            'laboratoryId'  => $request->laboratoryId,
+            'originId'      => $request->originId,
+            'hasStock'      => $request->has('hasStock')
+                ? filter_var($request->hasStock, FILTER_VALIDATE_BOOLEAN)
+                : null,
+            'groupId'       => $request->get('groupId'),
+            'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN),
+        ];
+    }
+
+    /**
+     * Retorna el query base (UNION) envuelto en un subquery para contar.
+     * No tiene ORDER BY — solo sirve para COUNT(*).
+     */
     public function getCountQueryProduct(Request $request): QueryBuilder
     {
-        $filters = [
-            'q' => $request->q,
-            'categoryId' => $request->categoryId,
-            'laboratoryId' => $request->laboratoryId,
-            'originId' => $request->originId,
-            'hasStock' => $request->has('hasStock') ? filter_var($request->hasStock, FILTER_VALIDATE_BOOLEAN) : null,
-            'groupId' => $request->get('groupId'),
-            'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN)
-        ];
+        $unionQuery = $this->getBaseQueryProduct($this->filtersFromRequest($request));
+        $sql        = $unionQuery->toSql();
+        $bindings   = $unionQuery->getBindings();
 
-        $unionQuery = $this->getBaseQueryProduct($filters);
-        $sql = $unionQuery->toSql();
-        $bindings = $unionQuery->getBindings();
-
-        return DB::table(DB::raw("($sql) as tpv_count"))
+        return DB::table(DB::raw("({$sql}) as tpv_count"))
             ->setBindings($bindings);
     }
 
+    /**
+     * Retorna el query paginable con ordenamiento aplicado.
+     */
     public function getFilteredQuery(Request $request): QueryBuilder
     {
-        $filters = [
-            'q' => $request->q,
-            'categoryId' => $request->categoryId,
-            'laboratoryId' => $request->laboratoryId,
-            'originId' => $request->originId,
-            'hasStock' => $request->has('hasStock') ? filter_var($request->hasStock, FILTER_VALIDATE_BOOLEAN) : null,
-            'groupId' => $request->get('groupId'),
-            'isStrictSearch' => filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN)
-        ];
-
-        $unionQuery = $this->getBaseQueryProduct($filters);
+        $unionQuery = $this->getBaseQueryProduct($this->filtersFromRequest($request));
 
         $query = DB::table(DB::raw("({$unionQuery->toSql()}) as tpv_items"))
             ->mergeBindings($unionQuery)
             ->select('*');
 
-        $this->applySortingProduct($query, $request->input('sortBy'), $request->input('orderBy', 'asc'));
+        $this->applySortingProduct(
+            $query,
+            $request->input('sortBy'),
+            $request->input('orderBy', 'asc')
+        );
 
         return $query;
     }

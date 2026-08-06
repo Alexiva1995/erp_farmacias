@@ -244,9 +244,9 @@ const clearDialogErrors = () => {
       />
 
       <!-- Tarjetas de Estadísticas -->
-      <VRow dense class="mb-0">
-        <VCol class="kpi-col">
-          <VCard class="border shadow-sm rounded-lg overflow-hidden">
+      <VRow dense class="mb-0 flex-nowrap overflow-x-auto ga-2" align="stretch">
+        <VCol cols="12" sm="6" md="2" class="flex-grow-1 flex-shrink-0" style="min-width: 160px;">
+          <VCard class="border shadow-sm rounded-lg overflow-hidden h-100">
             <VCardText class="pa-4 d-flex align-center justify-space-between">
               <div>
                 <div class="text-super-xs font-weight-black text-disabled uppercase mb-1">Pendientes</div>
@@ -261,8 +261,8 @@ const clearDialogErrors = () => {
           </VCard>
         </VCol>
 
-        <VCol class="kpi-col">
-          <VCard class="border shadow-sm rounded-lg overflow-hidden">
+        <VCol cols="12" sm="6" md="2" class="flex-grow-1 flex-shrink-0" style="min-width: 160px;">
+          <VCard class="border shadow-sm rounded-lg overflow-hidden h-100">
             <VCardText class="pa-4 d-flex align-center justify-space-between">
               <div>
                 <div class="text-super-xs font-weight-black text-disabled uppercase mb-1">Aprobadas</div>
@@ -277,8 +277,8 @@ const clearDialogErrors = () => {
           </VCard>
         </VCol>
 
-        <VCol class="kpi-col">
-          <VCard class="border shadow-sm rounded-lg overflow-hidden">
+        <VCol cols="12" sm="6" md="2" class="flex-grow-1 flex-shrink-0" style="min-width: 160px;">
+          <VCard class="border shadow-sm rounded-lg overflow-hidden h-100">
             <VCardText class="pa-4 d-flex align-center justify-space-between">
               <div>
                 <div class="text-super-xs font-weight-black text-disabled uppercase mb-1">Vencidas</div>
@@ -293,8 +293,8 @@ const clearDialogErrors = () => {
           </VCard>
         </VCol>
 
-        <VCol class="kpi-col">
-          <VCard class="border shadow-sm rounded-lg overflow-hidden">
+        <VCol cols="12" sm="6" md="2" class="flex-grow-1 flex-shrink-0" style="min-width: 160px;">
+          <VCard class="border shadow-sm rounded-lg overflow-hidden h-100">
             <VCardText class="pa-4 d-flex align-center justify-space-between">
               <div>
                 <div class="text-super-xs font-weight-black text-disabled uppercase mb-1">Canceladas</div>
@@ -309,8 +309,8 @@ const clearDialogErrors = () => {
           </VCard>
         </VCol>
 
-        <VCol class="kpi-col">
-          <VCard class="border shadow-sm rounded-lg overflow-hidden">
+        <VCol cols="12" sm="6" md="2" class="flex-grow-1 flex-shrink-0" style="min-width: 160px;">
+          <VCard class="border shadow-sm rounded-lg overflow-hidden h-100">
             <VCardText class="pa-4 d-flex align-center justify-space-between">
               <div>
                 <div class="text-super-xs font-weight-black text-disabled uppercase mb-1">Hoy</div>
@@ -351,22 +351,3 @@ const clearDialogErrors = () => {
     </div>
   </div>
 </template>
-
-<style scoped>
-.kpi-col {
-  flex: 0 0 100%;
-  max-width: 100%;
-}
-@media (min-width: 600px) {
-  .kpi-col {
-    flex: 0 0 33.33%;
-    max-width: 33.33%;
-  }
-}
-@media (min-width: 960px) {
-  .kpi-col {
-    flex: 0 0 20%;
-    max-width: 20%;
-  }
-}
-</style>

@@ -12,7 +12,7 @@ use App\Models\Product as ModelsProduct;
 use App\Repositories\AutoOrderDetailsRepository;
 use App\Repositories\ProductRepository;
 use App\Repositories\ProductSupplierRepository;
-use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 class ProductServices implements Product
@@ -101,21 +101,6 @@ class ProductServices implements Product
         } else {
             $respuestaConsulta = $this->productRepository->filtrarIndividualProductForAssistantReportTypeAveragesWithoutPaginate($filtros);
         }
-        // if ($filtros["tipo_filtracion"] != "average" && $filtros["tipo_filtracion"] != "sales") {
-        //     for ($index = 0; $index < count($respuestaConsulta); $index++) {
-        //         $itemsBusqueda = null;
-        //         # code...
-        //         $filtros["orderBy"] = "ASC";
-        //         $filtros["sortBy"] = "id";
-        //         $filtros["id"] = $respuestaConsulta[$index]->id;
-        //         $itemsBusqueda = $this->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtros)->first();
-        //         if ($itemsBusqueda) {
-        //             $itemsBusqueda = $this->calcularAOProduct($itemsBusqueda);
-        //             $itemsBusqueda->solicitar = $itemsBusqueda->solicitar + $itemsBusqueda->totalQuantityInAutoOrder;
-        //             $respuestaConsulta[$index]->solicitar = ceil(($respuestaConsulta[$index]->solicitar + $itemsBusqueda->solicitar) / 2);
-        //         }
-        //     }
-        // }
         if ($filtros["tipo_filtracion"] == "combinado") {
             for ($index = 0; $index < count($respuestaConsulta); $index++) {
                 // Obtener datos de ventas para este producto específico
@@ -184,8 +169,6 @@ class ProductServices implements Product
 
         return $productosConPedidosAutomaticos;
     }
-
-
 
     public function actualizarElSolicitadoConElAO(Collection $productos): Collection
     {

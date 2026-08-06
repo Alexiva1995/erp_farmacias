@@ -39,6 +39,14 @@ class User extends Authenticatable
     ];
 
     /**
+     * Accesor para name basado en username (evita errores cuando se consulta ->name)
+     */
+    public function getNameAttribute(): ?string
+    {
+        return $this->attributes['username'] ?? null;
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>

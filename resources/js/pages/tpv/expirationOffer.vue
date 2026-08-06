@@ -7,21 +7,8 @@ import { toast } from "@/plugins/sweetalert";
 import Swal from "sweetalert2";
 import { ref, onMounted, watch } from "vue";
 
-// Datos y estado
-// ... (imports)
-
-// Datos y estado
-// const availableProductLots = ref([]); // Removed
+// Datos y estado reactivo
 const productExpirationOfferData = ref([]);
-// ...
-
-// Obtener lotes disponibles -> REMOVED / CHANGED to open dialog directly
-const openCreateOfferModal = () => {
-  isEditingMode.value = false;
-  currentOfferToEdit.value = null;
-  isOfferDialogVisible.value = true;
-};
-
 const totalExpirations = ref(0);
 const loadingExpirations = ref(false);
 const pageExpirations = ref(1);
@@ -38,7 +25,13 @@ const isLoadingDialogData = ref(false);
 const currentOfferToEdit = ref(null);
 const isEditingMode = ref(false);
 
-// Obtener ofertas
+const openCreateOfferModal = () => {
+  isEditingMode.value = false;
+  currentOfferToEdit.value = null;
+  isOfferDialogVisible.value = true;
+};
+
+// Obtener ofertas de la API Resource
 const fetchExpirationOffers = async () => {
   loadingExpirations.value = true;
 
@@ -54,13 +47,10 @@ const fetchExpirationOffers = async () => {
     };
 
     Object.keys(params).forEach(
-      (key) =>
-        (params[key] === null || params[key] === "") && delete params[key]
+      (key) => (params[key] === null || params[key] === "") && delete params[key]
     );
 
-    const response = await axios.get("/tpv/promotions/expiration-offer", {
-      params,
-    });
+    const response = await axios.get("/tpv/promotions/expiration-offer", { params });
 
     if (response.data.success) {
       productExpirationOfferData.value = response.data.data;
@@ -79,11 +69,7 @@ const fetchExpirationOffers = async () => {
 // Manejar creación/edición
 const handleSaveOffer = async (offerData) => {
   try {
-    // VERIFICAR QUE TENEMOS EL ID EN MODO EDICIÓN
-    if (
-      isEditingMode.value &&
-      (!currentOfferToEdit.value || !currentOfferToEdit.value.id)
-    ) {
+    if (isEditingMode.value && (!currentOfferToEdit.value || !currentOfferToEdit.value.id)) {
       console.error("ERROR: No hay ID de oferta para editar");
       toast.error("Error: No se puede identificar la oferta a editar");
       return;
@@ -106,10 +92,7 @@ const handleSaveOffer = async (offerData) => {
     }
   } catch (error) {
     console.error("Error al guardar oferta:", error);
-    console.error("Respuesta del error:", error.response?.data);
-
-    const errorMessage =
-      error.response?.data?.message || "Error al guardar la oferta";
+    const errorMessage = error.response?.data?.message || "Error al guardar la oferta";
     toast.error(errorMessage);
   }
 };
@@ -129,9 +112,7 @@ const handleDeleteOffer = async (offerId) => {
 
   if (result.isConfirmed) {
     try {
-      const response = await axios.delete(
-        `/tpv/promotions/expiration-offer/${offerId}`
-      );
+      const response = await axios.delete(`/tpv/promotions/expiration-offer/${offerId}`);
       if (response.data.success) {
         toast.success(response.data.message);
         fetchExpirationOffers();
@@ -145,7 +126,6 @@ const handleDeleteOffer = async (offerId) => {
 
 // Editar oferta
 const handleEditOffer = (offer) => {
-  // Asegurarnos de que tenemos el ID
   if (!offer.id) {
     console.error("ERROR: La oferta no tiene ID");
     toast.error("Error: No se puede editar la oferta sin ID");
@@ -192,7 +172,6 @@ const handleClearFiltersExpirationOffer = () => {
   fetchExpirationOffers();
 };
 
-// Watcher: al cambiar filtros, buscar automáticamente (sin botón Buscar)
 let searchDebounceTimer;
 watch(
   [
@@ -209,7 +188,6 @@ watch(
   }
 );
 
-// Cargar datos iniciales
 onMounted(() => {
   fetchExpirationOffers();
 });

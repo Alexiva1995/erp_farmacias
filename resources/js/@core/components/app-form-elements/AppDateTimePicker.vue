@@ -125,14 +125,6 @@ const elementId = computed(() => {
 
 <template>
   <div class="app-picker-field">
-    <!-- v-input -->
-    <VLabel
-      v-if="fieldProps.label"
-      class="mb-1 text-body-2"
-      :for="elementId"
-      :text="fieldProps.label"
-    />
-
     <VInput
       v-bind="{ ...inputProps, ...rootAttrs }"
       :model-value="modelValue"
@@ -148,7 +140,7 @@ const elementId = computed(() => {
       <template #default="{ id, isDirty, isValid, isDisabled, isReadonly, validate }">
         <!-- v-field -->
         <VField
-          v-bind="{ ...fieldProps, label: undefined }"
+          v-bind="fieldProps"
           :id="id.value"
           role="textbox"
           :active="focused || isDirty.value || isCalendarOpen"

@@ -1,5 +1,6 @@
 <script setup>
 import HistoryFilters from "@/components/HistoryFilters.vue";
+import HistoryKpiCards from "@/components/HistoryKpiCards.vue";
 import HistoryTable from "@/components/HistoryTable.vue";
 import DetailHistoryShowDialog from "@/components/dialogs/DetailHistoryShowDialog.vue";
 import axios from "@/plugins/axios";
@@ -9,6 +10,12 @@ import { onMounted, ref, watch } from "vue";
 // --- Estados ---
 const histories = ref([]);
 const totalHistories = ref(0);
+const summaryStats = ref({
+  total_count: 0,
+  total_exempt: 0,
+  total_iva: 0,
+  grand_total: 0,
+});
 const loading = ref(false);
 const exportLoading = ref(false);
 const page = ref(1);
@@ -24,7 +31,7 @@ const endDate = ref(`${currentYear}-12-31`);
 
 // Diálogo de detalle
 const isEditDialogVisible = ref(false);
-const currentProduct = ref({});
+const selectedHistory = ref({});
 const currentHistoryDetails = ref([]);
 const currentHistoryUser = ref({});
 const historyIdToEdit = ref(null);
@@ -47,6 +54,9 @@ const fetchHistories = async () => {
     const response = await axios.get("/history", { params });
     histories.value = response.data.data || [];
     totalHistories.value = response.data.total || 0;
+    if (response.data.stats) {
+      summaryStats.value = response.data.stats;
+    }
   } catch (error) {
     console.error("Error al obtener el historial fiscal:", error);
     toast.error("Error al cargar el historial fiscal.");
@@ -92,7 +102,7 @@ const updateTableOptions = (options) => {
 };
 
 const handleShowDetailHistory = (history) => {
-  currentProduct.value = { ...history };
+  selectedHistory.value = { ...history };
   currentHistoryDetails.value = history.details || [];
   currentHistoryUser.value = history.user || {};
   isEditDialogVisible.value = true;
@@ -162,7 +172,11 @@ const handleSort = (sortOptions) => {
 
 <template>
   <div class="fiscal-history-page pb-12">
-    <div class="d-flex flex-column gap-2 mt-1">
+    <!-- Resumen KPI -->
+    <HistoryKpiCards :stats="summaryStats" :loading="loading" />
+
+    <!-- Filtros y Tabla -->
+    <div class="d-flex flex-column gap-3">
       <HistoryFilters
         v-model:searchQuery="searchQuery"
         v-model:startDate="startDate"
@@ -189,7 +203,7 @@ const handleSort = (sortOptions) => {
         :history-id="historyIdToEdit"
         :details="currentHistoryDetails"
         :user="currentHistoryUser"
-        :histories="currentProduct"
+        :histories="selectedHistory"
       />
     </div>
   </div>

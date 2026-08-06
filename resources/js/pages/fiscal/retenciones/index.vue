@@ -1,14 +1,25 @@
 <script setup>
+import BatchGenerateRetentionsDialog from "@/components/dialogs/BatchGenerateRetentionsDialog.vue";
+import EditRetentionDialog from "@/components/dialogs/EditRetentionDialog.vue";
+import OmitRetentionsDialog from "@/components/dialogs/OmitRetentionsDialog.vue";
 import RetentionFilters from "@/components/RetentionFilters.vue";
 import RetentionTable from "@/components/RetentionTable.vue";
+import { useRetentionDates } from "@/composables/useRetentionDates";
 import axios from "@/plugins/axios";
-import { toast, Swal } from "@/plugins/sweetalert";
-import { onMounted, ref, watch } from "vue";
-import { useDisplay } from "vuetify";
+import { Swal, toast } from "@/plugins/sweetalert";
+import { onMounted, onUnmounted, ref, watch } from "vue";
 
-const { mobile } = useDisplay();
 const loading = ref(false);
+const showOmitDialog = ref(false);
+const savingOmit = ref(false);
+const showBatchDialog = ref(false);
+const savingBatch = ref(false);
+const calculatedDefaultFiscalDate = ref("");
+const showEditDialog = ref(false);
+const editingRetention = ref(null);
+const savingEdit = ref(false);
 const downloadingPdf = ref({}); // Estado de descarga independiente por comprobante
+
 const invoices = ref([]);
 const suppliers = ref([]);
 const totalRecords = ref(0);
@@ -17,26 +28,26 @@ const itemsPerPage = ref(10);
 const selected = ref([]);
 const currentTab = ref("pending");
 
-// Filtros de búsqueda y fechas
+// Filtros de búsqueda
 const search = ref("");
 const supplierId = ref(null);
-const startDate = ref("");
-const endDate = ref("");
 const sortBy = ref("created_invoice_date");
 const orderBy = ref("desc");
 
-// Establece el rango de fechas al inicio del año actual (dinámico)
-const setYearPreset = () => {
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  startDate.value = `${currentYear}-01-01`;
-  endDate.value = `${currentYear}-12-31`;
-};
+// Composable de gestión de fechas y quincenas
+const {
+  startDate,
+  endDate,
+  selectedPreset,
+  applyDatePreset,
+  setFortnightPreset,
+  getCalculatedFiscalDateIso,
+} = useRetentionDates();
 
 const fetchSuppliers = async () => {
   try {
-    const response = await axios.get("/suppliers", { 
-      params: { itemsPerPage: -1, select_minimal: true } 
+    const response = await axios.get("/suppliers", {
+      params: { itemsPerPage: -1, select_minimal: true },
     });
     suppliers.value = response.data?.data || response.data || [];
   } catch (error) {
@@ -89,13 +100,13 @@ const handleBulkGenerate = async () => {
     const response = await axios.post("/retentions/bulk-generate", {
       ids: idsToProcess,
     });
-    
+
     toast.success(response.data?.message || "Retención generada exitosamente.");
-    
+
     if (response.data?.retention_id) {
       await downloadPdf(response.data.retention_id, true);
     }
-    
+
     selected.value = [];
     fetchRetentions();
   } catch (error) {
@@ -106,46 +117,62 @@ const handleBulkGenerate = async () => {
   }
 };
 
-const handleBatchGenerateAll = async () => {
-  const result = await Swal.fire({
-    title: '¿Generar todas las retenciones?',
-    text: `Se procesarán las facturas pendientes entre ${startDate.value} y ${endDate.value}. Esta acción creará un comprobante por cada proveedor.`,
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonColor: '#fb8c00',
-    cancelButtonColor: '#9e9e9e',
-    confirmButtonText: 'SÍ, GENERAR TODO',
-    cancelButtonText: 'CANCELAR'
-  });
+const handleBatchGenerateAll = () => {
+  calculatedDefaultFiscalDate.value = getCalculatedFiscalDateIso();
+  showBatchDialog.value = true;
+};
 
-  if (!result.isConfirmed) return;
-
+const handleConfirmBatchGenerate = async (customRetentionDate) => {
+  savingBatch.value = true;
   try {
-    loading.value = true;
     const response = await axios.post("/retentions/batch-generate-all", {
       start_date: startDate.value,
       end_date: endDate.value,
+      retention_date: customRetentionDate,
     });
-    
+
     toast.success(response.data?.message || "Retenciones procesadas correctamente.");
+    showBatchDialog.value = false;
     fetchRetentions();
   } catch (error) {
     console.error("Error en generación masiva:", error);
     toast.error(error.response?.data?.message || "Ocurrió un error al procesar la solicitud.");
   } finally {
-    loading.value = false;
+    savingBatch.value = false;
+  }
+};
+
+const handleOmitUntilDate = () => {
+  showOmitDialog.value = true;
+};
+
+const handleConfirmOmit = async (cutoffDate) => {
+  savingOmit.value = true;
+  try {
+    const response = await axios.post("/retentions/omit-until-date", {
+      cutoff_date: cutoffDate,
+    });
+
+    toast.success(response.data?.message || "Facturas omitidas exitosamente.");
+    showOmitDialog.value = false;
+    fetchRetentions();
+  } catch (error) {
+    console.error("Error al omitir facturas por fecha:", error);
+    toast.error(error.response?.data?.message || "Ocurrió un error al omitir las facturas.");
+  } finally {
+    savingOmit.value = false;
   }
 };
 
 const downloadPdf = async (id, isRetention = true) => {
-  downloadingPdf.value[id] = true;
+  downloadingPdf.value = { ...downloadingPdf.value, [id]: true };
   try {
     const params = isRetention ? { retention_id: id } : { ids: id };
     const response = await axios.get("/retentions/download", {
       params,
       responseType: "blob",
     });
-    
+
     const url = window.URL.createObjectURL(new Blob([response.data]));
     const link = document.createElement("a");
     link.href = url;
@@ -159,28 +186,55 @@ const downloadPdf = async (id, isRetention = true) => {
     console.error("Error al descargar PDF:", error);
     toast.error("Error al obtener el archivo PDF.");
   } finally {
-    downloadingPdf.value[id] = false;
+    downloadingPdf.value = { ...downloadingPdf.value, [id]: false };
   }
 };
 
 const clearFilters = () => {
   search.value = "";
   supplierId.value = null;
-  setYearPreset();
+  setFortnightPreset();
   page.value = 1;
   fetchRetentions();
 };
 
+const handleRestoreOmitted = async () => {
+  const result = await Swal.fire({
+    title: "¿Restaurar Facturas Omitidas?",
+    text: "Todas las facturas que fueron omitidas volverán a aparecer en la lista de pendientes.",
+    icon: "question",
+    showCancelButton: true,
+    confirmButtonColor: "#0288d1",
+    cancelButtonColor: "#9e9e9e",
+    confirmButtonText: "SÍ, RESTAURAR TODAS",
+    cancelButtonText: "CANCELAR",
+  });
+
+  if (!result.isConfirmed) return;
+
+  try {
+    loading.value = true;
+    const response = await axios.post("/retentions/restore-omitted");
+    toast.success(response.data?.message || "Facturas restauradas exitosamente.");
+    fetchRetentions();
+  } catch (error) {
+    console.error("Error al restaurar facturas:", error);
+    toast.error(error.response?.data?.message || "Error al restaurar las facturas.");
+  } finally {
+    loading.value = false;
+  }
+};
+
 const handleDeleteRetention = async (id) => {
   const result = await Swal.fire({
-    title: '¿Eliminar comprobante?',
-    text: 'Esta acción desvinculará las facturas y volverán a estado pendiente.',
-    icon: 'warning',
+    title: "¿Eliminar comprobante?",
+    text: "Esta acción desvinculará las facturas y volverán a estado pendiente.",
+    icon: "warning",
     showCancelButton: true,
-    confirmButtonColor: '#e53935',
-    cancelButtonColor: '#9e9e9e',
-    confirmButtonText: 'SÍ, ELIMINAR',
-    cancelButtonText: 'CANCELAR'
+    confirmButtonColor: "#e53935",
+    cancelButtonColor: "#9e9e9e",
+    confirmButtonText: "SÍ, ELIMINAR",
+    cancelButtonText: "CANCELAR",
   });
 
   if (!result.isConfirmed) return;
@@ -199,35 +253,40 @@ const handleDeleteRetention = async (id) => {
 };
 
 const handleEditRetention = async (retention) => {
-  const { value: newNumber } = await Swal.fire({
-    title: 'Editar Número de Comprobante',
-    input: 'text',
-    inputLabel: 'Número de Comprobante',
-    inputValue: retention.number,
-    showCancelButton: true,
-    confirmButtonColor: '#fb8c00',
-    cancelButtonColor: '#9e9e9e',
-    confirmButtonText: 'GUARDAR',
-    cancelButtonText: 'CANCELAR',
-    inputValidator: (value) => {
-      if (!value) {
-        return '¡Debes ingresar un número válido!';
-      }
-    }
-  });
-
-  if (!newNumber) return;
+  savingEdit.value = false;
+  editingRetention.value = null;
+  showEditDialog.value = false;
 
   try {
-    loading.value = true;
-    const response = await axios.put(`/retentions/${retention.id}`, { number: newNumber });
-    toast.success(response.data?.message || "Número actualizado correctamente.");
+    const response = await axios.get(`/retentions/${retention.id}`);
+    editingRetention.value = response.data?.data ?? retention;
+    showEditDialog.value = true;
+  } catch (error) {
+    console.error("Error al cargar datos de la retención:", error);
+    toast.error("No se pudieron cargar los datos de la retención.");
+  }
+};
+
+const handleSaveRetention = async (payload) => {
+  if (!editingRetention.value) return;
+  savingEdit.value = true;
+  try {
+    const response = await axios.put(`/retentions/${editingRetention.value.id}`, payload);
+    toast.success(response.data?.message || "Retención actualizada correctamente.");
+    showEditDialog.value = false;
+    editingRetention.value = null;
     fetchRetentions();
   } catch (error) {
-    console.error("Error al editar comprobante:", error);
-    toast.error(error.response?.data?.message || "Error al actualizar el número.");
+    console.error("Error al guardar retención:", error);
+    const errors = error.response?.data?.errors;
+    if (errors) {
+      const firstError = Object.values(errors)[0]?.[0];
+      toast.error(firstError || "Error de validación al guardar.");
+    } else {
+      toast.error(error.response?.data?.message || "Error al actualizar la retención.");
+    }
   } finally {
-    loading.value = false;
+    savingEdit.value = false;
   }
 };
 
@@ -241,7 +300,7 @@ const handleSort = (sortOptions) => {
 watch(currentTab, (newTab) => {
   page.value = 1;
   selected.value = [];
-  
+
   if (newTab === "generated") {
     sortBy.value = "date";
     orderBy.value = "desc";
@@ -249,7 +308,7 @@ watch(currentTab, (newTab) => {
     sortBy.value = "created_invoice_date";
     orderBy.value = "desc";
   }
-  
+
   fetchRetentions();
 });
 
@@ -263,9 +322,15 @@ watch([search, supplierId, startDate, endDate], () => {
 });
 
 onMounted(() => {
-  setYearPreset();
+  setFortnightPreset();
   fetchSuppliers();
   fetchRetentions();
+});
+
+onUnmounted(() => {
+  if (debounceTimer) {
+    clearTimeout(debounceTimer);
+  }
 });
 </script>
 
@@ -278,13 +343,17 @@ onMounted(() => {
         v-model:supplier-id="supplierId"
         v-model:start-date="startDate"
         v-model:end-date="endDate"
+        v-model:selected-preset="selectedPreset"
         :suppliers="suppliers"
         :loading="loading"
         :selected-count="selected.length"
         :current-tab="currentTab"
         @clear="clearFilters"
+        @preset-selected="applyDatePreset"
         @bulk-generate="handleBulkGenerate"
         @batch-generate-all="handleBatchGenerateAll"
+        @omit-until-date="handleOmitUntilDate"
+        @restore-omitted="handleRestoreOmitted"
         @sort="handleSort"
         class="mb-0"
       />
@@ -298,18 +367,6 @@ onMounted(() => {
             </VAvatar>
             <span class="text-sm font-weight-black uppercase">Gestión de Retenciones IVA</span>
           </div>
-          <VSpacer />
-          <VBtn
-            v-if="selected.length > 0 && currentTab === 'pending'"
-            color="success"
-            variant="flat"
-            class="rounded-lg text-xs font-weight-black px-4 shadow-sm"
-            :loading="loading"
-            @click="handleBulkGenerate"
-          >
-            <VIcon start icon="tabler-check" size="18" />
-            GENERAR {{ selected.length }} RETENCIONES
-          </VBtn>
         </VCardTitle>
 
         <VTabs v-model="currentTab" color="primary" grow class="premium-tabs bg-surface-variant-opacity-2">
@@ -349,6 +406,31 @@ onMounted(() => {
         </VCardText>
       </VCard>
     </div>
+
+    <!-- Batch Generate Retentions Dialog Component -->
+    <BatchGenerateRetentionsDialog
+      v-model="showBatchDialog"
+      :start-date="startDate"
+      :end-date="endDate"
+      :default-fiscal-date="calculatedDefaultFiscalDate"
+      :loading="savingBatch"
+      @confirm="handleConfirmBatchGenerate"
+    />
+
+    <!-- Omit Retentions Dialog Component -->
+    <OmitRetentionsDialog
+      v-model="showOmitDialog"
+      :loading="savingOmit"
+      @confirm="handleConfirmOmit"
+    />
+
+    <!-- Edit Retention Dialog Component -->
+    <EditRetentionDialog
+      v-model="showEditDialog"
+      :retention="editingRetention"
+      :loading="savingEdit"
+      @saved="handleSaveRetention"
+    />
   </div>
 </template>
 
@@ -360,7 +442,7 @@ onMounted(() => {
 
 .premium-tabs :deep(.v-tab--selected) {
   opacity: 1 !important;
-  background-color: white !important;
+  background-color: rgba(var(--v-theme-surface), 1) !important;
 }
 
 .bg-surface-variant-opacity-2 {

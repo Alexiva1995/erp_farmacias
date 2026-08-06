@@ -11,6 +11,10 @@ const props = defineProps({
   dataDetailed: { type: Boolean, default: false },
   selectedCurrency: { type: String, default: "" },
   selectedOption: { type: String, default: "" },
+  // Nuevas props
+  rates: { type: Object, default: () => ({ bcv: { rate: 0 }, cop: { rate: 0 } }) },
+  cashStatus: { type: Object, default: () => null },
+  isExporting: { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
@@ -21,6 +25,7 @@ const emit = defineEmits([
   "update:selectedOption",
   "adjust",
   "clear",
+  "export",
 ]);
 
 const options = {
@@ -58,6 +63,8 @@ function handleWalletSelect({ currency, option }) {
       :date-filtered="!!dateRange"
       :selected-currency="selectedCurrency"
       :selected-option="selectedOption"
+      :rates="rates"
+      :cash-status="cashStatus"
       @select="handleWalletSelect"
       @adjust="emit('adjust', $event)"
       class="mb-7"
@@ -122,7 +129,7 @@ function handleWalletSelect({ currency, option }) {
           </div>
         </VCol>
 
-        <VCol v-if="props.dataDetailed" cols="12" sm="6" md="8">
+        <VCol v-if="props.dataDetailed" cols="12" sm="6" md="6">
           <VSelect
             :model-value="props.selectedOption"
             :items="options[props.selectedCurrency ?? 'USD']"
@@ -133,6 +140,23 @@ function handleWalletSelect({ currency, option }) {
             prepend-inner-icon="tabler-wallet"
             @update:model-value="emit('update:selectedOption', $event)"
           />
+        </VCol>
+
+        <!-- Botón Exportar Excel -->
+        <VCol cols="12" sm="6" md="2" class="d-flex justify-end align-center">
+          <VBtn
+            id="btn-export-excel"
+            :loading="isExporting"
+            :disabled="isExporting"
+            color="success"
+            variant="tonal"
+            size="small"
+            prepend-icon="tabler-table-export"
+            class="font-weight-black"
+            @click="emit('export')"
+          >
+            Excel
+          </VBtn>
         </VCol>
       </template>
     </AppFilterBase>

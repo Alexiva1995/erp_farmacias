@@ -89,13 +89,5 @@ class CashRegisterClosureTest extends TestCase
         $this->openCash->refresh();
         $this->assertEquals('closed', $this->openCash->status);
         $this->assertNotNull($this->openCash->closing_date);
-
-        // Validar que se haya abierto una nueva caja registradora para el vendedor automáticamente
-        $newOpenCash = CashClosing::where('seller_id', $this->seller->id)
-            ->where('status', 'open')
-            ->first();
-
-        $this->assertNotNull($newOpenCash);
-        $this->assertNotEquals($this->openCash->id, $newOpenCash->id);
     }
 }

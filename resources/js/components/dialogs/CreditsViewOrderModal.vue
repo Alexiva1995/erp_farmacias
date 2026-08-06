@@ -4,7 +4,7 @@ import { formatDateTime } from "@/utils/formatDateTime";
 import { capitalizeFirstAndLastName } from "@/@core/utils/formatters";
 import { translateMethod } from "@/utils/paymentMethods";
 import axios from "@/plugins/axios";
-import { computed, defineEmits, defineProps, ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 
 const props = defineProps({
   isDialogVisible: {

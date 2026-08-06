@@ -1,5 +1,6 @@
 <script setup>
 import axios from "@/plugins/axios";
+import { toast } from "@/plugins/sweetalert";
 import { ref, watch } from "vue";
 
 const props = defineProps({
@@ -13,7 +14,7 @@ const emit = defineEmits(["update:modelValue", "client-assigned"]);
 const searchQuery = ref("");
 const clients = ref([]);
 const loading = ref(false);
-const assigning = ref(false);
+const assigningId = ref(null);
 let debounceTimer = null;
 
 const fetchClients = async (query) => {
@@ -47,20 +48,24 @@ watch(searchQuery, (val) => {
 });
 
 const assignClient = async (clientId) => {
-  assigning.value = true;
+  assigningId.value = clientId;
   try {
-    await axios.post(`/crm/clients/${clientId}/update-company/${props.companyId}`, {
+    const compId = parseInt(props.companyId);
+    const res = await axios.post(`/crm/clients/${clientId}/update-company/${compId}`, {
       client_id: clientId,
-      company_id: parseInt(props.companyId),
+      company_id: compId,
       status: true,
     });
-    // Quitar el cliente de la lista
-    clients.value = clients.value.filter((c) => c.id !== clientId);
-    emit("client-assigned");
+    if (res.status === 200) {
+      toast.success("Cliente vinculado exitosamente");
+      clients.value = clients.value.filter((c) => c.id !== clientId);
+      emit("client-assigned");
+    }
   } catch (error) {
     console.error("Error al asignar cliente:", error);
+    toast.error(error.response?.data?.message || "Error al vincular el cliente");
   } finally {
-    assigning.value = false;
+    assigningId.value = null;
   }
 };
 
@@ -162,7 +167,7 @@ watch(
                   size="small"
                   prepend-icon="tabler-plus"
                   class="font-weight-black shadow-sm"
-                  :loading="assigning"
+                  :loading="assigningId === client.id"
                   @click="assignClient(client.id)"
                 >
                   VINCULAR

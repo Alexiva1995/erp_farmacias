@@ -2,50 +2,59 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Exports\HistoriesExport;
-use Illuminate\Http\Request;
-use App\Models\FiscalHistory;
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Fiscal\FiscalHistoryIndexRequest;
+use App\Http\Resources\Fiscal\FiscalHistoryResource;
 use App\Services\History\HistoryActionService;
 use App\Services\History\HistoryQueryService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class FiscalController extends Controller
 {
-
     public function __construct(
-        private HistoryActionService $HistoryActionService,
-        private HistoryQueryService $HistoryQueryService
+        private HistoryActionService $historyActionService,
+        private HistoryQueryService $historyQueryService
     ) {}
 
-    public function index(Request $request)
+    /**
+     * Display a paginated listing of the fiscal history resource.
+     */
+    public function index(FiscalHistoryIndexRequest $request): JsonResponse
     {
-        $query = $this->HistoryQueryService->getFilteredQuery($request);
-        $perPage = $request->input('itemsPerPage', 10);
+        $query = $this->historyQueryService->getFilteredQuery($request);
+        $perPage = (int) $request->input('itemsPerPage', 10);
 
         if ($perPage < 1) {
             $items = $query->get();
-            return response()->json(['data' => $items, 'total' => $items->count()]);
+            return response()->json([
+                'data'  => FiscalHistoryResource::collection($items),
+                'total' => $items->count(),
+                'stats' => $this->historyQueryService->getSummaryStats($request),
+            ]);
         }
+
         $paginatedResult = $query->paginate($perPage);
 
-        // Verificar hash de auditoría para cada registro
-        $paginatedResult->getCollection()->transform(function ($history) {
-            $history->is_audit_valid = $this->HistoryQueryService->verifyAuditHash($history);
-            return $history;
-        });
-
         return response()->json([
-            'data' => $paginatedResult->items(),
-            'total' => $paginatedResult->total()
+            'data'  => FiscalHistoryResource::collection($paginatedResult->getCollection()),
+            'total' => $paginatedResult->total(),
+            'stats' => $this->historyQueryService->getSummaryStats($request),
         ]);
     }
 
-    public function export(Request $request)
+    /**
+     * Export fiscal history report to Excel/CSV.
+     */
+    public function export(Request $request): BinaryFileResponse
     {
-        $query = $this->HistoryQueryService->getFilteredQuery($request);
+        $query = $this->historyQueryService->getFilteredQuery($request);
         $format = $request->input('format', 'xlsx');
         $fileName = 'HistoriaFiscal-' . now()->format('Y-m-d') . '.' . $format;
+        
         return Excel::download(new HistoriesExport($query), $fileName);
     }
 }

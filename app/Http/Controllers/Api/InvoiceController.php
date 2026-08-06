@@ -17,6 +17,9 @@ use App\Http\Requests\Invoice\MatchBarcodeRequest;
 use App\Http\Requests\Invoice\UploadInvoicePhotoRequest;
 use App\Http\Requests\Invoice\NextSequenceRequest;
 use App\Http\Requests\Invoices\ApproveInvoiceRequest;
+use App\Http\Requests\Invoices\BulkDeleteInvoicesRequest;
+
+use App\Http\Requests\Invoices\IndexInvoiceRequest;
 
 class InvoiceController extends Controller
 {
@@ -26,23 +29,26 @@ class InvoiceController extends Controller
     ) {
     }
 
-    public function index(Request $request)
+    public function index(IndexInvoiceRequest $request)
     {
         try {
-            if (!$request->has('status')) {
+            $validated = $request->validated();
+            if (!isset($validated['status'])) {
                 $request->merge(['status' => ['pending']]);
             }
             $query = $this->invoiceQueryService->getInvoicesQuery($request);
+            $totalUsdSum = (clone $query)->sum('total_usd');
 
-            $perPage = (int) $request->input('itemsPerPage', 10);
-            if ($perPage <= 0) {
-                $perPage = $query->count() ?: 1;
+            $perPage = (int) ($validated['itemsPerPage'] ?? 10);
+            if ($perPage <= 0 || $perPage > 100) {
+                $perPage = 10;
             }
             $paginatedResult = $query->paginate($perPage);
 
             return response()->json([
                 'data' => InvoiceResource::collection($paginatedResult->items()),
                 'total' => $paginatedResult->total(),
+                'total_usd_sum' => (float) $totalUsdSum,
             ]);
         } catch (\Exception $e) {
             Log::error('Error en InvoiceController@index: ' . $e->getMessage(), [
@@ -83,6 +89,28 @@ class InvoiceController extends Controller
 
         } catch (\Exception $e) {
             return response()->json(['message' => $e->getMessage()], 409);
+        }
+    }
+
+    public function bulkDelete(BulkDeleteInvoicesRequest $request)
+    {
+        try {
+            $deletedCount = $this->invoiceActionService->bulkDeleteInvoicesBeforeDate(
+                $request->validated()['before_date']
+            );
+
+            return response()->json([
+                'message' => "Se cambiaron a estado eliminadas {$deletedCount} facturas correctamente.",
+                'deleted_count' => $deletedCount
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error en InvoiceController@bulkDelete: ' . $e->getMessage());
+
+            return response()->json([
+                'message' => 'Error al procesar la eliminación masiva de facturas.',
+                'error' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
         }
     }
 

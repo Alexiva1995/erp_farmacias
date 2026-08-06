@@ -261,90 +261,34 @@ class EcommerceController extends Controller
      */
     public function getAdminOrders(Request $request): JsonResponse
     {
-        $startDate = $request->input('start_date');
-        $endDate = $request->input('end_date');
+        $filters = $request->only(['start_date', 'end_date']);
+        $perPage = (int) $request->input('per_page', 15);
 
-        $query = \Illuminate\Support\Facades\DB::table('ecommerce_orders')
-            ->select('ecommerce_orders.*', 'users.username as assigned_user')
-            ->leftJoin('users', 'users.id', '=', 'ecommerce_orders.user_id');
-
-        if ($startDate) {
-            $query->where('ecommerce_orders.created_at', '>=', $startDate . ' 00:00:00');
-        }
-        if ($endDate) {
-            $query->where('ecommerce_orders.created_at', '<=', $endDate . ' 23:59:59');
-        }
-
-        $orders = $query->orderBy('ecommerce_orders.id', 'desc')->get();
-
-        if ($orders->isEmpty()) {
-            return response()->json([
-                'success' => true,
-                'data'    => [],
-            ]);
-        }
-
-        $orderIds = $orders->pluck('id')->toArray();
-
-        // Traer todos los items de golpe en una sola consulta (Evita N+1)
-        $items = \Illuminate\Support\Facades\DB::table('ecommerce_order_items')
-            ->join('products', 'products.id', '=', 'ecommerce_order_items.product_id')
-            ->leftJoin('product_variants', 'product_variants.id', '=', 'ecommerce_order_items.product_variant_id')
-            ->select(
-                'ecommerce_order_items.*', 
-                'products.name as product_name', 
-                'product_variants.attribute_value as variant_value'
-            )
-            ->whereIn('ecommerce_order_id', $orderIds)
-            ->get()
-            ->groupBy('ecommerce_order_id');
-
-        foreach ($orders as $order) {
-            $order->items = $items->get($order->id) ?? [];
-        }
+        $orders = $this->orderService->getAdminOrders($filters, $perPage);
 
         return response()->json([
             'success' => true,
-            'data'    => $orders,
+            'data'    => \App\Http\Resources\EcommerceOrderResource::collection($orders->items()),
+            'meta'    => [
+                'current_page' => $orders->currentPage(),
+                'last_page'    => $orders->lastPage(),
+                'per_page'     => $orders->perPage(),
+                'total'        => $orders->total(),
+            ],
         ]);
     }
 
     /**
      * Aprobar una orden de e-commerce (el pago fue confirmado).
-     * La orden TPV ya fue creada al checkout — solo se actualiza el estado.
      */
     public function approveOrder(int $id): JsonResponse
     {
         try {
-            return \Illuminate\Support\Facades\DB::transaction(function () use ($id) {
-                $ecommerceOrder = \Illuminate\Support\Facades\DB::table('ecommerce_orders')
-                    ->where('id', $id)
-                    ->first();
-
-                if (!$ecommerceOrder) {
-                    throw new \Exception('La orden no fue encontrada.');
-                }
-
-                if ($ecommerceOrder->status !== 'Pending') {
-                    throw new \Exception('Solo se pueden aprobar órdenes en estado Pendiente.');
-                }
-
-                // Marcar la ecommerce_order como Pagada
-                \Illuminate\Support\Facades\DB::table('ecommerce_orders')
-                    ->where('id', $id)
-                    ->update(['status' => 'Paid', 'updated_at' => now()]);
-
-                // Marcar la orden TPV vinculada como completada (venta confirmada)
-                if (!empty($ecommerceOrder->tpv_order_id)) {
-                    \App\Models\Order::where('id', $ecommerceOrder->tpv_order_id)
-                        ->update(['status' => 'Completed']);
-                }
-
-                return response()->json([
-                    'success' => true,
-                    'message' => 'La orden ha sido aprobada. Pago confirmado.',
-                ]);
-            });
+            $this->orderService->approveOrder($id);
+            return response()->json([
+                'success' => true,
+                'message' => 'La orden ha sido aprobada. Pago confirmado.',
+            ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -355,53 +299,15 @@ class EcommerceController extends Controller
 
     /**
      * Cancelar una orden de e-commerce.
-     * Devuelve el stock y cancela también la orden TPV vinculada.
      */
     public function cancelOrder(int $id): JsonResponse
     {
         try {
-            return \Illuminate\Support\Facades\DB::transaction(function () use ($id) {
-                $ecommerceOrder = \Illuminate\Support\Facades\DB::table('ecommerce_orders')
-                    ->where('id', $id)
-                    ->first();
-
-                if (!$ecommerceOrder) {
-                    throw new \Exception('La orden no fue encontrada.');
-                }
-
-                // Devolver stock de los ítems
-                $items = \Illuminate\Support\Facades\DB::table('ecommerce_order_items')
-                    ->where('ecommerce_order_id', $id)
-                    ->get();
-
-                foreach ($items as $item) {
-                    if (!empty($item->product_variant_id)) {
-                        \Illuminate\Support\Facades\DB::table('product_variants')
-                            ->where('id', $item->product_variant_id)
-                            ->increment('stock', $item->quantity);
-                    } else {
-                        \Illuminate\Support\Facades\DB::table('products')
-                            ->where('id', $item->product_id)
-                            ->increment('stock', $item->quantity);
-                    }
-                }
-
-                // Cancelar la ecommerce_order
-                \Illuminate\Support\Facades\DB::table('ecommerce_orders')
-                    ->where('id', $id)
-                    ->update(['status' => 'Cancelled', 'updated_at' => now()]);
-
-                // Cancelar también la orden TPV vinculada
-                if (!empty($ecommerceOrder->tpv_order_id)) {
-                    \App\Models\Order::where('id', $ecommerceOrder->tpv_order_id)
-                        ->update(['status' => 'cancelled']);
-                }
-
-                return response()->json([
-                    'success' => true,
-                    'message' => 'La orden ha sido cancelada y el stock devuelto.',
-                ]);
-            });
+            $this->orderService->cancelOrder($id);
+            return response()->json([
+                'success' => true,
+                'message' => 'La orden ha sido cancelada y el stock devuelto.',
+            ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -412,29 +318,15 @@ class EcommerceController extends Controller
 
     /**
      * Marcar pedido como enviado.
-     * La orden TPV ya existe — solo actualiza el estado.
      */
     public function shipOrder(int $id): JsonResponse
     {
         try {
-            return \Illuminate\Support\Facades\DB::transaction(function () use ($id) {
-                $ecommerceOrder = \Illuminate\Support\Facades\DB::table('ecommerce_orders')
-                    ->where('id', $id)
-                    ->first();
-
-                if (!$ecommerceOrder) {
-                    throw new \Exception('La orden no fue encontrada.');
-                }
-
-                \Illuminate\Support\Facades\DB::table('ecommerce_orders')
-                    ->where('id', $id)
-                    ->update(['status' => 'Shipped', 'updated_at' => now()]);
-
-                return response()->json([
-                    'success' => true,
-                    'message' => 'La orden ha sido marcada como enviada.',
-                ]);
-            });
+            $this->orderService->shipOrder($id);
+            return response()->json([
+                'success' => true,
+                'message' => 'La orden ha sido marcada como enviada.',
+            ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -444,46 +336,17 @@ class EcommerceController extends Controller
     }
 
     /**
-     * Completar el pedido (entregado al cliente). Marca la orden TPV como cerrada.
+     * Completar el pedido (entregado al cliente).
      */
     public function completeOrder(int $id): JsonResponse
     {
         try {
-            return \Illuminate\Support\Facades\DB::transaction(function () use ($id) {
-                $ecommerceOrder = \Illuminate\Support\Facades\DB::table('ecommerce_orders')
-                    ->where('id', $id)
-                    ->first();
-
-                if (!$ecommerceOrder) {
-                    throw new \Exception('La orden no existe.');
-                }
-
-                if ($ecommerceOrder->status === 'Completed') {
-                    throw new \Exception('La orden ya fue completada anteriormente.');
-                }
-
-                if ($ecommerceOrder->status === 'Cancelled') {
-                    throw new \Exception('Una orden cancelada no se puede completar.');
-                }
-
-                // Actualizar ecommerce_order
-                \Illuminate\Support\Facades\DB::table('ecommerce_orders')
-                    ->where('id', $id)
-                    ->update(['status' => 'Completed', 'updated_at' => now()]);
-
-                // Marcar la orden TPV como completada si aún está pendiente
-                if (!empty($ecommerceOrder->tpv_order_id)) {
-                    \App\Models\Order::where('id', $ecommerceOrder->tpv_order_id)
-                        ->whereNotIn('status', ['Completed', 'cancelled'])
-                        ->update(['status' => 'Completed']);
-                }
-
-                return response()->json([
-                    'success'  => true,
-                    'message'  => 'La orden ha sido completada con éxito.',
-                    'order_id' => $ecommerceOrder->tpv_order_id,
-                ]);
-            });
+            $tpvOrderId = $this->orderService->completeOrder($id);
+            return response()->json([
+                'success'  => true,
+                'message'  => 'La orden ha sido completada con éxito.',
+                'order_id' => $tpvOrderId,
+            ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,

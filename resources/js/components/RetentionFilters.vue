@@ -8,6 +8,7 @@ const props = defineProps({
   supplierId: [Number, String, null],
   startDate: String,
   endDate: String,
+  selectedPreset: { type: String, default: "fortnight_current" },
   suppliers: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
   selectedCount: { type: Number, default: 0 },
@@ -19,13 +20,22 @@ const emit = defineEmits([
   "update:supplierId",
   "update:startDate",
   "update:endDate",
+  "update:selectedPreset",
+  "preset-selected",
   "clear",
   "bulk-generate",
   "batch-generate-all",
+  "omit-until-date",
+  "restore-omitted",
   "sort",
 ]);
 
-// Opciones de ordenamiento según el tab activo
+// Rangos de fechas preestablecidos
+const datePresets = [
+  { title: "Quincena Actual", value: "fortnight_current" },
+  { title: "Quincena Pasada", value: "fortnight_previous" },
+];
+
 const sortOptionsPending = [
   { title: "Fecha Reciente", icon: "tabler-calendar-up", key: "created_invoice_date", order: "desc" },
   { title: "Fecha Antigua", icon: "tabler-calendar-down", key: "created_invoice_date", order: "asc" },
@@ -91,11 +101,56 @@ const hasAdvancedFilters = computed(() =>
         <VIcon icon="tabler-wand" size="20" />
         <VTooltip activator="parent" location="top">Generar TODAS las Pendientes (Rango Actual)</VTooltip>
       </VBtn>
+
+      <!-- Botón Omitir Facturas Anteriores a Fecha -->
+      <VBtn
+        v-if="props.currentTab === 'pending'"
+        icon
+        color="error"
+        variant="tonal"
+        size="38"
+        class="ml-2 shadow-sm"
+        @click="emit('omit-until-date')"
+      >
+        <VIcon icon="tabler-calendar-off" size="20" />
+        <VTooltip activator="parent" location="top">Omitir Facturas Anteriores a una Fecha</VTooltip>
+      </VBtn>
+
+      <!-- Botón Restaurar Facturas Omitidas -->
+      <VBtn
+        v-if="props.currentTab === 'pending'"
+        icon
+        color="info"
+        variant="tonal"
+        size="38"
+        class="ml-1 shadow-sm"
+        @click="emit('restore-omitted')"
+      >
+        <VIcon icon="tabler-rotate-clockwise" size="20" />
+        <VTooltip activator="parent" location="top">Restaurar Facturas Omitidas</VTooltip>
+      </VBtn>
     </template>
 
     <template #advanced-filters>
+      <!-- Rango Preestablecido -->
+      <VCol cols="12" sm="3">
+        <VSelect
+          :model-value="props.selectedPreset"
+          :items="datePresets"
+          item-title="title"
+          item-value="value"
+          placeholder="Rango Preestablecido"
+          variant="outlined"
+          density="compact"
+          hide-details
+          prepend-inner-icon="tabler-calendar"
+          color="primary"
+          @update:model-value="(val) => { emit('update:selectedPreset', val); emit('preset-selected', val); }"
+        />
+      </VCol>
+
       <!-- Proveedor -->
-      <VCol cols="12" sm="4">
+      <VCol cols="12" sm="3">
         <VSelect
           :model-value="props.supplierId"
           :items="props.suppliers"
@@ -112,7 +167,7 @@ const hasAdvancedFilters = computed(() =>
       </VCol>
 
       <!-- Fecha Inicial -->
-      <VCol cols="12" sm="4">
+      <VCol cols="12" sm="3">
         <AppDateTimePicker
           :model-value="props.startDate"
           placeholder="Fecha Inicial"
@@ -127,7 +182,7 @@ const hasAdvancedFilters = computed(() =>
       </VCol>
 
       <!-- Fecha Final -->
-      <VCol cols="12" sm="4">
+      <VCol cols="12" sm="3">
         <AppDateTimePicker
           :model-value="props.endDate"
           placeholder="Fecha Final"

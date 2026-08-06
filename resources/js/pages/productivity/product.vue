@@ -27,6 +27,7 @@ const currentEmployeeView = ref({});
 const isDialogVisible = ref(false);
 const currentEmployee = ref({});
 const dialogErrors = ref({});
+const saving = ref(false);
 
 // Función para obtener los empleados con sus productos
 const fetchEmployeeProducts = async () => {
@@ -179,6 +180,7 @@ const handleEditAssignment = (employee) => {
 };
 
 const handleSaveAssignment = async (assignmentData) => {
+  saving.value = true;
   try {
     console.log("Datos que se enviarán al backend:", assignmentData);
 
@@ -199,6 +201,8 @@ const handleSaveAssignment = async (assignmentData) => {
       console.error("Error al guardar la asignación:", error);
       toast.error("Hubo un error al guardar la asignación.");
     }
+  } finally {
+    saving.value = false;
   }
 };
 
@@ -240,6 +244,7 @@ const clearDialogErrors = () => {
       :employee="currentEmployee"
       :employees="employees"
       :errors="dialogErrors"
+      :saving="saving"
       @save="handleSaveAssignment"
       @clear-errors="clearDialogErrors"
     />

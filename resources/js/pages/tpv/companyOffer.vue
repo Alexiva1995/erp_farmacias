@@ -14,7 +14,7 @@ const companiesOfferData = ref([]);
 const totalCompanies = ref(0);
 const loadingCompanies = ref(false);
 
-// Filtros de paginacion
+// Filtros de paginación
 const filterSearchQueryIdCompaniesOffer = ref("");
 const filterSearchQueryCompaniesOffer = ref("");
 const pageCompanies = ref(1);
@@ -31,7 +31,7 @@ const currentOfferToEdit = ref(null);
 const currentOfferToView = ref(null);
 const isEditingMode = ref(false);
 
-// Obtener las ofertas de empresas
+// Obtener las ofertas de empresas de la API Resource
 const fetchCompaniesOffers = async () => {
   loadingCompanies.value = true;
   try {
@@ -46,13 +46,8 @@ const fetchCompaniesOffers = async () => {
 
     const response = await axios.get("/tpv/promotions/company-offer", { params });
     
-    companiesOfferData.value = response.data.data.map(offer => ({
-      ...offer,
-      company_name: offer.company?.name || 'N/A',
-      scales: offer.scales || []
-    }));
-    
-    totalCompanies.value = response.data.total;
+    companiesOfferData.value = response.data.data || [];
+    totalCompanies.value = response.data.total || 0;
     
   } catch (error) {
     console.error("Error al obtener las ofertas de empresas:", error);
@@ -62,45 +57,12 @@ const fetchCompaniesOffers = async () => {
   }
 };
 
-/*const fetchCompaniesOffers = async () => {
-  loadingCompanies.value = true;
-  try {
-    const params = {
-      page: pageCompanies.value,
-      items_per_page: itemsPerPageCompanies.value,
-      ...(filterSearchQueryCompaniesOffer.value && {
-        search: filterSearchQueryCompaniesOffer.value,
-      }),
-      ...(filterSearchQueryIdCompaniesOffer.value && {
-        search: filterSearchQueryIdCompaniesOffer.value,
-      }),
-      ...(sortByCompanies.value && { sort_by: sortByCompanies.value }),
-      ...(orderByCompanies.value && { order_by: orderByCompanies.value }),
-    };
-
-    const response = await axios.get("/tpv/promotions/company-offer", { params });
-
-    companiesOfferData.value = response.data.data.map((offer) => ({
-      ...offer,
-      company_name: offer.company?.name || "N/A",
-      scales: offer.scales || [],
-    }));
-
-    totalCompanies.value = response.data.total;
-  } catch (error) {
-    console.error("Error al obtener las ofertas de empresas:", error);
-    toast.error("Error al cargar las ofertas");
-  } finally {
-    loadingCompanies.value = false;
-  }
-};*/
-
 // Obtener las empresas disponibles
 const fetchAvailableCompanies = async () => {
+  if (availableCompanies.value.length > 0) return;
   try {
     const response = await axios.get("/crm/companies");
-
-    availableCompanies.value = response.data.data;
+    availableCompanies.value = response.data.data || [];
   } catch (error) {
     console.error("Error al obtener las empresas:", error);
     toast.error("Error al cargar las empresas");
@@ -147,11 +109,9 @@ const handleAddCompaniesOfferModal = async () => {
 };
 
 // Visualizar una oferta
-
-const handleViewOffer = async (offer) => {
+const handleViewOffer = (offer) => {
   isLoadingDialogData.value = true;
   currentOfferToView.value = { ...offer };
-  console.log('el valor de offer es: ', currentOfferToView);
   isViewOfferDialogVisible.value = true;
   isLoadingDialogData.value = false;
 };
@@ -201,20 +161,20 @@ const handleRecalculateOffer = async (offer) => {
         await Swal.fire({
           title: "Recálculo Exitoso",
           html: `
-            <div class="text-start">
-              <p><b>Ventas Acumuladas:</b> ${formatCurrency(total_sales, 'USD')}</p>
-              <p><b>Mínimo Requerido:</b> ${formatCurrency(min_required, 'USD')}</p>
-              <p><b>Nuevo Estado:</b> <span class="badge ${is_active ? 'badge-success' : 'badge-danger'}">${is_active ? 'ACTIVA' : 'INACTIVA'}</span></p>
+            <div class="text-start pa-2">
+              <p class="mb-1"><b>Ventas Acumuladas:</b> ${formatCurrency(total_sales, 'USD')}</p>
+              <p class="mb-1"><b>Mínimo Requerido:</b> ${formatCurrency(min_required, 'USD')}</p>
+              <p class="mb-0"><b>Nuevo Estado:</b> <span class="v-chip v-chip--density-comfortable v-chip--size-small ${is_active ? 'text-success' : 'text-error'} font-weight-black">${is_active ? 'ACTIVA' : 'INACTIVA'}</span></p>
             </div>
           `,
           icon: is_active ? "success" : "warning",
           confirmButtonText: "Entendido",
           customClass: {
-            confirmButton: 'rounded-lg'
+            confirmButton: 'v-btn v-btn--elevated bg-primary rounded-lg'
           }
         });
         
-        fetchCompaniesOffers();
+        await fetchCompaniesOffers();
       } else {
         toast.error(response.data.message || "Error al recalcular");
       }
@@ -244,7 +204,7 @@ const handleDeleteOffer = async (offer) => {
     try {
       await axios.delete(`/tpv/promotions/company-offer/${offer.id}`);
       toast.success("Oferta eliminada exitosamente");
-      fetchCompaniesOffers();
+      await fetchCompaniesOffers();
     } catch (error) {
       console.error("Error deleting offer:", error);
       toast.error("Error al eliminar la oferta");
@@ -252,14 +212,14 @@ const handleDeleteOffer = async (offer) => {
   }
 };
 
-// Cerrar modal de creacion o actualizacion
+// Cerrar modal de creación o actualización
 const closeCompaniesOfferModal = () => {
   isOfferDialogVisible.value = false;
   currentOfferToEdit.value = null;
   isEditingMode.value = false;
 };
 
-// Cerrar modal de visualizacion
+// Cerrar modal de visualización
 const closeViewOfferModal = () => {
   isViewOfferDialogVisible.value = false;
   currentOfferToView.value = null;
@@ -267,11 +227,11 @@ const closeViewOfferModal = () => {
 
 // Guardar una oferta
 const handleOfferSaved = () => {
-  fetchCompaniesOffers(); // Refresh table
+  fetchCompaniesOffers();
   closeCompaniesOfferModal();
 };
 
-// Watchers para los filtros de paginacion
+// Watchers para los filtros de paginación
 watch(
   [
     () => filterSearchQueryCompaniesOffer.value,

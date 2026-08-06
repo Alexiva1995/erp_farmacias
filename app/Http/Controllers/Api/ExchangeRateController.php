@@ -28,89 +28,11 @@ class ExchangeRateController extends Controller
     {
         $data = $request->data->all();
 
-        // Si el rate viene vacío o es null, buscamos el valor de la API correspondiente
-        if (!isset($data['rate']) || $data['rate'] === null || $data['rate'] === '') {
-            $currency = $data['currency_code'];
-            $rate = null;
-
-            if ($currency === 'BS') {
-                try {
-                    $response = \Illuminate\Support\Facades\Http::retry(3, 1000)->get('https://ve.dolarapi.com/v1/dolares/oficial');
-                    $rate = $response->json('promedio');
-                    if (!$rate) {
-                        $responseList = \Illuminate\Support\Facades\Http::retry(3, 1000)->get('https://ve.dolarapi.com/v1/dolares');
-                        if ($responseList->successful() && is_array($responseList->json())) {
-                            foreach ($responseList->json() as $item) {
-                                if (isset($item['fuente']) && $item['fuente'] === 'bcv') {
-                                    $rate = $item['promedio'] ?? null;
-                                    break;
-                                }
-                            }
-                            if (!$rate && isset($responseList[0]['promedio'])) {
-                                $rate = $responseList[0]['promedio'];
-                            }
-                        }
-                    }
-                } catch (\Exception $e) {
-                    \Log::error("Error consultando Dólar BCV en Controller: " . $e->getMessage());
-                }
-            } elseif ($currency === 'BINANCE') {
-                try {
-                    $responseBinance = \Illuminate\Support\Facades\Http::withHeaders([
-                        'Content-Type' => 'application/json',
-                        'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                    ])->post('https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search', [
-                        "fiat" => "VES",
-                        "page" => 1,
-                        "rows" => 5,
-                        "tradeType" => "BUY",
-                        "asset" => "USDT",
-                        "countries" => [],
-                        "proMerchantAds" => false,
-                        "shieldMerchantAds" => false,
-                        "publisherType" => null,
-                        "payTypes" => []
-                    ]);
-
-                    if ($responseBinance->successful() && isset($responseBinance->json('data')[0]['adv']['price'])) {
-                        $rate = floatval($responseBinance->json('data')[0]['adv']['price']);
-                    } else {
-                        \Log::warning("Binance P2P respondió con status " . $responseBinance->status() . " y body: " . substr($responseBinance->body(), 0, 500));
-                    }
-                } catch (\Exception $e) {
-                    \Log::error("Error consultando Binance P2P en Controller store: " . $e->getMessage());
-                }
-            } elseif ($currency === 'EUR') {
-                try {
-                    $response = \Illuminate\Support\Facades\Http::retry(3, 1000)->get('https://ve.dolarapi.com/v1/euros/oficial');
-                    $rate = $response->json('promedio');
-                    if (!$rate) {
-                        $responseList = \Illuminate\Support\Facades\Http::retry(3, 1000)->get('https://ve.dolarapi.com/v1/euros');
-                        if ($responseList->successful() && is_array($responseList->json())) {
-                            foreach ($responseList->json() as $item) {
-                                if (isset($item['fuente']) && $item['fuente'] === 'bcv') {
-                                    $rate = $item['promedio'] ?? null;
-                                    break;
-                                }
-                            }
-                            if (!$rate && isset($responseList[0]['promedio'])) {
-                                $rate = $responseList[0]['promedio'];
-                            }
-                        }
-                    }
-                } catch (\Exception $e) {
-                    \Log::error("Error consultando Euro en Controller: " . $e->getMessage());
-                }
-            }
-
-            if ($rate && floatval($rate) > 0) {
-                $data['rate'] = floatval($rate);
-            } else {
-                return response()->json("No se pudo obtener la tasa desde el API automáticamente.", 422);
-            }
+        try {
+            $this->exchangeRate->store($data);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json($e->getMessage(), 422);
         }
-
-        $this->exchangeRate->store($data);
 
         // Limpiar caché
         Cache::forget("resources.exchange_rate.{$data['currency_code']}");
@@ -149,6 +71,16 @@ class ExchangeRateController extends Controller
     public function consultOneCOPC()
     {
         return $this->exchangeRate->consultOneCOPC();
+    }
+
+    public function consultOneBsCOP()
+    {
+        return $this->exchangeRate->consultOneBsCOP();
+    }
+
+    public function consultOneCOPS()
+    {
+        return $this->exchangeRate->consultOneCOPS();
     }
 
     public function updateBCVDollar(Request $request)

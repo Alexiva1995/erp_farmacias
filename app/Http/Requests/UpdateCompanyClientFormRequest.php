@@ -30,10 +30,9 @@ class UpdateCompanyClientFormRequest extends FormRequest
     public function rules(): array
     {
         return [
-            //
             "client_id"  => "required|numeric|exists:clients,id",
             "company_id" => "required|numeric|exists:companies,id",
-            "status"     => "required|boolean:strict",
+            "status"     => "required|boolean",
         ];
     }
 

@@ -1,6 +1,6 @@
 <script setup>
 import { formatCurrency } from '@/utils/currencyFormatter';
-import { computed, defineProps } from 'vue';
+import { computed } from 'vue';
 
 const props = defineProps({
   payments: {

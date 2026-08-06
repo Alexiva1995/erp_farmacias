@@ -19,26 +19,17 @@ class AutoOrdersRepository
         return AutoOrder::query()
             ->select(
                 'auto_orders.id',
+                'auto_orders.supplier_id',
                 'auto_orders.status',
                 'auto_orders.order_date',
                 'auto_orders.tentative_delivery_date',
                 'auto_orders.hash_token',
+                'auto_orders.total_quantity',
+                'auto_orders.total_amount',
                 'suppliers.name as supplier_name',
-                'suppliers.sales_phone as phone',
-                DB::raw('SUM(auto_order_details.quantity) as total_quantity'),
-                DB::raw('SUM(auto_order_details.subtotal) as total_amount')
+                'suppliers.sales_phone as phone'
             )
-            ->join('suppliers', 'auto_orders.supplier_id', '=', 'suppliers.id')
-            ->leftJoin('auto_order_details', 'auto_order_details.order_id', '=', 'auto_orders.id')
-            ->groupBy(
-                'auto_orders.id',
-                'auto_orders.status',
-                'auto_orders.order_date',
-                'auto_orders.tentative_delivery_date',
-                'auto_orders.hash_token',
-                'suppliers.name',
-                'suppliers.sales_phone'
-            );
+            ->join('suppliers', 'auto_orders.supplier_id', '=', 'suppliers.id');
     }
 
     public function applyFilters($query, array $filters = [])
@@ -263,12 +254,20 @@ class AutoOrdersRepository
                 fn($q, $date) => $q->whereDate('auto_orders.order_date', '<=', $date)
             );
 
+        $stats = $query->selectRaw('
+            COUNT(*) as total_orders,
+            COALESCE(SUM(total_amount), 0) as total_amount,
+            COUNT(CASE WHEN status = 0 THEN 1 END) as pending_orders,
+            COUNT(CASE WHEN status = 1 THEN 1 END) as sent_orders,
+            COUNT(CASE WHEN status = 2 THEN 1 END) as completed_orders
+        ')->first();
+
         return [
-            'total_orders' => (clone $query)->count(),
-            'total_amount' => (clone $query)->sum('total_amount') ?? 0,
-            'pending_orders' => (clone $query)->where('status', AutoOrderStatus::PENDING)->count(),
-            'sent_orders' => (clone $query)->where('status', AutoOrderStatus::SENT)->count(),
-            'completed_orders' => (clone $query)->where('status', AutoOrderStatus::COMPLETED)->count(),
+            'total_orders' => (int) ($stats->total_orders ?? 0),
+            'total_amount' => (float) ($stats->total_amount ?? 0),
+            'pending_orders' => (int) ($stats->pending_orders ?? 0),
+            'sent_orders' => (int) ($stats->sent_orders ?? 0),
+            'completed_orders' => (int) ($stats->completed_orders ?? 0),
         ];
     }
 

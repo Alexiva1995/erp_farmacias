@@ -11,11 +11,18 @@ use Illuminate\Http\Request;
 class CleaningActivityQueryService
 {
     /**
-     * Prepara la consulta base para las actividades.
+     * Prepara la consulta base para las actividades con campos explícitos.
      */
     private function getBaseQuery(): Builder
     {
-        return CleaningActivity::query();
+        return CleaningActivity::query()->select([
+            'id',
+            'activity',
+            'description',
+            'frequency',
+            'created_at',
+            'updated_at',
+        ]);
     }
 
     /**

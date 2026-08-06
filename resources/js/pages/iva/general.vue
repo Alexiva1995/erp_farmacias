@@ -262,11 +262,13 @@ onMounted(() => {
 <template>
   <div class="iva-general-page pb-12">
     <div class="d-flex flex-column gap-3 mt-1">
-      <!-- KPI Cards Responsivas sin Layout Shift -->
-      <VRow dense class="mb-1">
+      <!-- KPI Cards Responsivas en 1 Sola Fila -->
+      <div class="d-flex flex-wrap flex-md-nowrap gap-3 mb-1">
         <!-- Débito Fiscal -->
-        <VCol cols="12" sm="6" md="4" lg="2-4" class="flex-grow-1">
-          <VSkeletonLoader v-if="loading" type="card" height="130" class="rounded-lg border-0" />
+        <div class="kpi-col-5">
+          <VCard v-if="loading" class="stats-card border-0 overflow-hidden h-100 pa-4">
+            <VSkeletonLoader type="list-item-avatar-two-line" />
+          </VCard>
           <VCard v-else class="stats-card border-0 overflow-hidden h-100">
             <div class="card-bg-decoration" :style="{ background: 'linear-gradient(45deg, rgba(var(--v-theme-warning), 0.12), transparent)' }"></div>
             <VCardText class="pa-5 relative-content">
@@ -289,11 +291,13 @@ onMounted(() => {
             </VCardText>
             <div class="accent-border" style="background-color: rgb(var(--v-theme-warning));"></div>
           </VCard>
-        </VCol>
+        </div>
 
         <!-- Crédito Fiscal -->
-        <VCol cols="12" sm="6" md="4" lg="2-4" class="flex-grow-1">
-          <VSkeletonLoader v-if="loading" type="card" height="130" class="rounded-lg border-0" />
+        <div class="kpi-col-5">
+          <VCard v-if="loading" class="stats-card border-0 overflow-hidden h-100 pa-4">
+            <VSkeletonLoader type="list-item-avatar-two-line" />
+          </VCard>
           <VCard v-else class="stats-card border-0 overflow-hidden h-100">
             <div class="card-bg-decoration" :style="{ background: 'linear-gradient(45deg, rgba(var(--v-theme-info), 0.12), transparent)' }"></div>
             <VCardText class="pa-5 relative-content">
@@ -316,11 +320,13 @@ onMounted(() => {
             </VCardText>
             <div class="accent-border" style="background-color: rgb(var(--v-theme-info));"></div>
           </VCard>
-        </VCol>
+        </div>
 
         <!-- Saldo IVA -->
-        <VCol cols="12" sm="6" md="4" lg="2-4" class="flex-grow-1">
-          <VSkeletonLoader v-if="loading" type="card" height="130" class="rounded-lg border-0" />
+        <div class="kpi-col-5">
+          <VCard v-if="loading" class="stats-card border-0 overflow-hidden h-100 pa-4">
+            <VSkeletonLoader type="list-item-avatar-two-line" />
+          </VCard>
           <VCard v-else class="stats-card border-0 overflow-hidden h-100">
             <div class="card-bg-decoration" :style="{ background: `linear-gradient(45deg, rgba(var(--v-theme-${getIvaStatus.color}), 0.12), transparent)` }"></div>
             <VCardText class="pa-5 relative-content">
@@ -343,11 +349,13 @@ onMounted(() => {
             </VCardText>
             <div class="accent-border" :style="{ backgroundColor: `rgb(var(--v-theme-${getIvaStatus.color}))` }"></div>
           </VCard>
-        </VCol>
+        </div>
 
         <!-- Retenciones (75% del Crédito Fiscal) -->
-        <VCol cols="12" sm="6" md="4" lg="2-4" class="flex-grow-1">
-          <VSkeletonLoader v-if="loading" type="card" height="130" class="rounded-lg border-0" />
+        <div class="kpi-col-5">
+          <VCard v-if="loading" class="stats-card border-0 overflow-hidden h-100 pa-4">
+            <VSkeletonLoader type="list-item-avatar-two-line" />
+          </VCard>
           <VCard v-else class="stats-card border-0 overflow-hidden h-100">
             <div class="card-bg-decoration" :style="{ background: 'linear-gradient(45deg, rgba(var(--v-theme-secondary), 0.12), transparent)' }"></div>
             <VCardText class="pa-5 relative-content">
@@ -370,11 +378,13 @@ onMounted(() => {
             </VCardText>
             <div class="accent-border" style="background-color: rgb(var(--v-theme-secondary));"></div>
           </VCard>
-        </VCol>
+        </div>
 
         <!-- IGTF (3% de ventas SPE) -->
-        <VCol cols="12" sm="6" md="4" lg="2-4" class="flex-grow-1">
-          <VSkeletonLoader v-if="loading" type="card" height="130" class="rounded-lg border-0" />
+        <div class="kpi-col-5">
+          <VCard v-if="loading" class="stats-card border-0 overflow-hidden h-100 pa-4">
+            <VSkeletonLoader type="list-item-avatar-two-line" />
+          </VCard>
           <VCard v-else class="stats-card border-0 overflow-hidden h-100">
             <div class="card-bg-decoration" :style="{ background: 'linear-gradient(45deg, rgba(var(--v-theme-error), 0.1), transparent)' }"></div>
             <VCardText class="pa-5 relative-content">
@@ -397,8 +407,8 @@ onMounted(() => {
             </VCardText>
             <div class="accent-border" style="background-color: rgb(var(--v-theme-error));"></div>
           </VCard>
-        </VCol>
-      </VRow>
+        </div>
+      </div>
 
       <!-- Filtros de Fecha -->
       <IvaFiscalFilters
@@ -483,5 +493,17 @@ onMounted(() => {
 .text-h5 {
   color: rgb(var(--v-theme-on-surface));
   letter-spacing: -0.5px !important;
+}
+
+.kpi-col-5 {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+@media (max-width: 959px) {
+  .kpi-col-5 {
+    flex: 1 1 calc(50% - 12px);
+    min-width: 220px;
+  }
 }
 </style>

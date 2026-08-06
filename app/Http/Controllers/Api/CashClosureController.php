@@ -98,11 +98,25 @@ class CashClosureController extends Controller
 
         $perPage = $request->input('itemsPerPage', 10);
 
+        $isBlind = !empty(\App\Models\GeneralSetting::first()?->blind_cash_closure);
+
         if ($perPage < 1) {
             $items = $query->get();
+            if ($isBlind) {
+                $items->transform(function ($order) {
+                    $order->total_amount = '***';
+                    return $order;
+                });
+            }
             return response()->json(['data' => $items, 'total' => $items->count()]);
         }
         $paginatedResult = $query->paginate($perPage);
+        if ($isBlind) {
+            $paginatedResult->getCollection()->transform(function ($order) {
+                $order->total_amount = '***';
+                return $order;
+            });
+        }
         return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
     }
 
@@ -129,9 +143,8 @@ class CashClosureController extends Controller
     public function getMonthlyCashTable(Request $request)
     {
         $query = $this->cashClosureQueryService->getFilteredQueryMonthly($request);
-        $perPage = $request->input('itemsPerPage', 10);
-        $perPage = $request->input('itemsPerPage', 10);
-        $page = $request->input('page', 1);
+        $perPage = (int) $request->input('itemsPerPage', 10);
+        $page = (int) $request->input('page', 1);
         $offset = ($page - 1) * $perPage;
         $itemsForCurrentPage = $query->slice($offset, $perPage)->values();
         $paginatedResult = new LengthAwarePaginator(

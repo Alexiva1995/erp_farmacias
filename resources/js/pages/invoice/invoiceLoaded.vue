@@ -1,4 +1,5 @@
 <script setup>
+import { ref, watch, onMounted, onUnmounted } from "vue";
 import InvoiceFilters from "@/components/InvoiceFilters.vue";
 import InvoiceTable from "@/components/InvoiceTable.vue";
 import InvoiceDetailView from "@/pages/invoice/invoiceDetails.vue";
@@ -6,7 +7,6 @@ import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { useAuthStore } from "@/stores/auth";
 import Swal from "sweetalert2";
-import { onMounted, ref, watch } from "vue";
 
 const currentView = ref("list");
 const selectedInvoiceId = ref(null);
@@ -22,18 +22,20 @@ const startDate = ref(null);
 const endDate = ref(null);
 const page = ref(1);
 const itemsPerPage = ref(10);
-const sortBy = ref();
-const orderBy = ref();
+const sortBy = ref(null);
+const orderBy = ref(null);
 const availablePaymentRules = ref([]);
 const isApproving = ref(false);
 
 const { isAdmin } = useAuthStore();
 
+let debounceTimer = null;
+
 const fetchSuppliers = async () => {
   isLoadingFilters.value = true;
   try {
     const response = await axios.get("/suppliers");
-    suppliers.value = response.data.data ?? response.data;
+    suppliers.value = response.data.data ?? response.data ?? [];
   } catch (error) {
     toast.error("No se pudieron cargar los proveedores.");
   } finally {
@@ -56,21 +58,28 @@ const fetchInvoices = async () => {
   };
 
   Object.keys(params).forEach(
-    (key) => (params[key] == null || params[key] === "") && delete params[key],
+    (key) => (params[key] == null || params[key] === "") && delete params[key]
   );
 
   try {
     const response = await axios.get("/invoices", { params });
-    invoices.value = response.data.data;
-    totalInvoices.value = response.data.total;
+    invoices.value = response.data.data ?? [];
+    totalInvoices.value = response.data.total ?? 0;
   } catch (error) {
-    toast.error("Error al obtener las facturas.");
+    toast.error("Error al obtener las facturas cargadas.");
   } finally {
     loading.value = false;
   }
 };
 
-let debounceTimer;
+// Reiniciar a página 1 al cambiar filtros de búsqueda
+watch([searchQuery, selectedSupplier, startDate, endDate], () => {
+  if (page.value !== 1) {
+    page.value = 1;
+  }
+});
+
+// Reactividad con debounce centralizado para evitar llamadas duplicadas
 watch(
   [
     page,
@@ -84,29 +93,29 @@ watch(
   ],
   () => {
     if (currentView.value === "list") {
-      clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(() => fetchInvoices(), 300);
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        fetchInvoices();
+      }, 300);
     }
   },
-  { deep: true },
+  { deep: true }
 );
-
-watch([searchQuery, selectedSupplier, startDate, endDate], () => {
-  if (page.value !== 1) {
-    page.value = 1;
-  }
-});
 
 onMounted(() => {
   fetchSuppliers();
   fetchInvoices();
 });
 
+onUnmounted(() => {
+  if (debounceTimer) clearTimeout(debounceTimer);
+});
+
 const updateTableOptions = (options) => {
   page.value = options.page;
   itemsPerPage.value = options.itemsPerPage;
-  sortBy.value = options.sortBy[0]?.key;
-  orderBy.value = options.sortBy[0]?.order;
+  sortBy.value = options.sortBy[0]?.key || null;
+  orderBy.value = options.sortBy[0]?.order || null;
 };
 
 const handleClearFilters = () => {
@@ -122,7 +131,7 @@ const handleReviewInvoice = async (invoice) => {
 
   try {
     const response = await axios.get(
-      `/suppliers/${invoice.supplier_id}/payment-rules`,
+      `/suppliers/${invoice.supplier_id}/payment-rules`
     );
     availablePaymentRules.value = response.data.data ?? response.data ?? [];
   } catch (error) {
@@ -149,7 +158,7 @@ const handleApprovalApiCall = async ({ paymentRuleId }) => {
     handleReturnToList();
   } catch (error) {
     toast.error(
-      error.response?.data?.message || "No se pudo aprobar la factura.",
+      error.response?.data?.message || "No se pudo aprobar la factura."
     );
   } finally {
     isApproving.value = false;
@@ -164,7 +173,7 @@ const handleRejectApiCall = async () => {
     handleReturnToList();
   } catch (error) {
     toast.error(
-      error.response?.data?.message || "No se pudo rechazar la factura.",
+      error.response?.data?.message || "No se pudo rechazar la factura."
     );
   } finally {
     isApproving.value = false;
@@ -178,25 +187,8 @@ const handleReturnInvoice = async (invoiceId) => {
     icon: "warning",
     showCancelButton: true,
     cancelButtonText: "Cancelar",
-    confirmButtonText: "Aprobar",
-    confirmButtonColor: "#28a745",
-    reverseButtons: true,
-    didOpen: () => {
-      const actions = Swal.getActions();
-      const confirmButton = Swal.getConfirmButton();
-      const cancelButton = Swal.getCancelButton();
-
-      actions.style.display = "flex";
-      actions.style.gap = "10px";
-      actions.style.width = "100%";
-      actions.style.padding = "0 20px";
-
-      confirmButton.style.flex = "1";
-      confirmButton.style.width = "50%";
-
-      cancelButton.style.flex = "1";
-      cancelButton.style.width = "50%";
-    },
+    confirmButtonText: "Devolver a Pendiente",
+    confirmButtonColor: "#d33",
   });
 
   if (result.isConfirmed) {
@@ -204,13 +196,13 @@ const handleReturnInvoice = async (invoiceId) => {
       const { data } = await axios.put(`/invoices/${invoiceId}/return-pending`);
 
       if (data.status) {
-        toast.success(data.message);
+        toast.success(data.message || "Factura devuelta a pendientes.");
         fetchInvoices();
       } else {
-        toast.error(data.message);
+        toast.error(data.message || "No se pudo devolver la factura.");
       }
     } catch (error) {
-      toast.error("No se pudo devolver la factura a estado pendiente");
+      toast.error("No se pudo devolver la factura a estado pendiente.");
     }
   }
 };
@@ -226,6 +218,7 @@ const handleReturnInvoice = async (invoiceId) => {
         v-model:endDate="endDate"
         :suppliers="suppliers"
         :loading="isLoadingFilters"
+        :show-add="false"
         @clear="handleClearFilters"
         class="mb-6"
       />

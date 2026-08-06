@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 import axios from "@/plugins/axios";
 import { computed, ref, watch } from "vue";
 import { useDisplay } from "vuetify";
@@ -9,6 +9,7 @@ const props = defineProps({
   employee: { type: Object, default: () => ({}) },
   employees: { type: Array, default: () => [] },
   errors: { type: Object, default: () => ({}) },
+  saving: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(["update:modelValue", "save", "clear-errors"]);
@@ -471,7 +472,8 @@ const getProductColor = (index) => {
               block
               height="50"
               class="font-weight-black rounded-lg shadow-primary text-button uppercase"
-              :disabled="!formData.employee_id || formData.products.length === 0"
+              :disabled="!formData.employee_id || formData.products.length === 0 || props.saving"
+              :loading="props.saving"
               @click="handleSubmit"
             >
               <VIcon start icon="tabler-device-floppy" size="18" class="me-2" />

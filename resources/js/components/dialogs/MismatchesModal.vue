@@ -1,5 +1,5 @@
 <script setup>
-import { computed, defineEmits, defineProps } from "vue";
+import { computed } from "vue";
 import { formatCurrency } from "@/utils/currencyFormatter";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
@@ -116,6 +116,53 @@ const closuresWithMismatches = computed(() => {
     return list.length > 0;
   });
 });
+
+// Lógica de Rectificación de Arqueo por Error Humano
+const isEditModalOpen = ref(false);
+const editingClosing = ref(null);
+const editForm = ref({
+  id: null,
+  declared_cop: 0,
+  declared_cop_transfer: 0,
+  declared_usd: 0,
+  declared_credit: 0,
+  declared_bs_mobile: 0,
+  declared_bs_card: 0,
+});
+const savingRectification = ref(false);
+
+const openEditModal = (closing) => {
+  editingClosing.value = closing;
+  editForm.value = {
+    id: closing.id,
+    declared_cop: parseFloat(closing.declared_cop || 0),
+    declared_cop_transfer: parseFloat(closing.declared_cop_transfer || 0),
+    declared_usd: parseFloat(closing.declared_usd || 0),
+    declared_credit: parseFloat(closing.declared_credit || 0),
+    declared_bs_mobile: parseFloat(closing.declared_bs_mobile || 0),
+    declared_bs_card: parseFloat(closing.declared_bs_card || 0),
+  };
+  isEditModalOpen.value = true;
+};
+
+const handleSaveRectification = async () => {
+  try {
+    savingRectification.value = true;
+    toast.info("Recalculando y rectificando arqueo...");
+    const { data } = await axios.patch("/finances/cash-closure/update-blind-amounts", editForm.value);
+
+    if (data.status === "success") {
+      toast.success("Arqueo rectificado correctamente por error de digitación.");
+      isEditModalOpen.value = false;
+      emit("refresh");
+    }
+  } catch (error) {
+    console.error("Error al rectificar cierre:", error);
+    toast.error("Error al actualizar montos declarados.");
+  } finally {
+    savingRectification.value = false;
+  }
+};
 
 // Llama al backend para procesar y aceptar la discrepancia
 const handleAcceptMismatch = async (closingId, item) => {
@@ -243,9 +290,23 @@ const handleAcceptMismatch = async (closingId, item) => {
             </VTable>
 
             <!-- Comentarios del Cajero -->
-            <div v-if="authStore.isAdmin" class="bg-grey-lighten-4 rounded-lg pa-3 border text-caption" style="line-height: 1.4;">
+            <div v-if="authStore.isAdmin" class="bg-grey-lighten-4 rounded-lg pa-3 border text-caption mb-3" style="line-height: 1.4;">
               <strong class="text-disabled uppercase d-block mb-1">Notas / Justificación del cajero:</strong>
               <span class="text-medium-emphasis font-weight-medium italic">{{ closing.blind_note || 'Sin comentarios registrados por el cajero.' }}</span>
+            </div>
+
+            <!-- Botón de Acción Extra: Rectificación por Error Humano -->
+            <div v-if="authStore.isAdmin" class="d-flex justify-end">
+              <VBtn
+                size="small"
+                color="warning"
+                variant="tonal"
+                prepend-icon="tabler-edit"
+                class="rounded-lg font-weight-bold text-xs"
+                @click="openEditModal(closing)"
+              >
+                Rectificar Arqueo (Error de Digitaciones/Conteo)
+              </VBtn>
             </div>
           </div>
         </div>
@@ -256,6 +317,55 @@ const handleAcceptMismatch = async (closingId, item) => {
       <VCardActions class="pa-4 bg-white border-t px-6">
         <VBtn variant="tonal" color="secondary" block height="48" class="font-weight-black rounded-lg" @click="closeModal">
           Cerrar
+        </VBtn>
+      </VCardActions>
+    </VCard>
+  </VDialog>
+
+  <!-- Modal Secundario de Rectificación por Error Humano -->
+  <VDialog v-model="isEditModalOpen" max-width="550px">
+    <VCard class="rounded-xl overflow-hidden bg-surface">
+      <div class="bg-warning pa-4 d-flex align-center">
+        <VAvatar color="white" size="36" class="me-3">
+          <VIcon icon="tabler-edit" color="warning" size="20" />
+        </VAvatar>
+        <div>
+          <h3 class="text-subtitle-1 font-weight-black text-white leading-tight">Rectificar Montos Declarados</h3>
+          <span class="text-xs text-white opacity-80 font-weight-medium">Corrección de errores de conteo o tipeo</span>
+        </div>
+      </div>
+      <VCardText class="pa-6">
+        <p class="text-xs text-medium-emphasis mb-4">
+          Ingrese los valores físicos reales contados en caja. Al guardar, el sistema recalculará automáticamente las diferencias sin alterar las transacciones de ventas reales del TPV.
+        </p>
+        <VRow density="compact">
+          <VCol cols="12" sm="6">
+            <VTextField v-model.number="editForm.declared_usd" label="Efectivo USD ($)" type="number" prefix="$" variant="outlined" density="compact" />
+          </VCol>
+          <VCol cols="12" sm="6">
+            <VTextField v-model.number="editForm.declared_cop" label="Efectivo COP ($)" type="number" prefix="$" variant="outlined" density="compact" />
+          </VCol>
+          <VCol cols="12" sm="6">
+            <VTextField v-model.number="editForm.declared_bs_mobile" label="Pago Móvil / Transf. Bs" type="number" prefix="Bs." variant="outlined" density="compact" />
+          </VCol>
+          <VCol cols="12" sm="6">
+            <VTextField v-model.number="editForm.declared_bs_card" label="Tarjetas Bs (POS)" type="number" prefix="Bs." variant="outlined" density="compact" />
+          </VCol>
+          <VCol cols="12" sm="6">
+            <VTextField v-model.number="editForm.declared_cop_transfer" label="Transf. COP (Bancolombia)" type="number" prefix="$" variant="outlined" density="compact" />
+          </VCol>
+          <VCol cols="12" sm="6">
+            <VTextField v-model.number="editForm.declared_credit" label="Crédito USD" type="number" prefix="$" variant="outlined" density="compact" />
+          </VCol>
+        </VRow>
+      </VCardText>
+      <VCardActions class="pa-4 bg-light border-t d-flex gap-2">
+        <VSpacer />
+        <VBtn variant="tonal" color="secondary" class="rounded-lg font-weight-bold" @click="isEditModalOpen = false">
+          Cancelar
+        </VBtn>
+        <VBtn color="warning" variant="flat" class="rounded-lg font-weight-bold" :loading="savingRectification" @click="handleSaveRectification">
+          Guardar y Recalcular
         </VBtn>
       </VCardActions>
     </VCard>

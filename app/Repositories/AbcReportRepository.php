@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Repositories;
 
 use App\Contracts\Repositories\AbcReportRepositoryInterface;
-use App\Models\Product;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
 
@@ -52,29 +51,19 @@ class AbcReportRepository implements AbcReportRepositoryInterface
             )
             ->groupBy('daily_sales.product_id', 'daily_sales.dish_id');
 
-        // Subconsulta agrupada de Ventas y Márgenes para evitar duplicidad
+        // Subconsulta unificada de Ventas, Márgenes y Fecha de Última Venta
         $salesSubquery = DB::table('order_details')
             ->select(
                 'order_details.product_id',
                 'order_details.dish_id',
                 DB::raw('SUM(order_details.quantity) as sold_units'),
                 DB::raw('SUM(order_details.quantity * CASE WHEN order_details.unit_price_usd > 0 THEN order_details.unit_price_usd WHEN orders.currency = \'USD\' THEN order_details.price ELSE (order_details.price / NULLIF(orders.usd_conversion, 0)) END) as total_sales'),
-                DB::raw('SUM(order_details.quantity * order_details.unit_cost) as total_cost')
-            )
-            ->join('orders', 'order_details.order_id', '=', 'orders.id')
-            ->where('orders.status', 'Completed')
-            ->whereBetween('orders.order_date', [$startDate, $endDate])
-            ->groupBy('order_details.product_id', 'order_details.dish_id');
-
-        // Subconsulta para obtener la fecha de la última venta absoluta del producto
-        $lastSaleQuery = DB::table('order_details')
-            ->select(
-                'order_details.product_id',
-                'order_details.dish_id',
+                DB::raw('SUM(order_details.quantity * order_details.unit_cost) as total_cost'),
                 DB::raw('MAX(orders.order_date) as last_sale_date')
             )
             ->join('orders', 'order_details.order_id', '=', 'orders.id')
             ->where('orders.status', 'Completed')
+            ->whereBetween('orders.order_date', [$startDate, $endDate])
             ->groupBy('order_details.product_id', 'order_details.dish_id');
 
         // Consulta 1: Productos de Inventario
@@ -91,7 +80,7 @@ class AbcReportRepository implements AbcReportRepositoryInterface
                 DB::raw('COALESCE(sales.total_cost, 0) as total_cost'),
                 DB::raw('COALESCE(variance.std_dev_sales, 0) as std_dev_sales'),
                 DB::raw('COALESCE(variance.avg_daily_sales, 0) as avg_daily_sales'),
-                'last_sale.last_sale_date as last_sale_date',
+                'sales.last_sale_date as last_sale_date',
                 DB::raw("'product' as item_type")
             )
             ->leftJoin('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
@@ -100,17 +89,34 @@ class AbcReportRepository implements AbcReportRepositoryInterface
             })
             ->leftJoinSub($varianceSubquery, 'variance', function($join) {
                 $join->on('products.id', '=', 'variance.product_id');
-            })
-            ->leftJoinSub($lastSaleQuery, 'last_sale', function($join) {
-                $join->on('products.id', '=', 'last_sale.product_id');
-            })
-            ->where(function($q) {
+            });
+
+        $analysisType = $filtros['analysis_type'] ?? 'all';
+
+        if ($analysisType === 'dead_stock') {
+            $productsQuery->where('products.stock', '>', 0)
+                ->where(function($q) {
+                    $q->whereNull('sales.sold_units')
+                      ->orWhere('sales.sold_units', '<=', 0);
+                });
+        } else {
+            $productsQuery->where(function($q) {
                 $q->where('sales.sold_units', '>', 0)
                   ->orWhere('products.stock', '>', 0);
             });
+        }
 
         if (!empty($filtros['laboratory_id'])) {
             $productsQuery->whereIn('products.laboratory_id', (array) $filtros['laboratory_id']);
+        }
+
+        if (!empty($filtros['search'])) {
+            $term = '%' . trim((string) $filtros['search']) . '%';
+            $productsQuery->where(function($q) use ($term) {
+                $q->where('products.name', 'like', $term)
+                  ->orWhere('products.id', 'like', $term)
+                  ->orWhere('laboratories.name', 'like', $term);
+            });
         }
 
         // Consulta 2: Platos de Menú (Dishes)
@@ -118,8 +124,8 @@ class AbcReportRepository implements AbcReportRepositoryInterface
             ->select(
                 'dishes.id',
                 'dishes.name as product_name',
-                'categories.name as laboratory_name', // Usamos la categoría como "laboratorio" para platos
-                DB::raw('0 as current_stock'), // Los platos no suelen tener stock directo
+                'categories.name as laboratory_name',
+                DB::raw('0 as current_stock'),
                 'dishes.cost_price as last_cost',
                 DB::raw('0 as sales_average'),
                 DB::raw('COALESCE(sales.sold_units, 0) as sold_units'),
@@ -127,7 +133,7 @@ class AbcReportRepository implements AbcReportRepositoryInterface
                 DB::raw('COALESCE(sales.total_cost, 0) as total_cost'),
                 DB::raw('COALESCE(variance.std_dev_sales, 0) as std_dev_sales'),
                 DB::raw('COALESCE(variance.avg_daily_sales, 0) as avg_daily_sales'),
-                'last_sale.last_sale_date as last_sale_date',
+                'sales.last_sale_date as last_sale_date',
                 DB::raw("'dish' as item_type")
             )
             ->leftJoin('categories', 'dishes.category_id', '=', 'categories.id')
@@ -136,11 +142,23 @@ class AbcReportRepository implements AbcReportRepositoryInterface
             })
             ->leftJoinSub($varianceSubquery, 'variance', function($join) {
                 $join->on('dishes.id', '=', 'variance.dish_id');
-            })
-            ->leftJoinSub($lastSaleQuery, 'last_sale', function($join) {
-                $join->on('dishes.id', '=', 'last_sale.dish_id');
-            })
-            ->where('sales.sold_units', '>', 0);
+            });
+
+        if ($analysisType === 'dead_stock') {
+            // Los platos de menú no tienen stock de inventario físico
+            $dishesQuery->whereRaw('1 = 0');
+        } else {
+            $dishesQuery->where('sales.sold_units', '>', 0);
+        }
+
+        if (!empty($filtros['search'])) {
+            $term = '%' . trim((string) $filtros['search']) . '%';
+            $dishesQuery->where(function($q) use ($term) {
+                $q->where('dishes.name', 'like', $term)
+                  ->orWhere('dishes.id', 'like', $term)
+                  ->orWhere('categories.name', 'like', $term);
+            });
+        }
 
         // Combinar ambas consultas
         $combinedQuery = $productsQuery->unionAll($dishesQuery);

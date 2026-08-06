@@ -103,6 +103,11 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  // Indica que el backend está procesando una petición de guardado
+  isSaving: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const emit = defineEmits([
@@ -663,26 +668,26 @@ onMounted(() => {
       <div class="d-flex justify-space-between w-100 gap-2">
         <VTooltip text="Limpiar Cotización" location="top">
           <template #activator="{ props: tProps }">
-            <VBtn v-bind="tProps" icon="tabler-trash" variant="tonal" color="error" class="rounded-circle" @click="remove" />
+            <VBtn v-bind="tProps" icon="tabler-trash" variant="tonal" color="error" class="rounded-circle" :disabled="props.isSaving" @click="remove" />
           </template>
         </VTooltip>
 
         <div class="d-flex gap-2">
           <VTooltip text="Imprimir Ticket" location="top">
             <template #activator="{ props: tProps }">
-              <VBtn v-bind="tProps" icon="tabler-printer" variant="tonal" color="primary" class="rounded-circle" @click="handlePrintButtonClick" />
+              <VBtn v-bind="tProps" icon="tabler-printer" variant="tonal" color="primary" class="rounded-circle" :loading="props.isSaving" :disabled="props.isSaving" @click="handlePrintButtonClick" />
             </template>
           </VTooltip>
           
           <VTooltip text="Copiar Mensaje" location="top">
             <template #activator="{ props: tProps }">
-              <VBtn v-bind="tProps" icon="tabler-copy" variant="tonal" color="info" class="rounded-circle" @click="handleCopyWhatsappMessage" />
+              <VBtn v-bind="tProps" icon="tabler-copy" variant="tonal" color="info" class="rounded-circle" :disabled="props.isSaving" @click="handleCopyWhatsappMessage" />
             </template>
           </VTooltip>
 
           <VTooltip text="Enviar WhatsApp" location="top">
             <template #activator="{ props: tProps }">
-              <VBtn v-bind="tProps" icon="tabler-brand-whatsapp" variant="tonal" color="success" class="rounded-circle" @click="handleShareButtonClick" />
+              <VBtn v-bind="tProps" icon="tabler-brand-whatsapp" variant="tonal" color="success" class="rounded-circle" :disabled="props.isSaving" @click="handleShareButtonClick" />
             </template>
           </VTooltip>
 
@@ -691,6 +696,8 @@ onMounted(() => {
             color="primary" 
             prepend-icon="tabler-circle-check"
             class="rounded-lg px-6 font-weight-bold"
+            :loading="props.isSaving"
+            :disabled="props.isSaving"
             @click="handleSaveQuotation"
           >
             Finalizar

@@ -40,6 +40,7 @@ class AbcReportRequest extends FormRequest
             'analysis_type' => ['nullable', 'string', 'in:all,dead_stock,star_products'],
             'min_gmroi' => ['nullable', 'numeric'],
             'stock_filter' => ['nullable', 'string', 'in:all,with_stock,out_of_stock'],
+            'search' => ['nullable', 'string'],
         ];
     }
 }

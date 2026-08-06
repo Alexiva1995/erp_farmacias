@@ -127,7 +127,7 @@ class ResignationController extends Controller
 
             return response()->json([
                 'success' => true,
-                'data' => $result->items(),
+                'data' => \App\Http\Resources\ResignationResource::collection($result->items()),
                 'pagination' => [
                     'total' => $result->total(),
                     'per_page' => $result->perPage(),

@@ -31,7 +31,7 @@ export default [
         subject: 'admin',
         children: [
           {
-            title: 'Limpieza',
+            title: 'Tareas',
             to: 'productivity-cleaning',
           },
           {

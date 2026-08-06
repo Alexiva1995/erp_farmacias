@@ -33,6 +33,7 @@ const frequencies = ref([
 const isEditDialogVisible = ref(false);
 const currentActivity = ref({});
 const activityFormErrors = ref({});
+const saving = ref(false);
 
 const fetchActivities = async () => {
   loading.value = true;
@@ -150,6 +151,8 @@ const handleSaveActivity = async (activityData) => {
     ? "/cleaning-activities"
     : `/cleaning-activities/${currentActivity.value.id}`;
 
+  saving.value = true;
+
   try {
     if (isNewActivity) {
       await axios.post(url, activityData);
@@ -170,6 +173,8 @@ const handleSaveActivity = async (activityData) => {
       console.error("Error al guardar la actividad:", error);
       toast.error("Hubo un error al guardar la actividad.");
     }
+  } finally {
+    saving.value = false;
   }
 };
 
@@ -213,14 +218,15 @@ const handleSort = (sortOptions) => {
         @delete-activity="handleDeleteActivity"
       />
 
-    <ActivityEditDialog
-      v-model="isEditDialogVisible"
-      :activity="currentActivity"
-      :frequencies="frequencies"
-      :errors="activityFormErrors"
-      @save="handleSaveActivity"
-      @clear-errors="clearFormErrors"
-    />
+      <ActivityEditDialog
+        v-model="isEditDialogVisible"
+        :activity="currentActivity"
+        :frequencies="frequencies"
+        :errors="activityFormErrors"
+        :saving="saving"
+        @save="handleSaveActivity"
+        @clear-errors="clearFormErrors"
+      />
     </div>
   </div>
 </template>

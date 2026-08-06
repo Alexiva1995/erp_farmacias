@@ -16,7 +16,7 @@ const isSaving = ref(false)
 const fetchSettings = async () => {
   isLoading.value = true
   try {
-    const response = await axios.get('/general-settings')
+    const response = await axios.get('/general-settings?only=cyclic_inventory_mode,cyclic_inventory_barcode_required,enable_lots,enable_stock_control')
     const settings = response.data.data
     cyclicInventoryMode.value = settings.cyclic_inventory_mode || 'double'
     barcodeRequired.value = settings.cyclic_inventory_barcode_required ?? true

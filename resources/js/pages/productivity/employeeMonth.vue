@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 import EmployeeMonthFilters from "@/components/EmployeeMonthFilters.vue";
 import EmployeeMonthTable from "@/components/EmployeeMonthTable.vue";
 import axios from "axios";
@@ -84,7 +84,13 @@ const availableYears = computed(() => {
   return [currentYear, currentYear - 1];
 });
 
+const loading = ref(false);
+const errorMessage = ref("");
+const showErrorSnackbar = ref(false);
+
 const fetchEmployees = async () => {
+  loading.value = true;
+  errorMessage.value = "";
   try {
     const response = await axios.get("/api/rrhh/employee-performance", {
       params: {
@@ -95,9 +101,15 @@ const fetchEmployees = async () => {
     if (response.data && response.data.status) {
       employees.value = response.data.data;
       isLocked.value = response.data.data.some((e) => e.is_locked);
+    } else {
+      throw new Error(response.data?.message || "Error al obtener rendimiento de empleados");
     }
   } catch (error) {
     console.error("Error fetching employee performance:", error);
+    errorMessage.value = error.response?.data?.message || error.message || "Error de conexión con el servidor";
+    showErrorSnackbar.value = true;
+  } finally {
+    loading.value = false;
   }
 };
 
@@ -251,14 +263,21 @@ const statistics = computed(() => [
         :available-years="availableYears"
         :sort-options="sortOptions"
         :is-locked="isLocked"
+        :loading="loading"
         @clear="handleClear"
         @lock-month="handleLockMonth"
         @sort="handleSortClick"
         class="ma-0 mb-0"
       />
 
+      <!-- Carga limpia -->
+      <div v-if="loading" class="pa-12 text-center rounded-lg border bg-white my-4 shadow-sm">
+        <VProgressCircular indeterminate color="primary" size="40" class="mb-3" />
+        <div class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Cargando métricas de empleados...</div>
+      </div>
+
       <!-- Header Summary / Leaderboard -->
-      <VRow v-if="calculatedEmployees.length" class="ma-0 mt-4 mb-4 mx-n2">
+      <VRow v-else-if="calculatedEmployees.length" class="ma-0 mt-4 mb-4 mx-n2">
         <!-- Card Lider -->
         <VCol cols="12" md="4" class="pa-2">
           <VCard
@@ -381,7 +400,22 @@ const statistics = computed(() => [
         </VCol>
       </VRow>
 
-      <EmployeeMonthTable :items="calculatedEmployees" />
+      <EmployeeMonthTable :items="calculatedEmployees" :loading="loading" />
+
+      <!-- Toast de Error -->
+      <VSnackbar
+        v-model="showErrorSnackbar"
+        color="error"
+        location="top right"
+        timeout="5000"
+      >
+        {{ errorMessage }}
+        <template #actions>
+          <VBtn color="white" variant="text" @click="showErrorSnackbar = false">
+            Cerrar
+          </VBtn>
+        </template>
+      </VSnackbar>
     </div>
   </div>
 </template>

@@ -24,6 +24,8 @@ class AutoReplenishmentConfigResource extends JsonResource
             'lapso_de_tiempo'     => $this->lapso_de_tiempo,
             'min_solicitar'       => (float) $this->min_solicitar,
             'con_descuento'       => (bool) $this->con_descuento,
+            'exclude_colombian'   => (bool) $this->exclude_colombian,
+            'exclude_novaventa'   => (bool) $this->exclude_novaventa,
             'stock_filter'        => $this->stock_filter,
             'supplier_id'         => $this->supplier_id,
             'group_ids'           => $this->group_ids,

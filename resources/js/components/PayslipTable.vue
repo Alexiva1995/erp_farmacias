@@ -17,6 +17,8 @@ const props = defineProps({
 const emit = defineEmits([
   "update:options",
   "finalize-payslip",
+  "reopen-payslip",
+  "delete-payslip",
   "download-excel",
   "download-pdf",
 ]);
@@ -28,13 +30,6 @@ const headers = [
   { title: "PERIODO", key: "payslip_date", sortable: false },
   { title: "TOTAL BRUTO", key: "total", sortable: false, align: "end" },
   { title: "NETO PAGADO", key: "payed", sortable: false, align: "end" },
-  {
-    title: "DIVISA",
-    key: "currency",
-    sortable: false,
-    align: "center",
-    width: "90px",
-  },
   { title: "ESTADO", key: "status", sortable: false, align: "center" },
   {
     title: "ACCIONES",
@@ -159,16 +154,6 @@ const getAvatarColor = (id) => {
           >
         </template>
 
-        <template #item.currency="{ item }">
-          <VChip
-            size="x-small"
-            variant="tonal"
-            class="rounded font-weight-black uppercase px-2"
-          >
-            {{ item.currency }}
-          </VChip>
-        </template>
-
         <template #item.status="{ item }">
           <VChip
             :color="item.status === 1 ? 'success' : 'warning'"
@@ -235,6 +220,23 @@ const getAvatarColor = (id) => {
             </VTooltip>
 
             <VTooltip
+              v-if="item.status === 1 && authStore.isAdmin"
+              text="Reabrir / Editar Nómina"
+              location="top"
+            >
+              <template #activator="{ props: tooltipProps }">
+                <IconBtn
+                  v-bind="tooltipProps"
+                  color="warning"
+                  size="32"
+                  @click="emit('reopen-payslip', item)"
+                >
+                  <VIcon icon="tabler-lock-open" size="18" />
+                </IconBtn>
+              </template>
+            </VTooltip>
+
+            <VTooltip
               v-if="item.status === 0 && authStore.isAdmin"
               text="Finalizar Nómina"
               location="top"
@@ -247,6 +249,23 @@ const getAvatarColor = (id) => {
                   @click="emit('finalize-payslip', item)"
                 >
                   <VIcon icon="tabler-file-check" size="18" />
+                </IconBtn>
+              </template>
+            </VTooltip>
+
+            <VTooltip
+              v-if="authStore.isAdmin"
+              text="Eliminar Nómina"
+              location="top"
+            >
+              <template #activator="{ props: tooltipProps }">
+                <IconBtn
+                  v-bind="tooltipProps"
+                  color="error"
+                  size="32"
+                  @click="emit('delete-payslip', item)"
+                >
+                  <VIcon icon="tabler-trash" size="18" />
                 </IconBtn>
               </template>
             </VTooltip>

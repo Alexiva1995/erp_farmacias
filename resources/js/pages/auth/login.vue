@@ -5,9 +5,10 @@ import authV1TopShape from "@images/svg/auth-v1-top-shape.svg?raw";
 import { VNodeRenderer } from "@layouts/components/VNodeRenderer";
 import { themeConfig } from "@themeConfig";
 import { useBrandingStore } from "@/stores/useBrandingStore";
-import { onMounted, ref } from "vue";
+import { onMounted, ref, computed } from "vue";
 
 const brandingStore = useBrandingStore();
+const logoSrc = computed(() => brandingStore.settings?.app_logo || '/logo.png');
 
 definePage({
   meta: {
@@ -59,7 +60,7 @@ const isPasswordVisible = ref(false);
             <RouterLink to="/">
               <div class="app-logo">
                 <img
-                  src="/logo.svg"
+                  :src="logoSrc"
                   alt="logo"
                   style="max-height: 80px; max-width: 100%; object-fit: contain;"
                 >

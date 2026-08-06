@@ -5,18 +5,14 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Contracts\Client;
-use App\Data\CreateClientData;
-use App\Data\EditClientData;
 use App\Exports\ClientsExport;
 use App\Repositories\ClientRepository;
-use App\Repositories\CompanyRepository;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 class ClientServices implements Client
 {
-
     public function __construct(
         protected ClientRepository $clientRepository,
     ) {
@@ -24,7 +20,6 @@ class ClientServices implements Client
 
     public function create(array $data): Model
     {
-
         return $this->clientRepository->create($data);
     }
 
@@ -33,7 +28,12 @@ class ClientServices implements Client
         return $this->clientRepository->edit($data);
     }
 
-    public function consultById(string $id): ?Model
+    public function consultAll(): Collection
+    {
+        return $this->clientRepository->consultAll();
+    }
+
+    public function consultById(string|int $id): ?Model
     {
         return $this->clientRepository->consultById($id);
     }
@@ -43,20 +43,16 @@ class ClientServices implements Client
         return $this->clientRepository->consultByIdentification($identification);
     }
 
-    public function deleteById(string $id): void
+    public function deleteById(string|int $id): void
     {
         $this->clientRepository->deleteById($id);
-    }
-
-    public function consultAll(): Collection
-    {
-        return $this->clientRepository->consultAll();
     }
 
     public function filtrar(array $filtros): LengthAwarePaginator
     {
         return $this->clientRepository->filtrar($filtros, $filtros["itemsPerPage"]);
     }
+
     public function pending(array $filters): LengthAwarePaginator
     {
         return $this->clientRepository->pending($filters, $filters["itemsPerPage"]);
@@ -73,7 +69,7 @@ class ClientServices implements Client
         return new ClientsExport($query);
     }
 
-    public function updateCompany(int $client_id, int $company_id, bool $status): Model
+    public function updateCompany(int $client_id, int $company_id, bool $status): ?Model
     {
         if ($status) {
             return $this->clientRepository->assignCompany($client_id, $company_id);

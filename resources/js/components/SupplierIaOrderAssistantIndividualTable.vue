@@ -327,12 +327,31 @@ function rowClass(item) {
           class="text-no-wrap assistant-data-table"
           @update:options="(options) => emit('update:options', options)"
         >
-          <!-- Estado vacío -->
+          <!-- Estado de carga limpio -->
+          <template #loading>
+            <div class="pa-8 text-center bg-white">
+              <VProgressCircular indeterminate color="primary" size="36" class="mb-2" />
+              <div class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Cargando productos de sugerencia...</div>
+            </div>
+          </template>
+
+          <!-- Estado vacío enriquecido con acción de limpieza -->
           <template #no-data>
             <div class="d-flex flex-column align-center py-12 text-disabled">
-              <VIcon icon="tabler-package-off" size="48" class="mb-3" />
-              <span class="text-body-1 font-weight-medium">No hay productos que coincidan con los filtros</span>
-              <span class="text-caption mt-1">Ajusta los filtros de laboratorio, grupo o lapso de tiempo</span>
+              <VIcon icon="tabler-package-off" size="54" color="secondary" class="mb-3 opacity-60" />
+              <span class="text-h6 font-weight-bold text-high-emphasis">No hay productos en esta consulta</span>
+              <span class="text-body-2 text-medium-emphasis mt-1 mb-4">
+                No se encontraron productos que coincidan con los filtros seleccionados.
+              </span>
+              <VBtn
+                variant="outlined"
+                color="primary"
+                size="small"
+                prepend-icon="tabler-filter-off"
+                @click="emit('refresh')"
+              >
+                Recargar Datos
+              </VBtn>
             </div>
           </template>
 
@@ -624,11 +643,11 @@ function rowClass(item) {
                 <div class="grid-mobile-info">
                   <div class="info-item">
                     <span class="label">Stock</span>
-                    <span class="value">{{ item.lote_quantity || 0 }}</span>
+                    <span class="value">{{ item.lote_quantity ? Math.round(Number(item.lote_quantity)) : 0 }}</span>
                   </div>
                   <div class="info-item">
                     <span class="label">Vent.</span>
-                    <span class="value">{{ item.total_sold_completed || 0 }}</span>
+                    <span class="value">{{ item.total_sold_completed ? Math.round(Number(item.total_sold_completed)) : 0 }}</span>
                   </div>
                   <div class="info-item">
                     <span class="label">Pedido</span>

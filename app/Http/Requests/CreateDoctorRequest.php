@@ -33,7 +33,7 @@ class CreateDoctorRequest extends FormRequest
         return [
             //
             "name"                   =>    "required|string|max:255",
-            "identification"         =>    "required|string|unique:doctors",
+            "identification"         =>    ["required", "string", \Illuminate\Validation\Rule::unique("doctors")->whereNull("deleted_at")],
             "address"                =>    "nullable|string",
             "specialty_id"           =>    "required|exists:specialties,id",
         ];

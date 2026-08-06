@@ -32,6 +32,9 @@ const props = defineProps({
 const authStore = useAuthStore();
 const currentUser = computed(() => authStore.user);
 
+import { useBrandingStore } from "@/stores/useBrandingStore";
+
+const brandingStore = useBrandingStore();
 const today = new Date();
 
 const userUsername = computed(() => {
@@ -39,7 +42,7 @@ const userUsername = computed(() => {
 });
 
 const logoSrc = computed(() => {
-  return BASE64_LOGO_DATA;
+  return brandingStore.settings?.app_logo || BASE64_LOGO_DATA;
 });
 
 const getPaymentMethodLabel = (methodValue, currency) => {

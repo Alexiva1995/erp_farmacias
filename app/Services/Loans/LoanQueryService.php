@@ -123,64 +123,83 @@ class LoanQueryService
      */
     public function getFilteredQuery($request)
     {
-        $query = Loan::query()->withSum(['payments' => function ($q) {
-            $q->where('status', \App\Models\Expense::STATUS_APPROVED);
-        }], 'amount');
+        // Subconsulta para obtener los abonos aprobados de cada préstamo
+        $paymentsSub = \DB::table('expenses')
+            ->select('loan_id', \DB::raw('COALESCE(SUM(amount), 0) as total_paid'))
+            ->where('status', \App\Models\Expense::STATUS_APPROVED)
+            ->whereNotNull('loan_id')
+            ->groupBy('loan_id');
+
+        $query = Loan::query()
+            ->select([
+                'loans.id',
+                'loans.loan_date',
+                'loans.monthly_payment',
+                'loans.total_installments',
+                'loans.created_at',
+                'loans.updated_at',
+                \DB::raw('COALESCE(payments_sub.total_paid, 0) as payments_sum_amount')
+            ])
+            ->leftJoinSub($paymentsSub, 'payments_sub', function ($join) {
+                $join->on('loans.id', '=', 'payments_sub.loan_id');
+            });
 
         // Filtro por año del préstamo
         if ($request->filled('loanYear')) {
-            $query->whereYear('loan_date', $request->input('loanYear'));
+            $query->whereYear('loans.loan_date', $request->input('loanYear'));
         }
 
-        // Filtro por estado del préstamo
+        // Filtro por estado del préstamo basado en el saldo real
         if ($request->filled('status')) {
             $status = $request->input('status');
 
             switch ($status) {
-                case 'active':
-                    $query->whereRaw('DATEDIFF(CURDATE(), loan_date) / 30.44 < total_installments')
-                        ->whereRaw('(monthly_payment * (total_installments - FLOOR(DATEDIFF(CURDATE(), loan_date) / 30.44))) > 0');
-                    break;
-                case 'ending_soon':
-                    $query->whereRaw('(total_installments - FLOOR(DATEDIFF(CURDATE(), loan_date) / 30.44)) BETWEEN 1 AND 3')
-                        ->whereRaw('(monthly_payment * (total_installments - FLOOR(DATEDIFF(CURDATE(), loan_date) / 30.44))) > 0');
+                case 'completed':
+                    $query->whereRaw('(loans.monthly_payment * loans.total_installments) - COALESCE(payments_sub.total_paid, 0) <= 0');
                     break;
                 case 'overdue':
-                    $query->whereRaw('FLOOR(DATEDIFF(CURDATE(), loan_date) / 30.44) >= total_installments')
-                        ->whereRaw('(monthly_payment * (total_installments - FLOOR(DATEDIFF(CURDATE(), loan_date) / 30.44))) > 0');
+                    $query->whereRaw('(loans.monthly_payment * loans.total_installments) - COALESCE(payments_sub.total_paid, 0) > 0')
+                        ->whereRaw('TIMESTAMPDIFF(MONTH, loans.loan_date, CURDATE()) >= loans.total_installments');
                     break;
-                case 'completed':
-                    $query->whereRaw('(monthly_payment * (total_installments - FLOOR(DATEDIFF(CURDATE(), loan_date) / 30.44))) <= 0');
+                case 'ending_soon':
+                    $query->whereRaw('(loans.monthly_payment * loans.total_installments) - COALESCE(payments_sub.total_paid, 0) > 0')
+                        ->whereRaw('(loans.total_installments - TIMESTAMPDIFF(MONTH, loans.loan_date, CURDATE())) BETWEEN 1 AND 3');
+                    break;
+                case 'active':
+                    $query->whereRaw('(loans.monthly_payment * loans.total_installments) - COALESCE(payments_sub.total_paid, 0) > 0')
+                        ->whereRaw('TIMESTAMPDIFF(MONTH, loans.loan_date, CURDATE()) < loans.total_installments');
                     break;
             }
         }
 
         // Filtro por rango de fechas
         if ($request->filled('startDate')) {
-            $query->whereDate('loan_date', '>=', $request->input('startDate'));
+            $query->whereDate('loans.loan_date', '>=', $request->input('startDate'));
         }
 
         if ($request->filled('endDate')) {
-            $query->whereDate('loan_date', '<=', $request->input('endDate'));
+            $query->whereDate('loans.loan_date', '<=', $request->input('endDate'));
         }
 
         // Ordenamiento
         if ($request->filled('sortBy') && $request->filled('orderBy')) {
             $sortBy = $request->input('sortBy');
-            $orderBy = $request->input('orderBy');
+            $orderBy = strtolower($request->input('orderBy')) === 'asc' ? 'asc' : 'desc';
 
-            // Ordenamientos especiales que requieren cálculos
             if ($sortBy === 'remaining_balance') {
-                $query->orderByRaw("(monthly_payment * GREATEST(0, total_installments - FLOOR(DATEDIFF(CURDATE(), loan_date) / 30.44))) {$orderBy}");
+                $query->orderByRaw("((loans.monthly_payment * loans.total_installments) - COALESCE(payments_sub.total_paid, 0)) {$orderBy}");
             } elseif ($sortBy === 'total_amount') {
-                $query->orderByRaw("(monthly_payment * total_installments) {$orderBy}");
+                $query->orderByRaw("(loans.monthly_payment * loans.total_installments) {$orderBy}");
             } else {
-                // Ordenamientos normales
-                $query->orderBy($sortBy, $orderBy);
+                $allowedSorts = ['id', 'loan_date', 'monthly_payment', 'total_installments', 'created_at'];
+                if (in_array($sortBy, $allowedSorts, true)) {
+                    $query->orderBy("loans.{$sortBy}", $orderBy);
+                } else {
+                    $query->orderBy('loans.loan_date', 'desc');
+                }
             }
         } else {
-            // Ordenamiento por defecto
-            $query->orderBy('loan_date', 'desc');
+            $query->orderBy('loans.loan_date', 'desc');
         }
 
         return $query;

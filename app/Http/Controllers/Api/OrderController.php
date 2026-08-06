@@ -261,56 +261,80 @@ class OrderController extends Controller
     {
         $this->applySellerFilterForVendedor($request);
         $query = $this->orderQueryService->getFilteredQuery($request, 'Completed');
-        $perPage = $request->input('itemsPerPage', 10);
+        $perPage = (int) $request->input('itemsPerPage', 10);
 
         if ($perPage < 1) {
             $items = $query->get();
-            return response()->json(['data' => $items, 'total' => $items->count()]);
+            return response()->json([
+                'data' => \App\Http\Resources\OrderListItemResource::collection($items),
+                'total' => $items->count()
+            ]);
         }
         $paginatedResult = $query->paginate($perPage);
-        return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
+        return response()->json([
+            'data' => \App\Http\Resources\OrderListItemResource::collection($paginatedResult->items()),
+            'total' => $paginatedResult->total()
+        ]);
     }
 
     public function getAllOrder(Request $request)
     {
         $this->applySellerFilterForVendedor($request);
         $query = $this->orderQueryService->getFilteredQuery($request, 'all');
-        $perPage = $request->input('itemsPerPage', 10);
+        $perPage = (int) $request->input('itemsPerPage', 10);
 
         if ($perPage < 1) {
             $items = $query->get();
-            return response()->json(['data' => $items, 'total' => $items->count()]);
+            return response()->json([
+                'data' => \App\Http\Resources\OrderListItemResource::collection($items),
+                'total' => $items->count()
+            ]);
         }
         $paginatedResult = $query->paginate($perPage);
-        return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
+        return response()->json([
+            'data' => \App\Http\Resources\OrderListItemResource::collection($paginatedResult->items()),
+            'total' => $paginatedResult->total()
+        ]);
     }
 
     public function getAbandonedOrder(Request $request)
     {
         $this->applySellerFilterForVendedor($request);
         $query = $this->orderQueryService->getFilteredQuery($request, 'Abandoned');
-        $perPage = $request->input('itemsPerPage', 10);
+        $perPage = (int) $request->input('itemsPerPage', 10);
 
         if ($perPage < 1) {
             $items = $query->get();
-            return response()->json(['data' => $items, 'total' => $items->count()]);
+            return response()->json([
+                'data' => \App\Http\Resources\OrderListItemResource::collection($items),
+                'total' => $items->count()
+            ]);
         }
         $paginatedResult = $query->paginate($perPage);
-        return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
+        return response()->json([
+            'data' => \App\Http\Resources\OrderListItemResource::collection($paginatedResult->items()),
+            'total' => $paginatedResult->total()
+        ]);
     }
 
     public function getCancelledOrder(Request $request)
     {
         $this->applySellerFilterForVendedor($request);
         $query = $this->orderQueryService->getFilteredQuery($request, 'Cancelled');
-        $perPage = $request->input('itemsPerPage', 10);
+        $perPage = (int) $request->input('itemsPerPage', 10);
 
         if ($perPage < 1) {
             $items = $query->get();
-            return response()->json(['data' => $items, 'total' => $items->count()]);
+            return response()->json([
+                'data' => \App\Http\Resources\OrderListItemResource::collection($items),
+                'total' => $items->count()
+            ]);
         }
         $paginatedResult = $query->paginate($perPage);
-        return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
+        return response()->json([
+            'data' => \App\Http\Resources\OrderListItemResource::collection($paginatedResult->items()),
+            'total' => $paginatedResult->total()
+        ]);
     }
 
 
@@ -432,10 +456,10 @@ class OrderController extends Controller
             if ($startDate < '2026-01-01') {
                 $startDate = '2026-01-01';
             }
-            $page = $request->page ?? 1;
-            $itemsPerPage = $request->itemsPerPage ?? 10;
+            $page = (int) ($request->page ?? 1);
+            $itemsPerPage = (int) ($request->itemsPerPage ?? 10);
             if ($itemsPerPage == -1) {
-                $itemsPerPage = 1000; // Limite si pide "Todas"
+                $itemsPerPage = 1000; // Límite si pide "Todas"
             }
             $sortBy = $request->sortBy ?? 'invoice_date';
             $orderBy = $request->orderBy ?? 'desc';
@@ -448,6 +472,13 @@ class OrderController extends Controller
                 $sortBy,
                 $orderBy
             );
+
+            // Transformar datos mediante Api Resource para garantizar consistencia arquitectónica
+            if (isset($fiscalData['data']) && is_array($fiscalData['data'])) {
+                $fiscalData['data'] = \App\Http\Resources\Fiscal\FiscalHistoryResource::collection(
+                    collect($fiscalData['data'])
+                );
+            }
 
             return ApiResponse::success($fiscalData, 'Registros de fiscal history obtenidos exitosamente');
 

@@ -17,7 +17,7 @@ const headers = [
   { title: 'Tipo', key: 'type_company', sortable: true },
   { title: 'Identificación', key: 'identification', sortable: true },
   { title: 'Dirección', key: 'address', sortable: false },
-  { title: 'Total Clientes', key: 'clients', sortable: false, value: items => items.clients.length },
+  { title: 'Total Clientes', key: 'clients_count', sortable: false, value: item => item.clients_count ?? item.clients?.length ?? 0 },
   { 
     title: 'Fecha', 
     key: 'created_at', 
@@ -54,6 +54,13 @@ const handleMobilePageChange = (newPage) => {
           :page="props.page"
           @update:options="(options) => emit('update:options', options)"
         >
+          <template #no-data>
+            <AppEmptyState
+              title="No hay empresas"
+              message="No se encontraron empresas registradas en el sistema."
+              icon="tabler-building-community"
+            />
+          </template>
           <template #item.id="{ item }">
             <span class="font-weight-black text-primary">{{ item.id }}</span>
           </template>
@@ -84,9 +91,12 @@ const handleMobilePageChange = (newPage) => {
     <div class="d-block d-md-none pa-2 bg-light">
       <VProgressLinear v-if="props.loading" indeterminate color="primary" class="mb-2" />
       
-      <div v-if="props.items.length === 0 && !props.loading" class="text-center py-8 text-disabled font-weight-bold uppercase">
-        No se encontraron empresas registradas.
-      </div>
+      <AppEmptyState
+        v-if="props.items.length === 0 && !props.loading"
+        title="No hay empresas"
+        message="No se encontraron empresas registradas en el sistema."
+        icon="tabler-building-community"
+      />
 
       <div class="d-flex flex-column gap-3">
         <VCard
@@ -150,7 +160,7 @@ const handleMobilePageChange = (newPage) => {
               </div>
               <div class="stat-box text-right">
                 <span class="label">Clientes</span>
-                <span class="value text-primary font-weight-black text-xs">{{ item.clients?.length || 0 }}</span>
+                <span class="value text-primary font-weight-black text-xs">{{ item.clients_count ?? item.clients?.length ?? 0 }}</span>
               </div>
             </div>
 

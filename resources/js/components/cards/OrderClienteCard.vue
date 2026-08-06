@@ -1,5 +1,5 @@
 <script setup>
-import { computed, defineProps, ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 const props = defineProps({
   modelValue: { type: String, default: '' },
@@ -11,7 +11,7 @@ const props = defineProps({
   showQuotationInput: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(['update:modelValue', 'verify-client', 'reserved-order-cliente', 'load-quotation']);
+const emit = defineEmits(['update:modelValue', 'verify-client', 'reserved-order-cliente', 'load-quotation', 'identify-and-start']);
 const identificationInput = ref(props.modelValue);
 
 watch(() => props.modelValue, (newVal) => {

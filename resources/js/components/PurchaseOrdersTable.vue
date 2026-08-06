@@ -246,6 +246,15 @@ const formatTime = (dateString) => {
           </VBtn>
         </div>
       </template>
+
+      <!-- Estado Vacío en Escritorio -->
+      <template #no-data>
+        <div class="text-center py-10 opacity-70">
+          <VIcon icon="tabler-clipboard-off" size="48" color="secondary" class="mb-2" />
+          <div class="text-sm font-weight-black uppercase text-high-emphasis">No hay órdenes de compra registradas</div>
+          <div class="text-xs text-disabled mt-1">Prueba ajustando los criterios de búsqueda o el rango de fechas</div>
+        </div>
+      </template>
     </VDataTableServer>
 
     <!-- Vista Móvil (Cards) -->

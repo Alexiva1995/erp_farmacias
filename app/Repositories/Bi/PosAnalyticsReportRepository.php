@@ -14,27 +14,31 @@ class PosAnalyticsReportRepository
         $startDate = $filters['start_date'] ?? now()->startOfMonth()->format('Y-m-d');
         $endDate = $filters['end_date'] ?? now()->format('Y-m-d');
 
-        $baseQuery = DB::table('orders')
-            ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
+        $orderStats = DB::table('orders')
+            ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+            ->select(
+                DB::raw("COUNT(CASE WHEN status = 'Completed' THEN 1 END) as completed_sales"),
+                DB::raw("COUNT(CASE WHEN status IN ('Cancelled', 'Abandoned') THEN 1 END) as abandoned_sales"),
+                DB::raw("SUM(CASE WHEN status = 'Completed' THEN total_amount_usd ELSE 0 END) as total_revenue")
+            )
+            ->first();
 
-        $completedSales = (clone $baseQuery)->where('status', 'Completed')->count();
-        $abandonedSales = (clone $baseQuery)->whereIn('status', ['Cancelled', 'Abandoned'])->count();
-        
-        $totalRevenue = (clone $baseQuery)->where('status', 'Completed')->sum('total_amount_usd');
+        $completedSales = (int)($orderStats->completed_sales ?? 0);
+        $abandonedSales = (int)($orderStats->abandoned_sales ?? 0);
+        $totalRevenue = (float)($orderStats->total_revenue ?? 0.0);
         
         $quotationsCount = DB::table('quotations')
             ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->count();
 
         // Ticket Promedio
-        $avgTicket = $completedSales > 0 ? (float)$totalRevenue / $completedSales : 0.0;
+        $avgTicket = $completedSales > 0 ? $totalRevenue / $completedSales : 0.0;
 
         // Promedio Venta Diario
         $diffDays = Carbon::parse($startDate)->diffInDays(Carbon::parse($endDate)) + 1;
-        $avgDailySales = (float)$totalRevenue / $diffDays;
+        $avgDailySales = $totalRevenue / $diffDays;
 
-        // Tasa Conversión (Simplificada: Monto y Cliente coincidente en el periodo)
-        // Nota: Esta es una aproximación ya que no hay FK directa.
+        // Tasa Conversión (Coincidencia por cliente y total en periodo)
         $convertedQuotations = DB::table('quotations')
             ->whereBetween('quotations.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->whereExists(function ($query) use ($startDate, $endDate) {
@@ -49,22 +53,24 @@ class PosAnalyticsReportRepository
         
         $conversionRate = $quotationsCount > 0 ? ($convertedQuotations / $quotationsCount) * 100 : 0;
 
-        // Venta Cruzada (Tickets con > 1 unidad física total)
-        $crossSellingCount = DB::table('orders')
+        // Venta Cruzada (Conteo directo en base de datos sin traer dataset a memoria)
+        $crossSellingQuery = DB::table('orders')
             ->join('order_details', 'orders.id', '=', 'order_details.order_id')
             ->where('orders.status', 'Completed')
             ->whereBetween('orders.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
-            ->select('orders.id', DB::raw('SUM(order_details.quantity) as total_qty'))
+            ->select('orders.id')
             ->groupBy('orders.id')
-            ->having('total_qty', '>', 1)
-            ->get()
+            ->havingRaw('SUM(order_details.quantity) > 1');
+
+        $crossSellingCount = DB::table(DB::raw("({$crossSellingQuery->toSql()}) as cross_orders"))
+            ->mergeBindings($crossSellingQuery)
             ->count();
 
         $crossSellingRate = $completedSales > 0 ? ($crossSellingCount / $completedSales) * 100 : 0;
 
         return [
-            'completed_sales' => (int)$completedSales,
-            'abandoned_sales' => (int)$abandonedSales,
+            'completed_sales' => $completedSales,
+            'abandoned_sales' => $abandonedSales,
             'quotations_generated' => (int)$quotationsCount,
             'conversion_rate' => round((float)$conversionRate, 2),
             'avg_ticket' => round((float)$avgTicket, 2),

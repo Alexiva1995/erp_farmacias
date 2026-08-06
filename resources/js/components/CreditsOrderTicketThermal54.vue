@@ -1,7 +1,7 @@
-<script setup>
-import { computed } from "vue";
-import { BASE64_LOGO_DATA } from "@/constants/logo.js";
-import { formatCurrency } from "@/utils/currencyFormatter";
+import { useBrandingStore } from "@/stores/useBrandingStore";
+
+const brandingStore = useBrandingStore();
+const logoSrc = computed(() => brandingStore.settings?.app_logo || BASE64_LOGO_DATA);
 
 const props = defineProps({
   creditsData: {
@@ -55,7 +55,7 @@ const productLineText = (item) => item.lineText;
 <template>
   <div class="thermal-54-ticket">
     <header class="thermal-header">
-      <img class="thermal-logo" :src="BASE64_LOGO_DATA" alt="Logo" />
+      <img class="thermal-logo" :src="logoSrc" alt="Logo" />
       <div class="thermal-rif">J-50540695-7</div>
       <div class="thermal-company">FARMACIA BARRIO SUCRE 2024, C.A.</div>
       <div class="thermal-address">CALLE PRINCIPAL LOCAL 05 (L5)</div>

@@ -1,71 +1,117 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import axios from '@/plugins/axios'
-import { toast } from "@/plugins/sweetalert";
-import { useBrandingStore } from "@/stores/useBrandingStore";
+import { toast } from "@/plugins/sweetalert"
+import { useBrandingStore } from "@/stores/useBrandingStore"
+import BiModuleCard from '@/Components/configuration/BiModuleCard.vue'
 
 const brandingStore = useBrandingStore()
 
-const enabledBiViews = ref([
-  'abc',
-  'dead-stock',
-  'sku',
-  'products',
-  'expiry',
-  'laboratories',
-  'pos',
-  'cyclic',
-  'customer',
-  'performance'
-])
+// Estados reactivos de la interfaz
+const isLoading = ref(true)
+const isSaving = ref(false)
+const hasError = ref(false)
+const errorMessage = ref('')
 
+const enabledBiViews = ref([])
+
+// Lista estática de vistas configurables de BI
 const availableBiViews = [
   { key: 'abc', title: 'Reporte ABC', description: 'Categorización de inventario ABC según valor y rotación.', icon: 'tabler-abc' },
-  { key: 'dead-stock', title: 'Reporte Stock Muerto', description: 'Detección de productos sin movimiento o de baja rotación.', icon: 'tabler-package-off' },
-  { key: 'sku', title: 'Reporte de Margen SKU', description: 'Detalle de utilidad y rendimiento individual por SKU.', icon: 'tabler-calculator' },
+  { key: 'dead-stock', title: 'Stock Muerto', description: 'Detección de productos sin movimiento o de baja rotación.', icon: 'tabler-package-off' },
+  { key: 'sku', title: 'Margen SKU', description: 'Detalle de utilidad y rendimiento individual por SKU.', icon: 'tabler-calculator' },
   { key: 'products', title: 'Dashboard Maestro', description: 'Visión consolidada y analíticas globales de ventas de productos.', icon: 'tabler-chart-pie' },
   { key: 'expiry', title: 'BI Caducidad', description: 'Predicciones y alertas de productos próximos a vencer.', icon: 'tabler-calendar' },
-  { key: 'laboratories', title: 'Marcas', description: 'Análisis de rendimiento comercial agrupado por laboratorios/marcas.', icon: 'tabler-brand-sublime' },
-  { key: 'pos', title: 'Analíticas TPV', description: 'Métricas de ventas, transacciones y promedios en tiempo real del TPV.', icon: 'tabler-device-desktop' },
+  { key: 'laboratories', title: 'Marcas / Labs', description: 'Análisis comercial agrupado por laboratorios y marcas.', icon: 'tabler-building-factory-2' },
+  { key: 'pos', title: 'Analíticas TPV', description: 'Métricas de ventas, transacciones y promedios en tiempo real.', icon: 'tabler-device-desktop' },
   { key: 'cyclic', title: 'Análisis Cíclico', description: 'Auditoría de discrepancias y efectividad de conteos cíclicos.', icon: 'tabler-refresh' },
-  { key: 'customer', title: 'Analítica de Clientes', description: 'Comportamiento, ticket promedio e historial de frecuencia de clientes.', icon: 'tabler-users' },
+  { key: 'customer', title: 'Analítica Clientes', description: 'Comportamiento, ticket promedio e historial de frecuencia.', icon: 'tabler-users' },
   { key: 'performance', title: 'Rendimiento RRHH', description: 'Scorecard de gamificación y KPIs de rendimiento del personal.', icon: 'tabler-trophy' }
 ]
 
+// Propiedades computadas para métricas y estado global
+const totalCount = computed(() => availableBiViews.length)
+
+const activeCount = computed(() => enabledBiViews.value.length)
+
+const activePercentage = computed(() => {
+  if (totalCount.value === 0) return 0
+  return Math.round((activeCount.value / totalCount.value) * 100)
+})
+
+const allEnabled = computed(() => activeCount.value === totalCount.value)
+
+const noneEnabled = computed(() => activeCount.value === 0)
+
+// Petición optimizada mediante el filtro 'only'
 const fetchSettings = async () => {
+  isLoading.value = true
+  hasError.value = false
+  errorMessage.value = ''
+
   try {
-    const response = await axios.get('/general-settings')
+    const response = await axios.get('/general-settings', {
+      params: { only: 'enabled_bi_views' }
+    })
     const settings = response.data.data
-    if (settings.enabled_bi_views) {
+    if (settings && Array.isArray(settings.enabled_bi_views)) {
       enabledBiViews.value = settings.enabled_bi_views
     }
   } catch (error) {
     console.error("Error cargando configuración de BI:", error)
+    hasError.value = true
+    errorMessage.value = "No se pudo cargar la configuración de BI. Verifique su conexión e intente de nuevo."
     toast.error("Error al cargar la configuración")
+  } finally {
+    isLoading.value = false
   }
 }
 
-const toggleBiView = (key) => {
-  const index = enabledBiViews.value.indexOf(key)
+// Alternar vista individual
+const toggleBiView = async (key) => {
+  if (isSaving.value || isLoading.value) return
+
+  const previousState = [...enabledBiViews.value]
+  const updatedViews = [...enabledBiViews.value]
+  const index = updatedViews.indexOf(key)
+
   if (index > -1) {
-    enabledBiViews.value.splice(index, 1)
+    updatedViews.splice(index, 1)
   } else {
-    enabledBiViews.value.push(key)
+    updatedViews.push(key)
   }
-  updateSettings()
+
+  enabledBiViews.value = updatedViews
+  await updateSettings(previousState)
 }
 
-const updateSettings = async () => {
+// Acciones masivas: Activar o Desactivar todas las vistas
+const setAllViews = async (enable) => {
+  if (isSaving.value || isLoading.value) return
+
+  const previousState = [...enabledBiViews.value]
+  enabledBiViews.value = enable ? availableBiViews.map(v => v.key) : []
+  await updateSettings(previousState)
+}
+
+// Persistir la configuración en el servidor
+const updateSettings = async (previousState = null) => {
+  isSaving.value = true
   try {
     await axios.post('/general-settings', {
       enabled_bi_views: enabledBiViews.value
     })
-    await brandingStore.fetchSettings()
 
+    await brandingStore.fetchSettings()
     toast.success("Configuración de BI actualizada exitosamente")
   } catch (error) {
-    console.error("Error al guardar:", error)
+    if (previousState) {
+      enabledBiViews.value = previousState
+    }
+    console.error("Error al guardar la configuración de BI:", error)
     toast.error("Error al actualizar la configuración")
+  } finally {
+    isSaving.value = false
   }
 }
 
@@ -75,69 +121,102 @@ onMounted(() => {
 </script>
 
 <template>
-  <div>
-    <!-- Tarjeta Principal de Configuración de Vistas de BI -->
+  <div class="position-relative">
+    <!-- Barra de progreso superior durante guardado -->
+    <VProgressLinear
+      v-if="isSaving"
+      color="primary"
+      indeterminate
+      height="4"
+      class="position-absolute top-0 left-0 right-0"
+      style="z-index: 99;"
+    />
+
+    <!-- Tarjeta Principal de Configuración de BI -->
     <VCard class="mb-6 rounded-lg border shadow-sm">
       <VCardItem class="py-5">
-        <VCardTitle class="text-h5 font-weight-black text-uppercase d-flex align-center gap-2 mb-2">
-          <VIcon icon="tabler-chart-bar" class="text-primary" size="26" />
-          Configuración de Vistas de BI (Business Intelligence)
-        </VCardTitle>
-        <p class="text-caption text-medium-emphasis">
-          Selecciona qué reportes, tableros y herramientas analíticas del módulo de Inteligencia de Negocios (BI) estarán disponibles y visibles en el menú lateral para los usuarios autorizados.
-        </p>
-      </VCardItem>
+        <!-- Encabezado Estandarizado con Métricas -->
+        <div class="d-flex flex-column flex-sm-row justify-space-between align-start align-sm-center gap-4 mb-4">
+          <div>
+            <VCardTitle class="text-h5 font-weight-black text-uppercase d-flex align-center gap-2">
+              <VIcon icon="tabler-chart-bar" color="primary" size="28" />
+              Configuración de Vistas de BI (Business Intelligence)
+            </VCardTitle>
+            <p class="text-caption text-medium-emphasis mb-0 mt-1">
+              Habilita o deshabilita los tableros y herramientas analíticas en la barra de navegación lateral.
+            </p>
+          </div>
 
-      <VDivider />
+          <!-- Métricas y Botones de Acción Masiva -->
+          <div class="d-flex align-center gap-2 flex-wrap" v-if="!isLoading && !hasError">
+            <VChip color="primary" variant="tonal" size="small" class="font-weight-bold">
+              {{ activeCount }} / {{ totalCount }} Vistas Activas ({{ activePercentage }}%)
+            </VChip>
+            <VBtn
+              size="small"
+              variant="outlined"
+              color="primary"
+              :disabled="allEnabled || isSaving"
+              @click="setAllViews(true)"
+            >
+              Activar Todas
+            </VBtn>
+            <VBtn
+              size="small"
+              variant="outlined"
+              color="error"
+              :disabled="noneEnabled || isSaving"
+              @click="setAllViews(false)"
+            >
+              Desactivar Todas
+            </VBtn>
+          </div>
+        </div>
 
-      <VCardText class="pa-6">
-        <VRow>
+        <VDivider class="mb-6" />
+
+        <!-- Banner de Error con Reintento -->
+        <VAlert
+          v-if="hasError"
+          type="error"
+          variant="tonal"
+          class="mb-6 rounded-lg"
+          closable
+        >
+          <template #title> Error de Carga </template>
+          {{ errorMessage }}
+          <template #append>
+            <VBtn color="error" variant="text" size="small" @click="fetchSettings">
+              Reintentar
+            </VBtn>
+          </template>
+        </VAlert>
+
+        <!-- Skeletons durante Carga Inicial -->
+        <VRow v-if="isLoading">
+          <VCol v-for="n in 9" :key="n" cols="12" sm="6" md="4">
+            <VSkeletonLoader type="article, actions" class="rounded-lg border" height="130" />
+          </VCol>
+        </VRow>
+
+        <!-- Rejilla de Módulos BI -->
+        <VRow v-else-if="!hasError">
           <VCol
             v-for="view in availableBiViews"
             :key="view.key"
             cols="12"
             sm="6"
             md="4"
-            class="d-flex"
           >
-            <VCard
-              variant="outlined"
-              class="w-100 rounded-lg d-flex flex-column justify-space-between transition-all"
-              :class="enabledBiViews.includes(view.key) ? 'border-primary bg-var-theme-background' : 'opacity-70'"
-            >
-              <VCardItem class="pa-4 flex-grow-1">
-                <div class="d-flex justify-space-between align-start gap-4">
-                  <VAvatar color="primary" variant="tonal" size="40" class="rounded-lg">
-                    <VIcon :icon="view.icon" size="20" />
-                  </VAvatar>
-                  <VSwitch
-                    :model-value="enabledBiViews.includes(view.key)"
-                    color="primary"
-                    density="compact"
-                    hide-details
-                    @update:model-value="toggleBiView(view.key)"
-                  />
-                </div>
-                <div class="d-flex flex-column gap-1 mt-4">
-                  <span class="font-weight-black text-body-1 text-high-emphasis">{{ view.title }}</span>
-                  <p class="text-caption text-medium-emphasis mb-0 leading-snug">
-                    {{ view.description }}
-                  </p>
-                </div>
-              </VCardItem>
-            </VCard>
+            <BiModuleCard
+              :view="view"
+              :is-active="enabledBiViews.includes(view.key)"
+              :is-saving="isSaving"
+              @toggle="toggleBiView"
+            />
           </VCol>
         </VRow>
-      </VCardText>
+      </VCardItem>
     </VCard>
   </div>
 </template>
-
-<style scoped>
-.bg-var-theme-background {
-  background-color: rgba(var(--v-theme-primary), 0.04) !important;
-}
-.leading-snug {
-  line-height: 1.35;
-}
-</style>

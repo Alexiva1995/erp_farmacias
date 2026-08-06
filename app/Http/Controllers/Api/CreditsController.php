@@ -4,14 +4,18 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Http\Request;
 use App\Services\Credits\CreditsQueryService;
 use App\Services\Credits\CreditsActionService;
 use App\Models\Credit;
 use App\Helpers\ApiResponse;
+use App\Http\Requests\Credits\IndexCreditRequest;
+use App\Http\Requests\Credits\IndexCreditPaymentRequest;
+use App\Http\Requests\Credits\CompleteCreditRequest;
 use App\Http\Requests\Credits\UpdateCreditStatusRequest;
 use App\Http\Requests\Credits\CreditIdsRequest;
 use App\Http\Requests\Credits\GetPaymentHistoryRequest;
+use App\Http\Resources\Finances\CreditResource;
+use App\Http\Resources\Finances\CreditPaymentResource;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
@@ -23,24 +27,15 @@ class CreditsController extends Controller
     ) {
     }
 
-    public function index(Request $request)
+    public function index(IndexCreditRequest $request)
     {
         $query = $this->creditsQueryService->getFilteredQuery($request);
 
-        $perPage = $request->input('itemsPerPage', 10);
+        $perPage = (int) $request->input('itemsPerPage', 10);
         $paginatedResult = $query->paginate($perPage)->withQueryString();
 
-        $credits = $paginatedResult->getCollection()->map(function ($credit) {
-            if ($credit->credit_ids) {
-                $credit->credit_ids = explode(',', $credit->credit_ids);
-            } else {
-                $credit->credit_ids = [];
-            }
-            return $credit;
-        });
-
         return response()->json([
-            'data' => $credits,
+            'data' => CreditResource::collection($paginatedResult->getCollection()),
             'total' => $paginatedResult->total(),
         ]);
     }
@@ -70,21 +65,17 @@ class CreditsController extends Controller
         );
 
         if ($success) {
-            return response()->json([
-                'message' => 'El estado de los créditos ha sido actualizado con éxito.',
-            ]);
+            return ApiResponse::success(null, 'El estado de los créditos ha sido actualizado con éxito.');
         }
 
-        return response()->json([
-            'message' => 'Error al actualizar el estado de los créditos.',
-        ], 500);
+        return ApiResponse::error('Error al actualizar el estado de los créditos.', 500);
     }
 
-
-    public function completeCredits(Request $request)
+    public function completeCredits(CompleteCreditRequest $request)
     {
         try {
             $this->creditsActionService->complete($request);
+            return ApiResponse::success(null, 'Pago completado exitosamente.');
         } catch (\Exception $e) {
             Log::error('Error al completar el pago:', ['error' => $e->getMessage()]);
             return ApiResponse::error('No se pudo completar la orden: ' . $e->getMessage(), 500);
@@ -97,7 +88,7 @@ class CreditsController extends Controller
             ->whereIn('id', $request->input('credit_ids'))
             ->get();
 
-        return response()->json($credits);
+        return ApiResponse::success($credits);
     }
 
     public function getPaymentHistory(GetPaymentHistoryRequest $request)
@@ -134,10 +125,10 @@ class CreditsController extends Controller
             }
         }
 
-        return response()->json($payments);
+        return ApiResponse::success($payments);
     }
 
-    public function payments(Request $request)
+    public function payments(IndexCreditPaymentRequest $request)
     {
         $search = $request->input('client');
         $sortBy = $request->input('sort_by', 'date');
@@ -197,12 +188,9 @@ class CreditsController extends Controller
                 });
             }
 
-            $sortKey = $sortBy;
-            if ($sortKey === 'date') $sortKey = 'date';
-            
             $paymentsCollection = $orderBy === 'desc'
-                ? $paymentsCollection->sortByDesc($sortKey)
-                : $paymentsCollection->sortBy($sortKey);
+                ? $paymentsCollection->sortByDesc($sortBy)
+                : $paymentsCollection->sortBy($sortBy);
 
             $currentPage = \Illuminate\Pagination\LengthAwarePaginator::resolveCurrentPage();
             $paginated = new \Illuminate\Pagination\LengthAwarePaginator(
@@ -214,7 +202,7 @@ class CreditsController extends Controller
             );
 
             return response()->json([
-                'data' => $paginated->items(),
+                'data' => CreditPaymentResource::collection($paginated->items()),
                 'total' => $paginated->total(),
             ]);
         }
@@ -237,7 +225,7 @@ class CreditsController extends Controller
                 'payment.method',
                 'payment.currency',
                 'payment.reference',
-                'cp.payment_date',
+                'cp.payment_date as date',
                 DB::raw("CONCAT(clients.name, ' ', clients.last_name) as client"),
                 'seller.username as seller',
             ])
@@ -260,7 +248,7 @@ class CreditsController extends Controller
 
         switch ($sortBy) {
             case 'client':
-                $query->orderBy(DB::raw("CONCAT(clients.name, ' ', clients.last_name)"), $orderBy);
+                $query->orderBy('client', $orderBy);
                 break;
             case 'seller':
                 $query->orderBy('seller.username', $orderBy);
@@ -283,22 +271,10 @@ class CreditsController extends Controller
                 break;
         }
 
-        $payments = $query->paginate($itemsPerPage)
-            ->through(function ($row) {
-                return [
-                    'id' => $row->id,
-                    'amount' => $row->amount,
-                    'method' => $row->method,
-                    'currency' => $row->currency,
-                    'reference' => $row->reference ?? 'N/A',
-                    'date' => $row->payment_date,
-                    'seller' => $row->seller,
-                    'client' => $row->client,
-                ];
-            });
+        $payments = $query->paginate($itemsPerPage);
 
         return response()->json([
-            'data' => $payments->items(),
+            'data' => CreditPaymentResource::collection($payments->items()),
             'total' => $payments->total(),
         ]);
     }

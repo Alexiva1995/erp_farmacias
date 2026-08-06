@@ -8,6 +8,7 @@ import { faLock, faUnlock } from "@fortawesome/free-solid-svg-icons";
 library.add(faLock, faUnlock);
 
 import { useBrandingStore } from "@/stores/useBrandingStore";
+import { toast } from "@/plugins/sweetalert";
 
 const props = defineProps({
   products: { type: Array, required: true },
@@ -30,7 +31,7 @@ const sortByModel = computed(() => {
   return [{ key: props.sortBy, order: props.orderBy || 'asc' }];
 });
 
-const emit = defineEmits(["refresh", "update:options", "editProduct"]);
+const emit = defineEmits(["refresh", "update:options", "editProduct", "updateProduct"]);
 
 const headers = computed(() => {
   if (isMinimarket.value) {
@@ -68,10 +69,15 @@ async function toggleLock(productId, percentage) {
       product_id: productId,
       profitability_percentage: percentage
     });
-    console.log("Éxito:", response.data);
-    emit("refresh");
+    toast.success("Estado de bloqueo actualizado");
+    if (response.data?.data) {
+      emit("updateProduct", response.data.data);
+    } else {
+      emit("refresh");
+    }
   } catch (error) {
     console.error("Error al actualizar el bloqueo de margen:", error);
+    toast.error("Error al cambiar el estado de bloqueo");
   } finally {
     loadingLocks.value[productId] = false;
   }

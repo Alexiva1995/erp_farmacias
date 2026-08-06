@@ -31,8 +31,7 @@ class CashClosureQueryService
         // Las órdenes se cargan por separado al imprimir/descargar (printCash/downloadCash).
         return CashClosing::query()
             ->where('seller_id', $sellerId)
-            ->where('status', CashClosing::CLOSED)
-            ->select(['id', 'closing_date', 'seller_id', 'status']);
+            ->where('status', CashClosing::CLOSED);
     }
 
 
@@ -129,7 +128,12 @@ class CashClosureQueryService
 
     private function getBaseQueryDaily(): Builder
     {
-        $query = DailyCashClosure::query()->with('cashClosings.seller', 'cashClosings.orders');
+        $query = DailyCashClosure::query()->with([
+            'cashClosings.seller',
+            'cashClosings.orders' => function ($q) {
+                $q->where('status', 'Completed');
+            },
+        ]);
         if (Auth::check() && Auth::user()->role_id === 2) {
             $latestIds = DailyCashClosure::orderByDesc('id')->limit(10)->pluck('id');
             $query->whereIn('id', $latestIds);

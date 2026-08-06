@@ -4,20 +4,31 @@ const props = defineProps({
     type: Array,
     required: true,
   },
+  loading: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const headers = [
-  { title: "EMPLEADO", key: "name", width: "250px" },
-  { title: "PUNTAJE FINAL", key: "scores.total", align: "end", width: "130px" },
-  { title: "VENTAS", key: "scores.sales", align: "center", width: "130px" },
-  { title: "CRECIMIENTO", key: "scores.growth", align: "center", width: "130px" },
-  { title: "VENCIMIENTOS", key: "scores.expiration", align: "center", width: "130px" },
-  { title: "INVENTARIO", key: "scores.inventory", align: "center", width: "130px" },
-  { title: "PREMIUM", key: "scores.premium", align: "center", width: "130px" },
-  { title: "FACTURACIÓN", key: "scores.invoice", align: "center", width: "130px" },
-  { title: "LIMPIEZA", key: "scores.cleaning", align: "center", width: "110px" },
-  { title: "ESTRATÉGICO", key: "scores.strategy", align: "center", width: "130px" },
+  { title: "EMPLEADO", key: "name", width: "140px" },
+  { title: "PUNTAJE", key: "scores.total", align: "center", width: "95px" },
+  { title: "VENTAS", key: "scores.sales", align: "center", width: "85px" },
+  { title: "CRECIMIENTO", key: "scores.growth", align: "center", width: "85px" },
+  { title: "VENCIMIENTOS", key: "scores.expiration", align: "center", width: "85px" },
+  { title: "INVENTARIO", key: "scores.inventory", align: "center", width: "85px" },
+  { title: "PREMIUM", key: "scores.premium", align: "center", width: "80px" },
+  { title: "FACTURACIÓN", key: "scores.invoice", align: "center", width: "85px" },
+  { title: "LIMPIEZA", key: "scores.cleaning", align: "center", width: "80px" },
+  { title: "ESTRATÉGICO", key: "scores.strategy", align: "center", width: "85px" },
 ];
+
+const formatShortName = (name, lastName) => {
+  if (!name && !lastName) return "";
+  const firstNameInitial = name ? `${name.trim().charAt(0)}.` : "";
+  const firstLastName = lastName ? lastName.trim().split(" ")[0] : "";
+  return `${firstNameInitial} ${firstLastName}`.toUpperCase();
+};
 
 const getScoreInfo = (key) => {
   const infos = {
@@ -60,10 +71,18 @@ const formatCurrency = (amount) =>
       <VDataTable
         :headers="headers"
         :items="props.items"
+        :loading="props.loading"
         item-value="id"
         class="premium-performance-table text-no-wrap"
         density="compact"
       >
+        <template #no-data>
+          <div class="pa-8 text-center text-medium-emphasis">
+            <VIcon icon="tabler-users-minus" size="48" color="secondary" class="mb-2 opacity-50" />
+            <h3 class="text-h6 font-weight-bold">No se encontraron empleados</h3>
+            <p class="text-body-2 text-disabled">No hay datos disponibles para el periodo o criterio de búsqueda seleccionado.</p>
+          </div>
+        </template>
         <!-- Custom Headers with Tooltips -->
         <template v-for="header in headers" :key="header.key" #[`header.${header.key}`]="{ column }">
           <div class="d-flex align-center gap-1 justify-center" v-if="header.key !== 'name' && header.key !== 'scores.total'">
@@ -78,12 +97,12 @@ const formatCurrency = (amount) =>
         </template>
 
         <template #item.name="{ item }">
-          <div class="d-flex align-center gap-3 py-2">
+          <div class="d-flex align-center gap-2 py-1">
             <div class="position-relative">
               <VAvatar 
                 :color="props.items.indexOf(item) === 0 ? 'warning' : 'primary'" 
                 variant="tonal"
-                size="34"
+                size="30"
                 class="rounded"
               >
                 <VImg v-if="item.photo" :src="item.photo" cover />
@@ -93,15 +112,16 @@ const formatCurrency = (amount) =>
                 v-if="props.items.indexOf(item) === 0"
                 color="warning"
                 icon="tabler-crown"
-                size="16"
+                size="14"
                 class="position-absolute leader-crown"
               />
             </div>
             <div class="d-flex flex-column">
               <span class="text-xs font-weight-black text-high-emphasis text-uppercase leading-tight">
-                {{ item.name }} {{ item.last_name }}
+                {{ formatShortName(item.name, item.last_name) }}
+                <VTooltip activator="parent" location="top">{{ item.name }} {{ item.last_name }}</VTooltip>
               </span>
-              <span class="text-super-xs text-disabled uppercase font-weight-black mt-1">ID: #{{ item.id }}</span>
+              <span class="text-super-xs text-disabled uppercase font-weight-black">ID: #{{ item.id }}</span>
             </div>
           </div>
         </template>
@@ -235,7 +255,8 @@ const formatCurrency = (amount) =>
       background-color: rgba(var(--v-theme-primary), 0.02) !important;
     }
     td {
-      padding-block: 8px !important;
+      padding-block: 4px !important;
+      padding-inline: 6px !important;
       border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.03) !important;
     }
   }
@@ -260,7 +281,7 @@ const formatCurrency = (amount) =>
 }
 
 .score-cell-desktop {
-  min-inline-size: 100px;
+  min-inline-size: 70px;
 }
 
 .bg-light {

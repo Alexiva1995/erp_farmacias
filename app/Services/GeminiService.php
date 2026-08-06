@@ -50,9 +50,9 @@ class GeminiService
                 . "IMPORTANTE: Si el final de la factura está cortado o no se visualiza el bloque de totales, calcula el total sumando los precios de todos los artículos visibles y asígnalo a 'total_amount'.\n"
                 . "Devuelve exclusivamente el JSON estructurado, sin rodeos, sin markdown block de tipo ```json, solo el objeto plano.";
 
-            $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={$key}";
-
-            $response = Http::timeout(30)->post($url, [
+            $response = Http::withHeaders([
+                'x-goog-api-key' => $key,
+            ])->timeout(30)->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent", [
                 'contents' => [
                     [
                         'parts' => [
@@ -125,9 +125,9 @@ class GeminiService
                 . "}\n"
                 . "Devuelve exclusivamente el JSON estructurado, sin rodeos, sin bloques de código, solo el objeto plano.";
 
-            $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={$key}";
-
-            $response = Http::timeout(20)->post($url, [
+            $response = Http::withHeaders([
+                'x-goog-api-key' => $key,
+            ])->timeout(20)->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent", [
                 'contents' => [
                     [
                         'parts' => [
@@ -210,14 +210,14 @@ class GeminiService
             . $candidateLines
             . "\nResponde con el ID del candidato que coincide o null si ninguno cumple las reglas.";
 
+        $maxRetries = 3;
+        $retryDelay = 2;
+
         try {
-            $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={$key}";
-
-            $maxRetries = 3;
-            $retryDelay = 5;
-
             for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
-                $response = Http::timeout(25)->post($url, [
+                $response = Http::withHeaders([
+                    'x-goog-api-key' => $key,
+                ])->timeout(25)->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent", [
                     'contents' => [
                         ['parts' => [['text' => $prompt]]]
                     ],
@@ -281,9 +281,9 @@ class GeminiService
         }
 
         try {
-            $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={$key}";
-
-            $response = Http::timeout(25)->post($url, [
+            $response = Http::withHeaders([
+                'x-goog-api-key' => $key,
+            ])->timeout(25)->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent", [
                 'contents' => [
                     ['parts' => [['text' => $prompt]]]
                 ]

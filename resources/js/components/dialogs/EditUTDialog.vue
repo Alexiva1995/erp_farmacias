@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 import { ref, watch } from "vue";
 import { useDisplay } from "vuetify";
 
@@ -10,6 +10,10 @@ const props = defineProps({
   currentValue: {
     type: Number,
     required: true,
+  },
+  loading: {
+    type: Boolean,
+    default: false,
   },
 });
 
@@ -195,8 +199,9 @@ const saveUT = () => {
               height="50"
               block
               class="font-weight-black rounded-lg shadow-primary text-button uppercase"
+              :loading="props.loading"
+              :disabled="props.loading || !tempUT || tempUT <= 0"
               @click="saveUT"
-              :disabled="!tempUT || tempUT <= 0"
             >
               <VIcon
                 start

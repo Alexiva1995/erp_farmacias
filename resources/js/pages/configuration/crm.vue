@@ -1,11 +1,13 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import axios from '@/plugins/axios'
-import { toast } from "@/plugins/sweetalert";
-import { useBrandingStore } from "@/stores/useBrandingStore";
+import { toast } from "@/plugins/sweetalert"
+import { useBrandingStore } from "@/stores/useBrandingStore"
+import CrmModuleCard from '@/Components/configuration/CrmModuleCard.vue'
 
 const brandingStore = useBrandingStore()
 
+// Vistas activas por defecto
 const enabledCrmViews = ref([
   'clients',
   'companies',
@@ -13,9 +15,13 @@ const enabledCrmViews = ref([
   'lottery'
 ])
 
+// Estados de carga y guardado
 const isLoading = ref(true)
 const isSaving = ref(false)
+const hasError = ref(false)
+const errorMessage = ref('')
 
+// Catálogo de vistas disponibles del CRM
 const availableCrmViews = [
   { key: 'clients', title: 'Clientes', description: 'Gestión de ficha de clientes, hábitos de compra y trazabilidad.', icon: 'tabler-users' },
   { key: 'companies', title: 'Convenios / Empresas', description: 'Gestión de acuerdos corporativos y descuentos institucionales.', icon: 'tabler-building' },
@@ -23,46 +29,84 @@ const availableCrmViews = [
   { key: 'lottery', title: 'Sorteo / Lotería', description: 'Campañas de fidelización, emisión de boletos y rifas.', icon: 'tabler-ticket' },
 ]
 
+// Propiedades computadas para la interfaz y métricas
+const totalCount = computed(() => availableCrmViews.length)
+
+const activeCount = computed(() => enabledCrmViews.value.length)
+
+const activePercentage = computed(() => {
+  if (totalCount.value === 0) return 0
+  return Math.round((activeCount.value / totalCount.value) * 100)
+})
+
+const allEnabled = computed(() => activeCount.value === totalCount.value)
+
+const noneEnabled = computed(() => activeCount.value === 0)
+
+// Cargar la configuración optimizada solicitando únicamente el campo de CRM
 const fetchSettings = async () => {
   isLoading.value = true
+  hasError.value = false
+  errorMessage.value = ''
+  
   try {
-    const response = await axios.get('/general-settings')
+    const response = await axios.get('/general-settings', {
+      params: { only: 'enabled_crm_views' }
+    })
+    
     const settings = response.data.data
-    if (settings.enabled_crm_views) {
+    if (settings && Array.isArray(settings.enabled_crm_views)) {
       enabledCrmViews.value = settings.enabled_crm_views
     }
   } catch (error) {
     console.error("Error cargando configuración del CRM:", error)
+    hasError.value = true
+    errorMessage.value = "No se pudo cargar la configuración del CRM. Verifique su conexión e intente de nuevo."
     toast.error("Error al cargar la configuración")
   } finally {
     isLoading.value = false
   }
 }
 
+// Alternar el estado de una vista específica
 const toggleCrmView = async (key) => {
   if (isSaving.value || isLoading.value) return
+
+  const updatedViews = [...enabledCrmViews.value]
+  const index = updatedViews.indexOf(key)
   
-  const index = enabledCrmViews.value.indexOf(key)
   if (index > -1) {
-    enabledCrmViews.value.splice(index, 1)
+    updatedViews.splice(index, 1)
   } else {
-    enabledCrmViews.value.push(key)
+    updatedViews.push(key)
   }
+  
+  enabledCrmViews.value = updatedViews
   await updateSettings()
 }
 
+// Acciones masivas: Habilitar o deshabilitar todas las vistas
+const setAllViews = async (enable) => {
+  if (isSaving.value || isLoading.value) return
+  
+  enabledCrmViews.value = enable ? availableCrmViews.map(v => v.key) : []
+  await updateSettings()
+}
+
+// Persistir la configuración en el servidor
 const updateSettings = async () => {
   isSaving.value = true
   try {
     await axios.post('/general-settings', {
       enabled_crm_views: enabledCrmViews.value
     })
+    
     await brandingStore.fetchSettings()
     toast.success("Configuración de vistas del CRM actualizada exitosamente")
   } catch (error) {
-    console.error("Error al guardar:", error)
+    console.error("Error al guardar la configuración:", error)
     toast.error("Error al actualizar la configuración")
-    // Revertir en caso de error
+    // Revertir estado previo mediante recarga ligera
     await fetchSettings()
   } finally {
     isSaving.value = false
@@ -76,129 +120,110 @@ onMounted(() => {
 
 <template>
   <div>
-    <!-- Tarjeta Principal de Configuración de Vistas del CRM -->
+    <!-- Tarjeta Principal de Configuración del CRM -->
     <VCard class="mb-6 rounded-lg border shadow-sm">
       <VCardItem class="py-5">
-        <VCardTitle class="text-h5 font-weight-black text-uppercase d-flex align-center gap-2 mb-2">
-          <VIcon icon="tabler-address-book" class="text-primary" size="26" />
-          Configuración de Vistas del CRM
-          <VProgressCircular
-            v-if="isSaving"
-            indeterminate
-            size="20"
-            width="2"
-            color="primary"
-            class="ms-2"
-          />
-        </VCardTitle>
-        <p class="text-caption text-medium-emphasis mb-6">
-          Habilita o deshabilita los módulos y vistas del CRM en la barra de navegación lateral. Las vistas desmarcadas se ocultarán inmediatamente para todos los usuarios.
-        </p>
+        <!-- Encabezado con Jerarquía y Estado de Guardado -->
+        <div class="d-flex flex-column flex-sm-row justify-space-between align-start align-sm-center gap-4 mb-4">
+          <div>
+            <VCardTitle class="text-h5 font-weight-black text-uppercase d-flex align-center gap-2">
+              <VIcon icon="tabler-address-book" color="primary" size="28" />
+              Configuración de Vistas del CRM
+              <VProgressCircular
+                v-if="isSaving"
+                indeterminate
+                size="20"
+                width="2"
+                color="primary"
+                class="ms-2"
+              />
+            </VCardTitle>
+            <p class="text-caption text-medium-emphasis mb-0 mt-1">
+              Habilita o deshabilita los módulos y vistas del CRM en la barra de navegación lateral. Las vistas desmarcadas se ocultarán inmediatamente para todos los usuarios.
+            </p>
+          </div>
 
-        <!-- Skeletons durante la carga inicial -->
+          <!-- Métricas y Botones de Acción Masiva -->
+          <div class="d-flex align-center gap-2 flex-wrap" v-if="!isLoading && !hasError">
+            <VChip color="primary" variant="tonal" size="small" class="font-weight-bold">
+              {{ activeCount }} / {{ totalCount }} Módulos Activos ({{ activePercentage }}%)
+            </VChip>
+            <VBtn
+              size="small"
+              variant="outlined"
+              color="primary"
+              :disabled="allEnabled || isSaving"
+              @click="setAllViews(true)"
+            >
+              Activar Todas
+            </VBtn>
+            <VBtn
+              size="small"
+              variant="outlined"
+              color="error"
+              :disabled="noneEnabled || isSaving"
+              @click="setAllViews(false)"
+            >
+              Desactivar Todas
+            </VBtn>
+          </div>
+        </div>
+
+        <VDivider class="mb-6" />
+
+        <!-- Banner de Error con Reintento -->
+        <VAlert
+          v-if="hasError"
+          type="error"
+          variant="tonal"
+          class="mb-6 rounded-lg"
+          closable
+        >
+          <template #title>
+            Error de Carga
+          </template>
+          {{ errorMessage }}
+          <template #append>
+            <VBtn
+              color="error"
+              variant="text"
+              size="small"
+              @click="fetchSettings"
+            >
+              Reintentar
+            </VBtn>
+          </template>
+        </VAlert>
+
+        <!-- Skeletons durante Carga Inicial -->
         <VRow v-if="isLoading">
           <VCol v-for="n in 4" :key="n" cols="12" sm="6" md="3">
-            <VCard variant="outlined" class="rounded-lg h-100 border-dashed opacity-75">
-              <VCardItem class="py-4 px-4">
-                <div class="animate-pulse">
-                  <div class="d-flex align-center justify-space-between mb-3">
-                    <div class="d-flex align-center">
-                      <div class="rounded-circle me-2 bg-skeleton" style="width: 32px; height: 32px;"></div>
-                      <div class="rounded bg-skeleton" style="width: 80px; height: 16px;"></div>
-                    </div>
-                    <div class="rounded bg-skeleton" style="width: 36px; height: 20px;"></div>
-                  </div>
-                  <div class="rounded bg-skeleton mb-2" style="width: 100%; height: 12px;"></div>
-                  <div class="rounded bg-skeleton" style="width: 75%; height: 12px;"></div>
-                </div>
-              </VCardItem>
-            </VCard>
+            <VSkeletonLoader
+              type="article, actions"
+              class="rounded-lg border"
+              height="140"
+            />
           </VCol>
         </VRow>
 
-        <!-- Vista de tarjetas de configuración -->
-        <VRow v-else>
-          <VCol v-for="view in availableCrmViews" :key="view.key" cols="12" sm="6" md="3">
-            <VCard
-              variant="outlined"
-              class="rounded-lg cursor-pointer crm-view-card h-100"
-              :class="[
-                enabledCrmViews.includes(view.key) ? 'is-active' : 'opacity-60',
-                { 'is-disabled': isSaving }
-              ]"
-              @click="toggleCrmView(view.key)"
-            >
-              <VCardItem class="py-4 px-4">
-                <div class="d-flex flex-column h-100 justify-space-between">
-                  <div>
-                    <div class="d-flex align-center justify-space-between w-100 mb-2">
-                      <div class="d-flex align-center">
-                        <VAvatar color="primary" variant="tonal" size="32" class="me-2">
-                          <VIcon :icon="view.icon" size="18" />
-                        </VAvatar>
-                        <span class="font-weight-black text-body-2" :class="enabledCrmViews.includes(view.key) ? 'text-high-emphasis' : 'text-disabled'">
-                          {{ view.title }}
-                        </span>
-                      </div>
-                      <VSwitch
-                        :model-value="enabledCrmViews.includes(view.key)"
-                        :disabled="isSaving"
-                        density="compact"
-                        hide-details
-                        color="primary"
-                        @click.stop
-                        @update:model-value="toggleCrmView(view.key)"
-                      />
-                    </div>
-                    <p class="text-caption text-medium-emphasis mb-0 leading-tight">
-                      {{ view.description }}
-                    </p>
-                  </div>
-                </div>
-              </VCardItem>
-            </VCard>
+        <!-- Tarjetas de Módulos CRM -->
+        <VRow v-else-if="!hasError">
+          <VCol
+            v-for="view in availableCrmViews"
+            :key="view.key"
+            cols="12"
+            sm="6"
+            md="3"
+          >
+            <CrmModuleCard
+              :view="view"
+              :is-active="enabledCrmViews.includes(view.key)"
+              :is-saving="isSaving"
+              @toggle="toggleCrmView"
+            />
           </VCol>
         </VRow>
       </VCardItem>
     </VCard>
   </div>
 </template>
-
-<style scoped>
-.crm-view-card {
-  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s, opacity 0.2s;
-}
-
-.crm-view-card:hover:not(.is-disabled) {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 16px -4px rgba(0, 0, 0, 0.08) !important;
-}
-
-.crm-view-card.is-active {
-  border-color: rgb(var(--v-theme-primary)) !important;
-  background-color: rgba(var(--v-theme-primary), 0.02) !important;
-}
-
-.is-disabled {
-  pointer-events: none;
-  opacity: 0.65;
-}
-
-.bg-skeleton {
-  background-color: rgba(0, 0, 0, 0.08);
-}
-
-.animate-pulse {
-  animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: .4;
-  }
-}
-</style>
-

@@ -38,12 +38,9 @@ const currentOfferToEdit = ref(null);
 const isEditingMode = ref(false);
 
 const updateTableOptionsCategories = (options) => {
-  // Evitar peticiones si los valores no han cambiado realmente (prevención de bucles)
-  const isInitialLoad = offerData.value.data.length === 0;
-  
   pageCategories.value = options.page;
   itemsPerPageCategories.value = options.itemsPerPage;
-  
+
   if (options.sortBy && options.sortBy.length > 0) {
     sortByCategories.value = options.sortBy[0].key;
     orderByCategories.value = options.sortBy[0].order;
@@ -51,7 +48,7 @@ const updateTableOptionsCategories = (options) => {
     sortByCategories.value = null;
     orderByCategories.value = null;
   }
-  
+
   actualizarTabla();
 };
 
@@ -64,26 +61,32 @@ const handleClearFiltersCategoriesOffer = () => {
   actualizarTabla();
 };
 
+const fetchCategories = async () => {
+  if (availableCategories.value.length > 0) return;
+  try {
+    const categoriesResponse = await axios.get("/categories");
+    availableCategories.value = categoriesResponse.data;
+  } catch (error) {
+    console.error("Error al cargar categorías:", error);
+    toast.error("Error al cargar categorías");
+  }
+};
+
 const handleEditOffer = async (catOffer) => {
   isLoadingDialogData.value = true;
   try {
-    // Cargar categorías si no están cargadas
-    if (availableCategories.value.length === 0) {
-      const categoriesResponse = await axios.get("/categories");
-      availableCategories.value = categoriesResponse.data;
-    }
-    
+    await fetchCategories();
+
     currentOfferToEdit.value = { ...catOffer };
     Object.assign(categoryOfferData, catOffer);
-    
-    // Convertir fechas al formato correcto
+
     if (catOffer.start_date) {
       categoryOfferData.start_date = formatDateForInput(catOffer.start_date);
     }
     if (catOffer.end_date) {
       categoryOfferData.end_date = formatDateForInput(catOffer.end_date);
     }
-    
+
     formularioError.value = {};
     isOfferDialogVisible.value = true;
     isEditingMode.value = true;
@@ -107,10 +110,8 @@ const formatDateForInput = (dateString) => {
 const handleAddCategoriesOfferModal = async () => {
   isLoadingDialogData.value = true;
   try {
-    const categoriesResponse = await axios.get("/categories");
-    availableCategories.value = categoriesResponse.data;
+    await fetchCategories();
 
-    // Resetear formulario
     Object.assign(categoryOfferData, {
       id: null,
       category_id: null,
@@ -119,10 +120,8 @@ const handleAddCategoriesOfferModal = async () => {
       end_date: "",
       is_active: true,
     });
-    
-    // Resetear errores
-    formularioError.value = {};
 
+    formularioError.value = {};
     isEditingMode.value = false;
     currentOfferToEdit.value = null;
     isOfferDialogVisible.value = true;
@@ -183,7 +182,7 @@ async function actualizar(data) {
       `/tpv/promotions/category/${data.id}`,
       data
     );
-    if (respuestaApi.status == 200) {
+    if (respuestaApi.status === 200) {
       toast.success("Se guardaron los cambios correctamente");
       isOfferDialogVisible.value = false;
       await actualizarTabla();
@@ -204,7 +203,7 @@ async function crear(data) {
   formularioError.value = {};
   try {
     let respuestaApi = await axios.post("/tpv/promotions/category", data);
-    if (respuestaApi.status == 201) {
+    if (respuestaApi.status === 201 || respuestaApi.status === 200) {
       toast.success("La oferta se ha guardado correctamente");
       isOfferDialogVisible.value = false;
       await actualizarTabla();
@@ -250,11 +249,17 @@ async function actualizarTabla() {
       search_id: filterSearchQueryIdCategoriesOffer.value,
       is_active: filterIsActive.value,
       sort_by: sortByCategories.value,
-      order_by: orderByCategories.value
+      order_by: orderByCategories.value,
     };
 
     let responseApi = await axios.get("/tpv/promotions/category", { params });
-    offerData.value = responseApi.data.data;
+    const payload = responseApi.data;
+    offerData.value = {
+      data: payload.data || [],
+      total: payload.meta?.total ?? payload.total ?? (payload.data ? payload.data.length : 0),
+      per_page: payload.meta?.per_page ?? payload.per_page ?? itemsPerPageCategories.value,
+      current_page: payload.meta?.current_page ?? payload.current_page ?? pageCategories.value,
+    };
   } catch (error) {
     toast.error("Error al cargar los datos en la tabla");
     console.error("Error al cargar tabla:", error);
@@ -265,16 +270,16 @@ async function actualizarTabla() {
 
 // Watchers para filtros
 watch([
-  filterSearchQueryIdCategoriesOffer, 
+  filterSearchQueryIdCategoriesOffer,
   filterSearchQueryCategoriesOffer,
-  filterIsActive
+  filterIsActive,
 ], () => {
   pageCategories.value = 1;
   actualizarTabla();
 });
 
 onMounted(async () => {
-  // La carga inicial la dispara automáticamente la tabla mediante @update:options
+  await actualizarTabla();
 });
 </script>
 
@@ -290,12 +295,12 @@ onMounted(async () => {
     />
 
     <CategoryOfferTable
-      :categories-offer="offerData.data || []"
+      :categories-offer="offerData.data"
       :loading="loadingCategories"
-      :total-offer="offerData.total || 0"
+      :total-offer="offerData.total"
       :discount="discount"
-      :items-per-page="offerData.per_page || 10"
-      :page="offerData.current_page || 1"
+      :items-per-page="offerData.per_page"
+      :page="offerData.current_page"
       @update:options="updateTableOptionsCategories"
       @edit-offer="handleEditOffer"
       @delete-offer="handleDeleteOffer"

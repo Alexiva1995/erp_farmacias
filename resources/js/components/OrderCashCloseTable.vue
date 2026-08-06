@@ -190,6 +190,7 @@ const hasCreditPayment = (rawData) => {
             @click="handleView(item.id)"
           />
           <VBtn
+            v-if="authStore.user?.role_id === 1 || authStore.user?.role_id === 2"
             icon="tabler-trash"
             variant="tonal"
             color="error"
@@ -245,6 +246,7 @@ const hasCreditPayment = (rawData) => {
                     @click="handleView(item.id)"
                   />
                   <VBtn
+                    v-if="authStore.user?.role_id === 1 || authStore.user?.role_id === 2"
                     icon="tabler-trash"
                     variant="tonal"
                     color="error"

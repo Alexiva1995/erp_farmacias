@@ -17,82 +17,112 @@ class IaAssistantReportService
     }
 
     /**
+    /**
+     * Obtiene la colección procesada y consolidada usando almacenamiento en caché por firma de filtros.
+     */
+    public function getProcessedCollection(array $filtros): Collection
+    {
+        $filtros = $this->prepareDateFilters($filtros);
+        $tipo = $filtros['tipo_filtracion'] ?? 'average';
+
+        $filtrosCacheKey = $filtros;
+        unset(
+            $filtrosCacheKey['page'],
+            $filtrosCacheKey['itemsPerPage'],
+            $filtrosCacheKey['with_trend'],
+            $filtrosCacheKey['with_suppliers']
+        );
+        if (isset($filtrosCacheKey['dateToday'])) {
+            $filtrosCacheKey['dateToday'] = substr((string)$filtrosCacheKey['dateToday'], 0, 10);
+        }
+        $cacheKey = 'ia_assistant_report_' . md5(json_encode($filtrosCacheKey));
+
+        return Cache::remember($cacheKey, 120, function () use ($filtros, $tipo) {
+            if ($tipo === 'sales') {
+                $resultado = $this->productRepository->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtros);
+            } else {
+                $resultado = $this->productRepository->filtrarIndividualProductForAssistantReportTypeAveragesWithoutPaginate($filtros);
+            }
+
+            if ($tipo === 'combinado') {
+                $procesado = $this->processCombinedReport($resultado, $filtros);
+            } else {
+                $procesado = $this->processRegularReport($resultado, $tipo, $filtros);
+            }
+
+            if (array_key_exists('isColombian', $filtros)) {
+                if ($filtros['isColombian'] === true || $filtros['isColombian'] === 'true') {
+                    $procesado = $procesado->filter(fn($p) => (int)($p->is_colombian_origin ?? 0) === 1);
+                } elseif ($filtros['isColombian'] === false || $filtros['isColombian'] === 'false') {
+                    $procesado = $procesado->filter(fn($p) => (int)($p->is_colombian_origin ?? 0) !== 1);
+                }
+            }
+            if (array_key_exists('isNovaventa', $filtros)) {
+                if ($filtros['isNovaventa'] === true || $filtros['isNovaventa'] === 'true') {
+                    $procesado = $procesado->filter(fn($p) => (int)($p->is_novaventa ?? 0) === 1);
+                } elseif ($filtros['isNovaventa'] === false || $filtros['isNovaventa'] === 'false') {
+                    $procesado = $procesado->filter(fn($p) => (int)($p->is_novaventa ?? 0) !== 1);
+                }
+            }
+
+            $procesado = $this->consolidateCollection($procesado, $filtros);
+
+            if (array_key_exists('isColombian', $filtros)) {
+                if ($filtros['isColombian'] === true || $filtros['isColombian'] === 'true') {
+                    $procesado = $procesado->filter(fn($p) => (int)($p->is_colombian_origin ?? 0) === 1);
+                } elseif ($filtros['isColombian'] === false || $filtros['isColombian'] === 'false') {
+                    $procesado = $procesado->filter(fn($p) => (int)($p->is_colombian_origin ?? 0) !== 1);
+                }
+            }
+            if (array_key_exists('isNovaventa', $filtros)) {
+                if ($filtros['isNovaventa'] === true || $filtros['isNovaventa'] === 'true') {
+                    $procesado = $procesado->filter(fn($p) => (int)($p->is_novaventa ?? 0) === 1);
+                } elseif ($filtros['isNovaventa'] === false || $filtros['isNovaventa'] === 'false') {
+                    $procesado = $procesado->filter(fn($p) => (int)($p->is_novaventa ?? 0) !== 1);
+                }
+            }
+
+            if (!filter_var($filtros['show_ignored'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
+                $now = now();
+                $procesado = $procesado->filter(function ($p) use ($now) {
+                    if (empty($p->ignore_until)) return true;
+                    return \Carbon\Carbon::parse($p->ignore_until)->lte($now);
+                });
+            }
+
+            $stockFilter = $filtros['stock'] ?? 'all';
+            if ($stockFilter === 'fallas') {
+                $procesado = $procesado->filter(function($p) {
+                    $solicitarVal = (float)($p->solicitar ?? 0);
+                    $loteQuantity = (float)($p->lote_quantity ?? 0);
+                    return $solicitarVal > 0 || ($solicitarVal == 0 && $loteQuantity <= 0);
+                });
+            } elseif ($stockFilter === 'exceso') {
+                $procesado = $procesado->filter(fn($p) => (float)($p->solicitar ?? 0) < 0);
+            }
+
+            $shortBy = $filtros['sortBy'] ?? 'solicitar';
+            $orderDir = strtolower($filtros['orderBy'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
+
+            $procesado = ($orderDir === 'desc') 
+                ? $procesado->sortByDesc($shortBy) 
+                : $procesado->sortBy($shortBy);
+
+            return $procesado->values();
+        });
+    }
+
+    /**
      * Orquesta el reporte filtrado con paginación USANDO CACHÉ DE IDs (Estilo IA Assistant)
      */
     public function getFilteredReportWithPaginate(array $filtros)
     {
-        $filtros = $this->prepareDateFilters($filtros);
-        $tipo = $filtros['tipo_filtracion'] ?? 'average';
         $page = (int) ($filtros['page'] ?? 1);
         $perPage = (int) ($filtros['itemsPerPage'] ?? 25);
         if ($perPage <= 0) $perPage = 999999;
 
-        $esVistaGrupal = filter_var($filtros['tipo_vista'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        $procesado = $this->getProcessedCollection($filtros);
 
-        // 1. Hidratar todos los candidatos devueltos por la consulta base (universo filtrado por SQL)
-        if ($tipo === 'sales') {
-            $resultado = $this->productRepository->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtros);
-        } else {
-            $resultado = $this->productRepository->filtrarIndividualProductForAssistantReportTypeAveragesWithoutPaginate($filtros);
-        }
-
-        // 2. Procesar cálculos adicionales (AO, Combinado, etc.)
-        if ($tipo === 'combinado') {
-            $procesado = $this->processCombinedReport($resultado, $filtros);
-        } else {
-            $procesado = $this->processRegularReport($resultado, $tipo, $filtros);
-        }
-
-        // 3. Consolidar productos unificados (grupos) para tener el stock, ventas y 'solicitar' real del grupo
-        $procesado = $this->consolidateCollection($procesado, $filtros);
-
-        // 3.1 Safety net: forzar inclusión o exclusión de Colombia/Novaventa post-consolidación
-        // (consolidateCollection puede mezclar productos de grupos sin respetar estos flags)
-        if (array_key_exists('isColombian', $filtros)) {
-            if ($filtros['isColombian'] === true || $filtros['isColombian'] === 'true') {
-                $procesado = $procesado->filter(fn($p) => (int)($p->is_colombian_origin ?? 0) === 1);
-            } elseif ($filtros['isColombian'] === false || $filtros['isColombian'] === 'false') {
-                $procesado = $procesado->filter(fn($p) => (int)($p->is_colombian_origin ?? 0) !== 1);
-            }
-        }
-        if (array_key_exists('isNovaventa', $filtros)) {
-            if ($filtros['isNovaventa'] === true || $filtros['isNovaventa'] === 'true') {
-                $procesado = $procesado->filter(fn($p) => (int)($p->is_novaventa ?? 0) === 1);
-            } elseif ($filtros['isNovaventa'] === false || $filtros['isNovaventa'] === 'false') {
-                $procesado = $procesado->filter(fn($p) => (int)($p->is_novaventa ?? 0) !== 1);
-            }
-        }
-
-        // Safety net: Descartar estrictamente productos ignorados (ignore_until > now()) post-consolidación
-        if (!filter_var($filtros['show_ignored'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
-            $now = now();
-            $procesado = $procesado->filter(function ($p) use ($now) {
-                if (empty($p->ignore_until)) return true;
-                return \Carbon\Carbon::parse($p->ignore_until)->lte($now);
-            });
-        }
-
-        // 4. Filtrar strictly por estado de stock pos-procesamiento (Fallas / Exceso)
-        $stockFilter = $filtros['stock'] ?? 'all';
-        if ($stockFilter === 'fallas') {
-            $procesado = $procesado->filter(function($p) {
-                $solicitarVal = (float)($p->solicitar ?? 0);
-                $loteQuantity = (float)($p->lote_quantity ?? 0);
-                return $solicitarVal > 0 || ($solicitarVal == 0 && $loteQuantity <= 0);
-            });
-        } elseif ($stockFilter === 'exceso') {
-            $procesado = $procesado->filter(fn($p) => (float)($p->solicitar ?? 0) < 0);
-        }
-
-        // 5. Ordenamiento dinámico sobre el universo completo de fallas
-        $shortBy = $filtros['sortBy'] ?? 'solicitar';
-        $orderDir = strtolower($filtros['orderBy'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
-
-        $procesado = ($orderDir === 'desc') 
-            ? $procesado->sortByDesc($shortBy) 
-            : $procesado->sortBy($shortBy);
-        
-        $procesado = $procesado->values();
         $total = $procesado->count();
 
         // 6. Aplicar la paginación (Corte exacto de perPage sobre el universo filtrado real)
@@ -127,6 +157,35 @@ class IaAssistantReportService
     {
         $filtros = $this->prepareDateFilters($filtros);
         return count($this->getFilteredIds($filtros, false));
+    }
+
+    /**
+     * Calcula estadísticas rápidas (necesitan, exceso, ok) sin hidratar tendencias ni proveedores.
+     */
+    public function getStatsReport(array $filtros): array
+    {
+        $procesado = $this->getProcessedCollection($filtros);
+
+        $stats = [
+            'necesitan' => 0,
+            'exceso' => 0,
+            'ok' => 0
+        ];
+
+        foreach ($procesado as $item) {
+            $solicitarVal = (float)($item->solicitar ?? 0);
+            $loteQuantity = (float)($item->lote_quantity ?? 0);
+
+            if ($solicitarVal > 0 || ($solicitarVal == 0 && $loteQuantity <= 0)) {
+                $stats['necesitan']++;
+            } elseif ($solicitarVal < 0) {
+                $stats['exceso']++;
+            } else {
+                $stats['ok']++;
+            }
+        }
+
+        return $stats;
     }
 
     /**
@@ -318,7 +377,7 @@ class IaAssistantReportService
             $previousDate = new \DateTime("now", $timeZone);
             $previousDate->modify("-" . $filtros["tiempo"] . " " . $filtros["tipo_de_tiempo"]);
             
-            $filtros["dateToday"] = $dateToday->format("Y-m-d H:i:s");
+            $filtros["dateToday"] = $dateToday->format("Y-m-d 23:59:59");
             // Se usa H:i:s para evitar problemas con la hora límite
             $filtros["previousDate"] = $previousDate->format("Y-m-d 00:00:00");
         }

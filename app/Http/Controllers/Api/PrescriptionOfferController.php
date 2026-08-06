@@ -3,89 +3,37 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\PrescriptionOffer;
+use App\Http\Requests\Offers\AddProductToPrescriptionOfferRequest;
+use App\Http\Requests\Offers\RemoveProductFromOfferRequest;
 use App\Http\Requests\Offers\StorePrescriptionOfferRequest;
 use App\Http\Requests\Offers\UpdatePrescriptionOfferRequest;
-use App\Http\Requests\Offers\AddProductToPrescriptionOfferRequest;
 use App\Http\Requests\Offers\UpdateProductQuantityRequest;
-use App\Http\Requests\Offers\RemoveProductFromOfferRequest;
-use Illuminate\Http\Request;
+use App\Http\Resources\PrescriptionOfferResource;
+use App\Models\PrescriptionOffer;
+use App\Services\PrescriptionOfferService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
+use Illuminate\Http\Request;
 
 class PrescriptionOfferController extends Controller
 {
-    /**
-     * Lista de ofertas de recipe.
-     */
+    public function __construct(
+        protected PrescriptionOfferService $offerService
+    ) {}
+
     public function index(Request $request): JsonResponse
     {
         try {
-            $query = PrescriptionOffer::query();
-
-            if ($request->filled('id')) {
-                $query->where('id', $request->id);
-            }
-
-            if ($request->has('is_active')) {
-                $query->where('is_active', $request->boolean('is_active'));
-            }
-
-            if ($request->filled('search')) {
-                $search = $request->input('search');
-                $query->where(function ($q) use ($search) {
-                    $q->where('name', 'like', "%{$search}%")
-                        ->orWhere('discount_percentage', 'like', "%{$search}%");
-                });
-            }
-            $sortBy = $request->input('sort_by', 'created_at');
-            $sortOrder = $request->input('order', 'desc');
-
-            $allowedSorts = ['id', 'name', 'discount_percentage', 'start_date', 'end_date', 'is_active', 'created_at'];
-
-            if (in_array($sortBy, $allowedSorts)) {
-                $query->orderBy($sortBy, $sortOrder);
-            } else {
-                $query->orderBy('created_at', 'desc');
-            }
-
-            $perPage = $request->input('per_page', 10);
-            $offers = $query->paginate($perPage);
-
-            $formattedData = $offers->getCollection()->map(function ($offer) {
-                $salesCount = (int) \App\Models\OrderDetail::whereIn('discount_type', ['prescription', 'recipe'])
-                    ->where('discount_source_id', $offer->id)
-                    ->whereHas('order', function ($q) {
-                        $q->where('status', \App\Models\Order::COMPLETED);
-                    })
-                    ->sum('quantity');
-
-                return [
-                    'id' => $offer->id,
-                    'name' => $offer->name,
-                    'discount_percentage' => $offer->discount_percentage,
-                    'start_date' => $offer->start_date,
-                    'end_date' => $offer->end_date,
-                    'is_active' => $offer->is_active,
-                    'is_currently_active' => $offer->is_currently_active,
-                    'sales_count' => $salesCount,
-                    'created_at' => $offer->created_at,
-                    'updated_at' => $offer->updated_at,
-                ];
-            });
-
-            $offers->setCollection($formattedData);
+            $filters = $request->only(['id', 'is_active', 'search', 'sort_by', 'order', 'per_page']);
+            $offers = $this->offerService->listOffers($filters);
 
             return response()->json([
                 'success' => true,
-                'data' => $offers->items(),
+                'data' => PrescriptionOfferResource::collection($offers->items()),
                 'total' => $offers->total(),
                 'per_page' => $offers->perPage(),
                 'current_page' => $offers->currentPage(),
                 'last_page' => $offers->lastPage(),
             ]);
-
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -94,41 +42,23 @@ class PrescriptionOfferController extends Controller
         }
     }
 
-    /**
-     * Creacion de la nueva oferta.
-     */
     public function store(StorePrescriptionOfferRequest $request): JsonResponse
     {
-        $validated = $request->validated();
-
         try {
-            DB::beginTransaction();
-
-            $offer = PrescriptionOffer::create([
-                'name' => $validated['name'],
-                'discount_percentage' => $validated['discount_percentage'],
-                'start_date' => $validated['start_date'],
-                'end_date' => $validated['end_date'],
-                'is_active' => $validated['is_active'] ?? true,
-            ]);
-            
-            DB::commit();
+            $offer = $this->offerService->createOffer($request->validated());
 
             return response()->json([
                 'success' => true,
                 'message' => 'Oferta de receta creada exitosamente',
-                'data' => $offer
+                'data' => new PrescriptionOfferResource($offer)
             ], 201);
-
-        } catch (ValidationException $e) {
-            DB::rollBack();
+        } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Error de validación',
                 'errors' => $e->errors()
             ], 422);
         } catch (\Exception $e) {
-            DB::rollBack();
             return response()->json([
                 'success' => false,
                 'message' => 'Error al crear la oferta de receta: ' . $e->getMessage()
@@ -136,69 +66,31 @@ class PrescriptionOfferController extends Controller
         }
     }
 
-    /**
-     * Obtener una oferta de receta específica.
-     */
-    public function show(string $id): JsonResponse
+    public function show(PrescriptionOffer $prescriptionOffer): JsonResponse
     {
-        try {
-            $offer = PrescriptionOffer::findOrFail($id);
-
-            return response()->json([
-                'success' => true,
-                'data' => $offer
-            ]);
-
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Oferta de receta no encontrada'
-            ], 404);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al obtener la oferta de receta: ' . $e->getMessage()
-            ], 500);
-        }
+        return response()->json([
+            'success' => true,
+            'data' => new PrescriptionOfferResource($prescriptionOffer)
+        ]);
     }
 
-    /**
-     * Actualización de una oferta específica.
-     */
-    public function update(UpdatePrescriptionOfferRequest $request, string $id): JsonResponse
+    public function update(UpdatePrescriptionOfferRequest $request, PrescriptionOffer $prescriptionOffer): JsonResponse
     {
-        DB::beginTransaction();
-
         try {
-            $offer = PrescriptionOffer::findOrFail($id);
-
-            $validated = $request->validated();
-
-            $offer->update($validated);
-
-            DB::commit();
+            $updatedOffer = $this->offerService->updateOffer($prescriptionOffer, $request->validated());
 
             return response()->json([
                 'success' => true,
                 'message' => 'Oferta de receta actualizada exitosamente',
-                'data' => $offer
+                'data' => new PrescriptionOfferResource($updatedOffer)
             ]);
-
-        } catch (ValidationException $e) {
-            DB::rollBack();
+        } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Error de validación',
                 'errors' => $e->errors()
             ], 422);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Oferta de receta no encontrada'
-            ], 404);
         } catch (\Exception $e) {
-            DB::rollBack();
             return response()->json([
                 'success' => false,
                 'message' => 'Error al actualizar la oferta de receta: ' . $e->getMessage()
@@ -206,31 +98,16 @@ class PrescriptionOfferController extends Controller
         }
     }
 
-    /**
-     * Eliminar una oferta especifica.
-     */
-    public function destroy(string $id): JsonResponse
+    public function destroy(PrescriptionOffer $prescriptionOffer): JsonResponse
     {
-        DB::beginTransaction();
-
         try {
-            $offer = PrescriptionOffer::findOrFail($id);
-            $offer->delete();
-
-            DB::commit();
+            $this->offerService->deleteOffer($prescriptionOffer);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Oferta de receta eliminada exitosamente'
             ]);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Oferta de receta no encontrada'
-            ], 404);
         } catch (\Exception $e) {
-            DB::rollBack();
             return response()->json([
                 'success' => false,
                 'message' => 'Error al eliminar la oferta de receta: ' . $e->getMessage()
@@ -238,50 +115,23 @@ class PrescriptionOfferController extends Controller
         }
     }
 
-    public function addProductToOffer(AddProductToPrescriptionOfferRequest $request, string $id): JsonResponse
+    public function addProductToOffer(AddProductToPrescriptionOfferRequest $request, PrescriptionOffer $prescriptionOffer): JsonResponse
     {
-        DB::beginTransaction();
-
         try {
-            $offer = PrescriptionOffer::findOrFail($id);
-
-            $validated = $request->validated();
-
-            $offer->addProduct(
-                $validated['product_id'],
-                $validated['sale_price'],
-                $validated['quantity']
-            );
-
-            $offer->save();
-
-            DB::commit();
+            $data = $this->offerService->addProductToOffer($prescriptionOffer, $request->validated());
 
             return response()->json([
                 'success' => true,
                 'message' => 'Producto agregado a la oferta exitosamente',
-                'data' => [
-                    'products_with_details' => $offer->products_with_details,
-                    'total_cost' => $offer->total_cost,
-                    'total_discount_amount' => $offer->total_discount_amount,
-                    'final_total_cost' => $offer->final_total_cost,
-                ]
+                'data' => $data
             ]);
-        } catch (ValidationException $e) {
-            DB::rollBack();
+        } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Error de validación',
                 'errors' => $e->errors()
             ], 422);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Oferta de receta no encontrada'
-            ], 404);
         } catch (\Exception $e) {
-            DB::rollBack();
             return response()->json([
                 'success' => false,
                 'message' => 'Error al agregar producto a la oferta: ' . $e->getMessage()
@@ -289,121 +139,53 @@ class PrescriptionOfferController extends Controller
         }
     }
 
-    /**
-     * Actualizar cantidad de un producto en la oferta
-     */
-    public function updateProductQuantity(UpdateProductQuantityRequest $request, string $id): JsonResponse
+    public function updateProductQuantity(UpdateProductQuantityRequest $request, PrescriptionOffer $prescriptionOffer): JsonResponse
     {
-        DB::beginTransaction();
-
         try {
-            $offer = PrescriptionOffer::findOrFail($id);
+            $data = $this->offerService->updateProductQuantity($prescriptionOffer, $request->validated());
 
-            $validated = $request->validated();
-
-            $updated = $offer->updateProductQuantity(
-                $validated['product_id'],
-                $validated['quantity']
-            );
-
-            if ($updated) {
-                $offer->save();
-                DB::commit();
-
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Cantidad del producto actualizada exitosamente',
-                    'data' => [
-                        'products_with_details' => $offer->products_with_details,
-                        'total_cost' => $offer->total_cost,
-                        'total_discount_amount' => $offer->total_discount_amount,
-                        'final_total_cost' => $offer->final_total_cost,
-                    ]
-                ]);
-            } else {
-                DB::rollBack();
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Producto no encontrado en la oferta'
-                ], 404);
-            }
-        } catch (ValidationException $e) {
-            DB::rollBack();
+            return response()->json([
+                'success' => true,
+                'message' => 'Cantidad del producto actualizada exitosamente',
+                'data' => $data
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Error de validación',
                 'errors' => $e->errors()
             ], 422);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Oferta de receta no encontrada'
-            ], 404);
         } catch (\Exception $e) {
-            DB::rollBack();
+            $code = $e->getCode() === 404 ? 404 : 500;
             return response()->json([
                 'success' => false,
-                'message' => 'Error al actualizar cantidad del producto: ' . $e->getMessage()
-            ], 500);
+                'message' => $e->getMessage()
+            ], $code);
         }
     }
 
-    /**
-     * Remover producto de una oferta existente
-     */
-    public function removeProductFromOffer(RemoveProductFromOfferRequest $request, string $id): JsonResponse
+    public function removeProductFromOffer(RemoveProductFromOfferRequest $request, PrescriptionOffer $prescriptionOffer): JsonResponse
     {
-        DB::beginTransaction();
-
         try {
-            $offer = PrescriptionOffer::findOrFail($id);
+            $data = $this->offerService->removeProductFromOffer($prescriptionOffer, (int) $request->validated()['product_id']);
 
-            $validated = $request->validated();
-
-            $removed = $offer->removeProduct($validated['product_id']);
-
-            if ($removed) {
-                $offer->save();
-                DB::commit();
-
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Producto removido de la oferta exitosamente',
-                    'data' => [
-                        'products_with_details' => $offer->products_with_details,
-                        'total_cost' => $offer->total_cost,
-                        'total_discount_amount' => $offer->total_discount_amount,
-                        'final_total_cost' => $offer->final_total_cost,
-                    ]
-                ]);
-            } else {
-                DB::rollBack();
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Producto no encontrado en la oferta'
-                ], 404);
-            }
-        } catch (ValidationException $e) {
-            DB::rollBack();
+            return response()->json([
+                'success' => true,
+                'message' => 'Producto removido de la oferta exitosamente',
+                'data' => $data
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Error de validación',
                 'errors' => $e->errors()
             ], 422);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Oferta de receta no encontrada'
-            ], 404);
         } catch (\Exception $e) {
-            DB::rollBack();
+            $code = $e->getCode() === 404 ? 404 : 500;
             return response()->json([
                 'success' => false,
-                'message' => 'Error al remover producto de la oferta: ' . $e->getMessage()
-            ], 500);
+                'message' => $e->getMessage()
+            ], $code);
         }
     }
 }
-

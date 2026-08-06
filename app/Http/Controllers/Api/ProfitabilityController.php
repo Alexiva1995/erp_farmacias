@@ -48,38 +48,52 @@ class ProfitabilityController extends Controller
         $productId = $request->input('product_id');
         $percentage = $request->input('profitability_percentage', 0);
 
-        $profitability = ProductProfitability::where('product_id', $productId)->first();
+        $productProfitability = ProductProfitability::where('product_id', $productId)->first();
 
-        if ($profitability) {
-            $newLock = $profitability->is_locked == 1 ? 0 : 1;
-            $profitability->update([
+        if ($productProfitability) {
+            $newLock = $productProfitability->is_locked == 1 ? 0 : 1;
+            $productProfitability->update([
                 'is_locked' => $newLock,
             ]);
         } else {
-            $profitability = ProductProfitability::create([
+            ProductProfitability::create([
                 'product_id' => $productId,
                 'profitability_percentage' => $percentage,
                 'is_locked' => 1,
             ]);
         }
 
+        $product = Product::with(['laboratory', 'profitability'])->find($productId);
+
         return response()->json([
             'status' => 'success',
             'message' => 'Bloqueo de margen actualizado con éxito',
-            'data' => $profitability
+            'data' => new ProductProfitabilityResource($product)
         ]);
     }
 
     public function storeProfitabilityProduct(ProfitabilityProductCreateRequest $request)
     {
         $this->profitability->storeProduct($request->profitability->all());
-        return response()->json("Se ha guardado la rentabilidad del producto");
+        $productId = $request->profitability->product_id;
+        $product = Product::with(['laboratory', 'profitability'])->find($productId);
+
+        return response()->json([
+            'message' => "Se ha guardado la rentabilidad del producto",
+            'data' => new ProductProfitabilityResource($product)
+        ]);
     }
 
     public function editProfitabilityProduct(ProfitabilityProductEditRequest $request)
     {
         $this->profitability->editProduct($request->profitability->all());
-        return response()->json("Se ha actualizado el porcentaje");
+        $productId = $request->profitability->product_id;
+        $product = Product::with(['laboratory', 'profitability'])->find($productId);
+
+        return response()->json([
+            'message' => "Se ha actualizado el porcentaje",
+            'data' => new ProductProfitabilityResource($product)
+        ]);
     }
 
     public function store(Request $request)

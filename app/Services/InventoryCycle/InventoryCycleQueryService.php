@@ -34,6 +34,7 @@ class InventoryCycleQueryService
             ->where(function ($q) {
                 $q->whereNull('is_deleted')->orWhere('is_deleted', 0);
             })
+            ->selectRaw("products.*, COALESCE((SELECT SUM(quantity) FROM product_lots WHERE product_lots.product_id = products.id), 0) AS stock_calculado")
             ->with(['lots', 'laboratory', 'origin']);
     }
 
@@ -41,9 +42,20 @@ class InventoryCycleQueryService
      * Construye un query con la unión de product_counts, invoice_counts y sale_counts
      * filtrado por ciclo y estado según sea necesario.
      */
-    private function buildDiscrepanciesUnionQuery(int|string|null $cycleId = null, bool $includePending = false)
+    private function buildDiscrepanciesUnionQuery(int|string|null $cycleId = null, bool $includePending = false, bool $includeTraceability = false)
     {
         $cycleId = $cycleId !== null ? (int) $cycleId : null;
+
+        $traceabilitySelect = $includeTraceability
+            ? "EXISTS(
+                SELECT 1 FROM product_distributions WHERE product_count_id = pc.id
+                UNION
+                SELECT 1 FROM inventory_movements WHERE product_id = pc.product_id 
+                AND movement_type IN ('adjustment', 'loss')
+                AND ABS(TIMESTAMPDIFF(SECOND, created_at, pc.updated_at)) < 30
+            ) as has_traceability"
+            : "0 as has_traceability";
+
         $productCounts = ProductCount::query()
             ->from('product_counts as pc')
             ->select([
@@ -59,16 +71,20 @@ class InventoryCycleQueryService
                 'pc.created_at',
                 'pc.updated_at',
                 DB::raw("'product_count' as source_type"),
-                DB::raw("EXISTS(
-                    SELECT 1 FROM product_distributions WHERE product_count_id = pc.id
-                    UNION
-                    SELECT 1 FROM inventory_movements WHERE product_id = pc.product_id 
-                    AND movement_type IN ('adjustment', 'loss')
-                    AND ABS(TIMESTAMPDIFF(SECOND, created_at, pc.updated_at)) < 30
-                ) as has_traceability")
+                DB::raw($traceabilitySelect)
             ])
             ->when(!$includePending, fn ($q) => $q->where('pc.status', 'approved'))
             ->when($cycleId, fn ($q) => $q->where('pc.cycle_id', $cycleId));
+
+        $invoiceTraceabilitySelect = $includeTraceability
+            ? "EXISTS(
+                SELECT 1 FROM invoice_count_distributions WHERE invoice_count_id = ic.id
+                UNION
+                SELECT 1 FROM inventory_movements WHERE product_id = ic.product_id 
+                AND movement_type IN ('adjustment', 'loss')
+                AND ABS(TIMESTAMPDIFF(SECOND, created_at, ic.updated_at)) < 30
+            ) as has_traceability"
+            : "0 as has_traceability";
 
         $invoiceCounts = InvoiceCount::query()
             ->from('invoices_counts as ic')
@@ -85,16 +101,20 @@ class InventoryCycleQueryService
                 'ic.created_at',
                 'ic.updated_at',
                 DB::raw("'invoice_count' as source_type"),
-                DB::raw("EXISTS(
-                    SELECT 1 FROM invoice_count_distributions WHERE invoice_count_id = ic.id
-                    UNION
-                    SELECT 1 FROM inventory_movements WHERE product_id = ic.product_id 
-                    AND movement_type IN ('adjustment', 'loss')
-                    AND ABS(TIMESTAMPDIFF(SECOND, created_at, ic.updated_at)) < 30
-                ) as has_traceability")
+                DB::raw($invoiceTraceabilitySelect)
             ])
             ->when(!$includePending, fn ($q) => $q->where('ic.status', 'approved'))
             ->when($cycleId, fn ($q) => $q->where('ic.cycle_id', $cycleId));
+
+        $saleTraceabilitySelect = $includeTraceability
+            ? "EXISTS(
+                SELECT 1 FROM sale_count_distributions WHERE sale_count_id = sc.id
+                UNION
+                SELECT 1 FROM inventory_movements WHERE product_id = sc.product_id 
+                AND movement_type IN ('adjustment', 'loss')
+                AND ABS(TIMESTAMPDIFF(SECOND, created_at, sc.updated_at)) < 30
+            ) as has_traceability"
+            : "0 as has_traceability";
 
         $saleCounts = SaleCount::query()
             ->from('sales_counts as sc')
@@ -111,13 +131,7 @@ class InventoryCycleQueryService
                 'sc.created_at',
                 'sc.updated_at',
                 DB::raw("'sale_count' as source_type"),
-                DB::raw("EXISTS(
-                    SELECT 1 FROM sale_count_distributions WHERE sale_count_id = sc.id
-                    UNION
-                    SELECT 1 FROM inventory_movements WHERE product_id = sc.product_id 
-                    AND movement_type IN ('adjustment', 'loss')
-                    AND ABS(TIMESTAMPDIFF(SECOND, created_at, sc.updated_at)) < 30
-                ) as has_traceability")
+                DB::raw($saleTraceabilitySelect)
             ])
             ->when(!$includePending, fn ($q) => $q->where('sc.status', 'approved'))
             ->when($cycleId, fn ($q) => $q->where('sc.cycle_id', $cycleId));
@@ -633,7 +647,7 @@ class InventoryCycleQueryService
     {
         $activeCycleId = InventoryCycle::where('status', 'active')->value('id');
 
-        $unionQuery = $this->buildDiscrepanciesUnionQuery($activeCycleId, true);
+        $unionQuery = $this->buildDiscrepanciesUnionQuery($activeCycleId, false, true);
 
         $query = DB::query()->fromSub($unionQuery, 'discrepancies')
             ->leftJoin('products', 'discrepancies.product_id', '=', 'products.id')
@@ -793,6 +807,7 @@ class InventoryCycleQueryService
                 'products.iva as product_iva',
                 'products.psychotropic as product_psychotropic',
                 'products.unit_cost as product_unit_cost',
+                'products.sale_price as product_sale_price',
                 'products.is_colombian_origin as product_is_colombian_origin',
                 'laboratories.name as laboratory_name',
                 'users.email as user_email',

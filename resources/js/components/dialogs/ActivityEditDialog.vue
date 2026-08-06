@@ -1,4 +1,5 @@
 <script setup>
+import { computed, ref, watch } from "vue";
 import { useDisplay } from "vuetify";
 
 const props = defineProps({
@@ -6,6 +7,7 @@ const props = defineProps({
   activity: { type: Object, default: () => ({}) },
   frequencies: { type: Array, default: () => [] },
   errors: { type: Object, default: () => ({}) },
+  saving: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(["update:modelValue", "save", "clearErrors"]);
@@ -190,6 +192,8 @@ const submitForm = () => {
               size="large"
               block
               height="50"
+              :loading="props.saving"
+              :disabled="props.saving"
               class="font-weight-black rounded-lg shadow-primary text-button uppercase"
               @click="submitForm"
             >

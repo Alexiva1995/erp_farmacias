@@ -182,7 +182,6 @@ async function crear(data){
   } catch (error) {
     let msg = error?.response?.data?.message || "Error al crear el cliente"
     toast.error(msg)
-    console.error("Error en el servidor =>", error)
     let errores = error?.response?.data?.data?.errors || error?.response?.data?.errors || {}
     cargarErrores(errores)
   } finally {
@@ -207,7 +206,6 @@ async function actualizar(data){
   } catch (error) {
     let msg = error?.response?.data?.message || "Error al guardar los cambios del cliente"
     toast.error(msg)
-    console.error("Error en el servidor =>", error)
     let errores = error?.response?.data?.data?.errors || error?.response?.data?.errors || {}
     cargarErrores(errores)
   } finally {
@@ -250,7 +248,7 @@ async function actualizarTabla(){
     statuModule.totalClientes = respuestaApiNaturles.total || 0
     statuModule.items = [...(respuestaApiNaturles.data || [])]
   } catch (err) {
-    console.error("Error cargando tabla de clientes:", err)
+    toast.error("Error al cargar la lista de clientes")
   } finally {
     loading.value = false;
   }

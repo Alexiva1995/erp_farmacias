@@ -4,14 +4,17 @@ import SectionDivider from "@/components/SectionDivider.vue";
 import TicketHeader from "@/components/TicketHeader.vue";
 import { BASE64_LOGO_DATA } from "@/constants/logo.js";
 import { formatDateTime } from "@/utils/formatDateTime";
-import { computed, defineProps } from "vue";
+import { computed } from "vue";
 
 const props = defineProps({
   cashData: { type: Object, required: true },
   isPdf: { type: Boolean, default: false },
 });
 
-const logoSrc = computed(() => BASE64_LOGO_DATA);
+import { useBrandingStore } from "@/stores/useBrandingStore";
+
+const brandingStore = useBrandingStore();
+const logoSrc = computed(() => brandingStore.settings?.app_logo || BASE64_LOGO_DATA);
 
 const getValue = (key) => parseFloat(props.cashData[key] || 0);
 

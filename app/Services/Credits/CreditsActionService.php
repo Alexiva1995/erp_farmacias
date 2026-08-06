@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Credits;
 
-
 use App\Models\Credit;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
@@ -61,24 +60,23 @@ class CreditsActionService
             DB::beginTransaction();
             $money_returns = (isset($request->changeAmount)) ? $request->changeAmount : 0;
             $sellerId = Auth::id();
-            //$sellerId = 3; //para realizar pruebas
             $creditosPagados = [];
             $creditosPendientes = Credit::where('client_id', $request->clientId)->where('status', 'Active')->orderBy('created_at')->get();
+
+            $rates = $this->resourceService->getAllExchangeRate();
+            $ratesArray = $rates->pluck('rate', 'currency_code')->toArray();
 
             foreach ($request->payments as $paymend) {
                 $montoRestantePagoActual = $paymend['amount'];
                 $montoRestantePagoActual = (float)$montoRestantePagoActual;
-                
-                $rates = $this->resourceService->getAllExchangeRate();
-                $ratesArray = $rates->pluck('rate', 'currency_code')->toArray();
                  
                 if ($paymend['currency'] == 'BS') {
                     $bsToUsdRate = (float) ($ratesArray['BS'] ?? 0);
                     if ($bsToUsdRate > 0) {
                         $montoRestantePagoActual /= $bsToUsdRate;
                     }
-                }else if ($paymend['currency'] == 'COP') {
-                     $copToUsdRate = (float) ($ratesArray['COP'] ?? 0);
+                } else if ($paymend['currency'] == 'COP') {
+                    $copToUsdRate = (float) ($ratesArray['COP'] ?? 0);
                     if ($copToUsdRate > 0) {
                         $montoRestantePagoActual /= $copToUsdRate;
                     }
@@ -134,9 +132,7 @@ class CreditsActionService
                 'payment_date'   => Carbon::now(),
             ]);
 
-            
-
-             foreach ($request->payments as $payment) {
+            foreach ($request->payments as $payment) {
                 $method = $payment['method'] ?? null;
                 $amount = $payment['amount'] ?? 0;
 
@@ -173,17 +169,22 @@ class CreditsActionService
                 }
             }
 
+            $changeAmount = (float) ($request->changeAmount ?? 0);
+            $changeAmountUSD = (float) ($request->changeAmountUSD ?? 0);
 
-                        if (isset($request->changeAmount) && $request->changeAmount > 0) {
-                // El vuelto se dio físicamente en Pesos (COP)
+            if ($changeAmountUSD > 0 && $changeAmount > 0) {
+                // El vuelto se dio en Pesos (COP) para un pago en USD
                 $copRate = (float) ($ratesArray['COPC'] ?? 1);
-                $copChangeAmount = $request->changeAmountUSD * $copRate;
-                
+                $copChangeAmount = $changeAmountUSD * $copRate;
+
                 $current_cash->cop_conversion_payment_credit += $copChangeAmount;
                 $current_cash->cop_cash_payment_credit -= $copChangeAmount;
-            } else if (isset($request->changeAmountUSD) && $request->changeAmountUSD > 0) {
-                // El vuelto se dio físicamente en Dólares (USD)
-                $current_cash->usd_cash_payment_credit -= $request->changeAmountUSD;
+            } elseif ($changeAmount > 0) {
+                // El vuelto se dio en Pesos (COP)
+                $current_cash->cop_cash_payment_credit -= $changeAmount;
+            } elseif ($changeAmountUSD > 0) {
+                // El vuelto se dio en Dólares (USD)
+                $current_cash->usd_cash_payment_credit -= $changeAmountUSD;
             }
 
             // Recalcular todos los totales usando la lógica unificada en el modelo
@@ -191,13 +192,12 @@ class CreditsActionService
 
             DB::commit();
             return true;
-
-        } catch (\Throwable $e) {
+        } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error al completar el pago: ' . $e->getMessage(), [
+            Log::error('Error al completar el pago de crédito: ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
             ]);
-            throw $e;
+            return false;
         }
     }
 }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CleaningActivity\StoreCleaningActivityRequest;
 use App\Http\Requests\CleaningActivity\UpdateCleaningActivityRequest;
+use App\Http\Resources\CleaningActivityResource;
 use App\Models\CleaningActivity;
 use App\Services\CleaningActivities\CleaningActivityActionService;
 use App\Services\CleaningActivities\CleaningActivityQueryService;
@@ -21,19 +22,19 @@ class CleaningActivityController extends Controller
     public function index(Request $request)
     {
         $query = $this->queryService->getFilteredQuery($request);
-        $perPage = $request->input('itemsPerPage', 10);
+        $perPage = (int) $request->input('itemsPerPage', 10);
 
         if ($perPage < 1) {
             $items = $query->get();
             return response()->json([
-                'data' => $items,
+                'data' => CleaningActivityResource::collection($items),
                 'total' => $items->count()
             ]);
         }
 
         $paginatedResult = $query->paginate($perPage);
         return response()->json([
-            'data' => $paginatedResult->items(),
+            'data' => CleaningActivityResource::collection($paginatedResult->items()),
             'total' => $paginatedResult->total()
         ]);
     }
@@ -44,7 +45,7 @@ class CleaningActivityController extends Controller
 
         return response()->json([
             'message' => 'Actividad creada con éxito.',
-            'activity' => $activity
+            'activity' => new CleaningActivityResource($activity)
         ], 201);
     }
 
@@ -54,7 +55,7 @@ class CleaningActivityController extends Controller
 
         return response()->json([
             'message' => 'Actividad actualizada con éxito.',
-            'activity' => $updatedActivity
+            'activity' => new CleaningActivityResource($updatedActivity)
         ], 200);
     }
 
@@ -64,3 +65,4 @@ class CleaningActivityController extends Controller
         return response()->noContent();
     }
 }
+

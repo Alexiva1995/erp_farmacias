@@ -34,27 +34,10 @@ class ExpiryReportRepository implements ExpiryReportRepositoryInterface
         return $query->get()->toArray();
     }
 
-    public function getAnnualTrend(array $filters): array
-    {
-        $query = ProductLot::query()
-            ->join('products', 'product_lots.product_id', '=', 'products.id')
-            ->select(
-                DB::raw("DATE_FORMAT(product_lots.expiration_date, '%Y') as year"),
-                DB::raw('SUM(product_lots.quantity * products.unit_cost) as total_value'),
-                DB::raw('SUM(product_lots.quantity) as total_units')
-            )
-            ->where('product_lots.quantity', '>', 0)
-            ->where('product_lots.expiration_date', '>=', now())
-            ->groupBy('year')
-            ->orderBy('year');
-
-        $this->applyFilters($query, $filters);
-
-        return $query->get()->toArray();
-    }
-
     public function getRealLossAnalysis(array $filters): array
     {
+        // JOIN con products ya está hecho, se filtra directamente sobre la columna
+        // del JOIN en lugar de usar whereHas() que genera una subconsulta correlacionada EXISTS
         $query = ExpiredLog::query()
             ->join('products', 'expired_logs.product_id', '=', 'products.id')
             ->select(
@@ -62,42 +45,28 @@ class ExpiryReportRepository implements ExpiryReportRepositoryInterface
                 DB::raw('SUM(expired_logs.expired_quantity) as total_units'),
                 DB::raw('SUM(expired_logs.expired_quantity * products.unit_cost) as total_cost')
             )
+            ->whereNull('products.deleted_at')
+            ->where('products.is_deleted', false)
             ->groupBy('month')
             ->orderBy('month', 'desc')
             ->limit(6);
 
-        // Filters for ExpiredLog might differ slightly depending on available columns
+        // Filtro directo sobre el JOIN — sin subconsulta correlacionada
         if (!empty($filters['laboratory_id'])) {
-            $query->whereHas('product', function($q) use ($filters) {
-                $q->where('laboratory_id', $filters['laboratory_id']);
-            });
+            $query->where('products.laboratory_id', $filters['laboratory_id']);
+        }
+
+        if (!empty($filters['category_id'])) {
+            $query->where('products.category_id', $filters['category_id']);
+        }
+
+        if (!empty($filters['group_id'])) {
+            $query->where('products.group_id', $filters['group_id']);
         }
 
         return $query->get()->toArray();
     }
 
-    public function getRiskInventory(array $filters): array
-    {
-        $query = ProductLot::query()
-            ->join('products', 'product_lots.product_id', '=', 'products.id')
-            ->select(
-                'products.name',
-                'product_lots.expiration_date',
-                'product_lots.quantity',
-                'products.sales_average',
-                DB::raw('TIMESTAMPDIFF(DAY, NOW(), product_lots.expiration_date) as days_to_expiry'),
-                DB::raw('products.sales_average / 30 as daily_sales_velocity')
-            )
-            ->where('product_lots.quantity', '>', 0)
-            ->where('product_lots.expiration_date', '>=', now())
-            ->where('product_lots.expiration_date', '<=', now()->addMonths(6))
-            ->orderBy('days_to_expiry', 'asc')
-            ->limit(20);
-
-        $this->applyFilters($query, $filters);
-
-        return $query->get()->toArray();
-    }
 
     public function getOverstockWarning(array $filters): array
     {
@@ -118,8 +87,10 @@ class ExpiryReportRepository implements ExpiryReportRepositoryInterface
             )
             ->where('product_lots.quantity', '>', 0)
             ->where('product_lots.expiration_date', '>=', now())
-            // Consider critical if expires in less than 12 months for overstock warning
-            ->where('product_lots.expiration_date', '<=', now()->addMonths(12));
+            // Solo lotes con vencimiento en menos de 12 meses
+            ->where('product_lots.expiration_date', '<=', now()->addMonths(12))
+            // Límite defensivo: evita traer miles de filas en inventarios grandes
+            ->limit(200);
 
         $this->applyFilters($query, $filters);
 
@@ -138,21 +109,22 @@ class ExpiryReportRepository implements ExpiryReportRepositoryInterface
             )
             ->where('product_lots.quantity', '>', 0)
             ->where('product_lots.expiration_date', '<=', $endOfMonth);
-            
+
         $this->applyFilters($query, $filters);
-        
+
         $result = $query->first();
+
         return $result ? $result->toArray() : ['total_units' => 0, 'total_value' => 0];
     }
 
-    private function applyFilters($query, array $filters)
+    private function applyFilters($query, array $filters): void
     {
         // Excluir productos eliminados (SoftDeletes e is_deleted)
         $query->whereNull('products.deleted_at')
               ->where('products.is_deleted', false);
 
         if (!empty($filters['search'])) {
-            $query->where(function($q) use ($filters) {
+            $query->where(function ($q) use ($filters) {
                 $q->where('products.name', 'like', '%' . $filters['search'] . '%')
                   ->orWhere('products.barcode', 'like', '%' . $filters['search'] . '%');
             });
@@ -169,12 +141,5 @@ class ExpiryReportRepository implements ExpiryReportRepositoryInterface
         if (!empty($filters['group_id'])) {
             $query->where('products.group_id', $filters['group_id']);
         }
-        
-        // Location filter if applicable
-        if (!empty($filters['location_id'])) {
-            // Add location filtering logic if you have multiple branches/locations
-        }
-
-
     }
 }

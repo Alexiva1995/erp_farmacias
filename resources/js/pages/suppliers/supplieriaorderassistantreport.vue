@@ -70,45 +70,57 @@ async function consultarKpisGlobales() {
     kpiGlobal.ok        = stats.ok;
   } catch (e) {
     console.error('Error al cargar KPIs globales:', e);
+    toast.error("No se pudieron actualizar los KPIs globales.");
   } finally {
     loadingStats.value = false;
   }
 }
 
 async function consultarDataReport(){
-  let data = {
-    itemsPerPage: itemsPerPage.value,
-    page: page.value,
-    orderBy: orderBy.value,
-    sortBy: sortBy.value,
-    product: selectProducts.value,
-    laboratoryId: selectedLaboratory.value,
-    is_colombia: checkColombia.value,
-    lapso_de_tiempo: lapso_de_tiempo.value,
-    tipo_filtracion: tipo_de_filtracion.value,
-    stock: stock.value,
-    show_ignored: showIgnored.value,
-    with_trend: showGraphs.value,
-  }
+  try {
+    let data = {
+      itemsPerPage: itemsPerPage.value,
+      page: page.value,
+      orderBy: orderBy.value,
+      sortBy: sortBy.value,
+      product: selectProducts.value,
+      laboratoryId: selectedLaboratory.value,
+      is_colombia: checkColombia.value,
+      lapso_de_tiempo: lapso_de_tiempo.value,
+      tipo_filtracion: tipo_de_filtracion.value,
+      stock: stock.value,
+      show_ignored: showIgnored.value,
+      with_trend: showGraphs.value,
+    }
 
-  let respuestaApi = await axios.post(`suppliers-ia-assistant-report/filtrar-paginate?page=${page.value}`, data)
-  if(respuestaApi.status != 200){
-    toast.error("Error al filtrar")
+    let respuestaApi = await axios.post(`suppliers-ia-assistant-report/filtrar-paginate?page=${page.value}`, data)
+    return { ...respuestaApi.data }
+  } catch (error) {
+    console.error("Error al consultar reporte:", error);
+    toast.error("Error al obtener los datos del reporte.");
+    return { data: { data: [], total: 0 } };
   }
-  return { ...respuestaApi.data }
 }
 
 async function consultarProductos(){
-  let respuestaApi = await axios.get("suppliers-ia-assistant-report/consult-products")
-  if(respuestaApi.status != 200){
-    toast.error("Error al consultar los productos")
+  try {
+    let respuestaApi = await axios.get("suppliers-ia-assistant-report/consult-products")
+    return [...(respuestaApi.data?.data || [])]
+  } catch (error) {
+    console.error("Error al consultar productos:", error);
+    toast.error("Error al consultar la lista de productos.");
+    return [];
   }
-  return [...respuestaApi.data.data]
 }
 
 async function consultarLaboratorios(){
-  let respuesta = await axios.get("/laboratories")
-  laboratories.value = respuesta.data;
+  try {
+    let respuesta = await axios.get("/laboratories")
+    laboratories.value = respuesta.data || [];
+  } catch (error) {
+    console.error("Error al cargar laboratorios:", error);
+    toast.error("Error al cargar la lista de laboratorios.");
+  }
 }
 
 async function consultarProveedores() {
@@ -384,7 +396,7 @@ onMounted(async () => {
             </div>
             <div>
               <span class="text-xs text-disabled text-uppercase font-weight-bold">Fallas Detectadas</span>
-              <VSkeletonLoader v-if="loadingStats" type="text" width="60" height="24" class="mt-1" />
+              <VProgressCircular v-if="loadingStats" indeterminate color="error" size="20" width="2" class="mt-1" />
               <h3 v-else class="text-h4 font-weight-black text-error mt-1">{{ kpiGlobal.necesitan }}</h3>
             </div>
           </VCardText>
@@ -398,7 +410,7 @@ onMounted(async () => {
             </div>
             <div>
               <span class="text-xs text-disabled text-uppercase font-weight-bold">Stock Excedente</span>
-              <VSkeletonLoader v-if="loadingStats" type="text" width="60" height="24" class="mt-1" />
+              <VProgressCircular v-if="loadingStats" indeterminate color="warning" size="20" width="2" class="mt-1" />
               <h3 v-else class="text-h4 font-weight-black text-warning mt-1">{{ kpiGlobal.exceso }}</h3>
             </div>
           </VCardText>
@@ -412,7 +424,7 @@ onMounted(async () => {
             </div>
             <div>
               <span class="text-xs text-disabled text-uppercase font-weight-bold">Productos al Día</span>
-              <VSkeletonLoader v-if="loadingStats" type="text" width="60" height="24" class="mt-1" />
+              <VProgressCircular v-if="loadingStats" indeterminate color="success" size="20" width="2" class="mt-1" />
               <h3 v-else class="text-h4 font-weight-black text-success mt-1">{{ kpiGlobal.ok }}</h3>
             </div>
           </VCardText>

@@ -103,8 +103,6 @@ class CashClosureActionService
             ->first();
 
         if ($cashClosing) {
-            // Calculamos la deuda global total de todos los clientes (Cuentas por Cobrar)
-            $cashClosing->total_global_debt = \App\Models\Credit::where('status', '!=', 'Paid')->sum('pending_amount');
             $cashClosing->setAttribute('blind_cash_closure', !empty(\App\Models\GeneralSetting::first()?->blind_cash_closure));
         }
 
@@ -203,25 +201,44 @@ class CashClosureActionService
             $updateData['blind_mismatches'] = json_encode($mismatches);
             $updateData['blind_note'] = implode(' | ', $notes);
 
-            // Notificar descuadre por Telegram al administrador
-            if (!empty($mismatches)) {
-                try {
+            // Enviar notificación detallada por Telegram al administrador sobre la declaración del cierre ciego si la notificación está activa
+            try {
+                $isNotifyActive = \App\Models\TelegramCommand::where('module', 'generales')
+                    ->where('command', '/cierre_individual')
+                    ->value('is_active') ?? true;
+
+                if ($isNotifyActive) {
                     $telegram = resolve(\App\Services\TelegramService::class);
                     $sellerName = $cashClosure->seller?->username ?? "Cajero #{$cashClosure->seller_id}";
+                    $hasMismatch = !empty($mismatches);
                     
-                    $msg = "⚠️ *[DESCUADRE DE CAJA DETECTADO]* ⚠️\n\n"
-                         . "👤 *Cajero:* {$sellerName}\n"
-                         . "🆔 *Cierre ID:* #{$cashClosure->id}\n"
-                         . "📅 *Fecha:* " . now()->format('d/m/Y g:i A') . "\n\n"
-                         . "*Diferencias encontradas:*\n";
-                    foreach ($notes as $note) {
-                        $msg .= "• {$note}\n";
+                    $msg = $hasMismatch 
+                        ? "🚨 *[ALERTA: DESCUADRE EN CIERRE DE CAJA]* 🚨\n\n" 
+                        : "✅ *[NOTIFICACIÓN: CIERRE DE CAJA RECIBIDO]* ✅\n\n";
+                        
+                    $msg .= "👤 *Cajero:* {$sellerName}\n"
+                          . "🆔 *Cierre ID:* #{$cashClosure->id}\n"
+                          . "📅 *Fecha:* " . now()->format('d/m/Y g:i A') . "\n\n";
+
+                    if ($hasMismatch) {
+                        $msg .= "*Descuadres / Diferencias encontradas:*\n";
+                        foreach ($notes as $note) {
+                            $msg .= "• {$note}\n";
+                        }
+                    } else {
+                        $msg .= "✨ *Estado:* Cierre cuadrado correctamente sin diferencias.\n";
                     }
+
+                    $msg .= "\n💵 *Declaración realizada:* \n"
+                          . "• Efectivo COP: $" . number_format($decCop, 2) . "\n"
+                          . "• Efectivo USD: $" . number_format($decUsd, 2) . "\n"
+                          . "• Pago Móvil / Transf BS: Bs " . number_format($decBsMobile, 2) . "\n"
+                          . "• Tarjetas BS: Bs " . number_format($decBsCard, 2) . "\n";
                     
                     $telegram->sendToAdmin($msg);
-                } catch (\Exception $e) {
-                    \Illuminate\Support\Facades\Log::error('[TelegramNotify] Error al notificar descuadre: ' . $e->getMessage());
                 }
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('[TelegramNotify] Error al enviar alerta de cierre a Telegram: ' . $e->getMessage());
             }
         }
 
@@ -247,11 +264,7 @@ class CashClosureActionService
 
         // $this->generateClosingTransactions($cashClosure);
 
-        CashClosing::create([
-            'seller_id' => $sellerId,
-            'status' => CashClosing::OPEN,
-            'closing_date' => Carbon::now(),
-        ]);
+
 
 
         return response()->json([
@@ -322,16 +335,7 @@ class CashClosureActionService
                 $this->generateClosingTransactions($cashClosing);
             }
 
-            $sellers = User::all();
-            foreach ($sellers as $seller) {
-                CashClosing::firstOrCreate(
-                    [
-                        'seller_id' => $seller->id,
-                        'closing_date' => Carbon::today()->toDateString(),
-                        'status' => CashClosing::OPEN,
-                    ]
-                );
-            }
+
 
             DB::commit();
         } catch (\Exception $e) {

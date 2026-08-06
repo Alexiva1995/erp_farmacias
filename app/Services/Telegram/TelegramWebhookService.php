@@ -59,8 +59,7 @@ class TelegramWebhookService
         $fromId = $message['from']['id'] ?? null;
 
         // Verificar que el mensaje venga del administrador autorizado
-        $adminChatId = config('services.telegram.admin_chat_id');
-        
+        $adminChatId = $this->telegramService->getAdminChatId() ?: config('services.telegram.admin_chat_id');
 
         if (!$adminChatId || (string)$fromId !== (string)$adminChatId) {
             return;
@@ -198,6 +197,12 @@ class TelegramWebhookService
 
         // ==================== COMANDOS DE FARMACIA ====================
         if ($botType === 'farmacia' || $botType === 'all') {
+            // Caso E: Comando para revisar facturas cargadas una a una
+            if ($cleanText === 'facturas cargadas' || $cleanText === '/facturas_cargadas' || $cleanText === 'facturas_cargadas') {
+                $this->initLoadedInvoicesReviewFlow($chatId, 0);
+                return;
+            }
+
             // Caso F: Comando para gestionar pagos pendientes
             if ($cleanText === 'pagos' || $cleanText === '/pagos') {
                 $this->initPaymentsFlow($fromId, $chatId);
@@ -219,6 +224,12 @@ class TelegramWebhookService
             // Caso J: Comando de Pedido Automático Inteligente
             if ($cleanText === 'pedido' || $cleanText === '/pedido') {
                 $this->processAutomaticOrderFromTelegram($chatId);
+                return;
+            }
+
+            // Caso K: Comando de Gestión de Fallas y Faltantes de Stock
+            if ($cleanText === 'fallas' || $cleanText === '/fallas') {
+                $this->telegramService->sendMessage("📋 *[GESTOR DE FALLAS DE STOCK]*\n\nConsultando reporte de fallas y productos con faltantes registrados...", $chatId);
                 return;
             }
         }
@@ -522,6 +533,11 @@ class TelegramWebhookService
         $chatId = $callbackQuery['message']['chat']['id'] ?? null;
         $fromId = $callbackQuery['from']['id'] ?? null;
 
+        if (str_starts_with($callbackData, 'inv_review_')) {
+            $this->handleInvoiceReviewCallback($callbackData, $callbackQueryId, $messageId, $chatId);
+            return;
+        }
+
         if (str_starts_with($callbackData, 'stockout_auto_')) {
             $this->handleStockoutAutoCallback($callbackData, $callbackQueryId, $messageId, $chatId);
             return;
@@ -529,6 +545,16 @@ class TelegramWebhookService
 
         if (str_starts_with($callbackData, 'falla_aprobar_')) {
             $this->handleFallaAprobarCallback($callbackData, $callbackQueryId, $messageId, $chatId);
+            return;
+        }
+
+        if (str_starts_with($callbackData, 'falla_cancelar_')) {
+            $this->handleFallaCancelarCallback($callbackData, $callbackQueryId, $messageId, $chatId);
+            return;
+        }
+
+        if (str_starts_with($callbackData, 'falla_buscar_ia_')) {
+            $this->handleFallaBuscarIaCallback($callbackData, $callbackQueryId, $messageId, $chatId);
             return;
         }
 
@@ -2724,6 +2750,63 @@ class TelegramWebhookService
 
             $this->telegramService->sendMessage($msg, $chatId);
 
+            // Generar y enviar el documento PDF por cada orden creada/actualizada por proveedor
+            if (!empty($ordersToUpdate)) {
+                $tempDir = storage_path('app/temp/telegram');
+                if (!is_dir($tempDir)) {
+                    mkdir($tempDir, 0755, true);
+                }
+
+                foreach ($ordersToUpdate as $order) {
+                    try {
+                        $order->load(['supplier', 'details.product']);
+                        $supplierName = $order->supplier?->name ?? "Proveedor_{$order->supplier_id}";
+                        $supplierRif = $order->supplier?->rif ?? 'S/R';
+
+                        $items = [];
+                        foreach ($order->details as $det) {
+                            $items[] = [
+                                'name' => $det->product?->name ?? 'Producto',
+                                'sku' => $det->product?->sku ?? '',
+                                'quantity' => $det->quantity,
+                                'unit_cost' => $det->unit_cost,
+                                'subtotal' => $det->subtotal,
+                            ];
+                        }
+
+                        $pdfData = [
+                            'orderId' => $order->id,
+                            'supplierName' => $supplierName,
+                            'supplierRif' => $supplierRif,
+                            'totalItems' => $order->total_items,
+                            'totalQuantity' => $order->total_quantity,
+                            'totalAmount' => $order->total_amount,
+                            'items' => $items,
+                        ];
+
+                        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.purchase_order', $pdfData);
+                        $cleanSupplierName = preg_replace('/[^A-Za-z0-9_\-]/', '_', $supplierName);
+                        $fileName = "Pedido_{$cleanSupplierName}_" . date('Ymd_His') . ".pdf";
+                        $pdfPath = $tempDir . '/' . $fileName;
+
+                        file_put_contents($pdfPath, $pdf->output());
+
+                        $caption = "📄 *ORDEN DE COMPRA GENERADA*\n\n"
+                                 . "🏢 *Proveedor:* {$supplierName}\n"
+                                 . "🔢 *Total Ítems:* {$order->total_items}\n"
+                                 . "💰 *Monto Total:* $" . number_format($order->total_amount, 2) . " USD";
+
+                        $this->telegramService->sendDocument($pdfPath, $chatId, $caption);
+
+                        if (file_exists($pdfPath)) {
+                            unlink($pdfPath);
+                        }
+                    } catch (\Exception $e) {
+                        \Illuminate\Support\Facades\Log::error("[TelegramPdf] Error al generar o enviar PDF para {$supplierName}: " . $e->getMessage());
+                    }
+                }
+            }
+
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\DB::rollBack();
             Log::error("Error procesando pedido automático desde Telegram: " . $e->getMessage());
@@ -2846,7 +2929,8 @@ class TelegramWebhookService
             \Illuminate\Support\Facades\DB::beginTransaction();
 
             $offer = \App\Models\ProductSupplier::find($productSupplierId);
-            $costoProveedor = (float)($offer ? ($offer->unit_cost_usd_with_discount > 0 ? $offer->unit_cost_usd_with_discount : $offer->unit_cost_usd) : $product->unit_cost);
+            // Usar siempre el precio completo en USD del proveedor (sin aplicar descuento)
+            $costoProveedor = (float)($offer ? $offer->unit_cost_usd : $product->unit_cost);
 
             // Crear o buscar la AutoOrder pendiente
             $autoOrder = \App\Models\AutoOrder::firstOrCreate(
@@ -2895,39 +2979,116 @@ class TelegramWebhookService
             ]);
 
             \Illuminate\Support\Facades\DB::commit();
-            $this->answerCallback($callbackQueryId, '🛒 Pedido de falla confirmado exitosamente.');
 
-            // Crear mensaje para el proveedor
-            $supplierCode = $offer->cod_supplier ?? 'N/A';
-            $copiaMensaje = "Estimado proveedor *{$supplier->name}*,\n\n";
-            $copiaMensaje .= "Deseo solicitar el siguiente producto:\n";
-            $copiaMensaje .= "• *Producto:* {$product->name}\n";
-            $copiaMensaje .= "• *Código Proveedor:* {$supplierCode}\n";
-            $copiaMensaje .= "• *Cantidad:* {$qty} unidades\n";
-            $copiaMensaje .= "• *Costo:* " . number_format($costoProveedor, 2) . " USD/unid.\n\n";
-            $copiaMensaje .= "Quedo atento a la confirmación de la orden.";
-
-            if ($messageId) {
-                $token = config('services.telegram.bot_token');
-                Http::post("https://api.telegram.org/bot{$token}/editMessageText", [
-                    'chat_id' => $chatId,
-                    'message_id' => $messageId,
-                    'text' => "✅ *[SOLICITUD DE FALLA APROBADA]*\n\n" .
-                              "📦 *Producto:* {$product->name}\n" .
-                              "🏢 *Proveedor:* {$supplier->name}\n" .
-                              "🔢 *Cantidad:* {$qty} unidades\n" .
-                              "💵 *Costo:* " . number_format($costoProveedor, 2) . " USD/unid.\n\n" .
-                              "Se ha agregado exitosamente a la auto-orden de compra en el ERP.\n\n" .
-                              "-------------------------------\n" .
-                              "📋 *Mensaje para enviar al proveedor:*\n\n" .
-                              "```\n" . $copiaMensaje . "\n```",
-                    'parse_mode' => 'Markdown',
-                ]);
-            }
+            $this->answerCallback($callbackQueryId, '✅ Pedido aprobado e ingresado en Reabastecimiento');
+            $this->telegramService->sendMessage(
+                "✅ *[PEDIDO DE FALLA APROBADO]*\n\n"
+                . "📦 *Producto:* {$product->name}\n"
+                . "🏢 *Proveedor:* {$supplier->name}\n"
+                . "🔢 *Cantidad:* {$qty} ud.\n"
+                . "💵 *Costo Completo USD:* $" . number_format($costoProveedor, 2) . "\n\n"
+                . "Se ha agregado a la orden en estado Pendiente en `/suppliers/auto-replenishment`.",
+                $chatId
+            );
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\DB::rollBack();
-            Log::error("Error procesando falla aprobar callback: " . $e->getMessage());
-            $this->answerCallback($callbackQueryId, '❌ Error al procesar la aprobación.');
+            $this->answerCallback($callbackQueryId, 'Error al procesar pedido.');
+            \Illuminate\Support\Facades\Log::error("Error aprobando falla en Telegram: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Cancelar / Descartar una alerta de falla de stock.
+     */
+    protected function handleFallaCancelarCallback(string $callbackData, string $callbackQueryId, ?int $messageId, ?int $chatId): void
+    {
+        $this->answerCallback($callbackQueryId, '🚫 Alerta cancelada.');
+        $this->telegramService->sendMessage("❌ *[ALERTA DE FALLA CANCELADA]*\n\nNo se realizó ninguna acción sobre esta solicitud.", $chatId);
+    }
+
+    /**
+     * Buscar coincidencia mediante IA (Gemini) de forma explícita bajo demanda cuando el usuario presiona el botón.
+     */
+    protected function handleFallaBuscarIaCallback(string $callbackData, string $callbackQueryId, ?int $messageId, ?int $chatId): void
+    {
+        $parts = explode('_', $callbackData);
+        $productId = (int)($parts[3] ?? 0);
+        $failureId = (int)($parts[4] ?? 0);
+
+        $product = \App\Models\Product::find($productId);
+        if (!$product) {
+            $this->answerCallback($callbackQueryId, 'Producto no encontrado');
+            return;
+        }
+
+        $this->answerCallback($callbackQueryId, '🔍 Iniciando búsqueda por IA...');
+        $this->telegramService->sendMessage("🤖 *[BUSCANDO COINCIDENCIA POR IA]*\n\nAnalizando catálogo de proveedores con IA para *{$product->name}*...", $chatId);
+
+        try {
+            $candidates = \App\Models\ProductSupplier::where(function($q) {
+                $q->whereNull('barcode_match')->orWhere('barcode_match', '');
+            })->limit(50)->get();
+
+            if ($candidates->isEmpty()) {
+                $this->telegramService->sendMessage("❌ *No hay productos en catálogo de proveedores disponibles para comparar con IA.*", $chatId);
+                return;
+            }
+
+            $gemini = app(\App\Services\GeminiService::class);
+            $prompt = "Tengo un producto local llamado: '{$product->name}' (Laboratorio: " . ($product->laboratory->name ?? 'Genérico') . ", Ingrediente Activo: {$product->active_ingredient}).\n";
+            $prompt .= "Compara este producto con la lista de proveedores y decide si alguno es exactamente el mismo producto o una alternativa equivalente muy cercana (mismo ingrediente, concentración y forma farmacéutica).\n";
+            $prompt .= "Devuelve tu respuesta estrictamente en formato JSON: {\"matched\": true, \"product_supplier_id\": ID_EMPARETADO}.\n";
+            $prompt .= "Lista de proveedores (ID | Nombre | Laboratorio | Ingrediente Activo):\n";
+            foreach ($candidates as $cand) {
+                $prompt .= "- {$cand->id} | {$cand->name} | {$cand->laboratory} | {$cand->active_ingredient}\n";
+            }
+
+            $aiResponse = $gemini->generateText($prompt);
+            $matchedSupplierProduct = null;
+
+            if ($aiResponse) {
+                $aiResponse = preg_replace('/^```json\s*/i', '', trim($aiResponse));
+                $aiResponse = preg_replace('/```$/', '', trim($aiResponse));
+                $data = json_decode($aiResponse, true);
+                if (!empty($data['matched']) && !empty($data['product_supplier_id'])) {
+                    $matchedSupplierProduct = \App\Models\ProductSupplier::with('supplier')->find($data['product_supplier_id']);
+                }
+            }
+
+            if (!$matchedSupplierProduct) {
+                $this->telegramService->sendMessage("❌ *La IA no encontró ninguna coincidencia equivalente para este producto en el catálogo.*", $chatId);
+                return;
+            }
+
+            $costoProveedor = (float) $matchedSupplierProduct->unit_cost_usd;
+            $costoLocal = (float) ($product->unit_cost ?? 0);
+            $qtyToRecommend = 1;
+
+            $msg = "🤖 *[COINCIDENCIA ENCONTRADA POR IA]*\n\n"
+                 . "La IA sugiere que *{$product->name}* coincide con:\n"
+                 . "👉 *{$matchedSupplierProduct->name}* (Laboratorio: {$matchedSupplierProduct->laboratory})\n\n"
+                 . "🏢 *Proveedor:* {$matchedSupplierProduct->supplier->name}\n"
+                 . "💵 *Costo Completo USD:* $" . number_format($costoProveedor, 2) . " (Sin descuento)\n"
+                 . "💵 *Costo Local:* $" . number_format($costoLocal, 2) . "\n\n"
+                 . "¿Deseas aprobar la solicitud de este producto?";
+
+            $buttons = [
+                [
+                    [
+                        'text' => "✅ Aprobar Pedido IA (1 ud.)",
+                        'callback_data' => "falla_aprobar_{$product->id}_{$matchedSupplierProduct->supplier_id}_{$qtyToRecommend}_{$matchedSupplierProduct->id}"
+                    ],
+                    [
+                        'text' => "❌ Cancelar",
+                        'callback_data' => "falla_cancelar_{$failureId}"
+                    ]
+                ]
+            ];
+
+            $this->telegramService->sendMessage($msg, $chatId, ['inline_keyboard' => $buttons]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Error procesando búsqueda IA en falla Telegram: " . $e->getMessage());
+            $this->telegramService->sendMessage("⚠️ *Ocurrió un error al procesar la búsqueda por IA.*", $chatId);
         }
     }
 
@@ -3196,6 +3357,276 @@ class TelegramWebhookService
         } catch (\Exception $e) {
             \Log::error('[TelegramWebhook] Error al enviar pagos vencidos: ' . $e->getMessage());
             $this->telegramService->sendMessage("❌ Error al obtener los pagos vencidos: " . $e->getMessage(), $chatId);
+        }
+    }
+
+    /**
+     * Verificar si un comando está activo en la base de datos para un módulo específico.
+     */
+    protected function isCommandActive(string $commandName, string $module): bool
+    {
+        $cmd = \App\Models\TelegramCommand::where('module', $module)
+            ->where('command', $commandName)
+            ->first();
+
+        return $cmd ? (bool) $cmd->is_active : true;
+    }
+
+    /**
+     * Iniciar el flujo de revisión interactiva de facturas cargadas (una a una).
+     */
+    protected function initLoadedInvoicesReviewFlow(string|int $chatId, int $index = 0): void
+    {
+        $invoices = \App\Models\Invoice::whereIn('status', ['loaded', 'pending', 'cargada'])
+            ->with(['supplier', 'details.product'])
+            ->orderBy('id', 'asc')
+            ->get();
+
+        if ($invoices->isEmpty()) {
+            $this->telegramService->sendMessage("✅ *[REVISIÓN DE FACTURAS]*\n\nNo existen facturas cargadas pendientes por revisar en este momento.", $chatId);
+            return;
+        }
+
+        $totalInvoices = $invoices->count();
+        if ($index < 0) $index = 0;
+        if ($index >= $totalInvoices) $index = $totalInvoices - 1;
+
+        $invoice = $invoices[$index];
+        $supplierName = $invoice->supplier?->name ?? "Proveedor #{$invoice->supplier_id}";
+
+        $overcostAlerts = [];
+        $itemsSummary = [];
+
+        // Buscar AutoOrder relacionada del mismo proveedor para comparar precios
+        $autoOrder = \App\Models\AutoOrder::where('supplier_id', $invoice->supplier_id)
+            ->with('details')
+            ->latest()
+            ->first();
+
+        $autoOrderCosts = [];
+        if ($autoOrder) {
+            foreach ($autoOrder->details as $aDet) {
+                $autoOrderCosts[$aDet->product_id] = (float) $aDet->unit_cost;
+            }
+        }
+
+        foreach ($invoice->details as $det) {
+            $productName = $det->product?->name ?? "Producto #{$det->product_id}";
+            $costoFactura = (float) $det->unit_cost;
+            $itemsSummary[] = "• *{$productName}* (x{$det->quantity}) - $" . number_format($costoFactura, 2) . " USD";
+
+            $costoAutoOrder = $autoOrderCosts[$det->product_id] ?? null;
+
+            if ($costoAutoOrder !== null && $costoFactura > $costoAutoOrder) {
+                $diff = $costoFactura - $costoAutoOrder;
+                $pct = round(($diff / $costoAutoOrder) * 100, 2);
+                $overcostAlerts[] = "⚠️ *{$productName}*:\n  • Auto-Orden: $" . number_format($costoAutoOrder, 2) . " USD\n  • Factura: $" . number_format($costoFactura, 2) . " USD (+{$pct}% / +$" . number_format($diff, 2) . ")";
+            }
+        }
+
+        $numInvoiceCurrent = $index + 1;
+        $msg = "📄 *[REVISIÓN DE FACTURA CARGADA ({$numInvoiceCurrent}/{$totalInvoices})]*\n\n"
+             . "🏢 *Proveedor:* {$supplierName}\n"
+             . "🔢 *Nº Factura:* " . ($invoice->invoice_number ?? "ID #{$invoice->id}") . "\n"
+             . "📅 *Fecha:* " . ($invoice->created_at ? $invoice->created_at->format('d/m/Y') : 'N/A') . "\n"
+             . "💰 *Monto Total Factura:* $" . number_format((float)$invoice->total_amount, 2) . " USD\n"
+             . "📦 *Total Ítems:* " . count($invoice->details) . "\n\n";
+
+        if (!empty($overcostAlerts)) {
+            $msg .= "🚨 *[ALERTA DE SOBRECOSTO VS AUTO-ORDEN]* 🚨\n"
+                 . "Se detectaron productos con costo superior a la cotización original:\n\n"
+                 . implode("\n", $overcostAlerts) . "\n\n";
+        } else {
+            $msg .= "✨ *Sin sobrecostos detectados contra la auto-orden.* Cuentas cuadradas.\n\n";
+        }
+
+        $msg .= "¿Qué acción deseas realizar sobre esta factura?";
+
+        $buttons = [];
+        $buttons[] = [
+            [
+                'text' => '📋 Ver Todos los Productos',
+                'callback_data' => "inv_review_items_{$invoice->id}_{$index}"
+            ]
+        ];
+
+        $buttons[] = [
+            [
+                'text' => '✅ Aprobar Factura',
+                'callback_data' => "inv_review_approve_{$invoice->id}_{$index}"
+            ],
+            [
+                'text' => '↩️ Devolver Factura',
+                'callback_data' => "inv_review_return_{$invoice->id}_{$index}"
+            ]
+        ];
+
+        $navRow = [];
+        if ($index > 0) {
+            $navRow[] = [
+                'text' => '⬅️ Anterior',
+                'callback_data' => "inv_review_nav_" . ($index - 1)
+            ];
+        }
+        if ($index < $totalInvoices - 1) {
+            $navRow[] = [
+                'text' => '➡️ Siguiente',
+                'callback_data' => "inv_review_nav_" . ($index + 1)
+            ];
+        }
+        if (!empty($navRow)) {
+            $buttons[] = $navRow;
+        }
+
+        $this->telegramService->sendMessage($msg, $chatId, ['inline_keyboard' => $buttons]);
+    }
+
+    /**
+     * Manejador central para los callbacks de la revisión de facturas cargadas.
+     */
+    protected function handleInvoiceReviewCallback(string $callbackData, string $callbackQueryId, ?int $messageId, ?int $chatId): void
+    {
+        if (str_starts_with($callbackData, 'inv_review_nav_')) {
+            $index = (int) substr($callbackData, strlen('inv_review_nav_'));
+            $this->answerCallback($callbackQueryId);
+            $this->initLoadedInvoicesReviewFlow($chatId, $index);
+            return;
+        }
+
+        if (str_starts_with($callbackData, 'inv_review_items_')) {
+            $parts = explode('_', $callbackData);
+            $invoiceId = (int) ($parts[3] ?? 0);
+            $index = (int) ($parts[4] ?? 0);
+            $this->answerCallback($callbackQueryId, 'Cargando lista de productos...');
+            $this->showInvoiceItemsDetail($invoiceId, $index, $chatId);
+            return;
+        }
+
+        if (str_starts_with($callbackData, 'inv_review_approve_')) {
+            $parts = explode('_', $callbackData);
+            $invoiceId = (int) ($parts[3] ?? 0);
+            $index = (int) ($parts[4] ?? 0);
+            $this->handleInvoiceReviewApproveCallback($invoiceId, $index, $callbackQueryId, $chatId);
+            return;
+        }
+
+        if (str_starts_with($callbackData, 'inv_review_return_')) {
+            $parts = explode('_', $callbackData);
+            $invoiceId = (int) ($parts[3] ?? 0);
+            $index = (int) ($parts[4] ?? 0);
+            $this->handleInvoiceReviewReturnCallback($invoiceId, $index, $callbackQueryId, $chatId);
+            return;
+        }
+    }
+
+    /**
+     * Mostrar el detalle completo de todos los productos de una factura cargada.
+     */
+    protected function showInvoiceItemsDetail(int $invoiceId, int $index, string|int $chatId): void
+    {
+        $invoice = \App\Models\Invoice::with(['supplier', 'details.product'])->find($invoiceId);
+        if (!$invoice) {
+            $this->telegramService->sendMessage("❌ Factura no encontrada.", $chatId);
+            return;
+        }
+
+        $supplierName = $invoice->supplier?->name ?? "Proveedor #{$invoice->supplier_id}";
+        $msg = "📋 *[DETALLE COMPLETO DE PRODUCTOS - FACTURA]*\n\n"
+             . "🏢 *Proveedor:* {$supplierName}\n"
+             . "🔢 *Nº Factura:* " . ($invoice->invoice_number ?? "ID #{$invoice->id}") . "\n\n"
+             . "*Listado de Ítems e Insumos:*\n";
+
+        foreach ($invoice->details as $i => $det) {
+            $prodName = $det->product?->name ?? "Producto #{$det->product_id}";
+            $costo = number_format((float)$det->unit_cost, 2);
+            $subtotal = number_format((float)$det->subtotal, 2);
+            $msg .= ($i + 1) . ". *{$prodName}*\n   • Cantidad: {$det->quantity} ud.\n   • Costo Unit: {$costo} USD\n   • Subtotal: {$subtotal} USD\n";
+        }
+
+        $buttons = [
+            [
+                [
+                    'text' => '✅ Aprobar Factura',
+                    'callback_data' => "inv_review_approve_{$invoice->id}_{$index}"
+                ],
+                [
+                    'text' => '↩️ Devolver Factura',
+                    'callback_data' => "inv_review_return_{$invoice->id}_{$index}"
+                ]
+            ],
+            [
+                [
+                    'text' => '🔙 Volver al Resumen de Factura',
+                    'callback_data' => "inv_review_nav_{$index}"
+                ]
+            ]
+        ];
+
+        $this->telegramService->sendMessage($msg, $chatId, ['inline_keyboard' => $buttons]);
+    }
+
+    /**
+     * Aprobar la factura haciendo exactamente la misma acción que en la vista web Facturas Cargadas.
+     */
+    protected function handleInvoiceReviewApproveCallback(int $invoiceId, int $index, string $callbackQueryId, string|int $chatId): void
+    {
+        $invoice = \App\Models\Invoice::find($invoiceId);
+        if (!$invoice) {
+            $this->answerCallback($callbackQueryId, 'Factura no encontrada.');
+            return;
+        }
+
+        try {
+            $actionService = app(\App\Services\Invoices\InvoiceActionService::class);
+            $approvedInvoice = $actionService->approveInvoice($invoice, []);
+
+            $this->answerCallback($callbackQueryId, '✅ Factura aprobada con éxito.');
+            $this->telegramService->sendMessage(
+                "✅ *[FACTURA APROBADA CON ÉXITO]*\n\n"
+                . "🔢 *Factura:* " . ($approvedInvoice->invoice_number ?? "ID #{$approvedInvoice->id}") . "\n"
+                . "🏢 *Proveedor:* " . ($approvedInvoice->supplier?->name ?? 'N/A') . "\n"
+                . "💰 *Monto Total:* $" . number_format((float)$approvedInvoice->total_amount, 2) . " USD\n\n"
+                . "Se han procesado los inventarios y actualización de costos tal como se realiza desde la vista web.",
+                $chatId
+            );
+
+            // Continuar con la siguiente factura
+            $this->initLoadedInvoicesReviewFlow($chatId, $index);
+        } catch (\Exception $e) {
+            $this->answerCallback($callbackQueryId, 'Error al aprobar factura.');
+            $this->telegramService->sendMessage("⚠️ *Error al aprobar la factura:* " . $e->getMessage(), $chatId);
+        }
+    }
+
+    /**
+     * Devolver la factura a su estado anterior.
+     */
+    protected function handleInvoiceReviewReturnCallback(int $invoiceId, int $index, string $callbackQueryId, string|int $chatId): void
+    {
+        $invoice = \App\Models\Invoice::find($invoiceId);
+        if (!$invoice) {
+            $this->answerCallback($callbackQueryId, 'Factura no encontrada.');
+            return;
+        }
+
+        try {
+            // Devolver estado a pending / devolucion para revisión previa
+            $invoice->update(['status' => 'pending']);
+
+            $this->answerCallback($callbackQueryId, '↩️ Factura devuelta a estado anterior.');
+            $this->telegramService->sendMessage(
+                "↩️ *[FACTURA DEVUELTA A ESTADO ANTERIOR]*\n\n"
+                . "🔢 *Factura:* " . ($invoice->invoice_number ?? "ID #{$invoice->id}") . "\n"
+                . "🏢 *Proveedor:* " . ($invoice->supplier?->name ?? 'N/A') . "\n\n"
+                . "La factura ha sido devuelta al estado pendiente para corrección o ajuste de sobrecostos.",
+                $chatId
+            );
+
+            // Continuar con la siguiente factura
+            $this->initLoadedInvoicesReviewFlow($chatId, $index);
+        } catch (\Exception $e) {
+            $this->answerCallback($callbackQueryId, 'Error al devolver factura.');
+            $this->telegramService->sendMessage("⚠️ *Error al devolver la factura:* " . $e->getMessage(), $chatId);
         }
     }
 }

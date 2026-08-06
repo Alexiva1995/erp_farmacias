@@ -8,7 +8,12 @@ import Swal from "sweetalert2";
 import { onMounted, reactive, ref, watch } from "vue";
 
 // Estados reactivos
-const promotionsData = ref([]);
+const promotionsData = ref({
+  data: [],
+  total: 0,
+  per_page: 10,
+  current_page: 1,
+});
 const categories = ref([]);
 const loading = ref(false);
 const saving = ref(false);
@@ -51,8 +56,8 @@ const updateTableOptionsOffer = (options) => {
 };
 
 const fetchCategories = async () => {
+  if (categories.value.length > 0) return;
   try {
-    // REQUERIMIENTO: Cargar las categorías de los platos (restaurante)
     const res = await axios.get("/categories", { params: { type: "dishes" } });
     categories.value = res.data;
   } catch (error) {
@@ -70,7 +75,7 @@ const handleEditOffer = async (promo) => {
     is_active: promo.is_active,
     categories: Array.isArray(promo.categories) ? promo.categories : [],
   });
-  Object.keys(formularioError).forEach(key => formularioError[key] = "");
+  Object.keys(formularioError).forEach(key => (formularioError[key] = ""));
   isOfferDialogVisible.value = true;
   isEditingMode.value = true;
 };
@@ -92,7 +97,7 @@ const handleAddPromotionModal = async () => {
     is_active: true,
     categories: [],
   });
-  Object.keys(formularioError).forEach(key => formularioError[key] = "");
+  Object.keys(formularioError).forEach(key => (formularioError[key] = ""));
   isEditingMode.value = false;
   isOfferDialogVisible.value = true;
 };
@@ -140,7 +145,7 @@ function enviar(payload) {
 }
 
 async function crear(data) {
-  Object.keys(formularioError).forEach(key => formularioError[key] = "");
+  Object.keys(formularioError).forEach(key => (formularioError[key] = ""));
   saving.value = true;
   try {
     let res = await axios.post("/tpv/promotions/general-promotions", data);
@@ -167,7 +172,7 @@ async function crear(data) {
 }
 
 async function actualizar(data) {
-  Object.keys(formularioError).forEach(key => formularioError[key] = "");
+  Object.keys(formularioError).forEach(key => (formularioError[key] = ""));
   saving.value = true;
   try {
     let res = await axios.put(`/tpv/promotions/general-promotions/${data.id}`, data);
@@ -202,11 +207,16 @@ async function actualizarTabla() {
       search: filterSearchQuery.value,
       search_id: filterSearchQueryId.value,
       sort_by: sortBy.value,
-      order_by: orderBy.value
+      order_by: orderBy.value,
     };
 
     let res = await axios.get("/tpv/promotions/general-promotions", { params });
-    promotionsData.value = res.data.data || res.data;
+    promotionsData.value = {
+      data: res.data.data || [],
+      total: res.data.meta?.total ?? res.data.total ?? (res.data.data ? res.data.data.length : 0),
+      per_page: res.data.meta?.per_page ?? res.data.per_page ?? itemsPerPage.value,
+      current_page: res.data.meta?.current_page ?? res.data.current_page ?? page.value,
+    };
   } catch (error) {
     toast.error("Error al cargar los datos en la tabla");
     console.error("Error al cargar tabla:", error);
@@ -220,11 +230,8 @@ watch([filterSearchQueryId, filterSearchQuery], () => {
   actualizarTabla();
 });
 
-watch([sortBy, orderBy], () => {
-  actualizarTabla();
-});
-
 onMounted(async () => {
+  await fetchCategories();
   await actualizarTabla();
 });
 </script>
@@ -239,11 +246,11 @@ onMounted(async () => {
     />
 
     <GeneralPromotionTable
-      :promotions="promotionsData.data || promotionsData || []"
+      :promotions="promotionsData.data"
       :loading="loading"
-      :total-offer="promotionsData.total || (promotionsData ? promotionsData.length : 0)"
-      :items-per-page="promotionsData.per_page || 10"
-      :page="promotionsData.current_page || 1"
+      :total-offer="promotionsData.total"
+      :items-per-page="promotionsData.per_page"
+      :page="promotionsData.current_page"
       :categories="categories"
       @update:options="updateTableOptionsOffer"
       @edit-offer="handleEditOffer"

@@ -189,6 +189,173 @@ class EcommerceOrderService
     }
 
     /**
+     * Obtener listado paginado de pedidos e-commerce para el panel administrativo.
+     */
+    public function getAdminOrders(array $filters, int $perPage = 15)
+    {
+        $query = DB::table('ecommerce_orders')
+            ->select('ecommerce_orders.*', 'users.username as assigned_user')
+            ->leftJoin('users', 'users.id', '=', 'ecommerce_orders.user_id');
+
+        if (!empty($filters['start_date'])) {
+            $query->where('ecommerce_orders.created_at', '>=', $filters['start_date'] . ' 00:00:00');
+        }
+        if (!empty($filters['end_date'])) {
+            $query->where('ecommerce_orders.created_at', '<=', $filters['end_date'] . ' 23:59:59');
+        }
+
+        $paginated = $query->orderBy('ecommerce_orders.id', 'desc')->paginate($perPage);
+
+        if ($paginated->isEmpty()) {
+            return $paginated;
+        }
+
+        $orderIds = collect($paginated->items())->pluck('id')->toArray();
+
+        $items = DB::table('ecommerce_order_items')
+            ->join('products', 'products.id', '=', 'ecommerce_order_items.product_id')
+            ->leftJoin('product_variants', 'product_variants.id', '=', 'ecommerce_order_items.product_variant_id')
+            ->select(
+                'ecommerce_order_items.*', 
+                'products.name as product_name', 
+                'product_variants.attribute_value as variant_value'
+            )
+            ->whereIn('ecommerce_order_id', $orderIds)
+            ->get()
+            ->groupBy('ecommerce_order_id');
+
+        foreach ($paginated->items() as $order) {
+            $order->items = $items->get($order->id) ?? [];
+        }
+
+        return $paginated;
+    }
+
+    /**
+     * Aprobar una orden de e-commerce (el pago fue confirmado).
+     */
+    public function approveOrder(int $id): bool
+    {
+        return DB::transaction(function () use ($id) {
+            $ecommerceOrder = DB::table('ecommerce_orders')->where('id', $id)->first();
+
+            if (!$ecommerceOrder) {
+                throw new Exception('La orden no fue encontrada.');
+            }
+
+            if ($ecommerceOrder->status !== 'Pending') {
+                throw new Exception('Solo se pueden aprobar órdenes en estado Pendiente.');
+            }
+
+            DB::table('ecommerce_orders')
+                ->where('id', $id)
+                ->update(['status' => 'Paid', 'updated_at' => now()]);
+
+            if (!empty($ecommerceOrder->tpv_order_id)) {
+                \App\Models\Order::where('id', $ecommerceOrder->tpv_order_id)
+                    ->update(['status' => 'Completed']);
+            }
+
+            return true;
+        });
+    }
+
+    /**
+     * Cancelar una orden de e-commerce y devolver stock.
+     */
+    public function cancelOrder(int $id): bool
+    {
+        return DB::transaction(function () use ($id) {
+            $ecommerceOrder = DB::table('ecommerce_orders')->where('id', $id)->first();
+
+            if (!$ecommerceOrder) {
+                throw new Exception('La orden no fue encontrada.');
+            }
+
+            $items = DB::table('ecommerce_order_items')
+                ->where('ecommerce_order_id', $id)
+                ->get();
+
+            foreach ($items as $item) {
+                if (!empty($item->product_variant_id)) {
+                    DB::table('product_variants')
+                        ->where('id', $item->product_variant_id)
+                        ->increment('stock', $item->quantity);
+                } else {
+                    DB::table('products')
+                        ->where('id', $item->product_id)
+                        ->increment('stock', $item->quantity);
+                }
+            }
+
+            DB::table('ecommerce_orders')
+                ->where('id', $id)
+                ->update(['status' => 'Cancelled', 'updated_at' => now()]);
+
+            if (!empty($ecommerceOrder->tpv_order_id)) {
+                \App\Models\Order::where('id', $ecommerceOrder->tpv_order_id)
+                    ->update(['status' => 'cancelled']);
+            }
+
+            return true;
+        });
+    }
+
+    /**
+     * Marcar pedido como enviado.
+     */
+    public function shipOrder(int $id): bool
+    {
+        return DB::transaction(function () use ($id) {
+            $ecommerceOrder = DB::table('ecommerce_orders')->where('id', $id)->first();
+
+            if (!$ecommerceOrder) {
+                throw new Exception('La orden no fue encontrada.');
+            }
+
+            DB::table('ecommerce_orders')
+                ->where('id', $id)
+                ->update(['status' => 'Shipped', 'updated_at' => now()]);
+
+            return true;
+        });
+    }
+
+    /**
+     * Completar el pedido e-commerce.
+     */
+    public function completeOrder(int $id): int
+    {
+        return DB::transaction(function () use ($id) {
+            $ecommerceOrder = DB::table('ecommerce_orders')->where('id', $id)->first();
+
+            if (!$ecommerceOrder) {
+                throw new Exception('La orden no existe.');
+            }
+
+            if ($ecommerceOrder->status === 'Completed') {
+                throw new Exception('La orden ya fue completada anteriormente.');
+            }
+
+            if ($ecommerceOrder->status === 'Cancelled') {
+                throw new Exception('Una orden cancelada no se puede completar.');
+            }
+
+            DB::table('ecommerce_orders')
+                ->where('id', $id)
+                ->update(['status' => 'Completed', 'updated_at' => now()]);
+
+            if (!empty($ecommerceOrder->tpv_order_id)) {
+                \App\Models\Order::where('id', $ecommerceOrder->tpv_order_id)
+                    ->whereNotIn('status', ['Completed', 'cancelled'])
+                    ->update(['status' => 'Completed']);
+            }
+
+            return (int) ($ecommerceOrder->tpv_order_id ?? 0);
+        });
+    }
+
+    /**
      * Convierte un monto en USD a la moneda del cliente aplicando la tasa activa.
      * Los precios de los productos están guardados en USD.
      */
@@ -210,3 +377,4 @@ class EcommerceOrderService
         return round($amountUsd * (float) $rateObj->rate, 2);
     }
 }
+

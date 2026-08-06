@@ -115,10 +115,14 @@ const handleCloseViewModal = () => {
               <VListItemTitle class="text-body-2 font-weight-medium">
                 {{ item.client || "Cliente no disponible" }}
               </VListItemTitle>
-              <VListItemSubtitle class="text-caption">
-                <VChip size="x-small" color="primary" variant="tonal" class="me-1">
+              <VListItemSubtitle class="text-caption d-flex align-center gap-2 mt-1">
+                <VChip size="x-small" color="primary" variant="tonal">
                   Orden #{{ item.order_id }}
                 </VChip>
+                <span v-if="item.phone" class="text-disabled font-weight-medium ms-1">
+                  <VIcon icon="tabler-phone" size="14" class="me-1" />
+                  {{ item.phone }}
+                </span>
               </VListItemSubtitle>
               <template #append>
                 <IconBtn color="info" @click.stop="handleViewOrder(item.order_id)">

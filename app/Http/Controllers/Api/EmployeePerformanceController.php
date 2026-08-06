@@ -481,7 +481,7 @@ class EmployeePerformanceController extends Controller
                 ->limit(10)
                 ->get();
 
-            // Top 5 Laboratorios por unidades (histórico)
+            // Top 10 Laboratorios por unidades (histórico)
             $topLabsByUnits = OrderDetail::join('orders', 'order_details.order_id', '=', 'orders.id')
                 ->join('products', 'order_details.product_id', '=', 'products.id')
                 ->join('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
@@ -499,10 +499,10 @@ class EmployeePerformanceController extends Controller
                 ')
                 ->groupBy('laboratories.id', 'laboratories.name')
                 ->orderByDesc('units')
-                ->limit(5)
+                ->limit(10)
                 ->get();
 
-            // Top 5 Laboratorios por monto (histórico)
+            // Top 10 Laboratorios por monto (histórico)
             $topLabsByAmount = OrderDetail::join('orders', 'order_details.order_id', '=', 'orders.id')
                 ->join('products', 'order_details.product_id', '=', 'products.id')
                 ->join('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
@@ -520,7 +520,7 @@ class EmployeePerformanceController extends Controller
                 ')
                 ->groupBy('laboratories.id', 'laboratories.name')
                 ->orderByDesc('amount')
-                ->limit(5)
+                ->limit(10)
                 ->get();
         }
 

@@ -22,9 +22,10 @@ class RetentionRepository implements \App\Contracts\Retention
             $sortBy = 'created_invoice_date';
         }
 
-        $query = Invoice::with('supplier')
-            ->where('tax_amount', '>', 0)
-            ->where('retention_generated', $isGenerated);
+        $query = Invoice::with(['supplier:id,name,social_reason,rif'])
+            ->select(['invoices.id', 'invoices.supplier_id', 'invoices.invoice_number', 'invoices.control_number', 'invoices.taxable_base', 'invoices.tax_amount', 'invoices.total_amount', 'invoices.created_invoice_date', 'invoices.retention_generated', 'invoices.retention_id'])
+            ->where('invoices.tax_amount', '>', 0)
+            ->where('invoices.retention_generated', $isGenerated);
 
         if (empty($filters['start_date']) && empty($filters['end_date'])) {
             $query->whereYear('created_invoice_date', date('Y'));
@@ -70,7 +71,7 @@ class RetentionRepository implements \App\Contracts\Retention
         return $query->paginate($perPage);
     }
 
-    public function generateRetentions(array $invoiceIds): Retention
+    public function generateRetentions(array $invoiceIds, ?string $retentionDate = null): Retention
     {
         $invoices = Invoice::whereIn('id', $invoiceIds)
             ->where('retention_generated', false)
@@ -91,18 +92,15 @@ class RetentionRepository implements \App\Contracts\Retention
         $totalTax = $invoices->sum('tax_amount');
         $totalWithheld = round($totalTax * $retentionPercentage, 2);
 
-        // --- Nueva Lógica de Fecha Fiscal ---
-        $fiscalDate = $this->calculateFiscalDate();
+        // --- Fecha Fiscal de Emisión (Personalizada o Calculada) ---
+        $fiscalDate = $retentionDate ? \Carbon\Carbon::parse($retentionDate) : $this->calculateFiscalDate();
         $prefix = $fiscalDate->format('Ym');
 
-        // --- Nueva Lógica de Numeración Continua ---
-        // Buscamos la última retención absoluta en el sistema
+        // --- Numeración Continua ---
         $lastOverall = Retention::orderBy('id', 'desc')->first();
         
         $nextCorrelative = 1;
         if ($lastOverall) {
-            // Extraemos los últimos 8 dígitos del número (correlativo)
-            // Asumiendo formato YYYYMMXXXXXXXX
             $lastCorrelative = substr($lastOverall->number, -8);
             $nextCorrelative = (int)$lastCorrelative + 1;
         }
@@ -135,30 +133,25 @@ class RetentionRepository implements \App\Contracts\Retention
      * 1-2   -> Fin de mes anterior
      * Otros -> Fecha del día
      */
-    private function calculateFiscalDate(): \Carbon\Carbon
+    private function calculateFiscalDate(?string $endDate = null): \Carbon\Carbon
     {
-        $now = now();
-        $day = $now->day;
+        if ($endDate) {
+            return \Carbon\Carbon::parse($endDate);
+        }
 
-        if ($day >= 14 && $day <= 17) {
+        $now = now();
+        
+        if ($now->day <= 15) {
             return $now->copy()->day(15);
         }
 
-        if ($day >= 30) {
-            return $now->copy()->endOfMonth();
-        }
-
-        if ($day >= 1 && $day <= 2) {
-            return $now->copy()->subMonth()->endOfMonth();
-        }
-
-        return $now;
+        return $now->copy()->endOfMonth();
     }
 
     /**
      * Genera todas las retenciones pendientes para todos los proveedores en un rango.
      */
-    public function generateAllPendingInRange(string $startDate, string $endDate): int
+    public function generateAllPendingInRange(string $startDate, string $endDate, ?string $retentionDate = null): int
     {
         $pendingInvoices = Invoice::where('tax_amount', '>', 0)
             ->where('retention_generated', false)
@@ -174,7 +167,7 @@ class RetentionRepository implements \App\Contracts\Retention
         $generatedCount = 0;
 
         foreach ($groupedBySupplier as $supplierId => $invoices) {
-            $this->generateRetentions($invoices->pluck('id')->toArray());
+            $this->generateRetentions($invoices->pluck('id')->toArray(), $retentionDate);
             $generatedCount++;
         }
 
@@ -196,7 +189,10 @@ class RetentionRepository implements \App\Contracts\Retention
             $sortBy = 'date';
         }
 
-        $query = Retention::with(['supplier', 'invoices']);
+        $query = Retention::with([
+            'supplier:id,name,social_reason,rif',
+        ])
+        ->select(['retentions.id', 'retentions.supplier_id', 'retentions.number', 'retentions.date', 'retentions.total_taxable_base', 'retentions.total_tax_amount', 'retentions.total_withheld_amount']);
 
         if (!empty($filters['start_date'])) {
             $query->whereDate('date', '>=', $filters['start_date']);
@@ -337,5 +333,62 @@ class RetentionRepository implements \App\Contracts\Retention
         $retention = Retention::findOrFail($id);
         $retention->update($data);
         return $retention;
+    }
+
+    /**
+     * Obtiene una retención con sus facturas asociadas cargadas (eager load).
+     */
+    public function getRetentionWithInvoices(int $id): Retention
+    {
+        return Retention::with(['supplier:id,name,social_reason,rif', 'invoices'])->findOrFail($id);
+    }
+
+    /**
+     * Actualiza los datos del comprobante y los campos editables de las facturas vinculadas.
+     */
+    public function updateRetentionWithInvoices(int $id, array $data, array $invoices): Retention
+    {
+        $retention = Retention::findOrFail($id);
+
+        if (!empty($data)) {
+            $retention->update($data);
+        }
+
+        foreach ($invoices as $invoiceData) {
+            Invoice::where('id', $invoiceData['id'])
+                ->where('retention_id', $id)
+                ->update([
+                    'control_number' => $invoiceData['control_number'] ?? null,
+                    'invoice_number' => $invoiceData['invoice_number'] ?? null,
+                ]);
+        }
+
+        return $retention->fresh();
+    }
+
+    /**
+     * Omite todas las facturas pendientes con fecha igual o anterior a $cutoffDate
+     */
+    public function omitInvoicesUntilDate(string $cutoffDate): int
+    {
+        return Invoice::where('tax_amount', '>', 0)
+            ->where('retention_generated', false)
+            ->whereDate('created_invoice_date', '<=', $cutoffDate)
+            ->update([
+                'retention_generated' => true,
+            ]);
+    }
+
+    /**
+     * Restaura todas las facturas omitidas (retention_generated = true pero sin comprobante asignado).
+     */
+    public function restoreOmittedInvoices(): int
+    {
+        return Invoice::where('tax_amount', '>', 0)
+            ->where('retention_generated', true)
+            ->whereNull('retention_id')
+            ->update([
+                'retention_generated' => false,
+            ]);
     }
 }

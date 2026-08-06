@@ -1,11 +1,11 @@
 <script setup>
-// Filtros para el Historial de Pagos
 import AppFilterBase from "@/components/AppFilterBase.vue";
 
 const props = defineProps({
   searchQuery: String,
   selectedSupplier: [Number, String, null],
   selectedCurrency: [String, null],
+  selectedPaymentMethod: [String, null],
   startDate: [String, null],
   endDate: [String, null],
   suppliers: { type: Array, default: () => [] },
@@ -16,16 +16,24 @@ const emit = defineEmits([
   "update:searchQuery",
   "update:selectedSupplier",
   "update:selectedCurrency",
+  "update:selectedPaymentMethod",
   "update:startDate",
   "update:endDate",
   "clear",
   "refresh",
+  "export",
 ]);
 
 const currencies = [
   { value: "VES", label: "VES - Bolívar Venezolano" },
   { value: "USD", label: "USD - Dólar Americano" },
   { value: "COP", label: "COP - Peso Colombiano" },
+];
+
+const paymentMethods = [
+  { value: "USD", label: "USD - Dólar / Zelle / Cash" },
+  { value: "VES", label: "VES - Transferencia / Pago Móvil" },
+  { value: "COP", label: "COP - Pesos" },
 ];
 </script>
 
@@ -37,9 +45,22 @@ const currencies = [
     @update:search="emit('update:searchQuery', $event)"
     @clear="emit('clear')"
   >
+    <template #actions>
+      <VBtn
+        color="success"
+        variant="tonal"
+        size="small"
+        prepend-icon="tabler-file-spreadsheet"
+        class="font-weight-black rounded-lg"
+        @click="emit('export')"
+      >
+        Exportar Excel
+      </VBtn>
+    </template>
+
     <template #advanced-filters>
       <!-- Proveedor -->
-      <VCol cols="12" sm="6" md="4">
+      <VCol cols="12" sm="6" md="3">
         <VAutocomplete
           :model-value="props.selectedSupplier"
           :items="props.suppliers"
@@ -72,8 +93,25 @@ const currencies = [
         />
       </VCol>
 
-      <!-- Rango de Fechas -->
+      <!-- Método de Pago -->
       <VCol cols="12" sm="6" md="3">
+        <VSelect
+          :model-value="props.selectedPaymentMethod"
+          :items="paymentMethods"
+          item-title="label"
+          item-value="value"
+          placeholder="Método de Pago"
+          density="compact"
+          hide-details
+          variant="outlined"
+          clearable
+          prepend-inner-icon="tabler-wallet"
+          @update:model-value="emit('update:selectedPaymentMethod', $event)"
+        />
+      </VCol>
+
+      <!-- Rango de Fechas -->
+      <VCol cols="12" sm="6" md="2">
         <AppDateTimePicker
           :model-value="props.startDate"
           placeholder="Desde"
@@ -85,7 +123,7 @@ const currencies = [
         />
       </VCol>
 
-      <VCol cols="12" sm="6" md="3">
+      <VCol cols="12" sm="6" md="2">
         <AppDateTimePicker
           :model-value="props.endDate"
           placeholder="Hasta"

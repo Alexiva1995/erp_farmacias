@@ -55,12 +55,14 @@ const isEditing = computed(() => props.packData && props.packData.id);
 
 // Cargar productos con el mismo filtrado que /inventory/products
 const loadAvailableProducts = async (search = "") => {
+  const trimmedSearch = String(search ?? "").trim();
+  if (trimmedSearch.length > 0 && trimmedSearch.length < 2) return;
+
   loadingProducts.value = true;
   try {
-    const trimmedSearch = String(search ?? "").trim();
     const params = {
       q: trimmedSearch || undefined,
-      itemsPerPage: 500,
+      itemsPerPage: 20,
       sortBy: "name",
       orderBy: "asc",
     };
@@ -655,7 +657,11 @@ watch(
                     class="shadow-sm"
                   >
                     <template #item="{ props: itemProps, item: productItem }">
-                      <VListItem v-bind="itemProps" :title="productItem.raw.name" :subtitle="`ID: #${productItem.raw.id} | Stock: ${productItem.raw.stock} | Código: ${productItem.raw.barcode || 'N/A'}`" />
+                      <VListItem
+                        v-bind="itemProps"
+                        :title="productItem.raw.name"
+                        :subtitle="`ID: #${productItem.raw.id} | Lab: ${productItem.raw.laboratory?.name || productItem.raw.laboratory || 'S/L'} | Stock: ${productItem.raw.stock} | Código: ${productItem.raw.barcode || 'N/A'}`"
+                      />
                     </template>
                   </AppAutocomplete>
                 </VCol>

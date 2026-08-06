@@ -1,5 +1,5 @@
 <script setup>
-import { defineProps } from 'vue';
+
 import { formatCurrency } from '@/utils/currencyFormatter';
 
 const props = defineProps({

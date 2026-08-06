@@ -128,6 +128,15 @@ class AutoReplenishmentCommand extends Command
             $filtros['supplier_id'] = $config->supplier_id;
         }
 
+        // Exclusión de productos Plan Colombia y Novaventa
+        if ($config->exclude_colombian) {
+            $filtros['isColombian'] = false;
+        }
+
+        if ($config->exclude_novaventa) {
+            $filtros['isNovaventa'] = false;
+        }
+
         // Si tiene grupos específicos, filtrarlos
         if (!empty($config->group_ids)) {
             $filtros['groups'] = $config->group_ids;

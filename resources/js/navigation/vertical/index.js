@@ -12,6 +12,6 @@ import rrhh from './rrhh'
 import suppliers from './suppliers'
 import tpv from './tpv'
 import reservations from './reservations'
+import telegram from './telegram'
 
-export default [...home, ...inventory, ...cyclicInventory, ...tpv, ...crm, ...rrhh, ...finances, ...fiscal, ...suppliers, ...invoice, ...productivity, ...bi, ...configuration, ...reservations]
-
+export default [...home, ...inventory, ...cyclicInventory, ...tpv, ...crm, ...rrhh, ...finances, ...fiscal, ...suppliers, ...invoice, ...productivity, ...bi, ...configuration, ...reservations, ...telegram]

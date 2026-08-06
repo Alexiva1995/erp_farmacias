@@ -6,6 +6,7 @@ namespace App\Services\EmployeePerformance;
 
 use App\Models\Employee;
 use App\Models\Order;
+use App\Models\OrderDetail;
 use App\Models\Invoice;
 use App\Models\ProductCount;
 use App\Models\SaleCount;
@@ -72,62 +73,148 @@ class EmployeePerformanceQueryService
                     });
                 }
             } catch (\Exception $e) {
-                // Table doesn't exist yet or other SQL error, fall back to LIVE
                 \Log::warning("No se pudo consultar snapshots (posiblemente tabla inexistente): " . $e->getMessage());
             }
         }
 
-        // 1. Calculate RAW metrics for all employees (Live)
-        $employeesData = Employee::where('is_active', true)
+        // 1. Bulk pre-fetch all metrics for all active employees to avoid N+1 queries
+        $employees = Employee::with(['laboratories:id', 'products:id'])
+            ->where('is_active', true)
             ->select(['id', 'name', 'last_name', 'identification', 'photo', 'user_id'])
             ->orderByRaw('photo IS NOT NULL DESC')
             ->orderBy('name', 'ASC')
+            ->get();
+
+        // 1a. Bulk Sales & Previous Month Sales
+        $salesMap = Order::whereMonth('order_date', $month)
+            ->whereYear('order_date', $year)
+            ->where('status', 'Completed')
+            ->groupBy('seller_id')
+            ->selectRaw('seller_id, ROUND(SUM(total_amount_usd), 2) as total')
+            ->pluck('total', 'seller_id');
+
+        $prevSalesMap = Order::whereMonth('order_date', $prevMonth)
+            ->whereYear('order_date', $prevYear)
+            ->where('status', 'Completed')
+            ->groupBy('seller_id')
+            ->selectRaw('seller_id, ROUND(SUM(total_amount_usd), 2) as total')
+            ->pluck('total', 'seller_id');
+
+        // 1b. Bulk Order Details for Order Dependent Metrics
+        $orderDetailsGrouped = OrderDetail::join('orders', 'order_details.order_id', '=', 'orders.id')
+            ->join('products', 'order_details.product_id', '=', 'products.id')
+            ->whereMonth('orders.order_date', $month)
+            ->whereYear('orders.order_date', $year)
+            ->select([
+                'orders.seller_id',
+                'order_details.product_id',
+                'products.laboratory_id',
+                'order_details.unit_price_usd',
+                'order_details.quantity',
+                'order_details.quantity_expiration',
+            ])
             ->get()
-            ->map(function ($employee) use ($month, $year, $prevMonth, $prevYear) {
+            ->groupBy('seller_id');
 
-                $metrics = [
-                    'sales' => 0.0,
-                    'growth' => 0.0,
-                    'expirations' => 0,
-                    'inventory_counted' => 0,
-                    'inventory_errors' => 0,
-                    'premium_products' => 0,
-                    'cleaning_assigned' => 0,
-                    'cleaning_completed' => 0,
-                    'strategy_sales' => 0,
-                    // Invoice Raw Metrics
-                    'invoice_items' => 0,
-                    'invoice_headers' => 0,
-                    'invoice_archived' => 0,
-                ];
+        // 1c. Bulk Inventory Counts
+        $productCountMap = ProductCount::whereMonth('created_at', $month)->whereYear('created_at', $year)
+            ->groupBy('user_id')->selectRaw('user_id, COUNT(*) as total')->pluck('total', 'user_id');
 
-                if ($employee->user_id) {
-                    // Sales & Growth
-                    $metrics['sales'] = $this->calculateSales($employee->user_id, $month, $year);
-                    $metrics['growth'] = $this->calculateGrowth($employee->user_id, $metrics['sales'], $prevMonth, $prevYear);
+        $saleCountMap = SaleCount::whereMonth('created_at', $month)->whereYear('created_at', $year)
+            ->groupBy('user_id')->selectRaw('user_id, COUNT(*) as total')->pluck('total', 'user_id');
 
-                    // Order Dependent Metrics
-                    $orderMetrics = $this->calculateOrderDependentMetrics($employee, $month, $year);
-                    $metrics = array_merge($metrics, $orderMetrics);
+        $invoiceCountMap = InvoiceCount::whereMonth('created_at', $month)->whereYear('created_at', $year)
+            ->groupBy('user_id')->selectRaw('user_id, COUNT(*) as total')->pluck('total', 'user_id');
 
-                    // Inventory Cyclic
-                    $inventoryMetrics = $this->calculateInventoryMetrics($employee->user_id, $month, $year);
-                    $metrics = array_merge($metrics, $inventoryMetrics);
+        $productErrorMap = ProductCount::whereMonth('created_at', $month)->whereYear('created_at', $year)
+            ->where('status', 'approved')->where('correction_difference', '>', 0)
+            ->groupBy('user_id')->selectRaw('user_id, COUNT(*) as total')->pluck('total', 'user_id');
 
-                    // Invoice Metrics (Raw)
-                    $invoiceMetrics = $this->calculateInvoiceMetrics($employee->user_id, $month, $year);
-                    $metrics = array_merge($metrics, $invoiceMetrics);
+        // 1d. Bulk Invoice Metrics
+        $invoiceHeadersMap = Invoice::whereNotNull('registered_by')
+            ->whereMonth('created_at', $month)->whereYear('created_at', $year)
+            ->groupBy('registered_by')->selectRaw('registered_by, COUNT(*) as total')->pluck('total', 'registered_by');
+
+        $invoiceItemsMap = DB::table('invoices')
+            ->join('invoice_details', 'invoices.id', '=', 'invoice_details.invoice_id')
+            ->whereNotNull('invoices.loaded_by')
+            ->whereMonth('invoices.created_at', $month)->whereYear('invoices.created_at', $year)
+            ->groupBy('invoices.loaded_by')->selectRaw('invoices.loaded_by, COUNT(invoice_details.id) as total')->pluck('total', 'invoices.loaded_by');
+
+        $invoiceArchivedMap = Invoice::whereNotNull('ordered_by')
+            ->whereMonth('created_at', $month)->whereYear('created_at', $year)
+            ->groupBy('ordered_by')->selectRaw('ordered_by, COUNT(*) as total')->pluck('total', 'ordered_by');
+
+        // 1e. Bulk Cleaning Metrics
+        $cleaningMap = CleaningActivityExecution::whereMonth('scheduled_date', $month)->whereYear('scheduled_date', $year)
+            ->groupBy('employee_id')
+            ->selectRaw("employee_id, COUNT(*) as total_assigned, SUM(CASE WHEN status = 'Completada' THEN 1 ELSE 0 END) as total_completed")
+            ->get()
+            ->keyBy('employee_id');
+
+        // Map employee data without N+1 queries
+        $employeesData = $employees->map(function ($employee) use (
+            $salesMap, $prevSalesMap, $orderDetailsGrouped, $productCountMap,
+            $saleCountMap, $invoiceCountMap, $productErrorMap,
+            $invoiceHeadersMap, $invoiceItemsMap, $invoiceArchivedMap, $cleaningMap
+        ) {
+            $userId = $employee->user_id;
+
+            $sales = $userId ? (float) ($salesMap[$userId] ?? 0.0) : 0.0;
+            $prevSales = $userId ? (float) ($prevSalesMap[$userId] ?? 0.0) : 0.0;
+            $growth = $prevSales > 0 ? round((($sales - $prevSales) / $prevSales) * 100, 2) : 0.0;
+
+            $expirations = 0;
+            $premiumProducts = 0;
+            $strategySales = 0;
+
+            if ($userId && isset($orderDetailsGrouped[$userId])) {
+                $assignedLabIds = $employee->laboratories->pluck('id')->flip()->toArray();
+                $assignedProductIds = $employee->products->pluck('id')->flip()->toArray();
+
+                foreach ($orderDetailsGrouped[$userId] as $detail) {
+                    if ($detail->unit_price_usd > 15) {
+                        $premiumProducts += $detail->quantity;
+                    }
+                    if (isset($assignedProductIds[$detail->product_id]) || isset($assignedLabIds[$detail->laboratory_id])) {
+                        $strategySales += $detail->quantity;
+                    }
+                    if ($detail->quantity_expiration > 0) {
+                        $expirations += $detail->quantity_expiration;
+                    }
                 }
+            }
 
-                // Cleaning
-                $cleaningMetrics = $this->calculateCleaningMetrics($employee->id, $month, $year);
-                $metrics = array_merge($metrics, $cleaningMetrics);
+            $inventoryCounted = $userId ? (
+                ($productCountMap[$userId] ?? 0) +
+                ($saleCountMap[$userId] ?? 0) +
+                ($invoiceCountMap[$userId] ?? 0)
+            ) : 0;
 
-                return [
-                    'employee' => $employee,
-                    'metrics' => $metrics
-                ];
-            });
+            $inventoryErrors = $userId ? ($productErrorMap[$userId] ?? 0) : 0;
+
+            $cleaning = $cleaningMap[$employee->id] ?? null;
+
+            $metrics = [
+                'sales' => $sales,
+                'growth' => $growth,
+                'expirations' => (int) $expirations,
+                'inventory_counted' => (int) $inventoryCounted,
+                'inventory_errors' => (int) $inventoryErrors,
+                'premium_products' => (int) $premiumProducts,
+                'cleaning_assigned' => $cleaning ? (int) $cleaning->total_assigned : 0,
+                'cleaning_completed' => $cleaning ? (int) $cleaning->total_completed : 0,
+                'strategy_sales' => (int) $strategySales,
+                'invoice_items' => $userId ? (int) ($invoiceItemsMap[$userId] ?? 0) : 0,
+                'invoice_headers' => $userId ? (int) ($invoiceHeadersMap[$userId] ?? 0) : 0,
+                'invoice_archived' => $userId ? (int) ($invoiceArchivedMap[$userId] ?? 0) : 0,
+            ];
+
+            return [
+                'employee' => $employee,
+                'metrics' => $metrics
+            ];
+        });
 
         // 2. Find MAX values for dynamic scoring
         $maxSales = $employeesData->max('metrics.sales') ?: 1;
@@ -150,19 +237,14 @@ class EmployeePerformanceQueryService
             $employee = $data['employee'];
             $metrics = $data['metrics'];
 
-            // Puntaje de Crecimiento (Growth) - Refactorizado para proporcionalidad y capping
             if ($maxGrowth == 0) {
-                // El mejor es 0% (nadie creció positivamente). Ese recibe los 15 puntos.
                 $growthScore = ($metrics['growth'] == 0) ? 15 : 0;
             } elseif ($maxGrowth > 0) {
                 $growthScore = ($metrics['growth'] / $maxGrowth) * 15;
             } else {
-                // Si todos decrecen (< 0), el que decrece menos (más cercano a 0) obtiene 15 puntos.
-                // Usamos la relación inversa: maxGrowth / growth actual.
                 $growthScore = ($metrics['growth'] != 0) ? ($maxGrowth / $metrics['growth']) * 15 : 0;
             }
 
-            // Aplicar Capping de -15 a 15
             $scores = [
                 'sales' => ($metrics['sales'] / $maxSales) * 25,
                 'growth' => max(-15, min(15, $growthScore)),
@@ -237,154 +319,5 @@ class EmployeePerformanceQueryService
 
             return true;
         });
-    }
-
-    private function calculateSales(int $userId, int $month, int $year): float
-    {
-        return round((float) Order::where('seller_id', $userId)
-            ->whereMonth('order_date', $month)
-            ->whereYear('order_date', $year)
-            ->where('status', 'Completed')
-            ->sum('total_amount_usd'), 2);
-    }
-
-    private function calculateGrowth(int $userId, float $currentSales, int $prevMonth, int $prevYear): float
-    {
-        $salesPrev = (float) Order::where('seller_id', $userId)
-            ->whereMonth('order_date', $prevMonth)
-            ->whereYear('order_date', $prevYear)
-            ->where('status', 'Completed')
-            ->sum('total_amount_usd');
-
-        if ($salesPrev > 0) {
-            return round((($currentSales - $salesPrev) / $salesPrev) * 100, 2);
-        }
-
-        // Si el mes pasado no hubo ventas, el crecimiento es 0% según requerimiento de usuario
-        return 0.0;
-    }
-
-    private function calculateOrderDependentMetrics(Employee $employee, int $month, int $year): array
-    {
-        $expirations = 0;
-        $premiumProducts = 0;
-        $strategySales = 0;
-
-        $assignedLabIds = $employee->laboratories->pluck('id')->toArray();
-        $assignedProductIds = $employee->products->pluck('id')->toArray();
-
-        $orders = Order::with(['details.product'])
-            ->where('seller_id', $employee->user_id)
-            ->whereMonth('order_date', $month)
-            ->whereYear('order_date', $year)
-            ->get();
-
-        foreach ($orders as $order) {
-            foreach ($order->details as $detail) {
-                $product = $detail->product;
-                if (!$product)
-                    continue;
-
-                if ($detail->unit_price_usd > 15) {
-                    $premiumProducts += $detail->quantity;
-                }
-
-                if (in_array($product->id, $assignedProductIds) || in_array($product->laboratory_id, $assignedLabIds)) {
-                    $strategySales += $detail->quantity;
-                }
-
-                if ($detail->quantity_expiration > 0) {
-                    $expirations += $detail->quantity_expiration;
-                }
-            }
-        }
-
-        return [
-            'expirations' => (int) $expirations,
-            'premium_products' => (int) $premiumProducts,
-            'strategy_sales' => (int) $strategySales,
-        ];
-    }
-
-    private function calculateInventoryMetrics(int $userId, int $month, int $year): array
-    {
-        // 1. Conteos de Cíclicos
-        $productCounts = ProductCount::where('user_id', $userId)
-            ->whereMonth('created_at', $month)
-            ->whereYear('created_at', $year)
-            ->get();
-
-        // 2. Conteos de Ventas
-        $saleCounts = SaleCount::where('user_id', $userId)
-            ->whereMonth('created_at', $month)
-            ->whereYear('created_at', $year)
-            ->get();
-
-        // 3. Conteos de Facturas
-        $invoiceCounts = InvoiceCount::where('user_id', $userId)
-            ->whereMonth('created_at', $month)
-            ->whereYear('created_at', $year)
-            ->get();
-
-        // Unificamos el total de conteos realizados
-        $totalCounted = $productCounts->count() + $saleCounts->count() + $invoiceCounts->count();
-
-        // Lógica de "Error": Cuando el usuario reportó discrepancia pero el admin corrigió (correction_difference > 0)
-        // O cuando la discrepancia inicial fue desmentida por el admin (discrepancy inicial != 0, approved, discrefancy final = 0)
-        $errors = 0;
-
-        // Solo ProductCount tiene correction_difference actualmente
-        foreach ($productCounts as $count) {
-            if ($count->status === 'approved' && $count->correction_difference > 0) {
-                $errors++;
-            }
-        }
-
-        return [
-            'inventory_counted' => $totalCounted,
-            'inventory_errors' => $errors,
-        ];
-    }
-
-    private function calculateCleaningMetrics(int $employeeId, int $month, int $year): array
-    {
-        $cleaningExecutions = CleaningActivityExecution::where('employee_id', $employeeId)
-            ->whereMonth('scheduled_date', $month)
-            ->whereYear('scheduled_date', $year)
-            ->get();
-
-        return [
-            'cleaning_assigned' => $cleaningExecutions->count(),
-            'cleaning_completed' => $cleaningExecutions->where('status', 'Completada')->count(),
-        ];
-    }
-
-    private function calculateInvoiceMetrics(int $userId, int $month, int $year): array
-    {
-        // 1. Registered (Cabeceras creadas) - registered_by
-        $registeredCount = Invoice::where('registered_by', $userId)
-            ->whereMonth('created_at', $month)
-            ->whereYear('created_at', $year)
-            ->count();
-
-        // 2. Loaded Items (Items cargados) - loaded_by
-        $loadedItemsCount = Invoice::where('loaded_by', $userId)
-            ->whereMonth('created_at', $month)
-            ->whereYear('created_at', $year)
-            ->withCount('details')
-            ->get()
-            ->sum('details_count');
-
-        // 3. Ordered (Archivadas) - ordered_by
-        $orderedCount = Invoice::where('ordered_by', $userId)
-            ->whereMonth('created_at', $month)
-            ->whereYear('created_at', $year)
-            ->count();
-
-        return [
-            'invoice_headers' => $registeredCount,
-            'invoice_items' => $loadedItemsCount,
-            'invoice_archived' => $orderedCount,
-        ];
     }
 }

@@ -18,31 +18,40 @@ class PendingPaymentsService
      */
     public function getPendingInvoices(array $filters = []): Collection
     {
-        // ­ƒöì LOG DEBUG: Inicio del servicio
-
-        $query = Invoice::with(['supplier'])
-            ->whereIn('status', ['pending', 'loaded', 'to_order'])
+        $query = Invoice::with(['supplier', 'payments'])
             ->where(function ($q) {
                 $q->whereNull('status_payment')
                     ->orWhere('status_payment', '!=', 1);
             });
 
-        // ­ƒöì LOG DEBUG: Query base creada
+        $currentYearStart = Carbon::now()->startOfYear();
+        $query->whereDate('payment_date', '>=', $currentYearStart);
 
-        // Aplicar filtros
-        if (isset($filters['supplier_id'])) {
+        $query->orderBy('payment_date', 'asc');
+
+        if (!empty($filters['supplier_id'])) {
             $query->where('supplier_id', $filters['supplier_id']);
         }
 
-        if (isset($filters['start_date'])) {
+        if (!empty($filters['start_date'])) {
             $query->whereDate('payment_date', '>=', $filters['start_date']);
         }
 
-        if (isset($filters['end_date'])) {
+        if (!empty($filters['end_date'])) {
             $query->whereDate('payment_date', '<=', $filters['end_date']);
         }
 
-        if (isset($filters['show_overdue_only']) && $filters['show_overdue_only']) {
+        if (!empty($filters['q'])) {
+            $search = $filters['q'];
+            $query->where(function ($q) use ($search) {
+                $q->where('invoice_number', 'like', "%{$search}%")
+                    ->orWhereHas('supplier', function ($sq) use ($search) {
+                        $sq->where('name', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        if (!empty($filters['show_overdue_only']) && filter_var($filters['show_overdue_only'], FILTER_VALIDATE_BOOLEAN)) {
             $query->where(function ($q) {
                 $dueDate = Carbon::now();
                 $q->whereDate('payment_date', '<=', $dueDate)
@@ -50,186 +59,210 @@ class PendingPaymentsService
             });
         }
 
-        // Ordenamiento fijo
-        $query->orderByRaw('CASE 
-            WHEN status = "to_order" THEN 0 
-            WHEN status = "pending" THEN 1 
-            ELSE 2 
-        END')
-            ->orderBy('payment_date', 'asc');
-
-        // ­ƒöì LOG DEBUG: Query final antes de ejecutar
-
-        $result = $query->get();
-
-        // ­ƒöì LOG DEBUG: Resultado obtenido
-
-        return $result;
+        return $query->get();
     }
 
     /**
-     * Agrupar facturas por proveedor y fecha
+     * Agrupar y formatear facturas sin N+1 en proveedores o tasas
      */
-    public function groupInvoicesBySupplierAndDate(Collection $invoices): Collection
+    public function getGroupedPendingPayments(Collection $invoices): Collection
     {
+        $exchangeRates = ExchangeRate::all()->keyBy('currency_code');
+        $vesRate = $exchangeRates->get('VES')?->rate ?? 1;
+        $copRate = $exchangeRates->get('COP')?->rate ?? 1;
+        $bcvRateVal = $exchangeRates->get('BS')?->rate ?? 1;
+
         return $invoices->groupBy(function ($invoice) {
             return $invoice->supplier_id . '_' . $invoice->payment_date;
-        });
+        })->map(function ($group) use ($exchangeRates, $vesRate, $copRate, $bcvRateVal) {
+            $firstInvoice = $group->first();
+
+            $totalAmountUSD = $group->sum('total_usd');
+            $totalAmountOriginal = $group->sum('total_amount');
+
+            $remainingAmountUSD = $totalAmountUSD;
+            $remainingAmountOriginal = $totalAmountOriginal;
+
+            $payments = $group->flatMap(function ($invoice) {
+                return $invoice->payments;
+            })->unique('id');
+
+            if ($payments->count() > 0) {
+                $totalPaidUSD = 0;
+                foreach ($payments as $payment) {
+                    if ($payment->payment_method === 'USD') {
+                        $totalPaidUSD += $payment->amount;
+                    } else {
+                        $rateCurrency = ($payment->payment_method === 'COP') ? 'COPC' : $payment->payment_method;
+                        $rateObj = $exchangeRates->get($rateCurrency);
+                        if ($rateObj && $rateObj->rate > 0) {
+                            $totalPaidUSD += round($payment->amount / $rateObj->rate, 2);
+                        }
+                    }
+                }
+
+                $remainingAmountUSD = max(0, $totalAmountUSD - $totalPaidUSD);
+
+                if ($firstInvoice->currency === 'Bs') {
+                    $remainingAmountOriginal = round($remainingAmountUSD * $vesRate, 2);
+                } elseif ($firstInvoice->currency === 'COP') {
+                    $remainingAmountOriginal = round($remainingAmountUSD * $copRate, 2);
+                } else {
+                    $remainingAmountOriginal = $remainingAmountUSD;
+                }
+            }
+
+            $supplierPreferredCurrency = $this->getSupplierPreferredCurrencyFromGroup($group, $firstInvoice->supplier);
+            $totalInSupplierCurrency = $this->calculateTotalInSupplierCurrencyFromGroup($group, $supplierPreferredCurrency, $exchangeRates);
+
+            return [
+                'supplier_id' => $firstInvoice->supplier_id,
+                'supplier_name' => $firstInvoice->supplier?->name ?? 'N/A',
+                'payment_date' => $firstInvoice->payment_date,
+                'currency' => $firstInvoice->currency,
+                'total_amount' => $remainingAmountOriginal,
+                'total_usd' => $totalAmountUSD,
+                'remainingAmountUSD' => $remainingAmountUSD,
+                'total_in_supplier_currency' => $totalInSupplierCurrency,
+                'supplier_preferred_currency' => $supplierPreferredCurrency,
+                'invoice_count' => $group->count(),
+                'invoices' => $group->map(function ($invoice) use ($totalInSupplierCurrency, $totalAmountUSD, $exchangeRates, $vesRate, $copRate, $bcvRateVal) {
+                    $indexedData = $this->calculateIndexedAmountData($invoice, $exchangeRates);
+
+                    if ($invoice->is_indexed && $invoice->currency === 'Bs') {
+                        $invoiceRemainingUSD = $invoice->total_usd;
+                        $invoiceRemainingOriginal = round($invoice->total_usd * $bcvRateVal, 2);
+                    } else {
+                        $invoiceRemainingUSD = $invoice->total_usd;
+                        $invoiceRemainingOriginal = $invoice->total_amount;
+
+                        $invoicePayments = $invoice->payments;
+
+                        if ($invoicePayments->count() > 0) {
+                            $totalPaidUSD = 0;
+                            foreach ($invoicePayments as $payment) {
+                                if ($payment->payment_method === 'USD') {
+                                    $totalPaidUSD += $payment->amount;
+                                } else {
+                                    $rateCurrency = ($payment->payment_method === 'COP') ? 'COPC' : $payment->payment_method;
+                                    $rateObj = $exchangeRates->get($rateCurrency);
+                                    if ($rateObj && $rateObj->rate > 0) {
+                                        $totalPaidUSD += round($payment->amount / $rateObj->rate, 2);
+                                    }
+                                }
+                            }
+
+                            $invoiceRemainingUSD = max(0, $invoice->total_usd - $totalPaidUSD);
+
+                            if ($invoice->currency === 'Bs') {
+                                $invoiceRemainingOriginal = round($invoiceRemainingUSD * $vesRate, 2);
+                            } elseif ($invoice->currency === 'COP') {
+                                $invoiceRemainingOriginal = round($invoiceRemainingUSD * $copRate, 2);
+                            } else {
+                                $invoiceRemainingOriginal = $invoiceRemainingUSD;
+                            }
+                        }
+                    }
+
+                    $displayAmount = $indexedData['is_indexed'] ? $indexedData['indexed_amount'] : $invoiceRemainingOriginal;
+                    $displayOriginalAmount = $indexedData['is_indexed'] ? $indexedData['indexed_amount'] : $invoice->total_amount;
+
+                    return [
+                        'id' => $invoice->id,
+                        'invoice_number' => $invoice->invoice_number,
+                        'control_number' => $invoice->control_number ?? 'N/A',
+                        'supplier_rif' => $invoice->supplier?->rif ?? 'N/A',
+                        'total_amount' => $displayAmount,
+                        'total_usd' => $invoice->total_usd,
+                        'invoiceRemainingUSD' => $invoiceRemainingUSD,
+                        'remaining_amount' => $invoiceRemainingOriginal,
+                        'remaining_amount_usd' => $invoiceRemainingUSD,
+                        'original_amount' => $displayOriginalAmount,
+                        'original_amount_usd' => $invoice->total_usd,
+                        'currency' => $invoice->currency,
+                        'is_indexed' => $invoice->is_indexed ?? false,
+                        'indexed_data' => $indexedData,
+                        'exchange_rate' => $invoice->exchange_rate,
+                        'exp_date' => $invoice->exp_date,
+                        'supplier_total_bs' => $totalInSupplierCurrency,
+                        'supplier_total_usd' => $totalAmountUSD
+                    ];
+                })
+            ];
+        })->values();
     }
 
     /**
-     * Calcular totales por moneda
+     * Determinar la moneda preferida del proveedor sin hacer subconsultas N+1
      */
-    public function calculateTotalsByCurrency(Collection $invoices): array
+    private function getSupplierPreferredCurrencyFromGroup(Collection $groupInvoices, ?Supplier $supplier): string
     {
-        $invoicesBs = $invoices->where('currency', 'Bs');
-        $invoicesUsd = $invoices->where('currency', 'USD');
-        $invoicesCop = $invoices->where('currency', 'COP');
+        if (!$supplier) {
+            return 'USD';
+        }
 
-        return [
-            'bs' => [
-                'amount' => $invoicesBs->sum('total_amount'),
-                'count' => $invoicesBs->count(),
-                'total_usd' => $invoicesBs->sum('total_usd')
-            ],
-            'usd' => [
-                'amount' => $invoicesUsd->sum('total_amount'),
-                'count' => $invoicesUsd->count(),
-                'total_usd' => $invoicesUsd->sum('total_usd')
-            ],
-            'cop' => [
-                'amount' => $invoicesCop->sum('total_amount'),
-                'count' => $invoicesCop->count(),
-                'total_usd' => $invoicesCop->sum('total_usd')
-            ],
-            'usd_converted' => $invoices->sum('total_usd')
-        ];
-    }
-
-    /**
-     * Determinar la moneda preferida del proveedor
-     */
-    public function getSupplierPreferredCurrency(Supplier $supplier): string
-    {
         $supplierName = strtolower($supplier->name);
-
-        // Cristalmedicals siempre es USD
         if (strpos($supplierName, 'cristalmedicals') !== false) {
             return 'USD';
         }
 
-        // Para otros proveedores, determinar por las facturas pendientes
-        $invoices = Invoice::where('supplier_id', $supplier->id)
-            ->whereIn('status', ['pending', 'loaded', 'to_order'])
-            ->where(function ($q) {
-                $q->whereNull('status_payment')
-                    ->orWhere('status_payment', '!=', 1);
-            })
-            ->get();
-
-        if ($invoices->isEmpty()) {
-            return 'USD'; // Default
-        }
-
-        // Contar facturas por moneda
-        $currencyCounts = $invoices->groupBy('currency')->map->count();
-
-        // Retornar la moneda m├ís com├║n
+        $currencyCounts = $groupInvoices->groupBy('currency')->map->count();
         return $currencyCounts->sortDesc()->keys()->first() ?? 'USD';
     }
 
     /**
-     * Calcular total en moneda del proveedor considerando facturas indexadas
+     * Calcular total en moneda preferida del proveedor sin subconsultas
      */
-    public function calculateTotalInSupplierCurrency(Collection $invoices, string $supplierCurrency): float
+    private function calculateTotalInSupplierCurrencyFromGroup(Collection $invoices, string $supplierCurrency, Collection $exchangeRates): float
     {
-        $totalUSD = 0;
+        $totalUSD = $invoices->sum('total_usd');
 
-        foreach ($invoices as $invoice) {
-            // Para facturas indexadas en Bs, usar el monto indexado
-            if ($invoice->is_indexed && $invoice->currency === 'Bs') {
-                $bcvRate = ExchangeRate::where('currency_code', 'BS')->first();
-                if ($bcvRate) {
-                    $totalUSD += $invoice->total_usd; // USD fijo para facturas indexadas
-                } else {
-                    $totalUSD += $invoice->total_usd;
-                }
-            } else {
-                // Para facturas no indexadas, usar el total_usd normal
-                $totalUSD += $invoice->total_usd;
-            }
-        }
-
-        // Si la moneda del proveedor es USD, retornar directamente
         if ($supplierCurrency === 'USD') {
             return round($totalUSD, 2);
         }
 
-        // Convertir desde USD a la moneda del proveedor
         $currencyCode = $supplierCurrency === 'Bs' ? 'BS' : $supplierCurrency;
-        $exchangeRate = ExchangeRate::where('currency_code', $currencyCode)->first();
+        $exchangeRate = $exchangeRates->get($currencyCode);
 
-        if (!$exchangeRate) {
-            return round($totalUSD, 2); // Fallback a USD
+        if (!$exchangeRate || $exchangeRate->rate <= 0) {
+            return round($totalUSD, 2);
         }
 
         return round($totalUSD * $exchangeRate->rate, 2);
     }
 
     /**
-     * Calcular montos restantes considerando pagos parciales
+     * Calcular los datos de indexación sin subconsultas
      */
-    public function calculateRemainingAmounts(Collection $invoices): array
+    private function calculateIndexedAmountData(Invoice $invoice, Collection $exchangeRates): array
     {
-        $invoiceIds = $invoices->pluck('id');
-        $payments = InvoicePayment::whereHas('invoices', function ($query) use ($invoiceIds) {
-            $query->whereIn('id', $invoiceIds);
-        })->get();
-
-        $totalAmountUSD = $invoices->sum('total_usd');
-        $totalAmountOriginal = $invoices->sum('total_amount');
-        $remainingAmountUSD = $totalAmountUSD;
-        $remainingAmountOriginal = $totalAmountOriginal;
-
-        if ($payments->count() > 0) {
-            // Calcular total pagado en USD
-            $totalPaidUSD = 0;
-            foreach ($payments as $payment) {
-                if ($payment->payment_method === 'USD') {
-                    $totalPaidUSD += $payment->amount;
-                } else {
-                    $exchangeRate = ExchangeRate::where('currency_code', $payment->payment_method)->first();
-                    if ($exchangeRate) {
-                        $totalPaidUSD += round($payment->amount / $exchangeRate->rate, 2);
-                    }
-                }
-            }
-
-            // Calcular monto restante
-            $remainingAmountUSD = max(0, $totalAmountUSD - $totalPaidUSD);
-
-            // Convertir monto restante a moneda original
-            $firstInvoice = $invoices->first();
-            if ($firstInvoice->currency === 'Bs') {
-                $exchangeRate = ExchangeRate::where('currency_code', 'VES')->first();
-                if ($exchangeRate) {
-                    $remainingAmountOriginal = round($remainingAmountUSD * $exchangeRate->rate, 2);
-                }
-            } elseif ($firstInvoice->currency === 'COP') {
-                $exchangeRate = ExchangeRate::where('currency_code', 'COP')->first();
-                if ($exchangeRate) {
-                    $remainingAmountOriginal = round($remainingAmountUSD * $exchangeRate->rate, 2);
-                }
-            } else {
-                $remainingAmountOriginal = $remainingAmountUSD;
-            }
+        if (!$invoice->is_indexed || $invoice->currency !== 'Bs') {
+            return [
+                'original_amount' => $invoice->total_amount,
+                'original_amount_usd' => $invoice->total_usd,
+                'is_indexed' => false
+            ];
         }
 
+        $exchangeRate = $exchangeRates->get('BS');
+        if (!$exchangeRate) {
+            return [
+                'original_amount' => $invoice->total_amount,
+                'original_amount_usd' => $invoice->total_usd,
+                'is_indexed' => false
+            ];
+        }
+
+        $indexedAmountBs = round($invoice->total_usd * $exchangeRate->rate, 2);
+
         return [
-            'total_amount_usd' => $totalAmountUSD,
-            'total_amount_original' => $totalAmountOriginal,
-            'remaining_amount_usd' => $remainingAmountUSD,
-            'remaining_amount_original' => $remainingAmountOriginal
+            'original_amount' => $invoice->total_amount,
+            'original_amount_usd' => $invoice->total_usd,
+            'indexed_amount' => $indexedAmountBs,
+            'indexed_amount_usd' => $invoice->total_usd,
+            'is_indexed' => true,
+            'bcv_rate' => $exchangeRate->rate,
+            'rate_date' => $exchangeRate->updated_at
         ];
     }
 }

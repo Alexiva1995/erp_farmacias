@@ -54,10 +54,11 @@ class UpdateExchangeRate extends Command
         }
 
         if ($bcvRate && floatval($bcvRate) > 0) {
-            ExchangeRate::updateOrCreate(
-                ['currency_code' => 'BS'],
-                ['rate' => floatval($bcvRate), 'source' => null]
-            );
+            ExchangeRate::create([
+                'currency_code' => 'BS',
+                'rate' => floatval($bcvRate),
+                'source' => null,
+            ]);
             Cache::forget('resources.exchange_rate.BS');
             $this->info("Dólar BCV actualizado: {$bcvRate} BS");
         } else {
@@ -91,10 +92,11 @@ class UpdateExchangeRate extends Command
         }
 
         if ($binanceRate && floatval($binanceRate) > 0) {
-            ExchangeRate::updateOrCreate(
-                ['currency_code' => 'BINANCE'],
-                ['rate' => floatval($binanceRate), 'source' => 'binance']
-            );
+            ExchangeRate::create([
+                'currency_code' => 'BINANCE',
+                'rate' => floatval($binanceRate),
+                'source' => 'binance',
+            ]);
             Cache::forget('resources.exchange_rate.BINANCE');
             $this->info("Dólar Binance actualizado: {$binanceRate} BS");
         } else {
@@ -127,10 +129,11 @@ class UpdateExchangeRate extends Command
         }
 
         if ($eurToVes && floatval($eurToVes) > 0) {
-            ExchangeRate::updateOrCreate(
-                ['currency_code' => 'EUR'],
-                ['rate' => floatval($eurToVes), 'source' => null]
-            );
+            ExchangeRate::create([
+                'currency_code' => 'EUR',
+                'rate' => floatval($eurToVes),
+                'source' => null,
+            ]);
             Cache::forget('resources.exchange_rate.EUR');
             $this->info("Euro actualizado: {$eurToVes} BS");
         } else {

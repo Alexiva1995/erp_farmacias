@@ -37,29 +37,7 @@ class SupplierIaAssistantReportController extends Controller
     public function stats(IaAssistantReportRequest $request): JsonResponse
     {
         $filtros = $this->prepararFiltros($request);
-        
-        // Obtenemos todos los productos filtrados sin hidratar para mayor velocidad
-        $items = $this->iaAssistantReportService->getFilteredReportWithoutPaginate($filtros);
-
-        $stats = [
-            'necesitan' => 0,
-            'exceso' => 0,
-            'ok' => 0
-        ];
-
-        foreach ($items as $item) {
-            $solicitarVal = (float)($item->solicitar ?? 0);
-            $loteQuantity = (float)($item->lote_quantity ?? 0);
-
-            // Sincronizado con la lógica de UI y Repository
-            if ($solicitarVal > 0 || ($solicitarVal == 0 && $loteQuantity <= 0)) {
-                $stats['necesitan']++;
-            } elseif ($solicitarVal < 0) {
-                $stats['exceso']++;
-            } else {
-                $stats['ok']++;
-            }
-        }
+        $stats = $this->iaAssistantReportService->getStatsReport($filtros);
 
         return ApiResponse::success($stats, "ok", 200);
     }

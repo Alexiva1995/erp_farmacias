@@ -8,6 +8,7 @@ const props = defineProps({
   employees: { type: Array, default: () => [] },
   laboratories: { type: Array, default: () => [] },
   errors: { type: Object, default: () => ({}) },
+  saving: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(["update:modelValue", "save", "clear-errors"]);
@@ -371,7 +372,8 @@ const getLaboratoryColor = (index) => {
               block
               height="50"
               class="font-weight-black rounded-lg shadow-primary text-button uppercase"
-              :disabled="!formData.employee_id || (formData.laboratories.length === 0 && !formData.new_laboratory_id)"
+              :loading="props.saving"
+              :disabled="props.saving || !formData.employee_id || (formData.laboratories.length === 0 && !formData.new_laboratory_id)"
               @click="handleSubmit"
             >
               <VIcon start icon="tabler-device-floppy" size="18" class="me-2" />

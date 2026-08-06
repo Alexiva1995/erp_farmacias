@@ -2,6 +2,8 @@
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { computed, nextTick, onMounted, ref, watch } from "vue";
+import InvoiceBasicInfoForm from "./components/InvoiceBasicInfoForm.vue";
+import InvoiceFinancialForm from "./components/InvoiceFinancialForm.vue";
 
 const props = defineProps({
   invoiceId: { type: [Number, String], default: null },
@@ -50,15 +52,6 @@ const selectedSupplier = computed(() => {
     suppliers.value.find((s) => s.id === formData.value.supplier_id) || null
   );
 });
-
-const translatePaymentMethodType = (type) => {
-  const translations = {
-    invoice_date: "Fecha de factura",
-    early_payment: "Pronto Pago",
-    custom: "Personalizado",
-  };
-  return translations[type] || type;
-};
 
 const isInformalSupplier = computed(() => {
   if (!selectedSupplier.value) return false;
@@ -110,9 +103,6 @@ const calculatePaymentDate = () => {
   if (!selectedSupplier.value) return;
 
   if (!selectedSupplier.value.payment_due_type) {
-    console.warn(
-      "El proveedor no tiene configuración de fecha de pago (payment_due_type)",
-    );
     return;
   }
 
@@ -181,11 +171,7 @@ const calculatePaymentDate = () => {
       calculatedDate = null;
   }
 
-  if (calculatedDate) {
-    formData.value.payment_date = calculatedDate;
-  } else {
-    formData.value.payment_date = null;
-  }
+  formData.value.payment_date = calculatedDate;
 };
 
 const shouldShowExchangeRate = computed(() => {
@@ -270,7 +256,6 @@ watch(
           formData.value.invoice_number = seq;
           formData.value.control_number = seq;
         } catch (e) {
-          console.error("Error al obtener la secuencia correlativa informal, autogenerando en frontend", e);
           const nowObj = new Date();
           const yyyy = nowObj.getFullYear();
           const mm = String(nowObj.getMonth() + 1).padStart(2, '0');
@@ -379,7 +364,6 @@ const fetchInvoiceData = async () => {
     await nextTick();
     calculatePaymentDate();
   } catch (error) {
-    console.error("Error al cargar la factura:", error);
     toast.error("No se pudo cargar la información de la factura.");
     emit("back-to-list");
   } finally {
@@ -398,7 +382,6 @@ const fetchSuppliers = async () => {
     });
     suppliers.value = response.data.data ?? response.data;
   } catch (error) {
-    console.error("Error al obtener los proveedores:", error);
     toast.error("No se pudieron cargar los proveedores.");
   } finally {
     loadingSuppliers.value = false;
@@ -418,11 +401,14 @@ const fetchDiscountRules = async (supplierId) => {
       description: `${rule.days} días con un descuento de ${rule.descPorcentaje}%`,
     }));
   } catch (error) {
-    console.error("Error al obtener las reglas de descuento:", error);
     discountRules.value = [];
   } finally {
     loadingRules.value = false;
   }
+};
+
+const handleCancel = () => {
+  emit("back-to-list");
 };
 
 const handleSubmit = async () => {
@@ -454,7 +440,6 @@ const handleSubmit = async () => {
       resetFormFields();
     }
   } catch (error) {
-    console.error("Error al procesar la factura:", error);
     if (error.response && error.response.status === 422) {
       validationErrors.value = error.response.data.errors || {};
       const errors = Object.values(error.response.data.errors).flat();
@@ -466,7 +451,6 @@ const handleSubmit = async () => {
     loading.value = false;
   }
 };
-
 </script>
 
 <template>
@@ -482,194 +466,29 @@ const handleSubmit = async () => {
         </div>
 
         <VForm v-else @submit.prevent="handleSubmit">
-          <VRow index="0" density="compact" class="mb-2">
-            <VCol cols="12" md="4">
-              <VAutocomplete
-                v-model="formData.supplier_id"
-                :items="suppliers"
-                :loading="loadingSuppliers"
-                item-title="name"
-                item-value="id"
-                label="Proveedor"
-                placeholder="Busque un proveedor"
-                :error-messages="validationErrors.supplier_id"
-              />
-            </VCol>
-            <VCol cols="12" md="4">
-              <VTextField
-                v-model="formData.invoice_number"
-                label="N° de factura"
-                :disabled="isInformalSupplier"
-                :error-messages="validationErrors.invoice_number"
-              />
-            </VCol>
-            <VCol cols="12" md="4">
-              <VTextField
-                v-model="formData.control_number"
-                label="N° de Control"
-                :disabled="isInformalSupplier"
-                :error-messages="validationErrors.control_number"
-              />
-            </VCol>
-          </VRow>
-
-          <VRow index="1" density="compact" class="mb-2">
-            <VCol cols="12" md="3">
-              <VTextField
-                v-model="formData.created_invoice_date"
-                label="F. de Emisión"
-                type="date"
-                :error-messages="validationErrors.created_invoice_date"
-              />
-            </VCol>
-            <VCol cols="12" md="3">
-              <VTextField
-                v-model="formData.received_date"
-                label="F. de Recibo"
-                type="date"
-                :error-messages="validationErrors.received_date"
-              />
-            </VCol>
-            <VCol cols="12" md="3">
-              <VTextField
-                v-model="formData.exp_date"
-                label="Vencimiento"
-                type="date"
-                :error="!!expDateError"
-                :error-messages="validationErrors.exp_date || expDateError"
-              />
-            </VCol>
-            <VCol cols="12" md="3">
-              <VTextField
-                v-model="formData.payment_date"
-                label="Fecha de Pago"
-                type="date"
-                hint="Auto-calculado"
-                persistent-hint
-                readonly
-                variant="filled"
-                :error-messages="validationErrors.payment_date"
-              />
-            </VCol>
-          </VRow>
-
-          <VRow v-if="!isEditMode && selectedSupplier" class="mb-4">
-            <VCol cols="12">
-              <VAlert
-                color="primary"
-                variant="tonal"
-                icon="tabler-info-circle"
-                class="rounded pa-3"
-              >
-                <div class="d-flex align-center flex-wrap gap-2">
-                  <span class="text-body-2 font-weight-medium">Configuración de Pago:</span>
-                  <VChip color="primary" size="small" variant="flat" class="ml-2">
-                    {{ translatePaymentMethodType(selectedSupplier.payment_due_type) || "No definido" }}
-                  </VChip>
-                  <VChip v-if="selectedSupplier.custom_due_days" color="secondary" size="small" variant="tonal">
-                    {{ selectedSupplier.custom_due_days }} días
-                  </VChip>
-                  <VSpacer />
-                  <span class="text-caption text-medium-emphasis italic">
-                     La fecha de pago se recalcula automáticamente basado en estas reglas.
-                  </span>
-                </div>
-              </VAlert>
-            </VCol>
-          </VRow>
+          <InvoiceBasicInfoForm
+            :form-data="formData"
+            :suppliers="suppliers"
+            :loading-suppliers="loadingSuppliers"
+            :validation-errors="validationErrors"
+            :exp-date-error="expDateError"
+            :selected-supplier="selectedSupplier"
+            :is-informal-supplier="isInformalSupplier"
+            :is-edit-mode="isEditMode"
+          />
 
           <VDivider class="my-4" />
-          
-          <!-- Bloque Financiero -->
-          <VRow index="2" density="compact" class="align-center mb-2">
-            <VCol cols="12" md="2">
-              <VSelect
-                v-model="formData.currency"
-                :items="currencyOptions"
-                label="Moneda"
-                item-title="title"
-                item-value="value"
-                variant="solo-filled"
-                flat
-                :error-messages="validationErrors.currency"
-              >
-                <template #prepend-inner>
-                   <VIcon icon="tabler-coin" color="primary" size="20" />
-                </template>
-              </VSelect>
-            </VCol>
-            <VCol v-if="shouldShowExchangeRate" cols="12" md="2">
-              <VExpandTransition>
-                <VTextField
-                  v-model.number="formData.exchange_rate"
-                  label="Tasa"
-                  type="number"
-                  variant="outlined"
-                  color="primary"
-                  :error-messages="validationErrors.exchange_rate"
-                >
-                   <template #prepend-inner>
-                    <VIcon icon="tabler-trending-up" size="20" />
-                  </template>
-                </VTextField>
-              </VExpandTransition>
-            </VCol>
-            <VCol cols="12" md="2">
-              <VTextField
-                v-model.number="formData.exempt_amount"
-                label="Exento"
-                type="number"
-                :prefix="getCurrencySymbol"
-                variant="underlined"
-                :error-messages="validationErrors.exempt_amount"
-              />
-            </VCol>
-            <VCol cols="12" md="3">
-              <VTextField
-                v-model.number="formData.taxable_base"
-                label="Base (16%)"
-                type="number"
-                :prefix="getCurrencySymbol"
-                variant="underlined"
-                :error-messages="validationErrors.taxable_base"
-              />
-            </VCol>
-            <VCol cols="12" md="3">
-              <VTextField
-                :model-value="computedTaxAmount"
-                label="IVA (Auto)"
-                type="number"
-                :prefix="getCurrencySymbol"
-                readonly
-                variant="underlined"
-                :error-messages="validationErrors.tax_amount"
-              />
-            </VCol>
-          </VRow>
 
-          <!-- Totales Minimalistas -->
-          <VRow index="3" density="compact" class="mt-4">
-            <VCol cols="12" md="6">
-              <VAlert
-                color="primary"
-                variant="outlined"
-                class="pa-4 d-flex justify-space-between align-center"
-              >
-                <span class="text-subtitle-2 text-medium-emphasis">Total Factura ({{ formData.currency }})</span>
-                <span class="text-h5 font-weight-bold text-primary">{{ getCurrencySymbol }} {{ computedTotalAmount }}</span>
-              </VAlert>
-            </VCol>
-            <VCol cols="12" md="6">
-              <VAlert
-                color="success"
-                variant="outlined"
-                class="pa-4 d-flex justify-space-between align-center"
-              >
-                <span class="text-subtitle-2 text-medium-emphasis">Referencia Total (USD)</span>
-                <span class="text-h5 font-weight-bold text-success">$ {{ computedTotalUsd }}</span>
-              </VAlert>
-            </VCol>
-          </VRow>
+          <InvoiceFinancialForm
+            :form-data="formData"
+            :currency-options="currencyOptions"
+            :should-show-exchange-rate="shouldShowExchangeRate"
+            :get-currency-symbol="getCurrencySymbol"
+            :computed-tax-amount="computedTaxAmount"
+            :computed-total-amount="computedTotalAmount"
+            :computed-total-usd="computedTotalUsd"
+            :validation-errors="validationErrors"
+          />
         </VForm>
       </VCardText>
 

@@ -1,6 +1,7 @@
 <script setup>
 import ResignationFilters from "@/components/ResignationFilters.vue";
 import ResignationFormDialog from "@/components/dialogs/ResignationFormDialog.vue";
+import ResignationStatusDialog from "@/components/dialogs/ResignationStatusDialog.vue";
 import { toast } from "@/plugins/sweetalert";
 import axios from "@/plugins/axios";
 import Swal from "sweetalert2";
@@ -11,8 +12,14 @@ const { mobile } = useDisplay();
 
 // Estado reactivo
 const loading = ref(false);
+const actionLoading = ref(false);
 const resignations = ref([]);
 const search = ref("");
+
+// Paginación Servidor
+const page = ref(1);
+const perPage = ref(10);
+const totalItems = ref(0);
 
 // Filtros avanzados
 const filters = ref({
@@ -46,25 +53,24 @@ const headers = [
 const fetchResignations = async () => {
   loading.value = true;
   try {
-    const hasFilters = search.value || Object.values(filters.value).some(v => v !== null && v !== "");
-    let response;
+    const params = {
+      page: page.value,
+      perPage: perPage.value,
+    };
 
-    if (hasFilters) {
-      const params = {};
-      if (search.value) params.search = search.value;
-      if (filters.value.resignation_type) params.resignation_type = filters.value.resignation_type;
-      if (filters.value.date_from) params.date_from = filters.value.date_from;
-      if (filters.value.date_to) params.date_to = filters.value.date_to;
-      
-      response = await axios.get("/rrhh/resignations", { params });
-    } else {
-      response = await axios.get("/rrhh/resignations");
-    }
+    if (search.value) params.search = search.value;
+    if (filters.value.resignation_type) params.resignation_type = filters.value.resignation_type;
+    if (filters.value.date_from) params.date_from = filters.value.date_from;
+    if (filters.value.date_to) params.date_to = filters.value.date_to;
 
+    const response = await axios.get("/rrhh/resignations", { params });
     const { data } = response;
 
     if (data.success) {
       resignations.value = data.data || [];
+      if (data.pagination) {
+        totalItems.value = data.pagination.total;
+      }
     } else {
       toast.error("Error en la respuesta del servidor");
     }
@@ -84,6 +90,7 @@ const handleClearFilters = () => {
     date_to: null,
     status: null,
   };
+  page.value = 1;
 };
 
 const openToggleConfirmDialog = (employeeId, currentStatus, employeeName) => {
@@ -97,6 +104,7 @@ const openToggleConfirmDialog = (employeeId, currentStatus, employeeName) => {
 };
 
 const confirmToggleStatus = async () => {
+  actionLoading.value = true;
   try {
     await axios.put("/rrhh/resignations/toggle-employee-status", {
       employee_id: employeeToToggle.value.id,
@@ -107,12 +115,14 @@ const confirmToggleStatus = async () => {
       `Empleado ${newStatus.value ? "activado" : "desactivado"} exitosamente`
     );
 
-    fetchResignations();
+    await fetchResignations();
     showConfirmDialog.value = false;
     employeeToToggle.value = null;
     newStatus.value = null;
   } catch (error) {
     toast.error("Error al cambiar el estado del empleado");
+  } finally {
+    actionLoading.value = false;
   }
 };
 
@@ -266,7 +276,16 @@ const handleGenerateResignation = () => {
   showResignationDialog.value = true;
 };
 
+const handleOptionsUpdate = (options) => {
+  if (options.page !== page.value || options.itemsPerPage !== perPage.value) {
+    page.value = options.page;
+    perPage.value = options.itemsPerPage;
+    fetchResignations();
+  }
+};
+
 watch([search, filters], () => {
+  page.value = 1;
   fetchResignations();
 }, { deep: true });
 
@@ -288,15 +307,18 @@ onMounted(() => {
 
       <!-- Listado: Tabla o Cards -->
       <VCard class="rounded-lg border shadow-sm overflow-hidden">
-        <!-- Vista de Escritorio: Tabla Premium -->
-        <VDataTable
+        <!-- Vista de Escritorio: Tabla Premium Paginada por Servidor -->
+        <VDataTableServer
           v-if="!mobile"
+          v-model:page="page"
+          v-model:items-per-page="perPage"
           :headers="headers"
           :items="resignations"
+          :items-length="totalItems"
           :loading="loading"
-          :items-per-page="10"
           class="premium-table text-no-wrap"
           density="compact"
+          @update:options="handleOptionsUpdate"
         >
           <template #item.id="{ item }">
             <span class="font-weight-black text-primary">{{ item.id }}</span>
@@ -381,11 +403,11 @@ onMounted(() => {
               </VTooltip>
             </div>
           </template>
-        </VDataTable>
+        </VDataTableServer>
 
         <!-- Vista Móvil: Cards Premium -->
         <div v-else class="pa-4 bg-light">
-          <VRow dense>
+          <VRow dense v-if="!loading">
             <VCol v-for="item in resignations" :key="item.id" cols="12">
               <VCard class="rounded-lg border shadow-sm mb-2 overflow-hidden">
                 <div class="pa-3 border-b d-flex justify-space-between align-center">
@@ -448,7 +470,7 @@ onMounted(() => {
             </VCol>
           </VRow>
           
-          <div v-if="resignations.length === 0" class="text-center py-8">
+          <div v-if="!loading && resignations.length === 0" class="text-center py-8">
             <VIcon icon="tabler-ghost" size="48" color="disabled" class="mb-2" />
             <div class="text-xs font-weight-bold text-disabled">No se encontraron resultados</div>
           </div>
@@ -456,94 +478,15 @@ onMounted(() => {
       </VCard>
     </div>
 
-    <!-- Modal de Confirmación -->
-    <VDialog v-model="showConfirmDialog" max-width="500px" persistent>
-      <VCard class="rounded-lg overflow-hidden">
-        <VCardTitle class="d-flex align-center pa-4">
-          <VIcon
-            :icon="newStatus ? 'tabler-user-plus' : 'tabler-user-minus'"
-            :color="newStatus ? 'success' : 'error'"
-            class="me-3"
-          />
-          <span class="text-h6 font-weight-black">
-            {{ newStatus ? "Activar Empleado" : "Desactivar Empleado" }}
-          </span>
-        </VCardTitle>
-
-        <VDivider />
-
-        <VCardText class="pt-4 pa-4">
-          <div class="text-sm font-weight-black text-primary mb-4">
-            {{ employeeToToggle?.name }}
-          </div>
-
-          <div v-if="newStatus" class="text-sm font-weight-medium">
-            <VIcon icon="tabler-info-circle" color="success" class="me-2" size="18" />
-            ¿Está seguro de que desea activar este empleado?
-          </div>
-
-          <div v-else class="text-sm font-weight-medium">
-            <VIcon icon="tabler-info-circle" color="error" class="me-2" size="18" />
-            ¿Está seguro de que desea desactivar este empleado?
-          </div>
-
-          <VAlert
-            :color="newStatus ? 'success' : 'error'"
-            variant="tonal"
-            class="mt-4 rounded-lg"
-          >
-            <template #prepend>
-              <VIcon :icon="newStatus ? 'tabler-eye' : 'tabler-eye-off'" />
-            </template>
-
-            <div v-if="newStatus">
-              <strong class="text-xs font-weight-black uppercase"
-                >El empleado volverá a aparecer en la lista</strong
-              >
-              <div class="text-xs mt-1">
-                Podrá acceder al sistema y realizar sus funciones normalmente.
-              </div>
-            </div>
-
-            <div v-else>
-              <strong class="text-xs font-weight-black uppercase"
-                >El empleado ya no aparecerá en la lista</strong
-              >
-              <div class="text-xs mt-1">
-                No podrá acceder al sistema hasta que sea reactivado.
-              </div>
-            </div>
-          </VAlert>
-        </VCardText>
-
-        <VDivider />
-
-        <VCardActions class="pa-4">
-          <VBtn
-            color="secondary"
-            variant="tonal"
-            @click="cancelToggleStatus"
-            class="flex-grow-1 rounded-lg font-weight-black"
-          >
-            <VIcon icon="tabler-x" class="me-2" size="18" />
-            Cancelar
-          </VBtn>
-          <VBtn
-            :color="newStatus ? 'success' : 'error'"
-            variant="flat"
-            @click="confirmToggleStatus"
-            class="flex-grow-1 rounded-lg font-weight-black"
-          >
-            <VIcon
-              icon="tabler-check"
-              class="me-2"
-              size="18"
-            />
-            {{ newStatus ? "Activar" : "Desactivar" }}
-          </VBtn>
-        </VCardActions>
-      </VCard>
-    </VDialog>
+    <!-- Modal Desacoplado de Estado del Empleado -->
+    <ResignationStatusDialog
+      v-model="showConfirmDialog"
+      :employee="employeeToToggle"
+      :new-status="newStatus"
+      :loading="actionLoading"
+      @confirm="confirmToggleStatus"
+      @cancel="cancelToggleStatus"
+    />
 
     <!-- Modal de formulario de renuncia -->
     <ResignationFormDialog

@@ -33,14 +33,7 @@ class ProfitabilityServices implements Profitability
         $settings = $this->profitabilityRepository->store($data);
         $percentage = (float) $data['default_profitability_percentage'];
 
-        $productIds = Product::query()
-            ->whereDoesntHave('profitability')
-            ->orWhereHas('profitability', fn ($q) => $q->where('is_locked', '!=', 1))
-            ->pluck('id');
-
-        foreach ($productIds as $productId) {
-            $this->updateProductPrice((int) $productId, $percentage);
-        }
+        $this->applyGlobalProfitabilityToAllProductsWithPercentage($percentage);
 
         return $settings;
     }
@@ -48,14 +41,14 @@ class ProfitabilityServices implements Profitability
     public function storeProduct(array $data): Model
     {
         $profitability = $this->profitabilityRepository->storeProduct($data);
-        $this->updateProductPrice($data['product_id'], $data['profitability_percentage']);
+        $this->updateProductPrice((int) $data['product_id'], (float) $data['profitability_percentage']);
         return $profitability;
     }
 
     public function editProduct(array $data): Model
     {
         $profitability = $this->profitabilityRepository->editProduct($data);
-        $this->updateProductPrice($data['product_id'], $data['profitability_percentage']);
+        $this->updateProductPrice((int) $data['product_id'], (float) $data['profitability_percentage']);
         return $profitability;
     }
 
@@ -75,29 +68,38 @@ class ProfitabilityServices implements Profitability
         }
 
         $percentage = (float) $settings->default_profitability_percentage;
-
-        // Obtener IDs de productos que no tienen rentabilidad o que no están bloqueados
-        $productIds = Product::query()
-            ->whereDoesntHave('profitability')
-            ->orWhereHas('profitability', fn ($q) => $q->where('is_locked', '!=', 1))
-            ->pluck('id');
-
-        foreach ($productIds as $productId) {
-            $this->updateProductPrice((int) $productId, $percentage);
-        }
+        $this->applyGlobalProfitabilityToAllProductsWithPercentage($percentage);
     }
 
-    private function updateProductPrice(int $productId, float $percentage): void
+    private function applyGlobalProfitabilityToAllProductsWithPercentage(float $percentage): void
     {
-        $product = \App\Models\Product::find($productId);
-        if ($product) {
-            $generalSettings = \Illuminate\Support\Facades\DB::table('general_settings')->first();
-            $useCompound = $generalSettings && isset($generalSettings->profitability_calculation_type) && $generalSettings->profitability_calculation_type === 'compound';
+        $generalSettings = \Illuminate\Support\Facades\DB::table('general_settings')->first();
+        $useCompound = $generalSettings && isset($generalSettings->profitability_calculation_type) && $generalSettings->profitability_calculation_type === 'compound';
+        $roundUsdUp = $generalSettings && !empty($generalSettings->round_usd_up);
 
-            if ($useCompound) {
-                $settings = $this->consultOne();
-                $productProfitability = \App\Models\ProductProfitability::where('product_id', $productId)->first();
+        $query = Product::query()
+            ->whereDoesntHave('profitability')
+            ->orWhereHas('profitability', fn ($q) => $q->where('is_locked', '!=', 1));
 
+        if (!$useCompound) {
+            $multiplier = 1 + ($percentage / 100);
+            if ($roundUsdUp) {
+                $query->update([
+                    'sale_price' => \Illuminate\Support\Facades\DB::raw("CEIL(ROUND(unit_cost * {$multiplier}, 4))")
+                ]);
+            } else {
+                $query->update([
+                    'sale_price' => \Illuminate\Support\Facades\DB::raw("ROUND(unit_cost * {$multiplier}, 2)")
+                ]);
+            }
+            return;
+        }
+
+        $settings = $this->consultOne();
+
+        $query->with('profitability')->chunkById(500, function ($products) use ($settings, $roundUsdUp) {
+            foreach ($products as $product) {
+                $productProfitability = $product->profitability;
                 $shippingCost = $productProfitability && $productProfitability->shipping_cost !== null ? (float)$productProfitability->shipping_cost : ($settings ? (float)$settings->shipping_cost : 0.0);
                 $packagingCost = $productProfitability && $productProfitability->packaging_cost !== null ? (float)$productProfitability->packaging_cost : ($settings ? (float)$settings->packaging_cost : 0.0);
                 $expenseMargin = $productProfitability && $productProfitability->expense_margin !== null ? (float)$productProfitability->expense_margin : ($settings ? (float)$settings->expense_margin : 0.0);
@@ -108,21 +110,59 @@ class ProfitabilityServices implements Profitability
                 $fixedExpenseAmount = $costWithTax * ($expenseMargin / 100.0);
                 $profitDenominator = 1.0 - ($profitMargin / 100.0);
                 if ($profitDenominator <= 0.0) {
-                    $profitDenominator = 0.01; // Evitar división por cero
+                    $profitDenominator = 0.01;
                 }
 
                 $newPrice = ($costWithTax + $shippingCost + $packagingCost + $fixedExpenseAmount) / $profitDenominator;
-            } else {
-                $newPrice = $product->unit_cost * (1 + ($percentage / 100));
+
+                if ($roundUsdUp) {
+                    $product->sale_price = ceil(round($newPrice, 4));
+                } else {
+                    $product->sale_price = round($newPrice, 2);
+                }
+                $product->save();
+            }
+        });
+    }
+
+    private function updateProductPrice(int $productId, float $percentage): void
+    {
+        $product = Product::with('profitability')->find($productId);
+        if (!$product) {
+            return;
+        }
+
+        $generalSettings = \Illuminate\Support\Facades\DB::table('general_settings')->first();
+        $useCompound = $generalSettings && isset($generalSettings->profitability_calculation_type) && $generalSettings->profitability_calculation_type === 'compound';
+
+        if ($useCompound) {
+            $settings = $this->consultOne();
+            $productProfitability = $product->profitability;
+
+            $shippingCost = $productProfitability && $productProfitability->shipping_cost !== null ? (float)$productProfitability->shipping_cost : ($settings ? (float)$settings->shipping_cost : 0.0);
+            $packagingCost = $productProfitability && $productProfitability->packaging_cost !== null ? (float)$productProfitability->packaging_cost : ($settings ? (float)$settings->packaging_cost : 0.0);
+            $expenseMargin = $productProfitability && $productProfitability->expense_margin !== null ? (float)$productProfitability->expense_margin : ($settings ? (float)$settings->expense_margin : 0.0);
+            $profitMargin = $productProfitability && $productProfitability->profit_margin !== null ? (float)$productProfitability->profit_margin : ($settings ? (float)$settings->profit_margin : 0.0);
+            $taxUsa = $productProfitability && $productProfitability->tax_usa !== null ? (float)$productProfitability->tax_usa : ($settings ? (float)$settings->tax_usa : 0.0);
+
+            $costWithTax = $product->unit_cost * (1.0 + ($taxUsa / 100.0));
+            $fixedExpenseAmount = $costWithTax * ($expenseMargin / 100.0);
+            $profitDenominator = 1.0 - ($profitMargin / 100.0);
+            if ($profitDenominator <= 0.0) {
+                $profitDenominator = 0.01;
             }
 
-            $roundUsdUp = $generalSettings && !empty($generalSettings->round_usd_up);
-            if ($roundUsdUp) {
-                $product->sale_price = ceil(round($newPrice, 4));
-            } else {
-                $product->sale_price = round($newPrice, 2);
-            }
-            $product->save();
+            $newPrice = ($costWithTax + $shippingCost + $packagingCost + $fixedExpenseAmount) / $profitDenominator;
+        } else {
+            $newPrice = $product->unit_cost * (1 + ($percentage / 100));
         }
+
+        $roundUsdUp = $generalSettings && !empty($generalSettings->round_usd_up);
+        if ($roundUsdUp) {
+            $product->sale_price = ceil(round($newPrice, 4));
+        } else {
+            $product->sale_price = round($newPrice, 2);
+        }
+        $product->save();
     }
 }

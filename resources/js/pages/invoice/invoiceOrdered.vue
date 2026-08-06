@@ -37,12 +37,6 @@ const hasActiveFilters = computed(() => {
   );
 });
 
-// Calcular el total acumulado en USD en base a las facturas actuales del listado
-const statsTotalUSD = computed(() => {
-  if (!invoices.value || invoices.value.length === 0) return 0;
-  return invoices.value.reduce((acc, inv) => acc + (inv.total_usd || 0), 0);
-});
-
 const fetchSuppliers = async () => {
   isLoadingFilters.value = true;
   try {
@@ -80,38 +74,34 @@ const fetchOrderedInvoices = async () => {
     totalInvoices.value = response.data.total;
   } catch (error) {
     console.error("Hubo un error al obtener las facturas:", error);
-    toast.error("Error al obtener las facturas finalizadas.");
+    toast.error("Error al obtener las facturas ordenadas.");
   } finally {
     loading.value = false;
   }
 };
 
 let debounceTimer;
-watch(
-  [
-    page,
-    itemsPerPage,
-    sortBy,
-    orderBy,
-    searchQuery,
-    selectedSupplier,
-    startDate,
-    endDate,
-  ],
-  () => {
-    if (currentView.value === "list") {
-      clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(() => fetchOrderedInvoices(), 300);
-    }
-  },
-  { deep: true },
-);
+
+// Watchers optimizados: reinician a la página 1 cuando los filtros cambian
+watch([searchQuery, selectedSupplier, startDate, endDate], () => {
+  page.value = 1;
+  if (currentView.value === "list") {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => fetchOrderedInvoices(), 300);
+  }
+});
+
+// Paginación y ordenamiento ejecutan consulta inmediatamente sin debounce innecesario
+watch([page, itemsPerPage, sortBy, orderBy], () => {
+  if (currentView.value === "list") {
+    fetchOrderedInvoices();
+  }
+});
 
 onMounted(() => {
   fetchSuppliers();
   fetchOrderedInvoices();
 
-  // Si hay un invoiceId en la query, abrir esa factura directamente
   if (route.query.invoiceId) {
     const invoiceId = parseInt(route.query.invoiceId);
     if (invoiceId) {
@@ -121,7 +111,6 @@ onMounted(() => {
   }
 });
 
-// Limpieza de temporizadores al desmontar el componente para evitar fugas de memoria
 onUnmounted(() => {
   if (debounceTimer) {
     clearTimeout(debounceTimer);
@@ -156,75 +145,37 @@ const handleReturnToList = () => {
 </script>
 
 <template>
-  <div class="container-fluid py-4 max-w-7xl mx-auto">
+  <div>
     <div v-if="currentView === 'list'">
-      <!-- Encabezado Premium -->
-      <div class="d-flex flex-wrap align-center justify-space-between gap-4 mb-6">
-        <div>
-          <h1 class="text-h4 font-weight-bold text-high-emphasis">Facturas Ordenadas</h1>
-          <p class="text-subtitle-2 text-medium-emphasis mt-1">
-            Historial de facturas procesadas y listas para su almacenamiento e indexación en inventario.
-          </p>
-        </div>
-      </div>
 
-      <!-- Tarjetas de Estadísticas Rápidas con Skeletons -->
-      <VRow class="mb-6">
-        <VCol cols="12" sm="6" md="4">
-          <VCard class="rounded-lg border shadow-sm" variant="flat">
-            <VSkeletonLoader v-if="loading && totalInvoices === 0" type="list-item-two-line" />
-            <VCardText v-else class="d-flex align-center justify-space-between p-4">
-              <div>
-                <span class="text-sm text-medium-emphasis">Total Facturas Ordenadas</span>
-                <h3 class="text-h4 font-weight-bold mt-1 text-primary">{{ totalInvoices }}</h3>
-              </div>
-              <VAvatar color="primary" variant="tonal" size="48" class="rounded-lg">
-                <VIcon icon="tabler-clipboard-check" size="24" />
-              </VAvatar>
-            </VCardText>
-          </VCard>
-        </VCol>
-        
-        <VCol cols="12" sm="6" md="4">
-          <VCard class="rounded-lg border shadow-sm" variant="flat">
-            <VSkeletonLoader v-if="loading && invoices.length === 0" type="list-item-two-line" />
-            <VCardText v-else class="d-flex align-center justify-space-between p-4">
-              <div>
-                <span class="text-sm text-medium-emphasis">Monto Acumulado (USD)</span>
-                <h3 class="text-h4 font-weight-bold mt-1 text-success">
-                  ${{ statsTotalUSD.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
-                </h3>
-              </div>
-              <VAvatar color="success" variant="tonal" size="48" class="rounded-lg">
-                <VIcon icon="tabler-currency-dollar" size="24" />
-              </VAvatar>
-            </VCardText>
-          </VCard>
-        </VCol>
-      </VRow>
 
       <!-- Sección de Filtros -->
-      <VCard class="mb-6 rounded-lg border shadow-sm" variant="flat">
-        <VSkeletonLoader v-if="isLoadingFilters" type="card-heading, actions" />
-        <InvoiceFilters
-          v-else
-          v-model:searchQuery="searchQuery"
-          v-model:selectedSupplier="selectedSupplier"
-          v-model:startDate="startDate"
-          v-model:endDate="endDate"
-          :suppliers="suppliers"
-          :loading="isLoadingFilters"
-          @clear="handleClearFilters"
-        />
-      </VCard>
+      <VSkeletonLoader v-if="isLoadingFilters" type="card-heading, actions" class="mb-6 rounded-lg" />
+      <InvoiceFilters
+        v-else
+        v-model:searchQuery="searchQuery"
+        v-model:selectedSupplier="selectedSupplier"
+        v-model:startDate="startDate"
+        v-model:endDate="endDate"
+        :suppliers="suppliers"
+        :loading="isLoadingFilters"
+        :show-add="false"
+        :show-bulk-delete="false"
+        @clear="handleClearFilters"
+        class="mb-6"
+      />
 
       <!-- Tabla de Facturas o Estado Vacío -->
-      <div v-if="invoices.length === 0 && !loading" class="text-center py-12 border rounded-lg bg-surface shadow-sm mb-6">
+      <VCard
+        v-if="invoices.length === 0 && !loading"
+        class="text-center py-12 px-4 rounded-lg mb-6"
+        variant="outlined"
+      >
         <VAvatar size="72" color="secondary" variant="tonal" class="mb-4">
           <VIcon icon="tabler-folder-off" size="40" class="text-secondary" />
         </VAvatar>
         <h3 class="text-h6 font-weight-bold text-high-emphasis">No se encontraron facturas</h3>
-        <p class="text-subtitle-2 text-medium-emphasis max-w-sm mx-auto mt-2">
+        <p class="text-subtitle-2 text-medium-emphasis mt-2">
           No hay facturas registradas en estado "Ordenado" que coincidan con los criterios de búsqueda actuales.
         </p>
         <VBtn
@@ -236,7 +187,7 @@ const handleReturnToList = () => {
         >
           Limpiar Filtros
         </VBtn>
-      </div>
+      </VCard>
 
       <InvoiceTable
         v-else
@@ -260,12 +211,3 @@ const handleReturnToList = () => {
     </div>
   </div>
 </template>
-
-<style scoped>
-.max-w-7xl {
-  max-width: 80rem;
-}
-.max-w-sm {
-  max-width: 24rem;
-}
-</style>

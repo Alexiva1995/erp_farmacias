@@ -21,9 +21,9 @@ class RetentionService implements RetentionContract
         return $this->retentionRepository->getInvoicesWithTax($filters, (int) $perPage);
     }
 
-    public function generateRetentions(array $invoiceIds): Retention
+    public function generateRetentions(array $invoiceIds, ?string $retentionDate = null): Retention
     {
-        return $this->retentionRepository->generateRetentions($invoiceIds);
+        return $this->retentionRepository->generateRetentions($invoiceIds, $retentionDate);
     }
 
     public function getGeneratedRetentions($filters = [], $perPage = 10): LengthAwarePaginator
@@ -114,9 +114,9 @@ class RetentionService implements RetentionContract
         ];
     }
 
-    public function generateAllPendingInRange(string $startDate, string $endDate): int
+    public function generateAllPendingInRange(string $startDate, string $endDate, ?string $retentionDate = null): int
     {
-        return $this->retentionRepository->generateAllPendingInRange($startDate, $endDate);
+        return $this->retentionRepository->generateAllPendingInRange($startDate, $endDate, $retentionDate);
     }
 
     public function deleteRetention(int $id): bool
@@ -127,5 +127,25 @@ class RetentionService implements RetentionContract
     public function updateRetention(int $id, array $data): Retention
     {
         return $this->retentionRepository->updateRetention($id, $data);
+    }
+
+    public function getRetentionWithInvoices(int $id): Retention
+    {
+        return $this->retentionRepository->getRetentionWithInvoices($id);
+    }
+
+    public function updateRetentionWithInvoices(int $id, array $data, array $invoices): Retention
+    {
+        return $this->retentionRepository->updateRetentionWithInvoices($id, $data, $invoices);
+    }
+
+    public function omitInvoicesUntilDate(string $cutoffDate): int
+    {
+        return $this->retentionRepository->omitInvoicesUntilDate($cutoffDate);
+    }
+
+    public function restoreOmittedInvoices(): int
+    {
+        return $this->retentionRepository->restoreOmittedInvoices();
     }
 }

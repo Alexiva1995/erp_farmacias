@@ -89,14 +89,16 @@ class ReservationServices
                 $firstName = $nameParts[0];
                 $lastName = $nameParts[1] ?? '';
 
-                $newClient = \App\Models\Client::create([
-                    'name' => $firstName,
-                    'last_name' => $lastName,
-                    'identification_type' => 'V-', // Por defecto Cédula Venezolana
-                    'identification' => $identification,
-                    'phone' => $normalizedPhone,
-                    'client_type' => 'Ocasional',
-                ]);
+                $newClient = \App\Models\Client::firstOrCreate(
+                    ['identification' => $identification],
+                    [
+                        'name' => $firstName,
+                        'last_name' => $lastName,
+                        'identification_type' => 'V-', // Por defecto Cédula Venezolana
+                        'phone' => $normalizedPhone,
+                        'client_type' => 'Ocasional',
+                    ]
+                );
                 $clientId = $newClient->id;
             }
         } elseif (!$clientId && !$identification) {

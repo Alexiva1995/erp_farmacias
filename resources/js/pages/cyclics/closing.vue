@@ -107,7 +107,8 @@ const fetchCycleStatus = async () => {
 
 onMounted(async () => {
   loading.value = true;
-  await Promise.all([fetchCycleStatus(), fetchData()]);
+  await fetchCycleStatus();
+  await fetchData();
 });
 
 onUnmounted(() => clearTimeout(debounceTimer));

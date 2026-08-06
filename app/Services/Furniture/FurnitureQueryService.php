@@ -5,14 +5,13 @@ declare(strict_types=1);
 namespace App\Services\Furniture;
 
 use App\Models\Furniture;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\Request;
 
 class FurnitureQueryService
 {
     /**
      * Calcula el valor total actual de todo el mobiliario
-     * considerando la depreciación por años
-     * 
-     * @return float
      */
     public function calculateTotalValue(): float
     {
@@ -21,38 +20,31 @@ class FurnitureQueryService
 
     /**
      * Obtiene el detalle del valor de cada mobiliario
-     * 
-     * @return array
      */
     public function getDetailedValues(): array
     {
         $furniture = Furniture::select(['id', 'name', 'cost', 'acquisition_year', 'annual_depreciation_rate'])->get();
-        $details = [];
-
-        foreach ($furniture as $item) {
-            $details[] = [
+        
+        return $furniture->map(function ($item) {
+            return [
                 'id' => $item->id,
                 'name' => $item->name,
-                'original_cost' => $item->cost,
+                'original_cost' => (float) $item->cost,
                 'current_value' => $item->getCurrentValue(),
-                'acquisition_year' => $item->acquisition_year,
-                'depreciation_rate' => $item->annual_depreciation_rate,
+                'acquisition_year' => (int) $item->acquisition_year,
+                'depreciation_rate' => (float) $item->annual_depreciation_rate,
             ];
-        }
-
-        return $details;
+        })->toArray();
     }
 
     /**
      * Obtiene estadísticas del mobiliario
-     * 
-     * @return array
      */
     public function getFurnitureStats(): array
     {
         $furniture = Furniture::select(['id', 'cost', 'acquisition_year', 'annual_depreciation_rate'])->get();
 
-        $totalOriginalCost = $furniture->sum('cost');
+        $totalOriginalCost = (float) $furniture->sum('cost');
         $totalCurrentValue = $this->calculateTotalValue();
         $totalDepreciation = $totalOriginalCost - $totalCurrentValue;
 
@@ -64,42 +56,55 @@ class FurnitureQueryService
             'depreciation_percentage' => $totalOriginalCost > 0 ? ($totalDepreciation / $totalOriginalCost) * 100 : 0,
         ];
     }
-    public function getFilteredQuery($request)
-    {
-        $query = Furniture::query();
 
-        // Filtro por búsqueda de nombre
+    /**
+     * Construye la consulta filtrada y optimizada para el listado de mobiliario
+     */
+    public function getFilteredQuery(Request $request): Builder
+    {
+        $query = Furniture::query()->select([
+            'id',
+            'name',
+            'cost',
+            'acquisition_year',
+            'annual_depreciation_rate',
+            'created_at',
+            'updated_at'
+        ]);
+
+        // Búsqueda por término
         if ($request->filled('q')) {
-            $searchTerm = $request->input('q');
+            $searchTerm = trim($request->input('q'));
             $query->where('name', 'LIKE', "%{$searchTerm}%");
         }
 
         // Filtro por año de adquisición
         if ($request->filled('acquisitionYear')) {
-            $query->where('acquisition_year', $request->input('acquisitionYear'));
+            $query->where('acquisition_year', (int) $request->input('acquisitionYear'));
         }
 
-        // Filtro por rango de depreciación
+        // Filtro por rango de depreciación acumulada aproximada
         if ($request->filled('depreciationRange')) {
+            $currentYear = (int) date('Y');
             $depreciationRange = $request->input('depreciationRange');
 
             switch ($depreciationRange) {
                 case 'low':
-                    $query->whereRaw('((YEAR(NOW()) - acquisition_year) * annual_depreciation_rate) <= 20');
+                    $query->whereRaw("(({$currentYear} - acquisition_year) * annual_depreciation_rate) <= 20");
                     break;
                 case 'medium':
-                    $query->whereRaw('((YEAR(NOW()) - acquisition_year) * annual_depreciation_rate) BETWEEN 21 AND 50');
+                    $query->whereRaw("(({$currentYear} - acquisition_year) * annual_depreciation_rate) BETWEEN 21 AND 50");
                     break;
                 case 'high':
-                    $query->whereRaw('((YEAR(NOW()) - acquisition_year) * annual_depreciation_rate) BETWEEN 51 AND 80');
+                    $query->whereRaw("(({$currentYear} - acquisition_year) * annual_depreciation_rate) BETWEEN 51 AND 80");
                     break;
                 case 'very_high':
-                    $query->whereRaw('((YEAR(NOW()) - acquisition_year) * annual_depreciation_rate) > 80');
+                    $query->whereRaw("(({$currentYear} - acquisition_year) * annual_depreciation_rate) > 80");
                     break;
             }
         }
 
-        // Filtro por rango de fechas de creación
+        // Filtro por fecha de creación
         if ($request->filled('startDate')) {
             $query->whereDate('created_at', '>=', $request->input('startDate'));
         }
@@ -109,41 +114,37 @@ class FurnitureQueryService
         }
 
         // Ordenamiento
-        if ($request->filled('sortBy') && $request->filled('orderBy')) {
+        $allowedSorts = ['id', 'name', 'cost', 'acquisition_year', 'annual_depreciation_rate', 'created_at'];
+        if ($request->filled('sortBy') && in_array($request->input('sortBy'), $allowedSorts, true)) {
             $sortBy = $request->input('sortBy');
-            $orderBy = $request->input('orderBy');
-
-            // Ordenamientos especiales que requieren cálculos
-            if ($sortBy === 'current_value') {
-                $query->orderByRaw("cost * GREATEST(0, 1 - ((YEAR(NOW()) - acquisition_year) * annual_depreciation_rate / 100)) {$orderBy}");
-            } elseif ($sortBy === 'depreciation_rate') {
-                $query->orderByRaw("((YEAR(NOW()) - acquisition_year) * annual_depreciation_rate) {$orderBy}");
-            } else {
-                // Ordenamientos normales
-                $query->orderBy($sortBy, $orderBy);
-            }
+            $orderBy = strtolower($request->input('orderBy')) === 'asc' ? 'asc' : 'desc';
+            $query->orderBy($sortBy, $orderBy);
+        } elseif ($request->input('sortBy') === 'current_value') {
+            $currentYear = (int) date('Y');
+            $orderBy = strtolower($request->input('orderBy')) === 'asc' ? 'asc' : 'desc';
+            $query->orderByRaw("cost * GREATEST(0, 1 - (({$currentYear} - acquisition_year) * annual_depreciation_rate / 100)) {$orderBy}");
         } else {
-            // Ordenamiento por defecto
-            $query->orderBy('created_at', 'desc');
+            $query->orderBy('id', 'desc');
         }
 
         return $query;
     }
+
+    /**
+     * Calcula la depreciación acumulada total del mobiliario
+     */
     public function calculateTotalDepreciation(): float
     {
-        $furniture = Furniture::select(['id', 'cost', 'acquisition_year', 'annual_depreciation_rate'])->get();
-        $totalDepreciation = 0;
-        $currentYear = \Carbon\Carbon::now()->year;
+        $currentYear = (int) date('Y');
 
-        foreach ($furniture as $item) {
-            $cost = (float) $item->cost;
-            $rateAsDecimal = (float) ($item->annual_depreciation_rate / 100);
-            $yearsDepreciated = max(0, $currentYear - (int) $item->acquisition_year);
-            $cumulativeDepreciationFactor = min(1.0, $rateAsDecimal * $yearsDepreciated);
-            
-            $totalDepreciation += $cost * $cumulativeDepreciationFactor;
-        }
+        $depreciation = Furniture::query()
+            ->selectRaw("
+                SUM(
+                    cost * LEAST(1.0, GREATEST(0, ({$currentYear} - acquisition_year)) * (annual_depreciation_rate / 100.0))
+                ) as total_depreciation
+            ")
+            ->value('total_depreciation');
 
-        return (float) round($totalDepreciation, 2);
+        return (float) round((float) ($depreciation ?? 0), 2);
     }
 }

@@ -321,12 +321,10 @@ function rowClass(item) {
       <span class="text-body-1 font-weight-medium">No hay grupos con productos filtrados</span>
     </div>
 
-    <!-- Skeleton de carga -->
-    <div v-else-if="loading" class="pa-4 d-flex flex-column gap-3">
-      <div v-for="n in 5" :key="n" class="rounded-lg border pa-3 skeleton-group">
-        <div class="skeleton-bar short mb-2" />
-        <div class="skeleton-bar medium" />
-      </div>
+    <!-- Cargador de carga limpio -->
+    <div v-else-if="loading" class="pa-12 text-center bg-white rounded-lg">
+      <VProgressCircular indeterminate color="primary" size="38" class="mb-3" />
+      <div class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Cargando grupos de sugerencias...</div>
     </div>
 
     <!-- Acordeón de grupos -->

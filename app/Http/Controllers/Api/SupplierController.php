@@ -224,14 +224,6 @@ class SupplierController extends Controller
      */
     public function storeLaboratory(StoreSupplierLaboratoryRequest $request, Supplier $supplier)
     {
-       /* dd($request->validated());
-        $link = $this->supplierActionService->attachLaboratory($supplier, $request->validated());
-
-        return response()->json([
-            "message" => "Laboratorio vinculado con éxito.",
-            "laboratory_link" => $link->load("laboratory"),
-        ]);*/
-
         $validated = $request->validated();
         $createdRules = [];
         $sentIds = Arr::pluck($validated['rulesLaboratory'], 'id');

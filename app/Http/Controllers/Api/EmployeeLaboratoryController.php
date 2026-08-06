@@ -27,7 +27,7 @@ class EmployeeLaboratoryController extends Controller
         $result = $this->queryService->getFilteredEmployeeLaboratories($data);
 
         return ApiResponse::success([
-            'data' => $result->items(),
+            'data' => \App\Http\Resources\EmployeeLaboratoryResource::collection($result->items()),
             'total' => $result->total(),
             'current_page' => $result->currentPage(),
             'per_page' => $result->perPage(),

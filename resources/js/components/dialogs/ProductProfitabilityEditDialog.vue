@@ -10,7 +10,7 @@ const props = defineProps({
   settings: { type: Object, default: () => ({}) },
 });
 
-const emit = defineEmits(["refresh", "close-modal"]);
+const emit = defineEmits(["refresh", "close-modal", "productUpdated"]);
 
 const percentage = ref(0);
 const shippingCost = ref(0);
@@ -81,10 +81,14 @@ async function saveProfitability() {
   };
 
   try {
-    await axios.post(url, data);
+    const response = await axios.post(url, data);
     toast.success("Rentabilidad del producto actualizada correctamente.");
     emit("close-modal");
-    emit("refresh");
+    if (response.data?.data) {
+      emit("productUpdated", response.data.data);
+    } else {
+      emit("refresh");
+    }
   } catch (error) {
     console.error("Error al guardar rentabilidad:", error);
     toast.error("Error al guardar la rentabilidad del producto.");

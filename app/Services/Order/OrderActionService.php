@@ -100,6 +100,19 @@ class OrderActionService
     public function getMyOpenOrder(int $sellerId): array
     {
         try {
+            // Asegurar que el vendedor tenga un turno de caja abierto al entrar al TPV
+            $openCashClosing = \App\Models\CashClosing::where('seller_id', $sellerId)
+                ->where('status', \App\Models\CashClosing::OPEN)
+                ->first();
+
+            if (!$openCashClosing) {
+                \App\Models\CashClosing::create([
+                    'seller_id' => $sellerId,
+                    'status' => \App\Models\CashClosing::OPEN,
+                    'opening_date' => \Illuminate\Support\Carbon::now(),
+                ]);
+            }
+
             $withRelations = [
                 'client',
                 'seller',
@@ -1163,13 +1176,19 @@ class OrderActionService
                 $client->save();
             }
 
-            if ($request->credit) {
+            $hasCreditInRequest = filter_var($request->credit, FILTER_VALIDATE_BOOLEAN) || 
+                collect($request->payments)->contains(function ($payment) {
+                    $method = is_array($payment) ? ($payment['method'] ?? '') : ($payment->method ?? '');
+                    return strtolower((string) $method) === 'credit';
+                });
+
+            if ($hasCreditInRequest) {
                 // El crédito siempre es por el total de la orden (solo completo)
                 $creditAmount = (float) $orderId->total_amount;
 
                 if ($creditAmount > 0) {
                     Credit::create([
-                        'client_id' => $request->client_id,
+                        'client_id' => $request->client_id ?? $orderId->client_id,
                         'order_id' => $orderId->id,
                         'credit_amount' => $creditAmount,
                         'pending_amount' => $creditAmount,
@@ -1270,19 +1289,32 @@ class OrderActionService
             }
 
 
-            if (isset($request->changeAmountUSD) && $request->changeAmountUSD > 0) {
-                // Único caso de resta física en caja: Vuelto otorgado de USD entregado en COP disponible
-                if (isset($request->changeAmount) && $request->changeAmount > 0) {
-                    $resourceService = app(\App\Services\Resources\ResourceService::class);
-                    $copRate = $resourceService->getExchangeRate('COPC') ?: 1;
-                    
-                    // Convertir el monto de vuelto USD a COP para descontar del fondo físico en pesos
-                    $copChangeAmount = $request->changeAmountUSD * $copRate;
-                    
-                    $current_cash->cop_cash -= $copChangeAmount;
-                    $current_cash->cop_conversion += $copChangeAmount;
+            // Descontar el vuelto entregado en efectivo para registrar únicamente el neto ingresado en caja
+            $changeAmount = (float) ($request->changeAmount ?? 0);
+            $changeAmountUSD = (float) ($request->changeAmountUSD ?? 0);
+            $orderCurrency = strtoupper($request->currency ?? 'COP');
+
+            if ($changeAmount > 0 || $changeAmountUSD > 0) {
+                if ($orderCurrency === 'COP') {
+                    $current_cash->cop_cash -= $changeAmount;
+                } elseif ($orderCurrency === 'BS') {
+                    $current_cash->bs_cash -= $changeAmount;
+                } elseif ($orderCurrency === 'USD') {
+                    if ($changeAmountUSD > 0 && $changeAmount > 0) {
+                        // Vuelto otorgado en COP para un pago recibido en USD
+                        $resourceService = app(\App\Services\Resources\ResourceService::class);
+                        $copRate = $resourceService->getExchangeRate('COPC') ?: 1;
+                        $copChangeAmount = $changeAmountUSD * $copRate;
+
+                        $current_cash->cop_cash -= $copChangeAmount;
+                        $current_cash->cop_conversion += $copChangeAmount;
+                        $current_cash->usd_conversion += $changeAmountUSD;
+                    } else {
+                        // Vuelto otorgado directamente en USD
+                        $vueltoUSD = $changeAmountUSD > 0 ? $changeAmountUSD : $changeAmount;
+                        $current_cash->usd_cash -= $vueltoUSD;
+                    }
                 }
-                $current_cash->usd_conversion += $request->changeAmountUSD;
             }
 
             // Recalcular todos los totales usando la lógica unificada en el modelo

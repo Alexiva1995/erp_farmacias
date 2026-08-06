@@ -18,11 +18,17 @@ class SocialBenefitController extends Controller
     {
         $data = [
             'search' => $request->search,
-            'perPage' => $request->perPage,
+            'perPage' => $request->perPage ?? 10,
         ];
-        $result = $this->socialBenefitServices->index($data);
+        $paginator = $this->socialBenefitServices->index($data);
 
-        return ApiResponse::success($result);
+        return ApiResponse::success([
+            'data' => \App\Http\Resources\SocialBenefitEmployeeResource::collection($paginator->items()),
+            'total' => $paginator->total(),
+            'per_page' => $paginator->perPage(),
+            'current_page' => $paginator->currentPage(),
+            'last_page' => $paginator->lastPage(),
+        ]);
     }
 
     public function payment(Employee $employee, Request $request)

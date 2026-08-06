@@ -61,11 +61,13 @@ declare global {
   const formatDateToMonthShort: typeof import('./resources/js/@core/utils/formatters.js')['formatDateToMonthShort']
   const formatMonth: typeof import('./resources/js/utils/formatters.js')['formatMonth']
   const formatNumber: typeof import('./resources/js/utils/formatters.js')['formatNumber']
+  const formatOrderItemForFrontend: typeof import('./resources/js/composables/useTpvItemFormatter.js')['formatOrderItemForFrontend']
   const formatPrice: typeof import('./resources/js/utils/formatters.js')['formatPrice']
   const generateDonationPDF: typeof import('./resources/js/utils/donationPdfGenerator.js')['generateDonationPDF']
   const getActivePinia: typeof import('pinia')['getActivePinia']
   const getCurrentInstance: typeof import('vue')['getCurrentInstance']
   const getCurrentScope: typeof import('vue')['getCurrentScope']
+  const getItemPriceByCurrency: typeof import('./resources/js/composables/useTpvItemFormatter.js')['getItemPriceByCurrency']
   const h: typeof import('vue')['h']
   const hexToRgb: typeof import('./resources/js/@core/utils/colorConverter.js')['hexToRgb']
   const ignorableWatch: typeof import('@vueuse/core')['ignorableWatch']
@@ -166,6 +168,7 @@ declare global {
   const templateRef: typeof import('@vueuse/core')['templateRef']
   const throttledRef: typeof import('@vueuse/core')['throttledRef']
   const throttledWatch: typeof import('@vueuse/core')['throttledWatch']
+  const ticketStyles: typeof import('./resources/js/composables/useCashClosurePrint.js')['ticketStyles']
   const toRaw: typeof import('vue')['toRaw']
   const toReactive: typeof import('@vueuse/core')['toReactive']
   const toRef: typeof import('vue')['toRef']
@@ -210,6 +213,7 @@ declare global {
   const useBroadcastChannel: typeof import('@vueuse/core')['useBroadcastChannel']
   const useBrowserLocation: typeof import('@vueuse/core')['useBrowserLocation']
   const useCached: typeof import('@vueuse/core')['useCached']
+  const useCashClosurePrint: typeof import('./resources/js/composables/useCashClosurePrint.js')['useCashClosurePrint']
   const useCeil: typeof import('@vueuse/math')['useCeil']
   const useCheckout: typeof import('./resources/js/composables/useCheckout.js')['useCheckout']
   const useClamp: typeof import('@vueuse/math')['useClamp']
@@ -249,6 +253,7 @@ declare global {
   const useEventListener: typeof import('@vueuse/core')['useEventListener']
   const useEventSource: typeof import('@vueuse/core')['useEventSource']
   const useExpenses: typeof import('./resources/js/composables/useExpenses.js')['useExpenses']
+  const useExpiryCharts: typeof import('./resources/js/composables/useExpiryCharts.js')['useExpiryCharts']
   const useEyeDropper: typeof import('@vueuse/core')['useEyeDropper']
   const useFavicon: typeof import('@vueuse/core')['useFavicon']
   const useFetch: typeof import('@vueuse/core')['useFetch']
@@ -295,6 +300,7 @@ declare global {
   const useObjectUrl: typeof import('@vueuse/core')['useObjectUrl']
   const useOffsetPagination: typeof import('@vueuse/core')['useOffsetPagination']
   const useOnline: typeof import('@vueuse/core')['useOnline']
+  const useOrderPrint: typeof import('./resources/js/composables/useOrderPrint.js')['useOrderPrint']
   const usePageLeave: typeof import('@vueuse/core')['usePageLeave']
   const useParallax: typeof import('@vueuse/core')['useParallax']
   const useParentElement: typeof import('@vueuse/core')['useParentElement']
@@ -316,6 +322,7 @@ declare global {
   const useRefHistory: typeof import('@vueuse/core')['useRefHistory']
   const useResizeObserver: typeof import('@vueuse/core')['useResizeObserver']
   const useResponsiveLeftSidebar: typeof import('./resources/js/@core/composable/useResponsiveSidebar.js')['useResponsiveLeftSidebar']
+  const useRetentionDates: typeof import('./resources/js/composables/useRetentionDates.js')['useRetentionDates']
   const useRound: typeof import('@vueuse/math')['useRound']
   const useRoute: typeof import('vue-router/auto')['useRoute']
   const useRouter: typeof import('vue-router/auto')['useRouter']
@@ -354,6 +361,25 @@ declare global {
   const useToNumber: typeof import('@vueuse/core')['useToNumber']
   const useToString: typeof import('@vueuse/core')['useToString']
   const useToggle: typeof import('@vueuse/core')['useToggle']
+  const useTpvBarcode: typeof import('./resources/js/composables/useTpvBarcode.js')['useTpvBarcode']
+  const useTpvCalculations: typeof import('./resources/js/composables/useTpvCalculations.js')['useTpvCalculations']
+  const useTpvCart: typeof import('./resources/js/composables/useTpvCart.js')['useTpvCart']
+  const useTpvCatalog: typeof import('./resources/js/composables/useTpvCatalog.js')['useTpvCatalog']
+  const useTpvCheckoutCalculations: typeof import('./resources/js/composables/useTpvCheckoutCalculations.js')['useTpvCheckoutCalculations']
+  const useTpvCheckoutManager: typeof import('./resources/js/composables/useTpvCheckoutManager.js')['useTpvCheckoutManager']
+  const useTpvCheckoutUI: typeof import('./resources/js/composables/useTpvCheckoutUI.js')['useTpvCheckoutUI']
+  const useTpvClientManager: typeof import('./resources/js/composables/useTpvClientManager.js')['useTpvClientManager']
+  const useTpvDishes: typeof import('./resources/js/composables/useTpvDishes.js')['useTpvDishes']
+  const useTpvInit: typeof import('./resources/js/composables/useTpvInit.js')['useTpvInit']
+  const useTpvKeyboardShortcuts: typeof import('./resources/js/composables/useTpvKeyboardShortcuts.js')['useTpvKeyboardShortcuts']
+  const useTpvOrderManager: typeof import('./resources/js/composables/useTpvOrderManager.js')['useTpvOrderManager']
+  const useTpvPacks: typeof import('./resources/js/composables/useTpvPacks.js')['useTpvPacks']
+  const useTpvPrintManager: typeof import('./resources/js/composables/useTpvPrintManager.js')['useTpvPrintManager']
+  const useTpvPromotions: typeof import('./resources/js/composables/useTpvPromotions.js')['useTpvPromotions']
+  const useTpvQuotations: typeof import('./resources/js/composables/useTpvQuotations.js')['useTpvQuotations']
+  const useTpvRates: typeof import('./resources/js/composables/useTpvRates.js')['useTpvRates']
+  const useTpvRestaurantOrders: typeof import('./resources/js/composables/useTpvRestaurantOrders.js')['useTpvRestaurantOrders']
+  const useTpvState: typeof import('./resources/js/composables/useTpvState.js')['useTpvState']
   const useTransition: typeof import('@vueuse/core')['useTransition']
   const useTrunc: typeof import('@vueuse/math')['useTrunc']
   const useUrlSearchParams: typeof import('@vueuse/core')['useUrlSearchParams']
@@ -454,11 +480,13 @@ declare module 'vue' {
     readonly formatDateToMonthShort: UnwrapRef<typeof import('./resources/js/@core/utils/formatters.js')['formatDateToMonthShort']>
     readonly formatMonth: UnwrapRef<typeof import('./resources/js/utils/formatters.js')['formatMonth']>
     readonly formatNumber: UnwrapRef<typeof import('./resources/js/utils/formatters.js')['formatNumber']>
+    readonly formatOrderItemForFrontend: UnwrapRef<typeof import('./resources/js/composables/useTpvItemFormatter.js')['formatOrderItemForFrontend']>
     readonly formatPrice: UnwrapRef<typeof import('./resources/js/utils/formatters.js')['formatPrice']>
     readonly generateDonationPDF: UnwrapRef<typeof import('./resources/js/utils/donationPdfGenerator.js')['generateDonationPDF']>
     readonly getActivePinia: UnwrapRef<typeof import('pinia')['getActivePinia']>
     readonly getCurrentInstance: UnwrapRef<typeof import('vue')['getCurrentInstance']>
     readonly getCurrentScope: UnwrapRef<typeof import('vue')['getCurrentScope']>
+    readonly getItemPriceByCurrency: UnwrapRef<typeof import('./resources/js/composables/useTpvItemFormatter.js')['getItemPriceByCurrency']>
     readonly h: UnwrapRef<typeof import('vue')['h']>
     readonly hexToRgb: UnwrapRef<typeof import('./resources/js/@core/utils/colorConverter.js')['hexToRgb']>
     readonly ignorableWatch: UnwrapRef<typeof import('@vueuse/core')['ignorableWatch']>
@@ -559,6 +587,7 @@ declare module 'vue' {
     readonly templateRef: UnwrapRef<typeof import('@vueuse/core')['templateRef']>
     readonly throttledRef: UnwrapRef<typeof import('@vueuse/core')['throttledRef']>
     readonly throttledWatch: UnwrapRef<typeof import('@vueuse/core')['throttledWatch']>
+    readonly ticketStyles: UnwrapRef<typeof import('./resources/js/composables/useCashClosurePrint.js')['ticketStyles']>
     readonly toRaw: UnwrapRef<typeof import('vue')['toRaw']>
     readonly toReactive: UnwrapRef<typeof import('@vueuse/core')['toReactive']>
     readonly toRef: UnwrapRef<typeof import('vue')['toRef']>
@@ -603,6 +632,7 @@ declare module 'vue' {
     readonly useBroadcastChannel: UnwrapRef<typeof import('@vueuse/core')['useBroadcastChannel']>
     readonly useBrowserLocation: UnwrapRef<typeof import('@vueuse/core')['useBrowserLocation']>
     readonly useCached: UnwrapRef<typeof import('@vueuse/core')['useCached']>
+    readonly useCashClosurePrint: UnwrapRef<typeof import('./resources/js/composables/useCashClosurePrint.js')['useCashClosurePrint']>
     readonly useCeil: UnwrapRef<typeof import('@vueuse/math')['useCeil']>
     readonly useCheckout: UnwrapRef<typeof import('./resources/js/composables/useCheckout.js')['useCheckout']>
     readonly useClamp: UnwrapRef<typeof import('@vueuse/math')['useClamp']>
@@ -642,6 +672,7 @@ declare module 'vue' {
     readonly useEventListener: UnwrapRef<typeof import('@vueuse/core')['useEventListener']>
     readonly useEventSource: UnwrapRef<typeof import('@vueuse/core')['useEventSource']>
     readonly useExpenses: UnwrapRef<typeof import('./resources/js/composables/useExpenses.js')['useExpenses']>
+    readonly useExpiryCharts: UnwrapRef<typeof import('./resources/js/composables/useExpiryCharts.js')['useExpiryCharts']>
     readonly useEyeDropper: UnwrapRef<typeof import('@vueuse/core')['useEyeDropper']>
     readonly useFavicon: UnwrapRef<typeof import('@vueuse/core')['useFavicon']>
     readonly useFetch: UnwrapRef<typeof import('@vueuse/core')['useFetch']>
@@ -688,6 +719,7 @@ declare module 'vue' {
     readonly useObjectUrl: UnwrapRef<typeof import('@vueuse/core')['useObjectUrl']>
     readonly useOffsetPagination: UnwrapRef<typeof import('@vueuse/core')['useOffsetPagination']>
     readonly useOnline: UnwrapRef<typeof import('@vueuse/core')['useOnline']>
+    readonly useOrderPrint: UnwrapRef<typeof import('./resources/js/composables/useOrderPrint.js')['useOrderPrint']>
     readonly usePageLeave: UnwrapRef<typeof import('@vueuse/core')['usePageLeave']>
     readonly useParallax: UnwrapRef<typeof import('@vueuse/core')['useParallax']>
     readonly useParentElement: UnwrapRef<typeof import('@vueuse/core')['useParentElement']>
@@ -709,6 +741,7 @@ declare module 'vue' {
     readonly useRefHistory: UnwrapRef<typeof import('@vueuse/core')['useRefHistory']>
     readonly useResizeObserver: UnwrapRef<typeof import('@vueuse/core')['useResizeObserver']>
     readonly useResponsiveLeftSidebar: UnwrapRef<typeof import('./resources/js/@core/composable/useResponsiveSidebar.js')['useResponsiveLeftSidebar']>
+    readonly useRetentionDates: UnwrapRef<typeof import('./resources/js/composables/useRetentionDates.js')['useRetentionDates']>
     readonly useRound: UnwrapRef<typeof import('@vueuse/math')['useRound']>
     readonly useRoute: UnwrapRef<typeof import('vue-router/auto')['useRoute']>
     readonly useRouter: UnwrapRef<typeof import('vue-router/auto')['useRouter']>
@@ -747,6 +780,25 @@ declare module 'vue' {
     readonly useToNumber: UnwrapRef<typeof import('@vueuse/core')['useToNumber']>
     readonly useToString: UnwrapRef<typeof import('@vueuse/core')['useToString']>
     readonly useToggle: UnwrapRef<typeof import('@vueuse/core')['useToggle']>
+    readonly useTpvBarcode: UnwrapRef<typeof import('./resources/js/composables/useTpvBarcode.js')['useTpvBarcode']>
+    readonly useTpvCalculations: UnwrapRef<typeof import('./resources/js/composables/useTpvCalculations.js')['useTpvCalculations']>
+    readonly useTpvCart: UnwrapRef<typeof import('./resources/js/composables/useTpvCart.js')['useTpvCart']>
+    readonly useTpvCatalog: UnwrapRef<typeof import('./resources/js/composables/useTpvCatalog.js')['useTpvCatalog']>
+    readonly useTpvCheckoutCalculations: UnwrapRef<typeof import('./resources/js/composables/useTpvCheckoutCalculations.js')['useTpvCheckoutCalculations']>
+    readonly useTpvCheckoutManager: UnwrapRef<typeof import('./resources/js/composables/useTpvCheckoutManager.js')['useTpvCheckoutManager']>
+    readonly useTpvCheckoutUI: UnwrapRef<typeof import('./resources/js/composables/useTpvCheckoutUI.js')['useTpvCheckoutUI']>
+    readonly useTpvClientManager: UnwrapRef<typeof import('./resources/js/composables/useTpvClientManager.js')['useTpvClientManager']>
+    readonly useTpvDishes: UnwrapRef<typeof import('./resources/js/composables/useTpvDishes.js')['useTpvDishes']>
+    readonly useTpvInit: UnwrapRef<typeof import('./resources/js/composables/useTpvInit.js')['useTpvInit']>
+    readonly useTpvKeyboardShortcuts: UnwrapRef<typeof import('./resources/js/composables/useTpvKeyboardShortcuts.js')['useTpvKeyboardShortcuts']>
+    readonly useTpvOrderManager: UnwrapRef<typeof import('./resources/js/composables/useTpvOrderManager.js')['useTpvOrderManager']>
+    readonly useTpvPacks: UnwrapRef<typeof import('./resources/js/composables/useTpvPacks.js')['useTpvPacks']>
+    readonly useTpvPrintManager: UnwrapRef<typeof import('./resources/js/composables/useTpvPrintManager.js')['useTpvPrintManager']>
+    readonly useTpvPromotions: UnwrapRef<typeof import('./resources/js/composables/useTpvPromotions.js')['useTpvPromotions']>
+    readonly useTpvQuotations: UnwrapRef<typeof import('./resources/js/composables/useTpvQuotations.js')['useTpvQuotations']>
+    readonly useTpvRates: UnwrapRef<typeof import('./resources/js/composables/useTpvRates.js')['useTpvRates']>
+    readonly useTpvRestaurantOrders: UnwrapRef<typeof import('./resources/js/composables/useTpvRestaurantOrders.js')['useTpvRestaurantOrders']>
+    readonly useTpvState: UnwrapRef<typeof import('./resources/js/composables/useTpvState.js')['useTpvState']>
     readonly useTransition: UnwrapRef<typeof import('@vueuse/core')['useTransition']>
     readonly useTrunc: UnwrapRef<typeof import('@vueuse/math')['useTrunc']>
     readonly useUrlSearchParams: UnwrapRef<typeof import('@vueuse/core')['useUrlSearchParams']>
