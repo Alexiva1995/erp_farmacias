@@ -18,7 +18,7 @@ const currentLogo = computed(() => {
 </script>
 
 <template>
-  <div class="text-center pa-2 mb-2">
+  <div v-if="currentLogo" class="text-center pa-2 mb-2">
     <a href="#">
       <img width="130" :src="currentLogo" alt="Logotipo de la marca" style="max-height: 80px; object-fit: contain;" />
     </a>

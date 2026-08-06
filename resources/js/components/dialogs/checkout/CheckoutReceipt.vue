@@ -79,7 +79,7 @@ const formatAsBS = (amount, fromCurrency = "BS") => {
   <div class="checkout-receipt-container pa-4">
     <div class="d-flex justify-center">
       <div class="receipt-paper" id="printable-ticket">
-        <div class="text-center mb-4">
+        <div v-if="logoSrc" class="text-center mb-4">
           <img width="120" :src="logoSrc" alt="Logotipo" />
         </div>
         
