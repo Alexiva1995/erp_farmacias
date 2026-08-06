@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Models\TelegramConfig;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -15,20 +16,48 @@ class TelegramService
 
     public function __construct()
     {
-        $this->token = config('services.telegram.bot_token');
-        $this->chatId = config('services.telegram.chat_id');
-        $this->adminChatId = config('services.telegram.admin_chat_id') ?: $this->chatId;
+        $dbConfig = TelegramConfig::first();
+
+        $this->token = $dbConfig?->bot_token ?: config('services.telegram.bot_token');
+        $this->chatId = $dbConfig?->chat_id ?: config('services.telegram.chat_id');
+        $this->adminChatId = $dbConfig?->admin_chat_id ?: (config('services.telegram.admin_chat_id') ?: $this->chatId);
     }
 
     /**
-     * Enviar mensaje a Telegram (opcionalmente a un chat personalizado).
+     * Recargar configuración en caliente.
+     */
+    public function refreshConfig(): void
+    {
+        $dbConfig = TelegramConfig::first();
+        $this->token = $dbConfig?->bot_token ?: config('services.telegram.bot_token');
+        $this->chatId = $dbConfig?->chat_id ?: config('services.telegram.chat_id');
+        $this->adminChatId = $dbConfig?->admin_chat_id ?: (config('services.telegram.admin_chat_id') ?: $this->chatId);
+    }
+
+    public function getToken(): ?string
+    {
+        return $this->token;
+    }
+
+    public function getChatId(): ?string
+    {
+        return $this->chatId;
+    }
+
+    public function getAdminChatId(): ?string
+    {
+        return $this->adminChatId;
+    }
+
+    /**
+     * Enviar mensaje a Telegram con timeout y reintentos estructurados.
      */
     public function sendMessage(string $message, string|int|null $customChatId = null, ?array $replyMarkup = null): bool
     {
         $targetChatId = $customChatId ? (string) $customChatId : $this->chatId;
 
         if (empty($this->token) || empty($targetChatId)) {
-            Log::warning('[TelegramService] TELEGRAM_BOT_TOKEN o CHAT_ID no configurados');
+            Log::warning('[TelegramService] Bot token o Chat ID no configurados');
             return false;
         }
 
@@ -44,16 +73,18 @@ class TelegramService
                 $payload['reply_markup'] = $replyMarkup;
             }
 
-            $response = Http::post($url, $payload);
+            $response = Http::timeout(10)
+                ->retry(3, 100)
+                ->post($url, $payload);
 
-            if ($response->successful()) {
+            if ($response->successful() && ($response->json()['ok'] ?? false)) {
                 return true;
             }
 
-            Log::error('[TelegramService] Error al enviar mensaje: ' . $response->body());
+            Log::error('[TelegramService] Error enviando mensaje Telegram: ' . $response->body());
             return false;
-        } catch (\Exception $e) {
-            Log::error('[TelegramService] Excepción al enviar a Telegram: ' . $e->getMessage());
+        } catch (\Throwable $e) {
+            Log::error('[TelegramService] Excepción al enviar mensaje a Telegram: ' . $e->getMessage());
             return false;
         }
     }
@@ -72,31 +103,28 @@ class TelegramService
     public function downloadFile(string $fileId): ?string
     {
         if (empty($this->token)) {
-            Log::warning('[TelegramService] TELEGRAM_BOT_TOKEN no configurado');
+            Log::warning('[TelegramService] Bot token no configurado para descarga');
             return null;
         }
 
         try {
-            // 1. Obtener la ruta del archivo mediante getFile
             $url = "https://api.telegram.org/bot{$this->token}/getFile";
-            $response = Http::post($url, ['file_id' => $fileId]);
+            $response = Http::timeout(10)->retry(3, 100)->post($url, ['file_id' => $fileId]);
 
             if (!$response->successful()) {
-                Log::error('[TelegramService] Error al obtener ruta del archivo: ' . $response->body());
+                Log::error('[TelegramService] Error obteniendo ruta de archivo: ' . $response->body());
                 return null;
             }
 
             $filePath = $response->json()['result']['file_path'] ?? null;
             if (!$filePath) {
-                Log::error('[TelegramService] No se encontró file_path en la respuesta de getFile.');
+                Log::error('[TelegramService] No se encontró file_path en respuesta de Telegram getFile.');
                 return null;
             }
 
-            // 2. Descargar el archivo real
             $downloadUrl = "https://api.telegram.org/file/bot{$this->token}/{$filePath}";
-            $fileContents = Http::get($downloadUrl)->body();
+            $fileContents = Http::timeout(20)->retry(3, 100)->get($downloadUrl)->body();
 
-            // 3. Guardar el archivo en el directorio temporal
             $tempDir = storage_path('app/temp/telegram');
             if (!is_dir($tempDir)) {
                 mkdir($tempDir, 0755, true);
@@ -107,9 +135,45 @@ class TelegramService
             file_put_contents($localPath, $fileContents);
 
             return $localPath;
-        } catch (\Exception $e) {
-            Log::error('[TelegramService] Excepción al descargar archivo de Telegram: ' . $e->getMessage());
+        } catch (\Throwable $e) {
+            Log::error('[TelegramService] Excepción descargando archivo de Telegram: ' . $e->getMessage());
             return null;
+        }
+    }
+
+    /**
+     * Enviar un documento (PDF, archivo) por Telegram.
+     */
+    public function sendDocument(string $filePath, string|int|null $customChatId = null, ?string $caption = null): bool
+    {
+        $targetChatId = $customChatId ? (string) $customChatId : $this->chatId;
+
+        if (empty($this->token) || empty($targetChatId) || !file_exists($filePath)) {
+            Log::warning('[TelegramService] No se puede enviar documento: Token o ChatID no configurado, o archivo no existe.');
+            return false;
+        }
+
+        try {
+            $url = "https://api.telegram.org/bot{$this->token}/sendDocument";
+
+            $response = Http::timeout(30)
+                ->retry(2, 200)
+                ->attach('document', file_get_contents($filePath), basename($filePath))
+                ->post($url, [
+                    'chat_id' => $targetChatId,
+                    'caption' => $caption ?: '',
+                    'parse_mode' => 'Markdown',
+                ]);
+
+            if ($response->successful() && ($response->json()['ok'] ?? false)) {
+                return true;
+            }
+
+            Log::error('[TelegramService] Error al enviar documento por Telegram: ' . $response->body());
+            return false;
+        } catch (\Throwable $e) {
+            Log::error('[TelegramService] Excepción al enviar documento a Telegram: ' . $e->getMessage());
+            return false;
         }
     }
 }

@@ -81,9 +81,13 @@ const { formatCurrency } = useCurrencyConverter();
                 </template>
               </VListItem>
             </VList>
-            <div v-else class="pa-10 text-center text-medium-emphasis text-caption">
-              Sin datos registrados
-            </div>
+            <VEmptyState
+              v-else
+              icon="tabler-database-off"
+              title="Sin registros"
+              text="No se encontraron datos para la métrica seleccionada"
+              class="py-6"
+            />
           </template>
 
           <div class="pa-2 d-flex justify-space-between align-center bg-light-primary border-t">

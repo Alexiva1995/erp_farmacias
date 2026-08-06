@@ -201,36 +201,42 @@ class CashClosureActionService
             $updateData['blind_mismatches'] = json_encode($mismatches);
             $updateData['blind_note'] = implode(' | ', $notes);
 
-            // Enviar notificación detallada por Telegram al administrador sobre la declaración del cierre ciego
+            // Enviar notificación detallada por Telegram al administrador sobre la declaración del cierre ciego si la notificación está activa
             try {
-                $telegram = resolve(\App\Services\TelegramService::class);
-                $sellerName = $cashClosure->seller?->username ?? "Cajero #{$cashClosure->seller_id}";
-                $hasMismatch = !empty($mismatches);
-                
-                $msg = $hasMismatch 
-                    ? "🚨 *[ALERTA: DESCUADRE EN CIERRE DE CAJA]* 🚨\n\n" 
-                    : "✅ *[NOTIFICACIÓN: CIERRE DE CAJA RECIBIDO]* ✅\n\n";
+                $isNotifyActive = \App\Models\TelegramCommand::where('module', 'generales')
+                    ->where('command', '/cierre_individual')
+                    ->value('is_active') ?? true;
+
+                if ($isNotifyActive) {
+                    $telegram = resolve(\App\Services\TelegramService::class);
+                    $sellerName = $cashClosure->seller?->username ?? "Cajero #{$cashClosure->seller_id}";
+                    $hasMismatch = !empty($mismatches);
                     
-                $msg .= "👤 *Cajero:* {$sellerName}\n"
-                      . "🆔 *Cierre ID:* #{$cashClosure->id}\n"
-                      . "📅 *Fecha:* " . now()->format('d/m/Y g:i A') . "\n\n";
+                    $msg = $hasMismatch 
+                        ? "🚨 *[ALERTA: DESCUADRE EN CIERRE DE CAJA]* 🚨\n\n" 
+                        : "✅ *[NOTIFICACIÓN: CIERRE DE CAJA RECIBIDO]* ✅\n\n";
+                        
+                    $msg .= "👤 *Cajero:* {$sellerName}\n"
+                          . "🆔 *Cierre ID:* #{$cashClosure->id}\n"
+                          . "📅 *Fecha:* " . now()->format('d/m/Y g:i A') . "\n\n";
 
-                if ($hasMismatch) {
-                    $msg .= "*Descuadres / Diferencias encontradas:*\n";
-                    foreach ($notes as $note) {
-                        $msg .= "• {$note}\n";
+                    if ($hasMismatch) {
+                        $msg .= "*Descuadres / Diferencias encontradas:*\n";
+                        foreach ($notes as $note) {
+                            $msg .= "• {$note}\n";
+                        }
+                    } else {
+                        $msg .= "✨ *Estado:* Cierre cuadrado correctamente sin diferencias.\n";
                     }
-                } else {
-                    $msg .= "✨ *Estado:* Cierre cuadrado correctamente sin diferencias.\n";
-                }
 
-                $msg .= "\n💵 *Declaración realizada:* \n"
-                      . "• Efectivo COP: $" . number_format($decCop, 2) . "\n"
-                      . "• Efectivo USD: $" . number_format($decUsd, 2) . "\n"
-                      . "• Pago Móvil / Transf BS: Bs " . number_format($decBsMobile, 2) . "\n"
-                      . "• Tarjetas BS: Bs " . number_format($decBsCard, 2) . "\n";
-                
-                $telegram->sendToAdmin($msg);
+                    $msg .= "\n💵 *Declaración realizada:* \n"
+                          . "• Efectivo COP: $" . number_format($decCop, 2) . "\n"
+                          . "• Efectivo USD: $" . number_format($decUsd, 2) . "\n"
+                          . "• Pago Móvil / Transf BS: Bs " . number_format($decBsMobile, 2) . "\n"
+                          . "• Tarjetas BS: Bs " . number_format($decBsCard, 2) . "\n";
+                    
+                    $telegram->sendToAdmin($msg);
+                }
             } catch (\Exception $e) {
                 \Illuminate\Support\Facades\Log::error('[TelegramNotify] Error al enviar alerta de cierre a Telegram: ' . $e->getMessage());
             }

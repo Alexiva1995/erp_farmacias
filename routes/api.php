@@ -151,6 +151,26 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
     Route::put('/fixed-schedules/{id}', [\App\Http\Controllers\Api\FixedScheduleController::class, 'update']);
     Route::delete('/fixed-schedules/{id}', [\App\Http\Controllers\Api\FixedScheduleController::class, 'destroy']);
 
+    Route::prefix('telegram')->group(function () {
+        Route::get('/config', [\App\Http\Controllers\Api\TelegramConfigController::class, 'getConfig']);
+        Route::put('/config', [\App\Http\Controllers\Api\TelegramConfigController::class, 'updateConfig']);
+        Route::post('/webhook/register', [\App\Http\Controllers\Api\TelegramConfigController::class, 'registerWebhook']);
+        Route::get('/webhook/status', [\App\Http\Controllers\Api\TelegramConfigController::class, 'getWebhookStatus']);
+
+        // Rutas de Múltiples Canales
+        Route::get('/channels', [\App\Http\Controllers\Api\TelegramConfigController::class, 'getChannels']);
+        Route::post('/channels', [\App\Http\Controllers\Api\TelegramConfigController::class, 'storeChannel']);
+        Route::put('/channels/{id}', [\App\Http\Controllers\Api\TelegramConfigController::class, 'updateChannel']);
+        Route::patch('/channels/{id}/toggle', [\App\Http\Controllers\Api\TelegramConfigController::class, 'toggleChannel']);
+        Route::delete('/channels/{id}', [\App\Http\Controllers\Api\TelegramConfigController::class, 'deleteChannel']);
+        Route::post('/channels/{id}/test', [\App\Http\Controllers\Api\TelegramConfigController::class, 'testChannelMessage']);
+
+        // Rutas de Comandos por Módulo
+        Route::get('/commands/{module}', [\App\Http\Controllers\Api\TelegramConfigController::class, 'getModuleCommands']);
+        Route::patch('/commands/{id}/toggle', [\App\Http\Controllers\Api\TelegramConfigController::class, 'toggleCommand']);
+        Route::put('/commands/{id}', [\App\Http\Controllers\Api\TelegramConfigController::class, 'updateCommand']);
+    });
+
     Route::get('/general-settings', [GeneralSettingController::class, 'index']);
     Route::post('/import-csv', [\App\Http\Controllers\Api\DataImportController::class, 'importCsv']);
     // Rutas de Finanzas (Estado de Resultados) - Protegidas por autenticación

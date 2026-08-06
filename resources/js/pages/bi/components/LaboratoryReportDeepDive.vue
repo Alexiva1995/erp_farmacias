@@ -59,9 +59,13 @@ const { formatCurrency } = useCurrencyConverter();
             </tr>
           </tbody>
         </VTable>
-        <div v-else class="pa-10 text-center text-medium-emphasis">
-          No hay productos vendidos en el periodo seleccionado
-        </div>
+        <VEmptyState
+          v-else
+          icon="tabler-package-off"
+          title="Sin productos"
+          text="No se registraron productos vendidos para este laboratorio en el periodo seleccionado"
+          class="py-8"
+        />
       </template>
     </VCardText>
   </VCard>

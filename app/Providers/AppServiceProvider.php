@@ -307,6 +307,11 @@ class AppServiceProvider extends ServiceProvider
             \App\Repositories\InvoiceReturnRepository::class
         );
 
+        $this->app->bind(
+            \App\Contracts\Repositories\TelegramCommandRepositoryInterface::class,
+            \App\Repositories\Eloquent\TelegramCommandRepository::class
+        );
+
         $this->app->when(LocationController::class)
             ->needs(LocationContract::class)
             ->give(LocationRepository::class);

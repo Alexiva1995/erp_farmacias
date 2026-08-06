@@ -223,9 +223,13 @@ const formatPercent = (val) => `${parseFloat(val || 0).toFixed(1)}%`;
         </VCol>
       </VRow>
 
-      <div v-else class="pa-10 text-center text-medium-emphasis">
-        Selecciona dos laboratorios para comparar su rendimiento
-      </div>
+      <VEmptyState
+        v-else
+        icon="tabler-arrows-left-right"
+        title="Sin comparativa activa"
+        text="Selecciona dos laboratorios en los desplegables superiores para comparar su rendimiento"
+        class="py-8"
+      />
     </VCardText>
   </VCard>
 </template>
