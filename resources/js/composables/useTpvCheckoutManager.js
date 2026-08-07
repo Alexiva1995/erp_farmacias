@@ -305,6 +305,7 @@ export function useTpvCheckoutManager({
         payments: validPayments,
         total_amount: roundedTotalAmountToPay.value,
         changeAmount: changeAmount.value,
+        changeAmountInCop: changeAmountInCop?.value || 0,
         changeAmountUSD: changeAmountInUsd?.value || 0,
         currency: props.selectedCurrency,
         applies_spe_tax: appliesSpecialTax.value,

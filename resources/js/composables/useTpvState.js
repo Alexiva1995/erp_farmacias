@@ -4,21 +4,11 @@ export function useTpvState({ brandingStore, isRestaurant, isSportsRental }) {
   // --- Modo TPV ---
   const isSimpleTpv = computed(() => brandingStore.settings?.tpv_mode === 'simple')
 
-  const defaultCurrency = computed(() => {
-    if (isRestaurant.value || isSportsRental.value) return 'COP'
-    const saved = localStorage.getItem('tpv_last_currency')
-    if (saved && ['COP', 'USD', 'BS'].includes(saved.toUpperCase())) {
-      return saved.toUpperCase()
-    }
-    return brandingStore.settings?.default_currency || 'COP'
-  })
+  const defaultCurrency = computed(() => 'COP')
 
-  const initialCurrency = localStorage.getItem('tpv_last_currency') || defaultCurrency.value
-  const selectedDisplayCurrency = ref(initialCurrency)
-  watch(selectedDisplayCurrency, (newVal) => { 
-    if (newVal) {
-      localStorage.setItem('tpv_last_currency', newVal.toUpperCase()) 
-    }
+  const selectedDisplayCurrency = ref('COP')
+  watch(defaultCurrency, (newVal) => { 
+    if (newVal) selectedDisplayCurrency.value = newVal 
   }, { immediate: true })
 
   // --- Estado de la sesión de orden ---

@@ -201,33 +201,37 @@ const processedClosings = computed(() => {
         parseFloat(closing.bs_transfer_payment_credit || 0) + parseFloat(closing.bs_mobile_payment_credit || 0);
       
       const copSum = 
-        parseFloat(closing.cop_cash || 0) + parseFloat(closing.cop_transfer || 0) +
+        parseFloat(closing.cop_cash || 0) + parseFloat(closing.cop_transfer || 0) + parseFloat(closing.cop_delivered || 0) +
         parseFloat(closing.cop_cash_payment_credit || 0) + parseFloat(closing.cop_transfer_payment_credit || 0);
       
       const usdSum = 
-        parseFloat(closing.usd_cash || 0) + parseFloat(closing.usd_transfer || 0) +
+        parseFloat(closing.usd_cash || 0) + parseFloat(closing.usd_transfer || 0) + parseFloat(closing.usd_delivered || 0) +
         parseFloat(closing.usd_paypal || 0) + parseFloat(closing.usd_binance || 0) +
         parseFloat(closing.usd_credit || 0) +
         parseFloat(closing.usd_cash_payment_credit || 0) + parseFloat(closing.usd_paypal_payment_credit || 0) +
         parseFloat(closing.usd_binance_payment_credit || 0) + parseFloat(closing.usd_conversion || 0);
 
-      const bcvRate = parseFloat(props.cashData?.exchange_rate || 1);
-      const copRate = parseFloat(props.cashData?.cop_exchange_rate || 1);
+      const bcvRate = parseFloat(props.cashData?.exchange_rate || 0) || 1;
+      const copRate = parseFloat(props.cashData?.cop_exchange_rate || 0) || 4000;
 
       // Calculamos el equivalente real en USD usando las tasas
       const bsInUsd = bcvRate > 0 ? (bsSum / bcvRate) : 0;
       const copInUsd = copRate > 0 ? (copSum / copRate) : 0;
       const totalUsdEq = usdSum + bsInUsd + copInUsd;
+      const totalSales = parseFloat(closing.total_sales || 0);
+
+      const hasActivity = bsSum > 0 || copSum > 0 || usdSum > 0 || totalSales > 0 || (closing.orders && closing.orders.length > 0);
 
       return {
         ...closing,
         real_bs: bsSum,
         real_cop: copSum,
         real_usd: usdSum,
-        real_total_usd: totalUsdEq
+        real_total_usd: totalUsdEq > 0 ? totalUsdEq : totalSales,
+        has_activity: hasActivity
       };
     })
-    .filter((c) => c.real_total_usd > 0);
+    .filter((c) => c.has_activity || c.real_total_usd > 0);
 });
 
 const filteredCashClosings = processedClosings;

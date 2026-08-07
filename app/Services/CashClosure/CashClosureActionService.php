@@ -100,6 +100,7 @@ class CashClosureActionService
         $sellerId = Auth::id();
         $cashClosing = CashClosing::where('seller_id', $sellerId)
             ->where('status', CashClosing::OPEN)
+            ->orderByDesc('id')
             ->first();
 
         if ($cashClosing) {
@@ -337,7 +338,7 @@ class CashClosureActionService
                 $cashClosing->update([
                     'status' => CashClosing::CLOSED,
                     'daily_closure_id' => $dailyClosure->id,
-                    'closing_date' => Carbon::now(),
+                    'closing_date' => $cashClosing->created_at ?? Carbon::now(),
                 ]);
 
                 $this->generateClosingTransactions($cashClosing);

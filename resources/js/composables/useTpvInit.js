@@ -65,7 +65,7 @@ export function useTpvInit({
     initPromises.push(fetchGeneralSettings().catch(err => console.error('[ORDER_USER] Error config general', err)))
     await Promise.allSettled(initPromises)
 
-    selectedDisplayCurrency.value = defaultCurrency.value
+    selectedDisplayCurrency.value = 'COP'
     heartbeatInterval = startHeartbeat()
 
     // 2. Cargar la Orden Abierta (El catálogo de productos se carga automáticamente a través de la tabla VDataTableServer)

@@ -24,6 +24,7 @@ class StoreOrderRequest extends FormRequest
         return [
             'client_id' => ['nullable', 'numeric'],
             'seller_id' => ['required', 'numeric'],
+            'currency'  => ['nullable', 'string', 'in:COP,USD,BS'],
         ];
     }
 

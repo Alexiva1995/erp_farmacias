@@ -357,11 +357,41 @@ const getConvertedRemainingAmount = (currency) => {
 
   if (!ratesLoaded.value) return 0;
 
-  const rate = exchangeRates.value[baseCurrency]?.[targetCurrency];
-  if (!rate) return 0;
+  if (baseCurrency === "USD") {
+    const rate = exchangeRates.value?.["USD"]?.[targetCurrency];
+    if (!rate) return 0;
+    const result = remainingAmount.value * rate;
+    if (targetCurrency === "COP") {
+      return roundUpToNearestHundred(result);
+    }
+    return roundToTwoDecimalPlaces(result);
+  }
 
-  let converted = remainingAmount.value * rate;
-  return parseFloat(converted.toFixed(2));
+  if (targetCurrency === "USD") {
+    const rateToUsd = exchangeRates.value?.[baseCurrency]?.["USD"];
+    if (rateToUsd > 0) {
+      return roundToTwoDecimalPlaces(remainingAmount.value * rateToUsd);
+    }
+    const rateFromUsd = exchangeRates.value?.["USD"]?.[baseCurrency];
+    if (rateFromUsd > 0) {
+      return roundToTwoDecimalPlaces(remainingAmount.value / rateFromUsd);
+    }
+    return 0;
+  }
+
+  let rateToUsd = exchangeRates.value?.[baseCurrency]?.["USD"];
+  if (!rateToUsd || rateToUsd <= 0) {
+    const rateFromUsd = exchangeRates.value?.["USD"]?.[baseCurrency];
+    if (rateFromUsd > 0) rateToUsd = 1 / rateFromUsd;
+  }
+  const remainingInUsd = remainingAmount.value * (rateToUsd || 1);
+  const rateUsdToTarget = exchangeRates.value?.["USD"]?.[targetCurrency] || 1;
+  const result = remainingInUsd * rateUsdToTarget;
+
+  if (targetCurrency === "COP") {
+    return roundUpToNearestHundred(result);
+  }
+  return roundToTwoDecimalPlaces(result);
 };
 
 const hasMissingReferences = () => {

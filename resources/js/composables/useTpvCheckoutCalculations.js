@@ -18,7 +18,8 @@ export function useTpvCheckoutCalculations(props, payments, brandingStore) {
   }
 
   function roundToTwoDecimalPlaces(num) {
-    return Number(Math.round(num + 'e+2') + 'e-2')
+    if (!num || isNaN(num)) return 0
+    return Math.round((Number(num) + Number.EPSILON) * 100) / 100
   }
 
   const appliesSpecialTax = computed(() => {
@@ -136,7 +137,7 @@ export function useTpvCheckoutCalculations(props, payments, brandingStore) {
     if (props.selectedCurrency === 'COP') {
       return roundUpToNearestHundred(baseAmount)
     }
-    return parseFloat(baseAmount.toFixed(2))
+    return roundToTwoDecimalPlaces(baseAmount)
   })
 
   const remainingAmount = computed(() => {
@@ -161,70 +162,100 @@ export function useTpvCheckoutCalculations(props, payments, brandingStore) {
     if (baseCurrency === targetCurrency) {
       return remainingAmount.value
     }
-    if (!ratesLoaded.value) {
+
+    if (!ratesLoaded.value) return 0
+
+    // 1. Si la moneda base del pedido es USD
+    if (baseCurrency === 'USD') {
+      const rate = getEffectiveRate('USD', targetCurrency)
+      if (rate <= 0) return 0
+      const result = remainingAmount.value * rate
+      if (targetCurrency === 'COP') {
+        return roundUpToNearestHundred(result)
+      }
+      return roundToTwoDecimalPlaces(result)
+    }
+
+    // 2. Si la moneda objetivo es USD
+    if (targetCurrency === 'USD') {
+      const rateToUsd = getEffectiveRate(baseCurrency, 'USD')
+      if (rateToUsd > 0) {
+        return roundToTwoDecimalPlaces(remainingAmount.value * rateToUsd)
+      }
+      const rateFromUsd = getEffectiveRate('USD', baseCurrency)
+      if (rateFromUsd > 0) {
+        return roundToTwoDecimalPlaces(remainingAmount.value / rateFromUsd)
+      }
       return 0
     }
 
-    const rate = getEffectiveRate(baseCurrency, targetCurrency)
-    if (rate <= 0) {
-      console.warn(`No hay tasa de cambio de ${baseCurrency} a ${targetCurrency}`)
-      return 0
+    // 3. Conversiones entre otras monedas pivotando a USD
+    let rateToUsd = getEffectiveRate(baseCurrency, 'USD')
+    if (rateToUsd <= 0) {
+      const rateFromUsd = getEffectiveRate('USD', baseCurrency)
+      if (rateFromUsd > 0) rateToUsd = 1 / rateFromUsd
     }
+    const remainingInUsd = remainingAmount.value * rateToUsd
+    const rateUsdToTarget = getEffectiveRate('USD', targetCurrency)
+    const result = remainingInUsd * rateUsdToTarget
 
-    let converted = remainingAmount.value * rate
-    return parseFloat(converted.toFixed(2))
+    if (targetCurrency === 'COP') {
+      return roundUpToNearestHundred(result)
+    }
+    return roundToTwoDecimalPlaces(result)
   }
 
-  const changeAmount = computed(() => {
-    let totalToPay = props.totalAmount
-    if (appliesSpecialTax.value) {
-      totalToPay += specialTaxAmount.value
-    }
+  const changeAmountInCop = computed(() => {
+    let totalPaidInCop = 0
+    payments.value.forEach((payment) => {
+      let amount = Number(payment.amount) || 0
+      if (payment.currency === 'COP') {
+        totalPaidInCop += amount
+      } else {
+        const rate = getEffectiveRate(payment.currency, 'COP')
+        if (rate > 0) {
+          totalPaidInCop += amount * rate
+        }
+      }
+    })
 
+    let totalToPayInCop = 0
     if (props.selectedCurrency === 'COP') {
-      totalToPay = roundUpToNearestHundred(totalToPay)
+      totalToPayInCop = roundUpToNearestHundred(props.totalAmount + (appliesSpecialTax.value ? specialTaxAmount.value : 0))
     } else {
-      totalToPay = roundToTwoDecimalPlaces(totalToPay)
+      const rateUsdToCop = getEffectiveRate('USD', 'COP')
+      const baseUsd = props.totalAmount + (appliesSpecialTax.value ? specialTaxAmount.value : 0)
+      totalToPayInCop = roundUpToNearestHundred(baseUsd * rateUsdToCop)
     }
 
-    const diff = totalPaidAmount.value - totalToPay
+    const diff = totalPaidInCop - totalToPayInCop
+    if (diff <= 0) return 0
+    return Math.floor(diff / 100) * 100
+  })
+
+  const changeAmount = computed(() => {
+    if (props.selectedCurrency === 'COP') {
+      return changeAmountInCop.value
+    }
+    const rateCopToUsd = getEffectiveRate('COP', 'USD') || (1 / (getEffectiveRate('USD', 'COP') || 1))
+    if (rateCopToUsd > 0) {
+      return roundToTwoDecimalPlaces(changeAmountInCop.value * rateCopToUsd)
+    }
+    const diff = totalPaidAmount.value - roundedTotalAmountToPay.value
     return Math.max(0, roundToTwoDecimalPlaces(diff))
   })
 
   const changeAmountInUsd = computed(() => {
-    const cashPaymentsInUSD = payments.value.filter(
-      (p) => p.method === 'cash_usd' && p.currency === 'USD'
-    )
-    if (cashPaymentsInUSD.length === 0) return 0
-
-    let totalCashPaidInUSD = 0
-    cashPaymentsInUSD.forEach((p) => {
-      totalCashPaidInUSD += Number(p.amount) || 0
-    })
-
-    let totalOrdenEnUSD
     if (props.selectedCurrency === 'USD') {
-      totalOrdenEnUSD = props.totalAmount
-    } else {
-      const rate = getEffectiveRate('USD', props.selectedCurrency)
-      if (rate <= 0) return 0
-      totalOrdenEnUSD = props.totalAmount / rate
+      return changeAmount.value
     }
-
-    const diff = totalCashPaidInUSD - totalOrdenEnUSD
-    return Math.max(0, roundToTwoDecimalPlaces(diff))
-  })
-
-  const changeAmountInCop = computed(() => {
-    const vueltoEnMonedaOrden = changeAmount.value
-    if (props.selectedCurrency === 'COP') {
-      return vueltoEnMonedaOrden
+    const rateToUsd = getEffectiveRate(props.selectedCurrency, 'USD')
+    if (rateToUsd > 0) {
+      return roundToTwoDecimalPlaces(changeAmount.value * rateToUsd)
     }
-
-    const rate = getEffectiveRate(props.selectedCurrency, 'COP')
-    if (rate > 0) {
-      const vueltoConvertido = vueltoEnMonedaOrden * rate
-      return roundUpToNearestHundred(vueltoConvertido)
+    const rateFromUsd = getEffectiveRate('USD', props.selectedCurrency)
+    if (rateFromUsd > 0) {
+      return roundToTwoDecimalPlaces(changeAmount.value / rateFromUsd)
     }
     return 0
   })

@@ -543,6 +543,7 @@ useTpvInit({
       :openOrderData="openOrderData"
       :isFinishingOrder="isFinishingOrder"
       :totalOrderAmount="totalOrderAmount"
+      :totalAmountUsd="totalAmountUsd"
       :selectedDisplayCurrency="selectedDisplayCurrency"
       @closeBuysModal="closeBuysModal"
       @handleBuysCompletion="handleBuysCompletion"

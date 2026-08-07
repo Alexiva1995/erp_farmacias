@@ -41,7 +41,8 @@ export function useCheckout(props) {
   };
 
   function roundToTwoDecimalPlaces(num) {
-    return Number(Math.round(num + "e+2") + "e-2");
+    if (!num || isNaN(num)) return 0
+    return Math.round((Number(num) + Number.EPSILON) * 100) / 100
   }
 
   const fetchExchangeRates = async () => {
@@ -133,11 +134,15 @@ export function useCheckout(props) {
 
   const getConvertedRemainingAmount = (currency) => {
     const baseCurrency = props.selectedCurrency;
-    if (baseCurrency === currency) return remainingAmount.value;
-    if (!ratesLoaded.value) return 0;
-    const rate = exchangeRates.value[baseCurrency]?.[currency];
-    if (!rate) return 0;
-    return parseFloat((remainingAmount.value * rate).toFixed(2));
+    let result = 0;
+    if (baseCurrency === currency) {
+      result = remainingAmount.value;
+    } else if (ratesLoaded.value) {
+      const rate = exchangeRates.value[baseCurrency]?.[currency];
+      if (rate) result = remainingAmount.value * rate;
+    }
+    if (currency === "COP") return roundUpToNearestHundred(result);
+    return parseFloat(result.toFixed(2));
   };
 
   const getDiscountFactor = (product) => {
@@ -228,7 +233,7 @@ export function useCheckout(props) {
 
   const showChangeAmount = computed(() => {
     const hasRelevantCashPayment = payments.value.some(
-      (p) => (p.method === "cash_usd" && p.currency === "USD") || (p.method === "cash_cop" && p.currency === "COP")
+      (p) => (p.method === "cash_usd" && p.currency === "USD") || (p.method === "cash_cop" && p.currency === "COP") || (p.method === "cash_bs" && p.currency === "BS")
     );
     return hasRelevantCashPayment && changeAmount.value > 0;
   });

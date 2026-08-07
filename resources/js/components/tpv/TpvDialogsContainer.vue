@@ -17,6 +17,7 @@ defineProps({
   openOrderData: Object,
   isFinishingOrder: Boolean,
   totalOrderAmount: Number,
+  totalAmountUsd: Number,
   selectedDisplayCurrency: String,
   totalCompanyDiscountAmount: Number,
   selectedDiscountType: String,
@@ -91,8 +92,8 @@ defineEmits([
       :order-products="orderItems || []"
       :order-data="openOrderData || null"
       :is-external-loading="isFinishingOrder"
-      :total-amount="totalOrderAmount || 0"
-      :selected-currency="selectedDisplayCurrency || 'USD'"
+      :total-amount="totalAmountUsd || totalOrderAmount || 0"
+      :selected-currency="'USD'"
       @modal-closed="$emit('closeBuysModal')"
       @purchase-completed="() => {/* La venta ya fue completada, BuysModal muestra el ticket. finish-and-reload limpia el estado al cerrar. */}"
       :company-discount-total="totalCompanyDiscountAmount || 0"

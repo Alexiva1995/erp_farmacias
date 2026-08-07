@@ -74,8 +74,10 @@ export function useTpvCalculations({
       amtBs += basePriceBs * quantity * (1 + effectiveTaxRate)
 
       // 6. Moneda USD
-      const basePriceUsd = item.original_price_usd || 0
-      subtotalUsd += basePriceUsd * quantity
+      const basePriceUsd = getItemPriceByCurrency(item, 'USD', true)
+      if (item.discount_type !== 'expiration') {
+        subtotalUsd += basePriceUsd * quantity
+      }
       totalUsdBase += basePriceUsd * quantity * (1 + effectiveTaxRate)
 
       // 7. Moneda COP
@@ -107,6 +109,8 @@ export function useTpvCalculations({
 
     if (currency === 'COP') {
       finalOrderTotal = roundUpToNearestHundred(finalOrderTotal)
+    } else {
+      finalOrderTotal = Math.round((finalOrderTotal + Number.EPSILON) * 100) / 100
     }
 
     // Impuesto IGTF / Especial
@@ -124,7 +128,7 @@ export function useTpvCalculations({
     if (isSpeClient) {
       speSavings = origIvaAmt * 0.75
       if (currency === 'COP') speSavings = roundUpToNearestHundred(speSavings)
-      else speSavings = parseFloat(speSavings.toFixed(2))
+      else speSavings = Math.round((speSavings + Number.EPSILON) * 100) / 100
     }
 
     // Calculo USD Final
@@ -176,7 +180,7 @@ export function useTpvCalculations({
     let total =
       selectedDisplayCurrency.value === 'COP'
         ? roundUpToNearestHundred(totalOrderAmountWithspecialTaxAmount.value)
-        : totalOrderAmountWithspecialTaxAmount.value.toFixed(2)
+        : (Math.round((totalOrderAmountWithspecialTaxAmount.value + Number.EPSILON) * 100) / 100).toFixed(2)
 
     try {
       const payload = {

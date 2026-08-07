@@ -65,7 +65,7 @@ class OrderActionService
                 $data['money_returns'] = $data['money_returns'] ?? 0;
                 $data['total_cost'] = $data['total_cost'] ?? 0;
                 $data['payment_methods'] = null;
-                $data['currency'] = $data['currency'] ?? 'USD';
+                $data['currency'] = $data['currency'] ?? 'COP';
 
                 $order = Order::create($data);
                 $order->load('seller', 'client');
@@ -866,7 +866,40 @@ class OrderActionService
                 ];
             }
 
-            $orderId = $order;
+            // Detección automática: si todos los pagos fueron realizados en una sola moneda distinta a la de la orden, convertir la orden a esa moneda
+            if (!empty($request->payments) && is_array($request->payments)) {
+                $paymentCurrencies = collect($request->payments)
+                    ->pluck('currency')
+                    ->filter()
+                    ->map(fn($c) => strtoupper($c))
+                    ->unique();
+
+                if ($paymentCurrencies->count() === 1) {
+                    $singleCurrency = $paymentCurrencies->first();
+                    if ($singleCurrency !== strtoupper($orderId->currency)) {
+                        $resourceService = app(\App\Services\Resources\ResourceService::class);
+                        $tasaCop = (float) ($resourceService->getExchangeRate('COP') ?: 1);
+                        $tasaBs = (float) ($resourceService->getExchangeRate('BS') ?: 1);
+
+                        $newTotalAmount = $orderId->total_amount;
+                        if ($singleCurrency === 'COP') {
+                            $newTotalAmount = ($orderId->currency === 'USD') ? ($orderId->total_amount * $tasaCop) : $orderId->total_amount;
+                        } elseif ($singleCurrency === 'BS') {
+                            $newTotalAmount = ($orderId->currency === 'USD') ? ($orderId->total_amount * $tasaBs) : $orderId->total_amount;
+                        } elseif ($singleCurrency === 'USD') {
+                            $newTotalAmount = $orderId->total_amount_usd ?: ($orderId->total_amount / ($orderId->currency === 'COP' ? ($tasaCop ?: 1) : ($tasaBs ?: 1)));
+                        }
+
+                        $this->updateordenCurrency($orderId, [
+                            'currency' => $singleCurrency,
+                            'total_amount' => $newTotalAmount,
+                            'total_amount_usd' => $orderId->total_amount_usd ?? ($newTotalAmount / ($tasaCop ?: 1)),
+                        ]);
+                        $orderId->refresh();
+                    }
+                }
+            }
+
             $orderId->status = Order::COMPLETED;
             $orderId->payment_methods = $request->payments;
             $ivaEjecuted = false;
@@ -915,8 +948,19 @@ class OrderActionService
             }
 
 
-            if (isset($request->changeAmount)) {
-                $orderId->money_returns = $request->changeAmount;
+            if ($request->has('changeAmountInCop') && (float)$request->changeAmountInCop > 0) {
+                $orderId->money_returns = (float) $request->changeAmountInCop;
+            } elseif ($orderId->currency === 'COP') {
+                if (isset($request->changeAmount)) {
+                    $resourceService = app(\App\Services\Resources\ResourceService::class);
+                    $tasaCop = (float) ($resourceService->getExchangeRate('COP') ?: 1);
+                    $rawChange = (float) $request->changeAmount;
+                    $orderId->money_returns = ($rawChange < 1000 && $tasaCop > 1) ? round($rawChange * $tasaCop) : $rawChange;
+                }
+            } else {
+                if (isset($request->changeAmount)) {
+                    $orderId->money_returns = (float) $request->changeAmount;
+                }
             }
 
             if (isset($request->changeAmountUSD)) {
@@ -1290,28 +1334,35 @@ class OrderActionService
 
 
             // Descontar el vuelto entregado en efectivo para registrar únicamente el neto ingresado en caja
-            $changeAmount = (float) ($request->changeAmount ?? 0);
+            $orderCurrency = strtoupper($orderId->currency);
+            $moneyReturns = (float) ($orderId->money_returns ?? 0);
             $changeAmountUSD = (float) ($request->changeAmountUSD ?? 0);
-            $orderCurrency = strtoupper($request->currency ?? 'COP');
 
-            if ($changeAmount > 0 || $changeAmountUSD > 0) {
+            if ($moneyReturns > 0 || $changeAmountUSD > 0) {
                 if ($orderCurrency === 'COP') {
-                    $current_cash->cop_cash -= $changeAmount;
+                    $current_cash->cop_cash -= $moneyReturns;
                 } elseif ($orderCurrency === 'BS') {
-                    $current_cash->bs_cash -= $changeAmount;
+                    $current_cash->bs_cash -= $moneyReturns;
                 } elseif ($orderCurrency === 'USD') {
-                    if ($changeAmountUSD > 0 && $changeAmount > 0) {
-                        // Vuelto otorgado en COP para un pago recibido en USD
+                    $copChangeAmount = 0;
+                    if ($request->has('changeAmountInCop') && (float)$request->changeAmountInCop > 0) {
+                        $copChangeAmount = (float) $request->changeAmountInCop;
+                    } elseif ($moneyReturns > 100) {
+                        $copChangeAmount = $moneyReturns;
+                    } elseif ($changeAmountUSD > 0 && (float)($request->changeAmount ?? 0) > 0) {
                         $resourceService = app(\App\Services\Resources\ResourceService::class);
-                        $copRate = $resourceService->getExchangeRate('COPC') ?: 1;
-                        $copChangeAmount = $changeAmountUSD * $copRate;
+                        $copRate = (float) ($resourceService->getExchangeRate('COPC') ?: ($resourceService->getExchangeRate('COP') ?: 1));
+                        $copChangeAmount = floor(($changeAmountUSD * $copRate) / 100) * 100;
+                    }
 
+                    if ($copChangeAmount > 0) {
+                        // Vuelto otorgado en COP para un pago recibido en USD
                         $current_cash->cop_cash -= $copChangeAmount;
                         $current_cash->cop_conversion += $copChangeAmount;
                         $current_cash->usd_conversion += $changeAmountUSD;
                     } else {
                         // Vuelto otorgado directamente en USD
-                        $vueltoUSD = $changeAmountUSD > 0 ? $changeAmountUSD : $changeAmount;
+                        $vueltoUSD = $changeAmountUSD > 0 ? $changeAmountUSD : $moneyReturns;
                         $current_cash->usd_cash -= $vueltoUSD;
                     }
                 }
@@ -1470,10 +1521,13 @@ class OrderActionService
         DB::beginTransaction();
         try {
             $order->status = Order::CANCELLED;
-            $order->save();
             $order->load('details', 'cashClosing');
 
             foreach ($order->details as $item) {
+                if (!$item->product_id) {
+                    continue;
+                }
+
                 $productLot = ProductLot::where('product_id', $item->product_id)
                     ->where(function ($query) {
                         $query->whereNull('expiration_date')
@@ -1483,22 +1537,36 @@ class OrderActionService
                     ->orderBy('id', 'asc')
                     ->first();
 
+                // Si no hay un lote activo, buscar cualquier lote previo del producto sin restringir la fecha de vencimiento
                 if (!$productLot) {
-                    Log::error("No se encontró un lote activo/válido para devolver el producto.", [
-                        'order_item_id' => $item->id,
-                        'product_id' => $item->product_id,
-                        'order_id' => $order->id,
-                    ]);
-                    throw new \Exception("No se pudo devolver el inventario para el producto ID: {$item->product_id}. No hay lote disponible.");
+                    $productLot = ProductLot::where('product_id', $item->product_id)
+                        ->orderBy('id', 'desc')
+                        ->first();
                 }
 
-                $stockBefore = $item->product->stock ?? 0;
+                // Si el producto no posee ningún lote registrado en la base de datos, crear un lote genérico de devolución
+                if (!$productLot) {
+                    $productLot = ProductLot::create([
+                        'product_id' => $item->product_id,
+                        'lot_number' => 'LOT-RETURN-' . $item->product_id,
+                        'quantity' => 0,
+                        'expiration_date' => Carbon::now()->addYears(2),
+                        'cost_price' => $item->product->cost_price ?? 0,
+                    ]);
+                }
+
+                $product = $item->product;
+                $stockBefore = $product ? ($product->stock ?? 0) : 0;
                 $productLot->increment('quantity', $item->quantity);
                 
                 // Sincronizar stock del producto
-                $totalStock = (float) ($item->product->lots()->sum('quantity') ?? 0);
-                $item->product->updateQuietly(['stock' => $totalStock]);
-                \App\Services\Inventory\StockoutService::syncStockout($item->product, $totalStock);
+                if ($product) {
+                    $totalStock = (float) ($product->lots()->sum('quantity') ?? 0);
+                    $product->updateQuietly(['stock' => $totalStock]);
+                    \App\Services\Inventory\StockoutService::syncStockout($product, $totalStock);
+                } else {
+                    $totalStock = 0;
+                }
 
                 // Crear el movimiento de inventario de tipo 'return' (devolución por cancelación) asociado a la orden
                 \App\Models\InventoryMovement::create([
@@ -1515,14 +1583,15 @@ class OrderActionService
                     'movement_date' => now(),
                 ]);
             }
+
             $cashClosing = $order->cashClosing;
             if (!$cashClosing) {
                 Log::warning("Orden ID {$order->id} no tiene un cierre de caja asociado para descontar montos.");
             } else {
-
-                foreach ($order->payment_methods as $payment) {
-                    $amount = $payment['amount'];
-                    $method = $payment['method'];
+                $paymentMethods = is_array($order->payment_methods) ? $order->payment_methods : (json_decode($order->payment_methods ?? '[]', true) ?: []);
+                foreach ($paymentMethods as $payment) {
+                    $amount = (float) ($payment['amount'] ?? 0);
+                    $method = $payment['method'] ?? '';
                     switch ($method) {
                         case 'cash_usd':
                             if (isset($order->usd_conversion) && $order->usd_conversion > 0.0) {

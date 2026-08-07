@@ -45,7 +45,7 @@ const emit = defineEmits(["complete-purchase", "close-modal", "confirm-payment",
         </div>
 
         <div v-if="expirationDiscountTotal > 0" class="d-flex justify-space-between mb-1">
-          <span class="text-body-2">Descuento Vencimiento:</span>
+          <span class="text-body-2 text-medium-emphasis">Desc. Vencimiento (Incluido):</span>
           <span class="text-body-2 font-weight-medium text-error">- {{ formatCurrency(expirationDiscountTotal, selectedCurrency) }}</span>
         </div>
 
