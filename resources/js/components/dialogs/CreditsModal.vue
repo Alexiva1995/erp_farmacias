@@ -499,6 +499,10 @@ const selectPaymentMethod = (methodValue, currency = null) => {
     return;
   }
 
+  if (payments.value.length === 1 && !payments.value[0].method) {
+    payments.value.shift();
+  }
+
   const newPayment = {
     method: methodValue,
     amount: null,
@@ -862,15 +866,24 @@ const handleCompletePurchase = () => {
   }
   */
 
+  const validPayments = payments.value.filter(
+    (p) => p.method && p.amount !== null && p.amount !== undefined && Number(p.amount) > 0
+  );
+
+  if (validPayments.length === 0) {
+    toast.error("Debe ingresar al menos un método de pago válido.");
+    return;
+  }
+
   if (currentProgress.value === 0) {
     currentStageIndex.value++;
     currentProgress.value = 100;
   } else {
     emit(
       "purchase-completed",
-      payments.value.map((p) => ({
+      validPayments.map((p) => ({
         method: p.method,
-        amount: p.amount,
+        amount: Number(p.amount),
         currency: p.currency,
         reference: p.reference || undefined,
       })),

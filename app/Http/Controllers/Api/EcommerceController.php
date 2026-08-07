@@ -74,6 +74,12 @@ class EcommerceController extends Controller
         }
 
         $query = Product::with(['category', 'variants'])
+            ->withSum(['lots as calculated_stock' => function ($q) {
+                $q->where(function ($sub) {
+                    $sub->whereNull('expiration_date')
+                        ->orWhere('expiration_date', '>=', now()->format('Y-m-d'));
+                });
+            }], 'quantity')
             ->where('is_active', true)
             ->where('is_deleted', false);
 
@@ -102,18 +108,18 @@ class EcommerceController extends Controller
             $products = $query->paginate(8); // 8 productos por página para grilla de 4x2
         }
 
-        // Mapear photo_url a image_url para compatibilidad con el frontend
+        // Mapear photo_url a image_url para compatibilidad con el frontend y asignar el stock real calculado
+        $transformProduct = function ($product) {
+            $product->image_url = $product->photo_url;
+            $product->stock = (float) ($product->calculated_stock ?? 0);
+            return $product;
+        };
+
         if ($products instanceof \Illuminate\Pagination\LengthAwarePaginator) {
-            $products->getCollection()->transform(function ($product) {
-                $product->image_url = $product->photo_url;
-                return $product;
-            });
+            $products->getCollection()->transform($transformProduct);
             $productsCollection = $products->getCollection();
         } else {
-            $products->transform(function ($product) {
-                $product->image_url = $product->photo_url;
-                return $product;
-            });
+            $products->transform($transformProduct);
             $productsCollection = $products;
         }
 

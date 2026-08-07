@@ -77,7 +77,11 @@ class EcommerceOrderService
                         }
                         $variant->decrement('stock', $item['quantity']);
                     } else {
-                        if ($product->stock < $item['quantity']) {
+                        $availableStock = (float) ($product->lots()->where(function ($sub) {
+                            $sub->whereNull('expiration_date')->orWhere('expiration_date', '>=', now()->format('Y-m-d'));
+                        })->sum('quantity') ?? 0);
+
+                        if ($availableStock < $item['quantity']) {
                             throw new Exception("Stock insuficiente para el producto '{$product->name}'.");
                         }
                         $product->decrement('stock', $item['quantity']);

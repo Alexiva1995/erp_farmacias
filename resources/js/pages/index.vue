@@ -292,6 +292,7 @@ const clearCart = () => { cart.value = [] }
 
 // ——— Vista rápida ———
 const openQuickView = (product) => {
+  if (Number(product.stock) <= 0) return
   selectedProduct.value = product
   selectedVariant.value = product.variants?.length ? product.variants[0] : null
   quickViewDialog.value = true
@@ -639,7 +640,7 @@ onMounted(async () => {
           class="editorial-product-card"
         >
           <!-- Contenedor de Imagen -->
-          <div class="editorial-product-img-wrap" @click="openQuickView(product)">
+          <div class="editorial-product-img-wrap" @click="openQuickView(product)" :style="Number(product.stock) <= 0 ? 'cursor: not-allowed;' : ''">
             <div style="position: absolute; top: 12px; left: 12px; display: flex; flex-direction: column; gap: 6px; z-index: 5;">
               <span v-if="Number(product.stock) <= 0" style="background-color: #000000; color: #FFFFFF; padding: 4px 8px; font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;">AGOTADO</span>
               <span v-if="product.is_favorite && brandingStore.settings.enable_favorites" class="product-badge-editorial" style="position: static; margin-bottom: 0;">FAVORITO</span>
@@ -670,21 +671,26 @@ onMounted(async () => {
               <span class="fallback-sub">NO DISPONIBLE</span>
             </div>
             <div class="editorial-card-hover-action">
-              <span class="hover-action-label">VISTA RÁPIDA</span>
+              <span class="hover-action-label">{{ Number(product.stock) <= 0 ? 'AGOTADO' : 'VISTA RÁPIDA' }}</span>
             </div>
           </div>
 
           <!-- Info -->
           <div class="editorial-product-info" style="margin-top: 15px;">
-            <h3 class="editorial-product-name" @click="openQuickView(product)" style="cursor: pointer; margin-bottom: 4px;">{{ product.name.toUpperCase() }}</h3>
+            <h3 class="editorial-product-name" @click="openQuickView(product)" :style="Number(product.stock) <= 0 ? 'cursor: not-allowed; margin-bottom: 4px;' : 'cursor: pointer; margin-bottom: 4px;'">{{ product.name.toUpperCase() }}</h3>
             <span v-if="product.brand" class="editorial-product-brand" style="display: block; margin-bottom: 8px;">{{ product.brand }}</span>
             <div class="editorial-product-footer" style="display: flex; gap: 8px; align-items: baseline;">
               <span v-if="product.original_price" class="editorial-product-price-original" style="text-decoration: line-through; color: #888888; font-size: 13px; font-weight: 500;">{{ formatPrice(product.original_price) }}</span>
               <span class="editorial-product-price" style="font-weight: 700;">{{ formatPrice(product.sale_price) }}</span>
             </div>
             <!-- Botón de Ancho Completo Táctil y Accesible (Estilo Premium Zara/Fenty) -->
-            <button class="editorial-add-bag-btn" @click.stop="openQuickView(product)" style="background: var(--editorial-black); color: #fff; border: none; width: 100%; padding: 12px; font-size: 11px; font-weight: 700; letter-spacing: 2px; cursor: pointer; text-transform: uppercase; margin-top: 12px; display: block; text-align: center; transition: all 0.3s ease;">
-              + VER DETALLES
+            <button
+              class="editorial-add-bag-btn"
+              :disabled="Number(product.stock) <= 0"
+              @click.stop="openQuickView(product)"
+              :style="Number(product.stock) <= 0 ? 'background: #999999; color: #fff; border: none; width: 100%; padding: 12px; font-size: 11px; font-weight: 700; letter-spacing: 2px; cursor: not-allowed; text-transform: uppercase; margin-top: 12px; display: block; text-align: center;' : 'background: var(--editorial-black); color: #fff; border: none; width: 100%; padding: 12px; font-size: 11px; font-weight: 700; letter-spacing: 2px; cursor: pointer; text-transform: uppercase; margin-top: 12px; display: block; text-align: center; transition: all 0.3s ease;'"
+            >
+              {{ Number(product.stock) <= 0 ? 'AGOTADO' : '+ VER DETALLES' }}
             </button>
           </div>
         </div>
@@ -782,7 +788,7 @@ onMounted(async () => {
           class="editorial-product-card fav-carousel-card"
         >
           <!-- Contenedor de Imagen -->
-          <div class="editorial-product-img-wrap" @click="openQuickView(product)" style="aspect-ratio: 0.95; background-color: #F3F3F3; border: none; position: relative;">
+          <div class="editorial-product-img-wrap" @click="openQuickView(product)" :style="Number(product.stock) <= 0 ? 'aspect-ratio: 0.95; background-color: #F3F3F3; border: none; position: relative; cursor: not-allowed;' : 'aspect-ratio: 0.95; background-color: #F3F3F3; border: none; position: relative; cursor: pointer;'">
              <!-- Badges planos apilados como la referencia -->
              <div style="position: absolute; top: 12px; left: 12px; display: flex; flex-direction: column; gap: 6px; z-index: 5;">
                <span v-if="Number(product.stock) <= 0" style="background-color: #000000; color: #FFFFFF; padding: 4px 8px; font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;">AGOTADO</span>
@@ -815,13 +821,13 @@ onMounted(async () => {
               <span class="fallback-sub">NO DISPONIBLE</span>
             </div>
             <div class="editorial-card-hover-action">
-              <span class="hover-action-label">VISTA RÁPIDA</span>
+              <span class="hover-action-label">{{ Number(product.stock) <= 0 ? 'AGOTADO' : 'VISTA RÁPIDA' }}</span>
             </div>
           </div>
 
           <!-- Información de Producto estilo Fenty exacto -->
           <div class="editorial-product-info" style="padding-top: 15px; text-align: left; display: flex; flex-direction: column; flex-grow: 1;">
-            <h3 class="editorial-product-name" @click="openQuickView(product)" style="cursor: pointer; font-family: var(--editorial-font-sans); font-size: 14px; font-weight: 600; letter-spacing: 0.5px; color: #000000; margin-bottom: 4px; line-height: 1.4; text-transform: none;">
+            <h3 class="editorial-product-name" @click="openQuickView(product)" :style="Number(product.stock) <= 0 ? 'cursor: not-allowed; font-family: var(--editorial-font-sans); font-size: 14px; font-weight: 600; letter-spacing: 0.5px; color: #000000; margin-bottom: 4px; line-height: 1.4; text-transform: none;' : 'cursor: pointer; font-family: var(--editorial-font-sans); font-size: 14px; font-weight: 600; letter-spacing: 0.5px; color: #000000; margin-bottom: 4px; line-height: 1.4; text-transform: none;'">
               {{ product.name }}
             </h3>
             
@@ -836,8 +842,13 @@ onMounted(async () => {
                <span class="editorial-product-price" style="font-size: 16px; font-weight: 750; color: #000000; letter-spacing: 0.5px;">{{ formatPrice(product.sale_price) }}</span>
              </div>
             <!-- Botón de Ancho Completo Táctil y Accesible (Consistencia con catálogo) -->
-            <button class="editorial-add-bag-btn" @click.stop="openQuickView(product)" style="background: var(--editorial-black); color: #fff; border: none; width: 100%; padding: 12px; font-size: 11px; font-weight: 700; letter-spacing: 2px; cursor: pointer; text-transform: uppercase; margin-top: 12px; display: block; text-align: center; transition: all 0.3s ease;">
-              + VER DETALLES
+            <button
+              class="editorial-add-bag-btn"
+              :disabled="Number(product.stock) <= 0"
+              @click.stop="openQuickView(product)"
+              :style="Number(product.stock) <= 0 ? 'background: #999999; color: #fff; border: none; width: 100%; padding: 12px; font-size: 11px; font-weight: 700; letter-spacing: 2px; cursor: not-allowed; text-transform: uppercase; margin-top: 12px; display: block; text-align: center;' : 'background: var(--editorial-black); color: #fff; border: none; width: 100%; padding: 12px; font-size: 11px; font-weight: 700; letter-spacing: 2px; cursor: pointer; text-transform: uppercase; margin-top: 12px; display: block; text-align: center; transition: all 0.3s ease;'"
+            >
+              {{ Number(product.stock) <= 0 ? 'AGOTADO' : '+ VER DETALLES' }}
             </button>
           </div>
         </div>

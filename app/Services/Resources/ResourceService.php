@@ -100,9 +100,9 @@ class ResourceService
         try {
             // Intentar obtener la tasa fresca o desde la caché con expiración
             $rate = Cache::remember($cacheKey, now()->addHours(1), function () use ($currencyCode, $fallbackKey) {
-                $exchangeRate = ExchangeRate::where('currency_code', $currencyCode)->first();
+                $exchangeRate = ExchangeRate::where('currency_code', $currencyCode)->latest('id')->first();
                 if (!$exchangeRate && ($currencyCode === 'BCV' || $currencyCode === 'BS')) {
-                    $exchangeRate = ExchangeRate::whereIn('currency_code', ['BS', 'BCV', 'VES'])->first();
+                    $exchangeRate = ExchangeRate::whereIn('currency_code', ['BS', 'BCV', 'VES'])->latest('id')->first();
                 }
                 if ($exchangeRate) {
                     $val = (float) $exchangeRate->rate;
@@ -142,7 +142,14 @@ class ResourceService
     public function getAllExchangeRate(): Collection
     {
         return Cache::remember('resources.all_exchange_rates', now()->addHours(1), function () {
-            return ExchangeRate::orderBy('currency_code')->get(['currency_code', 'rate', 'source']);
+            return ExchangeRate::query()
+                ->whereIn('id', function ($query) {
+                    $query->selectRaw('MAX(id)')
+                        ->from('exchange_rates')
+                        ->groupBy('currency_code');
+                })
+                ->orderBy('currency_code')
+                ->get(['currency_code', 'rate', 'source']);
         });
     }
 
