@@ -46,11 +46,8 @@ export function useTpvCheckoutCalculations(props, payments, brandingStore) {
   }
 
   const getCopChangeRate = () => {
-    const usdRates = exchangeRates.value?.['USD']
-    if (usdRates && usdRates['COPC']) {
-      const val = parseFloat(usdRates['COPC'])
-      if (!isNaN(val) && val > 0) return val
-    }
+    const copcRate = getEffectiveRate('USD', 'COPC')
+    if (copcRate > 0) return copcRate
     return getEffectiveRate('USD', 'COP')
   }
 
@@ -124,6 +121,7 @@ export function useTpvCheckoutCalculations(props, payments, brandingStore) {
 
       exchangeRates.value = formattedRates
       ratesLoaded.value = true
+      console.warn('[TPV DEBUG TASAS CARGADAS EN MEMORIA]', formattedRates)
     } catch (error) {
       toast.error('No se pudieron cargar las tasas de cambio.')
       console.error('Error fetching exchange rates:', error)
@@ -134,6 +132,16 @@ export function useTpvCheckoutCalculations(props, payments, brandingStore) {
   onMounted(() => {
     fetchExchangeRates()
   })
+
+  watch(
+    () => props.isDialogVisible,
+    (visible) => {
+      if (visible) {
+        fetchExchangeRates()
+      }
+    },
+    { immediate: true }
+  )
 
   const roundedTotalAmountToPay = computed(() => {
     let baseAmount = props.totalAmount
@@ -163,7 +171,9 @@ export function useTpvCheckoutCalculations(props, payments, brandingStore) {
 
   const getConvertedRemainingAmount = (currency) => {
     const baseCurrency = props.selectedCurrency
-    const targetCurrency = currency
+    let targetCurrency = currency ? String(currency).toUpperCase().trim() : ''
+    const match = targetCurrency.match(/(USD|COP|BS)/)
+    if (match) targetCurrency = match[1]
 
     if (baseCurrency === targetCurrency) {
       return remainingAmount.value
@@ -173,13 +183,16 @@ export function useTpvCheckoutCalculations(props, payments, brandingStore) {
 
     // 1. Si la moneda base del pedido es USD
     if (baseCurrency === 'USD') {
-      const rate = getEffectiveRate('USD', targetCurrency)
+      const rateKey = targetCurrency === 'COP' ? 'COP' : targetCurrency
+      const usdRates = exchangeRates.value?.['USD']
+      const rate = usdRates ? (usdRates[rateKey] || 0) : 0
       if (rate <= 0) return 0
       const result = remainingAmount.value * rate
-      if (targetCurrency === 'COP') {
-        return roundUpToNearestHundred(result)
-      }
-      return roundToTwoDecimalPlaces(result)
+      const finalVal = targetCurrency === 'COP' ? roundUpToNearestHundred(result) : roundToTwoDecimalPlaces(result)
+
+      console.warn(`[TPV DEBUG RESTANTE] Moneda: ${targetCurrency} | Restante USD: ${remainingAmount.value} | Tasa Usada (${rateKey}): ${rate} | Resultado: ${finalVal}`)
+
+      return finalVal
     }
 
     // 2. Si la moneda objetivo es USD
@@ -230,9 +243,10 @@ export function useTpvCheckoutCalculations(props, payments, brandingStore) {
     })
 
     const totalToPayUsd = props.totalAmount + (appliesSpecialTax.value ? specialTaxAmount.value : 0)
-    const copChangeRate = getCopChangeRate()
 
+    // Caso 1: Los pagos en USD superan el total de la orden -> Usar tasa COPC
     if (totalPaidInUsd > totalToPayUsd) {
+      const copChangeRate = getCopChangeRate()
       const changeInUsd = totalPaidInUsd - totalToPayUsd
       const changeInCopFromUsd = changeInUsd * copChangeRate
       const totalCopChange = totalPaidInCop + changeInCopFromUsd
@@ -240,19 +254,37 @@ export function useTpvCheckoutCalculations(props, payments, brandingStore) {
       return roundUpToNearestHundred(totalCopChange)
     }
 
-    const totalToPayCop = roundUpToNearestHundred(totalToPayUsd * getEffectiveRate('USD', 'COP'))
-    const diff = totalPaidInCop - totalToPayCop
-    if (diff <= 0) return 0
-    return roundUpToNearestHundred(diff)
+    // Caso 2: Los pagos en USD NO superan la orden -> Calcular restante en COP con tasa estándar y obtener vuelto sobre pagos en COP
+    const remainingUsdToPay = Math.max(0, totalToPayUsd - totalPaidInUsd)
+    const standardCopRate = getEffectiveRate('USD', 'COP')
+    const remainingCopToPay = roundUpToNearestHundred(remainingUsdToPay * standardCopRate)
+    const diffCop = totalPaidInCop - remainingCopToPay
+    if (diffCop <= 0) return 0
+    return roundUpToNearestHundred(diffCop)
   })
 
   const changeAmount = computed(() => {
     if (props.selectedCurrency === 'COP') {
       return changeAmountInCop.value
     }
-    const rateCopToUsd = getEffectiveRate('COP', 'USD') || (1 / (getEffectiveRate('USD', 'COP') || 1))
-    if (rateCopToUsd > 0) {
-      return roundToTwoDecimalPlaces(changeAmountInCop.value * rateCopToUsd)
+
+    let totalPaidInUsd = 0
+    payments.value.forEach((payment) => {
+      let amount = Number(payment.amount) || 0
+      if (payment.currency === 'USD') {
+        totalPaidInUsd += amount
+      } else if (payment.currency !== 'COP') {
+        const rateToUsd = getEffectiveRate(payment.currency, 'USD')
+        if (rateToUsd > 0) totalPaidInUsd += amount * rateToUsd
+      }
+    })
+    const totalToPayUsd = props.totalAmount + (appliesSpecialTax.value ? specialTaxAmount.value : 0)
+
+    const isUsdSurplus = totalPaidInUsd > totalToPayUsd
+    const effectiveRate = isUsdSurplus ? getCopChangeRate() : getEffectiveRate('USD', 'COP')
+
+    if (effectiveRate > 0 && changeAmountInCop.value > 0) {
+      return roundToTwoDecimalPlaces(changeAmountInCop.value / effectiveRate)
     }
     const diff = totalPaidAmount.value - roundedTotalAmountToPay.value
     return Math.max(0, roundToTwoDecimalPlaces(diff))

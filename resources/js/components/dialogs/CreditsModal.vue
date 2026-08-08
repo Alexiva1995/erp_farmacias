@@ -450,7 +450,7 @@ const changeAmountInCOP = computed(() => {
   const vueltoEnMonedaOrden = changeAmount.value;
   if (props.selectedCurrency === "COP") return vueltoEnMonedaOrden;
 
-  const rate = exchangeRates.value?.[props.selectedCurrency]?.["COP"];
+  const rate = exchangeRates.value?.[props.selectedCurrency]?.["COPC"] ?? exchangeRates.value?.[props.selectedCurrency]?.["COP"];
   if (rate) {
     const vueltoConvertido = vueltoEnMonedaOrden * rate;
     return roundUpToNearestHundred(vueltoConvertido);

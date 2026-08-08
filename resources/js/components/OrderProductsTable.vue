@@ -73,11 +73,6 @@ const getEffectiveRate = (fromCurrency, toCurrency) => {
   const rates = props.exchangeRates?.[fromCurrency];
   if (!rates) return 0;
 
-  // REGLA NEGOCIO: Si convertimos de USD a COP, usar COPC (Tasa Manual) si existe
-  if (fromCurrency === "USD" && toCurrency === "COP" && rates["COPC"]) {
-    return rates["COPC"];
-  }
-
   return rates[toCurrency] || 0;
 };
 

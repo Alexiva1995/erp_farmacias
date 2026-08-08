@@ -213,9 +213,7 @@ export function useCheckout(props) {
   const changeAmountInCOP = computed(() => {
     const vueltoEnMonedaOrden = changeAmount.value;
     if (props.selectedCurrency === "COP") return vueltoEnMonedaOrden;
-    // Buscar la tasa preferencial COPC para vueltos en pesos (directa o indexada en USD)
     const rate = exchangeRates.value?.["USD"]?.["COPC"] ?? 
-                 exchangeRates.value?.["COPC"] ?? 
                  exchangeRates.value?.["USD"]?.["COP"] ?? 
                  exchangeRates.value?.["COP"];
     if (rate) return roundUpToNearestHundred(vueltoEnMonedaOrden * rate);

@@ -78,9 +78,6 @@ export function useTpvRates(brandingStore, isRestaurant, isSportsRental) {
     if (fromCurrency === toCurrency) return 1
     const rates = exchangeRates.value?.[fromCurrency]
     if (!rates) return 0
-    if (fromCurrency === 'USD' && toCurrency === 'COP' && rates['COPC']) {
-      return rates['COPC']
-    }
     return rates[toCurrency] || 0
   }
 
