@@ -138,7 +138,9 @@ export function useCheckout(props) {
     if (baseCurrency === currency) {
       result = remainingAmount.value;
     } else if (ratesLoaded.value) {
-      const rate = exchangeRates.value[baseCurrency]?.[currency];
+      // Usar la tasa oficial estándar COP para el total/restante a pagar
+      const targetRateKey = currency === "COP" ? "COP" : currency;
+      const rate = exchangeRates.value[baseCurrency]?.[targetRateKey];
       if (rate) result = remainingAmount.value * rate;
     }
     if (currency === "COP") return roundUpToNearestHundred(result);
@@ -210,7 +212,8 @@ export function useCheckout(props) {
   const changeAmountInCOP = computed(() => {
     const vueltoEnMonedaOrden = changeAmount.value;
     if (props.selectedCurrency === "COP") return vueltoEnMonedaOrden;
-    const rate = exchangeRates.value?.[props.selectedCurrency]?.["COP"];
+    // Tasa preferencial COPC para dar vueltos en COP cuando se paga en USD, fallback a COP
+    const rate = exchangeRates.value?.[props.selectedCurrency]?.["COPC"] || exchangeRates.value?.[props.selectedCurrency]?.["COP"];
     if (rate) return roundUpToNearestHundred(vueltoEnMonedaOrden * rate);
     return 0;
   });

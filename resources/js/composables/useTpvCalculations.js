@@ -118,7 +118,7 @@ export function useTpvCalculations({
     let specialTax = 0
     if (isSpecialTax) {
       specialTax = finalOrderTotal * 0.03
-      if (currency === 'COP') specialTax = Math.ceil(specialTax / 100) * 100
+      if (currency === 'COP') specialTax = roundUpToNearestHundred(specialTax)
     }
 
     const finalOrderTotalWithTax = finalOrderTotal + specialTax

@@ -326,7 +326,7 @@ const formattedTotalQuotation = computed(() => {
   }
 
   if (props.selectedDisplayCurrency === "COP") {
-    amountToFormat = Math.ceil(amountToFormat / 100) * 100;
+    amountToFormat = roundUpToNearestHundred(amountToFormat);
   }
   return formatCurrency(
     parseFloat(amountToFormat.toFixed(2)),
