@@ -3,6 +3,7 @@ import { formatCurrency, formatAmountOnly } from "@/utils/currencyFormatter";
 import { formatDateTime } from "@/utils/formatDateTime";
 import { capitalizeFirstAndLastName } from "@/@core/utils/formatters";
 import { translateMethod } from "@/utils/paymentMethods";
+import { getItemPriceByCurrency } from "@/composables/useTpvItemFormatter";
 import axios from "@/plugins/axios";
 import { computed, ref, watch } from "vue";
 
@@ -85,14 +86,6 @@ const getCurrencyChipColor = (currency) => {
     default:
       return "info";
   }
-};
-
-const getItemPriceByCurrency = (detail, currency) => {
-  const unitPrice =
-    parseFloat(detail.unit_price_usd) ??
-    parseFloat(detail.price) ??
-    0;
-  return unitPrice;
 };
 
 const getLineTotal = (detail) => {

@@ -3,6 +3,7 @@ import { formatCurrency, formatAmountOnly } from "@/utils/currencyFormatter";
 import { formatDateTime } from "@/utils/formatDateTime";
 import { capitalizeFirstAndLastName } from "@/@core/utils/formatters";
 import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
+import { getItemPriceByCurrency } from "@/composables/useTpvItemFormatter";
 import { computed } from "vue";
 import { useDisplay } from "vuetify";
 
@@ -156,30 +157,6 @@ const getPaymentMethodLabel = (methodValue, currency) => {
     }
   }
   return methodValue.replace(/_/g, " ").toUpperCase();
-};
-const getItemPriceByCurrency = (item, currency) => {
-  // Si ya se proporciona el precio unitario final (ej. desde el historial), usarlo directamente
-  if (item.unit_price !== undefined && item.unit_price !== null) {
-    return item.unit_price;
-  }
-  
-  if (item.fixed_price !== undefined && item.fixed_price !== null) {
-    return item.fixed_price;
-  }
-  const taxRate = item.taxRate || 0;
-  let basePrice = 0;
-  if (currency === "BS") {
-    basePrice = item.price_bs || 0;
-  } else if (currency === "COP") {
-    basePrice = item.price_cop || 0;
-  } else {
-    basePrice = item.price || 0;
-  }
-  let priceWithIva = basePrice * (1 + taxRate);
-  if (currency === "COP") {
-    priceWithIva = roundUpToNearestHundred(priceWithIva);
-  }
-  return priceWithIva;
 };
 
 const debtPayments = computed(() => {

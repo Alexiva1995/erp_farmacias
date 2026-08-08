@@ -2,6 +2,7 @@
 import { formatCurrency, formatAmountOnly } from "@/utils/currencyFormatter";
 import { capitalizeFirstAndLastName } from "@/@core/utils/formatters";
 import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
+import { getItemPriceByCurrency } from "@/composables/useTpvItemFormatter";
 import { computed } from "vue";
 import { useDisplay } from "vuetify";
 
@@ -45,15 +46,6 @@ const paymentBadge = computed(() => {
   if (!props.payments?.length) return { label: "—", color: "secondary" };
   return { label: "Pagado", color: "success" };
 });
-
-const getItemPriceByCurrency = (item, currency) => {
-  if (item.fixed_price != null) return item.fixed_price;
-  const taxRate = item.taxRate || 0;
-  let basePrice = currency === "BS" ? (item.price_bs || 0) : (currency === "COP" ? (item.price_cop || 0) : (item.price || 0));
-  let priceWithIva = basePrice * (1 + taxRate);
-  if (currency === "COP") priceWithIva = roundUpToNearestHundred(priceWithIva);
-  return priceWithIva;
-};
 
 const getLineTotal = (product) => {
   const price = getItemPriceByCurrency(product, props.selectedCurrency);

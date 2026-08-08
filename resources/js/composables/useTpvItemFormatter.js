@@ -1,14 +1,35 @@
 import axios from '@/plugins/axios'
 
 export const getItemPriceByCurrency = (item, currency, useBase = false) => {
-  if (currency === 'BS') {
-    return useBase ? item.base_price_bs ?? 0 : item.price_bs ?? 0
-  } else if (currency === 'COP') {
-    return useBase ? item.base_price_cop ?? 0 : item.price_cop ?? 0
+  if (!item) return 0
+
+  if (item.fixed_price !== undefined && item.fixed_price !== null) {
+    return Number(item.fixed_price) || 0
+  }
+
+  const curr = String(currency || 'USD').toUpperCase()
+
+  if (curr === 'BS') {
+    const val = useBase
+      ? (item.base_price_bs ?? item.original_price_bs ?? item.price_bs ?? item.unit_price_bs)
+      : (item.price_bs ?? item.unit_price_bs ?? item.base_price_bs)
+    if (val !== undefined && val !== null) return Number(val) || 0
+    const baseUsd = Number(item.price ?? item.unit_price ?? item.base_price ?? 0)
+    const rateBs = Number(item.exchange_rate_bs ?? item.rate_bs ?? 1)
+    return parseFloat((baseUsd * rateBs).toFixed(2))
+  } else if (curr === 'COP') {
+    const val = useBase
+      ? (item.base_price_cop ?? item.original_price_cop ?? item.price_cop ?? item.unit_price_cop)
+      : (item.price_cop ?? item.unit_price_cop ?? item.base_price_cop)
+    if (val !== undefined && val !== null) return Number(val) || 0
+    const baseUsd = Number(item.price ?? item.unit_price ?? item.base_price ?? 0)
+    const rateCop = Number(item.exchange_rate_cop ?? item.rate_cop ?? 4000)
+    return Math.round(baseUsd * rateCop)
   } else {
-    return useBase
-      ? item.base_price ?? item.original_price_usd ?? 0
-      : item.price ?? item.sale_price ?? 0
+    const val = useBase
+      ? (item.base_price ?? item.original_price_usd ?? item.price ?? item.unit_price_usd ?? item.unit_price)
+      : (item.price ?? item.sale_price ?? item.unit_price_usd ?? item.unit_price ?? item.base_price)
+    return Number(val) || 0
   }
 }
 
