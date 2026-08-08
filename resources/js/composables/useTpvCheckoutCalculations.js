@@ -42,10 +42,16 @@ export function useTpvCheckoutCalculations(props, payments, brandingStore) {
     if (fromCurrency === toCurrency) return 1
     const rates = exchangeRates.value?.[fromCurrency]
     if (!rates) return 0
-    if (fromCurrency === 'USD' && toCurrency === 'COP' && rates['COPC']) {
-      return rates['COPC']
-    }
     return rates[toCurrency] || 0
+  }
+
+  const getCopChangeRate = () => {
+    const usdRates = exchangeRates.value?.['USD']
+    if (usdRates && usdRates['COPC']) {
+      const val = parseFloat(usdRates['COPC'])
+      if (!isNaN(val) && val > 0) return val
+    }
+    return getEffectiveRate('USD', 'COP')
   }
 
   const totalPaidAmount = computed(() => {
@@ -206,31 +212,38 @@ export function useTpvCheckoutCalculations(props, payments, brandingStore) {
   }
 
   const changeAmountInCop = computed(() => {
+    let totalPaidInUsd = 0
     let totalPaidInCop = 0
+
     payments.value.forEach((payment) => {
       let amount = Number(payment.amount) || 0
       if (payment.currency === 'COP') {
         totalPaidInCop += amount
+      } else if (payment.currency === 'USD') {
+        totalPaidInUsd += amount
       } else {
-        const rate = getEffectiveRate(payment.currency, 'COP')
-        if (rate > 0) {
-          totalPaidInCop += amount * rate
+        const rateToUsd = getEffectiveRate(payment.currency, 'USD')
+        if (rateToUsd > 0) {
+          totalPaidInUsd += amount * rateToUsd
         }
       }
     })
 
-    let totalToPayInCop = 0
-    if (props.selectedCurrency === 'COP') {
-      totalToPayInCop = roundUpToNearestHundred(props.totalAmount + (appliesSpecialTax.value ? specialTaxAmount.value : 0))
-    } else {
-      const rateUsdToCop = getEffectiveRate('USD', 'COP')
-      const baseUsd = props.totalAmount + (appliesSpecialTax.value ? specialTaxAmount.value : 0)
-      totalToPayInCop = roundUpToNearestHundred(baseUsd * rateUsdToCop)
+    const totalToPayUsd = props.totalAmount + (appliesSpecialTax.value ? specialTaxAmount.value : 0)
+    const copChangeRate = getCopChangeRate()
+
+    if (totalPaidInUsd > totalToPayUsd) {
+      const changeInUsd = totalPaidInUsd - totalToPayUsd
+      const changeInCopFromUsd = changeInUsd * copChangeRate
+      const totalCopChange = totalPaidInCop + changeInCopFromUsd
+      if (totalCopChange <= 0) return 0
+      return roundUpToNearestHundred(totalCopChange)
     }
 
-    const diff = totalPaidInCop - totalToPayInCop
+    const totalToPayCop = roundUpToNearestHundred(totalToPayUsd * getEffectiveRate('USD', 'COP'))
+    const diff = totalPaidInCop - totalToPayCop
     if (diff <= 0) return 0
-    return Math.floor(diff / 100) * 100
+    return roundUpToNearestHundred(diff)
   })
 
   const changeAmount = computed(() => {

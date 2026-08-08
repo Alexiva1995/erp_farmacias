@@ -54,6 +54,7 @@ export function useCheckout(props) {
       apiRates.forEach((rateItem) => {
         const currencyCode = rateItem.currency_code;
         const rateValue = parseFloat(rateItem.rate);
+        formattedRates[currencyCode] = rateValue;
         if (!formattedRates["USD"]) formattedRates["USD"] = {};
         formattedRates["USD"][currencyCode] = rateValue;
         if (!formattedRates[currencyCode]) formattedRates[currencyCode] = {};
@@ -212,8 +213,11 @@ export function useCheckout(props) {
   const changeAmountInCOP = computed(() => {
     const vueltoEnMonedaOrden = changeAmount.value;
     if (props.selectedCurrency === "COP") return vueltoEnMonedaOrden;
-    // Tasa preferencial COPC para dar vueltos en COP cuando se paga en USD, fallback a COP
-    const rate = exchangeRates.value?.[props.selectedCurrency]?.["COPC"] || exchangeRates.value?.[props.selectedCurrency]?.["COP"];
+    // Buscar la tasa preferencial COPC para vueltos en pesos (directa o indexada en USD)
+    const rate = exchangeRates.value?.["USD"]?.["COPC"] ?? 
+                 exchangeRates.value?.["COPC"] ?? 
+                 exchangeRates.value?.["USD"]?.["COP"] ?? 
+                 exchangeRates.value?.["COP"];
     if (rate) return roundUpToNearestHundred(vueltoEnMonedaOrden * rate);
     return 0;
   });
