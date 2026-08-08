@@ -262,7 +262,7 @@ const totalUsdGlobal = computed(() => {
 });
 
 const totalCopGlobal = computed(() => {
-  return filteredCashClosings.value.reduce((acc, c) => acc + parseFloat(c.cop_delivered || 0), 0);
+  return filteredCashClosings.value.reduce((acc, c) => acc + (parseFloat(c.cop_delivered || 0) + parseFloat(c.cop_transfer || 0)), 0);
 });
 
 const totalBsGlobal = computed(() => {
@@ -709,7 +709,7 @@ defineExpose({ printReport });
                 </td>
                 <td class="text-end">
                   <div class="d-flex align-center justify-end gap-1">
-                    <span class="text-sm font-weight-bold text-success">{{ fmtCop(c.cop_delivered) }}</span>
+                    <span class="text-sm font-weight-bold text-success">{{ fmtCop(parseFloat(c.cop_delivered || 0) + parseFloat(c.cop_transfer || 0)) }}</span>
                     <!-- Icono de Descuadre en Rojo si aplica -->
                     <VMenu v-if="hasMismatchForCurrency(c, 'COP')" close-on-content-click location="top">
                       <template #activator="{ props: menuProps }">
@@ -921,7 +921,7 @@ defineExpose({ printReport });
                     {{ formatCurrency(cash.usd_delivered, 'USD') }}
                   </td>
                   <td style="padding: 6px; font-size: 8pt; text-align: end; color: #2e7d32;">
-                    {{ formatCurrency(cash.cop_delivered, 'COP') }}
+                    {{ formatCurrency(parseFloat(cash.cop_delivered || 0) + parseFloat(cash.cop_transfer || 0), 'COP') }}
                   </td>
                   <td style="padding: 6px; font-size: 8pt; text-align: end; color: #ed6c02;">
                     {{ formatCurrency(cash.total_bs, 'BS') }}

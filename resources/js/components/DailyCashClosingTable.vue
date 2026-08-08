@@ -244,7 +244,7 @@ const hasMismatch = (item) => {
         <!-- COP (entrega + popover) -->
         <template #item.cop_delivered="{ item }">
           <div class="d-flex align-center justify-end gap-1">
-            <span class="text-sm font-weight-bold text-success">{{ fmtCop(item.cop_delivered) }}</span>
+            <span class="text-sm font-weight-bold text-success">{{ fmtCop(parseFloat(item.cop_delivered || 0) + parseFloat(item.cop_transfer || 0)) }}</span>
             <VMenu v-if="getPaymentDetail(item, 'COP').length > 0" open-on-hover close-on-content-click location="top">
               <template #activator="{ props: menuProps }">
                 <VIcon v-bind="menuProps" icon="tabler-info-circle" size="14" class="text-disabled cursor-pointer" />

@@ -264,6 +264,7 @@ const sellerFullName = computed(() => {
 
 const blindPayments = computed(() => [
   { label: "Monto COP", amount: getValue("declared_cop"), currency: "COP" },
+  { label: "Monto COP Transf.", amount: getValue("declared_cop_transfer"), currency: "COP" },
   { label: "Monto USD", amount: getValue("declared_usd"), currency: "USD" },
   { label: "Monto Crédito", amount: getValue("declared_credit"), currency: "USD" },
   { label: "Monto BS (Transf/PM)", amount: getValue("declared_bs_mobile"), currency: "BS" },

@@ -295,6 +295,7 @@ const handleCompleteClosure = async ([closureData, cashClosureData]) => {
       ...cashClosureData,
       is_blind: closureData.is_blind,
       declared_cop: closureData.declared_cop,
+      declared_cop_transfer: closureData.declared_cop_transfer,
       declared_usd: closureData.declared_usd,
       declared_credit: closureData.declared_credit,
       declared_bs_mobile: closureData.declared_bs_mobile,
