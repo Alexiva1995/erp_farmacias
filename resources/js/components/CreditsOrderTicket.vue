@@ -30,39 +30,24 @@ const totalPendingAmount = computed(() => {
 });
 </script>
 <template>
-  <div class="col-12 col-md-8 mx-auto">
-    <VCard variant="outlined" class="pa-2 text-start">
+  <div class="col-12 col-md-8 mx-auto ticket-black-text">
+    <VCard variant="outlined" class="pa-2 text-start border-0 text-black">
       <div class="text-center pa-2 mb-2">
         <a href="#">
           <img width="130" :src="logoSrc" alt="Logotipo de la marca" />
         </a>
       </div>
-      <div class="text-center">
-        <span class="headerPrint">J-50540695-7</span>
-      </div>
-      <div class="text-center">
-        <span class="headerPrint">FARMACIA BARRIO SUCRE 2024!, C.A.</span>
-      </div>
-      <div class="text-center">
-        <span class="headerPrint">CALLE PRINCIPAL LOCAL 05 (L5)</span>
-      </div>
-      <div class="text-center">
-        <span class="headerPrint">SECTOR BARRIO SUCRE LA FRIA TACHIRA</span>
-      </div>
-      <div class="text-center">
-        <span class="headerPrint">ZONA POSTAL 5020</span>
-      </div>
 
       <div class="d-flex justify-space-between align-start mb-1">
-        <span class="font-weight-bold text-h6">Cliente:</span>
-        <span class="font-weight-bold text-h6"
+        <span class="font-weight-bold text-h6 text-black">Cliente:</span>
+        <span class="font-weight-bold text-h6 text-black"
           >{{ props.creditsData[0].client.name }}
           {{ props.creditsData[0].client.last_name }}</span
         >
       </div>
       <div class="d-flex justify-space-between align-start mb-1">
-        <span class="font-weight-bold text-h6">Documento:</span>
-        <span class="font-weight-bold text-h6">
+        <span class="font-weight-bold text-h6 text-black">Documento:</span>
+        <span class="font-weight-bold text-h6 text-black">
           {{ props.creditsData[0].client.identification_type }}
           {{ props.creditsData[0].client.identification }}</span
         >
@@ -75,10 +60,10 @@ const totalPendingAmount = computed(() => {
       >
         <div class="m-0">
           <VCardTitle class="d-flex justify-space-between align-center">
-            <span class="font-weight-bold text-h6"
+            <span class="font-weight-bold text-h6 text-black"
               >Orden #{{ credit.order.id }}</span
             >
-            <span class="text-body-2 text-medium-emphasis">
+            <span class="text-body-2 text-black">
               Total: {{ credit.order.total_amount }} {{ credit.order.currency }}
             </span>
           </VCardTitle>
@@ -92,16 +77,16 @@ const totalPendingAmount = computed(() => {
                   class="rounded-0"
                 >
                   <template #prepend>
-                    <span>{{ details.quantity }} x</span>
+                    <span class="text-black">{{ details.quantity }} x</span>
                   </template>
 
-                  <VListItemTitle class="font-weight-medium me-4">
+                  <VListItemTitle class="font-weight-medium me-4 text-black">
                     {{ details.product.name }}
                   </VListItemTitle>
 
                   <template #append>
                     <div class="d-flex align-center">
-                      <span class="text-body-1 me-2">
+                      <span class="text-body-1 me-2 text-black">
                         {{ details.unit_price_usd }} {{ credit.order.currency }}
                       </span>
                     </div>
@@ -114,21 +99,28 @@ const totalPendingAmount = computed(() => {
       </div>
       <hr />
       <div class="ticket-total d-flex justify-space-between align-center">
-        <span class="font-weight-bold text-h6">TOTAL CREDITO:</span>
-        <span class="text-end font-weight-bold text-h6"
+        <span class="font-weight-bold text-h6 text-black">TOTAL CREDITO:</span>
+        <span class="text-end font-weight-bold text-h6 text-black"
           >{{ totalCredits }} USD
         </span>
       </div>
       <div class="ticket-total d-flex justify-space-between align-center">
-        <span class="font-weight-bold text-h6">TOTAL CREDITO PENDIENTE:</span>
-        <span class="text-end font-weight-bold text-h6"
+        <span class="font-weight-bold text-h6 text-black">TOTAL CREDITO PENDIENTE:</span>
+        <span class="text-end font-weight-bold text-h6 text-black"
           >{{ totalPendingAmount }} USD
         </span>
       </div>
 
-      <p class="font-weight-bold text-center text-success">
+      <p class="font-weight-bold text-center text-black mt-2">
         ¡GRACIAS POR PREFERIRNOS!
       </p>
     </VCard>
   </div>
 </template>
+
+<style scoped>
+.ticket-black-text,
+.ticket-black-text * {
+  color: #000000 !important;
+}
+</style>

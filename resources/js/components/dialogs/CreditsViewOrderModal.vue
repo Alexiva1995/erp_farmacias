@@ -95,7 +95,12 @@ const getLineTotal = (detail) => {
 };
 
 const fetchPayments = async () => {
-  const clientId = clientInfo.value?.id ?? props.creditsData?.[0]?.client_id ?? props.creditsData?.[0]?.client?.id;
+  const clientId =
+    clientInfo.value?.id ??
+    props.creditsData?.[0]?.client_id ??
+    props.creditsData?.[0]?.client?.id ??
+    props.creditsData?.[0]?.order?.client_id ??
+    props.creditsData?.[0]?.order?.client?.id;
   if (!clientId) return;
 
   loadingPayments.value = true;
@@ -103,7 +108,10 @@ const fetchPayments = async () => {
     const response = await axios.post("/tpv/credits/payments", {
       client_id: clientId,
     });
-    payments.value = Array.isArray(response.data) ? response.data : [];
+    const resData = response.data;
+    payments.value = Array.isArray(resData?.data)
+      ? resData.data
+      : (Array.isArray(resData) ? resData : []);
   } catch (error) {
     console.error("Error al cargar los pagos:", error);
     payments.value = [];
@@ -224,8 +232,7 @@ const paymentHeaders = [
 watch(
   () => [props.isDialogVisible, props.creditsData],
   ([visible, credits]) => {
-    const hasClient = credits?.length > 0 && credits[0]?.client?.id;
-    if (visible && hasClient) {
+    if (visible && Array.isArray(credits) && credits.length > 0) {
       fetchPayments();
       fetchExchangeRates();
       pageOrders.value = 1;

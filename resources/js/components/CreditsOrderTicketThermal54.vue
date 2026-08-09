@@ -59,11 +59,6 @@ const productLineText = (item) => item.lineText;
   <div class="thermal-54-ticket">
     <header class="thermal-header">
       <img class="thermal-logo" :src="logoSrc" alt="Logo" />
-      <div class="thermal-rif">J-50540695-7</div>
-      <div class="thermal-company">FARMACIA BARRIO SUCRE 2024, C.A.</div>
-      <div class="thermal-address">CALLE PRINCIPAL LOCAL 05 (L5)</div>
-      <div class="thermal-address">SECTOR BARRIO SUCRE LA FRIA TACHIRA</div>
-      <div class="thermal-address">ZONA POSTAL 5020</div>
     </header>
 
     <div class="thermal-data">

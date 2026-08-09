@@ -87,30 +87,15 @@ const showChangeAmount = computed(() => {
 });
 </script>
 <template>
-  <div class="col-12 col-md-8 mx-auto">
-    <VCard variant="outlined" class="pa-2 text-start">
+  <div class="col-12 col-md-8 mx-auto ticket-black-text">
+    <VCard variant="outlined" class="pa-2 text-start border-0 text-black">
       <div class="text-center pa-2 mb-2">
         <a href="#">
           <img width="130" :src="logoSrc" alt="Logotipo de la marca" />
         </a>
       </div>
-      <div class="text-center">
-        <span class="headerPrint">J-50540695-7</span>
-      </div>
-      <div class="text-center">
-        <span class="headerPrint">FARMACIA BARRIO SUCRE 2024, C.A.</span>
-      </div>
-      <div class="text-center">
-        <span class="headerPrint">CALLE PRINCIPAL LOCAL 05 (L5)</span>
-      </div>
-      <div class="text-center">
-        <span class="headerPrint">SECTOR BARRIO SUCRE LA FRIA TACHIRA</span>
-      </div>
-      <div class="text-center">
-        <span class="headerPrint">ZONA POSTAL 5020</span>
-      </div>
       <div class="ticket-header d-flex justify-space-between align-start mt-2">
-        <span class="font-weight-bold tituloAzulPrint"></span>
+        <span class="font-weight-bold text-black"></span>
         <div class="text-right d-flex flex-column align-end">
           <p class="text-black font-weight-regular mb-0 textoPrint">
             Fecha: {{ formatDateTime(today, "date") }}
@@ -119,33 +104,33 @@ const showChangeAmount = computed(() => {
         </div>
       </div>
       <div class="d-flex justify-space-between align-start textoPrint mb-1">
-        <span class="textoPrint">Cajero:</span>
-        <span>{{ userUsername }}</span>
+        <span class="textoPrint text-black">Cajero:</span>
+        <span class="text-black">{{ userUsername }}</span>
       </div>
 
       <div class="d-flex justify-space-between align-start textoPrint mb-1">
-        <span class="textoPrint">Cliente:</span>
-        <span class="textoPrint"
+        <span class="textoPrint text-black">Cliente:</span>
+        <span class="textoPrint text-black"
           >{{ creditsData?.client?.name }}
           {{ creditsData?.client?.last_name }}</span
         >
       </div>
 
       <div class="d-flex justify-space-between align-start textoPrint mb-1">
-        <span class="textoPrint">Documento:</span>
-        <span class="textoPrint"
+        <span class="textoPrint text-black">Documento:</span>
+        <span class="textoPrint text-black"
           >{{ creditsData?.client?.identification_type }}
           {{ creditsData?.client?.identification }}</span
         >
       </div>
 
       <div class="d-flex flex-wrap justify-space-between textoPrint">
-        <p class="font-weight-bold text-h6">Métodos de Pago</p>
+        <p class="font-weight-bold text-h6 text-black">Métodos de Pago</p>
         <div class="text-end">
           <p
             v-for="(payment, pIndex) in payments"
             :key="`ticket-payment-${pIndex}`"
-            class="font-weight-bold my-1"
+            class="font-weight-bold my-1 text-black"
           >
             <span
               >{{ getPaymentMethodLabel(payment.method, payment.currency) }} ({{
@@ -159,24 +144,24 @@ const showChangeAmount = computed(() => {
       <div class="ticket-body mt-2">
         <div class="ticket-item">
           <span class="ticket-item-qty"></span>
-          <span class="ticket-item-name">Créditos</span>
-          <span class="ticket-item-total">{{formatCurrency(parseFloat(creditsData.total_pending_amount), props.selectedCurrency)}}</span>
+          <span class="ticket-item-name text-black">Créditos</span>
+          <span class="ticket-item-total text-black">{{formatCurrency(parseFloat(creditsData.total_pending_amount), props.selectedCurrency)}}</span>
         </div>
         <hr />
 
         <div class="ticket-total d-flex justify-space-between align-center">
-          <span class="font-weight-bold tituloAzulPrint">TOTAL:</span>
-          <span class="text-end font-weight-black tituloAzulPrint">
+          <span class="font-weight-bold text-black">TOTAL:</span>
+          <span class="text-end font-weight-black text-black">
           {{ creditsData.total_pending_amount }} {{ props.selectedCurrency }}</span>
         </div>
 
         <div class="ticket-total d-flex flex-wrap justify-space-between">
-          <p class="font-weight-bold text-h6 mt-2 tituloAzulPrint">PAGO:</p>
+          <p class="font-weight-bold text-h6 mt-2 text-black">PAGO:</p>
           <div class="text-end">
             <p
               v-for="(payment, pIndex) in payments"
               :key="`ticket-payment-${pIndex}`"
-              class="font-weight-bold my-1 tituloAzulPrint"
+              class="font-weight-bold my-1 text-black"
             >
               <span>
                 {{ formatCurrency(payment.amount || 0, payment.currency) }}
@@ -189,15 +174,22 @@ const showChangeAmount = computed(() => {
           v-if="showChangeAmount"
           class="ticket-total d-flex justify-space-between align-center"
         >
-          <span class="font-weight-bold tituloAzulPrint">DEVOLUCION:</span>
-          <span class="text-end font-weight-black tituloAzulPrint">
+          <span class="font-weight-bold text-black">DEVOLUCION:</span>
+          <span class="text-end font-weight-black text-black">
             {{ formatCurrency(changeAmount, "COP") }}
           </span>
         </div>
       </div>
-      <p class="font-weight-bold text-center text-success">
+      <p class="font-weight-bold text-center text-black mt-2">
         ¡GRACIAS POR PREFERIRNOS!
       </p>
     </VCard>
   </div>
 </template>
+
+<style scoped>
+.ticket-black-text,
+.ticket-black-text * {
+  color: #000000 !important;
+}
+</style>

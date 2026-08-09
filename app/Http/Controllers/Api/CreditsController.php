@@ -101,6 +101,9 @@ class CreditsController extends Controller
         $payments = [];
         foreach ($creditPayments as $cp) {
             $methodPayments = $cp->method_Payment;
+            if (is_string($methodPayments)) {
+                $methodPayments = json_decode($methodPayments, true) ?: [];
+            }
             if (!is_array($methodPayments)) {
                 $methodPayments = [];
             }
