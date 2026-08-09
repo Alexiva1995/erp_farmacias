@@ -18,6 +18,11 @@ class ProductLotObserver
     public static bool $isExpiringLot = false;
 
     /**
+     * Flag estático para indicar cuando una modificación de lote proviene de la devolución por cancelación de orden.
+     */
+    public static bool $isReturningLot = false;
+
+    /**
      * Handle the ProductLot "created" event.
      */
     public function created(ProductLot $productLot)
@@ -43,6 +48,11 @@ class ProductLotObserver
      */
     public function updated(ProductLot $productLot)
     {
+        if (static::$isReturningLot) {
+            $this->updateProductStockAndPrice($productLot->product);
+            return;
+        }
+
         if ($productLot->isDirty('quantity')) {
             $originalQuantity = (float) ($productLot->getOriginal('quantity') ?? 0);
             $newQuantity = (float) ($productLot->quantity ?? 0);
@@ -58,6 +68,21 @@ class ProductLotObserver
                 ->exists();
 
             if ($recentSaleMovement) {
+                $this->updateProductStockAndPrice($productLot->product);
+                return;
+            }
+
+            // Si ya existe un movimiento reciente de devolución por cancelación para este lote, omitir duplicación
+            $recentReturnMovement = InventoryMovement::where('product_id', $productLot->product_id)
+                ->where('movement_type', 'return')
+                ->where(function ($query) use ($productLot) {
+                    $query->where('product_lot_id', $productLot->id)
+                        ->orWhereNull('product_lot_id');
+                })
+                ->where('created_at', '>=', now()->subMinutes(2))
+                ->exists();
+
+            if ($recentReturnMovement) {
                 $this->updateProductStockAndPrice($productLot->product);
                 return;
             }

@@ -1521,6 +1521,7 @@ class OrderActionService
         DB::beginTransaction();
         try {
             $order->status = Order::CANCELLED;
+            $order->save();
             $order->load('details', 'cashClosing');
 
             foreach ($order->details as $item) {
@@ -1557,7 +1558,14 @@ class OrderActionService
 
                 $product = $item->product;
                 $stockBefore = $product ? ($product->stock ?? 0) : 0;
-                $productLot->increment('quantity', $item->quantity);
+                
+                // Activar bandera estática para que ProductLotObserver no cree un movimiento automático de 'AJUSTE'
+                \App\Observers\ProductLotObserver::$isReturningLot = true;
+                try {
+                    $productLot->increment('quantity', $item->quantity);
+                } finally {
+                    \App\Observers\ProductLotObserver::$isReturningLot = false;
+                }
                 
                 // Sincronizar stock del producto
                 if ($product) {
@@ -1585,6 +1593,12 @@ class OrderActionService
             }
 
             $cashClosing = $order->cashClosing;
+            if (!$cashClosing && $order->seller_id) {
+                $cashClosing = \App\Models\CashClosing::where('seller_id', $order->seller_id)
+                    ->where('status', \App\Models\CashClosing::OPEN)
+                    ->first();
+            }
+
             if (!$cashClosing) {
                 Log::warning("Orden ID {$order->id} no tiene un cierre de caja asociado para descontar montos.");
             } else {
