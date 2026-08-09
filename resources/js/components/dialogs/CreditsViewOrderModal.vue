@@ -5,6 +5,7 @@ import { capitalizeFirstAndLastName } from "@/@core/utils/formatters";
 import { translateMethod } from "@/utils/paymentMethods";
 import { getItemPriceByCurrency } from "@/composables/useTpvItemFormatter";
 import axios from "@/plugins/axios";
+import { toast, Swal } from "@/plugins/sweetalert";
 import { computed, ref, watch } from "vue";
 
 const props = defineProps({
@@ -120,10 +121,38 @@ const fetchPayments = async () => {
   }
 };
 
+const deletePaymentItem = async (paymentId) => {
+  if (!paymentId) return;
+
+  const result = await Swal.fire({
+    title: "¿Eliminar abono de crédito?",
+    text: "Esta acción revertirá el dinero de la caja chica y restaurará el saldo pendiente de la deuda del cliente.",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#d33",
+    cancelButtonColor: "#3085d6",
+    confirmButtonText: "Sí, eliminar abono",
+    cancelButtonText: "Cancelar",
+  });
+
+  if (!result.isConfirmed) return;
+
+  try {
+    const response = await axios.delete(`/tpv/credits/payments/${paymentId}`);
+    toast.success(response.data?.message || "Abono eliminado y saldo restaurado correctamente.");
+    await fetchPayments();
+    emit("modal-closed");
+  } catch (error) {
+    console.error("Error al eliminar abono:", error);
+    toast.error(error.response?.data?.message || "No se pudo eliminar el abono.");
+  }
+};
+
 const flattenedPaymentRows = computed(() => {
   const data = payments.value;
   if (!Array.isArray(data) || data.length === 0) return [];
   return data.map((row) => ({
+    id: row.id,
     date: row.payment_date ?? row.date,
     amount: row.amount ?? 0,
     currency: row.currency ?? "USD",
@@ -227,6 +256,7 @@ const paymentHeaders = [
   { title: "Moneda", key: "currency", sortable: false },
   { title: "Método", key: "method", sortable: false },
   { title: "Vendedor", key: "seller", sortable: false },
+  { title: "Acciones", key: "actions", sortable: false },
 ];
 
 watch(
@@ -461,6 +491,19 @@ watch([filterClient, filterDate, filterCurrency], () => {
                   </td>
                   <td class="text-xs font-weight-medium uppercase">{{ translateMethod(row.method) }}</td>
                   <td class="text-xs font-weight-bold text-disabled">{{ row.seller || "N/A" }}</td>
+                  <td>
+                    <VBtn
+                      v-if="row.id"
+                      icon
+                      variant="text"
+                      color="error"
+                      size="x-small"
+                      title="Eliminar abono y restaurar saldo"
+                      @click="deletePaymentItem(row.id)"
+                    >
+                      <VIcon icon="tabler-trash" size="18" />
+                    </VBtn>
+                  </td>
                 </tr>
                 <tr v-if="filteredPaymentRows.length === 0">
                   <td :colspan="paymentHeaders.length" class="text-center py-6 text-disabled text-super-xs font-weight-bold uppercase italic">

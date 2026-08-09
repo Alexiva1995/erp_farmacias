@@ -118,6 +118,7 @@ class CreditsController extends Controller
                 }
 
                 $payments[] = [
+                    'id' => $cp->id,
                     'payment_date' => $paymentDate,
                     'amount' => $payment['amount'] ?? 0,
                     'method' => $payment['method'] ?? '',
@@ -129,6 +130,17 @@ class CreditsController extends Controller
         }
 
         return ApiResponse::success($payments);
+    }
+
+    public function destroyPayment(\App\Models\CreditPayment $payment)
+    {
+        try {
+            $this->creditsActionService->deletePayment($payment);
+            return ApiResponse::success(null, 'Abono de crédito eliminado y saldo revertido correctamente.');
+        } catch (\Exception $e) {
+            Log::error('Error al eliminar abono de crédito:', ['error' => $e->getMessage()]);
+            return ApiResponse::error('No se pudo eliminar el abono: ' . $e->getMessage(), 500);
+        }
     }
 
     public function payments(IndexCreditPaymentRequest $request)

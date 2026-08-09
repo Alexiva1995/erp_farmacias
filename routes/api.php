@@ -382,6 +382,7 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
         Route::post('/credits/details', [CreditsController::class, 'showDetails']);
         Route::get('/credits/payments', [CreditsController::class, 'payments']);
         Route::post('/credits/payments', [CreditsController::class, 'getPaymentHistory']);
+        Route::delete('/credits/payments/{payment}', [CreditsController::class, 'destroyPayment']);
         Route::get('/returns', [ReturnsController::class, 'index']);
         Route::post('/returns/search-orders', [ReturnsController::class, 'searchOrders']);
         Route::get('/returns/product/{productId}/lots', [ReturnsController::class, 'getProductLots']);

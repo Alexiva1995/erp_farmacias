@@ -200,4 +200,112 @@ class CreditsActionService
             return false;
         }
     }
+
+    public function deletePayment(CreditPayment $payment): bool
+    {
+        DB::beginTransaction();
+        try {
+            $clientId = $payment->client_id;
+            $rates = $this->resourceService->getAllExchangeRate();
+            $ratesArray = $rates->pluck('rate', 'currency_code')->toArray();
+
+            $methodPayments = $payment->method_Payment;
+            if (is_string($methodPayments)) {
+                $methodPayments = json_decode($methodPayments, true) ?: [];
+            }
+            if (!is_array($methodPayments)) {
+                $methodPayments = [];
+            }
+
+            // Calcular monto total equivalente en USD a restaurar
+            $totalUsdRestored = 0;
+            foreach ($methodPayments as $pay) {
+                $amt = (float) ($pay['amount'] ?? 0);
+                $cur = $pay['currency'] ?? 'USD';
+                if ($amt <= 0) continue;
+
+                if ($cur === 'BS') {
+                    $bsRate = (float) ($ratesArray['BS'] ?? 0);
+                    if ($bsRate > 0) $totalUsdRestored += ($amt / $bsRate);
+                } elseif ($cur === 'COP') {
+                    $copRate = (float) ($ratesArray['COP'] ?? 0);
+                    if ($copRate > 0) $totalUsdRestored += ($amt / $copRate);
+                } else {
+                    $totalUsdRestored += $amt;
+                }
+            }
+
+            // Restaurar saldo pendiente en las órdenes de crédito del cliente
+            $credits = Credit::where('client_id', $clientId)
+                ->orderBy('id', 'desc')
+                ->get();
+
+            $remainingToRestore = $totalUsdRestored;
+            foreach ($credits as $credit) {
+                if ($remainingToRestore <= 0) break;
+
+                $maxCanRestore = (float) $credit->credit_amount - (float) $credit->pending_amount;
+                if ($maxCanRestore <= 0) continue;
+
+                $restoreForThisCredit = min($remainingToRestore, $maxCanRestore);
+                $credit->pending_amount = (float) $credit->pending_amount + $restoreForThisCredit;
+                if ($credit->pending_amount > 0 && $credit->status === 'Paid') {
+                    $credit->status = 'Active';
+                }
+                $credit->save();
+                $remainingToRestore -= $restoreForThisCredit;
+            }
+
+            // Revertir del Cierre de Caja si está vinculado
+            if ($payment->cash_closing_id) {
+                $cash = CashClosing::find($payment->cash_closing_id);
+                if ($cash) {
+                    foreach ($methodPayments as $pay) {
+                        $method = $pay['method'] ?? null;
+                        $amount = (float) ($pay['amount'] ?? 0);
+                        if ($method && $amount > 0) {
+                            switch ($method) {
+                                case 'cash_usd':
+                                    $cash->usd_cash_payment_credit = max(0, $cash->usd_cash_payment_credit - $amount);
+                                    break;
+                                case 'binance':
+                                    $cash->usd_binance_payment_credit = max(0, $cash->usd_binance_payment_credit - $amount);
+                                    break;
+                                case 'paypal':
+                                    $cash->usd_paypal_payment_credit = max(0, $cash->usd_paypal_payment_credit - $amount);
+                                    break;
+                                case 'cash_bs':
+                                    $cash->bs_cash_payment_credit = max(0, $cash->bs_cash_payment_credit - $amount);
+                                    break;
+                                case 'mobile_payment':
+                                    $cash->bs_mobile_payment_credit = max(0, $cash->bs_mobile_payment_credit - $amount);
+                                    break;
+                                case 'bank_transfer_bs':
+                                    $cash->bs_transfer_payment_credit = max(0, $cash->bs_transfer_payment_credit - $amount);
+                                    break;
+                                case 'card':
+                                    $cash->bs_card_payment_credit = max(0, $cash->bs_card_payment_credit - $amount);
+                                    break;
+                                case 'cash_cop':
+                                    $cash->cop_cash_payment_credit = max(0, $cash->cop_cash_payment_credit - $amount);
+                                    break;
+                                case 'bank_transfer':
+                                    $cash->cop_transfer_payment_credit = max(0, $cash->cop_transfer_payment_credit - $amount);
+                                    break;
+                            }
+                        }
+                    }
+                    $cash->recalculateTotals();
+                }
+            }
+
+            $payment->delete();
+            DB::commit();
+            return true;
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Error al borrar abono de crédito: ' . $e->getMessage());
+            throw $e;
+        }
+    }
 }

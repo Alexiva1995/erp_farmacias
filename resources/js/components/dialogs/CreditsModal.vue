@@ -580,29 +580,42 @@ const confirmPaymentAmount = (payment) => {
   ) {
     const numValue = parseFloat(payment.inputAmount);
     if (!isNaN(numValue) && numValue > 0) {
-      if (!isCashMethod(payment.method)) {
-        const previousAmount = payment.amount || 0;
-        let remainingInPaymentCurrency =
-          getConvertedRemainingAmount(payment.currency);
+      const previousAmount = payment.amount || 0;
+      let remainingInPaymentCurrency =
+        getConvertedRemainingAmount(payment.currency);
 
-        if (previousAmount > 0) {
-          if (payment.currency === props.selectedCurrency) {
-            remainingInPaymentCurrency += previousAmount;
-          } else {
-            const rateToBase =
-              exchangeRates.value?.[payment.currency]?.[props.selectedCurrency];
-            const rateToPayment =
-              exchangeRates.value?.[props.selectedCurrency]?.[payment.currency];
-            if (rateToBase && rateToPayment) {
-              const previousInBase = previousAmount * rateToBase;
-              remainingInPaymentCurrency += previousInBase * rateToPayment;
-            }
+      if (previousAmount > 0) {
+        if (payment.currency === props.selectedCurrency) {
+          remainingInPaymentCurrency += previousAmount;
+        } else {
+          const rateToBase =
+            exchangeRates.value?.[payment.currency]?.[props.selectedCurrency];
+          const rateToPayment =
+            exchangeRates.value?.[props.selectedCurrency]?.[payment.currency];
+          if (rateToBase && rateToPayment) {
+            const previousInBase = previousAmount * rateToBase;
+            remainingInPaymentCurrency += previousInBase * rateToPayment;
           }
         }
+      }
 
+      if (!isCashMethod(payment.method)) {
         if (numValue > remainingInPaymentCurrency) {
           toast.error(
             `El monto no puede exceder el restante: ${formatCurrency(remainingInPaymentCurrency, payment.currency)}`
+          );
+          payment._amountError = true;
+          return;
+        }
+      } else {
+        // Para métodos en efectivo, evitar montos exageradamente desproporcionados (ej. ingresar 40.000 USD por error)
+        const maxAllowedCash = payment.currency === "USD" 
+          ? Math.max(remainingInPaymentCurrency + 100, 200)
+          : remainingInPaymentCurrency * 3;
+
+        if (numValue > maxAllowedCash) {
+          toast.error(
+            `El monto ingresado (${formatCurrency(numValue, payment.currency)}) es desproporcionado para la deuda restante.`
           );
           payment._amountError = true;
           return;
@@ -684,29 +697,40 @@ const handlePaymentEnter = (event, payment) => {
   ) {
     const numValue = parseFloat(payment.inputAmount);
     if (!isNaN(numValue) && numValue > 0) {
-      if (!isCashMethod(payment.method)) {
-        const previousAmount = payment.amount || 0;
-        let remainingInPaymentCurrency =
-          getConvertedRemainingAmount(payment.currency);
+      const previousAmount = payment.amount || 0;
+      let remainingInPaymentCurrency =
+        getConvertedRemainingAmount(payment.currency);
 
-        if (previousAmount > 0) {
-          if (payment.currency === props.selectedCurrency) {
-            remainingInPaymentCurrency += previousAmount;
-          } else {
-            const rateToBase =
-              exchangeRates.value?.[payment.currency]?.[props.selectedCurrency];
-            const rateToPayment =
-              exchangeRates.value?.[props.selectedCurrency]?.[payment.currency];
-            if (rateToBase && rateToPayment) {
-              const previousInBase = previousAmount * rateToBase;
-              remainingInPaymentCurrency += previousInBase * rateToPayment;
-            }
+      if (previousAmount > 0) {
+        if (payment.currency === props.selectedCurrency) {
+          remainingInPaymentCurrency += previousAmount;
+        } else {
+          const rateToBase =
+            exchangeRates.value?.[payment.currency]?.[props.selectedCurrency];
+          const rateToPayment =
+            exchangeRates.value?.[props.selectedCurrency]?.[payment.currency];
+          if (rateToBase && rateToPayment) {
+            const previousInBase = previousAmount * rateToBase;
+            remainingInPaymentCurrency += previousInBase * rateToPayment;
           }
         }
+      }
 
+      if (!isCashMethod(payment.method)) {
         if (numValue > remainingInPaymentCurrency) {
           toast.error(
             `El monto no puede exceder el restante: ${formatCurrency(remainingInPaymentCurrency, payment.currency)}`
+          );
+          return;
+        }
+      } else {
+        const maxAllowedCash = payment.currency === "USD" 
+          ? Math.max(remainingInPaymentCurrency + 100, 200)
+          : remainingInPaymentCurrency * 3;
+
+        if (numValue > maxAllowedCash) {
+          toast.error(
+            `El monto ingresado (${formatCurrency(numValue, payment.currency)}) es desproporcionado para la deuda restante.`
           );
           return;
         }
