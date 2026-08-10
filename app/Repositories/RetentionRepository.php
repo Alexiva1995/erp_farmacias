@@ -96,16 +96,19 @@ class RetentionRepository implements \App\Contracts\Retention
         $fiscalDate = $retentionDate ? \Carbon\Carbon::parse($retentionDate) : $this->calculateFiscalDate();
         $prefix = $fiscalDate->format('Ym');
 
-        // --- Numeración Continua ---
+        // --- Numeración Continua (Garantizando Unicidad) ---
         $lastOverall = Retention::orderBy('id', 'desc')->first();
         
         $nextCorrelative = 1;
-        if ($lastOverall) {
+        if ($lastOverall && strlen($lastOverall->number) >= 8) {
             $lastCorrelative = substr($lastOverall->number, -8);
             $nextCorrelative = (int)$lastCorrelative + 1;
         }
 
-        $number = $prefix . str_pad((string)$nextCorrelative, 8, '0', STR_PAD_LEFT);
+        do {
+            $number = $prefix . str_pad((string)$nextCorrelative, 8, '0', STR_PAD_LEFT);
+            $nextCorrelative++;
+        } while (Retention::where('number', $number)->exists());
 
         $retention = Retention::create([
             'supplier_id' => $supplierId,
