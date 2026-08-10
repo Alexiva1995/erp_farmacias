@@ -118,6 +118,7 @@ class AutoReplenishmentCommand extends Command
             'stock'           => $config->stock_filter,     // 'fallas' por defecto
             'con_descuento'   => $config->con_descuento,
             'with_suppliers'  => true,
+            'show_ignored'    => $config->include_ignored ?? true,
             'orderBy'         => 'desc',
             'sortBy'          => 'solicitar',
             'tipo_vista'      => false,                     // Vista individual (no grupal)
@@ -163,6 +164,7 @@ class AutoReplenishmentCommand extends Command
             if (!$productSupplier && $bestSupplier) {
                 $productSupplier = ProductSupplier::where('product_id', $product->id)
                     ->where('supplier_id', $bestSupplier->id)
+                    ->where('created_at', '>=', now()->subDays(7))
                     ->where(function ($q) {
                         $q->where('unit_cost_usd', '>', 0)
                           ->orWhere('unit_cost_usd_with_discount', '>', 0);

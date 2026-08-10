@@ -26,6 +26,7 @@ class AutoReplenishmentConfigResource extends JsonResource
             'con_descuento'       => (bool) $this->con_descuento,
             'exclude_colombian'   => (bool) $this->exclude_colombian,
             'exclude_novaventa'   => (bool) $this->exclude_novaventa,
+            'include_ignored'     => (bool) ($this->include_ignored ?? true),
             'stock_filter'        => $this->stock_filter,
             'supplier_id'         => $this->supplier_id,
             'group_ids'           => $this->group_ids,

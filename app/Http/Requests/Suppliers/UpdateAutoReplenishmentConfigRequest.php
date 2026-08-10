@@ -50,6 +50,7 @@ class UpdateAutoReplenishmentConfigRequest extends FormRequest
             'con_descuento'       => ['sometimes', 'boolean'],
             'exclude_colombian'   => ['sometimes', 'boolean'],
             'exclude_novaventa'   => ['sometimes', 'boolean'],
+            'include_ignored'     => ['sometimes', 'boolean'],
             'stock_filter'        => ['sometimes', 'nullable', 'string', 'in:fallas,all'],
             'supplier_id'         => ['sometimes', 'nullable', 'integer', 'exists:suppliers,id'],
             'group_ids'           => ['sometimes', 'nullable', 'array'],

@@ -13,10 +13,11 @@ class ProductSupplierRepository
 {
     public function consultSupplierByProductWithBetterPrice($product_id, $conDescuento): Collection
     {
-        // Obtener solo el ID más reciente por cada proveedor para este producto
+        // Obtener solo el ID más reciente por cada proveedor para este producto (máximo 7 días de antigüedad)
         $latestIds = DB::table('product_suppliers')
             ->select(DB::raw('MAX(id) as id'))
             ->where("product_id", "=", $product_id)
+            ->where('created_at', '>=', now()->subDays(7))
             ->groupBy('supplier_id')
             ->pluck('id');
 
@@ -36,10 +37,11 @@ class ProductSupplierRepository
 
     public function consultarTodosLosProveedorProIdProducto($product_id): Collection
     {
-        // Obtener solo el ID más reciente por cada proveedor para este producto
+        // Obtener solo el ID más reciente por cada proveedor para este producto (máximo 7 días de antigüedad)
         $latestIds = DB::table('product_suppliers')
             ->select(DB::raw('MAX(id) as id'))
             ->where("product_id", "=", $product_id)
+            ->where('created_at', '>=', now()->subDays(7))
             ->groupBy('supplier_id')
             ->pluck('id');
 
@@ -56,10 +58,11 @@ class ProductSupplierRepository
     {
         $productIds = $products->pluck('id')->toArray();
         
-        // 1. Obtener solo los IDs más recientes por combinación de product_id y supplier_id
+        // 1. Obtener solo los IDs más recientes por combinación de product_id y supplier_id (máximo 7 días)
         $latestIds = DB::table('product_suppliers')
             ->select(DB::raw('MAX(id) as id'))
             ->whereIn('product_id', $productIds)
+            ->where('created_at', '>=', now()->subDays(7))
             ->groupBy('product_id', 'supplier_id')
             ->pluck('id');
 
@@ -90,10 +93,13 @@ class ProductSupplierRepository
         foreach ($products as $product) {
             $bestOffer = $allOffers->where('product_id', $product->id)->first();
 
-            // Si no tiene oferta asociada, intentar asociar por código de barras de manera automática y permanente
+            // Si no tiene oferta asociada, intentar asociar por código de barras de manera automática y permanente (máximo 7 días)
             if (!$bestOffer && $product->barcode) {
-                $barcodeOffer = ProductSupplier::where('barcode_match', $product->barcode)
-                    ->orWhere('cod_supplier', $product->barcode)
+                $barcodeOffer = ProductSupplier::where('created_at', '>=', now()->subDays(7))
+                    ->where(function ($q) use ($product) {
+                        $q->where('barcode_match', $product->barcode)
+                          ->orWhere('cod_supplier', $product->barcode);
+                    })
                     ->first();
                 if ($barcodeOffer) {
                     ProductSupplier::where('id', $barcodeOffer->id)->update([

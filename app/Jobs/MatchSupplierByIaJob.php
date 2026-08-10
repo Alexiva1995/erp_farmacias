@@ -132,9 +132,10 @@ class MatchSupplierByIaJob implements ShouldQueue
      */
     private function buscarCandidatosMultiEstrategia(Product $product, array $rechazadosIds): \Illuminate\Support\Collection
     {
-        // Base: solo productos SIN vincular, con precio válido, excluyendo rechazados previos
+        // Base: solo productos SIN vincular, con precio válido, creados hace 7 días o menos, excluyendo rechazados previos
         $base = ProductSupplier::whereNull('product_id')
             ->whereNotIn('id', $rechazadosIds)
+            ->where('created_at', '>=', now()->subDays(7))
             ->where(function ($q) {
                 $q->where('unit_cost_usd', '>', 0)
                   ->orWhere('unit_cost_usd_with_discount', '>', 0);

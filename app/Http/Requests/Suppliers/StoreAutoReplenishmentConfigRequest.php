@@ -43,6 +43,7 @@ class StoreAutoReplenishmentConfigRequest extends FormRequest
             'con_descuento'       => ['boolean'],
             'exclude_colombian'   => ['boolean'],
             'exclude_novaventa'   => ['boolean'],
+            'include_ignored'     => ['boolean'],
             'stock_filter'        => ['nullable', 'string', 'in:fallas,all'],
             'supplier_id'         => ['nullable', 'integer', 'exists:suppliers,id'],
             'group_ids'           => ['nullable', 'array'],

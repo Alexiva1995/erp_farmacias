@@ -88,6 +88,7 @@ class MarketOpportunityRepository implements MarketOpportunityRepositoryInterfac
          */
         $latestIdsQuery = DB::table('product_suppliers')
             ->select(DB::raw('MAX(id)'))
+            ->where('created_at', '>=', now()->subDays(7))
             ->groupBy('product_id', 'supplier_id');
 
         $sub = ProductSupplier::query()

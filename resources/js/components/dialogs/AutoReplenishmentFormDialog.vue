@@ -200,6 +200,15 @@ function handleSave() {
               :error-messages="formErrors.exclude_novaventa"
             />
           </VCol>
+
+          <VCol cols="12">
+            <VSwitch
+              v-model="configForm.include_ignored"
+              label="Incluir productos ignorados manualmente (si tienen coincidencia de proveedor)"
+              color="info"
+              :error-messages="formErrors.include_ignored"
+            />
+          </VCol>
         </VRow>
       </VCardText>
 

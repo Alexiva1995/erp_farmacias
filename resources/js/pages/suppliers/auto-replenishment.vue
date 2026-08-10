@@ -27,6 +27,7 @@ const configForm = ref({
   con_descuento: false,
   exclude_colombian: false,
   exclude_novaventa: false,
+  include_ignored: true,
   stock_filter: "fallas",
   supplier_id: null,
   group_ids: [],
@@ -43,6 +44,7 @@ const defaultForm = () => ({
   con_descuento: false,
   exclude_colombian: false,
   exclude_novaventa: false,
+  include_ignored: true,
   stock_filter: "fallas",
   supplier_id: null,
   group_ids: [],
@@ -112,6 +114,7 @@ function openCreate() {
 function openEdit(item) {
   configForm.value = {
     ...item,
+    include_ignored: item.include_ignored ?? true,
     group_ids: item.group_ids || [],
   };
   formErrors.value = {};

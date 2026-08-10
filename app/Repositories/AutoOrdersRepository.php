@@ -331,14 +331,28 @@ class AutoOrdersRepository
             ->count() === 0;
 
         if ($allProcessed && $autoOrder->status === AutoOrderStatus::SENT) {
-            return $autoOrder->update(['status' => AutoOrderStatus::COMPLETED]);
+            return $this->finish($autoOrder);
         }
         
         return false;
     }
     public function finish(AutoOrder $autoOrder): bool
     {
-        return $autoOrder->update(['status' => AutoOrderStatus::COMPLETED]);
+        return DB::transaction(function () use ($autoOrder) {
+            // Eliminar ÚNICAMENTE los registros de product_suppliers asociados explícitamente a esta orden por su ID
+            $productSupplierIds = $autoOrder->details()
+                ->whereNotNull('product_suppliers_id')
+                ->pluck('product_suppliers_id')
+                ->filter()
+                ->unique()
+                ->toArray();
+
+            if (!empty($productSupplierIds)) {
+                \App\Models\ProductSupplier::whereIn('id', $productSupplierIds)->delete();
+            }
+
+            return $autoOrder->update(['status' => AutoOrderStatus::COMPLETED]);
+        });
     }
     public function rejectPendingDetails(AutoOrder $autoOrder): void
     {

@@ -425,6 +425,7 @@ class SupplierQueryService
             )
             ->leftJoin("products", "products.id", "=", "product_suppliers.product_id")
             ->where("product_suppliers.supplier_id", "=", $supplier->id)
+            ->where("product_suppliers.created_at", ">=", now()->subDays(7))
             ->orderByRaw("CASE WHEN COALESCE(products.name, 'N/A') = 'N/A' THEN 1 ELSE 0 END")
             ->orderBy("name", "asc")
             ->paginate($perPage);
@@ -499,6 +500,7 @@ class SupplierQueryService
         $sortColumn = $sortableColumns[$sortBy] ?? 'product_suppliers.name';
 
         $results = ProductSupplier::query()
+            ->where('product_suppliers.created_at', '>=', now()->subDays(7))
             ->with([
                 'product:id,name,laboratory_id,origin_id,group_id',
                 'supplier:id,name'

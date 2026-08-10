@@ -3025,9 +3025,10 @@ class TelegramWebhookService
         $this->telegramService->sendMessage("🤖 *[BUSCANDO COINCIDENCIA POR IA]*\n\nAnalizando catálogo de proveedores con IA para *{$product->name}*...", $chatId);
 
         try {
-            $candidates = \App\Models\ProductSupplier::where(function($q) {
-                $q->whereNull('barcode_match')->orWhere('barcode_match', '');
-            })->limit(50)->get();
+            $candidates = \App\Models\ProductSupplier::where('created_at', '>=', now()->subDays(7))
+                ->where(function($q) {
+                    $q->whereNull('barcode_match')->orWhere('barcode_match', '');
+                })->limit(50)->get();
 
             if ($candidates->isEmpty()) {
                 $this->telegramService->sendMessage("❌ *No hay productos en catálogo de proveedores disponibles para comparar con IA.*", $chatId);

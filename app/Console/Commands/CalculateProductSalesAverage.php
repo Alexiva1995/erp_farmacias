@@ -74,9 +74,18 @@ class CalculateProductSalesAverage extends Command
                     if ($totalSold === null || $totalSold == 0) {
                         $salesAverage = 0;
                     } else {
-                        // Usar la fecha de la PRIMERA VENTA REAL del producto dentro de la ventana
-                        // para no penalizar productos recién comprados con denominadores de 12 meses.
-                        // Si no hay venta dentro de la ventana (no debería ocurrir aquí), caer en created_at.
+                        // Fecha del primer ingreso a inventario (lotes o movimientos)
+                        $firstStockDate = DB::table('product_lots')
+                            ->where('product_id', $product->id)
+                            ->min('created_at');
+
+                        if (!$firstStockDate) {
+                            $firstStockDate = DB::table('inventory_movements')
+                                ->where('product_id', $product->id)
+                                ->where('quantity', '>', 0)
+                                ->min('created_at');
+                        }
+
                         $firstSaleDate = DB::table('order_details')
                             ->join('orders', 'order_details.order_id', '=', 'orders.id')
                             ->where('order_details.product_id', $product->id)
@@ -84,16 +93,22 @@ class CalculateProductSalesAverage extends Command
                             ->where('orders.created_at', '>=', $windowStart)
                             ->min('orders.created_at');
 
-                        if ($firstSaleDate) {
-                            $referenceDate = Carbon::parse($firstSaleDate);
+                        $possibleDates = array_filter([
+                            $firstStockDate ? Carbon::parse($firstStockDate) : null,
+                            $firstSaleDate ? Carbon::parse($firstSaleDate) : null,
+                            $product->created_at ? Carbon::parse($product->created_at) : null,
+                        ]);
+
+                        if (!empty($possibleDates)) {
+                            $earliestDate = collect($possibleDates)->min();
+                            $referenceDate = $earliestDate->isBefore($windowStart) ? $windowStart->copy() : $earliestDate;
                         } else {
-                            $referenceDate = $product->created_at
-                                ? Carbon::parse($product->created_at)
-                                : $now->copy()->subMonths(12);
+                            $referenceDate = $now->copy()->subMonths(12);
                         }
 
-                        // Meses desde la primera venta real dentro de la ventana (mínimo 1, máximo 12)
-                        $monthsOfLife = (int) ceil($referenceDate->diffInMonths($now));
+                        // Calcular días transcurridos y convertir a meses reales (30.44 días por mes)
+                        $daysElapsed = max(1, $referenceDate->diffInDays($now));
+                        $monthsOfLife = (int) ceil($daysElapsed / 30.4375);
                         $actualMonths = max(1, min(12, $monthsOfLife));
 
                         // Promedio mensual = ventas en ventana / meses reales transcurridos
