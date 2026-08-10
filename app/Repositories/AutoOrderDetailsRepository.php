@@ -50,7 +50,7 @@ class AutoOrderDetailsRepository
 
                 $hasUpdates = false;
                 foreach ($pendingOrderDetails as $detail) {
-                    $productId = $detail->productSupplier->product_id ?? null;
+                    $productId = $detail->product_id ?? $detail->productSupplier?->product_id;
                     
                     // Si el producto está presente en alguna de las facturas cargadas del proveedor
                     if ($productId && in_array($productId, $receivedProductIds)) {

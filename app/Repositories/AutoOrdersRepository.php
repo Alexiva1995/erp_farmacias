@@ -348,7 +348,10 @@ class AutoOrdersRepository
                 ->toArray();
 
             if (!empty($productSupplierIds)) {
-                \App\Models\ProductSupplier::whereIn('id', $productSupplierIds)->delete();
+                // Desvincular el producto del proveedor (product_id = null) para que no vuelva a aparecer en listas/IA,
+                // manteniendo la integridad referencial NOT NULL de auto_order_details sin borrar el detalle en cascada.
+                \App\Models\ProductSupplier::whereIn('id', $productSupplierIds)
+                    ->update(['product_id' => null]);
             }
 
             return $autoOrder->update(['status' => AutoOrderStatus::COMPLETED]);
