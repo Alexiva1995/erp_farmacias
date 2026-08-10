@@ -23,6 +23,7 @@ class InvoiceReturn extends Model
 
     protected $casts = [
         'return_date' => 'date',
+        'expiration_date' => 'date',
         'quantity' => 'decimal:2',
         'amount_refunded' => 'decimal:2',
         'status' => InvoiceReturnStatus::class,

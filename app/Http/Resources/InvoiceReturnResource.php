@@ -27,12 +27,12 @@ class InvoiceReturnResource extends JsonResource
             'quantity' => (float) $this->quantity,
             'amount_refunded' => (float) $this->amount_refunded,
             'supplier_discount_percentage' => (float) ($this->supplier_discount_percentage ?? 0),
-            'return_date' => $this->return_date ? $this->return_date->format('Y-m-d') : null,
+            'return_date' => $this->return_date ? ($this->return_date instanceof \Carbon\Carbon ? $this->return_date->format('Y-m-d') : \Carbon\Carbon::parse($this->return_date)->format('Y-m-d')) : null,
             'lot_number' => $this->lot_number,
-            'expiration_date' => $this->expiration_date ? $this->expiration_date->format('Y-m-d') : null,
+            'expiration_date' => $this->expiration_date ? ($this->expiration_date instanceof \Carbon\Carbon ? $this->expiration_date->format('Y-m-d') : \Carbon\Carbon::parse($this->expiration_date)->format('Y-m-d')) : null,
             'status' => $this->status ? $this->status->value : 'pending',
             'status_label' => $this->status ? $this->status->label() : 'Pendiente',
-            'created_at' => $this->created_at ? $this->created_at->toDateTimeString() : null,
+            'created_at' => $this->created_at ? ($this->created_at instanceof \Carbon\Carbon ? $this->created_at->toDateTimeString() : \Carbon\Carbon::parse($this->created_at)->toDateTimeString()) : null,
         ];
     }
 }
