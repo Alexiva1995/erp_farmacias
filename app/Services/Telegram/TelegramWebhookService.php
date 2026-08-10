@@ -1373,8 +1373,9 @@ class TelegramWebhookService
                     }
 
                     // Replicar exactamente la lógica de /finances/pending-payments
-                    if ($invoice->is_indexed && $invoice->currency === 'Bs') {
-                        $bcvRate = \App\Models\ExchangeRate::where('currency_code', 'BS')->first()?->rate ?? 1.00;
+                    $isIndexed = (bool) ($invoice->is_indexed || ($invoice->supplier && $invoice->supplier->is_indexed));
+                    if ($isIndexed && ($invoice->currency === 'Bs' || $invoice->currency === 'VES')) {
+                        $bcvRate = \App\Models\ExchangeRate::whereIn('currency_code', ['BS', 'VES', 'USD_VES'])->value('rate') ?? 1.00;
                         $invoiceRemainingOriginal = round($invoice->total_usd * $bcvRate, 2);
                     } else {
                         $invoiceRemainingOriginal = $invoice->total_amount;
@@ -2119,8 +2120,9 @@ class TelegramWebhookService
                     }
 
                     // Replicar exactamente la lógica de /finances/pending-payments
-                    if ($invoice->is_indexed && $invoice->currency === 'Bs') {
-                        $bcvRate = \App\Models\ExchangeRate::where('currency_code', 'BS')->first()?->rate ?? 1.00;
+                    $isIndexed = (bool) ($invoice->is_indexed || ($invoice->supplier && $invoice->supplier->is_indexed));
+                    if ($isIndexed && ($invoice->currency === 'Bs' || $invoice->currency === 'VES')) {
+                        $bcvRate = \App\Models\ExchangeRate::whereIn('currency_code', ['BS', 'VES', 'USD_VES'])->value('rate') ?? 1.00;
                         $invoiceRemainingOriginal = round($invoice->total_usd * $bcvRate, 2);
                     } else {
                         $invoiceRemainingOriginal = $invoice->total_amount;
@@ -2230,8 +2232,9 @@ class TelegramWebhookService
                     }
 
                     // Determinar monto original en la moneda correspondiente
-                    if ($invoice->is_indexed && $invoice->currency === 'Bs') {
-                        $bcvRate = \App\Models\ExchangeRate::where('currency_code', 'BS')->first()?->rate ?? 1.00;
+                    $isIndexed = (bool) ($invoice->is_indexed || ($invoice->supplier && $invoice->supplier->is_indexed));
+                    if ($isIndexed && ($invoice->currency === 'Bs' || $invoice->currency === 'VES')) {
+                        $bcvRate = \App\Models\ExchangeRate::whereIn('currency_code', ['BS', 'VES', 'USD_VES'])->value('rate') ?? 1.00;
                         $invoiceRemainingOriginal = round($invoice->total_usd * $bcvRate, 2);
                         
                         $totalUSD += $invoiceRemainingUSD;
@@ -3294,8 +3297,9 @@ class TelegramWebhookService
                         continue;
                     }
 
-                    if ($invoice->is_indexed && $invoice->currency === 'Bs') {
-                        $bcvRate = \App\Models\ExchangeRate::where('currency_code', 'BS')->first()?->rate ?? 1.00;
+                    $isIndexed = (bool) ($invoice->is_indexed || ($invoice->supplier && $invoice->supplier->is_indexed));
+                    if ($isIndexed && ($invoice->currency === 'Bs' || $invoice->currency === 'VES')) {
+                        $bcvRate = \App\Models\ExchangeRate::whereIn('currency_code', ['BS', 'VES', 'USD_VES'])->value('rate') ?? 1.00;
                         $invoiceRemainingOriginal = round($invoice->total_usd * $bcvRate, 2);
                     } else {
                         $invoiceRemainingOriginal = $invoice->total_amount;
