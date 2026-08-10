@@ -348,6 +348,7 @@ class RetentionRepository implements \App\Contracts\Retention
 
     /**
      * Actualiza los datos del comprobante y los campos editables de las facturas vinculadas.
+     * Desvincula facturas removidas y recalcula los totales automáticamente.
      */
     public function updateRetentionWithInvoices(int $id, array $data, array $invoices): Retention
     {
@@ -357,14 +358,40 @@ class RetentionRepository implements \App\Contracts\Retention
             $retention->update($data);
         }
 
+        $submittedIds = array_filter(array_column($invoices, 'id'));
+
+        // Desvincular las facturas que fueron quitadas de este comprobante
+        Invoice::where('retention_id', $id)
+            ->whereNotIn('id', $submittedIds)
+            ->update([
+                'retention_id' => null,
+                'retention_generated' => false,
+            ]);
+
+        // Actualizar facturas conservadas
         foreach ($invoices as $invoiceData) {
-            Invoice::where('id', $invoiceData['id'])
-                ->where('retention_id', $id)
-                ->update([
-                    'control_number' => $invoiceData['control_number'] ?? null,
-                    'invoice_number' => $invoiceData['invoice_number'] ?? null,
-                ]);
+            if (!empty($invoiceData['id'])) {
+                Invoice::where('id', $invoiceData['id'])
+                    ->where('retention_id', $id)
+                    ->update([
+                        'control_number' => $invoiceData['control_number'] ?? null,
+                        'invoice_number' => $invoiceData['invoice_number'] ?? null,
+                    ]);
+            }
         }
+
+        // Recalcular totales del comprobante con las facturas vinculadas actuales
+        $remainingInvoices = Invoice::where('retention_id', $id)->get();
+        $retentionPercentage = ($retention->retention_percentage ?? 75) / 100;
+        $totalTaxable = $remainingInvoices->sum('taxable_base');
+        $totalTax = $remainingInvoices->sum('tax_amount');
+        $totalWithheld = round($totalTax * $retentionPercentage, 2);
+
+        $retention->update([
+            'total_taxable_base' => $totalTaxable,
+            'total_tax_amount' => $totalTax,
+            'total_withheld_amount' => $totalWithheld,
+        ]);
 
         return $retention->fresh();
     }

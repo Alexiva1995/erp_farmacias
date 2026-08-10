@@ -53,6 +53,13 @@ const formatCurrency = (value) => {
 
 const formatDate = (date) => {
   if (!date) return "-";
+  const str = String(date).trim();
+  const dateOnly = str.split(" ")[0].split("T")[0];
+  const parts = dateOnly.split("-");
+  if (parts.length === 3) {
+    const [year, month, day] = parts;
+    return `${parseInt(day, 10)}/${parseInt(month, 10)}/${year}`;
+  }
   return new Intl.DateTimeFormat("es-VE").format(new Date(date));
 };
 

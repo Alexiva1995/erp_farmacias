@@ -47,6 +47,10 @@ const hasChanges = computed(() => {
   return true; // Siempre permitir guardar mientras el diálogo esté abierto
 });
 
+const removeInvoice = (idx) => {
+  form.value.invoices.splice(idx, 1);
+};
+
 const closeDialog = () => {
   if (saving.value) return;
   emit("update:modelValue", false);
@@ -164,7 +168,7 @@ const handleSave = () => {
               <VCol cols="3">
                 <span class="text-super-xs text-uppercase font-weight-black text-disabled">N° Factura</span>
               </VCol>
-              <VCol cols="3">
+              <VCol cols="2">
                 <span class="text-super-xs text-uppercase font-weight-black text-disabled">N° Control</span>
               </VCol>
               <VCol cols="2" class="text-right">
@@ -172,6 +176,9 @@ const handleSave = () => {
               </VCol>
               <VCol cols="2" class="text-right">
                 <span class="text-super-xs text-uppercase font-weight-black text-disabled">IVA</span>
+              </VCol>
+              <VCol cols="1" class="text-center">
+                <span class="text-super-xs text-uppercase font-weight-black text-disabled">Acción</span>
               </VCol>
             </VRow>
 
@@ -201,7 +208,7 @@ const handleSave = () => {
                   class="text-caption"
                 />
               </VCol>
-              <VCol cols="3" class="pe-2">
+              <VCol cols="2" class="pe-2">
                 <VTextField
                   v-model="form.invoices[idx].control_number"
                   density="compact"
@@ -211,15 +218,25 @@ const handleSave = () => {
                   class="text-caption"
                 />
               </VCol>
-              <VCol cols="2" class="text-right">
+              <VCol cols="2" class="text-right pe-1">
                 <span class="text-caption font-weight-medium">
                   {{ Number(inv.taxable_base).toLocaleString('es-VE', { minimumFractionDigits: 2 }) }}
                 </span>
               </VCol>
-              <VCol cols="2" class="text-right">
+              <VCol cols="2" class="text-right pe-1">
                 <span class="text-caption font-weight-medium text-warning">
                   {{ Number(inv.tax_amount).toLocaleString('es-VE', { minimumFractionDigits: 2 }) }}
                 </span>
+              </VCol>
+              <VCol cols="1" class="text-center">
+                <VBtn
+                  icon="tabler-trash"
+                  variant="text"
+                  color="error"
+                  size="x-small"
+                  title="Quitar / desvincular factura"
+                  @click="removeInvoice(idx)"
+                />
               </VCol>
             </VRow>
           </template>
