@@ -49,4 +49,9 @@ return [
         'failures_chat_id' => env('TELEGRAM_FAILURES_CHAT_ID'),
     ],
 
+    // Integración de Gemini AI
+    'gemini' => [
+        'api_key' => env('GEMINI_API_KEY'),
+    ],
+
 ];

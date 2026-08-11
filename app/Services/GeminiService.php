@@ -13,7 +13,13 @@ class GeminiService
 
     public function __construct()
     {
-        $this->apiKey = config('services.telegram.gemini_api_key') ?: env('GEMINI_API_KEY');
+        $this->apiKey = $this->getApiKey();
+    }
+
+    private function getApiKey(): ?string
+    {
+        $key = config('services.gemini.api_key') ?: config('services.telegram.gemini_api_key') ?: env('GEMINI_API_KEY');
+        return $key ? trim((string) $key) : null;
     }
 
     /**
@@ -21,7 +27,7 @@ class GeminiService
      */
     public function analyzeInvoice(string $imagePath): ?array
     {
-        $key = $this->apiKey ?: env('GEMINI_API_KEY');
+        $key = $this->getApiKey();
         if (empty($key)) {
             Log::error('[GeminiService] GEMINI_API_KEY no está configurado.');
             return null;
@@ -52,7 +58,7 @@ class GeminiService
 
             $response = Http::withHeaders([
                 'x-goog-api-key' => $key,
-            ])->timeout(30)->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent", [
+            ])->timeout(30)->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={$key}", [
                 'contents' => [
                     [
                         'parts' => [
@@ -102,7 +108,7 @@ class GeminiService
      */
     public function extractPaymentReference(string $imagePath): ?string
     {
-        $key = $this->apiKey ?: env('GEMINI_API_KEY');
+        $key = $this->getApiKey();
         if (empty($key)) {
             Log::error('[GeminiService] GEMINI_API_KEY no está configurado.');
             return null;
@@ -127,7 +133,7 @@ class GeminiService
 
             $response = Http::withHeaders([
                 'x-goog-api-key' => $key,
-            ])->timeout(20)->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent", [
+            ])->timeout(20)->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={$key}", [
                 'contents' => [
                     [
                         'parts' => [
@@ -174,7 +180,7 @@ class GeminiService
      */
     public function matchProduct(array $product, array $candidates, array $rejections = []): ?array
     {
-        $key = $this->apiKey ?: env('GEMINI_API_KEY');
+        $key = $this->getApiKey();
         if (empty($key) || empty($candidates)) {
             return null;
         }
@@ -217,7 +223,7 @@ class GeminiService
             for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
                 $response = Http::withHeaders([
                     'x-goog-api-key' => $key,
-                ])->timeout(25)->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent", [
+                ])->timeout(25)->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={$key}", [
                     'contents' => [
                         ['parts' => [['text' => $prompt]]]
                     ],
@@ -275,7 +281,7 @@ class GeminiService
      */
     public function generateText(string $prompt): ?string
     {
-        $key = $this->apiKey ?: env('GEMINI_API_KEY');
+        $key = $this->getApiKey();
         if (empty($key)) {
             return null;
         }
@@ -283,7 +289,7 @@ class GeminiService
         try {
             $response = Http::withHeaders([
                 'x-goog-api-key' => $key,
-            ])->timeout(25)->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent", [
+            ])->timeout(25)->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={$key}", [
                 'contents' => [
                     ['parts' => [['text' => $prompt]]]
                 ]
