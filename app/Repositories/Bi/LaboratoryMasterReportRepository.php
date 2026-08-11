@@ -135,7 +135,7 @@ class LaboratoryMasterReportRepository
             ->groupBy($labField)
             ->orderByDesc(DB::raw('SUM(order_details.quantity * order_details.unit_price_usd)'))
             ->limit(5)
-            ->pluck($groupByCorporate ? 'master_id' : 'products.laboratory_id', $groupByCorporate ? DB::raw('COALESCE(groups_laboratories.id, laboratories.id) as master_id') : 'products.laboratory_id');
+            ->pluck($groupByCorporate ? DB::raw('COALESCE(groups_laboratories.id, laboratories.id)') : 'products.laboratory_id');
 
         if ($top5Ids->isEmpty()) {
             return collect([]);
@@ -156,7 +156,7 @@ class LaboratoryMasterReportRepository
                 DB::raw('SUM(order_details.quantity * order_details.unit_price_usd) as revenue')
             )
             ->whereIn(DB::raw('COALESCE(groups_laboratories.id, laboratories.id)'), $top5Ids->values())
-            ->groupBy('lab_name', 'month');
+            ->groupBy(DB::raw('COALESCE(groups_laboratories.name, laboratories.name)'), DB::raw("DATE_FORMAT(orders.created_at, '%Y-%m')"));
         } else {
             $query->select(
                 'laboratories.name as lab_name',
@@ -164,7 +164,7 @@ class LaboratoryMasterReportRepository
                 DB::raw('SUM(order_details.quantity * order_details.unit_price_usd) as revenue')
             )
             ->whereIn('products.laboratory_id', $top5Ids->values())
-            ->groupBy('lab_name', 'month');
+            ->groupBy('laboratories.name', DB::raw("DATE_FORMAT(orders.created_at, '%Y-%m')"));
         }
 
         return $query->orderBy('month')->get();
