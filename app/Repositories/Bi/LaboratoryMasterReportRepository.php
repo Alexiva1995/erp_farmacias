@@ -125,17 +125,32 @@ class LaboratoryMasterReportRepository
             ? DB::raw('COALESCE(groups_laboratories.id, laboratories.id)')
             : 'products.laboratory_id';
 
-        $top5Ids = DB::table('order_details')
-            ->join('orders', 'order_details.order_id', '=', 'orders.id')
-            ->join('products', 'order_details.product_id', '=', 'products.id')
-            ->join('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
-            ->leftJoin('groups_laboratories', 'laboratories.group_id', '=', 'groups_laboratories.id')
-            ->where('orders.status', 'Completed')
-            ->whereBetween('orders.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
-            ->groupBy($labField)
-            ->orderByDesc(DB::raw('SUM(order_details.quantity * order_details.unit_price_usd)'))
-            ->limit(5)
-            ->pluck($groupByCorporate ? DB::raw('COALESCE(groups_laboratories.id, laboratories.id)') : 'products.laboratory_id');
+        if ($groupByCorporate) {
+            $top5Ids = DB::table('order_details')
+                ->join('orders', 'order_details.order_id', '=', 'orders.id')
+                ->join('products', 'order_details.product_id', '=', 'products.id')
+                ->join('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
+                ->leftJoin('groups_laboratories', 'laboratories.group_id', '=', 'groups_laboratories.id')
+                ->where('orders.status', 'Completed')
+                ->whereBetween('orders.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+                ->select(DB::raw('COALESCE(groups_laboratories.id, laboratories.id) as lab_id'))
+                ->groupBy($labField)
+                ->orderByDesc(DB::raw('SUM(order_details.quantity * order_details.unit_price_usd)'))
+                ->limit(5)
+                ->pluck('lab_id');
+        } else {
+            $top5Ids = DB::table('order_details')
+                ->join('orders', 'order_details.order_id', '=', 'orders.id')
+                ->join('products', 'order_details.product_id', '=', 'products.id')
+                ->join('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
+                ->leftJoin('groups_laboratories', 'laboratories.group_id', '=', 'groups_laboratories.id')
+                ->where('orders.status', 'Completed')
+                ->whereBetween('orders.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+                ->groupBy($labField)
+                ->orderByDesc(DB::raw('SUM(order_details.quantity * order_details.unit_price_usd)'))
+                ->limit(5)
+                ->pluck('products.laboratory_id');
+        }
 
         if ($top5Ids->isEmpty()) {
             return collect([]);
