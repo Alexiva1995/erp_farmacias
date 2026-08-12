@@ -293,12 +293,9 @@ const generateWhatsappMessage = () => {
   const fecha = new Date();
   const productos_array = [];
   props.quotationProducts.forEach((product) => {
-    let priceWithIvaUsd = (product.price || 0) * (1 + (product.taxRate || 0));
-    let priceWithIvaBs = (product.price_bs || 0) * (1 + (product.taxRate || 0));
-    let priceWithIvaCop =
-      (product.price_cop || 0) * (1 + (product.taxRate || 0));
-
-    priceWithIvaCop = roundUpToNearestHundred(priceWithIvaCop);
+    let priceWithIvaUsd = getProductPrice(product, "USD");
+    let priceWithIvaBs = getProductPrice(product, "BS");
+    let priceWithIvaCop = getProductPrice(product, "COP");
 
     let emojiPrefix = "💊 ";
     if (brandingStore.settings?.quotation_style === 'cosmetic') {

@@ -117,7 +117,7 @@ class GeneralSettingResource extends JsonResource
             'enabled_supplier_types' => $this->enabled_supplier_types ?? ['inventory', 'expenses'],
             'supplier_form_fields' => $this->supplier_form_fields ?? ['name', 'social_reason', 'rif', 'address', 'sales_phone', 'collections_phone', 'payment_due_type', 'invoice_date_reference', 'custom_due_days', 'payment_due_reference', 'payment_method', 'is_indexed', 'logistics_dispatch'],
             'expense_supplier_form_fields' => $this->expense_supplier_form_fields ?? ['name', 'rif', 'address', 'sales_phone', 'payment_method', 'is_indexed'],
-            'product_form_fields' => $this->product_form_fields ?? null,
+            'product_form_fields' => $this->product_form_fields ?? ['name', 'barcode', 'description', 'active_ingredient', 'laboratory_id', 'origin_id', 'category_id', 'unit_cost', 'sale_price', 'stock', 'iva', 'is_colombian_origin', 'is_novaventa', 'psychotropic', 'no_pvp', 'presentation', 'unit_of_measure', 'photo_url'],
             'enabled_finance_views' => $this->enabled_finance_views ?? ['profitability', 'exchangerate', 'pending-payments', 'payment-history', 'cashout', 'payslips', 'cash-closure', 'cash-closure-user', 'income-statement', 'expense-expenses', 'balance-general', 'furnitures-list', 'loans-list'],
             'profitability_calculation_type' => $this->profitability_calculation_type ?? 'simple',
             'round_usd_up' => (bool) ($this->round_usd_up ?? false),

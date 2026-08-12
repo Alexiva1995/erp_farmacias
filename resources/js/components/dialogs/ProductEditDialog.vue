@@ -17,7 +17,9 @@ const isMiniMarket = computed(() => false);
 const isSportsRental = computed(() => false);
 
 const isFieldEnabled = (fieldKey) => {
-  return !brandingStore.settings.product_form_fields || brandingStore.settings.product_form_fields.includes(fieldKey);
+  const fields = brandingStore.settings?.product_form_fields;
+  if (!fields || !Array.isArray(fields) || fields.length === 0) return true;
+  return fields.includes(fieldKey);
 };
 
 const props = defineProps({
@@ -341,10 +343,7 @@ const submitForm = () => {
     payload.append("unit_cost", formData.value.unit_cost);
   }
 
-  // Para vendedores y supervisores, el precio debe ser 0
-  if (authStore.isVendedor || authStore.isSupervisor) {
-    payload.append("sale_price", 0);
-  } else if (
+  if (
     formData.value.sale_price !== null &&
     formData.value.sale_price !== undefined &&
     formData.value.sale_price !== "" &&
@@ -851,7 +850,7 @@ const submitForm = () => {
                         prefix="$"
                         variant="outlined"
                         density="comfortable"
-                        :readonly="!authStore.isAdmin"
+                        :readonly="!authStore.isAdmin && !isNewProduct"
                         :error-messages="formErrors.unit_cost"
                         class="rounded-lg font-weight-black"
                         hide-details="auto"
@@ -867,7 +866,7 @@ const submitForm = () => {
                         prefix="$"
                         variant="outlined"
                         density="comfortable"
-                        :readonly="authStore.isVendedor || authStore.isSupervisor"
+                        :readonly="(authStore.isVendedor || authStore.isSupervisor) && !isNewProduct"
                         :error-messages="formErrors.sale_price"
                         class="rounded-lg font-weight-black"
                         hide-details="auto"

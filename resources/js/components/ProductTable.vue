@@ -19,7 +19,9 @@ const isMiniMarket = computed(() => brandingStore.settings.business_type === 'mi
 const isSportsRental = computed(() => brandingStore.settings.business_type === 'sports_rental');
 
 const isFieldEnabled = (fieldKey) => {
-  return !brandingStore.settings.product_form_fields || brandingStore.settings.product_form_fields.includes(fieldKey);
+  const fields = brandingStore.settings?.product_form_fields;
+  if (!fields || !Array.isArray(fields) || fields.length === 0) return true;
+  return fields.includes(fieldKey);
 };
 
 // Selección reactiva para acciones en bloque

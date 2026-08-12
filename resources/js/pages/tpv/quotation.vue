@@ -134,14 +134,16 @@ let barcodeInputTimer;
 const BARCODE_LENGTH_THRESHOLD = 10;
 
 const getItemPriceByCurrency = (item, currency) => {
+  let basePrice = 0;
   if (currency === "BS" || currency === "Bs") {
-    return item.price_bs || 0;
+    basePrice = item.price_bs || 0;
   } else if (currency === "COP") {
-    return item.price_cop || 0;
+    basePrice = item.price_cop || 0;
   } else {
     // Por defecto o si es 'USD'
-    return item.price || 0;
+    basePrice = item.price || 0;
   }
+  return calculateItemDiscountedPrice(item, basePrice);
 };
 
 // Computed: porcentaje de descuento global activo según tipo seleccionado
@@ -218,12 +220,8 @@ const totalAmountCop = computed(() => {
     const taxRate = item.taxRate || 0;
 
     let discountedPrice = calculateItemDiscountedPrice(item, basePriceCop);
-    // Apply rounding for COP calculation if needed before or after?
-    // Usually rounding happens on final price. QuotationProducts rounds priceWithIva.
-    // Let's mimic QuotationProducts logic: base -> discount -> +tax -> round.
-
     let priceWithIva = discountedPrice * (1 + taxRate);
-    priceWithIva = Math.ceil(priceWithIva / 100) * 100; // Manual round up to nearest hundred as per logic
+    priceWithIva = Math.ceil(priceWithIva / 100) * 100;
 
     total += priceWithIva * quantity;
   });
@@ -243,7 +241,6 @@ const totalProductsAmount = computed(() => {
 const totalEligibleAmount = computed(() => {
   let total = 0;
   quotationItems.value.forEach((item) => {
-    // Exclude items with expiration discount from the eligible base
     if (item.discount_type === "expiration") {
       return;
     }
@@ -291,23 +288,18 @@ const totalRecipeDiscountAmount = computed(() => {
 
 // Computed: payload listo para enviar al backend (evita duplicación entre save/print)
 const buildPayload = computed(() => {
-  let productsUsd  = 0;
-  let eligibleBase = 0;
-  let ivaUsd       = 0;
+  let productsUsd = 0;
+  let ivaUsd      = 0;
 
   quotationItems.value.forEach((item) => {
-    const p = item.price || 0;
+    const discountedPrice = calculateItemDiscountedPrice(item, item.price || 0);
     const q = item.selectedQuantity || 0;
     const t = item.taxRate || 0;
-    productsUsd  += p * q;
-    ivaUsd       += p * q * t;
-    if (item.discount_type !== "expiration") {
-      eligibleBase += p * q;
-    }
+    productsUsd += discountedPrice * q;
+    ivaUsd      += discountedPrice * q * t;
   });
 
-  const discountAmount = eligibleBase * (globalDiscountPercentage.value / 100);
-  const grandTotal     = productsUsd + ivaUsd - discountAmount;
+  const grandTotal = productsUsd + ivaUsd;
 
   return {
     total_amount_usd: productsUsd,
@@ -335,16 +327,7 @@ const totalIVAAmount = computed(() => {
 });
 
 const totalQuotationAmount = computed(() => {
-  const baseTotal = totalProductsAmount.value + totalIVAAmount.value;
-  let discountToSubtract = 0;
-  if (selectedDiscountType.value === "Empresa") {
-    discountToSubtract = totalCompanyDiscountAmount.value;
-  } else if (selectedDiscountType.value === "Medico") {
-    discountToSubtract = totalDoctorDiscountAmount.value;
-  } else if (selectedDiscountType.value === "Recipe") {
-    discountToSubtract = totalRecipeDiscountAmount.value;
-  }
-  return baseTotal - discountToSubtract;
+  return totalProductsAmount.value + totalIVAAmount.value;
 });
 
 const fetchSelectOptions = async () => {

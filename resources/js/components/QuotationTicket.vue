@@ -45,12 +45,16 @@ const currentUser = computed(() => authStore.user);
 const getItemPriceByCurrency = (item, currency) => {
   const taxRate = item.taxRate || 0;
   let basePrice = 0;
-  if (currency === "BS") {
+  if (currency === "BS" || currency === "Bs") {
     basePrice = item.price_bs || 0;
   } else if (currency === "COP") {
     basePrice = item.price_cop || 0;
   } else {
     basePrice = item.price || 0;
+  }
+  const discountPct = parseFloat(item.discount_percentage || 0);
+  if (discountPct > 0) {
+    basePrice = basePrice * (1 - discountPct / 100);
   }
   let priceWithIva = basePrice * (1 + taxRate);
   if (currency === "COP") {

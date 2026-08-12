@@ -310,7 +310,7 @@ async function submitForm() {
                 class="text-white opacity-75 uppercase font-weight-bold"
                 style="font-size: 0.6rem; letter-spacing: 0.05em;"
               >
-                Módulo de Gestión de Gastos • Farmacia Barrio Sucre
+                Módulo de Gestión de Gastos
               </span>
             </div>
           </div>
