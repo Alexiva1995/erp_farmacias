@@ -221,9 +221,7 @@ class GeminiService
 
         try {
             for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
-                $response = Http::withHeaders([
-                    'x-goog-api-key' => $key,
-                ])->timeout(25)->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={$key}", [
+                $response = Http::timeout(25)->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={$key}", [
                     'contents' => [
                         ['parts' => [['text' => $prompt]]]
                     ],
@@ -257,6 +255,11 @@ class GeminiService
 
                     Log::warning('[GeminiService::matchProduct] JSON inválido: ' . $textResponse);
                     return null;
+                }
+
+                if ($response->status() === 401) {
+                    Log::warning('[GeminiService::matchProduct] Error 401 de autenticación. Verifica que la clave GEMINI_API_KEY en .env de producción sea una API Key válida de Google AI Studio (comienza por AIzaSy...).');
+                    break;
                 }
 
                 if ($response->status() === 429) {

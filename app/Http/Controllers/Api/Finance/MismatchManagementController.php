@@ -15,62 +15,65 @@ class MismatchManagementController extends Controller
 {
     public function acceptMismatch(AcceptMismatchRequest $request)
     {
-        $closing = CashClosing::findOrFail($request->cash_closing_id);
         $diff = (float) $request->difference;
         $currency = $request->currency;
         $type = $request->mismatch_type;
+        $user = $request->user();
 
-        DB::beginTransaction();
         try {
-            $movementType = $diff >= 0 ? 'IN' : 'OUT';
-            $absDiff = abs($diff);
-            
-            // 1. Registro de la transacción en el flujo contable (transactions)
-            $transaction = Transaction::create([
-                'user_id' => $request->user()->id,
-                'exchange_rate' => $currency === 'BS' ? $closing->exchange_rate : ($currency === 'COP' ? $closing->cop_exchange_rate : 1.0000),
-                'description' => "Ajuste de descuadre consolidado ({$movementType}) - Caja #{$closing->id} ({$closing->seller->username}) - Moneda: {$currency}",
-                'currency' => $currency,
-                'type' => $this->mapMismatchToTransactionType($type),
-                'amount' => $absDiff,
-                'movement_type' => $movementType,
-                'transaction_date' => now()->toDateString(),
-            ]);
+            $closing = DB::transaction(function () use ($request, $diff, $currency, $type, $user) {
+                $closing = CashClosing::where('id', $request->cash_closing_id)->lockForUpdate()->firstOrFail();
 
-            // 2. Registro en el flujo de caja diario (cash_flow)
-            $flowField = $this->mapMismatchToFlowField($type);
-            if ($flowField) {
-                CashFlow::create([
-                    'cash_closing_id' => $closing->id,
-                    'flow_date' => now()->toDateString(),
-                    $flowField => $diff, // Guarda el valor con signo para sumar o restar al acumulado
+                $movementType = $diff >= 0 ? 'IN' : 'OUT';
+                $absDiff = abs($diff);
+                
+                // 1. Registro de la transacción en el flujo contable (transactions)
+                Transaction::create([
+                    'user_id' => $user->id,
+                    'exchange_rate' => $currency === 'BS' ? $closing->exchange_rate : ($currency === 'COP' ? $closing->cop_exchange_rate : 1.0000),
+                    'description' => "Ajuste de descuadre consolidado ({$movementType}) - Caja #{$closing->id} ({$closing->seller?->username}) - Moneda: {$currency}",
+                    'currency' => $currency,
+                    'type' => $this->mapMismatchToTransactionType($type),
+                    'amount' => $absDiff,
+                    'movement_type' => $movementType,
+                    'transaction_date' => now()->toDateString(),
                 ]);
-            }
 
-            // 3. Modificaciones sobre los datos originales del cierre
-            $currentMismatches = is_string($closing->blind_mismatches)
-                ? json_decode($closing->blind_mismatches, true)
-                : ($closing->blind_mismatches ?? []);
+                // 2. Registro en el flujo de caja diario (cash_flow)
+                $flowField = $this->mapMismatchToFlowField($type);
+                if ($flowField) {
+                    CashFlow::create([
+                        'cash_closing_id' => $closing->id,
+                        'flow_date' => now()->toDateString(),
+                        $flowField => $diff,
+                    ]);
+                }
 
-            if ($diff > 0) {
-                // SOBRANTE: Ajustar la data original incrementando el teórico para que coincida con el físico
-                $this->adjustTeoricoSobrante($closing, $type, $absDiff);
-                $closing->blind_note = $closing->blind_note . " | Sobrante de " . number_format($absDiff, 2) . " {$currency} ACEPTADO y Ajustado en Sistema.";
-            } else {
-                // FALTANTE: Dejar data original inalterada pero registrar glosa de descuento aceptado
-                $closing->blind_note = $closing->blind_note . " | Faltante de " . number_format($absDiff, 2) . " {$currency} ACEPTADO y descontado de flujo.";
-            }
+                // 3. Modificaciones sobre los datos originales del cierre
+                $currentMismatches = is_string($closing->blind_mismatches)
+                    ? json_decode($closing->blind_mismatches, true)
+                    : ($closing->blind_mismatches ?? []);
 
-            // Remover el elemento resuelto de los descuadres pendientes
-            $updatedMismatches = array_values(array_filter($currentMismatches, function($m) use ($type) {
-                return $m !== $type && $m !== $this->mapTypeToMismatchString($type);
-            }));
+                if ($diff > 0) {
+                    // SOBRANTE: Ajustar la data original incrementando el teórico para que coincida con el físico
+                    $this->adjustTeoricoSobrante($closing, $type, $absDiff);
+                    $closing->blind_note = $closing->blind_note . " | Sobrante de " . number_format($absDiff, 2) . " {$currency} ACEPTADO y Ajustado en Sistema.";
+                } else {
+                    // FALTANTE: Dejar data original inalterada pero registrar glosa de descuento aceptado
+                    $closing->blind_note = $closing->blind_note . " | Faltante de " . number_format($absDiff, 2) . " {$currency} ACEPTADO y descontado de flujo.";
+                }
 
-            $closing->blind_mismatches = json_encode($updatedMismatches);
-            $closing->save();
-            $closing->recalculateTotals();
+                // Remover el elemento resuelto de los descuadres pendientes
+                $updatedMismatches = array_values(array_filter($currentMismatches, function($m) use ($type) {
+                    return $m !== $type && $m !== $this->mapTypeToMismatchString($type);
+                }));
 
-            DB::commit();
+                $closing->blind_mismatches = json_encode($updatedMismatches);
+                $closing->save();
+                $closing->recalculateTotals();
+
+                return $closing;
+            }, 3);
 
             return response()->json([
                 'status' => 'success',
@@ -79,7 +82,6 @@ class MismatchManagementController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            DB::rollBack();
             Log::error("Error al aceptar descuadre: " . $e->getMessage());
             return response()->json([
                 'status' => 'error',
