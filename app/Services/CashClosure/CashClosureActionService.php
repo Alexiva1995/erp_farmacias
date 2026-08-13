@@ -114,17 +114,13 @@ class CashClosureActionService
         $validatedData = $request->validated();
         $sellerId = Auth::id();
         $cashClosure = CashClosing::findOrFail($validatedData['id']);
+        // Si hay órdenes pendientes o reservadas asociadas al cierre, las pasamos a ABANDONED para permitir el cierre
         $pendingOrders = $cashClosure->orders()->whereIn('status', [Order::RESERVED, Order::PENDING])->get();
-
         if ($pendingOrders->isNotEmpty()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'No se puede cerrar la caja. Hay órdenes pendientes o reservadas.',
-                'data' => [
-                    'pending_orders_count' => $pendingOrders->count(),
-                    'pending_order_ids' => $pendingOrders->pluck('id')->toArray(),
-                ],
-            ], 409);
+            foreach ($pendingOrders as $pendingOrder) {
+                $pendingOrder->status = Order::ABANDONED;
+                $pendingOrder->save();
+            }
         }
 
         $updateData = [
