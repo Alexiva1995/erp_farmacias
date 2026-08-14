@@ -11,21 +11,44 @@ body .apexcharts-canvas {
     @include mixins.elevation(3);
 
     border-color: rgba(var(--v-border-color), var(--v-border-opacity));
-    background: rgb(var(--v-theme-surface));
-
-    .apexcharts-tooltip-title {
-      border-color: rgba(var(--v-border-color), var(--v-border-opacity));
-      background: rgb(var(--v-theme-surface));
-      font-weight: 500;
-      padding-inline: 10px;
-    }
 
     &.apexcharts-theme-light {
-      color: rgba(var(--v-theme-on-background), var(--v-high-emphasis-opacity));
+      background: rgb(var(--v-theme-surface)) !important;
+      color: rgba(var(--v-theme-on-background), var(--v-high-emphasis-opacity)) !important;
+
+      .apexcharts-tooltip-title {
+        border-color: rgba(var(--v-border-color), var(--v-border-opacity));
+        background: rgba(var(--v-theme-on-surface), 0.05) !important;
+        color: rgba(var(--v-theme-on-background), var(--v-high-emphasis-opacity)) !important;
+        font-weight: 500;
+        padding-inline: 10px;
+      }
+
+      .apexcharts-tooltip-text,
+      .apexcharts-tooltip-text-y-value,
+      .apexcharts-tooltip-text-y-label {
+        color: rgba(var(--v-theme-on-background), var(--v-high-emphasis-opacity)) !important;
+      }
     }
 
     &.apexcharts-theme-dark {
-      color: white;
+      background: #1e1e1e !important;
+      color: #ffffff !important;
+
+      .apexcharts-tooltip-title {
+        border-color: rgba(255, 255, 255, 0.1);
+        background: #2a2a2a !important;
+        color: #ffffff !important;
+        font-weight: 500;
+        padding-inline: 10px;
+      }
+
+      .apexcharts-tooltip-text,
+      .apexcharts-tooltip-text-y-value,
+      .apexcharts-tooltip-text-y-label,
+      .apexcharts-tooltip-series-group {
+        color: #ffffff !important;
+      }
     }
 
     .apexcharts-tooltip-series-group:first-of-type {

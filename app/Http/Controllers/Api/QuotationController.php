@@ -165,8 +165,32 @@ class QuotationController extends Controller
     public function list(Request $request)
     {
         $query = Quotation::query()
-            ->with(['client', 'creator'])
-            ->orderBy('id', 'desc');
+            ->with(['client', 'creator']);
+
+        $sortBy = $request->input('sortBy');
+        $orderBy = strtolower($request->input('orderBy', 'desc')) === 'asc' ? 'asc' : 'desc';
+
+        if (!empty($sortBy)) {
+            switch ($sortBy) {
+                case 'id':
+                    $query->orderBy('id', $orderBy);
+                    break;
+                case 'total':
+                    $query->orderBy('total', $orderBy);
+                    break;
+                case 'currency':
+                    $query->orderBy('currency', $orderBy);
+                    break;
+                case 'created_at':
+                    $query->orderBy('created_at', $orderBy);
+                    break;
+                default:
+                    $query->orderBy('id', 'desc');
+                    break;
+            }
+        } else {
+            $query->orderBy('id', 'desc');
+        }
 
         if ($request->filled('start_date')) {
             $start = Carbon::parse($request->start_date)->startOfDay();
@@ -186,11 +210,13 @@ class QuotationController extends Controller
         }
 
         $perPage = (int) $request->input('itemsPerPage', 10);
+        $page = (int) $request->input('page', 1);
+
         if ($perPage < 1) {
             $items = $query->get();
             return response()->json(['data' => $items, 'total' => $items->count()]);
         }
-        $paginated = $query->paginate($perPage);
+        $paginated = $query->paginate($perPage, ['*'], 'page', $page);
         return response()->json(['data' => $paginated->items(), 'total' => $paginated->total()]);
     }
 }

@@ -34,7 +34,7 @@ class CNEQueryService
 
             $url = "https://api.cedula.com.ve/api/v1?app_id={$appId}&token={$token}&cedula={$cedula}";
 
-            $response = Http::timeout(10)->get($url);
+            $response = Http::timeout(3)->get($url);
 
             if ($response->failed()) {
                 \Log::warning("CNE: Falla HTTP para CI {$cedula}: status=" . $response->status() . " body=" . $response->body());

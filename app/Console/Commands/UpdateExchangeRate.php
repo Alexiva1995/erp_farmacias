@@ -143,10 +143,10 @@ class UpdateExchangeRate extends Command
         // Limpiar caché global de tasas de cambio
         Cache::forget('resources.all_exchange_rates');
 
-        // Obtener tasas finales de la base de datos para el reporte
-        $bcvVal = ExchangeRate::where('currency_code', 'BS')->value('rate');
-        $binanceVal = ExchangeRate::where('currency_code', 'BINANCE')->value('rate');
-        $eurVal = ExchangeRate::where('currency_code', 'EUR')->value('rate');
+        // Obtener tasas finales (las más recientes) de la base de datos para el reporte
+        $bcvVal = ExchangeRate::where('currency_code', 'BS')->latest('id')->value('rate') ?? $bcvRate;
+        $binanceVal = ExchangeRate::where('currency_code', 'BINANCE')->latest('id')->value('rate') ?? $binanceRate;
+        $eurVal = ExchangeRate::where('currency_code', 'EUR')->latest('id')->value('rate') ?? $eurToVes;
 
         $bcvValFormatted = $bcvVal ? number_format((float) $bcvVal, 2, ',', '.') : 'No disponible';
         $binanceValFormatted = $binanceVal ? number_format((float) $binanceVal, 2, ',', '.') : 'No disponible';

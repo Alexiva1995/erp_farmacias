@@ -58,6 +58,8 @@ const totalQuotations = ref(0);
 const loadingQuotations = ref(false);
 const pageQuotations = ref(1);
 const itemsPerPageQuotations = ref(25);
+const sortByQuotations = ref();
+const orderByQuotations = ref();
 
 const sellers = ref([]);
 const users = ref([]);
@@ -287,6 +289,8 @@ const fetchQuotations = async () => {
     end_date: globalEndDate.value || undefined,
     page: pageQuotations.value,
     itemsPerPage: itemsPerPageQuotations.value,
+    sortBy: sortByQuotations.value || undefined,
+    orderBy: orderByQuotations.value || undefined,
   };
   Object.keys(params).forEach((k) => (params[k] == null || params[k] === "") && delete params[k]);
   try {
@@ -459,7 +463,7 @@ const handleClearFilters = () => {
 
 let debounceTimerQuotations;
 watch(
-  [pageQuotations, itemsPerPageQuotations, filterSearchQuery, globalStartDate, globalEndDate],
+  [pageQuotations, itemsPerPageQuotations, filterSearchQuery, globalStartDate, globalEndDate, sortByQuotations, orderByQuotations],
   () => {
     if (activeTab.value !== 4) return;
     clearTimeout(debounceTimerQuotations);
@@ -550,6 +554,13 @@ const updateTableOptionsOrdersCancelled = (options) => {
 const updateTableOptionsQuotations = (options) => {
   pageQuotations.value = options.page;
   itemsPerPageQuotations.value = options.itemsPerPage;
+  if (options.sortBy && options.sortBy.length > 0) {
+    sortByQuotations.value = options.sortBy[0].key;
+    orderByQuotations.value = options.sortBy[0].order;
+  } else {
+    sortByQuotations.value = null;
+    orderByQuotations.value = null;
+  }
 };
 
 const formatQuotationDate = (dateStr) => {
@@ -1140,6 +1151,7 @@ const sellerDisplayName = (item) => (item?.username ? capitalizeFirstAndLastName
             :loading="loadingQuotations"
             :items-per-page="itemsPerPageQuotations"
             :page="pageQuotations"
+            :sort-by="sortByQuotations ? [{ key: sortByQuotations, order: orderByQuotations || 'desc' }] : []"
             class="text-no-wrap quotation-table-premium"
             @update:options="updateTableOptionsQuotations"
           >

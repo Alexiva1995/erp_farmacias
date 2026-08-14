@@ -18,7 +18,7 @@ class StoreProductCountRequest extends FormRequest
 
         $rules = [
             'counted_quantity' => 'required|numeric|min:0',
-            'system_quantity' => 'required|numeric|min:0',
+            'system_quantity' => 'required|numeric',
             'discrepancy' => 'required|numeric',
         ];
 

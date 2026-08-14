@@ -190,7 +190,7 @@ const renderSellerName = (item) => {
       <!-- Paginación Móvil -->
       <div class="pa-4 border-t d-flex justify-center">
         <VPagination
-          v-model="props.page"
+          :model-value="props.page"
           :length="Math.ceil(props.totalOrders / props.itemsPerPage)"
           size="small"
           total-visible="5"
@@ -240,7 +240,7 @@ const renderSellerName = (item) => {
         {{ renderUsername(item) }}
       </template>
 
-      <template v-slot:item.seller.username="{ item }">
+      <template #['item.seller.username']="{ item }">
         {{ renderSellerName(item) }}
       </template>
 

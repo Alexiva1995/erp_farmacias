@@ -262,6 +262,7 @@ class OrderController extends Controller
         $this->applySellerFilterForVendedor($request);
         $query = $this->orderQueryService->getFilteredQuery($request, 'Completed');
         $perPage = (int) $request->input('itemsPerPage', 10);
+        $page = (int) $request->input('page', 1);
 
         if ($perPage < 1) {
             $items = $query->get();
@@ -270,7 +271,7 @@ class OrderController extends Controller
                 'total' => $items->count()
             ]);
         }
-        $paginatedResult = $query->paginate($perPage);
+        $paginatedResult = $query->paginate($perPage, ['*'], 'page', $page);
         return response()->json([
             'data' => \App\Http\Resources\OrderListItemResource::collection($paginatedResult->items()),
             'total' => $paginatedResult->total()
@@ -282,6 +283,7 @@ class OrderController extends Controller
         $this->applySellerFilterForVendedor($request);
         $query = $this->orderQueryService->getFilteredQuery($request, 'all');
         $perPage = (int) $request->input('itemsPerPage', 10);
+        $page = (int) $request->input('page', 1);
 
         if ($perPage < 1) {
             $items = $query->get();
@@ -290,7 +292,7 @@ class OrderController extends Controller
                 'total' => $items->count()
             ]);
         }
-        $paginatedResult = $query->paginate($perPage);
+        $paginatedResult = $query->paginate($perPage, ['*'], 'page', $page);
         return response()->json([
             'data' => \App\Http\Resources\OrderListItemResource::collection($paginatedResult->items()),
             'total' => $paginatedResult->total()
@@ -302,6 +304,7 @@ class OrderController extends Controller
         $this->applySellerFilterForVendedor($request);
         $query = $this->orderQueryService->getFilteredQuery($request, 'Abandoned');
         $perPage = (int) $request->input('itemsPerPage', 10);
+        $page = (int) $request->input('page', 1);
 
         if ($perPage < 1) {
             $items = $query->get();
@@ -310,7 +313,7 @@ class OrderController extends Controller
                 'total' => $items->count()
             ]);
         }
-        $paginatedResult = $query->paginate($perPage);
+        $paginatedResult = $query->paginate($perPage, ['*'], 'page', $page);
         return response()->json([
             'data' => \App\Http\Resources\OrderListItemResource::collection($paginatedResult->items()),
             'total' => $paginatedResult->total()
@@ -322,6 +325,7 @@ class OrderController extends Controller
         $this->applySellerFilterForVendedor($request);
         $query = $this->orderQueryService->getFilteredQuery($request, 'Cancelled');
         $perPage = (int) $request->input('itemsPerPage', 10);
+        $page = (int) $request->input('page', 1);
 
         if ($perPage < 1) {
             $items = $query->get();
@@ -330,7 +334,7 @@ class OrderController extends Controller
                 'total' => $items->count()
             ]);
         }
-        $paginatedResult = $query->paginate($perPage);
+        $paginatedResult = $query->paginate($perPage, ['*'], 'page', $page);
         return response()->json([
             'data' => \App\Http\Resources\OrderListItemResource::collection($paginatedResult->items()),
             'total' => $paginatedResult->total()
