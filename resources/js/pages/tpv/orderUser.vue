@@ -366,7 +366,19 @@ const {
   selectedDisplayCurrency,
   finalizeAndCheckPending,
   brandingStore,
+  getEffectiveRate,
 });
+
+// Mantener los ítems para el ticket térmico siempre sincronizados con la orden activa
+watch(
+  orderItems,
+  (newItems) => {
+    if (Array.isArray(newItems)) {
+      itemsToPrint.value = newItems;
+    }
+  },
+  { immediate: true, deep: true }
+);
 
 // ─── Control del modal de cobro ───────────────────────────────────────────────
 const openBuysModal = () => { showBuysModal.value = true; };
@@ -406,6 +418,7 @@ useTpvInit({
   authStore,
   brandingStore,
   fetchGeneralSettings,
+  fetchExchangeRates,
   sortBy,
   orderBy,
   tableOptions,
@@ -559,7 +572,7 @@ useTpvInit({
       :isSpecialTaxpayer="isSpecialTaxpayer"
       :allForeignSalesSpe="allForeignSalesSpe"
       :foreignOrdersCount="foreignOrdersCount"
-      @printTickeCompletion="printTickeCompletion"
+      @printTickeCompletion="(order) => printTickeCompletion(order)"
       @printFiscalPNP="printFiscalPNP"
       @finalizeAndCheckPending="finalizeAndCheckPending"
       :isPrinting="isPrinting"

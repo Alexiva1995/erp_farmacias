@@ -77,11 +77,12 @@ const activeDiscount = computed(() => {
   return c && c.amount > 0 ? c : null;
 });
 
-const productLab = (item) => item.laboratory || null;
+const productLab = (item) => item.laboratory || item.laboratory_name || null;
 const productLineText = (item) => {
-  const qty = item.selectedQuantity ?? "";
-  const title = (item.title || "—").toUpperCase();
-  const lab = productLab(item) ? String(productLab(item)).toUpperCase() : "";
+  const qty = item.selectedQuantity || item.quantity || 1;
+  const rawTitle = item.title || item.name || item.dish?.name || item.product?.name || "—";
+  const title = String(rawTitle).toUpperCase();
+  const lab = productLab(item) && productLab(item) !== 'Restaurante' && productLab(item) !== 'N/A' ? String(productLab(item)).toUpperCase() : "";
   const line = lab ? `${qty} X ${title} ${lab}` : `${qty} X ${title}`;
   return line.trim();
 };

@@ -188,13 +188,12 @@ const nextExpirationDate = (product) => {
 };
 
 const calculateSalePriceWithIva = (product) => {
+  const isCopPrice = isRestaurant.value && Boolean(product.sale_price_cop);
   const basePrice = isRestaurant.value
     ? Number(product.sale_price_cop || 0)
     : Number(product.sale_price || 0);
-  if (product.iva == 1) {
-    return basePrice * 1.16;
-  }
-  return basePrice;
+  const finalPrice = product.iva == 1 ? basePrice * 1.16 : basePrice;
+  return { price: finalPrice, isAlreadyConverted: isCopPrice };
 };
 
 // Estado para la fusión
@@ -262,11 +261,32 @@ const formatStock = (item) => {
   return `${formatted} UNDS`;
 };
 
-// Formatea precio respetando la moneda configurada en los ajustes del negocio
-const formatPriceWithCurrency = (price) => {
+const formatPriceWithCurrency = (price, isAlreadyConverted = false) => {
   const numPrice = Number(price);
   if (isNaN(numPrice)) return '—';
-  const currency = brandingStore.settings.default_currency || 'USD';
+
+  const currency = brandingStore.settings?.default_currency || 'USD';
+
+  if (isAlreadyConverted || currency === 'USD') {
+    return formatCurrency(numPrice, currency);
+  }
+
+  const rates = Array.isArray(brandingStore.exchangeRates) ? brandingStore.exchangeRates : [];
+
+  if (currency === 'COP') {
+    const copObj = rates.find(r => r && (r.currency_code === 'COP' || r.currency_code === 'COPC'));
+    const copRate = Number(copObj?.rate || 4000);
+    // Redondear al múltiplo de 100 más cercano hacia arriba (igual que el backend)
+    const rounded = Math.ceil((numPrice * copRate) / 100) * 100;
+    return formatCurrency(rounded, 'COP');
+  }
+
+  if (currency === 'BS' || currency === 'Bs') {
+    const bsObj = rates.find(r => r && r.currency_code === 'BS');
+    const bsRate = Number(bsObj?.rate || 1);
+    return formatCurrency(numPrice * bsRate, 'BS');
+  }
+
   return formatCurrency(numPrice, currency);
 };
 
@@ -461,7 +481,7 @@ defineExpose({
         <template #item.sale_price="{ item }">
           <div class="d-flex flex-column text-end">
             <span class="text-sm font-weight-black text-primary">{{
-              formatPriceWithCurrency(calculateSalePriceWithIva(item))
+              formatPriceWithCurrency(calculateSalePriceWithIva(item).price, calculateSalePriceWithIva(item).isAlreadyConverted)
             }}</span>
             <span v-if="item.iva == 1" class="text-super-xs text-success"
               >IVA INC.</span
@@ -618,7 +638,7 @@ defineExpose({
               <div v-if="!isRestaurant" class="d-flex flex-column text-right">
                 <span class="text-super-xs text-disabled text-uppercase font-weight-black text-xs">P.V.P ({{ item.iva == 1 ? 'IVA' : 'EX' }})</span>
                 <span class="text-base font-weight-black text-primary">
-                  {{ formatPriceWithCurrency(calculateSalePriceWithIva(item)) }}
+                  {{ formatPriceWithCurrency(calculateSalePriceWithIva(item).price, calculateSalePriceWithIva(item).isAlreadyConverted) }}
                 </span>
               </div>
             </div>

@@ -1052,8 +1052,8 @@ const getIva = (product, currency) => {
                     </template>
                   </div>
 
-                  <!-- Botón de Anotación (Solo Platos) -->
-                  <div v-if="product.is_dish" class="d-flex align-center ml-auto">
+                  <!-- Botón de Anotación (Solo en Modo Restaurante o Platos) -->
+                  <div v-if="isRestaurant || product.is_dish" class="d-flex align-center ml-auto">
                     <VBtn
                       icon="tabler-note"
                       size="24"

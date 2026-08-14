@@ -6,11 +6,13 @@ import ProductTable from "@/components/ProductTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { useAuthStore } from "@/stores/auth";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 import Swal from "sweetalert2";
 import { onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 
 const authStore = useAuthStore();
+const brandingStore = useBrandingStore();
 const route = useRoute();
 
 const products = ref([]);
@@ -68,7 +70,9 @@ const fetchSelectOptions = async () => {
     suppliers.value = suppliersResponse.data?.data || suppliersResponse.data || [];
   } catch (error) {
     console.error("Error al cargar opciones de los selects:", error);
-    toast.error("No se pudieron cargar los filtros.");
+    if (error.response?.status !== 401) {
+      toast.error("No se pudieron cargar los filtros.");
+    }
   } finally {
     isLoadingFilters.value = false;
   }
@@ -139,12 +143,14 @@ watch([page, itemsPerPage, sortBy, orderBy], () => {
   fetchProducts();
 });
 
-onMounted(() => {
+onMounted(async () => {
   if (route.query.laboratoryId) {
     selectedLaboratory.value = Number(route.query.laboratoryId);
   }
+  await brandingStore.fetchSettings();
+  await brandingStore.fetchExchangeRates();
   fetchSelectOptions();
-  fetchProducts();
+  await fetchProducts();
 });
 
 onUnmounted(() => clearTimeout(debounceTimer));

@@ -2,6 +2,7 @@ import { ref, computed, nextTick } from 'vue'
 import axios from '@/plugins/axios'
 import { toast } from '@/plugins/sweetalert'
 import { THERMAL_54MM_CSS } from '@/constants/thermalTicket54.js'
+import { formatOrderItemForFrontend } from '@/composables/useTpvItemFormatter.js'
 
 export function useTpvPrintManager({
   orderData,
@@ -10,6 +11,7 @@ export function useTpvPrintManager({
   selectedDisplayCurrency,
   finalizeAndCheckPending,
   brandingStore,
+  getEffectiveRate,
 }) {
   const isPrinting = ref(false)
   const itemsToPrint = ref([])
@@ -60,13 +62,35 @@ export function useTpvPrintManager({
     })
   })
 
-  const printTickeCompletion = async () => {
-    if (!orderData.value) {
+  const printTickeCompletion = async (completedOrder = null) => {
+    const targetOrder = completedOrder || orderData.value
+    if (!targetOrder) {
       console.error('No hay datos de orden para imprimir')
       return
     }
-    speSurchargeAmountPrint.value = parseFloat(orderData.value.spe_surcharge_amount || 0)
-    if (isSpecialTaxpayer) isSpecialTaxpayer.value = parseFloat(orderData.value.spe_surcharge_amount) > 0
+    
+    // Si viene la orden completada desde el modal de cobro, formateamos sus ítems
+    if (completedOrder) {
+      orderData.value = completedOrder
+      const rawDetails = completedOrder.details || completedOrder.items || completedOrder.products || []
+      if (Array.isArray(rawDetails) && rawDetails.length > 0) {
+        itemsToPrint.value = rawDetails.map((detail) => {
+          // Si ya está formateado en el frontend
+          if (detail.title || detail.name) {
+            return {
+              ...detail,
+              title: detail.title || detail.name || detail.dish?.name || detail.product?.name || "—",
+              notes: detail.notes || detail.observation || null,
+            }
+          }
+          // Si es un modelo Eloquent OrderDetail directo
+          return formatOrderItemForFrontend(detail, getEffectiveRate)
+        })
+      }
+    }
+    
+    speSurchargeAmountPrint.value = parseFloat(targetOrder.spe_surcharge_amount || 0)
+    if (isSpecialTaxpayer) isSpecialTaxpayer.value = parseFloat(targetOrder.spe_surcharge_amount) > 0
     isPrinting.value = true
     await nextTick()
     await new Promise((resolve) => setTimeout(resolve, 600))

@@ -1387,7 +1387,7 @@ class OrderActionService
                 $newPendingOrder = $reservedOrder;
             }*/
 
-            $orderId->load(['seller', 'client', 'details.product']);
+            $orderId->load(['seller', 'client', 'details.product', 'details.dish', 'details.court']);
             DB::commit();
             return [
                 //'order' => $newPendingOrder,

@@ -33,7 +33,12 @@ const props = defineProps({
 
 const emit = defineEmits(["print", "cancel", "print-fiscal"]);
 
+const handlePrintClick = () => {
+  emit('print');
+};
+
 const logoSrc = computed(() => brandingStore.settings?.app_logo || BASE64_LOGO_DATA);
+
 
 /**
  * Convierte un monto a Bolívares (BS) usando las tasas de cambio proporcionadas.
@@ -115,9 +120,12 @@ const formatAsBS = (amount, fromCurrency = "BS") => {
             <div class="d-flex flex-column text-caption border-b pb-1">
               <span class="font-weight-medium leading-tight">
                 {{ product.selectedQuantity }} x {{ product.title }}
-              </span>
-              <span v-if="product.laboratory || product.laboratory_name" class="text-tiny text-disabled font-weight-bold uppercase">
-                LAB: {{ product.laboratory || product.laboratory_name }}
+                <template v-if="product.notes">
+                  - <strong class="text-success">NOTA: {{ product.notes }}</strong>
+                </template>
+                <template v-else-if="product.laboratory && product.laboratory !== 'Restaurante' && product.laboratory !== 'N/A'">
+                  - <span class="text-disabled">LAB: {{ product.laboratory || product.laboratory_name }}</span>
+                </template>
               </span>
             </div>
           </div>
@@ -136,7 +144,7 @@ const formatAsBS = (amount, fromCurrency = "BS") => {
 
     <!-- Acciones -->
     <VCardActions class="px-0 pt-6 d-flex flex-column gap-2 no-print">
-      <VBtn color="primary" variant="flat" block size="large" class="rounded-lg font-weight-black" @click="emit('print')">
+      <VBtn color="primary" variant="flat" block size="large" class="rounded-lg font-weight-black" @click="handlePrintClick">
         <VIcon icon="tabler-printer" class="me-2" />
         IMPRIMIR TICKET
       </VBtn>

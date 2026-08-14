@@ -108,7 +108,7 @@ defineEmits([
       :is-special-taxpayer="isSpecialTaxpayer || false"
       :all-foreign-sales-spe="allForeignSalesSpe || false"
       :foreign-orders-count="foreignOrdersCount || 0"
-      @printTicke-completed="$emit('printTickeCompletion')"
+      @printTicke-completed="$emit('printTickeCompletion', $event)"
       @print-fiscal="$emit('printFiscalPNP', $event)"
       @finish-and-reload="$emit('finalizeAndCheckPending')"
     />

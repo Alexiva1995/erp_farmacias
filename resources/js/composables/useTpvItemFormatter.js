@@ -87,13 +87,16 @@ export function formatOrderItemForFrontend(backendItem, getEffectiveRate) {
     }
   }
 
+
   // Ítem PLATO
   if (backendItem.product_type === 'dish' && backendItem.dish) {
     const dish = backendItem.dish
-    const rateCop = getEffectiveRate('USD', 'COP') || 1
+    const rateCop = getEffectiveRate('USD', 'COP') || 4000
     const rateBs = getEffectiveRate('USD', 'BS') || 1
-    const priceCop = parseFloat(dish.price) || 0
-    const priceUsd = parseFloat((priceCop / rateCop).toFixed(4))
+
+    // designated_price es el precio del plato en USD
+    const priceUsd = parseFloat(dish.designated_price ?? dish.price ?? 0)
+    const priceCop = Math.ceil((priceUsd * rateCop) / 100) * 100
     const priceBs = parseFloat((priceUsd * rateBs).toFixed(2))
 
     return {
@@ -126,6 +129,7 @@ export function formatOrderItemForFrontend(backendItem, getEffectiveRate) {
       original_pack_config: null,
       has_pack_discount: false,
       is_dish: true,
+      notes: backendItem.notes || backendItem.observation || null,
     }
   }
 
@@ -134,6 +138,7 @@ export function formatOrderItemForFrontend(backendItem, getEffectiveRate) {
   const originalPrice = parseFloat(product.price ?? product.sale_price ?? backendItem.price_usd_unit ?? backendItem.price_at_product ?? 0)
   const originalPriceBs = parseFloat(product.price_bs ?? backendItem.price_bs ?? 0)
   const originalPriceCop = parseFloat(product.price_cop ?? backendItem.price_cop ?? 0)
+
 
   const backendDiscount = parseFloat(backendItem.discount_percentage) || 0
   const hasPackDiscount = !!(backendItem.pack_id || backendItem.pack_config)
@@ -179,5 +184,6 @@ export function formatOrderItemForFrontend(backendItem, getEffectiveRate) {
       backendItem.pack_config || backendItem.product?.pack_config || null,
     has_pack_discount: hasPackDiscount,
     is_dish: false,
+    notes: backendItem.notes || backendItem.observation || null,
   }
 }

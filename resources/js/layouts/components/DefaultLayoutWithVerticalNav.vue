@@ -34,7 +34,8 @@ const processedNavItems = computed(() => {
     const to = (item.to || '').toLowerCase();
 
     if (title === 'reservas' || to === 'reservations') {
-      return enabledModules.includes('reservation');
+      const enableReservations = brandingStore.settings.enable_reservations ?? true;
+      return enabledModules.includes('reservation') && enableReservations;
     }
     if (title === 'lotería' || to === 'lottery' || title === 'loteria') {
       return enabledModules.includes('lottery');

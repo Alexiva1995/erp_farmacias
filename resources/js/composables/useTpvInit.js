@@ -5,6 +5,7 @@ export function useTpvInit({
   authStore,
   brandingStore,
   fetchGeneralSettings,
+  fetchExchangeRates,
   sortBy,
   orderBy,
   tableOptions,
@@ -56,13 +57,17 @@ export function useTpvInit({
       console.error('[ORDER_USER] Error config usuario', err)
     }
 
-    // 1. Cargar usuario y configuraciones iniciales
+    // 1. Cargar usuario, configuraciones iniciales y tasas de cambio en paralelo
     const initPromises = []
     if (authStore?.fetchUser) {
       initPromises.push(authStore.fetchUser())
     }
     initPromises.push(brandingStore.fetchSettings())
     initPromises.push(fetchGeneralSettings().catch(err => console.error('[ORDER_USER] Error config general', err)))
+    // Cargar tasas de cambio antes de abrir la orden para que los precios en COP/BS sean correctos
+    if (fetchExchangeRates) {
+      initPromises.push(fetchExchangeRates().catch(err => console.error('[ORDER_USER] Error tasas de cambio', err)))
+    }
     await Promise.allSettled(initPromises)
 
     selectedDisplayCurrency.value = 'COP'
@@ -98,6 +103,7 @@ export function useTpvInit({
 
     // 3. Cargar en SEGUNDO PLANO (sin bloquear la interfaz ni la tabla) las listas secundarias
     Promise.allSettled([
+      fetchProducts(),
       fetchSelectOptions(),
       consultAllcomapanies(),
       fetchDoctorOffers(),

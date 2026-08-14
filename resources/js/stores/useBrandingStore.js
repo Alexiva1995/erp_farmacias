@@ -157,12 +157,25 @@ export const useBrandingStore = defineStore('branding', () => {
     settings.value.tpv_payment_methods = methods
   }
 
+  // Recarga solo las tasas de cambio sin depender del caché de fetchSettings
+  const fetchExchangeRates = async () => {
+    try {
+      const ratesResponse = await axios.get('/public/exchange-rates')
+      exchangeRates.value = ratesResponse.data
+    } catch (e) {
+      if (e?.response?.status !== 401) {
+        console.warn('Error fetching exchange rates:', e)
+      }
+    }
+  }
+
   return {
     settings,
     exchangeRates,
     isLoading,
     isLoaded,
     fetchSettings,
+    fetchExchangeRates,
     updatePaymentMethods,
     hexToRgb,
   }
