@@ -114,6 +114,8 @@ const hasData = computed(() => props.segmentation && (props.segmentation.total_r
       />
     </VCardText>
   </VCard>
+</template>
+
 <style scoped>
 :deep(.apexcharts-tooltip) {
   background: #1e1e1e !important;
