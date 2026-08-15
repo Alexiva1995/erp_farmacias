@@ -25,7 +25,14 @@ export function useTpvCatalog({
   const categories = ref([])
   const isLoadingFilters = ref(false)
 
+  let activeAbortController = null
+
   const fetchProducts = async () => {
+    if (activeAbortController) {
+      activeAbortController.abort()
+    }
+    activeAbortController = new AbortController()
+
     loading.value = true
     const params = {
       q: filterSearchQuery.value,
@@ -43,10 +50,16 @@ export function useTpvCatalog({
     Object.keys(params).forEach((key) => (params[key] === null || params[key] === '') && delete params[key])
 
     try {
-      const response = await axios.get('/tpv/order', { params })
+      const response = await axios.get('/tpv/order', {
+        params,
+        signal: activeAbortController.signal,
+      })
       products.value = response.data.data
       totalProduct.value = response.data.total
     } catch (error) {
+      if (axios.isCancel(error) || error.name === 'CanceledError' || error.name === 'AbortError') {
+        return
+      }
       if (error.response?.status === 401) {
         window.location.reload()
       } else if (error.response?.status === 429) {
@@ -55,7 +68,9 @@ export function useTpvCatalog({
         toast.error('Error al obtener los productos.')
       }
     } finally {
-      loading.value = false
+      if (activeAbortController && !activeAbortController.signal.aborted) {
+        loading.value = false
+      }
     }
   }
 
@@ -180,7 +195,7 @@ export function useTpvCatalog({
         } catch (error) {
           console.error('Error en watcher de productos:', error)
         }
-      }, 200)
+      }, 400)
     },
     { deep: false }
   )
@@ -188,7 +203,9 @@ export function useTpvCatalog({
   watch(
     [filterSearchQuery, selectedLaboratory, selectedOrigin, selectedCategory, stockStatusFilter],
     () => {
-      page.value = 1
+      if (page.value !== 1) {
+        page.value = 1
+      }
     }
   )
 

@@ -807,11 +807,18 @@ class OrderActionService
             }
         }
 
+        $bcvRate = $rates['BS'] ?? 1.0;
         if ($isMulticurrency) {
-            $bcvRate = $rates['BS'] ?? 1.0;
             $tolerance = ($orderCurrency === 'COP') ? 12000.0 : (3.0 * $bcvRate); // Margen para absorber diferencias de tasa cruzada
         } else {
-            $tolerance = ($orderCurrency === 'COP') ? 2500.0 : 1.0;
+            if ($orderCurrency === 'COP') {
+                $tolerance = 2500.0;
+            } elseif ($orderCurrency === 'BS') {
+                // Margen de tolerancia para absorber diferencias de redondeo por renglón acumuladas (hasta 5 BS o 0.01 USD equivalente)
+                $tolerance = max(5.0, 0.01 * $bcvRate);
+            } else {
+                $tolerance = 1.0;
+            }
         }
 
         $sumInOrderCurrency = 0;

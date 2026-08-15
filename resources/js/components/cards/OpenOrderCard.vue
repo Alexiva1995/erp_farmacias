@@ -907,7 +907,6 @@ const getIva = (product, currency) => {
               hide-details
               prepend-inner-icon="tabler-scan"
               class="rounded-lg custom-search-slim shadow-sm border flex-grow-1"
-              autofocus
               @keyup.enter="handleSearchAction(internalSearchQuery)"
             >
               <template #append-inner>
