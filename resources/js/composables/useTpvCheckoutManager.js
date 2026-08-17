@@ -329,7 +329,12 @@ export function useTpvCheckoutManager({
       }
     } catch (error) {
       console.error('Error al completar la compra:', error)
-      toast.error('Error de servidor al procesar la compra.')
+      if (error.response?.status === 404) {
+        toast.error('La orden ya no existe o fue eliminada. Por favor recarga la página (F5) para iniciar una nueva orden.')
+      } else {
+        const errorMsg = error.response?.data?.message || error.response?.data?.error || 'Error de servidor al procesar la compra.'
+        toast.error(errorMsg)
+      }
     } finally {
       issubmitting.value = false
     }

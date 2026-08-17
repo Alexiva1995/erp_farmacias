@@ -225,6 +225,37 @@ export function useTpvCheckoutCalculations(props, payments, brandingStore) {
   }
 
   const changeAmountInCop = computed(() => {
+    // Si la moneda del pedido es COP, el vuelto se calcula directamente en COP con la misma tasa
+    if (props.selectedCurrency === 'COP') {
+      const totalToPayCop = roundedTotalAmountToPay.value
+      let totalPaidInCop = 0
+
+      payments.value.forEach((payment) => {
+        let amount = Number(payment.amount) || 0
+        if (payment.currency === 'COP') {
+          totalPaidInCop += amount
+        } else if (payment.currency === 'USD') {
+          const rateUsdToCop = getEffectiveRate('USD', 'COP')
+          totalPaidInCop += amount * (rateUsdToCop > 0 ? rateUsdToCop : 1)
+        } else {
+          const rateToCop = getEffectiveRate(payment.currency, 'COP')
+          if (rateToCop > 0) {
+            totalPaidInCop += amount * rateToCop
+          } else {
+            const rateToUsd = getEffectiveRate(payment.currency, 'USD')
+            const rateUsdToCop = getEffectiveRate('USD', 'COP')
+            if (rateToUsd > 0 && rateUsdToCop > 0) {
+              totalPaidInCop += amount * rateToUsd * rateUsdToCop
+            }
+          }
+        }
+      })
+
+      const diffCop = totalPaidInCop - totalToPayCop
+      if (diffCop <= 0) return 0
+      return roundUpToNearestHundred(diffCop)
+    }
+
     let totalPaidInUsd = 0
     let totalPaidInCop = 0
 
@@ -310,9 +341,10 @@ export function useTpvCheckoutCalculations(props, payments, brandingStore) {
       (payment) =>
         (payment.method === 'cash_usd' && payment.currency === 'USD') ||
         (payment.method === 'cash_bs' && payment.currency === 'BS') ||
-        (payment.method === 'cash_cop' && payment.currency === 'COP')
+        (payment.method === 'cash_cop' && payment.currency === 'COP') ||
+        (payment.method === 'cash')
     )
-    return hasRelevantCashPayment && changeAmount.value > 0
+    return hasRelevantCashPayment && (props.selectedCurrency === 'COP' ? changeAmountInCop.value > 0 : changeAmount.value > 0)
   })
 
   return {
