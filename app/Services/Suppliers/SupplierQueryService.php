@@ -383,7 +383,11 @@ class SupplierQueryService
     public function getSupplierConnections(Request $request)
     {
         $filters = $request->query();
-        $perPage = $filters["perPage"] ?? 10;
+        $perPage = (int) ($filters["perPage"] ?? $filters["itemsPerPage"] ?? $filters["per_page"] ?? 10);
+        if ($perPage <= 0) {
+            $perPage = 1000;
+        }
+        $page = (int) ($filters["page"] ?? $request->query("page", 1));
 
         // Buscamos el parámetro 'search' (enviado desde el frontend)
         // O mantenemos compatibilidad si enviasen 'selectedSupplier' como texto
@@ -394,17 +398,21 @@ class SupplierQueryService
                 "suppliers.name as name",
                 "suppliers.id",
                 "suppliers.public_token",
+                DB::raw("COALESCE(suppliers.is_active, 1) as is_active"),
                 DB::raw(
                     "COALESCE(supplier_connections.last_connection, 'No se ha establecido conexión') as last_connection",
                 ),
                 DB::raw("UPPER(COALESCE(CASE WHEN supplier_connections.type = 'file' THEN 'Archivo Excel' ELSE supplier_connections.type END, 'No registrado')) as type"),
             )
             ->leftJoin("supplier_connections", "supplier_id", "=", "suppliers.id")
+            ->whereNull("suppliers.deleted_at")
             ->when($searchTerm, function ($query) use ($searchTerm) {
                 // Buscamos coincidencia parcial en el nombre
                 $query->where("suppliers.name", "LIKE", "%{$searchTerm}%");
             })
-            ->paginate($perPage);
+            ->orderBy("suppliers.is_active", "desc")
+            ->orderBy("suppliers.name", "asc")
+            ->paginate($perPage, ["*"], "page", $page);
 
         return $paginated;
     }
@@ -515,7 +523,8 @@ class SupplierQueryService
                 DB::raw("COALESCE(product_suppliers.unit_cost_with_discount, 0) as final_cost_bs"),
                 DB::raw("COALESCE(product_suppliers.unit_cost_usd_with_discount, 0) as final_cost_usd"),
                 "product_suppliers.expiration as expiration",
-                "product_suppliers.active_ingredient as active_ingredient"
+                "product_suppliers.active_ingredient as active_ingredient",
+                "product_suppliers.is_active as is_active",
             ])
             ->leftJoin("products", "products.id", "=", "product_suppliers.product_id")
             ->leftJoin("suppliers", "suppliers.id", "=", "product_suppliers.supplier_id")
@@ -536,6 +545,7 @@ class SupplierQueryService
                     'product_suppliers.unit_cost_usd_with_discount',
                     'product_suppliers.expiration',
                     'product_suppliers.active_ingredient',
+                    'product_suppliers.is_active',
                     'products.id'
                 ]);
             })
@@ -580,6 +590,7 @@ class SupplierQueryService
             ->when($hasStock !== null, function ($query) use ($hasStock) {
                 $query->havingRaw($hasStock ? "COALESCE(SUM(product_lots.quantity), 0) > 0" : "COALESCE(SUM(product_lots.quantity), 0) = 0");
             })
+            ->orderBy('product_suppliers.is_active', 'desc')
             ->orderBy($sortColumn, $sortOrder)
             ->paginate($perPage);
 
@@ -606,6 +617,20 @@ class SupplierQueryService
         $quantity = $request->quantity;
         $discount = $request->boolean("discount");
         $product = ProductSupplier::find($productId);
+
+        if (!$product) {
+            return [
+                'success' => false,
+                'message' => 'Producto de proveedor no encontrado.',
+            ];
+        }
+
+        if ($product->is_active === false) {
+            return [
+                'success' => false,
+                'message' => 'Este producto se encuentra desactivado. Debe habilitarlo antes de añadirlo al pedido.',
+            ];
+        }
 
         $barcodeWarning = null;
         $mainProduct = $mainProductId ? Product::find($mainProductId) : null;
@@ -811,5 +836,25 @@ class SupplierQueryService
             'successful_connections' => $successfulConnections,
             'total_connections_24h' => $totalConnections
         ];
+    }
+
+    /**
+     * Obtiene los proveedores desactivados.
+     */
+    public function getDisabledSuppliers(Request $request)
+    {
+        $search = trim($request->query('search', ''));
+
+        return Supplier::query()
+            ->where('is_active', false)
+            ->when(!empty($search), function ($q) use ($search) {
+                $q->where(function ($sq) use ($search) {
+                    $sq->where('name', 'like', "%{$search}%")
+                      ->orWhere('id', 'like', "%{$search}%");
+                });
+            })
+            ->with(['connections:id,supplier_id,type,last_connection'])
+            ->orderBy('name', 'asc')
+            ->get();
     }
 }

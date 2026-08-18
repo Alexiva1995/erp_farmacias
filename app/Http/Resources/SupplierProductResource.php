@@ -24,6 +24,7 @@ class SupplierProductResource extends JsonResource
             'final_cost_usd' => $this->final_cost_usd ?? $this->unit_cost_usd_with_discount ?? $this->unit_cost_usd ?? 0,
             'supplier_name' => $this->supplier_name ?? $this->supplier?->name ?? 'N/A',
             'barcode_match' => $this->barcode_match ?? null,
+            'is_active' => (bool) ($this->is_active ?? true),
         ];
     }
 }

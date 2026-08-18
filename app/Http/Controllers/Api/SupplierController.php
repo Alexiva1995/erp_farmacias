@@ -18,6 +18,7 @@ use App\Http\Requests\StoreProductIntoAutoOrderRequest;
 use App\Http\Requests\Supplier\ApplyGlobalDiscountRequest;
 use App\Http\Requests\Supplier\DeleteOldProductsRequest;
 use App\Http\Requests\Supplier\SaveConnectionConfigRequest;
+use App\Http\Requests\Supplier\ToggleProductSupplierStatusRequest;
 use App\Jobs\ProcessSupplierConnectionJob;
 use App\Models\Supplier;
 use App\Http\Resources\SupplierResource;
@@ -562,6 +563,53 @@ class SupplierController extends Controller
                 'host'         => $connection->host,
                 'has_password' => !empty($connection->password),
             ],
+        ]);
+    }
+
+    /**
+     * Alterna o actualiza el estado activo/desactivado de un producto de proveedor.
+     */
+    public function toggleProductSupplierStatus(ToggleProductSupplierStatusRequest $request, ProductSupplier $productSupplier)
+    {
+        $validated = $request->validated();
+        $status = isset($validated['is_active']) ? (bool) $validated['is_active'] : null;
+
+        $updated = $this->supplierActionService->toggleProductSupplierStatus($productSupplier, $status);
+
+        return response()->json([
+            'message' => $updated->is_active
+                ? 'Oferta habilitada correctamente.'
+                : 'Oferta desactivada correctamente.',
+            'product_supplier' => new SupplierProductResource($updated),
+        ]);
+    }
+
+    /**
+     * Alterna o actualiza el estado activo/desactivado de un proveedor.
+     */
+    public function toggleSupplierStatus(Request $request, Supplier $supplier)
+    {
+        $status = $request->has('is_active') ? $request->boolean('is_active') : null;
+
+        $updated = $this->supplierActionService->toggleSupplierStatus($supplier, $status);
+
+        return response()->json([
+            'message' => $updated->is_active
+                ? 'Proveedor habilitado correctamente.'
+                : 'Proveedor desactivado correctamente.',
+            'supplier' => new SupplierResource($updated),
+        ]);
+    }
+
+    /**
+     * Obtiene los proveedores desactivados.
+     */
+    public function getDisabledSuppliers(Request $request)
+    {
+        $suppliers = $this->supplierQueryService->getDisabledSuppliers($request);
+
+        return response()->json([
+            'data' => SupplierResource::collection($suppliers)->resolve(),
         ]);
     }
 }

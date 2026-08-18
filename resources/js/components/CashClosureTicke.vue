@@ -344,18 +344,20 @@ const blindPayments = computed(() => [
           </div>
           <hr style="border-block-start: 1px dotted #000; margin-block-end: 4px;"/>
           <table style=" font-size: 14px; font-weight: bold;inline-size: 100%;">
-            <tr>
-              <td style="text-align: start;">USD:</td>
-              <td style="text-align: end;">{{ formatCurrency(totalEfectivoUsd, 'USD') }}</td>
-            </tr>
-            <tr>
-              <td style="text-align: start;">BS:</td>
-              <td style="text-align: end;">{{ formatCurrency(totalEfectivoBs, 'BS') }}</td>
-            </tr>
-             <tr>
-              <td style="text-align: start;">COP:</td>
-              <td style="text-align: end;">{{ formatCurrency(totalEfectivoCop, 'COP') }}</td>
-            </tr>
+            <tbody>
+              <tr>
+                <td style="text-align: start;">USD:</td>
+                <td style="text-align: end;">{{ formatCurrency(totalEfectivoUsd, 'USD') }}</td>
+              </tr>
+              <tr>
+                <td style="text-align: start;">BS:</td>
+                <td style="text-align: end;">{{ formatCurrency(totalEfectivoBs, 'BS') }}</td>
+              </tr>
+              <tr>
+                <td style="text-align: start;">COP:</td>
+                <td style="text-align: end;">{{ formatCurrency(totalEfectivoCop, 'COP') }}</td>
+              </tr>
+            </tbody>
           </table>
         </div>
 

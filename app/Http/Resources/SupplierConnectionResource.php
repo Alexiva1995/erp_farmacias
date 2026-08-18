@@ -20,6 +20,7 @@ class SupplierConnectionResource extends JsonResource
             'public_token' => $this->public_token,
             'last_connection' => $this->last_connection,
             'type' => $this->type,
+            'is_active' => (bool) ($this->is_active ?? true),
         ];
     }
 }

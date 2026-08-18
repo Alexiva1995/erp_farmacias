@@ -165,10 +165,12 @@ export function useProductComparator() {
     }
   };
 
+  const isUpdatingAllApi = ref(false);
+
   const handleUpdateAllApi = () => {
     Swal.fire({
       title: "¿Actualizar todos los proveedores?",
-      text: "Este proceso se ejecutará en segundo plano y actualizará el inventario de todos los proveedores conectados vía API.",
+      text: "Este proceso se ejecutará en segundo plano y actualizará el inventario de todos los proveedores conectados vía API y FTP.",
       icon: "info",
       showCancelButton: true,
       confirmButtonColor: "#00bad1",
@@ -178,16 +180,23 @@ export function useProductComparator() {
       reverseButtons: true,
     }).then(async (result) => {
       if (result.isConfirmed) {
+        isUpdatingAllApi.value = true;
         try {
           const response = await axios.post("/suppliers/update-all-job");
           if (response.status === 200) {
             toast.success(
               "El proceso de actualización ha iniciado en segundo plano.",
             );
+            supplierConnectionStore.startConnection();
+            startPolling();
           }
         } catch (error) {
           console.error(error);
           toast.error("No se pudo iniciar el proceso de actualización.");
+        } finally {
+          setTimeout(() => {
+            isUpdatingAllApi.value = false;
+          }, 2500);
         }
       }
     });
@@ -269,6 +278,7 @@ export function useProductComparator() {
     loadingSuppliers.value = true;
     const params = {
       page: page.value,
+      perPage: itemsPerPage.value,
       itemsPerPage: itemsPerPage.value,
       search: selectedSupplier.value,
     };
@@ -425,12 +435,12 @@ export function useProductComparator() {
 
   let supplierDebounceTimer;
   watch(
-    [page, itemsPerPage, selectedSupplier, searchedSupplier],
+    () => selectedSupplier.value,
     () => {
+      page.value = 1;
       clearTimeout(supplierDebounceTimer);
-      supplierDebounceTimer = setTimeout(() => fetchSupplierConnections(), 300);
+      supplierDebounceTimer = setTimeout(() => fetchSupplierConnections(), 350);
     },
-    { deep: true },
   );
 
   watch(
@@ -449,16 +459,13 @@ export function useProductComparator() {
       con_descuento,
       searchQueryRight,
       filterSearchQuery,
-      selectedSupplier,
+      searchedSupplier,
       selectedOrigin,
       stockStatusFilter,
       isStrictSearch,
-      pageProductsWithoutSupplier,
-      itemsPerPageProductsWithoutSupplier,
-      productsPage,
-      productsItemPerPage,
     ],
     () => {
+      productsPage.value = 1;
       clearTimeout(debounceTimerProductsWithoutSupplier);
       debounceTimerProductsWithoutSupplier = setTimeout(() => {
         fetchProductsWithoutSupplier();
@@ -469,22 +476,18 @@ export function useProductComparator() {
   );
 
   const updateTableOptions = (options) => {
-    page.value = options.page;
-    itemsPerPage.value = options.itemsPerPage;
+    page.value = options.page || 1;
+    itemsPerPage.value = options.itemsPerPage || 10;
+    fetchSupplierConnections();
   };
 
   const updateProductsTableOptions = (options) => {
-    if (productsPage.value === options.page && 
-        productsItemPerPage.value === options.itemsPerPage && 
-        JSON.stringify(sortOptions.value) === JSON.stringify(options.sortBy || [])) {
-      return;
-    }
-    
-    productsPage.value = options.page;
-    productsItemPerPage.value = options.itemsPerPage;
+    productsPage.value = options.page || 1;
+    productsItemPerPage.value = options.itemsPerPage || 10;
     if (options.sortBy) {
       sortOptions.value = options.sortBy;
     }
+    fetchProducts();
   };
 
   const handleShowProducts = (supplier) => {
@@ -650,6 +653,38 @@ export function useProductComparator() {
     isGeneratePublicLinkDialogActive.value = true;
   };
 
+  const handleToggleProductSupplierStatus = async (item) => {
+    if (!item?.id) return;
+    try {
+      const response = await axios.patch(
+        `/suppliers/product-suppliers/${item.id}/toggle-status`,
+      );
+      toast.success(response.data.message || "Estado actualizado correctamente.");
+      await fetchProducts();
+    } catch (error) {
+      console.error("Error al alternar estado del producto de proveedor:", error);
+      toast.error(
+        error.response?.data?.message || "No se pudo cambiar el estado de la oferta.",
+      );
+    }
+  };
+
+  const handleToggleSupplierStatus = async (supplier) => {
+    if (!supplier?.id) return;
+    try {
+      const response = await axios.patch(
+        `/suppliers/${supplier.id}/toggle-status`,
+      );
+      toast.success(response.data.message || "Estado del proveedor actualizado correctamente.");
+      await fetchSupplierConnections();
+    } catch (error) {
+      console.error("Error al alternar estado del proveedor:", error);
+      toast.error(
+        error.response?.data?.message || "No se pudo cambiar el estado del proveedor.",
+      );
+    }
+  };
+
   return {
     supplierConnections,
     suppliers,
@@ -731,5 +766,8 @@ export function useProductComparator() {
     handleSaveAnalysis,
     updateProductsWithoutSupplierOptions,
     handleOpenPublicLink,
+    handleToggleProductSupplierStatus,
+    handleToggleSupplierStatus,
+    isUpdatingAllApi,
   };
 }

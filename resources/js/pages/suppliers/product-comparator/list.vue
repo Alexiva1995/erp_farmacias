@@ -85,6 +85,9 @@ const {
   handleSaveAnalysis,
   updateProductsWithoutSupplierOptions,
   handleOpenPublicLink,
+  handleToggleProductSupplierStatus,
+  handleToggleSupplierStatus,
+  isUpdatingAllApi,
 } = useProductComparator();
 </script>
 
@@ -154,13 +157,14 @@ const {
       <VTabsWindow v-model="tab">
         <VTabsWindowItem value="suppliers">
           <ProductComparisionTable
+            v-model:page="page"
+            v-model:items-per-page="itemsPerPage"
             :supplierConnections="supplierConnections"
             :loading="loadingSuppliers"
             :total-supplierConnections="totalSupplierConnections"
-            :items-per-page="itemsPerPage"
-            :page="page"
             :checking-api-id="checkingApiSupplierId"
             :search-query="selectedSupplier"
+            :is-updating-all="isUpdatingAllApi"
             @update:search-query="selectedSupplier = $event"
             @update:options="updateTableOptions"
             @show-products="handleShowProducts"
@@ -169,6 +173,9 @@ const {
             @delete-products="handleDeleteSupplierProducts"
             @open-discount-dialog="handleShowDiscountDialog"
             @open-public-link="handleOpenPublicLink"
+            @toggle-status="handleToggleSupplierStatus"
+            @update-all-api="handleUpdateAllApi"
+            @refresh="fetchSupplierConnections"
           />
         </VTabsWindowItem>
 
@@ -201,6 +208,7 @@ const {
                 v-model:selected-supplier="searchedSupplier"
                 v-model:enable-discounts="enableDiscounts"
                 @sync-apis="handleUpdateAllApi"
+                @toggle-status="handleToggleProductSupplierStatus"
               />
             </VCol>
 

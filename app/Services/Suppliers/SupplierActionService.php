@@ -4,19 +4,20 @@ declare(strict_types=1);
 
 namespace App\Services\Suppliers;
 
+use App\Contracts\Repositories\SupplierRepositoryInterface;
+use App\Models\PaymentRule;
 use App\Models\ProductSupplier;
 use App\Models\Supplier;
-use App\Models\PaymentRule;
 use App\Models\SupplierDiscount;
 use App\Models\SupplierLaboratory;
-use App\Models\SupplierPaymentMethod;
-use App\Contracts\Repositories\SupplierRepositoryInterface;
+use Illuminate\Support\Facades\DB;
 
 class SupplierActionService
 {
     public function __construct(
         private SupplierRepositoryInterface $supplierRepository
     ) {}
+
     /**
      * Crea un nuevo proveedor.
      *
@@ -54,26 +55,26 @@ class SupplierActionService
      * Actualiza o crea una regla de pago para un proveedor.
      *
      * @param Supplier $supplier
-     * @param array $validatedData
+     * @param array $data
      * @return PaymentRule
      */
     public function createPaymentRule(Supplier $supplier, array $data): PaymentRule
     {
         if (isset($data['id']) && $data['id'] > 0) {
-        return $supplier->paymentRules()->updateOrCreate(
-            ['id' => $data['id']],
-            [
-                'days' => $data['days'],
-                'discount_percentage' => $data['discount_percentage'],
-                'supplier_id' => $supplier->id,
-            ]
-        );
+            return $supplier->paymentRules()->updateOrCreate(
+                ['id' => $data['id']],
+                [
+                    'days' => $data['days'],
+                    'discount_percentage' => $data['discount_percentage'],
+                    'supplier_id' => $supplier->id,
+                ]
+            );
         }
 
         return $supplier->paymentRules()->create([
-        'days' => $data['days'],
-        'discount_percentage' => $data['discount_percentage'],
-        'supplier_id' => $supplier->id,
+            'days' => $data['days'],
+            'discount_percentage' => $data['discount_percentage'],
+            'supplier_id' => $supplier->id,
         ]);
     }
 
@@ -86,40 +87,39 @@ class SupplierActionService
      */
     public function attachLaboratory(Supplier $supplier, array $validatedData): SupplierLaboratory
     {
-
         $values = [
-        'phone' => $validatedData['phone'],
-        'laboratory_id' => $validatedData['laboratory_id'],
-        'supplier_id' => $supplier->id, 
-    ];
-    $isUpdate = isset($validatedData['id']) && $validatedData['id'] > 0;
-    if ($isUpdate) {
-        $link = $supplier->laboratoryLinks()->findOrFail($validatedData['id']);
-        $link->update($values);
-        return $link;
-    } else {
-        return $supplier->laboratoryLinks()->create($values);
-    }
-        //return $supplier->laboratoryLinks()->create($validatedData);
+            'phone' => $validatedData['phone'],
+            'laboratory_id' => $validatedData['laboratory_id'],
+            'supplier_id' => $supplier->id, 
+        ];
+        $isUpdate = isset($validatedData['id']) && $validatedData['id'] > 0;
+        if ($isUpdate) {
+            $link = $supplier->laboratoryLinks()->findOrFail($validatedData['id']);
+            $link->update($values);
+            return $link;
+        } else {
+            return $supplier->laboratoryLinks()->create($values);
+        }
     }
 
     public function createDiscount(Supplier $supplier, array $data): SupplierDiscount
     {
         return $supplier->discounts()->create($data);
     }
+
     public function applyGlobalDiscount(Supplier $supplier, float $percentage)
     {
         $factor = 1 - ($percentage / 100);
-        return \Illuminate\Support\Facades\DB::table('product_suppliers')
+        return DB::table('product_suppliers')
             ->where('supplier_id', $supplier->id)
             ->update([
-                'unit_cost_with_discount' => \Illuminate\Support\Facades\DB::raw("
+                'unit_cost_with_discount' => DB::raw("
                     ROUND(
                         COALESCE(NULLIF(unit_cost_with_discount, 0), unit_cost) * {$factor}, 
                         2
                     )
                 "),
-                'unit_cost_usd_with_discount' => \Illuminate\Support\Facades\DB::raw("
+                'unit_cost_usd_with_discount' => DB::raw("
                     ROUND(
                         COALESCE(NULLIF(unit_cost_usd_with_discount, 0), unit_cost_usd) * {$factor}, 
                         2
@@ -128,10 +128,45 @@ class SupplierActionService
                 'updated_at' => now(),
             ]);
     }
+
     public function deleteProductsOlderThan(string $date)
     {
         return ProductSupplier::whereDate('updated_at', '<', $date)
             ->whereDoesntHave('autoOrderDetails')
             ->delete();
+    }
+
+    /**
+     * Alterna o establece el estado activo/desactivado de un producto de proveedor.
+     *
+     * @param ProductSupplier $productSupplier
+     * @param bool|null $status
+     * @return ProductSupplier
+     */
+    public function toggleProductSupplierStatus(ProductSupplier $productSupplier, ?bool $status = null): ProductSupplier
+    {
+        $newStatus = $status !== null ? $status : !$productSupplier->is_active;
+        $productSupplier->update([
+            'is_active' => $newStatus,
+        ]);
+
+        return $productSupplier;
+    }
+
+    /**
+     * Alterna o establece el estado activo/desactivado de un proveedor.
+     *
+     * @param Supplier $supplier
+     * @param bool|null $status
+     * @return Supplier
+     */
+    public function toggleSupplierStatus(Supplier $supplier, ?bool $status = null): Supplier
+    {
+        $newStatus = $status !== null ? $status : !($supplier->is_active ?? true);
+        $supplier->update([
+            'is_active' => $newStatus,
+        ]);
+
+        return $supplier;
     }
 }

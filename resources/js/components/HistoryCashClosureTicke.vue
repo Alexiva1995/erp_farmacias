@@ -27,23 +27,25 @@ const getOrderTotal = (order) => {
     <VCard variant="outlined" class="pa-4 text-start" style="border: 1px solid #ddd; border-radius: 8px; background: #fff;">
       <!-- CABECERA DEL REPORTE -->
       <table style="inline-size: 100%; margin-block-end: 20px;">
-        <tr>
-          <td style="inline-size: 30%; text-align: start; vertical-align: top;">
-            <img :src="logoSrc" alt="Logo" style="inline-size: 120px;" />
-          </td>
-          <td style="inline-size: 70%; text-align: end; vertical-align: top;">
-            <h2 style="margin: 0; color: #2c3e50; font-size: 20px;">Reporte de Ventas por Cierre</h2>
-            <p style=" color: #555; font-size: 14px;margin-block: 5px 0; margin-inline: 0;">
-              Cierre N°: <strong>{{ props.cashData.id }}</strong>
-            </p>
-            <p style=" color: #555; font-size: 14px;margin-block: 5px 0; margin-inline: 0;">
-              Fecha: {{ formatDateTime(props.cashData.closing_date, "date") }}
-            </p>
-            <p style=" color: #555; font-size: 14px;margin-block: 5px 0; margin-inline: 0;">
-              Vendedor: <strong>{{ props.cashData.seller?.username }}</strong>
-            </p>
-          </td>
-        </tr>
+        <tbody>
+          <tr>
+            <td style="inline-size: 30%; text-align: start; vertical-align: top;">
+              <img :src="logoSrc" alt="Logo" style="inline-size: 120px;" />
+            </td>
+            <td style="inline-size: 70%; text-align: end; vertical-align: top;">
+              <h2 style="margin: 0; color: #2c3e50; font-size: 20px;">Reporte de Ventas por Cierre</h2>
+              <p style=" color: #555; font-size: 14px;margin-block: 5px 0; margin-inline: 0;">
+                Cierre N°: <strong>{{ props.cashData.id }}</strong>
+              </p>
+              <p style=" color: #555; font-size: 14px;margin-block: 5px 0; margin-inline: 0;">
+                Fecha: {{ formatDateTime(props.cashData.closing_date, "date") }}
+              </p>
+              <p style=" color: #555; font-size: 14px;margin-block: 5px 0; margin-inline: 0;">
+                Vendedor: <strong>{{ props.cashData.seller?.username }}</strong>
+              </p>
+            </td>
+          </tr>
+        </tbody>
       </table>
 
       <hr style="border: 0; border-block-start: 2px solid #34495e; margin-block-end: 20px;" />

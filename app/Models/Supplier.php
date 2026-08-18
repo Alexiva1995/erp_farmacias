@@ -47,13 +47,15 @@ class Supplier extends Model
         'address',
         'public_token',
         'is_indexed',
-        'type'
+        'type',
+        'is_active',
     ];
 
     protected $casts = [
         'dispatch_days' => 'array',
         'order_days' => 'array',
         'type' => SupplierType::class,
+        'is_active' => 'boolean',
     ];
 
     /**

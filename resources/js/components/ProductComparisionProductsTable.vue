@@ -36,6 +36,7 @@ const props = defineProps({
 const emit = defineEmits([
   "update:options",
   "send-product",
+  "toggle-status",
   "update:searchQuery",
   "update:isStrictSearch",
   "update:selectedLaboratory",
@@ -52,6 +53,15 @@ const emit = defineEmits([
 const { mdAndUp } = useDisplay();
 const localSearch = ref(props.searchQuery);
 const isAdvancedFiltersVisible = ref(false);
+const isTogglingStatus = reactive({});
+
+const onToggleStatusClick = (item) => {
+  isTogglingStatus[item.id] = true;
+  emit('toggle-status', item);
+  setTimeout(() => {
+    delete isTogglingStatus[item.id];
+  }, 1200);
+};
 
 const toggleAdvancedFilters = () => {
   isAdvancedFiltersVisible.value = !isAdvancedFiltersVisible.value;
@@ -381,21 +391,41 @@ const headers = computed(() =>
           @update:options="(options) => emit('update:options', options)"
         >
           <template #item.name="{ item }">
-            <div class="d-flex flex-column py-2" style="min-inline-size: 175px; white-space: normal !important;">
-                <span class="text-xs font-weight-black text-high-emphasis text-uppercase leading-tight mb-1" :title="item.name">
+            <div
+              class="d-flex flex-column py-2"
+              :class="{ 'opacity-60': item.is_active === false }"
+              style="min-inline-size: 175px; white-space: normal !important;"
+            >
+              <div class="d-flex align-center flex-wrap gap-1 mb-1">
+                <span
+                  class="text-xs font-weight-black text-uppercase leading-tight"
+                  :class="item.is_active === false ? 'text-disabled text-decoration-line-through' : 'text-high-emphasis'"
+                  :title="item.name"
+                >
                   {{ item.name.toUpperCase() }}
                 </span>
+                <VChip
+                  v-if="item.is_active === false"
+                  color="error"
+                  size="x-small"
+                  variant="tonal"
+                  density="compact"
+                  class="font-weight-bold ms-1"
+                >
+                  Desactivado
+                </VChip>
+              </div>
                 
-                <div class="d-flex align-center flex-wrap gap-x-2 text-super-xs font-weight-bold">
-                  <span v-if="item.laboratory_name" class="text-primary uppercase">
-                    {{ item.laboratory_name.toUpperCase() }}
-                  </span>
-                  <span v-if="item.laboratory_name && item.supplier_name" class="text-disabled">|</span>
-                  <div class="d-flex align-center gap-1">
-                    <VIcon icon="tabler-building-warehouse" size="10" class="text-disabled" />
-                    <span class="text-disabled uppercase">{{ item.supplier_name }}</span>
-                  </div>
+              <div class="d-flex align-center flex-wrap gap-x-2 text-super-xs font-weight-bold">
+                <span v-if="item.laboratory_name" class="text-primary uppercase">
+                  {{ item.laboratory_name.toUpperCase() }}
+                </span>
+                <span v-if="item.laboratory_name && item.supplier_name" class="text-disabled">|</span>
+                <div class="d-flex align-center gap-1">
+                  <VIcon icon="tabler-building-warehouse" size="10" class="text-disabled" />
+                  <span class="text-disabled uppercase">{{ item.supplier_name }}</span>
                 </div>
+              </div>
             </div>
           </template>
 
@@ -436,26 +466,60 @@ const headers = computed(() =>
           </template>
 
           <template #item.actions="{ item }">
-            <div class="d-flex align-center justify-end ga-2">
-              <VTextField
-                :model-value="getQty(item.id)"
-                @update:model-value="(val) => (rows[item.id] = Number(val))"
-                type="number"
-                variant="outlined"
-                density="compact"
-                hide-details
-                class="compact-qty-input"
-                :error="!!quantityErrors[item.id]"
-              />
-              <VBtn
-                icon="tabler-shopping-cart-plus"
-                variant="flat"
-                color="primary"
-                size="small"
-                class="rounded-circle shadow-sm"
-                :loading="isProcessing[item.id]"
-                @click="onActionClick(item)"
-              />
+            <div class="d-flex align-center justify-end ga-1">
+              <!-- Acciones cuando está Activo -->
+              <template v-if="item.is_active !== false">
+                <VTextField
+                  :model-value="getQty(item.id)"
+                  @update:model-value="(val) => (rows[item.id] = Number(val))"
+                  type="number"
+                  variant="outlined"
+                  density="compact"
+                  hide-details
+                  class="compact-qty-input"
+                  :error="!!quantityErrors[item.id]"
+                />
+                <VBtn
+                  icon="tabler-shopping-cart-plus"
+                  variant="flat"
+                  color="primary"
+                  size="small"
+                  class="rounded-circle shadow-sm"
+                  :loading="isProcessing[item.id]"
+                  @click="onActionClick(item)"
+                >
+                  <VIcon icon="tabler-shopping-cart-plus" size="18" />
+                  <VTooltip activator="parent" location="top">Añadir al pedido</VTooltip>
+                </VBtn>
+                <VBtn
+                  icon="tabler-eye-off"
+                  variant="tonal"
+                  color="secondary"
+                  size="small"
+                  class="rounded-circle shadow-sm"
+                  :loading="isTogglingStatus[item.id]"
+                  @click="onToggleStatusClick(item)"
+                >
+                  <VIcon icon="tabler-eye-off" size="17" />
+                  <VTooltip activator="parent" location="top">Desactivar oferta</VTooltip>
+                </VBtn>
+              </template>
+
+              <!-- Acciones cuando está Desactivado -->
+              <template v-else>
+                <VBtn
+                  variant="tonal"
+                  color="success"
+                  size="small"
+                  class="rounded-pill px-2 font-weight-bold"
+                  :loading="isTogglingStatus[item.id]"
+                  @click="onToggleStatusClick(item)"
+                >
+                  <VIcon icon="tabler-eye" size="16" class="me-1" />
+                  Habilitar
+                  <VTooltip activator="parent" location="top">Habilitar oferta</VTooltip>
+                </VBtn>
+              </template>
             </div>
           </template>
 
@@ -478,12 +542,28 @@ const headers = computed(() =>
             v-for="item in props.products"
             :key="item.id"
             class="mobile-card border shadow-none"
+            :class="{ 'opacity-60': item.is_active === false }"
           >
             <VCardText class="pa-4">
               <div class="mb-3">
-                <span class="text-sm font-weight-black text-high-emphasis text-uppercase d-block mb-1 leading-tight">
-                  {{ item.name }}
-                </span>
+                <div class="d-flex align-center justify-space-between gap-1 mb-1">
+                  <span
+                    class="text-sm font-weight-black text-uppercase leading-tight"
+                    :class="item.is_active === false ? 'text-disabled text-decoration-line-through' : 'text-high-emphasis'"
+                  >
+                    {{ item.name }}
+                  </span>
+                  <VChip
+                    v-if="item.is_active === false"
+                    color="error"
+                    size="x-small"
+                    variant="tonal"
+                    density="compact"
+                    class="font-weight-bold"
+                  >
+                    Desactivado
+                  </VChip>
+                </div>
                 <div class="d-flex align-center flex-wrap gap-x-2 text-super-xs font-weight-bold">
                   <span v-if="item.laboratory_name" class="text-primary uppercase">
                     {{ item.laboratory_name.toUpperCase() }}
@@ -519,7 +599,7 @@ const headers = computed(() =>
 
               <VDivider class="mb-3" />
 
-              <div class="d-flex align-center ga-2">
+              <div v-if="item.is_active !== false" class="d-flex align-center ga-2">
                 <VTextField
                   :model-value="getQty(item.id)"
                   @update:model-value="(val) => (rows[item.id] = Number(val))"
@@ -534,8 +614,31 @@ const headers = computed(() =>
                   color="primary"
                   icon="tabler-shopping-cart-plus"
                   size="small"
-                  @click="emit('send-product', { id: item.id, quantity: getQty(item.id), item: item })"
+                  :loading="isProcessing[item.id]"
+                  @click="onActionClick(item)"
                 />
+                <VBtn
+                  color="secondary"
+                  variant="tonal"
+                  icon="tabler-eye-off"
+                  size="small"
+                  :loading="isTogglingStatus[item.id]"
+                  @click="onToggleStatusClick(item)"
+                />
+              </div>
+
+              <div v-else class="d-flex justify-end">
+                <VBtn
+                  color="success"
+                  variant="tonal"
+                  block
+                  size="small"
+                  prepend-icon="tabler-eye"
+                  :loading="isTogglingStatus[item.id]"
+                  @click="onToggleStatusClick(item)"
+                >
+                  Habilitar Oferta
+                </VBtn>
               </div>
             </VCardText>
           </VCard>

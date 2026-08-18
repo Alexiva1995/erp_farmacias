@@ -660,6 +660,9 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
         Route::post('/products/delete-old', [SupplierController::class, 'deleteOldProducts']);
         Route::post('/update-all-job', [SupplierController::class, 'dispatchUpdateAllJob']);
         Route::patch('/{id}/toggle-order', [SupplierController::class, 'toggleOrder']);
+        Route::get('/disabled', [SupplierController::class, 'getDisabledSuppliers']);
+        Route::patch('/{supplier}/toggle-status', [SupplierController::class, 'toggleSupplierStatus']);
+        Route::patch('/product-suppliers/{productSupplier}/toggle-status', [SupplierController::class, 'toggleProductSupplierStatus']);
         Route::post("/{supplier}/generate-public-token", [SupplierController::class, "generatePublicToken"]);
         // Rutas de configuración FTP/API autoadministrable
         Route::get('/{supplier}/connection-config', [SupplierController::class, 'getConnectionConfig']);

@@ -38,6 +38,8 @@ class SupplierResource extends JsonResource
             'debt' => $this->debt,
             'latest_score_value' => $this->latest_score_value,
             'is_indexed' => (bool) $this->is_indexed,
+            'is_active' => (bool) ($this->is_active ?? true),
+            'type' => $this->type,
             'score_breakdown' => $this->score_breakdown,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,

@@ -13,11 +13,12 @@ class ProductSupplierRepository
 {
     public function consultSupplierByProductWithBetterPrice($product_id, $conDescuento): Collection
     {
-        // Obtener solo el ID más reciente por cada proveedor para este producto (máximo 7 días de antigüedad)
+        // Obtener solo el ID más reciente por cada proveedor para este producto (máximo 7 días de antigüedad y activo)
         $latestIds = DB::table('product_suppliers')
             ->select(DB::raw('MAX(id) as id'))
             ->where("product_id", "=", $product_id)
             ->where('created_at', '>=', now()->subDays(7))
+            ->where('is_active', true)
             ->groupBy('supplier_id')
             ->pluck('id');
 
@@ -37,11 +38,12 @@ class ProductSupplierRepository
 
     public function consultarTodosLosProveedorProIdProducto($product_id): Collection
     {
-        // Obtener solo el ID más reciente por cada proveedor para este producto (máximo 7 días de antigüedad)
+        // Obtener solo el ID más reciente por cada proveedor para este producto (máximo 7 días de antigüedad y activo)
         $latestIds = DB::table('product_suppliers')
             ->select(DB::raw('MAX(id) as id'))
             ->where("product_id", "=", $product_id)
             ->where('created_at', '>=', now()->subDays(7))
+            ->where('is_active', true)
             ->groupBy('supplier_id')
             ->pluck('id');
 
@@ -58,11 +60,12 @@ class ProductSupplierRepository
     {
         $productIds = $products->pluck('id')->toArray();
         
-        // 1. Obtener solo los IDs más recientes por combinación de product_id y supplier_id (máximo 7 días)
+        // 1. Obtener solo los IDs más recientes por combinación de product_id y supplier_id (máximo 7 días y activo)
         $latestIds = DB::table('product_suppliers')
             ->select(DB::raw('MAX(id) as id'))
             ->whereIn('product_id', $productIds)
             ->where('created_at', '>=', now()->subDays(7))
+            ->where('is_active', true)
             ->groupBy('product_id', 'supplier_id')
             ->pluck('id');
 
@@ -70,6 +73,7 @@ class ProductSupplierRepository
         // No incluyas 'deleted_at' ya que la tabla product_suppliers no lo tiene.
         $query = ProductSupplier::with('supplier')
             ->whereIn('id', $latestIds)
+            ->where('is_active', true)
             ->where(function ($query) {
                 $query->where('unit_cost_usd', '>', 0)
                     ->orWhere('unit_cost_usd_with_discount', '>', 0);
@@ -96,6 +100,7 @@ class ProductSupplierRepository
             // Si no tiene oferta asociada, intentar asociar por código de barras de manera automática y permanente (máximo 7 días)
             if (!$bestOffer && $product->barcode) {
                 $barcodeOffer = ProductSupplier::where('created_at', '>=', now()->subDays(7))
+                    ->where('is_active', true)
                     ->where(function ($q) use ($product) {
                         $q->where('barcode_match', $product->barcode)
                           ->orWhere('cod_supplier', $product->barcode);

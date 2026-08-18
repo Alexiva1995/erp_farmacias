@@ -7,6 +7,7 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    ActivateSupplierDialog: typeof import('./resources/js/components/dialogs/ActivateSupplierDialog.vue')['default']
     ActivityEditDialog: typeof import('./resources/js/components/dialogs/ActivityEditDialog.vue')['default']
     ActivityFilters: typeof import('./resources/js/components/ActivityFilters.vue')['default']
     ActivityTable: typeof import('./resources/js/components/ActivityTable.vue')['default']
