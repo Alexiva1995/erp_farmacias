@@ -233,6 +233,7 @@ class HomologateSlaveCatalogCommand extends Command
             $products = $query->orderBy('p.id')->get();
 
             $productMap = [];
+            $failedProducts = 0;
 
             $barProducts = $this->output->createProgressBar(count($products));
             $barProducts->start();
@@ -256,15 +257,22 @@ class HomologateSlaveCatalogCommand extends Command
                         'iva'               => $prod->iva ?? 0,
                     ]);
 
-                    if (!empty($masterProd['id']) && (int) $masterProd['id'] !== (int) $prod->id) {
-                        $productMap[$prod->id] = (int) $masterProd['id'];
+                    if ($masterProd && !empty($masterProd['id'])) {
+                        if ((int) $masterProd['id'] !== (int) $prod->id) {
+                            $productMap[$prod->id] = (int) $masterProd['id'];
+                        }
+                    } else {
+                        $failedProducts++;
                     }
                 }
                 $barProducts->advance();
             }
             $barProducts->finish();
             $this->newLine();
-            $this->line('• Productos a remapear: <fg=yellow>' . count($productMap) . '</>');
+            $this->line('• Productos a remapear con nuevo ID oficial: <fg=green>' . count($productMap) . '</>');
+            if ($failedProducts > 0) {
+                $this->warn("• Productos que no pudieron sincronizarse: {$failedProducts}");
+            }
 
             // ==========================================
             // EJECUCIÓN DE MIGRACIÓN DE IDs EN BASE DE DATOS

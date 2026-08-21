@@ -83,6 +83,8 @@ class MasterCatalogClientService
                     if ($response->successful()) {
                         $data = $response->json();
                         return $data['product'] ?? null;
+                    } else {
+                        Log::error("Error Master Catalog HTTP {$response->status()}: " . $response->body());
                     }
                 } catch (\Throwable $e) {
                     Log::error("Error al registrar producto en Catálogo Maestro remoto: " . $e->getMessage());
