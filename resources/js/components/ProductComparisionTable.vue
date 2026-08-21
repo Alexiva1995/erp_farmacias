@@ -296,19 +296,6 @@ const headers = [
                   </template>
                 </VTooltip>
 
-                <VTooltip text="Desactivar proveedor" location="top">
-                  <template #activator="{ props: tooltipProps }">
-                    <VBtn
-                      v-bind="tooltipProps"
-                      icon="tabler-eye-off"
-                      variant="text"
-                      color="secondary"
-                      size="small"
-                      :loading="isTogglingStatus[item.id]"
-                      @click="onToggleStatusClick(item)"
-                    />
-                  </template>
-                </VTooltip>
 
                 <VMenu location="bottom end" transition="slide-y-transition">
                   <template #activator="{ props: menuProps }">

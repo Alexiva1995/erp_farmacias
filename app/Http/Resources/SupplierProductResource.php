@@ -21,9 +21,12 @@ class SupplierProductResource extends JsonResource
             'laboratory_name' => $this->laboratory_name ?? $this->laboratory ?? 'N/A',
             'unit_cost' => $this->unit_cost_bs ?? $this->unit_cost ?? 0,
             'unit_cost_usd' => $this->unit_cost_usd ?? 0,
+            'final_cost_bs' => $this->final_cost_bs ?? $this->unit_cost_with_discount ?? $this->unit_cost ?? 0,
             'final_cost_usd' => $this->final_cost_usd ?? $this->unit_cost_usd_with_discount ?? $this->unit_cost_usd ?? 0,
+            'our_cost_usd' => (float) ($this->our_unit_cost_usd ?? $this->product?->unit_cost ?? 0),
             'supplier_name' => $this->supplier_name ?? $this->supplier?->name ?? 'N/A',
             'barcode_match' => $this->barcode_match ?? null,
+            'expiration' => $this->expiration ?? null,
             'is_active' => (bool) ($this->is_active ?? true),
         ];
     }

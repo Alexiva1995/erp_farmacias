@@ -34,10 +34,6 @@ export default [
         subject: 'admin',
       },
       {
-        title: 'Ecommerce',
-        to: 'tova-store',
-      },
-      {
         title: 'Promociones',
         action: 'manage',
         subject: 'admin',

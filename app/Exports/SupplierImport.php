@@ -181,8 +181,8 @@ class SupplierImport implements ToCollection, WithStartRow, WithCalculatedFormul
                     'active_ingredient' => $this->cleanCell($active_ingredient),
                     "laboratory" => null,
                     "product_id" => null,
-                    "unit_cost_with_discount" => null,
-                    "unit_cost_usd_with_discount" => null,
+                    "unit_cost_with_discount" => $this->castToFloat($bs),
+                    "unit_cost_usd_with_discount" => $this->castToFloat($usd),
                 ];
 
                 $product = $products->get($bar);

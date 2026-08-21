@@ -42,6 +42,7 @@ const emit = defineEmits([
   "delete",
   "delete-old",
   "save-analysis",
+  "close",
 ]);
 
 const precioOpciones = [
@@ -211,6 +212,21 @@ const isSelected = (item) => props.modelValue && props.modelValue.id === item.id
               <VIcon icon="tabler-eraser" size="20" />
               <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
             </VBtn>
+
+            <VDivider vertical class="mx-1 my-2 border-opacity-10" />
+
+            <!-- Ocultar Panel de Necesidades IA -->
+            <VBtn
+              icon
+              variant="tonal"
+              color="secondary"
+              size="38"
+              class="rounded-circle shadow-sm"
+              @click="emit('close')"
+            >
+              <VIcon icon="tabler-layout-sidebar-right-collapse" size="20" />
+              <VTooltip activator="parent" location="top">Ocultar Panel</VTooltip>
+            </VBtn>
           </div>
         </VRow>
 
@@ -218,7 +234,8 @@ const isSelected = (item) => props.modelValue && props.modelValue.id === item.id
         <VExpandTransition>
           <div v-show="isAdvancedFiltersVisible" class="pt-4 mt-4 border-t">
             <VRow dense>
-              <VCol cols="12" md="6">
+              <!-- Primera Fila: Laboratorios, Grupos y Disponibilidad (Todos) -->
+              <VCol cols="12" md="5">
                 <VAutocomplete
                   :model-value="props.selectedLaboratory"
                   :items="props.laboratories"
@@ -236,7 +253,7 @@ const isSelected = (item) => props.modelValue && props.modelValue.id === item.id
                 />
               </VCol>
               
-              <VCol cols="12" md="6">
+              <VCol cols="12" md="4">
                 <VAutocomplete
                   :model-value="props.selectedGroup"
                   :items="props.groups"
@@ -251,6 +268,18 @@ const isSelected = (item) => props.modelValue && props.modelValue.id === item.id
                   density="compact"
                   prepend-inner-icon="tabler-tags"
                   @update:model-value="emit('update:selectedGroup', $event)"
+                />
+              </VCol>
+
+              <VCol cols="12" sm="6" md="3">
+                <VSelect
+                  :model-value="props.hasStock"
+                  :items="hasStockOpciones"
+                  placeholder="Disponibilidad"
+                  hide-details
+                  density="compact"
+                  prepend-inner-icon="tabler-box"
+                  @update:model-value="emit('update:hasStock', $event)"
                 />
               </VCol>
 
@@ -301,48 +330,6 @@ const isSelected = (item) => props.modelValue && props.modelValue.id === item.id
                   @update:model-value="emit('update:selectConDescuento', $event)"
                 />
               </VCol>
-
-              <VCol cols="12" sm="6" md="3">
-                <VSelect
-                  :model-value="props.hasStock"
-                  :items="hasStockOpciones"
-                  placeholder="Disponibilidad"
-                  hide-details
-                  density="compact"
-                  prepend-inner-icon="tabler-box"
-                  @update:model-value="emit('update:hasStock', $event)"
-                />
-              </VCol>
-
-              <VCol cols="12" sm="6" md="3">
-                <div class="d-flex align-center h-100 px-3 rounded-lg border bg-var-theme-background" style="min-height: 40px;">
-                  <VSwitch
-                    :model-value="props.isColombian"
-                    label="Colombia"
-                    color="info"
-                    hide-details
-                    density="compact"
-                    class="ms-1 font-weight-bold text-xs"
-                    @update:model-value="emit('update:isColombian', $event)"
-                  />
-                </div>
-              </VCol>
-
-              <VCol cols="12" sm="6" md="3">
-                <div class="d-flex align-center h-100 px-3 rounded-lg border bg-var-theme-background" style="min-height: 40px;">
-                  <VSwitch
-                    :model-value="props.isNovaventa"
-                    label="Novaventa"
-                    color="secondary"
-                    hide-details
-                    density="compact"
-                    class="ms-1 font-weight-bold text-xs"
-                    @update:model-value="emit('update:isNovaventa', $event)"
-                  />
-                </div>
-              </VCol>
-
-
             </VRow>
           </div>
         </VExpandTransition>

@@ -6,11 +6,4 @@ export default [
     action: 'manage',
     subject: 'admin',
   },
-  {
-    title: 'E-commerce',
-    icon: { icon: 'tabler-shopping-cart' },
-    to: 'tova-store',
-    action: 'manage',
-    subject: 'admin',
-  },
 ]

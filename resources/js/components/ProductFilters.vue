@@ -300,7 +300,8 @@ const showExport = computed(() => props.mode === 'products');
           @update:model-value="emit('update:selectedGroup', $event)"
         />
       </VCol>
-      <VCol v-else-if="isRestaurant || isSportsRental" cols="12" sm="6" md="2">
+      <!-- Proveedor -->
+      <VCol cols="12" sm="6" md="2">
         <VAutocomplete
           :model-value="props.selectedSupplier"
           :items="props.suppliers"

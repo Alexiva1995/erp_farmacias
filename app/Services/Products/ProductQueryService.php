@@ -54,6 +54,12 @@ class ProductQueryService
             $query->whereNull('group_id');
         }
 
+        // Excluir productos sin nombre válido (nulos, vacíos o solo un punto)
+        if (empty($filters['productId'])) {
+            $query->whereNotNull('products.name')
+                ->whereRaw("TRIM(products.name) NOT IN ('', '.')");
+        }
+
         // Si hay productId, priorizar búsqueda directa por ID (omitir filtro q para evitar conflictos)
         if (!empty($filters['productId'])) {
             $query->where('products.id', (int) $filters['productId']);

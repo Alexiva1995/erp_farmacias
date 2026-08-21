@@ -651,6 +651,9 @@ class SupplierConnectionService
                 }
             }
 
+            $entry["unit_cost_with_discount"] = $entry["unit_cost"] ?? null;
+            $entry["unit_cost_usd_with_discount"] = $entry["unit_cost_usd"] ?? null;
+
             if (!isset($entry["quantity"]))
                 $entry["quantity"] = $quantity;
 

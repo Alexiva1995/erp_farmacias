@@ -652,6 +652,7 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
         Route::get("/connections", [SupplierController::class, "getSupplierConnections"]);
         Route::get("available-products", [SupplierController::class, "getProducts"]);
         Route::get("available-laboratories", [SupplierController::class, "getLaboratories"]);
+        Route::get("available-suppliers", [SupplierController::class, "getSuppliers"]);
         Route::post("add-product-to-order", [SupplierController::class, "addProductToOrder"]);
         Route::post("/{supplier}/import", [SupplierController::class, "importData"]);
         Route::delete("/{supplier}/delete-products", [SupplierController::class, "deleteProducts"]);

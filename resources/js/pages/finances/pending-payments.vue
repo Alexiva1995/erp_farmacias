@@ -127,6 +127,7 @@ const toggleIndexedStatus = async (item) => {
       item.is_indexed = data.data.is_indexed;
     }
     toast.success("Estado de indexación actualizado");
+    await fetchPendingPayments();
   } catch (error) {
     item.is_indexed = !item.is_indexed;
     toast.error("Error al actualizar indexación");

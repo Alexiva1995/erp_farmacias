@@ -509,24 +509,31 @@ class SupplierQueryService
 
         $results = ProductSupplier::query()
             ->where('product_suppliers.created_at', '>=', now()->subDays(7))
+            ->where(function ($q) {
+                $q->where('product_suppliers.unit_cost_usd', '>', 0)
+                  ->orWhere('product_suppliers.unit_cost', '>', 0);
+            })
             ->with([
-                'product:id,name,laboratory_id,origin_id,group_id',
+                'product.laboratory:id,name',
                 'supplier:id,name'
             ])
             ->select([
                 "product_suppliers.id as id",
                 "product_suppliers.product_id as product_id",
                 "product_suppliers.name as name",
+                DB::raw("COALESCE(NULLIF(product_suppliers.laboratory, ''), laboratories.name, 'N/A') as laboratory_name"),
                 "suppliers.name as supplier_name",
                 "product_suppliers.unit_cost as unit_cost_bs",
                 "product_suppliers.unit_cost_usd as unit_cost_usd",
                 DB::raw("COALESCE(product_suppliers.unit_cost_with_discount, 0) as final_cost_bs"),
                 DB::raw("COALESCE(product_suppliers.unit_cost_usd_with_discount, 0) as final_cost_usd"),
+                DB::raw("COALESCE(products.unit_cost, 0) as our_unit_cost_usd"),
                 "product_suppliers.expiration as expiration",
                 "product_suppliers.active_ingredient as active_ingredient",
                 "product_suppliers.is_active as is_active",
             ])
             ->leftJoin("products", "products.id", "=", "product_suppliers.product_id")
+            ->leftJoin("laboratories", "laboratories.id", "=", "products.laboratory_id")
             ->leftJoin("suppliers", "suppliers.id", "=", "product_suppliers.supplier_id")
             ->when($hasStock !== null, function ($query) {
                 $query->leftJoin('product_lots', function ($join) {
@@ -546,29 +553,29 @@ class SupplierQueryService
                     'product_suppliers.expiration',
                     'product_suppliers.active_ingredient',
                     'product_suppliers.is_active',
+                    'product_suppliers.laboratory',
+                    'laboratories.name',
                     'products.id'
                 ]);
             })
             ->when(!empty($search), function ($query) use ($search, $isStrictSearch) {
                 if ($isStrictSearch) {
                     $query->where(function ($q) use ($search) {
-                        $q->where('product_suppliers.name', '=', $search)
+                        // Coincidencia estricta por palabra independiente compatible con MySQL 8+ / MariaDB
+                        $escapedSearch = preg_quote($search, '/');
+                        $q->whereRaw("product_suppliers.name REGEXP ?", ['(^|[[:space:][:punct:]])' . $escapedSearch . '([[:space:][:punct:]]|$)'])
+                            ->orWhereRaw("product_suppliers.active_ingredient REGEXP ?", ['(^|[[:space:][:punct:]])' . $escapedSearch . '([[:space:][:punct:]]|$)'])
+                            ->orWhere('product_suppliers.barcode_match', '=', $search)
                             ->orWhere('product_suppliers.id', '=', $search)
-                            ->orWhere('product_suppliers.product_id', '=', $search)
-                            ->orWhere('product_suppliers.barcode_match', '=', $search);
+                            ->orWhere('product_suppliers.product_id', '=', $search);
                     });
                 } else {
-                    $words = explode(' ', $search);
+                    $words = array_filter(explode(' ', $search));
                     foreach ($words as $word) {
                         $query->where(function ($wordQuery) use ($word) {
                             $wordQuery->where('product_suppliers.name', 'like', "%{$word}%")
                                 ->orWhere('product_suppliers.active_ingredient', 'like', "%{$word}%")
-                                ->orWhere('product_suppliers.laboratory', 'like', "%{$word}%")
                                 ->orWhere('product_suppliers.barcode_match', 'like', "%{$word}%");
-
-                            if (is_numeric($word)) {
-                                $wordQuery->orWhere('product_suppliers.product_id', '=', $word);
-                            }
                         });
                     }
                 }
@@ -605,6 +612,18 @@ class SupplierQueryService
             ->get();
 
         return $results;
+    }
+
+    /**
+     * Obtiene los proveedores que tienen productos subidos en product_suppliers.
+     */
+    public function getAvailableSuppliers(): Collection
+    {
+        return Supplier::query()
+            ->whereHas('productSuppliers')
+            ->select(["id", "name"])
+            ->orderBy("name", "asc")
+            ->get();
     }
 
     public function addProductToOrder(\Illuminate\Http\Request $request)

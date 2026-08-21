@@ -27,10 +27,8 @@ const props = defineProps({
   selectedOrigin: [Number, String, null],
   suppliers: { type: Array, default: () => [] },
   selectedSupplier: [Number, String, null],
-  // Switches
   enableDiscounts: Boolean,
-  enableUsdAmountCol: Boolean,
-  enableDiscountCol: Boolean,
+  isNeedsVisible: { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
@@ -48,6 +46,7 @@ const emit = defineEmits([
   "update:enableDiscountCol",
   "update:sortBy",
   "sync-apis",
+  "toggle-needs",
 ]);
 
 const { mdAndUp } = useDisplay();
@@ -71,12 +70,17 @@ const hasActiveAdvancedFilters = computed(() => {
   return props.selectedLaboratory?.length > 0;
 });
 
+// Emitir cambios hacia el padre inmediatamente
+watch(localSearch, (newVal) => {
+  emit('update:searchQuery', newVal ?? '');
+});
+
 // Sincronizar localSearch si cambia desde fuera
 watch(
   () => props.searchQuery,
   (newVal) => {
     if (newVal !== localSearch.value) {
-      localSearch.value = newVal;
+      localSearch.value = newVal ?? '';
     }
   },
 );
@@ -110,8 +114,12 @@ const formatUsd = (amount) => {
 };
 
 const getPriceDiff = (item) => {
-  if (!props.selectedProduct) return null;
-  const currentCost = parseFloat(props.selectedProduct.current_unit_cost ?? props.selectedProduct.unit_cost ?? 0);
+  const currentCost = parseFloat(
+    props.selectedProduct?.current_unit_cost ?? 
+    props.selectedProduct?.unit_cost ?? 
+    item.our_cost_usd ?? 
+    0
+  );
   if (!currentCost || currentCost === 0) return null;
 
   const supplierCost = parseFloat(
@@ -125,11 +133,11 @@ const getPriceDiff = (item) => {
   const absDiff = Math.abs(diff).toFixed(1);
 
   if (diff > 0.5) {
-    return { diff, label: `${absDiff}% más barato`, color: "success", icon: 'tabler-trending-down' };
+    return { diff, shortLabel: `${absDiff}%`, label: `${absDiff}% más barato`, color: "success", icon: 'tabler-trending-down' };
   } else if (diff < -0.5) {
-    return { diff, label: `${absDiff}% más caro`, color: "error", icon: 'tabler-trending-up' };
+    return { diff, shortLabel: `${absDiff}%`, label: `${absDiff}% más caro`, color: "error", icon: 'tabler-trending-up' };
   }
-  return { diff: 0, label: "Precio igual", color: "warning", icon: 'tabler-minus' };
+  return { diff: 0, shortLabel: "0%", label: "Precio igual", color: "warning", icon: 'tabler-minus' };
 };
 
 const isProcessing = ref({});
@@ -137,26 +145,22 @@ const isProcessing = ref({});
 const onActionClick = (item) => {
   const qty = getQty(item.id);
   isProcessing.value[item.id] = true;
-  emit('send-product', { id: item.id, quantity: qty, item: item });
+  emit('send-product', { 
+    id: item.id, 
+    quantity: qty, 
+    item: item 
+  }, () => {
+    isProcessing.value[item.id] = false;
+  });
 };
 
-const allHeaders = [
-  { title: "PRODUCTO / PROVEEDOR", key: "name", sortable: true, width: "175px" },
-  { title: "NUESTRO COSTO", key: "our_cost", sortable: false, width: "90px", align: 'end' },
-  { title: "COSTO USD", key: "unit_cost_usd", sortable: true, width: "90px", align: 'end' },
-  { title: "AHORRO", key: "price_diff", sortable: false, width: "110px", align: 'center' },
+const headers = computed(() => [
+  { title: "PRODUCTO / PROVEEDOR", key: "name", sortable: true, width: "180px" },
+  { title: props.enableUsdAmountCol ? "COSTO" : "COSTO (BS)", key: "our_cost", sortable: false, width: "100px", align: 'end' },
+  { title: props.enableUsdAmountCol ? "COSTO USD" : "COSTO BS", key: "unit_cost", sortable: true, width: "110px", align: 'end' },
+  { title: "EXP", key: "expiration", sortable: true, width: "95px", align: 'center' },
   { title: "ACCIÓN", key: "actions", sortable: false, width: "110px", align: "end" },
-];
-
-const headers = computed(() =>
-  allHeaders.filter((h) => {
-    if (h.key === "price_diff" && !props.selectedProduct) return false;
-    if (props.enableUsdAmountCol && h.key.includes("bs")) return false;
-    if (!props.enableUsdAmountCol && h.key.includes("usd")) return false;
-    if (h.key.includes("final_cost") && !props.enableDiscountCol) return false;
-    return true;
-  }),
-);
+]);
 </script>
 
 <template>
@@ -171,17 +175,37 @@ const headers = computed(() =>
             <span class="text-subtitle-2 font-weight-bold text-uppercase d-none d-sm-inline">Catálogo Proveedores</span>
           </div>
 
-          <!-- Buscador Principal -->
-          <VCol cols="12" sm="5" md="4" lg="4">
+          <!-- Buscador Principal con botón integrado de Búsqueda Estricta -->
+          <VCol cols="12" sm="6" md="5" lg="4">
             <VTextField
-              :model-value="localSearch"
+              :model-value="props.searchQuery"
+              @update:model-value="(val) => emit('update:searchQuery', val ?? '')"
               placeholder="Buscar producto o proveedor..."
               clearable
               density="compact"
               hide-details
               prepend-inner-icon="tabler-search"
-              @update:model-value="$emit('update:searchQuery', $event)"
-            />
+            >
+              <template #append-inner>
+                <VBtn
+                  size="x-small"
+                  :variant="props.isStrictSearch ? 'flat' : 'tonal'"
+                  :color="props.isStrictSearch ? 'warning' : 'secondary'"
+                  class="text-super-xs font-weight-bold px-2"
+                  @click.stop="emit('update:isStrictSearch', !props.isStrictSearch)"
+                >
+                  <VIcon
+                    :icon="props.isStrictSearch ? 'tabler-check' : 'tabler-switch-horizontal'"
+                    size="12"
+                    class="me-1"
+                  />
+                  {{ props.isStrictSearch ? 'Estricta' : 'Flexible' }}
+                  <VTooltip activator="parent" location="top">
+                    {{ props.isStrictSearch ? 'Modo Estricto (código/id exacto). Clic para cambiar a flexible.' : 'Modo Flexible (por palabras). Clic para cambiar a estricto.' }}
+                  </VTooltip>
+                </VBtn>
+              </template>
+            </VTextField>
           </VCol>
 
           <VSpacer />
@@ -235,15 +259,35 @@ const headers = computed(() =>
               <VIcon icon="tabler-eraser" size="20" />
               <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
             </VBtn>
+
+            <VDivider vertical class="mx-1 my-2 border-opacity-10" />
+
+            <!-- Botón para Mostrar / Ocultar Necesidades IA -->
+            <VBtn
+              icon
+              :variant="props.isNeedsVisible ? 'tonal' : 'elevated'"
+              :color="props.isNeedsVisible ? 'primary' : 'primary'"
+              size="38"
+              class="rounded-circle shadow-sm"
+              @click="emit('toggle-needs')"
+            >
+              <VIcon
+                :icon="props.isNeedsVisible ? 'tabler-layout-sidebar-right-collapse' : 'tabler-layout-sidebar-right-expand'"
+                size="20"
+              />
+              <VTooltip activator="parent" location="top">
+                {{ props.isNeedsVisible ? 'Ocultar Necesidades IA' : 'Ver Necesidades IA' }}
+              </VTooltip>
+            </VBtn>
           </div>
         </VRow>
 
         <!-- Panel de Filtros Avanzados -->
         <VExpandTransition>
           <div v-show="isAdvancedFiltersVisible" class="pt-4 mt-4 border-t">
-            <VRow dense>
-              <!-- Selecciones Principales -->
-              <VCol cols="12" md="6">
+            <VRow dense align="center">
+              <!-- Selecciones Principales en 1 Sola Línea -->
+              <VCol cols="12" sm="6" md="3">
                 <VAutocomplete
                   :model-value="props.selectedLaboratory"
                   :items="props.laboratories"
@@ -261,7 +305,7 @@ const headers = computed(() =>
                 />
               </VCol>
               
-              <VCol cols="12" md="6">
+              <VCol cols="12" sm="6" md="3">
                 <VAutocomplete
                   :model-value="props.selectedGroup"
                   :items="props.groups"
@@ -279,7 +323,7 @@ const headers = computed(() =>
                 />
               </VCol>
 
-              <VCol cols="12" md="6">
+              <VCol cols="12" sm="6" md="3">
                 <VSelect
                   :model-value="props.selectedOrigin"
                   :items="props.origins"
@@ -294,7 +338,7 @@ const headers = computed(() =>
                 />
               </VCol>
 
-              <VCol cols="12" md="6">
+              <VCol cols="12" sm="6" md="3">
                 <VAutocomplete
                   :model-value="props.selectedSupplier"
                   :items="props.suppliers"
@@ -309,9 +353,9 @@ const headers = computed(() =>
                 />
               </VCol>
 
-              <!-- Switches -->
+              <!-- Switches Principales -->
               <VCol cols="12" class="mt-2">
-                <div class="d-flex flex-wrap ga-4 align-center">
+                <div class="d-flex flex-wrap ga-6 align-center">
                   <VSwitch
                     :model-value="props.enableDiscounts"
                     label="Descuentos"
@@ -328,23 +372,6 @@ const headers = computed(() =>
                     hide-details
                     @update:model-value="emit('update:enableUsdAmountCol', $event)"
                   />
-                  <VSwitch
-                    :model-value="props.enableDiscountCol"
-                    label="Ver % Desc."
-                    color="info"
-                    density="compact"
-                    hide-details
-                    @update:model-value="emit('update:enableDiscountCol', $event)"
-                  />
-                  <VSwitch
-                    :model-value="props.isStrictSearch"
-                    label="Estricta"
-                    color="warning"
-                    density="compact"
-                    hide-details
-                    @update:model-value="emit('update:isStrictSearch', $event)"
-                  />
-                  
                   <VSpacer />
                 </div>
               </VCol>
@@ -429,40 +456,72 @@ const headers = computed(() =>
             </div>
           </template>
 
-          <template #item.our_cost>
-            <span v-if="selectedProduct" class="text-sm font-weight-medium text-disabled">
-              ${{ formatUsd(selectedProduct.current_unit_cost ?? selectedProduct.unit_cost ?? 0) }}
-            </span>
-          </template>
-
-          <template #item.price_diff="{ item }">
-            <template v-if="getPriceDiff(item)">
-              <VChip
-                :color="getPriceDiff(item).color"
-                size="x-small"
-                variant="tonal"
-                :prepend-icon="getPriceDiff(item).icon"
-                class="font-weight-bold"
-              >
-                {{ getPriceDiff(item).label }}
-              </VChip>
+          <template #item.our_cost="{ item }">
+            <template v-if="props.enableUsdAmountCol">
+              <span v-if="parseFloat(selectedProduct?.current_unit_cost ?? selectedProduct?.unit_cost ?? item.our_cost_usd ?? 0) > 0" class="text-sm font-weight-medium text-disabled">
+                ${{ formatUsd(selectedProduct?.current_unit_cost ?? selectedProduct?.unit_cost ?? item.our_cost_usd) }}
+              </span>
+              <span v-else class="text-disabled text-xs">—</span>
             </template>
-            <span v-else class="text-disabled text-xs">—</span>
+            <template v-else>
+              <span v-if="parseFloat(selectedProduct?.current_unit_cost ?? selectedProduct?.unit_cost ?? item.our_cost_usd ?? 0) > 0" class="text-sm font-weight-medium text-disabled">
+                Bs. {{ formatUsd(selectedProduct?.unit_cost_bs ?? item.unit_cost) }}
+              </span>
+              <span v-else class="text-disabled text-xs">—</span>
+            </template>
           </template>
 
-          <template #item.unit_cost_usd="{ item }">
-            <div class="d-flex flex-column align-end">
-              <template v-if="props.enableDiscounts && parseFloat(item.final_cost_usd) > 0">
-                <span class="text-sm font-weight-black text-primary">
-                  ${{ formatUsd(item.final_cost_usd) }}
-                </span>
+          <template #item.unit_cost="{ item }">
+            <div class="d-flex flex-column align-end ga-1">
+              <template v-if="props.enableUsdAmountCol">
+                <template v-if="props.enableDiscounts && parseFloat(item.final_cost_usd) > 0">
+                  <span class="text-sm font-weight-black text-primary">
+                    ${{ formatUsd(item.final_cost_usd) }}
+                  </span>
+                </template>
+                <template v-else>
+                  <span class="text-sm font-weight-bold text-high-emphasis">
+                    ${{ formatUsd(item.unit_cost_usd) }}
+                  </span>
+                </template>
               </template>
               <template v-else>
-                <span class="text-sm font-weight-bold text-high-emphasis">
-                  ${{ formatUsd(item.unit_cost_usd) }}
-                </span>
+                <template v-if="props.enableDiscounts && parseFloat(item.final_cost_bs) > 0">
+                  <span class="text-sm font-weight-black text-primary">
+                    Bs. {{ formatUsd(item.final_cost_bs) }}
+                  </span>
+                </template>
+                <template v-else>
+                  <span class="text-sm font-weight-bold text-high-emphasis">
+                    Bs. {{ formatUsd(item.unit_cost) }}
+                  </span>
+                </template>
               </template>
+
+              <!-- Ahorro / Diferencia de Precio debajo del Costo -->
+              <div v-if="getPriceDiff(item)">
+                <VChip
+                  :color="getPriceDiff(item).color"
+                  size="x-small"
+                  variant="tonal"
+                  density="compact"
+                  :prepend-icon="getPriceDiff(item).icon"
+                  class="font-weight-bold text-super-xs"
+                >
+                  {{ props.isNeedsVisible ? getPriceDiff(item).shortLabel : getPriceDiff(item).label }}
+                  <VTooltip activator="parent" location="top">
+                    {{ getPriceDiff(item).label }}
+                  </VTooltip>
+                </VChip>
+              </div>
             </div>
+          </template>
+
+          <template #item.expiration="{ item }">
+            <span v-if="item.expiration" class="text-xs font-weight-medium">
+              {{ item.expiration }}
+            </span>
+            <span v-else class="text-disabled text-xs">—</span>
           </template>
 
           <template #item.actions="{ item }">
@@ -490,18 +549,6 @@ const headers = computed(() =>
                 >
                   <VIcon icon="tabler-shopping-cart-plus" size="18" />
                   <VTooltip activator="parent" location="top">Añadir al pedido</VTooltip>
-                </VBtn>
-                <VBtn
-                  icon="tabler-eye-off"
-                  variant="tonal"
-                  color="secondary"
-                  size="small"
-                  class="rounded-circle shadow-sm"
-                  :loading="isTogglingStatus[item.id]"
-                  @click="onToggleStatusClick(item)"
-                >
-                  <VIcon icon="tabler-eye-off" size="17" />
-                  <VTooltip activator="parent" location="top">Desactivar oferta</VTooltip>
                 </VBtn>
               </template>
 
@@ -617,14 +664,6 @@ const headers = computed(() =>
                   :loading="isProcessing[item.id]"
                   @click="onActionClick(item)"
                 />
-                <VBtn
-                  color="secondary"
-                  variant="tonal"
-                  icon="tabler-eye-off"
-                  size="small"
-                  :loading="isTogglingStatus[item.id]"
-                  @click="onToggleStatusClick(item)"
-                />
               </div>
 
               <div v-else class="d-flex justify-end">
@@ -683,6 +722,18 @@ const headers = computed(() =>
   padding-inline: 4px;
   text-align: center;
   font-size: 0.85rem;
+}
+
+/* Ocultar flechas de incremento / decremento (spinners) */
+.compact-qty-input :deep(input[type="number"]::-webkit-outer-spin-button),
+.compact-qty-input :deep(input[type="number"]::-webkit-inner-spin-button) {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.compact-qty-input :deep(input[type="number"]) {
+  -moz-appearance: textfield;
+  appearance: textfield;
 }
 
 .bg-var-theme-background {

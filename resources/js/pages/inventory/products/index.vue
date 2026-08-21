@@ -67,7 +67,9 @@ const fetchSelectOptions = async () => {
     origins.value = originResponse.data;
     categories.value = categoryResponse.data;
     groups.value = groupsResponse.data?.data || groupsResponse.data || [];
-    suppliers.value = suppliersResponse.data?.data || suppliersResponse.data || [];
+    suppliers.value = Array.isArray(suppliersResponse.data) 
+      ? suppliersResponse.data 
+      : (suppliersResponse.data?.data || []);
   } catch (error) {
     console.error("Error al cargar opciones de los selects:", error);
     if (error.response?.status !== 401) {

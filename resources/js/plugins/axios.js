@@ -15,13 +15,22 @@ const axiosInstance = axios.create({
 // Laravel Sanctum usa cookies de sesión, no tokens Bearer
 axiosInstance.interceptors.request.use(
   (config) => {
-    // Agregar CSRF token si está disponible
-    const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-    if (token) {
-      config.headers['X-CSRF-TOKEN'] = token;
+    // 1. Intentar leer la cookie XSRF-TOKEN actualizada por Laravel/Sanctum
+    const xsrfCookie = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]+)/);
+    if (xsrfCookie) {
+      const decodedToken = decodeURIComponent(xsrfCookie[1]);
+      config.headers['X-XSRF-TOKEN'] = decodedToken;
+      config.headers['X-CSRF-TOKEN'] = decodedToken;
+    } else {
+      // 2. Respaldo: meta tag inyectado por Blade
+      const metaToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+      if (metaToken) {
+        config.headers['X-CSRF-TOKEN'] = metaToken;
+        config.headers['X-XSRF-TOKEN'] = metaToken;
+      }
     }
     
-    // Asegurar que las cookies se envíen
+    // Asegurar que las cookies de sesión se envíen
     config.withCredentials = true;
     
     return config
@@ -134,6 +143,12 @@ axiosInstance.interceptors.response.use(
       } finally {
         isRefreshingCsrf = false;
       }
+    }
+
+    // Manejo de sesión expirada (401 Unauthenticated)
+    if (error.response?.status === 401 && !window.location.pathname.includes('/login')) {
+      window.location.href = '/login';
+      return Promise.reject(error);
     }
 
     // Guardar el último error de Axios de forma global para el sistema de Toasts

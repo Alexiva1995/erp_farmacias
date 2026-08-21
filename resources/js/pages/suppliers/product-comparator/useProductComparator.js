@@ -30,6 +30,7 @@ export function useProductComparator() {
   const searchedLaboratory = ref(null);
   let debounceTimerProductsWithoutSupplier;
 
+  const isNeedsVisible = ref(false);
   const enableDiscounts = ref(false);
 
   const isShowSupplierProductsDialogActive = ref(false);
@@ -234,8 +235,9 @@ export function useProductComparator() {
       page: productsPage.value,
       perPage: productsItemPerPage.value,
       supplierId: searchedSupplier.value,
-      laboratoryId: selectedLaboratory.value,
-      q: filterSearchQuery.value || searchQueryRight.value,
+      laboratoryId: searchedLaboratory.value,
+      groupId: selectedGroup.value,
+      q: filterSearchQuery.value,
       originId: selectedOrigin.value,
       isStrictSearch: isStrictSearch.value,
       ...(stockStatusFilter.value !== null && {
@@ -251,10 +253,7 @@ export function useProductComparator() {
     try {
       loadingProducts.value = true;
       const { data } = await axios.get("/suppliers/available-products", {
-        params: {
-          ...params,
-          groupId: selectedGroup.value,
-        }
+        params
       });
       products.value = data.data;
       productsTotal.value = data.total;
@@ -340,7 +339,10 @@ export function useProductComparator() {
     }
   };
 
-  const fetchProductsWithoutSupplier = async () => {
+  const fetchProductsWithoutSupplier = async (force = false) => {
+    // Optimización: Solo consultar si el panel lateral está visible
+    if (!isNeedsVisible.value && !force) return;
+
     try {
       if (loadingProductsWithoutSupplier.value) return;
       loadingProductsWithoutSupplier.value = true;
@@ -404,14 +406,14 @@ export function useProductComparator() {
       const [labResponse, originResponse, suppliersResponse, groupsResponse] = await Promise.all([
         axios.get("/laboratories"),
         axios.get("/origins"),
-        axios.get("/available-suppliers"),
+        axios.get("/suppliers/available-suppliers"),
         axios.get("/groups"),
       ]);
-      laboratories.value = labResponse.data;
-      laboratoriesProductsWithoutSupplier.value = labResponse.data;
-      origins.value = originResponse.data;
-      suppliers.value = suppliersResponse.data.data;
-      groups.value = groupsResponse.data.data;
+      laboratories.value = labResponse.data?.data || labResponse.data || [];
+      laboratoriesProductsWithoutSupplier.value = labResponse.data?.data || labResponse.data || [];
+      origins.value = originResponse.data?.data || originResponse.data || [];
+      suppliers.value = suppliersResponse.data?.data || suppliersResponse.data || [];
+      groups.value = groupsResponse.data?.data || groupsResponse.data || [];
     } catch (error) {
       console.error("Hubo un error al obtener los datos para filtrar:", error);
       toast.error("Hubo un error al obtener los datos para filtrar.");
@@ -424,7 +426,7 @@ export function useProductComparator() {
     fetchOptions();
     fetchSupplierConnections();
     fetchProducts();
-    fetchProductsWithoutSupplier();
+    // Lazy load: fetchProductsWithoutSupplier se ejecutará solo cuando el usuario abra el panel
   });
 
   onUnmounted(() => {
@@ -441,6 +443,16 @@ export function useProductComparator() {
       clearTimeout(supplierDebounceTimer);
       supplierDebounceTimer = setTimeout(() => fetchSupplierConnections(), 350);
     },
+  );
+
+  // Watcher para abrir el panel de necesidades (Lazy Load al expandir)
+  watch(
+    () => isNeedsVisible.value,
+    (val) => {
+      if (val && listProductsWithoutSupplier.value.length === 0) {
+        fetchProductsWithoutSupplier(true);
+      }
+    }
   );
 
   watch(
@@ -460,6 +472,7 @@ export function useProductComparator() {
       searchQueryRight,
       filterSearchQuery,
       searchedSupplier,
+      searchedLaboratory,
       selectedOrigin,
       stockStatusFilter,
       isStrictSearch,
@@ -468,7 +481,9 @@ export function useProductComparator() {
       productsPage.value = 1;
       clearTimeout(debounceTimerProductsWithoutSupplier);
       debounceTimerProductsWithoutSupplier = setTimeout(() => {
-        fetchProductsWithoutSupplier();
+        if (isNeedsVisible.value) {
+          fetchProductsWithoutSupplier();
+        }
         fetchProducts();
       }, 400);
     },
@@ -537,7 +552,7 @@ export function useProductComparator() {
     enableDiscountCol.value = false;
   };
 
-  const handleAddItemToAutoOrder = async (product) => {
+  const handleAddItemToAutoOrder = async (product, onComplete) => {
     quantityErrors[product.id] = null;
     const mainProductId = selectedProductFromTop.value?.id ?? null;
 
@@ -554,16 +569,17 @@ export function useProductComparator() {
       if (message && message.warning) {
         toast.warning(message.warning, { timeout: 8000 });
       }
-      selectedProductFromTop.value = null;
-      filterSearchQuery.value = "";
       fetchProductsWithoutSupplier();
-      fetchProducts();
     } catch (error) {
       if (error.response?.status === 422) {
         quantityErrors[product.id] = error.response.data.errors.quantity?.[0];
       }
       console.error("Hubo un error al enviar la petición:", error);
       toast.error(error.response?.data?.message || "Error al añadir productos al pedido.");
+    } finally {
+      if (typeof onComplete === "function") {
+        onComplete();
+      }
     }
   };
 
@@ -646,6 +662,7 @@ export function useProductComparator() {
       sortByProductsWithoutSupplier.value = options.sortBy[0].key;
       orderByProductsWithoutSupplier.value = options.sortBy[0].order;
     }
+    fetchProductsWithoutSupplier();
   };
 
   const handleOpenPublicLink = (supplier) => {
@@ -721,6 +738,7 @@ export function useProductComparator() {
     productsItemPerPage,
     productsTotal,
     sortOptions,
+    isNeedsVisible,
     enableUsdAmountCol,
     enableDiscountCol,
     isDeleteDialogVisible,

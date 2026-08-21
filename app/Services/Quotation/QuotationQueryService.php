@@ -154,6 +154,8 @@ class QuotationQueryService
             ->where(function ($q) {
                 $q->whereNull('products.is_deleted')->orWhere('products.is_deleted', 0);
             })
+            ->whereNotNull('products.name')
+            ->whereRaw("TRIM(products.name) NOT IN ('', '.')")
             ->where('products.no_pvp', $isRestaurant ? 1 : 0);
 
         // ── 3. Consulta de PACKS ──
@@ -336,36 +338,38 @@ class QuotationQueryService
 
     private function applySortingProduct(QueryBuilder $query, ?string $sortBy, string $orderBy): QueryBuilder
     {
+        $orderBy = in_array(strtolower($orderBy), ['asc', 'desc']) ? strtolower($orderBy) : 'asc';
+
+        // Si no hay orden especificado por el usuario, aplicar orden de negocio por defecto:
         // Prioridad fija: packs primero, luego items con descuento, luego el resto
-        $query->orderByRaw("CASE
-            WHEN item_type = 'pack' THEN 0
-            WHEN discount_percentage > 0 THEN 1
-            ELSE 2
-        END ASC");
-
-        $query->orderBy('discount_percentage', 'desc');
-
         if (empty($sortBy)) {
+            $query->orderByRaw("CASE
+                WHEN item_type = 'pack' THEN 0
+                WHEN discount_percentage > 0 THEN 1
+                ELSE 2
+            END ASC");
+            $query->orderBy('discount_percentage', 'desc');
             return $query->orderBy('name', 'asc');
         }
 
         switch ($sortBy) {
             case 'laboratory.name':
             case 'laboratory_name':
-                return $query->orderBy('laboratory_name', $orderBy);
+                return $query->orderBy('laboratory_name', $orderBy)->orderBy('name', 'asc');
             case 'valid_stock':
             case 'lots_sum_quantity':
             case 'valid_stock_sum':
-                return $query->orderBy('valid_stock_sum', $orderBy);
+                return $query->orderByRaw("CAST(valid_stock_sum AS DECIMAL(10,2)) " . strtoupper($orderBy))->orderBy('name', 'asc');
             case 'name':
                 return $query->orderBy('name', $orderBy);
             case 'sale_price':
             case 'price':
-                return $query->orderBy('sale_price', $orderBy);
+            case 'unit_price_usd':
+                return $query->orderByRaw("CAST(sale_price AS DECIMAL(10,2)) " . strtoupper($orderBy))->orderBy('name', 'asc');
             case 'sales_average':
-                return $query->orderBy('sales_average', $orderBy);
+                return $query->orderByRaw("CAST(sales_average AS DECIMAL(10,2)) " . strtoupper($orderBy))->orderBy('name', 'asc');
             case 'next_expiration':
-                return $query->orderBy('next_expiration', $orderBy);
+                return $query->orderByRaw("next_expiration IS NULL, next_expiration {$orderBy}")->orderBy('name', 'asc');
             default:
                 return $query->orderBy('name', 'asc');
         }

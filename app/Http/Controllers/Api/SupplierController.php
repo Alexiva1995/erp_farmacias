@@ -353,6 +353,13 @@ class SupplierController extends Controller
         return LaboratoryResource::collection($results);
     }
 
+    public function getSuppliers()
+    {
+        $results = $this->supplierQueryService->getAvailableSuppliers();
+
+        return SupplierResource::collection($results);
+    }
+
     public function addProductToOrder(StoreProductIntoAutoOrderRequest $request)
     {
         $productId = $request->productId;

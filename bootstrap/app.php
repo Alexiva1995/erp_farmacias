@@ -24,6 +24,10 @@ return Application::configure(basePath: dirname(__DIR__))
             \Illuminate\View\Middleware\ShareErrorsFromSession::class,
         ]);
 
+        $middleware->validateCsrfTokens(except: [
+            'api/*',
+        ]);
+
         $middleware->redirectGuestsTo(function ($request) {
             if ($request->expectsJson() || $request->is('api/*')) {
                 return null;

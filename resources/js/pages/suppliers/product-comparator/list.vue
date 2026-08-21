@@ -11,6 +11,7 @@ import ProductsWithoutSupplierComparatorTable from "@/components/ProductsWithout
 import { useProductComparator } from "./useProductComparator";
 
 const {
+  isNeedsVisible,
   supplierConnections,
   suppliers,
   origins,
@@ -181,8 +182,8 @@ const {
 
         <VTabsWindowItem value="products">
           <VRow class="match-height">
-            <!-- COLUMNA IZQUIERDA: Catálogo de Proveedores -->
-            <VCol cols="12" md="6">
+            <!-- COLUMNA IZQUIERDA: Catálogo de Proveedores (Ocupa todo el ancho si Necesidades IA está oculto) -->
+            <VCol cols="12" :md="isNeedsVisible ? 6 : 12">
               <ProductComparisionProductsTable
                 :products="products"
                 :loading="loadingProducts"
@@ -190,12 +191,10 @@ const {
                 :items-per-page="productsItemPerPage"
                 :page="productsPage"
                 :quantity-errors="quantityErrors"
-                :enable-usd-amount-col="enableUsdAmountCol"
-                :enable-discount-col="enableDiscountCol"
-                :search-query="filterSearchQuery"
-                @update:search-query="filterSearchQuery = $event"
-                :is-strict-search="isStrictSearch"
-                @update:is-strict-search="isStrictSearch = $event"
+                v-model:enable-usd-amount-col="enableUsdAmountCol"
+                v-model:enable-discount-col="enableDiscountCol"
+                v-model:search-query="filterSearchQuery"
+                v-model:is-strict-search="isStrictSearch"
                 :selected-product="selectedProductFromTop"
                 v-model:sortBy="sortOptions"
                 @update:options="updateProductsTableOptions"
@@ -203,17 +202,20 @@ const {
                 :laboratories="laboratories"
                 v-model:selected-laboratory="searchedLaboratory"
                 :groups="groups"
+                v-model:selected-group="selectedGroup"
                 :origins="origins"
                 :suppliers="suppliers"
                 v-model:selected-supplier="searchedSupplier"
                 v-model:enable-discounts="enableDiscounts"
+                :is-needs-visible="isNeedsVisible"
+                @toggle-needs="isNeedsVisible = !isNeedsVisible"
                 @sync-apis="handleUpdateAllApi"
                 @toggle-status="handleToggleProductSupplierStatus"
               />
             </VCol>
 
-            <!-- COLUMNA DERECHA: Productos sin proveedor -->
-            <VCol cols="12" md="6">
+            <!-- COLUMNA DERECHA: Productos sin proveedor (Oculto por defecto, visible al expandir) -->
+            <VCol v-if="isNeedsVisible" cols="12" md="6">
               <ProductsWithoutSupplierComparatorTable
                 v-model="selectedProductFromTop"
                 :products="listProductsWithoutSupplier"
@@ -227,6 +229,7 @@ const {
                 @select-product="handleSelectProductFromTop"
                 @delete="handleToggleOrder"
                 @save-analysis="handleSaveAnalysis"
+                @close="isNeedsVisible = false"
                 :laboratories="laboratories"
                 v-model:selected-laboratory="needsLaboratory"
                 :groups="groups"
