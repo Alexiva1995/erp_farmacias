@@ -254,6 +254,14 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
     Route::get("/laboratories", [ResourceController::class, "getLaboratories"]);
     Route::post("/laboratories", [ResourceController::class, "storeLaboratory"]);
 
+    // Alias directo para Categorías de Gastos (/api/expenses/category)
+    Route::prefix("expenses/category")->group(function () {
+        Route::get("/", [ExpenseCategoryController::class, "getAll"]);
+        Route::post("/", [ExpenseCategoryController::class, "store"]);
+        Route::put("/{id}", [ExpenseCategoryController::class, "update"]);
+        Route::delete("/{id}", [ExpenseCategoryController::class, "destroy"]);
+    });
+
     // Gestión Administrativa de Laboratorios
     Route::prefix('inventory/laboratories-manage')->group(function () {
         Route::get('/', [\App\Http\Controllers\Api\Inventory\LaboratoryManagementController::class, 'index']);
