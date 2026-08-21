@@ -259,9 +259,17 @@ watch(searchQuery, () => {
   searchTimeout = setTimeout(() => fetchProducts(1), 400)
 })
 
-const selectCategory = (slug) => {
+const categoryLoadingSlug = ref(null)
+
+const selectCategory = async (slug) => {
+  if (loading.value) return
+  categoryLoadingSlug.value = slug
   selectedCategory.value = selectedCategory.value === slug ? null : slug
-  fetchProducts(1)
+  try {
+    await fetchProducts(1)
+  } finally {
+    categoryLoadingSlug.value = null
+  }
 }
 
 // ——— Carrito ———
@@ -616,10 +624,15 @@ onMounted(async () => {
           v-for="cat in categories"
           :key="cat.id"
           class="category-editorial-chip"
-          :class="{ 'chip-active': selectedCategory === cat.slug }"
+          :class="{ 
+            'chip-active': selectedCategory === cat.slug,
+            'chip-loading': categoryLoadingSlug === cat.slug
+          }"
+          :disabled="loading"
           @click="selectCategory(cat.slug)"
         >
-          {{ cat.name.toUpperCase() }}
+          <span v-if="categoryLoadingSlug === cat.slug" class="chip-spinner"></span>
+          <span>{{ cat.name.toUpperCase() }}</span>
         </button>
       </div>
 
@@ -646,17 +659,6 @@ onMounted(async () => {
               <span v-if="product.is_favorite && brandingStore.settings.enable_favorites" class="product-badge-editorial" style="position: static; margin-bottom: 0;">FAVORITO</span>
               <span v-if="product.discount_percentage" style="background-color: #E20074; color: #FFFFFF; padding: 4px 8px; font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">-{{ Math.round(product.discount_percentage) }}%</span>
             </div>
-            <button
-              v-if="brandingStore.settings.enable_favorites"
-              class="favorite-toggle-btn"
-              @click.stop="toggleFavorite(product)"
-              :class="{ 'is-active-fav': product.is_favorite }"
-              title="Marcar como favorito"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="heart-icon">
-                <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
-              </svg>
-            </button>
             <img
               v-if="(product.photo_url || product.image_url) && !product.image_failed"
               :src="product.photo_url || product.image_url"
@@ -760,16 +762,7 @@ onMounted(async () => {
     <section v-if="favoriteProducts.length && brandingStore.settings.enable_favorites" class="editorial-products-section favorites-section-wrap" style="border-top: 1px solid var(--editorial-border); border-bottom: 1px solid var(--editorial-border); background-color: var(--editorial-white);">
       <div class="catalog-header-editorial favorites-header-editorial">
         <div style="display: flex; align-items: baseline; gap: 30px; flex-wrap: wrap;">
-          <h2 class="editorial-title-serif" style="margin: 0; font-size: 24px; letter-spacing: 2px;">ICONIC PICKS FOR BOMB LIPS</h2>
-          <div class="fenty-sub-links d-none d-md-flex" style="display: flex; gap: 20px; font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: #000;">
-            <span style="cursor: pointer; border-bottom: 2px solid #000; padding-bottom: 4px;">New + Best Sellers</span>
-            <span style="color: #666; cursor: pointer;">Makeup</span>
-            <span style="color: #666; cursor: pointer;">Skin</span>
-            <span style="color: #666; cursor: pointer;">Body</span>
-            <span style="color: #666; cursor: pointer;">Hair</span>
-            <span style="color: #666; cursor: pointer;">Sale</span>
-            <span style="color: #666; cursor: pointer;">Discover</span>
-          </div>
+          <h2 class="editorial-title-serif" style="margin: 0; font-size: 24px; letter-spacing: 2px;">NUESTROS FAVORITOS</h2>
         </div>
         <div class="fenty-carousel-controls" style="display: flex; gap: 12px;">
           <button class="carousel-control-circle-btn" @click="scrollCarousel('left')" title="Desplazar a la izquierda">
@@ -796,16 +789,6 @@ onMounted(async () => {
                <span v-if="product.is_favorite" style="background-color: #FFFFFF; color: #000000; padding: 4px 8px; font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; border: 1px solid rgba(0,0,0,0.05); box-shadow: 0 2px 4px rgba(0,0,0,0.03);">FAVORITO</span>
                <span v-if="product.discount_percentage" style="background-color: #E20074; color: #FFFFFF; padding: 4px 8px; font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">-{{ Math.round(product.discount_percentage) }}%</span>
              </div>
-            <button
-              class="favorite-toggle-btn"
-              @click.stop="toggleFavorite(product)"
-              :class="{ 'is-active-fav': product.is_favorite }"
-              title="Marcar como favorito"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="heart-icon">
-                <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
-              </svg>
-            </button>
             <img
               v-if="(product.photo_url || product.image_url) && !product.image_failed"
               :src="product.photo_url || product.image_url"
@@ -1605,6 +1588,10 @@ onMounted(async () => {
   gap: 16px;
 }
 .category-editorial-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   background-color: #F5F3F2; /* Fondo beige interactivo muy sutil */
   border: 1px solid #E5E2E0; /* Borde de contraste suave */
   border-radius: 20px; /* Cápsula elegante y ergonómica */
@@ -1615,16 +1602,34 @@ onMounted(async () => {
   letter-spacing: 1.5px;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+  user-select: none;
 }
-.category-editorial-chip:hover {
+.category-editorial-chip:hover:not(:disabled) {
   background-color: #EAE5E2;
   border-color: var(--editorial-black);
+}
+.category-editorial-chip:disabled {
+  opacity: 0.65;
+  cursor: wait !important;
 }
 .category-editorial-chip.chip-active {
   border-color: var(--editorial-black);
   background-color: var(--editorial-black) !important;
   color: var(--editorial-white) !important;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+.chip-spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: chipSpin 0.6s linear infinite;
+  display: inline-block;
+}
+@keyframes chipSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 /* ——— 2. Híbrido 50/50: Split Row ——— */
@@ -1667,11 +1672,16 @@ onMounted(async () => {
   max-width: 440px;
 }
 .split-eyebrow {
+  display: inline-block;
   font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 4px;
-  color: var(--editorial-nude-dark);
-  display: block;
+  font-weight: 800;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--editorial-black, #1a1a1a);
+  background-color: rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  padding: 4px 10px;
+  border-radius: 4px;
   margin-bottom: 16px;
 }
 .split-heading-serif {

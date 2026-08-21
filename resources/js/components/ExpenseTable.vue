@@ -48,6 +48,62 @@ const actionLabels = {
   status_changed: 'Cambio de Estado',
   invoice_uploaded: 'Factura Subida',
 };
+
+function getAuditColor(action) {
+  switch (action) {
+    case 'created':
+    case 'created_recurring':
+      return 'primary';
+    case 'status_changed':
+      return 'warning';
+    case 'invoice_uploaded':
+      return 'info';
+    case 'updated':
+      return 'secondary';
+    default:
+      return 'primary';
+  }
+}
+
+function getAuditIcon(action) {
+  switch (action) {
+    case 'created':
+    case 'created_recurring':
+      return 'tabler-circle-plus';
+    case 'status_changed':
+      return 'tabler-refresh';
+    case 'invoice_uploaded':
+      return 'tabler-file-invoice';
+    case 'updated':
+      return 'tabler-edit';
+    default:
+      return 'tabler-point';
+  }
+}
+
+function getStatusLabel(status) {
+  if (!status) return 'N/A';
+  if (status === 'Approved' || status === 'Aprobado') return 'Aprobado';
+  if (status === 'Cancelled' || status === 'Cancelado') return 'Cancelado';
+  return 'Pendiente';
+}
+
+function getStatusChipColor(status) {
+  if (status === 'Approved' || status === 'Aprobado') return 'success';
+  if (status === 'Cancelled' || status === 'Cancelado') return 'error';
+  return 'warning';
+}
+
+function isImageFile(url) {
+  if (!url || typeof url !== 'string') return false;
+  return !url.toLowerCase().endsWith('.pdf');
+}
+
+function openImage(url) {
+  if (url) {
+    window.open(url, '_blank');
+  }
+}
 </script>
 
 <template>
@@ -316,23 +372,90 @@ const actionLabels = {
               <VTimelineItem
                 v-for="audit in selectedAuditExpense.audits"
                 :key="audit.id"
-                dot-color="primary"
+                :dot-color="getAuditColor(audit.action)"
                 size="x-small"
               >
                 <div class="d-flex justify-space-between align-center mb-1">
-                  <span class="font-weight-black text-xs text-high-emphasis uppercase">
-                    {{ actionLabels[audit.action] || audit.action }}
-                  </span>
+                  <div class="d-flex align-center gap-2">
+                    <VIcon :icon="getAuditIcon(audit.action)" size="16" :color="getAuditColor(audit.action)" />
+                    <span class="font-weight-black text-xs text-high-emphasis uppercase">
+                      {{ actionLabels[audit.action] || audit.action }}
+                    </span>
+                  </div>
                   <span class="text-super-xs text-disabled">{{ audit.created_at }}</span>
                 </div>
                 
-                <div class="text-super-xs font-weight-bold text-primary mb-1">
+                <div class="text-super-xs font-weight-bold text-primary mb-2">
                   Usuario: {{ audit.user_name }}
                 </div>
 
-                <div v-if="audit.old_values || audit.new_values" class="bg-surface pa-2 rounded border text-super-xs font-mono">
-                  <div v-if="audit.old_values" class="text-error">Anterior: {{ JSON.stringify(audit.old_values) }}</div>
-                  <div v-if="audit.new_values" class="text-success">Nuevo: {{ JSON.stringify(audit.new_values) }}</div>
+                <!-- Caso: Factura / Comprobante subido -->
+                <div v-if="audit.action === 'invoice_uploaded' && (audit.new_values?.url_file || selectedAuditExpense.url_file)" class="bg-light pa-3 rounded-lg border">
+                  <div class="d-flex align-center justify-space-between mb-2">
+                    <span class="text-xs font-weight-bold text-high-emphasis d-flex align-center gap-1">
+                      <VIcon icon="tabler-paperclip" size="14" color="primary" />
+                      Comprobante Adjunto
+                    </span>
+                    <VBtn
+                      size="x-small"
+                      variant="tonal"
+                      color="primary"
+                      prepend-icon="tabler-external-link"
+                      :href="audit.new_values?.url_file || selectedAuditExpense.url_file"
+                      target="_blank"
+                    >
+                      Abrir original
+                    </VBtn>
+                  </div>
+                  <div
+                    v-if="isImageFile(audit.new_values?.url_file || selectedAuditExpense.url_file)"
+                    class="rounded-lg overflow-hidden border bg-white d-flex justify-center pa-2"
+                  >
+                    <VImg
+                      :src="audit.new_values?.url_file || selectedAuditExpense.url_file"
+                      max-height="180"
+                      class="cursor-pointer rounded"
+                      cover
+                      @click="openImage(audit.new_values?.url_file || selectedAuditExpense.url_file)"
+                    />
+                  </div>
+                  <div v-else class="pa-2 bg-white rounded border d-flex align-center gap-2 text-xs font-weight-bold text-primary">
+                    <VIcon icon="tabler-file-text" size="20" />
+                    Documento PDF / Archivo adjunto
+                  </div>
+                </div>
+
+                <!-- Caso: Cambio de Estado -->
+                <div v-else-if="audit.action === 'status_changed'" class="bg-light pa-3 rounded-lg border d-flex align-center gap-2">
+                  <VChip v-if="audit.old_values?.status" size="x-small" :color="getStatusChipColor(audit.old_values.status)" variant="tonal" class="font-weight-bold uppercase">
+                    {{ getStatusLabel(audit.old_values.status) }}
+                  </VChip>
+                  <VIcon icon="tabler-arrow-right" size="14" class="text-disabled" />
+                  <VChip size="x-small" :color="getStatusChipColor(audit.new_values?.status)" variant="flat" class="font-weight-bold uppercase">
+                    {{ getStatusLabel(audit.new_values?.status) }}
+                  </VChip>
+                </div>
+
+                <!-- Caso: Creación / Modificación -->
+                <div v-else-if="audit.new_values" class="bg-light pa-3 rounded-lg border">
+                  <div class="d-flex flex-wrap gap-2">
+                    <div v-if="audit.new_values.name" class="text-super-xs">
+                      <span class="text-disabled uppercase font-weight-bold">Descripción:</span>
+                      <span class="font-weight-bold text-high-emphasis ml-1">{{ audit.new_values.name }}</span>
+                    </div>
+                    <div v-if="audit.new_values.amount" class="text-super-xs">
+                      <span class="text-disabled uppercase font-weight-bold">Monto:</span>
+                      <span class="font-weight-bold text-high-emphasis ml-1">{{ Number(audit.new_values.amount).toLocaleString('es-VE') }} {{ audit.new_values.currency || '' }}</span>
+                    </div>
+                    <div v-if="audit.new_values.total_usd" class="text-super-xs">
+                      <span class="text-disabled uppercase font-weight-bold">Total USD:</span>
+                      <span class="font-weight-bold text-error ml-1">${{ Number(audit.new_values.total_usd).toFixed(2) }}</span>
+                    </div>
+                    <div v-if="audit.new_values.expense_date" class="text-super-xs">
+                      <span class="text-disabled uppercase font-weight-bold">Fecha:</span>
+                      <span class="font-weight-bold text-high-emphasis ml-1">{{ audit.new_values.expense_date }}</span>
+                    </div>
+                  </div>
                 </div>
               </VTimelineItem>
             </VTimeline>
