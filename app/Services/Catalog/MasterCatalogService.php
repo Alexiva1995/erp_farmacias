@@ -183,6 +183,7 @@ class MasterCatalogService
             'iva'               => (float) ($data['iva'] ?? 0),
             'is_deleted'        => true,
             'is_active'         => false,
+            'deleted_at'        => now(),
         ]);
 
         $product->load(['laboratory', 'category', 'origin']);
