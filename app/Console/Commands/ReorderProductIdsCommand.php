@@ -256,16 +256,11 @@ class ReorderProductIdsCommand extends Command
             ");
             $this->line("   • Registros de productos actualizados: <fg=green>{$affectedProducts}</>");
 
-            // 8. Ajustar AUTO_INCREMENT para nuevos productos
-            $nextAutoIncrement = $endId + 1;
-            $this->line("8. Ajustando AUTO_INCREMENT a {$nextAutoIncrement}...");
-            DB::statement("ALTER TABLE `products` AUTO_INCREMENT = {$nextAutoIncrement}");
-
-            // 9. Reactivar Foreign Key Checks
+            // 8. Reactivar Foreign Key Checks
             DB::statement('SET FOREIGN_KEY_CHECKS = 1');
 
-            // 10. Verificación de Integridad Referencial
-            $this->line('9. Verificando integridad referencial...');
+            // 9. Verificación de Integridad Referencial
+            $this->line('8. Verificando integridad referencial...');
             $orphanLots = DB::table('product_lots as pl')
                 ->leftJoin('products as p', 'pl.product_id', '=', 'p.id')
                 ->whereNull('p.id')
@@ -282,12 +277,22 @@ class ReorderProductIdsCommand extends Command
 
             $this->info("   ✓ Integridad referencial 100% verificada sin registros huérfanos.");
 
-            // 11. Finalización
+            // 10. Finalización y Commit
             if ($isDryRun) {
-                DB::rollBack();
+                if (DB::transactionLevel() > 0) {
+                    DB::rollBack();
+                }
                 $this->warn('>> SIMULACIÓN COMPLETADA (Dry-Run): Todos los cambios fueron revertidos exitosamente sin alterar la base de datos.');
             } else {
-                DB::commit();
+                if (DB::transactionLevel() > 0) {
+                    DB::commit();
+                }
+
+                // 11. Ajustar AUTO_INCREMENT para nuevos productos después del commit
+                $nextAutoIncrement = $endId + 1;
+                $this->line("9. Ajustando AUTO_INCREMENT a {$nextAutoIncrement}...");
+                DB::statement("ALTER TABLE `products` AUTO_INCREMENT = {$nextAutoIncrement}");
+
                 $this->info('>> OPERACIÓN COMPLETADA CON ÉXITO: Todos los IDs de productos y dependencias fueron actualizados.');
             }
 
@@ -297,7 +302,9 @@ class ReorderProductIdsCommand extends Command
             return self::SUCCESS;
         } catch (\Throwable $e) {
             DB::statement('SET FOREIGN_KEY_CHECKS = 1');
-            DB::rollBack();
+            if (DB::transactionLevel() > 0) {
+                DB::rollBack();
+            }
             $this->error('ERROR DURANTE LA EJECUCIÓN: ' . $e->getMessage());
             Log::error('Error en ReorderProductIdsCommand: ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString(),

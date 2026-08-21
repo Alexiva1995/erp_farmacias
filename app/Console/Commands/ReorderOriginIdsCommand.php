@@ -134,16 +134,11 @@ class ReorderOriginIdsCommand extends Command
             ");
             $this->line("   • Registros de orígenes actualizados: <fg=green>{$affectedOrigins}</>");
 
-            // 6. Ajustar AUTO_INCREMENT para nuevos orígenes
-            $nextAutoIncrement = $endId + 1;
-            $this->line("6. Ajustando AUTO_INCREMENT a {$nextAutoIncrement}...");
-            DB::statement("ALTER TABLE `origins` AUTO_INCREMENT = {$nextAutoIncrement}");
-
-            // 7. Reactivar Foreign Key Checks
+            // 6. Reactivar Foreign Key Checks
             DB::statement('SET FOREIGN_KEY_CHECKS = 1');
 
-            // 8. Verificación de Integridad Referencial
-            $this->line('7. Verificando integridad referencial...');
+            // 7. Verificación de Integridad Referencial
+            $this->line('6. Verificando integridad referencial...');
             $orphanProducts = DB::table('products as p')
                 ->leftJoin('origins as o', 'p.origin_id', '=', 'o.id')
                 ->whereNotNull('p.origin_id')
@@ -156,12 +151,22 @@ class ReorderOriginIdsCommand extends Command
 
             $this->info("   ✓ Integridad referencial 100% verificada sin registros huérfanos.");
 
-            // 9. Finalización
+            // 8. Finalización y Commit
             if ($isDryRun) {
-                DB::rollBack();
+                if (DB::transactionLevel() > 0) {
+                    DB::rollBack();
+                }
                 $this->warn('>> SIMULACIÓN COMPLETADA (Dry-Run): Todos los cambios fueron revertidos exitosamente sin alterar la base de datos.');
             } else {
-                DB::commit();
+                if (DB::transactionLevel() > 0) {
+                    DB::commit();
+                }
+                
+                // 9. Ajustar AUTO_INCREMENT para nuevos orígenes después del commit
+                $nextAutoIncrement = $endId + 1;
+                $this->line("7. Ajustando AUTO_INCREMENT a {$nextAutoIncrement}...");
+                DB::statement("ALTER TABLE `origins` AUTO_INCREMENT = {$nextAutoIncrement}");
+
                 $this->info('>> OPERACIÓN COMPLETADA CON ÉXITO: Todos los IDs de orígenes y dependencias fueron actualizados.');
             }
 
@@ -171,7 +176,9 @@ class ReorderOriginIdsCommand extends Command
             return self::SUCCESS;
         } catch (\Throwable $e) {
             DB::statement('SET FOREIGN_KEY_CHECKS = 1');
-            DB::rollBack();
+            if (DB::transactionLevel() > 0) {
+                DB::rollBack();
+            }
             $this->error('ERROR DURANTE LA EJECUCIÓN: ' . $e->getMessage());
             Log::error('Error en ReorderOriginIdsCommand: ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString(),

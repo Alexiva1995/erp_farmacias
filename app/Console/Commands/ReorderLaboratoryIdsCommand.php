@@ -167,16 +167,11 @@ class ReorderLaboratoryIdsCommand extends Command
             ");
             $this->line("   • Registros de laboratorios actualizados: <fg=green>{$affectedLaboratories}</>");
 
-            // 7. Ajustar AUTO_INCREMENT para nuevos laboratorios
-            $nextAutoIncrement = $endId + 1;
-            $this->line("7. Ajustando AUTO_INCREMENT a {$nextAutoIncrement}...");
-            DB::statement("ALTER TABLE `laboratories` AUTO_INCREMENT = {$nextAutoIncrement}");
-
-            // 8. Reactivar Foreign Key Checks
+            // 7. Reactivar Foreign Key Checks
             DB::statement('SET FOREIGN_KEY_CHECKS = 1');
 
-            // 9. Verificación de Integridad Referencial
-            $this->line('8. Verificando integridad referencial...');
+            // 8. Verificación de Integridad Referencial
+            $this->line('7. Verificando integridad referencial...');
             $orphanProducts = DB::table('products as p')
                 ->leftJoin('laboratories as l', 'p.laboratory_id', '=', 'l.id')
                 ->whereNotNull('p.laboratory_id')
@@ -189,12 +184,22 @@ class ReorderLaboratoryIdsCommand extends Command
 
             $this->info("   ✓ Integridad referencial 100% verificada sin registros huérfanos.");
 
-            // 10. Finalización
+            // 9. Finalización y Commit
             if ($isDryRun) {
-                DB::rollBack();
+                if (DB::transactionLevel() > 0) {
+                    DB::rollBack();
+                }
                 $this->warn('>> SIMULACIÓN COMPLETADA (Dry-Run): Todos los cambios fueron revertidos exitosamente sin alterar la base de datos.');
             } else {
-                DB::commit();
+                if (DB::transactionLevel() > 0) {
+                    DB::commit();
+                }
+
+                // 10. Ajustar AUTO_INCREMENT para nuevos laboratorios después del commit
+                $nextAutoIncrement = $endId + 1;
+                $this->line("8. Ajustando AUTO_INCREMENT a {$nextAutoIncrement}...");
+                DB::statement("ALTER TABLE `laboratories` AUTO_INCREMENT = {$nextAutoIncrement}");
+
                 $this->info('>> OPERACIÓN COMPLETADA CON ÉXITO: Todos los IDs de laboratorios y dependencias fueron actualizados.');
             }
 
@@ -204,7 +209,9 @@ class ReorderLaboratoryIdsCommand extends Command
             return self::SUCCESS;
         } catch (\Throwable $e) {
             DB::statement('SET FOREIGN_KEY_CHECKS = 1');
-            DB::rollBack();
+            if (DB::transactionLevel() > 0) {
+                DB::rollBack();
+            }
             $this->error('ERROR DURANTE LA EJECUCIÓN: ' . $e->getMessage());
             Log::error('Error en ReorderLaboratoryIdsCommand: ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
