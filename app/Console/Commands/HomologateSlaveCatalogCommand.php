@@ -194,26 +194,30 @@ class HomologateSlaveCatalogCommand extends Command
             // ETAPA E: HOMOLOGAR PRODUCTOS
             // ==========================================
             $this->info("\n--- [5/5] Homologando Productos con el Catálogo Maestro ---");
-            $products = DB::table('products as p')
-                ->leftJoin('laboratories as l', 'p.laboratory_id', '=', 'l.id')
-                ->select([
-                    'p.id',
-                    'p.name',
-                    'p.barcode',
-                    'p.active_ingredient',
-                    'p.category_id',
-                    'p.origin_id',
-                    'p.unit_cost',
-                    'p.sale_price',
-                    'p.is_fractionable',
-                    'p.fraction_name',
-                    'p.units_per_fraction',
-                    'p.psychotropic',
-                    'p.iva',
-                    'l.name as laboratory_name',
-                ])
-                ->orderBy('p.id')
-                ->get();
+            
+            $productCols = \Illuminate\Support\Facades\Schema::getColumnListing('products');
+            $hasLabId = in_array('laboratory_id', $productCols);
+
+            $selects = ['p.id', 'p.name', 'p.barcode'];
+            if (in_array('active_ingredient', $productCols)) $selects[] = 'p.active_ingredient';
+            if (in_array('category_id', $productCols)) $selects[] = 'p.category_id';
+            if (in_array('origin_id', $productCols)) $selects[] = 'p.origin_id';
+            if (in_array('unit_cost', $productCols)) $selects[] = 'p.unit_cost';
+            if (in_array('sale_price', $productCols)) $selects[] = 'p.sale_price';
+            if (in_array('is_fractionable', $productCols)) $selects[] = 'p.is_fractionable';
+            if (in_array('fraction_name', $productCols)) $selects[] = 'p.fraction_name';
+            if (in_array('units_per_fraction', $productCols)) $selects[] = 'p.units_per_fraction';
+            if (in_array('psychotropic', $productCols)) $selects[] = 'p.psychotropic';
+            if (in_array('iva', $productCols)) $selects[] = 'p.iva';
+
+            $query = DB::table('products as p')->select($selects);
+
+            if ($hasLabId && \Illuminate\Support\Facades\Schema::hasTable('laboratories')) {
+                $query->leftJoin('laboratories as l', 'p.laboratory_id', '=', 'l.id')
+                      ->addSelect('l.name as laboratory_name');
+            }
+
+            $products = $query->orderBy('p.id')->get();
 
             $productMap = [];
 
