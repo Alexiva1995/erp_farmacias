@@ -306,7 +306,8 @@ class ProductActionService
     {
         \DB::beginTransaction();
         try {
-            $product->update(['group_id' => $groupId]);
+            $normalizedGroupId = ($groupId && $groupId > 0) ? $groupId : null;
+            $product->update(['group_id' => $normalizedGroupId]);
             \DB::commit();
             return true;
         } catch (\Exception $e) {
