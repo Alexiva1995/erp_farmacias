@@ -44,7 +44,7 @@ const filteredCategories = computed(() => {
 const fetchCategories = async () => {
   isLoading.value = true
   try {
-    const response = await axios.get('/expenses/category')
+    const response = await axios.get('/finances/expenses/category')
     categories.value = response.data?.data || []
   } catch (error) {
     console.error('Error al cargar categorías de gastos:', error)
@@ -84,12 +84,12 @@ const submitForm = async () => {
 
   try {
     if (isEditing.value) {
-      const response = await axios.put(`/expenses/category/${form.id}`, {
+      const response = await axios.put(`/finances/expenses/category/${form.id}`, {
         name: form.name.trim(),
       })
       toast.success(response.data?.message || 'Categoría actualizada exitosamente')
     } else {
-      const response = await axios.post('/expenses/category', {
+      const response = await axios.post('/finances/expenses/category', {
         name: form.name.trim(),
       })
       toast.success(response.data?.message || 'Categoría creada exitosamente')
@@ -138,7 +138,7 @@ const confirmDelete = async (item) => {
 
   if (result.isConfirmed) {
     try {
-      await axios.delete(`/expenses/category/${item.id}`)
+      await axios.delete(`/finances/expenses/category/${item.id}`)
       toast.success('Categoría eliminada exitosamente')
       await fetchCategories()
     } catch (error) {

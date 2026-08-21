@@ -178,6 +178,7 @@ declare module 'vue' {
     ErrorHeader: typeof import('./resources/js/components/ErrorHeader.vue')['default']
     ExchangeRateCard: typeof import('./resources/js/components/ExchangeRateCard.vue')['default']
     ExchangeRatesModal: typeof import('./resources/js/components/dialogs/ExchangeRatesModal.vue')['default']
+    ExpenseCategoryTable: typeof import('./resources/js/components/configuration/ExpenseCategoryTable.vue')['default']
     ExpenseFormDialoge: typeof import('./resources/js/components/dialogs/ExpenseFormDialoge.vue')['default']
     ExpenseSettingCard: typeof import('./resources/js/components/configuration/ExpenseSettingCard.vue')['default']
     ExpenseTable: typeof import('./resources/js/components/ExpenseTable.vue')['default']
