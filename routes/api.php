@@ -918,6 +918,9 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
             Route::post("/upload-file-invoice", [ExpensesController::class, "uploadFileInvoice"]);
             Route::prefix("category")->group(function () {
                 Route::get("/", [ExpenseCategoryController::class, "getAll"]);
+                Route::post("/", [ExpenseCategoryController::class, "store"]);
+                Route::put("/{id}", [ExpenseCategoryController::class, "update"]);
+                Route::delete("/{id}", [ExpenseCategoryController::class, "destroy"]);
             });
         });
 

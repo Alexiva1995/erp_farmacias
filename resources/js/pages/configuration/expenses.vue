@@ -4,6 +4,7 @@ import axios from '@/plugins/axios'
 import { toast } from "@/plugins/sweetalert"
 import { useBrandingStore } from "@/stores/useBrandingStore"
 import ExpenseSettingCard from '@/Components/configuration/ExpenseSettingCard.vue'
+import ExpenseCategoryTable from '@/Components/configuration/ExpenseCategoryTable.vue'
 
 const brandingStore = useBrandingStore()
 
@@ -191,5 +192,9 @@ onMounted(() => {
         </VRow>
       </VCardItem>
     </VCard>
+
+    <!-- Sección de Gestión de Categorías de Gastos -->
+    <ExpenseCategoryTable />
   </div>
 </template>
+
