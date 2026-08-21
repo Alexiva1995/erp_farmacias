@@ -380,6 +380,14 @@ class HomologateSlaveCatalogCommand extends Command
                 if (DB::transactionLevel() > 0) {
                     DB::commit();
                 }
+
+                // Ajustar AUTO_INCREMENT
+                if (!empty($productMap)) {
+                    $maxPId = (int) (DB::table('products')->max('id') ?? 10000);
+                    $nextAutoIncrement = $maxPId + 1;
+                    DB::statement("ALTER TABLE `products` AUTO_INCREMENT = {$nextAutoIncrement}");
+                }
+
                 $this->info("\n>> HOMOLOGACIÓN COMPLETADA CON ÉXITO: Todos los catálogos de la esclava fueron igualados con el Master.");
             }
 
