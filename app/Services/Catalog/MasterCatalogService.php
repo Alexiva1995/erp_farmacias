@@ -51,9 +51,9 @@ class MasterCatalogService
                 'category_name'     => $product->category?->name,
                 'origin_id'         => $product->origin_id,
                 'origin_name'       => $product->origin?->name,
-                'is_fractionable'   => (bool) ($product->is_fractionable ?? false),
-                'fraction_name'     => $product->fraction_name ?? null,
-                'units_per_fraction'=> $product->units_per_fraction ?? null,
+                'description'       => $product->description,
+                'presentation'      => $product->presentation,
+                'unit_of_measure'   => $product->unit_of_measure,
                 'psychotropic'      => (bool) ($product->psychotropic ?? false),
                 'iva'               => (float) ($product->iva ?? 0),
                 'photo_url'         => $product->photo_url,
@@ -68,7 +68,37 @@ class MasterCatalogService
     {
         $barcode = !empty($data['barcode']) ? trim((string) $data['barcode']) : null;
 
-        // 1. Si ya existe un producto con este código de barras, devolver el existente
+        // 1. Homologar laboratorio si viene el nombre
+        $laboratoryId = $data['laboratory_id'] ?? null;
+        if (!empty($data['laboratory_name'])) {
+            $lab = Laboratory::firstOrCreate(
+                ['name' => trim($data['laboratory_name'])],
+                ['created_at' => now(), 'updated_at' => now()]
+            );
+            $laboratoryId = $lab->id;
+        }
+
+        // 2. Homologar origen si viene el nombre
+        $originId = $data['origin_id'] ?? null;
+        if (!empty($data['origin_name'])) {
+            $orig = Origin::firstOrCreate(
+                ['name' => trim($data['origin_name'])],
+                ['created_at' => now(), 'updated_at' => now()]
+            );
+            $originId = $orig->id;
+        }
+
+        // 3. Homologar categoría si viene el nombre
+        $categoryId = $data['category_id'] ?? null;
+        if (!empty($data['category_name'])) {
+            $cat = Category::firstOrCreate(
+                ['name' => trim($data['category_name'])],
+                ['created_at' => now(), 'updated_at' => now()]
+            );
+            $categoryId = $cat->id;
+        }
+
+        // 4. Si ya existe un producto con este código de barras, enriquecer sus datos faltantes
         if ($barcode) {
             $existing = Product::withoutGlobalScope('not_deleted')
                 ->withTrashed()
@@ -77,6 +107,46 @@ class MasterCatalogService
                 ->first();
 
             if ($existing) {
+                $hasUpdates = false;
+
+                if (empty($existing->laboratory_id) && $laboratoryId) {
+                    $existing->laboratory_id = $laboratoryId;
+                    $hasUpdates = true;
+                }
+                if (empty($existing->origin_id) && $originId) {
+                    $existing->origin_id = $originId;
+                    $hasUpdates = true;
+                }
+                if (empty($existing->category_id) && $categoryId) {
+                    $existing->category_id = $categoryId;
+                    $hasUpdates = true;
+                }
+                if (empty($existing->active_ingredient) && !empty($data['active_ingredient'])) {
+                    $existing->active_ingredient = $data['active_ingredient'];
+                    $hasUpdates = true;
+                }
+                if (empty($existing->description) && !empty($data['description'])) {
+                    $existing->description = $data['description'];
+                    $hasUpdates = true;
+                }
+                if (empty($existing->photo_url) && !empty($data['photo_url'])) {
+                    $existing->photo_url = $data['photo_url'];
+                    $hasUpdates = true;
+                }
+                if (empty($existing->presentation) && !empty($data['presentation'])) {
+                    $existing->presentation = $data['presentation'];
+                    $hasUpdates = true;
+                }
+                if (empty($existing->unit_of_measure) && !empty($data['unit_of_measure'])) {
+                    $existing->unit_of_measure = $data['unit_of_measure'];
+                    $hasUpdates = true;
+                }
+
+                if ($hasUpdates) {
+                    $existing->save();
+                    $existing->load(['laboratory', 'category', 'origin']);
+                }
+
                 return [
                     'created' => false,
                     'product' => [
@@ -93,17 +163,7 @@ class MasterCatalogService
             }
         }
 
-        // 2. Homologar laboratorio si viene el nombre
-        $laboratoryId = $data['laboratory_id'] ?? null;
-        if (!empty($data['laboratory_name'])) {
-            $lab = Laboratory::firstOrCreate(
-                ['name' => trim($data['laboratory_name'])],
-                ['created_at' => now(), 'updated_at' => now()]
-            );
-            $laboratoryId = $lab->id;
-        }
-
-        // 3. Crear el nuevo producto en el Master obteniendo el siguiente ID oficial
+        // 5. Crear el nuevo producto en el Master obteniendo el siguiente ID oficial
         // Se crea con is_deleted = 1 / is_active = 0 para que exista en el catálogo de la BD
         // pero NO aparezca en las vistas de inventario/POS de la farmacia Master
         $product = Product::create([
@@ -111,13 +171,14 @@ class MasterCatalogService
             'barcode'           => $barcode,
             'active_ingredient' => $data['active_ingredient'] ?? null,
             'laboratory_id'     => $laboratoryId,
-            'category_id'       => $data['category_id'] ?? null,
-            'origin_id'         => $data['origin_id'] ?? null,
+            'category_id'       => $categoryId,
+            'origin_id'         => $originId,
             'unit_cost'         => (float) ($data['unit_cost'] ?? 0),
             'sale_price'        => (float) ($data['sale_price'] ?? 0),
-            'is_fractionable'   => (bool) ($data['is_fractionable'] ?? false),
-            'fraction_name'     => $data['fraction_name'] ?? null,
-            'units_per_fraction'=> $data['units_per_fraction'] ?? null,
+            'description'       => $data['description'] ?? null,
+            'presentation'      => $data['presentation'] ?? null,
+            'unit_of_measure'   => $data['unit_of_measure'] ?? null,
+            'photo_url'         => $data['photo_url'] ?? null,
             'psychotropic'      => (bool) ($data['psychotropic'] ?? false),
             'iva'               => (float) ($data['iva'] ?? 0),
             'is_deleted'        => true,

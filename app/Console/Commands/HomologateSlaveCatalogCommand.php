@@ -197,6 +197,8 @@ class HomologateSlaveCatalogCommand extends Command
             
             $productCols = \Illuminate\Support\Facades\Schema::getColumnListing('products');
             $hasLabId = in_array('laboratory_id', $productCols);
+            $hasOriginId = in_array('origin_id', $productCols);
+            $hasCategoryId = in_array('category_id', $productCols);
 
             $selects = ['p.id', 'p.name', 'p.barcode'];
             if (in_array('active_ingredient', $productCols)) $selects[] = 'p.active_ingredient';
@@ -204,9 +206,10 @@ class HomologateSlaveCatalogCommand extends Command
             if (in_array('origin_id', $productCols)) $selects[] = 'p.origin_id';
             if (in_array('unit_cost', $productCols)) $selects[] = 'p.unit_cost';
             if (in_array('sale_price', $productCols)) $selects[] = 'p.sale_price';
-            if (in_array('is_fractionable', $productCols)) $selects[] = 'p.is_fractionable';
-            if (in_array('fraction_name', $productCols)) $selects[] = 'p.fraction_name';
-            if (in_array('units_per_fraction', $productCols)) $selects[] = 'p.units_per_fraction';
+            if (in_array('description', $productCols)) $selects[] = 'p.description';
+            if (in_array('presentation', $productCols)) $selects[] = 'p.presentation';
+            if (in_array('unit_of_measure', $productCols)) $selects[] = 'p.unit_of_measure';
+            if (in_array('photo_url', $productCols)) $selects[] = 'p.photo_url';
             if (in_array('psychotropic', $productCols)) $selects[] = 'p.psychotropic';
             if (in_array('iva', $productCols)) $selects[] = 'p.iva';
 
@@ -215,6 +218,16 @@ class HomologateSlaveCatalogCommand extends Command
             if ($hasLabId && \Illuminate\Support\Facades\Schema::hasTable('laboratories')) {
                 $query->leftJoin('laboratories as l', 'p.laboratory_id', '=', 'l.id')
                       ->addSelect('l.name as laboratory_name');
+            }
+
+            if ($hasOriginId && \Illuminate\Support\Facades\Schema::hasTable('origins')) {
+                $query->leftJoin('origins as o', 'p.origin_id', '=', 'o.id')
+                      ->addSelect('o.name as origin_name');
+            }
+
+            if ($hasCategoryId && \Illuminate\Support\Facades\Schema::hasTable('categories')) {
+                $query->leftJoin('categories as c', 'p.category_id', '=', 'c.id')
+                      ->addSelect('c.name as category_name');
             }
 
             $products = $query->orderBy('p.id')->get();
@@ -231,13 +244,14 @@ class HomologateSlaveCatalogCommand extends Command
                         'barcode'           => !empty($prod->barcode) ? $prod->barcode : null,
                         'active_ingredient' => $prod->active_ingredient ?? null,
                         'laboratory_name'   => $prod->laboratory_name ?? null,
-                        'category_id'       => $prod->category_id ?? null,
-                        'origin_id'         => $prod->origin_id ?? null,
+                        'origin_name'       => $prod->origin_name ?? null,
+                        'category_name'     => $prod->category_name ?? null,
+                        'description'       => $prod->description ?? null,
+                        'presentation'      => $prod->presentation ?? null,
+                        'unit_of_measure'   => $prod->unit_of_measure ?? null,
+                        'photo_url'         => $prod->photo_url ?? null,
                         'unit_cost'         => $prod->unit_cost ?? 0,
                         'sale_price'        => $prod->sale_price ?? 0,
-                        'is_fractionable'   => (bool) ($prod->is_fractionable ?? false),
-                        'fraction_name'     => $prod->fraction_name ?? null,
-                        'units_per_fraction'=> $prod->units_per_fraction ?? null,
                         'psychotropic'      => (bool) ($prod->psychotropic ?? false),
                         'iva'               => $prod->iva ?? 0,
                     ]);
