@@ -25,7 +25,9 @@ class MasterCatalogService
             return ['found' => false, 'product' => null];
         }
 
-        $product = Product::with(['laboratory', 'category', 'origin'])
+        $product = Product::withoutGlobalScope('not_deleted')
+            ->withTrashed()
+            ->with(['laboratory', 'category', 'origin'])
             ->where('barcode', $barcode)
             ->whereNotNull('name')
             ->where('name', '!=', '')
@@ -49,10 +51,10 @@ class MasterCatalogService
                 'category_name'     => $product->category?->name,
                 'origin_id'         => $product->origin_id,
                 'origin_name'       => $product->origin?->name,
-                'is_fractionable'   => (bool) $product->is_fractionable,
-                'fraction_name'     => $product->fraction_name,
-                'units_per_fraction'=> $product->units_per_fraction,
-                'psychotropic'      => (bool) $product->psychotropic,
+                'is_fractionable'   => (bool) ($product->is_fractionable ?? false),
+                'fraction_name'     => $product->fraction_name ?? null,
+                'units_per_fraction'=> $product->units_per_fraction ?? null,
+                'psychotropic'      => (bool) ($product->psychotropic ?? false),
                 'iva'               => (float) ($product->iva ?? 0),
                 'photo_url'         => $product->photo_url,
             ],
@@ -68,7 +70,9 @@ class MasterCatalogService
 
         // 1. Si ya existe un producto con este código de barras, devolver el existente
         if ($barcode) {
-            $existing = Product::with(['laboratory', 'category', 'origin'])
+            $existing = Product::withoutGlobalScope('not_deleted')
+                ->withTrashed()
+                ->with(['laboratory', 'category', 'origin'])
                 ->where('barcode', $barcode)
                 ->first();
 
@@ -100,6 +104,8 @@ class MasterCatalogService
         }
 
         // 3. Crear el nuevo producto en el Master obteniendo el siguiente ID oficial
+        // Se crea con is_deleted = 1 / is_active = 0 para que exista en el catálogo de la BD
+        // pero NO aparezca en las vistas de inventario/POS de la farmacia Master
         $product = Product::create([
             'name'              => trim($data['name'] ?? ''),
             'barcode'           => $barcode,
@@ -114,6 +120,8 @@ class MasterCatalogService
             'units_per_fraction'=> $data['units_per_fraction'] ?? null,
             'psychotropic'      => (bool) ($data['psychotropic'] ?? false),
             'iva'               => (float) ($data['iva'] ?? 0),
+            'is_deleted'        => true,
+            'is_active'         => false,
         ]);
 
         $product->load(['laboratory', 'category', 'origin']);
