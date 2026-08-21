@@ -24,9 +24,21 @@ class ResourceController extends Controller
 
     public function storeLaboratory(StoreLaboratoryRequest $request)
     {
-        $laboratory = Laboratory::create([
-            'name' => $request->validated()['name'],
-        ]);
+        $data = $request->validated();
+
+        if (config('catalog.role') === 'slave') {
+            try {
+                $masterClient = app(\App\Services\Catalog\MasterCatalogClientService::class);
+                $masterLab = $masterClient->registerLaboratoryInMaster($data);
+                if (!empty($masterLab['id'])) {
+                    $data['id'] = (int) $masterLab['id'];
+                }
+            } catch (\Throwable $e) {
+                \Log::warning('No se pudo sincronizar laboratorio con Master Catalog: ' . $e->getMessage());
+            }
+        }
+
+        $laboratory = Laboratory::create($data);
 
         // Limpiar la caché de laboratorios para que se actualice la lista
         \Cache::forget('resources.laboratories');
@@ -39,9 +51,21 @@ class ResourceController extends Controller
 
     public function storeOrigin(StoreOriginRequest $request)
     {
-        $origin = Origin::create([
-            'name' => $request->validated()['name'],
-        ]);
+        $data = $request->validated();
+
+        if (config('catalog.role') === 'slave') {
+            try {
+                $masterClient = app(\App\Services\Catalog\MasterCatalogClientService::class);
+                $masterOrigin = $masterClient->registerOriginInMaster($data);
+                if (!empty($masterOrigin['id'])) {
+                    $data['id'] = (int) $masterOrigin['id'];
+                }
+            } catch (\Throwable $e) {
+                \Log::warning('No se pudo sincronizar origen con Master Catalog: ' . $e->getMessage());
+            }
+        }
+
+        $origin = Origin::create($data);
 
         // Limpiar la caché de orígenes para que se actualice la lista
         \Cache::forget('resources.origins');

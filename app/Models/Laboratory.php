@@ -25,6 +25,7 @@ class Laboratory extends Model
      * @var array<int, string>
      */
     protected $fillable = [
+        'id',
         'name',
         'group_id',
         'parent_id',

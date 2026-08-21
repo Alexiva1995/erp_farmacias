@@ -8,6 +8,7 @@ use App\Models\GroupsProduct;
 use App\Models\Product;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class GroupActionService
 {
@@ -16,6 +17,18 @@ class GroupActionService
      */
     public function createGroup(array $validatedData): GroupsProduct
     {
+        if (config('catalog.role') === 'slave') {
+            try {
+                $masterClient = app(\App\Services\Catalog\MasterCatalogClientService::class);
+                $masterGroup = $masterClient->registerGroupInMaster($validatedData);
+                if (!empty($masterGroup['id'])) {
+                    $validatedData['id'] = (int) $masterGroup['id'];
+                }
+            } catch (\Throwable $e) {
+                Log::warning('No se pudo sincronizar grupo con Master Catalog: ' . $e->getMessage());
+            }
+        }
+
         return GroupsProduct::create($validatedData);
     }
 

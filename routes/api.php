@@ -108,6 +108,16 @@ Route::get("/public/exchange-rates", [ResourceController::class, "getExchangeRat
 Route::get("/public/suppliers/upload/{token}", [SupplierPublicUploadController::class, "show"]);
 Route::post("/public/suppliers/upload/{token}", [SupplierPublicUploadController::class, "upload"]);
 Route::get("/public/orders/{hash}", [SupplierOrderResponseController::class, "show"]);
+
+// Master Catalog API (Para comunicación entre Farmacia Principal y Esclavas)
+Route::prefix('v1/master-catalog')->middleware('master_catalog')->group(function () {
+    Route::get('/lookup', [\App\Http\Controllers\Api\MasterCatalogController::class, 'lookup']);
+    Route::post('/products', [\App\Http\Controllers\Api\MasterCatalogController::class, 'store']);
+    Route::post('/laboratories', [\App\Http\Controllers\Api\MasterCatalogController::class, 'storeLaboratory']);
+    Route::post('/groups', [\App\Http\Controllers\Api\MasterCatalogController::class, 'storeGroup']);
+    Route::post('/suppliers', [\App\Http\Controllers\Api\MasterCatalogController::class, 'storeSupplier']);
+    Route::post('/origins', [\App\Http\Controllers\Api\MasterCatalogController::class, 'storeOrigin']);
+});
 Route::post("/public/orders/{hash}/respond", [SupplierOrderResponseController::class, "respond"]);
 
 Route::post("/public/reservations/webhook", [\App\Http\Controllers\Api\ReservationController::class, "webhook"]);
@@ -227,6 +237,7 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
     Route::post('/products/{product}/toggle-active', [ProductController::class, 'toggleActive']);
     Route::delete('/products/{product}/unassign-group', [ProductController::class, 'unassignProductFromGroup']);
     Route::get('/products/search-by-barcode', [ProductController::class, 'searchByBarcode']);
+    Route::get('/catalog/master-lookup', [\App\Http\Controllers\Api\CatalogLookupController::class, 'lookup']);
     Route::get('/products/inventory/value', [ProductController::class, 'getInventoryValue']);
     Route::post('/products/merge', [ProductController::class, 'merge']);
 

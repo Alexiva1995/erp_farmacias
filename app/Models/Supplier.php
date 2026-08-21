@@ -27,6 +27,7 @@ class Supplier extends Model
      * @var array<int, string>
      */
     protected $fillable = [
+        'id',
         'name',
         'social_reason',
         'rif',

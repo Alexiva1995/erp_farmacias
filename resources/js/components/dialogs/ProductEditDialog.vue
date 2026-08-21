@@ -234,12 +234,97 @@ watch(
         unit_of_measure: null,
         supplier_ids: [],
         supplier_id: null,
+        master_id: null,
       };
     }
+    masterFound.value = false;
+    masterFoundProduct.value = null;
     imageFile.value = null;
     formErrors.value = {};
   },
   { deep: true, immediate: true },
+);
+
+// --- Búsqueda y Auto-completado con Catálogo Maestro ---
+const isMasterSearching = ref(false);
+const masterFound = ref(false);
+const masterFoundProduct = ref(null);
+let barcodeSearchTimer = null;
+
+const checkBarcodeMasterCatalog = async (barcode) => {
+  if (!barcode || barcode.trim().length < 5 || !isNewProduct.value) {
+    masterFound.value = false;
+    masterFoundProduct.value = null;
+    return;
+  }
+
+  isMasterSearching.value = true;
+  try {
+    const { data } = await axios.get("/catalog/master-lookup", {
+      params: { barcode: barcode.trim() },
+    });
+
+    if (data?.found_in_master && data?.product) {
+      masterFound.value = true;
+      masterFoundProduct.value = data.product;
+
+      // Auto-completar datos si aún no están llenos
+      if (!formData.value.name) formData.value.name = data.product.name;
+      if (!formData.value.active_ingredient && data.product.active_ingredient) {
+        formData.value.active_ingredient = data.product.active_ingredient;
+      }
+      if (data.product.laboratory_id && !formData.value.laboratory_id) {
+        const matchedLab = props.laboratories.find(
+          (l) =>
+            l.id === data.product.laboratory_id ||
+            l.name?.toLowerCase() === data.product.laboratory_name?.toLowerCase()
+        );
+        if (matchedLab) {
+          formData.value.laboratory_id = matchedLab.id;
+        }
+      }
+      if (data.product.category_id && !formData.value.category_id) {
+        const matchedCat = props.categories.find(
+          (c) =>
+            c.id === data.product.category_id ||
+            c.name?.toLowerCase() === data.product.category_name?.toLowerCase()
+        );
+        if (matchedCat) {
+          formData.value.category_id = matchedCat.id;
+        }
+      }
+      if (data.product.origin_id && !formData.value.origin_id) {
+        formData.value.origin_id = data.product.origin_id;
+      }
+
+      // Guardar el ID oficial del catálogo maestro
+      formData.value.master_id = data.product.id;
+
+      toast.info(
+        `Producto homologado encontrado en el Catálogo Maestro (ID #${data.product.id})`
+      );
+    } else {
+      masterFound.value = false;
+      masterFoundProduct.value = null;
+      formData.value.master_id = null;
+    }
+  } catch (error) {
+    masterFound.value = false;
+    masterFoundProduct.value = null;
+  } finally {
+    isMasterSearching.value = false;
+  }
+};
+
+watch(
+  () => formData.value.barcode,
+  (newBarcode) => {
+    if (!isNewProduct.value) return;
+    if (barcodeSearchTimer) clearTimeout(barcodeSearchTimer);
+    barcodeSearchTimer = setTimeout(() => {
+      checkBarcodeMasterCatalog(newBarcode);
+    }, 450);
+  }
 );
 
 const groups = ref([]);
@@ -540,11 +625,25 @@ const submitForm = () => {
                           placeholder="Código de Barras (SCAN O MANUAL)"
                           variant="outlined"
                           density="comfortable"
+                          :loading="isMasterSearching"
                           :error-messages="formErrors.barcode"
                           prepend-inner-icon="tabler-barcode"
                           class="rounded-lg font-weight-black"
                           hide-details="auto"
-                        />
+                        >
+                          <template #append-inner v-if="masterFound">
+                            <VChip
+                              size="x-small"
+                              color="success"
+                              variant="elevated"
+                              class="font-weight-bold cursor-pointer"
+                              title="Producto homologado en el Catálogo Maestro"
+                            >
+                              <VIcon start size="13" icon="tabler-cloud-check" />
+                              ID #{{ masterFoundProduct?.id }}
+                            </VChip>
+                          </template>
+                        </AppTextField>
                       </VCol>
 
                       <!-- Principio Activo -->

@@ -26,6 +26,18 @@ class SupplierActionService
      */
     public function createSupplier(array $validatedData): Supplier
     {
+        if (config('catalog.role') === 'slave') {
+            try {
+                $masterClient = app(\App\Services\Catalog\MasterCatalogClientService::class);
+                $masterSupplier = $masterClient->registerSupplierInMaster($validatedData);
+                if (!empty($masterSupplier['id'])) {
+                    $validatedData['id'] = (int) $masterSupplier['id'];
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('No se pudo sincronizar proveedor con Master Catalog: ' . $e->getMessage());
+            }
+        }
+
         return $this->supplierRepository->create($validatedData);
     }
 

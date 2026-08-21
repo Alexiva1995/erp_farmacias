@@ -15,6 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->append(\App\Http\Middleware\FixPaginationLimit::class);
         $middleware->alias([
             'module' => \App\Http\Middleware\CheckModule::class,
+            'master_catalog' => \App\Http\Middleware\VerifyMasterCatalogToken::class,
         ]);
 
         $middleware->group('api', [

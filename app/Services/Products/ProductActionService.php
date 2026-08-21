@@ -101,12 +101,23 @@ class ProductActionService
             unset($validatedData['supplier_id']);
         }
 
-        // Extraer variantes antes de guardar
-        $variantsData = request()->input('variants') ? json_decode(request()->input('variants'), true) : [];
+        $masterId = $validatedData['master_id'] ?? null;
+        if (isset($validatedData['master_id'])) {
+            unset($validatedData['master_id']);
+        }
 
-        $initialStock = (float)($validatedData['initial_stock'] ?? 0);
-        if (isset($validatedData['initial_stock'])) {
-            unset($validatedData['initial_stock']);
+        if (!empty($masterId)) {
+            $validatedData['id'] = (int) $masterId;
+        } elseif (config('catalog.role') === 'slave') {
+            try {
+                $masterClient = app(\App\Services\Catalog\MasterCatalogClientService::class);
+                $masterProduct = $masterClient->registerProductInMaster($validatedData);
+                if (!empty($masterProduct['id'])) {
+                    $validatedData['id'] = (int) $masterProduct['id'];
+                }
+            } catch (\Throwable $e) {
+                Log::warning('No se pudo sincronizar ID con Master Catalog: ' . $e->getMessage());
+            }
         }
 
         $product = Product::create($validatedData);

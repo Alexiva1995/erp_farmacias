@@ -18,6 +18,7 @@ class Origin extends Authenticatable
      * @var list<string>
      */
     protected $fillable = [
+        'id',
         'name',
     ];
 
