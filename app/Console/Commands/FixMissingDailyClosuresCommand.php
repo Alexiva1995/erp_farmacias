@@ -19,7 +19,7 @@ class FixMissingDailyClosuresCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'app:fix-missing-daily-closures {--date= : Fecha específica en formato YYYY-MM-DD} {--sync-dates : Reajusta las fechas de los cierres diarios creados para que coincidan con la fecha real de sus cajas}';
+    protected $signature = 'app:fix-missing-daily-closures {--date= : Fecha específica en formato YYYY-MM-DD} {--sync-dates : Reajusta las fechas de los cierres diarios creados para que coincidan con la fecha real de sus cajas} {--rebuild-all : Desvincula y recalcula todas las cajas según su fecha real de órdenes y regenera los cierres diarios}';
 
     /**
      * The console command description.
@@ -35,7 +35,52 @@ class FixMissingDailyClosuresCommand extends Command
     {
         $specificDate = $this->option('date');
         $syncDates = $this->option('sync-dates');
+        $rebuildAll = $this->option('rebuild-all');
         $cashClosureService = app(CashClosureActionService::class);
+
+        // Si se pasa la bandera --rebuild-all, recalcular y reconstruir todo limpiamente
+        if ($rebuildAll) {
+            $this->info('Iniciando reconstrucción completa de cajas y cierres diarios...');
+            DB::beginTransaction();
+            try {
+                // 1. Desvincular todas las cajas y vaciar cierres diarios
+                DB::table('cash_closing')->update(['daily_closure_id' => null]);
+                DB::table('daily_closures')->delete();
+
+                // 2. Corregir fechas reales de cada caja según sus órdenes
+                $allBoxes = CashClosing::all();
+                foreach ($allBoxes as $box) {
+                    $latestOrder = $box->orders()->where('status', 'Completed')->orderByDesc('created_at')->first();
+                    if ($latestOrder && $latestOrder->created_at) {
+                        $realDate = Carbon::parse($latestOrder->created_at)->toDateString();
+                        $box->closing_date = $realDate;
+                        $box->save();
+                    }
+                }
+
+                // 3. Limpiar valores corruptos conocidos
+                DB::table('cash_closing')->where('id', 2)->update([
+                    'cop_delivered' => 0.00,
+                    'cop_cash_payment_credit' => 0.00,
+                    'cop_conversion_payment_credit' => 0.00,
+                ]);
+
+                // 4. Redondear entrega COP en caja 5 si corresponde a vuelto de 47.000
+                $box5 = CashClosing::find(5);
+                if ($box5 && $box5->total_cop == 47000) {
+                    $box5->cop_cash = 47000.00;
+                    $box5->cop_delivered = 47000.00;
+                    $box5->save();
+                }
+
+                DB::commit();
+                $this->info('✓ Cajas ajustadas con sus fechas reales y valores saneados.');
+            } catch (\Exception $e) {
+                DB::rollBack();
+                $this->error('Error durante la preparación: ' . $e->getMessage());
+                return Command::FAILURE;
+            }
+        }
 
         // Si se pasa la bandera --sync-dates, corregir las fechas de los daily_closures ya creados
         if ($syncDates) {
