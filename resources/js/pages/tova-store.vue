@@ -890,11 +890,11 @@ onMounted(async () => {
       </div>
     </section>
 
-    <!-- 2. NUESTROS FAVORITOS - DESLIZADOR HORIZONTAL EXCLUSIVO (ESTILO FENTY - ORIGINALMENTE EN MEDIO DE LAS HÍBRIDAS) -->
+    <!-- 2. ICONIC PICKS - DESLIZADOR HORIZONTAL EXCLUSIVO (ESTILO FENTY - ORIGINALMENTE EN MEDIO DE LAS HÍBRIDAS) -->
     <section v-if="favoriteProducts.length" class="editorial-products-section favorites-section-wrap" style="border-top: 1px solid var(--editorial-border); border-bottom: 1px solid var(--editorial-border); background-color: var(--editorial-white);">
       <div class="catalog-header-editorial favorites-header-editorial">
         <div style="display: flex; align-items: baseline; gap: 30px; flex-wrap: wrap;">
-          <h2 class="editorial-title-serif" style="margin: 0; font-size: 24px; letter-spacing: 2px;">NUESTROS FAVORITOS</h2>
+          <h2 class="editorial-title-serif" style="margin: 0; font-size: 24px; letter-spacing: 2px;">ICONIC PICKS</h2>
         </div>
         <div class="fenty-carousel-controls" style="display: flex; gap: 12px;">
           <button class="carousel-control-circle-btn" @click="scrollCarousel('left')" title="Desplazar a la izquierda">
