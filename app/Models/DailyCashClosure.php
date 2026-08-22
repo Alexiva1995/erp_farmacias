@@ -40,6 +40,8 @@ class DailyCashClosure extends Model
         'total_credits',
         'total_payment_credit',
         'total_delivery',
+        'created_at',
+        'updated_at',
     ];
 
     protected $appends = ['total_bs_in_usd', 'total_cop_in_usd', 'exchange_rate', 'cop_exchange_rate'];

@@ -19,7 +19,7 @@ class FixMissingDailyClosuresCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'app:fix-missing-daily-closures {--date= : Fecha específica en formato YYYY-MM-DD}';
+    protected $signature = 'app:fix-missing-daily-closures {--date= : Fecha específica en formato YYYY-MM-DD} {--sync-dates : Reajusta las fechas de los cierres diarios creados para que coincidan con la fecha real de sus cajas}';
 
     /**
      * The console command description.
@@ -34,7 +34,32 @@ class FixMissingDailyClosuresCommand extends Command
     public function handle(): int
     {
         $specificDate = $this->option('date');
+        $syncDates = $this->option('sync-dates');
         $cashClosureService = app(CashClosureActionService::class);
+
+        // Si se pasa la bandera --sync-dates, corregir las fechas de los daily_closures ya creados
+        if ($syncDates) {
+            $this->info('Sincronizando fechas de cierres diarios existentes con sus cajas asociadas...');
+            $closures = DailyCashClosure::with('cashClosings')->get();
+            $synced = 0;
+
+            foreach ($closures as $dc) {
+                $firstBox = $dc->cashClosings->first();
+                if ($firstBox && $firstBox->closing_date) {
+                    $boxDate = Carbon::parse($firstBox->closing_date)->format('Y-m-d') . ' 23:59:59';
+                    DB::table('daily_closures')
+                        ->where('id', $dc->id)
+                        ->update([
+                            'created_at' => $boxDate,
+                            'updated_at' => $boxDate,
+                        ]);
+                    $synced++;
+                }
+            }
+
+            $this->info("✓ Se corrigieron las fechas de {$synced} cierre(s) diario(s).");
+            return Command::SUCCESS;
+        }
 
         $this->info('Iniciando verificación de cierres diarios pendientes...');
 
@@ -80,7 +105,9 @@ class FixMissingDailyClosuresCommand extends Command
                 $totalCopDeliveryInUsd = $dailyCashClosureInstance->getTotalCopDeliveryInUsd($cashClosings);
                 $totalBsDeliveryInUsd = $dailyCashClosureInstance->getTotalBsDeliveryInUsd($cashClosings);
 
-                $dailyClosure = DailyCashClosure::create([
+                $targetTimestamp = Carbon::parse($day . ' 23:59:59')->toDateTimeString();
+
+                $dailyClosure = new DailyCashClosure([
                     'total_sales'          => $cashClosings->sum('total_sales'),
                     'total_usd'            => $cashClosings->sum('total_usd'),
                     'total_cop'            => $cashClosings->sum('total_cop'),
@@ -104,14 +131,19 @@ class FixMissingDailyClosuresCommand extends Command
                     'total_credits'        => $cashClosings->sum('usd_credit'),
                     'total_payment_credit' => $cashClosings->sum('usd_transfer_payment_credit') + $cashClosings->sum('usd_cash_payment_credit') + $cashClosings->sum('usd_paypal_payment_credit') + $cashClosings->sum('usd_binance_payment_credit') + $totalCopPaymentInUsd + $totalBsPaymentInUsd,
                     'total_delivery'       => $totalCopDeliveryInUsd + $cashClosings->sum('usd_delivered') + $cashClosings->sum('usd_transfer') + $cashClosings->sum('usd_paypal') + $cashClosings->sum('usd_binance') + $totalBsDeliveryInUsd,
-                    'created_at'           => Carbon::parse($day . ' 23:59:59'),
                 ]);
+
+                // Desactivar timestamps automáticos de Eloquent para preservar la fecha retroactiva exacta
+                $dailyClosure->timestamps = false;
+                $dailyClosure->created_at = $targetTimestamp;
+                $dailyClosure->updated_at = $targetTimestamp;
+                $dailyClosure->save();
 
                 foreach ($cashClosings as $cashClosing) {
                     $cashClosing->update([
                         'status'           => CashClosing::CLOSED,
                         'daily_closure_id' => $dailyClosure->id,
-                        'closing_date'     => $cashClosing->closing_date ?? Carbon::parse($day . ' 23:59:59'),
+                        'closing_date'     => $cashClosing->closing_date ?? $targetTimestamp,
                     ]);
 
                     $cashClosureService->generateClosingTransactions($cashClosing);
