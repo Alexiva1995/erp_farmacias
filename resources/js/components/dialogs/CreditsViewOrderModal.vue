@@ -451,9 +451,6 @@ watch([filterClient, filterDate, filterCurrency], () => {
               <div class="header-indicator success"></div>
               <span class="text-xs font-weight-black text-success uppercase letter-spacing-1">Historial de Pagos Recibidos</span>
             </div>
-            <VChip color="success" size="small" variant="flat" class="font-weight-black shadow-sm">
-              TOTAL PAGADO: {{ formatCurrency(totalPaidUSD, "USD") }}
-            </VChip>
           </div>
 
           <!-- Filtros de Pagos -->
