@@ -102,6 +102,11 @@ class CashClosing extends Model
         return $this->hasMany(Order::class, 'cash_closing_id');
     }
 
+    public function creditPayments()
+    {
+        return $this->hasMany(CreditPayment::class, 'cash_closing_id');
+    }
+
       public function dailyClosure()
     {
         return $this->belongsTo(DailyCashClosure::class);

@@ -272,7 +272,7 @@ const downloadReport = async () => {
     const fullHtml = `<html><head><meta charset="UTF-8"><style>${ticketStyles}</style></head><body>${htmlContent}</body></html>`;
     const params = { html_content: fullHtml, filename: "Resumen_Cajas_Diario" };
     const response = await axios.post("/finances/cash-closure/downloadReport", params, { responseType: "blob" });
-    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const url = window.URL.createObjectURL(new Blob([response.data], { type: "application/pdf" }));
     const link = document.createElement("a");
     link.href = url;
     link.setAttribute("download", "CierreDiario.pdf");

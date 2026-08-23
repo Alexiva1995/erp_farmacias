@@ -911,6 +911,7 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
             Route::patch('/confirm-reference', [CashClosureController::class, 'confirmReference']);
             Route::patch('/update-blind-amounts', [CashClosureController::class, 'updateBlindAmounts']);
             Route::post('/mismatches/accept', [\App\Http\Controllers\Api\Finance\MismatchManagementController::class, 'acceptMismatch']);
+            Route::get('/download-pdf/{id}', [CashClosureController::class, 'downloadDirectPdf']);
             Route::get('/{id}', [CashClosureController::class, 'show']);
         });
 

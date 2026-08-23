@@ -58,53 +58,89 @@ export function useCashClosurePrint() {
   const isDownload = ref(false);
   const isDownloadingPdf = ref(false);
   const isPrinting = ref(false);
+  const downloadingCashId = ref(null);
   const cashData = ref(null);
   const orderDataHistory = ref(null);
   const isDownloadCashDataSellers = ref(false);
   const monthlyCashDataSellers = ref(null);
 
+  /**
+   * Sanitiza el HTML capturado del DOM para compatibilidad con DomPDF.
+   * DomPDF usa motor CSS 2.1 y no soporta propiedades lógicas ni valores lógicos.
+   */
+  const sanitizeHtmlForDompdf = (html) => {
+    return html
+      // Propiedades de dimensión lógicas
+      .replace(/inline-size/g, 'width')
+      .replace(/block-size/g, 'height')
+      .replace(/min-inline-size/g, 'min-width')
+      .replace(/max-inline-size/g, 'max-width')
+      .replace(/min-block-size/g, 'min-height')
+      .replace(/max-block-size/g, 'max-height')
+      // Márgenes lógicos (orden importa: más específicos primero)
+      .replace(/margin-block-start/g, 'margin-top')
+      .replace(/margin-block-end/g, 'margin-bottom')
+      .replace(/margin-block/g, 'margin-top')
+      .replace(/margin-inline-start/g, 'margin-left')
+      .replace(/margin-inline-end/g, 'margin-right')
+      .replace(/margin-inline/g, 'margin-left')
+      // Padding lógico
+      .replace(/padding-block-start/g, 'padding-top')
+      .replace(/padding-block-end/g, 'padding-bottom')
+      .replace(/padding-block/g, 'padding-top')
+      .replace(/padding-inline-start/g, 'padding-left')
+      .replace(/padding-inline-end/g, 'padding-right')
+      .replace(/padding-inline/g, 'padding-left')
+      // Bordes lógicos
+      .replace(/border-block-start/g, 'border-top')
+      .replace(/border-block-end/g, 'border-bottom')
+      .replace(/border-block/g, 'border-top')
+      .replace(/border-inline-start/g, 'border-left')
+      .replace(/border-inline-end/g, 'border-right')
+      .replace(/border-inline/g, 'border-left')
+      // Valores lógicos de text-align (DomPDF no soporta start/end)
+      .replace(/text-align:\s*start/g, 'text-align: left')
+      .replace(/text-align:\s*end/g, 'text-align: right');
+  };
+
+  /** Estilos específicos para reportes de cierre de caja (tamaño A4) */
+  const reportStyles = `
+    @page { margin: 10mm; size: A4; }
+    body { margin: 0; padding: 0; background: #fff; font-family: Helvetica, Arial, sans-serif; font-size: 12px; color: #333; }
+    * { box-sizing: border-box; }
+    table { width: 100% !important; border-collapse: collapse; }
+    .v-card--variant-outlined { border: none !important; }
+    .v-card { box-shadow: none !important; border: none !important; background: transparent !important; display: block !important; }
+    div, span, p, h1, h2, h3, h4, td, th { display: revert; }
+  `;
+
   const downloadcash = async (cash) => {
     try {
-      toast.info("Obteniendo detalles del cierre de caja...");
-      const detailsResponse = await axios.get(`/finances/cash-closure/${cash.id}`);
-      const cashDetailed = detailsResponse.data.data;
+      downloadingCashId.value = cash.id;
+      toast.info("Generando reporte de cierre...");
 
-      orderDataHistory.value = cashDetailed.orders;
-      cashData.value = cashDetailed;
-      isDownload.value = true;
-      await nextTick();
-
-      const printContents = document.getElementById("HistoryDownload");
-      if (!printContents) {
-        toast.error("Hubo un error al generar el PDF. Contenido no disponible.");
-        return;
-      }
-      const htmlContent = printContents.innerHTML;
-
-      const response = await axios.post(
-        "/finances/cash-closure/generate-pdf",
-        {
-          html: `<style>${ticketStyles}</style>${htmlContent}`,
-          filename: `historico-${cashDetailed.id}.pdf`,
-        },
+      const response = await axios.get(
+        `/finances/cash-closure/download-pdf/${cash.id}`,
         { responseType: "blob" }
       );
-      const url = window.URL.createObjectURL(new Blob([response.data]));
+
+      const blob = new Blob([response.data], { type: "application/pdf" });
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.setAttribute("download", `Cierre-Caja-${cashDetailed.id}.pdf`);
+      link.setAttribute("download", `Cierre-Caja-${cash.id}.pdf`);
       document.body.appendChild(link);
       link.click();
       link.remove();
-      window.URL.revokeObjectURL(url);
-      toast.success("PDF generado y descargado con éxito.");
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+      }, 1000);
+      toast.success("PDF descargado con éxito.");
     } catch (error) {
       console.error("Error al descargar el PDF:", error);
       toast.error("Hubo un error al generar y descargar el PDF.");
     } finally {
-      isDownload.value = false;
-      orderDataHistory.value = null;
-      cashData.value = null;
+      downloadingCashId.value = null;
     }
   };
 
@@ -179,22 +215,26 @@ export function useCashClosurePrint() {
         toast.error("Hubo un error al generar el PDF. Contenido no disponible.");
         return;
       }
-      const htmlContent = printContents.innerHTML;
+      const rawHtml = printContents.innerHTML;
+      const htmlContent = sanitizeHtmlForDompdf(rawHtml);
 
       const params = {
-        html_content: `<style>${ticketStyles}</style>${htmlContent}`,
+        html_content: `<!DOCTYPE html><html><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"/><style>${reportStyles}</style></head><body>${htmlContent}</body></html>`,
         filename: "Cierre de caja",
       };
 
       const response = await axios.post("/finances/cash-closure/downloadReport", params, { responseType: "blob" });
-      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const blob = new Blob([response.data], { type: "application/pdf" });
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
       link.setAttribute("download", "CierreCaja.pdf");
       document.body.appendChild(link);
       link.click();
       link.remove();
-      window.URL.revokeObjectURL(url);
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+      }, 1000);
       toast.success("PDF generado y descargado con éxito.");
     } catch (error) {
       console.error("Error al obtener los detalles del cierre por vendedor:", error);
@@ -209,6 +249,7 @@ export function useCashClosurePrint() {
     isDownload,
     isDownloadingPdf,
     isPrinting,
+    downloadingCashId,
     cashData,
     orderDataHistory,
     isDownloadCashDataSellers,

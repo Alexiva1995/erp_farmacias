@@ -248,44 +248,74 @@ const ticketStyles = `
 .mb-2 { margin-bottom: 8px; }
 .tbody-bordered { border: 1px solid #dfdfdff9; background-color: #f9f8f8; }`;
 
+/** Estilos para reporte PDF A4 */
+const reportStyles = `
+  @page { margin: 10mm; size: A4; }
+  body { margin: 0; padding: 0; background: #fff; font-family: Helvetica, Arial, sans-serif; font-size: 12px; color: #333; }
+  * { box-sizing: border-box; }
+  table { width: 100% !important; border-collapse: collapse; }
+  .v-card--variant-outlined { border: none !important; }
+  .v-card { box-shadow: none !important; border: none !important; background: transparent !important; display: block !important; }
+  div, span, p, h1, h2, h3, h4, td, th { display: revert; }
+`;
+
+/**
+ * Sanitiza propiedades CSS lógicas a físicas para compatibilidad con DomPDF (CSS 2.1)
+ */
+const sanitizeHtmlForDompdf = (html) => {
+  return html
+    .replace(/inline-size/g, 'width')
+    .replace(/block-size/g, 'height')
+    .replace(/min-inline-size/g, 'min-width')
+    .replace(/max-inline-size/g, 'max-width')
+    .replace(/min-block-size/g, 'min-height')
+    .replace(/max-block-size/g, 'max-height')
+    .replace(/margin-block-start/g, 'margin-top')
+    .replace(/margin-block-end/g, 'margin-bottom')
+    .replace(/margin-block/g, 'margin-top')
+    .replace(/margin-inline-start/g, 'margin-left')
+    .replace(/margin-inline-end/g, 'margin-right')
+    .replace(/margin-inline/g, 'margin-left')
+    .replace(/padding-block-start/g, 'padding-top')
+    .replace(/padding-block-end/g, 'padding-bottom')
+    .replace(/padding-block/g, 'padding-top')
+    .replace(/padding-inline-start/g, 'padding-left')
+    .replace(/padding-inline-end/g, 'padding-right')
+    .replace(/padding-inline/g, 'padding-left')
+    .replace(/border-block-start/g, 'border-top')
+    .replace(/border-block-end/g, 'border-bottom')
+    .replace(/border-block/g, 'border-top')
+    .replace(/border-inline-start/g, 'border-left')
+    .replace(/border-inline-end/g, 'border-right')
+    .replace(/border-inline/g, 'border-left')
+    .replace(/text-align:\s*start/g, 'text-align: left')
+    .replace(/text-align:\s*end/g, 'text-align: right');
+};
+
 const downloadcash = async (cash) => {
   try {
-    orderDataHistory.value = cash.orders;
-    cashData.value = cash;
-    isDownload.value = true;
-    await nextTick();
-    const printContents = document.getElementById("HistoryDownload");
-    if (!printContents) {
-      console.error("Elemento 'HistoryDownload' no encontrado.");
-      toast.error("Hubo un error al generar el PDF. Contenido no disponible.");
-      return;
-    }
-    const htmlContent = printContents.innerHTML;
+    toast.info("Generando reporte de cierre...");
 
-    const response = await axios.post(
-      "/finances/cash-closure/generate-pdf",
-      {
-        html: `<style>${ticketStyles}</style>${htmlContent}`,
-        filename: `historico-${cash.id}.pdf`,
-      },
+    const response = await axios.get(
+      `/finances/cash-closure/download-pdf/${cash.id}`,
       { responseType: "blob" }
     );
-    const url = window.URL.createObjectURL(new Blob([response.data]));
+
+    const blob = new Blob([response.data], { type: "application/pdf" });
+    const url = window.URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
     link.setAttribute("download", `Cierre-Caja-${cash.id}.pdf`);
     document.body.appendChild(link);
     link.click();
     link.remove();
-    window.URL.revokeObjectURL(url);
-    toast.success("PDF generado y descargado con éxito.");
+    setTimeout(() => {
+      window.URL.revokeObjectURL(url);
+    }, 1000);
+    toast.success("PDF descargado con éxito.");
   } catch (error) {
     console.error("Error al descargar el PDF:", error);
     toast.error("Hubo un error al generar y descargar el PDF.");
-  } finally {
-    isDownload.value = false;
-    orderDataHistory.value = null;
-    cashData.value = null;
   }
 };
 

@@ -92,6 +92,10 @@ const processQueue = (error, token = null) => {
 // Interceptor de respuesta
 axiosInstance.interceptors.response.use(
   (response) => {
+    // Si la respuesta es un Blob o ArrayBuffer (descargas de PDF, Excel, imágenes), no transformarla
+    if (response.data instanceof Blob || response.data instanceof ArrayBuffer) {
+      return response;
+    }
     const isMiniMarket = localStorage.getItem('business_type') === 'minimarket';
     if (isMiniMarket && response.data) {
       response.data = roundQuantitiesAndStock(response.data);

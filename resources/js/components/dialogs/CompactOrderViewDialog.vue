@@ -160,11 +160,6 @@ const activeDiscount = computed(() => {
                    <span class="text-xs font-weight-bold text-error">- {{ formatCurrency(activeDiscount.amount, selectedCurrency) }}</span>
                 </div>
                 
-                <div v-if="changeAmount" class="d-flex justify-space-between align-center">
-                   <span class="text-super-xs font-weight-black text-disabled uppercase">Cambio Entregado</span>
-                   <span class="text-xs font-weight-bold text-success">{{ formatCurrency(changeAmount, "COP") }}</span>
-                </div>
-
                 <div v-if="creditAmount" class="d-flex justify-space-between align-center">
                    <span class="text-super-xs font-weight-black text-disabled uppercase">Crédito</span>
                    <span class="text-xs font-weight-bold text-primary">{{ formatCurrency(creditAmount, selectedCurrency) }}</span>

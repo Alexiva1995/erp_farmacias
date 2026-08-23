@@ -8,7 +8,8 @@ const props = defineProps({
   totalSellerCash: { type: Number, required: true },
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
-  tpvPaymentMethods: { type: Object, default: () => ({ COP: [], USD: [], BS: [] }) }
+  tpvPaymentMethods: { type: Object, default: () => ({ COP: [], USD: [], BS: [] }) },
+  downloadingCashId: { type: [Number, String], default: null },
 });
 
 const emit = defineEmits(["update:options", "print-cash", "download-cash"]);
@@ -341,6 +342,8 @@ const getAvatarColor = (id) => {
                   variant="text"
                   color="primary"
                   class="rounded-lg"
+                  :loading="props.downloadingCashId === item.id"
+                  :disabled="props.downloadingCashId !== null"
                   @click="emit('download-cash', item)"
                 />
               </template>
@@ -498,6 +501,8 @@ const getAvatarColor = (id) => {
               class="rounded-lg"
               size="40"
               min-width="40"
+              :loading="props.downloadingCashId === item.id"
+              :disabled="props.downloadingCashId !== null"
               @click="emit('download-cash', item)"
             />
           </div>

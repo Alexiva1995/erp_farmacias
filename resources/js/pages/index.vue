@@ -1001,7 +1001,7 @@ onMounted(async () => {
               <div class="form-input-group">
                 <label>DOCUMENTO DE IDENTIDAD *</label>
                 <div style="display: flex; gap: 8px;">
-                  <select v-model="orderForm.customer_document_type" style="width: 80px; padding: 12px; border: 1px solid var(--editorial-border); background-color: var(--editorial-grey-bg); font-size: 13px; font-family: inherit; outline: none; border-radius: 0;">
+                  <select v-model="orderForm.customer_document_type" style="width: 80px; padding: 12px; border: 1px solid var(--editorial-border); background-color: #FFFFFF; color: #1E293B; font-size: 13px; font-family: inherit; font-weight: 600; outline: none; border-radius: 4px;">
                     <option value="V-">V</option>
                     <option value="E-">E</option>
                     <option value="J-">J</option>
@@ -1057,7 +1057,7 @@ onMounted(async () => {
             <!-- Selección de Moneda -->
             <div class="form-input-group" style="margin-bottom: 20px;">
               <label style="font-size: 11px; font-weight: 700; letter-spacing: 1px; margin-bottom: 8px; display: block;">MONEDA DE PAGO *</label>
-              <select v-model="selectedCurrency" style="width: 100%; padding: 12px; border: 1px solid var(--editorial-border); background-color: var(--editorial-grey-bg); font-size: 13px; font-family: inherit; font-weight: 500; outline: none; border-radius: 0;" @change="orderForm.payment_method = ''">
+              <select v-model="selectedCurrency" style="width: 100%; padding: 12px; border: 1px solid var(--editorial-border); background-color: #FFFFFF; color: #1E293B; font-size: 13px; font-family: inherit; font-weight: 600; outline: none; border-radius: 4px;" @change="orderForm.payment_method = ''">
                 <option value="" disabled selected>Seleccione la moneda...</option>
                 <option value="VES">VES - Bolívares</option>
                 <option value="USD">USD - Dólares</option>
@@ -2488,12 +2488,15 @@ onMounted(async () => {
 }
 
 .checkout-editorial-summary {
-  background-color: var(--editorial-grey-bg);
+  background-color: #FFFFFF !important;
+  border: 1px solid #E2E8F0;
+  border-radius: 6px;
   padding: 24px;
   margin-bottom: 30px;
+  color: #1E293B;
 }
 .checkout-section-title {
-  font-size: 11px; font-weight: 700; letter-spacing: 2px; color: var(--editorial-nude-dark); margin-bottom: 16px; border-bottom: 1px solid rgba(0,0,0,0.06); padding-bottom: 8px;
+  font-size: 12px; font-weight: 800; letter-spacing: 2px; color: #1E293B !important; margin-bottom: 16px; border-bottom: 1px solid #E2E8F0; padding-bottom: 8px;
 }
 .checkout-summary-row {
   display: flex; justify-content: space-between; font-size: 13px; padding: 8px 0; border-bottom: 1px solid rgba(0,0,0,0.03);
@@ -2539,20 +2542,41 @@ onMounted(async () => {
 
 /* Selector interactivo de Métodos de Pago */
 .payment-method-card {
-  background-color: var(--editorial-white);
-  border: 1px solid var(--editorial-border);
+  background-color: #FFFFFF !important;
+  border: 1px solid #E2E8F0 !important;
+  color: #1E293B !important;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+  border-radius: 4px;
+  transition: all 0.25s ease;
 }
 .payment-method-card:hover {
-  border-color: var(--editorial-black);
-  background-color: rgba(0, 0, 0, 0.01);
+  border-color: var(--editorial-black) !important;
+  background-color: #F8FAFC !important;
 }
 .payment-method-card.method-selected {
   border-color: var(--editorial-black) !important;
-  background-color: var(--editorial-black) !important;
-  color: var(--editorial-white) !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border-width: 2px !important;
+  background-color: #FFFFFF !important;
+  color: var(--editorial-black) !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+}
+.payment-method-card.method-selected .method-title {
+  color: var(--editorial-black) !important;
+  font-weight: 800 !important;
+}
+
+/* Caja de Detalles de Pago con Fondo Blanco y Borde Nítido */
+.payment-details-box {
+  background-color: #FFFFFF !important;
+  border: 1px solid #E2E8F0 !important;
+  border-left: 4px solid var(--editorial-black) !important;
+  color: #1E293B !important;
+  border-radius: 4px;
+}
+.payment-details-box p, 
+.payment-details-box span, 
+.payment-details-box strong {
+  color: #1E293B !important;
 }
 
 

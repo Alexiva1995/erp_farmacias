@@ -50,7 +50,6 @@ class CashClosureController extends Controller
 
     public function pdf($html)
     {
-
         $html = str_replace(
             ['á', 'é', 'í', 'ó', 'ú', 'ñ', 'Á', 'É', 'Í', 'Ó', 'Ú', 'Ñ', '°'],
             [
@@ -70,9 +69,11 @@ class CashClosureController extends Controller
             ],
             $html
         );
-        $pdf = Pdf::loadHtml($html);
+        $pdf = Pdf::loadHtml($html, 'UTF-8');
         $pdf->setOptions([
-            'encoding' => 'UTF-8'
+            'isRemoteEnabled' => true,
+            'isHtml5ParserEnabled' => true,
+            'defaultFont' => 'DejaVu Sans',
         ]);
         return $pdf;
     }
@@ -80,7 +81,11 @@ class CashClosureController extends Controller
     public function generate(GeneratePdfReportRequest $request)
     {
         $pdf = $this->pdf($request->input('html'));
-        return $pdf->download($request->input('filename'));
+        $filename = $request->input('filename') ?: 'reporte.pdf';
+        return response($pdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
     }
 
     public function closeCash(CloseCashClosureRequest $request)
@@ -178,11 +183,66 @@ class CashClosureController extends Controller
         $cashClosing = \App\Models\CashClosing::with([
             'seller',
             'orders' => function ($query) {
-                $query->where('status', 'Completed')->with('client');
-            }
+                $query->where('status', 'Completed')->with(['client', 'details.product']);
+            },
+            'creditPayments.client',
         ])->findOrFail($id);
 
         return new CashClosingResource($cashClosing);
+    }
+
+    public function downloadDirectPdf(int $id)
+    {
+        $cashClosing = \App\Models\CashClosing::with([
+            'seller',
+            'orders' => function ($query) {
+                $query->where('status', 'Completed')->with(['client', 'details.product']);
+            },
+            'creditPayments.client',
+        ])->findOrFail($id);
+
+        $setting = \App\Models\GeneralSetting::first();
+        $logoBase64 = '';
+
+        if (!empty($setting?->app_logo)) {
+            $rawLogo = $setting->app_logo;
+            if (str_starts_with($rawLogo, 'data:image')) {
+                $logoBase64 = $rawLogo;
+            } else {
+                $cleanPath = ltrim($rawLogo, '/\\');
+                $possiblePaths = [
+                    public_path($cleanPath),
+                    storage_path('app/public/' . preg_replace('#^storage/#', '', $cleanPath)),
+                    public_path('storage/' . preg_replace('#^storage/#', '', $cleanPath)),
+                ];
+                foreach ($possiblePaths as $p) {
+                    if (file_exists($p) && is_file($p)) {
+                        $type = pathinfo($p, PATHINFO_EXTENSION);
+                        $data = file_get_contents($p);
+                        $logoBase64 = 'data:image/' . ($type === 'svg' ? 'svg+xml' : $type) . ';base64,' . base64_encode($data);
+                        break;
+                    }
+                }
+            }
+        }
+
+        $pdf = Pdf::loadView('exports.cash-closure-report', [
+            'cashClosing' => $cashClosing,
+            'setting' => $setting,
+            'logoBase64' => $logoBase64,
+        ])->setPaper('letter', 'portrait')
+          ->setOptions([
+              'isRemoteEnabled' => false,
+              'isHtml5ParserEnabled' => true,
+              'defaultFont' => 'DejaVu Sans',
+          ]);
+
+        $filename = "Cierre-Caja-{$cashClosing->id}.pdf";
+
+        return response($pdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
     }
 
     public function getmonthlyCashclosing(Request $request)
@@ -198,14 +258,20 @@ class CashClosureController extends Controller
     {
         $filename = $request->input('filename') . now()->format('Y_m_d_His') . '.pdf';
         $pdf = $this->pdf($request->input('html_content'));
-        return $pdf->download($filename);
+        return response($pdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
     }
 
     public function printdReport(Request $request)
     {
         $filename = $request->input('filename') . now()->format('Y_m_d_His') . '.pdf';
         $pdf = $this->pdf($request->input('html_content'));
-        return $pdf->stream($filename);
+        return response($pdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . $filename . '"',
+        ]);
     }
 
     public function getmonthlyCashclosingAllSellers(Request $request)

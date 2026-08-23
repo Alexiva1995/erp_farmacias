@@ -128,6 +128,8 @@ declare module 'vue' {
     CycleSummaryTable: typeof import('./resources/js/components/CycleSummaryTable.vue')['default']
     DailyCashClosingTable: typeof import('./resources/js/components/DailyCashClosingTable.vue')['default']
     DailyCashModal: typeof import('./resources/js/components/dialogs/DailyCashModal.vue')['default']
+    DailyCashReportTemplate: typeof import('./resources/js/components/dialogs/DailyCashReportTemplate.vue')['default']
+    DailyCashSellerTable: typeof import('./resources/js/components/dialogs/DailyCashSellerTable.vue')['default']
     DashboardLeaderStats: typeof import('./resources/js/components/dashboard/DashboardLeaderStats.vue')['default']
     DashboardLoadedInvoices: typeof import('./resources/js/components/dashboard/DashboardLoadedInvoices.vue')['default']
     DashboardRecentSummaryCards: typeof import('./resources/js/components/dashboard/DashboardRecentSummaryCards.vue')['default']

@@ -74,6 +74,34 @@ class CashClosingResource extends JsonResource
                     'payment_methods' => is_string($order->payment_methods) 
                         ? json_decode($order->payment_methods, true) 
                         : ($order->payment_methods ?? []),
+                    'details' => $order->relationLoaded('details') ? $order->details->map(function($detail) {
+                        return [
+                            'id' => $detail->id,
+                            'product_id' => $detail->product_id,
+                            'quantity' => $detail->quantity,
+                            'price' => (float)$detail->price,
+                            'product' => $detail->relationLoaded('product') && $detail->product ? [
+                                'id' => $detail->product->id,
+                                'name' => $detail->product->name,
+                            ] : null,
+                        ];
+                    }) : [],
+                ];
+            }) : [],
+            'credit_payments' => $this->relationLoaded('creditPayments') ? $this->creditPayments->map(function($payment) {
+                return [
+                    'id' => $payment->id,
+                    'client_id' => $payment->client_id,
+                    'money_returns' => (float)$payment->money_returns,
+                    'payment_date' => $payment->payment_date,
+                    'method_Payment' => is_string($payment->method_Payment) 
+                        ? json_decode($payment->method_Payment, true) 
+                        : ($payment->method_Payment ?? []),
+                    'client' => $payment->relationLoaded('client') && $payment->client ? [
+                        'id' => $payment->client->id,
+                        'name' => $payment->client->name,
+                        'identification' => $payment->client->identification,
+                    ] : null,
                 ];
             }) : [],
         ];

@@ -403,11 +403,6 @@ const productLineLabel = (product) => {
                   </div>
                 </template>
 
-                <div v-if="changeAmount" class="summary-row">
-                  <span class="summary-label">Cambio Entregado</span>
-                  <span class="summary-value text-success font-weight-black">{{ formatCurrency(changeAmount, "COP") }}</span>
-                </div>
-
                 <VDivider class="my-1 opacity-10" />
 
                 <div class="d-flex align-center justify-space-between pt-0.5">

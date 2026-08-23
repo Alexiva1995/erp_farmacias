@@ -79,6 +79,7 @@ const {
   isDownload,
   isDownloadingPdf,
   isPrinting,
+  downloadingCashId,
   cashData,
   orderDataHistory,
   isDownloadCashDataSellers,
@@ -461,6 +462,7 @@ const closingDaily = async (daily) => {
             :items-per-page="itemsPerPageSellerCash"
             :page="pageSellerCash"
             :tpv-payment-methods="tpvPaymentMethods"
+            :downloading-cash-id="downloadingCashId"
             @update:options="updateTableOptionsSellerCash"
             @print-cash="printCash"
             @download-cash="downloadcash"
