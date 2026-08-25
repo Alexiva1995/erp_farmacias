@@ -65,7 +65,7 @@ class SyncSupplierConfigsCommand extends Command
                 $hostLower = strtolower($connection->host ?? '');
                 $supplierNameLower = strtolower($supplier->name ?? '');
 
-                if ($connection->type === 'api' || str_contains($hostLower, 'cristmedicals') || str_contains($supplierNameLower, 'crist')) {
+                if (str_contains($hostLower, 'cristmedicals') || str_contains($supplierNameLower, 'crist')) {
                     $content = $this->getCristmedicalsTemplate();
                     $this->writeConfigFiles($configsDir, (string) $supplier->id, [
                         'cristalmedicals',

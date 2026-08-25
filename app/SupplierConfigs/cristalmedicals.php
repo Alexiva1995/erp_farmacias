@@ -16,7 +16,6 @@ return [
         ];
     },
     'factura_detalle' => function ($connection, $facturaId) {
-        // Viene anidado en la respuesta de facturas
         return [];
     },
 ];
