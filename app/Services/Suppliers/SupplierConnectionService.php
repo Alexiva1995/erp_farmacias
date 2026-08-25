@@ -173,7 +173,10 @@ class SupplierConnectionService
                 if (@ftp_get($ftp, $tempInvoice, $filePath, FTP_BINARY)) {
                     $filename = pathinfo($filePath, PATHINFO_FILENAME);
                     $invoiceContent = file_get_contents($tempInvoice);
-                    $parsed = $this->invoiceTxtParser($invoiceContent, $connection, $seenInvoiceNumbers, $connection->supplier_id === 2 ? $filename : null);
+                    $isVitalClinic = str_contains(strtolower($connection->host ?? ''), 'vitalclinic')
+                        || str_contains(strtolower($connection->supplier?->name ?? ''), 'vitalclinic')
+                        || in_array($connection->supplier_id, [2, 1009]);
+                    $parsed = $this->invoiceTxtParser($invoiceContent, $connection, $seenInvoiceNumbers, $isVitalClinic ? $filename : null);
 
                     if (!empty($parsed) && !empty($parsed['header'])) {
                         $invoiceResults[] = $parsed;
@@ -209,7 +212,11 @@ class SupplierConnectionService
             $client = (new Browser($connector))->withTimeout(1800.0);
 
             $token = null;
-            if (!empty($connection->username) && !empty($connection->password) && !in_array($connection->supplier_id, [3])) {
+            $isCristmedicals = str_contains(strtolower($connection->host ?? ''), 'cristmedicals')
+                || str_contains(strtolower($connection->supplier?->name ?? ''), 'crist')
+                || in_array($connection->supplier_id, [3, 21, 1002]);
+
+            if (!empty($connection->username) && !empty($connection->password) && !$isCristmedicals) {
                 $loginResponse = Http::post($connection->host, [
                     "usuario" => $connection->username,
                     "clave" => FtpCrypt::decrypt($connection->password),
@@ -798,7 +805,11 @@ class SupplierConnectionService
                     $lineData['product_id'] = $product?->id;
                 }
 
-                if ($connection->supplier_id === 2) {
+                $isVitalClinic = str_contains(strtolower($connection->host ?? ''), 'vitalclinic')
+                    || str_contains(strtolower($connection->supplier?->name ?? ''), 'vitalclinic')
+                    || in_array($connection->supplier_id, [2, 1009]);
+
+                if ($isVitalClinic) {
                     if (isset($header["tax_amount"])) {
                         $header["taxable_base"] = (floatval($header["tax_amount"]) * 100) / 16;
                     }
@@ -823,9 +834,16 @@ class SupplierConnectionService
             // ✅ Variable para guardar el exchange_rate del header actual
             $currentExchangeRate = null;
 
+            $isDronena = str_contains(strtolower($connection->host ?? ''), 'dronena')
+                || str_contains(strtolower($connection->supplier?->name ?? ''), 'dronena')
+                || in_array($connection->supplier_id, [27, 1014]);
+            $isDromega = str_contains(strtolower($connection->host ?? ''), 'dromega')
+                || str_contains(strtolower($connection->supplier?->name ?? ''), 'dromega')
+                || in_array($connection->supplier_id, [9, 15, 38, 1005]);
+
             foreach ($lines as $line) {
                 $cols = explode($separator, $line);
-                if ($connection->supplier_id === 27) {
+                if ($isDronena) {
                     $cols = explode(";", $this->convertLineToCSV($line));
                 }
                 $tipo = trim($cols[0] ?? "");
@@ -839,7 +857,7 @@ class SupplierConnectionService
                         $header[$meta["field"]] = $value;
                     }
 
-                    if ($connection->supplier_id === 27) {
+                    if ($isDronena) {
                         $exchangeRate = floatval($header['exchange_rate'] ?? 0);
                         $totalAmount = floatval($header['total_amount'] ?? 0);
 
@@ -855,12 +873,12 @@ class SupplierConnectionService
                         continue;
                     }
 
-                    if (in_array($connection->supplier_id, [9, 15, 38])) {
+                    if ($isDromega) {
                         $totalUSD = floatval($header["total_usd"] ?? 0);
                         $exchangeRate = floatval($header["exchange_rate"] ?? 0);
                         $currentExchangeRate = $exchangeRate; // ✅ Guardar para las líneas
 
-                        if ($connection->supplier_id !== 9) {
+                        if ($connection->supplier_id !== 9 && $connection->supplier_id !== 1005) {
                             $header["total_amount"] = $totalUSD * $exchangeRate;
                         }
 
@@ -1098,21 +1116,46 @@ class SupplierConnectionService
     public function buildPayload(SupplierConnection $connection, string $endpoint, $extra = null): ?array
     {
         $supplierId = $connection->supplier_id;
-        $configPath = app_path("SupplierConfigs/{$supplierId}.php");
+        $supplier = $connection->supplier ?? \App\Models\Supplier::find($supplierId);
+        $supplierName = strtolower($supplier?->name ?? '');
+        $host = strtolower($connection->host ?? '');
 
-        // Si no existe por ID numérico, buscar por nombre del proveedor normalizado (ej: cristmedicals, cobeca)
-        if (!file_exists($configPath)) {
-            $supplier = $connection->supplier ?? \App\Models\Supplier::find($supplierId);
-            if ($supplier && !empty($supplier->name)) {
-                $slug = \Illuminate\Support\Str::slug($supplier->name, '');
-                $namedConfigPath = app_path("SupplierConfigs/{$slug}.php");
-                if (file_exists($namedConfigPath)) {
-                    $configPath = $namedConfigPath;
-                }
+        $candidates = [
+            app_path("SupplierConfigs/{$supplierId}.php"),
+        ];
+
+        if (!empty($supplierName)) {
+            $candidates[] = app_path("SupplierConfigs/" . \Illuminate\Support\Str::slug($supplierName, '') . ".php");
+            $candidates[] = app_path("SupplierConfigs/" . \Illuminate\Support\Str::slug($supplierName, '_') . ".php");
+            $candidates[] = app_path("SupplierConfigs/" . \Illuminate\Support\Str::slug($supplierName, '-') . ".php");
+        }
+
+        // Aliases por contenido de nombre o host
+        if (str_contains($host, 'cristmedicals') || str_contains($supplierName, 'crist')) {
+            $candidates[] = app_path("SupplierConfigs/cristalmedicals.php");
+            $candidates[] = app_path("SupplierConfigs/cristmedicals.php");
+            $candidates[] = app_path("SupplierConfigs/1002.php");
+            $candidates[] = app_path("SupplierConfigs/3.php");
+            $candidates[] = app_path("SupplierConfigs/21.php");
+        }
+
+        if (str_contains($host, 'cobeca') || str_contains($supplierName, 'mafarta') || str_contains($supplierName, 'cobeca')) {
+            $candidates[] = app_path("SupplierConfigs/cobeca.php");
+            $candidates[] = app_path("SupplierConfigs/mafarta.php");
+            $candidates[] = app_path("SupplierConfigs/drogueriascobeca.php");
+            $candidates[] = app_path("SupplierConfigs/1011.php");
+            $candidates[] = app_path("SupplierConfigs/23.php");
+        }
+
+        $configPath = null;
+        foreach ($candidates as $candidate) {
+            if (file_exists($candidate)) {
+                $configPath = $candidate;
+                break;
             }
         }
 
-        if (!file_exists($configPath)) {
+        if (!$configPath) {
             return null;
         }
 

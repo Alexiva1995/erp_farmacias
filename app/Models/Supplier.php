@@ -168,6 +168,11 @@ class Supplier extends Model
         return $this->hasMany(SupplierDiscount::class);
     }
 
+    public function connection()
+    {
+        return $this->hasOne(SupplierConnection::class);
+    }
+
     public function connections()
     {
         return $this->hasMany(SupplierConnection::class);

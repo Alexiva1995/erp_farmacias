@@ -1292,6 +1292,7 @@ class OrderActionService
             // Usar montos validados: el total de la orden (calculado en servidor) para crédito;
             // los montos por método se validaron en validatePaymentsCoverOrderTotal
             $orderTotal = (float) $orderId->total_amount;
+            $orderCurrency = strtoupper($orderId->currency);
 
             foreach ($request->payments as $payment) {
                 $method = $payment['method'] ?? null;
@@ -1327,7 +1328,13 @@ class OrderActionService
                             $current_cash->bs_card_credit += $amount;
                             break;
                         case 'cash_cop':
-                            $current_cash->cop_cash += $amount;
+                            if ($orderCurrency === 'COP') {
+                                // En ventas en COP se acumula estrictamente el valor neto de la orden ($orderTotal) sin importar el billete ingresado
+                                $copPortion = (count($request->payments) === 1 || $amount >= $orderTotal) ? $orderTotal : min($amount, $orderTotal);
+                                $current_cash->cop_cash += $copPortion;
+                            } else {
+                                $current_cash->cop_cash += $amount;
+                            }
                             break;
                         case 'bank_transfer':
                             $current_cash->cop_transfer += $amount;
@@ -1340,14 +1347,13 @@ class OrderActionService
             }
 
 
-            // Descontar el vuelto entregado en efectivo para registrar únicamente el neto ingresado en caja
-            $orderCurrency = strtoupper($orderId->currency);
+            // Descontar el vuelto entregado en efectivo para registrar únicamente el neto ingresado en caja en otras monedas
             $moneyReturns = (float) ($orderId->money_returns ?? 0);
             $changeAmountUSD = (float) ($request->changeAmountUSD ?? 0);
 
             if ($moneyReturns > 0 || $changeAmountUSD > 0) {
                 if ($orderCurrency === 'COP') {
-                    $current_cash->cop_cash -= $moneyReturns;
+                    // Para ventas en COP ya se acumuló el valor neto directo de la compra en cop_cash
                 } elseif ($orderCurrency === 'BS') {
                     $current_cash->bs_cash -= $moneyReturns;
                 } elseif ($orderCurrency === 'USD') {
@@ -1648,7 +1654,11 @@ class OrderActionService
                             $cashClosing->bs_card_credit -= $amount;
                             break;
                         case 'cash_cop':
-                            if (isset($order->money_returns) && $order->money_returns > 0.0) {
+                            $orderCurr = strtoupper($order->currency ?? '');
+                            if ($orderCurr === 'COP') {
+                                $copPortion = (count($order->payment_methods ?? []) === 1 || $amount >= (float)$order->total_amount) ? (float)$order->total_amount : min($amount, (float)$order->total_amount);
+                                $cashClosing->cop_cash -= $copPortion;
+                            } elseif (isset($order->money_returns) && $order->money_returns > 0.0) {
                                 // Si se dio vuelto en pesos, el monto neto cobrado en COP es el pago - vuelto
                                 $montoDescCOP = $amount - $order->money_returns;
                                 $cashClosing->cop_cash -= $montoDescCOP;

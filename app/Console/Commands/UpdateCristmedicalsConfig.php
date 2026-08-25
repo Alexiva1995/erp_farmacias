@@ -12,11 +12,15 @@ class UpdateCristmedicalsConfig extends Command
 
     public function handle()
     {
-        // El job usa Supplier id=3, que tiene SupplierConnection con supplier_id=3 (id=13)
-        $connection = SupplierConnection::where('supplier_id', 3)->first();
+        $connection = SupplierConnection::whereHas('supplier', function ($q) {
+            $q->where('name', 'LIKE', '%CRIST%');
+        })->orWhere('host', 'LIKE', '%cristmedicals%')
+          ->orWhere('supplier_id', 1002)
+          ->orWhere('supplier_id', 3)
+          ->first();
 
         if (!$connection) {
-            $this->error('No se encontro la conexion para supplier_id=3 (Cristmedicals)');
+            $this->error('No se encontro la conexion para Cristmedicals.');
             return;
         }
 

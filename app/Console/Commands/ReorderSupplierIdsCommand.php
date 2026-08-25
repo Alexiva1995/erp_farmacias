@@ -221,6 +221,10 @@ class ReorderSupplierIdsCommand extends Command
                 $this->line("8. Ajustando AUTO_INCREMENT a {$nextAutoIncrement}...");
                 DB::statement("ALTER TABLE `suppliers` AUTO_INCREMENT = {$nextAutoIncrement}");
 
+                // 11. Sincronizar archivos de configuración con los nuevos IDs
+                $this->line('9. Sincronizando archivos de configuración en app/SupplierConfigs...');
+                $this->call('suppliers:sync-configs');
+
                 $this->info('>> OPERACIÓN COMPLETADA CON ÉXITO: Todos los IDs de proveedores y dependencias fueron actualizados.');
             }
 
