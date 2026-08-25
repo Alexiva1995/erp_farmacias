@@ -14,8 +14,8 @@ class SaveConnectionConfigRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'type'          => 'required|in:ftp,sftp,http,api',
-            'host'          => 'required|string|max:500',
+            'type'          => 'required|in:ftp,sftp,http,api,dronena_bot',
+            'host'          => 'nullable|string|max:500',
             'port'          => 'nullable|numeric|min:1|max:65535',
             'username'      => 'nullable|string|max:255',
             'password'      => 'nullable|string',

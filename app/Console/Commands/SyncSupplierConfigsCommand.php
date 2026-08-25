@@ -155,7 +155,7 @@ return [
         $hasta = now()->format('Y-m-d');
         return [
             'url' => 'https://apienterprise.cristmedicals.com/api/v1/facturas?co_cli=' . urlencode($co_cli) . '&fec_desde=' . $desde . '&fec_hasta=' . $hasta,
-            'method' => 'post',
+            'method' => 'get',
         ];
     },
     'factura_detalle' => function ($connection, $facturaId) {

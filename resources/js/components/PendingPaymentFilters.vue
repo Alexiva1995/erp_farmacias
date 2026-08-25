@@ -12,6 +12,7 @@ const props = defineProps({
   suppliers:          { type: Array,   default: () => [] },
   loading:            { type: Boolean, default: false },
   isLoadingFilters:   { type: Boolean, default: false },
+  isSyncingDronena:   { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
@@ -22,6 +23,7 @@ const emit = defineEmits([
   "update:showOverdueOnly",
   "clear",
   "refresh",
+  "sync-dronena",
 ]);
 
 const hasAdvancedFilters = computed(() =>
@@ -40,7 +42,20 @@ const hasAdvancedFilters = computed(() =>
   >
     <template #actions-extra>
       <slot name="selection-actions" />
-      
+
+      <VBtn
+        icon
+        variant="tonal"
+        color="info"
+        size="38"
+        class="ml-1"
+        :loading="props.isSyncingDronena"
+        @click="emit('sync-dronena')"
+      >
+        <VIcon icon="tabler-robot" size="20" />
+        <VTooltip activator="parent" location="top">Sincronizar Facturas Dronena</VTooltip>
+      </VBtn>
+
       <VBtn
         icon
         variant="tonal"

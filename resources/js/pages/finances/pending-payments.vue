@@ -5,6 +5,7 @@ import PendingPaymentModal from "@/components/dialogs/PendingPaymentModal.vue";
 import ProcessPaymentModal from "@/components/dialogs/ProcessPaymentModal.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
+import Swal from "sweetalert2";
 import { onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useDisplay } from "vuetify";
@@ -85,7 +86,7 @@ const fetchPendingPayments = async () => {
         allInvoices.push({
           ...invoice,
           supplier_name: group.supplier_name,
-          payment_date: group.payment_date,
+          payment_date: invoice.payment_date || invoice.exp_date || group.payment_date,
           group_id: `${group.supplier_id}_${group.payment_date}`,
           supplier_total_bs: group.total_in_supplier_currency,
           supplier_total_usd: group.total_amount_usd,
@@ -236,6 +237,34 @@ watch(
     fetchPendingPayments();
   },
 );
+
+const isSyncingDronena = ref(false);
+
+const handleSyncDronena = async () => {
+  const result = await Swal.fire({
+    title: "¿Sincronizar Cuentas por Pagar con Dronena?",
+    text: "Se consultará el portal de Dronena para actualizar las fechas de vencimiento, fechas de pago e indexación (FA$) de las facturas.",
+    icon: "info",
+    showCancelButton: true,
+    confirmButtonText: "Sincronizar",
+    cancelButtonText: "Cancelar",
+  });
+
+  if (!result.isConfirmed) return;
+
+  isSyncingDronena.value = true;
+  try {
+    const payload = selectedSupplier.value ? { supplier_id: selectedSupplier.value } : {};
+    const response = await axios.post("/invoices/sync-dronena", payload);
+    toast.success(response.data.message || "Sincronización completada exitosamente.");
+    await fetchPendingPayments();
+  } catch (error) {
+    console.error("Error al sincronizar con Dronena:", error);
+    toast.error(error.response?.data?.message || "Ocurrió un error al sincronizar con Dronena.");
+  } finally {
+    isSyncingDronena.value = false;
+  }
+};
 </script>
 
 <template>
@@ -251,8 +280,10 @@ watch(
         :suppliers="suppliers"
         :loading="loading"
         :is-loading-filters="isLoadingFilters"
+        :is-syncing-dronena="isSyncingDronena"
         @clear="clearFilters"
         @refresh="fetchPendingPayments"
+        @sync-dronena="handleSyncDronena"
         class="mb-0"
       >
         <template #selection-actions>

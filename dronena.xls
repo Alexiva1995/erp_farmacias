@@ -1,0 +1,128 @@
+<html lang='es'><head runat='server'><title></title><link href='http://www.dronena.com/Home/App_Themes/CSS/Impresion.css' rel='stylesheet' type='text/css'/></head><body><div id='header'><div id='HeaderImagen'><img src='http://www.dronena.com/Home/images/LogoPie.png' width='234' height='80' /></div><div class='wraptocenter'><span>ESTADO DE CUENTA</asp:Label></span></div></div><form method="post" action="ImpresionEdoCuentaCli.aspx" id="ctl00">
+<div>
+<input type="hidden" name="__VIEWSTATE" id="
+__VIEWSTATE" value="" />
+</div>
+<div>
+	<table class="bordertable AliDer" cellspacing="0" cellpadding="0" rules="all" border="1" id="GvRptReporte" style="color:#333333;width:100%;border-collapse:collapse;">
+		<tr class="titulocelda alingC" valign="middle" style="color:#2B6191;">
+			<th scope="col">Cliente</th><th scope="col">Tipo</th><th scope="col">Recibo</th><th scope="col">Fecha Movimiento</th><th scope="col">Fecha Vencimiento</th><th scope="col">Fecha Entregada</th><th scope="col">Monto Recibo</th><th scope="col">Monto Retenido</th><th scope="col">Monto ND Referencial</th><th scope="col">Monto Reclamo</th><th scope="col">Saldo</th><th scope="col">Tasa</th><th scope="col">D&#237;as Protecci&#243;n de Tasa</th><th scope="col">Fecha Tope P. de Tasa</th>
+		</tr><tr style="color:#333333;background-color:#F7F6F3;">
+			<td class="center">D719</td><td class="center">FA$</td><td class="center">43101985</td><td class="left">7/8/2026</td><td class="center">15/8/2026</td><td class="center">08/08/2026</td><td>4.328,37</td><td>0,00</td><td>0,00</td><td>0,00</td><td>4.206,28</td><td>756,71</td><td class="center">0</td><td class="center">08/08/2026</td>
+		</tr><tr style="color:#284775;background-color:White;">
+			<td class="center">D719</td><td class="center">FA$</td><td class="center">43103729</td><td class="left">7/8/2026</td><td class="center">15/8/2026</td><td class="center">08/08/2026</td><td>4.024,66</td><td>0,00</td><td>0,00</td><td>0,00</td><td>4.024,66</td><td>756,71</td><td class="center">0</td><td class="center">08/08/2026</td>
+		</tr><tr style="color:#333333;background-color:#F7F6F3;">
+			<td class="center">D719</td><td class="center">FA</td><td class="center">43103730</td><td class="left">7/8/2026</td><td class="center">15/8/2026</td><td class="center">08/08/2026</td><td>168.287,46</td><td>0,00</td><td>6.077,46</td><td>0,00</td><td>168.287,46</td><td>785,07</td><td class="center">7</td><td class="center">15/08/2026</td>
+		</tr><tr style="color:#284775;background-color:White;">
+			<td class="center">D719</td><td class="center">FA$</td><td class="center">42928236</td><td class="left">3/7/2026</td><td class="center">18/8/2026</td><td class="center">04/07/2026</td><td>1.372,29</td><td>0,00</td><td>0,00</td><td>0,00</td><td>1.372,29</td><td>652,97</td><td class="center">0</td><td class="center">04/07/2026</td>
+		</tr><tr style="color:#333333;background-color:#F7F6F3;">
+			<td class="center">D719</td><td class="center">FA</td><td class="center">43114021</td><td class="left">10/8/2026</td><td class="center">18/8/2026</td><td class="center">11/08/2026</td><td>3.495,28</td><td>0,00</td><td>0,00</td><td>0,00</td><td>3.495,28</td><td>757,54</td><td class="center">7</td><td class="center">18/08/2026</td>
+		</tr><tr style="color:#284775;background-color:White;">
+			<td class="center">D719</td><td class="center">FA</td><td class="center">43127211</td><td class="left">12/8/2026</td><td class="center">20/8/2026</td><td class="center">13/08/2026</td><td>23.836,82</td><td>0,00</td><td>0,00</td><td>0,00</td><td>23.836,82</td><td>764,35</td><td class="center">7</td><td class="center">20/08/2026</td>
+		</tr><tr style="color:#333333;background-color:#F7F6F3;">
+			<td class="center">D719</td><td class="center">FA</td><td class="center">43130622</td><td class="left">13/8/2026</td><td class="center">21/8/2026</td><td class="center">14/08/2026</td><td>14.701,13</td><td>0,00</td><td>0,00</td><td>0,00</td><td>14.701,13</td><td>766,86</td><td class="center">7</td><td class="center">21/08/2026</td>
+		</tr><tr style="color:#284775;background-color:White;">
+			<td class="center">D719</td><td class="center">FA</td><td class="center">43134143</td><td class="left">13/8/2026</td><td class="center">21/8/2026</td><td class="center">14/08/2026</td><td>19.735,33</td><td>0,00</td><td>0,00</td><td>0,00</td><td>19.735,33</td><td>766,86</td><td class="center">7</td><td class="center">21/08/2026</td>
+		</tr><tr style="color:#333333;background-color:#F7F6F3;">
+			<td class="center">D719</td><td class="center">FA$</td><td class="center">43103731</td><td class="left">7/8/2026</td><td class="center">22/8/2026</td><td class="center">08/08/2026</td><td>11.624,12</td><td>0,00</td><td>0,00</td><td>0,00</td><td>11.624,12</td><td>756,71</td><td class="center">0</td><td class="center">08/08/2026</td>
+		</tr><tr style="color:#284775;background-color:White;">
+			<td class="center">D719</td><td class="center">FA</td><td class="center">43103732</td><td class="left">7/8/2026</td><td class="center">22/8/2026</td><td class="center">08/08/2026</td><td>34.617,88</td><td>0,00</td><td>0,00</td><td>0,00</td><td>34.617,88</td><td>756,71</td><td class="center">14</td><td class="center">22/08/2026</td>
+		</tr><tr style="color:#333333;background-color:#F7F6F3;">
+			<td class="center">D719</td><td class="center">FA</td><td class="center">43138431</td><td class="left">14/8/2026</td><td class="center">22/8/2026</td><td class="center">15/08/2026</td><td>4.525,77</td><td>0,00</td><td>0,00</td><td>0,00</td><td>4.525,77</td><td>771,07</td><td class="center">7</td><td class="center">22/08/2026</td>
+		</tr><tr style="color:#284775;background-color:White;">
+			<td class="center">D719</td><td class="center">FA</td><td class="center">43141520</td><td class="left">14/8/2026</td><td class="center">22/8/2026</td><td class="center">15/08/2026</td><td>2.953,05</td><td>0,00</td><td>0,00</td><td>0,00</td><td>2.953,05</td><td>771,07</td><td class="center">7</td><td class="center">22/08/2026</td>
+		</tr><tr style="color:#333333;background-color:#F7F6F3;">
+			<td class="center">D719</td><td class="center">FA</td><td class="center">43103472</td><td class="left">7/8/2026</td><td class="center">23/8/2026</td><td class="center">08/08/2026</td><td>8.580,55</td><td>0,00</td><td>0,00</td><td>0,00</td><td>8.580,55</td><td>756,71</td><td class="center">15</td><td class="center">23/08/2026</td>
+		</tr><tr style="color:#284775;background-color:White;">
+			<td class="center">D719</td><td class="center">FA$</td><td class="center">43103733</td><td class="left">7/8/2026</td><td class="center">23/8/2026</td><td class="center">08/08/2026</td><td>33.512,61</td><td>0,00</td><td>0,00</td><td>0,00</td><td>33.512,61</td><td>756,71</td><td class="center">0</td><td class="center">08/08/2026</td>
+		</tr><tr style="color:#333333;background-color:#F7F6F3;">
+			<td class="center">D719</td><td class="center">FA</td><td class="center">43103734</td><td class="left">7/8/2026</td><td class="center">23/8/2026</td><td class="center">08/08/2026</td><td>16.366,18</td><td>0,00</td><td>0,00</td><td>0,00</td><td>16.366,18</td><td>756,71</td><td class="center">15</td><td class="center">23/08/2026</td>
+		</tr><tr style="color:#284775;background-color:White;">
+			<td class="center">D719</td><td class="center">FA</td><td class="center">43114022</td><td class="left">10/8/2026</td><td class="center">25/8/2026</td><td class="center">11/08/2026</td><td>2.292,47</td><td>0,00</td><td>0,00</td><td>0,00</td><td>2.292,47</td><td>757,54</td><td class="center">14</td><td class="center">25/08/2026</td>
+		</tr><tr style="color:#333333;background-color:#F7F6F3;">
+			<td class="center">D719</td><td class="center">FA$</td><td class="center">43114023</td><td class="left">10/8/2026</td><td class="center">26/8/2026</td><td class="center">11/08/2026</td><td>696,85</td><td>0,00</td><td>0,00</td><td>0,00</td><td>696,85</td><td>757,54</td><td class="center">0</td><td class="center">11/08/2026</td>
+		</tr><tr style="color:#284775;background-color:White;">
+			<td class="center">D719</td><td class="center">FA</td><td class="center">43123970</td><td class="left">12/8/2026</td><td class="center">27/8/2026</td><td class="center">13/08/2026</td><td>16.312,20</td><td>0,00</td><td>0,00</td><td>0,00</td><td>16.312,20</td><td>764,35</td><td class="center">14</td><td class="center">27/08/2026</td>
+		</tr><tr style="color:#333333;background-color:#F7F6F3;">
+			<td class="center">D719</td><td class="center">FA</td><td class="center">43124003</td><td class="left">12/8/2026</td><td class="center">27/8/2026</td><td class="center">13/08/2026</td><td>10.874,80</td><td>0,00</td><td>0,00</td><td>0,00</td><td>10.874,80</td><td>764,35</td><td class="center">14</td><td class="center">27/08/2026</td>
+		</tr><tr style="color:#284775;background-color:White;">
+			<td class="center">D719</td><td class="center">FA$</td><td class="center">43127212</td><td class="left">12/8/2026</td><td class="center">27/8/2026</td><td class="center">13/08/2026</td><td>7.073,29</td><td>0,00</td><td>0,00</td><td>0,00</td><td>7.073,29</td><td>764,35</td><td class="center">0</td><td class="center">13/08/2026</td>
+		</tr><tr style="color:#333333;background-color:#F7F6F3;">
+			<td class="center">D719</td><td class="center">FA</td><td class="center">43127213</td><td class="left">12/8/2026</td><td class="center">27/8/2026</td><td class="center">13/08/2026</td><td>73.579,41</td><td>0,00</td><td>0,00</td><td>0,00</td><td>73.579,41</td><td>764,35</td><td class="center">14</td><td class="center">27/08/2026</td>
+		</tr><tr style="color:#284775;background-color:White;">
+			<td class="center">D719</td><td class="center">FA</td><td class="center">43127167</td><td class="left">12/8/2026</td><td class="center">28/8/2026</td><td class="center">13/08/2026</td><td>715,43</td><td>0,00</td><td>0,00</td><td>0,00</td><td>715,43</td><td>764,35</td><td class="center">15</td><td class="center">28/08/2026</td>
+		</tr><tr style="color:#333333;background-color:#F7F6F3;">
+			<td class="center">D719</td><td class="center">FA$</td><td class="center">43127214</td><td class="left">12/8/2026</td><td class="center">28/8/2026</td><td class="center">13/08/2026</td><td>4.218,66</td><td>0,00</td><td>0,00</td><td>0,00</td><td>4.218,66</td><td>764,35</td><td class="center">0</td><td class="center">13/08/2026</td>
+		</tr><tr style="color:#284775;background-color:White;">
+			<td class="center">D719</td><td class="center">FA</td><td class="center">43132541</td><td class="left">13/8/2026</td><td class="center">28/8/2026</td><td class="center">14/08/2026</td><td>16.312,20</td><td>0,00</td><td>0,00</td><td>0,00</td><td>16.312,20</td><td>766,86</td><td class="center">14</td><td class="center">28/08/2026</td>
+		</tr><tr style="color:#333333;background-color:#F7F6F3;">
+			<td class="center">D719</td><td class="center">FA</td><td class="center">43134144</td><td class="left">13/8/2026</td><td class="center">28/8/2026</td><td class="center">14/08/2026</td><td>34.951,72</td><td>0,00</td><td>0,00</td><td>4.012,82</td><td>34.951,72</td><td>766,86</td><td class="center">14</td><td class="center">28/08/2026</td>
+		</tr><tr style="color:#284775;background-color:White;">
+			<td class="center">D719</td><td class="center">FA$</td><td class="center">43103473</td><td class="left">7/8/2026</td><td class="center">29/8/2026</td><td class="center">08/08/2026</td><td>4.208,53</td><td>0,00</td><td>0,00</td><td>0,00</td><td>4.208,53</td><td>756,71</td><td class="center">0</td><td class="center">08/08/2026</td>
+		</tr><tr style="color:#333333;background-color:#F7F6F3;">
+			<td class="center">D719</td><td class="center">FA$</td><td class="center">43103735</td><td class="left">7/8/2026</td><td class="center">29/8/2026</td><td class="center">08/08/2026</td><td>13.404,77</td><td>0,00</td><td>0,00</td><td>0,00</td><td>13.404,77</td><td>756,71</td><td class="center">0</td><td class="center">08/08/2026</td>
+		</tr><tr style="color:#284775;background-color:White;">
+			<td class="center">D719</td><td class="center">FA</td><td class="center">43138432</td><td class="left">14/8/2026</td><td class="center">29/8/2026</td><td class="center">15/08/2026</td><td>271,87</td><td>0,00</td><td>0,00</td><td>0,00</td><td>271,87</td><td>771,07</td><td class="center">14</td><td class="center">29/08/2026</td>
+		</tr><tr style="color:#333333;background-color:#F7F6F3;">
+			<td class="center">D719</td><td class="center">FA$</td><td class="center">43141521</td><td class="left">14/8/2026</td><td class="center">29/8/2026</td><td class="center">15/08/2026</td><td>7.262,69</td><td>0,00</td><td>0,00</td><td>0,00</td><td>7.262,69</td><td>771,07</td><td class="center">0</td><td class="center">15/08/2026</td>
+		</tr><tr style="color:#284775;background-color:White;">
+			<td class="center">D719</td><td class="center">FA</td><td class="center">43141522</td><td class="left">14/8/2026</td><td class="center">29/8/2026</td><td class="center">15/08/2026</td><td>1.631,22</td><td>0,00</td><td>0,00</td><td>0,00</td><td>1.631,22</td><td>771,07</td><td class="center">14</td><td class="center">29/08/2026</td>
+		</tr><tr style="color:#333333;background-color:#F7F6F3;">
+			<td class="center">D719</td><td class="center">FA</td><td class="center">43138433</td><td class="left">14/8/2026</td><td class="center">30/8/2026</td><td class="center">15/08/2026</td><td>452,26</td><td>0,00</td><td>0,00</td><td>0,00</td><td>452,26</td><td>771,07</td><td class="center">15</td><td class="center">30/08/2026</td>
+		</tr><tr style="color:#284775;background-color:White;">
+			<td class="center">D719</td><td class="center">FA$</td><td class="center">43114024</td><td class="left">10/8/2026</td><td class="center">1/9/2026</td><td class="center">11/08/2026</td><td>14.320,40</td><td>0,00</td><td>0,00</td><td>0,00</td><td>14.320,40</td><td>757,54</td><td class="center">0</td><td class="center">11/08/2026</td>
+		</tr><tr style="color:#333333;background-color:#F7F6F3;">
+			<td class="center">D719</td><td class="center">FA$</td><td class="center">43103736</td><td class="left">7/8/2026</td><td class="center">2/9/2026</td><td class="center">08/08/2026</td><td>7.972,08</td><td>0,00</td><td>0,00</td><td>0,00</td><td>7.972,08</td><td>756,71</td><td class="center">0</td><td class="center">08/08/2026</td>
+		</tr><tr style="color:#284775;background-color:White;">
+			<td class="center">D719</td><td class="center">FA</td><td class="center">43151341</td><td class="left">18/8/2026</td><td class="center">2/9/2026</td><td class="center">19/08/2026</td><td>120.535,20</td><td>0,00</td><td>0,00</td><td>0,00</td><td>120.535,20</td><td>773,31</td><td class="center">14</td><td class="center">02/09/2026</td>
+		</tr><tr style="color:#333333;background-color:#F7F6F3;">
+			<td class="center">D719</td><td class="center">FA$</td><td class="center">43127215</td><td class="left">12/8/2026</td><td class="center">3/9/2026</td><td class="center">13/08/2026</td><td>6.521,39</td><td>0,00</td><td>0,00</td><td>0,00</td><td>6.521,39</td><td>764,35</td><td class="center">0</td><td class="center">13/08/2026</td>
+		</tr><tr style="color:#284775;background-color:White;">
+			<td class="center">D719</td><td class="center">FA</td><td class="center">43127216</td><td class="left">12/8/2026</td><td class="center">3/9/2026</td><td class="center">13/08/2026</td><td>4.176,90</td><td>0,00</td><td>0,00</td><td>0,00</td><td>4.176,90</td><td>764,35</td><td class="center">21</td><td class="center">03/09/2026</td>
+		</tr><tr style="color:#333333;background-color:#F7F6F3;">
+			<td class="center">D719</td><td class="center">FA$</td><td class="center">43161612</td><td class="left">19/8/2026</td><td class="center">4/9/2026</td><td class="center">20/08/2026</td><td>16.328,58</td><td>0,00</td><td>0,00</td><td>0,00</td><td>16.328,58</td><td>775,34</td><td class="center">0</td><td class="center">20/08/2026</td>
+		</tr><tr style="color:#284775;background-color:White;">
+			<td class="center">D719</td><td class="center">FA$</td><td class="center">43103737</td><td class="left">7/8/2026</td><td class="center">7/9/2026</td><td class="center">08/08/2026</td><td>152.962,90</td><td>0,00</td><td>5.524,50</td><td>0,00</td><td>152.962,90</td><td>785,07</td><td class="center">0</td><td class="center">08/08/2026</td>
+		</tr><tr style="color:#333333;background-color:#F7F6F3;">
+			<td class="center">D719</td><td class="center">FA</td><td class="center">43103738</td><td class="left">7/8/2026</td><td class="center">7/9/2026</td><td class="center">08/08/2026</td><td>60.857,58</td><td>0,00</td><td>0,00</td><td>0,00</td><td>60.857,58</td><td>756,71</td><td class="center">30</td><td class="center">07/09/2026</td>
+		</tr><tr style="color:#284775;background-color:White;">
+			<td class="center">D719</td><td class="center">FA$</td><td class="center">43141523</td><td class="left">14/8/2026</td><td class="center">9/9/2026</td><td class="center">15/08/2026</td><td>4.979,89</td><td>0,00</td><td>0,00</td><td>0,00</td><td>4.979,89</td><td>771,07</td><td class="center">0</td><td class="center">15/08/2026</td>
+		</tr><tr style="color:#333333;background-color:#F7F6F3;">
+			<td class="center">D719</td><td class="center">FA$</td><td class="center">43114025</td><td class="left">10/8/2026</td><td class="center">10/9/2026</td><td class="center">11/08/2026</td><td>16.591,98</td><td>0,00</td><td>0,00</td><td>0,00</td><td>16.591,98</td><td>757,54</td><td class="center">0</td><td class="center">11/08/2026</td>
+		</tr><tr style="color:#284775;background-color:White;">
+			<td class="center">D719</td><td class="center">FA$</td><td class="center">43120591</td><td class="left">11/8/2026</td><td class="center">11/9/2026</td><td class="center">12/08/2026</td><td>23.607,52</td><td>0,00</td><td>0,00</td><td>0,00</td><td>23.607,52</td><td>761,22</td><td class="center">0</td><td class="center">12/08/2026</td>
+		</tr><tr style="color:#333333;background-color:#F7F6F3;">
+			<td class="center">D719</td><td class="center">FA$</td><td class="center">43127217</td><td class="left">12/8/2026</td><td class="center">12/9/2026</td><td class="center">13/08/2026</td><td>42.919,65</td><td>0,00</td><td>0,00</td><td>0,00</td><td>42.919,65</td><td>764,35</td><td class="center">0</td><td class="center">13/08/2026</td>
+		</tr><tr style="color:#284775;background-color:White;">
+			<td class="center">D719</td><td class="center">FA</td><td class="center">43127218</td><td class="left">12/8/2026</td><td class="center">12/9/2026</td><td class="center">13/08/2026</td><td>5.637,53</td><td>0,00</td><td>0,00</td><td>0,00</td><td>5.637,53</td><td>764,35</td><td class="center">30</td><td class="center">12/09/2026</td>
+		</tr><tr style="color:#333333;background-color:#F7F6F3;">
+			<td class="center">D719</td><td class="center">FA$</td><td class="center">43147448</td><td class="left">17/8/2026</td><td class="center">12/9/2026</td><td class="center">18/08/2026</td><td>40.172,30</td><td>0,00</td><td>0,00</td><td>0,00</td><td>40.172,30</td><td>772,54</td><td class="center">0</td><td class="center">18/08/2026</td>
+		</tr><tr style="color:#284775;background-color:White;">
+			<td class="center">D719</td><td class="center">FA</td><td class="center">43137371</td><td class="left">14/8/2026</td><td class="center">14/9/2026</td><td class="center">15/08/2026</td><td>105.181,20</td><td>0,00</td><td>0,00</td><td>0,00</td><td>105.181,20</td><td>771,07</td><td class="center">30</td><td class="center">14/09/2026</td>
+		</tr><tr style="color:#333333;background-color:#F7F6F3;">
+			<td class="center">D719</td><td class="center">FA$</td><td class="center">43138434</td><td class="left">14/8/2026</td><td class="center">14/9/2026</td><td class="center">15/08/2026</td><td>11.275,67</td><td>0,00</td><td>0,00</td><td>0,00</td><td>11.275,67</td><td>771,07</td><td class="center">0</td><td class="center">15/08/2026</td>
+		</tr><tr style="color:#284775;background-color:White;">
+			<td class="center">D719</td><td class="center">FA$</td><td class="center">43141524</td><td class="left">14/8/2026</td><td class="center">14/9/2026</td><td class="center">15/08/2026</td><td>6.439,50</td><td>0,00</td><td>0,00</td><td>0,00</td><td>6.439,50</td><td>771,07</td><td class="center">0</td><td class="center">15/08/2026</td>
+		</tr><tr style="color:#333333;background-color:#F7F6F3;">
+			<td class="center">D719</td><td class="center">FA$</td><td class="center">43102686</td><td class="left">7/8/2026</td><td class="center">17/9/2026</td><td class="center">08/08/2026</td><td>24.984,60</td><td>0,00</td><td>0,00</td><td>0,00</td><td>24.984,60</td><td>756,71</td><td class="center">0</td><td class="center">08/08/2026</td>
+		</tr><tr style="color:#284775;background-color:White;">
+			<td class="center">D719</td><td class="center">FA$</td><td class="center">43103749</td><td class="left">7/8/2026</td><td class="center">17/9/2026</td><td class="center">08/08/2026</td><td>30.941,27</td><td>0,00</td><td>0,00</td><td>0,00</td><td>30.941,27</td><td>756,71</td><td class="center">0</td><td class="center">08/08/2026</td>
+		</tr><tr style="color:#333333;background-color:#F7F6F3;">
+			<td class="center">D719</td><td class="center">FA$</td><td class="center">43127219</td><td class="left">12/8/2026</td><td class="center">17/9/2026</td><td class="center">13/08/2026</td><td>4.434,82</td><td>0,00</td><td>0,00</td><td>0,00</td><td>4.434,82</td><td>764,35</td><td class="center">0</td><td class="center">13/08/2026</td>
+		</tr><tr style="color:#284775;background-color:White;">
+			<td class="center">D719</td><td class="center">FA$</td><td class="center">43130623</td><td class="left">13/8/2026</td><td class="center">18/9/2026</td><td class="center">14/08/2026</td><td>33.020,64</td><td>0,00</td><td>0,00</td><td>0,00</td><td>33.020,64</td><td>766,86</td><td class="center">0</td><td class="center">14/08/2026</td>
+		</tr><tr style="color:#333333;background-color:#F7F6F3;">
+			<td class="center">D719</td><td class="center">FA$</td><td class="center">43114026</td><td class="left">10/8/2026</td><td class="center">20/9/2026</td><td class="center">11/08/2026</td><td>8.873,07</td><td>0,00</td><td>0,00</td><td>0,00</td><td>8.873,07</td><td>757,54</td><td class="center">0</td><td class="center">11/08/2026</td>
+		</tr><tr style="color:#284775;background-color:White;">
+			<td class="center">D719</td><td class="center">FA$</td><td class="center">43103750</td><td class="left">7/8/2026</td><td class="center">22/9/2026</td><td class="center">08/08/2026</td><td>81.882,73</td><td>0,00</td><td>2.959,19</td><td>0,00</td><td>81.882,73</td><td>785,07</td><td class="center">0</td><td class="center">08/08/2026</td>
+		</tr><tr style="color:#333333;background-color:#F7F6F3;">
+			<td class="center">D719</td><td class="center">FA$</td><td class="center">43141525</td><td class="left">14/8/2026</td><td class="center">24/9/2026</td><td class="center">15/08/2026</td><td>2.587,48</td><td>0,00</td><td>0,00</td><td>0,00</td><td>2.587,48</td><td>771,07</td><td class="center">0</td><td class="center">15/08/2026</td>
+		</tr><tr style="color:#284775;background-color:White;">
+			<td class="center">D719</td><td class="center">FA$</td><td class="center">43127220</td><td class="left">12/8/2026</td><td class="center">27/9/2026</td><td class="center">13/08/2026</td><td>7.683,52</td><td>0,00</td><td>0,00</td><td>0,00</td><td>7.683,52</td><td>764,35</td><td class="center">0</td><td class="center">13/08/2026</td>
+		</tr><tr style="color:#333333;background-color:#F7F6F3;">
+			<td class="center">D719</td><td class="center">FA$</td><td class="center">43130624</td><td class="left">13/8/2026</td><td class="center">28/9/2026</td><td class="center">14/08/2026</td><td>60.249,02</td><td>0,00</td><td>0,00</td><td>0,00</td><td>60.249,02</td><td>766,86</td><td class="center">0</td><td class="center">14/08/2026</td>
+		</tr><tr class="titulocelda" align="right" style="color:#2B6191;">
+			<td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>
+		</tr>
+	</table>
+</div></form></body></html>

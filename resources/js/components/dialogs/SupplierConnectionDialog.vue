@@ -31,15 +31,28 @@ const hasExistingPassword = ref(false);
 const lastConnection      = ref(null);
 const errors              = ref({});
 
-// ─── Computed ─────────────────────────────────────────────────────────────────
 const isFtp  = computed(() => ['ftp', 'sftp'].includes(form.value.type));
 const isHttp = computed(() => ['http', 'api'].includes(form.value.type));
+const isDronenaBot = computed(() => form.value.type === 'dronena_bot' || (props.supplier?.name && props.supplier.name.toUpperCase().includes('NENA')));
 
-const typeOptions = [
-  { title: 'FTP',  value: 'ftp',  icon: 'tabler-server', description: 'Conexión por protocolo FTP estándar' },
-  { title: 'SFTP', value: 'sftp', icon: 'tabler-lock',   description: 'FTP seguro sobre SSH' },
-  { title: 'HTTP / API', value: 'api', icon: 'tabler-api', description: 'Endpoint REST con autenticación por token' },
-];
+const typeOptions = computed(() => {
+  const options = [
+    { title: 'FTP',  value: 'ftp',  icon: 'tabler-server', description: 'Conexión por protocolo FTP estándar' },
+    { title: 'SFTP', value: 'sftp', icon: 'tabler-lock',   description: 'FTP seguro sobre SSH' },
+    { title: 'HTTP / API', value: 'api', icon: 'tabler-api', description: 'Endpoint REST con autenticación por token' },
+  ];
+
+  if (props.supplier?.name && (props.supplier.name.toUpperCase().includes('NENA') || props.supplier.name.toUpperCase().includes('DRONENA'))) {
+    options.unshift({
+      title: 'Bot Dronena',
+      value: 'dronena_bot',
+      icon: 'tabler-robot',
+      description: 'Extracción automática directa del portal web de Dronena',
+    });
+  }
+
+  return options;
+});
 
 const defaultPort = computed(() => {
   if (form.value.type === 'ftp')  return 21;
@@ -86,6 +99,9 @@ const saveConfig = async () => {
   saving.value = true;
   try {
     const payload = { ...form.value };
+    if (payload.type === 'dronena_bot' && !payload.host) {
+      payload.host = 'https://www.dronena.com/NuevaExperiencia/';
+    }
     // Si no envió nueva contraseña y ya existía una, no mandamos el campo
     if (!payload.password && hasExistingPassword.value) {
       delete payload.password;
@@ -209,15 +225,15 @@ watch(() => props.modelValue, (isOpen) => {
             </VRow>
           </VCard>
 
-          <!-- Sección 2: Servidor -->
-          <div class="d-flex align-center gap-2 mb-3">
+          <!-- Sección 2: Servidor (Oculto o simplificado en Dronena Bot) -->
+          <div v-if="form.type !== 'dronena_bot'" class="d-flex align-center gap-2 mb-3">
             <div class="header-indicator secondary shadow-sm" />
             <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">
               {{ isFtp ? 'Servidor FTP' : 'Endpoint de la API' }}
             </span>
           </div>
 
-          <VCard variant="flat" class="pa-4 bg-white rounded-xl border shadow-sm mb-4">
+          <VCard v-if="form.type !== 'dronena_bot'" variant="flat" class="pa-4 bg-white rounded-xl border shadow-sm mb-4">
             <VRow>
               <VCol cols="12" :md="isFtp ? 8 : 12">
                 <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">
@@ -242,6 +258,17 @@ watch(() => props.modelValue, (isOpen) => {
               </VCol>
             </VRow>
           </VCard>
+
+          <VAlert
+            v-else
+            type="info"
+            variant="tonal"
+            density="compact"
+            icon="tabler-robot"
+            class="mb-4 rounded-xl"
+          >
+            El <strong>Bot Dronena</strong> accederá automáticamente a <code>https://www.dronena.com/NuevaExperiencia/</code>. Solo necesitas ingresar el <strong>Usuario</strong> y la <strong>Contraseña</strong> de la cuenta.
+          </VAlert>
 
           <!-- Sección 3: Credenciales -->
           <div class="d-flex align-center gap-2 mb-3">
@@ -277,40 +304,42 @@ watch(() => props.modelValue, (isOpen) => {
             </VRow>
           </VCard>
 
-          <!-- Sección 4: Rutas -->
-          <div class="d-flex align-center gap-2 mb-3">
-            <div class="header-indicator secondary shadow-sm" />
-            <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">
-              {{ isFtp ? 'Rutas de Archivos' : 'Endpoints de Datos' }}
-            </span>
-          </div>
+          <!-- Sección 4: Rutas (Solo para FTP / API estándar) -->
+          <template v-if="form.type !== 'dronena_bot'">
+            <div class="d-flex align-center gap-2 mb-3">
+              <div class="header-indicator secondary shadow-sm" />
+              <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">
+                {{ isFtp ? 'Rutas de Archivos' : 'Endpoints de Datos' }}
+              </span>
+            </div>
 
-          <VCard variant="flat" class="pa-4 bg-white rounded-xl border shadow-sm mb-4">
-            <VRow>
-              <VCol cols="12" md="6">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">
-                  {{ isFtp ? 'Ruta de productos' : 'Endpoint de Productos' }}
-                </span>
-                <AppTextField
-                  v-model="form.path"
-                  :placeholder="isFtp ? '/inventario/productos.txt' : '/api/v1/productos'"
-                  prepend-inner-icon="tabler-folder"
-                  :error-messages="errors.path"
-                />
-              </VCol>
-              <VCol cols="12" md="6">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">
-                  {{ isFtp ? 'Ruta de facturas' : 'Endpoint de Facturas' }}
-                </span>
-                <AppTextField
-                  v-model="form.invoice_path"
-                  :placeholder="isFtp ? '/facturas/' : '/api/v1/facturas'"
-                  prepend-inner-icon="tabler-file-invoice"
-                  :error-messages="errors.invoice_path"
-                />
-              </VCol>
-            </VRow>
-          </VCard>
+            <VCard variant="flat" class="pa-4 bg-white rounded-xl border shadow-sm mb-4">
+              <VRow>
+                <VCol cols="12" md="6">
+                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">
+                    {{ isFtp ? 'Ruta de productos' : 'Endpoint de Productos' }}
+                  </span>
+                  <AppTextField
+                    v-model="form.path"
+                    :placeholder="isFtp ? '/inventario/productos.txt' : '/api/v1/productos'"
+                    prepend-inner-icon="tabler-folder"
+                    :error-messages="errors.path"
+                  />
+                </VCol>
+                <VCol cols="12" md="6">
+                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">
+                    {{ isFtp ? 'Ruta de facturas' : 'Endpoint de Facturas' }}
+                  </span>
+                  <AppTextField
+                    v-model="form.invoice_path"
+                    :placeholder="isFtp ? '/facturas/' : '/api/v1/facturas'"
+                    prepend-inner-icon="tabler-file-invoice"
+                    :error-messages="errors.invoice_path"
+                  />
+                </VCol>
+              </VRow>
+            </VCard>
+          </template>
 
           <!-- Sección 5: Opciones FTP -->
           <template v-if="isFtp">

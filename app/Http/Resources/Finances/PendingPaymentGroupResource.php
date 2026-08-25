@@ -44,11 +44,17 @@ class PendingPaymentGroupResource extends JsonResource
                     'original_amount_usd' => (float)$invoice['original_amount_usd'],
                     'currency' => $invoice['currency'],
                     'is_indexed' => (bool)$invoice['is_indexed'],
+                    'claim_amount' => (float)($invoice['claim_amount'] ?? 0),
+                    'nd_referential_amount' => (float)($invoice['nd_referential_amount'] ?? 0),
+                    'net_payable_amount' => isset($invoice['net_payable_amount']) && $invoice['net_payable_amount'] !== null ? (float)$invoice['net_payable_amount'] : null,
                     'indexed_data' => $invoice['indexed_data'],
                     'exchange_rate' => $invoice['exchange_rate'] !== null ? (float)$invoice['exchange_rate'] : null,
                     'exp_date' => $invoice['exp_date'] instanceof \Carbon\Carbon 
                         ? $invoice['exp_date']->toDateString() 
                         : $invoice['exp_date'],
+                    'payment_date' => $invoice['payment_date'] instanceof \Carbon\Carbon 
+                        ? $invoice['payment_date']->toDateString() 
+                        : $invoice['payment_date'],
                     'supplier_total_bs' => (float)$invoice['supplier_total_bs'],
                     'supplier_total_usd' => (float)$invoice['supplier_total_usd'],
                 ];

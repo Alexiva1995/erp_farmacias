@@ -17,6 +17,7 @@ class PurchaseOrderServices implements PurchaseOrder
   public function __construct(
     protected AutoOrdersRepository $autoOrdersRepository,
     protected AutoOrderDetailsRepository $autoOrderDetailsRepository,
+    protected \App\Contracts\Suppliers\DronenaEdiServiceInterface $dronenaEdiService,
   ) {
   }
 
@@ -64,6 +65,31 @@ class PurchaseOrderServices implements PurchaseOrder
 
   public function confirmSent(AutoOrder $autoOrder): bool
   {
+    $supplier = $autoOrder->supplier ?: \App\Models\Supplier::find($autoOrder->supplier_id);
+    
+    // Si es Droguería Nena (por nombre o conexión FTP con dronena.com), transmitir archivo EDI FACTUXX
+    $isDronena = false;
+    if ($supplier) {
+      $supplierName = strtoupper($supplier->name);
+      if (str_contains($supplierName, 'NENA') || str_contains($supplierName, 'DRONENA')) {
+        $isDronena = true;
+      } else {
+        $hasDronenaFtp = $supplier->connections()->where('host', 'LIKE', '%dronena%')->exists();
+        if ($hasDronenaFtp) {
+          $isDronena = true;
+        }
+      }
+    }
+
+    if ($isDronena) {
+      try {
+        $this->dronenaEdiService->sendOrderFtp($autoOrder);
+      } catch (\Throwable $e) {
+        \Illuminate\Support\Facades\Log::error("[DRONENA EDI] Error transmitiendo pedido automático #{$autoOrder->id}: " . $e->getMessage());
+        throw new \Exception("Error al transmitir el pedido a Droguería Nena por FTP: " . $e->getMessage());
+      }
+    }
+
     return $this->autoOrdersRepository->confirmSent($autoOrder);
   }
 

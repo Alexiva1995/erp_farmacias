@@ -106,19 +106,24 @@ const totalInUSD = computed(() => {
 
 const totalInBS = computed(() => {
   return props.invoices.reduce((sum, invoice) => {
+    let amount = 0;
     // Si la factura está indexada, el usuario quiere usar la "tasa de hoy"
     if (invoice.is_indexed) {
-      return sum + ((parseFloat(invoice.total_usd) || 0) * props.exchangeRate);
+      amount = (parseFloat(invoice.total_usd) || 0) * props.exchangeRate;
+    } else if (invoice.currency === "Bs" || invoice.currency === "VES") {
+      // Si no está indexada, el usuario quiere el "precio de la factura" (original en BS)
+      amount = parseFloat(invoice.total_amount) || 0;
+    } else {
+      // Si la factura es en moneda extranjera y NO está indexada
+      amount = parseFloat(invoice.total_amount_bs) || 0;
     }
-    
-    // Si no está indexada, el usuario quiere el "precio de la factura" (original en BS)
-    if (invoice.currency === "Bs" || invoice.currency === "VES") {
-      return sum + (parseFloat(invoice.total_amount) || 0);
+
+    // Restar descuento por Nota de Débito Referencial si aplica
+    if (invoice.nd_referential_amount && parseFloat(invoice.nd_referential_amount) > 0) {
+      amount = Math.max(0, amount - parseFloat(invoice.nd_referential_amount));
     }
-    
-    // Si la factura es en moneda extranjera y NO está indexada, 
-    // su valor en BS es el que se registró originalmente (total_amount_bs)
-    return sum + (parseFloat(invoice.total_amount_bs) || 0);
+
+    return sum + amount;
   }, 0);
 });
 

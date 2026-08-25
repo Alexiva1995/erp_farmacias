@@ -12,6 +12,8 @@ const props = defineProps({
   loading: { type: Boolean, default: false },
   showAdd: { type: Boolean, default: true },
   showBulkDelete: { type: Boolean, default: false },
+  showSyncDronena: { type: Boolean, default: true },
+  isSyncingDronena: { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
@@ -22,6 +24,7 @@ const emit = defineEmits([
   "clear",
   "create-invoice",
   "bulk-delete",
+  "sync-dronena",
 ]);
 
 const hasAdvancedFilters = computed(
@@ -42,6 +45,20 @@ const hasAdvancedFilters = computed(
     @add="emit('create-invoice')"
   >
     <template #prepend-actions>
+      <VBtn
+        v-if="props.showSyncDronena"
+        icon
+        color="info"
+        variant="tonal"
+        size="38"
+        rounded="circle"
+        :loading="props.isSyncingDronena"
+        @click="emit('sync-dronena')"
+      >
+        <VIcon icon="tabler-refresh" />
+        <VTooltip activator="parent" location="top">Sincronizar Dronena</VTooltip>
+      </VBtn>
+
       <VBtn
         v-if="props.showBulkDelete"
         icon

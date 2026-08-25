@@ -14,9 +14,24 @@ const props = defineProps({
   exchangeRate: { type: Number, default: 1 },
 });
 
+const getDisplayAmount = (item) => {
+  if (item.is_indexed && item.indexed_data?.is_indexed) {
+    return item.indexed_data.indexed_amount;
+  }
+  return item.total_amount;
+};
+
 const selectedTotals = computed(() => {
   const usd = props.selectedTableInvoices.reduce((acc, item) => acc + (parseFloat(item.original_amount_usd) || 0), 0);
-  const bs = usd * (props.exchangeRate || 1);
+  const bs = props.selectedTableInvoices.reduce((acc, item) => {
+    let amount = parseFloat(getDisplayAmount(item)) || 0;
+    // Si tiene Nota de Débito referencial aprobada (descuento), se resta al total a pagar
+    if (item.nd_referential_amount && parseFloat(item.nd_referential_amount) > 0) {
+      amount = Math.max(0, amount - parseFloat(item.nd_referential_amount));
+    }
+    return acc + amount;
+  }, 0);
+
   return {
     count: props.selectedTableInvoices.length,
     usd: usd.toFixed(2),
@@ -135,13 +150,6 @@ const getRemainingAmountClass = (item) => {
   return remaining < original ? "text-warning" : "text-success";
 };
 
-const getDisplayAmount = (item) => {
-  if (item.is_indexed && item.indexed_data?.is_indexed) {
-    return item.indexed_data.indexed_amount;
-  }
-  return item.total_amount;
-};
-
 const isTableInvoiceSelected = (invoice) => {
   return props.selectedTableInvoices.some((inv) => inv.id === invoice.id);
 };
@@ -239,9 +247,27 @@ const getInitials = (name) => {
         </template>
 
         <template #item.remaining_amount="{ item }">
-          <span class="text-xs font-weight-black" :class="getRemainingAmountClass(item)">
-            {{ formatCurrency(getDisplayAmount(item), item.currency, true) }}
-          </span>
+          <div class="d-flex flex-column align-end">
+            <span class="text-xs font-weight-black" :class="getRemainingAmountClass(item)">
+              {{ formatCurrency(getDisplayAmount(item), item.currency, true) }}
+            </span>
+            <div v-if="item.nd_referential_amount > 0 || item.claim_amount > 0" class="d-flex align-center gap-1 mt-0">
+              <span
+                v-if="item.nd_referential_amount > 0"
+                class="text-super-xs font-weight-bold text-error d-inline-flex align-center cursor-pointer"
+              >
+                ND Ref: -{{ formatCurrency(item.nd_referential_amount, item.currency, true) }}
+                <VTooltip activator="parent" location="top">Nota de Débito Referencial Aprobada (-{{ formatCurrency(item.nd_referential_amount, item.currency) }})</VTooltip>
+              </span>
+              <span
+                v-if="item.claim_amount > 0"
+                class="text-super-xs font-weight-bold text-warning d-inline-flex align-center cursor-pointer"
+              >
+                Reclamo: {{ formatCurrency(item.claim_amount, item.currency, true) }}
+                <VTooltip activator="parent" location="top">Reclamo en Proceso ({{ formatCurrency(item.claim_amount, item.currency) }})</VTooltip>
+              </span>
+            </div>
+          </div>
         </template>
 
         <template #item.is_indexed="{ item }">

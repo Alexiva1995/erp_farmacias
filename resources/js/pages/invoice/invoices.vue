@@ -289,6 +289,33 @@ const handleConfirmBulkDelete = async () => {
     isSubmittingBulkDelete.value = false;
   }
 };
+
+const isSyncingDronena = ref(false);
+
+const handleSyncDronena = async () => {
+  const confirmResult = await Swal.fire({
+    title: "¿Sincronizar con Dronena?",
+    text: "Se consultará el portal de Dronena para actualizar las fechas de vencimiento, fechas de pago e indexación (FA$) de las facturas.",
+    icon: "info",
+    showCancelButton: true,
+    confirmButtonText: "Sincronizar",
+    cancelButtonText: "Cancelar",
+  });
+
+  if (!confirmResult.isConfirmed) return;
+
+  isSyncingDronena.value = true;
+  try {
+    const response = await axios.post("/invoices/sync-dronena");
+    toast.success(response.data.message || "Sincronización completada exitosamente.");
+    await fetchInvoices();
+  } catch (error) {
+    console.error("Error al sincronizar con Dronena:", error);
+    toast.error(error.response?.data?.message || "Ocurrió un error al sincronizar con Dronena.");
+  } finally {
+    isSyncingDronena.value = false;
+  }
+};
 </script>
 
 <template>
@@ -302,9 +329,12 @@ const handleConfirmBulkDelete = async () => {
         :suppliers="suppliers"
         :loading="isLoadingFilters"
         :show-bulk-delete="true"
+        :show-sync-dronena="true"
+        :is-syncing-dronena="isSyncingDronena"
         @clear="handleClearFilters"
         @create-invoice="handleCreateInvoice"
         @bulk-delete="handleOpenBulkDeleteModal"
+        @sync-dronena="handleSyncDronena"
         class="mb-6"
       />
 

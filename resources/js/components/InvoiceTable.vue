@@ -176,7 +176,18 @@ const formatDate = (dateString) => {
         {{ formatDate(item.created_invoice_date) }}
       </template>
       <template #item.exp_date="{ item }">
-        {{ formatDate(item.exp_date) }}
+        <div class="d-flex align-center ga-1">
+          <span>{{ formatDate(item.exp_date) }}</span>
+          <VChip
+            v-if="item.is_indexed"
+            color="warning"
+            size="x-small"
+            variant="flat"
+            class="font-weight-bold"
+          >
+            FA$ Indexada
+          </VChip>
+        </div>
       </template>
 
       <template #item.actions="{ item }">

@@ -135,6 +135,8 @@ class AppServiceProvider extends ServiceProvider
             ->needs(PurchaseOrder::class)
             ->give(PurchaseOrderServices::class);
 
+        $this->app->bind(PurchaseOrder::class, PurchaseOrderServices::class);
+
         $this->app->when(SupplierIaAssistantReportController::class)
             ->needs(Product::class)
             ->give(ProductServices::class);
@@ -310,6 +312,16 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(
             \App\Contracts\Repositories\TelegramCommandRepositoryInterface::class,
             \App\Repositories\Eloquent\TelegramCommandRepository::class
+        );
+
+        $this->app->bind(
+            \App\Contracts\Suppliers\DronenaScraperServiceInterface::class,
+            \App\Services\Suppliers\DronenaScraperService::class
+        );
+
+        $this->app->bind(
+            \App\Contracts\Suppliers\DronenaEdiServiceInterface::class,
+            \App\Services\Suppliers\DronenaEdiService::class
         );
 
         $this->app->when(LocationController::class)

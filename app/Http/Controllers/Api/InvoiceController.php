@@ -25,7 +25,8 @@ class InvoiceController extends Controller
 {
     public function __construct(
         private InvoiceActionService $invoiceActionService,
-        private InvoiceQueryService $invoiceQueryService
+        private InvoiceQueryService $invoiceQueryService,
+        private \App\Contracts\Suppliers\DronenaScraperServiceInterface $dronenaScraperService
     ) {
     }
 
@@ -325,5 +326,34 @@ class InvoiceController extends Controller
         return response()->json([
             'next_sequence' => $formatted
         ]);
+    }
+
+    /**
+     * Sincroniza las facturas y fechas de vencimiento desde el portal Dronena.
+     */
+    public function syncDronena(Request $request)
+    {
+        try {
+            $user = $request->input('username');
+            $pass = $request->input('password');
+            $supplierId = $request->input('supplier_id') ? (int) $request->input('supplier_id') : null;
+
+            $result = $this->dronenaScraperService->syncInvoices($user, $pass, $supplierId);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Sincronización completada. Facturas actualizadas: {$result['updated']}, Omitidas/No encontradas: {$result['skipped']}.",
+                'data' => $result,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error en InvoiceController@syncDronena: ' . $e->getMessage(), [
+                'exception' => $e
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al sincronizar facturas desde Dronena: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

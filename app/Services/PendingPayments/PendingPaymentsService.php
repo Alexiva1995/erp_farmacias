@@ -181,9 +181,13 @@ class PendingPaymentsService
                         'original_amount_usd' => $invoice->total_usd,
                         'currency' => $invoice->currency,
                         'is_indexed' => $invoice->is_indexed ?? false,
+                        'claim_amount' => (float) ($invoice->claim_amount ?? 0),
+                        'nd_referential_amount' => (float) ($invoice->nd_referential_amount ?? 0),
+                        'net_payable_amount' => $invoice->net_payable_amount !== null ? (float) $invoice->net_payable_amount : null,
                         'indexed_data' => $indexedData,
                         'exchange_rate' => $invoice->exchange_rate,
                         'exp_date' => $invoice->exp_date,
+                        'payment_date' => $invoice->payment_date,
                         'supplier_total_bs' => $totalInSupplierCurrency,
                         'supplier_total_usd' => $totalAmountUSD
                     ];

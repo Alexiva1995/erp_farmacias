@@ -37,6 +37,7 @@ const emit = defineEmits([
   "supplier-pending-invoices",
   "check-supplier-api",
   "config-connection",
+  "sync-dronena-bot",
 ]);
 
 const headers = [
@@ -191,6 +192,15 @@ const headers = [
 
                 <VListItem v-if="authStore.isAdmin && !isRestaurant" @click="emit('config-connection', item)" prepend-icon="tabler-plug-connected" base-color="warning">
                   <VListItemTitle>Configurar Conexión</VListItemTitle>
+                </VListItem>
+
+                <VListItem
+                  v-if="(item.name && (item.name.toUpperCase().includes('NENA') || item.name.toUpperCase().includes('DRONENA')))"
+                  @click="emit('sync-dronena-bot', item)"
+                  prepend-icon="tabler-robot"
+                  base-color="info"
+                >
+                  <VListItemTitle>Sincronizar Facturas (Bot Dronena)</VListItemTitle>
                 </VListItem>
 
                 <VListItem v-if="!isRestaurant" :disabled="checkingApiId === item.id" @click="emit('check-supplier-api', item)" prepend-icon="tabler-api">
