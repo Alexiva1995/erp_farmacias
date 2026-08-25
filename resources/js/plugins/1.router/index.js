@@ -40,7 +40,7 @@ const router = createRouter({
       })
     }
 
-    const filteredPages = pages.filter(p => p.path !== '/public/booking' && p.path !== '/tova-store' && p.path !== '/restaurant-store')
+    const filteredPages = pages.filter(p => !p.path.startsWith('/public') && p.path !== '/tova-store' && p.path !== '/restaurant-store')
     
     // Cambiar la raíz '/' para usar el componente de tova-store con layout blank
     const indexRoute = filteredPages.find(p => p.path === '/')

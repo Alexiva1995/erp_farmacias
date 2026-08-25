@@ -150,9 +150,21 @@ axiosInstance.interceptors.response.use(
     }
 
     // Manejo de sesión expirada (401 Unauthenticated)
-    if (error.response?.status === 401 && !window.location.pathname.includes('/login')) {
-      window.location.href = '/login';
-      return Promise.reject(error);
+    if (error.response?.status === 401) {
+      const pathname = window.location.pathname
+      const isPublicPath = 
+        pathname.includes('/login') ||
+        pathname.startsWith('/p/') ||
+        pathname.startsWith('/reservar') ||
+        pathname.startsWith('/tova-store') ||
+        pathname.startsWith('/restaurant-store')
+      
+      const isAuthCheck = originalRequest?.url?.endsWith('/user') || originalRequest?.url === '/user'
+
+      if (!isPublicPath && !isAuthCheck) {
+        window.location.href = '/login'
+      }
+      return Promise.reject(error)
     }
 
     // Guardar el último error de Axios de forma global para el sistema de Toasts
