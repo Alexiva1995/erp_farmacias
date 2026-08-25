@@ -54,4 +54,9 @@ return [
         'api_key' => env('GEMINI_API_KEY'),
     ],
 
+    // Clave de cifrado para credenciales FTP / Integraciones
+    'ftp' => [
+        'secret_key' => env('FTP_SECRET_KEY', 'e6891c6c01292c1b82b8f999e8ef65102ff683994cbc2534eca0e47aa0cad0c3'),
+    ],
+
 ];

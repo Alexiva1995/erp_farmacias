@@ -7,9 +7,11 @@ use Illuminate\Contracts\Encryption\DecryptException;
 
 class FtpCrypt
 {
+    private const DEFAULT_KEY = 'e6891c6c01292c1b82b8f999e8ef65102ff683994cbc2534eca0e47aa0cad0c3';
+
     protected static function getEncrypter(?string $rawKey = null): Encrypter
     {
-        $rawKey = $rawKey ?? env('FTP_SECRET_KEY', '');
+        $rawKey = $rawKey ?? config('services.ftp.secret_key') ?? env('FTP_SECRET_KEY') ?? self::DEFAULT_KEY;
         $key = substr(hash('sha256', (string) $rawKey), 0, 32);
         return new Encrypter($key, 'AES-256-CBC');
     }
@@ -24,21 +26,29 @@ class FtpCrypt
     {
         if (empty($encrypted)) return '';
 
-        // 1. Intentar con la clave FTP_SECRET_KEY
+        // 1. Intentar con la clave de servicios/env/fallback
         try {
-            return self::getEncrypter(env('FTP_SECRET_KEY', ''))->decryptString($encrypted);
+            $key = config('services.ftp.secret_key') ?? env('FTP_SECRET_KEY') ?? self::DEFAULT_KEY;
+            return self::getEncrypter($key)->decryptString($encrypted);
         } catch (\Throwable $e) {
             // continuar
         }
 
-        // 2. Intentar con APP_KEY bajo Encrypter personalizado
+        // 2. Intentar con la clave por defecto directamente
+        try {
+            return self::getEncrypter(self::DEFAULT_KEY)->decryptString($encrypted);
+        } catch (\Throwable $e) {
+            // continuar
+        }
+
+        // 3. Intentar con APP_KEY bajo Encrypter personalizado
         try {
             return self::getEncrypter(config('app.key'))->decryptString($encrypted);
         } catch (\Throwable $e) {
             // continuar
         }
 
-        // 3. Intentar con Crypt nativo de Laravel
+        // 4. Intentar con Crypt nativo de Laravel
         try {
             return \Illuminate\Support\Facades\Crypt::decryptString($encrypted);
         } catch (\Throwable $e) {
