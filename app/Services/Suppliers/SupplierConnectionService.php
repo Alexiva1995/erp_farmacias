@@ -223,15 +223,25 @@ class SupplierConnectionService
             $payloadDef = $this->buildPayload($connection, 'productos');
             $productData = [];
 
-            if ($payloadDef) {
-                $url = $payloadDef['url'] ?? $connection->path;
-                $requestData = isset($payloadDef['payload']) ? $payloadDef['payload'] : (isset($payloadDef['url']) ? [] : $payloadDef);
+            // Determinar URL de productos: desde payloadDef o construida desde host + path
+            $url = $payloadDef['url'] ?? null;
+            if (!$url && !empty($connection->host)) {
+                $base = rtrim($connection->host, '/');
+                $path = ltrim($connection->path ?? '', '/');
+                $url = !empty($path) ? "{$base}/{$path}" : $base;
+            } elseif (!$url && !empty($connection->path)) {
+                $url = $connection->path;
+            }
+
+            if (!empty($url)) {
+                $requestData = isset($payloadDef['payload']) ? $payloadDef['payload'] : (isset($payloadDef['url']) ? [] : ($payloadDef ?? []));
+                $method = $payloadDef['method'] ?? 'get';
 
                 $allProducts = [];
                 $currentUrl = $url;
                 
                 while ($currentUrl) {
-                    $productResponse = $this->fetchFromAPI($token, $requestData, $client, $currentUrl, $payloadDef['method'] ?? 'post');
+                    $productResponse = $this->fetchFromAPI($token, $requestData, $client, $currentUrl, $method);
                     
                     // Detectar si los productos vienen en una clave específica
                     $pageData = $productResponse;
@@ -273,12 +283,21 @@ class SupplierConnectionService
                 $seenInvoiceNumbers = [];
 
                 $payloadInvoice = $this->buildPayload($connection, 'facturas');
-                $invoiceUrl = $payloadInvoice['url'] ?? $connection->invoice_path;
-                $requestDataInv = isset($payloadInvoice['payload']) ? $payloadInvoice['payload'] : (isset($payloadInvoice['url']) ? [] : $payloadInvoice);
+                $invoiceUrl = $payloadInvoice['url'] ?? null;
+                if (!$invoiceUrl && !empty($connection->host)) {
+                    $base = rtrim($connection->host, '/');
+                    $path = ltrim($connection->invoice_path, '/');
+                    $invoiceUrl = !empty($path) ? "{$base}/{$path}" : $base;
+                } elseif (!$invoiceUrl) {
+                    $invoiceUrl = $connection->invoice_path;
+                }
+
+                $requestDataInv = isset($payloadInvoice['payload']) ? $payloadInvoice['payload'] : (isset($payloadInvoice['url']) ? [] : ($payloadInvoice ?? []));
+                $invMethod = $payloadInvoice['method'] ?? 'get';
                 
-                Log::info("🔎 [FACTURAS] buildPayload result", ['payloadInvoice' => $payloadInvoice, 'invoiceUrl' => $invoiceUrl, 'method' => $payloadInvoice['method'] ?? 'post']);
-                $invoiceResponse = $this->fetchFromAPI($token, $requestDataInv, $client, $invoiceUrl, $payloadInvoice['method'] ?? 'post');
-                Log::info("🔎 [FACTURAS] fetchFromAPI result", ['count' => count($invoiceResponse)]);
+                Log::info("🔎 [FACTURAS] buildPayload result", ['payloadInvoice' => $payloadInvoice, 'invoiceUrl' => $invoiceUrl, 'method' => $invMethod]);
+                $invoiceResponse = $this->fetchFromAPI($token, $requestDataInv, $client, $invoiceUrl, $invMethod);
+                Log::info("🔎 [FACTURAS] fetchFromAPI result", ['count' => is_countable($invoiceResponse) ? count($invoiceResponse) : 0]);
 
                 // Detectar si las facturas vienen en una clave específica (ej: 'facturas')
                 $invoicesRaw = $invoiceResponse;
@@ -1080,6 +1099,18 @@ class SupplierConnectionService
     {
         $supplierId = $connection->supplier_id;
         $configPath = app_path("SupplierConfigs/{$supplierId}.php");
+
+        // Si no existe por ID numérico, buscar por nombre del proveedor normalizado (ej: cristmedicals, cobeca)
+        if (!file_exists($configPath)) {
+            $supplier = $connection->supplier ?? \App\Models\Supplier::find($supplierId);
+            if ($supplier && !empty($supplier->name)) {
+                $slug = \Illuminate\Support\Str::slug($supplier->name, '');
+                $namedConfigPath = app_path("SupplierConfigs/{$slug}.php");
+                if (file_exists($namedConfigPath)) {
+                    $configPath = $namedConfigPath;
+                }
+            }
+        }
 
         if (!file_exists($configPath)) {
             return null;
