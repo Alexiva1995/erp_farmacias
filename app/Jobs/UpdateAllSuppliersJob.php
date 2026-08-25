@@ -74,7 +74,10 @@ class UpdateAllSuppliersJob implements ShouldQueue
                     throw new \Exception("Error al guardar los datos en la base de datos.");
                 }
 
-                if (!in_array($supplier->id, [2])) {
+                $isVitalClinic = str_contains(strtolower($supplier->name ?? ''), 'vitalclinic')
+                    || in_array($supplier->id, [2, 1009]);
+
+                if (!$isVitalClinic) {
                     $queryService->addDiscountsToProducts($supplier);
                 }
 

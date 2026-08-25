@@ -319,7 +319,9 @@ class SupplierQueryService
 
                     // ✅ Obtener exchange_rate del header
                     $exchangeRate = floatval($header['exchange_rate'] ?? 1);
-                    $isVitaclinics = $supplier->id === 15;
+                    $isVitaclinics = str_contains(strtolower($supplier->name ?? ''), 'vitalclinic')
+                        || str_contains(strtolower($supplier->name ?? ''), 'vitaclinic')
+                        || in_array($supplier->id, [15, 1009]);
 
                     $details = [];
                     foreach ($lines as $line) {
