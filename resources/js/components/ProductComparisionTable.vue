@@ -440,7 +440,7 @@ const headers = [
 
                 <div class="d-flex ga-1">
                   <VBtn
-                    :icon="['API', 'FTP', 'SFTP', 'HTTP'].includes(item.type) ? 'tabler-refresh' : 'tabler-upload'"
+                    :icon="['API', 'FTP', 'SFTP', 'HTTP'].includes(item.type) ? (checkingApiId === item.id ? 'tabler-loader-2' : 'tabler-refresh') : 'tabler-upload'"
                     variant="tonal"
                     color="info"
                     size="small"

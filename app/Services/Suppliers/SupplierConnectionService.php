@@ -163,11 +163,38 @@ class SupplierConnectionService
                 return str_starts_with($name, $startsWith) && str_ends_with($name, $endsWith);
             });
 
+            // Optimización: Cargar facturas ya registradas en base de datos para no descargarlas repetidamente por FTP
+            $existingInvoicesMap = \App\Models\Invoice::where('supplier_id', $connection->supplier_id)
+                ->pluck('invoice_number')
+                ->map(fn($num) => strtoupper(trim((string)$num)))
+                ->filter()
+                ->flip()
+                ->toArray();
+
+            // Filtrar archivos cuya factura ya esté registrada en BD por nombre de archivo
+            $filesToProcess = [];
             foreach ($files as $filePath) {
-                if (!str_ends_with($filePath, ".txt")) {
+                if (!str_ends_with(strtolower($filePath), ".txt")) {
+                    continue;
+                }
+                $filename = pathinfo($filePath, PATHINFO_FILENAME);
+                $cleanFilename = strtoupper(trim($filename));
+                $cleanFilenameNoPrefix = strtoupper(ltrim($cleanFilename, 'F'));
+                $cleanFilenameNoZeroes = strtoupper(ltrim($cleanFilenameNoPrefix, '0'));
+
+                if (isset($existingInvoicesMap[$cleanFilename]) || 
+                    isset($existingInvoicesMap[$cleanFilenameNoPrefix]) ||
+                    (!empty($cleanFilenameNoZeroes) && isset($existingInvoicesMap[$cleanFilenameNoZeroes]))) {
+                    // Ya está en BD, saltar descarga FTP
                     continue;
                 }
 
+                $filesToProcess[] = $filePath;
+            }
+
+            Log::info("📡 [FTP FACTURAS] Proveedor {$connection->supplier_id}: Total archivos remotos: " . count($files) . ", Nuevos a descargar: " . count($filesToProcess));
+
+            foreach ($filesToProcess as $filePath) {
                 $tempInvoice = tempnam(sys_get_temp_dir(), "inv_");
 
                 if (@ftp_get($ftp, $tempInvoice, $filePath, FTP_BINARY)) {
@@ -528,7 +555,11 @@ class SupplierConnectionService
         }
 
         $barcodes = array_unique(array_filter($barcodes));
-        $products = Product::with("laboratory")->whereIn("barcode", $barcodes)->get()->keyBy("barcode");
+        $products = Product::with(['laboratory' => fn($q) => $q->select(['id', 'name'])])
+            ->whereIn("barcode", $barcodes)
+            ->select(['id', 'barcode', 'laboratory_id'])
+            ->get()
+            ->keyBy("barcode");
 
         $result = collect($lines)->map(function (string $line, $key) use ($normalizedStructure, $now, $usdCurrency, $supplierId, $products, $structure_for_parsing, $headerMap, $getIdx, $splitLine) {
             if (!empty($structure_for_parsing)) {

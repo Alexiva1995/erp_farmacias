@@ -6,7 +6,6 @@ import { computed } from "vue"
 
 // Components
 import Footer from '@/layouts/components/Footer.vue'
-import NavbarThemeSwitcher from '@/layouts/components/NavbarThemeSwitcher.vue'
 import UserProfile from '@/layouts/components/UserProfile.vue'
 import NavBarI18n from '@core/components/I18n.vue'
 import { HorizontalNavLayout } from '@layouts'
@@ -53,7 +52,6 @@ const processedNavItems = computed(() => {
         :languages="themeConfig.app.i18n.langConfig"
       />
 
-      <NavbarThemeSwitcher class="me-2" />
       <UserProfile />
     </template>
 

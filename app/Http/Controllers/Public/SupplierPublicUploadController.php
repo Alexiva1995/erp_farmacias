@@ -23,10 +23,15 @@ class SupplierPublicUploadController extends Controller
             return ApiResponse::error('Enlace no válido o expirado.', 404);
         }
 
+        $latestExchangeRate = \App\Models\ExchangeRate::orderByDesc('created_at')
+            ->where('currency_code', 'BS')
+            ->first();
+
         return ApiResponse::success([
             'name' => $supplier->name,
             'id' => $supplier->id,
-            'last_upload' => $supplier->connections()->first()?->last_connection
+            'last_upload' => $supplier->connections()->first()?->last_connection,
+            'exchange_rate' => $latestExchangeRate ? (float) $latestExchangeRate->rate : null,
         ]);
     }
 

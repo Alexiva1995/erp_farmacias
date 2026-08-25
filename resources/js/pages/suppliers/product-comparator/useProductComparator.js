@@ -321,12 +321,13 @@ export function useProductComparator() {
         stopPolling();
         pollingSupplierId.value = null;
         pollingStartTime.value = null;
+        checkingApiSupplierId.value = null;
 
         await fetchSupplierConnections();
         await fetchProducts();
 
         if (currentStatus.status === "failed") {
-          toast.error("La sincronización con el proveedor falló");
+          toast.error(`La sincronización con el proveedor falló: ${currentStatus.message || ''}`);
         } else {
           toast.success("Sincronización completada exitosamente");
         }
@@ -336,6 +337,7 @@ export function useProductComparator() {
       stopPolling();
       pollingSupplierId.value = null;
       pollingStartTime.value = null;
+      checkingApiSupplierId.value = null;
     }
   };
 
@@ -399,6 +401,7 @@ export function useProductComparator() {
       clearInterval(pollingInterval.value);
       pollingInterval.value = null;
     }
+    checkingApiSupplierId.value = null;
   };
 
   const fetchOptions = async () => {
@@ -528,9 +531,8 @@ export function useProductComparator() {
       toast.error(`No se pudo iniciar la conexión con ${supplier.name}${errorDetail ? `: ${errorDetail}` : ""}`);
       pollingSupplierId.value = null;
       pollingStartTime.value = null;
-      return;
-    } finally {
       checkingApiSupplierId.value = null;
+      return;
     }
 
     try {

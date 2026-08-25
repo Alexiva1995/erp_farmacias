@@ -23,6 +23,9 @@ const fetchSupplier = async () => {
     const response = await axios.get(`/public/suppliers/upload/${token}`)
     supplierName.value = response.data.data.name
     lastUpload.value = response.data.data.last_upload
+    if (response.data.data.exchange_rate && (exchangeRate.value === null || exchangeRate.value === '')) {
+      exchangeRate.value = response.data.data.exchange_rate
+    }
     loading.value = false
   } catch (error) {
     isError.value = true
@@ -62,10 +65,10 @@ const handleUpload = async () => {
 
 const resetForm = () => {
   file.value = null
-  exchangeRate.value = null
   isSuccess.value = false
   isError.value = false
   errorMessage.value = ''
+  fetchSupplier()
 }
 
 const formatDate = (dateString) => {
@@ -84,17 +87,17 @@ onMounted(fetchSupplier)
 </script>
 
 <template>
-  <div class="public-upload-container d-flex align-center justify-center fill-height">
-    <VCard width="500" class="pa-8 text-center glass-card" theme="dark">
+  <div class="public-upload-container d-flex align-center justify-center fill-height pa-4">
+    <VCard width="520" class="pa-8 text-center upload-card elevation-4">
       <div v-if="loading" class="py-12">
         <VProgressCircular indeterminate color="primary" size="64" />
-        <p class="mt-4 text-h6">Cargando portal de proveedor...</p>
+        <p class="mt-4 text-h6 text-medium-emphasis">Cargando portal de proveedor...</p>
       </div>
 
       <div v-else-if="isSuccess">
-        <VIcon size="100" color="success" class="mb-4">tabler-circle-check</VIcon>
+        <VIcon size="90" color="success" class="mb-4">tabler-circle-check</VIcon>
         <h2 class="text-h4 font-weight-bold mb-2">¡Carga Exitosa!</h2>
-        <p class="text-body-1 mb-6">
+        <p class="text-body-1 text-medium-emphasis mb-6">
           Hemos recibido su lista de precios correctamente. El sistema la procesará automáticamente.
         </p>
         
@@ -109,21 +112,21 @@ onMounted(fetchSupplier)
           Subir otro archivo
         </VBtn>
         
-        <p class="text-caption">Ya puede cerrar esta ventana o subir una nueva lista.</p>
+        <p class="text-caption text-disabled">Ya puede cerrar esta ventana o subir una nueva lista.</p>
       </div>
 
       <div v-else-if="isError">
-        <VIcon size="100" color="error" class="mb-4">tabler-alert-circle</VIcon>
+        <VIcon size="90" color="error" class="mb-4">tabler-alert-circle</VIcon>
         <h2 class="text-h4 font-weight-bold mb-2">Ocurrió un Problema</h2>
         <p class="text-body-1 mb-6 text-error">{{ errorMessage }}</p>
-        <p class="text-body-2 font-weight-medium">
+        <p class="text-body-2 text-medium-emphasis">
           Si el problema persiste, por favor contacte con el personal de la farmacia para asistencia.
         </p>
       </div>
 
       <div v-else>
-        <div class="mb-8">
-          <div class="d-flex justify-center mb-6">
+        <div class="mb-6">
+          <div class="d-flex justify-center mb-4">
             <VImg
               :src="logo"
               max-width="180"
@@ -131,7 +134,7 @@ onMounted(fetchSupplier)
             />
           </div>
           <h1 class="text-h4 font-weight-bold mb-1">Hola, {{ supplierName }}</h1>
-          <p class="text-body-1 text-secondary mb-0">Suba su lista de precios actualizada</p>
+          <p class="text-body-1 text-medium-emphasis mb-0">Suba su lista de precios actualizada</p>
           <div v-if="lastUpload" class="mt-2 text-caption text-secondary">
             <VIcon size="14" class="me-1">tabler-history</VIcon>
             Última subida: {{ formatDate(lastUpload) }}
@@ -141,8 +144,8 @@ onMounted(fetchSupplier)
         <VForm @submit.prevent="handleUpload">
           <VFileInput
             v-model="file"
-            label="Seleccionar archivo Excel"
-            placeholder="Suba su archivo .xlsx o .xls"
+            label="Seleccionar archivo Excel / CSV"
+            placeholder="Suba su archivo .xlsx, .xls o .csv"
             prepend-icon=""
             prepend-inner-icon="tabler-file-spreadsheet"
             accept=".xlsx,.xls,.csv"
@@ -155,12 +158,14 @@ onMounted(fetchSupplier)
           <VTextField
             v-model="exchangeRate"
             label="Tasa de Cambio (BS/USD)"
-            placeholder="Ej: 45.50"
+            placeholder="Ej: 785.07"
             prepend-inner-icon="tabler-currency-dollar"
             variant="outlined"
             type="number"
-            step="0.01"
+            step="0.0001"
             class="mb-6"
+            hint="Tasa oficial del día cargada automáticamente (editable si aplica)"
+            persistent-hint
             required
             :disabled="uploading"
           />
@@ -178,8 +183,8 @@ onMounted(fetchSupplier)
           </VBtn>
         </VForm>
 
-        <p class="mt-8 text-caption text-secondary">
-          Protegido por el sistema de gestión Alexiva
+        <p class="mt-8 text-caption text-disabled mb-0">
+          Protegido por el sistema de gestión ERP
         </p>
       </div>
     </VCard>
@@ -188,28 +193,18 @@ onMounted(fetchSupplier)
 
 <style scoped>
 .public-upload-container {
-  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  background: #f4f5fa;
   min-block-size: 100vh;
 }
 
-.glass-card {
-  border: 1px solid rgba(255, 255, 255, 10%);
-  border-radius: 24px;
-  backdrop-filter: blur(10px);
-  background: rgba(255, 255, 255, 5%);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 37%);
-}
-
-.text-h4 {
-  color: #f8fafc;
-}
-
-.text-body-1 {
-  color: #cbd5e1;
+.upload-card {
+  border-radius: 16px;
+  background: #ffffff;
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
 }
 
 :deep(.v-field) {
-  border-radius: 12px;
+  border-radius: 8px;
 }
 </style>
 

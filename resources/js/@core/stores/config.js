@@ -5,21 +5,14 @@ import { themeConfig } from '@themeConfig'
 
 // SECTION Store
 export const useConfigStore = defineStore('config', () => {
-  // 👉 Theme
-  const userPreferredColorScheme = usePreferredColorScheme()
-  const cookieColorScheme = cookieRef('color-scheme', 'light')
-
-  watch(userPreferredColorScheme, val => {
-    if (val !== 'no-preference')
-      cookieColorScheme.value = val
-  }, { immediate: true })
-
-  const theme = cookieRef('theme', themeConfig.app.theme)
+  // 👉 Theme (siempre light)
+  const cookieColorScheme = ref('light')
+  const theme = ref('light')
 
   // 👉 isVerticalNavSemiDark
-  const isVerticalNavSemiDark = cookieRef('isVerticalNavSemiDark', themeConfig.verticalNav.isVerticalNavSemiDark)
+  const isVerticalNavSemiDark = ref(false)
 
-  // 👉 isVerticalNavSemiDark
+  // 👉 skin
   const skin = cookieRef('skin', themeConfig.app.skin)
 
   // ℹ️ We need to use `storeToRefs` to forward the state
@@ -44,15 +37,30 @@ export const useConfigStore = defineStore('config', () => {
 // !SECTION
 // SECTION Init
 export const initConfigStore = () => {
-  const userPreferredColorScheme = usePreferredColorScheme()
   const vuetifyTheme = useTheme()
   const configStore = useConfigStore()
 
-  // Forzar siempre modo claro
+  // Forzar siempre modo claro y purgar configuraciones oscuras
   configStore.theme = 'light'
+  configStore.isVerticalNavSemiDark = false
+  vuetifyTheme.global.name.value = 'light'
 
-  watch([() => configStore.theme, userPreferredColorScheme], () => {
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.removeItem('theme')
+      localStorage.removeItem('color-scheme')
+      document.documentElement.setAttribute('data-theme', 'light')
+      document.cookie = 'theme=light; path=/;'
+      document.cookie = 'color-scheme=light; path=/;'
+      document.cookie = 'isVerticalNavSemiDark=false; path=/;'
+    } catch (e) {
+      // silenciar
+    }
+  }
+
+  watch(() => configStore.theme, () => {
     vuetifyTheme.global.name.value = 'light'
+    configStore.theme = 'light'
   }, { immediate: true })
   
   onMounted(() => {
