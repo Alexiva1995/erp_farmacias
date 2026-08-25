@@ -14,7 +14,10 @@ class SupplierPublicUploadRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'file' => 'required|file|mimes:xlsx,xls,csv|max:10240',
+            'file' => 'required|file|mimes:xlsx,xls,csv|max:20480',
+            'file_2' => 'nullable|file|mimes:xlsx,xls,csv|max:20480',
+            'files' => 'nullable|array',
+            'files.*' => 'nullable|file|mimes:xlsx,xls,csv|max:20480',
             'exchange_rate' => 'required|numeric|min:0.01',
         ];
     }

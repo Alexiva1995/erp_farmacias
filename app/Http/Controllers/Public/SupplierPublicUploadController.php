@@ -53,19 +53,38 @@ class SupplierPublicUploadController extends Controller
         }
 
         try {
-            // Guardar el archivo temporalmente
-            $path = $request->file('file')->store('temp', ['disk' => 'local']);
+            $filePaths = [];
+
+            if ($request->hasFile('file')) {
+                $filePaths[] = $request->file('file')->store('temp', ['disk' => 'local']);
+            }
+
+            if ($request->hasFile('file_2')) {
+                $filePaths[] = $request->file('file_2')->store('temp', ['disk' => 'local']);
+            }
+
+            if ($request->hasFile('files')) {
+                foreach ($request->file('files') as $f) {
+                    if ($f) {
+                        $filePaths[] = $f->store('temp', ['disk' => 'local']);
+                    }
+                }
+            }
+
+            if (empty($filePaths)) {
+                return ApiResponse::error('No se ha recibido ningún archivo.', 422);
+            }
             
-            // Despachar el Job con la tasa de cambio (SÍNCRONO)
+            // Despachar el Job con la tasa de cambio y archivos (SÍNCRONO)
             ProcessSupplierConnectionJob::dispatchSync(
                 $supplier,
                 null, // No hay usuario autenticado (es público)
-                $path,
+                count($filePaths) === 1 ? $filePaths[0] : $filePaths,
                 $connection->structure,
                 (float) $request->exchange_rate
             );
 
-            return ApiResponse::success(null, 'Archivo recibido correctamente. El procesamiento ha comenzado.');
+            return ApiResponse::success(null, 'Archivo(s) recibido(s) correctamente. El procesamiento ha finalizado.');
         } catch (\Exception $e) {
             return ApiResponse::error('Error al procesar el archivo: ' . $e->getMessage(), 500);
         }

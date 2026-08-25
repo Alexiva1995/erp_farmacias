@@ -26,7 +26,7 @@ class ProcessSupplierConnectionJob implements ShouldQueue
     public function __construct(
         public Supplier $supplier,
         public ?int $userId,
-        public ?string $filePath = null,
+        public string|array|null $filePath = null,
         public array $columnMap = [],
         public ?float $exchangeRate = null,
     ) {
@@ -39,11 +39,12 @@ class ProcessSupplierConnectionJob implements ShouldQueue
     {
         // Log INMEDIATO al inicio del Job
         $logFile = storage_path('logs/supplier_debug_' . date('Y-m-d') . '.log');
-        $tipo = $this->filePath ? 'EXCEL' : 'FTP/API';
+        $hasFiles = !empty($this->filePath);
+        $tipo = $hasFiles ? 'EXCEL' : 'FTP/API';
         $logMessage = "[" . date('Y-m-d H:i:s') . "] 🔧 [JOB] INICIO handle() - Tipo: {$tipo}\n";
         $logMessage .= "[" . date('Y-m-d H:i:s') . "] 📦 Supplier ID: {$this->supplier->id}, Name: {$this->supplier->name}\n";
         $logMessage .= "[" . date('Y-m-d H:i:s') . "] 👤 User ID: " . ($this->userId ?? 'NULL') . "\n";
-        $logMessage .= "[" . date('Y-m-d H:i:s') . "] 📁 File Path: " . ($this->filePath ?? 'NULL (FTP)') . "\n";
+        $logMessage .= "[" . date('Y-m-d H:i:s') . "] 📁 File Path: " . json_encode($this->filePath) . "\n";
         $logMessage .= "[" . date('Y-m-d H:i:s') . "] 🗺️ Column Map: " . json_encode($this->columnMap) . "\n";
         file_put_contents($logFile, $logMessage, FILE_APPEND);
         error_log($logMessage);
@@ -64,7 +65,7 @@ class ProcessSupplierConnectionJob implements ShouldQueue
         file_put_contents($logFile, $logMessage, FILE_APPEND);
 
         $supplierConnection = \App\Models\SupplierConnection::where('supplier_id', $this->supplier->id)->first();
-        if (is_null($supplierConnection) && !$this->filePath) {
+        if (is_null($supplierConnection) && !$hasFiles) {
             $status->update([
                 "status" => "failed",
                 "message" => "Este proveedor no posee una conexión registrada",
@@ -77,7 +78,7 @@ class ProcessSupplierConnectionJob implements ShouldQueue
         try {
             $results = [];
 
-            if ($this->filePath) {
+            if ($hasFiles) {
                 if (!$supplierConnection || $structure !== $this->columnMap) {
                     $data = [
                         'supplier_id' => $this->supplier->id,
@@ -92,46 +93,59 @@ class ProcessSupplierConnectionJob implements ShouldQueue
                     $supplierConnection = \App\Models\SupplierConnection::where('supplier_id', $this->supplier->id)->first();
                 }
 
-                if (!Storage::disk('local')->exists($this->filePath)) {
-                    throw new \Exception("Archivo subido no encontrado: {$this->filePath}");
+                $paths = is_array($this->filePath) ? $this->filePath : [$this->filePath];
+                $allProducts = [];
+
+                foreach ($paths as $singlePath) {
+                    if (empty($singlePath)) {
+                        continue;
+                    }
+
+                    if (!Storage::disk('local')->exists($singlePath)) {
+                        Log::warning("Archivo subido no encontrado: {$singlePath}");
+                        continue;
+                    }
+
+                    $absolutePath = Storage::disk('local')->path($singlePath);
+
+                    $import = new SupplierImport(
+                        supplierId: (int) $this->supplier->id,
+                        startRow: (int) ($this->columnMap["start_row"] ?? 1),
+                        codSupplierCol: $this->columnMap["cod_supplier"] ?? null,
+                        nameCol: $this->columnMap["name"],
+                        barcodeCol: $this->columnMap["barcode_match"] ?? null,
+                        qtyCol: $this->columnMap["quantity"] ?? null,
+                        costBsCol: $this->columnMap["unit_cost"] ?? null,
+                        costUsdCol: $this->columnMap["unit_cost_usd"] ?? null,
+                        activeIngredientCol: $this->columnMap["active_ingredient"] ?? null,
+                        expirationCol: $this->columnMap["expiration"] ?? null,
+                        currencyCol: $this->exchangeRate ?? ($this->columnMap["currency"] ?? null),
+                    );
+
+                    $logFile = storage_path('logs/supplier_debug_' . date('Y-m-d') . '.log');
+                    $logMessage = "[" . date('Y-m-d H:i:s') . "] 🚨 [JOB] ANTES Excel::import - Path: {$absolutePath}\n";
+                    file_put_contents($logFile, $logMessage, FILE_APPEND);
+                    
+                    Excel::import($import, $absolutePath);
+
+                    $products = $import->getRows();
+                    if ($products->isNotEmpty()) {
+                        $allProducts = array_merge($allProducts, $products->toArray());
+                    }
+
+                    Storage::disk('local')->delete($singlePath);
                 }
 
-                $absolutePath = Storage::disk('local')->path($this->filePath);
-
-                $import = new SupplierImport(
-                    supplierId: (int) $this->supplier->id,
-                    startRow: (int) ($this->columnMap["start_row"] ?? 1),
-                    codSupplierCol: $this->columnMap["cod_supplier"] ?? null,
-                    nameCol: $this->columnMap["name"],
-                    barcodeCol: $this->columnMap["barcode_match"] ?? null,
-                    qtyCol: $this->columnMap["quantity"] ?? null,
-                    costBsCol: $this->columnMap["unit_cost"] ?? null,
-                    costUsdCol: $this->columnMap["unit_cost_usd"] ?? null,
-                    activeIngredientCol: $this->columnMap["active_ingredient"] ?? null,
-                    expirationCol: $this->columnMap["expiration"] ?? null,
-                    currencyCol: $this->exchangeRate ?? ($this->columnMap["currency"] ?? null),
-                );
-
-                $logFile = storage_path('logs/supplier_debug_' . date('Y-m-d') . '.log');
-                $logMessage = "[" . date('Y-m-d H:i:s') . "] 🚨 [JOB] ANTES Excel::import - Path: {$absolutePath}\n";
-                file_put_contents($logFile, $logMessage, FILE_APPEND);
+                $productsCount = count($allProducts);
                 
-                Excel::import($import, $absolutePath);
-
-                $products = $import->getRows();
-                $productsArray = $products->isNotEmpty() ? $products->toArray() : [];
-                $productsCount = count($productsArray);
-                
-                $logMessage = "[" . date('Y-m-d H:i:s') . "] 🚨 [JOB] DESPUÉS Excel::import - Productos obtenidos: {$productsCount}\n";
+                $logMessage = "[" . date('Y-m-d H:i:s') . "] 🚨 [JOB] DESPUÉS Excel::import - Total productos combinados: {$productsCount}\n";
                 file_put_contents($logFile, $logMessage, FILE_APPEND);
-                Log::info("🚨 [JOB] Productos importados", ['count' => $productsCount]);
+                Log::info("🚨 [JOB] Productos importados combinados", ['count' => $productsCount]);
                 
                 $results = [
-                    "products" => $productsArray,
+                    "products" => $allProducts,
                     "invoices" => []
                 ];
-
-                Storage::disk('local')->delete($this->filePath);
             } else {
                 // Procesando conexión FTP/API
                 $logFile = storage_path('logs/supplier_debug_' . date('Y-m-d') . '.log');

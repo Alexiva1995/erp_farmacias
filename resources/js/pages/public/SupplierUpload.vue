@@ -16,6 +16,8 @@ const isSuccess = ref(false)
 const uploading = ref(false)
 
 const file = ref(null)
+const file2 = ref(null)
+const showSecondFile = ref(false)
 const exchangeRate = ref(null)
 
 const fetchSupplier = async () => {
@@ -46,6 +48,15 @@ const handleUpload = async () => {
   } else {
     formData.append('file', file.value)
   }
+
+  if (showSecondFile.value && file2.value) {
+    if (Array.isArray(file2.value)) {
+      formData.append('file_2', file2.value[0])
+    } else {
+      formData.append('file_2', file2.value)
+    }
+  }
+
   formData.append('exchange_rate', exchangeRate.value)
 
   try {
@@ -63,8 +74,17 @@ const handleUpload = async () => {
   }
 }
 
+const toggleSecondFile = () => {
+  showSecondFile.value = !showSecondFile.value
+  if (!showSecondFile.value) {
+    file2.value = null
+  }
+}
+
 const resetForm = () => {
   file.value = null
+  file2.value = null
+  showSecondFile.value = false
   isSuccess.value = false
   isError.value = false
   errorMessage.value = ''
@@ -88,7 +108,7 @@ onMounted(fetchSupplier)
 
 <template>
   <div class="public-upload-container d-flex align-center justify-center fill-height pa-4">
-    <VCard width="520" class="pa-8 text-center upload-card elevation-4">
+    <VCard width="540" class="pa-8 text-center upload-card elevation-4">
       <div v-if="loading" class="py-12">
         <VProgressCircular indeterminate color="primary" size="64" />
         <p class="mt-4 text-h6 text-medium-emphasis">Cargando portal de proveedor...</p>
@@ -98,7 +118,7 @@ onMounted(fetchSupplier)
         <VIcon size="90" color="success" class="mb-4">tabler-circle-check</VIcon>
         <h2 class="text-h4 font-weight-bold mb-2">¡Carga Exitosa!</h2>
         <p class="text-body-1 text-medium-emphasis mb-6">
-          Hemos recibido su lista de precios correctamente. El sistema la procesará automáticamente.
+          Hemos recibido su lista de precios correctamente. El sistema ha procesado los productos.
         </p>
         
         <VBtn
@@ -109,7 +129,7 @@ onMounted(fetchSupplier)
           class="mb-4"
         >
           <VIcon start>tabler-plus</VIcon>
-          Subir otro archivo
+          Subir otra lista
         </VBtn>
         
         <p class="text-caption text-disabled">Ya puede cerrar esta ventana o subir una nueva lista.</p>
@@ -142,18 +162,53 @@ onMounted(fetchSupplier)
         </div>
 
         <VForm @submit.prevent="handleUpload">
+          <!-- Primer Listado -->
           <VFileInput
             v-model="file"
-            label="Seleccionar archivo Excel / CSV"
+            label="Lista de Precios Principal (Excel / CSV)"
             placeholder="Suba su archivo .xlsx, .xls o .csv"
             prepend-icon=""
             prepend-inner-icon="tabler-file-spreadsheet"
             accept=".xlsx,.xls,.csv"
             variant="outlined"
-            class="mb-4"
+            class="mb-3"
             required
             :disabled="uploading"
           />
+
+          <!-- Botón para Agregar / Quitar Segundo Listado -->
+          <div class="d-flex justify-start mb-4">
+            <VBtn
+              variant="text"
+              color="primary"
+              size="small"
+              class="px-1 text-none font-weight-medium"
+              :disabled="uploading"
+              @click="toggleSecondFile"
+            >
+              <VIcon start size="18">{{ showSecondFile ? 'tabler-minus' : 'tabler-plus' }}</VIcon>
+              {{ showSecondFile ? 'Quitar segundo listado' : 'Agregar segundo listado (Opcional)' }}
+            </VBtn>
+          </div>
+
+          <!-- Segundo Listado (Condicional / Opcional) -->
+          <VExpandTransition>
+            <div v-if="showSecondFile" class="mb-4">
+              <VFileInput
+                v-model="file2"
+                label="Segundo Listado Adicional (Opcional)"
+                placeholder="Suba el segundo archivo .xlsx, .xls o .csv"
+                prepend-icon=""
+                prepend-inner-icon="tabler-file-spreadsheet"
+                accept=".xlsx,.xls,.csv"
+                variant="outlined"
+                clearable
+                hint="Los productos de ambos listados se unirán automáticamente"
+                persistent-hint
+                :disabled="uploading"
+              />
+            </div>
+          </VExpandTransition>
 
           <VTextField
             v-model="exchangeRate"
@@ -179,7 +234,7 @@ onMounted(fetchSupplier)
             :disabled="!file || !exchangeRate"
           >
             <VIcon start>tabler-cloud-upload</VIcon>
-            Enviar Lista de Precios
+            Enviar {{ showSecondFile && file2 ? 'Listados' : 'Lista de Precios' }}
           </VBtn>
         </VForm>
 
