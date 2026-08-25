@@ -123,4 +123,19 @@ class MasterCatalogController extends Controller
 
         return response()->json($result, $result['created'] ? 201 : 200);
     }
+
+    /**
+     * Registrar o asegurar una categoría en el catálogo maestro.
+     */
+    public function storeCategory(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'name' => 'required|string|max:255',
+        ]);
+
+        $result = $this->masterCatalogService->registerMasterCategory($data);
+
+        return response()->json($result, $result['created'] ? 201 : 200);
+    }
 }
+

@@ -26,6 +26,7 @@ class IaOrderAssistantFilterRequest extends FormRequest
             'tipo_exclusion' => 'nullable',
             'con_descuento' => 'nullable|boolean',
             'with_suppliers' => 'nullable|boolean',
+            'skip_ai_match' => 'nullable|boolean',
             'show_ignored' => 'nullable|boolean',
             'with_trend' => 'nullable|boolean',
             'q' => 'nullable|string|max:255',

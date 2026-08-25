@@ -142,7 +142,7 @@ async function actualizarTabla() {
   loading.value = true;
   try {
     const respuesta = await consultarProductosConPaginacion();
-    const paginacion = respuesta.data.paginate;
+    const paginacion = respuesta?.data?.paginate || respuesta?.paginate || {};
 
     if (tipo_de_vista.value) {
       gruposData.grupos = paginacion.grupos ?? [];
@@ -159,7 +159,9 @@ async function actualizarTabla() {
       gruposData.total_grupos = 0;
     }
   } catch (e) {
-    toast.error("Error al cargar los productos.");
+    console.error("Error al cargar los productos:", e);
+    const mensajeError = e.response?.data?.message || e.message || "Error al cargar los productos.";
+    toast.error(mensajeError);
   } finally {
     loading.value = false;
   }

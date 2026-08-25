@@ -68,34 +68,40 @@ class MasterCatalogService
     {
         $barcode = !empty($data['barcode']) ? trim((string) $data['barcode']) : null;
 
-        // 1. Homologar laboratorio si viene el nombre
-        $laboratoryId = $data['laboratory_id'] ?? null;
+        // 1. Homologar laboratorio si viene el nombre o validar id
+        $laboratoryId = null;
         if (!empty($data['laboratory_name'])) {
             $lab = Laboratory::firstOrCreate(
                 ['name' => trim($data['laboratory_name'])],
                 ['created_at' => now(), 'updated_at' => now()]
             );
             $laboratoryId = $lab->id;
+        } elseif (!empty($data['laboratory_id']) && Laboratory::where('id', $data['laboratory_id'])->exists()) {
+            $laboratoryId = (int) $data['laboratory_id'];
         }
 
-        // 2. Homologar origen si viene el nombre
-        $originId = $data['origin_id'] ?? null;
+        // 2. Homologar origen si viene el nombre o validar id
+        $originId = null;
         if (!empty($data['origin_name'])) {
             $orig = Origin::firstOrCreate(
                 ['name' => trim($data['origin_name'])],
                 ['created_at' => now(), 'updated_at' => now()]
             );
             $originId = $orig->id;
+        } elseif (!empty($data['origin_id']) && Origin::where('id', $data['origin_id'])->exists()) {
+            $originId = (int) $data['origin_id'];
         }
 
-        // 3. Homologar categoría si viene el nombre
-        $categoryId = $data['category_id'] ?? null;
+        // 3. Homologar categoría si viene el nombre o validar id
+        $categoryId = null;
         if (!empty($data['category_name'])) {
             $cat = Category::firstOrCreate(
                 ['name' => trim($data['category_name'])],
                 ['created_at' => now(), 'updated_at' => now()]
             );
             $categoryId = $cat->id;
+        } elseif (!empty($data['category_id']) && Category::where('id', $data['category_id'])->exists()) {
+            $categoryId = (int) $data['category_id'];
         }
 
         // 4. Si ya existe un producto con este código de barras, enriquecer sus datos faltantes
@@ -360,4 +366,39 @@ class MasterCatalogService
             ],
         ];
     }
+
+    /**
+     * Registrar o asegurar una categoría en el Catálogo Maestro.
+     */
+    public function registerMasterCategory(array $data): array
+    {
+        $name = trim($data['name'] ?? '');
+        if (empty($name)) {
+            throw new \InvalidArgumentException('El nombre de la categoría es requerido.');
+        }
+
+        $existing = Category::where('name', $name)->first();
+        if ($existing) {
+            return [
+                'created' => false,
+                'category' => [
+                    'id'   => $existing->id,
+                    'name' => $existing->name,
+                ],
+            ];
+        }
+
+        $category = Category::create([
+            'name' => $name,
+        ]);
+
+        return [
+            'created' => true,
+            'category' => [
+                'id'   => $category->id,
+                'name' => $category->name,
+            ],
+        ];
+    }
 }
+

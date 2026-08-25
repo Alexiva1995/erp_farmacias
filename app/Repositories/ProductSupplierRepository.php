@@ -13,14 +13,19 @@ class ProductSupplierRepository
 {
     public function consultSupplierByProductWithBetterPrice($product_id, $conDescuento): Collection
     {
+        $hasIsActive = \Illuminate\Support\Facades\Schema::hasColumn('product_suppliers', 'is_active');
+
         // Obtener solo el ID más reciente por cada proveedor para este producto (máximo 7 días de antigüedad y activo)
-        $latestIds = DB::table('product_suppliers')
+        $latestIdsQuery = DB::table('product_suppliers')
             ->select(DB::raw('MAX(id) as id'))
             ->where("product_id", "=", $product_id)
-            ->where('created_at', '>=', now()->subDays(7))
-            ->where('is_active', true)
-            ->groupBy('supplier_id')
-            ->pluck('id');
+            ->where('created_at', '>=', now()->subDays(7));
+
+        if ($hasIsActive) {
+            $latestIdsQuery->where('is_active', true);
+        }
+
+        $latestIds = $latestIdsQuery->groupBy('supplier_id')->pluck('id');
 
         $consulta = ProductSupplier::query()
             ->whereIn("id", $latestIds);
@@ -38,14 +43,19 @@ class ProductSupplierRepository
 
     public function consultarTodosLosProveedorProIdProducto($product_id): Collection
     {
+        $hasIsActive = \Illuminate\Support\Facades\Schema::hasColumn('product_suppliers', 'is_active');
+
         // Obtener solo el ID más reciente por cada proveedor para este producto (máximo 7 días de antigüedad y activo)
-        $latestIds = DB::table('product_suppliers')
+        $latestIdsQuery = DB::table('product_suppliers')
             ->select(DB::raw('MAX(id) as id'))
             ->where("product_id", "=", $product_id)
-            ->where('created_at', '>=', now()->subDays(7))
-            ->where('is_active', true)
-            ->groupBy('supplier_id')
-            ->pluck('id');
+            ->where('created_at', '>=', now()->subDays(7));
+
+        if ($hasIsActive) {
+            $latestIdsQuery->where('is_active', true);
+        }
+
+        $latestIds = $latestIdsQuery->groupBy('supplier_id')->pluck('id');
 
         return ProductSupplier::whereIn("id", $latestIds)
             ->with("supplier")
@@ -59,25 +69,32 @@ class ProductSupplierRepository
     public function getSupplierToReplenishTheProducts(Collection $products, string $conDescuento, bool $skipAiMatch = false): array
     {
         $productIds = $products->pluck('id')->toArray();
+        $hasIsActive = \Illuminate\Support\Facades\Schema::hasColumn('product_suppliers', 'is_active');
         
         // 1. Obtener solo los IDs más recientes por combinación de product_id y supplier_id (máximo 7 días y activo)
-        $latestIds = DB::table('product_suppliers')
+        $latestIdsQuery = DB::table('product_suppliers')
             ->select(DB::raw('MAX(id) as id'))
             ->whereIn('product_id', $productIds)
-            ->where('created_at', '>=', now()->subDays(7))
-            ->where('is_active', true)
-            ->groupBy('product_id', 'supplier_id')
-            ->pluck('id');
+            ->where('created_at', '>=', now()->subDays(7));
+
+        if ($hasIsActive) {
+            $latestIdsQuery->where('is_active', true);
+        }
+
+        $latestIds = $latestIdsQuery->groupBy('product_id', 'supplier_id')->pluck('id');
 
         // 2. Obtener todas las ofertas disponibles para estos productos de una sola vez
-        // No incluyas 'deleted_at' ya que la tabla product_suppliers no lo tiene.
         $query = ProductSupplier::with('supplier')
-            ->whereIn('id', $latestIds)
-            ->where('is_active', true)
-            ->where(function ($query) {
-                $query->where('unit_cost_usd', '>', 0)
-                    ->orWhere('unit_cost_usd_with_discount', '>', 0);
-            });
+            ->whereIn('id', $latestIds);
+
+        if ($hasIsActive) {
+            $query->where('is_active', true);
+        }
+
+        $query->where(function ($query) {
+            $query->where('unit_cost_usd', '>', 0)
+                ->orWhere('unit_cost_usd_with_discount', '>', 0);
+        });
 
         // 3. Ordenar por precio según preferencia del usuario (ignorando ceros)
         if ($conDescuento === "true") {
@@ -99,9 +116,13 @@ class ProductSupplierRepository
 
             // Si no tiene oferta asociada, intentar asociar por código de barras de manera automática y permanente (máximo 7 días)
             if (!$bestOffer && $product->barcode) {
-                $barcodeOffer = ProductSupplier::where('created_at', '>=', now()->subDays(7))
-                    ->where('is_active', true)
-                    ->where(function ($q) use ($product) {
+                $barcodeQuery = ProductSupplier::where('created_at', '>=', now()->subDays(7));
+
+                if ($hasIsActive) {
+                    $barcodeQuery->where('is_active', true);
+                }
+
+                $barcodeOffer = $barcodeQuery->where(function ($q) use ($product) {
                         $q->where('barcode_match', $product->barcode)
                           ->orWhere('cod_supplier', $product->barcode);
                     })

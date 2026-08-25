@@ -422,10 +422,12 @@ class InvoiceActionService
             ]);
         }
 
+        $lotNumber = !empty(trim($detail->lot_number ?? '')) ? trim($detail->lot_number) : 'S/L';
+
         return ProductLot::create([
             'product_id' => $detail->product_id,
             'supplier_id' => $invoice->supplier_id,
-            'lot_number' => $detail->lot_number,
+            'lot_number' => $lotNumber,
             'expiration_date' => $detail->expiration_date,
             'quantity' => $detail->quantity,
             'location' => $detail->location ?? null, // Puede ser null, se actualizará después

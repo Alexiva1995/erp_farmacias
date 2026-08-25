@@ -35,53 +35,70 @@ class SuppliersIaOrderAssistantController extends Controller
 
     public function filtrarPaginate(IaOrderAssistantFilterRequest $request): JsonResponse
     {
-        $respuesta = [
-            "tipo_filtracion" => $request->tipo_filtracion,
-            "tipo_vista" => $request->tipo_vista,
-            "paginate" => [],
-        ];
+        try {
+            $respuesta = [
+                "tipo_filtracion" => $request->tipo_filtracion,
+                "tipo_vista" => $request->tipo_vista,
+                "paginate" => [],
+            ];
 
-        $filtros = $this->prepararFiltros($request);
+            $filtros = $this->prepararFiltros($request);
 
-        $esVistaGrupal = filter_var($filtros['tipo_vista'] ?? false, FILTER_VALIDATE_BOOLEAN);
+            $esVistaGrupal = filter_var($filtros['tipo_vista'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
-        if ($esVistaGrupal) {
-            $respuesta["paginate"] = $this->iaAssistantReportService->getGroupedReportWithPaginate($filtros);
-        } else {
-            $respuesta["paginate"] = $this->iaAssistantReportService->getFilteredReportWithPaginate($filtros);
+            if ($esVistaGrupal) {
+                $respuesta["paginate"] = $this->iaAssistantReportService->getGroupedReportWithPaginate($filtros);
+            } else {
+                $respuesta["paginate"] = $this->iaAssistantReportService->getFilteredReportWithPaginate($filtros);
+            }
+
+            return ApiResponse::success($respuesta, "ok", 200);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("[SuppliersIaOrderAssistantController@filtrarPaginate] Error: " . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return ApiResponse::error(
+                "Error al procesar el reporte de compras: " . $e->getMessage(),
+                500,
+                config('app.debug') ? ['trace' => $e->getTraceAsString()] : []
+            );
         }
-
-        return ApiResponse::success($respuesta, "ok", 200);
     }
 
     public function stats(Request $request): JsonResponse
     {
-        $filtros = $this->prepararFiltros($request);
-        
-        // Obtenemos todos los productos filtrados sin hidratar para mayor velocidad
-        $items = $this->iaAssistantReportService->getFilteredReportWithoutPaginate($filtros);
+        try {
+            $filtros = $this->prepararFiltros($request);
+            
+            // Obtenemos todos los productos filtrados sin hidratar para mayor velocidad
+            $items = $this->iaAssistantReportService->getFilteredReportWithoutPaginate($filtros);
 
-        $stats = [
-            'necesitan' => 0,
-            'exceso' => 0,
-            'ok' => 0
-        ];
+            $stats = [
+                'necesitan' => 0,
+                'exceso' => 0,
+                'ok' => 0
+            ];
 
-        foreach ($items as $item) {
-            $solicitarVal = (float)($item->solicitar ?? 0);
-            $loteQuantity = (float)($item->lote_quantity ?? 0);
+            foreach ($items as $item) {
+                $solicitarVal = (float)($item->solicitar ?? 0);
+                $loteQuantity = (float)($item->lote_quantity ?? 0);
 
-            // Sincronizado con la lógica de UI y Repository
-            if ($solicitarVal > 0 || ($solicitarVal == 0 && $loteQuantity <= 0)) {
-                $stats['necesitan']++;
-            } elseif ($solicitarVal < 0) {
-                $stats['exceso']++;
-            } else {
-                $stats['ok']++;
+                // Sincronizado con la lógica de UI y Repository
+                if ($solicitarVal > 0 || ($solicitarVal == 0 && $loteQuantity <= 0)) {
+                    $stats['necesitan']++;
+                } elseif ($solicitarVal < 0) {
+                    $stats['exceso']++;
+                } else {
+                    $stats['ok']++;
+                }
             }
-        }
 
-        return ApiResponse::success($stats, "ok", 200);
+            return ApiResponse::success($stats, "ok", 200);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("[SuppliersIaOrderAssistantController@stats] Error: " . $e->getMessage());
+            return ApiResponse::error("Error al calcular estadísticas: " . $e->getMessage(), 500);
+        }
     }
 
     private function prepararFiltros(Request $request): array

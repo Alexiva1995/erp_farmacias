@@ -117,6 +117,7 @@ Route::prefix('v1/master-catalog')->middleware('master_catalog')->group(function
     Route::post('/groups', [\App\Http\Controllers\Api\MasterCatalogController::class, 'storeGroup']);
     Route::post('/suppliers', [\App\Http\Controllers\Api\MasterCatalogController::class, 'storeSupplier']);
     Route::post('/origins', [\App\Http\Controllers\Api\MasterCatalogController::class, 'storeOrigin']);
+    Route::post('/categories', [\App\Http\Controllers\Api\MasterCatalogController::class, 'storeCategory']);
 });
 Route::post("/public/orders/{hash}/respond", [SupplierOrderResponseController::class, "respond"]);
 

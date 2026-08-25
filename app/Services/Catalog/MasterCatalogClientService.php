@@ -226,4 +226,38 @@ class MasterCatalogClientService
 
         return null;
     }
+
+    /**
+     * Registrar categoría en el Catálogo Maestro para obtener ID oficial unificado.
+     */
+    public function registerCategoryInMaster(array $data): ?array
+    {
+        $role = config('catalog.role', 'standalone');
+
+        if ($role === 'slave') {
+            $masterUrl = config('catalog.master_url');
+            $masterKey = config('catalog.master_key');
+
+            if (!empty($masterUrl)) {
+                try {
+                    $response = Http::timeout(5)
+                        ->withHeaders([
+                            'X-Master-Key' => $masterKey,
+                            'Accept'       => 'application/json',
+                        ])
+                        ->post("{$masterUrl}/categories", $data);
+
+                    if ($response->successful()) {
+                        $responseData = $response->json();
+                        return $responseData['category'] ?? null;
+                    }
+                } catch (\Throwable $e) {
+                    Log::error("Error al registrar categoría en Catálogo Maestro remoto: " . $e->getMessage());
+                }
+            }
+        }
+
+        return null;
+    }
 }
+

@@ -157,9 +157,35 @@ class HomologateSlaveCatalogCommand extends Command
             $this->line('• Grupos a remapear: <fg=yellow>' . count($groupMap) . '</>');
 
             // ==========================================
-            // ETAPA D: HOMOLOGAR PROVEEDORES
+            // ETAPA D: HOMOLOGAR CATEGORÍAS
             // ==========================================
-            $this->info("\n--- [4/5] Homologando Proveedores ---");
+            $this->info("\n--- [4/6] Homologando Categorías ---");
+            $categories = DB::table('categories')->orderBy('id')->get();
+            $categoryMap = [];
+
+            $barCategories = $this->output->createProgressBar(count($categories));
+            $barCategories->start();
+
+            foreach ($categories as $cat) {
+                if (!empty($cat->name)) {
+                    $masterCat = $masterClient->registerCategoryInMaster([
+                        'name' => $cat->name,
+                    ]);
+
+                    if (!empty($masterCat['id']) && (int) $masterCat['id'] !== (int) $cat->id) {
+                        $categoryMap[$cat->id] = (int) $masterCat['id'];
+                    }
+                }
+                $barCategories->advance();
+            }
+            $barCategories->finish();
+            $this->newLine();
+            $this->line('• Categorías a remapear: <fg=yellow>' . count($categoryMap) . '</>');
+
+            // ==========================================
+            // ETAPA E: HOMOLOGAR PROVEEDORES
+            // ==========================================
+            $this->info("\n--- [5/6] Homologando Proveedores ---");
             $suppliers = DB::table('suppliers')->orderBy('id')->get();
             $supplierMap = [];
 
@@ -191,9 +217,9 @@ class HomologateSlaveCatalogCommand extends Command
             $this->line('• Proveedores a remapear: <fg=yellow>' . count($supplierMap) . '</>');
 
             // ==========================================
-            // ETAPA E: HOMOLOGAR PRODUCTOS
+            // ETAPA F: HOMOLOGAR PRODUCTOS
             // ==========================================
-            $this->info("\n--- [5/5] Homologando Productos con el Catálogo Maestro ---");
+            $this->info("\n--- [6/6] Homologando Productos con el Catálogo Maestro ---");
             
             $productCols = \Illuminate\Support\Facades\Schema::getColumnListing('products');
             $hasLabId = in_array('laboratory_id', $productCols);
@@ -311,7 +337,17 @@ class HomologateSlaveCatalogCommand extends Command
                 ], $offset);
             }
 
-            // 4. Remapear Proveedores
+            // 4. Remapear Categorías
+            if (!empty($categoryMap)) {
+                $this->line('• Actualizando tabla `categories` y relaciones...');
+                $this->applyMapping('categories', 'id', $categoryMap, [
+                    'products' => 'category_id',
+                    'category_offers' => 'category_id',
+                    'category_profitability' => 'category_id',
+                ], $offset);
+            }
+
+            // 5. Remapear Proveedores
             if (!empty($supplierMap)) {
                 $this->line('• Actualizando tabla `suppliers` y relaciones...');
                 $this->applyMapping('suppliers', 'id', $supplierMap, [
