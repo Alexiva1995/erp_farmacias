@@ -410,7 +410,10 @@ class SupplierController extends Controller
         $logMessage = "[" . date('Y-m-d H:i:s') . "] ✅ Validación pasada - Columnas mapeadas: " . json_encode($validated) . "\n";
         file_put_contents($logFile, $logMessage, FILE_APPEND);
 
-        unset($validated["file"]);
+        $formatType = $request->input('format_type', 'primary');
+        $saveAsSecondary = filter_var($request->input('save_as_secondary', false), FILTER_VALIDATE_BOOLEAN) || $formatType === 'secondary';
+
+        unset($validated["file"], $validated["format_type"], $validated["save_as_secondary"]);
 
         try {
             $path = $request->file("file")->store("temp", ["disk" => "local"]);
@@ -421,6 +424,16 @@ class SupplierController extends Controller
             file_put_contents($logFile, $logMessage, FILE_APPEND);
             error_log($logMessage);
             return response()->json(['error' => 'Failed to store file'], 500);
+        }
+
+        // Actualizar la estructura correspondiente en la conexión del proveedor
+        $connection = $supplier->connections()->first();
+        if ($connection) {
+            if ($saveAsSecondary) {
+                $connection->update(['secondary_structure' => $validated]);
+            } else {
+                $connection->update(['structure' => $validated]);
+            }
         }
 
         // Log ANTES de dispatch

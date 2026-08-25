@@ -1,7 +1,7 @@
 <script setup>
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { ref, watch } from "vue";
+import { reactive, ref, watch } from "vue";
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
@@ -15,18 +15,38 @@ const emit = defineEmits([
 ]);
 
 const errors = ref({});
+const activeFormat = ref("primary"); // 'primary' | 'secondary'
 
-const start_row = ref(1);
-const cod_supplier = ref("");
-const name = ref("");
-const barcode = ref(null);
-const bs_cost = ref("");
-const usd_cost = ref("");
-const active_ingredient = ref("");
-const expiration = ref(null);
-const quantity = ref(null);
-const currency = ref(null);
+// Estructuras reactivas para formato principal y secundario
+const formats = reactive({
+  primary: {
+    start_row: 1,
+    cod_supplier: "",
+    name: "",
+    barcode_match: null,
+    unit_cost: "",
+    unit_cost_usd: "",
+    active_ingredient: "",
+    expiration: null,
+    quantity: null,
+    currency: null,
+  },
+  secondary: {
+    start_row: 1,
+    cod_supplier: "",
+    name: "",
+    barcode_match: null,
+    unit_cost: "",
+    unit_cost_usd: "",
+    active_ingredient: "",
+    expiration: null,
+    quantity: null,
+    currency: null,
+  },
+});
+
 const file = ref(null);
+const isSavingStructure = ref(false);
 
 const formatDate = (dateString) => {
   if (!dateString || dateString === "No se ha establecido conexión")
@@ -45,96 +65,59 @@ const formatDate = (dateString) => {
 const submitForm = async () => {
   errors.value = {};
 
+  const current = formats[activeFormat.value];
   const form = new FormData();
-  form.append("start_row", start_row.value);
-  form.append("cod_supplier", cod_supplier.value);
-  form.append("name", name.value);
-  form.append("barcode_match", barcode.value);
-  form.append("quantity", quantity.value);
-  form.append("unit_cost", bs_cost.value);
-  form.append("unit_cost_usd", usd_cost.value);
-  form.append("active_ingredient", active_ingredient.value);
-  form.append("expiration", expiration.value);
+  form.append("start_row", current.start_row || 1);
+  form.append("cod_supplier", current.cod_supplier || "");
+  form.append("name", current.name || "");
+  form.append("barcode_match", current.barcode_match || "");
+  form.append("quantity", current.quantity || "");
+  form.append("unit_cost", current.unit_cost || "");
+  form.append("unit_cost_usd", current.unit_cost_usd || "");
+  form.append("active_ingredient", current.active_ingredient || "");
+  form.append("expiration", current.expiration || "");
+  form.append("format_type", activeFormat.value);
+  form.append("save_as_secondary", activeFormat.value === "secondary" ? "1" : "0");
 
-  if (currency.value !== null && currency.value !== "") {
-    form.append("currency", currency.value);
+  if (current.currency !== null && current.currency !== "") {
+    form.append("currency", current.currency);
   }
-  if (file.value && Array.isArray(file.value)) {
-    form.append("file", file.value[0]);
-  } else {
-    form.append("file", file.value);
+
+  let fileToUpload = file.value;
+  if (Array.isArray(file.value) && file.value.length > 0) {
+    fileToUpload = file.value[0];
   }
+
+  if (!fileToUpload) {
+    toast.error("Debes seleccionar un archivo Excel o CSV.");
+    return;
+  }
+
+  form.append("file", fileToUpload);
 
   try {
-    console.log("[Import] Iniciando subida para Proveedor ID:", props.selectedSupplier.id);
-    console.log("[Import] Archivo seleccionado:", file.value);
-    
     const uploadUrl = `/suppliers/${props.selectedSupplier.id}/import`;
-    console.log("[Import] URL de destino:", uploadUrl);
-
-    // Aseguramos que file sea un objeto File, no un array
-    let fileToUpload = file.value;
-    if (Array.isArray(file.value) && file.value.length > 0) {
-      fileToUpload = file.value[0];
-    }
-    
-    if (fileToUpload && fileToUpload.size === 0) {
-      console.warn("[Import] El navegador reporta 0 bytes. Intentando prueba de lectura forzada...");
-      const reader = new FileReader();
-      reader.onload = () => console.log("[Import] Prueba de lectura: ¡EXITOSA! El archivo es accesible a pesar del tamaño reportado.");
-      reader.onerror = () => console.error("[Import] Prueba de lectura: FALLIDA. El archivo está bloqueado o inaccesible.");
-      reader.readAsArrayBuffer(fileToUpload.slice(0, 10));
-      
-      toast.error("El navegador detecta el archivo como vacío (0 bytes). Verifica que no esté abierto en Excel o intenta renombrarlo a algo simple como 'datos.xlsx'.");
-      return;
-    }
-
-    if (fileToUpload) {
-      // Re-agregamos el archivo al FormData por si acaso el anterior falló
-      form.delete("file");
-      form.append("file", fileToUpload);
-    }
-
-    console.log("[Import] Objeto File final a subir:", fileToUpload);
 
     await axios.post(uploadUrl, form, {
       transformRequest: (data, headers) => {
-        // Al ser un FormData, eliminamos el Content-Type para que el navegador
-        // ponga 'multipart/form-data' con el boundary correcto.
         delete headers["Content-Type"];
         return data;
       },
     });
 
-    toast.success(`Datos cargados para ${props.selectedSupplier.name}`);
+    toast.success(`Datos cargados correctamente para ${props.selectedSupplier.name} (${activeFormat.value === 'secondary' ? 'Formato 2' : 'Formato 1'})`);
 
-    start_row.value = 1;
-    cod_supplier.value = "";
-    name.value = "";
-    barcode.value = null;
-    bs_cost.value = "";
-    usd_cost.value = "";
-    active_ingredient.value = "";
-    currency.value = null;
-    expiration.value = null;
-    quantity.value = null;
     file.value = null;
     emit("close-dialog");
-    handleCleanFormData();
-
     emit("refresh-products");
   } catch (error) {
     console.error("[Import] Error en la petición:", error);
-    if (error.response) {
-      console.error("[Import] Respuesta del servidor:", error.response.status, error.response.data);
-    }
-    
     toast.error(
       `No se pudo cargar los datos del excel para el proveedor ${props.selectedSupplier.name}`
     );
 
     if (error.response && error.response.status === 422) {
-      errors.value = error.response.data.errors;
+      errors.value = error.response.data.errors || {};
     }
   }
 };
@@ -142,32 +125,42 @@ const submitForm = async () => {
 const fetchSupplierConnection = async (id) => {
   try {
     const { data } = await axios.get(`suppliers/${id}/first-connection`);
-    const structure = data.data.structure;
-    start_row.value = structure.start_row ?? 1;
-    cod_supplier.value = structure.cod_supplier ?? "";
-    name.value = structure.name ?? "";
-    barcode.value = structure.barcode_match ?? null;
-    bs_cost.value = structure.unit_cost ?? "";
-    usd_cost.value = structure.unit_cost_usd ?? "";
-    active_ingredient.value = structure.active_ingredient ?? "";
-    expiration.value =
-      structure.expiration != "null" ? structure.expiration : null;
-    quantity.value = structure.quantity != "null" ? structure.quantity : null;
-  } catch (error) {}
+    const structure = data.data?.structure || {};
+    const secondaryStructure = data.data?.secondary_structure || {};
+
+    formats.primary = {
+      start_row: structure.start_row ?? 1,
+      cod_supplier: structure.cod_supplier ?? "",
+      name: structure.name ?? "",
+      barcode_match: structure.barcode_match ?? null,
+      unit_cost: structure.unit_cost ?? "",
+      unit_cost_usd: structure.unit_cost_usd ?? "",
+      active_ingredient: structure.active_ingredient ?? "",
+      expiration: structure.expiration != "null" ? structure.expiration : null,
+      quantity: structure.quantity != "null" ? structure.quantity : null,
+      currency: structure.currency ?? null,
+    };
+
+    formats.secondary = {
+      start_row: secondaryStructure.start_row ?? structure.start_row ?? 1,
+      cod_supplier: secondaryStructure.cod_supplier ?? "",
+      name: secondaryStructure.name ?? "",
+      barcode_match: secondaryStructure.barcode_match ?? null,
+      unit_cost: secondaryStructure.unit_cost ?? "",
+      unit_cost_usd: secondaryStructure.unit_cost_usd ?? "",
+      active_ingredient: secondaryStructure.active_ingredient ?? "",
+      expiration: secondaryStructure.expiration != "null" ? secondaryStructure.expiration : null,
+      quantity: secondaryStructure.quantity != "null" ? secondaryStructure.quantity : null,
+      currency: secondaryStructure.currency ?? null,
+    };
+  } catch (error) {
+    console.error("Error al obtener estructura de conexión:", error);
+  }
 };
 
 const handleCleanFormData = () => {
-  start_row.value = 1;
-  cod_supplier.value = "";
-  name.value = "";
-  barcode.value = null;
-  bs_cost.value = "";
-  usd_cost.value = "";
-  active_ingredient.value = "";
-  expiration.value = null;
-  quantity.value = null;
-  currency.value = null;
   file.value = null;
+  activeFormat.value = "primary";
 };
 
 watch(
@@ -185,7 +178,7 @@ watch(
 <template>
   <VDialog
     :model-value="props.modelValue"
-    max-width="820px"
+    max-width="840px"
     persistent
     scrollable
     @update:model-value="emit('close-dialog')"
@@ -202,7 +195,7 @@ watch(
               Cargar Productos desde Excel
             </h2>
             <span class="text-super-xs opacity-75 font-weight-bold uppercase letter-spacing-1">
-              Importación Masiva • Mapeo de Columnas
+              Importación Masiva • Soporte de Múltiples Formatos
             </span>
           </div>
           <VSpacer />
@@ -244,22 +237,52 @@ watch(
           </VRow>
         </VCard>
 
-        <!-- Mapeo de columnas -->
-        <div class="d-flex align-center gap-2 mb-3">
-          <div class="header-indicator secondary shadow-sm" />
-          <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Mapeo de Columnas del Archivo</span>
+        <!-- Selector de Formato / Mapeo -->
+        <div class="d-flex align-center justify-space-between mb-3">
+          <div class="d-flex align-center gap-2">
+            <div class="header-indicator secondary shadow-sm" />
+            <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Mapeo de Columnas</span>
+          </div>
+
+          <!-- Tabs para cambiar entre Formato 1 y Formato 2 -->
+          <VBtnToggle
+            v-model="activeFormat"
+            mandatory
+            color="primary"
+            variant="outlined"
+            density="compact"
+            class="rounded-lg border"
+          >
+            <VBtn value="primary" size="small" class="px-3 text-none font-weight-bold">
+              <VIcon start icon="tabler-file-text" size="16" />
+              Formato 1 (Principal)
+            </VBtn>
+            <VBtn value="secondary" size="small" class="px-3 text-none font-weight-bold">
+              <VIcon start icon="tabler-file-plus" size="16" />
+              Formato 2 (Secundario)
+            </VBtn>
+          </VBtnToggle>
         </div>
 
         <VCard variant="flat" class="pa-4 bg-white rounded-xl border shadow-sm mb-4">
-          <VAlert type="info" variant="tonal" density="compact" icon="tabler-info-circle" class="rounded-xl mb-4">
-            <span class="text-super-xs font-weight-black">Indica el número de columna en la que se encuentra cada campo dentro del archivo Excel.</span>
+          <VAlert
+            :type="activeFormat === 'secondary' ? 'warning' : 'info'"
+            variant="tonal"
+            density="compact"
+            icon="tabler-info-circle"
+            class="rounded-xl mb-4"
+          >
+            <span class="text-super-xs font-weight-black">
+              Editando columnas para el <strong>{{ activeFormat === 'secondary' ? 'Formato 2 (Secundario / Alternativo)' : 'Formato 1 (Principal por Defecto)' }}</strong>.
+              Indica la letra o número de columna en la que se encuentra cada campo en este archivo.
+            </span>
           </VAlert>
 
           <VRow>
             <VCol cols="6">
               <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Fila de Inicio</span>
               <VTextField
-                v-model="start_row"
+                v-model="formats[activeFormat].start_row"
                 type="text"
                 variant="outlined"
                 density="comfortable"
@@ -272,7 +295,7 @@ watch(
             <VCol cols="6">
               <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Nombre del Producto</span>
               <VTextField
-                v-model="name"
+                v-model="formats[activeFormat].name"
                 type="text"
                 variant="outlined"
                 density="comfortable"
@@ -285,7 +308,7 @@ watch(
             <VCol cols="6">
               <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Código del Proveedor</span>
               <VTextField
-                v-model="cod_supplier"
+                v-model="formats[activeFormat].cod_supplier"
                 type="text"
                 variant="outlined"
                 density="comfortable"
@@ -298,7 +321,7 @@ watch(
             <VCol cols="6">
               <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Código de Barras</span>
               <VTextField
-                v-model="barcode"
+                v-model="formats[activeFormat].barcode_match"
                 type="text"
                 variant="outlined"
                 density="comfortable"
@@ -311,7 +334,7 @@ watch(
             <VCol cols="6">
               <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Coste Unitario (Bs)</span>
               <VTextField
-                v-model="bs_cost"
+                v-model="formats[activeFormat].unit_cost"
                 type="text"
                 variant="outlined"
                 density="comfortable"
@@ -324,20 +347,20 @@ watch(
             <VCol cols="6">
               <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Coste Unitario (USD)</span>
               <VTextField
-                v-model="usd_cost"
+                v-model="formats[activeFormat].unit_cost_usd"
                 type="text"
                 variant="outlined"
                 density="comfortable"
                 hide-details="auto"
                 prepend-inner-icon="tabler-currency-dollar"
                 class="rounded-lg font-weight-black"
-                :error-messages="errors.usd_cost"
+                :error-messages="errors.unit_cost_usd"
               />
             </VCol>
             <VCol cols="6">
               <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Tasa de Cambio</span>
               <VTextField
-                v-model="currency"
+                v-model="formats[activeFormat].currency"
                 type="number"
                 :step="0.01"
                 variant="outlined"
@@ -351,7 +374,7 @@ watch(
             <VCol cols="6">
               <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Principio Activo</span>
               <VTextField
-                v-model="active_ingredient"
+                v-model="formats[activeFormat].active_ingredient"
                 type="text"
                 variant="outlined"
                 density="comfortable"
@@ -364,7 +387,7 @@ watch(
             <VCol cols="6">
               <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Fecha de Expiración</span>
               <VTextField
-                v-model="expiration"
+                v-model="formats[activeFormat].expiration"
                 type="text"
                 variant="outlined"
                 density="comfortable"
@@ -377,7 +400,7 @@ watch(
             <VCol cols="6">
               <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Cantidad</span>
               <VTextField
-                v-model="quantity"
+                v-model="formats[activeFormat].quantity"
                 type="text"
                 variant="outlined"
                 density="comfortable"
@@ -393,14 +416,14 @@ watch(
         <!-- Archivo Excel -->
         <div class="d-flex align-center gap-2 mb-3">
           <div class="header-indicator primary shadow-sm" />
-          <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Archivo de Productos</span>
+          <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Archivo de Productos ({{ activeFormat === 'secondary' ? 'Formato 2' : 'Formato 1' }})</span>
         </div>
 
         <VCard variant="flat" class="pa-4 bg-white rounded-xl border shadow-sm">
-          <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Listado de Productos (Excel)</span>
+          <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Listado de Productos (.xlsx, .xls o .csv)</span>
           <VFileInput
             v-model="file"
-            accept="application/vnd.ms-excel, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            accept=".xlsx,.xls,.csv"
             variant="outlined"
             density="comfortable"
             prepend-inner-icon="tabler-file-spreadsheet"
@@ -440,7 +463,7 @@ watch(
               @click="submitForm"
             >
               <VIcon start icon="tabler-upload" size="18" />
-              Cargar Productos
+              Cargar con {{ activeFormat === 'secondary' ? 'Formato 2' : 'Formato 1' }}
             </VBtn>
           </VCol>
         </VRow>

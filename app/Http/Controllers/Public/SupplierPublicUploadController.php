@@ -23,6 +23,8 @@ class SupplierPublicUploadController extends Controller
             return ApiResponse::error('Enlace no válido o expirado.', 404);
         }
 
+        $connection = $supplier->connections()->first();
+
         $latestExchangeRate = \App\Models\ExchangeRate::orderByDesc('created_at')
             ->where('currency_code', 'BS')
             ->first();
@@ -30,8 +32,9 @@ class SupplierPublicUploadController extends Controller
         return ApiResponse::success([
             'name' => $supplier->name,
             'id' => $supplier->id,
-            'last_upload' => $supplier->connections()->first()?->last_connection,
+            'last_upload' => $connection?->last_connection,
             'exchange_rate' => $latestExchangeRate ? (float) $latestExchangeRate->rate : null,
+            'has_secondary_structure' => !empty($connection?->secondary_structure),
         ]);
     }
 
@@ -53,33 +56,41 @@ class SupplierPublicUploadController extends Controller
         }
 
         try {
-            $filePaths = [];
+            $filesConfig = [];
 
+            // Archivo principal (Siempre usa el mapeo principal)
             if ($request->hasFile('file')) {
-                $filePaths[] = $request->file('file')->store('temp', ['disk' => 'local']);
+                $path = $request->file('file')->store('temp', ['disk' => 'local']);
+                $filesConfig[] = [
+                    'path' => $path,
+                    'column_map' => $connection->structure,
+                ];
             }
 
+            // Segundo archivo (Opcional - Puede usar mapeo secundario o principal)
             if ($request->hasFile('file_2')) {
-                $filePaths[] = $request->file('file_2')->store('temp', ['disk' => 'local']);
+                $path2 = $request->file('file_2')->store('temp', ['disk' => 'local']);
+                $file2StructureChoice = $request->input('file_2_structure', 'secondary');
+
+                $secondMap = ($file2StructureChoice === 'secondary' && !empty($connection->secondary_structure))
+                    ? $connection->secondary_structure
+                    : $connection->structure;
+
+                $filesConfig[] = [
+                    'path' => $path2,
+                    'column_map' => $secondMap,
+                ];
             }
 
-            if ($request->hasFile('files')) {
-                foreach ($request->file('files') as $f) {
-                    if ($f) {
-                        $filePaths[] = $f->store('temp', ['disk' => 'local']);
-                    }
-                }
-            }
-
-            if (empty($filePaths)) {
+            if (empty($filesConfig)) {
                 return ApiResponse::error('No se ha recibido ningún archivo.', 422);
             }
             
-            // Despachar el Job con la tasa de cambio y archivos (SÍNCRONO)
+            // Despachar el Job con la configuración de archivos y tasa de cambio (SÍNCRONO)
             ProcessSupplierConnectionJob::dispatchSync(
                 $supplier,
                 null, // No hay usuario autenticado (es público)
-                count($filePaths) === 1 ? $filePaths[0] : $filePaths,
+                $filesConfig,
                 $connection->structure,
                 (float) $request->exchange_rate
             );

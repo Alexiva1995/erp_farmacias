@@ -93,10 +93,31 @@ class ProcessSupplierConnectionJob implements ShouldQueue
                     $supplierConnection = \App\Models\SupplierConnection::where('supplier_id', $this->supplier->id)->first();
                 }
 
-                $paths = is_array($this->filePath) ? $this->filePath : [$this->filePath];
+                $fileItems = [];
+                if (is_array($this->filePath)) {
+                    if (!empty($this->filePath) && isset($this->filePath[0]) && is_array($this->filePath[0])) {
+                        $fileItems = $this->filePath;
+                    } else {
+                        foreach ($this->filePath as $singlePath) {
+                            $fileItems[] = [
+                                'path' => $singlePath,
+                                'column_map' => $this->columnMap
+                            ];
+                        }
+                    }
+                } elseif (!empty($this->filePath)) {
+                    $fileItems[] = [
+                        'path' => $this->filePath,
+                        'column_map' => $this->columnMap
+                    ];
+                }
+
                 $allProducts = [];
 
-                foreach ($paths as $singlePath) {
+                foreach ($fileItems as $item) {
+                    $singlePath = $item['path'] ?? null;
+                    $map = (!empty($item['column_map']) && is_array($item['column_map'])) ? $item['column_map'] : $this->columnMap;
+
                     if (empty($singlePath)) {
                         continue;
                     }
@@ -110,20 +131,20 @@ class ProcessSupplierConnectionJob implements ShouldQueue
 
                     $import = new SupplierImport(
                         supplierId: (int) $this->supplier->id,
-                        startRow: (int) ($this->columnMap["start_row"] ?? 1),
-                        codSupplierCol: $this->columnMap["cod_supplier"] ?? null,
-                        nameCol: $this->columnMap["name"],
-                        barcodeCol: $this->columnMap["barcode_match"] ?? null,
-                        qtyCol: $this->columnMap["quantity"] ?? null,
-                        costBsCol: $this->columnMap["unit_cost"] ?? null,
-                        costUsdCol: $this->columnMap["unit_cost_usd"] ?? null,
-                        activeIngredientCol: $this->columnMap["active_ingredient"] ?? null,
-                        expirationCol: $this->columnMap["expiration"] ?? null,
-                        currencyCol: $this->exchangeRate ?? ($this->columnMap["currency"] ?? null),
+                        startRow: (int) ($map["start_row"] ?? 1),
+                        codSupplierCol: $map["cod_supplier"] ?? null,
+                        nameCol: $map["name"] ?? 'B',
+                        barcodeCol: $map["barcode_match"] ?? null,
+                        qtyCol: $map["quantity"] ?? null,
+                        costBsCol: $map["unit_cost"] ?? null,
+                        costUsdCol: $map["unit_cost_usd"] ?? null,
+                        activeIngredientCol: $map["active_ingredient"] ?? null,
+                        expirationCol: $map["expiration"] ?? null,
+                        currencyCol: $this->exchangeRate ?? ($map["currency"] ?? null),
                     );
 
                     $logFile = storage_path('logs/supplier_debug_' . date('Y-m-d') . '.log');
-                    $logMessage = "[" . date('Y-m-d H:i:s') . "] 🚨 [JOB] ANTES Excel::import - Path: {$absolutePath}\n";
+                    $logMessage = "[" . date('Y-m-d H:i:s') . "] 🚨 [JOB] ANTES Excel::import - Path: {$absolutePath}, Mapeo: " . json_encode($map) . "\n";
                     file_put_contents($logFile, $logMessage, FILE_APPEND);
                     
                     Excel::import($import, $absolutePath);

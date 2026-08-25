@@ -18,6 +18,8 @@ const uploading = ref(false)
 const file = ref(null)
 const file2 = ref(null)
 const showSecondFile = ref(false)
+const hasSecondaryStructure = ref(false)
+const file2Structure = ref('secondary')
 const exchangeRate = ref(null)
 
 const fetchSupplier = async () => {
@@ -25,6 +27,9 @@ const fetchSupplier = async () => {
     const response = await axios.get(`/public/suppliers/upload/${token}`)
     supplierName.value = response.data.data.name
     lastUpload.value = response.data.data.last_upload
+    hasSecondaryStructure.value = Boolean(response.data.data.has_secondary_structure)
+    file2Structure.value = hasSecondaryStructure.value ? 'secondary' : 'primary'
+
     if (response.data.data.exchange_rate && (exchangeRate.value === null || exchangeRate.value === '')) {
       exchangeRate.value = response.data.data.exchange_rate
     }
@@ -55,6 +60,7 @@ const handleUpload = async () => {
     } else {
       formData.append('file_2', file2.value)
     }
+    formData.append('file_2_structure', file2Structure.value)
   }
 
   formData.append('exchange_rate', exchangeRate.value)
@@ -165,7 +171,7 @@ onMounted(fetchSupplier)
           <!-- Primer Listado -->
           <VFileInput
             v-model="file"
-            label="Lista de Precios Principal (Excel / CSV)"
+            label="Lista de Precios Principal (Formato 1)"
             placeholder="Suba su archivo .xlsx, .xls o .csv"
             prepend-icon=""
             prepend-inner-icon="tabler-file-spreadsheet"
@@ -193,7 +199,7 @@ onMounted(fetchSupplier)
 
           <!-- Segundo Listado (Condicional / Opcional) -->
           <VExpandTransition>
-            <div v-if="showSecondFile" class="mb-4">
+            <div v-if="showSecondFile" class="mb-4 text-start">
               <VFileInput
                 v-model="file2"
                 label="Segundo Listado Adicional (Opcional)"
@@ -203,10 +209,33 @@ onMounted(fetchSupplier)
                 accept=".xlsx,.xls,.csv"
                 variant="outlined"
                 clearable
-                hint="Los productos de ambos listados se unirán automáticamente"
-                persistent-hint
+                class="mb-3"
                 :disabled="uploading"
               />
+
+              <!-- Selector de Mapeo para el Segundo Archivo si existe segundo formato -->
+              <div v-if="hasSecondaryStructure" class="mt-2 mb-2 pa-3 bg-var-theme-background rounded-lg border">
+                <span class="text-caption font-weight-bold d-block mb-2 text-high-emphasis">
+                  Seleccione el formato del segundo archivo:
+                </span>
+                <VRadioGroup
+                  v-model="file2Structure"
+                  inline
+                  hide-details
+                  density="compact"
+                >
+                  <VRadio
+                    value="secondary"
+                    label="Formato 2 (Secundario)"
+                    color="primary"
+                  />
+                  <VRadio
+                    value="primary"
+                    label="Formato 1 (Principal)"
+                    color="primary"
+                  />
+                </VRadioGroup>
+              </div>
             </div>
           </VExpandTransition>
 
@@ -256,6 +285,10 @@ onMounted(fetchSupplier)
   border-radius: 16px;
   background: #ffffff;
   border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+
+.bg-var-theme-background {
+  background-color: rgba(var(--v-border-color), 0.04);
 }
 
 :deep(.v-field) {

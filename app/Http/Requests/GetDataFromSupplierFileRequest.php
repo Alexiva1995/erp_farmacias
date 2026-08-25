@@ -30,9 +30,11 @@ class GetDataFromSupplierFileRequest extends FormRequest
             "currency" => ["nullable", "decimal:0,2"],
             "unit_cost" => ["nullable", "string"],
             "unit_cost_usd" => ["nullable", "string"],
-            "expiration" => ["nullable", "required", "string"],
+            "expiration" => ["nullable", "string"],
             "active_ingredient" => ["nullable", "string"],
-            "file" => ["required", "file", "mimes:xlsx,xls"],
+            "file" => ["required", "file", "mimes:xlsx,xls,csv"],
+            "format_type" => ["nullable", "string", "in:primary,secondary"],
+            "save_as_secondary" => ["nullable"],
         ];
     }
 

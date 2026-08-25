@@ -16,6 +16,7 @@ class SupplierPublicUploadRequest extends FormRequest
         return [
             'file' => 'required|file|mimes:xlsx,xls,csv|max:20480',
             'file_2' => 'nullable|file|mimes:xlsx,xls,csv|max:20480',
+            'file_2_structure' => 'nullable|string|in:primary,secondary',
             'files' => 'nullable|array',
             'files.*' => 'nullable|file|mimes:xlsx,xls,csv|max:20480',
             'exchange_rate' => 'required|numeric|min:0.01',
