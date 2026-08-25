@@ -1065,7 +1065,6 @@ class SupplierConnectionService
 
     public function fetchFromAPI($token, $data, $client, $path, $method = 'post'): array
     {
-        $productResponse = [];
         $headers = [
             'Content-Type' => 'application/json',
             'Accept' => 'application/json'
@@ -1078,24 +1077,52 @@ class SupplierConnectionService
 
         $method = strtolower($method);
 
-        $client->{$method}(
-            $path,
-            $headers,
-            $method === 'post' ? json_encode($data) : null
-        )->then(function (ResponseInterface $response) use (&$productResponse, $path) {
-            $body = (string) $response->getBody();
-            $productResponse = json_decode($body, true);
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                Log::error("API JSON Decode Error for {$path}", [
-                    'error' => json_last_error_msg(),
-                    'body_preview' => substr($body, 0, 500)
+        try {
+            $http = Http::withHeaders($headers)
+                ->withoutVerifying()
+                ->timeout(120);
+
+            if ($method === 'post') {
+                $response = $http->post($path, is_array($data) ? $data : []);
+            } else {
+                $response = $http->get($path, is_array($data) && !empty($data) ? $data : []);
+            }
+
+            if ($response->successful()) {
+                $json = $response->json();
+                if (is_array($json)) {
+                    return $json;
+                }
+                $decoded = json_decode($response->body(), true);
+                if (is_array($decoded)) {
+                    return $decoded;
+                }
+            } else {
+                Log::warning("API Request returned status {$response->status()} for {$path}", [
+                    'body_preview' => substr($response->body(), 0, 500)
                 ]);
             }
-        }, function (\Exception $e) use ($path) {
-            Log::error('API Error: ' . $e->getMessage(), ['url' => $path]);
-        });
+        } catch (\Throwable $e) {
+            Log::error("Http:: client error for {$path}: " . $e->getMessage());
+        }
 
-        Loop::run();
+        $productResponse = [];
+        try {
+            $client->{$method}(
+                $path,
+                $headers,
+                $method === 'post' ? json_encode($data) : null
+            )->then(function (ResponseInterface $response) use (&$productResponse, $path) {
+                $body = (string) $response->getBody();
+                $productResponse = json_decode($body, true);
+            }, function (\Exception $e) use ($path) {
+                Log::error('ReactPHP API Error: ' . $e->getMessage(), ['url' => $path]);
+            });
+
+            Loop::run();
+        } catch (\Throwable $e) {
+            // silenciar
+        }
 
         return $productResponse ?? [];
     }
