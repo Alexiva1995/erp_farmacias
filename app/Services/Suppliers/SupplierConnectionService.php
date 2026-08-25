@@ -241,7 +241,7 @@ class SupplierConnectionService
             }
 
             if (!empty($url)) {
-                $requestData = isset($payloadDef['payload']) ? $payloadDef['payload'] : (isset($payloadDef['url']) ? [] : ($payloadDef ?? []));
+        $requestData = isset($payloadDef['payload']) ? $payloadDef['payload'] : (isset($payloadDef['url']) ? [] : ($payloadDef ?? []));
                 $method = $payloadDef['method'] ?? 'get';
 
                 $allProducts = [];
@@ -249,6 +249,12 @@ class SupplierConnectionService
                 
                 while ($currentUrl) {
                     $productResponse = $this->fetchFromAPI($token, $requestData, $client, $currentUrl, $method);
+                    
+                    Log::info("📡 [API PRODUCTOS] Respuesta de {$currentUrl}", [
+                        'type' => gettype($productResponse),
+                        'keys' => is_array($productResponse) ? array_keys($productResponse) : [],
+                        'count' => is_countable($productResponse) ? count($productResponse) : 0,
+                    ]);
                     
                     // Detectar si los productos vienen en una clave específica
                     $pageData = $productResponse;
@@ -262,9 +268,15 @@ class SupplierConnectionService
                         } else {
                             $pageData = $productResponse['articulos'];
                         }
+                    } elseif (isset($productResponse['productos']) && is_array($productResponse['productos'])) {
+                        $pageData = $productResponse['productos'];
+                    } elseif (isset($productResponse['items']) && is_array($productResponse['items'])) {
+                        $pageData = $productResponse['items'];
                     } elseif (isset($productResponse['data']) && is_array($productResponse['data'])) {
                          $pageData = $productResponse['data'];
                          $nextPageUrl = $productResponse['next_page_url'] ?? null;
+                    } elseif (isset($productResponse['results']) && is_array($productResponse['results'])) {
+                        $pageData = $productResponse['results'];
                     }
 
                     if (is_array($pageData)) {
@@ -280,8 +292,10 @@ class SupplierConnectionService
                     if (!$nextPageUrl) break;
                 }
 
+                Log::info("📡 [API PRODUCTOS] Total productos recopilados: " . count($allProducts));
                 $productCsvString = $this->convertJsonArrayToCsvString($allProducts);
                 $productData = $this->parseDynamicContent($productCsvString, $connection);
+                Log::info("📡 [API PRODUCTOS] Total productos parseados: " . count($productData ?? []));
             }
 
             // Facturas (si tiene ruta definida)
@@ -1183,13 +1197,15 @@ class SupplierConnectionService
         $csv = fopen('php://temp', 'r+');
 
         // Escribir encabezados
-        fputcsv($csv, array_keys($data[0]), ';');
+        $first = (array) ($data[0] ?? []);
+        fputcsv($csv, array_keys($first), ';');
 
         // Escribir filas
         foreach ($data as $row) {
+            $rowArray = (array) $row;
             fputcsv($csv, array_map(function ($value) {
                 return is_array($value) ? json_encode($value, JSON_UNESCAPED_UNICODE) : $value;
-            }, $row), ';');
+            }, $rowArray), ';');
         }
 
         rewind($csv);
