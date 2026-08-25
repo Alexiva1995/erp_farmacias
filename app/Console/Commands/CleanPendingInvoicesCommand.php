@@ -67,7 +67,6 @@ class CleanPendingInvoicesCommand extends Command
                     $ids = collect($toMarkPaid)->pluck('id');
                     Invoice::whereIn('id', $ids)->update([
                         'status_payment' => 1,
-                        'outstanding_debt' => 0,
                     ]);
                     $this->info("✅ Se marcaron como pagadas " . count($toMarkPaid) . " facturas de Dronena.");
                 }
@@ -92,7 +91,6 @@ class CleanPendingInvoicesCommand extends Command
                 $ids = $zeroInvoices->pluck('id');
                 Invoice::whereIn('id', $ids)->update([
                     'status_payment' => 1,
-                    'outstanding_debt' => 0,
                 ]);
                 $this->info("✅ Se cerraron {$zeroInvoices->count()} facturas con monto 0.");
             }

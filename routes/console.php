@@ -74,6 +74,13 @@ Schedule::command('app:apply-global-profitability')
     ->dailyAt('02:00')
     ->onOneServer()
     ->withoutOverlapping();
+Schedule::command('dronena:sync-invoices')
+    ->dailyAt('04:00')
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->onFailure(function () {
+        \Log::error('[DronenaSync] Falló la sincronización automática de facturas a las 04:00 AM');
+    });
 
 // Reposición automática de inventario: cada config activa define su propio cron
 // Se lee de BD para registrar cada expresión cron de forma independiente
