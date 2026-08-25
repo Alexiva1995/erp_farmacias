@@ -237,32 +237,25 @@ watch(
           </VRow>
         </VCard>
 
-        <!-- Selector de Formato / Mapeo -->
-        <div class="d-flex align-center justify-space-between mb-3">
-          <div class="d-flex align-center gap-2">
-            <div class="header-indicator secondary shadow-sm" />
-            <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Mapeo de Columnas</span>
-          </div>
-
-          <!-- Tabs para cambiar entre Formato 1 y Formato 2 -->
-          <VBtnToggle
+        <!-- Tabs para seleccionar Formato 1 o Formato 2 -->
+        <VCard variant="flat" class="mb-4 bg-white rounded-xl border shadow-sm pa-1">
+          <VTabs
             v-model="activeFormat"
-            mandatory
             color="primary"
-            variant="outlined"
-            density="compact"
-            class="rounded-lg border"
+            density="comfortable"
+            grow
+            class="format-tabs"
           >
-            <VBtn value="primary" size="small" class="px-3 text-none font-weight-bold">
-              <VIcon start icon="tabler-file-text" size="16" />
+            <VTab value="primary" class="text-none font-weight-bold py-2">
+              <VIcon start icon="tabler-file-text" size="18" />
               Formato 1 (Principal)
-            </VBtn>
-            <VBtn value="secondary" size="small" class="px-3 text-none font-weight-bold">
-              <VIcon start icon="tabler-file-plus" size="16" />
+            </VTab>
+            <VTab value="secondary" class="text-none font-weight-bold py-2">
+              <VIcon start icon="tabler-file-plus" size="18" />
               Formato 2 (Secundario)
-            </VBtn>
-          </VBtnToggle>
-        </div>
+            </VTab>
+          </VTabs>
+        </VCard>
 
         <VCard variant="flat" class="pa-4 bg-white rounded-xl border shadow-sm mb-4">
           <VAlert

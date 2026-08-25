@@ -438,6 +438,7 @@ class ProductRepository
                   AND ps.barcode_match != \'\'
                   AND ps.unit_cost_usd > 0
                   AND ps.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+                  AND (ps.expiration IS NULL OR ps.expiration > DATE_ADD(CURDATE(), INTERVAL 6 MONTH))
                 ORDER BY ps.unit_cost_usd ASC
                 LIMIT 1
             ) AS cheapest_barcode'),
@@ -449,6 +450,7 @@ class ProductRepository
                 WHERE ps.product_id = products.id
                   AND ps.unit_cost_usd > 0
                   AND ps.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+                  AND (ps.expiration IS NULL OR ps.expiration > DATE_ADD(CURDATE(), INTERVAL 6 MONTH))
                 ORDER BY ps.unit_cost_usd ASC
                 LIMIT 1
             ) AS best_supplier_price'),
@@ -912,6 +914,7 @@ class ProductRepository
                     FROM product_suppliers ps
                     WHERE ps.product_id = products.id
                       AND ps.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+                      AND (ps.expiration IS NULL OR ps.expiration > DATE_ADD(CURDATE(), INTERVAL 6 MONTH))
                 )';
                 $subqueryVariation = "CASE 
                     WHEN products.unit_cost > 0 THEN 
@@ -1233,6 +1236,7 @@ class ProductRepository
                     FROM product_suppliers ps
                     WHERE ps.product_id = products.id
                       AND ps.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+                      AND (ps.expiration IS NULL OR ps.expiration > DATE_ADD(CURDATE(), INTERVAL 6 MONTH))
                 )';
                 $subqueryVariation = "CASE 
                     WHEN products.unit_cost > 0 THEN 
@@ -1515,6 +1519,7 @@ class ProductRepository
                 FROM product_suppliers ps
                 WHERE ps.product_id = products.id
                   AND ps.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+                  AND (ps.expiration IS NULL OR ps.expiration > DATE_ADD(CURDATE(), INTERVAL 6 MONTH))
             )';
             $subqueryVariation = "CASE 
                 WHEN products.unit_cost > 0 THEN 

@@ -14,12 +14,17 @@ class ProductSupplierRepository
     public function consultSupplierByProductWithBetterPrice($product_id, $conDescuento): Collection
     {
         $hasIsActive = \Illuminate\Support\Facades\Schema::hasColumn('product_suppliers', 'is_active');
+        $minExpirationDate = now()->addMonths(6)->toDateString();
 
         // Obtener solo el ID más reciente por cada proveedor para este producto (máximo 7 días de antigüedad y activo)
         $latestIdsQuery = DB::table('product_suppliers')
             ->select(DB::raw('MAX(id) as id'))
             ->where("product_id", "=", $product_id)
-            ->where('created_at', '>=', now()->subDays(7));
+            ->where('created_at', '>=', now()->subDays(7))
+            ->where(function ($q) use ($minExpirationDate) {
+                $q->whereNull('expiration')
+                  ->orWhere('expiration', '>', $minExpirationDate);
+            });
 
         if ($hasIsActive) {
             $latestIdsQuery->where('is_active', true);
@@ -28,7 +33,11 @@ class ProductSupplierRepository
         $latestIds = $latestIdsQuery->groupBy('supplier_id')->pluck('id');
 
         $consulta = ProductSupplier::query()
-            ->whereIn("id", $latestIds);
+            ->whereIn("id", $latestIds)
+            ->where(function ($q) use ($minExpirationDate) {
+                $q->whereNull('expiration')
+                  ->orWhere('expiration', '>', $minExpirationDate);
+            });
 
         if ($conDescuento == "true") {
             $consulta->where("unit_cost_usd_with_discount", ">", 0)
@@ -70,12 +79,18 @@ class ProductSupplierRepository
     {
         $productIds = $products->pluck('id')->toArray();
         $hasIsActive = \Illuminate\Support\Facades\Schema::hasColumn('product_suppliers', 'is_active');
+        $minExpirationDate = now()->addMonths(6)->toDateString();
         
         // 1. Obtener solo los IDs más recientes por combinación de product_id y supplier_id (máximo 7 días y activo)
+        // Descartando ofertas que venzan en los próximos 6 meses (si tienen dato de expiración)
         $latestIdsQuery = DB::table('product_suppliers')
             ->select(DB::raw('MAX(id) as id'))
             ->whereIn('product_id', $productIds)
-            ->where('created_at', '>=', now()->subDays(7));
+            ->where('created_at', '>=', now()->subDays(7))
+            ->where(function ($q) use ($minExpirationDate) {
+                $q->whereNull('expiration')
+                  ->orWhere('expiration', '>', $minExpirationDate);
+            });
 
         if ($hasIsActive) {
             $latestIdsQuery->where('is_active', true);
@@ -85,7 +100,11 @@ class ProductSupplierRepository
 
         // 2. Obtener todas las ofertas disponibles para estos productos de una sola vez
         $query = ProductSupplier::with('supplier')
-            ->whereIn('id', $latestIds);
+            ->whereIn('id', $latestIds)
+            ->where(function ($q) use ($minExpirationDate) {
+                $q->whereNull('expiration')
+                  ->orWhere('expiration', '>', $minExpirationDate);
+            });
 
         if ($hasIsActive) {
             $query->where('is_active', true);
@@ -116,7 +135,11 @@ class ProductSupplierRepository
 
             // Si no tiene oferta asociada, intentar asociar por código de barras de manera automática y permanente (máximo 7 días)
             if (!$bestOffer && $product->barcode) {
-                $barcodeQuery = ProductSupplier::where('created_at', '>=', now()->subDays(7));
+                $barcodeQuery = ProductSupplier::where('created_at', '>=', now()->subDays(7))
+                    ->where(function ($q) use ($minExpirationDate) {
+                        $q->whereNull('expiration')
+                          ->orWhere('expiration', '>', $minExpirationDate);
+                    });
 
                 if ($hasIsActive) {
                     $barcodeQuery->where('is_active', true);
