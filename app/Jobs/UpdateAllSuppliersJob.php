@@ -32,11 +32,23 @@ class UpdateAllSuppliersJob implements ShouldQueue
     {
         // 1. Log de inicio general del Job
 
-        $suppliers = Supplier::whereHas('connections')->get();
+        $suppliers = Supplier::where(function ($q) {
+            $q->where('is_active', true)->orWhereNull('is_active');
+        })
+        ->whereHas('connections', function ($q) {
+            $q->whereIn('type', ['ftp', 'sftp', 'api', 'http']);
+        })
+        ->with(['connections' => function ($q) {
+            $q->whereIn('type', ['ftp', 'sftp', 'api', 'http']);
+        }])
+        ->get();
 
         foreach ($suppliers as $supplier) {
+            $supplierConnection = $supplier->connections->first();
 
-            // 2. Log de inicio por proveedor (útil si el job se pega, sabes en cuál fue)
+            if (!$supplierConnection || $supplierConnection->type === 'file') {
+                continue;
+            }
 
             $status = SupplierConnectionStatus::create([
                 "supplier_id" => $supplier->id,
@@ -46,17 +58,6 @@ class UpdateAllSuppliersJob implements ShouldQueue
             ]);
 
             try {
-                $supplierConnection = $supplier->connections->first();
-
-                if (!$supplierConnection) {
-                    Log::warning("Proveedor sin configuración de conexión válida", ['supplier_id' => $supplier->id]);
-
-                    $status->update([
-                        "status" => "failed",
-                        "message" => "No se encontró configuración de conexión válida.",
-                    ]);
-                    continue;
-                }
 
                 $results = $connectionService->fetchData($supplierConnection);
 

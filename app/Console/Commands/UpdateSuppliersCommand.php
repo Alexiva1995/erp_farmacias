@@ -38,7 +38,15 @@ class UpdateSuppliersCommand extends Command
         $supplierOption = $this->option('supplier');
         $userId = (int) $this->option('user');
 
-        $query = Supplier::whereHas('connections')->with('connections');
+        $query = Supplier::where(function ($q) {
+            $q->where('is_active', true)->orWhereNull('is_active');
+        })
+        ->whereHas('connections', function ($q) {
+            $q->whereIn('type', ['ftp', 'sftp', 'api', 'http']);
+        })
+        ->with(['connections' => function ($q) {
+            $q->whereIn('type', ['ftp', 'sftp', 'api', 'http']);
+        }]);
 
         if ($supplierOption) {
             if (is_numeric($supplierOption)) {
@@ -51,7 +59,7 @@ class UpdateSuppliersCommand extends Command
         $suppliers = $query->get();
 
         if ($suppliers->isEmpty()) {
-            $this->warn('No se encontraron proveedores con conexión configurada.');
+            $this->warn('No se encontraron proveedores activos con conexión remota (FTP/API) configurada.');
             return self::SUCCESS;
         }
 
