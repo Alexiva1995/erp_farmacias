@@ -49,20 +49,33 @@ const close = () => {
       </VCardText>
       <VDivider />
       <VCardActions class="pa-3 bg-surface">
-        <VSpacer />
-        <VBtn variant="tonal" color="secondary" class="rounded-lg" @click="close">
-          Cerrar
-        </VBtn>
-        <VBtn 
-          color="primary" 
-          variant="flat" 
-          :href="previewImageUrl" 
-          target="_blank" 
-          class="rounded-lg"
-        >
-          <VIcon start icon="tabler-external-link" />
-          Abrir en pestaña nueva
-        </VBtn>
+        <VRow dense class="w-100 ma-0">
+          <VCol cols="6" class="ps-0 pe-2">
+            <VBtn
+              variant="tonal"
+              color="secondary"
+              block
+              class="rounded-lg font-weight-bold"
+              @click="close"
+            >
+              <VIcon start icon="tabler-x" />
+              Cerrar
+            </VBtn>
+          </VCol>
+          <VCol cols="6" class="ps-2 pe-0">
+            <VBtn
+              color="primary"
+              variant="flat"
+              block
+              :href="previewImageUrl"
+              target="_blank"
+              class="rounded-lg font-weight-bold"
+            >
+              <VIcon start icon="tabler-external-link" />
+              Abrir en Pestaña Nueva
+            </VBtn>
+          </VCol>
+        </VRow>
       </VCardActions>
     </VCard>
   </VDialog>
