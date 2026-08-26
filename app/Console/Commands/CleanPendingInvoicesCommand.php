@@ -17,6 +17,7 @@ class CleanPendingInvoicesCommand extends Command
      */
     protected $signature = 'invoices:clean-pending 
                             {--dry-run : Ejecuta en modo simulación sin alterar la base de datos}
+                            {--deduplicate : Elimina los registros duplicados más recientes dejando el original}
                             {--fix-dates : Asigna fechas por defecto a facturas que tengan fechas NULL}
                             {--close-settled-dronena : Marca como pagadas las facturas de Dronena que ya no existen en el portal activo}
                             {--delete-zero-amounts : Cierra facturas con monto 0 o negativo}';
@@ -31,11 +32,53 @@ class CleanPendingInvoicesCommand extends Command
     public function handle(DronenaScraperServiceInterface $dronenaService): int
     {
         $isDryRun = $this->option('dry-run');
+        $deduplicate = $this->option('deduplicate');
         $fixDates = $this->option('fix-dates');
         $closeSettled = $this->option('close-settled-dronena');
         $deleteZero = $this->option('delete-zero-amounts');
 
         $this->info($isDryRun ? '=== MODO SIMULACIÓN (DRY-RUN: NO SE MODIFICARÁ LA BD) ===' : '=== EJECUTANDO DEPURACIÓN Y LIMPIEZA ===');
+
+        // 0. Eliminación de facturas duplicadas (conservando la original más antigua o con datos completos)
+        if ($deduplicate) {
+            $this->info("\n--- 0. Buscando y eliminando facturas duplicadas más recientes ---");
+            $allInvoices = Invoice::withCount('details')->orderBy('id', 'asc')->get();
+            $grouped = [];
+            foreach ($allInvoices as $inv) {
+                $cleanNum = ltrim((string)$inv->invoice_number, 'A');
+                $key = "{$inv->supplier_id}_{$cleanNum}";
+                $grouped[$key][] = $inv;
+            }
+
+            $deletedCount = 0;
+            foreach ($grouped as $key => $list) {
+                if (count($list) <= 1) continue;
+
+                // Ordenar: primero los que tienen productos (details_count desc), luego por id asc (más antiguos)
+                usort($list, function ($a, $b) {
+                    if ($a->details_count !== $b->details_count) {
+                        return $b->details_count <=> $a->details_count;
+                    }
+                    return $a->id <=> $b->id;
+                });
+
+                $keeper = $list[0];
+                $this->line("Manteniendo Factura Principal: ID {$keeper->id} | {$keeper->invoice_number} | Control: " . ($keeper->control_number ?? 'NULL') . " | Items: {$keeper->details_count}");
+
+                for ($i = 1; $i < count($list); $i++) {
+                    $dup = $list[$i];
+                    $this->warn("  -> Eliminando Duplicado Reciente: ID {$dup->id} | {$dup->invoice_number} | Control: " . ($dup->control_number ?? 'NULL') . " | Creada: {$dup->created_at}");
+                    if (!$isDryRun) {
+                        // Eliminar detalles huérfanos si los tuviera y borrar factura
+                        $dup->details()->delete();
+                        $dup->delete();
+                    }
+                    $deletedCount++;
+                }
+            }
+
+            $this->info("✅ Se " . ($isDryRun ? 'detectaron para eliminar' : 'eliminaron') . " {$deletedCount} facturas duplicadas recientes.");
+        }
 
         // 1. Facturas de Dronena saldadas que ya no están en el estado de cuenta activo
         if ($closeSettled || (!$fixDates && !$deleteZero)) {
