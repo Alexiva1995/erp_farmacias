@@ -1,8 +1,9 @@
-﻿<script setup>
+<script setup>
 import BarcodeSearchModal from "@/components/dialogs/BarcodeSearchModal.vue";
 import ProductEditDialog from "@/components/dialogs/ProductEditDialog.vue";
 import ProductFilters from "@/components/ProductFilters.vue";
 import ProductTable from "@/components/ProductTable.vue";
+import InvoicePhotoPreviewDialog from "@/components/InvoicePhotoPreviewDialog.vue";
 import { useDisplay } from "vuetify";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
@@ -10,6 +11,15 @@ import Swal from "sweetalert2";
 import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { useBrandingStore } from "@/stores/useBrandingStore";
 import { useAuthStore } from "@/stores/auth";
+
+const isPreviewDialogVisible = ref(false);
+const previewImageUrl = ref("");
+
+const viewInvoicePhoto = (photoPath) => {
+  if (!photoPath) return;
+  previewImageUrl.value = photoPath.startsWith("http") ? photoPath : `/storage/${photoPath}`;
+  isPreviewDialogVisible.value = true;
+};
 
 const brandingStore = useBrandingStore();
 const authStore = useAuthStore();
@@ -1623,6 +1633,16 @@ const detailsHeaders = computed(() => {
                       title="Ver historial de auditoría de la factura"
                       @click="showAuditModal = true"
                     />
+                    <VBtn
+                      v-if="invoice.invoice_photo"
+                      icon="tabler-file-type-pdf"
+                      size="x-small"
+                      color="error"
+                      variant="tonal"
+                      class="ms-1"
+                      title="Ver / Descargar PDF digital de la factura"
+                      @click="viewInvoicePhoto(invoice.invoice_photo)"
+                    />
                   </h1>
                   <div class="d-flex flex-wrap gap-2 align-center">
                     <VChip size="small" color="error" variant="flat" class="font-weight-bold">
@@ -2748,6 +2768,12 @@ const detailsHeaders = computed(() => {
           </VCardActions>
         </VCard>
       </VDialog>
+
+      <!-- Modal de Visualización de PDF / Foto -->
+      <InvoicePhotoPreviewDialog
+        v-model="isPreviewDialogVisible"
+        :preview-image-url="previewImageUrl"
+      />
     </div>
   </div>
 </template>

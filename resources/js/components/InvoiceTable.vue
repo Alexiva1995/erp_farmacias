@@ -398,6 +398,9 @@ const formatDate = (dateString) => {
 
               <template v-else>
                 <div class="d-flex ga-2 w-100 justify-center mb-2">
+                  <VBtn v-if="item.invoice_photo" color="error" variant="tonal" size="small" class="flex-grow-1" @click="viewPhoto(item.invoice_photo)">
+                    <VIcon icon="tabler-file-type-pdf" />
+                  </VBtn>
                   <VBtn color="warning" variant="tonal" size="small" class="flex-grow-1" @click="emit('edit-invoice-form', item)">
                     <VIcon icon="tabler-edit" />
                   </VBtn>

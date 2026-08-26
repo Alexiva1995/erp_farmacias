@@ -2,6 +2,7 @@
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { computed, onMounted, ref, watch } from "vue";
+import InvoicePhotoPreviewDialog from "@/components/InvoicePhotoPreviewDialog.vue";
 
 const props = defineProps({
   invoiceId: { type: [Number, String], default: null },
@@ -10,6 +11,15 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["back-to-list", "invoice-saved"]);
+
+const isPreviewDialogVisible = ref(false);
+const previewImageUrl = ref("");
+
+const viewPhoto = (photoPath) => {
+  if (!photoPath) return;
+  previewImageUrl.value = photoPath.startsWith("http") ? photoPath : `/storage/${photoPath}`;
+  isPreviewDialogVisible.value = true;
+};
 
 const formData = ref({
   supplier_id: null,
@@ -26,6 +36,7 @@ const formData = ref({
   exchange_rate: 0,
   total_amount: 0,
   total_usd: 0,
+  invoice_photo: null,
 });
 
 const currencyOptions = [
@@ -199,6 +210,8 @@ const fetchInvoiceData = async () => {
       total_amount: invoice.total_amount,
       exchange_rate: invoice.exchange_rate,
       total_usd: invoice.total_usd,
+      created_invoice_date: invoice.created_invoice_date,
+      invoice_photo: invoice.invoice_photo,
     };
 
     if (invoice.supplier_id) {
@@ -298,6 +311,19 @@ const handleCancel = () => {
     <VCard v-else :title="isEditMode ? 'Editar Factura' : 'Registrar Factura'">
       <template #prepend>
         <VBtn icon="tabler-arrow-left" variant="text" @click="handleCancel" />
+      </template>
+
+      <template #append v-if="formData.invoice_photo">
+        <VBtn
+          color="error"
+          variant="tonal"
+          size="small"
+          prepend-icon="tabler-file-type-pdf"
+          class="rounded-lg font-weight-bold"
+          @click="viewPhoto(formData.invoice_photo)"
+        >
+          Ver PDF Digital
+        </VBtn>
       </template>
 
       <VCardText>
@@ -453,11 +479,17 @@ const handleCancel = () => {
               @click="handleSubmit"
               block
             >
-              {{ isEditMode ? "Actualizar" : "Registrar" }}
+              {{ isEditMode ? 'Actualizar Factura' : 'Guardar Factura' }}
             </VBtn>
           </VCol>
         </VRow>
       </VCardActions>
     </VCard>
+
+    <!-- Modal de Visualización de PDF / Foto -->
+    <InvoicePhotoPreviewDialog
+      v-model="isPreviewDialogVisible"
+      :preview-image-url="previewImageUrl"
+    />
   </div>
 </template>
