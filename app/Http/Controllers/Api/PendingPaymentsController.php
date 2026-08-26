@@ -366,20 +366,7 @@ class PendingPaymentsController extends Controller
                         $request->photo_url
                     );
                 } catch (\Throwable $dEx) {
-                    $dronenaResult = [
-                        'success' => false,
-                        'message' => 'Excepción al conectar con Dronena: ' . $dEx->getMessage()
-                    ];
-                }
-            }
-
-            $messageText = 'Pago procesado exitosamente en el ERP.';
-            if ($dronenaResult) {
-                if (!empty($dronenaResult['success'])) {
-                    $messageText = "Pago procesado y enviado a Dronena con éxito (ID: {$dronenaResult['payment_id']}).";
-                } else {
-                    $dronenaErrMsg = $dronenaResult['message'] ?? 'Error desconocido';
-                    $messageText = "Pago registrado en ERP, pero Dronena reportó: {$dronenaErrMsg}";
+                    Log::warning('[PendingPayments] Error reportando pago en Dronena: ' . $dEx->getMessage());
                 }
             }
 
@@ -395,8 +382,7 @@ class PendingPaymentsController extends Controller
                 'total_invoice_amount' => $totalInvoiceAmount,
                 'remaining_amount' => $totalInvoiceAmount - $amountUSD,
                 'dronena_submission' => $dronenaResult,
-            ], $messageText);
-
+            ], 'Pago procesado exitosamente' . ($dronenaResult && $dronenaResult['success'] ? ' y enviado a Dronena' : ''));
         } catch (\Exception $e) {
             DB::rollBack();
             return ApiResponse::error('Error al procesar el pago: ' . $e->getMessage(), 500);

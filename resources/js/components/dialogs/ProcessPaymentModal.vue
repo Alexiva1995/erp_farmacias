@@ -208,18 +208,12 @@ const processPayment = async () => {
 
     if (response.data.status === "success") {
       const msg = response.data.message || "Pago procesado";
-      const dronenaSub = response.data.data?.dronena_submission;
-      if (dronenaSub && dronenaSub.success === false) {
-        toast.warning(msg);
-      } else {
-        toast.success(msg);
-      }
+      toast.success(msg);
       emit("payment-processed");
       closeModal();
     } else {
       toast.error(response.data.message);
     }
-
 
   } catch (error) {
     console.error("Error al procesar:", error);

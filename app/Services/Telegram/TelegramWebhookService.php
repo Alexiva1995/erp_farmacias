@@ -2141,15 +2141,9 @@ class TelegramWebhookService
             $statusText = $isFullPayment ? 'Pago Completo (Liquidado) 🟩' : 'Pago Parcial (Saldo Restante) 🟨';
             $remainingText = $isFullPayment ? '0.00 USD' : number_format(max(0, $totalInvoiceDebtUSD - $amountUSD), 2) . ' USD';
             $dronenaNotice = '';
-            if ($dronenaResult) {
-                if (!empty($dronenaResult['success'])) {
-                    $dronenaNotice = "\n🤖 *Portal Dronena:* `Pago enviado con éxito (ID: {$dronenaResult['payment_id']})` ✅";
-                } else {
-                    $dronenaErrMsg = $dronenaResult['message'] ?? 'Error desconocido';
-                    $dronenaNotice = "\n⚠️ *Portal Dronena:* `No se pudo enviar al portal: {$dronenaErrMsg}` ❌";
-                }
+            if ($dronenaResult && !empty($dronenaResult['success'])) {
+                $dronenaNotice = "\n🤖 *Portal Dronena:* `Pago enviado con éxito (ID: {$dronenaResult['payment_id']})` ✅";
             }
-
 
             $msg = "✅ *[PAGO PROCESADO EXITOSAMENTE]*\n\n"
                  . "🏢 *Proveedor:* {$stateData['supplier_name']}\n"
