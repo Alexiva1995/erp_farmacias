@@ -695,20 +695,25 @@ class DronenaScraperService implements DronenaScraperServiceInterface
             }
 
             if (empty($codCuentaDestino) && !empty($destinationBank)) {
-                // Si el formato viene con número de cuenta (ej. BANESCO - 01340326153261014466)
-                if (preg_match('/(\d{4}):?(\d+)/', $destinationBank, $bm)) {
-                    $codCuentaDestino = $bm[1] . ':' . $bm[2];
-                } else {
-                    $codCuentaDestino = $destinationBank;
-                }
+                $codCuentaDestino = $destinationBank;
             }
+
+            // Para VerificarPago se usa el formato CodBanco:Cuenta (ej. 0102:01020211670006291538)
+            $codCuentaVerif = $codCuentaDestino;
+            if (!str_contains($codCuentaVerif, ':') && strlen(preg_replace('/\D/', '', $codCuentaVerif)) >= 20) {
+                $digitsAcc = preg_replace('/\D/', '', $codCuentaVerif);
+                $codCuentaVerif = substr($digitsAcc, 0, 4) . ':' . $digitsAcc;
+            }
+
+            // Para el XML en ProcesarPago el atributo CTA requiere solo el número de cuenta de 20 dígitos (ej. 01020211670006291538)
+            $codCuentaXml = str_contains($codCuentaDestino, ':') ? explode(':', $codCuentaDestino)[1] : preg_replace('/\D/', '', $codCuentaDestino);
 
             // 7. Verificar el pago antes de procesar (/Cobranza/Pago/VerificarPago)
             $client->post('https://www.dronena.com/NuevaExperiencia/Cobranza/Pago/VerificarPago', [
                 'json' => [
                     'NumOperacion' => $cleanRef,
                     'TipoOperacion' => '1', // Transferencia
-                    'CodCuenta' => $codCuentaDestino,
+                    'CodCuenta' => $codCuentaVerif,
                     'Monto' => $paymentAmount,
                 ],
                 'headers' => ['X-Requested-With' => 'XMLHttpRequest']
@@ -721,11 +726,12 @@ class DronenaScraperService implements DronenaScraperServiceInterface
             $xmlPagosCancelar = '<RELACION>';
             $xmlPagosCancelar .= "<RECIBOS>{$recibosXml}</RECIBOS>";
             $xmlPagosCancelar .= '<PAGOS>';
-            $xmlPagosCancelar .= "<PAGO TIPOPAG=\"1\" CTA=\"{$codCuentaDestino}\" NROPAGO=\"{$cleanRef}\" MONTOPAG=\"{$montoBaseFormatted}\" FECHA=\"{$formattedDateDb}\" ADJUNTO=\"{$pdfFileName}\" MONTOBASE=\"{$montoBaseFormatted}\" TASAIGTF=\"0\" MONTOIGTF=\"0\">";
+            $xmlPagosCancelar .= "<PAGO TIPOPAG=\"1\" CTA=\"{$codCuentaXml}\" NROPAGO=\"{$cleanRef}\" MONTOPAG=\"{$montoBaseFormatted}\" FECHA=\"{$formattedDateDb}\" ADJUNTO=\"{$pdfFileName}\" MONTOBASE=\"{$montoBaseFormatted}\" TASAIGTF=\"0\" MONTOIGTF=\"0\">";
             $xmlPagosCancelar .= '<CHEQUES></CHEQUES>';
             $xmlPagosCancelar .= '</PAGO>';
             $xmlPagosCancelar .= '</PAGOS>';
             $xmlPagosCancelar .= '</RELACION>';
+
 
             // 9. Ejecutar el procesamiento final del pago en Dronena (/Cobranza/Pago/ProcesarPago)
             $procRes = $client->post('https://www.dronena.com/NuevaExperiencia/Cobranza/Pago/ProcesarPago', [
