@@ -3,6 +3,7 @@ import PendingPaymentFilters from "@/components/PendingPaymentFilters.vue";
 import PendingPaymentTable from "@/components/PendingPaymentTable.vue";
 import PendingPaymentModal from "@/components/dialogs/PendingPaymentModal.vue";
 import ProcessPaymentModal from "@/components/dialogs/ProcessPaymentModal.vue";
+import DronenaDiscrepanciesModal from "@/components/dialogs/DronenaDiscrepanciesModal.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import Swal from "sweetalert2";
@@ -39,9 +40,13 @@ const itemsPerPage = ref(10);
 // Modales
 const showPaymentModal = ref(false);
 const showProcessModal = ref(false);
+const showDiscrepanciesModal = ref(false);
+const syncDiscrepancies = ref({});
+const syncSummary = ref({});
 const selectedPaymentGroup = ref(null);
 const selectedInvoices = ref([]);
 const selectedTableInvoices = ref([]);
+
 
 const fetchExchangeRates = async () => {
   try {
@@ -265,7 +270,7 @@ const isSyncingDronena = ref(false);
 const handleSyncDronena = async () => {
   const result = await Swal.fire({
     title: "¿Sincronizar Cuentas por Pagar con Dronena?",
-    text: "Se consultará el portal de Dronena para actualizar las fechas de vencimiento, fechas de pago e indexación (FA$) de las facturas.",
+    text: "Se consultará el portal de Dronena para actualizar las fechas de vencimiento, fechas de pago, indexación (FA$) y contrastar el estado de las facturas.",
     icon: "info",
     showCancelButton: true,
     confirmButtonText: "Sincronizar",
@@ -278,7 +283,20 @@ const handleSyncDronena = async () => {
   try {
     const payload = selectedSupplier.value ? { supplier_id: selectedSupplier.value } : {};
     const response = await axios.post("/invoices/sync-dronena", payload);
-    toast.success(response.data.message || "Sincronización completada exitosamente.");
+    const data = response.data?.data || {};
+
+    syncSummary.value = {
+      updated: data.updated || 0,
+      skipped: data.skipped || 0,
+      total_extracted: data.total_extracted || 0,
+    };
+    syncDiscrepancies.value = data.discrepancies || {
+      paid_in_erp_pending_in_dronena: [],
+      pending_in_erp_paid_in_dronena: [],
+      total_discrepancies: 0,
+    };
+
+    showDiscrepanciesModal.value = true;
     await fetchPendingPayments();
   } catch (error) {
     console.error("Error al sincronizar con Dronena:", error);
@@ -287,6 +305,7 @@ const handleSyncDronena = async () => {
     isSyncingDronena.value = false;
   }
 };
+
 </script>
 
 <template>
@@ -378,9 +397,17 @@ const handleSyncDronena = async () => {
         :exchange-rate="exchangeRate"
         @payment-processed="handlePaymentProcessed"
       />
+
+      <DronenaDiscrepanciesModal
+        v-model="showDiscrepanciesModal"
+        :discrepancies="syncDiscrepancies"
+        :sync-summary="syncSummary"
+        @close="showDiscrepanciesModal = false"
+      />
     </div>
   </div>
 </template>
+
 
 <style scoped>
 .text-super-xs {

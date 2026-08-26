@@ -230,14 +230,64 @@ class DronenaScraperService implements DronenaScraperServiceInterface
             }
         }
 
+        // Calcular discrepancias entre ERP y portal de Dronena
+        $portalNumbers = [];
+        foreach ($documents as $d) {
+            $pClean = ltrim($d['numero_factura'], 'A0');
+            $portalNumbers[$pClean] = $d;
+        }
+
+        $erpInvoicesQuery = Invoice::where('supplier_id', $supplierId);
+        $erpInvoices = $erpInvoicesQuery->get();
+
+        $paidInErpPendingInDronena = [];
+        $pendingInErpPaidInDronena = [];
+
+        foreach ($erpInvoices as $inv) {
+            $invClean = ltrim($inv->invoice_number, 'A0');
+            $isPaidInErp = ($inv->status_payment == 1);
+            $isPendingInPortal = isset($portalNumbers[$invClean]);
+
+            if ($isPaidInErp && $isPendingInPortal) {
+                $pDoc = $portalNumbers[$invClean];
+                $paidInErpPendingInDronena[] = [
+                    'id' => $inv->id,
+                    'invoice_number' => $inv->invoice_number,
+                    'control_number' => $inv->control_number,
+                    'amount' => $inv->total_amount,
+                    'currency' => $inv->currency,
+                    'portal_amount' => $pDoc['saldo_db'] ?? $inv->total_amount,
+                    'portal_type' => $pDoc['tipo_documento'] ?? 'FA',
+                    'erp_status' => 'Pagada en ERP',
+                    'portal_status' => 'Pendiente en Dronena',
+                ];
+            } elseif (!$isPaidInErp && !$isPendingInPortal) {
+                $pendingInErpPaidInDronena[] = [
+                    'id' => $inv->id,
+                    'invoice_number' => $inv->invoice_number,
+                    'control_number' => $inv->control_number,
+                    'amount' => $inv->total_amount,
+                    'currency' => $inv->currency,
+                    'erp_status' => 'Pendiente en ERP',
+                    'portal_status' => 'Liquidada/No pendiente en Dronena',
+                ];
+            }
+        }
+
         return [
             'total_extracted' => count($documents),
             'updated' => $updatedCount,
             'skipped' => $skippedCount,
             'supplier_id' => $supplierId,
+            'discrepancies' => [
+                'paid_in_erp_pending_in_dronena' => $paidInErpPendingInDronena,
+                'pending_in_erp_paid_in_dronena' => $pendingInErpPaidInDronena,
+                'total_discrepancies' => count($paidInErpPendingInDronena) + count($pendingInErpPaidInDronena),
+            ],
             'details' => $processed,
         ];
     }
+
 
     /**
      * Extrae el listado de documentos directamente de la web de Dronena.
@@ -815,5 +865,43 @@ class DronenaScraperService implements DronenaScraperServiceInterface
         file_put_contents($tempPdf, $dompdf->output());
         return $tempPdf;
     }
+
+    /**
+     * Parsea un monto en formato español (1.234,56) a float.
+     */
+    private function parseAmount(string $amountStr): float
+    {
+        $cleaned = str_replace('.', '', trim($amountStr));
+        $cleaned = str_replace(',', '.', $cleaned);
+        return (float) $cleaned;
+    }
+
+    /**
+     * Parsea una fecha en formato dd/mm/yy o dd/mm/yyyy a formato Y-m-d.
+     */
+    private function parseDate(string $dateStr): ?string
+    {
+        $dateStr = trim($dateStr);
+        if (empty($dateStr)) {
+            return null;
+        }
+
+        try {
+            if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/', $dateStr, $m)) {
+                $day = str_pad($m[1], 2, '0', STR_PAD_LEFT);
+                $month = str_pad($m[2], 2, '0', STR_PAD_LEFT);
+                $year = $m[3];
+                if (strlen($year) === 2) {
+                    $year = '20' . $year;
+                }
+                return "$year-$month-$day";
+            }
+
+            return Carbon::parse($dateStr)->format('Y-m-d');
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
 }
+
 
