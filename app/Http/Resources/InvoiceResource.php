@@ -60,6 +60,7 @@ class InvoiceResource extends JsonResource
                 'name' => $this->orderedBy->username,
                 'username' => $this->orderedBy->username,
             ] : null,
+            'invoice_photo' => $this->invoice_photo,
         ];
     }
 }
