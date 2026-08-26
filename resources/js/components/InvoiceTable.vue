@@ -205,6 +205,19 @@ const formatDate = (dateString) => {
             </VBtn>
           </div>
 
+          <!-- Botón Ver/Descargar PDF o Foto (Disponible siempre si existe) -->
+          <VTooltip v-if="item.invoice_photo" text="Ver Factura PDF / Foto">
+            <template #activator="{ props: tooltipProps }">
+              <IconBtn
+                v-bind="tooltipProps"
+                color="error"
+                @click="viewPhoto(item.invoice_photo)"
+              >
+                <VIcon icon="tabler-file-type-pdf" />
+              </IconBtn>
+            </template>
+          </VTooltip>
+
           <div v-if="props.actionsMode === 'approval'">
             <VTooltip text="Revisar y Aprobar">
               <template #activator="{ props: tooltipProps }">
@@ -256,7 +269,7 @@ const formatDate = (dateString) => {
             </VTooltip>
           </div>
 
-          <div v-else class="d-flex">
+          <div v-else class="d-flex ga-1">
             <VTooltip text="Editar Factura">
               <template #activator="{ props: tooltipProps }">
                 <IconBtn

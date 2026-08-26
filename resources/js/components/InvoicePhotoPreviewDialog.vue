@@ -24,10 +24,19 @@ const close = () => {
         <VBtn icon="tabler-x" variant="text" size="small" @click="close" />
       </VCardTitle>
       <VDivider />
-      <VCardText class="pa-0 bg-surface d-flex justify-center align-center" style="min-height: 400px;">
-        <VImg
+      <VCardText class="pa-0 bg-surface d-flex justify-center align-center" style="min-height: 500px; height: 80vh;">
+        <iframe
+          v-if="previewImageUrl.toLowerCase().endsWith('.pdf') || previewImageUrl.toLowerCase().includes('.pdf')"
           :src="previewImageUrl"
           width="100%"
+          height="100%"
+          style="border: none;"
+        />
+        <VImg
+          v-else
+          :src="previewImageUrl"
+          width="100%"
+          height="100%"
           cover
           class="rounded-0"
         >
