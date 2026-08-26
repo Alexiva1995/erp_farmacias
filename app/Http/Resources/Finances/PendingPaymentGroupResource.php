@@ -55,6 +55,8 @@ class PendingPaymentGroupResource extends JsonResource
                     'payment_date' => $invoice['payment_date'] instanceof \Carbon\Carbon 
                         ? $invoice['payment_date']->toDateString() 
                         : $invoice['payment_date'],
+                    'invoice_photo' => $invoice['invoice_photo'] ?? null,
+                    'pdf_url' => $invoice['pdf_url'] ?? null,
                     'supplier_total_bs' => (float)$invoice['supplier_total_bs'],
                     'supplier_total_usd' => (float)$invoice['supplier_total_usd'],
                 ];

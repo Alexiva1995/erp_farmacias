@@ -15,7 +15,8 @@ class SyncDronenaInvoicesCommand extends Command
     protected $signature = 'dronena:sync-invoices 
                             {--user= : Usuario de acceso a Dronena} 
                             {--pass= : Contraseña de acceso a Dronena} 
-                            {--supplier= : ID del proveedor en BD}';
+                            {--supplier= : ID del proveedor en BD}
+                            {--invoice= : Número o ID de factura específica a sincronizar}';
 
     /**
      * The console command description.
@@ -32,11 +33,12 @@ class SyncDronenaInvoicesCommand extends Command
         $user = $this->option('user');
         $pass = $this->option('pass');
         $supplierId = $this->option('supplier') ? (int) $this->option('supplier') : null;
+        $onlyInvoice = $this->option('invoice');
 
         $this->info('Iniciando sincronización de facturas desde Dronena...');
 
         try {
-            $result = $scraperService->syncInvoices($user, $pass, $supplierId);
+            $result = $scraperService->syncInvoices($user, $pass, $supplierId, $onlyInvoice);
 
             $this->info("Proceso finalizado con éxito:");
             $this->table(

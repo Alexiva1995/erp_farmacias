@@ -188,6 +188,8 @@ class PendingPaymentsService
                         'exchange_rate' => $invoice->exchange_rate,
                         'exp_date' => $invoice->exp_date,
                         'payment_date' => $invoice->payment_date,
+                        'invoice_photo' => $invoice->invoice_photo,
+                        'pdf_url' => $invoice->invoice_photo ? asset('storage/' . $invoice->invoice_photo) : null,
                         'supplier_total_bs' => $totalInSupplierCurrency,
                         'supplier_total_usd' => $totalAmountUSD
                     ];

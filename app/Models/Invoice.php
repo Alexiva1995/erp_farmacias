@@ -36,6 +36,7 @@ class Invoice extends Model
         'ordered_by',
         'created_invoice_date',
         'retention_generated',
+        'invoice_photo',
     ];
 
     /**

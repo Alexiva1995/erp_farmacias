@@ -334,6 +334,21 @@ const getInitials = (name) => {
               </VCard>
             </VMenu>
 
+            <!-- Ver / Descargar PDF de la Factura -->
+            <VBtn
+              v-if="item.pdf_url || item.invoice_photo"
+              icon
+              variant="tonal"
+              size="32"
+              color="error"
+              class="rounded-circle shadow-sm"
+              :href="item.pdf_url || `/storage/${item.invoice_photo}`"
+              target="_blank"
+            >
+              <VIcon icon="tabler-file-type-pdf" size="18" />
+              <VTooltip activator="parent" location="top">Ver / Descargar PDF Digital</VTooltip>
+            </VBtn>
+
             <!-- Marcar como Pagado Directamente -->
             <VBtn
               v-if="authStore.isAdmin"

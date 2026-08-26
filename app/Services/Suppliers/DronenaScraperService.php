@@ -20,7 +20,7 @@ class DronenaScraperService implements DronenaScraperServiceInterface
     /**
      * Sincroniza las facturas de Dronena en la tabla invoices.
      */
-    public function syncInvoices(?string $username = null, ?string $password = null, ?int $supplierId = null): array
+    public function syncInvoices(?string $username = null, ?string $password = null, ?int $supplierId = null, ?string $onlyInvoice = null): array
     {
         $supplier = null;
         if ($supplierId) {
@@ -52,6 +52,33 @@ class DronenaScraperService implements DronenaScraperServiceInterface
         $pass = $pass ?: env('DRONENA_PASSWORD', 'dronena2025');
 
         $documents = $this->fetchDocuments($user, $pass);
+
+        if (empty($documents)) {
+            return [
+                'total_extracted' => 0,
+                'updated' => 0,
+                'skipped' => 0,
+                'supplier_id' => $supplierId,
+                'details' => [],
+            ];
+        }
+
+        // Si se especificó una factura única (ej. 43141520 o ID 6394)
+        if ($onlyInvoice) {
+            $targetNum = $onlyInvoice;
+            if (is_numeric($onlyInvoice) && intval($onlyInvoice) < 100000) {
+                // Podría ser un ID de BD
+                $invById = Invoice::find((int)$onlyInvoice);
+                if ($invById) {
+                    $targetNum = $invById->invoice_number;
+                }
+            }
+            $cleanTarget = ltrim($targetNum, 'A');
+            $documents = array_values(array_filter($documents, function ($d) use ($cleanTarget, $targetNum) {
+                $docClean = ltrim($d['numero_factura'], 'A');
+                return $docClean === $cleanTarget || $d['numero_factura'] === $targetNum;
+            }));
+        }
 
         $createdCount = 0;
         $updatedCount = 0;
@@ -100,8 +127,8 @@ class DronenaScraperService implements DronenaScraperServiceInterface
                     'net_payable_amount' => $netPayable,
                 ];
 
-                // Si la factura no tiene número de control o montos base y hay enlace a PDF digital, extraer datos del PDF
-                if ((empty($invoice->control_number) || $invoice->control_number === 'N/A' || floatval($invoice->total_amount) <= 0) && !empty($doc['pdf_url'])) {
+                // Si la factura no tiene PDF guardado, o le falta número de control o montos base, descargar y parsear el PDF
+                if ((empty($invoice->invoice_photo) || empty($invoice->control_number) || $invoice->control_number === 'N/A' || floatval($invoice->total_amount) <= 0) && !empty($doc['pdf_url'])) {
                     $pdfData = $this->fetchAndParsePdf($doc['pdf_url'], $client);
                     if ($pdfData) {
                         if (!empty($pdfData['control_number'])) {
@@ -130,6 +157,9 @@ class DronenaScraperService implements DronenaScraperServiceInterface
                         }
                         if (floatval($pdfData['total_usd'] ?? 0) > 0 && floatval($invoice->total_usd ?? 0) <= 0) {
                             $updateData['total_usd'] = $pdfData['total_usd'];
+                        }
+                        if (!empty($pdfData['invoice_photo'])) {
+                            $updateData['invoice_photo'] = $pdfData['invoice_photo'];
                         }
                     }
                 }
@@ -170,6 +200,7 @@ class DronenaScraperService implements DronenaScraperServiceInterface
                             'claim_amount' => $claimAmount,
                             'nd_referential_amount' => $ndRefAmount,
                             'net_payable_amount' => $netPayable,
+                            'invoice_photo' => $pdfData['invoice_photo'] ?? null,
                             'status' => 'pending',
                             'status_payment' => 0,
                             'uploaded_by' => 1,
@@ -337,15 +368,30 @@ class DronenaScraperService implements DronenaScraperServiceInterface
             $firstLink = $cols->item(2)->getElementsByTagName('a')->item(0);
             $recibo = $firstLink ? trim($firstLink->textContent) : trim(explode(' ', trim($cols->item(2)->textContent))[0]);
             
-            // Buscar enlace de descarga de PDF digital (Soluciones Laser / Dronena)
+            // Buscar enlace de descarga de PDF digital en toda la fila (Priorizar Soluciones Laser)
             $pdfUrl = null;
-            foreach ($cols->item(2)->getElementsByTagName('a') as $aTag) {
+            $laserUrl = null;
+            $otherPdfUrl = null;
+
+            foreach ($row->getElementsByTagName('a') as $aTag) {
                 $href = $aTag->getAttribute('href');
-                if (str_contains($href, 'solucioneslaser.com') || str_contains($href, '.pdf')) {
-                    $pdfUrl = $href;
+                if (str_contains($href, 'solucioneslaser.com')) {
+                    $laserUrl = $href;
                     break;
                 }
+                $onclick = $aTag->getAttribute('onclick');
+                if (preg_match('/popUpFact\([\'"]([^\'"]+)[\'"]/i', $onclick, $mPop)) {
+                    $popUrl = $mPop[1];
+                    if (!str_starts_with($popUrl, 'http')) {
+                        $popUrl = 'https://www.dronena.com/NuevaExperiencia/General/EstadoCuenta/' . basename($popUrl);
+                    }
+                    if (!$otherPdfUrl) {
+                        $otherPdfUrl = $popUrl;
+                    }
+                }
             }
+
+            $pdfUrl = $laserUrl ?: $otherPdfUrl;
 
             $fechaMovimiento = trim($cols->item(3)->textContent);
             $fechaTope = trim($cols->item(5)->textContent);
@@ -480,6 +526,11 @@ class DronenaScraperService implements DronenaScraperServiceInterface
                 $totalUsd = round($totalBs / $tasa, 2);
             }
 
+            // Guardar permanentemente el PDF en storage/app/public/invoices/
+            $pdfFileName = "invoice_{$serie}{$numeroFactura}_" . time() . ".pdf";
+            $pdfStorageRelPath = "invoices/{$pdfFileName}";
+            \Illuminate\Support\Facades\Storage::disk('public')->put($pdfStorageRelPath, $pdfContent);
+
             return [
                 'serie' => $serie,
                 'numero_factura' => $numeroFactura,
@@ -492,6 +543,7 @@ class DronenaScraperService implements DronenaScraperServiceInterface
                 'tax_amount' => $iva,
                 'total_amount' => $totalBs,
                 'total_usd' => $totalUsd,
+                'invoice_photo' => $pdfStorageRelPath,
             ];
         } catch (\Throwable $e) {
             Log::warning("[DronenaScraper] Error leyendo PDF {$pdfUrl}: " . $e->getMessage());
