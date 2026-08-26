@@ -193,7 +193,7 @@ const fetchInvoiceData = async () => {
   loadingInvoice.value = true;
   try {
     const response = await axios.get(`/invoices/${props.invoiceId}`);
-    const invoice = response.data.data;
+    const invoice = response.data.data ?? response.data;
 
     formData.value = {
       supplier_id: invoice.supplier_id,
@@ -313,8 +313,9 @@ const handleCancel = () => {
         <VBtn icon="tabler-arrow-left" variant="text" @click="handleCancel" />
       </template>
 
-      <template #append v-if="formData.invoice_photo">
+      <template #append>
         <VBtn
+          v-if="formData.invoice_photo"
           color="error"
           variant="tonal"
           size="small"
