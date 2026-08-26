@@ -103,15 +103,27 @@ class DronenaScraperService implements DronenaScraperServiceInterface
             $isOverdue = ($expDate < $today);
             $isIndexed = ($isFaDollar || $isOverdue);
 
-            // Buscar si ya existe la factura registrada (exacto, con prefijo 'A' o sin prefijo 'A')
-            $cleanNumber = ltrim($invoiceNumber, 'A');
-            $possibleNumbers = array_unique([$invoiceNumber, $cleanNumber, 'A' . $cleanNumber]);
+            // Buscar si ya existe la factura registrada (exacto, con prefijo 'A', sin ceros a la izquierda, etc.)
+            $cleanNumber = ltrim($invoiceNumber, 'A0');
+            $possibleNumbers = array_unique([
+                $invoiceNumber,
+                ltrim($invoiceNumber, 'A'),
+                $cleanNumber,
+                'A' . $cleanNumber,
+                'A' . ltrim($invoiceNumber, 'A'),
+                str_pad($cleanNumber, 8, '0', STR_PAD_LEFT),
+                'A' . str_pad($cleanNumber, 8, '0', STR_PAD_LEFT),
+            ]);
 
-            $invoiceQuery = Invoice::whereIn('invoice_number', $possibleNumbers);
+            $invoiceQuery = Invoice::where(function ($q) use ($possibleNumbers, $cleanNumber) {
+                $q->whereIn('invoice_number', $possibleNumbers)
+                  ->orWhere('invoice_number', 'LIKE', "%{$cleanNumber}");
+            });
             if ($supplierId) {
                 $invoiceQuery->where('supplier_id', $supplierId);
             }
             $invoice = $invoiceQuery->first();
+
 
             $claimAmount = $doc['monto_reclamo_db'] ?? 0;
             $ndRefAmount = $doc['monto_nd_referencial_db'] ?? 0;
@@ -134,12 +146,10 @@ class DronenaScraperService implements DronenaScraperServiceInterface
                         if (!empty($pdfData['control_number'])) {
                             $updateData['control_number'] = $pdfData['control_number'];
                         }
-                        if (!empty($pdfData['invoice_number'])) {
-                            $updateData['invoice_number'] = $pdfData['invoice_number'];
-                        }
                         if (!empty($pdfData['created_invoice_date']) && empty($invoice->created_invoice_date)) {
                             $updateData['created_invoice_date'] = $pdfData['created_invoice_date'];
                         }
+
                         if (floatval($pdfData['exchange_rate'] ?? 0) > 0 && floatval($invoice->exchange_rate ?? 0) <= 0) {
                             $updateData['exchange_rate'] = $pdfData['exchange_rate'];
                         }

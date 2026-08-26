@@ -146,6 +146,7 @@ declare module 'vue' {
     DoctorTable: typeof import('./resources/js/components/DoctorTable.vue')['default']
     DoctorViewOffer: typeof import('./resources/js/components/dialogs/DoctorViewOffer.vue')['default']
     DonationLetterDialog: typeof import('./resources/js/components/DonationLetterDialog.vue')['default']
+    DronenaDiscrepanciesModal: typeof import('./resources/js/components/dialogs/DronenaDiscrepanciesModal.vue')['default']
     DropZone: typeof import('./resources/js/@core/components/DropZone.vue')['default']
     EcommerceExpensesRadialBarCharts: typeof import('./resources/js/components/EcommerceExpensesRadialBarCharts.vue')['default']
     EcommerceGeneratedLeads: typeof import('./resources/js/components/EcommerceGeneratedLeads.vue')['default']
