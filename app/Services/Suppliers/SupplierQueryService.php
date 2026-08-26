@@ -220,16 +220,30 @@ class SupplierQueryService
 
             $invoiceNumbersToFilter = collect($invoices)->pluck('header.invoice_number')->filter()->unique()->toArray();
             
-            $existingInvoiceNumbers = Invoice::whereIn('invoice_number', $invoiceNumbersToFilter)
+            // Expandir números posibles (ej. 43141520 y A43141520) para evitar duplicar facturas de Dronena
+            $allPossibleNumbers = [];
+            foreach ($invoiceNumbersToFilter as $num) {
+                $clean = ltrim((string)$num, 'A');
+                $allPossibleNumbers[] = $num;
+                $allPossibleNumbers[] = $clean;
+                $allPossibleNumbers[] = 'A' . $clean;
+            }
+            $allPossibleNumbers = array_unique($allPossibleNumbers);
+
+            $existingInvoices = Invoice::where('supplier_id', $supplier->id)
+                ->whereIn('invoice_number', $allPossibleNumbers)
                 ->pluck('invoice_number')
+                ->map(fn($n) => ltrim((string)$n, 'A'))
                 ->toArray();
 
             $filteredInvoices = collect($invoices)
-                ->filter(function ($invoice) use ($existingInvoiceNumbers) {
+                ->filter(function ($invoice) use ($existingInvoices) {
                     $number = $invoice['header']['invoice_number'] ?? null;
-                    $isNew = $number && !in_array($number, $existingInvoiceNumbers);
+                    if (!$number) return false;
+                    $cleanNumber = ltrim((string)$number, 'A');
+                    $isNew = !in_array($cleanNumber, $existingInvoices);
                     if (!$isNew) {
-                        Log::warning("Factura filtrada (ya existe o sin número)", ['number' => $number]);
+                        Log::warning("Factura filtrada (ya existe en ERP con o sin 'A')", ['number' => $number]);
                     }
                     return $isNew;
                 })->values()->toArray();
@@ -310,8 +324,16 @@ class SupplierQueryService
                     $header = $invoice['header'];
                     $lines = $invoice['lines'];
 
+                    $totalAmount = $header['total_amount'] ?? null;
+                    if ($totalAmount === null || $totalAmount === '') {
+                        $totalUsd = floatval($header['total_usd'] ?? 0);
+                        $rate = floatval($header['exchange_rate'] ?? 1);
+                        $totalAmount = round($totalUsd * $rate, 2);
+                    }
+
                     $invoiceModel = $supplier->invoices()->create([
                         ...Arr::only($header, Invoice::FILLABLEHEADER),
+                        'total_amount' => $totalAmount,
                         'status' => $invoice['status'] ?? 'pending',
                         'uploaded_by' => auth()->id() ?? 1,
                         'registered_by' => auth()->id() ?? 1,

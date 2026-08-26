@@ -120,6 +120,7 @@ const handleTableUpdate = (options) => {
 
 const toggleIndexedStatus = async (item) => {
   updatingIndexed.value[item.id] = true;
+  const previousState = !item.is_indexed;
   try {
     const { data } = await axios.put(`/finances/invoices/${item.id}/toggle-indexed`, {
       is_indexed: item.is_indexed,
@@ -127,10 +128,31 @@ const toggleIndexedStatus = async (item) => {
     if (data?.data) {
       item.is_indexed = data.data.is_indexed;
     }
+
+    // Actualizar reactivamente los datos de indexación del item local
+    if (item.is_indexed) {
+      const currentRate = exchangeRate.value > 0 ? exchangeRate.value : 1;
+      const originalUsd = parseFloat(item.original_amount_usd || item.total_usd) || 0;
+      item.indexed_data = {
+        is_indexed: true,
+        indexed_amount: originalUsd * currentRate,
+        exchange_rate: currentRate,
+        original_amount: item.original_amount || item.total_amount,
+        original_amount_usd: originalUsd,
+      };
+    } else if (item.indexed_data) {
+      item.indexed_data.is_indexed = false;
+    }
+
+    // Sincronizar si la factura está en la selección de lotes
+    const selIdx = selectedTableInvoices.value.findIndex((inv) => inv.id === item.id);
+    if (selIdx !== -1) {
+      selectedTableInvoices.value[selIdx] = { ...item };
+    }
+
     toast.success("Estado de indexación actualizado");
-    await fetchPendingPayments();
   } catch (error) {
-    item.is_indexed = !item.is_indexed;
+    item.is_indexed = previousState;
     toast.error("Error al actualizar indexación");
   } finally {
     updatingIndexed.value[item.id] = false;
