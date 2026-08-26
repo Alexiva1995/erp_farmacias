@@ -552,39 +552,268 @@ class DronenaScraperService implements DronenaScraperServiceInterface
     }
 
     /**
-     * Parsea un monto en formato español (1.234,56) a float.
+     * Procesa y reporta un pago directamente en el portal de Dronena (Cobranza/Pago/Pagos).
      */
-    private function parseAmount(string $amountStr): float
-    {
-        $cleaned = str_replace('.', '', trim($amountStr));
-        $cleaned = str_replace(',', '.', $cleaned);
-        return (float) $cleaned;
+    public function submitPayment(
+        array $invoiceNumbers,
+        float $paymentAmount,
+        string $reference,
+        string $destinationBank,
+        ?string $paymentDate = null,
+        ?string $receiptPathOrUrl = null,
+        ?string $username = null,
+        ?string $password = null
+    ): array {
+        $user = $username ?: env('DRONENA_USERNAME', 'D719');
+        $pass = $password ?: env('DRONENA_PASSWORD', 'dronena2025');
+        $date = $paymentDate ?: Carbon::now()->format('d/m/Y');
+        if (str_contains($date, '-')) {
+            $date = Carbon::parse($date)->format('d/m/Y');
+        }
+
+        // Tomar exactamente los últimos 10 dígitos de la referencia
+        $digitsOnly = preg_replace('/\D/', '', $reference);
+        $cleanRef = strlen($digitsOnly) >= 10 ? substr($digitsOnly, -10) : str_pad($digitsOnly, 10, '0', STR_PAD_LEFT);
+
+        $jar = new CookieJar();
+        $client = new Client([
+            'cookies' => $jar,
+            'verify' => false,
+            'headers' => [
+                'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            ],
+            'timeout' => 45,
+        ]);
+
+        try {
+            // 1. Iniciar sesión en Dronena
+            $initRes = $client->get(self::BASE_URL);
+            preg_match('/name="__RequestVerificationToken"[^>]*value="([^"]+)"/i', (string) $initRes->getBody(), $m);
+            $token = $m[1] ?? '';
+
+            $client->post(self::BASE_URL, [
+                'form_params' => [
+                    '__RequestVerificationToken' => $token,
+                    'Login' => $user,
+                    'Contraseña' => $pass,
+                    'IdRol' => '3',
+                ],
+                'allow_redirects' => true,
+            ]);
+
+            // 2. Cargar página de Cobranza/Pago/Pagos para inicializar sesión de pagos
+            $client->get('https://www.dronena.com/NuevaExperiencia/Cobranza/Pago/Pagos', ['allow_redirects' => true]);
+
+            // 3. Consultar los movimientos / facturas pendientes en Dronena
+            $movRes = $client->post('https://www.dronena.com/NuevaExperiencia/Cobranza/Pago/getMovimientos', [
+                'form_params' => [
+                    'CodCli' => $user,
+                    'NroRecibo' => '',
+                    'FechaDesde' => '',
+                    'FechaHasta' => '',
+                    'Estatus' => '0', // TODOS
+                    'TipoMov' => '<TIPOMOV><TIPO>DC</TIPO><TIPO>FA</TIPO><TIPO>ND</TIPO><TIPO>NC</TIPO><TIPO>CH</TIPO><TIPO>GR</TIPO></TIPOMOV>',
+                    'Clientes' => "<CLIENTES><CODIGO>{$user}</CODIGO></CLIENTES>",
+                    'docTransito' => 'false',
+                    'Moneda' => 'VES',
+                    'FechaRef' => $date,
+                    'TipoFecha' => '2', // PR. DE TASA
+                    'RangoFecha' => 'false',
+                ],
+                'headers' => ['X-Requested-With' => 'XMLHttpRequest']
+            ]);
+
+            $movData = json_decode((string) $movRes->getBody(), true);
+            $allRecibos = $movData['data'] ?? [];
+
+            // Filtrar y armar lista de recibos a cancelar según las facturas enviadas
+            $recibosXml = '';
+            $montoTotalRecibos = 0;
+            $cleanTargets = array_map(fn($n) => ltrim($n, 'A0'), $invoiceNumbers);
+
+            foreach ($allRecibos as $r) {
+                $reciboNum = (string) ($r['Recibo'] ?? '');
+                $cleanRecibo = ltrim($reciboNum, 'A0');
+
+                if (in_array($cleanRecibo, $cleanTargets) || in_array($reciboNum, $invoiceNumbers)) {
+                    $tipoRbo = $r['TipoMov'] ?? 'FA$';
+                    $codCli = $r['CodCliente'] ?? $user;
+                    $montoRbo = (float) ($r['SaldoCancelar'] ?? $r['MontoACancelar'] ?? 0);
+                    $tasaDia = $r['Tasa'] ?? '1';
+
+                    $recibosXml .= "<RECIBO NRORBO=\"{$reciboNum}\" TIPORBO=\"{$tipoRbo}\" CODCLI=\"{$codCli}\" MONTORBO=\"{$montoRbo}\" TASADIA=\"{$tasaDia}\"/>";
+                    $montoTotalRecibos += $montoRbo;
+                }
+            }
+
+            if (empty($recibosXml) && !empty($invoiceNumbers)) {
+                // Si no se encontró por coincidencia exacta, registrar con los números recibidos
+                foreach ($invoiceNumbers as $invNum) {
+                    $cleanInv = preg_replace('/\D/', '', $invNum);
+                    $recibosXml .= "<RECIBO NRORBO=\"{$cleanInv}\" TIPORBO=\"FA$\" CODCLI=\"{$user}\" MONTORBO=\"{$paymentAmount}\" TASADIA=\"1\"/>";
+                }
+                $montoTotalRecibos = $paymentAmount;
+            }
+
+            // 4. Preparar comprobante en PDF (convertir automáticamente si es imagen)
+            $pdfTempFile = $this->prepareReceiptPdf($receiptPathOrUrl, $cleanRef);
+            $pdfFileName = basename($pdfTempFile);
+
+            // 5. Subir comprobante temporal a Dronena (/Cobranza/Pago/GuardarArchivosTemp)
+            $uploadRes = $client->post('https://www.dronena.com/NuevaExperiencia/Cobranza/Pago/GuardarArchivosTemp', [
+                'multipart' => [
+                    [
+                        'name' => 'Files',
+                        'contents' => fopen($pdfTempFile, 'r'),
+                        'filename' => $pdfFileName,
+                        'headers' => ['Content-Type' => 'application/pdf']
+                    ]
+                ],
+                'headers' => ['X-Requested-With' => 'XMLHttpRequest']
+            ]);
+
+            $uploadJson = json_decode((string) $uploadRes->getBody(), true);
+
+            // 6. Consultar código de cuenta destino en Dronena
+            $bancosRes = $client->post('https://www.dronena.com/NuevaExperiencia/Cobranza/Pago/ConsultarBancos', [
+                'json' => [
+                    'TipoMoneda' => 'VES',
+                    'TipoOperacion' => '1',
+                ],
+                'headers' => ['X-Requested-With' => 'XMLHttpRequest']
+            ]);
+            $bancosJson = json_decode((string) $bancosRes->getBody(), true);
+            $codCuentaDestino = '';
+
+            foreach ($bancosJson['data'] ?? [] as $b) {
+                if (!empty($b['Nombre']) && !empty($destinationBank)) {
+                    if (str_contains($destinationBank, $b['Nombre']) || str_contains($b['Nombre'], $destinationBank)) {
+                        $codCuentaDestino = $b['Codigo'];
+                        break;
+                    }
+                }
+            }
+
+            if (empty($codCuentaDestino) && !empty($destinationBank)) {
+                // Si el formato viene con número de cuenta (ej. BANESCO - 01340326153261014466)
+                if (preg_match('/(\d{4}):?(\d+)/', $destinationBank, $bm)) {
+                    $codCuentaDestino = $bm[1] . ':' . $bm[2];
+                } else {
+                    $codCuentaDestino = $destinationBank;
+                }
+            }
+
+            // 7. Verificar el pago antes de procesar (/Cobranza/Pago/VerificarPago)
+            $client->post('https://www.dronena.com/NuevaExperiencia/Cobranza/Pago/VerificarPago', [
+                'json' => [
+                    'NumOperacion' => $cleanRef,
+                    'TipoOperacion' => '1', // Transferencia
+                    'CodCuenta' => $codCuentaDestino,
+                    'Monto' => $paymentAmount,
+                ],
+                'headers' => ['X-Requested-With' => 'XMLHttpRequest']
+            ]);
+
+            // 8. Construir XML completo de pagos a cancelar
+            $montoBaseFormatted = number_format($paymentAmount, 2, '.', '');
+            $formattedDateDb = Carbon::createFromFormat('d/m/Y', $date)->format('Y-m-d');
+
+            $xmlPagosCancelar = '<RELACION>';
+            $xmlPagosCancelar .= "<RECIBOS>{$recibosXml}</RECIBOS>";
+            $xmlPagosCancelar .= '<PAGOS>';
+            $xmlPagosCancelar .= "<PAGO TIPOPAG=\"1\" CTA=\"{$codCuentaDestino}\" NROPAGO=\"{$cleanRef}\" MONTOPAG=\"{$montoBaseFormatted}\" FECHA=\"{$formattedDateDb}\" ADJUNTO=\"{$pdfFileName}\" MONTOBASE=\"{$montoBaseFormatted}\" TASAIGTF=\"0\" MONTOIGTF=\"0\">";
+            $xmlPagosCancelar .= '<CHEQUES></CHEQUES>';
+            $xmlPagosCancelar .= '</PAGO>';
+            $xmlPagosCancelar .= '</PAGOS>';
+            $xmlPagosCancelar .= '</RELACION>';
+
+            // 9. Ejecutar el procesamiento final del pago en Dronena (/Cobranza/Pago/ProcesarPago)
+            $procRes = $client->post('https://www.dronena.com/NuevaExperiencia/Cobranza/Pago/ProcesarPago', [
+                'form_params' => [
+                    'PagosCancelar' => $xmlPagosCancelar,
+                    'IsoMoneda' => 'VES',
+                ],
+                'headers' => ['X-Requested-With' => 'XMLHttpRequest']
+            ]);
+
+            $procJson = json_decode((string) $procRes->getBody(), true);
+            $pagoId = $procJson['data'] ?? 0;
+
+            if ($pagoId > 0) {
+                Log::info("[DronenaPayment] Pago registrado exitosamente en Dronena. ID: {$pagoId}, Ref: {$cleanRef}");
+                return [
+                    'success' => true,
+                    'payment_id' => $pagoId,
+                    'message' => "Pago registrado exitosamente en el portal de Dronena (ID: {$pagoId}).",
+                    'clean_reference' => $cleanRef,
+                ];
+            } else {
+                Log::warning("[DronenaPayment] Respuesta al procesar pago: " . json_encode($procJson));
+                return [
+                    'success' => false,
+                    'payment_id' => null,
+                    'message' => $procJson['message'] ?? 'No se pudo completar el procesamiento del pago en Dronena.',
+                ];
+            }
+
+        } catch (\Throwable $e) {
+            Log::error('[DronenaPayment] Error reportando pago en Dronena: ' . $e->getMessage(), [
+                'exception' => $e
+            ]);
+            return [
+                'success' => false,
+                'message' => 'Error de conexión con Dronena: ' . $e->getMessage(),
+            ];
+        }
     }
 
     /**
-     * Parsea una fecha en formato dd/mm/yy o dd/mm/yyyy a formato Y-m-d.
+     * Convierte cualquier imagen o archivo a un PDF compatible < 1MB para Dronena.
      */
-    private function parseDate(string $dateStr): ?string
+    private function prepareReceiptPdf(?string $receiptPathOrUrl, string $reference): string
     {
-        $dateStr = trim($dateStr);
-        if (empty($dateStr)) {
-            return null;
-        }
+        $tempPdf = sys_get_temp_dir() . DIRECTORY_SEPARATOR . "soporte_{$reference}_" . time() . ".pdf";
 
-        try {
-            if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/', $dateStr, $m)) {
-                $day = str_pad($m[1], 2, '0', STR_PAD_LEFT);
-                $month = str_pad($m[2], 2, '0', STR_PAD_LEFT);
-                $year = $m[3];
-                if (strlen($year) === 2) {
-                    $year = '20' . $year;
+        // Si ya es un archivo PDF local existente
+        if (!empty($receiptPathOrUrl)) {
+            $localPath = public_path(ltrim($receiptPathOrUrl, '/'));
+            if (file_exists($localPath)) {
+                $ext = strtolower(pathinfo($localPath, PATHINFO_EXTENSION));
+                if ($ext === 'pdf') {
+                    return $localPath;
                 }
-                return "$year-$month-$day";
-            }
 
-            return Carbon::parse($dateStr)->format('Y-m-d');
-        } catch (\Exception $e) {
-            return null;
+                // Es una imagen (png, jpg, jpeg, webp) -> convertir a PDF con Dompdf
+                $imgData = base64_encode(file_get_contents($localPath));
+                $mime = ($ext === 'png') ? 'image/png' : 'image/jpeg';
+                $src = "data:{$mime};base64,{$imgData}";
+
+                $html = "<html><head><style>@page { margin: 0; size: letter portrait; } body { margin: 0; text-align: center; } img { max-width: 95%; max-height: 95%; margin: auto; display: block; }</style></head><body><img src=\"{$src}\"/></body></html>";
+
+                $options = new \Dompdf\Options();
+                $options->set('isRemoteEnabled', true);
+                $options->set('isHtml5ParserEnabled', true);
+
+                $dompdf = new \Dompdf\Dompdf($options);
+                $dompdf->loadHtml($html);
+                $dompdf->setPaper('letter', 'portrait');
+                $dompdf->render();
+
+                file_put_contents($tempPdf, $dompdf->output());
+                return $tempPdf;
+            }
         }
+
+        // Si no hay comprobante, generar PDF genérico con la referencia
+        $html = "<html><head><style>body { font-family: sans-serif; text-align: center; padding: 50px; }</style></head><body><h2>COMPROBANTE DE PAGO</h2><p><b>Referencia:</b> {$reference}</p><p><b>Fecha:</b> " . date('d/m/Y H:i:s') . "</p></body></html>";
+        $options = new \Dompdf\Options();
+        $dompdf = new \Dompdf\Dompdf($options);
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('letter', 'portrait');
+        $dompdf->render();
+
+        file_put_contents($tempPdf, $dompdf->output());
+        return $tempPdf;
     }
 }
+

@@ -30,10 +30,12 @@ class ProcessPaymentRequest extends FormRequest
             'payment_date' => 'required|date',
             'payment_method' => ['required', Rule::in($allowedMethods)],
             'reference' => 'nullable|string|max:100',
+            'destination_bank' => 'nullable|string|max:150',
             'photo_url' => 'nullable|string',
             'notes' => 'nullable|string|max:500',
             'has_iva' => 'nullable|boolean',
         ];
+
     }
 
     public function messages(): array

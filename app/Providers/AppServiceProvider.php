@@ -320,9 +320,15 @@ class AppServiceProvider extends ServiceProvider
         );
 
         $this->app->bind(
+            \App\Contracts\Suppliers\DrocercaScraperServiceInterface::class,
+            \App\Services\Suppliers\DrocercaScraperService::class
+        );
+
+        $this->app->bind(
             \App\Contracts\Suppliers\DronenaEdiServiceInterface::class,
             \App\Services\Suppliers\DronenaEdiService::class
         );
+
 
         $this->app->when(LocationController::class)
             ->needs(LocationContract::class)

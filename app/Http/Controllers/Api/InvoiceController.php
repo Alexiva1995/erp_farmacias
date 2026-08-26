@@ -26,9 +26,11 @@ class InvoiceController extends Controller
     public function __construct(
         private InvoiceActionService $invoiceActionService,
         private InvoiceQueryService $invoiceQueryService,
-        private \App\Contracts\Suppliers\DronenaScraperServiceInterface $dronenaScraperService
+        private \App\Contracts\Suppliers\DronenaScraperServiceInterface $dronenaScraperService,
+        private \App\Contracts\Suppliers\DrocercaScraperServiceInterface $drocercaScraperService
     ) {
     }
+
 
     public function index(IndexInvoiceRequest $request)
     {
@@ -356,4 +358,34 @@ class InvoiceController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Sincroniza las facturas, vencimientos y totales fiscales desde el portal Drocerca.
+     */
+    public function syncDrocerca(Request $request)
+    {
+        try {
+            $user = $request->input('username');
+            $pass = $request->input('password');
+            $supplierId = $request->input('supplier_id') ? (int) $request->input('supplier_id') : null;
+
+            $result = $this->drocercaScraperService->syncInvoices($user, $pass, $supplierId);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Sincronización con Drocerca completada. Nuevas: {$result['created']}, Actualizadas: {$result['updated']}, Omitidas: {$result['skipped']}.",
+                'data' => $result,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error en InvoiceController@syncDrocerca: ' . $e->getMessage(), [
+                'exception' => $e
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al sincronizar facturas desde Drocerca: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }
+

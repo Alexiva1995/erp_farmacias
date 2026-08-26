@@ -62,6 +62,8 @@ declare module 'vue-router/auto-routes' {
     'bi-report-laboratories': RouteRecordInfo<'bi-report-laboratories', '/bi/report-laboratories', Record<never, never>, Record<never, never>>,
     'bi-report-products': RouteRecordInfo<'bi-report-products', '/bi/report-products', Record<never, never>, Record<never, never>>,
     'bi-report-sku': RouteRecordInfo<'bi-report-sku', '/bi/report-sku', Record<never, never>, Record<never, never>>,
+    'bots-drocerca': RouteRecordInfo<'bots-drocerca', '/bots/drocerca', Record<never, never>, Record<never, never>>,
+    'bots-dronena': RouteRecordInfo<'bots-dronena', '/bots/dronena', Record<never, never>, Record<never, never>>,
     'configuration': RouteRecordInfo<'configuration', '/configuration', Record<never, never>, Record<never, never>>,
     'configuration-bi': RouteRecordInfo<'configuration-bi', '/configuration/bi', Record<never, never>, Record<never, never>>,
     'configuration-branding': RouteRecordInfo<'configuration-branding', '/configuration/branding', Record<never, never>, Record<never, never>>,

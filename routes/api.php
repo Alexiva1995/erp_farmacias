@@ -643,7 +643,9 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
         Route::put('/{invoice}/finalize', 'finalize')->name('finalize');
         Route::post('/bulk-delete', 'bulkDelete')->name('bulk-delete');
         Route::post('/sync-dronena', 'syncDronena')->name('sync-dronena');
+        Route::post('/sync-drocerca', 'syncDrocerca')->name('sync-drocerca');
         Route::delete('/{invoice}', 'destroy')->name('destroy');
+
         Route::put('/{invoice}', 'update')->name('update');
         Route::get('/supplier/debts', [InvoiceController::class, 'getSupplierDebts']);
         Route::post('/{invoice}/photo', 'uploadPhoto')->name('photo.upload');

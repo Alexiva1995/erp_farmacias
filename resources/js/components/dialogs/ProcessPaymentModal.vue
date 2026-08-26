@@ -36,7 +36,39 @@ const form = ref({
   photo_url: null,
   reference: "",
   payment_method: null,
+  destination_bank: null,
 });
+
+// Bancos oficiales estáticos de Dronena para conciliación y reporte automatizado
+const dronenaBanks = [
+  { title: "BANCRECER - 01680051115101043568", value: "BANCRECER - 01680051115101043568" },
+  { title: "BANESCO - 01340326153261014466", value: "BANESCO - 01340326153261014466" },
+  { title: "BANESCO - 01340326153263034391", value: "BANESCO - 01340326153263034391" },
+  { title: "BICENTENARIO - 01750350280080076402", value: "BICENTENARIO - 01750350280080076402" },
+  { title: "DEL CARIBE - 01140300053000149682", value: "DEL CARIBE - 01140300053000149682" },
+  { title: "EXTERIOR - 01150036650360015433", value: "EXTERIOR - 01150036650360015433" },
+  { title: "MERCANTIL - 01050102481102031682", value: "MERCANTIL - 01050102481102031682" },
+  { title: "NACIONAL DE CREDITO - 01910137192100014169", value: "NACIONAL DE CREDITO - 01910137192100014169" },
+  { title: "PROVINCIAL - 01080087140100005071", value: "PROVINCIAL - 01080087140100005071" },
+  { title: "SOFITASA - 01370060580000013941", value: "SOFITASA - 01370060580000013941" },
+  { title: "VENEZOLANO DE CREDITO - 01040154230154000097", value: "VENEZOLANO DE CREDITO - 01040154230154000097" },
+  { title: "VENEZUELA - 01020211670006291538", value: "VENEZUELA - 01020211670006291538" },
+];
+
+const isDronenaPayment = computed(() => {
+  if (props.paymentGroup?.supplier_name) {
+    const name = props.paymentGroup.supplier_name.toUpperCase();
+    if (name.includes("NENA") || name.includes("DRONENA")) return true;
+  }
+  return props.invoices.some(
+    (inv) =>
+      inv.supplier?.name?.toUpperCase().includes("NENA") ||
+      inv.supplier?.name?.toUpperCase().includes("DRONENA") ||
+      inv.supplier_name?.toUpperCase().includes("NENA") ||
+      inv.supplier_name?.toUpperCase().includes("DRONENA")
+  );
+});
+
 
 const loading = ref(false);
 const uploading = ref(false);
@@ -153,9 +185,11 @@ const resetForm = () => {
     photo_url: null,
     reference: "",
     payment_method: null,
+    destination_bank: null,
   };
   errors.value = {};
 };
+
 
 const processPayment = async () => {
   loading.value = true;
@@ -432,6 +466,29 @@ watch(() => props.modelValue, (val) => { if (val) fetchExchangeRates(); });
                   </VSelect>
                 </VCol>
 
+                <VCol
+                  v-if="isDronenaPayment && form.payment_method !== 'cash'"
+                  cols="12"
+                >
+                  <div class="d-flex align-center justify-space-between mb-1">
+                    <span class="text-super-xs font-weight-black text-primary uppercase">Banco Destino Dronena</span>
+                    <VChip size="x-small" color="primary" variant="tonal">Portal Dronena</VChip>
+                  </div>
+                  <VSelect
+                    v-model="form.destination_bank"
+                    :items="dronenaBanks"
+                    item-title="title"
+                    item-value="value"
+                    placeholder="SELECCIONE BANCO DRONENA"
+                    variant="outlined"
+                    density="compact"
+                    class="premium-input mb-3"
+                    clearable
+                    prepend-inner-icon="tabler-building-bank"
+                    hide-details
+                  />
+                </VCol>
+
                 <VCol cols="12">
                   <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Referencia</span>
                   <VTextField
@@ -440,9 +497,12 @@ watch(() => props.modelValue, (val) => { if (val) fetchExchangeRates(); });
                     variant="outlined"
                     density="compact"
                     class="premium-input mb-3"
-                    hide-details
+                    :hint="isDronenaPayment ? 'Para Dronena se tomarán automáticamente los últimos 10 dígitos' : undefined"
+                    :persistent-hint="isDronenaPayment"
+                    hide-details="auto"
                   />
                 </VCol>
+
 
                 <VCol cols="12">
                   <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Comprobante</span>

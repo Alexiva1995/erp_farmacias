@@ -614,7 +614,14 @@ class TelegramWebhookService
             return;
         }
 
+        if (str_starts_with($callbackData, 'dronena_bank_')) {
+            $bankCode = substr($callbackData, strlen('dronena_bank_'));
+            $this->selectDronenaBank($bankCode, $fromId, $callbackQueryId, $messageId, $chatId);
+            return;
+        }
+
         if ($callbackData === 'skip_payment_photo') {
+
             $this->skipPaymentPhotoFromCallback($fromId, $callbackQueryId, $messageId, $chatId);
             return;
         }
@@ -1710,6 +1717,51 @@ class TelegramWebhookService
 
         $amount = (float) $priceStr;
         $stateData['payment_amount'] = $amount;
+
+        $supplierName = strtoupper($stateData['supplier_name'] ?? '');
+        $isDronena = str_contains($supplierName, 'DRONENA') || str_contains($supplierName, 'NENA');
+        $isCash = ($stateData['payment_method'] ?? '') === 'CASH';
+
+        // Si es Dronena y no es efectivo, preguntar primero a qué banco de Dronena se realizó la transferencia
+        if ($isDronena && !$isCash) {
+            $stateData['state'] = 'waiting_for_dronena_bank';
+            Cache::put('telegram_state_' . $fromId, $stateData, 600);
+
+            $msg = "🏛️ *[REGISTRAR PAGO - SELECCIONA BANCO DRONENA]*\n\n"
+                 . "🏢 *Proveedor:* {$stateData['supplier_name']}\n"
+                 . "💰 *Monto a Pagar:* " . number_format($amount, 2) . " {$stateData['payment_currency']}\n\n"
+                 . "Selecciona la **cuenta bancaria destino de Dronena** donde se realizó el pago:";
+
+            $dronenaBanks = [
+                ['BANESCO (4466)', '0134:01340326153261014466'],
+                ['BANESCO (4391)', '0134:01340326153263034391'],
+                ['VENEZUELA (1538)', '0102:01020211670006291538'],
+                ['MERCANTIL (1682)', '0105:01050102481102031682'],
+                ['PROVINCIAL (5071)', '0108:01080087140100005071'],
+                ['BNC (4169)', '0191:01910137192100014169'],
+                ['BANCRECER (3568)', '0168:01680051115101043568'],
+                ['EXTERIOR (5433)', '0115:01150036650360015433'],
+                ['DEL CARIBE (9682)', '0114:01140300053000149682'],
+                ['SOFITASA (3941)', '0137:01370060580000013941'],
+                ['BICENTENARIO (6402)', '0175:01750350280080076402'],
+                ['VZLA DE CREDITO (0097)', '0104:01040154230154000097'],
+            ];
+
+            $buttons = [];
+            for ($i = 0; $i < count($dronenaBanks); $i += 2) {
+                $row = [];
+                $row[] = ['text' => $dronenaBanks[$i][0], 'callback_data' => 'dronena_bank_' . $dronenaBanks[$i][1]];
+                if (isset($dronenaBanks[$i + 1])) {
+                    $row[] = ['text' => $dronenaBanks[$i + 1][0], 'callback_data' => 'dronena_bank_' . $dronenaBanks[$i + 1][1]];
+                }
+                $buttons[] = $row;
+            }
+            $buttons[] = [['text' => '❌ Cancelar', 'callback_data' => 'exit_payments']];
+
+            $this->telegramService->sendMessage($msg, $chatId, ['inline_keyboard' => $buttons]);
+            return;
+        }
+
         $stateData['state'] = 'waiting_for_payment_photo';
         Cache::put('telegram_state_' . $fromId, $stateData, 600);
 
@@ -1732,6 +1784,53 @@ class TelegramWebhookService
 
         $this->telegramService->sendMessage($msg, $chatId, $replyMarkup);
     }
+
+    /**
+     * Al seleccionar la cuenta bancaria de Dronena.
+     */
+    protected function selectDronenaBank(string $bankCode, $fromId, string $callbackQueryId, ?int $messageId, ?int $chatId): void
+    {
+        $stateData = Cache::get('telegram_state_' . $fromId);
+        if (!$stateData || $stateData['state'] !== 'waiting_for_dronena_bank') {
+            $this->answerCallback($callbackQueryId, 'Sesión de pago inválida.');
+            return;
+        }
+
+        $stateData['destination_bank'] = $bankCode;
+        $stateData['state'] = 'waiting_for_payment_photo';
+        Cache::put('telegram_state_' . $fromId, $stateData, 600);
+
+        $this->answerCallback($callbackQueryId, "Banco seleccionado.");
+
+        $msg = "📸 *[REGISTRAR PAGO - PASO 4]*\n\n"
+             . "🏢 *Proveedor:* {$stateData['supplier_name']}\n"
+             . "💰 *Monto a Pagar:* " . number_format($stateData['payment_amount'], 2) . " {$stateData['payment_currency']}\n"
+             . "🏛️ *Banco Dronena:* `{$bankCode}`\n\n"
+             . "Por favor, envía la **foto del comprobante de pago** (capture de pantalla de la transferencia).\n\n"
+             . "_Si no tienes foto o prefieres no subirla, escribe *saltar* o presiona el botón de abajo._";
+
+        $replyMarkup = [
+            'inline_keyboard' => [
+                [
+                    ['text' => '⏭️ Saltar Foto', 'callback_data' => 'skip_payment_photo']
+                ],
+                [
+                    ['text' => '❌ Cancelar', 'callback_data' => 'exit_payments']
+                ]
+            ]
+        ];
+
+        $token = config('services.telegram.bot_token');
+        \Illuminate\Support\Facades\Http::post("https://api.telegram.org/bot{$token}/editMessageText", [
+            'chat_id' => $chatId,
+            'message_id' => $messageId,
+            'text' => $msg,
+            'parse_mode' => 'Markdown',
+            'reply_markup' => json_encode($replyMarkup)
+        ]);
+    }
+
+
 
     /**
      * Saltar foto desde texto.
@@ -2018,9 +2117,33 @@ class TelegramWebhookService
 
             \Illuminate\Support\Facades\DB::commit();
 
+            // Si el proveedor es Dronena y no fue efectivo, reportar el pago automáticamente en el portal de Dronena
+            $dronenaResult = null;
+            $supplierName = strtoupper($firstInvoice->supplier->name ?? '');
+            if ((str_contains($supplierName, 'DRONENA') || str_contains($supplierName, 'NENA')) && !empty($reference) && $paymentMethod !== 'CASH') {
+                try {
+                    $dronenaService = app(\App\Contracts\Suppliers\DronenaScraperServiceInterface::class);
+                    $destBank = $stateData['destination_bank'] ?? '0134:01340326153261014466';
+                    $dronenaResult = $dronenaService->submitPayment(
+                        $invoices->pluck('invoice_number')->toArray(),
+                        (float) $paymentAmount,
+                        (string) $reference,
+                        (string) $destBank,
+                        now()->format('d/m/Y'),
+                        $photoUrl
+                    );
+                } catch (\Throwable $dEx) {
+                    \Log::warning('[TelegramPayment] Error reportando pago en Dronena: ' . $dEx->getMessage());
+                }
+            }
+
             // 7. Responder con éxito y continuar con la cola
             $statusText = $isFullPayment ? 'Pago Completo (Liquidado) 🟩' : 'Pago Parcial (Saldo Restante) 🟨';
             $remainingText = $isFullPayment ? '0.00 USD' : number_format(max(0, $totalInvoiceDebtUSD - $amountUSD), 2) . ' USD';
+            $dronenaNotice = '';
+            if ($dronenaResult && !empty($dronenaResult['success'])) {
+                $dronenaNotice = "\n🤖 *Portal Dronena:* `Pago enviado con éxito (ID: {$dronenaResult['payment_id']})` ✅";
+            }
 
             $msg = "✅ *[PAGO PROCESADO EXITOSAMENTE]*\n\n"
                  . "🏢 *Proveedor:* {$stateData['supplier_name']}\n"
@@ -2028,8 +2151,9 @@ class TelegramWebhookService
                  . "📈 *Estatus del Pago:* `{$statusText}`\n"
                  . "💵 *Monto en USD:* " . number_format($amountUSD, 2) . " USD\n"
                  . "📝 *Referencia:* " . ($reference ?: 'Ninguna') . "\n"
-                 . "⚖️ *Saldo Restante:* `{$remainingText}`\n\n"
+                 . "⚖️ *Saldo Restante:* `{$remainingText}`{$dronenaNotice}\n\n"
                  . "_El pago ha quedado asentado en el histórico, egresos y cierre de caja del ERP._";
+
 
             $this->telegramService->sendMessage($msg, $chatId);
 

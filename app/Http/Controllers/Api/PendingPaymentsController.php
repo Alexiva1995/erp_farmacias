@@ -351,23 +351,44 @@ class PendingPaymentsController extends Controller
 
             DB::commit();
 
+            // 9. Si el proveedor es Dronena y se indicó banco/referencia, reportar el pago automáticamente en el portal
+            $dronenaResult = null;
+            $supplierName = strtoupper($invoices->first()?->supplier?->name ?? '');
+            if ((str_contains($supplierName, 'DRONENA') || str_contains($supplierName, 'NENA')) && !empty($request->reference) && $request->payment_method !== 'CASH') {
+                try {
+                    $dronenaService = app(\App\Contracts\Suppliers\DronenaScraperServiceInterface::class);
+                    $dronenaResult = $dronenaService->submitPayment(
+                        $invoices->pluck('invoice_number')->toArray(),
+                        (float) $request->payment_amount,
+                        (string) $request->reference,
+                        (string) ($request->destination_bank ?? '0134:01340326153261014466'),
+                        $request->payment_date,
+                        $request->photo_url
+                    );
+                } catch (\Throwable $dEx) {
+                    Log::warning('[PendingPayments] Error reportando pago en Dronena: ' . $dEx->getMessage());
+                }
+            }
+
             return ApiResponse::success([
                 'payment_id' => $payment->id,
                 'processed_invoices' => $request->invoice_ids,
-                'payment_type' => $request->payment_type, // Nuevo campo
+                'payment_type' => $request->payment_type,
                 'amount_paid' => $request->payment_amount,
                 'currency' => $request->payment_currency,
                 'amount_usd' => $amountUSD,
                 'exchange_rate' => $exchangeRate->rate ?? 1,
                 'payment_status' => $paymentStatus,
                 'total_invoice_amount' => $totalInvoiceAmount,
-                'remaining_amount' => $totalInvoiceAmount - $amountUSD // Monto restante
-            ], 'Pago procesado exitosamente');
+                'remaining_amount' => $totalInvoiceAmount - $amountUSD,
+                'dronena_submission' => $dronenaResult,
+            ], 'Pago procesado exitosamente' . ($dronenaResult && $dronenaResult['success'] ? ' y enviado a Dronena' : ''));
         } catch (\Exception $e) {
             DB::rollBack();
             return ApiResponse::error('Error al procesar el pago: ' . $e->getMessage(), 500);
         }
     }
+
 
     /**
      * Obtener historial de pagos realizados
