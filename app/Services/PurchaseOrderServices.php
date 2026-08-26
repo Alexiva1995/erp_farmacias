@@ -18,6 +18,7 @@ class PurchaseOrderServices implements PurchaseOrder
     protected AutoOrdersRepository $autoOrdersRepository,
     protected AutoOrderDetailsRepository $autoOrderDetailsRepository,
     protected \App\Contracts\Suppliers\DronenaEdiServiceInterface $dronenaEdiService,
+    protected \App\Contracts\Suppliers\VitalclinicFtpServiceInterface $vitalclinicFtpService,
   ) {
   }
 
@@ -69,6 +70,8 @@ class PurchaseOrderServices implements PurchaseOrder
     
     // Si es Droguería Nena (por nombre o conexión FTP con dronena.com), transmitir archivo EDI FACTUXX
     $isDronena = false;
+    $isVitalclinic = false;
+
     if ($supplier) {
       $supplierName = strtoupper($supplier->name);
       if (str_contains($supplierName, 'NENA') || str_contains($supplierName, 'DRONENA')) {
@@ -79,6 +82,18 @@ class PurchaseOrderServices implements PurchaseOrder
           $isDronena = true;
         }
       }
+
+      if (str_contains($supplierName, 'VITALCLINIC') || str_contains($supplierName, 'VITAL CLINIC')) {
+        $isVitalclinic = true;
+      } else {
+        $hasVitalclinicFtp = $supplier->connections()->where(function ($query) {
+          $query->where('host', 'LIKE', '%vitalclinic%')
+            ->orWhere('username', 'LIKE', '%vitalclinic%');
+        })->exists();
+        if ($hasVitalclinicFtp) {
+          $isVitalclinic = true;
+        }
+      }
     }
 
     if ($isDronena) {
@@ -87,6 +102,15 @@ class PurchaseOrderServices implements PurchaseOrder
       } catch (\Throwable $e) {
         \Illuminate\Support\Facades\Log::error("[DRONENA EDI] Error transmitiendo pedido automático #{$autoOrder->id}: " . $e->getMessage());
         throw new \Exception("Error al transmitir el pedido a Droguería Nena por FTP: " . $e->getMessage());
+      }
+    }
+
+    if ($isVitalclinic) {
+      try {
+        $this->vitalclinicFtpService->sendOrderFtp($autoOrder);
+      } catch (\Throwable $e) {
+        \Illuminate\Support\Facades\Log::error("[VITALCLINIC FTP] Error transmitiendo pedido automático #{$autoOrder->id}: " . $e->getMessage());
+        throw new \Exception("Error al transmitir el pedido a Droguería Vitalclinic por FTP: " . $e->getMessage());
       }
     }
 

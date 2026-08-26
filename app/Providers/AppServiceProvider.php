@@ -329,6 +329,11 @@ class AppServiceProvider extends ServiceProvider
             \App\Services\Suppliers\DronenaEdiService::class
         );
 
+        $this->app->bind(
+            \App\Contracts\Suppliers\VitalclinicFtpServiceInterface::class,
+            \App\Services\Suppliers\VitalclinicFtpService::class
+        );
+
 
         $this->app->when(LocationController::class)
             ->needs(LocationContract::class)
