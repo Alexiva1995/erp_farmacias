@@ -626,6 +626,16 @@
                 "file_field": "ProductCode",
                 "type": "string",
                 "target": "cod_supplier"
+            },
+            "15": {
+                "file_field": "Laboratorio",
+                "type": "string",
+                "target": "laboratory"
+            },
+            "16": {
+                "file_field": "Marca",
+                "type": "string",
+                "target": "laboratory"
             }
         },
         "invoice_structure": {

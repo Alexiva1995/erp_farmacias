@@ -14,6 +14,8 @@ const props = defineProps({
   showBulkDelete: { type: Boolean, default: false },
   showSyncDronena: { type: Boolean, default: true },
   isSyncingDronena: { type: Boolean, default: false },
+  showSyncMafarta: { type: Boolean, default: true },
+  isSyncingMafarta: { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
@@ -25,6 +27,7 @@ const emit = defineEmits([
   "create-invoice",
   "bulk-delete",
   "sync-dronena",
+  "sync-mafarta",
 ]);
 
 const hasAdvancedFilters = computed(
@@ -57,6 +60,20 @@ const hasAdvancedFilters = computed(
       >
         <VIcon icon="tabler-refresh" />
         <VTooltip activator="parent" location="top">Sincronizar Dronena</VTooltip>
+      </VBtn>
+
+      <VBtn
+        v-if="props.showSyncMafarta"
+        icon
+        color="warning"
+        variant="tonal"
+        size="38"
+        rounded="circle"
+        :loading="props.isSyncingMafarta"
+        @click="emit('sync-mafarta')"
+      >
+        <VIcon icon="tabler-arrows-down-up" />
+        <VTooltip activator="parent" location="top">Sincronizar Mafarta / Cobeca (SIC)</VTooltip>
       </VBtn>
 
       <VBtn

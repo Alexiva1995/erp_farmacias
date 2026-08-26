@@ -691,7 +691,7 @@ class SupplierConnectionService
                     $product = $products->get($value);
 
                     if ($product) {
-                        $entry["laboratory"] = $product?->laboratory?->name;
+                        $entry["laboratory"] = $product?->laboratory?->name ?? $entry["laboratory"] ?? null;
                         $entry["product_id"] = $product?->id;
                     } else {
                         $missingBarcode = true; // lo marcamos para crear luego

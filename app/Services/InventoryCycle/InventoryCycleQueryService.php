@@ -666,6 +666,7 @@ class InventoryCycleQueryService
                 'discrepancies.discrepancy',
                 'discrepancies.status',
                 'discrepancies.source_type',
+                'discrepancies.has_traceability',
                 'discrepancies.updated_at as processed_date',
                 'products.name as product_name',
                 'products.active_ingredient as active_ingredient',

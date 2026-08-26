@@ -50,12 +50,10 @@ class ProductObserver
                 $difference = $newStock - $originalStock;
 
                 if ($difference != 0) {
-                    $movementType = $difference > 0 ? 'purchase' : 'adjustment';
-
                     InventoryMovement::create([
                         'product_id' => $product->id,
                         'product_lot_id' => null,
-                        'movement_type' => $movementType,
+                        'movement_type' => 'adjustment',
                         'quantity' => $difference,
                         'invoice_id' => null,
                         'supplier_id' => $product->supplier_id,

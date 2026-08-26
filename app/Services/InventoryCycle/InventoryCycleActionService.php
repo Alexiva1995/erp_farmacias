@@ -301,18 +301,63 @@ class InventoryCycleActionService
             }
         }
 
-        // Si no se creó ninguna distribución, el conteo físico coincide con el sistema.
-        // Se comporta igual que discrepancia=0 al momento del registro:
-        // forzar discrepancia a 0 y crear movimiento de verificación.
+        // Si no se creó ninguna distribución manual:
         if (!$distributionsCreated) {
-            $realCurrentStock = (int) $product->lots()->sum('quantity');
-            $finalQuantity    = $realCurrentStock;
-            $finalDiscrepancy = 0;
-            
-            // También actualizamos el system_quantity en el registro para que la discrepancia sea 0 real.
-            $productCount->system_quantity = $realCurrentStock;
-            
-            $this->createVerificationMovement($product, $realCurrentStock, now());
+            if ($finalDiscrepancy === 0) {
+                $finalQuantity = $realCurrentStock;
+                $this->createVerificationMovement($product, $realCurrentStock, now());
+            } else {
+                $targetLot = $product->lots()->where('quantity', '>', 0)->orderBy('id', 'desc')->first()
+                    ?? $product->lots()->orderBy('id', 'desc')->first();
+
+                $stockBefore = $realCurrentStock;
+
+                if ($targetLot) {
+                    $targetLot->quantity = max(0, $targetLot->quantity + $finalDiscrepancy);
+                    ProductLot::withoutEvents(function () use ($targetLot) {
+                        $targetLot->save();
+                    });
+
+                    ProductDistribution::create([
+                        'product_count_id' => $productCount->id,
+                        'product_lot_id'   => $targetLot->id,
+                        'quantity'         => $targetLot->quantity,
+                    ]);
+                } else {
+                    $targetLot = ProductLot::create([
+                        'product_id'      => $product->id,
+                        'lot_number'      => 'LOTE-AJUSTE',
+                        'expiration_date' => now()->addYears(2)->toDateString(),
+                        'quantity'        => max(0, $finalQuantity),
+                        'unit_cost'       => $product->unit_cost ?? 0,
+                    ]);
+
+                    ProductDistribution::create([
+                        'product_count_id' => $productCount->id,
+                        'product_lot_id'   => $targetLot->id,
+                        'quantity'         => $targetLot->quantity,
+                    ]);
+                }
+
+                $stockAfter = (int) $product->lots()->sum('quantity');
+                Product::withoutEvents(function () use ($product, $stockAfter) {
+                    $product->update(['stock' => $stockAfter]);
+                });
+
+                InventoryMovement::create([
+                    'product_id'     => $product->id,
+                    'product_lot_id' => $targetLot->id,
+                    'movement_type'  => $finalDiscrepancy > 0 ? 'adjustment' : 'loss',
+                    'quantity'       => $finalDiscrepancy,
+                    'invoice_id'     => null,
+                    'supplier_id'    => null,
+                    'order_id'       => null,
+                    'user_id'        => Auth::id(),
+                    'stock_before'   => $stockBefore,
+                    'stock_after'    => $stockAfter,
+                    'movement_date'  => now(),
+                ]);
+            }
         }
 
         $productCount->counted_quantity    = $finalQuantity;
@@ -348,98 +393,9 @@ class InventoryCycleActionService
 
         return [
             'success' => true,
-            'message' => "Conteo rechazado. No se realizaron cambios en el inventario de '{$productCount->product->name}'.",
+            'message' => "Conteo para '{$productCount->product->name}' rechazado.",
             'data' => $productCount
         ];
-    }
-
-    private function updateLotQuantity(ProductCount $productCount): void
-    {
-        $productLot = ProductLot::findOrFail($productCount->product_lot_id);
-
-        $countedQuantity = $productCount->counted_quantity;
-        $newQuantity = $productLot->quantity + $countedQuantity;
-
-        if ($newQuantity < 0) {
-            Log::warning('Cantidad del lote resultaría negativa', [
-                'product_lot_id' => $productLot->id,
-                'current_quantity' => $productLot->quantity,
-                'counted_quantity' => $countedQuantity,
-                'calculated_quantity' => $newQuantity
-            ]);
-        }
-
-        $productLot->update([
-            'quantity' => $newQuantity
-        ]);
-
-        $productCount->update([
-            'system_quantity' => $productLot->quantity - $countedQuantity,
-            'discrepancy' => $countedQuantity
-        ]);
-    }
-
-    public function getCountStatistics(): array
-    {
-        $statistics = ProductCount::selectRaw('
-            status,
-            COUNT(*) as count,
-            SUM(CASE WHEN counted_quantity > 0 THEN counted_quantity ELSE 0 END) as positive_counts,
-            SUM(CASE WHEN counted_quantity < 0 THEN counted_quantity ELSE 0 END) as negative_counts,
-            AVG(counted_quantity) as average_count,
-            SUM(ABS(discrepancy)) as total_discrepancies
-        ')
-            ->groupBy('status')
-            ->get()
-            ->keyBy('status');
-
-        return [
-            'pending' => $statistics->get('pending', (object) [
-                'count' => 0,
-                'positive_counts' => 0,
-                'negative_counts' => 0,
-                'average_count' => 0,
-                'total_discrepancies' => 0
-            ]),
-            'approved' => $statistics->get('approved', (object) [
-                'count' => 0,
-                'positive_counts' => 0,
-                'negative_counts' => 0,
-                'average_count' => 0,
-                'total_discrepancies' => 0
-            ]),
-            'rejected' => $statistics->get('rejected', (object) [
-                'count' => 0,
-                'positive_counts' => 0,
-                'negative_counts' => 0,
-                'average_count' => 0,
-                'total_discrepancies' => 0
-            ]),
-        ];
-    }
-
-    public function canProcessCount(ProductCount $productCount): bool
-    {
-        return $productCount->status === 'pending';
-    }
-
-    public function getPendingCountsForSupervisor(int $supervisorId): \Illuminate\Database\Eloquent\Collection
-    {
-        return ProductCount::with(['product', 'user', 'productLot'])
-            ->where('supervisor_id', $supervisorId)
-            ->where('status', 'pending')
-            ->orderBy('created_at', 'desc')
-            ->get();
-    }
-
-    public function hasActiveCycle(): bool
-    {
-        return InventoryCycle::where('status', 'active')->exists();
-    }
-
-    public function getActiveCycleInfo(): ?InventoryCycle
-    {
-        return $this->getActiveCycle();
     }
 
     public function createInvoiceCount(int $productId, array $data): array
@@ -450,15 +406,13 @@ class InventoryCycleActionService
                 $activeCycle = $this->getActiveCycle();
 
                 if (!$activeCycle) {
-                    return ['success' => false, 'message' => 'No existe un ciclo de inventario activo.', 'data' => null];
+                    return ['success' => false, 'message' => 'No existe un ciclo activo.', 'data' => null];
                 }
 
                 $allowWithoutBarcode = $data['allow_without_barcode'] ?? false;
-
-                // Solo validar código de barras si no se permite sin código de barras
                 if (!$allowWithoutBarcode) {
                     if ($product->barcode && isset($data['barcode']) && $product->barcode !== $data['barcode']) {
-                        return ['success' => false, 'message' => 'El código de barras no coincide con el producto.', 'data' => null];
+                        return ['success' => false, 'message' => 'El código de barras no coincide.', 'data' => null];
                     }
                 }
 
@@ -467,21 +421,20 @@ class InventoryCycleActionService
                     $data['discrepancy'] = $expectedDiscrepancy;
                 }
 
-                // Si no hay discrepancia, aprobar automáticamente sin supervisor
                 $finalDiscrepancy = $data['discrepancy'];
                 $status = ($finalDiscrepancy == 0) ? 'approved' : 'pending';
-                $supervisorId = null; // No hay supervisor cuando se aprueba automáticamente
+                $supervisorId = null;
 
                 $invoiceCount = InvoiceCount::create([
-                    'product_id' => $product->id,
-                    'user_id' => Auth::id(),
-                    'cycle_id' => $activeCycle->id,
-                    'system_quantity' => $data['system_quantity'],
+                    'product_id'       => $product->id,
+                    'user_id'          => Auth::id(),
+                    'cycle_id'         => $activeCycle->id,
+                    'system_quantity'  => $data['system_quantity'],
                     'counted_quantity' => $data['counted_quantity'],
-                    'discrepancy' => $finalDiscrepancy,
-                    'status' => $status,
-                    'supervisor_id' => $supervisorId,
-                    'type' => 'invoice',
+                    'discrepancy'      => $finalDiscrepancy,
+                    'status'           => $status,
+                    'supervisor_id'    => $supervisorId,
+                    'invoice_id'       => $data['invoice_id'] ?? null,
                 ]);
 
                 $invoiceCount->load(['product', 'user', 'cycle']);
@@ -491,7 +444,7 @@ class InventoryCycleActionService
                 }
 
                 $message = $status === 'approved' 
-                    ? "Conteo de factura registrado y aprobado automáticamente (sin discrepancia)."
+                    ? "Conteo de factura verificado y aprobado automáticamente."
                     : "Conteo de factura registrado.";
 
                 return ['success' => true, 'message' => $message, 'data' => $invoiceCount];
@@ -584,14 +537,63 @@ class InventoryCycleActionService
             }
         }
 
+        // Si no se creó ninguna distribución manual:
         if (!$distributionsCreated) {
-            $realCurrentStock = (int) $product->lots()->sum('quantity');
-            $finalQuantity    = $realCurrentStock;
-            $finalDiscrepancy = 0;
-            
-            $invoiceCount->system_quantity = $realCurrentStock;
-            
-            $this->createVerificationMovement($product, $realCurrentStock, now());
+            if ($finalDiscrepancy === 0) {
+                $finalQuantity = $realCurrentStock;
+                $this->createVerificationMovement($product, $realCurrentStock, now());
+            } else {
+                $targetLot = $product->lots()->where('quantity', '>', 0)->orderBy('id', 'desc')->first()
+                    ?? $product->lots()->orderBy('id', 'desc')->first();
+
+                $stockBefore = $realCurrentStock;
+
+                if ($targetLot) {
+                    $targetLot->quantity = max(0, $targetLot->quantity + $finalDiscrepancy);
+                    ProductLot::withoutEvents(function () use ($targetLot) {
+                        $targetLot->save();
+                    });
+
+                    InvoiceCountDistribution::create([
+                        'invoice_count_id' => $invoiceCount->id,
+                        'product_lot_id'   => $targetLot->id,
+                        'quantity'         => $targetLot->quantity,
+                    ]);
+                } else {
+                    $targetLot = ProductLot::create([
+                        'product_id'      => $product->id,
+                        'lot_number'      => 'LOTE-AJUSTE',
+                        'expiration_date' => now()->addYears(2)->toDateString(),
+                        'quantity'        => max(0, $finalQuantity),
+                        'unit_cost'       => $product->unit_cost ?? 0,
+                    ]);
+
+                    InvoiceCountDistribution::create([
+                        'invoice_count_id' => $invoiceCount->id,
+                        'product_lot_id'   => $targetLot->id,
+                        'quantity'         => $targetLot->quantity,
+                    ]);
+                }
+
+                $stockAfter = (int) $product->lots()->sum('quantity');
+                Product::withoutEvents(function () use ($product, $stockAfter) {
+                    $product->update(['stock' => $stockAfter]);
+                });
+
+                InventoryMovement::create([
+                    'product_id'     => $product->id,
+                    'product_lot_id' => $targetLot->id,
+                    'movement_type'  => $finalDiscrepancy > 0 ? 'adjustment' : 'loss',
+                    'quantity'       => $finalDiscrepancy,
+                    'invoice_id'     => null,
+                    'supplier_id'    => null,
+                    'order_id'       => null,
+                    'user_id'        => Auth::id(),
+                    'stock_before'   => $stockBefore,
+                    'stock_after'    => $stockAfter,
+                    'movement_date'  => now(),
+                ]);
+            }
         }
 
         $invoiceCount->counted_quantity = $finalQuantity;
@@ -634,6 +636,10 @@ class InventoryCycleActionService
                 InvoiceCount::where('cycle_id', $activeCycle->id)
                     ->where('status', 'pending')
                     ->update(['status' => 'rejected']);
+
+                SaleCount::where('cycle_id', $activeCycle->id)
+                    ->where('status', 'pending')
+                    ->update(['status' => 'rejected']);
             } else {
                 $hasPendingProductCounts = ProductCount::where('cycle_id', $activeCycle->id)
                     ->where('status', 'pending')
@@ -643,7 +649,11 @@ class InventoryCycleActionService
                     ->where('status', 'pending')
                     ->exists();
 
-                if ($hasPendingProductCounts || $hasPendingInvoiceCounts) {
+                $hasPendingSaleCounts = SaleCount::where('cycle_id', $activeCycle->id)
+                    ->where('status', 'pending')
+                    ->exists();
+
+                if ($hasPendingProductCounts || $hasPendingInvoiceCounts || $hasPendingSaleCounts) {
                     return [
                         'success' => false,
                         'message' => 'No se puede cerrar el ciclo. Aún existen conteos pendientes de aprobación o rechazo.'
@@ -655,7 +665,6 @@ class InventoryCycleActionService
             $activeCycle->end_date = now();
             $activeCycle->save();
 
-
             return ['success' => true, 'message' => 'El ciclo de inventario ha sido cerrado exitosamente.'];
         });
     }
@@ -666,18 +675,22 @@ class InventoryCycleActionService
             return ['success' => false, 'message' => 'Ya existe un ciclo de inventario activo.'];
         }
 
-        $newCycle = InventoryCycle::create([
+        InventoryCycle::create([
             'start_date' => now(),
             'end_date' => null,
             'status' => 'active',
             'created_by_id' => Auth::id(),
         ]);
 
-
         return ['success' => true, 'message' => 'Nuevo ciclo de inventario creado y activado.'];
     }
 
-     public function createSaleCount(int $productId, array $data): array
+    public function hasActiveCycle(): bool
+    {
+        return InventoryCycle::where('status', 'active')->exists();
+    }
+
+    public function createSaleCount(int $productId, array $data): array
     {
         return DB::transaction(function () use ($productId, $data) {
             try {
@@ -707,29 +720,29 @@ class InventoryCycleActionService
                 $status = ($finalDiscrepancy == 0) ? 'approved' : 'pending';
                 $supervisorId = null; // No hay supervisor cuando se aprueba automáticamente
 
-                $SaleCount = SaleCount::create([
-                    'product_id' => $product->id,
-                    'user_id' => Auth::id(),
-                    'cycle_id' => $activeCycle->id,
-                    'system_quantity' => $data['system_quantity'],
+                $saleCount = SaleCount::create([
+                    'product_id'       => $product->id,
+                    'user_id'          => Auth::id(),
+                    'cycle_id'         => $activeCycle->id,
+                    'system_quantity'  => $data['system_quantity'],
                     'counted_quantity' => $data['counted_quantity'],
-                    'discrepancy' => $finalDiscrepancy,
-                    'status' => $status,
-                    'supervisor_id' => $supervisorId,
-                    'type' => 'sale',
+                    'discrepancy'      => $finalDiscrepancy,
+                    'status'           => $status,
+                    'supervisor_id'    => $supervisorId,
+                    'type'             => 'sale',
                 ]);
 
-                $SaleCount->load(['product', 'user', 'cycle']);
+                $saleCount->load(['product', 'user', 'cycle']);
 
                 if ($status === 'approved') {
-                    $this->createVerificationMovement($product, $data['system_quantity'], $SaleCount->created_at);
+                    $this->createVerificationMovement($product, $data['system_quantity'], $saleCount->created_at);
                 }
 
                 $message = $status === 'approved' 
                     ? "Conteo de punto de venta registrado y aprobado automáticamente (sin discrepancia)."
                     : "Conteo de punto de venta registrado.";
 
-                return ['success' => true, 'message' => $message, 'data' => $SaleCount];
+                return ['success' => true, 'message' => $message, 'data' => $saleCount];
 
             } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
                 return ['success' => false, 'message' => 'Producto no encontrado.', 'data' => null];
@@ -798,14 +811,63 @@ class InventoryCycleActionService
             }
         }
 
+        // Si no se creó ninguna distribución manual:
         if (!$distributionsCreated) {
-            $realCurrentStock = (int) $product->lots()->sum('quantity');
-            $finalQuantity    = $realCurrentStock;
-            $finalDiscrepancy = 0;
-            
-            $saleCount->system_quantity = $realCurrentStock;
-            
-            $this->createVerificationMovement($product, $realCurrentStock, now());
+            if ($finalDiscrepancy === 0) {
+                $finalQuantity = $realCurrentStock;
+                $this->createVerificationMovement($product, $realCurrentStock, now());
+            } else {
+                $targetLot = $product->lots()->where('quantity', '>', 0)->orderBy('id', 'desc')->first()
+                    ?? $product->lots()->orderBy('id', 'desc')->first();
+
+                $stockBefore = $realCurrentStock;
+
+                if ($targetLot) {
+                    $targetLot->quantity = max(0, $targetLot->quantity + $finalDiscrepancy);
+                    ProductLot::withoutEvents(function () use ($targetLot) {
+                        $targetLot->save();
+                    });
+
+                    SaleCountDistribution::create([
+                        'sale_count_id'  => $saleCount->id,
+                        'product_lot_id' => $targetLot->id,
+                        'quantity'       => $targetLot->quantity,
+                    ]);
+                } else {
+                    $targetLot = ProductLot::create([
+                        'product_id'      => $product->id,
+                        'lot_number'      => 'LOTE-AJUSTE',
+                        'expiration_date' => now()->addYears(2)->toDateString(),
+                        'quantity'        => max(0, $finalQuantity),
+                        'unit_cost'       => $product->unit_cost ?? 0,
+                    ]);
+
+                    SaleCountDistribution::create([
+                        'sale_count_id'  => $saleCount->id,
+                        'product_lot_id' => $targetLot->id,
+                        'quantity'       => $targetLot->quantity,
+                    ]);
+                }
+
+                $stockAfter = (int) $product->lots()->sum('quantity');
+                Product::withoutEvents(function () use ($product, $stockAfter) {
+                    $product->update(['stock' => $stockAfter]);
+                });
+
+                InventoryMovement::create([
+                    'product_id'     => $product->id,
+                    'product_lot_id' => $targetLot->id,
+                    'movement_type'  => $finalDiscrepancy > 0 ? 'adjustment' : 'loss',
+                    'quantity'       => $finalDiscrepancy,
+                    'invoice_id'     => null,
+                    'supplier_id'    => null,
+                    'order_id'       => null,
+                    'user_id'        => Auth::id(),
+                    'stock_before'   => $stockBefore,
+                    'stock_after'    => $stockAfter,
+                    'movement_date'  => now(),
+                ]);
+            }
         }
 
         $saleCount->counted_quantity = $finalQuantity;
@@ -824,15 +886,14 @@ class InventoryCycleActionService
         return ['success' => true, 'message' => $message, 'data' => $saleCount];
     }
 
-
-        private function rejectSaleCount(SaleCount $saleCount): array
+    private function rejectSaleCount(SaleCount $saleCount): array
     {
         $saleCount->update(['status' => 'rejected', 'supervisor_id' => Auth::id()]);
         $saleCount->load(['product', 'user']);
         return ['success' => true, 'message' => "Conteo de punto de venta para '{$saleCount->product->name}' rechazado.", 'data' => $saleCount];
     }
 
-        public function processSaleCountAction(SaleCount $saleCount, string $action, array $data = []): array
+    public function processSaleCountAction(SaleCount $saleCount, string $action, array $data = []): array
     {
         if ($saleCount->status !== 'pending') {
             return ['success' => false, 'message' => "Este conteo de punto de venta ya fue procesado. Estado actual: {$saleCount->status}", 'data' => null];
@@ -857,10 +918,10 @@ class InventoryCycleActionService
     {
         return DB::transaction(function () use ($model, $newDiscrepancy) {
             try {
-                $oldDiscrepancy = $model->discrepancy;
-                $difference = $newDiscrepancy - $oldDiscrepancy;
+                $oldDiscrepancy = (float) $model->discrepancy;
+                $difference = (float) $newDiscrepancy - $oldDiscrepancy;
 
-                if ($difference === 0) {
+                if ($difference === 0.0) {
                     return [
                         'success' => true,
                         'message' => 'No hay cambios en la discrepancia.',
@@ -870,12 +931,70 @@ class InventoryCycleActionService
 
                 // Actualizar el registro del conteo
                 $model->discrepancy = $newDiscrepancy;
-                $model->counted_quantity = $model->system_quantity + $newDiscrepancy;
+                $model->counted_quantity = (float) $model->system_quantity + (float) $newDiscrepancy;
                 $model->save();
+
+                $product = $model->product;
+                if ($product) {
+                    // Si el conteo ya está aprobado, sincronizar el lote y registrar movimiento en Kardex
+                    if ($model->status === 'approved') {
+                        $targetLot = null;
+                        
+                        // Buscar si existe un lote asociado en distribuciones
+                        if ($model->relationLoaded('distributions') && $model->distributions->isNotEmpty()) {
+                            $targetLot = $model->distributions->first()->productLot;
+                        } elseif (method_exists($model, 'distributions') && $model->distributions()->exists()) {
+                            $dist = $model->distributions()->with('productLot')->first();
+                            $targetLot = $dist?->productLot;
+                        }
+                        
+                        if (!$targetLot) {
+                            $targetLot = $product->lots()->where('quantity', '>', 0)->orderBy('id', 'desc')->first()
+                                ?? $product->lots()->orderBy('id', 'desc')->first();
+                        }
+
+                        $stockBefore = (float) $product->lots()->sum('quantity');
+
+                        if ($targetLot) {
+                            $targetLot->quantity = max(0, $targetLot->quantity + $difference);
+                            ProductLot::withoutEvents(function () use ($targetLot) {
+                                $targetLot->save();
+                            });
+                        } else {
+                            $targetLot = ProductLot::create([
+                                'product_id'      => $product->id,
+                                'lot_number'      => 'LOTE-AJUSTE',
+                                'expiration_date' => now()->addYears(2)->toDateString(),
+                                'quantity'        => max(0, (int) $difference),
+                                'unit_cost'       => $product->unit_cost ?? 0,
+                            ]);
+                        }
+
+                        $stockAfter = (float) $product->lots()->sum('quantity');
+                        Product::withoutEvents(function () use ($product, $stockAfter) {
+                            $product->update(['stock' => $stockAfter]);
+                        });
+
+                        // Registrar movimiento de ajuste en trazabilidad
+                        InventoryMovement::create([
+                            'product_id'     => $product->id,
+                            'product_lot_id' => $targetLot?->id,
+                            'movement_type'  => $difference > 0 ? 'adjustment' : 'loss',
+                            'quantity'       => $difference,
+                            'invoice_id'     => null,
+                            'supplier_id'    => null,
+                            'order_id'       => null,
+                            'user_id'        => Auth::id(),
+                            'stock_before'   => $stockBefore,
+                            'stock_after'    => $stockAfter,
+                            'movement_date'  => now(),
+                        ]);
+                    }
+                }
 
                 return [
                     'success' => true,
-                    'message' => 'Discrepancia actualizada correctamente (solo registro).',
+                    'message' => 'Discrepancia y trazabilidad de inventario actualizadas correctamente.',
                     'data' => $model
                 ];
 

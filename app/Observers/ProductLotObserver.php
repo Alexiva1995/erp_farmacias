@@ -20,24 +20,51 @@ class ProductLotObserver
     /**
      * Flag estático para indicar cuando una modificación de lote proviene de la devolución por cancelación de orden.
      */
-    public static bool $isReturningLot = false;
+    /**
+     * Flag estático para omitir la creación automática de movimientos desde orígenes que ya gestionan su trazabilidad.
+     */
+    public static bool $skipMovementCreation = false;
 
     /**
      * Handle the ProductLot "created" event.
      */
     public function created(ProductLot $productLot)
     {
-        $recentMovement = InventoryMovement::where('product_id', $productLot->product_id)
-            ->where('movement_type', 'purchase')
-            ->where('created_at', '>=', now()->subMinutes(2))
-            ->where(function ($query) use ($productLot) {
-                $query->where('product_lot_id', $productLot->id)
-                    ->orWhereNull('product_lot_id');
-            })
-            ->exists();
+        if (static::$skipMovementCreation || static::$isReturningLot || static::$isExpiringLot) {
+            $this->updateProductStockAndPrice($productLot->product);
+            return;
+        }
 
-        if (!$recentMovement) {
-            $this->createPurchaseMovement($productLot);
+        if ((float) ($productLot->quantity ?? 0) <= 0) {
+            $this->updateProductStockAndPrice($productLot->product);
+            return;
+        }
+
+        // Si tiene invoice_id, proviene de una factura de compra
+        if ($productLot->invoice_id) {
+            $recentMovement = InventoryMovement::where('product_id', $productLot->product_id)
+                ->where('movement_type', 'purchase')
+                ->where('created_at', '>=', now()->subMinutes(2))
+                ->where(function ($query) use ($productLot) {
+                    $query->where('product_lot_id', $productLot->id)
+                        ->orWhereNull('product_lot_id');
+                })
+                ->exists();
+
+            if (!$recentMovement) {
+                $this->createPurchaseMovement($productLot);
+            }
+        } else {
+            // Si no proviene de una factura, es un ajuste inicial / manual, NO una compra
+            $recentMovement = InventoryMovement::where('product_id', $productLot->product_id)
+                ->whereIn('movement_type', ['adjustment', 'return', 'loss'])
+                ->where('created_at', '>=', now()->subMinutes(2))
+                ->where('product_lot_id', $productLot->id)
+                ->exists();
+
+            if (!$recentMovement) {
+                $this->createAdjustmentCreationMovement($productLot);
+            }
         }
 
         $this->updateProductStockAndPrice($productLot->product);
@@ -157,6 +184,31 @@ class ProductLotObserver
             'quantity' => $productLot->quantity,
             'invoice_id' => $productLot->invoice_id ?? null,
             'supplier_id' => $productLot->supplier_id ?? $product->supplier_id,
+            'order_id' => null,
+            'user_id' => Auth::id(),
+            'stock_before' => $stockBefore,
+            'stock_after' => $stockAfter,
+            'movement_date' => now(),
+        ]);
+    }
+
+    /**
+     * Crear movimiento de ajuste cuando se crea un lote de forma manual o sin factura
+     */
+    protected function createAdjustmentCreationMovement(ProductLot $productLot)
+    {
+        $product = $productLot->product;
+
+        $stockBefore = $product->lots()->where('id', '!=', $productLot->id)->sum('quantity');
+        $stockAfter = $stockBefore + $productLot->quantity;
+
+        InventoryMovement::create([
+            'product_id' => $product->id,
+            'product_lot_id' => $productLot->id,
+            'movement_type' => 'adjustment',
+            'quantity' => $productLot->quantity,
+            'invoice_id' => null,
+            'supplier_id' => null,
             'order_id' => null,
             'user_id' => Auth::id(),
             'stock_before' => $stockBefore,

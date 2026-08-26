@@ -334,6 +334,11 @@ class AppServiceProvider extends ServiceProvider
             \App\Services\Suppliers\VitalclinicFtpService::class
         );
 
+        $this->app->bind(
+            \App\Contracts\Suppliers\MafartaScraperServiceInterface::class,
+            \App\Services\Suppliers\MafartaScraperService::class
+        );
+
 
         $this->app->when(LocationController::class)
             ->needs(LocationContract::class)

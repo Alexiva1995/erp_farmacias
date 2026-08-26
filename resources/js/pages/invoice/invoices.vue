@@ -291,6 +291,7 @@ const handleConfirmBulkDelete = async () => {
 };
 
 const isSyncingDronena = ref(false);
+const isSyncingMafarta = ref(false);
 
 const handleSyncDronena = async () => {
   const confirmResult = await Swal.fire({
@@ -316,6 +317,31 @@ const handleSyncDronena = async () => {
     isSyncingDronena.value = false;
   }
 };
+
+const handleSyncMafarta = async () => {
+  const confirmResult = await Swal.fire({
+    title: "¿Sincronizar con Mafarta / Cobeca?",
+    text: "Se consultará el portal SIC de Cobeca para actualizar las facturas indexadas (amarillas/vencidas), fechas de vencimiento y números de control oficial.",
+    icon: "info",
+    showCancelButton: true,
+    confirmButtonText: "Sincronizar",
+    cancelButtonText: "Cancelar",
+  });
+
+  if (!confirmResult.isConfirmed) return;
+
+  isSyncingMafarta.value = true;
+  try {
+    const response = await axios.post("/invoices/sync-mafarta");
+    toast.success(response.data.message || "Sincronización con Mafarta completada exitosamente.");
+    await fetchInvoices();
+  } catch (error) {
+    console.error("Error al sincronizar con Mafarta:", error);
+    toast.error(error.response?.data?.message || "Ocurrió un error al sincronizar con Mafarta.");
+  } finally {
+    isSyncingMafarta.value = false;
+  }
+};
 </script>
 
 <template>
@@ -331,10 +357,13 @@ const handleSyncDronena = async () => {
         :show-bulk-delete="true"
         :show-sync-dronena="true"
         :is-syncing-dronena="isSyncingDronena"
+        :show-sync-mafarta="true"
+        :is-syncing-mafarta="isSyncingMafarta"
         @clear="handleClearFilters"
         @create-invoice="handleCreateInvoice"
         @bulk-delete="handleOpenBulkDeleteModal"
         @sync-dronena="handleSyncDronena"
+        @sync-mafarta="handleSyncMafarta"
         class="mb-6"
       />
 

@@ -200,6 +200,24 @@ const handleMobilePageChange = (newPage) => {
               </IconBtn>
             </template>
             <template v-else>
+              <!-- Indicador de concordancia con trazabilidad (Check azul o X roja) -->
+              <VIcon
+                v-if="item.hasTraceability"
+                icon="tabler-circle-check"
+                size="20"
+                color="info"
+              >
+                <VTooltip activator="parent">Coincide con movimiento registrado en trazabilidad</VTooltip>
+              </VIcon>
+              <VIcon
+                v-else
+                icon="tabler-circle-x"
+                size="20"
+                color="error"
+              >
+                <VTooltip activator="parent">Sin movimiento registrado en trazabilidad</VTooltip>
+              </VIcon>
+
               <IconBtn
                 v-if="can('manage', 'admin')"
                 color="primary"
@@ -219,9 +237,6 @@ const handleMobilePageChange = (newPage) => {
                 <VIcon icon="tabler-trash" />
                 <VTooltip activator="parent">Eliminar registro</VTooltip>
               </IconBtn>
-              <VIcon v-else icon="tabler-info-circle" size="small" color="secondary">
-                <VTooltip activator="parent">Tiene movimientos en trazabilidad</VTooltip>
-              </VIcon>
             </template>
           </div>
         </template>
@@ -273,6 +288,26 @@ const handleMobilePageChange = (newPage) => {
                   </IconBtn>
                 </template>
                 <template v-else>
+                  <!-- Indicador de concordancia con trazabilidad en móvil -->
+                  <VIcon
+                    v-if="item.hasTraceability"
+                    icon="tabler-circle-check"
+                    size="20"
+                    color="info"
+                    class="mt-1"
+                  >
+                    <VTooltip activator="parent">Coincide con trazabilidad</VTooltip>
+                  </VIcon>
+                  <VIcon
+                    v-else
+                    icon="tabler-circle-x"
+                    size="20"
+                    color="error"
+                    class="mt-1"
+                  >
+                    <VTooltip activator="parent">Sin movimiento en trazabilidad</VTooltip>
+                  </VIcon>
+
                   <IconBtn
                     v-if="can('manage', 'admin')"
                     variant="tonal"

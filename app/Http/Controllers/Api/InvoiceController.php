@@ -27,7 +27,8 @@ class InvoiceController extends Controller
         private InvoiceActionService $invoiceActionService,
         private InvoiceQueryService $invoiceQueryService,
         private \App\Contracts\Suppliers\DronenaScraperServiceInterface $dronenaScraperService,
-        private \App\Contracts\Suppliers\DrocercaScraperServiceInterface $drocercaScraperService
+        private \App\Contracts\Suppliers\DrocercaScraperServiceInterface $drocercaScraperService,
+        private \App\Contracts\Suppliers\MafartaScraperServiceInterface $mafartaScraperService
     ) {
     }
 
@@ -381,9 +382,31 @@ class InvoiceController extends Controller
                 'exception' => $e
             ]);
 
+    /**
+     * Sincroniza las facturas, vencimientos e indexación desde el portal SIC de Droguerías Cobeca / Mafarta.
+     */
+    public function syncMafarta(Request $request)
+    {
+        try {
+            $user = $request->input('username');
+            $pass = $request->input('password');
+            $supplierId = $request->input('supplier_id') ? (int) $request->input('supplier_id') : null;
+
+            $result = $this->mafartaScraperService->syncInvoices($user, $pass, $supplierId);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Sincronización con Mafarta completada. Actualizadas: {$result['updated']}, Omitidas/No encontradas: {$result['skipped']}.",
+                'data' => $result,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error en InvoiceController@syncMafarta: ' . $e->getMessage(), [
+                'exception' => $e
+            ]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'Error al sincronizar facturas desde Drocerca: ' . $e->getMessage()
+                'message' => 'Error al sincronizar facturas desde Mafarta: ' . $e->getMessage()
             ], 500);
         }
     }
