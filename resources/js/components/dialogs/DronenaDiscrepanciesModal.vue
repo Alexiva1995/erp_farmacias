@@ -1,5 +1,8 @@
 <script setup>
-import { computed } from "vue";
+import { computed, ref } from "vue";
+import axios from "@/plugins/axios";
+import { toast } from "@/plugins/sweetalert";
+import Swal from "sweetalert2";
 
 const props = defineProps({
   modelValue: {
@@ -24,7 +27,9 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(["update:modelValue", "close"]);
+const emit = defineEmits(["update:modelValue", "close", "invoices-marked-as-paid"]);
+
+const isMarkingPaid = ref(false);
 
 const paidInErpPendingInPortal = computed(
   () => props.discrepancies?.paid_in_erp_pending_in_dronena || []
@@ -40,6 +45,40 @@ const closeDialog = () => {
   emit("update:modelValue", false);
   emit("close");
 };
+
+const handleMarkAllPendingAsPaid = async () => {
+  const count = pendingInErpPaidInPortal.value.length;
+  if (count === 0) return;
+
+  const result = await Swal.fire({
+    title: `¿Marcar las ${count} facturas como Pagadas?`,
+    text: "Estas facturas ya figuran liquidadas en Dronena y pasarán automáticamente a estado Pagada (status_payment = 1) en tu ERP.",
+    icon: "question",
+    showCancelButton: true,
+    confirmButtonText: "Sí, marcar como pagadas",
+    cancelButtonText: "Cancelar",
+    confirmButtonColor: "#28c76f",
+  });
+
+  if (!result.isConfirmed) return;
+
+  isMarkingPaid.value = true;
+  try {
+    const invoiceIds = pendingInErpPaidInPortal.value.map((i) => i.id);
+    const { data } = await axios.post("/finances/pending-payments/invoices/bulk-mark-as-paid", {
+      invoice_ids: invoiceIds,
+    });
+
+    toast.success(data.message || `${count} facturas marcadas como pagadas`);
+    emit("invoices-marked-as-paid");
+    closeDialog();
+  } catch (error) {
+    console.error("Error marcando facturas:", error);
+    toast.error(error.response?.data?.message || "Error al marcar las facturas como pagadas.");
+  } finally {
+    isMarkingPaid.value = false;
+  }
+};
 </script>
 
 <template>
@@ -51,7 +90,7 @@ const closeDialog = () => {
     @update:model-value="emit('update:modelValue', $event)"
   >
     <VCard class="rounded-xl overflow-hidden shadow-2xl modal-card">
-      <!-- Encabezado con Vuetify 3 puro (bg-primary y text-white) -->
+      <!-- Encabezado con Vuetify 3 puro (bg-primary y texto blanco) -->
       <VCardItem class="bg-primary py-4 px-6">
         <div class="d-flex align-center justify-space-between w-100">
           <div class="d-flex align-center gap-3">
@@ -62,7 +101,7 @@ const closeDialog = () => {
               <VCardTitle class="text-white text-h6 font-weight-bold mb-0">
                 Resultado de Sincronización con Dronena
               </VCardTitle>
-              <VCardSubtitle class="text-white text-caption text-medium-emphasis">
+              <VCardSubtitle class="text-white text-caption opacity-90">
                 Comparativa de estado de facturas entre el ERP y el portal
               </VCardSubtitle>
             </div>
@@ -75,7 +114,7 @@ const closeDialog = () => {
 
       <!-- Contenedor con Scroll nativo -->
       <VCardText class="pa-6 modal-scroll-content">
-        <!-- Resumen Rápido con Componentes Vuetify -->
+        <!-- Resumen Rápido -->
         <VRow class="mb-4">
           <VCol cols="12" sm="4">
             <VCard variant="tonal" color="info" class="pa-3 rounded-lg text-center">
@@ -117,7 +156,7 @@ const closeDialog = () => {
 
           <VTable density="compact" class="border rounded-lg mb-2">
             <thead>
-              <tr class="bg-surface-variant">
+              <tr class="table-header-row">
                 <th class="text-left font-weight-bold">N° Factura</th>
                 <th class="text-left font-weight-bold">N° Control</th>
                 <th class="text-right font-weight-bold">Monto ERP</th>
@@ -143,21 +182,37 @@ const closeDialog = () => {
           </VTable>
         </div>
 
-        <!-- Caso 2: Pendientes en ERP pero ya NO figuran pendientes en Dronena -->
+        <!-- Caso 2: Pendientes en ERP pero ya NO figuran pendientes en Dronena CON BOTÓN DE ACCIÓN -->
         <div v-if="pendingInErpPaidInPortal.length > 0" class="mb-6">
-          <div class="d-flex align-center gap-2 mb-2">
-            <VIcon icon="tabler-circle-check" color="info" size="22" />
-            <h4 class="text-subtitle-1 font-weight-bold text-info mb-0">
-              Pendientes en ERP pero LIQUIDADAS en Dronena ({{ pendingInErpPaidInPortal.length }})
-            </h4>
+          <div class="d-flex align-center justify-space-between flex-wrap gap-2 mb-2">
+            <div class="d-flex align-center gap-2">
+              <VIcon icon="tabler-circle-check" color="info" size="22" />
+              <h4 class="text-subtitle-1 font-weight-bold text-info mb-0">
+                Pendientes en ERP pero LIQUIDADAS en Dronena ({{ pendingInErpPaidInPortal.length }})
+              </h4>
+            </div>
+
+            <!-- Botón para pasar todas a pagadas -->
+            <VBtn
+              color="success"
+              variant="elevated"
+              size="small"
+              prepend-icon="tabler-check-all"
+              class="rounded-lg shadow-sm font-weight-bold"
+              :loading="isMarkingPaid"
+              @click="handleMarkAllPendingAsPaid"
+            >
+              Marcar Todas como Pagadas ({{ pendingInErpPaidInPortal.length }})
+            </VBtn>
           </div>
+
           <p class="text-caption text-medium-emphasis mb-3">
-            Estas facturas están pendientes de pago en tu ERP, pero en Dronena ya no tienen saldo por pagar (ya fueron procesadas o cobradas):
+            Estas facturas están pendientes en tu ERP pero en Dronena ya fueron cobradas/liquidadas. Puedes pasarlas a estado Pagadas directamente:
           </p>
 
           <VTable density="compact" class="border rounded-lg mb-2">
             <thead>
-              <tr class="bg-surface-variant">
+              <tr class="table-header-row">
                 <th class="text-left font-weight-bold">N° Factura</th>
                 <th class="text-left font-weight-bold">N° Control</th>
                 <th class="text-right font-weight-bold">Monto en ERP</th>
@@ -199,7 +254,7 @@ const closeDialog = () => {
 
       <VCardActions class="pa-4 px-6 justify-end bg-surface">
         <VBtn color="primary" variant="flat" class="px-6 rounded-lg" @click="closeDialog">
-          Entendido
+          Cerrar
         </VBtn>
       </VCardActions>
     </VCard>
@@ -216,5 +271,10 @@ const closeDialog = () => {
 .modal-scroll-content {
   overflow-y: auto;
   max-height: calc(85vh - 140px);
+}
+
+.table-header-row th {
+  background-color: rgba(var(--v-theme-on-surface), 0.04) !important;
+  color: rgb(var(--v-theme-on-surface)) !important;
 }
 </style>

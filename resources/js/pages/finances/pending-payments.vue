@@ -402,8 +402,10 @@ const handleSyncDronena = async () => {
         v-model="showDiscrepanciesModal"
         :discrepancies="syncDiscrepancies"
         :sync-summary="syncSummary"
+        @invoices-marked-as-paid="fetchPendingPayments"
         @close="showDiscrepanciesModal = false"
       />
+
     </div>
   </div>
 </template>

@@ -852,7 +852,9 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
             Route::get('expenses-history', [PendingPaymentsController::class, 'getExpensesHistory']);
             Route::patch('/invoices/{invoiceId}/update-date', [PendingPaymentsController::class, 'updatePaymentDate']);
             Route::patch('/invoices/{invoiceId}/mark-as-paid', [PendingPaymentsController::class, 'markAsPaidDirectly']);
+            Route::post('/invoices/bulk-mark-as-paid', [PendingPaymentsController::class, 'bulkMarkAsPaid']);
         });
+
 
         // ISSUE #3: Rutas para facturas indexadas
         Route::prefix("invoices")->group(function () {

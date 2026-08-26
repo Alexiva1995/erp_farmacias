@@ -1149,6 +1149,33 @@ class PendingPaymentsController extends Controller
     }
 
     /**
+     * Marcar un conjunto de facturas como pagadas en lote (sin generar gastos)
+     */
+    public function bulkMarkAsPaid(Request $request): JsonResponse
+    {
+        try {
+            $invoiceIds = $request->input('invoice_ids', []);
+            if (empty($invoiceIds) || !is_array($invoiceIds)) {
+                return ApiResponse::error('No se especificaron facturas a marcar.', 422);
+            }
+
+            $updated = Invoice::whereIn('id', $invoiceIds)->update([
+                'status_payment' => 1,
+                'status' => 'ordered',
+                'payment_date' => now()->toDateString(),
+            ]);
+
+            return ApiResponse::success([
+                'updated_count' => $updated,
+                'invoice_ids' => $invoiceIds,
+            ], "{$updated} facturas marcadas como pagadas exitosamente.");
+        } catch (\Exception $e) {
+            return ApiResponse::error('Error al marcar facturas como pagadas: ' . $e->getMessage(), 500);
+        }
+    }
+
+
+    /**
      * Calcular monto restante para una factura individual considerando pagos parciales
      */
     private function calculateRemainingAmountForInvoice(Invoice $invoice): float
