@@ -45,23 +45,24 @@ const closeDialog = () => {
 <template>
   <VDialog
     :model-value="props.modelValue"
-    max-width="850"
+    max-width="950"
+    scrollable
     persistent
     @update:model-value="emit('update:modelValue', $event)"
   >
-    <VCard class="rounded-xl overflow-hidden shadow-2xl">
-      <!-- Encabezado -->
-      <VCardItem class="bg-primary py-4 px-6 text-white">
-        <div class="d-flex align-center justify-space-between">
+    <VCard class="rounded-xl overflow-hidden shadow-2xl modal-card">
+      <!-- Encabezado con Vuetify 3 puro (bg-primary y text-white) -->
+      <VCardItem class="bg-primary py-4 px-6">
+        <div class="d-flex align-center justify-space-between w-100">
           <div class="d-flex align-center gap-3">
-            <VAvatar color="white" variant="tonal" size="42" class="rounded-lg">
+            <VAvatar color="surface" variant="tonal" size="42" class="rounded-lg">
               <VIcon icon="tabler-scale" size="24" color="white" />
             </VAvatar>
             <div>
               <VCardTitle class="text-white text-h6 font-weight-bold mb-0">
                 Resultado de Sincronización con Dronena
               </VCardTitle>
-              <VCardSubtitle class="text-white opacity-80 text-caption">
+              <VCardSubtitle class="text-white text-caption text-medium-emphasis">
                 Comparativa de estado de facturas entre el ERP y el portal
               </VCardSubtitle>
             </div>
@@ -72,8 +73,9 @@ const closeDialog = () => {
         </div>
       </VCardItem>
 
-      <VCardText class="pa-6">
-        <!-- Resumen Rápido -->
+      <!-- Contenedor con Scroll nativo -->
+      <VCardText class="pa-6 modal-scroll-content">
+        <!-- Resumen Rápido con Componentes Vuetify -->
         <VRow class="mb-4">
           <VCol cols="12" sm="4">
             <VCard variant="tonal" color="info" class="pa-3 rounded-lg text-center">
@@ -104,7 +106,7 @@ const closeDialog = () => {
         <!-- Caso 1: Pagadas en ERP pero aún figuran PENDIENTES en Dronena -->
         <div v-if="paidInErpPendingInPortal.length > 0" class="mb-6">
           <div class="d-flex align-center gap-2 mb-2">
-            <VIcon icon="tabler-alert-circle" color="warning" size="20" />
+            <VIcon icon="tabler-alert-circle" color="warning" size="22" />
             <h4 class="text-subtitle-1 font-weight-bold text-warning mb-0">
               Pagadas en el ERP pero aún PENDIENTES en Dronena ({{ paidInErpPendingInPortal.length }})
             </h4>
@@ -113,9 +115,9 @@ const closeDialog = () => {
             Estas facturas ya las registraste como pagadas en el ERP, pero en el portal de Dronena todavía aparecen con saldo pendiente por cobrar:
           </p>
 
-          <VTable density="compact" class="border rounded-lg">
+          <VTable density="compact" class="border rounded-lg mb-2">
             <thead>
-              <tr class="bg-light">
+              <tr class="bg-surface-variant">
                 <th class="text-left font-weight-bold">N° Factura</th>
                 <th class="text-left font-weight-bold">N° Control</th>
                 <th class="text-right font-weight-bold">Monto ERP</th>
@@ -144,7 +146,7 @@ const closeDialog = () => {
         <!-- Caso 2: Pendientes en ERP pero ya NO figuran pendientes en Dronena -->
         <div v-if="pendingInErpPaidInPortal.length > 0" class="mb-6">
           <div class="d-flex align-center gap-2 mb-2">
-            <VIcon icon="tabler-circle-check" color="info" size="20" />
+            <VIcon icon="tabler-circle-check" color="info" size="22" />
             <h4 class="text-subtitle-1 font-weight-bold text-info mb-0">
               Pendientes en ERP pero LIQUIDADAS en Dronena ({{ pendingInErpPaidInPortal.length }})
             </h4>
@@ -153,9 +155,9 @@ const closeDialog = () => {
             Estas facturas están pendientes de pago en tu ERP, pero en Dronena ya no tienen saldo por pagar (ya fueron procesadas o cobradas):
           </p>
 
-          <VTable density="compact" class="border rounded-lg">
+          <VTable density="compact" class="border rounded-lg mb-2">
             <thead>
-              <tr class="bg-light">
+              <tr class="bg-surface-variant">
                 <th class="text-left font-weight-bold">N° Factura</th>
                 <th class="text-left font-weight-bold">N° Control</th>
                 <th class="text-right font-weight-bold">Monto en ERP</th>
@@ -181,7 +183,7 @@ const closeDialog = () => {
           </VTable>
         </div>
 
-        <!-- Estado Perfecto Sin Discrepancias -->
+        <!-- Estado Sin Discrepancias -->
         <div v-if="!hasDiscrepancies" class="text-center py-6">
           <VAvatar color="success" variant="tonal" size="56" class="mb-3">
             <VIcon icon="tabler-check" size="32" color="success" />
@@ -195,7 +197,7 @@ const closeDialog = () => {
 
       <VDivider />
 
-      <VCardActions class="pa-4 px-6 justify-end">
+      <VCardActions class="pa-4 px-6 justify-end bg-surface">
         <VBtn color="primary" variant="flat" class="px-6 rounded-lg" @click="closeDialog">
           Entendido
         </VBtn>
@@ -203,3 +205,16 @@ const closeDialog = () => {
     </VCard>
   </VDialog>
 </template>
+
+<style scoped>
+.modal-card {
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-scroll-content {
+  overflow-y: auto;
+  max-height: calc(85vh - 140px);
+}
+</style>

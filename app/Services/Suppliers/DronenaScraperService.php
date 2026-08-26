@@ -247,8 +247,25 @@ class DronenaScraperService implements DronenaScraperServiceInterface
             $portalNumbers[$pClean] = $d;
         }
 
-        $erpInvoicesQuery = Invoice::where('supplier_id', $supplierId);
+        $erpInvoicesQuery = Invoice::query()->select([
+            'id',
+            'supplier_id',
+            'invoice_number',
+            'control_number',
+            'total_amount',
+            'currency',
+            'status_payment',
+        ]);
+        if ($supplierId) {
+            $erpInvoicesQuery->where('supplier_id', $supplierId);
+        } else {
+            $erpInvoicesQuery->whereHas('supplier', function ($q) {
+                $q->where('name', 'LIKE', '%NENA%')->orWhere('name', 'LIKE', '%DRONENA%');
+            });
+        }
         $erpInvoices = $erpInvoicesQuery->get();
+
+
 
         $paidInErpPendingInDronena = [];
         $pendingInErpPaidInDronena = [];
