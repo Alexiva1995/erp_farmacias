@@ -236,14 +236,17 @@ const formatDate = (dateString) => {
           </div>
 
           <div v-else-if="props.actionsMode === 'location'">
-            <VBtn
-              color="primary"
-              variant="tonal"
-              size="small"
-              @click="emit('locate-products', item)"
-              ><VIcon icon="tabler-map-pin" class="me-2" />Ubicar
-              Productos</VBtn
-            >
+            <VTooltip text="Ubicar Productos">
+              <template #activator="{ props: tooltipProps }">
+                <IconBtn
+                  v-bind="tooltipProps"
+                  color="primary"
+                  @click="emit('locate-products', item)"
+                >
+                  <VIcon icon="tabler-map-pin" />
+                </IconBtn>
+              </template>
+            </VTooltip>
           </div>
 
           <div v-else-if="props.actionsMode === 'ordered'" class="d-flex ga-2">
