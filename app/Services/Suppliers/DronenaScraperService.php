@@ -58,6 +58,7 @@ class DronenaScraperService implements DronenaScraperServiceInterface
         $skippedCount = 0;
         $processed = [];
 
+        $client = new \GuzzleHttp\Client(['verify' => false, 'timeout' => 30]);
         $today = \Carbon\Carbon::now()->format('Y-m-d');
 
         foreach ($documents as $doc) {
@@ -90,19 +91,55 @@ class DronenaScraperService implements DronenaScraperServiceInterface
             $netPayable = $doc['saldo_db'] ?? null;
 
             if ($invoice) {
-                // Actualizar fecha de vencimiento, fecha de pago, indexación, reclamos y saldo neto
-                $invoice->update([
+                $updateData = [
                     'exp_date' => $expDate,
-                    'payment_date' => $expDate, // Misma fecha de vencimiento para la fecha de pago
+                    'payment_date' => $expDate,
                     'is_indexed' => $isIndexed,
                     'claim_amount' => $claimAmount,
                     'nd_referential_amount' => $ndRefAmount,
                     'net_payable_amount' => $netPayable,
-                ]);
+                ];
+
+                // Si la factura no tiene número de control o montos base y hay enlace a PDF digital, extraer datos del PDF
+                if ((empty($invoice->control_number) || $invoice->control_number === 'N/A' || floatval($invoice->total_amount) <= 0) && !empty($doc['pdf_url'])) {
+                    $pdfData = $this->fetchAndParsePdf($doc['pdf_url'], $client);
+                    if ($pdfData) {
+                        if (!empty($pdfData['control_number'])) {
+                            $updateData['control_number'] = $pdfData['control_number'];
+                        }
+                        if (!empty($pdfData['invoice_number'])) {
+                            $updateData['invoice_number'] = $pdfData['invoice_number'];
+                        }
+                        if (!empty($pdfData['created_invoice_date']) && empty($invoice->created_invoice_date)) {
+                            $updateData['created_invoice_date'] = $pdfData['created_invoice_date'];
+                        }
+                        if (floatval($pdfData['exchange_rate'] ?? 0) > 0 && floatval($invoice->exchange_rate ?? 0) <= 0) {
+                            $updateData['exchange_rate'] = $pdfData['exchange_rate'];
+                        }
+                        if (floatval($pdfData['exempt_amount'] ?? 0) > 0 && floatval($invoice->exempt_amount ?? 0) <= 0) {
+                            $updateData['exempt_amount'] = $pdfData['exempt_amount'];
+                        }
+                        if (floatval($pdfData['taxable_base'] ?? 0) > 0 && floatval($invoice->taxable_base ?? 0) <= 0) {
+                            $updateData['taxable_base'] = $pdfData['taxable_base'];
+                        }
+                        if (floatval($pdfData['tax_amount'] ?? 0) > 0 && floatval($invoice->tax_amount ?? 0) <= 0) {
+                            $updateData['tax_amount'] = $pdfData['tax_amount'];
+                        }
+                        if (floatval($pdfData['total_amount'] ?? 0) > 0 && floatval($invoice->total_amount ?? 0) <= 0) {
+                            $updateData['total_amount'] = $pdfData['total_amount'];
+                        }
+                        if (floatval($pdfData['total_usd'] ?? 0) > 0 && floatval($invoice->total_usd ?? 0) <= 0) {
+                            $updateData['total_usd'] = $pdfData['total_usd'];
+                        }
+                    }
+                }
+
+                $invoice->update($updateData);
                 $updatedCount++;
                 $processed[] = [
-                    'invoice_number' => $invoiceNumber,
+                    'invoice_number' => $invoice->invoice_number,
                     'action' => 'updated',
+                    'control_number' => $invoice->control_number,
                     'exp_date' => $expDate,
                     'payment_date' => $expDate,
                     'is_indexed' => $isIndexed,
@@ -111,7 +148,46 @@ class DronenaScraperService implements DronenaScraperServiceInterface
                     'net_payable_amount' => $netPayable,
                 ];
             } else {
-                // Factura no encontrada actualmente en el ERP
+                // Factura no encontrada previamente en el ERP: si tiene PDF, crearla completa
+                if (!empty($doc['pdf_url'])) {
+                    $pdfData = $this->fetchAndParsePdf($doc['pdf_url'], $client);
+                    if ($pdfData) {
+                        $newInvoice = Invoice::create([
+                            'supplier_id' => $supplierId,
+                            'invoice_number' => $pdfData['invoice_number'] ?: ('A' . $cleanNumber),
+                            'control_number' => $pdfData['control_number'] ?: null,
+                            'created_invoice_date' => $pdfData['created_invoice_date'] ?: $doc['fecha_emision_db'],
+                            'exp_date' => $expDate,
+                            'payment_date' => $expDate,
+                            'currency' => $currency,
+                            'is_indexed' => $isIndexed,
+                            'exempt_amount' => $pdfData['exempt_amount'] ?? 0,
+                            'taxable_base' => $pdfData['taxable_base'] ?? 0,
+                            'tax_amount' => $pdfData['tax_amount'] ?? 0,
+                            'total_amount' => $pdfData['total_amount'] ?: $doc['monto_db'],
+                            'total_usd' => $pdfData['total_usd'] ?: ($doc['tasa_db'] > 0 ? round($doc['monto_db'] / $doc['tasa_db'], 2) : 0),
+                            'exchange_rate' => $pdfData['exchange_rate'] ?: $doc['tasa_db'],
+                            'claim_amount' => $claimAmount,
+                            'nd_referential_amount' => $ndRefAmount,
+                            'net_payable_amount' => $netPayable,
+                            'status' => 'pending',
+                            'status_payment' => 0,
+                            'uploaded_by' => 1,
+                            'registered_by' => 1,
+                        ]);
+                        $updatedCount++;
+                        $processed[] = [
+                            'invoice_number' => $newInvoice->invoice_number,
+                            'action' => 'created_from_pdf',
+                            'control_number' => $newInvoice->control_number,
+                            'exp_date' => $expDate,
+                            'payment_date' => $expDate,
+                            'is_indexed' => $isIndexed,
+                        ];
+                        continue;
+                    }
+                }
+
                 $skippedCount++;
                 $processed[] = [
                     'invoice_number' => $invoiceNumber,
@@ -260,6 +336,17 @@ class DronenaScraperService implements DronenaScraperServiceInterface
 
             $firstLink = $cols->item(2)->getElementsByTagName('a')->item(0);
             $recibo = $firstLink ? trim($firstLink->textContent) : trim(explode(' ', trim($cols->item(2)->textContent))[0]);
+            
+            // Buscar enlace de descarga de PDF digital (Soluciones Laser / Dronena)
+            $pdfUrl = null;
+            foreach ($cols->item(2)->getElementsByTagName('a') as $aTag) {
+                $href = $aTag->getAttribute('href');
+                if (str_contains($href, 'solucioneslaser.com') || str_contains($href, '.pdf')) {
+                    $pdfUrl = $href;
+                    break;
+                }
+            }
+
             $fechaMovimiento = trim($cols->item(3)->textContent);
             $fechaTope = trim($cols->item(5)->textContent);
             $fechaVencimiento = trim($cols->item(6)->textContent);
@@ -289,6 +376,7 @@ class DronenaScraperService implements DronenaScraperServiceInterface
             $documents[] = [
                 'tipo' => $tipo,
                 'numero_factura' => $recibo,
+                'pdf_url' => $pdfUrl,
                 'fecha_emision' => $fechaMovimiento,
                 'fecha_emision_db' => $parsedEmision,
                 'fecha_vencimiento' => $fechaVencimiento,
@@ -311,6 +399,104 @@ class DronenaScraperService implements DronenaScraperServiceInterface
         }
 
         return $documents;
+    }
+
+    /**
+     * Descarga y parsea el PDF digital de Dronena para extraer datos fiscales completos.
+     */
+    public function fetchAndParsePdf(string $pdfUrl, Client $client): ?array
+    {
+        try {
+            $res = $client->get($pdfUrl, ['timeout' => 30]);
+            $pdfContent = (string) $res->getBody();
+            if (!str_starts_with($pdfContent, '%PDF')) {
+                return null;
+            }
+
+            $parser = new \Smalot\PdfParser\Parser();
+            $pdf = $parser->parseContent($pdfContent);
+            $text = $pdf->getText();
+            $normalized = preg_replace('/\t+/', ' ', $text);
+
+            $serie = 'A';
+            $numeroFactura = '';
+            $numeroControl = '';
+            $fechaEmision = null;
+            $tasa = 1.0;
+            $exento = 0.0;
+            $baseImponible = 0.0;
+            $iva = 0.0;
+            $totalBs = 0.0;
+            $totalUsd = 0.0;
+
+            if (preg_match('/Serie:\s*([A-Z0-9]+)/iu', $normalized, $m)) {
+                $serie = trim($m[1]);
+            }
+            if (preg_match('/N[uú]mero\s*de\s*Documento:\s*(\d+)/iu', $normalized, $m)) {
+                $numeroFactura = trim($m[1]);
+            }
+            if (preg_match('/N[uú]mero\s*de\s*Control:\s*([0-9\-]+)/iu', $normalized, $m)) {
+                $numeroControl = trim($m[1]);
+            }
+            if (preg_match('/Fecha\s*de\s*Emisi[oó]n:\s*([0-9]{2}[\-\/][0-9]{2}[\-\/][0-9]{4})/iu', $normalized, $m)) {
+                $d = \DateTime::createFromFormat('d-m-Y', str_replace('/', '-', trim($m[1])));
+                if ($d) $fechaEmision = $d->format('Y-m-d');
+            }
+            if (preg_match('/Tipo\s*de\s*Cambio\s*\(USA\s*\$\)\s*Bs\.?\s*([0-9\.,]+)/iu', $normalized, $m)) {
+                $tasa = (float) str_replace(',', '', trim($m[1]));
+            }
+
+            // Pie de totales fiscales
+            if (preg_match_all('/Bs\.\s*([0-9]{1,3}(?:,[0-9]{3})*\.[0-9]{2}|[0-9]+\.[0-9]{2})/iu', $normalized, $bsMatches)) {
+                $bsList = array_map(fn($v) => (float) str_replace(',', '', $v), $bsMatches[1]);
+                for ($i = 0; $i <= count($bsList) - 9; $i++) {
+                    $slice = array_slice($bsList, $i, 9);
+                    $calcTot = round($slice[4] + $slice[6] + $slice[7], 2);
+                    if (abs($calcTot - $slice[8]) < 0.05 && $slice[8] > 0) {
+                        $exento = $slice[4];
+                        $baseImponible = $slice[6];
+                        $iva = $slice[7];
+                        $totalBs = $slice[8];
+                        break;
+                    }
+                }
+            }
+
+            if (preg_match_all('/\$\s*([0-9]{1,3}(?:,[0-9]{3})*\.[0-9]{2}|[0-9]+\.[0-9]{2})/iu', $normalized, $usdMatches)) {
+                $usdList = array_map(fn($v) => (float) str_replace(',', '', $v), $usdMatches[1]);
+                for ($i = 0; $i <= count($usdList) - 9; $i++) {
+                    $slice = array_slice($usdList, $i, 9);
+                    if ($slice[8] > 0) {
+                        $totalUsd = $slice[8];
+                        break;
+                    }
+                }
+            }
+
+            if ($totalBs == 0 && ($exento > 0 || $baseImponible > 0)) {
+                $totalBs = round($exento + $baseImponible + $iva, 2);
+            }
+            if ($totalUsd == 0 && $tasa > 0 && $totalBs > 0) {
+                $totalUsd = round($totalBs / $tasa, 2);
+            }
+
+            return [
+                'serie' => $serie,
+                'numero_factura' => $numeroFactura,
+                'invoice_number' => "{$serie}{$numeroFactura}",
+                'control_number' => $numeroControl,
+                'created_invoice_date' => $fechaEmision,
+                'exchange_rate' => $tasa,
+                'exempt_amount' => $exento,
+                'taxable_base' => $baseImponible,
+                'tax_amount' => $iva,
+                'total_amount' => $totalBs,
+                'total_usd' => $totalUsd,
+            ];
+        } catch (\Throwable $e) {
+            Log::warning("[DronenaScraper] Error leyendo PDF {$pdfUrl}: " . $e->getMessage());
+            return null;
+        }
     }
 
     /**
