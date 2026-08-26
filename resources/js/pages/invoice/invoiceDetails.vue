@@ -557,11 +557,12 @@ const fetchInvoiceData = async (id) => {
   try {
     const response = await axios.get(`/invoices/${id}`);
 
-    invoice.value = response.data.data;
+    const invoiceData = response.data.data ?? response.data;
+    invoice.value = invoiceData;
     if (isEditableMode.value) {
-      formData.value = JSON.parse(JSON.stringify(invoice.value));
+      formData.value = JSON.parse(JSON.stringify(invoiceData));
       selectedSupplierDiscountId.value =
-        invoice.value.supplier_discount_id || null;
+        invoiceData.supplier_discount_id || null;
     }
   } catch (error) {
     console.error("Error al cargar la factura:", error);
