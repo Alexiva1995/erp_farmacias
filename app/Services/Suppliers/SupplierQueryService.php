@@ -230,8 +230,7 @@ class SupplierQueryService
             }
             $allPossibleNumbers = array_unique($allPossibleNumbers);
 
-            $existingInvoices = Invoice::where('supplier_id', $supplier->id)
-                ->whereIn('invoice_number', $allPossibleNumbers)
+            $existingInvoices = Invoice::whereIn('invoice_number', $allPossibleNumbers)
                 ->pluck('invoice_number')
                 ->map(fn($n) => ltrim((string)$n, 'A'))
                 ->toArray();

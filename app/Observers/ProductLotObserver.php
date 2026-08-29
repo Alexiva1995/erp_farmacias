@@ -20,6 +20,8 @@ class ProductLotObserver
     /**
      * Flag estático para indicar cuando una modificación de lote proviene de la devolución por cancelación de orden.
      */
+    public static bool $isReturningLot = false;
+
     /**
      * Flag estático para omitir la creación automática de movimientos desde orígenes que ya gestionan su trazabilidad.
      */

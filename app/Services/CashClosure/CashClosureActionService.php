@@ -36,6 +36,20 @@ class CashClosureActionService
 
     public function generateClosingTransactions(CashClosing $cashClosure)
     {
+        // Garantizar idempotencia eliminando transacciones previas asociadas a esta caja
+        Transaction::where('description', "Cierre de caja #" . $cashClosure->id)->delete();
+
+        // Determinar la fecha real de la caja
+        $transactionDate = null;
+        if (!empty($cashClosure->closing_date)) {
+            $transactionDate = Carbon::parse($cashClosure->closing_date)->toDateString();
+        } else {
+            $latestOrder = $cashClosure->orders()->orderByDesc('created_at')->first();
+            $transactionDate = $latestOrder && $latestOrder->created_at
+                ? Carbon::parse($latestOrder->created_at)->toDateString()
+                : Carbon::parse($cashClosure->created_at ?? now())->toDateString();
+        }
+
         $metrics = [
             'bs_mobile' => ['currency' => 'BS', 'type' => 'MOBILE'],
             'bs_transfer' => ['currency' => 'BS', 'type' => 'TRANSFER'],
@@ -44,11 +58,9 @@ class CashClosureActionService
             'bs_cash' => ['currency' => 'BS', 'type' => 'CASH'],
             'cop_delivered' => ['currency' => 'COP', 'type' => 'CASH'],
             'cop_transfer' => ['currency' => 'COP', 'type' => 'TRANSFER'],
-            'cop_spare' => ['currency' => 'COP', 'type' => 'CASH'],
             'usd_delivered' => ['currency' => 'USD', 'type' => 'CASH'],
             'usd_binance' => ['currency' => 'USD', 'type' => 'BINANCE'],
             'usd_paypal' => ['currency' => 'USD', 'type' => 'PAYPAL'],
-            'usd_credit' => ['currency' => 'USD', 'type' => 'CREDIT'],
 
             // Pagos de créditos
             'bs_cash_payment_credit' => ['currency' => 'BS', 'type' => 'CASH'],
@@ -65,19 +77,21 @@ class CashClosureActionService
 
         // Obtenemos los valores numéricos de las tasas (rate) indexados por el código de moneda
         $rates = DB::table('exchange_rates')->pluck('rate', 'currency_code');
+        $bsRate = $rates['BCV'] ?? ($rates['EUR'] ?? ($rates['BS'] ?? 1.0000));
+        $copRate = $rates['COP'] ?? 1.0000;
 
         foreach ($metrics as $field => $info) {
-            $amount = $cashClosure->$field;
+            $amount = (float) $cashClosure->$field;
 
             if ($amount > 0) {
-                // Lógica de asignación de tasa
                 $exchangeRateValue = 1.0000; // Valor base para USD
 
                 if ($info['currency'] === 'BS') {
-                    // Para BS usamos la tasa EUR (bolívares por euro)
-                    $exchangeRateValue = $rates['EUR'] ?? 1.0000;
+                    $exchangeRateValue = (float) $bsRate;
+                } elseif ($info['currency'] === 'COP') {
+                    $exchangeRateValue = (float) $copRate;
                 } elseif ($info['currency'] !== 'USD') {
-                    $exchangeRateValue = $rates[$info['currency']] ?? 1.0000;
+                    $exchangeRateValue = (float) ($rates[$info['currency']] ?? 1.0000);
                 }
 
                 Transaction::create([
@@ -88,8 +102,8 @@ class CashClosureActionService
                     'type' => $info['type'],
                     'amount' => $amount,
                     'movement_type' => 'IN',
-                    'transaction_date' => Carbon::now(),
-                    'exchange_rate' => $exchangeRateValue, // Nuevo campo decimal
+                    'transaction_date' => $transactionDate,
+                    'exchange_rate' => $exchangeRateValue,
                 ]);
             }
         }

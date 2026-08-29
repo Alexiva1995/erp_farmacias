@@ -382,6 +382,13 @@ class InvoiceController extends Controller
                 'exception' => $e
             ]);
 
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al sincronizar facturas desde Drocerca: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
     /**
      * Sincroniza las facturas, vencimientos e indexación desde el portal SIC de Droguerías Cobeca / Mafarta.
      */

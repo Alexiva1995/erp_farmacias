@@ -122,9 +122,14 @@ class InventoryCycleActionService
         });
     }
 
-    private function getActiveCycle(): ?InventoryCycle
+    public function getActiveCycle(): ?InventoryCycle
     {
         return InventoryCycle::where('status', 'active')->first();
+    }
+
+    public function getActiveCycleInfo(): ?InventoryCycle
+    {
+        return $this->getActiveCycle();
     }
 
     /**

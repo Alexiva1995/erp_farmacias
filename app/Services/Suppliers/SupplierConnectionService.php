@@ -259,10 +259,16 @@ class SupplierConnectionService
 
             // Determinar URL de productos: desde payloadDef o construida desde host + path
             $url = $payloadDef['url'] ?? null;
-            if (!$url && !empty($connection->host)) {
+            if (!$url && !empty($connection->path) && (str_starts_with($connection->path, 'http://') || str_starts_with($connection->path, 'https://'))) {
+                $url = $connection->path;
+            } elseif (!$url && !empty($connection->host)) {
                 $base = rtrim($connection->host, '/');
                 $path = ltrim($connection->path ?? '', '/');
-                $url = !empty($path) ? "{$base}/{$path}" : $base;
+                if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+                    $url = $path;
+                } else {
+                    $url = !empty($path) ? "{$base}/{$path}" : $base;
+                }
             } elseif (!$url && !empty($connection->path)) {
                 $url = $connection->path;
             }
@@ -332,10 +338,16 @@ class SupplierConnectionService
 
                 $payloadInvoice = $this->buildPayload($connection, 'facturas');
                 $invoiceUrl = $payloadInvoice['url'] ?? null;
-                if (!$invoiceUrl && !empty($connection->host)) {
+                if (!$invoiceUrl && !empty($connection->invoice_path) && (str_starts_with($connection->invoice_path, 'http://') || str_starts_with($connection->invoice_path, 'https://'))) {
+                    $invoiceUrl = $connection->invoice_path;
+                } elseif (!$invoiceUrl && !empty($connection->host)) {
                     $base = rtrim($connection->host, '/');
                     $path = ltrim($connection->invoice_path, '/');
-                    $invoiceUrl = !empty($path) ? "{$base}/{$path}" : $base;
+                    if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+                        $invoiceUrl = $path;
+                    } else {
+                        $invoiceUrl = !empty($path) ? "{$base}/{$path}" : $base;
+                    }
                 } elseif (!$invoiceUrl) {
                     $invoiceUrl = $connection->invoice_path;
                 }

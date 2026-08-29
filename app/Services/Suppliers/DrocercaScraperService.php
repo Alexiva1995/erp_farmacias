@@ -25,6 +25,7 @@ class DrocercaScraperService implements DrocercaScraperServiceInterface
      */
     public function syncInvoices(?string $username = null, ?string $password = null, ?int $supplierId = null, ?string $onlyInvoice = null): array
     {
+        @ini_set('memory_limit', '512M');
         $supplier = null;
         if ($supplierId) {
             $supplier = Supplier::with('connections')->find($supplierId);

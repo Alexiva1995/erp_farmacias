@@ -833,9 +833,22 @@ class OrderActionService
                 $amountInBase = ($currency === 'USD') ? $amount : ($amount / $rate);
                 $sumInOrderCurrency += $amountInBase * ($rates[$orderCurrency] ?? 1);
             }
+        $changeInOrderCurrency = 0.0;
+        if ($moneyReturns > 0) {
+            // Si la orden está en USD y el vuelto es un monto alto (como 4900 pesos COP)
+            if ($orderCurrency === 'USD' && $moneyReturns > 50) {
+                $copRate = (float) ($rates['COP'] ?? 1);
+                $changeInOrderCurrency = $copRate > 0 ? ($moneyReturns / $copRate) : $moneyReturns;
+            } elseif ($orderCurrency === 'BS' && $moneyReturns > 100) {
+                $copRate = (float) ($rates['COP'] ?? 1);
+                $bsRate = (float) ($rates['BS'] ?? 1);
+                $changeInOrderCurrency = $copRate > 0 ? (($moneyReturns / $copRate) * $bsRate) : $moneyReturns;
+            } else {
+                $changeInOrderCurrency = $moneyReturns;
+            }
         }
 
-        $netPaid = $sumInOrderCurrency - $moneyReturns;
+        $netPaid = $sumInOrderCurrency - $changeInOrderCurrency;
 
         // Si el pago neto cubre el total de la orden (o está dentro de la tolerancia permitida), permitir la transacción.
         // Solo bloquear si lo pagado es estrictamente MENOR al total menos la tolerancia.
