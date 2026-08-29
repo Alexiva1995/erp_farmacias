@@ -833,6 +833,7 @@ class OrderActionService
                 $amountInBase = ($currency === 'USD') ? $amount : ($amount / $rate);
                 $sumInOrderCurrency += $amountInBase * ($rates[$orderCurrency] ?? 1);
             }
+        }
         $changeInOrderCurrency = 0.0;
         if ($moneyReturns > 0) {
             // Si la orden está en USD y el vuelto es un monto alto (como 4900 pesos COP)
