@@ -36,17 +36,21 @@ class CashClosureActionService
 
     public function generateClosingTransactions(CashClosing $cashClosure)
     {
-        // Garantizar idempotencia eliminando transacciones previas asociadas a esta caja
-        Transaction::where('description', "Cierre de caja #" . $cashClosure->id)->delete();
+        // Idempotencia: Eliminar transacciones previas asociadas a este cierre de caja
+        Transaction::where(function ($q) use ($cashClosure) {
+            $q->where('description', "Cierre de caja #" . $cashClosure->id)
+              ->orWhere('description', "Abono a crédito en Cierre de caja #" . $cashClosure->id);
+        })->delete();
 
-        // Determinar la fecha real de la caja
-        $transactionDate = null;
-        if (!empty($cashClosure->closing_date)) {
-            $transactionDate = Carbon::parse($cashClosure->closing_date)->toDateString();
-        } else {
-            $latestOrder = $cashClosure->orders()->orderByDesc('created_at')->first();
-            $transactionDate = $latestOrder && $latestOrder->created_at
-                ? Carbon::parse($latestOrder->created_at)->toDateString()
+        // Determinar fecha real de la caja
+        $transactionDate = $cashClosure->closing_date
+            ? Carbon::parse($cashClosure->closing_date)->toDateString()
+            : null;
+
+        if (!$transactionDate) {
+            $lastOrder = $cashClosure->orders()->latest('id')->first();
+            $transactionDate = $lastOrder?->created_at
+                ? Carbon::parse($lastOrder->created_at)->toDateString()
                 : Carbon::parse($cashClosure->created_at ?? now())->toDateString();
         }
 
@@ -56,9 +60,12 @@ class CashClosureActionService
             'bs_card_debito' => ['currency' => 'BS', 'type' => 'CARD'],
             'bs_card_credit' => ['currency' => 'BS', 'type' => 'CARD'],
             'bs_cash' => ['currency' => 'BS', 'type' => 'CASH'],
-            'cop_delivered' => ['currency' => 'COP', 'type' => 'CASH'],
+            'cop_cash' => ['currency' => 'COP', 'type' => 'CASH'],
+            'cop_spare' => ['currency' => 'COP', 'type' => 'CASH'],
             'cop_transfer' => ['currency' => 'COP', 'type' => 'TRANSFER'],
-            'usd_delivered' => ['currency' => 'USD', 'type' => 'CASH'],
+            'usd_cash' => ['currency' => 'USD', 'type' => 'CASH'],
+            'usd_credit' => ['currency' => 'USD', 'type' => 'CREDIT'],
+            'usd_transfer' => ['currency' => 'USD', 'type' => 'TRANSFER'],
             'usd_binance' => ['currency' => 'USD', 'type' => 'BINANCE'],
             'usd_paypal' => ['currency' => 'USD', 'type' => 'PAYPAL'],
 
@@ -105,6 +112,30 @@ class CashClosureActionService
                     'transaction_date' => $transactionDate,
                     'exchange_rate' => $exchangeRateValue,
                 ]);
+
+                // Si es un abono o pago de crédito recibido, registrar la disminución en la cuenta de Crédito
+                if (str_contains($field, '_payment_credit')) {
+                    $creditDeductionUsd = match ($info['currency']) {
+                        'USD' => $amount,
+                        'COP' => $copRate > 0 ? round($amount / $copRate, 2) : 0,
+                        'BS'  => $bsRate > 0  ? round($amount / $bsRate, 2)  : 0,
+                        default => $amount
+                    };
+
+                    if ($creditDeductionUsd > 0) {
+                        Transaction::create([
+                            'user_id' => $cashClosure->seller_id,
+                            'category_id' => null,
+                            'description' => "Abono a crédito en Cierre de caja #" . $cashClosure->id,
+                            'currency' => 'USD',
+                            'type' => 'CREDIT',
+                            'amount' => $creditDeductionUsd,
+                            'movement_type' => 'OUT',
+                            'transaction_date' => $transactionDate,
+                            'exchange_rate' => 1.0000,
+                        ]);
+                    }
+                }
             }
         }
     }

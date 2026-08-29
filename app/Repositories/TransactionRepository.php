@@ -31,7 +31,7 @@ class TransactionRepository implements TransactionContract
         $option      = $rawOption ? (str_contains($rawOption, '_') ? substr($rawOption, 0, strpos($rawOption, '_')) : $rawOption) : null;
         $currentPage = (int) ($data['page'] ?? 1);
 
-        $datesQuery = Transaction::query()
+        $baseQuery = Transaction::query()
             ->when($currency, fn($q, $cur) => $q->where('transactions.currency', $cur))
             ->when(
                 $detailed && $option,
@@ -42,64 +42,11 @@ class TransactionRepository implements TransactionContract
             ->when(
                 $startDate && $endDate,
                 fn($q) => $q->whereBetween('transactions.transaction_date', [$startDate, $endDate])
-            )
-            ->select('transaction_date')
-            ->distinct()
-            ->orderByDesc('transaction_date');
+            );
 
-        $paginatedDates = $datesQuery->paginate($perPage, ['*'], 'page', $currentPage);
-        $activeDates    = $paginatedDates->pluck('transaction_date')->toArray();
-
-        $openingBalance = 0;
-        if ($detailed && $option && $currency) {
-            $openingBalance = Transaction::query()
-                ->where('transactions.currency', $currency)
-                ->when(
-                    $currency === 'BS' && $option === 'TRANSFER',
-                    fn($q) => $q->whereIn('transactions.type', ['CARD', 'TRANSFER']),
-                    fn($q) => $q->where('transactions.type', TransactionType::tryFrom($option)?->value ?? $option)
-                )
-                ->where('transactions.transaction_date', '<', $startDate ?: now()->format('Y-m-d'))
-                ->selectRaw("SUM(CASE WHEN movement_type = 'IN' THEN amount ELSE -amount END) as net")
-                ->value('net') ?? 0;
-        }
-
-        if (empty($activeDates)) {
-            return [
-                'paginator' => $paginatedDates,
-                'opening_balance' => (float)$openingBalance,
-                'previous_total_usd' => 0
-            ];
-        }
-
-        // Obtener saldo de apertura para transacciones anteriores a la fecha mínima activa
-        $minDate = min($activeDates);
-        $openingBalances = Transaction::query()
-            ->where('transaction_date', '<', $minDate)
-            ->when($currency, fn($q, $cur) => $q->where('currency', $cur))
-            ->when(
-                $detailed && $option,
-                fn($q) => ($currency === 'BS' && $option === 'TRANSFER')
-                    ? $q->whereIn('type', ['CARD', 'TRANSFER'])
-                    : $q->where('type', TransactionType::tryFrom($option)?->value ?? $option)
-            )
-            ->selectRaw("currency, type, SUM(CASE WHEN movement_type = 'IN' THEN amount ELSE -amount END) as net")
-            ->groupBy('currency', 'type')
-            ->get()
-            ->keyBy(fn($item) => $item->currency . '_' . $item->type)
-            ->map(fn($item) => (float) $item->net);
-
-        $results = Transaction::query()
+        $paginatedTransactions = (clone $baseQuery)
             ->leftJoin('users', 'users.id', '=', 'transactions.user_id')
             ->leftJoin('expense_categories', 'expense_categories.id', '=', 'transactions.category_id')
-            ->whereIn('transactions.transaction_date', $activeDates)
-            ->when($currency, fn($q, $cur) => $q->where('transactions.currency', $cur))
-            ->when(
-                $detailed && $option,
-                fn($q) => ($currency === 'BS' && $option === 'TRANSFER')
-                    ? $q->whereIn('transactions.type', ['CARD', 'TRANSFER'])
-                    : $q->where('transactions.type', TransactionType::tryFrom($option)?->value ?? $option)
-            )
             ->select([
                 'transactions.id',
                 'transactions.user_id',
@@ -115,42 +62,55 @@ class TransactionRepository implements TransactionContract
                 'users.username as user_name',
                 'expense_categories.name as category_name',
             ])
-            ->orderBy('transactions.transaction_date', 'asc')
-            ->orderBy('transactions.id', 'asc')
-            ->get();
+            ->orderByDesc('transactions.transaction_date')
+            ->orderByDesc('transactions.id')
+            ->paginate($perPage, ['*'], 'page', $currentPage);
 
-        // Calcular balance dinámico en PHP ($O(N)$) sin subconsultas SQL correlacionadas
-        $runningBalances = [];
-        foreach ($results as $transaction) {
-            $key = $transaction->currency . '_' . $transaction->type;
-            if (!isset($runningBalances[$key])) {
-                $runningBalances[$key] = $openingBalances->get($key, 0.0);
+        $items = $paginatedTransactions->items();
+
+        if (!empty($items)) {
+            foreach ($items as $transaction) {
+                $rawType = $transaction->type;
+                $runningBalance = Transaction::query()
+                    ->where('currency', $transaction->currency)
+                    ->when(
+                        $transaction->currency === 'BS' && in_array($rawType, ['CARD', 'TRANSFER']),
+                        fn($q) => $q->whereIn('type', ['CARD', 'TRANSFER']),
+                        fn($q) => $q->where('type', $rawType)
+                    )
+                    ->where(function ($q) use ($transaction) {
+                        $q->where('transaction_date', '<', $transaction->transaction_date)
+                          ->orWhere(function ($q2) use ($transaction) {
+                              $q2->where('transaction_date', '=', $transaction->transaction_date)
+                                 ->where('id', '<=', $transaction->id);
+                          });
+                    })
+                    ->selectRaw("SUM(CASE WHEN movement_type = 'IN' THEN amount ELSE -amount END) as balance")
+                    ->value('balance') ?? 0;
+
+                $transaction->balance = round((float) $runningBalance, 2);
+
+                $enum = TransactionType::tryFrom($rawType);
+                $transaction->type = $enum?->label() ?? $rawType;
             }
-            $amount = (float) $transaction->amount;
-            if (strtoupper((string) $transaction->movement_type) === 'IN') {
-                $runningBalances[$key] += $amount;
-            } else {
-                $runningBalances[$key] -= $amount;
-            }
-            $transaction->balance = round($runningBalances[$key], 2);
         }
 
-        // Reordenar descendentemente para presentación en el frontend
-        $sortedResults = $results->sortBy([
-            ['transaction_date', 'desc'],
-            ['id', 'desc']
-        ])->values();
-
-        $sortedResults->transform(function ($transaction) {
-            $enum = TransactionType::tryFrom($transaction->type);
-            $transaction->type = $enum?->label() ?? $transaction->type;
-            return $transaction;
-        });
-
-        $paginatedDates->setCollection($sortedResults);
+        $openingBalance = 0;
+        if ($detailed && $option && $currency) {
+            $openingBalance = Transaction::query()
+                ->where('transactions.currency', $currency)
+                ->when(
+                    $currency === 'BS' && $option === 'TRANSFER',
+                    fn($q) => $q->whereIn('transactions.type', ['CARD', 'TRANSFER']),
+                    fn($q) => $q->where('transactions.type', TransactionType::tryFrom($option)?->value ?? $option)
+                )
+                ->where('transactions.transaction_date', '<', $startDate ?: now()->format('Y-m-d'))
+                ->selectRaw("SUM(CASE WHEN movement_type = 'IN' THEN amount ELSE -amount END) as net")
+                ->value('net') ?? 0;
+        }
 
         return [
-            'paginator' => $paginatedDates,
+            'paginator' => $paginatedTransactions,
             'opening_balance' => (float)$openingBalance,
             'previous_total_usd' => 0
         ];
@@ -260,10 +220,6 @@ class TransactionRepository implements TransactionContract
             $method     = strtoupper($row->type);
             $balance    = (float) $row->balance;
 
-            if ($currency === 'USD' && $method === 'CREDIT') {
-                $balance = (float) Credit::where('status', '!=', 'Paid')->sum('pending_amount');
-            }
-
             $avgRate    = (float) ($row->avg_rate ?: 1);
             $balanceUsd = $currency === 'USD' ? $balance : round($balance / $avgRate, 2);
 
@@ -284,6 +240,27 @@ class TransactionRepository implements TransactionContract
 
             $sections[$currency]['section_total'] += $balance;
             $totalUsd += $balanceUsd;
+        }
+
+        // Garantizar que la caja de Crédito en USD siempre aparezca si hay créditos pendientes
+        $pendingCredit = (float) Credit::where('status', '!=', 'Paid')->sum('pending_amount');
+        if (!isset($sections['USD'])) {
+            $sections['USD'] = ['currency' => 'USD', 'section_total' => 0.0, 'wallets' => []];
+        }
+        $hasCreditWallet = collect($sections['USD']['wallets'])->contains('method', 'CREDIT');
+        if (!$hasCreditWallet && $pendingCredit > 0) {
+            $sections['USD']['wallets'][] = [
+                'key'                => 'CREDIT_USD',
+                'currency'           => 'USD',
+                'method'             => 'CREDIT',
+                'balance'            => round($pendingCredit, 2),
+                'total_in'           => round($pendingCredit, 2),
+                'total_out'          => 0.0,
+                'transactions_count' => 0,
+                'balance_usd'        => round($pendingCredit, 2),
+            ];
+            $sections['USD']['section_total'] += $pendingCredit;
+            $totalUsd += $pendingCredit;
         }
 
         $orderedSections = [];

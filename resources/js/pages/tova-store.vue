@@ -64,7 +64,13 @@ const cartTotalPrice = computed(() =>
 // ——— Formulario de orden ———
 const binanceRate = ref(45.50) // Tasa de cambio Binance de referencia para VES
 const copRate = ref(4000.00) // Tasa de cambio COP de referencia
-const selectedCurrency = ref(localStorage.getItem('ecommerce_currency') || 'USD') // Moneda seleccionada por el usuario (VES, USD, COP)
+const getInitialCurrency = () => {
+  const saved = localStorage.getItem('ecommerce_currency')
+  if (saved === 'VES' || saved === 'BS' || saved === 'Bs') return 'Bs'
+  if (saved === 'COP') return 'COP'
+  return 'USD'
+}
+const selectedCurrency = ref(getInitialCurrency()) // Moneda seleccionada por el usuario (Bs, USD, COP)
 const paymentProof = ref(null) // Archivo de comprobante de pago (solo transferencias)
 const orderForm = ref({
   customer_name: '',
@@ -351,8 +357,9 @@ const productPrice = (product, variant = null) => {
 
 
 const changeCurrency = (currency) => {
-  selectedCurrency.value = currency
-  localStorage.setItem('ecommerce_currency', currency)
+  const norm = (currency === 'VES' || currency === 'BS' || currency === 'Bs') ? 'Bs' : currency
+  selectedCurrency.value = norm
+  localStorage.setItem('ecommerce_currency', norm)
 }
 
 const getRateFor = (currency) => {
@@ -361,7 +368,7 @@ const getRateFor = (currency) => {
     const r = brandingStore.exchangeRates.find(x => x.currency_code === 'COP')
     return r ? Number(r.rate) : 3200
   }
-  if (currency === 'Bs' || currency === 'VES') {
+  if (currency === 'Bs' || currency === 'VES' || currency === 'BS') {
     const r = brandingStore.exchangeRates.find(x => x.currency_code === 'BINANCE')
     return r ? Number(r.rate) : 840
   }
@@ -374,7 +381,7 @@ const formatPrice = (n) => {
   
   if (selectedCurrency.value === 'COP') {
     return 'COP$ ' + new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 }).format(converted)
-  } else if (selectedCurrency.value === 'Bs' || selectedCurrency.value === 'VES') {
+  } else if (selectedCurrency.value === 'Bs' || selectedCurrency.value === 'VES' || selectedCurrency.value === 'BS') {
     return 'Bs. ' + new Intl.NumberFormat('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(converted)
   }
   return `$${Number(n).toFixed(2)}`
@@ -383,6 +390,7 @@ const formatPrice = (n) => {
 const currencyKeyMap = {
   VES: "BS",
   BS: "BS",
+  Bs: "BS",
   USD: "USD",
   COP: "COP",
 };
@@ -515,7 +523,7 @@ const submitOrder = async () => {
       orderDialog.value = false
       cartDrawer.value = false
       orderForm.value = { customer_name: '', customer_email: '', customer_phone: '', shipping_address: '', notes: '', payment_method: '', customer_document_type: 'V-', customer_document_number: '' }
-      selectedCurrency.value = ''
+      selectedCurrency.value = getInitialCurrency()
       paymentProof.value = null
       clientLookupState.value = 'idle'
       clientLookupMessage.value = ''
@@ -668,13 +676,13 @@ onMounted(async () => {
             </template>
             <VList density="compact">
               <VListItem @click="changeCurrency('USD')">
-                <VListItemTitle style="font-size: 11px; font-weight: 700; letter-spacing: 1px;">USD ($)</VListItemTitle>
+                <VListItemTitle style="font-size: 11px; font-weight: 700; letter-spacing: 1px;">USD</VListItemTitle>
               </VListItem>
               <VListItem @click="changeCurrency('COP')">
-                <VListItemTitle style="font-size: 11px; font-weight: 700; letter-spacing: 1px;">COP (COP$)</VListItemTitle>
+                <VListItemTitle style="font-size: 11px; font-weight: 700; letter-spacing: 1px;">COP</VListItemTitle>
               </VListItem>
               <VListItem @click="changeCurrency('Bs')">
-                <VListItemTitle style="font-size: 11px; font-weight: 700; letter-spacing: 1px;">Bs. (BINANCE)</VListItemTitle>
+                <VListItemTitle style="font-size: 11px; font-weight: 700; letter-spacing: 1px;">Bs</VListItemTitle>
               </VListItem>
             </VList>
           </VMenu>
@@ -1189,11 +1197,11 @@ onMounted(async () => {
             <!-- Selección de Moneda -->
             <div class="form-input-group" style="margin-bottom: 20px;">
               <label style="font-size: 11px; font-weight: 700; letter-spacing: 1px; margin-bottom: 8px; display: block;">MONEDA DE PAGO *</label>
-              <select v-model="selectedCurrency" style="width: 100%; padding: 12px; border: 1px solid var(--editorial-border); background-color: #FFFFFF; color: #1E293B; font-size: 13px; font-family: inherit; font-weight: 600; outline: none; border-radius: 4px;" @change="orderForm.payment_method = ''">
-                <option value="" disabled selected>Seleccione la moneda...</option>
-                <option value="VES">VES - Bolívares</option>
-                <option value="USD">USD - Dólares</option>
-                <option value="COP">COP - Pesos Colombianos</option>
+              <select v-model="selectedCurrency" style="width: 100%; padding: 12px; border: 1px solid var(--editorial-border); background-color: #FFFFFF; color: #1E293B; font-size: 13px; font-family: inherit; font-weight: 600; outline: none; border-radius: 4px;" @change="orderForm.payment_method = ''; localStorage.setItem('ecommerce_currency', selectedCurrency)">
+                <option value="" disabled>Seleccione la moneda...</option>
+                <option value="Bs">Bs</option>
+                <option value="USD">USD</option>
+                <option value="COP">COP</option>
               </select>
             </div>
 
@@ -1226,8 +1234,8 @@ onMounted(async () => {
 
                 <!-- Monto Total a Pagar calculado según la moneda -->
                 <div style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed #E2E8F0;">
-                  <template v-if="selectedCurrency === 'VES'">
-                    <p style="font-size: 11px; color: #64748B; margin-bottom: 4px;"><strong>Tasa de cambio:</strong> {{ binanceRate.toFixed(2) }} VES/USD</p>
+                  <template v-if="selectedCurrency === 'VES' || selectedCurrency === 'Bs' || selectedCurrency === 'BS'">
+                    <p style="font-size: 11px; color: #64748B; margin-bottom: 4px;"><strong>Tasa de cambio:</strong> {{ binanceRate.toFixed(2) }} Bs/USD</p>
                     <p style="font-size: 15px; color: #0F172A; margin: 0;"><strong>Monto Total a Pagar:</strong> <span style="font-weight: 800; color: var(--editorial-black);">Bs. {{ (cartTotalPrice * binanceRate).toFixed(2) }}</span></p>
                   </template>
                   <template v-else-if="selectedCurrency === 'COP'">
