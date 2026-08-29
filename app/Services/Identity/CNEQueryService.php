@@ -28,7 +28,7 @@ class CNEQueryService
             $token = config('services.cedula_vzla.token');
 
             if (!$appId || !$token) {
-                \Log::error("CNE: CEDULA_API_APP_ID o CEDULA_API_TOKEN no están configurados en .env");
+                \Log::debug("CNE: CEDULA_API_APP_ID o CEDULA_API_TOKEN no están configurados en .env");
                 return null;
             }
 

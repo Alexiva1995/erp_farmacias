@@ -358,7 +358,10 @@ class ExpensesRepository implements Expenses
 
     private function convertAmountToBs($amount, $conversion_rate, $rate)
     {
-        return ($amount === 0.0 ? 0.0 : $amount / $conversion_rate) * $rate;
+        if (empty($conversion_rate) || (float) $conversion_rate == 0.0) {
+            return 0.0;
+        }
+        return ((float) $amount === 0.0 ? 0.0 : (float) $amount / (float) $conversion_rate) * (float) $rate;
     }
 
     public function update(array $data): Expense

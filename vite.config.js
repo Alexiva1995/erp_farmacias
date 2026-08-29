@@ -54,7 +54,7 @@ export default defineConfig({
     }), // Docs: https://github.com/antfu/unplugin-vue-components#unplugin-vue-components
     Components({
       dirs: ['resources/js/@core/components', 'resources/js/views/demos', 'resources/js/components'],
-      dts: true,
+      dts: process.env.NODE_ENV === 'production' ? false : true,
       resolvers: [
         componentName => {
         // Auto import `VueApexCharts`
