@@ -389,28 +389,28 @@ class SocialBenefitRepository implements \App\Contracts\SocialBenefit
 
 
     // Usar salario integral para cálculos de prestaciones sociales
-    $socialBenefitsAmount = round($socialBenefitsDays * $integralSalary, 2);
-    $vacationVoucherAmount = round($vacationVoucherDays * $integralSalary, 2);
-    $vacBonusVoucherAmount = round($vacBonusVoucherDays * $integralSalary, 2);
-    $earningsVoucherAmount = round($earningsVoucherDays * $integralSalary, 2);
+    $socialBenefitsAmount = round((float)$socialBenefitsDays * (float)$integralSalary, 2);
+    $vacationVoucherAmount = round((float)$vacationVoucherDays * (float)$integralSalary, 2);
+    $vacBonusVoucherAmount = round((float)$vacBonusVoucherDays * (float)$integralSalary, 2);
+    $earningsVoucherAmount = round((float)$earningsVoucherDays * (float)$integralSalary, 2);
 
 
-    $totalSettlementAmount = round($socialBenefitsAmount
-      + $vacationVoucherAmount
-      + $vacBonusVoucherAmount
-      + $earningsVoucherAmount, 2);
+    $totalSettlementAmount = round((float)$socialBenefitsAmount
+      + (float)$vacationVoucherAmount
+      + (float)$vacBonusVoucherAmount
+      + (float)$earningsVoucherAmount, 2);
 
 
-    $totalDeductions = round($vacationDeduction
-      + $vacationBonusDeduction
-      + $earningsDeduction, 2);
+    $totalDeductions = round((float)$vacationDeduction
+      + (float)$vacationBonusDeduction
+      + (float)$earningsDeduction, 2);
 
 
-    $totalSettlementUsd = round($totalSettlementAmount / $currency, 2);
-    $totalDeductionsUsd = round($totalDeductions / $currency, 2);
+    $totalSettlementUsd = round((float)$totalSettlementAmount / (float)$currency, 2);
+    $totalDeductionsUsd = round((float)$totalDeductions / (float)$currency, 2);
 
     // Prevenir montos negativos - si las deducciones son mayores que el total, usar 0
-    $finalUsd = max(0, round($totalSettlementUsd - $totalDeductionsUsd, 2));
+    $finalUsd = max(0, round((float)$totalSettlementUsd - (float)$totalDeductionsUsd, 2));
     
     // Si hay deducciones manuales adicionales en USD, restarlas
     if (isset($overrides['additional_deductions_usd']) && !empty($overrides['additional_deductions_usd'])) {
@@ -426,7 +426,7 @@ class SocialBenefitRepository implements \App\Contracts\SocialBenefit
       'active_years' => $activeYears,
       'currency' => $currency,
       'daily_wage' => $dailyWage,
-      'integral_salary' => round($integralSalary, 2),
+      'integral_salary' => round((float)$integralSalary, 2),
       'social_benefits_days' => $socialBenefitsDays,
       'social_benefits_amount' => $socialBenefitsAmount,
       'vacation_voucher_days' => $vacationVoucherDays,
@@ -649,8 +649,8 @@ class SocialBenefitRepository implements \App\Contracts\SocialBenefit
 
     return $salaries->map(function ($salary) {
       return [
-        'amount_bs' => round($salary->amount_bs_calculated, 2),
-        'amount_original' => round($salary->amount_original, 2),
+        'amount_bs' => round((float) $salary->amount_bs_calculated, 2),
+        'amount_original' => round((float) $salary->amount_original, 2),
         'exchange_rate' => $salary->exchange_rate,
         'payslip_date' => $salary->payslip_date,
         'detected_currency' => $salary->detected_currency
@@ -698,12 +698,12 @@ class SocialBenefitRepository implements \App\Contracts\SocialBenefit
 
     if ($savedSettlement && $savedSettlement->total_settlement > 0 && $savedSettlement->social_benefits_amount > 0) {
       $integralSalary = $savedSettlement->social_benefits_days > 0 
-        ? round($savedSettlement->social_benefits_amount / $savedSettlement->social_benefits_days, 2) 
+        ? round((float)$savedSettlement->social_benefits_amount / (float)$savedSettlement->social_benefits_days, 2) 
         : 0;
-      $dailyWage = round($integralSalary / (1 + (30 / 360) + (15 / 360)), 2);
+      $dailyWage = round((float)$integralSalary / (1 + (30 / 360) + (15 / 360)), 2);
       $baseSalary = isset($overrides['base_salary_usd']) && (float)$overrides['base_salary_usd'] > 0
-        ? (float)$overrides['base_salary_usd'] * $savedSettlement->currency
-        : round($dailyWage * 30, 2);
+        ? (float)$overrides['base_salary_usd'] * (float)$savedSettlement->currency
+        : round((float)$dailyWage * 30, 2);
 
       $pdfData = [
         'name' => $employee->name,
@@ -794,9 +794,13 @@ class SocialBenefitRepository implements \App\Contracts\SocialBenefit
    */
   private function getDetailedSeniority($startDate, $endDate): string
   {
-    $start = $this->parseDate($startDate);
-    $end = $this->parseDate($endDate);
+    $start = $this->parseDate($startDate)->copy();
+    $end = $this->parseDate($endDate)->copy();
     
+    if ($start->gt($end)) {
+      return '0 días';
+    }
+
     $years = (int) $start->diffInYears($end);
     $start->addYears($years);
     
@@ -818,14 +822,22 @@ class SocialBenefitRepository implements \App\Contracts\SocialBenefit
 
   private function parseDate($date)
   {
-    if ($date instanceof Carbon) return $date;
+    if (empty($date)) return Carbon::now()->startOfDay();
+    if ($date instanceof Carbon) return $date->copy()->startOfDay();
     
     // Intentar formato DD/MM/YYYY
-    if (preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $date)) {
-      return Carbon::createFromFormat('d/m/Y', $date);
+    if (is_string($date) && preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $date)) {
+      try {
+        return Carbon::createFromFormat('d/m/Y', $date)->startOfDay();
+      } catch (\Exception $e) {
+        // Fallback abajo
+      }
     }
     
-    // Por defecto Carbon::parse
-    return Carbon::parse($date);
+    try {
+      return Carbon::parse($date)->startOfDay();
+    } catch (\Exception $e) {
+      return Carbon::now()->startOfDay();
+    }
   }
 }

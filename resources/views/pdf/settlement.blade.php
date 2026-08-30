@@ -146,8 +146,8 @@
                 <td><strong>ANTIGÜEDAD:</strong> {{ $detailed_seniority }}</td>
             </tr>
             <tr>
-                <td><strong>SALARIO BASE RECIBIDO:</strong> Bs. {{ number_format($base_salary, 2, ',', '.') }}</td>
-                <td><strong>SALARIO INTEGRAL:</strong> Bs. {{ number_format($integral_salary, 2, ',', '.') }}</td>
+                <td><strong>SALARIO BASE RECIBIDO:</strong> Bs. {{ number_format((float)($base_salary ?? 0), 2, ',', '.') }}</td>
+                <td><strong>SALARIO INTEGRAL:</strong> Bs. {{ number_format((float)($integral_salary ?? 0), 2, ',', '.') }}</td>
             </tr>
         </table>
     </div>
@@ -164,27 +164,27 @@
         <tbody>
             <tr>
                 <td>Prestaciones Sociales (Garantía de Prestaciones)</td>
-                <td class="text-center">{{ $social_benefits_days }}</td>
-                <td class="text-right">{{ number_format($social_benefits_amount, 2, ',', '.') }}</td>
+                <td class="text-center">{{ (float)($social_benefits_days ?? 0) }}</td>
+                <td class="text-right">{{ number_format((float)($social_benefits_amount ?? 0), 2, ',', '.') }}</td>
             </tr>
             <tr>
                 <td>Vacaciones Fraccionadas Legales</td>
-                <td class="text-center">{{ $vacation_voucher_days }}</td>
-                <td class="text-right">{{ number_format($vacation_voucher_amount, 2, ',', '.') }}</td>
+                <td class="text-center">{{ (float)($vacation_voucher_days ?? 0) }}</td>
+                <td class="text-right">{{ number_format((float)($vacation_voucher_amount ?? 0), 2, ',', '.') }}</td>
             </tr>
             <tr>
                 <td>Bono Vacacional Fraccionado conforme a Ley</td>
-                <td class="text-center">{{ $vacation_bonus_voucher_days }}</td>
-                <td class="text-right">{{ number_format($vacation_bonus_voucher_amount, 2, ',', '.') }}</td>
+                <td class="text-center">{{ (float)($vacation_bonus_voucher_days ?? 0) }}</td>
+                <td class="text-right">{{ number_format((float)($vacation_bonus_voucher_amount ?? 0), 2, ',', '.') }}</td>
             </tr>
             <tr>
                 <td>Utilidades Fraccionadas (Bonificación de Fin de Año)</td>
-                <td class="text-center">{{ $earnings_voucher_days }}</td>
-                <td class="text-right">{{ number_format($earnings_voucher_amount, 2, ',', '.') }}</td>
+                <td class="text-center">{{ (float)($earnings_voucher_days ?? 0) }}</td>
+                <td class="text-right">{{ number_format((float)($earnings_voucher_amount ?? 0), 2, ',', '.') }}</td>
             </tr>
             <tr class="total-row">
                 <td colspan="2" class="text-right">TOTAL BRUTO DEVENGADO:</td>
-                <td class="text-right">Bs. {{ number_format($total_settlement_amount, 2, ',', '.') }}</td>
+                <td class="text-right">Bs. {{ number_format((float)($total_settlement_amount ?? 0), 2, ',', '.') }}</td>
             </tr>
         </tbody>
     </table>
@@ -198,39 +198,39 @@
             </tr>
         </thead>
         <tbody>
-            @if($vacation_voucher_deduction > 0)
+            @if((float)($vacation_voucher_deduction ?? 0) > 0)
             <tr>
                 <td>Anticipo de Vacaciones pagadas durante el periodo</td>
-                <td class="text-right">{{ number_format($vacation_voucher_deduction, 2, ',', '.') }}</td>
+                <td class="text-right">{{ number_format((float)($vacation_voucher_deduction ?? 0), 2, ',', '.') }}</td>
             </tr>
             @endif
-            @if($vacation_bonus_voucher_deduction > 0)
+            @if((float)($vacation_bonus_voucher_deduction ?? 0) > 0)
             <tr>
                 <td>Anticipo de Bono Vacacional pagado durante el periodo</td>
-                <td class="text-right">{{ number_format($vacation_bonus_voucher_deduction, 2, ',', '.') }}</td>
+                <td class="text-right">{{ number_format((float)($vacation_bonus_voucher_deduction ?? 0), 2, ',', '.') }}</td>
             </tr>
             @endif
-            @if($earnings_voucher_deduction > 0)
+            @if((float)($earnings_voucher_deduction ?? 0) > 0)
             <tr>
                 <td>Anticipo de Utilidades pagado durante el periodo</td>
-                <td class="text-right">{{ number_format($earnings_voucher_deduction, 2, ',', '.') }}</td>
+                <td class="text-right">{{ number_format((float)($earnings_voucher_deduction ?? 0), 2, ',', '.') }}</td>
             </tr>
             @endif
-            @if(isset($additional_deductions_bs) && $additional_deductions_bs > 0)
+            @if(isset($additional_deductions_bs) && (float)$additional_deductions_bs > 0)
             <tr>
                 <td>Deducciones Adicionales (Préstamos/Otros conceptos)</td>
-                <td class="text-right">{{ number_format($additional_deductions_bs, 2, ',', '.') }}</td>
+                <td class="text-right">{{ number_format((float)$additional_deductions_bs, 2, ',', '.') }}</td>
             </tr>
             @endif
             <tr class="total-row">
                 <td class="text-right">TOTAL DEDUCCIONES:</td>
-                <td class="text-right">Bs. {{ number_format($total_deductions, 2, ',', '.') }}</td>
+                <td class="text-right">Bs. {{ number_format((float)($total_deductions ?? 0), 2, ',', '.') }}</td>
             </tr>
         </tbody>
     </table>
 
     <div class="totals-summary text-right">
-        <span class="net-amount">MONTO NETO A LIQUIDAR: Bs. {{ number_format($total_settlement_amount - $total_deductions, 2, ',', '.') }}</span>
+        <span class="net-amount">MONTO NETO A LIQUIDAR: Bs. {{ number_format((float)($total_settlement_amount ?? 0) - (float)($total_deductions ?? 0), 2, ',', '.') }}</span>
     </div>
 
     <div class="legal-text">

@@ -87,6 +87,7 @@ class SocialBenefitController extends Controller
             $filename = 'liquidacion-' . $employee->identification . '.pdf';
             return $pdf->download($filename);
         } catch (\Exception $e) {
+            \Log::error('Error en downloadSettlement: ' . $e->getMessage() . ' | Trace: ' . $e->getTraceAsString());
             return ApiResponse::error('No se pudo generar el documento de liquidación: ' . $e->getMessage(), 500);
         }
     }
