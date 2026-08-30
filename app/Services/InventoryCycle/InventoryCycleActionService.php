@@ -398,7 +398,7 @@ class InventoryCycleActionService
 
         return [
             'success' => true,
-            'message' => "Conteo para '{$productCount->product->name}' rechazado.",
+            'message' => "Conteo rechazado. No se realizaron cambios en el inventario de '{$productCount->product->name}'.",
             'data' => $productCount
         ];
     }

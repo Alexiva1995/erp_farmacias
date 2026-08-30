@@ -58,45 +58,45 @@ class SocialBenefitRepository implements \App\Contracts\SocialBenefit
 
     if (DB::connection()->getDriverName() === 'sqlite') {
         $activeYearsExpr = "(julianday('{$currentDate}') - julianday(employees.created_at)) / 365.25";
-        $vacationExpr = "MAX(CASE
-                  WHEN sc.name = 'Salario Base' THEN
-                    ROUND(usd.amount / 30.0, 2) *
+        $vacationExpr = "MAX(CASE 
+                  WHEN sc.name IN ('Salario Base', 'Salario Básico Mensual') THEN
+                    ROUND(usd.amount / 30.0, 2) * 
                     (15 + CASE WHEN $activeYearsExpr > 1 THEN CAST($activeYearsExpr AS INTEGER) - 1 ELSE 0 END)
-                  ELSE 0
+                  ELSE 0 
                 END) AS vacation_voucher";
-        $vacationBonusExpr = "MAX(CASE
-                  WHEN sc.name = 'Salario Base' THEN
-                    ROUND(usd.amount / 30.0, 2) *
+        $vacationBonusExpr = "MAX(CASE 
+                  WHEN sc.name IN ('Salario Base', 'Salario Básico Mensual') THEN
+                    ROUND(usd.amount / 30.0, 2) * 
                     (15 + CASE WHEN $activeYearsExpr > 1 THEN CAST($activeYearsExpr AS INTEGER) - 1 ELSE 0 END)
-                  ELSE 0
+                  ELSE 0 
                 END) AS vacation_bonus_voucher";
-        $earningsExpr = "MAX(CASE
-                  WHEN sc.name = 'Salario Base' THEN
-                    ROUND(usd.amount / 30.0, 2) *
+        $earningsExpr = "MAX(CASE 
+                  WHEN sc.name IN ('Salario Base', 'Salario Básico Mensual') THEN
+                    ROUND(usd.amount / 30.0, 2) * 
                     CAST($activeYearsExpr AS INTEGER)
-                  ELSE 0
+                  ELSE 0 
                 END) AS earnings_voucher";
     } else {
         $activeYearsExpr = "DATEDIFF('{$currentDate}', employees.created_at) / 365.25";
-        $vacationExpr = "MAX(CASE
-                  WHEN sc.name = 'Salario Base' THEN
-                    ROUND(usd.amount / 30, 2) *
-                    (15 + IF(DATEDIFF('{$currentDate}', employees.created_at) / 365.25 > 1,
+        $vacationExpr = "MAX(CASE 
+                  WHEN sc.name IN ('Salario Base', 'Salario Básico Mensual') THEN
+                    ROUND(usd.amount / 30, 2) * 
+                    (15 + IF(DATEDIFF('{$currentDate}', employees.created_at) / 365.25 > 1, 
                              FLOOR(DATEDIFF('{$currentDate}', employees.created_at) / 365.25) - 1, 0))
-                  ELSE 0
+                  ELSE 0 
                 END) AS vacation_voucher";
-        $vacationBonusExpr = "MAX(CASE
-                  WHEN sc.name = 'Salario Base' THEN
-                    ROUND(usd.amount / 30, 2) *
-                    (15 + IF(DATEDIFF('{$currentDate}', employees.created_at) / 365.25 > 1,
+        $vacationBonusExpr = "MAX(CASE 
+                  WHEN sc.name IN ('Salario Base', 'Salario Básico Mensual') THEN
+                    ROUND(usd.amount / 30, 2) * 
+                    (15 + IF(DATEDIFF('{$currentDate}', employees.created_at) / 365.25 > 1, 
                              FLOOR(DATEDIFF('{$currentDate}', employees.created_at) / 365.25) - 1, 0))
-                  ELSE 0
+                  ELSE 0 
                 END) AS vacation_bonus_voucher";
-        $earningsExpr = "MAX(CASE
-                  WHEN sc.name = 'Salario Base' THEN
-                    ROUND(usd.amount / 30, 2) *
+        $earningsExpr = "MAX(CASE 
+                  WHEN sc.name IN ('Salario Base', 'Salario Básico Mensual') THEN
+                    ROUND(usd.amount / 30, 2) * 
                     FLOOR(DATEDIFF('{$currentDate}', employees.created_at) / 365.25)
-                  ELSE 0
+                  ELSE 0 
                 END) AS earnings_voucher";
     }
 
@@ -264,14 +264,14 @@ class SocialBenefitRepository implements \App\Contracts\SocialBenefit
       ->leftJoin('payslips as ps', 'ps.id', '=', 'pd.payslip_id')
       ->leftJoin('salary_concepts as sc', 'sc.id', '=', 'usd.salary_concept_id')
       ->where('employees.id', $employee->id)
-      ->where('sc.name', 'Salario Base')
+      ->whereIn('sc.name', ['Salario Base', 'Salario Básico Mensual'])
       ->whereNotNull('ps.exchange_rate')
       ->groupBy(['employees.id', 'employees.created_at'])
       ->orderByDesc(DB::raw('MAX(pd.created_at)'))
       ->limit(6)
       ->first();
 
-    $amount = round((float) $settlement?->amount ?? 0, 2);
+    $amount = round((float) ($settlement?->amount ?? 0), 2);
     // Usar el cálculo de Carbon en lugar del SQL que puede fallar
     // $activeYears = (int) $settlement?->active_years ?? 1;
 
@@ -279,9 +279,8 @@ class SocialBenefitRepository implements \App\Contracts\SocialBenefit
     $averageSalaryData = $this->calculateAverageSalaryForBenefits($employee, $currentDate);
     
     // Si se proporciona un salario base manual en USD, sobrescribir
-    if (isset($overrides['base_salary_usd']) && $overrides['base_salary_usd'] > 0) {
-        $manualMonthlyBs = $overrides['base_salary_usd'] * $currency;
-        $manualQuincenalBs = $manualMonthlyBs / 2;
+    if (isset($overrides['base_salary_usd']) && (float)$overrides['base_salary_usd'] > 0) {
+        $manualMonthlyBs = (float)$overrides['base_salary_usd'] * $currency;
         
         $averageSalaryData = [
             'average_salary' => round($manualMonthlyBs, 2),
@@ -291,10 +290,27 @@ class SocialBenefitRepository implements \App\Contracts\SocialBenefit
         ];
     }
 
-
     // Usar el salario promedio si está disponible, sino usar el amount calculado
     $baseSalary = $averageSalaryData['average_salary'] > 0 ? $averageSalaryData['average_salary'] : $amount;
-    $dailyWage = $baseSalary === 0 ? 0 : round($baseSalary / 30, 2);
+
+    // Fallback: si no hay nóminas previas, obtener el salario base asignado en el perfil del usuario
+    if ($baseSalary <= 0) {
+        $assignedSalaryUsd = DB::table('employees as e')
+            ->leftJoin('users as u', 'u.id', '=', 'e.user_id')
+            ->leftJoin('users_salary_details as usd', 'usd.user_id', '=', 'u.id')
+            ->leftJoin('salary_concepts as sc', 'sc.id', '=', 'usd.salary_concept_id')
+            ->where('e.id', $employee->id)
+            ->whereIn('sc.name', ['Salario Base', 'Salario Básico Mensual'])
+            ->value('usd.amount');
+
+        if ($assignedSalaryUsd && (float)$assignedSalaryUsd > 0) {
+            $baseSalary = round((float)$assignedSalaryUsd * $currency, 2);
+            $averageSalaryData['average_salary'] = $baseSalary;
+            $averageSalaryData['calculation_details'] = "Salario asignado en perfil: {$assignedSalaryUsd} USD × {$currency} BS = " . number_format($baseSalary, 2) . " BS mensual.";
+        }
+    }
+
+    $dailyWage = $baseSalary == 0 ? 0 : round($baseSalary / 30, 2);
 
     // Calcular salario integral según fórmula: Salario Diario + [(30 × Salario Diario) ÷ 360] + [(15 × Salario Diario) ÷ 360]
     $integralSalary = $dailyWage + (30 * $dailyWage / 360) + (15 * $dailyWage / 360);
@@ -564,7 +580,7 @@ class SocialBenefitRepository implements \App\Contracts\SocialBenefit
       ->leftJoin('payslips as ps', 'ps.id', '=', 'pd.payslip_id')
       ->leftJoin('salary_concepts as sc', 'sc.id', '=', 'usd.salary_concept_id')
       ->where('employees.id', $employee->id)
-      ->where('sc.name', 'Salario Base')
+      ->whereIn('sc.name', ['Salario Base', 'Salario Básico Mensual'])
       ->whereNotNull('pd.amount')
       ->whereNotNull('ps.exchange_rate');
 
@@ -592,7 +608,7 @@ class SocialBenefitRepository implements \App\Contracts\SocialBenefit
         ->leftJoin('payslips as ps', 'ps.id', '=', 'pd.payslip_id')
         ->leftJoin('salary_concepts as sc', 'sc.id', '=', 'usd.salary_concept_id')
         ->where('employees.id', $employee->id)
-        ->where('sc.name', 'Salario Base')
+        ->whereIn('sc.name', ['Salario Base', 'Salario Básico Mensual'])
         ->whereNotNull('pd.amount');
 
       if ($maxDate) {
@@ -676,11 +692,19 @@ class SocialBenefitRepository implements \App\Contracts\SocialBenefit
 
   public function generatePdf(Employee $employee, array $overrides = []): \Barryvdh\DomPDF\PDF
   {
-    // Intentar obtener datos guardados de la liquidación si ya fue procesada
+    // Intentar obtener datos guardados de la liquidación si ya fue procesada con montos válidos
     $savedSettlement = $employee->settlement;
     $resignation = $employee->resignation;
 
-    if ($savedSettlement) {
+    if ($savedSettlement && $savedSettlement->total_settlement > 0 && $savedSettlement->social_benefits_amount > 0) {
+      $integralSalary = $savedSettlement->social_benefits_days > 0 
+        ? round($savedSettlement->social_benefits_amount / $savedSettlement->social_benefits_days, 2) 
+        : 0;
+      $dailyWage = round($integralSalary / (1 + (30 / 360) + (15 / 360)), 2);
+      $baseSalary = isset($overrides['base_salary_usd']) && (float)$overrides['base_salary_usd'] > 0
+        ? (float)$overrides['base_salary_usd'] * $savedSettlement->currency
+        : round($dailyWage * 30, 2);
+
       $pdfData = [
         'name' => $employee->name,
         'last_name' => $employee->last_name,
@@ -692,10 +716,10 @@ class SocialBenefitRepository implements \App\Contracts\SocialBenefit
         'company_logo' => $employee->id == 15 ? 'logoToffle.png' : 'logoDonative.png',
         'starting_date' => isset($overrides['hire_date']) && !empty($overrides['hire_date']) ? $this->parseDate($overrides['hire_date'])->format('d/m/Y') : ($resignation?->start_date?->format('d/m/Y') ?? $employee->created_at?->format('d/m/Y')),
         'resignation_date' => isset($overrides['resignation_date']) && !empty($overrides['resignation_date']) ? $this->parseDate($overrides['resignation_date'])->format('d/m/Y') : ($resignation?->effective_date?->format('d/m/Y') ?? $savedSettlement->created_at->format('d/m/Y')),
-        'active_years' => 0, // Se calculará abajo si es necesario para el string
+        'active_years' => 0, // Se calculará abajo
         'detailed_seniority' => '', // Se calculará abajo
-        'base_salary' => isset($overrides['base_salary_usd']) && $overrides['base_salary_usd'] > 0 ? $overrides['base_salary_usd'] * $savedSettlement->currency : 0,
-        'integral_salary' => $savedSettlement->total_settlement > 0 ? round($savedSettlement->social_benefits_amount / ($savedSettlement->social_benefits_days ?: 1), 2) : 0,
+        'base_salary' => $baseSalary,
+        'integral_salary' => $integralSalary,
         'social_benefits_days' => $savedSettlement->social_benefits_days,
         'social_benefits_amount' => $savedSettlement->social_benefits_amount,
         'vacation_voucher_days' => $savedSettlement->vacation_voucher_days,
@@ -721,13 +745,8 @@ class SocialBenefitRepository implements \App\Contracts\SocialBenefit
       $pdfData['detailed_seniority'] = $this->getDetailedSeniority($start, $end);
       
     } else {
-      // Si no hay datos guardados, proceder con el recálculo (comportamiento original)
+      // Proceder con el cálculo dinámico completo
       $data = $this->getSettlementData($employee, $overrides);
-
-      // Asegurar que el salario base no sea 0 si se pasó un override
-      if (isset($overrides['base_salary_usd']) && $overrides['base_salary_usd'] > 0) {
-          $data['base_salary'] = $overrides['base_salary_usd'] * $this->getCurrentExchangeRate();
-      }
 
       $pdfData = [
         'name' => $employee->name,

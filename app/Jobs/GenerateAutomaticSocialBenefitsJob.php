@@ -247,7 +247,7 @@ class GenerateAutomaticSocialBenefitsJob implements ShouldQueue
                     ->where('er.currency_code', '=', 'USD');
             })
             ->where('employees.id', $employee->id)
-            ->where('sc.name', 'Salario Base')
+            ->whereIn('sc.name', ['Salario Base', 'Salario Básico Mensual'])
             ->whereNotNull('pd.amount')
             ->whereNotNull('er.rate')
             ->orderByDesc('ps.payslip_date')
