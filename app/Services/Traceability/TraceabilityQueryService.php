@@ -20,8 +20,8 @@ class TraceabilityQueryService
     {
         $query = InventoryMovement::query()
             ->select('inventory_movements.*')
-            ->selectRaw('SUM(inventory_movements.quantity) OVER (PARTITION BY inventory_movements.product_id ORDER BY inventory_movements.id ASC) as global_stock_after')
-            ->selectRaw('(SUM(inventory_movements.quantity) OVER (PARTITION BY inventory_movements.product_id ORDER BY inventory_movements.id ASC) - inventory_movements.quantity) as global_stock_before')
+            ->selectRaw('inventory_movements.stock_after as global_stock_after')
+            ->selectRaw('inventory_movements.stock_before as global_stock_before')
             ->with([
                 'user:id,username,email',
                 'user.employee',
