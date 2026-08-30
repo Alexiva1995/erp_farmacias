@@ -18,9 +18,7 @@ class ProductRepository
 
     public function __construct()
     {
-        $isSqlite = DB::connection()->getDriverName() === 'sqlite';
-        $curdate = $isSqlite ? 'DATE("now")' : 'CURDATE()';
-        $this->subConsultaParaCalcularStockPorLotes = "COALESCE((SELECT SUM(quantity) FROM product_lots WHERE product_lots.product_id = products.id AND (expiration_date >= {$curdate} OR expiration_date IS NULL)), 0)";
+        $this->subConsultaParaCalcularStockPorLotes = "COALESCE((SELECT SUM(quantity) FROM product_lots WHERE product_lots.product_id = products.id), 0)";
     }
 
     public function consultProductById(int $id): ?Product

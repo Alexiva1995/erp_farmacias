@@ -66,7 +66,7 @@ class TraceabilityAndAuditTest extends TestCase
         $movement = InventoryMovement::create([
             'product_id' => $this->psychotropicProduct->id,
             'movement_type' => 'sale',
-            'quantity' => 1,
+            'quantity' => -1,
             'stock_before' => 5,
             'stock_after' => 4,
             'user_id' => $this->admin->id,

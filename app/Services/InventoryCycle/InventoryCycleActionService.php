@@ -155,13 +155,9 @@ class InventoryCycleActionService
             return 0;
         }
 
-        $today = now()->startOfDay();
-
-        return $product->lots
-            ->filter(function ($lot) use ($today) {
-                return $lot->expiration_date &&
-                    $lot->expiration_date >= $today &&
-                    $lot->quantity > 0;
+        return (int) $product->lots
+            ->filter(function ($lot) {
+                return $lot->quantity > 0;
             })
             ->sum('quantity');
     }

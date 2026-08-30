@@ -1068,6 +1068,8 @@ class OrderActionService
                                 });
                             }
                             
+                            $globalStockAfter = (float) ProductLot::where('product_id', $ingredient->id)->sum('quantity');
+
                             // Registrar el movimiento de inventario con el lote exacto vendido
                             \App\Models\InventoryMovement::create([
                                 'product_id' => $ingredient->id,
@@ -1079,8 +1081,8 @@ class OrderActionService
                                 'order_id' => $orderId->id,
                                 'dish_id' => $dish->id,
                                 'user_id' => $orderId->seller_id,
-                                'stock_before' => $lot->quantity + $taken,
-                                'stock_after' => $lot->quantity,
+                                'stock_before' => $globalStockAfter + $taken,
+                                'stock_after' => $globalStockAfter,
                                 'movement_date' => \Carbon\Carbon::now(),
                             ]);
                         }
@@ -1102,6 +1104,8 @@ class OrderActionService
                                 $fallbackLot->save();
                             });
                             
+                            $globalStockAfterFallback = (float) ProductLot::where('product_id', $ingredient->id)->sum('quantity');
+
                             \App\Models\InventoryMovement::create([
                                 'product_id' => $ingredient->id,
                                 'product_lot_id' => $fallbackLot->id,
@@ -1112,8 +1116,8 @@ class OrderActionService
                                 'order_id' => $orderId->id,
                                 'dish_id' => $dish->id,
                                 'user_id' => $orderId->seller_id,
-                                'stock_before' => $fallbackLot->quantity + $quantityToReduce,
-                                'stock_after' => $fallbackLot->quantity,
+                                'stock_before' => $globalStockAfterFallback + $quantityToReduce,
+                                'stock_after' => $globalStockAfterFallback,
                                 'movement_date' => \Carbon\Carbon::now(),
                             ]);
                             
@@ -1148,6 +1152,8 @@ class OrderActionService
                             });
                         }
 
+                        $globalStockAfter = (float) ProductLot::where('product_id', $detail->product_id)->sum('quantity');
+
                         // Registrar el movimiento de inventario con el lote exacto vendido
                         \App\Models\InventoryMovement::create([
                             'product_id' => $detail->product_id,
@@ -1158,8 +1164,8 @@ class OrderActionService
                             'supplier_id' => null,
                             'order_id' => $orderId->id,
                             'user_id' => $orderId->seller_id,
-                            'stock_before' => $lot->quantity + $taken,
-                            'stock_after' => $lot->quantity,
+                            'stock_before' => $globalStockAfter + $taken,
+                            'stock_after' => $globalStockAfter,
                             'movement_date' => \Carbon\Carbon::now(),
                         ]);
 

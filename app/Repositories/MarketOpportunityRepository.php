@@ -53,10 +53,6 @@ class MarketOpportunityRepository implements MarketOpportunityRepositoryInterfac
         $stockAggregated = DB::table('product_lots')
             ->select('product_id', DB::raw('COALESCE(SUM(quantity), 0) as lote_quantity'))
             ->where('quantity', '>', 0)
-            ->where(function ($q) use ($currentDateExpr) {
-                $q->whereNull('expiration_date')
-                  ->orWhereRaw("expiration_date >= $currentDateExpr");
-            })
             ->groupBy('product_id');
 
         $autoOrderAggregated = DB::table('auto_order_details as aod')
