@@ -332,6 +332,90 @@ class InvoiceController extends Controller
     }
 
     /**
+     * Sincroniza las facturas de todos los proveedores automatizados (Dronena, Drocerca, Mafarta).
+     */
+    public function syncAll(Request $request)
+    {
+        try {
+            $results = [
+                'dronena' => null,
+                'drocerca' => null,
+                'mafarta' => null,
+                'total_updated' => 0,
+                'total_created' => 0,
+                'total_skipped' => 0,
+                'discrepancies' => [
+                    'paid_in_erp_pending_in_dronena' => [],
+                    'pending_in_erp_paid_in_dronena' => [],
+                    'total_discrepancies' => 0,
+                ],
+                'messages' => [],
+                'errors' => [],
+            ];
+
+            // 1. Dronena
+            try {
+                $dronena = $this->dronenaScraperService->syncInvoices();
+                $results['dronena'] = $dronena;
+                $results['total_updated'] += ($dronena['updated'] ?? 0);
+                $results['total_skipped'] += ($dronena['skipped'] ?? 0);
+                if (!empty($dronena['discrepancies'])) {
+                    $results['discrepancies'] = $dronena['discrepancies'];
+                }
+                $results['messages'][] = "Dronena: {$dronena['updated']} actualizadas";
+            } catch (\Throwable $e) {
+                Log::error('Error syncAll Dronena: ' . $e->getMessage());
+                $results['errors'][] = 'Dronena: ' . $e->getMessage();
+            }
+
+            // 2. Drocerca
+            try {
+                $drocerca = $this->drocercaScraperService->syncInvoices();
+                $results['drocerca'] = $drocerca;
+                $results['total_updated'] += ($drocerca['updated'] ?? 0);
+                $results['total_created'] += ($drocerca['created'] ?? 0);
+                $results['total_skipped'] += ($drocerca['skipped'] ?? 0);
+                $results['messages'][] = "Drocerca: {$drocerca['created']} nuevas, {$drocerca['updated']} actualizadas";
+            } catch (\Throwable $e) {
+                Log::error('Error syncAll Drocerca: ' . $e->getMessage());
+                $results['errors'][] = 'Drocerca: ' . $e->getMessage();
+            }
+
+            // 3. Mafarta
+            try {
+                $mafarta = $this->mafartaScraperService->syncInvoices();
+                $results['mafarta'] = $mafarta;
+                $results['total_updated'] += ($mafarta['updated'] ?? 0);
+                $results['total_skipped'] += ($mafarta['skipped'] ?? 0);
+                $results['messages'][] = "Mafarta: {$mafarta['updated']} actualizadas";
+            } catch (\Throwable $e) {
+                Log::error('Error syncAll Mafarta: ' . $e->getMessage());
+                $results['errors'][] = 'Mafarta: ' . $e->getMessage();
+            }
+
+            $message = "Sincronización completada (" . implode(' | ', $results['messages']) . ")";
+            if (!empty($results['errors'])) {
+                $message .= " con advertencias en: " . implode(', ', $results['errors']);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'data' => $results,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error general en InvoiceController@syncAll: ' . $e->getMessage(), [
+                'exception' => $e,
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al ejecutar sincronización general: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Sincroniza las facturas y fechas de vencimiento desde el portal Dronena.
      */
     public function syncDronena(Request $request)

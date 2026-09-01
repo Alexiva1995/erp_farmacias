@@ -1,0 +1,71 @@
+name: Deploy ERP Farmacias
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - develop
+
+jobs:
+  build-and-deploy:
+    name: Build Frontend & Deploy to Production
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Clonar el repositorio
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # 2. Configurar versión de PHP
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, bcmath, intl, gd, exif, iconv
+          coverage: none
+
+      # 3. Configurar Node.js y PNPM
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9.15.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      # 4. Instalar dependencias de Composer
+      - name: Install Composer Dependencies
+        run: composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+
+      # 5. Instalar dependencias de Frontend y Compilar con Vite
+      - name: Install Node Dependencies & Build Assets
+        run: |
+          pnpm install
+          pnpm run build
+
+      # 6. Despliegue en el Servidor vía SSH (Ejecuta actualización, migraciones y recarga cachés)
+      - name: Deploy to Server via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        if: ${{ secrets.SSH_HOST != '' }}
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script: |
+            cd ${{ secrets.DEPLOY_PATH || '/var/www/erp_farmacias' }}
+            git pull origin ${{ github.ref_name }}
+            composer install --no-dev --optimize-autoloader --no-interaction
+            pnpm install
+            pnpm run build
+            php artisan migrate --force
+            php artisan optimize:clear
+            php artisan config:cache
+            php artisan route:cache
+            php artisan view:cache
+            php artisan queue:restart || true

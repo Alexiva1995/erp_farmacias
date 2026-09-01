@@ -265,44 +265,50 @@ watch(
   },
 );
 
-const isSyncingDronena = ref(false);
+const isSyncingBots = ref(false);
 
-const handleSyncDronena = async () => {
+const handleSyncBots = async () => {
   const result = await Swal.fire({
-    title: "¿Sincronizar Cuentas por Pagar con Dronena?",
-    text: "Se consultará el portal de Dronena para actualizar las fechas de vencimiento, fechas de pago, indexación (FA$) y contrastar el estado de las facturas.",
+    title: "¿Sincronizar Facturas con Droguerías?",
+    html: "Se consultarán los portales de <b>Dronena</b>, <b>Drocerca</b> y <b>Cobeca / Mafarta</b> para actualizar fechas de vencimiento, pagos, indexación y contrastar estados.",
     icon: "info",
     showCancelButton: true,
-    confirmButtonText: "Sincronizar",
+    confirmButtonText: "Sincronizar Todo",
     cancelButtonText: "Cancelar",
+    confirmButtonColor: "#7367f0",
   });
 
   if (!result.isConfirmed) return;
 
-  isSyncingDronena.value = true;
+  isSyncingBots.value = true;
   try {
-    const payload = selectedSupplier.value ? { supplier_id: selectedSupplier.value } : {};
-    const response = await axios.post("/invoices/sync-dronena", payload);
+    const response = await axios.post("/invoices/sync-all");
     const data = response.data?.data || {};
 
     syncSummary.value = {
-      updated: data.updated || 0,
-      skipped: data.skipped || 0,
-      total_extracted: data.total_extracted || 0,
+      updated: data.total_updated || (data.dronena?.updated || 0) + (data.drocerca?.updated || 0) + (data.mafarta?.updated || 0),
+      skipped: data.total_skipped || 0,
+      total_extracted: (data.dronena?.total_extracted || 0) + (data.drocerca?.total_extracted || 0) + (data.mafarta?.total_extracted || 0),
     };
+
     syncDiscrepancies.value = data.discrepancies || {
       paid_in_erp_pending_in_dronena: [],
       pending_in_erp_paid_in_dronena: [],
       total_discrepancies: 0,
     };
 
-    showDiscrepanciesModal.value = true;
+    toast.success(response.data?.message || "Sincronización con droguerías completada.");
+
+    if (syncDiscrepancies.value.total_discrepancies > 0 || (syncDiscrepancies.value.pending_in_erp_paid_in_dronena?.length > 0)) {
+      showDiscrepanciesModal.value = true;
+    }
+
     await fetchPendingPayments();
   } catch (error) {
-    console.error("Error al sincronizar con Dronena:", error);
-    toast.error(error.response?.data?.message || "Ocurrió un error al sincronizar con Dronena.");
+    console.error("Error al sincronizar con droguerías:", error);
+    toast.error(error.response?.data?.message || "Ocurrió un error al sincronizar con las droguerías.");
   } finally {
-    isSyncingDronena.value = false;
+    isSyncingBots.value = false;
   }
 };
 
@@ -321,10 +327,11 @@ const handleSyncDronena = async () => {
         :suppliers="suppliers"
         :loading="loading"
         :is-loading-filters="isLoadingFilters"
-        :is-syncing-dronena="isSyncingDronena"
+        :is-syncing-bots="isSyncingBots"
         @clear="clearFilters"
         @refresh="fetchPendingPayments"
-        @sync-dronena="handleSyncDronena"
+        @sync-bots="handleSyncBots"
+        @sync-dronena="handleSyncBots"
         class="mb-0"
       >
         <template #selection-actions>

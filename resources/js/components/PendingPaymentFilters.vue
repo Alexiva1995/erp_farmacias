@@ -13,6 +13,7 @@ const props = defineProps({
   loading:            { type: Boolean, default: false },
   isLoadingFilters:   { type: Boolean, default: false },
   isSyncingDronena:   { type: Boolean, default: false },
+  isSyncingBots:      { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
@@ -24,6 +25,7 @@ const emit = defineEmits([
   "clear",
   "refresh",
   "sync-dronena",
+  "sync-bots",
 ]);
 
 const hasAdvancedFilters = computed(() =>
@@ -49,11 +51,11 @@ const hasAdvancedFilters = computed(() =>
         color="info"
         size="38"
         class="ml-1"
-        :loading="props.isSyncingDronena"
-        @click="emit('sync-dronena')"
+        :loading="props.isSyncingBots || props.isSyncingDronena"
+        @click="emit('sync-bots')"
       >
         <VIcon icon="tabler-robot" size="20" />
-        <VTooltip activator="parent" location="top">Sincronizar Facturas Dronena</VTooltip>
+        <VTooltip activator="parent" location="top">Sincronizar Facturas (Dronena, Drocerca y Mafarta)</VTooltip>
       </VBtn>
 
       <VBtn
