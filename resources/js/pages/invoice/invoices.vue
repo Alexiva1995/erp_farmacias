@@ -1,5 +1,6 @@
 <script setup>
 import { onMounted, onUnmounted, ref, watch } from "vue";
+import { useRoute } from "vue-router";
 
 import InvoiceFilters from "@/components/InvoiceFilters.vue";
 import InvoiceTable from "@/components/InvoiceTable.vue";
@@ -9,6 +10,8 @@ import InvoiceForm from "@/pages/invoice/register.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import Swal from "sweetalert2";
+
+const route = useRoute();
 
 const currentView = ref("list");
 const selectedInvoiceId = ref(null);
@@ -116,9 +119,15 @@ watch([searchQuery, selectedSupplier, startDate, endDate], () => {
   }
 });
 
-onMounted(() => {
+onMounted(async () => {
   fetchSuppliers();
-  fetchInvoices();
+  const queryId = route.query.id || route.query.invoiceId;
+  if (queryId) {
+    selectedInvoiceId.value = parseInt(queryId, 10) || queryId;
+    currentView.value = "detail";
+  } else {
+    fetchInvoices();
+  }
 });
 
 onUnmounted(() => {

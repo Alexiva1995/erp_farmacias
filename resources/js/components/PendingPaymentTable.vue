@@ -169,6 +169,15 @@ const getInitials = (name) => {
   if (!name) return "P";
   return name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase();
 };
+
+const openInvoiceTab = (item) => {
+  const invoiceId = item.id || item.invoice_id;
+  if (invoiceId) {
+    window.open(`/invoice/invoices?id=${invoiceId}`, "_blank");
+  } else {
+    window.open(`/invoice/invoices?search=${encodeURIComponent(item.invoice_number)}`, "_blank");
+  }
+};
 </script>
 
 <template>
@@ -207,7 +216,15 @@ const getInitials = (name) => {
 
         <template #item.invoice_number="{ item }">
           <div class="d-flex flex-column">
-            <span class="text-xs font-weight-black text-primary">{{ item.invoice_number }}</span>
+            <a
+              href="javascript:void(0)"
+              class="text-xs font-weight-black text-primary text-decoration-none d-inline-flex align-center gap-1 cursor-pointer"
+              @click.stop="openInvoiceTab(item)"
+            >
+              <span>{{ item.invoice_number }}</span>
+              <VIcon icon="tabler-external-link" size="13" class="opacity-75" />
+              <VTooltip activator="parent" location="top">Abrir factura en nueva pestaña</VTooltip>
+            </a>
             <span class="text-super-xs text-medium-emphasis">Ctrl: {{ (item.control_number && item.control_number !== 'N/A') ? item.control_number : 'N/A' }}</span>
           </div>
         </template>
@@ -426,7 +443,14 @@ const getInitials = (name) => {
                 </VAvatar>
                 <div class="d-flex flex-column">
                   <span class="text-xs font-weight-black text-disabled uppercase leading-tight">Factura #</span>
-                  <span class="text-sm font-weight-black text-primary leading-tight">{{ item.invoice_number }}</span>
+                  <a
+                    href="javascript:void(0)"
+                    class="text-sm font-weight-black text-primary leading-tight text-decoration-none d-inline-flex align-center gap-1 cursor-pointer"
+                    @click.stop="openInvoiceTab(item)"
+                  >
+                    <span>{{ item.invoice_number }}</span>
+                    <VIcon icon="tabler-external-link" size="14" class="opacity-75" />
+                  </a>
                   <span class="text-super-xs text-disabled">Ctrl: {{ item.control_number || 'N/A' }}</span>
                 </div>
               </div>

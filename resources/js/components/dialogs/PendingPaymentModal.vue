@@ -91,6 +91,15 @@ const getAvatarColor = (name) => {
   const hash = (name || "").split("").reduce((a, b) => a + b.charCodeAt(0), 0);
   return colors[hash % colors.length];
 };
+
+const openInvoiceTab = (item) => {
+  const invoiceId = item.id || item.invoice_id;
+  if (invoiceId) {
+    window.open(`/invoice/invoices?id=${invoiceId}`, "_blank");
+  } else {
+    window.open(`/invoice/invoices?search=${encodeURIComponent(item.invoice_number)}`, "_blank");
+  }
+};
 </script>
 
 <template>
@@ -170,7 +179,15 @@ const getAvatarColor = (name) => {
             class="premium-detail-table font-weight-medium"
           >
             <template #item.invoice_number="{ item }">
-              <span class="text-xs font-weight-black text-primary">{{ item.invoice_number }}</span>
+              <a
+                href="javascript:void(0)"
+                class="text-xs font-weight-black text-primary text-decoration-none d-inline-flex align-center gap-1 cursor-pointer"
+                @click.stop="openInvoiceTab(item)"
+              >
+                <span>{{ item.invoice_number }}</span>
+                <VIcon icon="tabler-external-link" size="13" class="opacity-75" />
+                <VTooltip activator="parent" location="top">Abrir factura en nueva pestaña</VTooltip>
+              </a>
             </template>
             
             <template #item.total_amount="{ item }">
