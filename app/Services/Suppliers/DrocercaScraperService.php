@@ -254,6 +254,9 @@ class DrocercaScraperService implements DrocercaScraperServiceInterface
                 $userId = \Illuminate\Support\Facades\Auth::id() ?? \App\Models\User::first()?->id ?? 1;
 
                 // Crear factura si no existía en el ERP
+                // Solo se marca como pendiente (status_payment = 0) si figura en Efectos por Pagar (Edo. Cuenta)
+                $isPendingInDrocerca = !empty($edoItem);
+
                 $newInvoice = Invoice::create([
                     'supplier_id' => $supplierId,
                     'invoice_number' => $docNumber,
@@ -268,8 +271,8 @@ class DrocercaScraperService implements DrocercaScraperServiceInterface
                     'total_amount' => $totalAmount,
                     'total_usd' => $totalUsd,
                     'is_indexed' => $isIndexed,
-                    'status' => 'pending',
-                    'status_payment' => 0,
+                    'status' => $isPendingInDrocerca ? 'pending' : 'paid',
+                    'status_payment' => $isPendingInDrocerca ? 0 : 1,
                     'uploaded_by' => $userId,
                     'registered_by' => $userId,
                     'invoice_photo' => $invoicePhoto,
