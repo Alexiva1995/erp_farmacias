@@ -35,7 +35,7 @@ const form = ref({
   payment_date: new Date().toISOString().split("T")[0],
   photo_url: null,
   reference: "",
-  payment_method: null,
+  payment_method: "transfer",
   destination_bank: null,
 });
 
@@ -69,30 +69,30 @@ const mafartaBanks = [
 
 const isDronenaPayment = computed(() => {
   if (props.paymentGroup?.supplier_name) {
-    const name = props.paymentGroup.supplier_name.toUpperCase();
+    const name = String(props.paymentGroup.supplier_name).toUpperCase();
     if (name.includes("NENA") || name.includes("DRONENA")) return true;
   }
-  return props.invoices.some(
-    (inv) =>
-      inv.supplier?.name?.toUpperCase().includes("NENA") ||
-      inv.supplier?.name?.toUpperCase().includes("DRONENA") ||
-      inv.supplier_name?.toUpperCase().includes("NENA") ||
-      inv.supplier_name?.toUpperCase().includes("DRONENA")
-  );
+  return props.invoices.some((inv) => {
+    const sName = String(inv.supplier?.name || inv.supplier_name || "").toUpperCase();
+    return sName.includes("NENA") || sName.includes("DRONENA") || inv.supplier_id === 1010;
+  });
 });
 
 const isMafartaPayment = computed(() => {
   if (props.paymentGroup?.supplier_name) {
-    const name = props.paymentGroup.supplier_name.toUpperCase();
-    if (name.includes("MAFARTA") || name.includes("COBECA")) return true;
+    const name = String(props.paymentGroup.supplier_name).toUpperCase();
+    if (name.includes("MAFARTA") || name.includes("COBECA") || name.includes("MARFATA")) return true;
   }
-  return props.invoices.some(
-    (inv) =>
-      inv.supplier?.name?.toUpperCase().includes("MAFARTA") ||
-      inv.supplier?.name?.toUpperCase().includes("COBECA") ||
-      inv.supplier_name?.toUpperCase().includes("MAFARTA") ||
-      inv.supplier_name?.toUpperCase().includes("COBECA")
-  );
+  return props.invoices.some((inv) => {
+    const sName = String(inv.supplier?.name || inv.supplier_name || "").toUpperCase();
+    return sName.includes("MAFARTA") || sName.includes("COBECA") || sName.includes("MARFATA") || inv.supplier_id === 1011;
+  });
+});
+
+const destinationBankOptions = computed(() => {
+  if (isMafartaPayment.value) return mafartaBanks;
+  if (isDronenaPayment.value) return dronenaBanks;
+  return [...mafartaBanks, ...dronenaBanks];
 });
 
 
@@ -119,19 +119,19 @@ watch(() => form.value.payment_date, (newDate) => {
 const availablePaymentMethods = computed(() => {
   const currency = form.value.payment_currency;
   const methodMap = {
-    CASH: { value: "cash", label: "Efectivo", icon: "tabler-cash" },
-    BANK: { value: "transfer", label: "Banco", icon: "tabler-building-bank" },
+    BANK: { value: "transfer", label: "Transferencia / Banco", icon: "tabler-building-bank" },
     MOBILE: { value: "mobile", label: "Pago móvil", icon: "tabler-device-mobile" },
+    CASH: { value: "cash", label: "Efectivo", icon: "tabler-cash" },
     BINANCE: { value: "binance", label: "Binance", icon: "tabler-brand-binance" },
     PAYPAL: { value: "paypal", label: "PayPal", icon: "tabler-brand-paypal" },
     CREDIT: { value: "credit", label: "Crédito", icon: "tabler-hand-finger" },
   };
 
   const allowed = currency === "VES" || currency === "BS" 
-    ? ["CASH", "BANK", "MOBILE"]
+    ? ["BANK", "MOBILE", "CASH"]
     : currency === "COP" 
-    ? ["CASH", "BANK"]
-    : ["CASH", "BINANCE", "PAYPAL", "CREDIT"];
+    ? ["BANK", "CASH"]
+    : ["BANK", "CASH", "BINANCE", "PAYPAL", "CREDIT"];
 
   return allowed.map((key) => methodMap[key]);
 });
@@ -279,7 +279,22 @@ const formatCurrency = (amount, currency, omitCurrency = false) => {
   return formatted;
 };
 
-watch(() => props.modelValue, (val) => { if (val) fetchExchangeRates(); });
+watch(() => props.modelValue, (val) => {
+  if (val) {
+    fetchExchangeRates();
+    if (isMafartaPayment.value) {
+      form.value.payment_currency = 'VES';
+      form.value.payment_method = 'transfer';
+      form.value.destination_bank = mafartaBanks[0].value;
+      form.value.payment_amount = totalInBS.value;
+    } else if (isDronenaPayment.value) {
+      form.value.payment_currency = 'VES';
+      form.value.payment_method = 'transfer';
+      form.value.destination_bank = dronenaBanks[0].value;
+      form.value.payment_amount = totalInBS.value;
+    }
+  }
+});
 </script>
 
 <template>
@@ -494,24 +509,26 @@ watch(() => props.modelValue, (val) => { if (val) fetchExchangeRates(); });
                   </VSelect>
                 </VCol>
 
-                <VCol
-                  v-if="(isDronenaPayment || isMafartaPayment) && form.payment_method !== 'cash'"
-                  cols="12"
-                >
+                <VCol cols="12">
                   <div class="d-flex align-center justify-space-between mb-1">
                     <span class="text-super-xs font-weight-black text-primary uppercase">
-                      {{ isMafartaPayment ? 'Banco Destino Cobeca / Mafarta' : 'Banco Destino Dronena' }}
+                      {{ isMafartaPayment ? 'Banco Destino Cobeca / Mafarta' : (isDronenaPayment ? 'Banco Destino Dronena' : 'Banco Destino') }}
                     </span>
-                    <VChip size="x-small" color="primary" variant="tonal">
+                    <VChip
+                      v-if="isMafartaPayment || isDronenaPayment"
+                      size="x-small"
+                      color="primary"
+                      variant="tonal"
+                    >
                       {{ isMafartaPayment ? 'Portal Cobeca (SIC)' : 'Portal Dronena' }}
                     </VChip>
                   </div>
                   <VSelect
                     v-model="form.destination_bank"
-                    :items="isMafartaPayment ? mafartaBanks : dronenaBanks"
+                    :items="destinationBankOptions"
                     item-title="title"
                     item-value="value"
-                    :placeholder="isMafartaPayment ? 'SELECCIONE BANCO COBECA' : 'SELECCIONE BANCO DRONENA'"
+                    :placeholder="isMafartaPayment ? 'SELECCIONE BANCO COBECA' : (isDronenaPayment ? 'SELECCIONE BANCO DRONENA' : 'SELECCIONE BANCO DESTINO')"
                     variant="outlined"
                     density="compact"
                     class="premium-input mb-3"
