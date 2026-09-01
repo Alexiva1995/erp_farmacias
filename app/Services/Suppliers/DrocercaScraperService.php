@@ -301,12 +301,55 @@ class DrocercaScraperService implements DrocercaScraperServiceInterface
             }
         }
 
+        // Calcular discrepancias entre ERP y portal de Drocerca (Edo. Cuenta / Efectos por Pagar)
+        $erpInvoices = Invoice::where('supplier_id', $supplierId)->get([
+            'id', 'invoice_number', 'control_number', 'total_amount', 'currency', 'status_payment'
+        ]);
+        $paidInErpPendingInDrocerca = [];
+        $pendingInErpPaidInDrocerca = [];
+
+        foreach ($erpInvoices as $inv) {
+            $digitsOnly = preg_replace('/\D/', '', $inv->invoice_number);
+            $invClean = ltrim($digitsOnly ?: $inv->invoice_number, '0');
+            $isPaidInErp = ($inv->status_payment == 1);
+            $isPendingInPortal = isset($edoCuentaMap[$invClean]) || isset($edoCuentaMap[$inv->invoice_number]);
+
+            if ($isPaidInErp && $isPendingInPortal) {
+                $pDoc = $edoCuentaMap[$invClean] ?? $edoCuentaMap[$inv->invoice_number];
+                $paidInErpPendingInDrocerca[] = [
+                    'id' => $inv->id,
+                    'invoice_number' => $inv->invoice_number,
+                    'control_number' => $inv->control_number,
+                    'amount' => $inv->total_amount,
+                    'currency' => $inv->currency,
+                    'portal_amount' => $pDoc['saldo'] ?? $inv->total_amount,
+                    'erp_status' => 'Pagada en ERP',
+                    'portal_status' => 'Pendiente en Drocerca',
+                ];
+            } elseif (!$isPaidInErp && !$isPendingInPortal) {
+                $pendingInErpPaidInDrocerca[] = [
+                    'id' => $inv->id,
+                    'invoice_number' => $inv->invoice_number,
+                    'control_number' => $inv->control_number,
+                    'amount' => $inv->total_amount,
+                    'currency' => $inv->currency,
+                    'erp_status' => 'Pendiente en ERP',
+                    'portal_status' => 'Liquidada en Drocerca',
+                ];
+            }
+        }
+
         return [
             'total_extracted' => count($documents),
             'updated' => $updatedCount,
             'created' => $createdCount,
             'skipped' => $skippedCount,
             'supplier_id' => $supplierId,
+            'discrepancies' => [
+                'paid_in_erp_pending_in_drocerca' => $paidInErpPendingInDrocerca,
+                'pending_in_erp_paid_in_drocerca' => $pendingInErpPaidInDrocerca,
+                'total_discrepancies' => count($paidInErpPendingInDrocerca) + count($pendingInErpPaidInDrocerca),
+            ],
             'details' => $processed,
         ];
     }

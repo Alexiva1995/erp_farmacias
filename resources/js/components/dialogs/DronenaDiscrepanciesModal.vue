@@ -50,6 +50,10 @@ const drocercaData = computed(() => props.syncSummary?.drocerca || {});
 const mafartaData = computed(() => props.syncSummary?.mafarta || {});
 const dronenaData = computed(() => props.syncSummary?.dronena || {});
 
+const drocercaPendingPaid = computed(
+  () => drocercaData.value?.discrepancies?.pending_in_erp_paid_in_drocerca || []
+);
+
 const closeDialog = () => {
   emit("update:modelValue", false);
   emit("close");
@@ -83,6 +87,40 @@ const handleMarkAllPendingAsPaid = async () => {
     closeDialog();
   } catch (error) {
     console.error("Error marcando facturas:", error);
+    toast.error(error.response?.data?.message || "Error al marcar las facturas como pagadas.");
+  } finally {
+    isMarkingPaid.value = false;
+  }
+};
+
+const handleMarkAllDrocercaPendingAsPaid = async () => {
+  const count = drocercaPendingPaid.value.length;
+  if (count === 0) return;
+
+  const result = await Swal.fire({
+    title: `¿Marcar las ${count} facturas de Drocerca como Pagadas?`,
+    text: "Estas facturas ya figuran liquidadas en Drocerca y pasarán automáticamente a estado Pagada (status_payment = 1) en tu ERP.",
+    icon: "question",
+    showCancelButton: true,
+    confirmButtonText: "Sí, marcar como pagadas",
+    cancelButtonText: "Cancelar",
+    confirmButtonColor: "#28c76f",
+  });
+
+  if (!result.isConfirmed) return;
+
+  isMarkingPaid.value = true;
+  try {
+    const invoiceIds = drocercaPendingPaid.value.map((i) => i.id);
+    const { data } = await axios.post("/finances/pending-payments/invoices/bulk-mark-as-paid", {
+      invoice_ids: invoiceIds,
+    });
+
+    toast.success(data.message || `${count} facturas de Drocerca marcadas como pagadas`);
+    emit("invoices-marked-as-paid");
+    closeDialog();
+  } catch (error) {
+    console.error("Error marcando facturas Drocerca:", error);
     toast.error(error.response?.data?.message || "Error al marcar las facturas como pagadas.");
   } finally {
     isMarkingPaid.value = false;
@@ -360,11 +398,60 @@ const handleMarkAllPendingAsPaid = async () => {
                 </tbody>
               </VTable>
             </div>
-            <div v-else class="text-center py-6">
-              <VIcon icon="tabler-check-circle" size="40" color="success" class="mb-2" />
-              <p class="text-body-2 text-medium-emphasis mb-0">
-                Sincronización con Drocerca ejecutada correctamente. No hay nuevas facturas pendientes de registrar.
+
+            <!-- Facturas pendientes en ERP pero ya liquidadas en Drocerca -->
+            <div v-if="drocercaPendingPaid && drocercaPendingPaid.length > 0" class="mt-4 mb-6">
+              <div class="d-flex align-center justify-space-between flex-wrap gap-2 mb-2">
+                <div class="d-flex align-center gap-2">
+                  <VIcon icon="tabler-circle-check" color="info" size="22" />
+                  <h4 class="text-subtitle-1 font-weight-bold text-info mb-0">
+                    Pendientes en ERP pero LIQUIDADAS en Drocerca ({{ drocercaPendingPaid.length }})
+                  </h4>
+                </div>
+
+                <VBtn
+                  color="success"
+                  variant="elevated"
+                  size="small"
+                  prepend-icon="tabler-check-all"
+                  class="rounded-lg shadow-sm font-weight-bold"
+                  :loading="isMarkingPaid"
+                  @click="handleMarkAllDrocercaPendingAsPaid"
+                >
+                  Marcar Todas como Pagadas ({{ drocercaPendingPaid.length }})
+                </VBtn>
+              </div>
+
+              <p class="text-caption text-medium-emphasis mb-3">
+                Estas facturas están registradas como pendientes en tu ERP pero ya no figuran en Efectos por Pagar de Drocerca (fueron liquidadas):
               </p>
+
+              <VTable density="compact" class="border rounded-lg mb-2">
+                <thead>
+                  <tr class="table-header-row">
+                    <th class="text-left font-weight-bold">N° Factura</th>
+                    <th class="text-left font-weight-bold">N° Control</th>
+                    <th class="text-right font-weight-bold">Monto ERP</th>
+                    <th class="text-center font-weight-bold">Estado ERP</th>
+                    <th class="text-center font-weight-bold">Estado Drocerca</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="item in drocercaPendingPaid" :key="item.id">
+                    <td class="font-weight-medium text-primary">#{{ item.invoice_number }}</td>
+                    <td>{{ item.control_number || 'N/A' }}</td>
+                    <td class="text-right font-weight-bold">
+                      {{ Number(item.amount).toLocaleString('es-VE', { minimumFractionDigits: 2 }) }} {{ item.currency }}
+                    </td>
+                    <td class="text-center">
+                      <VChip size="x-small" color="error" variant="tonal">Por Pagar</VChip>
+                    </td>
+                    <td class="text-center">
+                      <VChip size="x-small" color="success" variant="tonal">Liquidada en Drocerca</VChip>
+                    </td>
+                  </tr>
+                </tbody>
+              </VTable>
             </div>
           </VWindowItem>
 
