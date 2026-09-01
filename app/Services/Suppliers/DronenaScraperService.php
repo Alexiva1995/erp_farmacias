@@ -276,12 +276,28 @@ class DronenaScraperService implements DronenaScraperServiceInterface
             $isPaidInErp = ($inv->status_payment == 1);
             $isPendingInPortal = isset($portalNumbers[$invClean]);
 
+            $controlNumber = $inv->control_number;
+            if (empty($controlNumber) || $controlNumber === 'N/A') {
+                $matchedControl = Invoice::where('supplier_id', $inv->supplier_id)
+                    ->where(function ($q) use ($invClean) {
+                        $q->where('invoice_number', 'LIKE', "%{$invClean}");
+                    })
+                    ->whereNotNull('control_number')
+                    ->where('control_number', '!=', '')
+                    ->where('control_number', '!=', 'N/A')
+                    ->value('control_number');
+                if ($matchedControl) {
+                    $controlNumber = $matchedControl;
+                    $inv->update(['control_number' => $matchedControl]);
+                }
+            }
+
             if ($isPaidInErp && $isPendingInPortal) {
                 $pDoc = $portalNumbers[$invClean];
                 $paidInErpPendingInDronena[] = [
                     'id' => $inv->id,
                     'invoice_number' => $inv->invoice_number,
-                    'control_number' => $inv->control_number,
+                    'control_number' => $controlNumber,
                     'amount' => $inv->total_amount,
                     'currency' => $inv->currency,
                     'portal_amount' => $pDoc['saldo_db'] ?? $inv->total_amount,
@@ -293,7 +309,7 @@ class DronenaScraperService implements DronenaScraperServiceInterface
                 $pendingInErpPaidInDronena[] = [
                     'id' => $inv->id,
                     'invoice_number' => $inv->invoice_number,
-                    'control_number' => $inv->control_number,
+                    'control_number' => $controlNumber,
                     'amount' => $inv->total_amount,
                     'currency' => $inv->currency,
                     'erp_status' => 'Pendiente en ERP',
