@@ -44,13 +44,16 @@ jobs:
           php -r "file_exists('.env') || copy('.env.example', '.env');"
           mkdir -p database
           touch database/database.sqlite
-          php artisan key:generate
 
       # 5. Instalar dependencias de Composer
       - name: Install Composer Dependencies
         run: composer install --no-interaction --prefer-dist --optimize-autoloader
 
-      # 6. Ejecutar suite de pruebas (95 tests)
+      # 6. Generar APP_KEY de Laravel (requiere vendor/autoload.php)
+      - name: Generate Application Key
+        run: php artisan key:generate
+
+      # 7. Ejecutar suite de pruebas (95 tests)
       - name: Execute Tests via PHPUnit
         env:
           DB_CONNECTION: sqlite
