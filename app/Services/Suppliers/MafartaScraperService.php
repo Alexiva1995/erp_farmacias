@@ -183,8 +183,8 @@ class MafartaScraperService implements MafartaScraperServiceInterface
                     $updateData['exchange_rate'] = $exchangeRate;
                 }
 
-                // Generar y almacenar el PDF de la factura si no tiene invoice_photo
-                if (empty($invoice->invoice_photo) && $token) {
+                // Generar y almacenar el PDF de la factura con la plantilla oficial
+                if ($token) {
                     $detailData = $detailData ?? $this->getInvoiceDetail($rawDocNum, $token);
                     if ($detailData) {
                         $pdfPath = $this->generateAndStoreInvoicePdf($invoice, $detailData);
@@ -454,10 +454,14 @@ class MafartaScraperService implements MafartaScraperServiceInterface
         try {
             $invoice->loadMissing('details');
 
+            if (!empty($invoice->invoice_photo) && \Illuminate\Support\Facades\Storage::disk('public')->exists($invoice->invoice_photo)) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($invoice->invoice_photo);
+            }
+
             $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.mafarta_invoice', [
                 'invoice' => $invoice,
                 'detail' => $detailData,
-            ])->setPaper('a4', 'portrait');
+            ])->setPaper('letter', 'portrait');
 
             $pdfFileName = "invoice_mafarta_{$invoice->invoice_number}_" . time() . ".pdf";
             $pdfStorageRelPath = "invoices/{$pdfFileName}";
