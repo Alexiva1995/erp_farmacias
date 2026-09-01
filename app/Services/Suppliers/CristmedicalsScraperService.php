@@ -189,6 +189,14 @@ class CristmedicalsScraperService implements CristmedicalsScraperServiceInterfac
                 // 3. Obtener token CSRF fresco de la sesión activa y HTML de facturas
                 $resFacturas = $this->executeCurl('GET', self::FACTURAS_URL, $cookieFile);
 
+                // Si la respuesta contiene el formulario de login o no está autenticado
+                if (str_contains($resFacturas['body'], 'form-signin') || str_contains($resFacturas['body'], 'action="https://cristmedicalsweb.cristmedicals.com/login"') || (!str_contains($resFacturas['body'], 'tabla-facturas') && !str_contains($resFacturas['body'], 'factura-check') && str_contains($resFacturas['body'], 'Iniciar Sesión'))) {
+                    if (file_exists($cookieFile)) {
+                        @unlink($cookieFile);
+                    }
+                    throw new \RuntimeException("Credenciales inválidas o inicio de sesión rechazado en el portal de Cristmedicals para el usuario '{$username}'.");
+                }
+
                 $freshToken = null;
                 if (preg_match('/<meta\s+name=["\']csrf-token["\']\s+content=["\']([^"\']+)["\']/i', $resFacturas['body'], $matches)) {
                     $freshToken = $matches[1];
@@ -323,7 +331,11 @@ class CristmedicalsScraperService implements CristmedicalsScraperServiceInterfac
             $user = $conn->username;
         }
         if (!$pass && $conn && !empty($conn->password)) {
-            $pass = FtpCrypt::decrypt($conn->password);
+            try {
+                $pass = FtpCrypt::decrypt($conn->password);
+            } catch (\Throwable) {
+                $pass = null;
+            }
         }
 
         $user = $user ?: env('CRISTMEDICALS_USERNAME', 'FAR00818');
@@ -477,9 +489,15 @@ class CristmedicalsScraperService implements CristmedicalsScraperServiceInterfac
             ->orWhere('id', 1002)
             ->first();
 
-        $conn = $supplier?->connections?->first();
-        $user = $conn?->username ?: env('CRISTMEDICALS_USERNAME', 'FAR00818');
-        $pass = ($conn && !empty($conn->password)) ? FtpCrypt::decrypt($conn->password) : env('CRISTMEDICALS_PASSWORD', 'FAR00818');
+        $pass = null;
+        if ($conn && !empty($conn->password)) {
+            try {
+                $pass = FtpCrypt::decrypt($conn->password);
+            } catch (\Throwable) {
+                $pass = null;
+            }
+        }
+        $pass = $pass ?: env('CRISTMEDICALS_PASSWORD', 'FAR00818');
 
         $session = $this->createAuthenticatedSession($user, $pass);
         $cookieFile = $session['cookie_file'];
