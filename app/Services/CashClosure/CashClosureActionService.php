@@ -328,7 +328,19 @@ class CashClosureActionService
     public function closeDailyCashClosure()
     {
         $cashClosings = CashClosing::whereDate('closing_date', Carbon::today())
-            ->where('total_sales', '>', 0.0)
+            ->where(function ($q) {
+                $q->where('total_sales', '>', 0.0)
+                  ->orWhere('usd_delivered', '>', 0.0)
+                  ->orWhere('cop_delivered', '>', 0.0)
+                  ->orWhere('bs_delivered', '>', 0.0)
+                  ->orWhere('usd_cash_payment_credit', '>', 0.0)
+                  ->orWhere('usd_transfer_payment_credit', '>', 0.0)
+                  ->orWhere('cop_cash_payment_credit', '>', 0.0)
+                  ->orWhere('bs_cash_payment_credit', '>', 0.0)
+                  ->orWhere('total_usd', '>', 0.0)
+                  ->orWhere('total_cop', '>', 0.0)
+                  ->orWhere('total_bs', '>', 0.0);
+            })
             ->whereNull('daily_closure_id')
             ->get();
 

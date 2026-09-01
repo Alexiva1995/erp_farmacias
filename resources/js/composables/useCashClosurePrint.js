@@ -162,7 +162,7 @@ export function useCashClosurePrint() {
       }
 
       const printWindow = window.open("", "", "height=600,width=800");
-      printWindow.document.write("<html><head><title>Farmacia Barrio Sucre</title>");
+      printWindow.document.write("<html><head><title>Cierre de Caja</title>");
       const styleSheets = document.styleSheets;
       for (let i = 0; i < styleSheets.length; i++) {
         const sheet = styleSheets[i];

@@ -87,12 +87,6 @@ const getCurrentTime = () => {
         alt="Logo"
         class="logo"
       >
-      <div class="company-name">
-        FARMACIA BARRIO SUCRE 2024 C.A.
-      </div>
-      <div class="company-rif">
-        R.I.F: J-50478962-1
-      </div>
       <div class="document-title">
         CIERRE CONSOLIDADO DE OPERACIONES
       </div>

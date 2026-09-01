@@ -108,8 +108,20 @@ class FixMissingDailyClosuresCommand extends Command
 
         $this->info('Iniciando verificación de cierres diarios pendientes...');
 
-        // Consultar fechas únicas que tengan cajas con ventas y sin cierre diario consolidado
-        $query = CashClosing::where('total_sales', '>', 0.0)
+        // Consultar fechas únicas que tengan cajas con ventas o movimientos y sin cierre diario consolidado
+        $query = CashClosing::where(function ($q) {
+                $q->where('total_sales', '>', 0.0)
+                  ->orWhere('usd_delivered', '>', 0.0)
+                  ->orWhere('cop_delivered', '>', 0.0)
+                  ->orWhere('bs_delivered', '>', 0.0)
+                  ->orWhere('usd_cash_payment_credit', '>', 0.0)
+                  ->orWhere('usd_transfer_payment_credit', '>', 0.0)
+                  ->orWhere('cop_cash_payment_credit', '>', 0.0)
+                  ->orWhere('bs_cash_payment_credit', '>', 0.0)
+                  ->orWhere('total_usd', '>', 0.0)
+                  ->orWhere('total_cop', '>', 0.0)
+                  ->orWhere('total_bs', '>', 0.0);
+            })
             ->whereNull('daily_closure_id');
 
         if ($specificDate) {
@@ -134,7 +146,19 @@ class FixMissingDailyClosuresCommand extends Command
             $this->line("Procesando fecha: {$day}...");
 
             $cashClosings = CashClosing::whereDate('closing_date', $day)
-                ->where('total_sales', '>', 0.0)
+                ->where(function ($q) {
+                    $q->where('total_sales', '>', 0.0)
+                      ->orWhere('usd_delivered', '>', 0.0)
+                      ->orWhere('cop_delivered', '>', 0.0)
+                      ->orWhere('bs_delivered', '>', 0.0)
+                      ->orWhere('usd_cash_payment_credit', '>', 0.0)
+                      ->orWhere('usd_transfer_payment_credit', '>', 0.0)
+                      ->orWhere('cop_cash_payment_credit', '>', 0.0)
+                      ->orWhere('bs_cash_payment_credit', '>', 0.0)
+                      ->orWhere('total_usd', '>', 0.0)
+                      ->orWhere('total_cop', '>', 0.0)
+                      ->orWhere('total_bs', '>', 0.0);
+                })
                 ->whereNull('daily_closure_id')
                 ->get();
 
