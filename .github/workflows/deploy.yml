@@ -37,18 +37,24 @@ jobs:
           node-version: 20
           cache: 'pnpm'
 
-      # 4. Instalar dependencias de Composer
-      - name: Install Composer Dependencies
-        run: composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+      # 4. Crear .env temporal y generar key en el runner para evitar errores de Laravel
+      - name: Create Temporary .env
+        run: |
+          php -r "file_exists('.env') || copy('.env.example', '.env');"
+          php artisan key:generate --ansi || true
 
-      # 5. Instalar dependencias de Frontend y Compilar en el Runner de GitHub (16GB RAM)
-      - name: Install Node Dependencies & Build Assets in GitHub Runner
+      # 5. Instalar dependencias de Composer en el Runner (sin scripts para evitar fallos de BD)
+      - name: Install Composer Dependencies
+        run: composer install --no-dev --no-interaction --no-scripts --prefer-dist --optimize-autoloader
+
+      # 6. Instalar dependencias de Node y Compilar Frontend con Vite
+      - name: Build Frontend Assets
         run: |
           pnpm install
           pnpm run build
 
-      # 6. Transferir archivos compilados (public/build) directamente al servidor vía SCP
-      - name: Transfer Compiled Assets to Server
+      # 7. Transferir archivos compilados (public/build) al servidor
+      - name: Transfer Compiled Assets to Server via SCP
         uses: appleboy/scp-action@v0.1.7
         if: ${{ secrets.SSH_HOST != '' }}
         with:
@@ -58,10 +64,11 @@ jobs:
           password: ${{ secrets.SSH_PASSWORD }}
           port: ${{ secrets.SSH_PORT || 22 }}
           source: "public/build"
-          target: ${{ secrets.DEPLOY_PATH || '/var/www/erp_farmacias' }}
+          target: ${{ secrets.DEPLOY_PATH || '/home/farmaciabs/public_html/erp3' }}
+          strip_components: 0
 
-      # 7. Ejecutar actualización de backend y cachés en el Servidor vía SSH (Sin compilar en servidor)
-      - name: Execute Remote Update on Server
+      # 8. Ejecutar actualización de backend y optimización en el Servidor (cPanel)
+      - name: Execute Remote Deploy on Server
         uses: appleboy/ssh-action@v1.0.3
         if: ${{ secrets.SSH_HOST != '' }}
         with:
@@ -71,7 +78,7 @@ jobs:
           password: ${{ secrets.SSH_PASSWORD }}
           port: ${{ secrets.SSH_PORT || 22 }}
           script: |
-            cd ${{ secrets.DEPLOY_PATH || '/var/www/erp_farmacias' }}
+            cd ${{ secrets.DEPLOY_PATH || '/home/farmaciabs/public_html/erp3' }}
             git pull origin ${{ github.ref_name }}
             composer install --no-dev --optimize-autoloader --no-interaction
             php artisan migrate --force
