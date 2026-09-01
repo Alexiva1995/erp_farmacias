@@ -54,6 +54,9 @@ const dronenaData = computed(() => props.syncSummary?.dronena || {});
 const drocercaPendingPaid = computed(
   () => drocercaData.value?.discrepancies?.pending_in_erp_paid_in_drocerca || []
 );
+const mafartaPendingPaid = computed(
+  () => mafartaData.value?.discrepancies?.pending_in_erp_paid_in_mafarta || []
+);
 
 const closeDialog = () => {
   emit("update:modelValue", false);
@@ -161,6 +164,40 @@ const handleMarkAllDrocercaPendingAsPaid = async () => {
     isMarkingPaid.value = false;
   }
 };
+
+const handleMarkAllMafartaPendingAsPaid = async () => {
+  const count = mafartaPendingPaid.value.length;
+  if (count === 0) return;
+
+  const result = await Swal.fire({
+    title: `¿Marcar las ${count} facturas de Cobeca / Mafarta como Pagadas?`,
+    text: "Estas facturas ya figuran liquidadas en Cobeca y pasarán automáticamente a estado Pagada (status_payment = 1) en tu ERP.",
+    icon: "question",
+    showCancelButton: true,
+    confirmButtonText: "Sí, marcar como pagadas",
+    cancelButtonText: "Cancelar",
+    confirmButtonColor: "#28c76f",
+  });
+
+  if (!result.isConfirmed) return;
+
+  isMarkingPaid.value = true;
+  try {
+    const invoiceIds = mafartaPendingPaid.value.map((i) => i.id);
+    const { data } = await axios.post("/finances/pending-payments/invoices/bulk-mark-as-paid", {
+      invoice_ids: invoiceIds,
+    });
+
+    toast.success(data.message || `${count} facturas de Cobeca marcadas como pagadas`);
+    emit("invoices-marked-as-paid");
+    closeDialog();
+  } catch (error) {
+    console.error("Error marcando facturas Cobeca:", error);
+    toast.error(error.response?.data?.message || "Error al marcar las facturas como pagadas.");
+  } finally {
+    isMarkingPaid.value = false;
+  }
+};
 </script>
 
 <template>
@@ -226,6 +263,24 @@ const handleMarkAllDrocercaPendingAsPaid = async () => {
           <VTab value="mafarta">
             <VIcon icon="tabler-building" class="mr-2" size="18" />
             Cobeca / Mafarta
+            <VChip
+              v-if="(mafartaData.created || 0) > 0"
+              size="x-small"
+              color="success"
+              variant="flat"
+              class="ml-2"
+            >
+              +{{ mafartaData.created }} nuevas
+            </VChip>
+            <VChip
+              v-else-if="mafartaPendingPaid.length > 0"
+              size="x-small"
+              color="warning"
+              variant="flat"
+              class="ml-2"
+            >
+              {{ mafartaPendingPaid.length }}
+            </VChip>
           </VTab>
         </VTabs>
       </div>
@@ -541,28 +596,35 @@ const handleMarkAllDrocercaPendingAsPaid = async () => {
           <!-- ================= TAB MAFARTA ================= -->
           <VWindowItem value="mafarta">
             <VRow class="mb-4">
-              <VCol cols="12" sm="4">
+              <VCol cols="12" sm="3">
                 <VCard variant="tonal" color="info" class="pa-3 rounded-lg text-center">
                   <div class="text-caption text-medium-emphasis">Documentos en Portal</div>
                   <div class="text-h5 font-weight-bold">{{ mafartaData.total_extracted || 0 }}</div>
                 </VCard>
               </VCol>
-              <VCol cols="12" sm="4">
+              <VCol cols="12" sm="3">
                 <VCard variant="tonal" color="success" class="pa-3 rounded-lg text-center">
-                  <div class="text-caption text-medium-emphasis">Actualizadas en ERP</div>
+                  <div class="text-caption text-medium-emphasis">Nuevas Creadas</div>
+                  <div class="text-h5 font-weight-bold">{{ mafartaData.created || 0 }}</div>
+                </VCard>
+              </VCol>
+              <VCol cols="12" sm="3">
+                <VCard variant="tonal" color="primary" class="pa-3 rounded-lg text-center">
+                  <div class="text-caption text-medium-emphasis">Actualizadas</div>
                   <div class="text-h5 font-weight-bold">{{ mafartaData.updated || 0 }}</div>
                 </VCard>
               </VCol>
-              <VCol cols="12" sm="4">
+              <VCol cols="12" sm="3">
                 <VCard variant="tonal" color="secondary" class="pa-3 rounded-lg text-center">
-                  <div class="text-caption text-medium-emphasis">Omitidas / No en ERP</div>
+                  <div class="text-caption text-medium-emphasis">Sin Cambios / Omitidas</div>
                   <div class="text-h5 font-weight-bold">{{ mafartaData.skipped || 0 }}</div>
                 </VCard>
               </VCol>
             </VRow>
 
+            <!-- Tabla de Facturas Procesadas / Actualizadas de Mafarta -->
             <div v-if="mafartaData.details && mafartaData.details.length > 0">
-              <h4 class="text-subtitle-1 font-weight-bold mb-2">Facturas Cobeca / Mafarta</h4>
+              <h4 class="text-subtitle-1 font-weight-bold mb-2">Facturas Procesadas desde Cobeca / Mafarta</h4>
               <VTable density="compact" class="border rounded-lg mb-2">
                 <thead>
                   <tr class="table-header-row">
@@ -570,7 +632,8 @@ const handleMarkAllDrocercaPendingAsPaid = async () => {
                     <th class="text-left font-weight-bold">N° Control</th>
                     <th class="text-center font-weight-bold">Acción</th>
                     <th class="text-center font-weight-bold">Vencimiento</th>
-                    <th class="text-center font-weight-bold">Indexación</th>
+                    <th class="text-center font-weight-bold">Indexada</th>
+                    <th class="text-right font-weight-bold">Total USD</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -578,16 +641,17 @@ const handleMarkAllDrocercaPendingAsPaid = async () => {
                     <td class="font-weight-medium text-primary">#{{ item.invoice_number }}</td>
                     <td>{{ item.control_number || 'N/A' }}</td>
                     <td class="text-center">
-                      <VChip size="x-small" :color="item.action === 'updated' ? 'success' : 'secondary'" variant="tonal">
-                        {{ item.action === 'updated' ? 'Actualizada' : 'No registrada' }}
+                      <VChip size="x-small" :color="item.action === 'created' ? 'success' : 'info'" variant="tonal">
+                        {{ item.action === 'created' ? 'Nueva Creada' : 'Actualizada' }}
                       </VChip>
                     </td>
                     <td class="text-center">{{ item.exp_date || 'N/A' }}</td>
                     <td class="text-center">
                       <VChip size="x-small" :color="item.is_indexed ? 'error' : 'secondary'" variant="tonal">
-                        {{ item.is_indexed ? 'Indexada' : 'No indexada' }}
+                        {{ item.is_indexed ? 'Sí' : 'No' }}
                       </VChip>
                     </td>
+                    <td class="text-right font-weight-bold">${{ Number(item.total_usd || 0).toFixed(2) }}</td>
                   </tr>
                 </tbody>
               </VTable>
@@ -595,8 +659,63 @@ const handleMarkAllDrocercaPendingAsPaid = async () => {
             <div v-else class="text-center py-6">
               <VIcon icon="tabler-check-circle" size="40" color="success" class="mb-2" />
               <p class="text-body-2 text-medium-emphasis mb-0">
-                Sincronización con Cobeca / Mafarta ejecutada correctamente.
+                Sincronización con Cobeca / Mafarta ejecutada correctamente. No hay facturas pendientes de procesar.
               </p>
+            </div>
+
+            <!-- Facturas pendientes en ERP pero ya liquidadas en Cobeca / Mafarta -->
+            <div v-if="mafartaPendingPaid && mafartaPendingPaid.length > 0" class="mt-4 mb-6">
+              <div class="d-flex align-center justify-space-between flex-wrap gap-2 mb-2">
+                <div class="d-flex align-center gap-2">
+                  <VIcon icon="tabler-circle-check" color="info" size="22" />
+                  <h4 class="text-subtitle-1 font-weight-bold text-info mb-0">
+                    Pendientes en ERP pero LIQUIDADAS en Cobeca ({{ mafartaPendingPaid.length }})
+                  </h4>
+                </div>
+
+                <VBtn
+                  color="success"
+                  variant="elevated"
+                  size="small"
+                  prepend-icon="tabler-check-all"
+                  class="rounded-lg shadow-sm font-weight-bold"
+                  :loading="isMarkingPaid"
+                  @click="handleMarkAllMafartaPendingAsPaid"
+                >
+                  Marcar Todas como Pagadas ({{ mafartaPendingPaid.length }})
+                </VBtn>
+              </div>
+
+              <p class="text-caption text-medium-emphasis mb-3">
+                Estas facturas están registradas como pendientes en tu ERP pero ya no figuran en Cobeca (fueron liquidadas):
+              </p>
+
+              <VTable density="compact" class="border rounded-lg mb-2">
+                <thead>
+                  <tr class="table-header-row">
+                    <th class="text-left font-weight-bold">N° Factura</th>
+                    <th class="text-left font-weight-bold">N° Control</th>
+                    <th class="text-right font-weight-bold">Monto ERP</th>
+                    <th class="text-center font-weight-bold">Estado ERP</th>
+                    <th class="text-center font-weight-bold">Estado Cobeca</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="item in mafartaPendingPaid" :key="item.id">
+                    <td class="font-weight-medium text-primary">#{{ item.invoice_number }}</td>
+                    <td>{{ item.control_number || 'N/A' }}</td>
+                    <td class="text-right font-weight-bold">
+                      {{ Number(item.amount).toLocaleString('es-VE', { minimumFractionDigits: 2 }) }} {{ item.currency }}
+                    </td>
+                    <td class="text-center">
+                      <VChip size="x-small" color="error" variant="tonal">Por Pagar</VChip>
+                    </td>
+                    <td class="text-center">
+                      <VChip size="x-small" color="success" variant="tonal">Liquidada en Cobeca</VChip>
+                    </td>
+                  </tr>
+                </tbody>
+              </VTable>
             </div>
           </VWindowItem>
         </VWindow>

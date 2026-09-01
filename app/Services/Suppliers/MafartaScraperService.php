@@ -76,10 +76,12 @@ class MafartaScraperService implements MafartaScraperServiceInterface
             }));
         }
 
+        $createdCount = 0;
         $updatedCount = 0;
         $skippedCount = 0;
         $processed = [];
         $today = Carbon::now()->format('Y-m-d');
+        $userId = \App\Models\User::first()?->id ?? 1;
 
         foreach ($documents as $doc) {
             $rawDocNum = (string) ($doc['numDoc'] ?? '');
@@ -127,6 +129,21 @@ class MafartaScraperService implements MafartaScraperServiceInterface
                     if (empty($emisionDate) && !empty($detailData['fechaFactura'])) {
                         $emisionDate = Carbon::parse($detailData['fechaFactura'])->format('Y-m-d');
                     }
+                }
+            }
+
+            // Si no tiene número de control, buscar en la BD si otro registro del ERP lo tiene
+            if (empty($controlNumber) || $controlNumber === 'N/A') {
+                $matchedControl = Invoice::where('supplier_id', $supplierId)
+                    ->where(function ($q) use ($cleanNumber) {
+                        $q->where('invoice_number', 'LIKE', "%{$cleanNumber}");
+                    })
+                    ->whereNotNull('control_number')
+                    ->where('control_number', '!=', '')
+                    ->where('control_number', '!=', 'N/A')
+                    ->value('control_number');
+                if ($matchedControl) {
+                    $controlNumber = $matchedControl;
                 }
             }
 
@@ -186,17 +203,104 @@ class MafartaScraperService implements MafartaScraperServiceInterface
                     'control_number' => $invoice->control_number,
                     'exp_date' => $expDate,
                     'is_indexed' => $isIndexed,
+                    'total_usd' => (float) ($invoice->total_usd ?: ($exchangeRate > 0 ? round($totalAmount / $exchangeRate, 2) : 0)),
                     'nd_referential_amount' => $ndRefAmount,
                     'has_pdf' => !empty($invoice->invoice_photo) || !empty($updateData['invoice_photo']),
                 ];
             } else {
-                $skippedCount++;
-                $processed[] = [
+                // Si la factura no existe en el ERP, crearla automáticamente
+                $calcUsd = $totalUsd > 0 ? $totalUsd : ($exchangeRate > 0 ? round($totalAmount / $exchangeRate, 2) : 0);
+                $newInvoice = Invoice::create([
+                    'supplier_id' => $supplierId,
                     'invoice_number' => $rawDocNum,
-                    'action' => 'not_found_in_erp',
                     'control_number' => $controlNumber,
+                    'created_invoice_date' => $emisionDate ?: $today,
+                    'exp_date' => $expDate ?: $today,
+                    'payment_date' => $expDate ?: $today,
+                    'exchange_rate' => $exchangeRate > 0 ? $exchangeRate : 1.00,
+                    'exempt_amount' => (float) ($doc['montoExento'] ?? 0),
+                    'taxable_base' => (float) ($doc['montoBase'] ?? ($totalAmount - ($doc['montoExento'] ?? 0))),
+                    'tax_amount' => (float) ($doc['montoIva'] ?? 0),
+                    'total_amount' => $totalAmount,
+                    'total_usd' => $calcUsd,
+                    'is_indexed' => $isIndexed,
+                    'status' => 'pending',
+                    'status_payment' => 0,
+                    'uploaded_by' => $userId,
+                    'registered_by' => $userId,
+                ]);
+
+                $createdCount++;
+                $processed[] = [
+                    'invoice_number' => $newInvoice->invoice_number,
+                    'action' => 'created',
+                    'control_number' => $newInvoice->control_number,
                     'exp_date' => $expDate,
                     'is_indexed' => $isIndexed,
+                    'total_usd' => $calcUsd,
+                    'nd_referential_amount' => $ndRefAmount,
+                    'has_pdf' => false,
+                ];
+            }
+        }
+
+        // Calcular discrepancias entre ERP y portal de Cobeca / Mafarta
+        $portalDocNumbers = [];
+        foreach ($documents as $d) {
+            $pClean = ltrim((string) ($d['numDoc'] ?? ''), '0');
+            $portalDocNumbers[$pClean] = $d;
+            $portalDocNumbers[(string) ($d['numDoc'] ?? '')] = $d;
+        }
+
+        $erpInvoices = Invoice::where('supplier_id', $supplierId)->get([
+            'id', 'invoice_number', 'control_number', 'total_amount', 'currency', 'status_payment'
+        ]);
+        $paidInErpPendingInMafarta = [];
+        $pendingInErpPaidInMafarta = [];
+
+        foreach ($erpInvoices as $inv) {
+            $digitsOnly = preg_replace('/\D/', '', $inv->invoice_number);
+            $invClean = ltrim($digitsOnly ?: $inv->invoice_number, '0');
+            $isPaidInErp = ($inv->status_payment == 1);
+            $isPendingInPortal = isset($portalDocNumbers[$invClean]) || isset($portalDocNumbers[$inv->invoice_number]);
+
+            $controlNumber = $inv->control_number;
+            if (empty($controlNumber) || $controlNumber === 'N/A') {
+                $matchedControl = Invoice::where('supplier_id', $inv->supplier_id)
+                    ->where(function ($q) use ($invClean) {
+                        $q->where('invoice_number', 'LIKE', "%{$invClean}");
+                    })
+                    ->whereNotNull('control_number')
+                    ->where('control_number', '!=', '')
+                    ->where('control_number', '!=', 'N/A')
+                    ->value('control_number');
+                if ($matchedControl) {
+                    $controlNumber = $matchedControl;
+                    $inv->update(['control_number' => $matchedControl]);
+                }
+            }
+
+            if ($isPaidInErp && $isPendingInPortal) {
+                $pDoc = $portalDocNumbers[$invClean] ?? $portalDocNumbers[$inv->invoice_number];
+                $paidInErpPendingInMafarta[] = [
+                    'id' => $inv->id,
+                    'invoice_number' => $inv->invoice_number,
+                    'control_number' => $controlNumber,
+                    'amount' => $inv->total_amount,
+                    'currency' => $inv->currency,
+                    'portal_amount' => $pDoc['montoTotal'] ?? $pDoc['montoDoc'] ?? $inv->total_amount,
+                    'erp_status' => 'Pagada en ERP',
+                    'portal_status' => 'Pendiente en Cobeca',
+                ];
+            } elseif (!$isPaidInErp && !$isPendingInPortal) {
+                $pendingInErpPaidInMafarta[] = [
+                    'id' => $inv->id,
+                    'invoice_number' => $inv->invoice_number,
+                    'control_number' => $controlNumber,
+                    'amount' => $inv->total_amount,
+                    'currency' => $inv->currency,
+                    'erp_status' => 'Pendiente en ERP',
+                    'portal_status' => 'Liquidada en Cobeca',
                 ];
             }
         }
@@ -204,8 +308,14 @@ class MafartaScraperService implements MafartaScraperServiceInterface
         return [
             'total_extracted' => count($documents),
             'updated' => $updatedCount,
+            'created' => $createdCount,
             'skipped' => $skippedCount,
             'supplier_id' => $supplierId,
+            'discrepancies' => [
+                'paid_in_erp_pending_in_mafarta' => $paidInErpPendingInMafarta,
+                'pending_in_erp_paid_in_mafarta' => $pendingInErpPaidInMafarta,
+                'total_discrepancies' => count($paidInErpPendingInMafarta) + count($pendingInErpPaidInMafarta),
+            ],
             'details' => $processed,
         ];
     }
