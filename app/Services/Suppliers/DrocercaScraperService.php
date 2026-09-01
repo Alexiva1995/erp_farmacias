@@ -34,6 +34,19 @@ class DrocercaScraperService implements DrocercaScraperServiceInterface
                 ->where('name', 'LIKE', '%DROCERCA%')
                 ->orWhere('name', 'LIKE', '%CERCA%')
                 ->first();
+            if (!$supplier) {
+                $supplier = Supplier::firstOrCreate(
+                    ['name' => 'DROGUERIA CERCA (DROCERCA)'],
+                    [
+                        'rif' => 'J-50540695-7',
+                        'dispatch_days' => [],
+                        'order_days' => [],
+                        'type' => \App\Enums\SupplierType::DROGUERIA,
+                        'is_active' => true,
+                        'rating' => 5,
+                    ]
+                );
+            }
             $supplierId = $supplier?->id;
         }
 
@@ -206,6 +219,8 @@ class DrocercaScraperService implements DrocercaScraperServiceInterface
                     'total_usd' => $invoice->total_usd,
                 ];
             } else {
+                $userId = \Illuminate\Support\Facades\Auth::id() ?? \App\Models\User::first()?->id ?? 1;
+
                 // Crear factura si no existía en el ERP
                 $newInvoice = Invoice::create([
                     'supplier_id' => $supplierId,
@@ -223,8 +238,8 @@ class DrocercaScraperService implements DrocercaScraperServiceInterface
                     'is_indexed' => $isIndexed,
                     'status' => 'pending',
                     'status_payment' => 0,
-                    'uploaded_by' => 1,
-                    'registered_by' => 1,
+                    'uploaded_by' => $userId,
+                    'registered_by' => $userId,
                     'invoice_photo' => $invoicePhoto,
                 ]);
 
