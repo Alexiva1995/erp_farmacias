@@ -70,11 +70,11 @@ jobs:
       - name: Transfer Compiled Assets to Server via SCP
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
-          password: ${{ secrets.SSH_PASSWORD }}
-          port: ${{ secrets.SSH_PORT || 22 }}
+          host: ${{ secrets.SERVER_HOST || secrets.SSH_HOST }}
+          username: ${{ secrets.SERVER_USER || secrets.SSH_USERNAME }}
+          key: ${{ secrets.SERVER_KEY || secrets.SSH_KEY }}
+          password: ${{ secrets.SERVER_PASSWORD || secrets.SSH_PASSWORD }}
+          port: ${{ secrets.SERVER_PORT || secrets.SSH_PORT || 22 }}
           source: "public/build"
           target: ${{ secrets.DEPLOY_PATH || '/home/farmaciabs/public_html/erp3' }}
           strip_components: 0
@@ -83,11 +83,11 @@ jobs:
       - name: Execute Remote Deploy on Server via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
-          password: ${{ secrets.SSH_PASSWORD }}
-          port: ${{ secrets.SSH_PORT || 22 }}
+          host: ${{ secrets.SERVER_HOST || secrets.SSH_HOST }}
+          username: ${{ secrets.SERVER_USER || secrets.SSH_USERNAME }}
+          key: ${{ secrets.SERVER_KEY || secrets.SSH_KEY }}
+          password: ${{ secrets.SERVER_PASSWORD || secrets.SSH_PASSWORD }}
+          port: ${{ secrets.SERVER_PORT || secrets.SSH_PORT || 22 }}
           script: |
             cd ${{ secrets.DEPLOY_PATH || '/home/farmaciabs/public_html/erp3' }}
             git pull origin ${{ github.ref_name }}
