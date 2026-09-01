@@ -3,7 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import axios from '@/plugins/axios'
 import { toast } from "@/plugins/sweetalert"
 import { useBrandingStore } from "@/stores/useBrandingStore"
-import IaAssistantModuleCard from '@/Components/configuration/IaAssistantModuleCard.vue'
+import IaAssistantModuleCard from '@/components/configuration/IaAssistantModuleCard.vue'
 
 const brandingStore = useBrandingStore()
 

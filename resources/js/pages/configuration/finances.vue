@@ -3,8 +3,8 @@ import { ref, computed, onMounted } from 'vue'
 import axios from '@/plugins/axios'
 import { toast } from "@/plugins/sweetalert"
 import { useBrandingStore } from "@/stores/useBrandingStore"
-import FinanceModuleCard from '@/Components/configuration/FinanceModuleCard.vue'
-import ProfitabilityFormulaCard from '@/Components/configuration/ProfitabilityFormulaCard.vue'
+import FinanceModuleCard from '@/components/configuration/FinanceModuleCard.vue'
+import ProfitabilityFormulaCard from '@/components/configuration/ProfitabilityFormulaCard.vue'
 
 const brandingStore = useBrandingStore()
 

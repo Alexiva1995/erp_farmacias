@@ -3,8 +3,8 @@ import { ref, computed, onMounted } from 'vue'
 import axios from '@/plugins/axios'
 import { toast } from "@/plugins/sweetalert"
 import { useBrandingStore } from "@/stores/useBrandingStore"
-import ExpenseSettingCard from '@/Components/configuration/ExpenseSettingCard.vue'
-import ExpenseCategoryTable from '@/Components/configuration/ExpenseCategoryTable.vue'
+import ExpenseSettingCard from '@/components/configuration/ExpenseSettingCard.vue'
+import ExpenseCategoryTable from '@/components/configuration/ExpenseCategoryTable.vue'
 
 const brandingStore = useBrandingStore()
 

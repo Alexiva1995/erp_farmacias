@@ -3,9 +3,9 @@ import { ref, onMounted } from 'vue'
 import axios from '@/plugins/axios'
 import { toast } from "@/plugins/sweetalert"
 import { useBrandingStore } from "@/stores/useBrandingStore"
-import ProductSettingsCard from '@/Components/configuration/ProductSettingsCard.vue'
-import ProductTypesCard from '@/Components/configuration/ProductTypesCard.vue'
-import ProductFormFieldsCard from '@/Components/configuration/ProductFormFieldsCard.vue'
+import ProductSettingsCard from '@/components/configuration/ProductSettingsCard.vue'
+import ProductTypesCard from '@/components/configuration/ProductTypesCard.vue'
+import ProductFormFieldsCard from '@/components/configuration/ProductFormFieldsCard.vue'
 
 const brandingStore = useBrandingStore()
 

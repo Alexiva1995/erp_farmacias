@@ -3,7 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import axios from '@/plugins/axios'
 import { toast } from "@/plugins/sweetalert"
 import { useBrandingStore } from "@/stores/useBrandingStore"
-import RrhhModuleCard from '@/Components/configuration/RrhhModuleCard.vue'
+import RrhhModuleCard from '@/components/configuration/RrhhModuleCard.vue'
 
 // Instancia de la tienda de branding
 const brandingStore = useBrandingStore()

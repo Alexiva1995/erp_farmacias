@@ -3,9 +3,9 @@ import { ref, onMounted } from 'vue'
 import axios from '@/plugins/axios'
 import { toast } from "@/plugins/sweetalert"
 import { useBrandingStore } from "@/stores/useBrandingStore"
-import TpvGeneralSettingsCard from '@/Components/configuration/TpvGeneralSettingsCard.vue'
-import TpvPaymentMethodsCard from '@/Components/configuration/TpvPaymentMethodsCard.vue'
-import TpvPromotionsCard from '@/Components/configuration/TpvPromotionsCard.vue'
+import TpvGeneralSettingsCard from '@/components/configuration/TpvGeneralSettingsCard.vue'
+import TpvPaymentMethodsCard from '@/components/configuration/TpvPaymentMethodsCard.vue'
+import TpvPromotionsCard from '@/components/configuration/TpvPromotionsCard.vue'
 
 const brandingStore = useBrandingStore()
 

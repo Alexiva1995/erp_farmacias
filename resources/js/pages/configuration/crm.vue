@@ -3,7 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import axios from '@/plugins/axios'
 import { toast } from "@/plugins/sweetalert"
 import { useBrandingStore } from "@/stores/useBrandingStore"
-import CrmModuleCard from '@/Components/configuration/CrmModuleCard.vue'
+import CrmModuleCard from '@/components/configuration/CrmModuleCard.vue'
 
 const brandingStore = useBrandingStore()
 
