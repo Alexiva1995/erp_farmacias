@@ -618,6 +618,14 @@ const handleMarkAllMafartaPendingAsPaid = async () => {
                 </tbody>
               </VTable>
             </div>
+
+            <!-- Estado sin datos en Drocerca -->
+            <div v-if="(!drocercaData.details || drocercaData.details.length === 0) && (!drocercaPendingPaid || drocercaPendingPaid.length === 0)" class="text-center py-6">
+              <VIcon icon="tabler-check-circle" size="40" color="success" class="mb-2" />
+              <p class="text-body-2 text-medium-emphasis mb-0">
+                Sincronización con Drocerca ejecutada correctamente. Todas las cuentas están al día y no hay diferencias.
+              </p>
+            </div>
           </VWindowItem>
 
           <!-- ================= TAB MAFARTA ================= -->
