@@ -1,4 +1,4 @@
-name: Deploy ERP Farmacias
+name: ERP Farmacias CI/CD Pipeline
 
 on:
   push:
@@ -9,8 +9,8 @@ on:
       - mejora
 
 jobs:
-  build-and-deploy:
-    name: Build Frontend & Deploy to Production
+  test-build-deploy:
+    name: Test, Build & Deploy Pipeline
     runs-on: ubuntu-latest
 
     steps:
@@ -18,12 +18,12 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 2. Configurar versión de PHP
+      # 2. Configurar versión de PHP 8.3 con extensiones necesarias
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
-          extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, bcmath, intl, gd, exif, iconv
+          extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite, bcmath, soap, intl, gd, exif, iconv
           coverage: none
 
       # 3. Configurar Node.js y PNPM
@@ -38,23 +38,32 @@ jobs:
           node-version: 20
           cache: 'pnpm'
 
-      # 4. Crear .env temporal y generar key en el runner para evitar errores de Laravel
-      - name: Create Temporary .env
+      # 4. Configurar entorno .env y base de datos SQLite para pruebas
+      - name: Prepare Environment & SQLite Database
         run: |
           php -r "file_exists('.env') || copy('.env.example', '.env');"
-          php artisan key:generate --ansi || true
+          mkdir -p database
+          touch database/database.sqlite
+          php artisan key:generate
 
-      # 5. Instalar dependencias de Composer en el Runner (sin scripts para evitar fallos de BD)
+      # 5. Instalar dependencias de Composer
       - name: Install Composer Dependencies
-        run: composer install --no-dev --no-interaction --no-scripts --prefer-dist --optimize-autoloader
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
 
-      # 6. Instalar dependencias de Node y Compilar Frontend con Vite
-      - name: Build Frontend Assets
+      # 6. Ejecutar suite de pruebas (95 tests)
+      - name: Execute Tests via PHPUnit
+        env:
+          DB_CONNECTION: sqlite
+          DB_DATABASE: database/database.sqlite
+        run: php artisan test
+
+      # 7. Instalar dependencias de Frontend y Compilar con Vite en el Runner
+      - name: Build Frontend Assets (Vite)
         run: |
           pnpm install
           pnpm run build
 
-      # 7. Transferir archivos compilados (public/build) al servidor
+      # 8. Transferir archivos compilados (public/build) directamente al servidor vía SCP
       - name: Transfer Compiled Assets to Server via SCP
         uses: appleboy/scp-action@v0.1.7
         if: ${{ secrets.SSH_HOST != '' }}
@@ -68,8 +77,8 @@ jobs:
           target: ${{ secrets.DEPLOY_PATH || '/home/farmaciabs/public_html/erp3' }}
           strip_components: 0
 
-      # 8. Ejecutar actualización de backend y optimización en el Servidor (cPanel)
-      - name: Execute Remote Deploy on Server
+      # 9. Ejecutar actualización remota, migraciones y cachés en el Servidor (cPanel)
+      - name: Execute Remote Deploy on Server via SSH
         uses: appleboy/ssh-action@v1.0.3
         if: ${{ secrets.SSH_HOST != '' }}
         with:
@@ -88,4 +97,3 @@ jobs:
             php artisan route:cache
             php artisan view:cache
             php artisan queue:restart || true
-
