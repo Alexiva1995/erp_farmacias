@@ -1174,6 +1174,31 @@ class PendingPaymentsController extends Controller
         }
     }
 
+    /**
+     * Marcar un conjunto de facturas como pendientes (status_payment = 0) en lote
+     */
+    public function bulkMarkAsPending(Request $request): JsonResponse
+    {
+        try {
+            $invoiceIds = $request->input('invoice_ids', []);
+            if (empty($invoiceIds) || !is_array($invoiceIds)) {
+                return ApiResponse::error('No se especificaron facturas a marcar.', 422);
+            }
+
+            $updated = Invoice::whereIn('id', $invoiceIds)->update([
+                'status_payment' => 0,
+                'status' => 'pending',
+            ]);
+
+            return ApiResponse::success([
+                'updated_count' => $updated,
+                'invoice_ids' => $invoiceIds,
+            ], "{$updated} facturas marcadas como pendientes (por pagar) exitosamente.");
+        } catch (\Exception $e) {
+            return ApiResponse::error('Error al marcar facturas como pendientes: ' . $e->getMessage(), 500);
+        }
+    }
+
 
     /**
      * Calcular monto restante para una factura individual considerando pagos parciales

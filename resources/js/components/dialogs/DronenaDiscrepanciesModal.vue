@@ -35,6 +35,7 @@ const emit = defineEmits(["update:modelValue", "close", "invoices-marked-as-paid
 
 const activeTab = ref("dronena");
 const isMarkingPaid = ref(false);
+const isMarkingPending = ref(false);
 
 const paidInErpPendingInPortal = computed(
   () => props.discrepancies?.paid_in_erp_pending_in_dronena || []
@@ -90,6 +91,40 @@ const handleMarkAllPendingAsPaid = async () => {
     toast.error(error.response?.data?.message || "Error al marcar las facturas como pagadas.");
   } finally {
     isMarkingPaid.value = false;
+  }
+};
+
+const handleMarkAllPaidAsPending = async () => {
+  const count = paidInErpPendingInPortal.value.length;
+  if (count === 0) return;
+
+  const result = await Swal.fire({
+    title: `¿Pasar las ${count} facturas a Pendientes (Por Pagar)?`,
+    text: "Estas facturas volverán al estado Por Pagar (status_payment = 0) en tu ERP porque aún tienen saldo pendiente por cobrar en Dronena.",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonText: "Sí, pasar a Por Pagar",
+    cancelButtonText: "Cancelar",
+    confirmButtonColor: "#ff9f43",
+  });
+
+  if (!result.isConfirmed) return;
+
+  isMarkingPending.value = true;
+  try {
+    const invoiceIds = paidInErpPendingInPortal.value.map((i) => i.id);
+    const { data } = await axios.post("/finances/pending-payments/invoices/bulk-mark-as-pending", {
+      invoice_ids: invoiceIds,
+    });
+
+    toast.success(data.message || `${count} facturas reabiertas como pendientes exitosamente`);
+    emit("invoices-marked-as-paid");
+    closeDialog();
+  } catch (error) {
+    console.error("Error marcando facturas como pendientes:", error);
+    toast.error(error.response?.data?.message || "Error al reabrir las facturas como pendientes.");
+  } finally {
+    isMarkingPending.value = false;
   }
 };
 
@@ -231,12 +266,27 @@ const handleMarkAllDrocercaPendingAsPaid = async () => {
 
             <!-- Caso 1: Pagadas en ERP pero aún figuran PENDIENTES en Dronena -->
             <div v-if="paidInErpPendingInPortal.length > 0" class="mb-6">
-              <div class="d-flex align-center gap-2 mb-2">
-                <VIcon icon="tabler-alert-circle" color="warning" size="22" />
-                <h4 class="text-subtitle-1 font-weight-bold text-warning mb-0">
-                  Pagadas en el ERP pero aún PENDIENTES en Dronena ({{ paidInErpPendingInPortal.length }})
-                </h4>
+              <div class="d-flex align-center justify-space-between flex-wrap gap-2 mb-2">
+                <div class="d-flex align-center gap-2">
+                  <VIcon icon="tabler-alert-circle" color="warning" size="22" />
+                  <h4 class="text-subtitle-1 font-weight-bold text-warning mb-0">
+                    Pagadas en el ERP pero aún PENDIENTES en Dronena ({{ paidInErpPendingInPortal.length }})
+                  </h4>
+                </div>
+
+                <VBtn
+                  color="warning"
+                  variant="elevated"
+                  size="small"
+                  prepend-icon="tabler-arrow-back-up"
+                  class="rounded-lg shadow-sm font-weight-bold"
+                  :loading="isMarkingPending"
+                  @click="handleMarkAllPaidAsPending"
+                >
+                  Pasar a Por Pagar ({{ paidInErpPendingInPortal.length }})
+                </VBtn>
               </div>
+
               <p class="text-caption text-medium-emphasis mb-3">
                 Estas facturas ya las registraste como pagadas en el ERP, pero en el portal de Dronena todavía aparecen con saldo pendiente por cobrar:
               </p>
@@ -324,8 +374,41 @@ const handleMarkAllDrocercaPendingAsPaid = async () => {
               </VTable>
             </div>
 
+            <!-- Facturas Procesadas / Actualizadas desde Dronena -->
+            <div v-if="dronenaData.details && dronenaData.details.length > 0" class="mt-6 mb-6">
+              <h4 class="text-subtitle-1 font-weight-bold mb-2">Facturas Procesadas desde Dronena</h4>
+              <VTable density="compact" class="border rounded-lg mb-2">
+                <thead>
+                  <tr class="table-header-row">
+                    <th class="text-left font-weight-bold">N° Factura</th>
+                    <th class="text-left font-weight-bold">N° Control</th>
+                    <th class="text-center font-weight-bold">Acción</th>
+                    <th class="text-center font-weight-bold">Vencimiento</th>
+                    <th class="text-center font-weight-bold">Indexada (FA$)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(item, idx) in dronenaData.details" :key="idx">
+                    <td class="font-weight-medium text-primary">#{{ item.invoice_number }}</td>
+                    <td>{{ item.control_number || 'N/A' }}</td>
+                    <td class="text-center">
+                      <VChip size="x-small" :color="item.action === 'updated' ? 'info' : 'success'" variant="tonal">
+                        {{ item.action === 'updated' ? 'Actualizada' : item.action }}
+                      </VChip>
+                    </td>
+                    <td class="text-center">{{ item.exp_date || 'N/A' }}</td>
+                    <td class="text-center">
+                      <VChip size="x-small" :color="item.is_indexed ? 'error' : 'secondary'" variant="tonal">
+                        {{ item.is_indexed ? 'Sí' : 'No' }}
+                      </VChip>
+                    </td>
+                  </tr>
+                </tbody>
+              </VTable>
+            </div>
+
             <!-- Estado Sin Discrepancias Dronena -->
-            <div v-if="!hasDiscrepancies" class="text-center py-6">
+            <div v-if="!hasDiscrepancies && (!dronenaData.details || dronenaData.details.length === 0)" class="text-center py-6">
               <VAvatar color="success" variant="tonal" size="56" class="mb-3">
                 <VIcon icon="tabler-check" size="32" color="success" />
               </VAvatar>
