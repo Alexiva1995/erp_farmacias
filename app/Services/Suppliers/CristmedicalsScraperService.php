@@ -23,14 +23,10 @@ class CristmedicalsScraperService implements CristmedicalsScraperServiceInterfac
     private const REGISTRAR_PAGO_URL = 'https://cristmedicalsweb.cristmedicals.com/registrar-pago-confirmado';
 
     /**
-     * Ejecuta una petición HTTP usando curl nativo de Windows (Schannel) para soportar renegociación TLS.
+     * Ejecuta una petición HTTP compatible con cualquier servidor (Linux / Windows / PHP-FPM / Apache / Nginx).
      */
     private function executeCurl(string $method, string $url, string $cookieFile, array $options = []): array
     {
-        $cookiePath = escapeshellarg($cookieFile);
-        $userAgent = escapeshellarg("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36");
-        $cmd = "curl.exe -s -i -k -L --compressed --connect-timeout 20 --max-time 45 -A {$userAgent} -b {$cookiePath} -c {$cookiePath}";
-
         $headers = array_merge([
             'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
             'Accept-Language' => 'es-ES,es;q=0.9,en;q=0.8',
@@ -40,6 +36,64 @@ class CristmedicalsScraperService implements CristmedicalsScraperServiceInterfac
             'Sec-Fetch-User' => '?1',
             'Upgrade-Insecure-Requests' => '1',
         ], $options['headers'] ?? []);
+
+        // 1. Intentar con la extensión PHP cURL nativa
+        if (function_exists('curl_init')) {
+            $ch = curl_init();
+            $curlHeaders = [];
+            foreach ($headers as $k => $v) {
+                $curlHeaders[] = "{$k}: {$v}";
+            }
+
+            $curlOpts = [
+                CURLOPT_URL => $url,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HEADER => true,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_SSL_VERIFYPEER => false,
+                CURLOPT_SSL_VERIFYHOST => 0,
+                CURLOPT_COOKIEJAR => $cookieFile,
+                CURLOPT_COOKIEFILE => $cookieFile,
+                CURLOPT_ENCODING => '',
+                CURLOPT_TIMEOUT => 30,
+                CURLOPT_CONNECTTIMEOUT => 15,
+                CURLOPT_USERAGENT => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+                CURLOPT_HTTPHEADER => $curlHeaders,
+            ];
+
+            if (strtoupper($method) === 'POST') {
+                $curlOpts[CURLOPT_POST] = true;
+                if (isset($options['form_params'])) {
+                    $curlOpts[CURLOPT_POSTFIELDS] = http_build_query($options['form_params']);
+                } elseif (isset($options['json'])) {
+                    $curlOpts[CURLOPT_POSTFIELDS] = json_encode($options['json'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+                    $curlHeaders[] = 'Content-Type: application/json';
+                    $curlOpts[CURLOPT_HTTPHEADER] = $curlHeaders;
+                }
+            }
+
+            curl_setopt_array($ch, $curlOpts);
+            $response = curl_exec($ch);
+            $statusCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+            curl_close($ch);
+
+            if ($response !== false && $statusCode > 0) {
+                $headerText = substr($response, 0, $headerSize);
+                $body = substr($response, $headerSize);
+                return [
+                    'status' => $statusCode,
+                    'header' => $headerText,
+                    'body' => $body,
+                ];
+            }
+        }
+
+        // 2. Fallback mediante binario curl del sistema
+        $binary = (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') ? 'curl.exe' : 'curl';
+        $cookiePath = escapeshellarg($cookieFile);
+        $userAgent = escapeshellarg("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36");
+        $cmd = "{$binary} -s -i -k -L --compressed --connect-timeout 20 --max-time 45 -A {$userAgent} -b {$cookiePath} -c {$cookiePath}";
 
         foreach ($headers as $k => $v) {
             $cmd .= " -H " . escapeshellarg("{$k}: {$v}");
@@ -58,8 +112,8 @@ class CristmedicalsScraperService implements CristmedicalsScraperServiceInterfac
         }
 
         $cmd .= " " . escapeshellarg($url);
-
         $output = shell_exec($cmd);
+
         if (!$output) {
             return ['status' => 0, 'header' => '', 'body' => ''];
         }
@@ -90,7 +144,11 @@ class CristmedicalsScraperService implements CristmedicalsScraperServiceInterfac
         $lastException = null;
 
         for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
-            $cookieFile = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'cristmedicals_' . md5($username . microtime()) . '.txt';
+            $cookieDir = storage_path('framework/cache');
+            if (!is_dir($cookieDir)) {
+                @mkdir($cookieDir, 0777, true);
+            }
+            $cookieFile = $cookieDir . DIRECTORY_SEPARATOR . 'cristmedicals_' . md5($username . microtime()) . '.txt';
 
             try {
                 // 1. Obtener token CSRF inicial desde la página de login
