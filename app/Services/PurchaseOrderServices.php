@@ -19,6 +19,7 @@ class PurchaseOrderServices implements PurchaseOrder
     protected AutoOrderDetailsRepository $autoOrderDetailsRepository,
     protected \App\Contracts\Suppliers\DronenaEdiServiceInterface $dronenaEdiService,
     protected \App\Contracts\Suppliers\VitalclinicFtpServiceInterface $vitalclinicFtpService,
+    protected \App\Contracts\Suppliers\DrocercaFtpServiceInterface $drocercaFtpService,
   ) {
   }
 
@@ -68,9 +69,10 @@ class PurchaseOrderServices implements PurchaseOrder
   {
     $supplier = $autoOrder->supplier ?: \App\Models\Supplier::find($autoOrder->supplier_id);
     
-    // Si es Droguería Nena (por nombre o conexión FTP con dronena.com), transmitir archivo EDI FACTUXX
+    // Identificar proveedor automatizado (Dronena, Vitalclinic, Drocerca)
     $isDronena = false;
     $isVitalclinic = false;
+    $isDrocerca = false;
 
     if ($supplier) {
       $supplierName = strtoupper($supplier->name);
@@ -94,6 +96,19 @@ class PurchaseOrderServices implements PurchaseOrder
           $isVitalclinic = true;
         }
       }
+
+      if (str_contains($supplierName, 'DROCERCA') || str_contains($supplierName, 'CERCA')) {
+        $isDrocerca = true;
+      } else {
+        $hasDrocercaFtp = $supplier->connections()->where(function ($query) {
+          $query->where('host', 'LIKE', '%drocerca%')
+            ->orWhere('username', 'LIKE', '%drocerca%')
+            ->orWhere('type', 'drocerca_bot');
+        })->exists();
+        if ($hasDrocercaFtp) {
+          $isDrocerca = true;
+        }
+      }
     }
 
     if ($isDronena) {
@@ -111,6 +126,15 @@ class PurchaseOrderServices implements PurchaseOrder
       } catch (\Throwable $e) {
         \Illuminate\Support\Facades\Log::error("[VITALCLINIC FTP] Error transmitiendo pedido automático #{$autoOrder->id}: " . $e->getMessage());
         throw new \Exception("Error al transmitir el pedido a Droguería Vitalclinic por FTP: " . $e->getMessage());
+      }
+    }
+
+    if ($isDrocerca) {
+      try {
+        $this->drocercaFtpService->sendOrderFtp($autoOrder);
+      } catch (\Throwable $e) {
+        \Illuminate\Support\Facades\Log::error("[DROCERCA FTP] Error transmitiendo pedido automático #{$autoOrder->id}: " . $e->getMessage());
+        throw new \Exception("Error al transmitir el pedido a Drocerca por FTP: " . $e->getMessage());
       }
     }
 

@@ -325,6 +325,11 @@ class AppServiceProvider extends ServiceProvider
         );
 
         $this->app->bind(
+            \App\Contracts\Suppliers\DrocercaFtpServiceInterface::class,
+            \App\Services\Suppliers\DrocercaFtpService::class
+        );
+
+        $this->app->bind(
             \App\Contracts\Suppliers\DronenaEdiServiceInterface::class,
             \App\Services\Suppliers\DronenaEdiService::class
         );
