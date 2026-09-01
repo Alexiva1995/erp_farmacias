@@ -86,24 +86,35 @@ class MafartaScraperService implements MafartaScraperServiceInterface
         foreach ($documents as $doc) {
             $rawDocNum = (string) ($doc['numDoc'] ?? '');
             $cleanNumber = ltrim($rawDocNum, '0');
-            $expDate = !empty($doc['fechVenc']) ? Carbon::parse($doc['fechVenc'])->format('Y-m-d') : null;
-            $emisionDate = !empty($doc['fechEmision']) ? Carbon::parse($doc['fechEmision'])->format('Y-m-d') : null;
+            $tipoDoc = strtoupper((string) ($doc['tipoDoc'] ?? 'FA'));
+            $isNC = ($tipoDoc === 'NC');
 
-            // Indexada si el portal marca facturaDolari = 1 o si la fecha de vencimiento es hoy o pasada
-            $isIndexed = (isset($doc['facturaDolari']) && (int) $doc['facturaDolari'] === 1)
-                || ($expDate && $expDate <= $today);
+            $emisionDate = !empty($doc['fechEmision']) ? Carbon::parse($doc['fechEmision'])->format('Y-m-d') : null;
+            // Para las NC, el vencimiento es SIEMPRE la fecha de emisión
+            $expDate = $isNC ? ($emisionDate ?: $today) : (!empty($doc['fechVenc']) ? Carbon::parse($doc['fechVenc'])->format('Y-m-d') : null);
+
+            // Indexada si el portal marca facturaDolari = 1 o si la fecha de vencimiento es hoy o pasada (las NC no son indexadas)
+            $isIndexed = !$isNC && ((isset($doc['facturaDolari']) && (int) $doc['facturaDolari'] === 1) || ($expDate && $expDate <= $today));
 
             if (empty($cleanNumber)) {
                 $skippedCount++;
                 continue;
             }
 
-            // Buscar la factura en el ERP por múltiples variantes
+            // Identificador en ERP (ej: NC-1635384 para Notas de Crédito o correlativo numérico)
+            $docPrefix = $isNC ? 'NC-' : '';
+            $erpDocNumber = $docPrefix . $cleanNumber;
+
+            // Buscar la factura o NC en el ERP por múltiples variantes
             $possibleNumbers = array_unique([
+                $erpDocNumber,
+                $docPrefix . $rawDocNum,
                 $cleanNumber,
                 $rawDocNum,
                 str_pad($cleanNumber, 8, '0', STR_PAD_LEFT),
                 str_pad($cleanNumber, 10, '0', STR_PAD_LEFT),
+                'NC-' . str_pad($cleanNumber, 8, '0', STR_PAD_LEFT),
+                'NC-' . str_pad($cleanNumber, 10, '0', STR_PAD_LEFT),
             ]);
 
             $invoice = Invoice::where('supplier_id', $supplierId)
@@ -114,16 +125,24 @@ class MafartaScraperService implements MafartaScraperServiceInterface
 
             // Consultar detalle completo en el API si falta nroControl o detalles
             $controlNumber = $doc['nroControl'] ?? null;
-            $ndRefAmount = (float) ($doc['montoDifer'] ?? 0); // Diferencial cambiario en Bs
-            $totalAmount = (float) ($doc['montoTotal'] ?? $doc['montoDoc'] ?? 0);
-            $totalUsd = (float) ($doc['montoTotal2'] ?? 0);
+            $ndRefAmount = 0; // En Cobeca/Mafarta el diferencial es producto de indexacion natural, no una ND a descontar
+            
+            $rawTotal = (float) ($doc['montoTotal'] ?? $doc['montoDoc'] ?? 0);
+            $rawTotalUsd = (float) ($doc['montoTotal2'] ?? 0);
             $exchangeRate = (float) ($doc['montoTasaConv'] ?? $doc['montoTasaFact'] ?? 0);
+
+            // Montos con signo según el tipo de documento (Negativos para NC para restar de la deuda)
+            $totalAmount = $isNC ? -abs($rawTotal) : abs($rawTotal);
+            $totalUsd = $isNC ? -abs($rawTotalUsd ?: ($exchangeRate > 0 ? round(abs($rawTotal) / $exchangeRate, 2) : 0)) : abs($rawTotalUsd);
+            $exemptAmount = $isNC ? -abs((float) ($doc['montoExento'] ?? 0)) : (float) ($doc['montoExento'] ?? 0);
+            $taxAmount = $isNC ? -abs((float) ($doc['montoIva'] ?? 0)) : (float) ($doc['montoIva'] ?? 0);
+            $taxableBase = $isNC ? -abs((float) ($doc['montoBase'] ?? (abs($totalAmount) - abs($exemptAmount)))) : (float) ($doc['montoBase'] ?? ($totalAmount - $exemptAmount));
 
             if ($token && empty($controlNumber)) {
                 $detailData = $this->getInvoiceDetail($rawDocNum, $token);
                 if ($detailData) {
                     $controlNumber = $detailData['nroControl'] ?? $controlNumber;
-                    if (empty($expDate) && !empty($detailData['fechaVencimiento'])) {
+                    if (!$isNC && empty($expDate) && !empty($detailData['fechaVencimiento'])) {
                         $expDate = Carbon::parse($detailData['fechaVencimiento'])->format('Y-m-d');
                     }
                     if (empty($emisionDate) && !empty($detailData['fechaFactura'])) {
@@ -155,10 +174,10 @@ class MafartaScraperService implements MafartaScraperServiceInterface
                     $updateData['control_number'] = $controlNumber;
                 }
 
-                // Actualizar fecha de vencimiento y de pago
+                // Actualizar fecha de vencimiento y de pago (en NC es siempre emision)
                 if ($expDate) {
                     $updateData['exp_date'] = $expDate;
-                    if (empty($invoice->payment_date)) {
+                    if (empty($invoice->payment_date) || $isNC) {
                         $updateData['payment_date'] = $expDate;
                     }
                 }
@@ -167,15 +186,22 @@ class MafartaScraperService implements MafartaScraperServiceInterface
                     $updateData['created_invoice_date'] = $emisionDate;
                 }
 
+                // Actualizar montos en NC para garantizar signo negativo
+                if ($isNC) {
+                    $updateData['total_amount'] = $totalAmount;
+                    $updateData['total_usd'] = $totalUsd;
+                    $updateData['taxable_base'] = $taxableBase;
+                    $updateData['tax_amount'] = $taxAmount;
+                    $updateData['exempt_amount'] = $exemptAmount;
+                }
+
                 // Actualizar estado de indexación
                 $updateData['is_indexed'] = $isIndexed;
 
-                // Monto referencial / diferencial si aplica
-                if ($ndRefAmount > 0) {
-                    $updateData['nd_referential_amount'] = $ndRefAmount;
-                }
+                // Limpiar ND referencial en Mafarta (no aplica)
+                $updateData['nd_referential_amount'] = 0;
 
-                if ($totalUsd > 0 && ((float) ($invoice->total_usd ?? 0) <= 0)) {
+                if (!$isNC && $totalUsd > 0 && ((float) ($invoice->total_usd ?? 0) <= 0)) {
                     $updateData['total_usd'] = $totalUsd;
                 }
 
@@ -203,26 +229,27 @@ class MafartaScraperService implements MafartaScraperServiceInterface
                     'control_number' => $invoice->control_number,
                     'exp_date' => $expDate,
                     'is_indexed' => $isIndexed,
-                    'total_usd' => (float) ($invoice->total_usd ?: ($exchangeRate > 0 ? round($totalAmount / $exchangeRate, 2) : 0)),
-                    'nd_referential_amount' => $ndRefAmount,
+                    'total_usd' => (float) $invoice->total_usd,
+                    'nd_referential_amount' => 0,
                     'has_pdf' => !empty($invoice->invoice_photo) || !empty($updateData['invoice_photo']),
                 ];
             } else {
-                // Si la factura no existe en el ERP, crearla automáticamente
-                $calcUsd = $totalUsd > 0 ? $totalUsd : ($exchangeRate > 0 ? round($totalAmount / $exchangeRate, 2) : 0);
+                // Si la factura o NC no existe en el ERP, crearla automáticamente
+                $calcUsd = $totalUsd;
                 $newInvoice = Invoice::create([
                     'supplier_id' => $supplierId,
-                    'invoice_number' => $rawDocNum,
+                    'invoice_number' => $erpDocNumber,
                     'control_number' => $controlNumber,
                     'created_invoice_date' => $emisionDate ?: $today,
                     'exp_date' => $expDate ?: $today,
                     'payment_date' => $expDate ?: $today,
                     'exchange_rate' => $exchangeRate > 0 ? $exchangeRate : 1.00,
-                    'exempt_amount' => (float) ($doc['montoExento'] ?? 0),
-                    'taxable_base' => (float) ($doc['montoBase'] ?? ($totalAmount - ($doc['montoExento'] ?? 0))),
-                    'tax_amount' => (float) ($doc['montoIva'] ?? 0),
+                    'exempt_amount' => $exemptAmount,
+                    'taxable_base' => $taxableBase,
+                    'tax_amount' => $taxAmount,
                     'total_amount' => $totalAmount,
                     'total_usd' => $calcUsd,
+                    'nd_referential_amount' => 0,
                     'is_indexed' => $isIndexed,
                     'status' => 'pending',
                     'status_payment' => 0,
@@ -248,7 +275,7 @@ class MafartaScraperService implements MafartaScraperServiceInterface
                     'exp_date' => $expDate,
                     'is_indexed' => $isIndexed,
                     'total_usd' => $calcUsd,
-                    'nd_referential_amount' => $ndRefAmount,
+                    'nd_referential_amount' => 0,
                     'has_pdf' => $hasPdf,
                 ];
             }
