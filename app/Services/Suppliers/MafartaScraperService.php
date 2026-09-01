@@ -231,6 +231,16 @@ class MafartaScraperService implements MafartaScraperServiceInterface
                 ]);
 
                 $createdCount++;
+
+                $hasPdf = false;
+                if ($token && !empty($detailData)) {
+                    $pdfPath = $this->generateAndStoreInvoicePdf($newInvoice, $detailData);
+                    if ($pdfPath) {
+                        $newInvoice->update(['invoice_photo' => $pdfPath]);
+                        $hasPdf = true;
+                    }
+                }
+
                 $processed[] = [
                     'invoice_number' => $newInvoice->invoice_number,
                     'action' => 'created',
@@ -239,7 +249,7 @@ class MafartaScraperService implements MafartaScraperServiceInterface
                     'is_indexed' => $isIndexed,
                     'total_usd' => $calcUsd,
                     'nd_referential_amount' => $ndRefAmount,
-                    'has_pdf' => false,
+                    'has_pdf' => $hasPdf,
                 ];
             }
         }
