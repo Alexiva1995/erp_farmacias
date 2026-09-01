@@ -1,5 +1,5 @@
 <script setup>
-import Configuration from "@/components/Cards/Configuration.vue";
+import Configuration from "@/components/cards/Configuration.vue";
 </script>
 
 <template>
