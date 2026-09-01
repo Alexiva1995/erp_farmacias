@@ -270,7 +270,7 @@ const isSyncingBots = ref(false);
 const handleSyncBots = async () => {
   const result = await Swal.fire({
     title: "¿Sincronizar Facturas con Droguerías?",
-    html: "Se consultarán los portales de <b>Dronena</b>, <b>Drocerca</b> y <b>Cobeca / Mafarta</b> para actualizar fechas de vencimiento, pagos, indexación y contrastar estados.",
+    html: "Se consultarán los portales de <b>Dronena</b>, <b>Drocerca</b>, <b>Cobeca / Mafarta</b> y <b>Cristmedicals</b> para actualizar fechas de vencimiento, pagos, saldos con descuento y contrastar estados.",
     icon: "info",
     showCancelButton: true,
     confirmButtonText: "Sincronizar Todo",
@@ -286,13 +286,14 @@ const handleSyncBots = async () => {
     const data = response.data?.data || {};
 
     syncSummary.value = {
-      updated: data.total_updated || (data.dronena?.updated || 0) + (data.drocerca?.updated || 0) + (data.mafarta?.updated || 0),
-      created: data.total_created || (data.drocerca?.created || 0),
+      updated: data.total_updated || (data.dronena?.updated || 0) + (data.drocerca?.updated || 0) + (data.mafarta?.updated || 0) + (data.cristmedicals?.updated || 0),
+      created: data.total_created || (data.drocerca?.created || 0) + (data.cristmedicals?.created || 0),
       skipped: data.total_skipped || 0,
-      total_extracted: (data.dronena?.total_extracted || 0) + (data.drocerca?.total_extracted || 0) + (data.mafarta?.total_extracted || 0),
+      total_extracted: (data.dronena?.total_extracted || 0) + (data.drocerca?.total_extracted || 0) + (data.mafarta?.total_extracted || 0) + (data.cristmedicals?.total_extracted || 0),
       dronena: data.dronena || {},
       drocerca: data.drocerca || {},
       mafarta: data.mafarta || {},
+      cristmedicals: data.cristmedicals || {},
       messages: data.messages || [],
     };
 

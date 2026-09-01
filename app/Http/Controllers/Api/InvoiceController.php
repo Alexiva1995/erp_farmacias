@@ -28,7 +28,8 @@ class InvoiceController extends Controller
         private InvoiceQueryService $invoiceQueryService,
         private \App\Contracts\Suppliers\DronenaScraperServiceInterface $dronenaScraperService,
         private \App\Contracts\Suppliers\DrocercaScraperServiceInterface $drocercaScraperService,
-        private \App\Contracts\Suppliers\MafartaScraperServiceInterface $mafartaScraperService
+        private \App\Contracts\Suppliers\MafartaScraperServiceInterface $mafartaScraperService,
+        private \App\Contracts\Suppliers\CristmedicalsScraperServiceInterface $cristmedicalsScraperService
     ) {
     }
 
@@ -393,6 +394,19 @@ class InvoiceController extends Controller
                 $results['errors'][] = 'Mafarta: ' . $e->getMessage();
             }
 
+            // 4. Cristmedicals
+            try {
+                $cristmedicals = $this->cristmedicalsScraperService->syncInvoices();
+                $results['cristmedicals'] = $cristmedicals;
+                $results['total_updated'] += ($cristmedicals['updated'] ?? 0);
+                $results['total_created'] += ($cristmedicals['created'] ?? 0);
+                $results['total_skipped'] += ($cristmedicals['skipped'] ?? 0);
+                $results['messages'][] = "Cristmedicals: {$cristmedicals['created']} creadas, {$cristmedicals['updated']} actualizadas";
+            } catch (\Throwable $e) {
+                Log::error('Error syncAll Cristmedicals: ' . $e->getMessage());
+                $results['errors'][] = 'Cristmedicals: ' . $e->getMessage();
+            }
+
             $message = "Sincronización completada (" . implode(' | ', $results['messages']) . ")";
             if (!empty($results['errors'])) {
                 $message .= " con advertencias en: " . implode(', ', $results['errors']);
@@ -411,6 +425,7 @@ class InvoiceController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error al ejecutar sincronización general: ' . $e->getMessage(),
+                'details' => $results,
             ], 500);
         }
     }
@@ -458,7 +473,7 @@ class InvoiceController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => "Sincronización con Drocerca completada. Nuevas: {$result['created']}, Actualizadas: {$result['updated']}, Omitidas: {$result['skipped']}.",
+                'message' => "Sincronización con Drocerca completada. Creadas: {$result['created']}, Actualizadas: {$result['updated']}, Omitidas: {$result['skipped']}.",
                 'data' => $result,
             ]);
         } catch (\Exception $e) {
@@ -501,5 +516,33 @@ class InvoiceController extends Controller
             ], 500);
         }
     }
-}
 
+    /**
+     * Sincroniza las facturas, vencimientos, saldos con descuento y totales en Bs desde el portal web de Cristmedicals.
+     */
+    public function syncCristmedicals(Request $request)
+    {
+        try {
+            $user = $request->input('username');
+            $pass = $request->input('password');
+            $supplierId = $request->input('supplier_id') ? (int) $request->input('supplier_id') : null;
+
+            $result = $this->cristmedicalsScraperService->syncInvoices($user, $pass, $supplierId);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Sincronización con Cristmedicals completada. Creadas: {$result['created']}, Actualizadas: {$result['updated']}, Omitidas: {$result['skipped']}.",
+                'data' => $result,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error en InvoiceController@syncCristmedicals: ' . $e->getMessage(), [
+                'exception' => $e
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al sincronizar facturas desde Cristmedicals: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+}

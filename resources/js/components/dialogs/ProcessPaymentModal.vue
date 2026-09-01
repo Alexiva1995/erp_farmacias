@@ -67,6 +67,15 @@ const mafartaBanks = [
   { title: "BANCO VENEZOLANO DE CREDITO - 01040107130107115544", value: "01040107130107115544" },
 ];
 
+// Bancos oficiales de Cristmedicals (Droguería Cristmedicals / Cristalmedicals)
+const cristmedicalsBanks = [
+  { title: "BANPLUS (MovilPay) - 0174 0144 1214 4440 2133", value: "30" },
+  { title: "BANCO PROVINCIAL - 0108 0014 4401 0034 7852", value: "01080014440100347852" },
+  { title: "BANESCO - 0134 0435 6943 5102 6986", value: "01340435694351026986" },
+  { title: "BANCO DE VENEZUELA - 0102 0219 1900 0117 6179", value: "01020219190001176179" },
+  { title: "BANCO NACIONAL DE CREDITO (BNC) - 0191 0040 5621 4008 9488", value: "01910040562140089488" },
+];
+
 const isDronenaPayment = computed(() => {
   if (props.paymentGroup?.supplier_name) {
     const name = String(props.paymentGroup.supplier_name).toUpperCase();
@@ -89,10 +98,22 @@ const isMafartaPayment = computed(() => {
   });
 });
 
+const isCristmedicalsPayment = computed(() => {
+  if (props.paymentGroup?.supplier_name) {
+    const name = String(props.paymentGroup.supplier_name).toUpperCase();
+    if (name.includes("CRIST") || name.includes("CRISTALMEDICALS")) return true;
+  }
+  return props.invoices.some((inv) => {
+    const sName = String(inv.supplier?.name || inv.supplier_name || "").toUpperCase();
+    return sName.includes("CRIST") || sName.includes("CRISTALMEDICALS") || inv.supplier_id === 1002;
+  });
+});
+
 const destinationBankOptions = computed(() => {
+  if (isCristmedicalsPayment.value) return cristmedicalsBanks;
   if (isMafartaPayment.value) return mafartaBanks;
   if (isDronenaPayment.value) return dronenaBanks;
-  return [...mafartaBanks, ...dronenaBanks];
+  return [...cristmedicalsBanks, ...mafartaBanks, ...dronenaBanks];
 });
 
 
@@ -282,7 +303,13 @@ const formatCurrency = (amount, currency, omitCurrency = false) => {
 watch(() => props.modelValue, (val) => {
   if (val) {
     fetchExchangeRates();
-    if (isMafartaPayment.value) {
+    if (isCristmedicalsPayment.value) {
+      form.value.payment_currency = 'VES';
+      form.value.payment_method = 'transfer';
+      form.value.destination_bank = '30';
+      const totalBsReal = props.invoices.reduce((acc, inv) => acc + (Number(inv.net_payable_amount) || 0), 0);
+      form.value.payment_amount = totalBsReal > 0 ? totalBsReal : totalInBS.value;
+    } else if (isMafartaPayment.value) {
       form.value.payment_currency = 'VES';
       form.value.payment_method = 'transfer';
       form.value.destination_bank = mafartaBanks[0].value;
@@ -512,15 +539,15 @@ watch(() => props.modelValue, (val) => {
                 <VCol cols="12">
                   <div class="d-flex align-center justify-space-between mb-1">
                     <span class="text-super-xs font-weight-black text-primary uppercase">
-                      {{ isMafartaPayment ? 'Banco Destino Cobeca / Mafarta' : (isDronenaPayment ? 'Banco Destino Dronena' : 'Banco Destino') }}
+                      {{ isCristmedicalsPayment ? 'Banco Destino Cristmedicals' : (isMafartaPayment ? 'Banco Destino Cobeca / Mafarta' : (isDronenaPayment ? 'Banco Destino Dronena' : 'Banco Destino')) }}
                     </span>
                     <VChip
-                      v-if="isMafartaPayment || isDronenaPayment"
+                      v-if="isCristmedicalsPayment || isMafartaPayment || isDronenaPayment"
                       size="x-small"
                       color="primary"
                       variant="tonal"
                     >
-                      {{ isMafartaPayment ? 'Portal Cobeca (SIC)' : 'Portal Dronena' }}
+                      {{ isCristmedicalsPayment ? 'Portal Cristmedicals' : (isMafartaPayment ? 'Portal Cobeca (SIC)' : 'Portal Dronena') }}
                     </VChip>
                   </div>
                   <VSelect
@@ -528,7 +555,7 @@ watch(() => props.modelValue, (val) => {
                     :items="destinationBankOptions"
                     item-title="title"
                     item-value="value"
-                    :placeholder="isMafartaPayment ? 'SELECCIONE BANCO COBECA' : (isDronenaPayment ? 'SELECCIONE BANCO DRONENA' : 'SELECCIONE BANCO DESTINO')"
+                    :placeholder="isCristmedicalsPayment ? 'SELECCIONE BANCO CRISTMEDICALS' : (isMafartaPayment ? 'SELECCIONE BANCO COBECA' : (isDronenaPayment ? 'SELECCIONE BANCO DRONENA' : 'SELECCIONE BANCO DESTINO'))"
                     variant="outlined"
                     density="compact"
                     class="premium-input mb-3"
@@ -546,8 +573,8 @@ watch(() => props.modelValue, (val) => {
                     variant="outlined"
                     density="compact"
                     class="premium-input mb-3"
-                    :hint="isDronenaPayment ? 'Para Dronena se tomarán automáticamente los últimos 10 dígitos' : (isMafartaPayment ? 'Para Cobeca/Mafarta se tomarán automáticamente los últimos 9 dígitos' : undefined)"
-                    :persistent-hint="isDronenaPayment || isMafartaPayment"
+                    :hint="isCristmedicalsPayment ? 'Para Cristmedicals se validará automáticamente la referencia en el banco vía MovilPay' : (isDronenaPayment ? 'Para Dronena se tomarán automáticamente los últimos 10 dígitos' : (isMafartaPayment ? 'Para Cobeca/Mafarta se tomarán automáticamente los últimos 9 dígitos' : undefined))"
+                    :persistent-hint="isCristmedicalsPayment || isDronenaPayment || isMafartaPayment"
                     hide-details="auto"
                   />
                 </VCol>

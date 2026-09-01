@@ -390,11 +390,30 @@ class PendingPaymentsController extends Controller
                 }
             }
 
+            // 11. Si el proveedor es Cristmedicals / Cristalmedicals y se indicó referencia, reportar el pago automáticamente en el portal
+            $cristmedicalsResult = null;
+            if ((str_contains($supplierName, 'CRIST') || str_contains($supplierName, 'CRISTALMEDICALS')) && !empty($request->reference) && $request->payment_method !== 'CASH') {
+                try {
+                    $cristmedicalsService = app(\App\Contracts\Suppliers\CristmedicalsScraperServiceInterface::class);
+                    $cristmedicalsResult = $cristmedicalsService->submitPayment(
+                        $invoices->pluck('invoice_number')->toArray(),
+                        (float) $request->payment_amount,
+                        (string) $request->reference,
+                        (string) ($request->destination_bank ?? '30'),
+                        $request->payment_date
+                    );
+                } catch (\Throwable $cEx) {
+                    Log::warning('[PendingPayments] Error reportando pago en Cristmedicals: ' . $cEx->getMessage());
+                }
+            }
+
             $submissionMessage = '';
             if ($dronenaResult && !empty($dronenaResult['success'])) {
                 $submissionMessage = ' y enviado a Dronena';
             } elseif ($mafartaResult && !empty($mafartaResult['success'])) {
                 $submissionMessage = ' y transmitido a Cobeca / Mafarta';
+            } elseif ($cristmedicalsResult && !empty($cristmedicalsResult['success'])) {
+                $submissionMessage = ' y transmitido a Cristmedicals';
             }
 
             return ApiResponse::success([
@@ -410,6 +429,7 @@ class PendingPaymentsController extends Controller
                 'remaining_amount' => $totalInvoiceAmount - $amountUSD,
                 'dronena_submission' => $dronenaResult,
                 'mafarta_submission' => $mafartaResult,
+                'cristmedicals_submission' => $cristmedicalsResult,
             ], 'Pago procesado exitosamente' . $submissionMessage);
         } catch (\Exception $e) {
             DB::rollBack();

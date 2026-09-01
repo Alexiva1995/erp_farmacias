@@ -184,6 +184,7 @@ class PendingPaymentsService
                         'claim_amount' => (float) ($invoice->claim_amount ?? 0),
                         'nd_referential_amount' => (float) ($invoice->nd_referential_amount ?? 0),
                         'net_payable_amount' => $invoice->net_payable_amount !== null ? (float) $invoice->net_payable_amount : null,
+                        'total_amount_discount' => $invoice->total_amount_discount !== null ? (float) $invoice->total_amount_discount : null,
                         'indexed_data' => $indexedData,
                         'exchange_rate' => $invoice->exchange_rate,
                         'exp_date' => $invoice->exp_date,

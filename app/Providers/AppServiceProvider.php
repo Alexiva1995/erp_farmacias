@@ -344,6 +344,11 @@ class AppServiceProvider extends ServiceProvider
             \App\Services\Suppliers\MafartaScraperService::class
         );
 
+        $this->app->bind(
+            \App\Contracts\Suppliers\CristmedicalsScraperServiceInterface::class,
+            \App\Services\Suppliers\CristmedicalsScraperService::class
+        );
+
 
         $this->app->when(LocationController::class)
             ->needs(LocationContract::class)

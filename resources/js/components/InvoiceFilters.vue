@@ -16,6 +16,8 @@ const props = defineProps({
   isSyncingDronena: { type: Boolean, default: false },
   showSyncMafarta: { type: Boolean, default: true },
   isSyncingMafarta: { type: Boolean, default: false },
+  showSyncCristmedicals: { type: Boolean, default: true },
+  isSyncingCristmedicals: { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
@@ -28,6 +30,7 @@ const emit = defineEmits([
   "bulk-delete",
   "sync-dronena",
   "sync-mafarta",
+  "sync-cristmedicals",
 ]);
 
 const hasAdvancedFilters = computed(
@@ -74,6 +77,20 @@ const hasAdvancedFilters = computed(
       >
         <VIcon icon="tabler-arrows-down-up" />
         <VTooltip activator="parent" location="top">Sincronizar Mafarta / Cobeca (SIC)</VTooltip>
+      </VBtn>
+
+      <VBtn
+        v-if="props.showSyncCristmedicals"
+        icon
+        color="success"
+        variant="tonal"
+        size="38"
+        rounded="circle"
+        :loading="props.isSyncingCristmedicals"
+        @click="emit('sync-cristmedicals')"
+      >
+        <VIcon icon="tabler-building-hospital" />
+        <VTooltip activator="parent" location="top">Sincronizar Cristmedicals</VTooltip>
       </VBtn>
 
       <VBtn

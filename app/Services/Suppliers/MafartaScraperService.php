@@ -7,6 +7,7 @@ namespace App\Services\Suppliers;
 use App\Contracts\Suppliers\MafartaScraperServiceInterface;
 use App\Models\Invoice;
 use App\Models\Supplier;
+use App\Models\SupplierConnection;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -521,19 +522,33 @@ class MafartaScraperService implements MafartaScraperServiceInterface
                 ->orWhere('name', 'LIKE', '%COBECA%')
                 ->first();
 
-            $connection = null;
-            if ($supplier) {
-                $connection = SupplierConnection::where('supplier_id', $supplier->id)->first();
-            }
+            $conn = $supplier?->connections?->where('type', 'mafarta_bot')->first() 
+                ?? $supplier?->connections?->first();
 
-            $username = $connection?->username ?: 'F31373';
-            $password = $connection?->password ?: 'Mafarta2026*';
+            $username = $conn?->username ?: 'F31373';
+            $password = null;
+            if ($conn && !empty($conn->password)) {
+                try {
+                    $password = \App\Helpers\FtpCrypt::decrypt($conn->password);
+                } catch (\Throwable $e) {
+                    $password = $conn->password;
+                }
+            }
+            $password = $password ?: env('MAFARTA_PASSWORD', 'Mafarta2026*');
 
             // 2. Iniciar sesión en el portal SIC
             $loginRes = Http::withoutVerifying()->post('https://sic.drogueriascobeca.com/api/auth/login', [
                 'User' => $username,
                 'Password' => $password,
             ]);
+
+            if ($loginRes->status() !== 200 || empty($loginRes->json('token'))) {
+                // Reintento con clave de respaldo oficial si falla
+                $loginRes = Http::withoutVerifying()->post('https://sic.drogueriascobeca.com/api/auth/login', [
+                    'User' => 'F31373',
+                    'Password' => 'Mafarta2026*',
+                ]);
+            }
 
             if ($loginRes->status() !== 200 || empty($loginRes->json('token'))) {
                 Log::error('[COBECA PAYMENT] Error de autenticación al reportar pago: ' . $loginRes->body());

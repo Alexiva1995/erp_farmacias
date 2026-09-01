@@ -292,6 +292,7 @@ const handleConfirmBulkDelete = async () => {
 
 const isSyncingDronena = ref(false);
 const isSyncingMafarta = ref(false);
+const isSyncingCristmedicals = ref(false);
 
 const handleSyncDronena = async () => {
   const confirmResult = await Swal.fire({
@@ -342,6 +343,31 @@ const handleSyncMafarta = async () => {
     isSyncingMafarta.value = false;
   }
 };
+
+const handleSyncCristmedicals = async () => {
+  const confirmResult = await Swal.fire({
+    title: "¿Sincronizar con Cristmedicals?",
+    text: "Se consultará el portal de Cristmedicals para actualizar vencimientos, saldos con descuento y montos reales a pagar en Bs.",
+    icon: "info",
+    showCancelButton: true,
+    confirmButtonText: "Sincronizar",
+    cancelButtonText: "Cancelar",
+  });
+
+  if (!confirmResult.isConfirmed) return;
+
+  isSyncingCristmedicals.value = true;
+  try {
+    const response = await axios.post("/invoices/sync-cristmedicals");
+    toast.success(response.data.message || "Sincronización con Cristmedicals completada exitosamente.");
+    await fetchInvoices();
+  } catch (error) {
+    console.error("Error al sincronizar con Cristmedicals:", error);
+    toast.error(error.response?.data?.message || "Ocurrió un error al sincronizar con Cristmedicals.");
+  } finally {
+    isSyncingCristmedicals.value = false;
+  }
+};
 </script>
 
 <template>
@@ -359,11 +385,14 @@ const handleSyncMafarta = async () => {
         :is-syncing-dronena="isSyncingDronena"
         :show-sync-mafarta="true"
         :is-syncing-mafarta="isSyncingMafarta"
+        :show-sync-cristmedicals="true"
+        :is-syncing-cristmedicals="isSyncingCristmedicals"
         @clear="handleClearFilters"
         @create-invoice="handleCreateInvoice"
         @bulk-delete="handleOpenBulkDeleteModal"
         @sync-dronena="handleSyncDronena"
         @sync-mafarta="handleSyncMafarta"
+        @sync-cristmedicals="handleSyncCristmedicals"
         class="mb-6"
       />
 

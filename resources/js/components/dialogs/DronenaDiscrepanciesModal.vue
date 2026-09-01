@@ -27,6 +27,7 @@ const props = defineProps({
       dronena: {},
       drocerca: {},
       mafarta: {},
+      cristmedicals: {},
     }),
   },
 });
@@ -49,6 +50,7 @@ const hasDiscrepancies = computed(
 
 const drocercaData = computed(() => props.syncSummary?.drocerca || {});
 const mafartaData = computed(() => props.syncSummary?.mafarta || {});
+const cristmedicalsData = computed(() => props.syncSummary?.cristmedicals || {});
 const dronenaData = computed(() => props.syncSummary?.dronena || {});
 
 const drocercaPendingPaid = computed(
@@ -56,6 +58,9 @@ const drocercaPendingPaid = computed(
 );
 const mafartaPendingPaid = computed(
   () => mafartaData.value?.discrepancies?.pending_in_erp_paid_in_mafarta || []
+);
+const cristmedicalsPendingPaid = computed(
+  () => cristmedicalsData.value?.discrepancies?.pending_in_erp_paid_in_cristmedicals || []
 );
 
 const closeDialog = () => {
@@ -221,7 +226,7 @@ const handleMarkAllMafartaPendingAsPaid = async () => {
                 Resultado de Sincronización con Droguerías
               </VCardTitle>
               <VCardSubtitle class="text-white text-caption opacity-90">
-                Resumen de Dronena, Drocerca y Cobeca / Mafarta
+                Resumen de Dronena, Drocerca, Cobeca / Mafarta y Cristmedicals
               </VCardSubtitle>
             </div>
           </div>
@@ -280,6 +285,28 @@ const handleMarkAllMafartaPendingAsPaid = async () => {
               class="ml-2"
             >
               {{ mafartaPendingPaid.length }}
+            </VChip>
+          </VTab>
+          <VTab value="cristmedicals">
+            <VIcon icon="tabler-building-hospital" class="mr-2" size="18" />
+            Cristmedicals
+            <VChip
+              v-if="(cristmedicalsData.created || 0) > 0"
+              size="x-small"
+              color="success"
+              variant="flat"
+              class="ml-2"
+            >
+              +{{ cristmedicalsData.created }} nuevas
+            </VChip>
+            <VChip
+              v-else-if="(cristmedicalsData.updated || 0) > 0"
+              size="x-small"
+              color="info"
+              variant="flat"
+              class="ml-2"
+            >
+              {{ cristmedicalsData.updated }} act.
             </VChip>
           </VTab>
         </VTabs>
@@ -716,6 +743,74 @@ const handleMarkAllMafartaPendingAsPaid = async () => {
                   </tr>
                 </tbody>
               </VTable>
+            </div>
+          </VWindowItem>
+
+          <!-- ================= TAB CRISTMEDICALS ================= -->
+          <VWindowItem value="cristmedicals">
+            <!-- Resumen Rápido Cristmedicals -->
+            <VRow class="mb-4">
+              <VCol cols="12" sm="3">
+                <VCard variant="tonal" color="info" class="pa-3 rounded-lg text-center">
+                  <div class="text-caption text-medium-emphasis">Facturas en Portal</div>
+                  <div class="text-h5 font-weight-bold">{{ cristmedicalsData.total_extracted || 0 }}</div>
+                </VCard>
+              </VCol>
+              <VCol cols="12" sm="3">
+                <VCard variant="tonal" color="success" class="pa-3 rounded-lg text-center">
+                  <div class="text-caption text-medium-emphasis">Nuevas Creadas</div>
+                  <div class="text-h5 font-weight-bold">{{ cristmedicalsData.created || 0 }}</div>
+                </VCard>
+              </VCol>
+              <VCol cols="12" sm="3">
+                <VCard variant="tonal" color="primary" class="pa-3 rounded-lg text-center">
+                  <div class="text-caption text-medium-emphasis">Actualizadas</div>
+                  <div class="text-h5 font-weight-bold">{{ cristmedicalsData.updated || 0 }}</div>
+                </VCard>
+              </VCol>
+              <VCol cols="12" sm="3">
+                <VCard variant="tonal" color="secondary" class="pa-3 rounded-lg text-center">
+                  <div class="text-caption text-medium-emphasis">Sin Cambios / Omitidas</div>
+                  <div class="text-h5 font-weight-bold">{{ cristmedicalsData.skipped || 0 }}</div>
+                </VCard>
+              </VCol>
+            </VRow>
+
+            <!-- Tabla de Facturas Procesadas / Actualizadas de Cristmedicals -->
+            <div v-if="cristmedicalsData.details && cristmedicalsData.details.length > 0">
+              <h4 class="text-subtitle-1 font-weight-bold mb-2">Facturas Procesadas desde Cristmedicals</h4>
+              <VTable density="compact" class="border rounded-lg mb-2">
+                <thead>
+                  <tr class="table-header-row">
+                    <th class="text-left font-weight-bold">N° Factura</th>
+                    <th class="text-center font-weight-bold">Acción</th>
+                    <th class="text-center font-weight-bold">Vencimiento</th>
+                    <th class="text-right font-weight-bold">Saldo Neto USD</th>
+                    <th class="text-right font-weight-bold">Saldo con Desc. USD</th>
+                    <th class="text-right font-weight-bold">Total Bs. (Real a Pagar)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(item, idx) in cristmedicalsData.details" :key="idx">
+                    <td class="font-weight-medium text-primary">#{{ item.invoice_number }}</td>
+                    <td class="text-center">
+                      <VChip size="x-small" :color="item.action === 'created' ? 'success' : 'info'" variant="tonal">
+                        {{ item.action === 'created' ? 'Nueva Creada' : 'Actualizada' }}
+                      </VChip>
+                    </td>
+                    <td class="text-center">{{ item.exp_date || 'N/A' }}</td>
+                    <td class="text-right font-weight-medium">${{ Number(item.total_usd || 0).toFixed(2) }}</td>
+                    <td class="text-right font-weight-bold text-success">${{ Number(item.saldo_con_desc_usd || 0).toFixed(2) }}</td>
+                    <td class="text-right font-weight-bold text-primary">Bs. {{ Number(item.total_bs || 0).toLocaleString('es-VE', { minimumFractionDigits: 2 }) }}</td>
+                  </tr>
+                </tbody>
+              </VTable>
+            </div>
+            <div v-else class="text-center py-6">
+              <VIcon icon="tabler-check-circle" size="40" color="success" class="mb-2" />
+              <p class="text-body-2 text-medium-emphasis mb-0">
+                Sincronización con Cristmedicals ejecutada correctamente. No hay facturas pendientes de procesar.
+              </p>
             </div>
           </VWindowItem>
         </VWindow>

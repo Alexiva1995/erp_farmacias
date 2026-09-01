@@ -377,7 +377,8 @@ class DrocercaScraperService implements DrocercaScraperServiceInterface
     {
         $client = new Client([
             'verify' => false,
-            'timeout' => 30,
+            'timeout' => 60,
+            'connect_timeout' => 20,
             'headers' => [
                 'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             ]
@@ -473,7 +474,8 @@ class DrocercaScraperService implements DrocercaScraperServiceInterface
     {
         $client = new Client([
             'verify' => false,
-            'timeout' => 30,
+            'timeout' => 60,
+            'connect_timeout' => 20,
             'headers' => [
                 'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             ]
