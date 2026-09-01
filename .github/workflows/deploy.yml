@@ -6,6 +6,7 @@ on:
       - main
       - master
       - develop
+      - mejora
 
 jobs:
   build-and-deploy:
