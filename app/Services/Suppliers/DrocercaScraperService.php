@@ -209,8 +209,12 @@ class DrocercaScraperService implements DrocercaScraperServiceInterface
                 $invoice = $primaryInvoice;
             }
 
+            // Número oficial con prefijo según el portal (ej. FC00909968 de Edo. Cuenta o F00909968)
+            $officialInvoiceNumber = $edoItem['numero_raw'] ?? (!empty($pdfData['invoice_number']) ? $pdfData['invoice_number'] : $docNumber);
+
             if ($invoice) {
                 $updateData = [
+                    'invoice_number' => $officialInvoiceNumber,
                     'control_number' => $finalControlNumber ?: $invoice->control_number,
                     'exp_date' => $expDate ?: $invoice->exp_date,
                     'payment_date' => $expDate ?: $invoice->payment_date,
@@ -259,7 +263,7 @@ class DrocercaScraperService implements DrocercaScraperServiceInterface
 
                 $newInvoice = Invoice::create([
                     'supplier_id' => $supplierId,
-                    'invoice_number' => $docNumber,
+                    'invoice_number' => $officialInvoiceNumber,
                     'control_number' => $finalControlNumber,
                     'created_invoice_date' => $createdDate,
                     'exp_date' => $expDate,
