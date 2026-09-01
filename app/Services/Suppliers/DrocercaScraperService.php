@@ -160,12 +160,31 @@ class DrocercaScraperService implements DrocercaScraperServiceInterface
                 }
             }
 
-            // Buscar si ya existe la factura registrada por número de documento o control
-            $cleanNumber = ltrim($docNumber, '0');
-            $possibleNumbers = array_unique([$docNumber, $cleanNumber, str_pad($cleanNumber, 8, '0', STR_PAD_LEFT)]);
+            // Buscar si ya existe la factura registrada por número de documento (con prefijos F, FC, FA, etc.) o control
+            $digitsOnly = preg_replace('/\D/', '', $docNumber);
+            $cleanNumber = ltrim($digitsOnly ?: $docNumber, '0');
+            $paddedNumber = str_pad($cleanNumber, 8, '0', STR_PAD_LEFT);
 
-            $invoiceQuery = Invoice::where(function ($q) use ($possibleNumbers, $finalControlNumber) {
+            $possibleNumbers = array_unique(array_filter([
+                $docNumber,
+                $cleanNumber,
+                $paddedNumber,
+                'F' . $cleanNumber,
+                'F' . $paddedNumber,
+                'FC' . $cleanNumber,
+                'FC' . $paddedNumber,
+                'FA' . $cleanNumber,
+                'FA' . $paddedNumber,
+                'F' . $docNumber,
+                'FC' . $docNumber,
+                'FA' . $docNumber,
+            ]));
+
+            $invoiceQuery = Invoice::where(function ($q) use ($possibleNumbers, $cleanNumber, $finalControlNumber) {
                 $q->whereIn('invoice_number', $possibleNumbers);
+                if (!empty($cleanNumber) && strlen($cleanNumber) >= 4) {
+                    $q->orWhere('invoice_number', 'LIKE', "%{$cleanNumber}");
+                }
                 if (!empty($finalControlNumber) && $finalControlNumber !== 'N/A') {
                     $q->orWhere('control_number', $finalControlNumber);
                 }
@@ -175,7 +194,20 @@ class DrocercaScraperService implements DrocercaScraperServiceInterface
                 $invoiceQuery->where('supplier_id', $supplierId);
             }
 
-            $invoice = $invoiceQuery->first();
+            $matchingInvoices = $invoiceQuery->orderByDesc('id')->get();
+            $invoice = $matchingInvoices->first();
+
+            // Si existen duplicados (ej. F00909968 y 00909968), limpiar los duplicados vacíos
+            if ($matchingInvoices->count() > 1) {
+                $primaryInvoice = $matchingInvoices->firstWhere(fn($i) => !empty($i->control_number) && $i->control_number !== 'N/A') 
+                    ?? $matchingInvoices->first();
+                foreach ($matchingInvoices as $dup) {
+                    if ($dup->id !== $primaryInvoice->id && $dup->status_payment == 0) {
+                        $dup->delete();
+                    }
+                }
+                $invoice = $primaryInvoice;
+            }
 
             if ($invoice) {
                 $updateData = [
@@ -200,10 +232,10 @@ class DrocercaScraperService implements DrocercaScraperServiceInterface
                 if (floatval($taxAmount) > 0 && floatval($invoice->tax_amount ?? 0) <= 0) {
                     $updateData['tax_amount'] = $taxAmount;
                 }
-                if (floatval($totalAmount) > 0 && floatval($invoice->total_amount ?? 0) <= 0) {
+                if (floatval($totalAmount) > 0) {
                     $updateData['total_amount'] = $totalAmount;
                 }
-                if (floatval($totalUsd) > 0 && floatval($invoice->total_usd ?? 0) <= 0) {
+                if (floatval($totalUsd) > 0) {
                     $updateData['total_usd'] = $totalUsd;
                 }
 
