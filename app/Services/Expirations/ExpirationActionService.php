@@ -58,7 +58,11 @@ class ExpirationActionService
                 'total_lost_value' => $totalLostValue,
             ]);
 
-            // 2. Registrar explícitamente el movimiento de trazabilidad como 'expired' (Caducado)
+            // 2. Poner la cantidad del lote en 0 y guardar en BD
+            $lot->quantity = 0;
+            $lot->save();
+
+            // 3. Registrar explícitamente el movimiento de trazabilidad como 'expired' (Caducado)
             InventoryMovement::create([
                 'product_id' => $product->id,
                 'product_lot_id' => $lot->id,
@@ -72,10 +76,6 @@ class ExpirationActionService
                 'stock_after' => $stockAfter,
                 'movement_date' => now(),
             ]);
-
-            // 3. Poner la cantidad del lote en 0 y guardar
-            $lot->quantity = 0;
-            $lot->save();
 
             DB::commit();
 

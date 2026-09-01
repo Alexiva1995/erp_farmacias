@@ -669,7 +669,7 @@ class ExpirationAndOfferTest extends TestCase
                 'product_id' => $prod->id,
                 'lot_number' => "LOT-N1-{$i}",
                 'expiration_date' => now()->startOfMonth()->addDays(10),
-                'quantity' => 10,
+                'quantity' => 9,
                 'unit_cost' => 1.00,
             ]);
 
@@ -710,12 +710,12 @@ class ExpirationAndOfferTest extends TestCase
      */
     public function test_get_sold_expiring_products_excludes_movements_without_lot_id_fully_isolated(): void
     {
-        // Lote expirando este mes
+        // Lote expirando este mes (ajustado a 9 para coincidir con el stock_after de la venta)
         $lot = ProductLot::create([
             'product_id' => $this->product->id,
             'lot_number' => 'LOT-EXP-LEGACY',
             'expiration_date' => now()->startOfMonth()->addDays(10),
-            'quantity' => 5,
+            'quantity' => 9,
             'unit_cost' => 1.00,
         ]);
 
