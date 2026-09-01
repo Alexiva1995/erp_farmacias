@@ -73,6 +73,15 @@ class DrocercaScraperService implements DrocercaScraperServiceInterface
         // 2. Obtener estado de cuenta y efectos por pagar en las 3 sedes (Mérida, Centro, Oriente)
         $edoCuentaMap = $this->fetchEdoCuenta($user, $pass);
 
+        // Filtrar para procesar EXCLUSIVAMENTE las facturas que están pendientes en Estado de Cuenta (Efectos por Pagar)
+        if (!empty($edoCuentaMap)) {
+            $documents = array_values(array_filter($documents, function ($d) use ($edoCuentaMap) {
+                $docDigits = preg_replace('/\D/', '', $d['documento']);
+                $docClean = ltrim($docDigits ?: $d['documento'], '0');
+                return isset($edoCuentaMap[$docClean]) || isset($edoCuentaMap[$d['documento']]) || isset($edoCuentaMap['FC' . $d['documento']]);
+            }));
+        }
+
         if (empty($documents) && empty($edoCuentaMap)) {
             return [
                 'total_extracted' => 0,
@@ -258,9 +267,6 @@ class DrocercaScraperService implements DrocercaScraperServiceInterface
                 $userId = \Illuminate\Support\Facades\Auth::id() ?? \App\Models\User::first()?->id ?? 1;
 
                 // Crear factura si no existía en el ERP
-                // Solo se marca como pendiente (status_payment = 0) si figura en Efectos por Pagar (Edo. Cuenta)
-                $isPendingInDrocerca = !empty($edoItem);
-
                 $newInvoice = Invoice::create([
                     'supplier_id' => $supplierId,
                     'invoice_number' => $officialInvoiceNumber,
@@ -275,8 +281,8 @@ class DrocercaScraperService implements DrocercaScraperServiceInterface
                     'total_amount' => $totalAmount,
                     'total_usd' => $totalUsd,
                     'is_indexed' => $isIndexed,
-                    'status' => $isPendingInDrocerca ? 'pending' : 'paid',
-                    'status_payment' => $isPendingInDrocerca ? 0 : 1,
+                    'status' => 'pending',
+                    'status_payment' => 0,
                     'uploaded_by' => $userId,
                     'registered_by' => $userId,
                     'invoice_photo' => $invoicePhoto,
