@@ -287,8 +287,13 @@ const handleSyncBots = async () => {
 
     syncSummary.value = {
       updated: data.total_updated || (data.dronena?.updated || 0) + (data.drocerca?.updated || 0) + (data.mafarta?.updated || 0),
+      created: data.total_created || (data.drocerca?.created || 0),
       skipped: data.total_skipped || 0,
       total_extracted: (data.dronena?.total_extracted || 0) + (data.drocerca?.total_extracted || 0) + (data.mafarta?.total_extracted || 0),
+      dronena: data.dronena || {},
+      drocerca: data.drocerca || {},
+      mafarta: data.mafarta || {},
+      messages: data.messages || [],
     };
 
     syncDiscrepancies.value = data.discrepancies || {
@@ -299,9 +304,7 @@ const handleSyncBots = async () => {
 
     toast.success(response.data?.message || "Sincronización con droguerías completada.");
 
-    if (syncDiscrepancies.value.total_discrepancies > 0 || (syncDiscrepancies.value.pending_in_erp_paid_in_dronena?.length > 0)) {
-      showDiscrepanciesModal.value = true;
-    }
+    showDiscrepanciesModal.value = true;
 
     await fetchPendingPayments();
   } catch (error) {

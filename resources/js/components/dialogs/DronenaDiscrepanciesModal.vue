@@ -21,14 +21,19 @@ const props = defineProps({
     type: Object,
     default: () => ({
       updated: 0,
+      created: 0,
       skipped: 0,
       total_extracted: 0,
+      dronena: {},
+      drocerca: {},
+      mafarta: {},
     }),
   },
 });
 
 const emit = defineEmits(["update:modelValue", "close", "invoices-marked-as-paid"]);
 
+const activeTab = ref("dronena");
 const isMarkingPaid = ref(false);
 
 const paidInErpPendingInPortal = computed(
@@ -40,6 +45,10 @@ const pendingInErpPaidInPortal = computed(
 const hasDiscrepancies = computed(
   () => (paidInErpPendingInPortal.value.length + pendingInErpPaidInPortal.value.length) > 0
 );
+
+const drocercaData = computed(() => props.syncSummary?.drocerca || {});
+const mafartaData = computed(() => props.syncSummary?.mafarta || {});
+const dronenaData = computed(() => props.syncSummary?.dronena || {});
 
 const closeDialog = () => {
   emit("update:modelValue", false);
@@ -84,7 +93,7 @@ const handleMarkAllPendingAsPaid = async () => {
 <template>
   <VDialog
     :model-value="props.modelValue"
-    max-width="950"
+    max-width="1000"
     scrollable
     persistent
     @update:model-value="emit('update:modelValue', $event)"
@@ -95,14 +104,14 @@ const handleMarkAllPendingAsPaid = async () => {
         <div class="d-flex align-center justify-space-between w-100">
           <div class="d-flex align-center gap-3">
             <VAvatar color="surface" variant="tonal" size="42" class="rounded-lg">
-              <VIcon icon="tabler-scale" size="24" color="white" />
+              <VIcon icon="tabler-robot" size="24" color="white" />
             </VAvatar>
             <div>
               <VCardTitle class="text-white text-h6 font-weight-bold mb-0">
-                Resultado de Sincronización con Dronena
+                Resultado de Sincronización con Droguerías
               </VCardTitle>
               <VCardSubtitle class="text-white text-caption opacity-90">
-                Comparativa de estado de facturas entre el ERP y el portal
+                Resumen de Dronena, Drocerca y Cobeca / Mafarta
               </VCardSubtitle>
             </div>
           </div>
@@ -112,142 +121,315 @@ const handleMarkAllPendingAsPaid = async () => {
         </div>
       </VCardItem>
 
+      <!-- Pestañas de Navegación por Droguería -->
+      <div class="bg-surface border-b px-4">
+        <VTabs v-model="activeTab" color="primary" density="compact">
+          <VTab value="dronena">
+            <VIcon icon="tabler-building-warehouse" class="mr-2" size="18" />
+            Dronena
+            <VChip
+              v-if="hasDiscrepancies"
+              size="x-small"
+              color="warning"
+              variant="flat"
+              class="ml-2"
+            >
+              {{ paidInErpPendingInPortal.length + pendingInErpPaidInPortal.length }}
+            </VChip>
+          </VTab>
+          <VTab value="drocerca">
+            <VIcon icon="tabler-building-factory-2" class="mr-2" size="18" />
+            Drocerca
+            <VChip
+              v-if="(drocercaData.created || 0) > 0"
+              size="x-small"
+              color="success"
+              variant="flat"
+              class="ml-2"
+            >
+              +{{ drocercaData.created }} nuevas
+            </VChip>
+          </VTab>
+          <VTab value="mafarta">
+            <VIcon icon="tabler-building" class="mr-2" size="18" />
+            Cobeca / Mafarta
+          </VTab>
+        </VTabs>
+      </div>
+
       <!-- Contenedor con Scroll nativo -->
       <VCardText class="pa-6 modal-scroll-content">
-        <!-- Resumen Rápido -->
-        <VRow class="mb-4">
-          <VCol cols="12" sm="4">
-            <VCard variant="tonal" color="info" class="pa-3 rounded-lg text-center">
-              <div class="text-caption text-medium-emphasis">Documentos en Portal</div>
-              <div class="text-h5 font-weight-bold">{{ props.syncSummary?.total_extracted || 0 }}</div>
-            </VCard>
-          </VCol>
-          <VCol cols="12" sm="4">
-            <VCard variant="tonal" color="success" class="pa-3 rounded-lg text-center">
-              <div class="text-caption text-medium-emphasis">Actualizadas en ERP</div>
-              <div class="text-h5 font-weight-bold">{{ props.syncSummary?.updated || 0 }}</div>
-            </VCard>
-          </VCol>
-          <VCol cols="12" sm="4">
-            <VCard
-              variant="tonal"
-              :color="hasDiscrepancies ? 'warning' : 'success'"
-              class="pa-3 rounded-lg text-center"
-            >
-              <div class="text-caption text-medium-emphasis">Diferencias Detectadas</div>
-              <div class="text-h5 font-weight-bold">
-                {{ (paidInErpPendingInPortal.length + pendingInErpPaidInPortal.length) }}
+        <!-- V-WINDOW CON LAS PESTAÑAS -->
+        <VWindow v-model="activeTab">
+          <!-- ================= TAB DRONENA ================= -->
+          <VWindowItem value="dronena">
+            <!-- Resumen Rápido Dronena -->
+            <VRow class="mb-4">
+              <VCol cols="12" sm="4">
+                <VCard variant="tonal" color="info" class="pa-3 rounded-lg text-center">
+                  <div class="text-caption text-medium-emphasis">Documentos en Portal</div>
+                  <div class="text-h5 font-weight-bold">{{ dronenaData.total_extracted || props.syncSummary?.total_extracted || 0 }}</div>
+                </VCard>
+              </VCol>
+              <VCol cols="12" sm="4">
+                <VCard variant="tonal" color="success" class="pa-3 rounded-lg text-center">
+                  <div class="text-caption text-medium-emphasis">Actualizadas en ERP</div>
+                  <div class="text-h5 font-weight-bold">{{ dronenaData.updated || props.syncSummary?.updated || 0 }}</div>
+                </VCard>
+              </VCol>
+              <VCol cols="12" sm="4">
+                <VCard
+                  variant="tonal"
+                  :color="hasDiscrepancies ? 'warning' : 'success'"
+                  class="pa-3 rounded-lg text-center"
+                >
+                  <div class="text-caption text-medium-emphasis">Diferencias Detectadas</div>
+                  <div class="text-h5 font-weight-bold">
+                    {{ (paidInErpPendingInPortal.length + pendingInErpPaidInPortal.length) }}
+                  </div>
+                </VCard>
+              </VCol>
+            </VRow>
+
+            <!-- Caso 1: Pagadas en ERP pero aún figuran PENDIENTES en Dronena -->
+            <div v-if="paidInErpPendingInPortal.length > 0" class="mb-6">
+              <div class="d-flex align-center gap-2 mb-2">
+                <VIcon icon="tabler-alert-circle" color="warning" size="22" />
+                <h4 class="text-subtitle-1 font-weight-bold text-warning mb-0">
+                  Pagadas en el ERP pero aún PENDIENTES en Dronena ({{ paidInErpPendingInPortal.length }})
+                </h4>
               </div>
-            </VCard>
-          </VCol>
-        </VRow>
+              <p class="text-caption text-medium-emphasis mb-3">
+                Estas facturas ya las registraste como pagadas en el ERP, pero en el portal de Dronena todavía aparecen con saldo pendiente por cobrar:
+              </p>
 
-        <!-- Caso 1: Pagadas en ERP pero aún figuran PENDIENTES en Dronena -->
-        <div v-if="paidInErpPendingInPortal.length > 0" class="mb-6">
-          <div class="d-flex align-center gap-2 mb-2">
-            <VIcon icon="tabler-alert-circle" color="warning" size="22" />
-            <h4 class="text-subtitle-1 font-weight-bold text-warning mb-0">
-              Pagadas en el ERP pero aún PENDIENTES en Dronena ({{ paidInErpPendingInPortal.length }})
-            </h4>
-          </div>
-          <p class="text-caption text-medium-emphasis mb-3">
-            Estas facturas ya las registraste como pagadas en el ERP, pero en el portal de Dronena todavía aparecen con saldo pendiente por cobrar:
-          </p>
-
-          <VTable density="compact" class="border rounded-lg mb-2">
-            <thead>
-              <tr class="table-header-row">
-                <th class="text-left font-weight-bold">N° Factura</th>
-                <th class="text-left font-weight-bold">N° Control</th>
-                <th class="text-right font-weight-bold">Monto ERP</th>
-                <th class="text-right font-weight-bold">Saldo en Dronena</th>
-                <th class="text-center font-weight-bold">Estado Portal</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="item in paidInErpPendingInPortal" :key="item.id">
-                <td class="font-weight-medium text-primary">#{{ item.invoice_number }}</td>
-                <td>{{ item.control_number || 'N/A' }}</td>
-                <td class="text-right">{{ Number(item.amount).toLocaleString('es-VE', { minimumFractionDigits: 2 }) }} {{ item.currency }}</td>
-                <td class="text-right font-weight-bold text-error">
-                  {{ Number(item.portal_amount).toLocaleString('es-VE', { minimumFractionDigits: 2 }) }} Bs
-                </td>
-                <td class="text-center">
-                  <VChip size="x-small" color="warning" variant="tonal" class="font-weight-medium">
-                    Por Cobrar ({{ item.portal_type || 'FA' }})
-                  </VChip>
-                </td>
-              </tr>
-            </tbody>
-          </VTable>
-        </div>
-
-        <!-- Caso 2: Pendientes en ERP pero ya NO figuran pendientes en Dronena CON BOTÓN DE ACCIÓN -->
-        <div v-if="pendingInErpPaidInPortal.length > 0" class="mb-6">
-          <div class="d-flex align-center justify-space-between flex-wrap gap-2 mb-2">
-            <div class="d-flex align-center gap-2">
-              <VIcon icon="tabler-circle-check" color="info" size="22" />
-              <h4 class="text-subtitle-1 font-weight-bold text-info mb-0">
-                Pendientes en ERP pero LIQUIDADAS en Dronena ({{ pendingInErpPaidInPortal.length }})
-              </h4>
+              <VTable density="compact" class="border rounded-lg mb-2">
+                <thead>
+                  <tr class="table-header-row">
+                    <th class="text-left font-weight-bold">N° Factura</th>
+                    <th class="text-left font-weight-bold">N° Control</th>
+                    <th class="text-right font-weight-bold">Monto ERP</th>
+                    <th class="text-right font-weight-bold">Saldo en Dronena</th>
+                    <th class="text-center font-weight-bold">Estado Portal</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="item in paidInErpPendingInPortal" :key="item.id">
+                    <td class="font-weight-medium text-primary">#{{ item.invoice_number }}</td>
+                    <td>{{ item.control_number || 'N/A' }}</td>
+                    <td class="text-right">{{ Number(item.amount).toLocaleString('es-VE', { minimumFractionDigits: 2 }) }} {{ item.currency }}</td>
+                    <td class="text-right font-weight-bold text-error">
+                      {{ Number(item.portal_amount).toLocaleString('es-VE', { minimumFractionDigits: 2 }) }} Bs
+                    </td>
+                    <td class="text-center">
+                      <VChip size="x-small" color="warning" variant="tonal" class="font-weight-medium">
+                        Por Cobrar ({{ item.portal_type || 'FA' }})
+                      </VChip>
+                    </td>
+                  </tr>
+                </tbody>
+              </VTable>
             </div>
 
-            <!-- Botón para pasar todas a pagadas -->
-            <VBtn
-              color="success"
-              variant="elevated"
-              size="small"
-              prepend-icon="tabler-check-all"
-              class="rounded-lg shadow-sm font-weight-bold"
-              :loading="isMarkingPaid"
-              @click="handleMarkAllPendingAsPaid"
-            >
-              Marcar Todas como Pagadas ({{ pendingInErpPaidInPortal.length }})
-            </VBtn>
-          </div>
+            <!-- Caso 2: Pendientes en ERP pero ya NO figuran pendientes en Dronena CON BOTÓN DE ACCIÓN -->
+            <div v-if="pendingInErpPaidInPortal.length > 0" class="mb-6">
+              <div class="d-flex align-center justify-space-between flex-wrap gap-2 mb-2">
+                <div class="d-flex align-center gap-2">
+                  <VIcon icon="tabler-circle-check" color="info" size="22" />
+                  <h4 class="text-subtitle-1 font-weight-bold text-info mb-0">
+                    Pendientes en ERP pero LIQUIDADAS en Dronena ({{ pendingInErpPaidInPortal.length }})
+                  </h4>
+                </div>
 
-          <p class="text-caption text-medium-emphasis mb-3">
-            Estas facturas están pendientes en tu ERP pero en Dronena ya fueron cobradas/liquidadas. Puedes pasarlas a estado Pagadas directamente:
-          </p>
+                <VBtn
+                  color="success"
+                  variant="elevated"
+                  size="small"
+                  prepend-icon="tabler-check-all"
+                  class="rounded-lg shadow-sm font-weight-bold"
+                  :loading="isMarkingPaid"
+                  @click="handleMarkAllPendingAsPaid"
+                >
+                  Marcar Todas como Pagadas ({{ pendingInErpPaidInPortal.length }})
+                </VBtn>
+              </div>
 
-          <VTable density="compact" class="border rounded-lg mb-2">
-            <thead>
-              <tr class="table-header-row">
-                <th class="text-left font-weight-bold">N° Factura</th>
-                <th class="text-left font-weight-bold">N° Control</th>
-                <th class="text-right font-weight-bold">Monto en ERP</th>
-                <th class="text-center font-weight-bold">Estado en ERP</th>
-                <th class="text-center font-weight-bold">Estado Portal</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="item in pendingInErpPaidInPortal" :key="item.id">
-                <td class="font-weight-medium text-primary">#{{ item.invoice_number }}</td>
-                <td>{{ item.control_number || 'N/A' }}</td>
-                <td class="text-right font-weight-bold">
-                  {{ Number(item.amount).toLocaleString('es-VE', { minimumFractionDigits: 2 }) }} {{ item.currency }}
-                </td>
-                <td class="text-center">
-                  <VChip size="x-small" color="error" variant="tonal">Por Pagar</VChip>
-                </td>
-                <td class="text-center">
-                  <VChip size="x-small" color="success" variant="tonal">Liquidada en Dronena</VChip>
-                </td>
-              </tr>
-            </tbody>
-          </VTable>
-        </div>
+              <p class="text-caption text-medium-emphasis mb-3">
+                Estas facturas están pendientes en tu ERP pero en Dronena ya fueron cobradas/liquidadas. Puedes pasarlas a estado Pagadas directamente:
+              </p>
 
-        <!-- Estado Sin Discrepancias -->
-        <div v-if="!hasDiscrepancies" class="text-center py-6">
-          <VAvatar color="success" variant="tonal" size="56" class="mb-3">
-            <VIcon icon="tabler-check" size="32" color="success" />
-          </VAvatar>
-          <h3 class="text-h6 font-weight-bold mb-1">¡Cuentas Cuadradas al 100%!</h3>
-          <p class="text-body-2 text-medium-emphasis mb-0">
-            No se encontraron discrepancias. Todas las facturas pagadas en tu ERP coinciden con el estado del portal de Dronena.
-          </p>
-        </div>
+              <VTable density="compact" class="border rounded-lg mb-2">
+                <thead>
+                  <tr class="table-header-row">
+                    <th class="text-left font-weight-bold">N° Factura</th>
+                    <th class="text-left font-weight-bold">N° Control</th>
+                    <th class="text-right font-weight-bold">Monto en ERP</th>
+                    <th class="text-center font-weight-bold">Estado en ERP</th>
+                    <th class="text-center font-weight-bold">Estado Portal</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="item in pendingInErpPaidInPortal" :key="item.id">
+                    <td class="font-weight-medium text-primary">#{{ item.invoice_number }}</td>
+                    <td>{{ item.control_number || 'N/A' }}</td>
+                    <td class="text-right font-weight-bold">
+                      {{ Number(item.amount).toLocaleString('es-VE', { minimumFractionDigits: 2 }) }} {{ item.currency }}
+                    </td>
+                    <td class="text-center">
+                      <VChip size="x-small" color="error" variant="tonal">Por Pagar</VChip>
+                    </td>
+                    <td class="text-center">
+                      <VChip size="x-small" color="success" variant="tonal">Liquidada en Dronena</VChip>
+                    </td>
+                  </tr>
+                </tbody>
+              </VTable>
+            </div>
+
+            <!-- Estado Sin Discrepancias Dronena -->
+            <div v-if="!hasDiscrepancies" class="text-center py-6">
+              <VAvatar color="success" variant="tonal" size="56" class="mb-3">
+                <VIcon icon="tabler-check" size="32" color="success" />
+              </VAvatar>
+              <h3 class="text-h6 font-weight-bold mb-1">¡Cuentas Dronena Cuadradas!</h3>
+              <p class="text-body-2 text-medium-emphasis mb-0">
+                No se encontraron discrepancias en Dronena. Todas las facturas coinciden entre el portal y tu ERP.
+              </p>
+            </div>
+          </VWindowItem>
+
+          <!-- ================= TAB DROCERCA ================= -->
+          <VWindowItem value="drocerca">
+            <VRow class="mb-4">
+              <VCol cols="12" sm="3">
+                <VCard variant="tonal" color="info" class="pa-3 rounded-lg text-center">
+                  <div class="text-caption text-medium-emphasis">Documentos en Portal</div>
+                  <div class="text-h5 font-weight-bold">{{ drocercaData.total_extracted || 0 }}</div>
+                </VCard>
+              </VCol>
+              <VCol cols="12" sm="3">
+                <VCard variant="tonal" color="success" class="pa-3 rounded-lg text-center">
+                  <div class="text-caption text-medium-emphasis">Nuevas Creadas</div>
+                  <div class="text-h5 font-weight-bold">{{ drocercaData.created || 0 }}</div>
+                </VCard>
+              </VCol>
+              <VCol cols="12" sm="3">
+                <VCard variant="tonal" color="primary" class="pa-3 rounded-lg text-center">
+                  <div class="text-caption text-medium-emphasis">Actualizadas</div>
+                  <div class="text-h5 font-weight-bold">{{ drocercaData.updated || 0 }}</div>
+                </VCard>
+              </VCol>
+              <VCol cols="12" sm="3">
+                <VCard variant="tonal" color="secondary" class="pa-3 rounded-lg text-center">
+                  <div class="text-caption text-medium-emphasis">Sin Cambios / Omitidas</div>
+                  <div class="text-h5 font-weight-bold">{{ drocercaData.skipped || 0 }}</div>
+                </VCard>
+              </VCol>
+            </VRow>
+
+            <div v-if="drocercaData.details && drocercaData.details.length > 0">
+              <h4 class="text-subtitle-1 font-weight-bold mb-2">Facturas Procesadas desde Drocerca</h4>
+              <VTable density="compact" class="border rounded-lg mb-2">
+                <thead>
+                  <tr class="table-header-row">
+                    <th class="text-left font-weight-bold">N° Factura</th>
+                    <th class="text-left font-weight-bold">N° Control</th>
+                    <th class="text-center font-weight-bold">Acción</th>
+                    <th class="text-center font-weight-bold">Vencimiento</th>
+                    <th class="text-center font-weight-bold">Indexada (FA$)</th>
+                    <th class="text-right font-weight-bold">Total USD</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(item, idx) in drocercaData.details" :key="idx">
+                    <td class="font-weight-medium text-primary">#{{ item.invoice_number }}</td>
+                    <td>{{ item.control_number || 'N/A' }}</td>
+                    <td class="text-center">
+                      <VChip size="x-small" :color="item.action === 'created' ? 'success' : 'info'" variant="tonal">
+                        {{ item.action === 'created' ? 'Nueva Creada' : 'Actualizada' }}
+                      </VChip>
+                    </td>
+                    <td class="text-center">{{ item.exp_date || 'N/A' }}</td>
+                    <td class="text-center">
+                      <VChip size="x-small" :color="item.is_indexed ? 'error' : 'secondary'" variant="tonal">
+                        {{ item.is_indexed ? 'Sí' : 'No' }}
+                      </VChip>
+                    </td>
+                    <td class="text-right font-weight-bold">${{ Number(item.total_usd || 0).toFixed(2) }}</td>
+                  </tr>
+                </tbody>
+              </VTable>
+            </div>
+            <div v-else class="text-center py-6">
+              <VIcon icon="tabler-check-circle" size="40" color="success" class="mb-2" />
+              <p class="text-body-2 text-medium-emphasis mb-0">
+                Sincronización con Drocerca ejecutada correctamente. No hay nuevas facturas pendientes de registrar.
+              </p>
+            </div>
+          </VWindowItem>
+
+          <!-- ================= TAB MAFARTA ================= -->
+          <VWindowItem value="mafarta">
+            <VRow class="mb-4">
+              <VCol cols="12" sm="4">
+                <VCard variant="tonal" color="info" class="pa-3 rounded-lg text-center">
+                  <div class="text-caption text-medium-emphasis">Documentos en Portal</div>
+                  <div class="text-h5 font-weight-bold">{{ mafartaData.total_extracted || 0 }}</div>
+                </VCard>
+              </VCol>
+              <VCol cols="12" sm="4">
+                <VCard variant="tonal" color="success" class="pa-3 rounded-lg text-center">
+                  <div class="text-caption text-medium-emphasis">Actualizadas en ERP</div>
+                  <div class="text-h5 font-weight-bold">{{ mafartaData.updated || 0 }}</div>
+                </VCard>
+              </VCol>
+              <VCol cols="12" sm="4">
+                <VCard variant="tonal" color="secondary" class="pa-3 rounded-lg text-center">
+                  <div class="text-caption text-medium-emphasis">Omitidas / No en ERP</div>
+                  <div class="text-h5 font-weight-bold">{{ mafartaData.skipped || 0 }}</div>
+                </VCard>
+              </VCol>
+            </VRow>
+
+            <div v-if="mafartaData.details && mafartaData.details.length > 0">
+              <h4 class="text-subtitle-1 font-weight-bold mb-2">Facturas Cobeca / Mafarta</h4>
+              <VTable density="compact" class="border rounded-lg mb-2">
+                <thead>
+                  <tr class="table-header-row">
+                    <th class="text-left font-weight-bold">N° Factura</th>
+                    <th class="text-left font-weight-bold">N° Control</th>
+                    <th class="text-center font-weight-bold">Acción</th>
+                    <th class="text-center font-weight-bold">Vencimiento</th>
+                    <th class="text-center font-weight-bold">Indexación</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(item, idx) in mafartaData.details" :key="idx">
+                    <td class="font-weight-medium text-primary">#{{ item.invoice_number }}</td>
+                    <td>{{ item.control_number || 'N/A' }}</td>
+                    <td class="text-center">
+                      <VChip size="x-small" :color="item.action === 'updated' ? 'success' : 'secondary'" variant="tonal">
+                        {{ item.action === 'updated' ? 'Actualizada' : 'No registrada' }}
+                      </VChip>
+                    </td>
+                    <td class="text-center">{{ item.exp_date || 'N/A' }}</td>
+                    <td class="text-center">
+                      <VChip size="x-small" :color="item.is_indexed ? 'error' : 'secondary'" variant="tonal">
+                        {{ item.is_indexed ? 'Indexada' : 'No indexada' }}
+                      </VChip>
+                    </td>
+                  </tr>
+                </tbody>
+              </VTable>
+            </div>
+            <div v-else class="text-center py-6">
+              <VIcon icon="tabler-check-circle" size="40" color="success" class="mb-2" />
+              <p class="text-body-2 text-medium-emphasis mb-0">
+                Sincronización con Cobeca / Mafarta ejecutada correctamente.
+              </p>
+            </div>
+          </VWindowItem>
+        </VWindow>
       </VCardText>
 
       <VDivider />
@@ -270,7 +452,7 @@ const handleMarkAllPendingAsPaid = async () => {
 
 .modal-scroll-content {
   overflow-y: auto;
-  max-height: calc(85vh - 140px);
+  max-height: calc(85vh - 180px);
 }
 
 .table-header-row th {
