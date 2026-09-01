@@ -28,12 +28,21 @@ class CristmedicalsScraperService implements CristmedicalsScraperServiceInterfac
     private function executeCurl(string $method, string $url, string $cookieFile, array $options = []): array
     {
         $cookiePath = escapeshellarg($cookieFile);
-        $cmd = "curl.exe -s -i -k -b {$cookiePath} -c {$cookiePath}";
+        $userAgent = escapeshellarg("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36");
+        $cmd = "curl.exe -s -i -k -L --compressed --connect-timeout 20 --max-time 45 -A {$userAgent} -b {$cookiePath} -c {$cookiePath}";
 
-        if (isset($options['headers'])) {
-            foreach ($options['headers'] as $k => $v) {
-                $cmd .= " -H " . escapeshellarg("{$k}: {$v}");
-            }
+        $headers = array_merge([
+            'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+            'Accept-Language' => 'es-ES,es;q=0.9,en;q=0.8',
+            'Sec-Fetch-Dest' => 'document',
+            'Sec-Fetch-Mode' => 'navigate',
+            'Sec-Fetch-Site' => 'same-origin',
+            'Sec-Fetch-User' => '?1',
+            'Upgrade-Insecure-Requests' => '1',
+        ], $options['headers'] ?? []);
+
+        foreach ($headers as $k => $v) {
+            $cmd .= " -H " . escapeshellarg("{$k}: {$v}");
         }
 
         if (strtoupper($method) === 'POST') {
@@ -77,46 +86,75 @@ class CristmedicalsScraperService implements CristmedicalsScraperServiceInterfac
      */
     private function createAuthenticatedSession(string $username, string $password): array
     {
-        $cookieFile = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'cristmedicals_' . md5($username . microtime()) . '.txt';
+        $maxAttempts = 3;
+        $lastException = null;
 
-        // 1. Obtener token CSRF inicial desde la página de login
-        $resLogin = $this->executeCurl('GET', self::LOGIN_URL, $cookieFile);
-        preg_match('/name="_token" value="([^"]+)"/', $resLogin['body'], $matches);
-        $token = $matches[1] ?? null;
+        for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+            $cookieFile = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'cristmedicals_' . md5($username . microtime()) . '.txt';
 
-        if (!$token) {
-            if (file_exists($cookieFile)) {
-                @unlink($cookieFile);
+            try {
+                // 1. Obtener token CSRF inicial desde la página de login
+                $resLogin = $this->executeCurl('GET', self::LOGIN_URL, $cookieFile);
+
+                $token = null;
+                if (preg_match('/name=["\']_token["\']\s+value=["\']([^"\']+)["\']/i', $resLogin['body'], $matches)) {
+                    $token = $matches[1];
+                } elseif (preg_match('/value=["\']([^"\']+)["\']\s+name=["\']_token["\']/i', $resLogin['body'], $matches)) {
+                    $token = $matches[1];
+                } elseif (preg_match('/<meta\s+name=["\']csrf-token["\']\s+content=["\']([^"\']+)["\']/i', $resLogin['body'], $matches)) {
+                    $token = $matches[1];
+                }
+
+                if (!$token) {
+                    if (file_exists($cookieFile)) {
+                        @unlink($cookieFile);
+                    }
+                    throw new \RuntimeException('No se pudo extraer el token CSRF del formulario de inicio de sesión de Cristmedicals.');
+                }
+
+                // 2. Enviar credenciales
+                $loginPost = $this->executeCurl('POST', self::LOGIN_URL, $cookieFile, [
+                    'form_params' => [
+                        '_token' => $token,
+                        'login' => $username,
+                        'password' => $password,
+                    ],
+                ]);
+
+                if ($loginPost['status'] >= 400 && $loginPost['status'] !== 302) {
+                    if (file_exists($cookieFile)) {
+                        @unlink($cookieFile);
+                    }
+                    throw new \RuntimeException("Fallo la autenticación en el portal Cristmedicals. Código de estado: {$loginPost['status']}");
+                }
+
+                // 3. Obtener token CSRF fresco de la sesión activa y HTML de facturas
+                $resFacturas = $this->executeCurl('GET', self::FACTURAS_URL, $cookieFile);
+
+                $freshToken = null;
+                if (preg_match('/<meta\s+name=["\']csrf-token["\']\s+content=["\']([^"\']+)["\']/i', $resFacturas['body'], $matches)) {
+                    $freshToken = $matches[1];
+                } elseif (preg_match('/name=["\']_token["\']\s+value=["\']([^"\']+)["\']/i', $resFacturas['body'], $matches)) {
+                    $freshToken = $matches[1];
+                }
+
+                return [
+                    'cookie_file' => $cookieFile,
+                    'csrf_token' => $freshToken ?: $token,
+                    'facturas_html' => $resFacturas['body'],
+                ];
+            } catch (\Throwable $e) {
+                if (file_exists($cookieFile)) {
+                    @unlink($cookieFile);
+                }
+                $lastException = $e;
+                if ($attempt < $maxAttempts) {
+                    usleep(500000); // 0.5s
+                }
             }
-            throw new \RuntimeException('No se pudo extraer el token CSRF del formulario de inicio de sesión de Cristmedicals.');
         }
 
-        // 2. Enviar credenciales
-        $loginPost = $this->executeCurl('POST', self::LOGIN_URL, $cookieFile, [
-            'form_params' => [
-                '_token' => $token,
-                'login' => $username,
-                'password' => $password,
-            ],
-        ]);
-
-        if ($loginPost['status'] >= 400) {
-            if (file_exists($cookieFile)) {
-                @unlink($cookieFile);
-            }
-            throw new \RuntimeException("Fallo la autenticación en el portal Cristmedicals. Código de estado: {$loginPost['status']}");
-        }
-
-        // 3. Obtener token CSRF fresco de la sesión activa y HTML de facturas
-        $resFacturas = $this->executeCurl('GET', self::FACTURAS_URL, $cookieFile);
-        preg_match('/name="csrf-token" content="([^"]+)"/', $resFacturas['body'], $metaMatches);
-        $sessionCsrfToken = $metaMatches[1] ?? $token;
-
-        return [
-            'cookie_file' => $cookieFile,
-            'csrf_token' => $sessionCsrfToken,
-            'facturas_html' => $resFacturas['body'],
-        ];
+        throw ($lastException ?: new \RuntimeException('Error al autenticar con el portal Cristmedicals tras múltiples intentos.'));
     }
 
     /**
