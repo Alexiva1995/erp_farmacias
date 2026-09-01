@@ -66,7 +66,6 @@ jobs:
       # 8. Transferir archivos compilados (public/build) directamente al servidor vía SCP
       - name: Transfer Compiled Assets to Server via SCP
         uses: appleboy/scp-action@v0.1.7
-        if: ${{ secrets.SSH_HOST != '' }}
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USERNAME }}
@@ -80,7 +79,6 @@ jobs:
       # 9. Ejecutar actualización remota, migraciones y cachés en el Servidor (cPanel)
       - name: Execute Remote Deploy on Server via SSH
         uses: appleboy/ssh-action@v1.0.3
-        if: ${{ secrets.SSH_HOST != '' }}
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USERNAME }}
