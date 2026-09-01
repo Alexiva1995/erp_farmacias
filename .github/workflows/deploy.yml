@@ -41,14 +41,27 @@ jobs:
       - name: Install Composer Dependencies
         run: composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
 
-      # 5. Instalar dependencias de Frontend y Compilar con Vite
-      - name: Install Node Dependencies & Build Assets
+      # 5. Instalar dependencias de Frontend y Compilar en el Runner de GitHub (16GB RAM)
+      - name: Install Node Dependencies & Build Assets in GitHub Runner
         run: |
           pnpm install
           pnpm run build
 
-      # 6. Despliegue en el Servidor vía SSH (Ejecuta actualización, migraciones y recarga cachés)
-      - name: Deploy to Server via SSH
+      # 6. Transferir archivos compilados (public/build) directamente al servidor vía SCP
+      - name: Transfer Compiled Assets to Server
+        uses: appleboy/scp-action@v0.1.7
+        if: ${{ secrets.SSH_HOST != '' }}
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          source: "public/build"
+          target: ${{ secrets.DEPLOY_PATH || '/var/www/erp_farmacias' }}
+
+      # 7. Ejecutar actualización de backend y cachés en el Servidor vía SSH (Sin compilar en servidor)
+      - name: Execute Remote Update on Server
         uses: appleboy/ssh-action@v1.0.3
         if: ${{ secrets.SSH_HOST != '' }}
         with:
@@ -61,11 +74,10 @@ jobs:
             cd ${{ secrets.DEPLOY_PATH || '/var/www/erp_farmacias' }}
             git pull origin ${{ github.ref_name }}
             composer install --no-dev --optimize-autoloader --no-interaction
-            pnpm install
-            pnpm run build
             php artisan migrate --force
             php artisan optimize:clear
             php artisan config:cache
             php artisan route:cache
             php artisan view:cache
             php artisan queue:restart || true
+
