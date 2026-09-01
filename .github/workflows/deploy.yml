@@ -73,6 +73,7 @@ jobs:
           host: ${{ secrets.SERVER_HOST || secrets.SSH_HOST }}
           username: ${{ secrets.SERVER_USER || secrets.SSH_USERNAME }}
           key: ${{ secrets.SERVER_KEY || secrets.SSH_KEY }}
+          passphrase: ${{ secrets.SERVER_PASSPHRASE || secrets.SSH_PASSPHRASE }}
           password: ${{ secrets.SERVER_PASSWORD || secrets.SSH_PASSWORD }}
           port: ${{ secrets.SERVER_PORT || secrets.SSH_PORT || 22 }}
           source: "public/build"
@@ -86,6 +87,7 @@ jobs:
           host: ${{ secrets.SERVER_HOST || secrets.SSH_HOST }}
           username: ${{ secrets.SERVER_USER || secrets.SSH_USERNAME }}
           key: ${{ secrets.SERVER_KEY || secrets.SSH_KEY }}
+          passphrase: ${{ secrets.SERVER_PASSPHRASE || secrets.SSH_PASSPHRASE }}
           password: ${{ secrets.SERVER_PASSWORD || secrets.SSH_PASSWORD }}
           port: ${{ secrets.SERVER_PORT || secrets.SSH_PORT || 22 }}
           script: |
