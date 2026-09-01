@@ -20,4 +20,18 @@ interface MafartaScraperServiceInterface
      * Obtiene el detalle oficial de una factura con su número de control y renglones.
      */
     public function getInvoiceDetail(string $invoiceNumber, string $token): ?array;
+
+    /**
+     * Reporta y procesa un pago directamente en el portal SIC de Cobeca / Mafarta.
+     */
+    public function submitPayment(
+        array $invoiceNumbers,
+        float $paymentAmount,
+        string $reference,
+        string $destinationBank,
+        string $paymentDate,
+        ?string $receiptPath = null,
+        string $idType = 'V',
+        string $idNumber = '24150980'
+    ): array;
 }

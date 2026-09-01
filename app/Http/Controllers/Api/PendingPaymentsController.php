@@ -370,6 +370,33 @@ class PendingPaymentsController extends Controller
                 }
             }
 
+            // 10. Si el proveedor es Cobeca / Mafarta y se indicó banco/referencia, reportar el pago automáticamente en el portal SIC
+            $mafartaResult = null;
+            if ((str_contains($supplierName, 'MAFARTA') || str_contains($supplierName, 'COBECA')) && !empty($request->reference) && $request->payment_method !== 'CASH') {
+                try {
+                    $mafartaService = app(\App\Contracts\Suppliers\MafartaScraperServiceInterface::class);
+                    $mafartaResult = $mafartaService->submitPayment(
+                        $invoices->pluck('invoice_number')->toArray(),
+                        (float) $request->payment_amount,
+                        (string) $request->reference,
+                        (string) ($request->destination_bank ?? '01020219190006814326'),
+                        $request->payment_date,
+                        $request->photo_url,
+                        (string) ($request->id_type ?? 'V'),
+                        (string) ($request->id_number ?? '24150980')
+                    );
+                } catch (\Throwable $mEx) {
+                    Log::warning('[PendingPayments] Error reportando pago en Cobeca/Mafarta: ' . $mEx->getMessage());
+                }
+            }
+
+            $submissionMessage = '';
+            if ($dronenaResult && !empty($dronenaResult['success'])) {
+                $submissionMessage = ' y enviado a Dronena';
+            } elseif ($mafartaResult && !empty($mafartaResult['success'])) {
+                $submissionMessage = ' y transmitido a Cobeca / Mafarta';
+            }
+
             return ApiResponse::success([
                 'payment_id' => $payment->id,
                 'processed_invoices' => $request->invoice_ids,
@@ -382,7 +409,8 @@ class PendingPaymentsController extends Controller
                 'total_invoice_amount' => $totalInvoiceAmount,
                 'remaining_amount' => $totalInvoiceAmount - $amountUSD,
                 'dronena_submission' => $dronenaResult,
-            ], 'Pago procesado exitosamente' . ($dronenaResult && $dronenaResult['success'] ? ' y enviado a Dronena' : ''));
+                'mafarta_submission' => $mafartaResult,
+            ], 'Pago procesado exitosamente' . $submissionMessage);
         } catch (\Exception $e) {
             DB::rollBack();
             return ApiResponse::error('Error al procesar el pago: ' . $e->getMessage(), 500);

@@ -55,6 +55,18 @@ const dronenaBanks = [
   { title: "VENEZUELA - 01020211670006291538", value: "VENEZUELA - 01020211670006291538" },
 ];
 
+// Bancos oficiales de Droguerías Cobeca / C.A. Mafarta (Droguería 3)
+const mafartaBanks = [
+  { title: "BANCO DE VENEZUELA - 01020219190006814326", value: "01020219190006814326" },
+  { title: "BANCO PROVINCIAL - 01080358610100010280", value: "01080358610100010280" },
+  { title: "BANCO MERCANTIL - 01050063001063242401", value: "01050063001063242401" },
+  { title: "BANCO MERCANTIL (Sec) - 01050063011063037247", value: "01050063011063037247" },
+  { title: "BANCO BANESCO - 01340340643403004226", value: "01340340643403004226" },
+  { title: "BANCO SOFITASA - 01370001040000394901", value: "01370001040000394901" },
+  { title: "BANCO NACIONAL DE CREDITO (BNC) - 01910031692131058703", value: "01910031692131058703" },
+  { title: "BANCO VENEZOLANO DE CREDITO - 01040107130107115544", value: "01040107130107115544" },
+];
+
 const isDronenaPayment = computed(() => {
   if (props.paymentGroup?.supplier_name) {
     const name = props.paymentGroup.supplier_name.toUpperCase();
@@ -66,6 +78,20 @@ const isDronenaPayment = computed(() => {
       inv.supplier?.name?.toUpperCase().includes("DRONENA") ||
       inv.supplier_name?.toUpperCase().includes("NENA") ||
       inv.supplier_name?.toUpperCase().includes("DRONENA")
+  );
+});
+
+const isMafartaPayment = computed(() => {
+  if (props.paymentGroup?.supplier_name) {
+    const name = props.paymentGroup.supplier_name.toUpperCase();
+    if (name.includes("MAFARTA") || name.includes("COBECA")) return true;
+  }
+  return props.invoices.some(
+    (inv) =>
+      inv.supplier?.name?.toUpperCase().includes("MAFARTA") ||
+      inv.supplier?.name?.toUpperCase().includes("COBECA") ||
+      inv.supplier_name?.toUpperCase().includes("MAFARTA") ||
+      inv.supplier_name?.toUpperCase().includes("COBECA")
   );
 });
 
@@ -469,19 +495,23 @@ watch(() => props.modelValue, (val) => { if (val) fetchExchangeRates(); });
                 </VCol>
 
                 <VCol
-                  v-if="isDronenaPayment && form.payment_method !== 'cash'"
+                  v-if="(isDronenaPayment || isMafartaPayment) && form.payment_method !== 'cash'"
                   cols="12"
                 >
                   <div class="d-flex align-center justify-space-between mb-1">
-                    <span class="text-super-xs font-weight-black text-primary uppercase">Banco Destino Dronena</span>
-                    <VChip size="x-small" color="primary" variant="tonal">Portal Dronena</VChip>
+                    <span class="text-super-xs font-weight-black text-primary uppercase">
+                      {{ isMafartaPayment ? 'Banco Destino Cobeca / Mafarta' : 'Banco Destino Dronena' }}
+                    </span>
+                    <VChip size="x-small" color="primary" variant="tonal">
+                      {{ isMafartaPayment ? 'Portal Cobeca (SIC)' : 'Portal Dronena' }}
+                    </VChip>
                   </div>
                   <VSelect
                     v-model="form.destination_bank"
-                    :items="dronenaBanks"
+                    :items="isMafartaPayment ? mafartaBanks : dronenaBanks"
                     item-title="title"
                     item-value="value"
-                    placeholder="SELECCIONE BANCO DRONENA"
+                    :placeholder="isMafartaPayment ? 'SELECCIONE BANCO COBECA' : 'SELECCIONE BANCO DRONENA'"
                     variant="outlined"
                     density="compact"
                     class="premium-input mb-3"
@@ -499,8 +529,8 @@ watch(() => props.modelValue, (val) => { if (val) fetchExchangeRates(); });
                     variant="outlined"
                     density="compact"
                     class="premium-input mb-3"
-                    :hint="isDronenaPayment ? 'Para Dronena se tomarán automáticamente los últimos 10 dígitos' : undefined"
-                    :persistent-hint="isDronenaPayment"
+                    :hint="isDronenaPayment ? 'Para Dronena se tomarán automáticamente los últimos 10 dígitos' : (isMafartaPayment ? 'Para Cobeca/Mafarta se tomarán automáticamente los últimos 9 dígitos' : undefined)"
+                    :persistent-hint="isDronenaPayment || isMafartaPayment"
                     hide-details="auto"
                   />
                 </VCol>

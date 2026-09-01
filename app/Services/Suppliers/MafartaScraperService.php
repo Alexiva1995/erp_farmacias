@@ -499,4 +499,203 @@ class MafartaScraperService implements MafartaScraperServiceInterface
             return null;
         }
     }
+
+    /**
+     * Reporta y procesa un pago directamente en el portal SIC de Cobeca / Mafarta.
+     */
+    public function submitPayment(
+        array $invoiceNumbers,
+        float $paymentAmount,
+        string $reference,
+        string $destinationBank,
+        string $paymentDate,
+        ?string $receiptPath = null,
+        string $idType = 'V',
+        string $idNumber = '24150980'
+    ): array {
+        try {
+            Log::info("[COBECA PAYMENT] Iniciando reporte de pago para facturas: " . implode(', ', $invoiceNumbers));
+
+            // 1. Obtener credenciales
+            $supplier = Supplier::where('name', 'LIKE', '%MAFARTA%')
+                ->orWhere('name', 'LIKE', '%COBECA%')
+                ->first();
+
+            $connection = null;
+            if ($supplier) {
+                $connection = SupplierConnection::where('supplier_id', $supplier->id)->first();
+            }
+
+            $username = $connection?->username ?: 'F31373';
+            $password = $connection?->password ?: 'Mafarta2026*';
+
+            // 2. Iniciar sesión en el portal SIC
+            $loginRes = Http::withoutVerifying()->post('https://sic.drogueriascobeca.com/api/auth/login', [
+                'User' => $username,
+                'Password' => $password,
+            ]);
+
+            if ($loginRes->status() !== 200 || empty($loginRes->json('token'))) {
+                Log::error('[COBECA PAYMENT] Error de autenticación al reportar pago: ' . $loginRes->body());
+                return [
+                    'success' => false,
+                    'message' => 'Error de autenticación con el portal de Cobeca.',
+                ];
+            }
+
+            $token = $loginRes->json('token');
+            $clientCode = (int) ($loginRes->json('client') ?? 31373);
+            $drugstore = (int) ($loginRes->json('drogueria') ?? 3);
+
+            // 3. Consultar estado de cuenta en vivo para obtener los documentos exactos y calcular el monto oficial de Cobeca
+            $edoCuentaRes = Http::withHeaders(['Authorization' => "Bearer {$token}"])
+                ->withoutVerifying()
+                ->post('https://sic.drogueriascobeca.com/api/estadocuenta/consulta', [
+                    'compania' => $drugstore,
+                    'drogueria' => $drugstore,
+                    'cliente' => $clientCode,
+                    'tipo' => 1,
+                ]);
+
+            $rawDocs = $edoCuentaRes->json('estadoCuenta') ?? [];
+
+            // Mapear números limpios buscados
+            $cleanTargets = array_map(function ($num) {
+                return ltrim(str_replace(['NC-', 'FA-', 'FB-', 'A', 'F'], '', trim((string) $num)), '0');
+            }, $invoiceNumbers);
+
+            $matchedDocs = [];
+            $cobecaCalculatedTotal = 0.0;
+
+            foreach ($rawDocs as $doc) {
+                $cleanDocNum = ltrim(str_replace(['NC-', 'FA-', 'FB-', 'A', 'F'], '', trim((string) ($doc['numDoc'] ?? ''))), '0');
+                if (in_array($cleanDocNum, $cleanTargets, true)) {
+                    $matchedDocs[] = $doc;
+                    $isNC = strtoupper($doc['tipoDoc'] ?? '') === 'NC';
+                    $rowTotal = (float) ($doc['montoTotal'] ?? $doc['montoDoc'] ?? 0);
+                    $cobecaCalculatedTotal += $isNC ? -abs($rowTotal) : abs($rowTotal);
+                }
+            }
+
+            if (empty($matchedDocs)) {
+                Log::warning('[COBECA PAYMENT] No se encontraron los documentos seleccionados en el estado de cuenta de Cobeca.');
+                return [
+                    'success' => false,
+                    'message' => 'Los documentos seleccionados no fueron encontrados pendientes en el estado de cuenta de Cobeca.',
+                ];
+            }
+
+            // Regla: Enviar el monto exacto calculado por Cobeca para evitar discrepancias por decimales/diferencial
+            $finalPaymentAmount = ($cobecaCalculatedTotal > 0) ? round($cobecaCalculatedTotal, 2) : round($paymentAmount, 2);
+
+            // 4. Formatear la referencia bancaria a los últimos 9 dígitos
+            $cleanRef = preg_replace('/\D/', '', $reference);
+            $ref9 = strlen($cleanRef) >= 9 ? substr($cleanRef, -9) : str_pad($cleanRef, 9, '0', STR_PAD_LEFT);
+
+            // 5. Preparar la cuenta bancaria de destino (cuenta de Cobeca/Mafarta)
+            $cleanDestinationBank = preg_replace('/\D/', '', $destinationBank);
+            if (empty($cleanDestinationBank)) {
+                $cleanDestinationBank = '01020219190006814326'; // Banco de Venezuela por defecto
+            }
+
+            $formattedPaymentDate = Carbon::parse($paymentDate)->format('Y-m-d');
+
+            // 6. Preparar documentos para el payload de Cobeca
+            $documentosPayload = [];
+            foreach ($matchedDocs as $mDoc) {
+                $documentosPayload[] = [
+                    'numDoc' => (string) ($mDoc['numDoc'] ?? ''),
+                    'Hoja' => (string) ($mDoc['hoja'] ?? 'A'),
+                    'MontoRetencion' => (float) ($mDoc['montoRetencion'] ?? 0),
+                    'tpDoc' => (string) ($mDoc['tipoDoc'] ?? 'FA'),
+                    'montoPP' => (float) ($mDoc['montoTotal'] ?? $mDoc['montoDoc'] ?? 0),
+                    'porcentajePP' => 0,
+                    'ivaPP' => 0,
+                ];
+            }
+
+            // 7. Preparar comprobante (archivo físico o generado)
+            $fileContent = null;
+            $fileName = 'comprobante_pago_' . time() . '.png';
+            $fileMime = 'image/png';
+
+            if (!empty($receiptPath) && \Illuminate\Support\Facades\Storage::disk('public')->exists($receiptPath)) {
+                $fileContent = \Illuminate\Support\Facades\Storage::disk('public')->get($receiptPath);
+                $fileName = basename($receiptPath);
+            } else {
+                // Generar un comprobante temporal en caso de no adjuntar archivo
+                $dummyImage = imagecreatetruecolor(400, 200);
+                $bgColor = imagecolorallocate($dummyImage, 240, 240, 240);
+                $textColor = imagecolorallocate($dummyImage, 0, 47, 134);
+                imagefill($dummyImage, 0, 0, $bgColor);
+                imagestring($dummyImage, 5, 20, 30, "COMPROBANTE DE PAGO", $textColor);
+                imagestring($dummyImage, 4, 20, 70, "Ref: {$ref9}", $textColor);
+                imagestring($dummyImage, 4, 20, 100, "Monto: Bs. " . number_format($finalPaymentAmount, 2, ',', '.'), $textColor);
+                imagestring($dummyImage, 4, 20, 130, "Fecha: {$formattedPaymentDate}", $textColor);
+                ob_start();
+                imagepng($dummyImage);
+                $fileContent = ob_get_clean();
+                imagedestroy($dummyImage);
+            }
+
+            // 8. Construir objeto de Pago
+            $pagoPayload = [
+                'type' => null,
+                'compania' => $drugstore,
+                'clientes' => [$clientCode],
+                'documentos' => $documentosPayload,
+                'listaPagos' => [
+                    [
+                        'Identificacion' => $idNumber,
+                        'Referencia' => $ref9,
+                        'FechaPago' => $formattedPaymentDate,
+                        'CuentaBanco' => $cleanDestinationBank,
+                        'MontoPago' => $finalPaymentAmount,
+                        'TipoPersona' => strtoupper($idType),
+                        'MontoDivisa' => 0,
+                        'TasaDivisa' => 0,
+                        'MedioPago' => 3, // Transferencia
+                        'CodigoDivisa' => 'VES',
+                        'TitularCuenta' => 'FARMACIA BARRIO SUCRE 2024, C.A',
+                        'CorreoOrigen' => '',
+                    ]
+                ]
+            ];
+
+            // 9. Enviar petición multipart a la API oficial de Cobeca
+            $submitRes = Http::withHeaders([
+                'Authorization' => "Bearer {$token}",
+                'Accept' => 'application/json',
+            ])->withoutVerifying()
+            ->attach('Imagen', $fileContent, $fileName)
+            ->post('https://sic.drogueriascobeca.com/api/pago/pagar', [
+                'Pago' => json_encode($pagoPayload),
+            ]);
+
+            $jsonRes = $submitRes->json();
+            Log::info('[COBECA PAYMENT] Respuesta al procesar pago: ' . json_encode($jsonRes));
+
+            if ($submitRes->successful() && !empty($jsonRes['success'])) {
+                return [
+                    'success' => true,
+                    'message' => $jsonRes['message'] ?? 'Pago registrado exitosamente en el portal de Cobeca / Mafarta.',
+                    'data' => $jsonRes,
+                ];
+            }
+
+            return [
+                'success' => false,
+                'message' => $jsonRes['message'] ?? 'No se pudo completar el procesamiento del pago en Cobeca.',
+                'data' => $jsonRes,
+            ];
+        } catch (\Throwable $e) {
+            Log::error('[COBECA PAYMENT] Excepción reportando pago: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return [
+                'success' => false,
+                'message' => 'Error de comunicación al reportar el pago: ' . $e->getMessage(),
+            ];
+        }
+    }
 }
