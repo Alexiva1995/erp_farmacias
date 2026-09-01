@@ -63,6 +63,13 @@ const getPaymentDetail = (item, currency) => {
         details.push({ label: m.label || m.value, value: fmtUsd(val) });
       }
     });
+
+    if (parseFloat(item.usd_cash_payment_credit || 0) > 0) {
+      details.push({ label: "Abono Efectivo", value: fmtUsd(item.usd_cash_payment_credit) });
+    }
+    if (parseFloat(item.usd_transfer_payment_credit || 0) > 0) {
+      details.push({ label: "Abono Transf.", value: fmtUsd(item.usd_transfer_payment_credit) });
+    }
   } else if (currency === 'COP') {
     const currencyObj = methods.COP || {};
     const activeMethods = Array.isArray(currencyObj.methods) ? currencyObj.methods : [];
@@ -99,6 +106,16 @@ const getPaymentDetail = (item, currency) => {
         details.push({ label: m.label || m.value, value: fmtBs(val) });
       }
     });
+
+    if (parseFloat(item.bs_cash_payment_credit || 0) > 0) {
+      details.push({ label: "Abono Efectivo", value: fmtBs(item.bs_cash_payment_credit) });
+    }
+    if (parseFloat(item.bs_mobile_payment_credit || 0) > 0 || parseFloat(item.bs_transfer_payment_credit || 0) > 0) {
+      details.push({
+        label: "Abono Transf/PM",
+        value: fmtBs(parseFloat(item.bs_mobile_payment_credit || 0) + parseFloat(item.bs_transfer_payment_credit || 0)),
+      });
+    }
   }
   return details;
 };

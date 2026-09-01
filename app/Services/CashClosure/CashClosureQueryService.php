@@ -380,7 +380,19 @@ class CashClosureQueryService
     public function getFilteredQuerySellerCash(Request $request): Builder
     {
         $query = $this->getBaseQuerySellerCash();
-        $query->where('total_sales', '>', 0); // Ocultar cierres en cero
+        $query->where(function ($q) {
+            $q->where('total_sales', '>', 0)
+              ->orWhere('usd_delivered', '>', 0)
+              ->orWhere('cop_delivered', '>', 0)
+              ->orWhere('bs_delivered', '>', 0)
+              ->orWhere('usd_cash_payment_credit', '>', 0)
+              ->orWhere('usd_transfer_payment_credit', '>', 0)
+              ->orWhere('cop_cash_payment_credit', '>', 0)
+              ->orWhere('bs_cash_payment_credit', '>', 0)
+              ->orWhere('total_usd', '>', 0)
+              ->orWhere('total_cop', '>', 0)
+              ->orWhere('total_bs', '>', 0);
+        });
         $filters = [
             'q' => $request->q,
             'start_date' => $request->start_date,
