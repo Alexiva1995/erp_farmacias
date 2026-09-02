@@ -176,8 +176,14 @@ class ProductObserver
 
             \App\Services\Inventory\StockoutService::syncStockout($product, $stockAfter);
 
-            // Buscar el lote por producto, número de lote y fecha de expiración si no hay product_lot_id
+            // Buscar el lote asociado recién creado si no viene en el detalle
             $productLotId = $detail->product_lot_id ?? null;
+            if (!$productLotId) {
+                $productLotId = \App\Models\ProductLot::where('product_id', $product->id)
+                    ->where('supplier_id', $invoice->supplier_id)
+                    ->latest('id')
+                    ->value('id');
+            }
 
             InventoryMovement::create([
                 'product_id' => $product->id,

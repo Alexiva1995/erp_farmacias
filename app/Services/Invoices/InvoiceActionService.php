@@ -346,35 +346,34 @@ class InvoiceActionService
             // Cargar detalles con productos y rentabilidad
             $invoice->load(['details.product.profitability']);
 
+            // Crear lotes al aprobar (sin ubicación todavía, se actualizará después o se setea N/A)
+            // Se usa $skipMovementCreation = true para evitar movimientos automáticos redundantes de lotes,
+            // ya que handleInvoiceMovement gestiona el movimiento oficial de compra.
+            \App\Observers\ProductLotObserver::$skipMovementCreation = true;
+            try {
+                foreach ($invoice->details as $detail) {
+                    // Convertir unit_cost a USD antes de crear el lote
+                    $unitCostInInvoiceCurrency = (float) $detail->unit_cost;
+                    $rate = (float) ($invoice->exchange_rate ?? 1);
+                    $unitCostInUSD = $invoice->currency === 'USD'
+                        ? $unitCostInInvoiceCurrency
+                        : ($rate > 0 ? $unitCostInInvoiceCurrency / $rate : $unitCostInInvoiceCurrency);
+
+                    // Crear lote
+                    $productLot = $this->createProductLot($detail, (float) $unitCostInUSD, $invoice);
+
+                    if (!$enableInvoiceLocations) {
+                        $productLot->update(['location' => 'N/A']);
+                        $detail->update(['location' => 'N/A']);
+                    }
+                }
+            } finally {
+                \App\Observers\ProductLotObserver::$skipMovementCreation = false;
+            }
+
             // ÚNICO punto donde se crean movimientos de inventario (purchase) por factura.
             // No se crean al cargar (loaded) ni al ordenar/archivar (ordered); solo al aprobar (loaded → to_order / ordered).
             \App\Observers\ProductObserver::handleInvoiceMovement($invoice);
-
-            // Crear lotes al aprobar (sin ubicación todavía, se actualizará después o se setea N/A)
-            foreach ($invoice->details as $detail) {
-                // Convertir unit_cost a USD antes de crear el lote
-                $unitCostInInvoiceCurrency = (float) $detail->unit_cost;
-                $rate = (float) ($invoice->exchange_rate ?? 1);
-                $unitCostInUSD = $invoice->currency === 'USD'
-                    ? $unitCostInInvoiceCurrency
-                    : ($rate > 0 ? $unitCostInInvoiceCurrency / $rate : $unitCostInInvoiceCurrency);
-
-                // Crear lote
-                $productLot = $this->createProductLot($detail, (float) $unitCostInUSD, $invoice);
-
-                if (!$enableInvoiceLocations) {
-                    $productLot->update(['location' => 'N/A']);
-                    $detail->update(['location' => 'N/A']);
-                }
-
-                // Actualizar el movimiento existente con el product_lot_id
-                \App\Models\InventoryMovement::where('invoice_id', $invoice->id)
-                    ->where('product_id', $detail->product_id)
-                    ->whereNull('product_lot_id')
-                    ->where('movement_type', 'purchase')
-                    ->where('quantity', $detail->quantity)
-                    ->update(['product_lot_id' => $productLot->id]);
-            }
 
             return $invoice->fresh(['details.product', 'supplier']);
         });
