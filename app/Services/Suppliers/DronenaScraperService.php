@@ -155,12 +155,15 @@ class DronenaScraperService implements DronenaScraperServiceInterface
             if ($invoice) {
                 $updateData = [
                     'exp_date' => $expDate,
-                    'payment_date' => $expDate,
                     'is_indexed' => $isIndexed,
                     'claim_amount' => $claimAmount,
                     'nd_referential_amount' => $ndRefAmount,
                     'net_payable_amount' => $netPayable,
                 ];
+
+                if ((int) ($invoice->status_payment ?? 0) !== 1) {
+                    $updateData['payment_date'] = $expDate;
+                }
 
                 // Si la factura no tiene PDF guardado, o le falta número de control o montos base, descargar y parsear el PDF
                 if ((empty($invoice->invoice_photo) || empty($invoice->control_number) || $invoice->control_number === 'N/A' || floatval($invoice->total_amount) <= 0) && !empty($doc['pdf_url'])) {

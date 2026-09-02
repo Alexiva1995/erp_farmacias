@@ -226,9 +226,12 @@ class DrocercaScraperService implements DrocercaScraperServiceInterface
                     'invoice_number' => $officialInvoiceNumber,
                     'control_number' => $finalControlNumber ?: $invoice->control_number,
                     'exp_date' => $expDate ?: $invoice->exp_date,
-                    'payment_date' => $expDate ?: $invoice->payment_date,
                     'is_indexed' => $isIndexed,
                 ];
+
+                if ((int) ($invoice->status_payment ?? 0) !== 1 && $expDate) {
+                    $updateData['payment_date'] = $expDate;
+                }
 
                 if (!empty($invoicePhoto) && empty($invoice->invoice_photo)) {
                     $updateData['invoice_photo'] = $invoicePhoto;

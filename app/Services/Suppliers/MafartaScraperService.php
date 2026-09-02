@@ -183,10 +183,12 @@ class MafartaScraperService implements MafartaScraperServiceInterface
                     $updateData['control_number'] = $controlNumber;
                 }
 
-                // Actualizar fecha de vencimiento y de pago con la fecha oficial del portal
+                // Actualizar fecha de vencimiento y de pago con la fecha oficial del portal (si no está pagada)
                 if ($expDate) {
                     $updateData['exp_date'] = $expDate;
-                    $updateData['payment_date'] = $expDate;
+                    if ((int) ($invoice->status_payment ?? 0) !== 1) {
+                        $updateData['payment_date'] = $expDate;
+                    }
                 }
 
                 if ($emisionDate) {

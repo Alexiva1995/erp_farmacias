@@ -502,14 +502,14 @@ class DrosymcaScraperService implements DrosymcaScraperServiceInterface
             $taxAmount = (float) ($doc['tax_amount'] ?? 0);
 
             if ($invoice) {
-                // Actualizar factura existente
-                $updateData = [
-                    'status_payment' => 0, // Pendiente en cobranza activa
-                ];
+                // Actualizar factura existente sin alterar status ni status_payment
+                $updateData = [];
 
                 if ($expDate) {
                     $updateData['exp_date'] = $expDate;
-                    $updateData['payment_date'] = $expDate;
+                    if ((int) ($invoice->status_payment ?? 0) !== 1) {
+                        $updateData['payment_date'] = $expDate;
+                    }
                 }
 
                 if ($emisionDate && empty($invoice->created_invoice_date)) {

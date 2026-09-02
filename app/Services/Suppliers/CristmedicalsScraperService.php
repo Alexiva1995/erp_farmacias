@@ -400,10 +400,13 @@ class CristmedicalsScraperService implements CristmedicalsScraperServiceInterfac
             if ($invoice) {
                 $updateData = [
                     'exp_date' => $expDate,
-                    'payment_date' => $expDate,
                     'total_amount_discount' => $saldoConDescUsd > 0 ? $saldoConDescUsd : $invoice->total_amount_discount,
                     'net_payable_amount' => $totalBs > 0 ? $totalBs : $invoice->net_payable_amount,
                 ];
+
+                if ((int) ($invoice->status_payment ?? 0) !== 1) {
+                    $updateData['payment_date'] = $expDate;
+                }
 
                 if ($emisionDate) {
                     $updateData['created_invoice_date'] = $emisionDate;
