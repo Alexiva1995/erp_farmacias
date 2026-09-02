@@ -18,6 +18,7 @@ class InventoryMovement extends Model
         'order_id',
         'dish_id',
         'user_id',
+        'product_count_id',
         'stock_before',
         'stock_after',
         'movement_date',
@@ -76,5 +77,10 @@ class InventoryMovement extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function productCount(): BelongsTo
+    {
+        return $this->belongsTo(ProductCount::class);
     }
 }

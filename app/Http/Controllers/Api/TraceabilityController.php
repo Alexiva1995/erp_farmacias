@@ -201,11 +201,11 @@ class TraceabilityController extends Controller
 
                 if (!$countRecord) {
                     $mDate = Carbon::parse($movement->created_at ?? $movement->movement_date);
-                    $countRecord = \App\Models\SaleCount::with(['user.employee', 'supervisor.employee'])
+                    $countRecord = \App\Models\ProductCount::with(['user.employee', 'supervisor.employee'])
                         ->where('product_id', $movement->product_id)
                         ->where(function ($q) use ($mDate) {
-                            $q->whereBetween('updated_at', [$mDate->copy()->subHours(24), $mDate->copy()->addHours(24)])
-                              ->orWhereBetween('created_at', [$mDate->copy()->subDays(2), $mDate->copy()->addHours(24)]);
+                            $q->whereBetween('updated_at', [$mDate->copy()->subMinutes(15), $mDate->copy()->addMinutes(15)])
+                              ->orWhereBetween('created_at', [$mDate->copy()->subMinutes(15), $mDate->copy()->addMinutes(15)]);
                         })
                         ->orderBy('id', 'desc')
                         ->first();
@@ -213,11 +213,11 @@ class TraceabilityController extends Controller
 
                 if (!$countRecord) {
                     $mDate = Carbon::parse($movement->created_at ?? $movement->movement_date);
-                    $countRecord = \App\Models\ProductCount::with(['user.employee', 'supervisor.employee'])
+                    $countRecord = \App\Models\SaleCount::with(['user.employee', 'supervisor.employee'])
                         ->where('product_id', $movement->product_id)
                         ->where(function ($q) use ($mDate) {
-                            $q->whereBetween('updated_at', [$mDate->copy()->subHours(24), $mDate->copy()->addHours(24)])
-                              ->orWhereBetween('created_at', [$mDate->copy()->subDays(2), $mDate->copy()->addHours(24)]);
+                            $q->whereBetween('updated_at', [$mDate->copy()->subMinutes(15), $mDate->copy()->addMinutes(15)])
+                              ->orWhereBetween('created_at', [$mDate->copy()->subMinutes(15), $mDate->copy()->addMinutes(15)]);
                         })
                         ->orderBy('id', 'desc')
                         ->first();
@@ -228,8 +228,8 @@ class TraceabilityController extends Controller
                     $countRecord = \App\Models\InvoiceCount::with(['user.employee', 'supervisor.employee'])
                         ->where('product_id', $movement->product_id)
                         ->where(function ($q) use ($mDate) {
-                            $q->whereBetween('updated_at', [$mDate->copy()->subHours(24), $mDate->copy()->addHours(24)])
-                              ->orWhereBetween('created_at', [$mDate->copy()->subDays(2), $mDate->copy()->addHours(24)]);
+                            $q->whereBetween('updated_at', [$mDate->copy()->subMinutes(15), $mDate->copy()->addMinutes(15)])
+                              ->orWhereBetween('created_at', [$mDate->copy()->subMinutes(15), $mDate->copy()->addMinutes(15)]);
                         })
                         ->orderBy('id', 'desc')
                         ->first();

@@ -22,8 +22,8 @@ class InventoryCycleQueryService
             'product' => function ($query) {
                 $query->with(['lots', 'laboratory']);
             },
-            'user',
-            'supervisor',
+            'user.employee',
+            'supervisor.employee',
             'cycle',
         ]);
     }
@@ -598,8 +598,8 @@ class InventoryCycleQueryService
             'product' => function ($query) {
                 $query->with(['lots', 'laboratory']);
             },
-            'user',
-            'supervisor',
+            'user.employee',
+            'supervisor.employee',
             'cycle',
         ]);
     }
@@ -965,8 +965,8 @@ class InventoryCycleQueryService
             'product' => function ($query) {
                 $query->with(['lots', 'laboratory']);
             },
-            'user',
-            'supervisor',
+            'user.employee',
+            'supervisor.employee',
             'cycle',
         ]);
     }

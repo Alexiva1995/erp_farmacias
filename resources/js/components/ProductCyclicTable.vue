@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 import { useBrandingStore } from "@/stores/useBrandingStore";
 import { computed } from "vue";
 
@@ -129,7 +129,7 @@ const formatOperatorName = (user) => {
         <template #item.user.username="{ item }">
           <div class="d-flex align-center gap-2">
             <VAvatar size="24" color="primary" variant="tonal">
-              <span class="text-super-xs font-weight-black">{{ (item.user?.username || 'U').charAt(0).toUpperCase() }}</span>
+              <span class="text-super-xs font-weight-black">{{ (item.user?.employee_name || item.user?.username || 'U').charAt(0).toUpperCase() }}</span>
             </VAvatar>
             <span class="text-caption font-weight-bold text-medium-emphasis">{{ formatOperatorName(item.user) }}</span>
           </div>

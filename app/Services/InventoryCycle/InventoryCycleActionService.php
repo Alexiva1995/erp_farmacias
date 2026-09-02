@@ -85,7 +85,7 @@ class InventoryCycleActionService
                 $productCount->load(['product', 'user', 'cycle']);
 
                 if ($status === 'approved') {
-                    $this->createVerificationMovement($product, $systemStock, $productCount->created_at);
+                    $this->createVerificationMovement($product, $systemStock, $productCount->created_at, $productCount->id);
                 }
 
                 $message = $status === 'approved' 
@@ -135,7 +135,7 @@ class InventoryCycleActionService
     /**
      * Crea un movimiento de inventario tipo ajuste cuando el conteo físico coincide con el stock en sistema.
      */
-    private function createVerificationMovement(Product $product, int $stockQuantity, \DateTimeInterface $movementDate): void
+    private function createVerificationMovement(Product $product, int $stockQuantity, \DateTimeInterface $movementDate, ?int $productCountId = null): void
     {
         InventoryMovement::create([
             'product_id' => $product->id,
@@ -143,6 +143,7 @@ class InventoryCycleActionService
             'movement_type' => 'adjustment',
             'quantity' => 0,
             'user_id' => Auth::id(),
+            'product_count_id' => $productCountId,
             'stock_before' => $stockQuantity,
             'stock_after' => $stockQuantity,
             'movement_date' => $movementDate,
@@ -306,7 +307,7 @@ class InventoryCycleActionService
         if (!$distributionsCreated) {
             if ($finalDiscrepancy === 0) {
                 $finalQuantity = $realCurrentStock;
-                $this->createVerificationMovement($product, $realCurrentStock, now());
+                $this->createVerificationMovement($product, $realCurrentStock, now(), $productCount->id);
             } else {
                 $targetLot = $product->lots()->where('quantity', '>', 0)->orderBy('id', 'desc')->first()
                     ?? $product->lots()->orderBy('id', 'desc')->first();
@@ -346,17 +347,18 @@ class InventoryCycleActionService
                 });
 
                 InventoryMovement::create([
-                    'product_id'     => $product->id,
-                    'product_lot_id' => $targetLot->id,
-                    'movement_type'  => $finalDiscrepancy > 0 ? 'adjustment' : 'loss',
-                    'quantity'       => $finalDiscrepancy,
-                    'invoice_id'     => null,
-                    'supplier_id'    => null,
-                    'order_id'       => null,
-                    'user_id'        => Auth::id(),
-                    'stock_before'   => $stockBefore,
-                    'stock_after'    => $stockAfter,
-                    'movement_date'  => now(),
+                    'product_id'       => $product->id,
+                    'product_lot_id'   => $targetLot->id,
+                    'movement_type'    => $finalDiscrepancy > 0 ? 'adjustment' : 'loss',
+                    'quantity'         => $finalDiscrepancy,
+                    'invoice_id'       => null,
+                    'supplier_id'      => null,
+                    'order_id'         => null,
+                    'user_id'          => Auth::id(),
+                    'product_count_id' => $productCount->id,
+                    'stock_before'     => $stockBefore,
+                    'stock_after'      => $stockAfter,
+                    'movement_date'    => now(),
                 ]);
             }
         }
