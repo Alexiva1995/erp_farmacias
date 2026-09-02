@@ -92,7 +92,9 @@ class DronenaScraperService implements DronenaScraperServiceInterface
         foreach ($documents as $doc) {
             $invoiceNumber = $doc['numero_factura'];
             $expDate = $doc['fecha_vencimiento_db'];
-            $isFaDollar = $doc['is_indexed']; // TRUE si es FA$
+            $tipoDoc = $doc['tipo'] ?? 'FA';
+            $isND = in_array($tipoDoc, ['ND', 'ND$']);
+            $isFaDollar = $doc['is_indexed']; // TRUE si es FA$ o ND$
             $currency = $doc['currency'];
 
             if (!$expDate || empty($invoiceNumber)) {
@@ -100,31 +102,51 @@ class DronenaScraperService implements DronenaScraperServiceInterface
                 continue;
             }
 
-            // Regla: Se marca como indexada si es tipo FA$ O si la fecha de vencimiento ya pasó (vencida)
+            // Regla: Se marca como indexada si es tipo FA$/ND$ O si la fecha de vencimiento ya pasó (ayer o antes)
             $isOverdue = ($expDate < $today);
             $isIndexed = ($isFaDollar || $isOverdue);
 
-            // Buscar si ya existe la factura registrada (exacto, con prefijo 'A', sin ceros a la izquierda, etc.)
-            $cleanNumber = ltrim($invoiceNumber, 'A0');
-            $possibleNumbers = array_unique([
-                $invoiceNumber,
-                ltrim($invoiceNumber, 'A'),
-                $cleanNumber,
-                'A' . $cleanNumber,
-                'A' . ltrim($invoiceNumber, 'A'),
-                str_pad($cleanNumber, 8, '0', STR_PAD_LEFT),
-                'A' . str_pad($cleanNumber, 8, '0', STR_PAD_LEFT),
-            ]);
+            // Identificador y búsqueda en el ERP
+            $cleanNumber = ltrim(preg_replace('/\D/', '', $invoiceNumber) ?: $invoiceNumber, '0');
+            $erpDocNumber = $isND ? ('ND-' . $cleanNumber) : ('A' . $cleanNumber);
 
-            $invoiceQuery = Invoice::where(function ($q) use ($possibleNumbers, $cleanNumber) {
-                $q->whereIn('invoice_number', $possibleNumbers)
-                  ->orWhere('invoice_number', 'LIKE', "%{$cleanNumber}");
-            });
+            if ($isND) {
+                $possibleNumbers = array_unique([
+                    'ND-' . $cleanNumber,
+                    'ND-' . $invoiceNumber,
+                    'ND-' . str_pad($cleanNumber, 8, '0', STR_PAD_LEFT),
+                    'ND-' . str_pad($cleanNumber, 10, '0', STR_PAD_LEFT),
+                    'ND' . $cleanNumber,
+                    'ND' . $invoiceNumber,
+                ]);
+
+                $invoiceQuery = Invoice::where(function ($q) use ($possibleNumbers, $cleanNumber) {
+                    $q->whereIn('invoice_number', $possibleNumbers)
+                      ->orWhere('invoice_number', 'LIKE', "ND-%{$cleanNumber}");
+                });
+            } else {
+                $possibleNumbers = array_unique([
+                    $invoiceNumber,
+                    ltrim($invoiceNumber, 'A'),
+                    $cleanNumber,
+                    'A' . $cleanNumber,
+                    'A' . ltrim($invoiceNumber, 'A'),
+                    str_pad($cleanNumber, 8, '0', STR_PAD_LEFT),
+                    'A' . str_pad($cleanNumber, 8, '0', STR_PAD_LEFT),
+                ]);
+
+                $invoiceQuery = Invoice::where(function ($q) use ($possibleNumbers, $cleanNumber) {
+                    $q->whereIn('invoice_number', $possibleNumbers)
+                      ->orWhere(function ($sub) use ($cleanNumber) {
+                          $sub->where('invoice_number', 'LIKE', "A%{$cleanNumber}")
+                              ->where('invoice_number', 'NOT LIKE', 'ND-%');
+                      });
+                });
+            }
             if ($supplierId) {
                 $invoiceQuery->where('supplier_id', $supplierId);
             }
             $invoice = $invoiceQuery->first();
-
 
             $claimAmount = $doc['monto_reclamo_db'] ?? 0;
             $ndRefAmount = $doc['monto_nd_referencial_db'] ?? 0;
@@ -189,51 +211,48 @@ class DronenaScraperService implements DronenaScraperServiceInterface
                     'net_payable_amount' => $netPayable,
                 ];
             } else {
-                // Factura no encontrada previamente en el ERP: si tiene PDF, crearla completa
+                // Documento (Factura o Nota de Débito) no encontrado previamente en el ERP:
+                $pdfData = null;
                 if (!empty($doc['pdf_url'])) {
                     $pdfData = $this->fetchAndParsePdf($doc['pdf_url'], $client);
-                    if ($pdfData) {
-                        $newInvoice = Invoice::create([
-                            'supplier_id' => $supplierId,
-                            'invoice_number' => $pdfData['invoice_number'] ?: ('A' . $cleanNumber),
-                            'control_number' => $pdfData['control_number'] ?: null,
-                            'created_invoice_date' => $pdfData['created_invoice_date'] ?: $doc['fecha_emision_db'],
-                            'exp_date' => $expDate,
-                            'payment_date' => $expDate,
-                            'currency' => $currency,
-                            'is_indexed' => $isIndexed,
-                            'exempt_amount' => $pdfData['exempt_amount'] ?? 0,
-                            'taxable_base' => $pdfData['taxable_base'] ?? 0,
-                            'tax_amount' => $pdfData['tax_amount'] ?? 0,
-                            'total_amount' => $pdfData['total_amount'] ?: $doc['monto_db'],
-                            'total_usd' => $pdfData['total_usd'] ?: ($doc['tasa_db'] > 0 ? round($doc['monto_db'] / $doc['tasa_db'], 2) : 0),
-                            'exchange_rate' => $pdfData['exchange_rate'] ?: $doc['tasa_db'],
-                            'claim_amount' => $claimAmount,
-                            'nd_referential_amount' => $ndRefAmount,
-                            'net_payable_amount' => $netPayable,
-                            'invoice_photo' => $pdfData['invoice_photo'] ?? null,
-                            'status' => 'pending',
-                            'status_payment' => 0,
-                            'uploaded_by' => 1,
-                            'registered_by' => 1,
-                        ]);
-                        $updatedCount++;
-                        $processed[] = [
-                            'invoice_number' => $newInvoice->invoice_number,
-                            'action' => 'created_from_pdf',
-                            'control_number' => $newInvoice->control_number,
-                            'exp_date' => $expDate,
-                            'payment_date' => $expDate,
-                            'is_indexed' => $isIndexed,
-                        ];
-                        continue;
-                    }
                 }
 
-                $skippedCount++;
+                $calcRate = (float) ($pdfData['exchange_rate'] ?? ($doc['tasa_db'] > 0 ? $doc['tasa_db'] : 1.00));
+                $calcTotalAmount = (float) ($pdfData['total_amount'] ?? $doc['monto_db']);
+                $calcTotalUsd = (float) ($pdfData['total_usd'] ?? ($calcRate > 0 ? round($calcTotalAmount / $calcRate, 2) : 0));
+
+                $newInvoice = Invoice::create([
+                    'supplier_id' => $supplierId,
+                    'invoice_number' => $pdfData['invoice_number'] ?? $erpDocNumber,
+                    'control_number' => $pdfData['control_number'] ?? null,
+                    'created_invoice_date' => $pdfData['created_invoice_date'] ?? ($doc['fecha_emision_db'] ?: $today),
+                    'exp_date' => $expDate,
+                    'payment_date' => $expDate,
+                    'currency' => $currency,
+                    'is_indexed' => $isIndexed,
+                    'exempt_amount' => $pdfData['exempt_amount'] ?? 0,
+                    'taxable_base' => $pdfData['taxable_base'] ?? 0,
+                    'tax_amount' => $pdfData['tax_amount'] ?? 0,
+                    'total_amount' => $calcTotalAmount,
+                    'total_usd' => $calcTotalUsd,
+                    'exchange_rate' => $calcRate,
+                    'claim_amount' => $claimAmount,
+                    'nd_referential_amount' => $ndRefAmount,
+                    'net_payable_amount' => $netPayable ?: $calcTotalAmount,
+                    'invoice_photo' => $pdfData['invoice_photo'] ?? null,
+                    'status' => 'pending',
+                    'status_payment' => 0,
+                    'uploaded_by' => 1,
+                    'registered_by' => 1,
+                    'loaded_by' => 1,
+                    'ordered_by' => 1,
+                ]);
+
+                $createdCount++;
                 $processed[] = [
-                    'invoice_number' => $invoiceNumber,
-                    'action' => 'not_found',
+                    'invoice_number' => $newInvoice->invoice_number,
+                    'action' => 'created',
+                    'control_number' => $newInvoice->control_number,
                     'exp_date' => $expDate,
                     'payment_date' => $expDate,
                     'is_indexed' => $isIndexed,
@@ -454,13 +473,14 @@ class DronenaScraperService implements DronenaScraperServiceInterface
 
             $tipo = trim($cols->item(1)->textContent);
 
-            // Filtrar solo facturas FA o FA$
-            if (!in_array($tipo, ['FA', 'FA$'])) {
+            // Filtrar facturas (FA, FA$) y notas de débito (ND, ND$)
+            if (!in_array($tipo, ['FA', 'FA$', 'ND', 'ND$'])) {
                 continue;
             }
 
-            $firstLink = $cols->item(2)->getElementsByTagName('a')->item(0);
-            $recibo = $firstLink ? trim($firstLink->textContent) : trim(explode(' ', trim($cols->item(2)->textContent))[0]);
+            $rawRecibo = trim($cols->item(2)->textContent);
+            preg_match('/(\d+)/', $rawRecibo, $mNum);
+            $recibo = $mNum[1] ?? trim(explode(' ', $rawRecibo)[0]);
             
             // Buscar enlace de descarga de PDF digital en toda la fila (Priorizar Soluciones Laser)
             $pdfUrl = null;
@@ -497,11 +517,11 @@ class DronenaScraperService implements DronenaScraperServiceInterface
             $saldo = trim($cols->item(13)->textContent);
             $tasa = trim($cols->item(14)->textContent);
 
-            // Regla solicitada:
-            // Si es FA$ => Factura Dolarizada => Marcar como INDEXADA (true)
-            // Si es FA => Factura en Bs.S => NO marcar como indexada (false)
-            $isIndexed = ($tipo === 'FA$');
-            $currency = ($tipo === 'FA$') ? 'USD' : 'Bs';
+            // Regla:
+            // Si es FA$ o ND$ => Documento Dolarizado => Indexado de origen (true)
+            // Si es FA o ND => Documento en Bs.S => No indexado de origen (false)
+            $isIndexed = in_array($tipo, ['FA$', 'ND$']);
+            $currency = in_array($tipo, ['FA$', 'ND$']) ? 'USD' : 'Bs';
 
             $parsedVencimiento = $this->parseDate($fechaVencimiento);
             $parsedEmision = $this->parseDate($fechaMovimiento);
