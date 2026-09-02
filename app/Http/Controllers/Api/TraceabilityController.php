@@ -242,6 +242,7 @@ class TraceabilityController extends Controller
                     $details['approval_date'] = $countRecord->updated_at ?? $movement->movement_date;
                     $details['counted_quantity'] = (float) $countRecord->counted_quantity;
                     $details['system_quantity'] = (float) $countRecord->system_quantity;
+                    $details['audited_quantity'] = (float) $countRecord->counted_quantity;
                     $details['discrepancy'] = (float) $countRecord->discrepancy;
                     $details['product_count'] = $countRecord;
                 } else {

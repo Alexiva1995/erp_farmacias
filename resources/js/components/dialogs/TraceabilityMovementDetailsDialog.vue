@@ -395,9 +395,14 @@ const getUserDisplayName = (user) => {
                     <span class="text-body-2 font-weight-black text-success d-block">
                       {{ getUserDisplayName(movementDetails.approved_by || movementDetails.movement?.user) }}
                     </span>
-                    <VChip v-if="movementDetails.discrepancy !== undefined" size="x-small" :color="movementDetails.discrepancy >= 0 ? 'success' : 'error'" variant="tonal" class="font-weight-black mt-1">
-                      Discrepancia: {{ movementDetails.discrepancy >= 0 ? '+' : '' }}{{ movementDetails.discrepancy }}
-                    </VChip>
+                    <div class="d-flex align-center justify-end gap-1 mt-1">
+                      <span v-if="movementDetails.audited_quantity !== undefined" class="text-super-xs font-weight-bold text-medium-emphasis">
+                        Auditado: {{ movementDetails.audited_quantity }}
+                      </span>
+                      <VChip v-if="movementDetails.discrepancy !== undefined" size="x-small" :color="movementDetails.discrepancy >= 0 ? 'success' : 'error'" variant="tonal" class="font-weight-black">
+                        Discrepancia: {{ movementDetails.discrepancy >= 0 ? '+' : '' }}{{ movementDetails.discrepancy }}
+                      </VChip>
+                    </div>
                   </div>
                 </div>
               </div>

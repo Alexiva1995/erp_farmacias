@@ -14,6 +14,7 @@ use App\Models\ProductDistribution;
 use App\Models\ProductLot;
 use App\Models\SaleCount;
 use App\Models\SaleCountDistribution;
+use App\Observers\ProductLotObserver;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -199,194 +200,195 @@ class InventoryCycleActionService
     private function approveOrCorrectCount(ProductCount $productCount, array $data): array
     {
         $isCorrection = isset($data['corrected_quantity']);
-        $finalQuantity = $isCorrection ? $data['corrected_quantity'] : $productCount->counted_quantity;
+        $finalQuantity = $isCorrection ? (float) $data['corrected_quantity'] : (float) $productCount->counted_quantity;
 
         $product = $productCount->product;
         
-        // Recalcular stock actual para que la discrepancia final refleje la realidad
-        // al momento de la verificación, no el stock viejo del conteo inicial.
-        $realCurrentStock = (int) $product->lots()->sum('quantity');
-        $finalDiscrepancy = $finalQuantity - $realCurrentStock;
+        // Stock actual real antes de cualquier modificación
+        $stockBefore = (float) $product->lots()->where('quantity', '>', 0)->sum('quantity');
+        $finalDiscrepancy = $finalQuantity - $stockBefore;
         
-        // Sincronizar system_quantity
-        $productCount->system_quantity = $realCurrentStock;
+        // Sincronizar system_quantity con el stock al momento de la verificación
+        $productCount->system_quantity = $stockBefore;
 
         $distributionsCreated = false;
 
-        $enableLots = \App\Models\GeneralSetting::first()?->enable_lots ?? true;
-        if (!$enableLots) {
-            $uniqueLot = ProductLot::where('product_id', $product->id)
-                ->where('lot_number', 'LOTE-UNICO')
-                ->first();
+        // Desactivar temporalmente el observer para evitar que genere movimientos duplicados
+        ProductLotObserver::$skipMovementCreation = true;
+        try {
+            $enableLots = \App\Models\GeneralSetting::first()?->enable_lots ?? true;
+            if (!$enableLots) {
+                $uniqueLot = ProductLot::where('product_id', $product->id)
+                    ->where('lot_number', 'LOTE-UNICO')
+                    ->first();
 
-            if (!$uniqueLot) {
-                $uniqueLot = ProductLot::create([
-                    'product_id'      => $product->id,
-                    'lot_number'      => 'LOTE-UNICO',
-                    'expiration_date' => '2050-12-31',
-                    'quantity'        => $finalQuantity,
-                    'unit_cost'       => $product->unit_cost ?? 0,
-                    'location'        => 'PRINCIPAL',
-                    'supplier_id'     => null,
-                ]);
-            } else {
-                $uniqueLot->update(['quantity' => $finalQuantity]);
-            }
-
-            ProductDistribution::create([
-                'product_count_id' => $productCount->id,
-                'product_lot_id'   => $uniqueLot->id,
-                'quantity'         => $finalQuantity,
-            ]);
-            $distributionsCreated = true;
-        }
-
-        if (!empty($data['updated_lots'])) {
-            foreach ($data['updated_lots'] as $lotData) {
-                $lotToUpdate = ProductLot::find($lotData['id']);
-
-                if ($lotToUpdate && $lotToUpdate->product_id === $product->id) {
-                    $updateData = ['quantity' => $lotData['quantity']];
-                    
-                    if (isset($lotData['lot_number'])) {
-                        $updateData['lot_number'] = $lotData['lot_number'];
-                    }
-                    if (isset($lotData['expiration_date'])) {
-                        $updateData['expiration_date'] = $lotData['expiration_date'];
-                    }
-                    if (isset($lotData['location'])) {
-                        $updateData['location'] = $lotData['location'];
-                    }
-                    
-                    $lotToUpdate->update($updateData);
-
-                    ProductDistribution::create([
-                        'product_count_id' => $productCount->id,
-                        'product_lot_id'   => $lotToUpdate->id,
-                        'quantity'         => $lotData['quantity'],
+                if (!$uniqueLot) {
+                    $uniqueLot = ProductLot::create([
+                        'product_id'      => $product->id,
+                        'lot_number'      => 'LOTE-UNICO',
+                        'expiration_date' => '2050-12-31',
+                        'quantity'        => $finalQuantity,
+                        'unit_cost'       => $product->unit_cost ?? 0,
+                        'location'        => 'PRINCIPAL',
+                        'supplier_id'     => null,
                     ]);
-                    $distributionsCreated = true;
                 } else {
-                    Log::warning('Se intentó actualizar un lote no encontrado o no perteneciente al producto.', [
-                        'lot_data'   => $lotData,
-                        'product_id' => $product->id,
-                    ]);
+                    $uniqueLot->update(['quantity' => $finalQuantity]);
                 }
-            }
-        }
-
-        if (!empty($data['new_lots'])) {
-            $existingLotsWithCost = ProductLot::where('product_id', $product->id)
-                ->where('unit_cost', '>', 0)
-                ->get();
-
-            $newLotUnitCost = $existingLotsWithCost->isNotEmpty()
-                ? round($existingLotsWithCost->avg('unit_cost'), 2)
-                : ($product->unit_price ?? 0);
-
-            foreach ($data['new_lots'] as $lotData) {
-                $newLot = ProductLot::create([
-                    'product_id'      => $product->id,
-                    'lot_number'      => $lotData['lot_number'],
-                    'expiration_date' => $lotData['expiration_date'],
-                    'quantity'        => $lotData['quantity'],
-                    'unit_cost'       => $newLotUnitCost,
-                    'supplier_id'     => null,
-                ]);
 
                 ProductDistribution::create([
                     'product_count_id' => $productCount->id,
-                    'product_lot_id'   => $newLot->id,
-                    'quantity'         => $newLot->quantity,
+                    'product_lot_id'   => $uniqueLot->id,
+                    'quantity'         => $finalQuantity,
                 ]);
                 $distributionsCreated = true;
             }
-        }
 
-        $stockBefore = (float) $product->lots()->where('quantity', '>', 0)->sum('quantity');
+            if (!empty($data['updated_lots'])) {
+                foreach ($data['updated_lots'] as $lotData) {
+                    $lotToUpdate = ProductLot::find($lotData['id']);
 
-        // Si se crearon distribuciones manuales (por lotes actualizados o nuevos):
-        if ($distributionsCreated) {
-            $stockAfter = (float) $product->lots()->where('quantity', '>', 0)->sum('quantity');
-            $product->updateQuietly(['stock' => $stockAfter]);
-            $diff = round($stockAfter - $stockBefore, 4);
+                    if ($lotToUpdate && $lotToUpdate->product_id === $product->id) {
+                        $updateData = ['quantity' => $lotData['quantity']];
+                        
+                        if (isset($lotData['lot_number'])) {
+                            $updateData['lot_number'] = $lotData['lot_number'];
+                        }
+                        if (isset($lotData['expiration_date'])) {
+                            $updateData['expiration_date'] = $lotData['expiration_date'];
+                        }
+                        if (isset($lotData['location'])) {
+                            $updateData['location'] = $lotData['location'];
+                        }
+                        
+                        $lotToUpdate->update($updateData);
 
-            if (abs($diff) > 0.0001) {
-                $targetLot = $product->lots()->where('quantity', '>', 0)->first();
-                InventoryMovement::create([
-                    'product_id'       => $product->id,
-                    'product_lot_id'   => $targetLot?->id,
-                    'movement_type'    => $diff > 0 ? 'adjustment' : 'loss',
-                    'quantity'         => $diff,
-                    'invoice_id'       => null,
-                    'supplier_id'      => null,
-                    'order_id'         => null,
-                    'user_id'          => Auth::id(),
-                    'product_count_id' => $productCount->id,
-                    'stock_before'     => $stockBefore,
-                    'stock_after'      => $stockAfter,
-                    'movement_date'    => now(),
-                ]);
-            } else {
-                $this->createVerificationMovement($product, (int) $stockAfter, now(), $productCount->id);
-            }
-        } else {
-            // Si no se creó ninguna distribución manual:
-            if ($finalDiscrepancy === 0) {
-                $stockAfter = $stockBefore;
-                $finalQuantity = (int) $realCurrentStock;
-                $product->updateQuietly(['stock' => $stockAfter]);
-                $this->createVerificationMovement($product, (int) $stockAfter, now(), $productCount->id);
-            } else {
-                $targetLot = $product->lots()->where('quantity', '>', 0)->orderBy('id', 'desc')->first()
-                    ?? $product->lots()->orderBy('id', 'desc')->first();
-
-                if ($targetLot) {
-                    $targetLot->quantity = max(0, $targetLot->quantity + $finalDiscrepancy);
-                    ProductLot::withoutEvents(function () use ($targetLot) {
-                        $targetLot->save();
-                    });
-
-                    ProductDistribution::create([
-                        'product_count_id' => $productCount->id,
-                        'product_lot_id'   => $targetLot->id,
-                        'quantity'         => $targetLot->quantity,
-                    ]);
-                } else {
-                    $targetLot = ProductLot::create([
-                        'product_id'      => $product->id,
-                        'lot_number'      => 'LOTE-AJUSTE',
-                        'expiration_date' => now()->addYears(2)->toDateString(),
-                        'quantity'        => max(0, $finalQuantity),
-                        'unit_cost'       => $product->unit_cost ?? 0,
-                    ]);
-
-                    ProductDistribution::create([
-                        'product_count_id' => $productCount->id,
-                        'product_lot_id'   => $targetLot->id,
-                        'quantity'         => $targetLot->quantity,
-                    ]);
+                        ProductDistribution::create([
+                            'product_count_id' => $productCount->id,
+                            'product_lot_id'   => $lotToUpdate->id,
+                            'quantity'         => $lotData['quantity'],
+                        ]);
+                        $distributionsCreated = true;
+                    } else {
+                        Log::warning('Se intentó actualizar un lote no encontrado o no perteneciente al producto.', [
+                            'lot_data'   => $lotData,
+                            'product_id' => $product->id,
+                        ]);
+                    }
                 }
+            }
 
+            if (!empty($data['new_lots'])) {
+                $existingLotsWithCost = ProductLot::where('product_id', $product->id)
+                    ->where('unit_cost', '>', 0)
+                    ->get();
+
+                $newLotUnitCost = $existingLotsWithCost->isNotEmpty()
+                    ? round($existingLotsWithCost->avg('unit_cost'), 2)
+                    : ($product->unit_price ?? 0);
+
+                foreach ($data['new_lots'] as $lotData) {
+                    $newLot = ProductLot::create([
+                        'product_id'      => $product->id,
+                        'lot_number'      => $lotData['lot_number'],
+                        'expiration_date' => $lotData['expiration_date'],
+                        'quantity'        => $lotData['quantity'],
+                        'unit_cost'       => $newLotUnitCost,
+                        'supplier_id'     => null,
+                    ]);
+
+                    ProductDistribution::create([
+                        'product_count_id' => $productCount->id,
+                        'product_lot_id'   => $newLot->id,
+                        'quantity'         => $newLot->quantity,
+                    ]);
+                    $distributionsCreated = true;
+                }
+            }
+
+            // Si se crearon distribuciones manuales (por lotes actualizados o nuevos):
+            if ($distributionsCreated) {
                 $stockAfter = (float) $product->lots()->where('quantity', '>', 0)->sum('quantity');
                 $product->updateQuietly(['stock' => $stockAfter]);
                 $diff = round($stockAfter - $stockBefore, 4);
 
-                InventoryMovement::create([
-                    'product_id'       => $product->id,
-                    'product_lot_id'   => $targetLot->id,
-                    'movement_type'    => $diff > 0 ? 'adjustment' : 'loss',
-                    'quantity'         => $diff,
-                    'invoice_id'       => null,
-                    'supplier_id'      => null,
-                    'order_id'         => null,
-                    'user_id'          => Auth::id(),
-                    'product_count_id' => $productCount->id,
-                    'stock_before'     => $stockBefore,
-                    'stock_after'      => $stockAfter,
-                    'movement_date'    => now(),
-                ]);
+                if (abs($diff) > 0.0001) {
+                    $targetLot = $product->lots()->where('quantity', '>', 0)->first();
+                    InventoryMovement::create([
+                        'product_id'       => $product->id,
+                        'product_lot_id'   => $targetLot?->id,
+                        'movement_type'    => $diff > 0 ? 'adjustment' : 'loss',
+                        'quantity'         => $diff,
+                        'invoice_id'       => null,
+                        'supplier_id'      => null,
+                        'order_id'         => null,
+                        'user_id'          => Auth::id(),
+                        'product_count_id' => $productCount->id,
+                        'stock_before'     => $stockBefore,
+                        'stock_after'      => $stockAfter,
+                        'movement_date'    => now(),
+                    ]);
+                } else {
+                    $this->createVerificationMovement($product, (int) $stockAfter, now(), $productCount->id);
+                }
+            } else {
+                // Si no se creó ninguna distribución manual:
+                if (abs($finalDiscrepancy) < 0.0001) {
+                    $stockAfter = $stockBefore;
+                    $finalQuantity = (float) $stockBefore;
+                    $product->updateQuietly(['stock' => $stockAfter]);
+                    $this->createVerificationMovement($product, (int) $stockAfter, now(), $productCount->id);
+                } else {
+                    $targetLot = $product->lots()->where('quantity', '>', 0)->orderBy('id', 'desc')->first()
+                        ?? $product->lots()->orderBy('id', 'desc')->first();
+
+                    if ($targetLot) {
+                        $targetLot->quantity = max(0, $targetLot->quantity + $finalDiscrepancy);
+                        $targetLot->saveQuietly();
+
+                        ProductDistribution::create([
+                            'product_count_id' => $productCount->id,
+                            'product_lot_id'   => $targetLot->id,
+                            'quantity'         => $targetLot->quantity,
+                        ]);
+                    } else {
+                        $targetLot = ProductLot::create([
+                            'product_id'      => $product->id,
+                            'lot_number'      => 'LOTE-AJUSTE',
+                            'expiration_date' => now()->addYears(2)->toDateString(),
+                            'quantity'        => max(0, $finalQuantity),
+                            'unit_cost'       => $product->unit_cost ?? 0,
+                        ]);
+
+                        ProductDistribution::create([
+                            'product_count_id' => $productCount->id,
+                            'product_lot_id'   => $targetLot->id,
+                            'quantity'         => $targetLot->quantity,
+                        ]);
+                    }
+
+                    $stockAfter = (float) $product->lots()->where('quantity', '>', 0)->sum('quantity');
+                    $product->updateQuietly(['stock' => $stockAfter]);
+                    $diff = round($stockAfter - $stockBefore, 4);
+
+                    InventoryMovement::create([
+                        'product_id'       => $product->id,
+                        'product_lot_id'   => $targetLot->id,
+                        'movement_type'    => $diff > 0 ? 'adjustment' : 'loss',
+                        'quantity'         => $diff,
+                        'invoice_id'       => null,
+                        'supplier_id'      => null,
+                        'order_id'         => null,
+                        'user_id'          => Auth::id(),
+                        'product_count_id' => $productCount->id,
+                        'stock_before'     => $stockBefore,
+                        'stock_after'      => $stockAfter,
+                        'movement_date'    => now(),
+                    ]);
+                }
             }
+        } finally {
+            ProductLotObserver::$skipMovementCreation = false;
         }
 
         $productCount->counted_quantity    = $finalQuantity;
@@ -511,145 +513,146 @@ class InventoryCycleActionService
     private function approveOrCorrectInvoiceCount(InvoiceCount $invoiceCount, array $data): array
     {
         $isCorrection = isset($data['corrected_quantity']);
-        $finalQuantity = $isCorrection ? $data['corrected_quantity'] : $invoiceCount->counted_quantity;
+        $finalQuantity = $isCorrection ? (float) $data['corrected_quantity'] : (float) $invoiceCount->counted_quantity;
         
         $product = $invoiceCount->product;
 
-        // Recalcular stock actual al momento de la verificación
-        $realCurrentStock = (int) $product->lots()->sum('quantity');
-        $finalDiscrepancy = $finalQuantity - $realCurrentStock;
+        // Stock actual real antes de cualquier modificación
+        $stockBefore = (float) $product->lots()->where('quantity', '>', 0)->sum('quantity');
+        $finalDiscrepancy = $finalQuantity - $stockBefore;
         
-        // Sincronizar system_quantity
-        $invoiceCount->system_quantity = $realCurrentStock;
+        // Sincronizar system_quantity con el stock al momento de la verificación
+        $invoiceCount->system_quantity = $stockBefore;
 
         $distributionsCreated = false;
 
-        if (!empty($data['updated_lots'])) {
-            foreach ($data['updated_lots'] as $lotData) {
-                $lotToUpdate = ProductLot::find($lotData['id']);
-                if ($lotToUpdate && $lotToUpdate->product_id === $product->id) {
-                    $updateData = ['quantity' => $lotData['quantity']];
-                    if (isset($lotData['lot_number'])) $updateData['lot_number'] = $lotData['lot_number'];
-                    if (isset($lotData['expiration_date'])) $updateData['expiration_date'] = $lotData['expiration_date'];
-                    if (isset($lotData['location'])) $updateData['location'] = $lotData['location'];
-                    $lotToUpdate->update($updateData);
+        ProductLotObserver::$skipMovementCreation = true;
+        try {
+            if (!empty($data['updated_lots'])) {
+                foreach ($data['updated_lots'] as $lotData) {
+                    $lotToUpdate = ProductLot::find($lotData['id']);
+                    if ($lotToUpdate && $lotToUpdate->product_id === $product->id) {
+                        $updateData = ['quantity' => $lotData['quantity']];
+                        if (isset($lotData['lot_number'])) $updateData['lot_number'] = $lotData['lot_number'];
+                        if (isset($lotData['expiration_date'])) $updateData['expiration_date'] = $lotData['expiration_date'];
+                        if (isset($lotData['location'])) $updateData['location'] = $lotData['location'];
+                        $lotToUpdate->update($updateData);
+                        InvoiceCountDistribution::create([
+                            'invoice_count_id' => $invoiceCount->id,
+                            'product_lot_id'   => $lotToUpdate->id,
+                            'quantity'         => $lotData['quantity'],
+                        ]);
+                        $distributionsCreated = true;
+                    }
+                }
+            }
+
+            if (!empty($data['new_lots'])) {
+                $existingLotsWithCost = ProductLot::where('product_id', $product->id)->where('unit_cost', '>', 0)->get();
+                $newLotUnitCost = $existingLotsWithCost->isNotEmpty() ? round($existingLotsWithCost->avg('unit_cost'), 2) : ($product->unit_price ?? 0);
+
+                foreach ($data['new_lots'] as $lotData) {
+                    $newLot = ProductLot::create([
+                        'product_id'      => $product->id,
+                        'lot_number'      => $lotData['lot_number'],
+                        'expiration_date' => $lotData['expiration_date'],
+                        'location'        => $lotData['location'] ?? null,
+                        'quantity'        => $lotData['quantity'],
+                        'unit_cost'       => $newLotUnitCost,
+                        'supplier_id'     => null,
+                    ]);
                     InvoiceCountDistribution::create([
                         'invoice_count_id' => $invoiceCount->id,
-                        'product_lot_id'   => $lotToUpdate->id,
-                        'quantity'         => $lotData['quantity'],
+                        'product_lot_id'   => $newLot->id,
+                        'quantity'         => $newLot->quantity,
                     ]);
                     $distributionsCreated = true;
                 }
             }
-        }
 
-        if (!empty($data['new_lots'])) {
-            $existingLotsWithCost = ProductLot::where('product_id', $product->id)->where('unit_cost', '>', 0)->get();
-            $newLotUnitCost = $existingLotsWithCost->isNotEmpty() ? round($existingLotsWithCost->avg('unit_cost'), 2) : ($product->unit_price ?? 0);
-
-            foreach ($data['new_lots'] as $lotData) {
-                $newLot = ProductLot::create([
-                    'product_id'      => $product->id,
-                    'lot_number'      => $lotData['lot_number'],
-                    'expiration_date' => $lotData['expiration_date'],
-                    'location'        => $lotData['location'] ?? null,
-                    'quantity'        => $lotData['quantity'],
-                    'unit_cost'       => $newLotUnitCost,
-                    'supplier_id'     => null,
-                ]);
-                InvoiceCountDistribution::create([
-                    'invoice_count_id' => $invoiceCount->id,
-                    'product_lot_id'   => $newLot->id,
-                    'quantity'         => $newLot->quantity,
-                ]);
-                $distributionsCreated = true;
-            }
-        }
-
-        $stockBefore = (float) $product->lots()->where('quantity', '>', 0)->sum('quantity');
-
-        // Si se crearon distribuciones manuales (por lotes actualizados o nuevos):
-        if ($distributionsCreated) {
-            $stockAfter = (float) $product->lots()->where('quantity', '>', 0)->sum('quantity');
-            $product->updateQuietly(['stock' => $stockAfter]);
-            $diff = round($stockAfter - $stockBefore, 4);
-
-            if (abs($diff) > 0.0001) {
-                $targetLot = $product->lots()->where('quantity', '>', 0)->first();
-                InventoryMovement::create([
-                    'product_id'       => $product->id,
-                    'product_lot_id'   => $targetLot?->id,
-                    'movement_type'    => $diff > 0 ? 'adjustment' : 'loss',
-                    'quantity'         => $diff,
-                    'invoice_id'       => null,
-                    'supplier_id'      => null,
-                    'order_id'         => null,
-                    'user_id'          => Auth::id(),
-                    'product_count_id' => null,
-                    'stock_before'     => $stockBefore,
-                    'stock_after'      => $stockAfter,
-                    'movement_date'    => now(),
-                ]);
-            } else {
-                $this->createVerificationMovement($product, (int) $stockAfter, now());
-            }
-        } else {
-            // Si no se creó ninguna distribución manual:
-            if ($finalDiscrepancy === 0) {
-                $stockAfter = $stockBefore;
-                $finalQuantity = (int) $realCurrentStock;
-                $product->updateQuietly(['stock' => $stockAfter]);
-                $this->createVerificationMovement($product, (int) $stockAfter, now());
-            } else {
-                $targetLot = $product->lots()->where('quantity', '>', 0)->orderBy('id', 'desc')->first()
-                    ?? $product->lots()->orderBy('id', 'desc')->first();
-
-                if ($targetLot) {
-                    $targetLot->quantity = max(0, $targetLot->quantity + $finalDiscrepancy);
-                    ProductLot::withoutEvents(function () use ($targetLot) {
-                        $targetLot->save();
-                    });
-
-                    InvoiceCountDistribution::create([
-                        'invoice_count_id' => $invoiceCount->id,
-                        'product_lot_id'   => $targetLot->id,
-                        'quantity'         => $targetLot->quantity,
-                    ]);
-                } else {
-                    $targetLot = ProductLot::create([
-                        'product_id'      => $product->id,
-                        'lot_number'      => 'LOTE-AJUSTE',
-                        'expiration_date' => now()->addYears(2)->toDateString(),
-                        'quantity'        => max(0, $finalQuantity),
-                        'unit_cost'       => $product->unit_cost ?? 0,
-                    ]);
-
-                    InvoiceCountDistribution::create([
-                        'invoice_count_id' => $invoiceCount->id,
-                        'product_lot_id'   => $targetLot->id,
-                        'quantity'         => $targetLot->quantity,
-                    ]);
-                }
-
+            // Si se crearon distribuciones manuales (por lotes actualizados o nuevos):
+            if ($distributionsCreated) {
                 $stockAfter = (float) $product->lots()->where('quantity', '>', 0)->sum('quantity');
                 $product->updateQuietly(['stock' => $stockAfter]);
                 $diff = round($stockAfter - $stockBefore, 4);
 
-                InventoryMovement::create([
-                    'product_id'       => $product->id,
-                    'product_lot_id'   => $targetLot->id,
-                    'movement_type'    => $diff > 0 ? 'adjustment' : 'loss',
-                    'quantity'         => $diff,
-                    'invoice_id'       => null,
-                    'supplier_id'      => null,
-                    'order_id'         => null,
-                    'user_id'          => Auth::id(),
-                    'product_count_id' => null,
-                    'stock_before'     => $stockBefore,
-                    'stock_after'      => $stockAfter,
-                    'movement_date'    => now(),
-                ]);
+                if (abs($diff) > 0.0001) {
+                    $targetLot = $product->lots()->where('quantity', '>', 0)->first();
+                    InventoryMovement::create([
+                        'product_id'       => $product->id,
+                        'product_lot_id'   => $targetLot?->id,
+                        'movement_type'    => $diff > 0 ? 'adjustment' : 'loss',
+                        'quantity'         => $diff,
+                        'invoice_id'       => null,
+                        'supplier_id'      => null,
+                        'order_id'         => null,
+                        'user_id'          => Auth::id(),
+                        'product_count_id' => null,
+                        'stock_before'     => $stockBefore,
+                        'stock_after'      => $stockAfter,
+                        'movement_date'    => now(),
+                    ]);
+                } else {
+                    $this->createVerificationMovement($product, (int) $stockAfter, now());
+                }
+            } else {
+                // Si no se creó ninguna distribución manual:
+                if (abs($finalDiscrepancy) < 0.0001) {
+                    $stockAfter = $stockBefore;
+                    $finalQuantity = (float) $stockBefore;
+                    $product->updateQuietly(['stock' => $stockAfter]);
+                    $this->createVerificationMovement($product, (int) $stockAfter, now());
+                } else {
+                    $targetLot = $product->lots()->where('quantity', '>', 0)->orderBy('id', 'desc')->first()
+                        ?? $product->lots()->orderBy('id', 'desc')->first();
+
+                    if ($targetLot) {
+                        $targetLot->quantity = max(0, $targetLot->quantity + $finalDiscrepancy);
+                        $targetLot->saveQuietly();
+
+                        InvoiceCountDistribution::create([
+                            'invoice_count_id' => $invoiceCount->id,
+                            'product_lot_id'   => $targetLot->id,
+                            'quantity'         => $targetLot->quantity,
+                        ]);
+                    } else {
+                        $targetLot = ProductLot::create([
+                            'product_id'      => $product->id,
+                            'lot_number'      => 'LOTE-AJUSTE',
+                            'expiration_date' => now()->addYears(2)->toDateString(),
+                            'quantity'        => max(0, $finalQuantity),
+                            'unit_cost'       => $product->unit_cost ?? 0,
+                        ]);
+
+                        InvoiceCountDistribution::create([
+                            'invoice_count_id' => $invoiceCount->id,
+                            'product_lot_id'   => $targetLot->id,
+                            'quantity'         => $targetLot->quantity,
+                        ]);
+                    }
+
+                    $stockAfter = (float) $product->lots()->where('quantity', '>', 0)->sum('quantity');
+                    $product->updateQuietly(['stock' => $stockAfter]);
+                    $diff = round($stockAfter - $stockBefore, 4);
+
+                    InventoryMovement::create([
+                        'product_id'       => $product->id,
+                        'product_lot_id'   => $targetLot->id,
+                        'movement_type'    => $diff > 0 ? 'adjustment' : 'loss',
+                        'quantity'         => $diff,
+                        'invoice_id'       => null,
+                        'supplier_id'      => null,
+                        'order_id'         => null,
+                        'user_id'          => Auth::id(),
+                        'product_count_id' => null,
+                        'stock_before'     => $stockBefore,
+                        'stock_after'      => $stockAfter,
+                        'movement_date'    => now(),
+                    ]);
+                }
             }
+        } finally {
+            ProductLotObserver::$skipMovementCreation = false;
         }
 
         $invoiceCount->counted_quantity = $finalQuantity;
@@ -812,145 +815,146 @@ class InventoryCycleActionService
     private function approveOrCorrectSaleCount(SaleCount $saleCount, array $data): array
     {
         $isCorrection = isset($data['corrected_quantity']);
-        $finalQuantity = $isCorrection ? $data['corrected_quantity'] : $saleCount->counted_quantity;
+        $finalQuantity = $isCorrection ? (float) $data['corrected_quantity'] : (float) $saleCount->counted_quantity;
         
         $product = $saleCount->product;
 
-        // Recalcular stock actual al momento de la verificación
-        $realCurrentStock = (int) $product->lots()->sum('quantity');
-        $finalDiscrepancy = $finalQuantity - $realCurrentStock;
+        // Stock actual real antes de cualquier modificación
+        $stockBefore = (float) $product->lots()->where('quantity', '>', 0)->sum('quantity');
+        $finalDiscrepancy = $finalQuantity - $stockBefore;
         
-        // Sincronizar system_quantity
-        $saleCount->system_quantity = $realCurrentStock;
+        // Sincronizar system_quantity con el stock al momento de la verificación
+        $saleCount->system_quantity = $stockBefore;
 
         $distributionsCreated = false;
 
-        if (!empty($data['updated_lots'])) {
-            foreach ($data['updated_lots'] as $lotData) {
-                $lotToUpdate = ProductLot::find($lotData['id']);
-                if ($lotToUpdate && $lotToUpdate->product_id === $product->id) {
-                    $updateData = ['quantity' => $lotData['quantity']];
-                    if (isset($lotData['lot_number'])) $updateData['lot_number'] = $lotData['lot_number'];
-                    if (isset($lotData['expiration_date'])) $updateData['expiration_date'] = $lotData['expiration_date'];
-                    if (isset($lotData['location'])) $updateData['location'] = $lotData['location'];
-                    $lotToUpdate->update($updateData);
+        ProductLotObserver::$skipMovementCreation = true;
+        try {
+            if (!empty($data['updated_lots'])) {
+                foreach ($data['updated_lots'] as $lotData) {
+                    $lotToUpdate = ProductLot::find($lotData['id']);
+                    if ($lotToUpdate && $lotToUpdate->product_id === $product->id) {
+                        $updateData = ['quantity' => $lotData['quantity']];
+                        if (isset($lotData['lot_number'])) $updateData['lot_number'] = $lotData['lot_number'];
+                        if (isset($lotData['expiration_date'])) $updateData['expiration_date'] = $lotData['expiration_date'];
+                        if (isset($lotData['location'])) $updateData['location'] = $lotData['location'];
+                        $lotToUpdate->update($updateData);
+                        SaleCountDistribution::create([
+                            'sale_count_id'  => $saleCount->id,
+                            'product_lot_id' => $lotToUpdate->id,
+                            'quantity'       => $lotData['quantity'],
+                        ]);
+                        $distributionsCreated = true;
+                    }
+                }
+            }
+
+            if (!empty($data['new_lots'])) {
+                $existingLotsWithCost = ProductLot::where('product_id', $product->id)->where('unit_cost', '>', 0)->get();
+                $newLotUnitCost = $existingLotsWithCost->isNotEmpty() ? round($existingLotsWithCost->avg('unit_cost'), 2) : ($product->unit_price ?? 0);
+
+                foreach ($data['new_lots'] as $lotData) {
+                    $newLot = ProductLot::create([
+                        'product_id'      => $product->id,
+                        'lot_number'      => $lotData['lot_number'],
+                        'expiration_date' => $lotData['expiration_date'],
+                        'location'        => $lotData['location'] ?? null,
+                        'quantity'        => $lotData['quantity'],
+                        'unit_cost'       => $newLotUnitCost,
+                        'supplier_id'     => null,
+                    ]);
                     SaleCountDistribution::create([
                         'sale_count_id'  => $saleCount->id,
-                        'product_lot_id' => $lotToUpdate->id,
-                        'quantity'       => $lotData['quantity'],
+                        'product_lot_id' => $newLot->id,
+                        'quantity'       => $newLot->quantity,
                     ]);
                     $distributionsCreated = true;
                 }
             }
-        }
 
-        if (!empty($data['new_lots'])) {
-            $existingLotsWithCost = ProductLot::where('product_id', $product->id)->where('unit_cost', '>', 0)->get();
-            $newLotUnitCost = $existingLotsWithCost->isNotEmpty() ? round($existingLotsWithCost->avg('unit_cost'), 2) : ($product->unit_price ?? 0);
-
-            foreach ($data['new_lots'] as $lotData) {
-                $newLot = ProductLot::create([
-                    'product_id'      => $product->id,
-                    'lot_number'      => $lotData['lot_number'],
-                    'expiration_date' => $lotData['expiration_date'],
-                    'location'        => $lotData['location'] ?? null,
-                    'quantity'        => $lotData['quantity'],
-                    'unit_cost'       => $newLotUnitCost,
-                    'supplier_id'     => null,
-                ]);
-                SaleCountDistribution::create([
-                    'sale_count_id'  => $saleCount->id,
-                    'product_lot_id' => $newLot->id,
-                    'quantity'       => $newLot->quantity,
-                ]);
-                $distributionsCreated = true;
-            }
-        }
-
-        $stockBefore = (float) $product->lots()->where('quantity', '>', 0)->sum('quantity');
-
-        // Si se crearon distribuciones manuales (por lotes actualizados o nuevos):
-        if ($distributionsCreated) {
-            $stockAfter = (float) $product->lots()->where('quantity', '>', 0)->sum('quantity');
-            $product->updateQuietly(['stock' => $stockAfter]);
-            $diff = round($stockAfter - $stockBefore, 4);
-
-            if (abs($diff) > 0.0001) {
-                $targetLot = $product->lots()->where('quantity', '>', 0)->first();
-                InventoryMovement::create([
-                    'product_id'       => $product->id,
-                    'product_lot_id'   => $targetLot?->id,
-                    'movement_type'    => $diff > 0 ? 'adjustment' : 'loss',
-                    'quantity'         => $diff,
-                    'invoice_id'       => null,
-                    'supplier_id'      => null,
-                    'order_id'         => null,
-                    'user_id'          => Auth::id(),
-                    'product_count_id' => null,
-                    'stock_before'     => $stockBefore,
-                    'stock_after'      => $stockAfter,
-                    'movement_date'    => now(),
-                ]);
-            } else {
-                $this->createVerificationMovement($product, (int) $stockAfter, now());
-            }
-        } else {
-            // Si no se creó ninguna distribución manual:
-            if ($finalDiscrepancy === 0) {
-                $stockAfter = $stockBefore;
-                $finalQuantity = (int) $realCurrentStock;
-                $product->updateQuietly(['stock' => $stockAfter]);
-                $this->createVerificationMovement($product, (int) $stockAfter, now());
-            } else {
-                $targetLot = $product->lots()->where('quantity', '>', 0)->orderBy('id', 'desc')->first()
-                    ?? $product->lots()->orderBy('id', 'desc')->first();
-
-                if ($targetLot) {
-                    $targetLot->quantity = max(0, $targetLot->quantity + $finalDiscrepancy);
-                    ProductLot::withoutEvents(function () use ($targetLot) {
-                        $targetLot->save();
-                    });
-
-                    SaleCountDistribution::create([
-                        'sale_count_id'  => $saleCount->id,
-                        'product_lot_id' => $targetLot->id,
-                        'quantity'       => $targetLot->quantity,
-                    ]);
-                } else {
-                    $targetLot = ProductLot::create([
-                        'product_id'      => $product->id,
-                        'lot_number'      => 'LOTE-AJUSTE',
-                        'expiration_date' => now()->addYears(2)->toDateString(),
-                        'quantity'        => max(0, $finalQuantity),
-                        'unit_cost'       => $product->unit_cost ?? 0,
-                    ]);
-
-                    SaleCountDistribution::create([
-                        'sale_count_id'  => $saleCount->id,
-                        'product_lot_id' => $targetLot->id,
-                        'quantity'         => $targetLot->quantity,
-                    ]);
-                }
-
+            // Si se crearon distribuciones manuales (por lotes actualizados o nuevos):
+            if ($distributionsCreated) {
                 $stockAfter = (float) $product->lots()->where('quantity', '>', 0)->sum('quantity');
                 $product->updateQuietly(['stock' => $stockAfter]);
                 $diff = round($stockAfter - $stockBefore, 4);
 
-                InventoryMovement::create([
-                    'product_id'       => $product->id,
-                    'product_lot_id'   => $targetLot->id,
-                    'movement_type'    => $diff > 0 ? 'adjustment' : 'loss',
-                    'quantity'         => $diff,
-                    'invoice_id'       => null,
-                    'supplier_id'      => null,
-                    'order_id'         => null,
-                    'user_id'          => Auth::id(),
-                    'product_count_id' => null,
-                    'stock_before'     => $stockBefore,
-                    'stock_after'      => $stockAfter,
-                    'movement_date'    => now(),
-                ]);
+                if (abs($diff) > 0.0001) {
+                    $targetLot = $product->lots()->where('quantity', '>', 0)->first();
+                    InventoryMovement::create([
+                        'product_id'       => $product->id,
+                        'product_lot_id'   => $targetLot?->id,
+                        'movement_type'    => $diff > 0 ? 'adjustment' : 'loss',
+                        'quantity'         => $diff,
+                        'invoice_id'       => null,
+                        'supplier_id'      => null,
+                        'order_id'         => null,
+                        'user_id'          => Auth::id(),
+                        'product_count_id' => null,
+                        'stock_before'     => $stockBefore,
+                        'stock_after'      => $stockAfter,
+                        'movement_date'    => now(),
+                    ]);
+                } else {
+                    $this->createVerificationMovement($product, (int) $stockAfter, now());
+                }
+            } else {
+                // Si no se creó ninguna distribución manual:
+                if (abs($finalDiscrepancy) < 0.0001) {
+                    $stockAfter = $stockBefore;
+                    $finalQuantity = (float) $stockBefore;
+                    $product->updateQuietly(['stock' => $stockAfter]);
+                    $this->createVerificationMovement($product, (int) $stockAfter, now());
+                } else {
+                    $targetLot = $product->lots()->where('quantity', '>', 0)->orderBy('id', 'desc')->first()
+                        ?? $product->lots()->orderBy('id', 'desc')->first();
+
+                    if ($targetLot) {
+                        $targetLot->quantity = max(0, $targetLot->quantity + $finalDiscrepancy);
+                        $targetLot->saveQuietly();
+
+                        SaleCountDistribution::create([
+                            'sale_count_id'  => $saleCount->id,
+                            'product_lot_id' => $targetLot->id,
+                            'quantity'         => $targetLot->quantity,
+                        ]);
+                    } else {
+                        $targetLot = ProductLot::create([
+                            'product_id'      => $product->id,
+                            'lot_number'      => 'LOTE-AJUSTE',
+                            'expiration_date' => now()->addYears(2)->toDateString(),
+                            'quantity'        => max(0, $finalQuantity),
+                            'unit_cost'       => $product->unit_cost ?? 0,
+                        ]);
+
+                        SaleCountDistribution::create([
+                            'sale_count_id'  => $saleCount->id,
+                            'product_lot_id' => $targetLot->id,
+                            'quantity'         => $targetLot->quantity,
+                        ]);
+                    }
+
+                    $stockAfter = (float) $product->lots()->where('quantity', '>', 0)->sum('quantity');
+                    $product->updateQuietly(['stock' => $stockAfter]);
+                    $diff = round($stockAfter - $stockBefore, 4);
+
+                    InventoryMovement::create([
+                        'product_id'       => $product->id,
+                        'product_lot_id'   => $targetLot->id,
+                        'movement_type'    => $diff > 0 ? 'adjustment' : 'loss',
+                        'quantity'         => $diff,
+                        'invoice_id'       => null,
+                        'supplier_id'      => null,
+                        'order_id'         => null,
+                        'user_id'          => Auth::id(),
+                        'product_count_id' => null,
+                        'stock_before'     => $stockBefore,
+                        'stock_after'      => $stockAfter,
+                        'movement_date'    => now(),
+                    ]);
+                }
             }
+        } finally {
+            ProductLotObserver::$skipMovementCreation = false;
         }
 
         $saleCount->counted_quantity = $finalQuantity;
