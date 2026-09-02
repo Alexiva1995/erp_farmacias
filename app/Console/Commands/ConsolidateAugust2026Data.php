@@ -11,6 +11,7 @@ use App\Models\ProductLot;
 use App\Models\InventoryMovement;
 use App\Models\DailyCashClosure;
 use App\Models\CashClosing;
+use App\Models\Order;
 use App\Models\ExchangeRate;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
