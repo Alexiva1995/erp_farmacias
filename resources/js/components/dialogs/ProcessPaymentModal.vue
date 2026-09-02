@@ -148,8 +148,19 @@ const isSumiandesPayment = computed(() => {
   });
 });
 
+const isDrosymcaPayment = computed(() => {
+  if (props.paymentGroup?.supplier_name) {
+    const name = String(props.paymentGroup.supplier_name).toUpperCase();
+    if (name.includes("DROSYM") || name.includes("DROSI")) return true;
+  }
+  return props.invoices.some((inv) => {
+    const sName = String(inv.supplier?.name || inv.supplier_name || "").toUpperCase();
+    return sName.includes("DROSYM") || sName.includes("DROSI") || inv.supplier_id === 1006;
+  });
+});
+
 const destinationBankOptions = computed(() => {
-  if (isSumiandesPayment.value) return [];
+  if (isSumiandesPayment.value || isDrosymcaPayment.value) return [];
   if (isDromegaPayment.value) return dromegaBanks;
   if (isCristmedicalsPayment.value) return cristmedicalsBanks;
   if (isMafartaPayment.value) return mafartaBanks;
@@ -684,7 +695,7 @@ watch(() => props.modelValue, (val) => {
                   </VSelect>
                 </VCol>
 
-                <VCol v-if="!isSumiandesPayment" cols="12">
+                <VCol v-if="!isSumiandesPayment && !isDrosymcaPayment" cols="12">
                   <div class="d-flex align-center justify-space-between mb-1">
                     <span class="text-super-xs font-weight-black text-primary uppercase">
                       {{ isCristmedicalsPayment ? 'Banco Destino Cristmedicals' : (isMafartaPayment ? 'Banco Destino Cobeca / Mafarta' : (isDronenaPayment ? 'Banco Destino Dronena' : (isDromegaPayment ? 'Banco Destino Droguería Mega' : 'Banco Destino'))) }}
