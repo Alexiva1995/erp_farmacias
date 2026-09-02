@@ -120,6 +120,11 @@ class ProductActionService
             }
         }
 
+        $initialStock = (float) ($validatedData['stock'] ?? 0);
+        if (isset($validatedData['stock'])) {
+            unset($validatedData['stock']);
+        }
+
         $product = Product::create($validatedData);
 
         if ($initialStock > 0) {
