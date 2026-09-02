@@ -29,7 +29,8 @@ class InvoiceController extends Controller
         private \App\Contracts\Suppliers\DrocercaScraperServiceInterface $drocercaScraperService,
         private \App\Contracts\Suppliers\MafartaScraperServiceInterface $mafartaScraperService,
         private \App\Contracts\Suppliers\CristmedicalsScraperServiceInterface $cristmedicalsScraperService,
-        private \App\Contracts\Suppliers\DromegaScraperServiceInterface $dromegaScraperService
+        private \App\Contracts\Suppliers\DromegaScraperServiceInterface $dromegaScraperService,
+        private \App\Contracts\Suppliers\DrosymcaScraperServiceInterface $drosymcaScraperService
     ) {
     }
 
@@ -417,6 +418,19 @@ class InvoiceController extends Controller
                 $results['errors'][] = 'Dromega: ' . $e->getMessage();
             }
 
+            // 6. Drosymca
+            try {
+                $drosymca = $this->drosymcaScraperService->syncInvoices();
+                $results['drosymca'] = $drosymca;
+                $results['total_updated'] += ($drosymca['updated'] ?? 0);
+                $results['total_created'] += ($drosymca['created'] ?? 0);
+                $results['total_skipped'] += ($drosymca['skipped'] ?? 0);
+                $results['messages'][] = "Drosymca: {$drosymca['created']} creadas, {$drosymca['updated']} actualizadas";
+            } catch (\Throwable $e) {
+                Log::error('Error syncAll Drosymca: ' . $e->getMessage());
+                $results['errors'][] = 'Drosymca: ' . $e->getMessage();
+            }
+
             $message = "Sincronización completada (" . implode(' | ', $results['messages']) . ")";
             if (!empty($results['errors'])) {
                 $message .= " con advertencias en: " . implode(', ', $results['errors']);
@@ -557,7 +571,7 @@ class InvoiceController extends Controller
     }
 
     /**
-     * Sincroniza las facturas, vencimientos, protección de tasa y saldos en Bs/USD desde el portal web de Droguería Mega (Dromega).
+     * Sincroniza las facturas, vencimientos, saldos e indexación desde el portal web de Droguería Mega (Dromega).
      */
     public function syncDromega(Request $request)
     {
@@ -582,6 +596,35 @@ class InvoiceController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error al sincronizar facturas desde Droguería Mega: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Sincroniza las facturas, vencimientos, saldos e indexación desde el portal web de Drosymca.
+     */
+    public function syncDrosymca(Request $request)
+    {
+        try {
+            $user = $request->input('username');
+            $pass = $request->input('password');
+            $supplierId = $request->input('supplier_id') ? (int) $request->input('supplier_id') : null;
+
+            $result = $this->drosymcaScraperService->syncInvoices($user, $pass, $supplierId);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Sincronización con Drosymca completada. Creadas: {$result['created']}, Actualizadas: {$result['updated']}, Omitidas: {$result['skipped']}.",
+                'data' => $result,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error en InvoiceController@syncDrosymca: ' . $e->getMessage(), [
+                'exception' => $e
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al sincronizar facturas desde Drosymca: ' . $e->getMessage()
             ], 500);
         }
     }

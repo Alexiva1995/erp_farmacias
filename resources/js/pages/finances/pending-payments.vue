@@ -270,7 +270,7 @@ const isSyncingBots = ref(false);
 const handleSyncBots = async () => {
   const result = await Swal.fire({
     title: "¿Sincronizar Facturas con Droguerías?",
-    html: "Se consultarán los portales de <b>Dronena</b>, <b>Drocerca</b>, <b>Cobeca / Mafarta</b>, <b>Cristmedicals</b> y <b>Droguería Mega</b> para actualizar fechas de vencimiento, pagos, protección de tasa y saldos.",
+    html: "Se consultarán los portales de <b>Dronena</b>, <b>Drocerca</b>, <b>Cobeca / Mafarta</b>, <b>Cristmedicals</b>, <b>Droguería Mega</b> y <b>Drosymca</b> para actualizar fechas de vencimiento, pagos, saldos e indexación.",
     icon: "info",
     showCancelButton: true,
     confirmButtonText: "Sincronizar Todo",
@@ -286,15 +286,16 @@ const handleSyncBots = async () => {
     const data = response.data?.data || {};
 
     syncSummary.value = {
-      updated: data.total_updated || (data.dronena?.updated || 0) + (data.drocerca?.updated || 0) + (data.mafarta?.updated || 0) + (data.cristmedicals?.updated || 0) + (data.dromega?.updated || 0),
-      created: data.total_created || (data.drocerca?.created || 0) + (data.cristmedicals?.created || 0) + (data.dromega?.created || 0),
+      updated: data.total_updated || (data.dronena?.updated || 0) + (data.drocerca?.updated || 0) + (data.mafarta?.updated || 0) + (data.cristmedicals?.updated || 0) + (data.dromega?.updated || 0) + (data.drosymca?.updated || 0),
+      created: data.total_created || (data.drocerca?.created || 0) + (data.cristmedicals?.created || 0) + (data.dromega?.created || 0) + (data.drosymca?.created || 0),
       skipped: data.total_skipped || 0,
-      total_extracted: (data.dronena?.total_extracted || 0) + (data.drocerca?.total_extracted || 0) + (data.mafarta?.total_extracted || 0) + (data.cristmedicals?.total_extracted || 0) + (data.dromega?.total_extracted || 0),
+      total_extracted: (data.dronena?.total_extracted || 0) + (data.drocerca?.total_extracted || 0) + (data.mafarta?.total_extracted || 0) + (data.cristmedicals?.total_extracted || 0) + (data.dromega?.total_extracted || 0) + (data.drosymca?.total_extracted || 0),
       dronena: data.dronena || {},
       drocerca: data.drocerca || {},
       mafarta: data.mafarta || {},
       cristmedicals: data.cristmedicals || {},
       dromega: data.dromega || {},
+      drosymca: data.drosymca || {},
       messages: data.messages || [],
     };
 

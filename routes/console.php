@@ -90,6 +90,14 @@ Schedule::command('drocerca:sync-invoices')
         \Log::error('[DrocercaSync] Falló la sincronización automática de facturas de Drocerca a las 04:30 AM');
     });
 
+Schedule::command('drosymca:sync-invoices')
+    ->dailyAt('04:45')
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->onFailure(function () {
+        \Log::error('[DrosymcaSync] Falló la sincronización automática de facturas de Drosymca a las 04:45 AM');
+    });
+
 
 // Reposición automática de inventario: cada config activa define su propio cron
 // Se lee de BD para registrar cada expresión cron de forma independiente

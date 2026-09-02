@@ -648,6 +648,7 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
         Route::post('/sync-mafarta', 'syncMafarta')->name('sync-mafarta');
         Route::post('/sync-cristmedicals', 'syncCristmedicals')->name('sync-cristmedicals');
         Route::post('/sync-dromega', 'syncDromega')->name('sync-dromega');
+        Route::post('/sync-drosymca', 'syncDrosymca')->name('sync-drosymca');
         Route::delete('/{invoice}', 'destroy')->name('destroy');
 
         Route::put('/{invoice}', 'update')->name('update');
