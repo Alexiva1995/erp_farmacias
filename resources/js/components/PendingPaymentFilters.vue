@@ -130,17 +130,18 @@ const hasActiveFilters = computed(() =>
             <VTooltip activator="parent" location="top">Sincronizar Facturas (Dronena, Drocerca, Mafarta, Cristmedicals, Dromega y Drosymca)</VTooltip>
           </VBtn>
 
+          <VDivider vertical class="mx-1 my-1" style="height: 24px;" />
+
           <!-- Botón Borrar / Limpiar Filtros -->
           <VBtn
             icon
-            variant="tonal"
+            variant="text"
             color="secondary"
             size="38"
             rounded="circle"
-            class="shadow-sm"
             @click="emit('clear')"
           >
-            <VIcon icon="tabler-eraser" size="20" />
+            <VIcon icon="tabler-eraser" size="22" />
             <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
           </VBtn>
         </div>

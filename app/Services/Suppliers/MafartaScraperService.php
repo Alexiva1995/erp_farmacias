@@ -94,8 +94,16 @@ class MafartaScraperService implements MafartaScraperServiceInterface
             // Para las NC, el vencimiento es SIEMPRE la fecha de emisión
             $expDate = $isNC ? ($emisionDate ?: $today) : (!empty($doc['fechVenc']) ? Carbon::parse($doc['fechVenc'])->format('Y-m-d') : null);
 
-            // Indexada si el portal marca facturaDolari = 1 o si la fecha de vencimiento es hoy o pasada (las NC no son indexadas)
-            $isIndexed = !$isNC && ((isset($doc['facturaDolari']) && (int) $doc['facturaDolari'] === 1) || ($expDate && $expDate <= $today));
+            // En Cobeca/Mafarta una factura es indexada ÚNICAMENTE si el portal lo define explícitamente:
+            // 1. facturaDolari es true/1, O
+            // 2. Tiene tasa de conversión activa (montoTasaConv > 0), O
+            // 3. Tiene monto diferencial cambiario (montoDifer > 0)
+            // (Las Notas de Crédito y facturas en Bs fijas con facturaDolari=false NO son indexadas)
+            $hasDolariFlag = isset($doc['facturaDolari']) && filter_var($doc['facturaDolari'], FILTER_VALIDATE_BOOLEAN);
+            $hasConvRate = (float) ($doc['montoTasaConv'] ?? 0) > 0;
+            $hasDifer = (float) ($doc['montoDifer'] ?? 0) > 0;
+
+            $isIndexed = !$isNC && ($hasDolariFlag || $hasConvRate || $hasDifer);
 
             if (empty($cleanNumber)) {
                 $skippedCount++;

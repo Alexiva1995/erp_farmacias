@@ -351,41 +351,96 @@ const handleFileUpload = async (file) => {
   }
 };
 
+const getInvoiceBsAmount = (invoice) => {
+  let amount = 0;
+  const sName = String(invoice.supplier?.name || invoice.supplier_name || "").toUpperCase();
+  const isCrist = sName.includes("CRIST") || invoice.supplier_id === 1002;
+
+  if (isCrist) {
+    if (invoice.net_payable_amount && parseFloat(invoice.net_payable_amount) > 0) {
+      amount = parseFloat(invoice.net_payable_amount);
+    } else {
+      amount = parseFloat(invoice.total_amount) || 0;
+    }
+  } else if (invoice.is_indexed) {
+    amount = (parseFloat(invoice.total_usd) || 0) * props.exchangeRate;
+  } else {
+    const invUsd = parseFloat(invoice.total_usd) || 0;
+    const invRate = parseFloat(invoice.exchange_rate) || 0;
+    if (invUsd > 0 && invRate > 0) {
+      amount = invUsd * invRate;
+    } else if (invoice.currency === "Bs" || invoice.currency === "VES") {
+      amount = parseFloat(invoice.total_amount) || 0;
+    } else {
+      amount = parseFloat(invoice.total_amount_bs) || 0;
+    }
+  }
+
+  if (invoice.nd_referential_amount && parseFloat(invoice.nd_referential_amount) > 0) {
+    amount = Math.max(0, amount - parseFloat(invoice.nd_referential_amount));
+  }
+
+  return Number(amount.toFixed(2));
+};
+
+const getInvoiceUsdAmount = (invoice) => {
+  const sName = String(invoice.supplier?.name || invoice.supplier_name || "").toUpperCase();
+  const isCrist = sName.includes("CRIST") || invoice.supplier_id === 1002;
+  if (isCrist && invoice.total_amount_discount && parseFloat(invoice.total_amount_discount) > 0) {
+    return parseFloat(invoice.total_amount_discount);
+  }
+  return parseFloat(invoice.total_usd) || 0;
+};
+
 const formatCurrency = (amount, currencyCode = null, omitCurrency = false) => {
   const code = currencyCode || form.value.payment_currency || "USD";
-  const formatted = new Intl.NumberFormat("es-VE", {
+  const num = Number(amount) || 0;
+  return new Intl.NumberFormat("es-VE", {
     style: omitCurrency ? "decimal" : "currency",
-    currency: code,
+    currency: code === "VES" ? "VES" : (code === "Bs" ? "VES" : code),
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(amount);
-  return formatted;
+  }).format(num);
 };
+
+const formatNumber = (value) => {
+  const num = Number(value) || 0;
+  return new Intl.NumberFormat("es-VE", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(num);
+};
+
+watch(() => form.value.payment_currency, (newCurrency) => {
+  if (!form.value.is_partial) {
+    if (newCurrency === "VES" || newCurrency === "BS") {
+      form.value.payment_amount = Number(totalInBS.value.toFixed(2));
+    } else if (newCurrency === "COP") {
+      const copRate = exchangeRates.value["COP"] || 1;
+      form.value.payment_amount = Number((totalInUSD.value * copRate).toFixed(2));
+    } else {
+      form.value.payment_amount = Number(totalInUSD.value.toFixed(2));
+    }
+  }
+});
 
 watch(() => props.modelValue, (val) => {
   if (val) {
     fetchExchangeRates();
+    form.value.payment_currency = 'VES';
+    form.value.payment_method = 'transfer';
+    form.value.payment_amount = Number(totalInBS.value.toFixed(2));
+
     if (isDromegaPayment.value) {
-      form.value.payment_currency = 'VES';
-      form.value.payment_method = 'transfer';
-      form.value.destination_bank = dromegaBanks[12].value; // Mercantil Banco Universal C1051
-      form.value.payment_amount = totalInBS.value;
+      form.value.destination_bank = dromegaBanks[12].value;
     } else if (isCristmedicalsPayment.value) {
-      form.value.payment_currency = 'VES';
-      form.value.payment_method = 'transfer';
       form.value.destination_bank = '30';
       const totalBsReal = props.invoices.reduce((acc, inv) => acc + (Number(inv.net_payable_amount) || 0), 0);
-      form.value.payment_amount = totalBsReal > 0 ? totalBsReal : totalInBS.value;
+      form.value.payment_amount = totalBsReal > 0 ? Number(totalBsReal.toFixed(2)) : Number(totalInBS.value.toFixed(2));
     } else if (isMafartaPayment.value) {
-      form.value.payment_currency = 'VES';
-      form.value.payment_method = 'transfer';
       form.value.destination_bank = mafartaBanks[0].value;
-      form.value.payment_amount = totalInBS.value;
     } else if (isDronenaPayment.value) {
-      form.value.payment_currency = 'VES';
-      form.value.payment_method = 'transfer';
       form.value.destination_bank = dronenaBanks[0].value;
-      form.value.payment_amount = totalInBS.value;
     }
   }
 });
@@ -396,7 +451,7 @@ watch(() => props.modelValue, (val) => {
     :model-value="modelValue"
     :fullscreen="mobile"
     :transition="mobile ? 'dialog-bottom-transition' : 'scale-transition'"
-    max-width="700"
+    max-width="850"
     persistent
     @update:model-value="closeModal"
   >
@@ -440,8 +495,8 @@ watch(() => props.modelValue, (val) => {
           />
         </div>
       </VCardTitle>
-      <VCardText class="pa-3 pa-sm-4 bg-light overflow-y-auto" style="max-block-size: 70vh;">
-        <!-- Resumen de Deuda Destacado -->
+      <VCardText class="pa-3 pa-sm-4 bg-light overflow-y-auto" style="max-block-size: 75vh;">
+        <!-- Resumen de Deuda y Montos Destacados -->
         <VCard
           variant="flat"
           class="rounded-xl border shadow-sm mb-3 bg-white overflow-hidden"
@@ -451,23 +506,24 @@ watch(() => props.modelValue, (val) => {
               <VAvatar
                 color="primary"
                 variant="tonal"
-                size="36"
+                size="40"
                 class="rounded-lg text-primary"
               >
                 <VIcon
                   icon="tabler-receipt-2"
-                  size="20"
+                  size="22"
                 />
               </VAvatar>
               <div class="d-flex flex-column">
-                <div class="d-flex align-center gap-2">
-                  <span class="text-h5 font-weight-black text-primary leading-none">{{ formatCurrency(totalInUSD, 'USD') }}</span>
+                <span class="text-super-xs font-weight-black text-disabled uppercase">Monto Total a Liquidar</span>
+                <div class="d-flex align-center gap-2 flex-wrap">
+                  <span class="text-h5 font-weight-black text-primary leading-none">${{ formatNumber(totalInUSD) }} USD</span>
                   <VDivider
                     vertical
                     class="opacity-10"
                     style="block-size: 16px;"
                   />
-                  <span class="text-h6 font-weight-bold text-success leading-none">Bs. {{ formatCurrency(totalInBS, 'Bs', true) }}</span>
+                  <span class="text-h6 font-weight-black text-success leading-none">{{ formatNumber(totalInBS) }} Bs</span>
                 </div>
               </div>
             </div>
@@ -480,23 +536,47 @@ watch(() => props.modelValue, (val) => {
               >
                 {{ props.invoices.length }} {{ props.invoices.length === 1 ? 'FACTURA' : 'FACTURAS' }}
               </VChip>
-              <span class="text-super-xs text-disabled uppercase font-weight-bold">Sujeto a Tasa: {{ exchangeRate }} Bt/USD</span>
+              <span class="text-super-xs text-disabled uppercase font-weight-bold">Tasa BCV Referencial: {{ formatNumber(exchangeRate) }} Bs/USD</span>
             </div>
           </div>
 
-          <!-- Facturas Incluidass (Sutil) -->
-          <VDivider class="border-dashed opacity-10 mx-3" />
-          <div class="px-3 py-2 d-flex flex-wrap gap-2 align-center bg-light-hint">
-            <span class="text-super-xs font-weight-black text-disabled uppercase">Detalle:</span>
-            <div class="d-flex flex-wrap gap-1">
-              <span 
-                v-for="invoice in props.invoices" 
-                :key="invoice.id"
-                class="invoice-tag text-xs font-weight-bold px-2 py-0.5 rounded border text-medium-emphasis"
-              >
-                #{{ invoice.invoice_number }}
-              </span>
+          <!-- Tabla con Detalle de Cada Factura -->
+          <VDivider class="opacity-10" />
+          <div class="pa-3 bg-light-hint">
+            <div class="d-flex align-center justify-space-between mb-2">
+              <span class="text-super-xs font-weight-black text-disabled uppercase">Detalle de Facturas a Pagar</span>
+              <span class="text-super-xs font-weight-bold text-medium-emphasis">Tasa individual por factura</span>
             </div>
+            
+            <VTable density="compact" class="rounded-lg border bg-white invoice-detail-table">
+              <thead>
+                <tr>
+                  <th class="text-xs font-weight-bold">N° Factura</th>
+                  <th class="text-xs font-weight-bold">N° Control</th>
+                  <th class="text-xs font-weight-bold text-end">Monto USD</th>
+                  <th class="text-xs font-weight-bold text-end">Monto en Bs</th>
+                  <th class="text-xs font-weight-bold text-center">Indexada</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="inv in props.invoices" :key="inv.id">
+                  <td class="text-xs font-weight-bold text-primary">#{{ inv.invoice_number }}</td>
+                  <td class="text-xs text-medium-emphasis">{{ inv.control_number && inv.control_number !== 'N/A' ? inv.control_number : 'S/N' }}</td>
+                  <td class="text-xs font-weight-bold text-end">${{ formatNumber(getInvoiceUsdAmount(inv)) }}</td>
+                  <td class="text-xs font-weight-bold text-success text-end">{{ formatNumber(getInvoiceBsAmount(inv)) }} Bs</td>
+                  <td class="text-center">
+                    <VChip
+                      size="x-small"
+                      :color="inv.is_indexed ? 'warning' : 'default'"
+                      variant="tonal"
+                      class="font-weight-bold"
+                    >
+                      {{ inv.is_indexed ? 'Sí' : 'No' }}
+                    </VChip>
+                  </td>
+                </tr>
+              </tbody>
+            </VTable>
           </div>
         </VCard>
 
@@ -520,7 +600,7 @@ watch(() => props.modelValue, (val) => {
                   <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Moneda de Pago</span>
                   <VSelect
                     v-model="form.payment_currency"
-                    :items="[ {title: 'USD - Dólar', value: 'USD'}, {title: 'VES - Bolívar', value: 'VES'}, {title: 'COP - Peso', value: 'COP'} ]"
+                    :items="[ {title: 'VES - Bolívar', value: 'VES'}, {title: 'USD - Dólar', value: 'USD'}, {title: 'COP - Peso', value: 'COP'} ]"
                     variant="outlined"
                     density="compact"
                     class="premium-input mb-3"
@@ -545,11 +625,12 @@ watch(() => props.modelValue, (val) => {
                   <VTextField
                     v-model="form.payment_amount"
                     type="number"
+                    step="0.01"
                     variant="outlined"
                     density="compact"
                     class="premium-input mb-3"
                     hide-details
-                    prefix="$"
+                    :prefix="form.payment_currency === 'USD' ? '$' : (form.payment_currency === 'VES' ? 'Bs' : '$')"
                   />
                 </VCol>
 

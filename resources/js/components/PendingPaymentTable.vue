@@ -44,6 +44,14 @@ const getDisplayAmount = (item) => {
   return (item.remaining_amount || item.total_amount || 0);
 };
 
+const formatNumber = (value) => {
+  if (value === null || value === undefined || isNaN(Number(value))) return "0,00";
+  return new Intl.NumberFormat("es-VE", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Number(value));
+};
+
 const selectedTotals = computed(() => {
   const usd = props.selectedTableInvoices.reduce((acc, item) => acc + getEffectiveUSD(item), 0);
   const bs = props.selectedTableInvoices.reduce((acc, item) => {
@@ -57,8 +65,8 @@ const selectedTotals = computed(() => {
 
   return {
     count: props.selectedTableInvoices.length,
-    usd: usd.toFixed(2),
-    bs: bs.toFixed(2),
+    usd: formatNumber(usd),
+    bs: formatNumber(bs),
   };
 });
 

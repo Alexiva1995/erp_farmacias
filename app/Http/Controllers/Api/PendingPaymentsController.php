@@ -1164,7 +1164,18 @@ class PendingPaymentsController extends Controller
     public function toggleIndexedStatus(Request $request, $invoiceId): JsonResponse
     {
         try {
-            $invoice = Invoice::findOrFail($invoiceId);
+            $invoice = Invoice::find($invoiceId);
+            if (!$invoice && $request->filled('invoice_number')) {
+                $rawNum = (string) $request->input('invoice_number');
+                $cleanNum = ltrim(preg_replace('/\D/', '', $rawNum) ?: $rawNum, '0');
+                $invoice = Invoice::where('invoice_number', $rawNum)
+                    ->orWhere('invoice_number', 'LIKE', "%{$cleanNum}")
+                    ->first();
+            }
+
+            if (!$invoice) {
+                return ApiResponse::error("No se encontró la factura #{$invoiceId} en el sistema.", 404);
+            }
 
             $isIndexed = $request->boolean('is_indexed');
 
@@ -1184,10 +1195,22 @@ class PendingPaymentsController extends Controller
     /**
      * Actualizar la fecha de pago de una factura
      */
-    public function updatePaymentDate(UpdatePaymentDateRequest $request, int $invoiceId): JsonResponse
+    public function updatePaymentDate(UpdatePaymentDateRequest $request, $invoiceId): JsonResponse
     {
         try {
-            $invoice = Invoice::findOrFail($invoiceId);
+            $invoice = Invoice::find($invoiceId);
+            if (!$invoice && $request->filled('invoice_number')) {
+                $rawNum = (string) $request->input('invoice_number');
+                $cleanNum = ltrim(preg_replace('/\D/', '', $rawNum) ?: $rawNum, '0');
+                $invoice = Invoice::where('invoice_number', $rawNum)
+                    ->orWhere('invoice_number', 'LIKE', "%{$cleanNum}")
+                    ->first();
+            }
+
+            if (!$invoice) {
+                return ApiResponse::error("No se encontró la factura #{$invoiceId} en el sistema.", 404);
+            }
+
             $invoice->update([
                 'payment_date' => $request->payment_date
             ]);
