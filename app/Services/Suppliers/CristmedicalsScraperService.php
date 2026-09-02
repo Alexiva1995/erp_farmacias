@@ -461,12 +461,64 @@ class CristmedicalsScraperService implements CristmedicalsScraperServiceInterfac
             }
         }
 
+        // Análisis de discrepancias entre el ERP y Cristmedicals
+        $portalPendingMap = [];
+        foreach ($invoices as $invData) {
+            $num = (string) ($invData['num_factura'] ?? '');
+            $clean = ltrim($num, '0');
+            $portalPendingMap[$num] = $invData;
+            if ($clean !== '') {
+                $portalPendingMap[$clean] = $invData;
+            }
+        }
+
+        $allErpInvoices = Invoice::where('supplier_id', $supplierId)->get();
+        $paidInErpPendingInCristmedicals = [];
+        $pendingInErpPaidInCristmedicals = [];
+
+        foreach ($allErpInvoices as $erpInv) {
+            $rawNum = (string) $erpInv->invoice_number;
+            $cleanNum = ltrim($rawNum, '0');
+            $isPendingInPortal = isset($portalPendingMap[$rawNum]) || isset($portalPendingMap[$cleanNum]);
+            $isPaidInErp = ((int) $erpInv->status_payment === 1);
+
+            if ($isPaidInErp && $isPendingInPortal) {
+                $portalDoc = $portalPendingMap[$rawNum] ?? $portalPendingMap[$cleanNum];
+                $paidInErpPendingInCristmedicals[] = [
+                    'id' => $erpInv->id,
+                    'invoice_number' => $erpInv->invoice_number,
+                    'control_number' => $erpInv->control_number,
+                    'amount' => $erpInv->total_amount,
+                    'currency' => $erpInv->currency,
+                    'portal_amount' => $portalDoc['total_bs'] ?? $erpInv->net_payable_amount,
+                    'portal_amount_usd' => $portalDoc['saldo_con_desc_usd'] ?? $erpInv->total_amount_discount,
+                    'erp_status' => 'Pagada en ERP',
+                    'portal_status' => 'Pendiente en Cristmedicals',
+                ];
+            } elseif (!$isPaidInErp && !$isPendingInPortal) {
+                $pendingInErpPaidInCristmedicals[] = [
+                    'id' => $erpInv->id,
+                    'invoice_number' => $erpInv->invoice_number,
+                    'control_number' => $erpInv->control_number,
+                    'amount' => $erpInv->total_amount,
+                    'currency' => $erpInv->currency,
+                    'erp_status' => 'Pendiente en ERP',
+                    'portal_status' => 'Liquidada en Cristmedicals',
+                ];
+            }
+        }
+
         return [
             'total_extracted' => count($invoices),
             'created' => $createdCount,
             'updated' => $updatedCount,
             'skipped' => $skippedCount,
             'supplier_id' => $supplierId,
+            'discrepancies' => [
+                'paid_in_erp_pending_in_cristmedicals' => $paidInErpPendingInCristmedicals,
+                'pending_in_erp_paid_in_cristmedicals' => $pendingInErpPaidInCristmedicals,
+                'total_discrepancies' => count($paidInErpPendingInCristmedicals) + count($pendingInErpPaidInCristmedicals),
+            ],
             'details' => $processed,
         ];
     }

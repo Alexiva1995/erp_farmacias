@@ -302,6 +302,7 @@ const handleConfirmBulkDelete = async () => {
 const isSyncingDronena = ref(false);
 const isSyncingMafarta = ref(false);
 const isSyncingCristmedicals = ref(false);
+const isSyncingDromega = ref(false);
 
 const handleSyncDronena = async () => {
   const confirmResult = await Swal.fire({
@@ -377,6 +378,31 @@ const handleSyncCristmedicals = async () => {
     isSyncingCristmedicals.value = false;
   }
 };
+
+const handleSyncDromega = async () => {
+  const confirmResult = await Swal.fire({
+    title: "¿Sincronizar con Droguería Mega (Dromega)?",
+    text: "Se consultará el estado de cuenta de Droguería Mega para actualizar vencimientos, protección de tasa, indexación y saldos en USD y Bs.",
+    icon: "info",
+    showCancelButton: true,
+    confirmButtonText: "Sincronizar",
+    cancelButtonText: "Cancelar",
+  });
+
+  if (!confirmResult.isConfirmed) return;
+
+  isSyncingDromega.value = true;
+  try {
+    const response = await axios.post("/invoices/sync-dromega");
+    toast.success(response.data.message || "Sincronización con Droguería Mega completada exitosamente.");
+    await fetchInvoices();
+  } catch (error) {
+    console.error("Error al sincronizar con Droguería Mega:", error);
+    toast.error(error.response?.data?.message || "Ocurrió un error al sincronizar con Droguería Mega.");
+  } finally {
+    isSyncingDromega.value = false;
+  }
+};
 </script>
 
 <template>
@@ -396,12 +422,15 @@ const handleSyncCristmedicals = async () => {
         :is-syncing-mafarta="isSyncingMafarta"
         :show-sync-cristmedicals="true"
         :is-syncing-cristmedicals="isSyncingCristmedicals"
+        :show-sync-dromega="true"
+        :is-syncing-dromega="isSyncingDromega"
         @clear="handleClearFilters"
         @create-invoice="handleCreateInvoice"
         @bulk-delete="handleOpenBulkDeleteModal"
         @sync-dronena="handleSyncDronena"
         @sync-mafarta="handleSyncMafarta"
         @sync-cristmedicals="handleSyncCristmedicals"
+        @sync-dromega="handleSyncDromega"
         class="mb-6"
       />
 

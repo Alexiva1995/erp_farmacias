@@ -407,6 +407,24 @@ class PendingPaymentsController extends Controller
                 }
             }
 
+            // 12. Si el proveedor es Droguería Mega (Dromega) y se indicó referencia, reportar el pago automáticamente en el portal
+            $dromegaResult = null;
+            if ((str_contains($supplierName, 'DROMEGA') || str_contains($supplierName, 'MEGA') || $invoices->first()?->supplier_id === 1005) && !empty($request->reference) && $request->payment_method !== 'CASH') {
+                try {
+                    $dromegaService = app(\App\Contracts\Suppliers\DromegaScraperServiceInterface::class);
+                    $dromegaResult = $dromegaService->submitPayment(
+                        $invoices->pluck('invoice_number')->toArray(),
+                        (float) $request->payment_amount,
+                        (string) $request->reference,
+                        (string) ($request->destination_bank ?? 'C1051'),
+                        $request->payment_date,
+                        $request->photo_url
+                    );
+                } catch (\Throwable $dmEx) {
+                    Log::warning('[PendingPayments] Error reportando pago en Droguería Mega: ' . $dmEx->getMessage());
+                }
+            }
+
             $submissionMessage = '';
             if ($dronenaResult && !empty($dronenaResult['success'])) {
                 $submissionMessage = ' y enviado a Dronena';
@@ -414,6 +432,8 @@ class PendingPaymentsController extends Controller
                 $submissionMessage = ' y transmitido a Cobeca / Mafarta';
             } elseif ($cristmedicalsResult && !empty($cristmedicalsResult['success'])) {
                 $submissionMessage = ' y transmitido a Cristmedicals';
+            } elseif ($dromegaResult && !empty($dromegaResult['success'])) {
+                $submissionMessage = ' y transmitido a Droguería Mega';
             }
 
             return ApiResponse::success([

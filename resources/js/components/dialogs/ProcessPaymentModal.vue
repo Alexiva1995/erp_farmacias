@@ -76,6 +76,23 @@ const cristmedicalsBanks = [
   { title: "BANCO NACIONAL DE CREDITO (BNC) - 0191 0040 5621 4008 9488", value: "01910040562140089488" },
 ];
 
+// Bancos oficiales de Droguería Mega (Dromega)
+const dromegaBanks = [
+  { title: "Bancaribe - 01140432414320836811", value: "C1141" },
+  { title: "Banco Activo - 01710049136001316984", value: "C1711" },
+  { title: "Banco de Venezuela - 01020859950000228921", value: "C1022" },
+  { title: "Banco del Tesoro - 01630305403053006965", value: "C1631" },
+  { title: "Banco Digital de los Trabajadores - 01750040640073861853", value: "C1752" },
+  { title: "Banco Exterior - 01150113331001027842", value: "C1151" },
+  { title: "Banco Fondo Común - 01510174131000220507", value: "C1511" },
+  { title: "Banco Nacional de Crédito (BNC) - BNC0142872100064533", value: "C1911" },
+  { title: "Banco Provincial - PROVINCIAL00033506", value: "C1081" },
+  { title: "Banco Venezolano de Crédito - 01040107100107232141", value: "C0104" },
+  { title: "Banesco Banco Universal - 01340030060301009127", value: "C1341" },
+  { title: "Banplus - 01740125481254202334", value: "C1741" },
+  { title: "Mercantil Banco Universal - MERCANTIL1065296975", value: "C1051" },
+];
+
 const isDronenaPayment = computed(() => {
   if (props.paymentGroup?.supplier_name) {
     const name = String(props.paymentGroup.supplier_name).toUpperCase();
@@ -109,11 +126,23 @@ const isCristmedicalsPayment = computed(() => {
   });
 });
 
+const isDromegaPayment = computed(() => {
+  if (props.paymentGroup?.supplier_name) {
+    const name = String(props.paymentGroup.supplier_name).toUpperCase();
+    if (name.includes("DROMEGA") || name.includes("MEGA")) return true;
+  }
+  return props.invoices.some((inv) => {
+    const sName = String(inv.supplier?.name || inv.supplier_name || "").toUpperCase();
+    return sName.includes("DROMEGA") || sName.includes("MEGA") || inv.supplier_id === 1005;
+  });
+});
+
 const destinationBankOptions = computed(() => {
+  if (isDromegaPayment.value) return dromegaBanks;
   if (isCristmedicalsPayment.value) return cristmedicalsBanks;
   if (isMafartaPayment.value) return mafartaBanks;
   if (isDronenaPayment.value) return dronenaBanks;
-  return [...cristmedicalsBanks, ...mafartaBanks, ...dronenaBanks];
+  return [...dromegaBanks, ...cristmedicalsBanks, ...mafartaBanks, ...dronenaBanks];
 });
 
 
@@ -288,9 +317,8 @@ const handleFileUpload = async (file) => {
   }
 };
 
-const formatCurrency = (amount, currency, omitCurrency = false) => {
-  if (!amount && amount !== 0) return "0,00";
-  const code = currency === "Bs" ? "VES" : currency === "COP" ? "COP" : "USD";
+const formatCurrency = (amount, currencyCode = null, omitCurrency = false) => {
+  const code = currencyCode || form.value.payment_currency || "USD";
   const formatted = new Intl.NumberFormat("es-VE", {
     style: omitCurrency ? "decimal" : "currency",
     currency: code,
@@ -303,7 +331,12 @@ const formatCurrency = (amount, currency, omitCurrency = false) => {
 watch(() => props.modelValue, (val) => {
   if (val) {
     fetchExchangeRates();
-    if (isCristmedicalsPayment.value) {
+    if (isDromegaPayment.value) {
+      form.value.payment_currency = 'VES';
+      form.value.payment_method = 'transfer';
+      form.value.destination_bank = dromegaBanks[12].value; // Mercantil Banco Universal C1051
+      form.value.payment_amount = totalInBS.value;
+    } else if (isCristmedicalsPayment.value) {
       form.value.payment_currency = 'VES';
       form.value.payment_method = 'transfer';
       form.value.destination_bank = '30';

@@ -28,6 +28,7 @@ const props = defineProps({
       drocerca: {},
       mafarta: {},
       cristmedicals: {},
+      dromega: {},
     }),
   },
 });
@@ -51,6 +52,7 @@ const hasDiscrepancies = computed(
 const drocercaData = computed(() => props.syncSummary?.drocerca || {});
 const mafartaData = computed(() => props.syncSummary?.mafarta || {});
 const cristmedicalsData = computed(() => props.syncSummary?.cristmedicals || {});
+const dromegaData = computed(() => props.syncSummary?.dromega || {});
 const dronenaData = computed(() => props.syncSummary?.dronena || {});
 
 const drocercaPendingPaid = computed(
@@ -203,6 +205,84 @@ const handleMarkAllMafartaPendingAsPaid = async () => {
     isMarkingPaid.value = false;
   }
 };
+
+const dromegaPaidInErpPending = computed(
+  () => dromegaData.value?.discrepancies?.paid_in_erp_pending_in_dromega || []
+);
+const dromegaPendingInErpPaid = computed(
+  () => dromegaData.value?.discrepancies?.pending_in_erp_paid_in_dromega || []
+);
+const hasDromegaDiscrepancies = computed(
+  () => (dromegaPaidInErpPending.value.length + dromegaPendingInErpPaid.value.length) > 0
+);
+
+const handleMarkAllDromegaPendingAsPaid = async () => {
+  const count = dromegaPendingInErpPaid.value.length;
+  if (count === 0) return;
+
+  const result = await Swal.fire({
+    title: `¿Marcar las ${count} facturas de Droguería Mega como Pagadas?`,
+    text: "Estas facturas ya figuran liquidadas en Droguería Mega y pasarán automáticamente a estado Pagada (status_payment = 1) en tu ERP.",
+    icon: "question",
+    showCancelButton: true,
+    confirmButtonText: "Sí, marcar como pagadas",
+    cancelButtonText: "Cancelar",
+    confirmButtonColor: "#28c76f",
+  });
+
+  if (!result.isConfirmed) return;
+
+  isMarkingPaid.value = true;
+  try {
+    const invoiceIds = dromegaPendingInErpPaid.value.map((i) => i.id);
+    const { data } = await axios.post("/finances/pending-payments/invoices/bulk-mark-as-paid", {
+      invoice_ids: invoiceIds,
+    });
+
+    toast.success(data.message || `${count} facturas de Droguería Mega marcadas como pagadas`);
+    emit("invoices-marked-as-paid");
+    closeDialog();
+  } catch (error) {
+    console.error("Error marcando facturas Droguería Mega:", error);
+    toast.error(error.response?.data?.message || "Error al marcar las facturas como pagadas.");
+  } finally {
+    isMarkingPaid.value = false;
+  }
+};
+
+const handleMarkAllDromegaPaidAsPending = async () => {
+  const count = dromegaPaidInErpPending.value.length;
+  if (count === 0) return;
+
+  const result = await Swal.fire({
+    title: `¿Pasar las ${count} facturas a Por Pagar?`,
+    text: "Estas facturas aún registran saldo pendiente en Droguería Mega y volverán a estado Pendiente (status_payment = 0) en tu ERP.",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonText: "Sí, cambiar a Por Pagar",
+    cancelButtonText: "Cancelar",
+    confirmButtonColor: "#ff9f43",
+  });
+
+  if (!result.isConfirmed) return;
+
+  isMarkingPending.value = true;
+  try {
+    const invoiceIds = dromegaPaidInErpPending.value.map((i) => i.id);
+    const { data } = await axios.post("/finances/pending-payments/invoices/bulk-mark-as-pending", {
+      invoice_ids: invoiceIds,
+    });
+
+    toast.success(data.message || `${count} facturas pasadas a estado Por Pagar`);
+    emit("invoices-marked-as-paid");
+    closeDialog();
+  } catch (error) {
+    console.error("Error revirtiendo facturas Droguería Mega:", error);
+    toast.error(error.response?.data?.message || "Error al actualizar las facturas.");
+  } finally {
+    isMarkingPending.value = false;
+  }
+};
 </script>
 
 <template>
@@ -307,6 +387,37 @@ const handleMarkAllMafartaPendingAsPaid = async () => {
               class="ml-2"
             >
               {{ cristmedicalsData.updated }} act.
+            </VChip>
+          </VTab>
+          <VTab value="dromega">
+            <VIcon icon="tabler-pill" class="mr-2" size="18" />
+            Droguería Mega
+            <VChip
+              v-if="hasDromegaDiscrepancies"
+              size="x-small"
+              color="warning"
+              variant="flat"
+              class="ml-2"
+            >
+              {{ dromegaPaidInErpPending.length + dromegaPendingInErpPaid.length }}
+            </VChip>
+            <VChip
+              v-else-if="(dromegaData.created || 0) > 0"
+              size="x-small"
+              color="success"
+              variant="flat"
+              class="ml-2"
+            >
+              +{{ dromegaData.created }} nuevas
+            </VChip>
+            <VChip
+              v-else-if="(dromegaData.updated || 0) > 0"
+              size="x-small"
+              color="info"
+              variant="flat"
+              class="ml-2"
+            >
+              {{ dromegaData.updated }} act.
             </VChip>
           </VTab>
         </VTabs>
@@ -818,6 +929,202 @@ const handleMarkAllMafartaPendingAsPaid = async () => {
               <VIcon icon="tabler-check-circle" size="40" color="success" class="mb-2" />
               <p class="text-body-2 text-medium-emphasis mb-0">
                 Sincronización con Cristmedicals ejecutada correctamente. No hay facturas pendientes de procesar.
+              </p>
+            </div>
+          </VWindowItem>
+
+          <!-- ================= TAB DROGUERIA MEGA (DROMEGA) ================= -->
+          <VWindowItem value="dromega">
+            <!-- Resumen Rápido Dromega -->
+            <VRow class="mb-4">
+              <VCol cols="12" sm="3">
+                <VCard variant="tonal" color="info" class="pa-3 rounded-lg text-center">
+                  <div class="text-caption text-medium-emphasis">Facturas en Portal</div>
+                  <div class="text-h5 font-weight-bold">{{ dromegaData.total_extracted || 0 }}</div>
+                </VCard>
+              </VCol>
+              <VCol cols="12" sm="3">
+                <VCard variant="tonal" color="success" class="pa-3 rounded-lg text-center">
+                  <div class="text-caption text-medium-emphasis">Actualizadas en ERP</div>
+                  <div class="text-h5 font-weight-bold">{{ dromegaData.updated || 0 }}</div>
+                </VCard>
+              </VCol>
+              <VCol cols="12" sm="3">
+                <VCard variant="tonal" color="primary" class="pa-3 rounded-lg text-center">
+                  <div class="text-caption text-medium-emphasis">Nuevas Creadas</div>
+                  <div class="text-h5 font-weight-bold">{{ dromegaData.created || 0 }}</div>
+                </VCard>
+              </VCol>
+              <VCol cols="12" sm="3">
+                <VCard
+                  variant="tonal"
+                  :color="hasDromegaDiscrepancies ? 'warning' : 'success'"
+                  class="pa-3 rounded-lg text-center"
+                >
+                  <div class="text-caption text-medium-emphasis">Diferencias Detectadas</div>
+                  <div class="text-h5 font-weight-bold">
+                    {{ (dromegaPaidInErpPending.length + dromegaPendingInErpPaid.length) }}
+                  </div>
+                </VCard>
+              </VCol>
+            </VRow>
+
+            <!-- Caso 1: Pagadas en ERP pero aún figuran PENDIENTES en Droguería Mega -->
+            <div v-if="dromegaPaidInErpPending.length > 0" class="mb-6">
+              <div class="d-flex align-center justify-space-between flex-wrap gap-2 mb-2">
+                <div class="d-flex align-center gap-2">
+                  <VIcon icon="tabler-alert-circle" color="warning" size="22" />
+                  <h4 class="text-subtitle-1 font-weight-bold text-warning mb-0">
+                    Pagadas en el ERP pero aún PENDIENTES en Droguería Mega ({{ dromegaPaidInErpPending.length }})
+                  </h4>
+                </div>
+
+                <VBtn
+                  color="warning"
+                  variant="elevated"
+                  size="small"
+                  prepend-icon="tabler-arrow-back-up"
+                  class="rounded-lg shadow-sm font-weight-bold"
+                  :loading="isMarkingPending"
+                  @click="handleMarkAllDromegaPaidAsPending"
+                >
+                  Pasar a Por Pagar ({{ dromegaPaidInErpPending.length }})
+                </VBtn>
+              </div>
+
+              <p class="text-caption text-medium-emphasis mb-3">
+                Estas facturas ya las registraste como pagadas en el ERP, pero en el estado de cuenta de Droguería Mega todavía aparecen con saldo pendiente por cobrar:
+              </p>
+
+              <VTable density="compact" class="border rounded-lg mb-2">
+                <thead>
+                  <tr class="table-header-row">
+                    <th class="text-left font-weight-bold">N° Factura</th>
+                    <th class="text-left font-weight-bold">N° Control</th>
+                    <th class="text-right font-weight-bold">Monto ERP</th>
+                    <th class="text-right font-weight-bold">Saldo Bs (Dromega)</th>
+                    <th class="text-right font-weight-bold">Saldo USD (Dromega)</th>
+                    <th class="text-center font-weight-bold">Estado Portal</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="item in dromegaPaidInErpPending" :key="item.id">
+                    <td class="font-weight-medium text-primary">#{{ item.invoice_number }}</td>
+                    <td>{{ item.control_number || 'N/A' }}</td>
+                    <td class="text-right">{{ Number(item.amount).toLocaleString('es-VE', { minimumFractionDigits: 2 }) }} {{ item.currency }}</td>
+                    <td class="text-right font-weight-bold text-error">
+                      Bs. {{ Number(item.portal_amount).toLocaleString('es-VE', { minimumFractionDigits: 2 }) }}
+                    </td>
+                    <td class="text-right font-weight-bold text-error">
+                      ${{ Number(item.portal_amount_usd || 0).toFixed(2) }}
+                    </td>
+                    <td class="text-center">
+                      <VChip size="x-small" color="warning" variant="tonal" class="font-weight-medium">
+                        Por Cobrar (Pendiente)
+                      </VChip>
+                    </td>
+                  </tr>
+                </tbody>
+              </VTable>
+            </div>
+
+            <!-- Caso 2: Pendientes en ERP pero ya NO figuran en Droguería Mega (LIQUIDADAS) CON BOTÓN DE ACCIÓN -->
+            <div v-if="dromegaPendingInErpPaid.length > 0" class="mb-6">
+              <div class="d-flex align-center justify-space-between flex-wrap gap-2 mb-2">
+                <div class="d-flex align-center gap-2">
+                  <VIcon icon="tabler-circle-check" color="info" size="22" />
+                  <h4 class="text-subtitle-1 font-weight-bold text-info mb-0">
+                    Pendientes en ERP pero LIQUIDADAS en Droguería Mega ({{ dromegaPendingInErpPaid.length }})
+                  </h4>
+                </div>
+
+                <VBtn
+                  color="success"
+                  variant="elevated"
+                  size="small"
+                  prepend-icon="tabler-check-all"
+                  class="rounded-lg shadow-sm font-weight-bold"
+                  :loading="isMarkingPaid"
+                  @click="handleMarkAllDromegaPendingAsPaid"
+                >
+                  Marcar Todas como Pagadas ({{ dromegaPendingInErpPaid.length }})
+                </VBtn>
+              </div>
+
+              <p class="text-caption text-medium-emphasis mb-3">
+                Estas facturas figuran como pendientes en tu ERP, pero en Droguería Mega ya no aparecen en el estado de cuenta por cobrar (ya fueron pagadas / liquidadas):
+              </p>
+
+              <VTable density="compact" class="border rounded-lg mb-2">
+                <thead>
+                  <tr class="table-header-row">
+                    <th class="text-left font-weight-bold">N° Factura</th>
+                    <th class="text-left font-weight-bold">N° Control</th>
+                    <th class="text-right font-weight-bold">Monto Registrado</th>
+                    <th class="text-center font-weight-bold">Estado en ERP</th>
+                    <th class="text-center font-weight-bold">Estado en Dromega</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="item in dromegaPendingInErpPaid" :key="item.id">
+                    <td class="font-weight-medium text-primary">#{{ item.invoice_number }}</td>
+                    <td>{{ item.control_number || 'N/A' }}</td>
+                    <td class="text-right">{{ Number(item.amount).toLocaleString('es-VE', { minimumFractionDigits: 2 }) }} {{ item.currency }}</td>
+                    <td class="text-center">
+                      <VChip size="x-small" color="error" variant="tonal">
+                        Pendiente
+                      </VChip>
+                    </td>
+                    <td class="text-center">
+                      <VChip size="x-small" color="success" variant="tonal" class="font-weight-medium">
+                        Liquidada (Pagada)
+                      </VChip>
+                    </td>
+                  </tr>
+                </tbody>
+              </VTable>
+            </div>
+
+            <!-- Tabla de Facturas Procesadas / Actualizadas de Dromega -->
+            <div v-if="dromegaData.details && dromegaData.details.length > 0">
+              <h4 class="text-subtitle-1 font-weight-bold mb-2">Facturas Procesadas desde Droguería Mega</h4>
+              <VTable density="compact" class="border rounded-lg mb-2">
+                <thead>
+                  <tr class="table-header-row">
+                    <th class="text-left font-weight-bold">N° Factura</th>
+                    <th class="text-center font-weight-bold">Acción</th>
+                    <th class="text-center font-weight-bold">Fecha Pago</th>
+                    <th class="text-center font-weight-bold">Vencimiento</th>
+                    <th class="text-center font-weight-bold">Indexada</th>
+                    <th class="text-right font-weight-bold">Saldo USD</th>
+                    <th class="text-right font-weight-bold">Total Bs.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(item, idx) in dromegaData.details" :key="idx">
+                    <td class="font-weight-medium text-primary">#{{ item.invoice_number }}</td>
+                    <td class="text-center">
+                      <VChip size="x-small" :color="item.action === 'created' ? 'success' : 'info'" variant="tonal">
+                        {{ item.action === 'created' ? 'Nueva Creada' : 'Actualizada' }}
+                      </VChip>
+                    </td>
+                    <td class="text-center">{{ item.payment_date || 'N/A' }}</td>
+                    <td class="text-center">{{ item.exp_date || 'N/A' }}</td>
+                    <td class="text-center">
+                      <VChip size="x-small" :color="item.is_indexed ? 'warning' : 'secondary'" variant="tonal">
+                        {{ item.is_indexed ? 'Indexada' : 'No Indexada' }}
+                      </VChip>
+                    </td>
+                    <td class="text-right font-weight-medium">${{ Number(item.total_usd || 0).toFixed(2) }}</td>
+                    <td class="text-right font-weight-bold text-primary">Bs. {{ Number(item.total_bs || 0).toLocaleString('es-VE', { minimumFractionDigits: 2 }) }}</td>
+                  </tr>
+                </tbody>
+              </VTable>
+            </div>
+            <div v-else class="text-center py-6">
+              <VIcon icon="tabler-check-circle" size="40" color="success" class="mb-2" />
+              <p class="text-body-2 text-medium-emphasis mb-0">
+                Sincronización con Droguería Mega ejecutada correctamente.
               </p>
             </div>
           </VWindowItem>

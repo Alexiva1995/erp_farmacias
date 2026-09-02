@@ -29,7 +29,8 @@ class InvoiceController extends Controller
         private \App\Contracts\Suppliers\DronenaScraperServiceInterface $dronenaScraperService,
         private \App\Contracts\Suppliers\DrocercaScraperServiceInterface $drocercaScraperService,
         private \App\Contracts\Suppliers\MafartaScraperServiceInterface $mafartaScraperService,
-        private \App\Contracts\Suppliers\CristmedicalsScraperServiceInterface $cristmedicalsScraperService
+        private \App\Contracts\Suppliers\CristmedicalsScraperServiceInterface $cristmedicalsScraperService,
+        private \App\Contracts\Suppliers\DromegaScraperServiceInterface $dromegaScraperService
     ) {
     }
 
@@ -332,6 +333,201 @@ class InvoiceController extends Controller
         ]);
     }
 
+    }
+
+    public function reject(Request $request, Invoice $invoice)
+    {
+
+        try {
+            $rejectedInvoice = $this->invoiceActionService->rejectInvoice(
+                $invoice
+            );
+
+            return response()->json([
+                'message' => 'Factura rechazada con éxito.',
+                'invoice' => $rejectedInvoice
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error al rechazar la factura: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function show(Invoice $invoice)
+    {
+        $invoiceData = $this->invoiceQueryService->getInvoiceById($invoice);
+        return new InvoiceResource($invoiceData);
+    }
+
+    public function getSuggestedDetails(Invoice $invoice)
+    {
+        $details = $this->invoiceQueryService->getSuggestedAndExistingDetails($invoice);
+
+        return response()->json(['data' => $details]);
+    }
+
+    public function updateData(UpdateInvoiceDataRequest $request, Invoice $invoice)
+    {
+        try {
+            $updatedInvoice = $this->invoiceActionService->updateInvoiceData($invoice, $request->validated());
+
+            return response()->json([
+                'message' => 'Datos de la factura actualizados con éxito.',
+                'invoice' => new InvoiceResource($updatedInvoice)
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function saveDetails(SaveInvoiceDetailsRequest $request, Invoice $invoice)
+    {
+        try {
+            $updatedInvoice = $this->invoiceActionService->saveInvoiceDetails($invoice, $request->validated());
+            return response()->json([
+                'message' => 'Progreso de la factura guardado con éxito.',
+                'invoice' => new InvoiceResource($updatedInvoice)
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function finalize(Request $request, Invoice $invoice)
+    {
+        try {
+            $finalizedInvoice = $this->invoiceActionService->finalizeInvoice($invoice);
+
+            return response()->json([
+                'message' => 'Factura finalizada con éxito.',
+                'invoice' => $finalizedInvoice
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function updateLocations(Request $request, Invoice $invoice)
+    {
+
+        try {
+            $updatedInvoice = $this->invoiceActionService->updateInvoiceLocations($invoice, $request->all());
+
+            return response()->json([
+                'message' => 'Ubicaciones actualizadas con éxito.',
+                'invoice' => $updatedInvoice
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function getSupplierDebts(Request $request)
+    {
+        $supplierDebts = $this->invoiceQueryService->calculateSupplierDebts();
+
+        return response()->json([
+            'data' => [
+                'total_debts' => $supplierDebts,
+                'currency' => 'USD',
+                'calculated_at' => now()->toISOString(),
+                'description' => 'Facturas pendientes de pago a proveedores'
+            ],
+            'message' => 'Deudas con proveedores calculadas con éxito.'
+        ], 200);
+    }
+
+    public function returnInvoiceToPendingStatus(Invoice $invoice)
+    {
+        $response = $this->invoiceActionService->updateToPendingStatus($invoice);
+
+        return response()->json([
+            'status' => $response['status'],
+            'message' => $response['message'] != null
+                ? $response['message']
+                : ($response['status']
+                    ? 'Se devolvió la factura a pendientes'
+                    : 'No se pudo devolver la factura a pendientes')
+        ], 200);
+    }
+
+    public function matchBarcode(MatchBarcodeRequest $request)
+    {
+        try {
+            $result = $this->invoiceQueryService->matchBarcodeWithAutoOrder(
+                $request->barcode,
+                $request->supplier_id,
+                $request->auto_order_id ?? null
+            );
+
+            if (!$result) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Producto no encontrado en el sistema.'
+                ], 404);
+            }
+
+            // Si el servicio devuelve status (warning), ya viene en el formato unificado
+            if (isset($result->status)) {
+                return response()->json($result, 200);
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'data' => $result
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Error al buscar el producto: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function uploadPhoto(UploadInvoicePhotoRequest $request, Invoice $invoice)
+    {
+        try {
+            $updatedInvoice = $this->invoiceActionService->uploadInvoicePhoto($invoice, $request->file('file'));
+
+            return response()->json([
+                'message' => 'Foto de factura cargada con éxito.',
+                'invoice' => $updatedInvoice,
+                'photo_url' => asset('storage/' . $updatedInvoice->invoice_photo)
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Error al cargar la foto: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function nextSequence(NextSequenceRequest $request)
+    {
+        $supplierId = $request->input('supplier_id');
+
+        // Buscar la factura con el número de factura más alto para este proveedor que comience con 'INF-'
+        $lastInvoice = Invoice::where('supplier_id', $supplierId)
+            ->where('invoice_number', 'like', 'INF-%')
+            ->orderByRaw('CAST(SUBSTRING(invoice_number, 5) AS UNSIGNED) DESC')
+            ->first();
+
+        if ($lastInvoice) {
+            $numberStr = str_replace('INF-', '', $lastInvoice->invoice_number);
+            $nextVal = ((int)$numberStr) + 1;
+        } else {
+            $nextVal = 1;
+        }
+
+        $formatted = 'INF-' . str_pad($nextVal, 6, '0', STR_PAD_LEFT);
+
+        return response()->json([
+            'next_sequence' => $formatted
+        ]);
+    }
+
     /**
      * Sincroniza las facturas de todos los proveedores automatizados (Dronena, Drocerca, Mafarta).
      */
@@ -342,6 +538,8 @@ class InvoiceController extends Controller
                 'dronena' => null,
                 'drocerca' => null,
                 'mafarta' => null,
+                'cristmedicals' => null,
+                'dromega' => null,
                 'total_updated' => 0,
                 'total_created' => 0,
                 'total_skipped' => 0,
@@ -405,6 +603,19 @@ class InvoiceController extends Controller
             } catch (\Throwable $e) {
                 Log::error('Error syncAll Cristmedicals: ' . $e->getMessage());
                 $results['errors'][] = 'Cristmedicals: ' . $e->getMessage();
+            }
+
+            // 5. Droguería Mega (Dromega)
+            try {
+                $dromega = $this->dromegaScraperService->syncInvoices();
+                $results['dromega'] = $dromega;
+                $results['total_updated'] += ($dromega['updated'] ?? 0);
+                $results['total_created'] += ($dromega['created'] ?? 0);
+                $results['total_skipped'] += ($dromega['skipped'] ?? 0);
+                $results['messages'][] = "Dromega: {$dromega['created']} creadas, {$dromega['updated']} actualizadas";
+            } catch (\Throwable $e) {
+                Log::error('Error syncAll Dromega: ' . $e->getMessage());
+                $results['errors'][] = 'Dromega: ' . $e->getMessage();
             }
 
             $message = "Sincronización completada (" . implode(' | ', $results['messages']) . ")";
@@ -542,6 +753,36 @@ class InvoiceController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error al sincronizar facturas desde Cristmedicals: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Sincroniza las facturas, vencimientos, protección de tasa y saldos en Bs/USD desde el portal web de Droguería Mega (Dromega).
+     */
+    public function syncDromega(Request $request)
+    {
+        try {
+            $cookie = $request->input('cookie');
+            $user = $request->input('username');
+            $pass = $request->input('password');
+            $supplierId = $request->input('supplier_id') ? (int) $request->input('supplier_id') : null;
+
+            $result = $this->dromegaScraperService->syncInvoices($cookie, $user, $pass, $supplierId);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Sincronización con Droguería Mega completada. Creadas: {$result['created']}, Actualizadas: {$result['updated']}, Omitidas: {$result['skipped']}.",
+                'data' => $result,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error en InvoiceController@syncDromega: ' . $e->getMessage(), [
+                'exception' => $e
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al sincronizar facturas desde Droguería Mega: ' . $e->getMessage()
             ], 500);
         }
     }
