@@ -409,8 +409,16 @@ class CristmedicalsScraperService implements CristmedicalsScraperServiceInterfac
                     $updateData['created_invoice_date'] = $emisionDate;
                 }
 
-                if ($totalNetoUsd > 0 && ((float) ($invoice->total_usd ?? 0) <= 0)) {
+                // Guardar el valor exacto en USD de la factura
+                if ($totalNetoUsd > 0) {
                     $updateData['total_usd'] = $totalNetoUsd;
+                } elseif ($saldoConDescUsd > 0) {
+                    $updateData['total_usd'] = $saldoConDescUsd;
+                }
+
+                // Guardar el monto real en Bs calculado por Cristmedicals
+                if ($totalBs > 0) {
+                    $updateData['total_amount'] = $totalBs;
                 }
 
                 $invoice->update($updateData);
@@ -420,7 +428,7 @@ class CristmedicalsScraperService implements CristmedicalsScraperServiceInterfac
                     'invoice_number' => $invoice->invoice_number,
                     'action' => 'updated',
                     'exp_date' => $expDate,
-                    'total_usd' => (float) $invoice->total_usd,
+                    'total_usd' => (float) ($updateData['total_usd'] ?? $invoice->total_usd),
                     'saldo_con_desc_usd' => $saldoConDescUsd,
                     'total_bs' => $totalBs,
                 ];

@@ -137,7 +137,19 @@ const isDromegaPayment = computed(() => {
   });
 });
 
+const isSumiandesPayment = computed(() => {
+  if (props.paymentGroup?.supplier_name) {
+    const name = String(props.paymentGroup.supplier_name).toUpperCase();
+    if (name.includes("SUMIANDES")) return true;
+  }
+  return props.invoices.some((inv) => {
+    const sName = String(inv.supplier?.name || inv.supplier_name || "").toUpperCase();
+    return sName.includes("SUMIANDES") || inv.supplier_id === 1008;
+  });
+});
+
 const destinationBankOptions = computed(() => {
+  if (isSumiandesPayment.value) return [];
   if (isDromegaPayment.value) return dromegaBanks;
   if (isCristmedicalsPayment.value) return cristmedicalsBanks;
   if (isMafartaPayment.value) return mafartaBanks;
@@ -209,21 +221,43 @@ const isFormValid = computed(() => {
 });
 
 const totalInUSD = computed(() => {
-  return props.invoices.reduce((sum, invoice) => sum + (parseFloat(invoice.total_usd) || 0), 0);
+  return props.invoices.reduce((sum, invoice) => {
+    const sName = String(invoice.supplier?.name || invoice.supplier_name || "").toUpperCase();
+    const isCrist = sName.includes("CRIST") || invoice.supplier_id === 1002;
+    if (isCrist && invoice.total_amount_discount && parseFloat(invoice.total_amount_discount) > 0) {
+      return sum + parseFloat(invoice.total_amount_discount);
+    }
+    return sum + (parseFloat(invoice.total_usd) || 0);
+  }, 0);
 });
 
 const totalInBS = computed(() => {
   return props.invoices.reduce((sum, invoice) => {
     let amount = 0;
-    // Si la factura está indexada, el usuario quiere usar la "tasa de hoy"
-    if (invoice.is_indexed) {
+    const sName = String(invoice.supplier?.name || invoice.supplier_name || "").toUpperCase();
+    const isCrist = sName.includes("CRIST") || invoice.supplier_id === 1002;
+
+    // Si es Cristmedicals, tomar directamente el monto real en Bs sincronizado desde el portal
+    if (isCrist) {
+      if (invoice.net_payable_amount && parseFloat(invoice.net_payable_amount) > 0) {
+        amount = parseFloat(invoice.net_payable_amount);
+      } else {
+        amount = parseFloat(invoice.total_amount) || 0;
+      }
+    } else if (invoice.is_indexed) {
+      // Si la factura está indexada, el usuario quiere usar la "tasa de hoy"
       amount = (parseFloat(invoice.total_usd) || 0) * props.exchangeRate;
-    } else if (invoice.currency === "Bs" || invoice.currency === "VES") {
-      // Si no está indexada, el usuario quiere el "precio de la factura" (original en BS)
-      amount = parseFloat(invoice.total_amount) || 0;
     } else {
-      // Si la factura es en moneda extranjera y NO está indexada
-      amount = parseFloat(invoice.total_amount_bs) || 0;
+      // Si no está indexada, es su monto en dólares por la tasa de la factura
+      const invUsd = parseFloat(invoice.total_usd) || 0;
+      const invRate = parseFloat(invoice.exchange_rate) || 0;
+      if (invUsd > 0 && invRate > 0) {
+        amount = invUsd * invRate;
+      } else if (invoice.currency === "Bs" || invoice.currency === "VES") {
+        amount = parseFloat(invoice.total_amount) || 0;
+      } else {
+        amount = parseFloat(invoice.total_amount_bs) || 0;
+      }
     }
 
     // Restar descuento por Nota de Débito Referencial si aplica
@@ -569,18 +603,18 @@ watch(() => props.modelValue, (val) => {
                   </VSelect>
                 </VCol>
 
-                <VCol cols="12">
+                <VCol v-if="!isSumiandesPayment" cols="12">
                   <div class="d-flex align-center justify-space-between mb-1">
                     <span class="text-super-xs font-weight-black text-primary uppercase">
-                      {{ isCristmedicalsPayment ? 'Banco Destino Cristmedicals' : (isMafartaPayment ? 'Banco Destino Cobeca / Mafarta' : (isDronenaPayment ? 'Banco Destino Dronena' : 'Banco Destino')) }}
+                      {{ isCristmedicalsPayment ? 'Banco Destino Cristmedicals' : (isMafartaPayment ? 'Banco Destino Cobeca / Mafarta' : (isDronenaPayment ? 'Banco Destino Dronena' : (isDromegaPayment ? 'Banco Destino Droguería Mega' : 'Banco Destino'))) }}
                     </span>
                     <VChip
-                      v-if="isCristmedicalsPayment || isMafartaPayment || isDronenaPayment"
+                      v-if="isCristmedicalsPayment || isMafartaPayment || isDronenaPayment || isDromegaPayment"
                       size="x-small"
                       color="primary"
                       variant="tonal"
                     >
-                      {{ isCristmedicalsPayment ? 'Portal Cristmedicals' : (isMafartaPayment ? 'Portal Cobeca (SIC)' : 'Portal Dronena') }}
+                      {{ isCristmedicalsPayment ? 'Portal Cristmedicals' : (isMafartaPayment ? 'Portal Cobeca (SIC)' : (isDronenaPayment ? 'Portal Dronena' : 'Portal Droguería Mega')) }}
                     </VChip>
                   </div>
                   <VSelect
@@ -588,7 +622,7 @@ watch(() => props.modelValue, (val) => {
                     :items="destinationBankOptions"
                     item-title="title"
                     item-value="value"
-                    :placeholder="isCristmedicalsPayment ? 'SELECCIONE BANCO CRISTMEDICALS' : (isMafartaPayment ? 'SELECCIONE BANCO COBECA' : (isDronenaPayment ? 'SELECCIONE BANCO DRONENA' : 'SELECCIONE BANCO DESTINO'))"
+                    :placeholder="isCristmedicalsPayment ? 'SELECCIONE BANCO CRISTMEDICALS' : (isMafartaPayment ? 'SELECCIONE BANCO COBECA' : (isDronenaPayment ? 'SELECCIONE BANCO DRONENA' : (isDromegaPayment ? 'SELECCIONE BANCO DROGUERÍA MEGA' : 'SELECCIONE BANCO DESTINO')))"
                     variant="outlined"
                     density="compact"
                     class="premium-input mb-3"

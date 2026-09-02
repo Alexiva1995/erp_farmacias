@@ -15,14 +15,30 @@ const props = defineProps({
 });
 
 const getDisplayAmount = (item) => {
-  if (item.is_indexed && item.indexed_data?.is_indexed) {
-    return item.indexed_data.indexed_amount;
+  const usd = parseFloat(item.original_amount_usd || item.total_usd) || 0;
+
+  // Si está indexada, el monto en Bs se calcula dinámicamente con la tasa del día
+  if (item.is_indexed) {
+    const rate = props.exchangeRate || item.indexed_data?.bcv_rate || 1;
+    return (usd * rate).toFixed(2);
   }
-  return item.total_amount;
+
+  // Si no está indexada, es su monto en dólares por la tasa de la factura
+  const invoiceRate = parseFloat(item.exchange_rate) || 0;
+  if (usd > 0 && invoiceRate > 0) {
+    return (usd * invoiceRate).toFixed(2);
+  }
+
+  // Si tiene monto neto sincronizado (ej. Cristmedicals / Dromega)
+  if (item.net_payable_amount && parseFloat(item.net_payable_amount) > 0) {
+    return parseFloat(item.net_payable_amount).toFixed(2);
+  }
+
+  return (item.remaining_amount || item.total_amount || 0);
 };
 
 const selectedTotals = computed(() => {
-  const usd = props.selectedTableInvoices.reduce((acc, item) => acc + (parseFloat(item.original_amount_usd) || 0), 0);
+  const usd = props.selectedTableInvoices.reduce((acc, item) => acc + (parseFloat(item.original_amount_usd || item.total_usd) || 0), 0);
   const bs = props.selectedTableInvoices.reduce((acc, item) => {
     let amount = parseFloat(getDisplayAmount(item)) || 0;
     // Si tiene Nota de Débito referencial aprobada (descuento), se resta al total a pagar
@@ -260,7 +276,7 @@ const openInvoiceTab = (item) => {
         </template>
 
         <template #item.original_amount="{ item }">
-          <span class="text-xs font-weight-bold">{{ formatCurrency(item.original_amount_usd, "USD", true) }}</span>
+          <span class="text-xs font-weight-bold">{{ formatCurrency(item.original_amount_usd || item.total_usd, "USD", true) }}</span>
         </template>
 
         <template #item.remaining_amount="{ item }">
@@ -486,7 +502,7 @@ const openInvoiceTab = (item) => {
             <div class="d-flex gap-3 mb-4">
               <div class="premium-stat-box flex-grow-1 pa-3 rounded-lg bg-surface-variant-opacity-2">
                 <span class="text-super-xs text-disabled font-weight-bold uppercase d-block mb-1">Original (USD)</span>
-                <span class="text-sm font-weight-black">{{ formatCurrency(item.original_amount_usd, "USD", true) }}</span>
+                <span class="text-sm font-weight-black">{{ formatCurrency(item.original_amount_usd || item.total_usd, "USD", true) }}</span>
               </div>
               <div class="premium-stat-box flex-grow-1 pa-3 rounded-lg" :class="getRemainingAmountClass(item) === 'text-success' ? 'bg-success-opacity-2' : 'bg-warning-opacity'">
                 <div class="d-flex align-center justify-space-between mb-1">

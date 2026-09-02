@@ -134,7 +134,10 @@ class PendingPaymentsService
                         $invoiceRemainingOriginal = round($invoice->total_usd * $bcvRateVal, 2);
                     } else {
                         $invoiceRemainingUSD = $invoice->total_usd;
-                        $invoiceRemainingOriginal = $invoice->total_amount;
+                        $nonIndexedBs = ($invoice->total_usd > 0 && (float) ($invoice->exchange_rate ?? 0) > 0)
+                            ? round($invoice->total_usd * (float) $invoice->exchange_rate, 2)
+                            : $invoice->total_amount;
+                        $invoiceRemainingOriginal = $nonIndexedBs;
 
                         $invoicePayments = $invoice->payments;
 
@@ -165,7 +168,7 @@ class PendingPaymentsService
                     }
 
                     $displayAmount = $indexedData['is_indexed'] ? $indexedData['indexed_amount'] : $invoiceRemainingOriginal;
-                    $displayOriginalAmount = $indexedData['is_indexed'] ? $indexedData['indexed_amount'] : $invoice->total_amount;
+                    $displayOriginalAmount = $indexedData['is_indexed'] ? $indexedData['indexed_amount'] : (($invoice->total_usd > 0 && (float) ($invoice->exchange_rate ?? 0) > 0) ? round($invoice->total_usd * (float) $invoice->exchange_rate, 2) : $invoice->total_amount);
 
                     return [
                         'id' => $invoice->id,
