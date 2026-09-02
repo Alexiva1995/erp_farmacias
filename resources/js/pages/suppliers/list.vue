@@ -283,6 +283,32 @@ const handleSyncDronenaBot = async (supplier) => {
   }
 };
 
+const handleSyncDrosymcaBot = async (supplier) => {
+  const result = await Swal.fire({
+    title: "¿Sincronizar Facturas con Drosymca?",
+    text: `Se extraerán las facturas pendientes, fechas de vencimiento, saldos e indexación desde Drosymca para ${supplier.name}.`,
+    icon: "info",
+    showCancelButton: true,
+    confirmButtonText: "Sincronizar Ahora",
+    cancelButtonText: "Cancelar",
+  });
+
+  if (!result.isConfirmed) return;
+
+  checkingApiSupplierId.value = supplier.id;
+  try {
+    const response = await axios.post("/invoices/sync-drosymca", {
+      supplier_id: supplier.id,
+    });
+    toast.success(response.data.message || "Sincronización de facturas completada.");
+  } catch (error) {
+    console.error("Error al sincronizar con Drosymca:", error);
+    toast.error(error.response?.data?.message || "Ocurrió un error durante la sincronización.");
+  } finally {
+    checkingApiSupplierId.value = null;
+  }
+};
+
 // Abre el diálogo de configuración de conexión FTP/API
 const handleConfigConnection = (supplier) => {
   connectionSupplier.value = { ...supplier };
@@ -427,6 +453,7 @@ onUnmounted(() => {
         @check-supplier-api="handleCheckSupplierApi"
         @config-connection="handleConfigConnection"
         @sync-dronena-bot="handleSyncDronenaBot"
+        @sync-drosymca-bot="handleSyncDrosymcaBot"
       />
 
       <SupplierEditDialog

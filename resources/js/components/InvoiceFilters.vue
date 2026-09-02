@@ -20,6 +20,8 @@ const props = defineProps({
   isSyncingCristmedicals: { type: Boolean, default: false },
   showSyncDromega: { type: Boolean, default: true },
   isSyncingDromega: { type: Boolean, default: false },
+  showSyncDrosymca: { type: Boolean, default: true },
+  isSyncingDrosymca: { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
@@ -34,6 +36,7 @@ const emit = defineEmits([
   "sync-mafarta",
   "sync-cristmedicals",
   "sync-dromega",
+  "sync-drosymca",
 ]);
 
 const hasAdvancedFilters = computed(
@@ -108,6 +111,20 @@ const hasAdvancedFilters = computed(
       >
         <VIcon icon="tabler-pill" />
         <VTooltip activator="parent" location="top">Sincronizar Droguería Mega (Dromega)</VTooltip>
+      </VBtn>
+
+      <VBtn
+        v-if="props.showSyncDrosymca"
+        icon
+        color="primary"
+        variant="tonal"
+        size="38"
+        rounded="circle"
+        :loading="props.isSyncingDrosymca"
+        @click="emit('sync-drosymca')"
+      >
+        <VIcon icon="tabler-building-store" />
+        <VTooltip activator="parent" location="top">Sincronizar Drosymca</VTooltip>
       </VBtn>
 
       <VBtn

@@ -55,7 +55,7 @@ const hasAdvancedFilters = computed(() =>
         @click="emit('sync-bots')"
       >
         <VIcon icon="tabler-robot" size="20" />
-        <VTooltip activator="parent" location="top">Sincronizar Facturas (Dronena, Drocerca, Mafarta y Cristmedicals)</VTooltip>
+        <VTooltip activator="parent" location="top">Sincronizar Facturas (Dronena, Drocerca, Mafarta, Cristmedicals, Dromega y Drosymca)</VTooltip>
       </VBtn>
 
       <VBtn

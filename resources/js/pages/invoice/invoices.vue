@@ -303,6 +303,7 @@ const isSyncingDronena = ref(false);
 const isSyncingMafarta = ref(false);
 const isSyncingCristmedicals = ref(false);
 const isSyncingDromega = ref(false);
+const isSyncingDrosymca = ref(false);
 
 const handleSyncDronena = async () => {
   const confirmResult = await Swal.fire({
@@ -403,6 +404,31 @@ const handleSyncDromega = async () => {
     isSyncingDromega.value = false;
   }
 };
+
+const handleSyncDrosymca = async () => {
+  const confirmResult = await Swal.fire({
+    title: "¿Sincronizar con Drosymca?",
+    text: "Se consultará el módulo de cobranza de Drosymca para actualizar facturas pendientes, fechas de vencimiento, indexación y saldos a pagar.",
+    icon: "info",
+    showCancelButton: true,
+    confirmButtonText: "Sincronizar",
+    cancelButtonText: "Cancelar",
+  });
+
+  if (!confirmResult.isConfirmed) return;
+
+  isSyncingDrosymca.value = true;
+  try {
+    const response = await axios.post("/invoices/sync-drosymca");
+    toast.success(response.data.message || "Sincronización con Drosymca completada exitosamente.");
+    await fetchInvoices();
+  } catch (error) {
+    console.error("Error al sincronizar con Drosymca:", error);
+    toast.error(error.response?.data?.message || "Ocurrió un error al sincronizar con Drosymca.");
+  } finally {
+    isSyncingDrosymca.value = false;
+  }
+};
 </script>
 
 <template>
@@ -424,6 +450,8 @@ const handleSyncDromega = async () => {
         :is-syncing-cristmedicals="isSyncingCristmedicals"
         :show-sync-dromega="true"
         :is-syncing-dromega="isSyncingDromega"
+        :show-sync-drosymca="true"
+        :is-syncing-drosymca="isSyncingDrosymca"
         @clear="handleClearFilters"
         @create-invoice="handleCreateInvoice"
         @bulk-delete="handleOpenBulkDeleteModal"
@@ -431,6 +459,7 @@ const handleSyncDromega = async () => {
         @sync-mafarta="handleSyncMafarta"
         @sync-cristmedicals="handleSyncCristmedicals"
         @sync-dromega="handleSyncDromega"
+        @sync-drosymca="handleSyncDrosymca"
         class="mb-6"
       />
 

@@ -361,9 +361,12 @@ class DromegaScraperService implements DromegaScraperServiceInterface
                     'total_bs' => $totalBs,
                 ];
             } else {
+                $userId = auth()->id() ?? \App\Models\User::first()?->id ?? 1;
                 $newInvoice = Invoice::create([
                     'supplier_id' => $supplierId,
-                    'uploaded_by' => auth()->id() ?? 1,
+                    'uploaded_by' => $userId,
+                    'registered_by' => $userId,
+                    'loaded_by' => $userId,
                     'invoice_number' => $rawDocNum,
                     'control_number' => '00-' . str_pad($cleanNumber, 7, '0', STR_PAD_LEFT),
                     'created_invoice_date' => $emisionDate,

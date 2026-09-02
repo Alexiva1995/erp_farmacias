@@ -38,6 +38,7 @@ const emit = defineEmits([
   "check-supplier-api",
   "config-connection",
   "sync-dronena-bot",
+  "sync-drosymca-bot",
 ]);
 
 const headers = [
@@ -201,6 +202,15 @@ const headers = [
                   base-color="info"
                 >
                   <VListItemTitle>Sincronizar Facturas (Bot Dronena)</VListItemTitle>
+                </VListItem>
+
+                <VListItem
+                  v-if="(item.name && (item.name.toUpperCase().includes('DROSYM') || item.name.toUpperCase().includes('DROSI')))"
+                  @click="emit('sync-drosymca-bot', item)"
+                  prepend-icon="tabler-robot"
+                  base-color="primary"
+                >
+                  <VListItemTitle>Sincronizar Facturas (Bot Drosymca)</VListItemTitle>
                 </VListItem>
 
                 <VListItem v-if="!isRestaurant" :disabled="checkingApiId === item.id" @click="emit('check-supplier-api', item)" prepend-icon="tabler-api">

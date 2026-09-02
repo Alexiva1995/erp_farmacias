@@ -29,6 +29,7 @@ const props = defineProps({
       mafarta: {},
       cristmedicals: {},
       dromega: {},
+      drosymca: {},
     }),
   },
 });
@@ -53,6 +54,7 @@ const drocercaData = computed(() => props.syncSummary?.drocerca || {});
 const mafartaData = computed(() => props.syncSummary?.mafarta || {});
 const cristmedicalsData = computed(() => props.syncSummary?.cristmedicals || {});
 const dromegaData = computed(() => props.syncSummary?.dromega || {});
+const drosymcaData = computed(() => props.syncSummary?.drosymca || {});
 const dronenaData = computed(() => props.syncSummary?.dronena || {});
 
 const drocercaPendingPaid = computed(
@@ -585,6 +587,28 @@ const handleMarkAllDromegaPaidAsPending = async () => {
               class="ml-2"
             >
               {{ dromegaData.updated }} act.
+            </VChip>
+          </VTab>
+          <VTab value="drosymca">
+            <VIcon icon="tabler-building-store" class="mr-2" size="18" />
+            Drosymca
+            <VChip
+              v-if="(drosymcaData.created || 0) > 0"
+              size="x-small"
+              color="success"
+              variant="flat"
+              class="ml-2"
+            >
+              +{{ drosymcaData.created }} nuevas
+            </VChip>
+            <VChip
+              v-else-if="(drosymcaData.updated || 0) > 0"
+              size="x-small"
+              color="info"
+              variant="flat"
+              class="ml-2"
+            >
+              {{ drosymcaData.updated }} act.
             </VChip>
           </VTab>
         </VTabs>
@@ -1536,6 +1560,75 @@ const handleMarkAllDromegaPaidAsPending = async () => {
               <VIcon icon="tabler-check-circle" size="40" color="success" class="mb-2" />
               <p class="text-body-2 text-medium-emphasis mb-0">
                 Sincronización con Droguería Mega ejecutada correctamente.
+              </p>
+            </div>
+          </VWindowItem>
+
+          <!-- ================= TAB DROSYMCA ================= -->
+          <VWindowItem value="drosymca">
+            <!-- Resumen Rápido Drosymca -->
+            <VRow class="mb-4">
+              <VCol cols="12" sm="4">
+                <VCard variant="tonal" color="primary" class="text-center pa-3 rounded-lg">
+                  <div class="text-caption font-weight-bold text-uppercase">Extraídas del Portal</div>
+                  <div class="text-h5 font-weight-bold">{{ drosymcaData.total_extracted || 0 }}</div>
+                </VCard>
+              </VCol>
+              <VCol cols="12" sm="4">
+                <VCard variant="tonal" color="info" class="text-center pa-3 rounded-lg">
+                  <div class="text-caption font-weight-bold text-uppercase">Actualizadas en ERP</div>
+                  <div class="text-h5 font-weight-bold">{{ drosymcaData.updated || 0 }}</div>
+                </VCard>
+              </VCol>
+              <VCol cols="12" sm="4">
+                <VCard variant="tonal" color="success" class="text-center pa-3 rounded-lg">
+                  <div class="text-caption font-weight-bold text-uppercase">Creadas en ERP</div>
+                  <div class="text-h5 font-weight-bold">{{ drosymcaData.created || 0 }}</div>
+                </VCard>
+              </VCol>
+            </VRow>
+
+            <!-- Tabla de Facturas Procesadas / Actualizadas de Drosymca -->
+            <div v-if="drosymcaData.details && drosymcaData.details.length > 0">
+              <div class="d-flex align-center justify-space-between mb-3">
+                <div class="d-flex align-center gap-2">
+                  <VIcon icon="tabler-list-check" size="20" color="primary" />
+                  <span class="text-subtitle-1 font-weight-bold">Facturas Sincronizadas ({{ drosymcaData.details.length }})</span>
+                </div>
+              </div>
+              <VTable density="compact" class="border rounded-lg" hover>
+                <thead>
+                  <tr class="table-header-row">
+                    <th class="text-left font-weight-bold">N° Factura</th>
+                    <th class="text-center font-weight-bold">Acción</th>
+                    <th class="text-center font-weight-bold">F. Vencimiento</th>
+                    <th class="text-center font-weight-bold">Estado Indexación</th>
+                    <th class="text-right font-weight-bold">Total Bs.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(item, idx) in drosymcaData.details" :key="idx">
+                    <td class="font-weight-medium text-primary">#{{ item.invoice_number }}</td>
+                    <td class="text-center">
+                      <VChip size="x-small" :color="item.action === 'created' ? 'success' : 'info'" variant="tonal">
+                        {{ item.action === 'created' ? 'Nueva Creada' : 'Actualizada' }}
+                      </VChip>
+                    </td>
+                    <td class="text-center">{{ item.exp_date || 'N/A' }}</td>
+                    <td class="text-center">
+                      <VChip size="x-small" :color="item.is_indexed ? 'warning' : 'secondary'" variant="tonal">
+                        {{ item.is_indexed ? 'Indexada' : 'No Indexada' }}
+                      </VChip>
+                    </td>
+                    <td class="text-right font-weight-bold text-primary">Bs. {{ Number(item.total_amount || 0).toLocaleString('es-VE', { minimumFractionDigits: 2 }) }}</td>
+                  </tr>
+                </tbody>
+              </VTable>
+            </div>
+            <div v-else class="text-center py-6">
+              <VIcon icon="tabler-check-circle" size="40" color="success" class="mb-2" />
+              <p class="text-body-2 text-medium-emphasis mb-0">
+                Sincronización con Drosymca ejecutada correctamente.
               </p>
             </div>
           </VWindowItem>
