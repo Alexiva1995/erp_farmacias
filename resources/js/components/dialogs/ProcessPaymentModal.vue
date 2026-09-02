@@ -324,7 +324,8 @@ const processPayment = async () => {
       ...form.value,
       payment_type: form.value.is_partial ? "partial" : "full",
       payment_method: frontendToEnumMap[form.value.payment_method],
-      invoice_ids: props.invoices.map(i => i.id)
+      invoice_ids: props.invoices.map(i => i.id).filter(Boolean),
+      invoice_numbers: props.invoices.map(i => i.invoice_number).filter(Boolean),
     });
 
     if (response.data.status === "success") {
@@ -338,7 +339,10 @@ const processPayment = async () => {
 
   } catch (error) {
     console.error("Error al procesar:", error);
-    toast.error("Error al procesar el pago");
+    const serverMsg = error.response?.data?.message || 
+                     (error.response?.data?.errors ? Object.values(error.response.data.errors).flat().join(", ") : null) || 
+                     "Error al procesar el pago";
+    toast.error(serverMsg);
   } finally {
     loading.value = false;
   }

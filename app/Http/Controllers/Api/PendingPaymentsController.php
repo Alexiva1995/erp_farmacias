@@ -187,11 +187,31 @@ class PendingPaymentsController extends Controller
 
         try {
 
-            // 1. Verificar que las facturas no estén ya pagadas
-            $invoices = Invoice::with(['supplier'])
-                ->whereIn('id', $request->invoice_ids)
-                ->get();
+            // 1. Obtener y verificar facturas por ID o número de factura
+            $invoiceIds = (array) $request->input('invoice_ids', []);
+            $invoiceNumbers = (array) $request->input('invoice_numbers', []);
 
+            $invoicesQuery = Invoice::with(['supplier']);
+            if (!empty($invoiceIds) && !empty($invoiceNumbers)) {
+                $invoicesQuery->where(function ($q) use ($invoiceIds, $invoiceNumbers) {
+                    $q->whereIn('id', $invoiceIds)
+                      ->orWhereIn('invoice_number', $invoiceNumbers);
+                });
+            } elseif (!empty($invoiceIds)) {
+                $invoicesQuery->whereIn('id', $invoiceIds);
+            } elseif (!empty($invoiceNumbers)) {
+                $invoicesQuery->whereIn('invoice_number', $invoiceNumbers);
+            } else {
+                return ApiResponse::error('Debe seleccionar al menos una factura para procesar el pago.', 400);
+            }
+
+            $invoices = $invoicesQuery->get();
+
+            if ($invoices->isEmpty()) {
+                return ApiResponse::error('No se encontraron las facturas seleccionadas en el sistema.', 404);
+            }
+
+            $resolvedInvoiceIds = $invoices->pluck('id')->toArray();
 
             foreach ($invoices as $invoice) {
                 if ($invoice->status_payment === 1) {
@@ -203,16 +223,14 @@ class PendingPaymentsController extends Controller
             }
 
             // 2. Verificar duplicados (versión mejorada para pagos parciales)
-            // CORRECCIÓN: Para pagos parciales, ser más permisivo
             if ($request->payment_type === 'partial') {
-                // Solo bloquear si tiene la misma referencia Y es exactamente el mismo pago
                 if (!empty($request->reference)) {
                     $duplicatePayment = InvoicePayment::where('amount', $request->payment_amount)
                         ->where('payment_date', $request->payment_date)
                         ->where('payment_method', $request->payment_currency)
                         ->where('reference', $request->reference)
-                        ->whereHas('invoices', function ($query) use ($request) {
-                            $query->whereIn('id', $request->invoice_ids);
+                        ->whereHas('invoices', function ($query) use ($resolvedInvoiceIds) {
+                            $query->whereIn('id', $resolvedInvoiceIds);
                         })
                         ->first();
 
@@ -223,14 +241,12 @@ class PendingPaymentsController extends Controller
                         );
                     }
                 }
-                // Si no hay referencia, permitir el pago (pagos parciales legítimos)
             } else {
-                // Para pagos completos, mantener validación estricta
                 $duplicatePayment = InvoicePayment::where('amount', $request->payment_amount)
                     ->where('payment_date', $request->payment_date)
                     ->where('payment_method', $request->payment_currency)
-                    ->whereHas('invoices', function ($query) use ($request) {
-                        $query->whereIn('id', $request->invoice_ids);
+                    ->whereHas('invoices', function ($query) use ($resolvedInvoiceIds) {
+                        $query->whereIn('id', $resolvedInvoiceIds);
                     })
                     ->first();
 

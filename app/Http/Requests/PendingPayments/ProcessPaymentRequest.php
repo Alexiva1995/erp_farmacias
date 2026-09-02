@@ -15,8 +15,8 @@ class ProcessPaymentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'invoice_ids' => 'required|array',
-            'invoice_ids.*' => 'exists:invoices,id',
+            'invoice_ids' => 'nullable|array',
+            'invoice_numbers' => 'nullable|array',
             'payment_type' => 'required|in:full,partial',
             'payment_currency' => 'required|in:VES,USD,COP,BS',
             'payment_amount' => 'required|numeric|min:0.01',
