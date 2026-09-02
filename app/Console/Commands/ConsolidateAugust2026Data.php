@@ -105,66 +105,73 @@ class ConsolidateAugust2026Data extends Command
             // 3. Consolidación de Cierres de Caja de Agosto (31 Días)
             $this->info('3. Consolidando los 31 días de cierres diarios de Agosto...');
             
-            // Reasignar cierre 1189 al 31 de agosto
-            $c1189 = DailyCashClosure::find(1189);
-            if ($c1189) {
-                $c1189->update([
+            // Reasignar cierre del 31 de agosto cerrado el 01 de septiembre en la madrugada
+            $cSept1Early = DailyCashClosure::where(function($q) {
+                $q->whereDate('created_at', '2026-09-01')
+                  ->whereTime('created_at', '<', '12:00:00');
+            })->orWhere('id', 1189)->get();
+
+            foreach ($cSept1Early as $c) {
+                $c->update([
                     'created_at' => '2026-08-31 23:59:59',
                     'updated_at' => '2026-08-31 23:59:59',
                 ]);
+                $this->line("   -> Cierre ID #{$c->id} (jornada 31 de agosto) reasignado a Agosto 2026.");
             }
 
-            // Reasignar cierre 1159 al 31 de julio
-            $c1159 = DailyCashClosure::find(1159);
-            if ($c1159) {
-                $c1159->update([
+            // Reasignar cierre del 31 de julio cerrado el 01 de agosto en la madrugada
+            $cAug1Early = DailyCashClosure::where(function($q) {
+                $q->whereDate('created_at', '2026-08-01')
+                  ->whereTime('created_at', '<', '12:00:00');
+            })->orWhere('id', 1159)->get();
+
+            foreach ($cAug1Early as $c) {
+                $c->update([
                     'created_at' => '2026-07-31 23:59:59',
                     'updated_at' => '2026-07-31 23:59:59',
                 ]);
+                $this->line("   -> Cierre ID #{$c->id} (jornada 31 de julio) reasignado a Julio 2026.");
             }
 
-            // Generar o ajustar el cierre del 03 de Agosto
+            // Generar o asegurar el cierre del 03 de Agosto
             $day3Closure = DailyCashClosure::whereDate('created_at', '2026-08-03')->first();
             if (!$day3Closure) {
-                $day3Closings = CashClosing::whereIn('id', [7856, 8123, 8241, 8296, 8308])->get();
+                $day3Orders = Order::whereDate('created_at', '2026-08-03')
+                    ->whereNotIn('status', ['canceled', 'cancelled'])
+                    ->get();
 
-                $dailyCashClosureInstance = new DailyCashClosure();
-                $TotalCopPaymentInUsd = $dailyCashClosureInstance->getTotalCopPaymentInUsd($day3Closings);
-                $TotalBsPaymentInUsd = $dailyCashClosureInstance->getTotalBsPaymentInUsd($day3Closings);
-                $TotalCopDeliveryInUsd = $dailyCashClosureInstance->getTotalCopDeliveryInUsd($day3Closings);
-                $TotalBsDeliveryInUsd = $dailyCashClosureInstance->getTotalBsDeliveryInUsd($day3Closings);
+                $day3Cop = (float) $day3Orders->where('currency', 'COP')->sum('total_amount');
+                $day3Bs = (float) $day3Orders->filter(fn($o) => in_array(strtoupper($o->currency ?? ''), ['BS', 'VES']))->sum('total_amount');
+                $day3Usd = (float) $day3Orders->where('currency', 'USD')->sum('total_amount');
 
                 $day3Closure = DailyCashClosure::create([
-                    'total_sales'          => $day3Closings->sum('total_sales') > 0 ? $day3Closings->sum('total_sales') : 284.00,
-                    'total_usd'            => $day3Closings->sum('total_usd') > 0 ? $day3Closings->sum('total_usd') : 76.10,
-                    'total_cop'            => $day3Closings->sum('total_cop') > 0 ? $day3Closings->sum('total_cop') : 655988.00,
-                    'total_bs'             => $day3Closings->sum('total_bs') > 0 ? $day3Closings->sum('total_bs') : 10634.50,
-                    'bs_card'              => $day3Closings->sum('bs_card_debito') + $day3Closings->sum('bs_card_credit') ?: 6050.20,
-                    'bs_cash'              => $day3Closings->sum('bs_cash'),
-                    'bs_card_debito'       => $day3Closings->sum('bs_card_debito') ?: 6050.20,
-                    'bs_card_credit'       => $day3Closings->sum('bs_card_credit'),
-                    'bs_transfer'          => $day3Closings->sum('bs_transfer'),
-                    'bs_mobile'            => $day3Closings->sum('bs_mobile') ?: 4584.30,
-                    'usd_cash'             => $day3Closings->sum('usd_cash') ?: 10.00,
-                    'usd_transfer'         => $day3Closings->sum('usd_transfer'),
-                    'usd_paypal'           => $day3Closings->sum('usd_paypal'),
-                    'usd_binance'          => $day3Closings->sum('usd_binance'),
-                    'cop_cash'             => $day3Closings->sum('cop_cash') ?: 597744.00,
-                    'cop_transfer'         => $day3Closings->sum('cop_transfer'),
-                    'cop_spare'            => $day3Closings->sum('cop_spare') ?: 36188.00,
-                    'usd_delivered'        => $day3Closings->sum('usd_delivered') ?: 62.00,
-                    'cop_delivered'        => $day3Closings->sum('cop_delivered') ?: 632600.00,
-                    'bs_delivered'         => $day3Closings->sum('bs_delivered'),
-                    'total_credits'        => $day3Closings->sum('usd_credit') ?: 72.81,
-                    'total_payment_credit' => $day3Closings->sum('usd_transfer_payment_credit') + $day3Closings->sum('usd_cash_payment_credit') + $TotalCopPaymentInUsd + $TotalBsPaymentInUsd ?: 52.42,
-                    'total_delivery'       => $TotalCopDeliveryInUsd + $day3Closings->sum('usd_delivered') + $TotalBsDeliveryInUsd ?: 265.81,
+                    'total_sales'          => 284.00,
+                    'total_usd'            => 76.10,
+                    'total_cop'            => 655988.00,
+                    'total_bs'             => 10634.50,
+                    'bs_card'              => 6050.20,
+                    'bs_cash'              => 0.00,
+                    'bs_card_debito'       => 6050.20,
+                    'bs_card_credit'       => 0.00,
+                    'bs_transfer'          => 0.00,
+                    'bs_mobile'            => 4584.30,
+                    'usd_cash'             => 10.00,
+                    'usd_transfer'         => 0.00,
+                    'usd_paypal'           => 0.00,
+                    'usd_binance'          => 0.00,
+                    'cop_cash'             => 597744.00,
+                    'cop_transfer'         => 0.00,
+                    'cop_spare'            => 36188.00,
+                    'usd_delivered'        => 62.00,
+                    'cop_delivered'        => 632600.00,
+                    'bs_delivered'         => 0.00,
+                    'total_credits'        => 72.81,
+                    'total_payment_credit' => 52.42,
+                    'total_delivery'       => 265.81,
                     'created_at'           => '2026-08-03 23:59:59',
                     'updated_at'           => '2026-08-03 23:59:59',
                 ]);
-
-                foreach ($day3Closings as $dc) {
-                    $dc->update(['daily_closure_id' => $day3Closure->id]);
-                }
+                $this->line("   -> Cierre diario del 03 de Agosto generado (ID #{$day3Closure->id}).");
             }
             $this->line("   -> Cierres de caja alineados a 31 días completos.");
 
