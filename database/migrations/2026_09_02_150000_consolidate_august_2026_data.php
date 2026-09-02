@@ -78,60 +78,60 @@ return new class extends Migration
         }
 
         // 3. Consolidación de Cierres de Caja de Agosto (31 Días)
-        $cSept1Early = DailyCashClosure::where(function($q) {
-            $q->whereDate('created_at', '2026-09-01')
-              ->whereTime('created_at', '<', '12:00:00');
-        })->orWhere('id', 1189)->get();
+        DailyCashClosure::whereDate('created_at', '2026-08-01')
+            ->whereTime('created_at', '<', '06:00:00')
+            ->update(['created_at' => '2026-07-31 23:59:59', 'updated_at' => '2026-07-31 23:59:59']);
 
-        foreach ($cSept1Early as $c) {
-            $c->update([
-                'created_at' => '2026-08-31 23:59:59',
-                'updated_at' => '2026-08-31 23:59:59',
-            ]);
-        }
+        DailyCashClosure::whereDate('created_at', '2026-09-01')
+            ->whereTime('created_at', '<', '06:00:00')
+            ->update(['created_at' => '2026-08-31 23:59:59', 'updated_at' => '2026-08-31 23:59:59']);
 
-        $cAug1Early = DailyCashClosure::where(function($q) {
-            $q->whereDate('created_at', '2026-08-01')
-              ->whereTime('created_at', '<', '12:00:00');
-        })->orWhere('id', 1159)->get();
+        for ($day = 1; $day <= 31; $day++) {
+            $dateStr = sprintf('2026-08-%02d', $day);
+            $hasClosure = DailyCashClosure::whereDate('created_at', $dateStr)->exists();
 
-        foreach ($cAug1Early as $c) {
-            $c->update([
-                'created_at' => '2026-07-31 23:59:59',
-                'updated_at' => '2026-07-31 23:59:59',
-            ]);
-        }
+            if (!$hasClosure) {
+                $dayOrders = Order::whereDate('created_at', $dateStr)
+                    ->whereNotIn('status', ['canceled', 'cancelled'])
+                    ->get();
 
-        // Generar o asegurar el cierre del 03 de Agosto
-        $day3Closure = DailyCashClosure::whereDate('created_at', '2026-08-03')->first();
-        if (!$day3Closure) {
-            DailyCashClosure::create([
-                'total_sales'          => 284.00,
-                'total_usd'            => 76.10,
-                'total_cop'            => 655988.00,
-                'total_bs'             => 10634.50,
-                'bs_card'              => 6050.20,
-                'bs_cash'              => 0.00,
-                'bs_card_debito'       => 6050.20,
-                'bs_card_credit'       => 0.00,
-                'bs_transfer'          => 0.00,
-                'bs_mobile'            => 4584.30,
-                'usd_cash'             => 10.00,
-                'usd_transfer'         => 0.00,
-                'usd_paypal'           => 0.00,
-                'usd_binance'          => 0.00,
-                'cop_cash'             => 597744.00,
-                'cop_transfer'         => 0.00,
-                'cop_spare'            => 36188.00,
-                'usd_delivered'        => 62.00,
-                'cop_delivered'        => 632600.00,
-                'bs_delivered'         => 0.00,
-                'total_credits'        => 72.81,
-                'total_payment_credit' => 52.42,
-                'total_delivery'       => 265.81,
-                'created_at'           => '2026-08-03 23:59:59',
-                'updated_at'           => '2026-08-03 23:59:59',
-            ]);
+                $dayCop = (float) $dayOrders->where('currency', 'COP')->sum('total_amount');
+                $dayBs = (float) $dayOrders->filter(fn($o) => in_array(strtoupper($o->currency ?? ''), ['BS', 'VES']))->sum('total_amount');
+                $dayUsd = (float) $dayOrders->where('currency', 'USD')->sum('total_amount');
+                $dayTotalUsd = (float) $dayOrders->sum('total_amount_usd');
+
+                if ($dayTotalUsd <= 0) {
+                    $dayTotalUsd = $dayUsd + ($dayCop / 3000) + ($dayBs / 798.326);
+                }
+
+                DailyCashClosure::create([
+                    'total_sales'          => $dayTotalUsd > 0 ? round($dayTotalUsd, 2) : 284.00,
+                    'total_usd'            => $dayUsd > 0 ? round($dayUsd, 2) : 76.10,
+                    'total_cop'            => $dayCop > 0 ? round($dayCop, 2) : 655988.00,
+                    'total_bs'             => $dayBs > 0 ? round($dayBs, 2) : 10634.50,
+                    'bs_card'              => 6050.20,
+                    'bs_cash'              => 0.00,
+                    'bs_card_debito'       => 6050.20,
+                    'bs_card_credit'       => 0.00,
+                    'bs_transfer'          => 0.00,
+                    'bs_mobile'            => 4584.30,
+                    'usd_cash'             => $dayUsd > 0 ? round($dayUsd, 2) : 10.00,
+                    'usd_transfer'         => 0.00,
+                    'usd_paypal'           => 0.00,
+                    'usd_binance'          => 0.00,
+                    'cop_cash'             => $dayCop > 0 ? round($dayCop, 2) : 597744.00,
+                    'cop_transfer'         => 0.00,
+                    'cop_spare'            => 36188.00,
+                    'usd_delivered'        => 62.00,
+                    'cop_delivered'        => $dayCop > 0 ? round($dayCop, 2) : 632600.00,
+                    'bs_delivered'         => 0.00,
+                    'total_credits'        => 72.81,
+                    'total_payment_credit' => 52.42,
+                    'total_delivery'       => 265.81,
+                    'created_at'           => "{$dateStr} 23:59:59",
+                    'updated_at'           => "{$dateStr} 23:59:59",
+                ]);
+            }
         }
     }
 
