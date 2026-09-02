@@ -217,12 +217,14 @@ const handleMarkAsPaid = async (item) => {
       try {
         await axios.patch(
           `/finances/pending-payments/invoices/${item.id}/mark-as-paid`,
+          { invoice_number: item.invoice_number }
         );
         toast.success("Factura marcada como pagada directamente");
-        fetchPendingPayments();
+        await fetchPendingPayments();
       } catch (error) {
         console.error("Error al marcar como pagada:", error);
-        toast.error("No se pudo marcar la factura como pagada");
+        toast.error(error.response?.data?.message || "No se pudo marcar la factura como pagada");
+        await fetchPendingPayments();
       }
     },
   );

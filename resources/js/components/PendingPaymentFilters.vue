@@ -35,9 +35,9 @@ const hasActiveFilters = computed(() =>
 <template>
   <VCard class="rounded-lg border shadow-sm mb-4 app-filter-single-row">
     <VCardText class="pa-2 px-3">
-      <VRow align="center" dense class="d-flex align-center flex-wrap ga-2">
+      <div class="d-flex align-center flex-wrap flex-md-nowrap gap-2 w-100">
         <!-- Buscador N° Factura -->
-        <VCol cols="12" sm="6" md="3" lg="2" class="d-flex align-center">
+        <div class="filter-search-box">
           <AppTextField
             :model-value="props.searchQuery"
             placeholder="Buscar N° Factura..."
@@ -48,10 +48,10 @@ const hasActiveFilters = computed(() =>
             hide-details
             @update:model-value="emit('update:searchQuery', $event)"
           />
-        </VCol>
+        </div>
 
         <!-- Selector Proveedor -->
-        <VCol cols="12" sm="6" md="3" lg="2.5" class="d-flex align-center">
+        <div class="filter-supplier-box">
           <VAutocomplete
             :model-value="props.selectedSupplier"
             :items="props.suppliers"
@@ -66,10 +66,10 @@ const hasActiveFilters = computed(() =>
             prepend-inner-icon="tabler-building-factory-2"
             @update:model-value="emit('update:selectedSupplier', $event)"
           />
-        </VCol>
+        </div>
 
         <!-- Fecha Desde -->
-        <VCol cols="6" sm="4" md="2" lg="1.5" class="d-flex align-center">
+        <div class="filter-date-box">
           <AppDateTimePicker
             :model-value="props.startDate"
             placeholder="Desde"
@@ -81,10 +81,10 @@ const hasActiveFilters = computed(() =>
             prepend-inner-icon="tabler-calendar"
             @update:model-value="emit('update:startDate', $event)"
           />
-        </VCol>
+        </div>
 
         <!-- Fecha Hasta -->
-        <VCol cols="6" sm="4" md="2" lg="1.5" class="d-flex align-center">
+        <div class="filter-date-box">
           <AppDateTimePicker
             :model-value="props.endDate"
             placeholder="Hasta"
@@ -96,10 +96,10 @@ const hasActiveFilters = computed(() =>
             prepend-inner-icon="tabler-calendar-check"
             @update:model-value="emit('update:endDate', $event)"
           />
-        </VCol>
+        </div>
 
         <!-- Checkbox Solo Vencidos -->
-        <VCol cols="auto" class="d-flex align-center">
+        <div class="filter-checkbox-box">
           <VCheckbox
             :model-value="props.showOverdueOnly"
             label="Solo Vencidos"
@@ -109,28 +109,13 @@ const hasActiveFilters = computed(() =>
             class="text-no-wrap"
             @update:model-value="emit('update:showOverdueOnly', $event)"
           />
-        </VCol>
+        </div>
 
         <VSpacer class="d-none d-md-flex" />
 
         <!-- Acciones a la derecha -->
-        <VCol cols="12" sm="auto" class="d-flex align-center justify-end gap-1 flex-wrap ms-auto">
+        <div class="d-flex align-center gap-1 flex-shrink-0 ms-auto">
           <slot name="selection-actions" />
-
-          <!-- Botón Limpiar Filtros -->
-          <VBtn
-            v-if="hasActiveFilters"
-            icon
-            variant="tonal"
-            color="error"
-            size="38"
-            rounded="circle"
-            class="shadow-sm"
-            @click="emit('clear')"
-          >
-            <VIcon icon="tabler-filter-x" size="20" />
-            <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
-          </VBtn>
 
           <!-- Botón Sincronizar Bots -->
           <VBtn
@@ -144,25 +129,24 @@ const hasActiveFilters = computed(() =>
             @click="emit('sync-bots')"
           >
             <VIcon icon="tabler-robot" size="20" />
-            <VTooltip activator="parent" location="top">Sincronizar Facturas con Droguerías</VTooltip>
+            <VTooltip activator="parent" location="top">Sincronizar Facturas (Dronena, Drocerca, Mafarta, Cristmedicals, Dromega y Drosymca)</VTooltip>
           </VBtn>
 
-          <!-- Botón Refrescar -->
+          <!-- Botón Borrar / Limpiar Filtros -->
           <VBtn
             icon
             variant="tonal"
-            color="primary"
+            color="secondary"
             size="38"
             rounded="circle"
             class="shadow-sm"
-            :loading="props.loading"
-            @click="emit('refresh')"
+            @click="emit('clear')"
           >
-            <VIcon icon="tabler-refresh" size="20" />
-            <VTooltip activator="parent" location="top">Actualizar Datos</VTooltip>
+            <VIcon icon="tabler-eraser" size="20" />
+            <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
           </VBtn>
-        </VCol>
-      </VRow>
+        </div>
+      </div>
     </VCardText>
   </VCard>
 </template>
@@ -170,5 +154,38 @@ const hasActiveFilters = computed(() =>
 <style scoped>
 .app-filter-single-row {
   background-color: rgb(var(--v-theme-surface));
+}
+
+.filter-search-box {
+  flex: 1 1 180px;
+  min-inline-size: 160px;
+}
+
+.filter-supplier-box {
+  flex: 1 1 200px;
+  min-inline-size: 160px;
+}
+
+.filter-date-box {
+  flex: 0 0 135px;
+  inline-size: 135px;
+  min-inline-size: 125px;
+}
+
+.filter-checkbox-box {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 960px) {
+  .filter-search-box,
+  .filter-supplier-box {
+    inline-size: 100%;
+    min-inline-size: 100%;
+  }
+
+  .filter-date-box {
+    flex: 1 1 calc(50% - 8px);
+    inline-size: auto;
+  }
 }
 </style>

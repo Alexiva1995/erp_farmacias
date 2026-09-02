@@ -1201,13 +1201,27 @@ class PendingPaymentsController extends Controller
     /**
      * Marcar una factura como pagada directamente (sin generar gastos)
      */
-    public function markAsPaidDirectly(int $invoiceId): JsonResponse
+    public function markAsPaidDirectly(Request $request, $invoiceId): JsonResponse
     {
         try {
-            $invoice = Invoice::findOrFail($invoiceId);
+            $invoice = Invoice::find($invoiceId);
+            
+            if (!$invoice && $request->filled('invoice_number')) {
+                $rawNum = (string) $request->input('invoice_number');
+                $cleanNum = ltrim(preg_replace('/\D/', '', $rawNum) ?: $rawNum, '0');
+                $invoice = Invoice::where('invoice_number', $rawNum)
+                    ->orWhere('invoice_number', 'LIKE', "%{$cleanNum}")
+                    ->first();
+            }
+
+            if (!$invoice) {
+                return ApiResponse::error("No se encontró la factura #{$invoiceId} en el sistema. Es posible que haya sido actualizada o sincronizada recientemente.", 404);
+            }
+
             $invoice->update([
                 'status_payment' => 1,
-                'status' => 'ordered'
+                'status' => 'ordered',
+                'payment_date' => $invoice->payment_date ?: now()->toDateString(),
             ]);
 
             return ApiResponse::success($invoice, 'Factura marcada como pagada (sin registro de gasto)');
@@ -1223,11 +1237,21 @@ class PendingPaymentsController extends Controller
     {
         try {
             $invoiceIds = $request->input('invoice_ids', []);
-            if (empty($invoiceIds) || !is_array($invoiceIds)) {
+            $invoiceNumbers = $request->input('invoice_numbers', []);
+
+            if (empty($invoiceIds) && empty($invoiceNumbers)) {
                 return ApiResponse::error('No se especificaron facturas a marcar.', 422);
             }
 
-            $updated = Invoice::whereIn('id', $invoiceIds)->update([
+            $query = Invoice::query();
+            if (!empty($invoiceIds) && is_array($invoiceIds)) {
+                $query->whereIn('id', $invoiceIds);
+            }
+            if (!empty($invoiceNumbers) && is_array($invoiceNumbers)) {
+                $query->orWhereIn('invoice_number', $invoiceNumbers);
+            }
+
+            $updated = $query->update([
                 'status_payment' => 1,
                 'status' => 'ordered',
                 'payment_date' => now()->toDateString(),
@@ -1249,11 +1273,21 @@ class PendingPaymentsController extends Controller
     {
         try {
             $invoiceIds = $request->input('invoice_ids', []);
-            if (empty($invoiceIds) || !is_array($invoiceIds)) {
+            $invoiceNumbers = $request->input('invoice_numbers', []);
+
+            if (empty($invoiceIds) && empty($invoiceNumbers)) {
                 return ApiResponse::error('No se especificaron facturas a marcar.', 422);
             }
 
-            $updated = Invoice::whereIn('id', $invoiceIds)->update([
+            $query = Invoice::query();
+            if (!empty($invoiceIds) && is_array($invoiceIds)) {
+                $query->whereIn('id', $invoiceIds);
+            }
+            if (!empty($invoiceNumbers) && is_array($invoiceNumbers)) {
+                $query->orWhereIn('invoice_number', $invoiceNumbers);
+            }
+
+            $updated = $query->update([
                 'status_payment' => 0,
                 'status' => 'pending',
             ]);
