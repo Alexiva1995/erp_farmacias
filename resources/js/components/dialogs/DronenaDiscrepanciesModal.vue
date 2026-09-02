@@ -439,7 +439,7 @@ const handleMarkAllDromegaPaidAsPending = async () => {
 <template>
   <VDialog
     :model-value="props.modelValue"
-    max-width="1000"
+    max-width="1180"
     scrollable
     persistent
     @update:model-value="emit('update:modelValue', $event)"
@@ -457,7 +457,7 @@ const handleMarkAllDromegaPaidAsPending = async () => {
                 Resultado de Sincronización con Droguerías
               </VCardTitle>
               <VCardSubtitle class="text-white text-caption opacity-90">
-                Resumen de Dronena, Drocerca, Cobeca / Mafarta y Cristmedicals
+                Resumen de Dronena, Drocerca, Cobeca / Mafarta, Cristmedicals, Droguería Mega y Drosymca
               </VCardSubtitle>
             </div>
           </div>
@@ -468,30 +468,39 @@ const handleMarkAllDromegaPaidAsPending = async () => {
       </VCardItem>
 
       <!-- Pestañas de Navegación por Droguería -->
-      <div class="bg-surface border-b px-4">
-        <VTabs v-model="activeTab" color="primary" density="compact">
+      <div class="bg-surface border-b px-2">
+        <VTabs v-model="activeTab" color="primary" density="compact" show-arrows>
           <VTab value="dronena">
-            <VIcon icon="tabler-building-warehouse" class="mr-2" size="18" />
+            <VIcon icon="tabler-building-warehouse" class="mr-1" size="18" />
             Dronena
             <VChip
               v-if="hasDiscrepancies"
               size="x-small"
               color="warning"
               variant="flat"
-              class="ml-2"
+              class="ml-1"
             >
               {{ paidInErpPendingInPortal.length + pendingInErpPaidInPortal.length }}
             </VChip>
+            <VChip
+              v-else-if="(dronenaData.updated || 0) > 0"
+              size="x-small"
+              color="info"
+              variant="flat"
+              class="ml-1"
+            >
+              {{ dronenaData.updated }}
+            </VChip>
           </VTab>
           <VTab value="drocerca">
-            <VIcon icon="tabler-building-factory-2" class="mr-2" size="18" />
+            <VIcon icon="tabler-building-factory-2" class="mr-1" size="18" />
             Drocerca
             <VChip
               v-if="(drocercaPaidInErpPending.length + drocercaPendingPaid.length) > 0"
               size="x-small"
               color="warning"
               variant="flat"
-              class="ml-2"
+              class="ml-1"
             >
               {{ drocercaPaidInErpPending.length + drocercaPendingPaid.length }}
             </VChip>
@@ -500,20 +509,29 @@ const handleMarkAllDromegaPaidAsPending = async () => {
               size="x-small"
               color="success"
               variant="flat"
-              class="ml-2"
+              class="ml-1"
             >
-              +{{ drocercaData.created }} nuevas
+              +{{ drocercaData.created }}
+            </VChip>
+            <VChip
+              v-else-if="(drocercaData.updated || 0) > 0"
+              size="x-small"
+              color="info"
+              variant="flat"
+              class="ml-1"
+            >
+              {{ drocercaData.updated }}
             </VChip>
           </VTab>
           <VTab value="mafarta">
-            <VIcon icon="tabler-building" class="mr-2" size="18" />
+            <VIcon icon="tabler-building" class="mr-1" size="18" />
             Cobeca / Mafarta
             <VChip
               v-if="(mafartaPaidInErpPending.length + mafartaPendingPaid.length) > 0"
               size="x-small"
               color="warning"
               variant="flat"
-              class="ml-2"
+              class="ml-1"
             >
               {{ mafartaPaidInErpPending.length + mafartaPendingPaid.length }}
             </VChip>
@@ -522,20 +540,29 @@ const handleMarkAllDromegaPaidAsPending = async () => {
               size="x-small"
               color="success"
               variant="flat"
-              class="ml-2"
+              class="ml-1"
             >
-              +{{ mafartaData.created }} nuevas
+              +{{ mafartaData.created }}
+            </VChip>
+            <VChip
+              v-else-if="(mafartaData.updated || 0) > 0"
+              size="x-small"
+              color="info"
+              variant="flat"
+              class="ml-1"
+            >
+              {{ mafartaData.updated }}
             </VChip>
           </VTab>
           <VTab value="cristmedicals">
-            <VIcon icon="tabler-building-hospital" class="mr-2" size="18" />
+            <VIcon icon="tabler-building-hospital" class="mr-1" size="18" />
             Cristmedicals
             <VChip
               v-if="(cristmedicalsPaidInErpPending.length + cristmedicalsPendingInErpPaid.length) > 0"
               size="x-small"
               color="warning"
               variant="flat"
-              class="ml-2"
+              class="ml-1"
             >
               {{ cristmedicalsPaidInErpPending.length + cristmedicalsPendingInErpPaid.length }}
             </VChip>
@@ -544,29 +571,29 @@ const handleMarkAllDromegaPaidAsPending = async () => {
               size="x-small"
               color="success"
               variant="flat"
-              class="ml-2"
+              class="ml-1"
             >
-              +{{ cristmedicalsData.created }} nuevas
+              +{{ cristmedicalsData.created }}
             </VChip>
             <VChip
               v-else-if="(cristmedicalsData.updated || 0) > 0"
               size="x-small"
               color="info"
               variant="flat"
-              class="ml-2"
+              class="ml-1"
             >
-              {{ cristmedicalsData.updated }} act.
+              {{ cristmedicalsData.updated }}
             </VChip>
           </VTab>
           <VTab value="dromega">
-            <VIcon icon="tabler-pill" class="mr-2" size="18" />
+            <VIcon icon="tabler-pill" class="mr-1" size="18" />
             Droguería Mega
             <VChip
               v-if="hasDromegaDiscrepancies"
               size="x-small"
               color="warning"
               variant="flat"
-              class="ml-2"
+              class="ml-1"
             >
               {{ dromegaPaidInErpPending.length + dromegaPendingInErpPaid.length }}
             </VChip>
@@ -575,40 +602,49 @@ const handleMarkAllDromegaPaidAsPending = async () => {
               size="x-small"
               color="success"
               variant="flat"
-              class="ml-2"
+              class="ml-1"
             >
-              +{{ dromegaData.created }} nuevas
+              +{{ dromegaData.created }}
             </VChip>
             <VChip
               v-else-if="(dromegaData.updated || 0) > 0"
               size="x-small"
               color="info"
               variant="flat"
-              class="ml-2"
+              class="ml-1"
             >
-              {{ dromegaData.updated }} act.
+              {{ dromegaData.updated }}
             </VChip>
           </VTab>
           <VTab value="drosymca">
-            <VIcon icon="tabler-building-store" class="mr-2" size="18" />
+            <VIcon icon="tabler-building-store" class="mr-1" size="18" />
             Drosymca
             <VChip
               v-if="(drosymcaData.created || 0) > 0"
               size="x-small"
               color="success"
               variant="flat"
-              class="ml-2"
+              class="ml-1"
             >
-              +{{ drosymcaData.created }} nuevas
+              +{{ drosymcaData.created }}
             </VChip>
             <VChip
               v-else-if="(drosymcaData.updated || 0) > 0"
               size="x-small"
               color="info"
               variant="flat"
-              class="ml-2"
+              class="ml-1"
             >
-              {{ drosymcaData.updated }} act.
+              {{ drosymcaData.updated }}
+            </VChip>
+            <VChip
+              v-else-if="(drosymcaData.total_extracted || 0) > 0"
+              size="x-small"
+              color="secondary"
+              variant="flat"
+              class="ml-1"
+            >
+              {{ drosymcaData.total_extracted }}
             </VChip>
           </VTab>
         </VTabs>
