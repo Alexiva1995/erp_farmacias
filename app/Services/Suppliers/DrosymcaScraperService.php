@@ -279,9 +279,10 @@ class DrosymcaScraperService implements DrosymcaScraperServiceInterface
             $totalAmount = $this->parseAmount($rawTotal);
             $balance = $this->parseAmount($rawBalance);
 
-            // Si está vencida o la fecha de vencimiento es igual o anterior a hoy, pasa a indexada
-            $isOverdue = str_contains(strtolower($rawDays), 'vencid') || ($dueDate && $dueDate <= $today);
-            $isIndexed = $isOverdue;
+            // Si la factura vence hoy, se mantiene NO indexada (hoy es el último día vigente).
+            // Pasa a indexada únicamente si la fecha de vencimiento ya pasó (ayer o antes).
+            $isOverdue = str_contains(strtolower($rawDays), 'vencid') && ($dueDate && $dueDate < $today);
+            $isIndexed = ($dueDate && $dueDate < $today) || $isOverdue;
 
             $invoices[] = [
                 'document_number' => $rawDocNum,
@@ -476,8 +477,8 @@ class DrosymcaScraperService implements DrosymcaScraperServiceInterface
             $expDate = !empty($doc['due_date']) ? Carbon::parse($doc['due_date'])->format('Y-m-d') : null;
             $emisionDate = !empty($doc['issue_date']) ? Carbon::parse($doc['issue_date'])->format('Y-m-d') : null;
 
-            // Factura indexada si la fecha de vencimiento es igual o anterior a hoy
-            $isIndexed = ($expDate && $expDate <= $today) || !empty($doc['is_overdue']);
+            // Factura indexada SOLO si la fecha de vencimiento ya pasó (ayer o antes). Si vence hoy, es el último día no indexada.
+            $isIndexed = !empty($expDate) && ($expDate < $today);
 
             // Múltiples formatos posibles para buscar la factura en el ERP
             $possibleNumbers = array_unique([

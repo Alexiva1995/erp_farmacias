@@ -155,8 +155,8 @@ class DrocercaScraperService implements DrocercaScraperServiceInterface
             $isIndexed = false;
             if ($edoItem) {
                 $fIndexa = $edoItem['f_indexa_db']; // formato Y-m-d
-                // Si la fecha de indexación (F.Indexa) es igual o menor a hoy (ya pasó o es hoy), está indexada
-                if (!empty($fIndexa) && $fIndexa <= $today) {
+                // Si la fecha de indexación (F.Indexa) ya pasó (ayer o antes), está indexada. Si vence hoy, se mantiene no indexada.
+                if (!empty($fIndexa) && $fIndexa < $today) {
                     $isIndexed = true;
                 }
                 if (!empty($edoItem['fecha_vencimiento_db'])) {
