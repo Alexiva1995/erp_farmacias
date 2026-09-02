@@ -129,9 +129,18 @@ class TraceabilityController extends Controller
      */
     public function getMovementDetails(InventoryMovement $movement): JsonResponse
     {
-        $movement->load(['product', 'user.employee', 'order.seller.employee', 'order.client', 'order' => function ($query) {
-            $query->select('id', 'url_recipe', 'seller_id', 'client_id');
-        }, 'invoice.supplier', 'supplier']);
+        $movement->load([
+            'product.laboratory',
+            'productLot',
+            'user.employee',
+            'order.seller.employee',
+            'order.client',
+            'order' => function ($query) {
+                $query->select('id', 'url_recipe', 'seller_id', 'client_id');
+            },
+            'invoice.supplier',
+            'supplier'
+        ]);
 
         $rawType = $movement->getAttributes()['movement_type'] ?? null;
 
@@ -185,19 +194,62 @@ class TraceabilityController extends Controller
 
             case 'adjustment':
             case 'loss':
-                $productCount = null;
+                $countRecord = null;
                 if ($movement->product_count_id) {
-                    $productCount = \App\Models\ProductCount::with(['user.employee', 'supervisor.employee'])->find($movement->product_count_id);
+                    $countRecord = \App\Models\ProductCount::with(['user.employee', 'supervisor.employee'])->find($movement->product_count_id);
                 }
 
-                if ($productCount) {
-                    $details['counted_by'] = $productCount->user;
-                    $details['approved_by'] = $productCount->supervisor ?? $movement->user;
-                    $details['product_count'] = $productCount;
+                if (!$countRecord) {
+                    $mDate = Carbon::parse($movement->created_at ?? $movement->movement_date);
+                    $countRecord = \App\Models\SaleCount::with(['user.employee', 'supervisor.employee'])
+                        ->where('product_id', $movement->product_id)
+                        ->where(function ($q) use ($mDate) {
+                            $q->whereBetween('updated_at', [$mDate->copy()->subHours(24), $mDate->copy()->addHours(24)])
+                              ->orWhereBetween('created_at', [$mDate->copy()->subDays(2), $mDate->copy()->addHours(24)]);
+                        })
+                        ->orderBy('id', 'desc')
+                        ->first();
+                }
+
+                if (!$countRecord) {
+                    $mDate = Carbon::parse($movement->created_at ?? $movement->movement_date);
+                    $countRecord = \App\Models\ProductCount::with(['user.employee', 'supervisor.employee'])
+                        ->where('product_id', $movement->product_id)
+                        ->where(function ($q) use ($mDate) {
+                            $q->whereBetween('updated_at', [$mDate->copy()->subHours(24), $mDate->copy()->addHours(24)])
+                              ->orWhereBetween('created_at', [$mDate->copy()->subDays(2), $mDate->copy()->addHours(24)]);
+                        })
+                        ->orderBy('id', 'desc')
+                        ->first();
+                }
+
+                if (!$countRecord) {
+                    $mDate = Carbon::parse($movement->created_at ?? $movement->movement_date);
+                    $countRecord = \App\Models\InvoiceCount::with(['user.employee', 'supervisor.employee'])
+                        ->where('product_id', $movement->product_id)
+                        ->where(function ($q) use ($mDate) {
+                            $q->whereBetween('updated_at', [$mDate->copy()->subHours(24), $mDate->copy()->addHours(24)])
+                              ->orWhereBetween('created_at', [$mDate->copy()->subDays(2), $mDate->copy()->addHours(24)]);
+                        })
+                        ->orderBy('id', 'desc')
+                        ->first();
+                }
+
+                if ($countRecord) {
+                    $details['counted_by'] = $countRecord->user;
+                    $details['approved_by'] = $countRecord->supervisor ?? $movement->user;
+                    $details['count_date'] = $countRecord->created_at;
+                    $details['approval_date'] = $countRecord->updated_at ?? $movement->movement_date;
+                    $details['counted_quantity'] = (float) $countRecord->counted_quantity;
+                    $details['system_quantity'] = (float) $countRecord->system_quantity;
+                    $details['discrepancy'] = (float) $countRecord->discrepancy;
+                    $details['product_count'] = $countRecord;
                 } else {
                     // Si el movimiento no devino de un ciclo de conteo, la persona responsable es el operador que ejecutó el movimiento
                     $details['counted_by'] = $movement->user;
                     $details['approved_by'] = $movement->user;
+                    $details['count_date'] = $movement->movement_date;
+                    $details['approval_date'] = $movement->movement_date;
                 }
                 break;
 

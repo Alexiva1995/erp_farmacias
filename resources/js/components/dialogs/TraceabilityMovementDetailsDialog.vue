@@ -291,7 +291,7 @@ const getUserDisplayName = (user) => {
                     <span class="text-super-xs text-disabled text-uppercase font-weight-black">Lote Afectado</span>
                     <div class="d-flex align-center mt-1">
                       <VChip size="x-small" color="secondary" variant="tonal" class="font-weight-black">
-                        {{ movementDetails.movement?.product_lot?.lot_number || 'N/A' }}
+                        {{ movementDetails.movement?.product_lot?.lot_number || movementDetails.movement?.productLot?.lot_number || 'N/A' }}
                       </VChip>
                     </div>
                   </div>
@@ -366,18 +366,39 @@ const getUserDisplayName = (user) => {
               </div>
 
               <!-- Casos de Auditoría (Ajuste, Pérdida) -->
-              <div v-else-if="['adjustment', 'loss'].includes(movementDetails.type)" class="d-flex flex-column gap-2">
-                <div class="d-flex align-center justify-space-between border-b pb-2 mb-2">
-                  <span class="text-caption font-weight-bold text-disabled">Auditado por:</span>
-                  <span class="text-body-2 font-weight-black text-primary">
-                    {{ getUserDisplayName(movementDetails.counted_by || movementDetails.movement?.user) }}
-                  </span>
+              <div v-else-if="['adjustment', 'loss'].includes(movementDetails.type)" class="d-flex flex-column gap-3">
+                <div class="d-flex align-center justify-space-between border-b pb-2">
+                  <div class="d-flex flex-column">
+                    <span class="text-caption font-weight-black text-disabled text-uppercase">Conteo Físico Inicial</span>
+                    <span v-if="movementDetails.count_date" class="text-super-xs text-disabled">
+                      Fecha: {{ formatDate(movementDetails.count_date) }}
+                    </span>
+                  </div>
+                  <div class="text-end">
+                    <span class="text-body-2 font-weight-black text-primary d-block">
+                      {{ getUserDisplayName(movementDetails.counted_by || movementDetails.movement?.user) }}
+                    </span>
+                    <span v-if="movementDetails.counted_quantity !== undefined" class="text-super-xs font-weight-bold text-medium-emphasis">
+                      Físico: {{ movementDetails.counted_quantity }} | Sistema: {{ movementDetails.system_quantity }}
+                    </span>
+                  </div>
                 </div>
+
                 <div class="d-flex align-center justify-space-between">
-                  <span class="text-caption font-weight-bold text-disabled">Aprobado por:</span>
-                  <span class="text-body-2 font-weight-black text-success">
-                    {{ getUserDisplayName(movementDetails.approved_by || movementDetails.movement?.user) }}
-                  </span>
+                  <div class="d-flex flex-column">
+                    <span class="text-caption font-weight-black text-disabled text-uppercase">Auditado y Aprobado por</span>
+                    <span v-if="movementDetails.approval_date" class="text-super-xs text-disabled">
+                      Fecha: {{ formatDate(movementDetails.approval_date) }}
+                    </span>
+                  </div>
+                  <div class="text-end">
+                    <span class="text-body-2 font-weight-black text-success d-block">
+                      {{ getUserDisplayName(movementDetails.approved_by || movementDetails.movement?.user) }}
+                    </span>
+                    <VChip v-if="movementDetails.discrepancy !== undefined" size="x-small" :color="movementDetails.discrepancy >= 0 ? 'success' : 'error'" variant="tonal" class="font-weight-black mt-1">
+                      Discrepancia: {{ movementDetails.discrepancy >= 0 ? '+' : '' }}{{ movementDetails.discrepancy }}
+                    </VChip>
+                  </div>
                 </div>
               </div>
 
