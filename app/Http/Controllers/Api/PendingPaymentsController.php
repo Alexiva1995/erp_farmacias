@@ -321,7 +321,7 @@ class PendingPaymentsController extends Controller
             ]);
 
             // 5. Crear relaciones en tabla pivot
-            foreach ($request->invoice_ids as $invoiceId) {
+            foreach ($resolvedInvoiceIds as $invoiceId) {
                 DB::table('invoice_payment_invoice')->insert([
                     'payment_id' => $payment->id,
                     'invoice_id' => $invoiceId,
@@ -332,7 +332,7 @@ class PendingPaymentsController extends Controller
             if ($request->payment_type === 'full') {
                 $paymentStatus = 1; // Pago Completo: se liquida la factura
             } else {
-                $paymentStatus = $this->determinePaymentStatusCorrected($request->invoice_ids, $amountUSD, $totalInvoiceAmount);
+                $paymentStatus = $this->determinePaymentStatusCorrected($resolvedInvoiceIds, $amountUSD, $totalInvoiceAmount);
             }
 
             // Preparar datos de actualización
@@ -347,7 +347,7 @@ class PendingPaymentsController extends Controller
                 $updateData['payment_date'] = $request->payment_date;
             }
 
-            Invoice::whereIn('id', $request->invoice_ids)->update($updateData);
+            Invoice::whereIn('id', $resolvedInvoiceIds)->update($updateData);
 
             // 7. Crear expense
             $this->createExpense($invoices, $payment, false);
