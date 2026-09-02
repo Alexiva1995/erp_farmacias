@@ -127,15 +127,19 @@ class PendingPaymentsService
                 'supplier_preferred_currency' => $supplierPreferredCurrency,
                 'invoice_count' => $group->count(),
                 'invoices' => $group->map(function ($invoice) use ($totalInSupplierCurrency, $totalAmountUSD, $exchangeRates, $vesRate, $copRate, $bcvRateVal) {
+                    $effectiveUsd = ((float) ($invoice->total_amount_discount ?? 0) > 0)
+                        ? (float) $invoice->total_amount_discount
+                        : (float) $invoice->total_usd;
+
                     $indexedData = $this->calculateIndexedAmountData($invoice, $exchangeRates);
 
                     if ($invoice->is_indexed && $invoice->currency === 'Bs') {
-                        $invoiceRemainingUSD = $invoice->total_usd;
-                        $invoiceRemainingOriginal = round($invoice->total_usd * $bcvRateVal, 2);
+                        $invoiceRemainingUSD = $effectiveUsd;
+                        $invoiceRemainingOriginal = round($effectiveUsd * $bcvRateVal, 2);
                     } else {
-                        $invoiceRemainingUSD = $invoice->total_usd;
-                        $nonIndexedBs = ($invoice->total_usd > 0 && (float) ($invoice->exchange_rate ?? 0) > 0)
-                            ? round($invoice->total_usd * (float) $invoice->exchange_rate, 2)
+                        $invoiceRemainingUSD = $effectiveUsd;
+                        $nonIndexedBs = ($effectiveUsd > 0 && (float) ($invoice->exchange_rate ?? 0) > 0)
+                            ? round($effectiveUsd * (float) $invoice->exchange_rate, 2)
                             : $invoice->total_amount;
                         $invoiceRemainingOriginal = $nonIndexedBs;
 
@@ -155,7 +159,7 @@ class PendingPaymentsService
                                 }
                             }
 
-                            $invoiceRemainingUSD = max(0, $invoice->total_usd - $totalPaidUSD);
+                            $invoiceRemainingUSD = max(0, $effectiveUsd - $totalPaidUSD);
 
                             if ($invoice->currency === 'Bs') {
                                 $invoiceRemainingOriginal = round($invoiceRemainingUSD * $vesRate, 2);
@@ -168,7 +172,7 @@ class PendingPaymentsService
                     }
 
                     $displayAmount = $indexedData['is_indexed'] ? $indexedData['indexed_amount'] : $invoiceRemainingOriginal;
-                    $displayOriginalAmount = $indexedData['is_indexed'] ? $indexedData['indexed_amount'] : (($invoice->total_usd > 0 && (float) ($invoice->exchange_rate ?? 0) > 0) ? round($invoice->total_usd * (float) $invoice->exchange_rate, 2) : $invoice->total_amount);
+                    $displayOriginalAmount = $indexedData['is_indexed'] ? $indexedData['indexed_amount'] : (($effectiveUsd > 0 && (float) ($invoice->exchange_rate ?? 0) > 0) ? round($effectiveUsd * (float) $invoice->exchange_rate, 2) : $invoice->total_amount);
 
                     return [
                         'id' => $invoice->id,
@@ -176,12 +180,12 @@ class PendingPaymentsService
                         'control_number' => $invoice->control_number ?? 'N/A',
                         'supplier_rif' => $invoice->supplier?->rif ?? 'N/A',
                         'total_amount' => $displayAmount,
-                        'total_usd' => $invoice->total_usd,
+                        'total_usd' => $effectiveUsd,
                         'invoiceRemainingUSD' => $invoiceRemainingUSD,
                         'remaining_amount' => $invoiceRemainingOriginal,
                         'remaining_amount_usd' => $invoiceRemainingUSD,
                         'original_amount' => $displayOriginalAmount,
-                        'original_amount_usd' => $invoice->total_usd,
+                        'original_amount_usd' => $effectiveUsd,
                         'currency' => $invoice->currency,
                         'is_indexed' => $invoice->is_indexed ?? false,
                         'claim_amount' => (float) ($invoice->claim_amount ?? 0),
@@ -246,10 +250,14 @@ class PendingPaymentsService
      */
     private function calculateIndexedAmountData(Invoice $invoice, Collection $exchangeRates): array
     {
+        $usdAmount = ((float) ($invoice->total_amount_discount ?? 0) > 0)
+            ? (float) $invoice->total_amount_discount
+            : (float) $invoice->total_usd;
+
         if (!$invoice->is_indexed || $invoice->currency !== 'Bs') {
             return [
                 'original_amount' => $invoice->total_amount,
-                'original_amount_usd' => $invoice->total_usd,
+                'original_amount_usd' => $usdAmount,
                 'is_indexed' => false
             ];
         }
@@ -258,18 +266,18 @@ class PendingPaymentsService
         if (!$exchangeRate) {
             return [
                 'original_amount' => $invoice->total_amount,
-                'original_amount_usd' => $invoice->total_usd,
+                'original_amount_usd' => $usdAmount,
                 'is_indexed' => false
             ];
         }
 
-        $indexedAmountBs = round($invoice->total_usd * $exchangeRate->rate, 2);
+        $indexedAmountBs = round($usdAmount * $exchangeRate->rate, 2);
 
         return [
             'original_amount' => $invoice->total_amount,
-            'original_amount_usd' => $invoice->total_usd,
+            'original_amount_usd' => $usdAmount,
             'indexed_amount' => $indexedAmountBs,
-            'indexed_amount_usd' => $invoice->total_usd,
+            'indexed_amount_usd' => $usdAmount,
             'is_indexed' => true,
             'bcv_rate' => $exchangeRate->rate,
             'rate_date' => $exchangeRate->updated_at

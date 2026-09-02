@@ -14,8 +14,15 @@ const props = defineProps({
   exchangeRate: { type: Number, default: 1 },
 });
 
+const getEffectiveUSD = (item) => {
+  if (item.total_amount_discount && parseFloat(item.total_amount_discount) > 0) {
+    return parseFloat(item.total_amount_discount);
+  }
+  return parseFloat(item.original_amount_usd || item.total_usd) || 0;
+};
+
 const getDisplayAmount = (item) => {
-  const usd = parseFloat(item.original_amount_usd || item.total_usd) || 0;
+  const usd = getEffectiveUSD(item);
 
   // Si está indexada, el monto en Bs se calcula dinámicamente con la tasa del día
   if (item.is_indexed) {
@@ -38,7 +45,7 @@ const getDisplayAmount = (item) => {
 };
 
 const selectedTotals = computed(() => {
-  const usd = props.selectedTableInvoices.reduce((acc, item) => acc + (parseFloat(item.original_amount_usd || item.total_usd) || 0), 0);
+  const usd = props.selectedTableInvoices.reduce((acc, item) => acc + getEffectiveUSD(item), 0);
   const bs = props.selectedTableInvoices.reduce((acc, item) => {
     let amount = parseFloat(getDisplayAmount(item)) || 0;
     // Si tiene Nota de Débito referencial aprobada (descuento), se resta al total a pagar
@@ -276,7 +283,7 @@ const openInvoiceTab = (item) => {
         </template>
 
         <template #item.original_amount="{ item }">
-          <span class="text-xs font-weight-bold">{{ formatCurrency(item.original_amount_usd || item.total_usd, "USD", true) }}</span>
+          <span class="text-xs font-weight-bold">{{ formatCurrency(getEffectiveUSD(item), "USD", true) }}</span>
         </template>
 
         <template #item.remaining_amount="{ item }">
@@ -502,7 +509,7 @@ const openInvoiceTab = (item) => {
             <div class="d-flex gap-3 mb-4">
               <div class="premium-stat-box flex-grow-1 pa-3 rounded-lg bg-surface-variant-opacity-2">
                 <span class="text-super-xs text-disabled font-weight-bold uppercase d-block mb-1">Original (USD)</span>
-                <span class="text-sm font-weight-black">{{ formatCurrency(item.original_amount_usd || item.total_usd, "USD", true) }}</span>
+                <span class="text-sm font-weight-black">{{ formatCurrency(getEffectiveUSD(item), "USD", true) }}</span>
               </div>
               <div class="premium-stat-box flex-grow-1 pa-3 rounded-lg" :class="getRemainingAmountClass(item) === 'text-success' ? 'bg-success-opacity-2' : 'bg-warning-opacity'">
                 <div class="d-flex align-center justify-space-between mb-1">
