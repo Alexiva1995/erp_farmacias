@@ -45,6 +45,20 @@ return new class extends Migration
             ]);
         }
 
+        // Limpiar facturas ficticias en estado 'pending' no Drocerca
+        $drocerca = \App\Models\Supplier::where('name', 'like', '%DROCERCA%')->first();
+        $drocercaId = $drocerca ? $drocerca->id : -1;
+
+        $pendingToClean = Invoice::where('status', 'pending')
+            ->where('supplier_id', '!=', $drocercaId)
+            ->get();
+
+        if ($pendingToClean->isNotEmpty()) {
+            $idsToClean = $pendingToClean->pluck('id')->all();
+            DB::table('invoice_details')->whereIn('invoice_id', $idsToClean)->delete();
+            Invoice::whereIn('id', $idsToClean)->delete();
+        }
+
         // 2. Corrección de Aflamax 50mg x 20 (ID 10802) a 73 unidades
         $product = Product::find(10802);
         if ($product) {

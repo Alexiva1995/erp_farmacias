@@ -69,6 +69,24 @@ class ConsolidateAugust2026Data extends Command
                 $this->warn('   -> Factura Dronena A43141525 no encontrada (omitido).');
             }
 
+            // 1.1 Limpiar facturas ficticias en estado 'pending' que no sean de DROCERCA
+            $this->info('1.1. Depurando facturas ficticias en estado pending (no Drocerca)...');
+            $drocerca = \App\Models\Supplier::where('name', 'like', '%DROCERCA%')->first();
+            $drocercaId = $drocerca ? $drocerca->id : -1;
+
+            $pendingToClean = Invoice::where('status', 'pending')
+                ->where('supplier_id', '!=', $drocercaId)
+                ->get();
+
+            if ($pendingToClean->isNotEmpty()) {
+                $idsToClean = $pendingToClean->pluck('id')->all();
+                DB::table('invoice_details')->whereIn('invoice_id', $idsToClean)->delete();
+                Invoice::whereIn('id', $idsToClean)->delete();
+                $this->line("   -> Se eliminaron " . count($idsToClean) . " facturas ficticias en estado 'pending'.");
+            } else {
+                $this->line("   -> No se encontraron facturas ficticias 'pending' para limpiar.");
+            }
+
             // 2. Corrección de Aflamax 50mg x 20 (ID 10802) a 73 unidades
             $this->info('2. Corrigiendo stock y lotes de Aflamax 50mg x 20...');
             $product = Product::find(10802);
