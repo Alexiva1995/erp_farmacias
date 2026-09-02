@@ -303,16 +303,43 @@ class InventoryCycleActionService
             }
         }
 
-        // Si no se creó ninguna distribución manual:
-        if (!$distributionsCreated) {
+        $stockBefore = (float) $product->lots()->where('quantity', '>', 0)->sum('quantity');
+
+        // Si se crearon distribuciones manuales (por lotes actualizados o nuevos):
+        if ($distributionsCreated) {
+            $stockAfter = (float) $product->lots()->where('quantity', '>', 0)->sum('quantity');
+            $product->updateQuietly(['stock' => $stockAfter]);
+            $diff = round($stockAfter - $stockBefore, 4);
+
+            if (abs($diff) > 0.0001) {
+                $targetLot = $product->lots()->where('quantity', '>', 0)->first();
+                InventoryMovement::create([
+                    'product_id'       => $product->id,
+                    'product_lot_id'   => $targetLot?->id,
+                    'movement_type'    => $diff > 0 ? 'adjustment' : 'loss',
+                    'quantity'         => $diff,
+                    'invoice_id'       => null,
+                    'supplier_id'      => null,
+                    'order_id'         => null,
+                    'user_id'          => Auth::id(),
+                    'product_count_id' => $productCount->id,
+                    'stock_before'     => $stockBefore,
+                    'stock_after'      => $stockAfter,
+                    'movement_date'    => now(),
+                ]);
+            } else {
+                $this->createVerificationMovement($product, (int) $stockAfter, now(), $productCount->id);
+            }
+        } else {
+            // Si no se creó ninguna distribución manual:
             if ($finalDiscrepancy === 0) {
-                $finalQuantity = $realCurrentStock;
-                $this->createVerificationMovement($product, $realCurrentStock, now(), $productCount->id);
+                $stockAfter = $stockBefore;
+                $finalQuantity = (int) $realCurrentStock;
+                $product->updateQuietly(['stock' => $stockAfter]);
+                $this->createVerificationMovement($product, (int) $stockAfter, now(), $productCount->id);
             } else {
                 $targetLot = $product->lots()->where('quantity', '>', 0)->orderBy('id', 'desc')->first()
                     ?? $product->lots()->orderBy('id', 'desc')->first();
-
-                $stockBefore = $realCurrentStock;
 
                 if ($targetLot) {
                     $targetLot->quantity = max(0, $targetLot->quantity + $finalDiscrepancy);
@@ -341,16 +368,15 @@ class InventoryCycleActionService
                     ]);
                 }
 
-                $stockAfter = (int) $product->lots()->sum('quantity');
-                Product::withoutEvents(function () use ($product, $stockAfter) {
-                    $product->update(['stock' => $stockAfter]);
-                });
+                $stockAfter = (float) $product->lots()->where('quantity', '>', 0)->sum('quantity');
+                $product->updateQuietly(['stock' => $stockAfter]);
+                $diff = round($stockAfter - $stockBefore, 4);
 
                 InventoryMovement::create([
                     'product_id'       => $product->id,
                     'product_lot_id'   => $targetLot->id,
-                    'movement_type'    => $finalDiscrepancy > 0 ? 'adjustment' : 'loss',
-                    'quantity'         => $finalDiscrepancy,
+                    'movement_type'    => $diff > 0 ? 'adjustment' : 'loss',
+                    'quantity'         => $diff,
                     'invoice_id'       => null,
                     'supplier_id'      => null,
                     'order_id'         => null,
@@ -540,16 +566,43 @@ class InventoryCycleActionService
             }
         }
 
-        // Si no se creó ninguna distribución manual:
-        if (!$distributionsCreated) {
+        $stockBefore = (float) $product->lots()->where('quantity', '>', 0)->sum('quantity');
+
+        // Si se crearon distribuciones manuales (por lotes actualizados o nuevos):
+        if ($distributionsCreated) {
+            $stockAfter = (float) $product->lots()->where('quantity', '>', 0)->sum('quantity');
+            $product->updateQuietly(['stock' => $stockAfter]);
+            $diff = round($stockAfter - $stockBefore, 4);
+
+            if (abs($diff) > 0.0001) {
+                $targetLot = $product->lots()->where('quantity', '>', 0)->first();
+                InventoryMovement::create([
+                    'product_id'       => $product->id,
+                    'product_lot_id'   => $targetLot?->id,
+                    'movement_type'    => $diff > 0 ? 'adjustment' : 'loss',
+                    'quantity'         => $diff,
+                    'invoice_id'       => null,
+                    'supplier_id'      => null,
+                    'order_id'         => null,
+                    'user_id'          => Auth::id(),
+                    'product_count_id' => null,
+                    'stock_before'     => $stockBefore,
+                    'stock_after'      => $stockAfter,
+                    'movement_date'    => now(),
+                ]);
+            } else {
+                $this->createVerificationMovement($product, (int) $stockAfter, now());
+            }
+        } else {
+            // Si no se creó ninguna distribución manual:
             if ($finalDiscrepancy === 0) {
-                $finalQuantity = $realCurrentStock;
-                $this->createVerificationMovement($product, $realCurrentStock, now());
+                $stockAfter = $stockBefore;
+                $finalQuantity = (int) $realCurrentStock;
+                $product->updateQuietly(['stock' => $stockAfter]);
+                $this->createVerificationMovement($product, (int) $stockAfter, now());
             } else {
                 $targetLot = $product->lots()->where('quantity', '>', 0)->orderBy('id', 'desc')->first()
                     ?? $product->lots()->orderBy('id', 'desc')->first();
-
-                $stockBefore = $realCurrentStock;
 
                 if ($targetLot) {
                     $targetLot->quantity = max(0, $targetLot->quantity + $finalDiscrepancy);
@@ -578,23 +631,23 @@ class InventoryCycleActionService
                     ]);
                 }
 
-                $stockAfter = (int) $product->lots()->sum('quantity');
-                Product::withoutEvents(function () use ($product, $stockAfter) {
-                    $product->update(['stock' => $stockAfter]);
-                });
+                $stockAfter = (float) $product->lots()->where('quantity', '>', 0)->sum('quantity');
+                $product->updateQuietly(['stock' => $stockAfter]);
+                $diff = round($stockAfter - $stockBefore, 4);
 
                 InventoryMovement::create([
-                    'product_id'     => $product->id,
-                    'product_lot_id' => $targetLot->id,
-                    'movement_type'  => $finalDiscrepancy > 0 ? 'adjustment' : 'loss',
-                    'quantity'       => $finalDiscrepancy,
-                    'invoice_id'     => null,
-                    'supplier_id'    => null,
-                    'order_id'       => null,
-                    'user_id'        => Auth::id(),
-                    'stock_before'   => $stockBefore,
-                    'stock_after'    => $stockAfter,
-                    'movement_date'  => now(),
+                    'product_id'       => $product->id,
+                    'product_lot_id'   => $targetLot->id,
+                    'movement_type'    => $diff > 0 ? 'adjustment' : 'loss',
+                    'quantity'         => $diff,
+                    'invoice_id'       => null,
+                    'supplier_id'      => null,
+                    'order_id'         => null,
+                    'user_id'          => Auth::id(),
+                    'product_count_id' => null,
+                    'stock_before'     => $stockBefore,
+                    'stock_after'      => $stockAfter,
+                    'movement_date'    => now(),
                 ]);
             }
         }
@@ -814,16 +867,43 @@ class InventoryCycleActionService
             }
         }
 
-        // Si no se creó ninguna distribución manual:
-        if (!$distributionsCreated) {
+        $stockBefore = (float) $product->lots()->where('quantity', '>', 0)->sum('quantity');
+
+        // Si se crearon distribuciones manuales (por lotes actualizados o nuevos):
+        if ($distributionsCreated) {
+            $stockAfter = (float) $product->lots()->where('quantity', '>', 0)->sum('quantity');
+            $product->updateQuietly(['stock' => $stockAfter]);
+            $diff = round($stockAfter - $stockBefore, 4);
+
+            if (abs($diff) > 0.0001) {
+                $targetLot = $product->lots()->where('quantity', '>', 0)->first();
+                InventoryMovement::create([
+                    'product_id'       => $product->id,
+                    'product_lot_id'   => $targetLot?->id,
+                    'movement_type'    => $diff > 0 ? 'adjustment' : 'loss',
+                    'quantity'         => $diff,
+                    'invoice_id'       => null,
+                    'supplier_id'      => null,
+                    'order_id'         => null,
+                    'user_id'          => Auth::id(),
+                    'product_count_id' => null,
+                    'stock_before'     => $stockBefore,
+                    'stock_after'      => $stockAfter,
+                    'movement_date'    => now(),
+                ]);
+            } else {
+                $this->createVerificationMovement($product, (int) $stockAfter, now());
+            }
+        } else {
+            // Si no se creó ninguna distribución manual:
             if ($finalDiscrepancy === 0) {
-                $finalQuantity = $realCurrentStock;
-                $this->createVerificationMovement($product, $realCurrentStock, now());
+                $stockAfter = $stockBefore;
+                $finalQuantity = (int) $realCurrentStock;
+                $product->updateQuietly(['stock' => $stockAfter]);
+                $this->createVerificationMovement($product, (int) $stockAfter, now());
             } else {
                 $targetLot = $product->lots()->where('quantity', '>', 0)->orderBy('id', 'desc')->first()
                     ?? $product->lots()->orderBy('id', 'desc')->first();
-
-                $stockBefore = $realCurrentStock;
 
                 if ($targetLot) {
                     $targetLot->quantity = max(0, $targetLot->quantity + $finalDiscrepancy);
@@ -848,27 +928,27 @@ class InventoryCycleActionService
                     SaleCountDistribution::create([
                         'sale_count_id'  => $saleCount->id,
                         'product_lot_id' => $targetLot->id,
-                        'quantity'       => $targetLot->quantity,
+                        'quantity'         => $targetLot->quantity,
                     ]);
                 }
 
-                $stockAfter = (int) $product->lots()->sum('quantity');
-                Product::withoutEvents(function () use ($product, $stockAfter) {
-                    $product->update(['stock' => $stockAfter]);
-                });
+                $stockAfter = (float) $product->lots()->where('quantity', '>', 0)->sum('quantity');
+                $product->updateQuietly(['stock' => $stockAfter]);
+                $diff = round($stockAfter - $stockBefore, 4);
 
                 InventoryMovement::create([
-                    'product_id'     => $product->id,
-                    'product_lot_id' => $targetLot->id,
-                    'movement_type'  => $finalDiscrepancy > 0 ? 'adjustment' : 'loss',
-                    'quantity'       => $finalDiscrepancy,
-                    'invoice_id'     => null,
-                    'supplier_id'    => null,
-                    'order_id'       => null,
-                    'user_id'        => Auth::id(),
-                    'stock_before'   => $stockBefore,
-                    'stock_after'    => $stockAfter,
-                    'movement_date'  => now(),
+                    'product_id'       => $product->id,
+                    'product_lot_id'   => $targetLot->id,
+                    'movement_type'    => $diff > 0 ? 'adjustment' : 'loss',
+                    'quantity'         => $diff,
+                    'invoice_id'       => null,
+                    'supplier_id'      => null,
+                    'order_id'         => null,
+                    'user_id'          => Auth::id(),
+                    'product_count_id' => null,
+                    'stock_before'     => $stockBefore,
+                    'stock_after'      => $stockAfter,
+                    'movement_date'    => now(),
                 ]);
             }
         }
