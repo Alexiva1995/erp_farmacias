@@ -429,19 +429,24 @@ export function useProductComparator() {
     }
   };
 
-  const startPolling = () => {
-    stopPolling();
-    pollingInterval.value = setInterval(fetchStatuses, 5000);
-  };
-
-  const stopPolling = () => {
+  const clearPollingTimer = () => {
     if (pollingInterval.value) {
       clearInterval(pollingInterval.value);
       pollingInterval.value = null;
     }
+  };
+
+  const stopPolling = () => {
+    clearPollingTimer();
     checkingApiSupplierId.value = null;
     pollingSupplierId.value = null;
     pollingStatusId.value = null;
+    isUpdatingAllApi.value = false;
+  };
+
+  const startPolling = () => {
+    clearPollingTimer();
+    pollingInterval.value = setInterval(fetchStatuses, 3000);
   };
 
   const fetchOptions = async () => {
