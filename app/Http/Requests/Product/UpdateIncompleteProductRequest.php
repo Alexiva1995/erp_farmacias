@@ -27,7 +27,35 @@ class UpdateIncompleteProductRequest extends FormRequest
         $productId = $this->route('product')->id ?? null;
 
         return [
-            'barcode' => ['nullable', 'string', 'max:255', 'unique:products,barcode,' . $productId],
+            'barcode' => [
+                'nullable',
+                'string',
+                'max:255',
+                function ($attribute, $value, $fail) use ($productId) {
+                    if (empty($value)) {
+                        return;
+                    }
+
+                    // Buscar producto duplicado (incluyendo los no eliminados y los eliminados)
+                    $existingProduct = Product::withoutGlobalScope('not_deleted')
+                        ->withTrashed()
+                        ->with('laboratory')
+                        ->where('barcode', $value)
+                        ->where('id', '!=', $productId)
+                        ->first();
+
+                    if ($existingProduct) {
+                        // Si el producto existente está eliminado, permitimos la validación para que el servicio lo fusione automáticamente
+                        if ($existingProduct->is_deleted || $existingProduct->trashed()) {
+                            return;
+                        }
+
+                        // Si está activo, informamos ID, nombre y laboratorio
+                        $labName = $existingProduct->laboratory?->name ?? 'Sin Laboratorio';
+                        $fail("El código de barras '{$value}' ya está asignado al producto ID #{$existingProduct->id} - {$existingProduct->name} (Lab: {$labName}).");
+                    }
+                },
+            ],
             'laboratory_id' => ['nullable', 'integer', 'exists:laboratories,id'],
             'origin_id' => ['nullable', 'integer', 'exists:origins,id'],
         ];
@@ -38,29 +66,10 @@ class UpdateIncompleteProductRequest extends FormRequest
      */
     protected function failedValidation(Validator $validator): void
     {
-        $errors = $validator->errors();
-
-        // Si hay un error de barcode único, buscar el producto que ya tiene ese código
-        if ($errors->has('barcode')) {
-            $barcode = $this->input('barcode');
-            $productId = $this->route('product')->id ?? null;
-
-            if ($barcode) {
-                $existingProduct = Product::where('barcode', $barcode)
-                    ->where('id', '!=', $productId)
-                    ->first();
-
-                if ($existingProduct) {
-                    $errors->forget('barcode');
-                    $errors->add('barcode', "El código de barras está repetido. ID del producto que lo tiene: {$existingProduct->id}");
-                }
-            }
-        }
-
         throw new HttpResponseException(
             response()->json([
                 'message' => 'Error de validación',
-                'errors' => $errors
+                'errors' => $validator->errors()
             ], 422)
         );
     }

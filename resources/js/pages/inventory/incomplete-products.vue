@@ -77,16 +77,21 @@ const handleUpdateProduct = async (payload) => {
     toast.success(getSuccessMessage(payload));
     await fetchProducts();
   } catch (err) {
-    toast.error("Error al actualizar los datos del producto");
-
     if (err.response?.status === 422) {
       productWithError.value = payload.id;
       const errors = err.response.data?.errors;
-      if (errors?.barcode && errors.barcode[0]) {
-        errorMessage.value = errors.barcode[0];
-      } else {
-        errorMessage.value = "Error al actualizar el producto";
-      }
+      const errorMsg =
+        errors?.barcode?.[0] ||
+        errors?.laboratory_id?.[0] ||
+        errors?.origin_id?.[0] ||
+        Object.values(errors || {})?.[0]?.[0] ||
+        err.response.data?.message ||
+        "Error de validación al actualizar el producto";
+
+      errorMessage.value = errorMsg;
+      toast.error(errorMsg);
+    } else {
+      toast.error(err.response?.data?.message || "Error al actualizar los datos del producto");
     }
   }
 };

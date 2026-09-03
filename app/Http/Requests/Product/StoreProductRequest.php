@@ -61,10 +61,30 @@ class StoreProductRequest extends FormRequest
             'initial_stock' => ['nullable', 'numeric', 'min:0'],
 
             'barcode' => [
-                'nullable',
+                'required',
                 'string',
                 'max:255',
-                Rule::unique('products', 'barcode')->ignore($productId)
+                function ($attribute, $value, $fail) use ($productId) {
+                    if (empty($value)) {
+                        return;
+                    }
+
+                    $existingProduct = \App\Models\Product::withoutGlobalScope('not_deleted')
+                        ->withTrashed()
+                        ->with('laboratory')
+                        ->where('barcode', $value)
+                        ->when($productId, fn($q) => $q->where('id', '!=', $productId))
+                        ->first();
+
+                    if ($existingProduct) {
+                        if ($existingProduct->is_deleted || $existingProduct->trashed()) {
+                            return;
+                        }
+
+                        $labName = $existingProduct->laboratory?->name ?? 'Sin Laboratorio';
+                        $fail("El código de barras '{$value}' ya está asignado al producto ID #{$existingProduct->id} - {$existingProduct->name} (Lab: {$labName}).");
+                    }
+                },
             ],
 
             // Booleanos: required solo si el campo está habilitado en config

@@ -83,7 +83,15 @@ class ProductActionService
         $validatedData['sale_price'] = (float)($validatedData['sale_price'] ?? 0);
         
         if (!empty($validatedData['barcode'])) {
-            $this->resolveBarcodeConflict($validatedData['barcode']);
+            $duplicateProduct = Product::withoutGlobalScope('not_deleted')
+                ->withTrashed()
+                ->where('barcode', $validatedData['barcode'])
+                ->first();
+
+            if ($duplicateProduct && ($duplicateProduct->is_deleted || $duplicateProduct->trashed())) {
+                $duplicateProduct->barcode = null;
+                $duplicateProduct->save();
+            }
         }
 
         $supplierIds = $validatedData['supplier_ids'] ?? [];
@@ -126,6 +134,10 @@ class ProductActionService
         }
 
         $product = Product::create($validatedData);
+
+        if (!empty($validatedData['barcode'])) {
+            $this->resolveBarcodeConflict($validatedData['barcode'], $product->id);
+        }
 
         if ($initialStock > 0) {
             $product->lots()->create([
@@ -620,22 +632,29 @@ class ProductActionService
     }
 
     /**
-     * Resuelve conflictos de código de barras duplicado si el producto que lo posee está eliminado.
+     * Resuelve conflictos de código de barras duplicado si el producto que lo posee está eliminado,
+     * realizando una fusión completa hacia el producto activo.
      */
     private function resolveBarcodeConflict(string $barcode, ?int $excludeProductId = null): void
     {
+        if (!$excludeProductId) {
+            return;
+        }
+
         $duplicateProduct = Product::withoutGlobalScope('not_deleted')
             ->withTrashed()
             ->where('barcode', $barcode)
-            ->when($excludeProductId, function ($q) use ($excludeProductId) {
-                $q->where('id', '!=', $excludeProductId);
-            })
+            ->where('id', '!=', $excludeProductId)
             ->first();
 
         if ($duplicateProduct) {
             if ($duplicateProduct->is_deleted || $duplicateProduct->trashed()) {
+                // Liberar el código de barras del producto eliminado para evitar colisión de índice único
                 $duplicateProduct->barcode = null;
                 $duplicateProduct->save();
+
+                // Fusionar todas las relaciones e historial del producto eliminado hacia el producto activo
+                $this->mergeProducts($duplicateProduct->id, $excludeProductId, $excludeProductId);
             }
         }
     }
