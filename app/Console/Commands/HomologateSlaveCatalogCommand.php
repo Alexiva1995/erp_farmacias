@@ -580,10 +580,10 @@ class HomologateSlaveCatalogCommand extends Command
         $dbName = DB::getDatabaseName();
         $tableList = array_map(fn($t) => ((array) $t)["Tables_in_{$dbName}"] ?? array_values((array) $t)[0], $existingTables);
 
-        // Crear tabla de mapeo (física para permitir múltiples referencias en la misma consulta en MySQL)
-        DB::statement('DROP TABLE IF EXISTS _temp_homologate_map');
+        // Crear tabla temporal de mapeo (TEMPORARY no causa auto-commit de transacciones en MySQL)
+        DB::statement('DROP TEMPORARY TABLE IF EXISTS temp_generic_map');
         DB::statement('
-            CREATE TABLE _temp_homologate_map (
+            CREATE TEMPORARY TABLE temp_generic_map (
                 old_id BIGINT UNSIGNED NOT NULL PRIMARY KEY,
                 new_id BIGINT UNSIGNED NOT NULL
             ) ENGINE=InnoDB
@@ -594,12 +594,12 @@ class HomologateSlaveCatalogCommand extends Command
             foreach ($map as $oldId => $newId) {
                 $insertData[] = ['old_id' => $oldId, 'new_id' => $newId];
                 if (count($insertData) >= 500) {
-                    DB::table('_temp_homologate_map')->insert($insertData);
+                    DB::table('temp_generic_map')->insert($insertData);
                     $insertData = [];
                 }
             }
             if (!empty($insertData)) {
-                DB::table('_temp_homologate_map')->insert($insertData);
+                DB::table('temp_generic_map')->insert($insertData);
             }
 
             // Fase 1: Tablas relacionales -> temporal
@@ -607,7 +607,7 @@ class HomologateSlaveCatalogCommand extends Command
                 if (in_array($relTable, $tableList)) {
                     DB::update("
                         UPDATE IGNORE `{$relTable}` t
-                        INNER JOIN _temp_homologate_map m ON t.{$fkColumn} = m.old_id
+                        INNER JOIN temp_generic_map m ON t.{$fkColumn} = m.old_id
                         SET t.{$fkColumn} = m.new_id + {$offset}
                     ");
                 }
@@ -625,19 +625,36 @@ class HomologateSlaveCatalogCommand extends Command
             }
 
             // Si el registro destino new_id ya existe en la tabla principal (p. ej. descargado del Master en la etapa 0)
-            // y no está siendo remapeado a otro ID, el registro antiguo old_id es redundante y se elimina para evitar colisión de PK.
-            DB::delete("
-                DELETE p FROM `{$mainTable}` p
-                INNER JOIN _temp_homologate_map m ON p.{$primaryKey} = m.old_id
-                INNER JOIN `{$mainTable}` existing ON existing.{$primaryKey} = m.new_id
-                LEFT JOIN _temp_homologate_map target_mapped ON existing.{$primaryKey} = target_mapped.old_id
-                WHERE target_mapped.old_id IS NULL
-            ");
+            // y no está siendo remapeado a otro ID, el registro antiguo old_id es redundante y se elimina.
+            $targetIds = array_values($map);
+            $existingTargetIds = [];
+            foreach (array_chunk($targetIds, 1000) as $chunk) {
+                $found = DB::table($mainTable)
+                    ->whereIn($primaryKey, $chunk)
+                    ->pluck($primaryKey)
+                    ->toArray();
+                foreach ($found as $id) {
+                    $existingTargetIds[(int) $id] = true;
+                }
+            }
+
+            $redundantOldIds = [];
+            foreach ($map as $oldId => $newId) {
+                if (isset($existingTargetIds[(int) $newId]) && !isset($map[$newId])) {
+                    $redundantOldIds[] = $oldId;
+                }
+            }
+
+            if (!empty($redundantOldIds)) {
+                foreach (array_chunk($redundantOldIds, 500) as $chunk) {
+                    DB::table($mainTable)->whereIn($primaryKey, $chunk)->delete();
+                }
+            }
 
             // Actualizar tabla principal en 2 fases para registros que no colisionan
             DB::update("
                 UPDATE `{$mainTable}` p
-                INNER JOIN _temp_homologate_map m ON p.{$primaryKey} = m.old_id
+                INNER JOIN temp_generic_map m ON p.{$primaryKey} = m.old_id
                 SET p.{$primaryKey} = m.new_id + {$offset}
             ");
 
@@ -647,7 +664,7 @@ class HomologateSlaveCatalogCommand extends Command
                 WHERE p.{$primaryKey} >= {$offset}
             ");
         } finally {
-            DB::statement('DROP TABLE IF EXISTS _temp_homologate_map');
+            DB::statement('DROP TEMPORARY TABLE IF EXISTS temp_generic_map');
         }
     }
 }
