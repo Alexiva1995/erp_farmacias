@@ -166,23 +166,43 @@ class HomologateSlaveCatalogCommand extends Command
                 }
 
                 if (!empty($masterData['suppliers'])) {
+                    $supCols = \Illuminate\Support\Facades\Schema::getColumnListing('suppliers');
                     foreach ($masterData['suppliers'] as $msup) {
                         $msupArray = (array) $msup;
+                        $supInsert = [
+                            'name'              => $msupArray['name'] ?? '',
+                            'social_reason'     => $msupArray['social_reason'] ?? ($msupArray['name'] ?? ''),
+                            'rif'               => $msupArray['rif'] ?? null,
+                            'sales_phone'       => $msupArray['sales_phone'] ?? null,
+                            'collections_phone' => $msupArray['collections_phone'] ?? null,
+                            'credit_days'       => $msupArray['credit_days'] ?? 0,
+                            'payment_method'    => $msupArray['payment_method'] ?? 'Bs',
+                            'cash_payment'      => $msupArray['cash_payment'] ?? 0,
+                            'charges_igtf'      => $msupArray['charges_igtf'] ?? 0,
+                            'created_at'        => $msupArray['created_at'] ?? now(),
+                            'updated_at'        => $msupArray['updated_at'] ?? now(),
+                        ];
+
+                        if (in_array('dispatch_days', $supCols)) {
+                            $supInsert['dispatch_days'] = !empty($msupArray['dispatch_days']) 
+                                ? (is_string($msupArray['dispatch_days']) ? $msupArray['dispatch_days'] : json_encode($msupArray['dispatch_days'])) 
+                                : json_encode([]);
+                        }
+                        if (in_array('order_days', $supCols)) {
+                            $supInsert['order_days'] = !empty($msupArray['order_days']) 
+                                ? (is_string($msupArray['order_days']) ? $msupArray['order_days'] : json_encode($msupArray['order_days'])) 
+                                : json_encode([]);
+                        }
+                        if (in_array('rating', $supCols)) {
+                            $supInsert['rating'] = $msupArray['rating'] ?? 0.00;
+                        }
+                        if (in_array('is_deleted', $supCols)) {
+                            $supInsert['is_deleted'] = $msupArray['is_deleted'] ?? 0;
+                        }
+
                         DB::table('suppliers')->updateOrInsert(
                             ['id' => $msupArray['id']],
-                            [
-                                'name'              => $msupArray['name'] ?? '',
-                                'social_reason'     => $msupArray['social_reason'] ?? ($msupArray['name'] ?? ''),
-                                'rif'               => $msupArray['rif'] ?? null,
-                                'sales_phone'       => $msupArray['sales_phone'] ?? null,
-                                'collections_phone' => $msupArray['collections_phone'] ?? null,
-                                'credit_days'       => $msupArray['credit_days'] ?? 0,
-                                'payment_method'    => $msupArray['payment_method'] ?? 'Bs',
-                                'cash_payment'      => $msupArray['cash_payment'] ?? 1,
-                                'charges_igtf'      => $msupArray['charges_igtf'] ?? 0,
-                                'created_at'        => $msupArray['created_at'] ?? now(),
-                                'updated_at'        => $msupArray['updated_at'] ?? now(),
-                            ]
+                            $supInsert
                         );
                     }
                     $this->line('• Proveedores sincronizados desde Master: <fg=green>' . count($masterData['suppliers']) . '</>');
