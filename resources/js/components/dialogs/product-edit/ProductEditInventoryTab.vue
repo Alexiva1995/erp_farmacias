@@ -2,7 +2,7 @@
 import { computed } from "vue";
 import { useAuthStore } from "@/stores/auth";
 import { useBrandingStore } from "@/stores/useBrandingStore";
-import { formatDate } from "@/utils/formatters";
+import { formatDateSimple } from "@/utils/formatters";
 
 const props = defineProps({
   formData: { type: Object, required: true },
@@ -266,7 +266,7 @@ const lotHeaders = [
               </VChip>
             </template>
             <template #item.expiration_date="{ item }">
-              <span class="text-caption font-weight-black text-high-emphasis">{{ formatDate(item.expiration_date) }}</span>
+              <span class="text-caption font-weight-black text-high-emphasis">{{ formatDateSimple(item.expiration_date) }}</span>
             </template>
           </VDataTable>
         </div>
@@ -298,7 +298,7 @@ const lotHeaders = [
                 </span>
                 <span class="d-flex align-center gap-1">
                   <VIcon icon="tabler-calendar" size="12" color="primary" />
-                  {{ formatDate(item.expiration_date) }}
+                  {{ formatDateSimple(item.expiration_date) }}
                 </span>
               </div>
             </VCard>
