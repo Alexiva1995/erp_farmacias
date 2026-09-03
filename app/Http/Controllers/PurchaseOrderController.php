@@ -94,4 +94,20 @@ class PurchaseOrderController extends Controller
     {
         return response()->json(['success' => $this->purchaseOrder->revertToSent($autoOrder)]);
     }
+
+    public function resendFtp(AutoOrder $autoOrder)
+    {
+        try {
+            $this->purchaseOrder->confirmSent($autoOrder);
+            return response()->json([
+                'success' => true,
+                'message' => 'Pedido reenviado exitosamente por FTP.'
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 400);
+        }
+    }
 }

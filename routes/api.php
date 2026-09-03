@@ -705,6 +705,7 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
     Route::prefix("suppliers/purchase-orders")->group(function () {
         Route::get("/stats", [PurchaseOrderController::class, "getStats"]);
         Route::post("/{autoOrder}/confirm-sent", [PurchaseOrderController::class, "confirmSent"]);
+        Route::post('/{autoOrder}/resend-ftp', [PurchaseOrderController::class, 'resendFtp']);
         Route::post('/{autoOrder}/finish', [PurchaseOrderController::class, 'finish']);
         Route::post("/{autoOrder}/revert-to-sent", [PurchaseOrderController::class, "revertToSent"]);
         Route::get("/", [PurchaseOrderController::class, "getPurchaseOrders"]);

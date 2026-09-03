@@ -18,6 +18,7 @@ const { mobile } = useDisplay();
 const loading = ref(false);
 const saving = ref(false);
 const sending = ref(false);
+const resending = ref(false);
 const reverting = ref(false);
 const details = ref([]);
 const page = ref(1);
@@ -159,6 +160,24 @@ const handleConfirmSent = async () => {
     toast.error("Error al procesar la solicitud.");
   } finally {
     sending.value = false;
+  }
+};
+
+// Reenviar archivo plano al FTP del proveedor
+const handleResendFtp = async () => {
+  resending.value = true;
+  try {
+    const { data } = await axios.post(`/suppliers/purchase-orders/${props.purchaseOrder.id}/resend-ftp`);
+    if (data.success) {
+      toast.success(data.message || "Pedido transmitido con éxito al FTP.");
+      emit("refresh");
+    } else {
+      toast.error(data.message || "Error al transmitir por FTP.");
+    }
+  } catch (error) {
+    toast.error(error.response?.data?.message || "Error al conectar y enviar al servidor FTP.");
+  } finally {
+    resending.value = false;
   }
 };
 
@@ -523,6 +542,19 @@ watch(
           size="large"
         >
           PDF
+        </VBtn>
+
+        <!-- Botón Reenviar al FTP -->
+        <VBtn
+          color="info"
+          variant="tonal"
+          prepend-icon="tabler-upload"
+          @click="handleResendFtp"
+          :loading="resending"
+          class="flex-grow-1 font-weight-black rounded-lg shadow-sm"
+          size="large"
+        >
+          Reenviar FTP
         </VBtn>
 
         <VBtn
