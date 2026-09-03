@@ -577,35 +577,74 @@ class SupplierController extends Controller
                 $data['password'] = \App\Helpers\FtpCrypt::encrypt($validated['password']);
             }
 
-            // Si es Cristmedicals / Cristalmedicals y no tiene estructura, precargar su mapeo estándar de API
             $existingConn = $supplier->connections()->first();
-            if (!$existingConn || empty($existingConn->structure)) {
-                if (stripos($supplier->name, 'CRIST') !== false || $supplier->id === 1002 || $supplier->id === 3) {
-                    $data['structure'] = [
-                        [ "target" => "name", "file_field" => "des_art", "type" => "string" ],
-                        [ "target" => "barcode_match", "file_field" => "codigo_barra", "type" => "string" ],
-                        [ "target" => "unit_cost_usd", "file_field" => "precio_con_descuento", "type" => "decimal" ],
-                        [ "target" => "cod_supplier", "file_field" => "co_art", "type" => "string" ]
-                    ];
-                    $data['invoice_structure'] = [
-                        "mode" => "grouped",
-                        "header" => [
-                            [ "field" => "invoice_number", "original_field" => "fact_num", "type" => "string" ],
-                            [ "field" => "date", "original_field" => "fec_emis", "type" => "date", "format" => "Y-m-d" ],
-                            [ "field" => "total_amount", "original_field" => "sub_total", "type" => "decimal" ],
-                            [ "field" => "tax_amount", "original_field" => "iva16", "type" => "decimal" ],
-                            [ "field" => "exempt_amount", "original_field" => "exento", "type" => "decimal" ],
-                            [ "field" => "exchange_rate", "original_field" => "tasa", "type" => "decimal" ]
-                        ],
-                        "lines" => [
-                            [ "field" => "barcode", "original_field" => "sku", "type" => "string" ],
-                            [ "field" => "name", "original_field" => "descrip", "type" => "string" ],
-                            [ "field" => "quantity", "original_field" => "cant", "type" => "integer" ],
-                            [ "field" => "unit_cost", "original_field" => "neto_und", "type" => "decimal" ],
-                            [ "field" => "total_cost", "original_field" => "total", "type" => "decimal" ]
-                        ]
-                    ];
-                }
+
+            // Preservar o asignar estructura por defecto para evitar errores de BD
+            if ($existingConn && !empty($existingConn->structure)) {
+                $data['structure'] = $existingConn->structure;
+                $data['invoice_structure'] = $existingConn->invoice_structure;
+                $data['parse_using'] = $existingConn->parse_using;
+            } elseif (stripos($supplier->name, 'CRIST') !== false || $supplier->id === 1002 || $supplier->id === 3) {
+                $data['structure'] = [
+                    [ "target" => "name", "file_field" => "des_art", "type" => "string" ],
+                    [ "target" => "barcode_match", "file_field" => "codigo_barra", "type" => "string" ],
+                    [ "target" => "unit_cost_usd", "file_field" => "precio_con_descuento", "type" => "decimal" ],
+                    [ "target" => "cod_supplier", "file_field" => "co_art", "type" => "string" ]
+                ];
+                $data['invoice_structure'] = [
+                    "mode" => "grouped",
+                    "header" => [
+                        [ "field" => "invoice_number", "original_field" => "fact_num", "type" => "string" ],
+                        [ "field" => "date", "original_field" => "fec_emis", "type" => "date", "format" => "Y-m-d" ],
+                        [ "field" => "total_amount", "original_field" => "sub_total", "type" => "decimal" ],
+                        [ "field" => "tax_amount", "original_field" => "iva16", "type" => "decimal" ],
+                        [ "field" => "exempt_amount", "original_field" => "exento", "type" => "decimal" ],
+                        [ "field" => "exchange_rate", "original_field" => "tasa", "type" => "decimal" ]
+                    ],
+                    "lines" => [
+                        [ "field" => "barcode", "original_field" => "sku", "type" => "string" ],
+                        [ "field" => "name", "original_field" => "descrip", "type" => "string" ],
+                        [ "field" => "quantity", "original_field" => "cant", "type" => "integer" ],
+                        [ "field" => "unit_cost", "original_field" => "neto_und", "type" => "decimal" ],
+                        [ "field" => "total_cost", "original_field" => "total", "type" => "decimal" ]
+                    ]
+                ];
+            } elseif (stripos($supplier->name, 'DRONENA') !== false || $supplier->id === 1014) {
+                $data['structure'] = [
+                    [ "type" => "string", "target" => "cod_supplier", "file_field" => "A" ],
+                    [ "type" => "string", "target" => "name", "file_field" => "B" ],
+                    [ "type" => "decimal", "target" => "unit_cost", "file_field" => "C" ],
+                    [ "type" => "decimal", "target" => "quantity", "file_field" => "D" ],
+                    [ "type" => "decimal", "target" => "discount_percentage", "file_field" => "G" ],
+                    [ "type" => "string", "target" => "barcode_match", "file_field" => "J" ],
+                    [ "type" => "date", "target" => "expiration", "file_field" => "N" ]
+                ];
+                $data['invoice_structure'] = [
+                    "mode" => "grouped",
+                    "separator" => "\t",
+                    "filter" => [ "starts_with" => "", "ends_with" => ".txt" ],
+                    "header" => [
+                        [ "type" => "string", "field" => "tipo" ],
+                        [ "type" => "string", "field" => "invoice_number" ],
+                        [ "type" => "decimal", "field" => "total_amount", "decimals" => 2 ],
+                        [ "type" => "datetime", "field" => "created_invoice_date", "format" => "d/m/Y g:i:s A" ],
+                        [ "type" => "decimal", "field" => "exchange_rate", "decimals" => 2 ],
+                        [ "type" => "decimal", "field" => "total_usd" ]
+                    ],
+                    "lines" => [
+                        [ "type" => "string", "field" => "tipo" ],
+                        [ "type" => "string", "field" => "invoice_number" ],
+                        [ "type" => "string", "field" => "cod_supplier" ],
+                        [ "type" => "string", "field" => "name" ],
+                        [ "type" => "integer", "field" => "quantity" ],
+                        [ "type" => "decimal", "field" => "unit_cost", "decimals" => 2 ],
+                        [ "type" => "decimal", "field" => "total_cost", "decimals" => 2 ],
+                        [ "type" => "string", "field" => "barcode" ],
+                        [ "type" => "date", "field" => "expiration_date", "format" => "d/m/Y" ]
+                    ]
+                ];
+            } else {
+                $data['structure'] = [];
             }
 
             $connection = $supplier->connections()->updateOrCreate(
