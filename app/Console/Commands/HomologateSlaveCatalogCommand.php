@@ -78,7 +78,7 @@ class HomologateSlaveCatalogCommand extends Command
         try {
             // 0. Si la esclava no tiene datos o requiere poblarse, descargar en bloque del Master
             $this->info("\n--- [0/6] Descargando Catálogos Globales desde el Master ---");
-            $fetchRes = $masterClient->fetchMasterEntities(['laboratories', 'origins', 'groups', 'categories', 'suppliers']);
+            $fetchRes = $masterClient->fetchMasterEntities(['groups_laboratories', 'laboratories', 'origins', 'groups', 'categories', 'suppliers']);
             $masterData = $fetchRes['data'] ?? [];
             
             if (empty($fetchRes['success']) && !empty($fetchRes['error'])) {
@@ -86,6 +86,23 @@ class HomologateSlaveCatalogCommand extends Command
             }
 
             if (!$isDryRun) {
+                DB::statement('SET FOREIGN_KEY_CHECKS = 0');
+
+                if (!empty($masterData['groups_laboratories'])) {
+                    foreach ($masterData['groups_laboratories'] as $mglab) {
+                        $mglabArray = (array) $mglab;
+                        DB::table('groups_laboratories')->updateOrInsert(
+                            ['id' => $mglabArray['id']],
+                            [
+                                'name'       => $mglabArray['name'] ?? '',
+                                'created_at' => $mglabArray['created_at'] ?? now(),
+                                'updated_at' => $mglabArray['updated_at'] ?? now(),
+                            ]
+                        );
+                    }
+                    $this->line('• Grupos de Laboratorios sincronizados: <fg=green>' . count($masterData['groups_laboratories']) . '</>');
+                }
+
                 if (!empty($masterData['laboratories'])) {
                     foreach ($masterData['laboratories'] as $mlab) {
                         $mlabArray = (array) $mlab;
@@ -170,6 +187,8 @@ class HomologateSlaveCatalogCommand extends Command
                     }
                     $this->line('• Proveedores sincronizados desde Master: <fg=green>' . count($masterData['suppliers']) . '</>');
                 }
+
+                DB::statement('SET FOREIGN_KEY_CHECKS = 1');
             }
 
             // ==========================================

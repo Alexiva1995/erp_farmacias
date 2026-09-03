@@ -408,6 +408,16 @@ class MasterCatalogService
     {
         $result = [];
 
+        if (in_array('groups_laboratories', $entities) || in_array('laboratories', $entities)) {
+            if (\Illuminate\Support\Facades\Schema::hasTable('groups_laboratories')) {
+                $q = DB::table('groups_laboratories');
+                if (\Illuminate\Support\Facades\Schema::hasColumn('groups_laboratories', 'deleted_at')) {
+                    $q->whereNull('deleted_at');
+                }
+                $result['groups_laboratories'] = $q->orderBy('id')->get()->toArray();
+            }
+        }
+
         if (in_array('laboratories', $entities)) {
             $q = DB::table('laboratories');
             if (\Illuminate\Support\Facades\Schema::hasColumn('laboratories', 'deleted_at')) {
