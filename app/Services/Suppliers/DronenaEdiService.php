@@ -149,7 +149,7 @@ class DronenaEdiService implements DronenaEdiServiceInterface
 
         foreach ($fileList as $file) {
             $base = basename($file);
-            if (preg_match('/^FACTU(\d+)$/i', $base, $matches)) {
+            if (preg_match('/^FACTU(\d+)(\.txt)?$/i', $base, $matches)) {
                 $existingFactu[] = (int) $matches[1];
             }
         }
@@ -158,8 +158,8 @@ class DronenaEdiService implements DronenaEdiServiceInterface
             $nextNumber = max($existingFactu) + 1;
         }
 
-        // Formato FACTUXX con 2 dígitos mínimo (ej. FACTU01, FACTU02)
-        $fileName = sprintf('FACTU%02d', $nextNumber);
+        // Formato FACTUXX.txt con 2 dígitos mínimo (ej. FACTU01.txt, FACTU02.txt)
+        $fileName = sprintf('FACTU%02d.txt', $nextNumber);
         $remoteFilePath = rtrim($remoteDir, '/') . '/' . $fileName;
 
         // Generar contenido plano
