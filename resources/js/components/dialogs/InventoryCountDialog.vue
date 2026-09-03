@@ -45,6 +45,18 @@ const allowWithoutBarcode = ref(false);
 const packagesCount = ref("");
 const openedQuantity = ref("");
 
+// Solo se permite bypass / ingreso manual si el producto NO tiene código de barras, si su código es igual a su ID, o si no tiene stock (stock <= 0)
+const canBypassBarcode = computed(() => {
+  const bc = props.product?.barcode ? String(props.product.barcode).trim() : '';
+  const id = props.product?.id ? String(props.product.id).trim() : '';
+  const stock = Number(props.product?.stock ?? props.product?.system_quantity ?? props.product?.current_stock ?? 0);
+  return !bc || bc === id || stock <= 0;
+});
+
+const isManualEntryAllowed = computed(() => {
+  return canBypassBarcode.value && (allowWithoutBarcode.value || !barcodeRequiredGlobal.value);
+});
+
 // Contenido por envase del producto (presentation) y unidad de medida
 const productPresentation = computed(() => Number(props.product?.presentation) || 0);
 const productUnit = computed(() => props.product?.unit_of_measure || 'und');
@@ -60,11 +72,12 @@ const dualTotalQuantity = computed(() => {
 });
 
 const canSave = computed(() => {
-  // En modo restaurante/minimarket se valida el modo dual solo si el producto tiene presentación
+  const allowManual = isManualEntryAllowed.value;
+
   if (isDualCountMode.value) {
     const hasValidDual = dualTotalQuantity.value >= 0 &&
       (packagesCount.value !== "" || openedQuantity.value !== "");
-    if (allowWithoutBarcode.value) return hasValidDual;
+    if (allowManual) return hasValidDual;
     return barcodeInput.value.trim() !== "" && hasValidDual && !barcodeError.value;
   }
 
@@ -73,7 +86,7 @@ const canSave = computed(() => {
     !isNaN(Number(countedQuantity.value)) &&
     Number(countedQuantity.value) >= 0;
 
-  if (allowWithoutBarcode.value) {
+  if (allowManual) {
     return isQuantityValid;
   }
 
@@ -89,8 +102,7 @@ const resetForm = () => {
   openedQuantity.value = "";
   barcodeError.value = "";
   isScannerVisible.value = false;
-  // Si la configuración global no requiere barcode, el modo manual es el predeterminado
-  allowWithoutBarcode.value = !barcodeRequiredGlobal.value;
+  allowWithoutBarcode.value = canBypassBarcode.value && !barcodeRequiredGlobal.value;
 };
 
 const handleCancel = () => {
@@ -101,11 +113,9 @@ watch(
   () => props.modelValue,
   (newVal) => {
     if (newVal) {
-      // Sincronizar el modo al abrir según la configuración global
-      allowWithoutBarcode.value = !barcodeRequiredGlobal.value;
+      allowWithoutBarcode.value = canBypassBarcode.value && !barcodeRequiredGlobal.value;
       nextTick(() => {
-        // Si no se requiere barcode, enfocar directamente el campo de cantidad
-        if (!barcodeRequiredGlobal.value) {
+        if (isManualEntryAllowed.value) {
           const quantityInput = document.querySelector("#quantity-input");
           if (quantityInput) quantityInput.focus();
         } else {
@@ -266,9 +276,9 @@ const handleSave = async () => {
         </div>
 
         <VForm @submit.prevent="handleSave">
-          <!-- Modo de Ingreso Compacto (solo visible si el escaneo es requerido por configuración) -->
+          <!-- Modo de Ingreso Compacto (solo visible si el producto permite bypass sin código de barras) -->
           <div
-            v-if="barcodeRequiredGlobal"
+            v-if="canBypassBarcode && barcodeRequiredGlobal"
             class="pa-2 mb-2 rounded-lg border shadow-xs d-flex align-center justify-space-between"
             :class="allowWithoutBarcode ? 'bg-warning-lighten-5' : 'bg-primary-lighten-5'"
           >
@@ -290,8 +300,18 @@ const handleSave = async () => {
             />
           </div>
 
+          <div
+            v-else-if="!canBypassBarcode"
+            class="pa-2 mb-2 rounded-lg border shadow-xs d-flex align-center gap-2 bg-primary-lighten-5"
+          >
+            <VIcon icon="tabler-scan" color="primary" size="18" />
+            <span class="text-super-xs font-weight-black uppercase text-primary">
+              Modo Escaneo Obligatorio
+            </span>
+          </div>
+
           <!-- Campo de Escaneo Ultra Compacto (solo si la config global lo requiere y el usuario no eligió ingreso manual) -->
-          <div v-if="barcodeRequiredGlobal && !allowWithoutBarcode" class="mb-2">
+          <div v-if="!isManualEntryAllowed" class="mb-2">
             <AppTextField
               id="barcode-input"
               v-model="barcodeInput"

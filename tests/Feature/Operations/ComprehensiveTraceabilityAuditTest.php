@@ -381,4 +381,61 @@ class ComprehensiveTraceabilityAuditTest extends TestCase
         $responseQuota->assertStatus(200)
             ->assertJsonPath('is_active', false);
     }
+
+    /**
+     * 7. Valida que el conteo físico sin discrepancia genere un movimiento de tipo 'verification' (Verificado) y se pueda filtrar.
+     */
+    public function test_cyclic_count_without_discrepancy_creates_verification_movement_and_filters_correctly(): void
+    {
+        $this->actingAs($this->admin, 'sanctum');
+
+        $cycle = InventoryCycle::create([
+            'start_date' => now(),
+            'status' => 'active',
+        ]);
+
+        $product = Product::create([
+            'name' => 'Acetaminofen Jarabe',
+            'barcode' => '7506666666666',
+            'unit_cost' => 1.50,
+            'sale_price' => 3.50,
+            'stock' => 8,
+        ]);
+
+        $lot = ProductLot::create([
+            'product_id' => $product->id,
+            'lot_number' => 'LOT-ACET-01',
+            'quantity' => 8,
+            'expiration_date' => now()->addYear(),
+            'unit_cost' => 1.50,
+        ]);
+
+        $cyclicService = app(InventoryCycleActionService::class);
+        $resCount = $cyclicService->createProductCount($product->id, [
+            'counted_quantity' => 8,
+            'system_quantity' => 8,
+            'discrepancy' => 0,
+            'barcode' => '7506666666666',
+        ]);
+
+        $this->assertTrue($resCount['success']);
+        $count = $resCount['data'];
+        $this->assertEquals('approved', $count->status);
+
+        $verificationMovements = InventoryMovement::where('product_id', $product->id)
+            ->where('movement_type', 'verification')
+            ->get();
+
+        $this->assertCount(1, $verificationMovements);
+        $this->assertEquals(0, (float) $verificationMovements->first()->quantity);
+        $this->assertEquals($count->id, $verificationMovements->first()->product_count_id);
+        $this->assertEquals('Verificado', $verificationMovements->first()->movement_type);
+
+        // Validar filtro por tipo de movimiento 'verification'
+        $responseFilter = $this->actingAs($this->admin, 'sanctum')
+            ->getJson("/api/sales/report?movement_type=verification");
+
+        $responseFilter->assertStatus(200);
+        $this->assertGreaterThanOrEqual(1, $responseFilter->json('total'));
+    }
 }

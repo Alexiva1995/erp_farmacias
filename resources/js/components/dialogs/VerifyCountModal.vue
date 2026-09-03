@@ -1,7 +1,8 @@
 <script setup>
+import BarcodeScannerDialog from "@/components/dialogs/BarcodeScannerDialog.vue";
 import axios from "@/plugins/axios";
-import { formatDateSimple } from "@/utils/formatters";
-import { computed, ref, watch } from "vue";
+import { formatDateSimple, formatNumber } from "@/utils/formatters";
+import { computed, nextTick, ref, watch } from "vue";
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
@@ -25,6 +26,75 @@ const currentStock = ref(null);
 const newCountedQuantity = ref(null);
 const loadError = ref(null);
 
+// Control de código de barras
+const barcodeInput = ref("");
+const barcodeError = ref("");
+const isScannerVisible = ref(false);
+const allowWithoutBarcode = ref(false);
+
+// Solo se permite bypass / ingreso manual si el producto no tiene código, su código es igual a su ID, o si no tiene stock (stock <= 0)
+const canBypassBarcode = computed(() => {
+  const p = props.countRecord?.product;
+  const bc = p?.barcode ? String(p.barcode).trim() : "";
+  const id = p?.id ? String(p.id).trim() : (props.countRecord?.product_id ? String(props.countRecord.product_id).trim() : "");
+  const stock = Number(currentStock.value ?? props.countRecord?.system_quantity ?? p?.stock ?? 0);
+  return !bc || bc === id || stock <= 0;
+});
+
+const isManualEntryAllowed = computed(() => {
+  return canBypassBarcode.value && allowWithoutBarcode.value;
+});
+
+const isBarcodeValid = computed(() => {
+  if (isManualEntryAllowed.value) return true;
+  const expectedBc = props.countRecord?.product?.barcode ? String(props.countRecord.product.barcode).trim() : "";
+  if (!expectedBc && canBypassBarcode.value) return true;
+  return barcodeInput.value.trim() !== "" && (!expectedBc || barcodeInput.value.trim() === expectedBc);
+});
+
+watch(barcodeInput, (newBarcode) => {
+  if (!newBarcode.trim()) {
+    barcodeError.value = "";
+    return;
+  }
+  if (isManualEntryAllowed.value) {
+    barcodeError.value = "";
+    return;
+  }
+  const expectedBc = props.countRecord?.product?.barcode ? String(props.countRecord.product.barcode).trim() : "";
+  if (expectedBc && newBarcode.trim() !== expectedBc) {
+    barcodeError.value = "El código de barras no coincide con este producto";
+  } else {
+    barcodeError.value = "";
+  }
+});
+
+watch(allowWithoutBarcode, (newValue) => {
+  if (newValue) {
+    barcodeError.value = "";
+    barcodeInput.value = "";
+    nextTick(() => {
+      const quantityInput = document.querySelector("#recounter-quantity-input");
+      if (quantityInput) quantityInput.focus();
+    });
+  }
+});
+
+const handleBarcodeEnter = () => {
+  if (!barcodeError.value && barcodeInput.value.trim()) {
+    nextTick(() => {
+      const quantityInput = document.querySelector("#recounter-quantity-input");
+      if (quantityInput) quantityInput.focus();
+    });
+  }
+};
+
+const onBarcodeScanned = (scannedBarcode) => {
+  barcodeInput.value = scannedBarcode;
+  isScannerVisible.value = false;
+  handleBarcodeEnter();
+};
+
 watch(
   () => props.modelValue,
   async (isOpening) => {
@@ -32,7 +102,20 @@ watch(
       newCountedQuantity.value = null;
       loadError.value = null;
       currentStock.value = null;
+      barcodeInput.value = "";
+      barcodeError.value = "";
+      isScannerVisible.value = false;
+      allowWithoutBarcode.value = canBypassBarcode.value;
       await loadCurrentStock();
+      nextTick(() => {
+        if (!isManualEntryAllowed.value) {
+          const barcodeElement = document.querySelector("#verify-barcode-input");
+          if (barcodeElement) barcodeElement.focus();
+        } else {
+          const quantityInput = document.querySelector("#recounter-quantity-input");
+          if (quantityInput) quantityInput.focus();
+        }
+      });
     }
   },
 );
@@ -82,6 +165,7 @@ const differenceText = computed(() => {
 
 const canVerify = computed(() => {
   return (
+    isBarcodeValid.value &&
     newCountedQuantity.value !== null &&
     newCountedQuantity.value >= 0 &&
     !isProcessing.value &&
@@ -121,7 +205,7 @@ const handleClose = () => {
     transition="dialog-bottom-transition"
     class="premium-dialog"
   >
-    <VCard :class="mobile ? 'rounded-0' : 'detail-dialog-card rounded-xl border-0 shadow-xl overflow-hidden bg-surface'">
+    <VCard class="detail-dialog-card rounded-xl border-0 shadow-xl overflow-hidden bg-surface">
       <!-- Cabecera Premium -->
       <VCardTitle class="pa-0">
         <div class="header-gradient pa-4 d-flex align-center shadow-sm">
@@ -220,6 +304,67 @@ const handleClose = () => {
             </div>
           </VCard>
 
+          <!-- Modo de Ingreso / Escaneo de Código de Barras -->
+          <div
+            v-if="canBypassBarcode"
+            class="pa-2 rounded-lg border shadow-xs d-flex align-center justify-space-between"
+            :class="allowWithoutBarcode ? 'bg-warning-lighten-5' : 'bg-primary-lighten-5'"
+          >
+            <div class="d-flex align-center gap-2">
+              <VIcon
+                :icon="allowWithoutBarcode ? 'tabler-keyboard' : 'tabler-scan'"
+                :color="allowWithoutBarcode ? 'warning' : 'primary'"
+                size="18"
+              />
+              <span class="text-super-xs font-weight-black uppercase">
+                {{ allowWithoutBarcode ? "Ingreso Manual (Sin Código)" : "Modo Escaneo" }}
+              </span>
+            </div>
+            <VSwitch
+              v-model="allowWithoutBarcode"
+              :color="allowWithoutBarcode ? 'warning' : 'primary'"
+              hide-details
+              density="compact"
+            />
+          </div>
+
+          <div
+            v-else
+            class="pa-2 rounded-lg border shadow-xs d-flex align-center gap-2 bg-primary-lighten-5"
+          >
+            <VIcon icon="tabler-scan" color="primary" size="18" />
+            <span class="text-super-xs font-weight-black uppercase text-primary">
+              Modo Escaneo Obligatorio
+            </span>
+          </div>
+
+          <!-- Campo de Escaneo de Código de Barras -->
+          <div v-if="!isManualEntryAllowed" class="mb-1">
+            <VTextField
+              id="verify-barcode-input"
+              v-model="barcodeInput"
+              placeholder="ESCANEAR CÓDIGO DE BARRAS..."
+              :error-messages="barcodeError"
+              variant="outlined"
+              density="compact"
+              hide-details="auto"
+              prepend-inner-icon="tabler-barcode"
+              class="rounded-lg font-weight-black text-xs"
+              @keyup.enter="handleBarcodeEnter"
+            >
+              <template #append-inner>
+                <VBtn
+                  icon="tabler-camera"
+                  variant="tonal"
+                  color="primary"
+                  size="x-small"
+                  class="rounded"
+                  @click="isScannerVisible = true"
+                />
+              </template>
+            </VTextField>
+          </div>
+
           <!-- Comparativa de Stock Premium -->
           <VCard
             variant="flat"
@@ -291,6 +436,7 @@ const handleClose = () => {
                 density="compact"
                 hide-details
                 autofocus
+                :disabled="!isBarcodeValid"
                 @keyup.enter="handleVerify"
               />
             </div>
@@ -382,6 +528,12 @@ const handleClose = () => {
         </VRow>
       </VCardActions>
     </VCard>
+
+    <!-- Dialogo de Cámara para Escaneo -->
+    <BarcodeScannerDialog
+      v-model="isScannerVisible"
+      @scanned="onBarcodeScanned"
+    />
   </VDialog>
 </template>
 

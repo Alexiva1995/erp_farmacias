@@ -37,12 +37,28 @@ class InventoryCycleActionService
                     ];
                 }
 
-                $systemStock = $data['system_quantity'];
-                $allowWithoutBarcode = $data['allow_without_barcode'] ?? false;
+                $systemStock = (float) $data['system_quantity'];
+                $rawBarcode = $product->barcode ? trim((string) $product->barcode) : '';
+                $rawId = trim((string) $product->id);
+                $hasRealBarcode = !empty($rawBarcode) && $rawBarcode !== $rawId;
+                $allowWithoutBarcode = (bool) ($data['allow_without_barcode'] ?? false);
 
-                // Solo validar código de barras si no se permite sin código de barras
-                if (!$allowWithoutBarcode) {
-                    if ($product->barcode && isset($data['barcode']) && $product->barcode !== $data['barcode']) {
+                // Si el producto tiene código de barras real Y tiene stock > 0, el escaneo es obligatorio
+                // Si el stock en sistema es 0 o menor, se permite el ingreso manual
+                $requiresStrictBarcode = $hasRealBarcode && $systemStock > 0;
+
+                if ($requiresStrictBarcode) {
+                    $scannedBarcode = isset($data['barcode']) ? trim((string) $data['barcode']) : '';
+                    if (empty($scannedBarcode) || $scannedBarcode !== $rawBarcode) {
+                        return [
+                            'success' => false,
+                            'message' => 'El código de barras no coincide con el producto seleccionado.',
+                            'data' => null
+                        ];
+                    }
+                } elseif (!$allowWithoutBarcode && !empty($rawBarcode)) {
+                    $scannedBarcode = isset($data['barcode']) ? trim((string) $data['barcode']) : '';
+                    if (!empty($scannedBarcode) && $scannedBarcode !== $rawBarcode) {
                         return [
                             'success' => false,
                             'message' => 'El código de barras no coincide con el producto seleccionado.',
@@ -151,14 +167,14 @@ class InventoryCycleActionService
     }
 
     /**
-     * Crea un movimiento de inventario tipo ajuste cuando el conteo físico coincide con el stock en sistema.
+     * Crea un movimiento de inventario tipo verificación cuando el conteo físico coincide con el stock en sistema.
      */
-    private function createVerificationMovement(Product $product, int $stockQuantity, \DateTimeInterface $movementDate, ?int $productCountId = null): void
+    private function createVerificationMovement(Product $product, float|int $stockQuantity, \DateTimeInterface $movementDate, ?int $productCountId = null): void
     {
         InventoryMovement::create([
             'product_id' => $product->id,
             'product_lot_id' => null,
-            'movement_type' => 'adjustment',
+            'movement_type' => 'verification',
             'quantity' => 0,
             'user_id' => Auth::id(),
             'product_count_id' => $productCountId,

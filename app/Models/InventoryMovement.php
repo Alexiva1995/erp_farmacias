@@ -40,6 +40,7 @@ class InventoryMovement extends Model
                 'adjustment' => 'Ajuste',
                 'loss' => 'Pérdida',
                 'expired' => 'Caducado',
+                'verification' => 'Verificado',
                 default => ucfirst($value),
             },
         );

@@ -365,8 +365,8 @@ const getUserDisplayName = (user) => {
                 </VBtn>
               </div>
 
-              <!-- Casos de Auditoría (Ajuste, Pérdida) -->
-              <div v-else-if="['adjustment', 'loss'].includes(movementDetails.type)" class="d-flex flex-column gap-3">
+              <!-- Casos de Auditoría (Ajuste, Pérdida, Verificación) -->
+              <div v-else-if="['adjustment', 'loss', 'verification'].includes(movementDetails.type)" class="d-flex flex-column gap-3">
                 <div class="d-flex align-center justify-space-between border-b pb-2">
                   <div class="d-flex flex-column">
                     <span class="text-caption font-weight-black text-disabled text-uppercase">Conteo Físico Inicial</span>

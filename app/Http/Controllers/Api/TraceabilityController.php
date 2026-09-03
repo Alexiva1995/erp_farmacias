@@ -194,6 +194,7 @@ class TraceabilityController extends Controller
 
             case 'adjustment':
             case 'loss':
+            case 'verification':
                 $countRecord = null;
                 if ($movement->product_count_id) {
                     $countRecord = \App\Models\ProductCount::with(['user.employee', 'supervisor.employee'])->find($movement->product_count_id);

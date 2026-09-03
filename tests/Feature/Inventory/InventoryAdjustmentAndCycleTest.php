@@ -169,7 +169,7 @@ class InventoryAdjustmentAndCycleTest extends TestCase
         // Verificar que se haya creado un movimiento de inventario de verificación (ajuste 0)
         $this->assertDatabaseHas('inventory_movements', [
             'product_id' => $this->product->id,
-            'movement_type' => 'adjustment',
+            'movement_type' => 'verification',
             'quantity' => 0,
             'stock_before' => 10,
             'stock_after' => 10,

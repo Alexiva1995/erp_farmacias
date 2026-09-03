@@ -23,6 +23,7 @@ const movementTypes = [
   { title: "Venta", value: "sale" },
   { title: "Compra", value: "purchase" },
   { title: "Devolución", value: "return" },
+  { title: "Verificado", value: "verification" },
   { title: "Ajuste", value: "adjustment" },
   { title: "Pérdida", value: "loss" },
   { title: "Caducado", value: "expired" },

@@ -29,7 +29,7 @@ class TraceabilityIndexRequest extends FormRequest
             'orderBy' => ['nullable', 'string', 'in:asc,desc,ASC,DESC'],
             'startDate' => ['nullable', 'date_format:Y-m-d'],
             'endDate' => ['nullable', 'date_format:Y-m-d'],
-            'movement_type' => ['nullable', 'string', 'in:sale,purchase,return,adjustment,loss,expired'],
+            'movement_type' => ['nullable', 'string', 'in:sale,purchase,return,adjustment,loss,expired,verification'],
             'is_psychotropic' => ['nullable', 'boolean'],
             'laboratoryId' => ['nullable', 'integer', 'exists:laboratories,id'],
             'hasStock' => ['nullable', 'boolean'],
