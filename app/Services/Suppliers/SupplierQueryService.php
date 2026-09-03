@@ -516,6 +516,9 @@ class SupplierQueryService
 
         $isStrictSearch = filter_var($request->query("isStrictSearch"), FILTER_VALIDATE_BOOLEAN);
 
+        $sortBy = $request->query("sortBy", "name");
+        $sortOrder = $request->query("order", "asc");
+
         $enableDiscounts = filter_var($request->query("enableDiscounts", false), FILTER_VALIDATE_BOOLEAN);
 
         $sortableColumns = [
