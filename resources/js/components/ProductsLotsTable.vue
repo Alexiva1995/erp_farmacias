@@ -1,9 +1,9 @@
 <script setup>
+import { computed } from "vue";
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
 import AppEmptyState from "@/components/AppEmptyState.vue";
 import { formatDateSimple } from "@/utils/formatters";
 import { useBrandingStore } from "@/stores/useBrandingStore";
-import { computed } from "vue";
 
 const props = defineProps({
   products: { type: Array, required: true },
@@ -16,6 +16,9 @@ const props = defineProps({
 const emit = defineEmits(["update:options", "adjust-lots"]);
 const brandingStore = useBrandingStore();
 
+const isRestaurant = computed(() => brandingStore.settings?.business_type === "restaurant");
+const isMiniMarket = computed(() => brandingStore.settings?.business_type === "minimarket");
+
 const headers = computed(() => [
   { 
     title: "ID", 
@@ -23,45 +26,55 @@ const headers = computed(() => [
     sortable: true,
     cellClass: "font-weight-black text-primary",
   },
-  { title: "Producto", key: "name", sortable: true },
   { 
-    title: "Stock Calculado", 
-    key: "stock_calculado", 
-    sortable: true, 
-    align: "center" 
-  },
-  { 
-    title: "Laboratorio", 
-    key: "laboratory.name", 
+    title: "PRODUCTO", 
+    key: "name", 
     sortable: true,
-    cellClass: "d-none d-md-table-cell",
-    headerClass: "d-none d-md-table-cell"
+    width: "45%",
   },
   { 
-    title: "Lotes Activos", 
-    key: "lots_count", 
-    sortable: false, 
-    align: "center",
-    cellClass: "d-none d-lg-table-cell",
-    headerClass: "d-none d-lg-table-cell"
-  },
-  { 
-    title: "Próx. Exp.", 
+    title: "EXP.", 
     key: "next_expiration", 
     sortable: false,
-    cellClass: "d-none d-sm-table-cell",
-    headerClass: "d-none d-sm-table-cell"
   },
-  { title: "Acciones", key: "actions", sortable: false, align: "center" },
+  { 
+    title: "STOCK", 
+    key: "stock_calculado", 
+    sortable: true, 
+    align: "end" 
+  },
+  { 
+    title: "Acciones", 
+    key: "actions", 
+    sortable: false, 
+    align: "center" 
+  },
 ]);
 
-const getNextExpiration = (lots) => {
-  if (!lots || lots.length === 0) return null;
-  const expirations = lots
-    .map(l => l.expiration_date)
-    .filter(d => d)
-    .sort();
-  return expirations[0] || null;
+const nextExpirationDate = (product) => {
+  if (!product.lots || !Array.isArray(product.lots) || product.lots.length === 0) return "N/A";
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const validLots = product.lots.filter((lot) => {
+    if (!lot.expiration_date) return false;
+    const expirationDate = new Date(lot.expiration_date);
+    return !isNaN(expirationDate.getTime()) && expirationDate >= today;
+  });
+  if (validLots.length === 0) return product.ultima_fecha_vencimiento || "EXPIRADO";
+  validLots.sort((a, b) => new Date(a.expiration_date) - new Date(b.expiration_date));
+  const closestDate = new Date(validLots[0].expiration_date);
+  return formatDateSimple(closestDate);
+};
+
+const formatStock = (item) => {
+  const stock = Number(item.stock_calculado ?? 0);
+  if (isMiniMarket.value) {
+    return Math.round(stock).toString();
+  }
+  if (!isRestaurant.value) {
+    return stock % 1 === 0 ? stock.toString() : stock.toFixed(2).replace(".", ",");
+  }
+  return stock.toString();
 };
 </script>
 
@@ -76,7 +89,9 @@ const getNextExpiration = (lots) => {
         :items="props.products"
         :items-length="props.totalProducts"
         :loading="props.loading"
-        class="text-no-wrap premium-table"
+        class="text-no-wrap"
+        density="compact"
+        item-value="id"
         @update:options="(options) => emit('update:options', options)"
       >
         <template #no-data>
@@ -87,174 +102,188 @@ const getNextExpiration = (lots) => {
           />
         </template>
 
+        <!-- ID sin símbolo # -->
         <template #item.id="{ item }">
           <a
             :href="'/inventory/traceability?q=' + item.id"
             target="_blank"
             class="text-decoration-none font-weight-black text-primary"
           >
-            #{{ item.id }}
+            {{ item.id }}
           </a>
         </template>
 
+        <!-- Producto con activo/laboratorio idéntico a ProductTable -->
         <template #item.name="{ item }">
-          <div class="d-flex align-center gap-x-3 py-1">
-            <VAvatar
-              v-if="item.photo_url"
-              size="38"
-              variant="tonal"
-              rounded
-              :image="item.photo_url"
-            />
-            <div class="d-flex flex-column">
+          <div class="d-flex align-center gap-x-3 py-2">
+            <div class="d-flex flex-column min-width-0">
               <span
-                class="text-sm font-weight-bold text-high-emphasis truncate"
+                class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate"
+                :class="{ 
+                  'text-warning': item.psychotropic == 1 || item.psychotropic === true
+                }"
                 style="max-inline-size: 320px;"
-                :class="{ 'text-warning': item.psychotropic == 1 || item.psychotropic === true }"
+                :title="item.name"
               >
                 {{ item.name?.toUpperCase() || "—" }}
-                <span v-if="item.iva == 1 || item.iva === true" class="text-xs text-info ms-1">(G)</span>
-                <span v-if="item.is_colombian_origin == 1 || item.is_colombian_origin === true" class="text-xs text-success ms-1">(COL)</span>
+                <span v-if="item.iva == 1 || item.iva === true" class="text-xs text-disabled"> (G)</span>
+                <span v-if="item.is_colombian_origin == 1 || item.is_colombian_origin === true" class="text-xs text-disabled"> (COL)</span>
               </span>
-              <span class="text-xs text-disabled truncate" style="max-inline-size: 280px;">
-                {{ item.active_ingredient || item.presentation || 'Sin Especificación' }}
-                <template v-if="item.laboratory?.name">
-                  • <strong class="text-primary">{{ item.laboratory.name }}</strong>
-                </template>
-              </span>
+              <div class="d-flex align-center gap-1 text-super-xs">
+                <span class="text-disabled truncate" style="max-inline-size: 200px;">
+                  {{ item.active_ingredient || item.presentation || 'Sin Especificación' }}
+                </span>
+                <span class="text-disabled mx-1">|</span>
+                <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 150px;">
+                  {{ item.laboratory?.name || 'S/L' }}
+                </span>
+              </div>
             </div>
           </div>
         </template>
 
-        <template #item.laboratory.name="{ item }">
-          <span class="text-xs font-weight-medium text-capitalize">{{ item.laboratory?.name || "—" }}</span>
-        </template>
-
-        <template #item.stock_calculado="{ item }">
-          <span class="text-xs font-weight-black" :class="(item.stock_calculado ?? 0) > 0 ? 'text-success' : 'text-error'">
-            {{ Math.round(item.stock_calculado ?? 0) }} <small>UNDS</small>
-          </span>
-        </template>
-
-        <template #item.lots_count="{ item }">
-          <span class="text-xs font-weight-bold">{{ item.lots?.length || 0 }}</span>
-        </template>
-
+        <!-- EXP. -->
         <template #item.next_expiration="{ item }">
-          <span class="text-xs font-weight-medium">{{ formatDateSimple(getNextExpiration(item.lots)) || 'N/A' }}</span>
+          <span class="text-xs font-weight-medium">{{ nextExpirationDate(item) }}</span>
         </template>
 
+        <!-- STOCK con chip y desglose flotante al pasar el cursor -->
+        <template #item.stock_calculado="{ item }">
+          <div class="text-end">
+            <VMenu
+              v-if="item.lots && item.lots.length > 0 && brandingStore.settings?.enable_lots !== false"
+              open-on-hover
+              location="bottom end"
+              offset="8px"
+            >
+              <template #activator="{ props: menuProps }">
+                <VChip
+                  v-bind="menuProps"
+                  :color="item.stock_calculado > 0 ? 'success' : 'error'"
+                  label
+                  size="x-small"
+                  variant="tonal"
+                  class="font-weight-black cursor-pointer hover-chip"
+                >
+                  {{ formatStock(item) }}
+                  <VIcon icon="tabler-info-circle" size="12" class="ms-1" />
+                </VChip>
+              </template>
+              <VCard min-width="280" class="rounded-xl border shadow-lg pa-3">
+                <div class="text-xs font-weight-black text-primary uppercase letter-spacing-1 mb-2 d-flex align-center gap-1">
+                  <VIcon icon="tabler-clipboard-list" size="14" />
+                  Desglose de Lotes
+                </div>
+                <VDivider class="mb-2" />
+                <div style="max-height: 180px; overflow-y: auto;">
+                  <div 
+                    v-for="lot in item.lots" 
+                    :key="lot.id"
+                    class="d-flex align-center justify-space-between py-1 border-bottom-light"
+                  >
+                    <div class="d-flex flex-column text-left">
+                      <span class="text-xs font-weight-bold text-high-emphasis">Lote: {{ lot.lot_number }}</span>
+                      <span class="text-super-xs text-disabled">Exp: {{ formatDateSimple(lot.expiration_date) }}</span>
+                    </div>
+                    <VChip size="x-small" label color="secondary" variant="flat" class="font-weight-black">
+                      {{ lot.quantity }}
+                    </VChip>
+                  </div>
+                </div>
+              </VCard>
+            </VMenu>
+            <VChip
+              v-else
+              :color="item.stock_calculado > 0 ? 'success' : 'error'"
+              label
+              size="x-small"
+              variant="tonal"
+              class="font-weight-black"
+            >
+              {{ formatStock(item) }}
+            </VChip>
+          </div>
+        </template>
+
+        <!-- Acciones con IconBtn limpio sin fondo -->
         <template #item.actions="{ item }">
           <div class="d-flex justify-center gap-1">
-            <VBtn
-              icon
-              size="32"
+            <IconBtn
               color="primary"
-              variant="tonal"
-              class="rounded-lg shadow-sm"
+              size="small"
               @click.stop="emit('adjust-lots', item)"
             >
               <VIcon icon="tabler-package" size="18" />
               <VTooltip activator="parent" location="top">Crear / Ajustar Lotes</VTooltip>
-            </VBtn>
+            </IconBtn>
           </div>
         </template>
       </VDataTableServer>
     </div>
 
     <!-- Mobile Cards -->
-    <div class="d-block d-sm-none">
-      <div v-if="loading && products.length === 0" class="pa-5 text-center">
-        <VProgressCircular indeterminate color="primary" />
-      </div>
-
-      <div v-else-if="products.length > 0" class="pa-3 d-flex flex-column gap-3">
-        <VCard
-          v-for="item in products"
-          :key="item.id"
-          class="border shadow-sm rounded-lg overflow-hidden"
-        >
-          <div class="pa-4">
-            <div class="d-flex gap-3 align-start mb-2">
-              <VAvatar
-                v-if="item.photo_url"
-                size="42"
-                variant="tonal"
-                rounded
-                :image="item.photo_url"
-                class="flex-shrink-0"
-              />
-              <div class="flex-grow-1 min-width-0">
-                <h3 class="text-xs font-weight-black text-high-emphasis text-uppercase leading-tight">
-                  <a
-                    :href="'/inventory/traceability?q=' + item.id"
-                    target="_blank"
-                    class="text-decoration-none text-primary me-1"
-                  >
-                    #{{ item.id }}
-                  </a>
-                  <span class="text-disabled me-1">|</span>
-                  {{ item.name }}
-                </h3>
-                <span class="text-super-xs text-disabled truncate d-block mt-1">
-                  {{ item.active_ingredient || 'Sin Especificación' }} • <strong class="text-primary">{{ item.laboratory?.name || 'S/L' }}</strong>
-                </span>
-              </div>
-            </div>
-
-            <VDivider class="my-3 opacity-10" />
-
-            <div class="d-flex justify-space-between align-center mb-3">
-              <div class="d-flex flex-column">
-                <span class="text-super-xs text-disabled text-uppercase font-weight-bold">Stock Registrado</span>
-                <span class="text-xs font-weight-black" :class="(item.stock_calculado ?? 0) > 0 ? 'text-success' : 'text-error'">
-                  {{ Math.round(item.stock_calculado ?? 0) }} <small>UNDS</small>
-                </span>
-              </div>
-              <div class="d-flex flex-column text-right">
-                <span class="text-super-xs text-disabled text-uppercase font-weight-bold">Próx. Venc.</span>
-                <span class="text-xs font-weight-bold">{{ formatDateSimple(getNextExpiration(item.lots)) || 'N/A' }}</span>
-              </div>
-            </div>
-
-            <div class="pa-2 rounded-lg bg-surface-variant-opacity border d-flex justify-space-between align-center">
-              <span class="text-super-xs text-disabled text-uppercase font-weight-bold">Lotes Físicos:</span>
-              <span class="text-xs font-weight-black text-primary">{{ item.lots?.length || 0 }} Registrados</span>
-            </div>
-          </div>
-
-          <div class="border-t">
-            <VBtn
-              block
-              color="primary"
-              variant="text"
-              class="rounded-0 text-xs font-weight-black"
-              height="40"
-              prepend-icon="tabler-package"
-              @click="emit('adjust-lots', item)"
-            >
-              ASIGNAR LOTES
-            </VBtn>
-          </div>
-        </VCard>
-
-        <!-- Paginación Móvil -->
-        <div class="d-flex justify-center mt-2">
-           <AppMobilePagination
-            :page="props.page"
-            :items-per-page="props.itemsPerPage"
-            :total-items="props.totalProducts"
-            :loading="props.loading"
-            @change="(options) => emit('update:options', { ...options, sortBy: [], groupBy: [] })"
-          />
-        </div>
-      </div>
-
-      <div v-else class="pa-4">
+    <div class="d-block d-sm-none pa-2">
+      <VProgressLinear v-if="props.loading" indeterminate color="primary" class="mb-2" />
+      
+      <div v-if="props.products.length === 0 && !props.loading" class="text-center py-8 text-disabled">
         <AppEmptyState
           title="¡Todo Lotificado!"
           message="No hay productos pendientes de asignación de lotes en el catálogo."
           icon="tabler-package-off"
+        />
+      </div>
+
+      <div v-else class="d-flex flex-column gap-2">
+        <VCard
+          v-for="item in props.products"
+          :key="item.id"
+          class="product-mobile-card border rounded-lg bg-surface pa-3 shadow-none position-relative"
+        >
+          <div class="d-flex align-center justify-space-between mb-2">
+            <div class="d-flex align-center gap-1 min-width-0">
+              <span class="text-xs font-weight-black text-primary">#{{ item.id }}</span>
+              <span class="text-disabled">|</span>
+              <span class="text-xs font-weight-black text-primary uppercase truncate" style="max-inline-size: 150px;">
+                {{ item.laboratory?.name || 'S/L' }}
+              </span>
+            </div>
+            <VChip
+              :color="item.stock_calculado > 0 ? 'success' : 'error'"
+              label
+              size="x-small"
+              variant="tonal"
+              class="font-weight-black"
+            >
+              {{ formatStock(item) }} UNDS
+            </VChip>
+          </div>
+
+          <h4 class="text-xs font-weight-black text-high-emphasis uppercase leading-tight mb-1 text-truncate">
+            {{ item.name }}
+          </h4>
+
+          <div class="d-flex align-center justify-space-between text-super-xs text-medium-emphasis mt-2 pt-2 border-t">
+            <span>Exp: {{ nextExpirationDate(item) }}</span>
+            <IconBtn
+              color="primary"
+              size="small"
+              @click.stop="emit('adjust-lots', item)"
+            >
+              <VIcon icon="tabler-package" size="18" />
+              <VTooltip activator="parent">Asignar Lotes</VTooltip>
+            </IconBtn>
+          </div>
+        </VCard>
+      </div>
+
+      <!-- Paginación Móvil -->
+      <div class="mt-4">
+        <AppMobilePagination
+          :page="props.page"
+          :items-per-page="props.itemsPerPage"
+          :total-items="props.totalProducts"
+          :loading="props.loading"
+          @change="(options) => emit('update:options', { ...options, sortBy: [], groupBy: [] })"
         />
       </div>
     </div>
@@ -262,27 +291,35 @@ const getNextExpiration = (lots) => {
 </template>
 
 <style scoped>
-.premium-table :deep(.v-data-table-header th) {
-  background: white !important;
-  color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)) !important;
-  font-size: 0.75rem !important;
-  font-weight: 700 !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.05rem !important;
-  border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.05) !important;
+.hover-chip:hover {
+  filter: brightness(0.95);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.08);
 }
 
-.premium-table :deep(.v-data-table__td) {
-  padding-block: 10px !important;
-  border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.03) !important;
+.border-bottom-light {
+  border-bottom: 1px solid rgba(var(--v-border-color), 0.08);
+}
+.border-bottom-light:last-child {
+  border-bottom: none;
 }
 
 .text-super-xs {
   font-size: 0.65rem !important;
+  line-height: 1;
 }
 
-.bg-surface-variant-opacity {
-  background-color: rgba(var(--v-theme-on-surface), 0.03) !important;
+.text-xs {
+  font-size: 0.75rem !important;
+}
+
+.gap-1 { gap: 4px !important; }
+.gap-2 { gap: 8px !important; }
+
+:deep(.v-data-table th) {
+  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
 }
 
 .truncate {

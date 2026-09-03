@@ -79,6 +79,7 @@ class ProductResource extends JsonResource
                         'lot_number' => $lot->lot_number,
                         'expiration_date' => $lot->expiration_date,
                         'quantity' => $lot->quantity,
+                        'location' => $lot->location,
                     ];
                 });
             }),

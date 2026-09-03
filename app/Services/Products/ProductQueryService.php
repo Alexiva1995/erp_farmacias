@@ -27,7 +27,7 @@ class ProductQueryService
                 'profitability:id,product_id,profitability_percentage,is_locked',
                 'variants',
                 'lots' => function ($query) {
-                    $query->select(['id', 'product_id', 'expiration_date', 'quantity'])
+                    $query->select(['id', 'product_id', 'lot_number', 'expiration_date', 'quantity', 'location'])
                           ->where('quantity', '>', 0)
                           ->orderBy('expiration_date', 'asc');
                 },

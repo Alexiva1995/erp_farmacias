@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 import BarcodeScannerDialog from "@/components/dialogs/BarcodeScannerDialog.vue";
 import { toast } from "@/plugins/sweetalert";
 import { formatDateSimple } from "@/utils/formatters";
@@ -47,10 +47,10 @@ const formatDateForInput = (dateString) => {
 };
 
 watch(
-  () => props.modelValue,
-  (isOpening) => {
+  [() => props.modelValue, () => props.lots],
+  ([isOpening, currentLots]) => {
     if (isOpening) {
-      const lotsArray = Array.isArray(props.lots) ? props.lots : [];
+      const lotsArray = Array.isArray(currentLots) ? currentLots : [];
       distributedLots.value = lotsArray.map(lot => ({
         ...lot,
         location: lot.location || (isMiniMarket.value ? "LOCAL" : ""),
@@ -62,7 +62,7 @@ watch(
       lotErrors.value = {};
     }
   },
-  { immediate: true }
+  { immediate: true, deep: true }
 );
 
 const currentLotsStockSum = computed(() => {
@@ -250,9 +250,9 @@ const handleScan = (code) => {
             color="white"
             variant="flat"
             size="40"
-            class="me-3 elevation-1"
+            class="me-3 elevation-1 rounded-lg"
           >
-            <VIcon icon="tabler-truck-delivery" color="primary" size="24" />
+            <VIcon icon="tabler-truck-delivery" size="24" class="modal-avatar-icon" />
           </VAvatar>
           <div class="d-flex flex-column leading-none text-white">
             <h2 class="text-h6 font-weight-black leading-tight mb-0 uppercase">
@@ -275,77 +275,65 @@ const handleScan = (code) => {
       </VCardTitle>
 
       <VCardText class="pa-4 pa-sm-6 bg-light overflow-y-auto" style="max-height: 75vh;">
-        <!-- Perfil del Producto Premium -->
-        <VCard variant="flat" class="pa-5 bg-white rounded-xl border shadow-sm mb-6">
-          <div class="d-flex align-center justify-space-between gap-4">
-            <div class="d-flex align-center gap-4 min-width-0">
+        <!-- Fila Única: Perfil del Producto + Resumen de Métricas -->
+        <VRow dense class="mb-4 align-stretch">
+          <!-- Card de Producto con Botón Agregar -->
+          <VCol cols="12" md="6" class="d-flex">
+            <VCard variant="flat" class="pa-3 bg-white rounded-xl border shadow-sm w-100 d-flex align-center justify-space-between gap-3">
               <div class="min-width-0">
-                <div class="d-flex align-center gap-2 mb-2">
-                  <VChip
-                    size="small"
-                    color="primary"
-                    variant="flat"
-                    class="font-weight-black uppercase px-3 shadow-sm rounded-lg"
-                  >
-                    {{ props.mode === 'adjustment' ? 'MODO CÍCLICO' : 'MODO RETORNO' }}
-                  </VChip>
-                  <VChip
-                    v-if="props.productId"
-                    size="small"
-                    color="secondary"
-                    variant="tonal"
-                    class="font-weight-black px-3 rounded-lg"
-                  >
-                    ID: {{ props.productId }}
-                  </VChip>
-                </div>
-                <h3 class="text-h6 font-weight-black text-high-emphasis leading-tight uppercase mb-1 truncate">
-                  {{ props.productName }}
-                </h3>
-                <div v-if="props.laboratory" class="d-flex align-center gap-1 opacity-75">
-                  <VIcon icon="tabler-building-factory" size="14" color="primary" />
-                  <span class="text-super-xs font-weight-black text-disabled uppercase letter-spacing-1">
+                <div class="d-flex align-center gap-2 mb-1">
+                  <span v-if="props.productId" class="text-super-xs font-weight-black text-primary uppercase letter-spacing-1">
+                    ID #{{ props.productId }}
+                  </span>
+                  <span v-if="props.laboratory" class="text-super-xs text-disabled">|</span>
+                  <span v-if="props.laboratory" class="text-super-xs font-weight-bold text-disabled uppercase truncate" style="max-inline-size: 180px;">
                     {{ props.laboratory }}
                   </span>
                 </div>
+                <h3 class="text-subtitle-1 font-weight-black text-high-emphasis leading-tight uppercase truncate">
+                  {{ props.productName }}
+                </h3>
               </div>
-            </div>
-            <VBtn
-              color="primary"
-              icon="tabler-plus"
-              variant="flat"
-              size="large"
-              class="rounded-lg shadow-primary"
-              @click="handleAddNewLot"
-            />
-          </div>
-        </VCard>
+              <VBtn
+                color="primary"
+                icon="tabler-plus"
+                variant="flat"
+                size="default"
+                class="rounded-lg shadow-primary flex-shrink-0"
+                @click="handleAddNewLot"
+              >
+                <VIcon icon="tabler-plus" size="20" />
+                <VTooltip activator="parent">Añadir Lote</VTooltip>
+              </VBtn>
+            </VCard>
+          </VCol>
 
-        <!-- Resumen de Stock Premium -->
-        <VRow dense class="mb-6">
-          <VCol cols="12" sm="4">
-            <VCard variant="flat" class="pa-4 bg-white text-center rounded-xl border shadow-sm border-l-primary">
-              <span class="text-super-xs font-weight-black text-disabled d-block uppercase mb-1 letter-spacing-1">Stock Objetivo</span>
-              <div class="text-h4 font-weight-black text-primary leading-none">
+          <!-- Stock Objetivo -->
+          <VCol cols="4" md="2" class="d-flex">
+            <VCard variant="flat" class="pa-2 bg-white text-center rounded-xl border shadow-sm w-100 d-flex flex-column justify-center border-l-primary">
+              <span class="text-super-xs font-weight-black text-disabled d-block uppercase mb-1 letter-spacing-1">Objetivo</span>
+              <div class="text-h5 font-weight-black text-primary leading-none">
                 {{ formatNumber(objective) }}
               </div>
             </VCard>
           </VCol>
           
-          <VCol cols="12" sm="4">
-            <VCard variant="flat" class="pa-4 bg-white text-center rounded-xl border shadow-sm">
-              <span class="text-super-xs font-weight-black text-disabled d-block uppercase mb-1 letter-spacing-1">Total Asignado</span>
-              <div class="text-h4 font-weight-black text-info leading-none">
+          <!-- Total Asignado -->
+          <VCol cols="4" md="2" class="d-flex">
+            <VCard variant="flat" class="pa-2 bg-white text-center rounded-xl border shadow-sm w-100 d-flex flex-column justify-center">
+              <span class="text-super-xs font-weight-black text-disabled d-block uppercase mb-1 letter-spacing-1">Asignado</span>
+              <div class="text-h5 font-weight-black text-info leading-none">
                 {{ formatNumber(totalDistributed) }}
               </div>
             </VCard>
           </VCol>
 
-          <VCol cols="12" sm="4">
-            <VCard variant="flat" class="pa-4 bg-white text-center rounded-xl border shadow-sm">
+          <!-- Diferencia -->
+          <VCol cols="4" md="2" class="d-flex">
+            <VCard variant="flat" class="pa-2 bg-white text-center rounded-xl border shadow-sm w-100 d-flex flex-column justify-center">
               <span class="text-super-xs font-weight-black text-disabled d-block uppercase mb-1 letter-spacing-1">Diferencia</span>
               <div 
-                class="text-h4 font-weight-black leading-none"
+                class="text-h5 font-weight-black leading-none"
                 :class="discrepancy === 0 ? 'text-success' : 'text-error'"
               >
                 {{ discrepancy > 0 ? '+' : '' }}{{ formatNumber(discrepancy) }}
@@ -353,13 +341,6 @@ const handleScan = (code) => {
             </VCard>
           </VCol>
         </VRow>
-
-        <div class="d-flex align-center gap-2 mb-4">
-          <div class="header-indicator secondary shadow-sm" />
-          <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">
-            Desglose de Lotes y Ubicaciones
-          </span>
-        </div>
 
         <!-- Tabla Escritorio Premium -->
         <div class="d-none d-md-block">
@@ -601,7 +582,15 @@ const handleScan = (code) => {
     135deg,
     rgb(var(--v-theme-primary)) 0%,
     rgb(var(--v-theme-gradient-end)) 100%
-  );
+  ) !important;
+}
+
+.modal-avatar-icon {
+  color: #7A0099 !important;
+}
+
+:deep(.modal-avatar-icon) {
+  color: #7A0099 !important;
 }
 
 .detail-dialog-card {
