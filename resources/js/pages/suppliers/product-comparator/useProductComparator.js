@@ -691,13 +691,34 @@ export function useProductComparator() {
 
   const handleToggleOrder = async (product) => {
     try {
-      const { data } = await axios.patch(`/suppliers/${product.id}/toggle-order`);
-      if (data.status === "success") {
-        toast.success(data.message || "Estado actualizado correctamente");
-        fetchProductsWithoutSupplier();
+      // 1. Remover inmediatamente de la lista reactiva local sin recargar toda la tabla
+      const currentIndex = listProductsWithoutSupplier.value.findIndex(p => p.id === product.id);
+      listProductsWithoutSupplier.value = listProductsWithoutSupplier.value.filter(p => p.id !== product.id);
+      if (totalProductsWithoutSupplier.value > 0) {
+        totalProductsWithoutSupplier.value--;
       }
+
+      // 2. Si este producto estaba seleccionado, auto-seleccionar el siguiente
+      if (selectedProductFromTop.value?.id === product.id) {
+        if (listProductsWithoutSupplier.value.length > 0) {
+          const nextIndex = Math.min(Math.max(0, currentIndex), listProductsWithoutSupplier.value.length - 1);
+          handleSelectProductFromTop(listProductsWithoutSupplier.value[nextIndex]);
+        } else {
+          selectedProductFromTop.value = null;
+          filterSearchQuery.value = "";
+          if (totalProductsWithoutSupplier.value > 0) {
+            fetchProductsWithoutSupplier();
+          }
+        }
+      }
+
+      // 3. Enviar la petición asíncrona al backend
+      const response = await axios.patch(`/suppliers/${product.id}/toggle-order`);
+      const { data, message } = response.data;
+      toast.success(data || message || "Producto ignorado por 7 días");
     } catch (error) {
-      toast.error("No se pudieron borrar el productos de la lista.");
+      toast.error("No se pudo ignorar el producto de la lista.");
+      fetchProductsWithoutSupplier();
     }
   };
 

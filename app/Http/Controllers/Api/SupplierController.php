@@ -504,9 +504,9 @@ class SupplierController extends Controller
         $product = Product::findOrFail($id);
         $product->update([
             'is_ordered' => false,
-            'ignore_until' => now()->addHours(48),
+            'ignore_until' => now()->addDays(7),
         ]);
-        return ApiResponse::success("Producto eliminado de la lista por 48 horas");
+        return ApiResponse::success("Producto ignorado por 7 días");
     }
 
     public function generatePublicToken(Supplier $supplier)
