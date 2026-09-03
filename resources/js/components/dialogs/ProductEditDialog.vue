@@ -9,11 +9,11 @@ import ProductEditGeneralTab from "./product-edit/ProductEditGeneralTab.vue";
 import ProductEditInventoryTab from "./product-edit/ProductEditInventoryTab.vue";
 import ProductEditVariationsTab from "./product-edit/ProductEditVariationsTab.vue";
 import ProductEditRelationsTab from "./product-edit/ProductEditRelationsTab.vue";
+import ProductCreateLaboratoryDialog from "./product-edit/ProductCreateLaboratoryDialog.vue";
+import ProductEcommercePreviewDialog from "./product-edit/ProductEcommercePreviewDialog.vue";
 
 const { xs } = useDisplay();
 const brandingStore = useBrandingStore();
-
-const isRestaurant = computed(() => brandingStore.settings?.business_type === "restaurant");
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
@@ -64,9 +64,6 @@ const onCropConfirm = (croppedFile) => {
 };
 
 const isLabDialogVisible = ref(false);
-const newLabName = ref("");
-const isSavingLab = ref(false);
-
 const activeTab = ref(0);
 
 const handleNextTab = () => {
@@ -79,29 +76,9 @@ const handleNextTab = () => {
   }
 };
 
-const createLaboratory = async () => {
-  if (!newLabName.value.trim()) return;
-
-  isSavingLab.value = true;
-  try {
-    const response = await axios.post("/laboratories", {
-      name: newLabName.value,
-    });
-
-    toast.success("Laboratorio / Marca creada con éxito");
-    emit("laboratory-created", response.data.laboratory);
-    formData.value.laboratory_id = response.data.laboratory.id;
-    isLabDialogVisible.value = false;
-    newLabName.value = "";
-  } catch (error) {
-    if (error.response && error.response.status === 422) {
-      toast.error(error.response.data.errors?.name?.[0] || "Error de validación");
-    } else {
-      toast.error("Error al crear el laboratorio / marca");
-    }
-  } finally {
-    isSavingLab.value = false;
-  }
+const onLaboratoryCreated = (lab) => {
+  emit("laboratory-created", lab);
+  formData.value.laboratory_id = lab.id;
 };
 
 const isNewProduct = computed(() => !formData.value.id);
@@ -398,7 +375,7 @@ const imagePreviewUrl = computed(() => {
             <VIcon
               :icon="isNewProduct ? 'tabler-circle-plus' : 'tabler-pencil'"
               :size="xs ? 20 : 24"
-              style="color: #7A0099 !important;"
+              class="modal-avatar-icon"
             />
           </VAvatar>
           <div class="d-flex flex-column leading-none">
@@ -569,106 +546,17 @@ const imagePreviewUrl = computed(() => {
     </VCard>
   </VDialog>
 
-  <!-- Diálogo para crear Laboratorio / Marca -->
-  <VDialog
+  <!-- Diálogo Desacoplado para crear Laboratorio / Marca -->
+  <ProductCreateLaboratoryDialog
     v-model="isLabDialogVisible"
-    max-width="450px"
-    transition="dialog-bottom-transition"
-  >
-    <VCard class="detail-dialog-card rounded-xl border-0 shadow-xl overflow-hidden bg-surface">
-      <VCardTitle class="pa-0">
-        <div class="header-gradient pa-4 d-flex align-center shadow-sm">
-          <div class="avatar-icon-box-xs d-flex align-center justify-center me-3 rounded-lg shadow-sm">
-            <VIcon icon="tabler-flask-2" size="18" class="header-icon" />
-          </div>
-          <div class="d-flex flex-column leading-none text-white">
-            <h2 class="text-subtitle-1 font-weight-black leading-tight mb-0 uppercase">
-              {{ isRestaurant ? 'Nueva Marca' : 'Nuevo Laboratorio' }}
-            </h2>
-            <span class="text-super-xs opacity-75 font-weight-bold uppercase letter-spacing-1">Registro Maestro</span>
-          </div>
-          <VSpacer />
-          <VBtn
-            icon="tabler-x"
-            variant="tonal"
-            color="white"
-            size="x-small"
-            class="rounded-lg"
-            @click="isLabDialogVisible = false"
-          />
-        </div>
-      </VCardTitle>
+    @created="onLaboratoryCreated"
+  />
 
-      <VCardText class="pa-6 bg-light">
-        <VCard variant="flat" class="pa-5 bg-white rounded-xl border shadow-sm">
-          <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">
-            {{ isRestaurant ? 'Nombre Oficial de la Marca' : 'Nombre Oficial del Laboratorio' }}
-          </span>
-          <VTextField
-            v-model="newLabName"
-            :placeholder="isRestaurant ? 'EJ: MARCA NESTLÉ' : 'EJ: LABORATORIOS GOVIMAR'"
-            variant="outlined"
-            density="comfortable"
-            autofocus
-            hide-details="auto"
-            class="rounded-lg font-weight-black"
-            @keydown.enter="createLaboratory"
-          />
-        </VCard>
-      </VCardText>
-
-      <VCardActions class="pa-4 bg-surface border-t px-6">
-        <VRow dense class="w-100 ma-0">
-          <VCol cols="6">
-            <VBtn
-              color="secondary"
-              variant="tonal"
-              height="44"
-              block
-              class="font-weight-black rounded-lg text-button uppercase"
-              @click="isLabDialogVisible = false"
-            >
-              Cerrar
-            </VBtn>
-          </VCol>
-          <VCol cols="6">
-            <VBtn
-              color="primary"
-              variant="flat"
-              height="44"
-              block
-              class="font-weight-black rounded-lg shadow-primary text-button uppercase"
-              :loading="isSavingLab"
-              :disabled="!newLabName.trim()"
-              @click="createLaboratory"
-            >
-              Guardar
-            </VBtn>
-          </VCol>
-        </VRow>
-      </VCardActions>
-    </VCard>
-  </VDialog>
-
-  <!-- Preview ecommerce de imagen -->
-  <VDialog v-model="imgPreviewOpen" max-width="340" scrollable>
-    <VCard class="rounded-xl overflow-hidden pa-0">
-      <div class="d-flex align-center justify-space-between px-4 py-3" style="background: linear-gradient(135deg, rgb(var(--v-theme-secondary)) 0%, rgb(var(--v-theme-primary)) 100%);">
-        <span class="text-subtitle-2 font-weight-black text-white" style="letter-spacing:1px;">VISTA PREVIA TIENDA</span>
-        <VBtn icon="tabler-x" variant="text" color="white" size="small" density="compact" @click="imgPreviewOpen = false" />
-      </div>
-      <div style="aspect-ratio:1; background:#F5F5F5; overflow:hidden;">
-        <img
-          :src="imagePreviewUrl"
-          style="width:100%; height:100%; object-fit:cover; display:block;"
-          alt="Vista previa"
-        />
-      </div>
-      <div class="px-4 py-2 text-center">
-        <span class="text-caption text-disabled" style="letter-spacing:1px; font-size:10px;">ASÍ SE VERÁ EN EL ECOMMERCE</span>
-      </div>
-    </VCard>
-  </VDialog>
+  <!-- Diálogo Desacoplado de Preview ecommerce de imagen -->
+  <ProductEcommercePreviewDialog
+    v-model="imgPreviewOpen"
+    :image-preview-url="imagePreviewUrl"
+  />
 
   <!-- Editor de recorte de imagen -->
   <ImageCropperDialog
@@ -683,40 +571,16 @@ const imagePreviewUrl = computed(() => {
   background: linear-gradient(135deg, rgb(var(--v-theme-secondary)) 0%, rgb(var(--v-theme-primary)) 100%) !important;
 }
 
-.avatar-icon-box {
-  width: 40px;
-  height: 40px;
-  background-color: #ffffff !important;
-  flex-shrink: 0;
-}
-
-.avatar-icon-box-xs {
-  width: 32px;
-  height: 32px;
-  background-color: #ffffff !important;
-  flex-shrink: 0;
-}
-
-.header-icon {
-  color: rgb(var(--v-theme-primary)) !important;
-}
-
-.header-gradient h2,
-.header-gradient span {
-  color: #ffffff !important;
-}
-
 .detail-dialog-card {
   border-radius: 12px !important;
 }
 
-.shadow-primary {
-  box-shadow: 0 4px 14px 0 rgba(var(--v-theme-primary), 0.39) !important;
+.modal-avatar-icon {
+  color: #7A0099 !important;
 }
 
-.text-super-xs {
-  font-size: 0.65rem !important;
-  line-height: normal;
+.shadow-primary {
+  box-shadow: 0 4px 14px 0 rgba(var(--v-theme-primary), 0.39) !important;
 }
 
 .letter-spacing-1 {

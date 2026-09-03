@@ -289,7 +289,7 @@ const closeDialog = () => {
           <VIcon
             icon="tabler-chart-histogram"
             :size="xs ? 20 : 22"
-            style="color: #7A0099 !important;"
+            class="modal-avatar-icon"
           />
         </VAvatar>
         <div class="d-flex flex-column">
@@ -464,6 +464,10 @@ const closeDialog = () => {
 }
 
 .header-icon {
+  color: #7A0099 !important;
+}
+
+.modal-avatar-icon {
   color: #7A0099 !important;
 }
 
