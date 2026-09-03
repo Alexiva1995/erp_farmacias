@@ -160,12 +160,16 @@ watch(allowWithoutBarcode, (newValue) => {
   }
 });
 
+const lastScanTimestamp = ref(0);
+
 const handleBarcodeEnter = () => {
+  lastScanTimestamp.value = Date.now();
   if (!barcodeError.value && barcodeInput.value.trim()) {
     nextTick(() => {
-      const quantityInput = document.querySelector("#quantity-input");
+      const quantityInput = document.querySelector("#quantity-input") || document.querySelector("#packages-input");
       if (quantityInput) {
         quantityInput.focus();
+        if (typeof quantityInput.select === "function") quantityInput.select();
       }
     });
   }
@@ -179,6 +183,7 @@ const fillBarcode = () => {
 };
 
 const onBarcodeScanned = (scannedBarcode) => {
+  lastScanTimestamp.value = Date.now();
   barcodeInput.value = scannedBarcode;
   isScannerVisible.value = false;
   handleBarcodeEnter();
@@ -187,28 +192,86 @@ const onBarcodeScanned = (scannedBarcode) => {
 const handleSave = async () => {
   if (!canSave.value) return;
 
+  // Prevenir que una ráfaga o doble Enter del lector de código de barras dispare el guardado accidentalmente
+  if (Date.now() - lastScanTimestamp.value < 450) {
+    return;
+  }
+
   // En modo restaurante el total se calcula del modo dual si el producto tiene presentación
   const quantity = isDualCountMode.value
     ? dualTotalQuantity.value
     : Number(countedQuantity.value);
 
-  const confirmText = isDualCountMode.value
-    ? `${Number(packagesCount.value) || 0} paquete(s) completo(s) + ${Number(openedQuantity.value) || 0} ${productUnit.value} abierto(s) = ${quantity} ${productUnit.value} en total`
-    : `Confirma que está contando la cantidad de ${quantity} ${quantity === 1 ? "unidad" : "unidades"}`;
+  const systemStock = Number(props.product?.stock ?? props.product?.system_quantity ?? props.product?.stock_calculado ?? 0);
+  const difference = quantity - systemStock;
+  const isZeroWhenHadStock = systemStock > 0 && quantity === 0;
 
-  const result = await Swal.fire({
-    title: "Confirmar Conteo",
-    text: confirmText,
-    icon: "question",
-    showCancelButton: true,
-    confirmButtonText: "Confirmar",
-    cancelButtonText: "Cancelar",
-    reverseButtons: true,
-    confirmButtonColor: "rgba(var(--v-theme-primary), 1)",
-    cancelButtonColor: "rgba(var(--v-theme-secondary), 1)",
-  });
+  let result;
+  if (isZeroWhenHadStock) {
+    result = await Swal.fire({
+      title: "⚠️ ¡ATENCIÓN: Stock en CERO!",
+      html: `
+        <div class="text-start py-2" style="font-size: 0.95rem; line-height: 1.5;">
+          <p class="mb-2 font-weight-bold" style="color: #dc3545;">
+            El sistema registra <strong>${systemStock} unidades</strong> y estás a punto de reportar <strong>0 unidades</strong> (Pérdida Total: -${systemStock}).
+          </p>
+          <div style="background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 10px;">
+            <div><strong>Producto:</strong> ${props.product?.name || ''}</div>
+            <div><strong>Stock en Sistema:</strong> ${systemStock} und</div>
+            <div><strong>Tu Conteo Físico:</strong> <span style="color: #dc3545; font-weight: bold;">0 und</span></div>
+            <div><strong>Diferencia:</strong> <span style="color: #dc3545; font-weight: bold;">-${systemStock} und (Faltante Total)</span></div>
+          </div>
+          <p class="mt-2 mb-0 text-muted" style="font-size: 0.85rem;">
+            ¿Confirmas conscientemente que NO hay existencias físicas de este producto?
+          </p>
+        </div>
+      `,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Sí, Confirmo que hay CERO (0)",
+      cancelButtonText: "Cancelar / Rectificar",
+      confirmButtonColor: "#dc3545",
+      cancelButtonColor: "rgba(var(--v-theme-secondary), 1)",
+      reverseButtons: true,
+      focusCancel: true,
+    });
+  } else {
+    const diffColor = difference > 0 ? "#0d6efd" : (difference < 0 ? "#dc3545" : "#198754");
+    const diffLabel = difference > 0 ? `+${difference} (Sobrante)` : (difference < 0 ? `${difference} (Faltante)` : "0 (Exacto)");
 
-  if (!result.isConfirmed) return;
+    result = await Swal.fire({
+      title: difference === 0 ? "Confirmar Conteo Exacto" : "Confirmar Conteo con Discrepancia",
+      html: `
+        <div class="text-start py-2" style="font-size: 0.95rem; line-height: 1.5;">
+          <div style="background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 10px; margin-bottom: 8px;">
+            <div style="font-weight: bold; margin-bottom: 4px;">${props.product?.name || ''}</div>
+            <div style="display: flex; justify-content: space-between;">
+              <span>Stock en Sistema:</span>
+              <strong>${systemStock} und</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+              <span>Tu Conteo Físico:</span>
+              <strong style="color: ${diffColor};">${quantity} und</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; border-top: 1px dashed #ccc; padding-top: 4px; margin-top: 4px;">
+              <span>Diferencia:</span>
+              <strong style="color: ${diffColor};">${diffLabel}</strong>
+            </div>
+          </div>
+          ${isDualCountMode.value ? `<p class="text-caption text-muted mb-0">${Number(packagesCount.value) || 0} paquete(s) + ${Number(openedQuantity.value) || 0} ${productUnit.value} abierto(s)</p>` : ''}
+        </div>
+      `,
+      icon: difference === 0 ? "question" : "warning",
+      showCancelButton: true,
+      confirmButtonText: "Confirmar Conteo",
+      cancelButtonText: "Cancelar",
+      confirmButtonColor: difference === 0 ? "rgba(var(--v-theme-primary), 1)" : "#f59e0b",
+      cancelButtonColor: "rgba(var(--v-theme-secondary), 1)",
+      reverseButtons: true,
+    });
+  }
+
+  if (!result || !result.isConfirmed) return;
 
   const countData = {
     barcode: allowWithoutBarcode.value ? null : barcodeInput.value.trim(),
@@ -416,13 +479,14 @@ const handleSave = async () => {
                   type="number"
                   min="0"
                   step="any"
-                  placeholder="0"
+                  placeholder="Ingrese cantidad..."
                   variant="plain"
                   class="audit-huge-input font-weight-black"
                   density="compact"
                   hide-details
                   :disabled="barcodeRequiredGlobal && !allowWithoutBarcode && (!barcodeInput.trim() || !!barcodeError)"
                   @keyup.enter="handleSave"
+                  @focus="$event.target.select()"
                 />
               </div>
             </template>

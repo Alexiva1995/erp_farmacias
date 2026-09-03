@@ -2,6 +2,7 @@
 import BarcodeScannerDialog from "@/components/dialogs/BarcodeScannerDialog.vue";
 import axios from "@/plugins/axios";
 import { formatDateSimple, formatNumber } from "@/utils/formatters";
+import Swal from "sweetalert2";
 import { computed, nextTick, ref, watch } from "vue";
 
 const props = defineProps({
@@ -31,6 +32,7 @@ const barcodeInput = ref("");
 const barcodeError = ref("");
 const isScannerVisible = ref(false);
 const allowWithoutBarcode = ref(false);
+const lastScanTimestamp = ref(0);
 
 // Solo se permite bypass / ingreso manual si el producto no tiene código, su código es igual a su ID, o si no tiene stock (stock <= 0)
 const canBypassBarcode = computed(() => {
@@ -75,21 +77,29 @@ watch(allowWithoutBarcode, (newValue) => {
     barcodeInput.value = "";
     nextTick(() => {
       const quantityInput = document.querySelector("#recounter-quantity-input");
-      if (quantityInput) quantityInput.focus();
+      if (quantityInput) {
+        quantityInput.focus();
+        if (typeof quantityInput.select === "function") quantityInput.select();
+      }
     });
   }
 });
 
 const handleBarcodeEnter = () => {
+  lastScanTimestamp.value = Date.now();
   if (!barcodeError.value && barcodeInput.value.trim()) {
     nextTick(() => {
       const quantityInput = document.querySelector("#recounter-quantity-input");
-      if (quantityInput) quantityInput.focus();
+      if (quantityInput) {
+        quantityInput.focus();
+        if (typeof quantityInput.select === "function") quantityInput.select();
+      }
     });
   }
 };
 
 const onBarcodeScanned = (scannedBarcode) => {
+  lastScanTimestamp.value = Date.now();
   barcodeInput.value = scannedBarcode;
   isScannerVisible.value = false;
   handleBarcodeEnter();
@@ -113,7 +123,10 @@ watch(
           if (barcodeElement) barcodeElement.focus();
         } else {
           const quantityInput = document.querySelector("#recounter-quantity-input");
-          if (quantityInput) quantityInput.focus();
+          if (quantityInput) {
+            quantityInput.focus();
+            if (typeof quantityInput.select === "function") quantityInput.select();
+          }
         }
       });
     }
@@ -173,8 +186,50 @@ const canVerify = computed(() => {
   );
 });
 
-const handleVerify = () => {
+const handleVerify = async () => {
   if (!canVerify.value) return;
+
+  // Prevenir doble enter accidental por escáner
+  if (Date.now() - lastScanTimestamp.value < 450) {
+    return;
+  }
+
+  const systemStock = Number(currentStock.value ?? props.countRecord?.system_quantity ?? 0);
+  const qty = Number(newCountedQuantity.value);
+  const isZeroWhenHadStock = systemStock > 0 && qty === 0;
+
+  if (isZeroWhenHadStock) {
+    const result = await Swal.fire({
+      title: "⚠️ ¡ATENCIÓN: Stock en CERO!",
+      html: `
+        <div class="text-start py-2" style="font-size: 0.95rem; line-height: 1.5;">
+          <p class="mb-2 font-weight-bold" style="color: #dc3545;">
+            El sistema registra <strong>${systemStock} unidades</strong> y estás auditando <strong>0 unidades</strong> (Pérdida Total: -${systemStock}).
+          </p>
+          <div style="background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 10px;">
+            <div><strong>Producto:</strong> ${props.countRecord?.product?.name || ''}</div>
+            <div><strong>Stock Sistema:</strong> ${systemStock} und</div>
+            <div><strong>Conteo Definitivo:</strong> <span style="color: #dc3545; font-weight: bold;">0 und</span></div>
+            <div><strong>Ajuste a Aplicar:</strong> <span style="color: #dc3545; font-weight: bold;">-${systemStock} und (Pérdida Total)</span></div>
+          </div>
+          <p class="mt-2 mb-0 text-muted" style="font-size: 0.85rem;">
+            ¿Confirmas como Supervisor que el producto físicamente NO tiene existencias?
+          </p>
+        </div>
+      `,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Sí, Confirmo que hay CERO (0)",
+      cancelButtonText: "Cancelar / Rectificar",
+      confirmButtonColor: "#dc3545",
+      cancelButtonColor: "rgba(var(--v-theme-secondary), 1)",
+      reverseButtons: true,
+      focusCancel: true,
+    });
+
+    if (!result.isConfirmed) return;
+  }
+
   isProcessing.value = true;
 
   if (difference.value === 0) {
@@ -430,7 +485,7 @@ const handleClose = () => {
                 v-model.number="newCountedQuantity"
                 type="number"
                 min="0"
-                placeholder="0"
+                placeholder="Ingrese cantidad..."
                 variant="plain"
                 class="ultra-huge-input-text h-auto font-weight-950"
                 density="compact"
@@ -438,6 +493,7 @@ const handleClose = () => {
                 autofocus
                 :disabled="!isBarcodeValid"
                 @keyup.enter="handleVerify"
+                @focus="$event.target.select()"
               />
             </div>
 

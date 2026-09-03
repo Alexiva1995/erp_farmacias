@@ -580,70 +580,74 @@ class HomologateSlaveCatalogCommand extends Command
         $dbName = DB::getDatabaseName();
         $tableList = array_map(fn($t) => ((array) $t)["Tables_in_{$dbName}"] ?? array_values((array) $t)[0], $existingTables);
 
-        // Crear tabla temporal de mapeo
-        DB::statement('DROP TEMPORARY TABLE IF EXISTS temp_generic_map');
+        // Crear tabla de mapeo (física para permitir múltiples referencias en la misma consulta en MySQL)
+        DB::statement('DROP TABLE IF EXISTS _temp_homologate_map');
         DB::statement('
-            CREATE TEMPORARY TABLE temp_generic_map (
+            CREATE TABLE _temp_homologate_map (
                 old_id BIGINT UNSIGNED NOT NULL PRIMARY KEY,
                 new_id BIGINT UNSIGNED NOT NULL
             ) ENGINE=InnoDB
         ');
 
-        $insertData = [];
-        foreach ($map as $oldId => $newId) {
-            $insertData[] = ['old_id' => $oldId, 'new_id' => $newId];
-            if (count($insertData) >= 500) {
-                DB::table('temp_generic_map')->insert($insertData);
-                $insertData = [];
+        try {
+            $insertData = [];
+            foreach ($map as $oldId => $newId) {
+                $insertData[] = ['old_id' => $oldId, 'new_id' => $newId];
+                if (count($insertData) >= 500) {
+                    DB::table('_temp_homologate_map')->insert($insertData);
+                    $insertData = [];
+                }
             }
-        }
-        if (!empty($insertData)) {
-            DB::table('temp_generic_map')->insert($insertData);
-        }
-
-        // Fase 1: Tablas relacionales -> temporal
-        foreach ($foreignRelations as $relTable => $fkColumn) {
-            if (in_array($relTable, $tableList)) {
-                DB::update("
-                    UPDATE IGNORE `{$relTable}` t
-                    INNER JOIN temp_generic_map m ON t.{$fkColumn} = m.old_id
-                    SET t.{$fkColumn} = m.new_id + {$offset}
-                ");
+            if (!empty($insertData)) {
+                DB::table('_temp_homologate_map')->insert($insertData);
             }
-        }
 
-        // Fase 2: Tablas relacionales -> definitivo
-        foreach ($foreignRelations as $relTable => $fkColumn) {
-            if (in_array($relTable, $tableList)) {
-                DB::update("
-                    UPDATE IGNORE `{$relTable}` t
-                    SET t.{$fkColumn} = t.{$fkColumn} - {$offset}
-                    WHERE t.{$fkColumn} >= {$offset}
-                ");
+            // Fase 1: Tablas relacionales -> temporal
+            foreach ($foreignRelations as $relTable => $fkColumn) {
+                if (in_array($relTable, $tableList)) {
+                    DB::update("
+                        UPDATE IGNORE `{$relTable}` t
+                        INNER JOIN _temp_homologate_map m ON t.{$fkColumn} = m.old_id
+                        SET t.{$fkColumn} = m.new_id + {$offset}
+                    ");
+                }
             }
+
+            // Fase 2: Tablas relacionales -> definitivo
+            foreach ($foreignRelations as $relTable => $fkColumn) {
+                if (in_array($relTable, $tableList)) {
+                    DB::update("
+                        UPDATE IGNORE `{$relTable}` t
+                        SET t.{$fkColumn} = t.{$fkColumn} - {$offset}
+                        WHERE t.{$fkColumn} >= {$offset}
+                    ");
+                }
+            }
+
+            // Si el registro destino new_id ya existe en la tabla principal (p. ej. descargado del Master en la etapa 0)
+            // y no está siendo remapeado a otro ID, el registro antiguo old_id es redundante y se elimina para evitar colisión de PK.
+            DB::delete("
+                DELETE p FROM `{$mainTable}` p
+                INNER JOIN _temp_homologate_map m ON p.{$primaryKey} = m.old_id
+                INNER JOIN `{$mainTable}` existing ON existing.{$primaryKey} = m.new_id
+                LEFT JOIN _temp_homologate_map target_mapped ON existing.{$primaryKey} = target_mapped.old_id
+                WHERE target_mapped.old_id IS NULL
+            ");
+
+            // Actualizar tabla principal en 2 fases para registros que no colisionan
+            DB::update("
+                UPDATE `{$mainTable}` p
+                INNER JOIN _temp_homologate_map m ON p.{$primaryKey} = m.old_id
+                SET p.{$primaryKey} = m.new_id + {$offset}
+            ");
+
+            DB::update("
+                UPDATE `{$mainTable}` p
+                SET p.{$primaryKey} = p.{$primaryKey} - {$offset}
+                WHERE p.{$primaryKey} >= {$offset}
+            ");
+        } finally {
+            DB::statement('DROP TABLE IF EXISTS _temp_homologate_map');
         }
-
-        // Si el registro destino new_id ya existe en la tabla principal (p. ej. descargado del Master en la etapa 0)
-        // y no está siendo remapeado a otro ID, el registro antiguo old_id es redundante y se elimina para evitar colisión de PK.
-        DB::delete("
-            DELETE p FROM `{$mainTable}` p
-            INNER JOIN temp_generic_map m ON p.{$primaryKey} = m.old_id
-            INNER JOIN `{$mainTable}` existing ON existing.{$primaryKey} = m.new_id
-            LEFT JOIN temp_generic_map target_mapped ON existing.{$primaryKey} = target_mapped.old_id
-            WHERE target_mapped.old_id IS NULL
-        ");
-
-        // Actualizar tabla principal en 2 fases para registros que no colisionan
-        DB::update("
-            UPDATE `{$mainTable}` p
-            INNER JOIN temp_generic_map m ON p.{$primaryKey} = m.old_id
-            SET p.{$primaryKey} = m.new_id + {$offset}
-        ");
-
-        DB::update("
-            UPDATE `{$mainTable}` p
-            SET p.{$primaryKey} = p.{$primaryKey} - {$offset}
-            WHERE p.{$primaryKey} >= {$offset}
-        ");
     }
 }
