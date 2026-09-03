@@ -13,6 +13,10 @@ Artisan::command('inspire', function () {
 Schedule::command('app:update-exchange-rate')->dailyAt('00:10');
 Schedule::command('app:close-cash')->dailyAt('23:59');
 Schedule::command('app:clear-expired-reservations')->everyMinute();
+Schedule::command('products:ai-categorize')
+    ->dailyAt('02:00')
+    ->withoutOverlapping()
+    ->runInBackground();
 Schedule::command('telegram:send-daily-reservations')->dailyAt('12:00');
 Schedule::command('telegram:send-upcoming-payments')->dailyAt('09:30');
 Schedule::job(new GeneratePayslipJob())->monthlyOn(15, '00:00');
