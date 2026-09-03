@@ -74,78 +74,93 @@ jobs:
           path: public/build
           retention-days: 1
 
-  deploy:
-    name: Deploy to ${{ matrix.target.name }}
+  # Despliegue en Servidor 1 (farmaciabs)
+  deploy-server-1:
+    name: Deploy to Servidor Principal (farmaciabs)
     needs: test-and-build
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        target:
-          - id: 1
-            name: "Servidor 1 (farmaciabs)"
-          - id: 2
-            name: "Servidor 2 (tovaerp)"
-
     steps:
-      # 1. Clonar el repositorio
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 2. Descargar artefactos compilados en el job anterior
       - name: Download Build Artifacts
         uses: actions/download-artifact@v4
         with:
           name: compiled-assets
           path: public/build
 
-      # 3. Determinar credenciales y rutas según el servidor destino
-      - name: Set Server Target Environment
-        id: set_env
-        run: |
-          if [ "${{ matrix.target.id }}" = "1" ]; then
-            echo "user=${{ secrets.SERVER_USER || 'farmaciabs' }}" >> "$GITHUB_OUTPUT"
-            echo "path=${{ secrets.DEPLOY_PATH || '/home/farmaciabs/public_html/erp3' }}" >> "$GITHUB_OUTPUT"
-            echo "key<<EOF" >> "$GITHUB_OUTPUT"
-            echo "${{ secrets.SERVER_KEY || secrets.SSH_KEY }}" >> "$GITHUB_OUTPUT"
-            echo "EOF" >> "$GITHUB_OUTPUT"
-            echo "passphrase=${{ secrets.SERVER_PASSPHRASE || secrets.SSH_PASSPHRASE }}" >> "$GITHUB_OUTPUT"
-            echo "password=${{ secrets.SERVER_PASSWORD || secrets.SSH_PASSWORD }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "user=${{ secrets.SERVER_2_USER || 'tovaerp' }}" >> "$GITHUB_OUTPUT"
-            echo "path=${{ secrets.SERVER_2_DEPLOY_PATH || '/home/tovaerp/zorcasalud.tovaerp.com' }}" >> "$GITHUB_OUTPUT"
-            echo "key<<EOF" >> "$GITHUB_OUTPUT"
-            echo "${{ secrets.SERVER_2_KEY || secrets.SERVER_KEY || secrets.SSH_KEY }}" >> "$GITHUB_OUTPUT"
-            echo "EOF" >> "$GITHUB_OUTPUT"
-            echo "passphrase=${{ secrets.SERVER_2_PASSPHRASE || secrets.SERVER_PASSPHRASE || secrets.SSH_PASSPHRASE }}" >> "$GITHUB_OUTPUT"
-            echo "password=${{ secrets.SERVER_2_PASSWORD || secrets.SERVER_PASSWORD || secrets.SSH_PASSWORD }}" >> "$GITHUB_OUTPUT"
-          fi
-
-      # 4. Transferir archivos compilados vía SCP al servidor correspondiente
-      - name: Transfer Compiled Assets to Server via SCP
+      - name: Transfer Compiled Assets via SCP
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SERVER_HOST || '162.240.166.50' }}
-          username: ${{ steps.set_env.outputs.user }}
-          key: ${{ steps.set_env.outputs.key }}
-          passphrase: ${{ steps.set_env.outputs.passphrase }}
-          password: ${{ steps.set_env.outputs.password }}
+          username: ${{ secrets.SERVER_USER || 'farmaciabs' }}
+          key: ${{ secrets.SERVER_KEY || secrets.SSH_KEY }}
+          passphrase: ${{ secrets.SERVER_PASSPHRASE || secrets.SSH_PASSPHRASE }}
+          password: ${{ secrets.SERVER_PASSWORD || secrets.SSH_PASSWORD }}
           port: ${{ secrets.SERVER_PORT || 22022 }}
           source: "public/build"
-          target: ${{ steps.set_env.outputs.path }}
+          target: ${{ secrets.DEPLOY_PATH || '/home/farmaciabs/public_html/erp3' }}
           strip_components: 0
 
-      # 5. Ejecutar actualización remota, migraciones y cachés vía SSH
-      - name: Execute Remote Deploy on Server via SSH
+      - name: Execute Remote Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_HOST || '162.240.166.50' }}
-          username: ${{ steps.set_env.outputs.user }}
-          key: ${{ steps.set_env.outputs.key }}
-          passphrase: ${{ steps.set_env.outputs.passphrase }}
-          password: ${{ steps.set_env.outputs.password }}
+          username: ${{ secrets.SERVER_USER || 'farmaciabs' }}
+          key: ${{ secrets.SERVER_KEY || secrets.SSH_KEY }}
+          passphrase: ${{ secrets.SERVER_PASSPHRASE || secrets.SSH_PASSPHRASE }}
+          password: ${{ secrets.SERVER_PASSWORD || secrets.SSH_PASSWORD }}
           port: ${{ secrets.SERVER_PORT || 22022 }}
           script: |
-            cd ${{ steps.set_env.outputs.path }}
+            cd ${{ secrets.DEPLOY_PATH || '/home/farmaciabs/public_html/erp3' }}
+            git pull origin ${{ github.ref_name }}
+            composer install --no-dev --optimize-autoloader --no-interaction
+            php artisan migrate --force
+            php artisan optimize:clear
+            php artisan config:cache
+            php artisan route:cache
+            php artisan view:cache
+            php artisan queue:restart || true
+
+  # Despliegue en Servidor 2 (tovaerp)
+  deploy-server-2:
+    name: Deploy to Servidor Secundario (tovaerp)
+    needs: test-and-build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download Build Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: compiled-assets
+          path: public/build
+
+      - name: Transfer Compiled Assets via SCP
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST || '162.240.166.50' }}
+          username: ${{ secrets.SERVER_2_USER || 'tovaerp' }}
+          key: ${{ secrets.SERVER_2_KEY || secrets.SERVER_KEY || secrets.SSH_KEY }}
+          passphrase: ${{ secrets.SERVER_2_PASSPHRASE || secrets.SERVER_PASSPHRASE || secrets.SSH_PASSPHRASE }}
+          password: ${{ secrets.SERVER_2_PASSWORD || secrets.SERVER_PASSWORD || secrets.SSH_PASSWORD }}
+          port: ${{ secrets.SERVER_PORT || 22022 }}
+          source: "public/build"
+          target: ${{ secrets.SERVER_2_DEPLOY_PATH || '/home/tovaerp/zorcasalud.tovaerp.com' }}
+          strip_components: 0
+
+      - name: Execute Remote Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST || '162.240.166.50' }}
+          username: ${{ secrets.SERVER_2_USER || 'tovaerp' }}
+          key: ${{ secrets.SERVER_2_KEY || secrets.SERVER_KEY || secrets.SSH_KEY }}
+          passphrase: ${{ secrets.SERVER_2_PASSPHRASE || secrets.SERVER_PASSPHRASE || secrets.SSH_PASSPHRASE }}
+          password: ${{ secrets.SERVER_2_PASSWORD || secrets.SERVER_PASSWORD || secrets.SSH_PASSWORD }}
+          port: ${{ secrets.SERVER_PORT || 22022 }}
+          script: |
+            cd ${{ secrets.SERVER_2_DEPLOY_PATH || '/home/tovaerp/zorcasalud.tovaerp.com' }}
             git pull origin ${{ github.ref_name }}
             composer install --no-dev --optimize-autoloader --no-interaction
             php artisan migrate --force
