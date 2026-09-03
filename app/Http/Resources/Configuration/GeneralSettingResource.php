@@ -93,6 +93,7 @@ class GeneralSettingResource extends JsonResource
             'enable_product_types' => (bool) ($this->enable_product_types ?? true),
             'enabled_product_types' => $this->enabled_product_types ?? ['redundantes', 'col', 'iva', 'exento', 'novaventa', 'eliminados', 'pvp', 'ingredients', 'mixed'],
             'enable_favorites' => (bool) ($this->enable_favorites ?? true),
+            'enable_bulk_toggle_active' => (bool) ($this->enable_bulk_toggle_active ?? true),
             'enable_variations' => (bool) ($this->enable_variations ?? true),
             'enable_merge'      => (bool) ($this->enable_merge      ?? false),
             'enable_groups'     => (bool) ($this->enable_groups     ?? true),

@@ -493,6 +493,7 @@ defineExpose({
           <div class="d-flex justify-center gap-1">
             <template v-if="mode === 'products'">
               <IconBtn
+                v-if="brandingStore.settings.enable_bulk_toggle_active !== false"
                 @click="toggleActiveProduct(item)"
                 :color="item.is_active !== false && item.is_active !== 0 ? 'success' : 'error'"
                 size="small"
@@ -654,6 +655,7 @@ defineExpose({
           <div class="d-flex align-center border-t border-opacity-10 mobile-actions-bar">
             <template v-if="mode === 'products'">
               <VBtn 
+                v-if="brandingStore.settings.enable_bulk_toggle_active !== false"
                 :color="item.is_active !== false && item.is_active !== 0 ? 'success' : 'error'" 
                 variant="text" 
                 class="flex-grow-1 rounded-0 mobile-action-btn d-flex align-center justify-center" 
@@ -662,7 +664,7 @@ defineExpose({
               >
                 <VIcon icon="tabler-power" size="18" />
               </VBtn>
-              <VDivider vertical class="border-opacity-10" />
+              <VDivider v-if="brandingStore.settings.enable_bulk_toggle_active !== false" vertical class="border-opacity-10" />
               <VBtn 
                 color="primary" 
                 variant="text" 
