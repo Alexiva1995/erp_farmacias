@@ -556,40 +556,82 @@ class SupplierController extends Controller
      */
     public function saveConnectionConfig(SaveConnectionConfigRequest $request, Supplier $supplier)
     {
-        $validated = $request->validated();
+        try {
+            $validated = $request->validated();
 
-        // Construir el payload que se persiste
-        $data = [
-            'supplier_id' => $supplier->id,
-            'type'        => $validated['type'],
-            'host'        => $validated['host'],
-            'port'        => $validated['port'] ?? null,
-            'username'    => $validated['username'] ?? null,
-            'path'        => $validated['path'] ?? null,
-            'pasv'        => $validated['pasv'] ?? false,
-            'has_header'  => $validated['has_header'] ?? false,
-            'invoice_path' => $validated['invoice_path'] ?? null,
-        ];
+            // Construir el payload que se persiste
+            $data = [
+                'supplier_id'  => $supplier->id,
+                'type'         => $validated['type'],
+                'host'         => $validated['host'] ?? null,
+                'port'         => !empty($validated['port']) ? (int) $validated['port'] : null,
+                'username'     => $validated['username'] ?? null,
+                'path'         => $validated['path'] ?? null,
+                'pasv'         => (bool) ($validated['pasv'] ?? false),
+                'has_header'   => (bool) ($validated['has_header'] ?? false),
+                'invoice_path' => $validated['invoice_path'] ?? null,
+            ];
 
-        // Solo actualizar la contraseña si el usuario envió una nueva
-        if (!empty($validated['password'])) {
-            $data['password'] = \App\Helpers\FtpCrypt::encrypt($validated['password']);
+            // Solo actualizar la contraseña si el usuario envió una nueva
+            if (!empty($validated['password'])) {
+                $data['password'] = \App\Helpers\FtpCrypt::encrypt($validated['password']);
+            }
+
+            // Si es Cristmedicals / Cristalmedicals y no tiene estructura, precargar su mapeo estándar de API
+            $existingConn = $supplier->connections()->first();
+            if (!$existingConn || empty($existingConn->structure)) {
+                if (stripos($supplier->name, 'CRIST') !== false || $supplier->id === 1002 || $supplier->id === 3) {
+                    $data['structure'] = [
+                        [ "target" => "name", "file_field" => "des_art", "type" => "string" ],
+                        [ "target" => "barcode_match", "file_field" => "codigo_barra", "type" => "string" ],
+                        [ "target" => "unit_cost_usd", "file_field" => "precio_con_descuento", "type" => "decimal" ],
+                        [ "target" => "cod_supplier", "file_field" => "co_art", "type" => "string" ]
+                    ];
+                    $data['invoice_structure'] = [
+                        "mode" => "grouped",
+                        "header" => [
+                            [ "field" => "invoice_number", "original_field" => "fact_num", "type" => "string" ],
+                            [ "field" => "date", "original_field" => "fec_emis", "type" => "date", "format" => "Y-m-d" ],
+                            [ "field" => "total_amount", "original_field" => "sub_total", "type" => "decimal" ],
+                            [ "field" => "tax_amount", "original_field" => "iva16", "type" => "decimal" ],
+                            [ "field" => "exempt_amount", "original_field" => "exento", "type" => "decimal" ],
+                            [ "field" => "exchange_rate", "original_field" => "tasa", "type" => "decimal" ]
+                        ],
+                        "lines" => [
+                            [ "field" => "barcode", "original_field" => "sku", "type" => "string" ],
+                            [ "field" => "name", "original_field" => "descrip", "type" => "string" ],
+                            [ "field" => "quantity", "original_field" => "cant", "type" => "integer" ],
+                            [ "field" => "unit_cost", "original_field" => "neto_und", "type" => "decimal" ],
+                            [ "field" => "total_cost", "original_field" => "total", "type" => "decimal" ]
+                        ]
+                    ];
+                }
+            }
+
+            $connection = $supplier->connections()->updateOrCreate(
+                ['supplier_id' => $supplier->id],
+                $data
+            );
+
+            return response()->json([
+                'message'    => 'Configuración guardada correctamente.',
+                'connection' => [
+                    'id'           => $connection->id,
+                    'type'         => $connection->type,
+                    'host'         => $connection->host,
+                    'has_password' => !empty($connection->password),
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Error en saveConnectionConfig: ' . $e->getMessage(), [
+                'supplier_id' => $supplier->id,
+                'trace'       => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'message' => 'Error al guardar la configuración: ' . $e->getMessage(),
+            ], 500);
         }
-
-        $connection = $supplier->connections()->updateOrCreate(
-            ['supplier_id' => $supplier->id],
-            $data
-        );
-
-        return response()->json([
-            'message'    => 'Configuración guardada correctamente.',
-            'connection' => [
-                'id'           => $connection->id,
-                'type'         => $connection->type,
-                'host'         => $connection->host,
-                'has_password' => !empty($connection->password),
-            ],
-        ]);
     }
 
     /**
