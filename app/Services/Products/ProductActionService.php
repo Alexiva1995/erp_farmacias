@@ -291,7 +291,6 @@ class ProductActionService
 
     public function updateIncompleteFields(Product $product, array $data): bool
     {
-        \DB::beginTransaction();
         try {
             $updateData = [];
             if (isset($data['barcode'])) {
@@ -310,12 +309,10 @@ class ProductActionService
             if (!empty($updateData)) {
                 $product->update($updateData);
             }
-            \DB::commit();
             return true;
         } catch (\Exception $e) {
-            \Log::error($e);
-            \DB::rollback();
-            return false;
+            \Log::error('Error en updateIncompleteFields: ' . $e->getMessage());
+            throw $e;
         }
     }
 

@@ -119,13 +119,13 @@ const saveInlineEdit = async (product) => {
     id: product.id,
   };
 
-  if (isMissing(product, "barcode")) {
+  if (editingBarcode.value !== undefined && editingBarcode.value !== "") {
     payload.barcode = editingBarcode.value;
   }
-  if (isMissing(product, "laboratory")) {
+  if (editingLaboratoryId.value !== undefined && editingLaboratoryId.value !== null) {
     payload.laboratory_id = editingLaboratoryId.value;
   }
-  if (isMissing(product, "origin")) {
+  if (editingOriginId.value !== undefined && editingOriginId.value !== null) {
     payload.origin_id = editingOriginId.value;
   }
 
