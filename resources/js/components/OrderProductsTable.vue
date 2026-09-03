@@ -292,13 +292,10 @@ const getRowClass = (item) => {
         <a
           :href="'/inventory/traceability?q=' + item.id"
           target="_blank"
-          class="text-decoration-none font-weight-black product-id-link"
+          class="text-decoration-none product-id-badge"
           :class="getExpirationColorClass(item)"
         >
           {{ item.id }}
-          <VTooltip activator="parent" location="top">
-            {{ getExpirationTooltip(item) }}
-          </VTooltip>
         </a>
       </template>
 
@@ -314,19 +311,20 @@ const getRowClass = (item) => {
       </template>
 
       <template #item.name="{ item }">
-        <div class="d-flex flex-column py-2" style="max-inline-size: 320px;">
-          <span
-            class="text-subtitle-2 font-weight-black text-high-emphasis leading-tight text-uppercase"
-            :class="{ 'text-primary': item.psychotropic == 1 }"
-            style="white-space: normal;"
-          >
-            {{ item.name }}
-          </span>
+        <div class="d-flex flex-column py-2 w-100">
+          <div class="d-flex align-center flex-wrap gap-1">
+            <span
+              class="text-subtitle-2 font-weight-black text-high-emphasis leading-tight text-uppercase"
+              :class="{ 'text-primary': item.psychotropic == 1 }"
+            >
+              {{ item.name }}
+            </span>
 
-          <!-- Chips de estado y descuento ubicados ordenadamente debajo del nombre -->
-          <div class="d-flex align-center flex-wrap gap-1 mt-1">
-            <VChip v-if="item.iva == 1" size="x-small" color="primary" variant="tonal" class="font-weight-bold">IVA</VChip>
-            <VChip v-if="item.is_colombian_origin == 1" size="x-small" color="info" variant="tonal" class="font-weight-bold">COL</VChip>
+            <!-- Indicador IVA simplificado a 'G' (Gravado) -->
+            <VChip v-if="item.iva == 1" size="x-small" color="primary" variant="tonal" class="font-weight-black px-1">G</VChip>
+            <VChip v-if="item.is_colombian_origin == 1" size="x-small" color="info" variant="tonal" class="font-weight-black">COL</VChip>
+            
+            <!-- Badge de descuento sin la palabra expira ni paréntesis, solo -XX% -->
             <VChip
               v-if="(item.discount_type === 'expiration' || item.is_expiration_discount) && (item.discount_percentage > 0 || item.discount_percentage_expiration > 0)"
               color="error"
@@ -334,7 +332,7 @@ const getRowClass = (item) => {
               class="font-weight-black uppercase"
               label
             >
-              Expira (-{{ item.discount_percentage || item.discount_percentage_expiration }}%)
+              -{{ item.discount_percentage || item.discount_percentage_expiration }}%
             </VChip>
             <VChip
               v-else-if="item.discount_percentage > 0"
@@ -343,7 +341,7 @@ const getRowClass = (item) => {
               class="font-weight-black uppercase"
               label
             >
-              Oferta (-{{ item.discount_percentage }}%)
+              -{{ item.discount_percentage }}%
             </VChip>
           </div>
 
@@ -502,17 +500,14 @@ const getRowClass = (item) => {
           }"
         >
           <div class="pa-4">
-            <div class="d-flex justify-space-between align-start mb-2">
+            <div class="d-flex justify-space-between align-center mb-2">
               <a
                 :href="'/inventory/traceability?q=' + item.id"
                 target="_blank"
-                class="text-decoration-none font-weight-black text-xs product-id-link"
+                class="text-decoration-none product-id-badge text-xs"
                 :class="getExpirationColorClass(item)"
               >
                 #{{ item.id }}
-                <VTooltip activator="parent" location="top">
-                  {{ getExpirationTooltip(item) }}
-                </VTooltip>
               </a>
               <VChip
                 :color="item.valid_stock_sum > 0 ? 'success' : 'error'"
@@ -524,12 +519,11 @@ const getRowClass = (item) => {
               </VChip>
             </div>
 
-            <h3 class="text-subtitle-2 font-weight-950 text-high-emphasis text-uppercase leading-tight mb-1">
-              {{ item.name }}
-            </h3>
-
-            <div class="d-flex flex-wrap gap-1 my-1">
-              <VChip v-if="item.iva == 1" size="x-small" color="primary" variant="tonal" class="font-weight-black">IVA</VChip>
+            <div class="d-flex align-center flex-wrap gap-1 mb-1">
+              <h3 class="text-subtitle-2 font-weight-950 text-high-emphasis text-uppercase leading-tight">
+                {{ item.name }}
+              </h3>
+              <VChip v-if="item.iva == 1" size="x-small" color="primary" variant="tonal" class="font-weight-black px-1">G</VChip>
               <VChip v-if="item.is_colombian_origin == 1" size="x-small" color="info" variant="tonal" class="font-weight-black">COL</VChip>
               <VChip
                 v-if="(item.discount_type === 'expiration' || item.is_expiration_discount) && (item.discount_percentage > 0 || item.discount_percentage_expiration > 0)"
@@ -538,7 +532,7 @@ const getRowClass = (item) => {
                 variant="flat"
                 class="font-weight-black"
               >
-                EXPIRA (-{{ item.discount_percentage || item.discount_percentage_expiration }}%)
+                -{{ item.discount_percentage || item.discount_percentage_expiration }}%
               </VChip>
               <VChip
                 v-else-if="item.discount_percentage > 0"
@@ -547,7 +541,7 @@ const getRowClass = (item) => {
                 variant="flat"
                 class="font-weight-black"
               >
-                OFERTA (-{{ item.discount_percentage }}%)
+                -{{ item.discount_percentage }}%
               </VChip>
             </div>
             
@@ -720,28 +714,36 @@ const getRowClass = (item) => {
   color: rgb(var(--v-theme-error));
 }
 
-/* Semáforo de Vencimiento para ID */
-.product-id-link {
-  transition: all 0.2s ease;
-  padding: 2px 4px;
-  border-radius: 4px;
+/* Semáforo de Vencimiento para ID (Badge con Fondo de Color y Texto Blanco) */
+.product-id-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-weight: 900 !important;
+  color: #ffffff !important;
+  text-decoration: none !important;
+  letter-spacing: 0.5px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  transition: transform 0.15s ease, opacity 0.15s ease;
 }
 
-.product-id-link.exp-verde {
-  color: #10b981 !important; /* Verde: >6 meses */
+.product-id-badge.exp-verde {
+  background-color: #10b981 !important; /* Verde: >6 meses (Stock regular) */
 }
 
-.product-id-link.exp-amarillo {
-  color: #f59e0b !important; /* Amarillo / Ámbar: 3 a 6 meses */
+.product-id-badge.exp-amarillo {
+  background-color: #f59e0b !important; /* Amarillo / Ámbar: 3 a 6 meses */
 }
 
-.product-id-link.exp-rojo {
-  color: #ef4444 !important; /* Rojo: <3 meses */
+.product-id-badge.exp-rojo {
+  background-color: #ef4444 !important; /* Rojo: <3 meses (Prioridad de salida) */
 }
 
-.product-id-link:hover {
-  text-decoration: underline !important;
-  opacity: 0.85;
+.product-id-badge:hover {
+  transform: translateY(-1px);
+  opacity: 0.92;
 }
 
 .leading-tight {
