@@ -384,6 +384,8 @@ class InventoryCycleController extends Controller
                     'unit_cost' => data_get($item, 'product_unit_cost', data_get($item, 'unit_cost', 0)),
                     'sale_price' => data_get($item, 'product_sale_price', data_get($item, 'sale_price', 0)),
                     'is_colombian_origin' => data_get($item, 'product_is_colombian_origin', data_get($item, 'is_colombian_origin')),
+                    'active_ingredient' => data_get($item, 'product_active_ingredient', data_get($item, 'active_ingredient')),
+                    'location' => data_get($item, 'product_location', data_get($item, 'location')),
                     'laboratory' => [
                         'name' => data_get($item, 'laboratory_name'),
                     ],

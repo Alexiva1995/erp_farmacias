@@ -62,6 +62,21 @@ const headers = computed(() => [
   { title: "Acciones", key: "actions", sortable: false, align: "center" },
 ]);
 
+const getProductLocations = (product) => {
+  if (!product) return [];
+  if (product.lot_locations && Array.isArray(product.lot_locations) && product.lot_locations.length > 0) {
+    return product.lot_locations.filter(Boolean);
+  }
+  if (product.lots && Array.isArray(product.lots)) {
+    const locs = product.lots.map(l => l.location).filter(l => l && String(l).trim() !== '');
+    return [...new Set(locs)];
+  }
+  if (product.location) {
+    return [product.location];
+  }
+  return [];
+};
+
 const isFiltersLoaded = ref(false);
 
 const fetchLaboratories = async () => {
@@ -419,7 +434,15 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
               <VAvatar v-if="item.product?.photo_url" size="34" variant="tonal" rounded :image="item.product.photo_url" class="flex-shrink-0" />
               <div class="d-flex flex-column" style="word-break: break-word; line-height: 1.25;">
                 <span class="text-sm font-weight-black text-high-emphasis">{{ item.product?.name?.toUpperCase() || 'N/A' }}</span>
-                <span class="text-xs text-primary font-weight-bold mt-1">{{ item.product?.laboratory?.name || '—' }}</span>
+                <div class="d-flex align-center flex-wrap gap-1 text-super-xs mt-1">
+                  <span class="text-xs text-primary font-weight-bold">{{ item.product?.laboratory?.name || '—' }}</span>
+                  <template v-if="getProductLocations(item.product).length > 0">
+                    <span class="text-disabled mx-1">|</span>
+                    <span class="text-success font-weight-black">
+                      📍 {{ getProductLocations(item.product).join(', ') }}
+                    </span>
+                  </template>
+                </div>
               </div>
             </div>
           </template>
@@ -484,8 +507,14 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
               <div class="d-flex align-start justify-space-between mb-3">
                 <div class="d-flex flex-column min-width-0">
                   <span class="text-sm font-weight-black text-primary truncate-1-line">{{ item.product?.name?.toUpperCase() }}</span>
-                  <div class="text-super-xs text-medium-emphasis d-flex align-center gap-x-2">
+                  <div class="text-super-xs text-medium-emphasis d-flex align-center flex-wrap gap-1">
                     <span class="text-primary font-weight-bold">{{ item.product?.laboratory?.name }}</span>
+                    <template v-if="getProductLocations(item.product).length > 0">
+                      <span class="text-disabled">|</span>
+                      <span class="text-success font-weight-black">
+                        📍 {{ getProductLocations(item.product).join(', ') }}
+                      </span>
+                    </template>
                     <span class="text-disabled">|</span>
                     <span class="d-flex align-center"><VIcon icon="tabler-clock" size="10" class="me-1" /> {{ formatDateSimple(item.created_at) }}</span>
                   </div>

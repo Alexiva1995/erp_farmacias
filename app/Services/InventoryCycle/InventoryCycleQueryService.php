@@ -826,6 +826,8 @@ class InventoryCycleQueryService
                 'products.unit_cost as product_unit_cost',
                 'products.sale_price as product_sale_price',
                 'products.is_colombian_origin as product_is_colombian_origin',
+                'products.active_ingredient as product_active_ingredient',
+                'products.location as product_location',
                 'laboratories.name as laboratory_name',
                 'users.email as user_email',
                 'users.username as user_username',

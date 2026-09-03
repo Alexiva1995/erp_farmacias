@@ -69,6 +69,21 @@ class CycleDetailProductResource extends JsonResource
                 'psychotropic' => (bool) ($item->product['psychotropic'] ?? $item->product->psychotropic ?? false),
                 'is_colombian_origin' => (int) ($item->product['is_colombian_origin'] ?? $item->product->is_colombian_origin ?? 0),
                 'active_ingredient' => $item->product['active_ingredient'] ?? $item->product->active_ingredient ?? null,
+                'location' => $item->product['location'] ?? $item->product->location ?? null,
+                'lot_locations' => is_array($item->product)
+                    ? ($item->product['lot_locations'] ?? [])
+                    : ($item->product->lot_locations ?? []),
+                'lots' => is_array($item->product)
+                    ? ($item->product['lots'] ?? [])
+                    : (isset($item->product->lots) && $item->product->relationLoaded('lots')
+                        ? $item->product->lots->map(fn($l) => [
+                            'id' => $l->id,
+                            'lot_number' => $l->lot_number,
+                            'location' => $l->location,
+                            'quantity' => $l->quantity,
+                            'expiration_date' => $l->expiration_date,
+                        ])->toArray()
+                        : []),
                 'laboratory' => isset($item->product['laboratory']) ? [
                     'name' => $item->product['laboratory']['name'] ?? $item->product->laboratory->name ?? ''
                 ] : null
