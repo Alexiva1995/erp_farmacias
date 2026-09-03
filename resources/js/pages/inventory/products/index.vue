@@ -46,6 +46,7 @@ const categories = ref([]);
 const groups = ref([]);
 
 const isEditDialogVisible = ref(false);
+const isSavingProduct = ref(false);
 const currentProduct = ref({});
 const productFormErrors = ref({});
 const isStatsDialogVisible = ref(false);
@@ -228,6 +229,7 @@ const handleSaveProduct = async productFormData => {
   const isNewProduct = !currentProduct.value.id;
   const url = isNewProduct ? "/products" : `/products/${currentProduct.value.id}`;
 
+  isSavingProduct.value = true;
   try {
     if (!isNewProduct)
       productFormData.append("_method", "PUT");
@@ -259,6 +261,8 @@ const handleSaveProduct = async productFormData => {
       const errorMessage = error.response?.data?.message || "Hubo un error al guardar el producto.";
       toast.error(errorMessage);
     }
+  } finally {
+    isSavingProduct.value = false;
   }
 };
 
@@ -475,7 +479,7 @@ const handleSort = sortOptions => {
       :categories="categories"
       :all-products="products"
       :errors="productFormErrors"
-      :groups="groups"
+      :is-saving="isSavingProduct"
       @save="handleSaveProduct"
       @clear-errors="clearFormErrors"
       @laboratory-created="fetchSelectOptions"

@@ -174,21 +174,21 @@ const marketShareSeries = computed(() => [productStatsData.value?.market_share ?
 
         <!-- Última operación -->
         <VCol cols="12">
-          <VCard variant="tonal" color="primary" class="pa-4 rounded-lg d-flex align-center justify-space-between">
+          <VCard variant="tonal" color="primary" class="pa-3 pa-sm-4 rounded-lg d-flex align-center justify-space-between flex-wrap gap-2">
             <div class="d-flex align-center gap-2">
               <VIcon icon="tabler-history" size="20" />
-              <span class="font-weight-bold">Detalle de la última operación:</span>
+              <span class="font-weight-bold d-none d-sm-inline">Detalle de la última operación:</span>
             </div>
-            <div v-if="productStatsData.last_sale" class="d-flex gap-8">
-              <div class="d-flex flex-column">
+            <div v-if="productStatsData.last_sale" class="d-flex align-center justify-space-between flex-grow-1 flex-sm-grow-0 gap-4 gap-sm-8">
+              <div class="d-flex flex-column align-start align-sm-end">
                 <span class="text-super-xs uppercase font-weight-black opacity-70">Fecha</span>
                 <span class="text-subtitle-2 font-weight-black">{{ formatDateSimple(productStatsData.last_sale.date) }}</span>
               </div>
-              <div class="d-flex flex-column">
+              <div class="d-flex flex-column align-center align-sm-end">
                 <span class="text-super-xs uppercase font-weight-black opacity-70">Precio</span>
                 <span class="text-subtitle-2 font-weight-black">{{ formatPrice(productStatsData.last_sale.price) }}</span>
               </div>
-              <div class="d-flex flex-column">
+              <div class="d-flex flex-column align-end">
                 <span class="text-super-xs uppercase font-weight-black opacity-70">Cantidad</span>
                 <span class="text-subtitle-2 font-weight-black text-right">{{ productStatsData.last_sale.quantity }} Und</span>
               </div>

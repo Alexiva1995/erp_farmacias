@@ -280,9 +280,9 @@ const closeDialog = () => {
     <VCard v-if="props.product" class="stats-dialog-card rounded-xl border-0 overflow-hidden bg-surface">
       <!-- Cabecera Premium más compacta -->
       <div class="header-gradient px-5 py-3 d-flex align-center shadow-sm">
-        <VAvatar color="white" variant="flat" size="36" class="me-3 elevation-2">
-          <VIcon icon="tabler-chart-bar" size="20" color="primary" />
-        </VAvatar>
+        <div class="avatar-icon-box d-flex align-center justify-center me-3 rounded-lg shadow-sm">
+          <VIcon icon="tabler-chart-histogram" size="20" class="header-icon" />
+        </div>
         <div class="d-flex flex-column">
           <h2 class="text-subtitle-1 font-weight-black text-white leading-tight mb-0 uppercase tracking-wide">
             Analítica de Producto
@@ -393,20 +393,20 @@ const closeDialog = () => {
 
             <!-- Card de Última Venta (Footer del modal body) -->
             <VCol cols="12">
-              <VCard variant="flat" class="pa-3 rounded-lg border shadow-sm bg-surface d-flex align-center justify-space-between">
-                <div class="d-flex align-center gap-3">
+              <VCard variant="flat" class="pa-3 rounded-lg border shadow-sm bg-surface d-flex align-center justify-space-between flex-wrap gap-2">
+                <div class="d-flex align-center gap-2">
                   <VIcon icon="tabler-history" size="18" color="info" />
-                  <span class="text-xs font-weight-bold text-medium-emphasis">
+                  <span class="text-xs font-weight-bold text-medium-emphasis d-none d-sm-inline">
                     {{ isIngredient ? 'Detalle del último consumo registrado:' : 'Detalle de la última operación registrada:' }}
                   </span>
                 </div>
                 <template v-if="stats.last_sale">
-                  <div class="d-flex align-center gap-4">
-                    <div class="d-flex flex-column align-end">
+                  <div class="d-flex align-center justify-space-between flex-grow-1 flex-sm-grow-0 gap-3 gap-sm-4">
+                    <div class="d-flex flex-column align-start align-sm-end">
                       <span class="text-super-xs text-disabled uppercase font-weight-black">Fecha</span>
                       <span class="text-xs font-weight-black text-high-emphasis">{{ formatDateSimple(stats.last_sale.date) }}</span>
                     </div>
-                    <div v-if="!isIngredient" class="d-flex flex-column align-end">
+                    <div v-if="!isIngredient" class="d-flex flex-column align-center align-sm-end">
                       <span class="text-super-xs text-disabled uppercase font-weight-black">Precio</span>
                       <span class="text-xs font-weight-black text-primary">{{ formatPrice(stats.last_sale.price, stats.last_sale.currency) }}</span>
                     </div>
@@ -445,6 +445,17 @@ const closeDialog = () => {
 
 .header-gradient {
   background: linear-gradient(135deg, #7A0099 0%, #E20074 100%);
+}
+
+.avatar-icon-box {
+  width: 36px;
+  height: 36px;
+  background-color: #ffffff !important;
+  flex-shrink: 0;
+}
+
+.header-icon {
+  color: #7A0099 !important;
 }
 
 .bg-light {
