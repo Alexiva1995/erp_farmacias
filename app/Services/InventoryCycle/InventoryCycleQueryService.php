@@ -1139,17 +1139,23 @@ class InventoryCycleQueryService
 
             foreach ($employees as $emp) {
                 $uId = (int) $emp->user_id;
-                $countVal = $matrixMap[$currentDate][$uId] ?? 0;
+                $empId = (int) $emp->id;
+                $countVal = $matrixMap[$currentDate][$uId] ?? $matrixMap[$currentDate][$empId] ?? 0;
                 $dayTotal += $countVal;
 
-                $userCells[$uId] = [
+                $cellData = [
                     'count'     => $countVal,
                     'quota'     => $dailyQuota,
                     'fulfilled' => ($type === 'products') ? ($countVal >= $dailyQuota) : ($countVal > 0),
                 ];
+
+                $userCells[$uId] = $cellData;
+                $userCells[(string) $uId] = $cellData;
+                $userCells[$empId] = $cellData;
+                $userCells[(string) $empId] = $cellData;
             }
 
-            // Si hay conteos del día que no corresponden a empleados de la lista, sumarlos al total del día
+            // Si hay conteos del día en general, asegurar la suma total del día
             if (!empty($matrixMap[$currentDate])) {
                 $dayTotal = array_sum($matrixMap[$currentDate]);
             }
