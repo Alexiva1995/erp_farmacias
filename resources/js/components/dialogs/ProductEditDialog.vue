@@ -389,13 +389,18 @@ const imagePreviewUrl = computed(() => {
       <!-- Cabecera Premium -->
       <VCardTitle class="pa-0">
         <div :class="[xs ? 'pa-2' : 'pa-4', 'header-gradient d-flex align-center shadow-sm']">
-          <div :class="[xs ? 'avatar-icon-box-xs' : 'avatar-icon-box', 'd-flex align-center justify-center me-3 rounded-lg shadow-sm']">
+          <VAvatar
+            color="white"
+            variant="flat"
+            :size="xs ? 34 : 40"
+            class="me-3 elevation-1 rounded-lg"
+          >
             <VIcon
               :icon="isNewProduct ? 'tabler-circle-plus' : 'tabler-pencil'"
-              :size="xs ? 18 : 22"
-              class="header-icon"
+              :size="xs ? 20 : 24"
+              style="color: #7A0099 !important;"
             />
-          </div>
+          </VAvatar>
           <div class="d-flex flex-column leading-none">
             <h2 class="text-h6 font-weight-black text-white leading-tight mb-0 uppercase">
               {{ isNewProduct ? "Añadir Nuevo Producto" : "Editar Producto" }}

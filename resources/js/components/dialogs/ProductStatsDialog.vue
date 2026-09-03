@@ -280,9 +280,18 @@ const closeDialog = () => {
     <VCard v-if="props.product" class="stats-dialog-card rounded-xl border-0 overflow-hidden bg-surface">
       <!-- Cabecera Premium más compacta -->
       <div class="header-gradient px-5 py-3 d-flex align-center shadow-sm">
-        <div class="avatar-icon-box d-flex align-center justify-center me-3 rounded-lg shadow-sm">
-          <VIcon icon="tabler-chart-histogram" size="20" class="header-icon" />
-        </div>
+        <VAvatar
+          color="white"
+          variant="flat"
+          :size="xs ? 34 : 38"
+          class="me-3 elevation-1 rounded-lg"
+        >
+          <VIcon
+            icon="tabler-chart-histogram"
+            :size="xs ? 20 : 22"
+            style="color: #7A0099 !important;"
+          />
+        </VAvatar>
         <div class="d-flex flex-column">
           <h2 class="text-subtitle-1 font-weight-black text-white leading-tight mb-0 uppercase tracking-wide">
             Analítica de Producto
