@@ -12,12 +12,30 @@ class AutoOrderDetailsRepository
 {
     public function create(array $datos): ?AutoOrderDetail
     {
+        // 1. Resolver producto a partir de product_suppliers si está presente
         if (!empty($datos['product_suppliers_id']) && empty($datos['product_id'])) {
             $ps = \App\Models\ProductSupplier::find($datos['product_suppliers_id']);
-            if ($ps) {
+            if ($ps && $ps->product_id) {
                 $datos['product_id'] = $ps->product_id;
+            } elseif ($ps && !empty($ps->barcode)) {
+                $masterClient = app(\App\Services\Catalog\MasterCatalogClientService::class);
+                $product = $masterClient->ensureLocalProductFromBarcode($ps->barcode);
+                if ($product) {
+                    $datos['product_id'] = $product->id;
+                    $ps->update(['product_id' => $product->id]);
+                }
             }
         }
+
+        // 2. Si se pasó directamente un barcode y no hay product_id
+        if (empty($datos['product_id']) && !empty($datos['barcode'])) {
+            $masterClient = app(\App\Services\Catalog\MasterCatalogClientService::class);
+            $product = $masterClient->ensureLocalProductFromBarcode($datos['barcode']);
+            if ($product) {
+                $datos['product_id'] = $product->id;
+            }
+        }
+
         $record = AutoOrderDetail::create($datos);
         return $record;
     }
