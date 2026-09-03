@@ -82,6 +82,7 @@ class InventoryCycleActionService
                     $quotaTier === 2 => 2,
                     default => 1,
                 };
+                $supervisorId = null;
 
                 $productCount = ProductCount::create([
                     'product_id' => $product->id,
