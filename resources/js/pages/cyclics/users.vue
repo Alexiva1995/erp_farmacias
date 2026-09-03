@@ -60,6 +60,42 @@ const locations     = ref([]);
 const isLoadingFilters = ref(false);
 const hasActiveCycle   = ref(false);
 
+// ── Estado de cuota diaria por operador ────────────────────────────────────
+const quotaStatus = ref({
+  is_active: false,
+  counted: 0,
+  total: 50,
+  tier: 1,
+  can_request_more: false,
+});
+const isRequestingMore = ref(false);
+
+const fetchUserQuota = async () => {
+  try {
+    const { data } = await axios.get("/inventory/user-quota-status");
+    quotaStatus.value = data;
+  } catch (error) {
+    console.error("Error al obtener estado de cuota:", error);
+  }
+};
+
+const handleRequestMoreProducts = async () => {
+  if (isRequestingMore.value) return;
+  isRequestingMore.value = true;
+  try {
+    const { data } = await axios.post("/inventory/request-more-quota");
+    toast.success(data.message || "¡Nuevo lote cargado exitosamente!");
+    await Promise.all([
+      fetchUserQuota(),
+      fetchProducts(),
+    ]);
+  } catch (error) {
+    toast.error(error.response?.data?.message || "No se pudo solicitar más productos.");
+  } finally {
+    isRequestingMore.value = false;
+  }
+};
+
 // ── Modal de conteo — compartido para las 3 pestañas ───────────────────────
 const isCountDialogVisible        = ref(false);
 const currentProduct              = ref({});
@@ -105,6 +141,7 @@ const fetchSelectOptions = async () => {
 
 onMounted(() => Promise.all([
   fetchSelectOptions(),
+  fetchUserQuota(),
   fetchProducts(),
   fetchInvoiceProducts(),
   fetchSalesProducts(),
@@ -145,7 +182,8 @@ const handleCountProduct = (product, type) => {
 };
 
 // ── Envío del conteo ────────────────────────────────────────────────────────
-const refetchByType = () => {
+const refetchByType = async () => {
+  await fetchUserQuota();
   if (countType.value === "invoice") return fetchInvoiceProducts();
   if (countType.value === "sales")   return fetchSalesProducts();
   return fetchProducts();
@@ -246,33 +284,72 @@ const handleLotsDistributed = async ({ updatedLots, newLots }) => {
 
       <!-- Card con pestañas — mismo patrón que cyclic.vue -->
       <VCard variant="outlined" class="rounded-lg bg-surface">
-        <VTabs v-model="activeTab" color="primary" align-tabs="start">
+        <div class="d-flex align-center justify-space-between flex-wrap gap-2 pr-3">
+          <VTabs v-model="activeTab" color="primary" align-tabs="start">
 
-          <VTab value="products" class="text-none font-weight-medium">
-            <VIcon start icon="mdi-package-variant-closed" />
-            Productos por Contar
-            <VChip size="x-small" class="ml-2" color="primary" variant="tonal">
-              {{ totalProduct }}
+            <VTab value="products" class="text-none font-weight-medium">
+              <VIcon start icon="mdi-package-variant-closed" />
+              Productos por Contar
+              <VChip size="x-small" class="ml-2" color="primary" variant="tonal">
+                {{ totalProduct }}
+              </VChip>
+            </VTab>
+
+            <VTab value="invoices" class="text-none font-weight-medium">
+              <VIcon start icon="mdi-file-document-outline" />
+              Por Factura
+              <VChip size="x-small" class="ml-2" color="info" variant="tonal">
+                {{ totalInvoiceProducts }}
+              </VChip>
+            </VTab>
+
+            <VTab value="sales" class="text-none font-weight-medium">
+              <VIcon start icon="mdi-cart-outline" />
+              Por Punto de Venta
+              <VChip size="x-small" class="ml-2" color="success" variant="tonal">
+                {{ totalSalesProducts }}
+              </VChip>
+            </VTab>
+
+          </VTabs>
+
+          <!-- Indicador de Cuota Diaria y Botón Solicitar Más -->
+          <div v-if="quotaStatus.is_active && activeTab === 'products'" class="d-flex align-center gap-2 py-1">
+            <VChip
+              :color="quotaStatus.counted >= quotaStatus.total ? 'success' : 'primary'"
+              variant="flat"
+              size="small"
+              class="font-weight-bold"
+            >
+              <VIcon start icon="mdi-counter" size="16" />
+              {{ quotaStatus.counted }}/{{ quotaStatus.total }}
             </VChip>
-          </VTab>
 
-          <VTab value="invoices" class="text-none font-weight-medium">
-            <VIcon start icon="mdi-file-document-outline" />
-            Por Factura
-            <VChip size="x-small" class="ml-2" color="info" variant="tonal">
-              {{ totalInvoiceProducts }}
+            <VChip
+              v-if="quotaStatus.tier > 1"
+              color="purple"
+              variant="tonal"
+              size="small"
+              class="font-weight-bold"
+            >
+              <VIcon start icon="mdi-fire" size="16" />
+              Nivel {{ quotaStatus.tier }} (+{{ quotaStatus.tier >= 3 ? 4 : 2 }} pts/conteo)
             </VChip>
-          </VTab>
 
-          <VTab value="sales" class="text-none font-weight-medium">
-            <VIcon start icon="mdi-cart-outline" />
-            Por Punto de Venta
-            <VChip size="x-small" class="ml-2" color="success" variant="tonal">
-              {{ totalSalesProducts }}
-            </VChip>
-          </VTab>
-
-        </VTabs>
+            <VBtn
+              v-if="quotaStatus.can_request_more"
+              color="success"
+              variant="elevated"
+              size="small"
+              class="text-none font-weight-bold"
+              :loading="isRequestingMore"
+              @click="handleRequestMoreProducts"
+            >
+              <VIcon start icon="mdi-plus-box-multiple" />
+              Solicitar más (+{{ quotaStatus.tier >= 2 ? 4 : 2 }} pts)
+            </VBtn>
+          </div>
+        </div>
 
         <VDivider />
 

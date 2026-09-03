@@ -40,6 +40,8 @@ export const useBrandingStore = defineStore('branding', () => {
     section3_button_text: 'COMPRAR BRONCEADOR',
     cyclic_inventory_mode: 'double',
     cyclic_inventory_barcode_required: true,
+    cyclic_inventory_scope: 'all',
+    cyclic_inventory_daily_quota: 50,
     tpv_payment_methods: null,
     expense_mode: 'real',
     expense_auto_approve: false,

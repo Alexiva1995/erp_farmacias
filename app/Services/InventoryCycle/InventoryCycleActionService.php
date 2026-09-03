@@ -14,6 +14,7 @@ use App\Models\ProductDistribution;
 use App\Models\ProductLot;
 use App\Models\SaleCount;
 use App\Models\SaleCountDistribution;
+use App\Models\UserCyclicQuota;
 use App\Observers\ProductLotObserver;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -67,11 +68,24 @@ class InventoryCycleActionService
                 $isSimple = \App\Models\GeneralSetting::first()?->cyclic_inventory_mode === 'simple';
                 $finalDiscrepancy = $data['discrepancy'];
                 $status = ($finalDiscrepancy == 0 && !$isSimple) ? 'approved' : 'pending';
-                $supervisorId = null; // No hay supervisor cuando se aprueba automáticamente
+                $userId = Auth::id();
+                $today = now()->toDateString();
+                $activeQuota = UserCyclicQuota::where('user_id', $userId)
+                    ->where('cycle_id', $activeCycle->id)
+                    ->where('quota_date', $today)
+                    ->orderBy('quota_tier', 'desc')
+                    ->first();
+
+                $quotaTier = $activeQuota ? $activeQuota->quota_tier : 1;
+                $pointsEarned = match (true) {
+                    $quotaTier >= 3 => 4,
+                    $quotaTier === 2 => 2,
+                    default => 1,
+                };
 
                 $productCount = ProductCount::create([
                     'product_id' => $product->id,
-                    'user_id' => Auth::id(),
+                    'user_id' => $userId,
                     'cycle_id' => $activeCycle->id,
                     'barcode_scanned' => $allowWithoutBarcode ? null : ($data['barcode'] ?? null),
                     'system_quantity' => $systemStock,
@@ -81,6 +95,8 @@ class InventoryCycleActionService
                     'supervisor_id' => $supervisorId,
                     'product_lot_id' => null,
                     'count_date' => now(),
+                    'quota_tier' => $quotaTier,
+                    'points_earned' => $pointsEarned,
                 ]);
 
                 $productCount->load(['product', 'user', 'cycle']);
@@ -391,13 +407,30 @@ class InventoryCycleActionService
             ProductLotObserver::$skipMovementCreation = false;
         }
 
-        $productCount->counted_quantity    = $finalQuantity;
-        $productCount->discrepancy         = $finalDiscrepancy;
-        $productCount->status              = 'approved';
-        $productCount->supervisor_id       = Auth::id();
-        $productCount->correction_difference = $isCorrection
-            ? abs($productCount->getOriginal('counted_quantity') - $finalQuantity)
-            : 0;
+        // Evaluación de penalizaciones para el operador que reportó el conteo inicial
+        $originalCounted = (float) $productCount->getOriginal('counted_quantity');
+        $correctionDiff = $isCorrection ? abs($originalCounted - $finalQuantity) : 0;
+        
+        $errorPenaltyType = null;
+        $penaltyPoints = 0;
+
+        // Si el operador original reportó discrepancia pero en la verificación física el stock del sistema estaba exacto: Falsa Discrepancia (-20 pts)
+        if ($finalDiscrepancy == 0 && abs($originalCounted - $stockBefore) > 0.0001) {
+            $errorPenaltyType = 'false_discrepancy';
+            $penaltyPoints = 20;
+        } elseif ($isCorrection && $correctionDiff > 0.0001) {
+            // Si la discrepancia reportada por el operador fue incorrecta/variable a la real: Discrepancia Errónea (-10 pts)
+            $errorPenaltyType = 'wrong_discrepancy';
+            $penaltyPoints = 10;
+        }
+
+        $productCount->counted_quantity      = $finalQuantity;
+        $productCount->discrepancy           = $finalDiscrepancy;
+        $productCount->status                = 'approved';
+        $productCount->supervisor_id         = Auth::id();
+        $productCount->correction_difference = $correctionDiff;
+        $productCount->error_penalty_type    = $errorPenaltyType;
+        $productCount->penalty_points        = $penaltyPoints;
         $productCount->save();
 
         $productCount->load(['product', 'user', 'distributions.productLot']);
@@ -466,6 +499,7 @@ class InventoryCycleActionService
                     'status'           => $status,
                     'supervisor_id'    => $supervisorId,
                     'invoice_id'       => $data['invoice_id'] ?? null,
+                    'points_earned'    => 2,
                 ]);
 
                 $invoiceCount->load(['product', 'user', 'cycle']);
@@ -655,13 +689,27 @@ class InventoryCycleActionService
             ProductLotObserver::$skipMovementCreation = false;
         }
 
-        $invoiceCount->counted_quantity = $finalQuantity;
-        $invoiceCount->discrepancy      = $finalDiscrepancy;
-        $invoiceCount->status           = 'approved';
-        $invoiceCount->supervisor_id    = Auth::id();
-        $invoiceCount->correction_difference = $isCorrection
-            ? abs($invoiceCount->getOriginal('counted_quantity') - $finalQuantity)
-            : 0;
+        $originalCounted = (float) $invoiceCount->getOriginal('counted_quantity');
+        $correctionDiff = $isCorrection ? abs($originalCounted - $finalQuantity) : 0;
+        
+        $errorPenaltyType = null;
+        $penaltyPoints = 0;
+
+        if ($finalDiscrepancy == 0 && abs($originalCounted - $stockBefore) > 0.0001) {
+            $errorPenaltyType = 'false_discrepancy';
+            $penaltyPoints = 20;
+        } elseif ($isCorrection && $correctionDiff > 0.0001) {
+            $errorPenaltyType = 'wrong_discrepancy';
+            $penaltyPoints = 10;
+        }
+
+        $invoiceCount->counted_quantity      = $finalQuantity;
+        $invoiceCount->discrepancy           = $finalDiscrepancy;
+        $invoiceCount->status                = 'approved';
+        $invoiceCount->supervisor_id         = Auth::id();
+        $invoiceCount->correction_difference = $correctionDiff;
+        $invoiceCount->error_penalty_type    = $errorPenaltyType;
+        $invoiceCount->penalty_points        = $penaltyPoints;
         $invoiceCount->save();
 
         $invoiceCount->load(['product', 'user', 'distributions.productLot']);
@@ -789,6 +837,7 @@ class InventoryCycleActionService
                     'status'           => $status,
                     'supervisor_id'    => $supervisorId,
                     'type'             => 'sale',
+                    'points_earned'    => 2,
                 ]);
 
                 $saleCount->load(['product', 'user', 'cycle']);
@@ -957,13 +1006,27 @@ class InventoryCycleActionService
             ProductLotObserver::$skipMovementCreation = false;
         }
 
-        $saleCount->counted_quantity = $finalQuantity;
-        $saleCount->discrepancy      = $finalDiscrepancy;
-        $saleCount->status           = 'approved';
-        $saleCount->supervisor_id    = Auth::id();
-        $saleCount->correction_difference = $isCorrection
-            ? abs($saleCount->getOriginal('counted_quantity') - $finalQuantity)
-            : 0;
+        $originalCounted = (float) $saleCount->getOriginal('counted_quantity');
+        $correctionDiff = $isCorrection ? abs($originalCounted - $finalQuantity) : 0;
+        
+        $errorPenaltyType = null;
+        $penaltyPoints = 0;
+
+        if ($finalDiscrepancy == 0 && abs($originalCounted - $stockBefore) > 0.0001) {
+            $errorPenaltyType = 'false_discrepancy';
+            $penaltyPoints = 20;
+        } elseif ($isCorrection && $correctionDiff > 0.0001) {
+            $errorPenaltyType = 'wrong_discrepancy';
+            $penaltyPoints = 10;
+        }
+
+        $saleCount->counted_quantity      = $finalQuantity;
+        $saleCount->discrepancy           = $finalDiscrepancy;
+        $saleCount->status                = 'approved';
+        $saleCount->supervisor_id         = Auth::id();
+        $saleCount->correction_difference = $correctionDiff;
+        $saleCount->error_penalty_type    = $errorPenaltyType;
+        $saleCount->penalty_points        = $penaltyPoints;
         $saleCount->save();
 
         $saleCount->load(['product', 'user', 'distributions.productLot']);

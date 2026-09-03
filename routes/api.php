@@ -328,6 +328,9 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
         Route::get("cycle/active", [InventoryCycleController::class, "getActiveCycleStatus"])->name("inventory.cycle.active");
         Route::get("cycle/users-with-counts", [InventoryCycleController::class, "getUsersWithCounts"]);
         Route::get("products", [InventoryCycleController::class, "getProductsForInventory"])->name("inventory.products.index");
+        Route::get("user-quota-status", [InventoryCycleController::class, "getUserQuotaStatus"]);
+        Route::post("request-more-quota", [InventoryCycleController::class, "requestMoreQuotaProducts"]);
+        Route::get("daily-quotas-matrix", [InventoryCycleController::class, "getDailyQuotasMatrix"]);
         Route::get("/cash-close-items", [InventoryCycleController::class, "getCashCloseItems"]);
         Route::post("/cycle/close", [InventoryCycleController::class, "closeActiveCycle"]);
         Route::post("/cycle/create", [InventoryCycleController::class, "createCycle"]);

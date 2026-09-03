@@ -7,6 +7,8 @@ import { useBrandingStore } from "@/stores/useBrandingStore";
 const brandingStore = useBrandingStore()
 const cyclicInventoryMode = ref('double')
 const barcodeRequired = ref(true)
+const cyclicInventoryScope = ref('all')
+const dailyQuota = ref(50)
 const enableLots = ref(true)
 const enableStockControl = ref(true)
 
@@ -16,10 +18,12 @@ const isSaving = ref(false)
 const fetchSettings = async () => {
   isLoading.value = true
   try {
-    const response = await axios.get('/general-settings?only=cyclic_inventory_mode,cyclic_inventory_barcode_required,enable_lots,enable_stock_control')
+    const response = await axios.get('/general-settings?only=cyclic_inventory_mode,cyclic_inventory_barcode_required,cyclic_inventory_scope,cyclic_inventory_daily_quota,enable_lots,enable_stock_control')
     const settings = response.data.data
     cyclicInventoryMode.value = settings.cyclic_inventory_mode || 'double'
     barcodeRequired.value = settings.cyclic_inventory_barcode_required ?? true
+    cyclicInventoryScope.value = settings.cyclic_inventory_scope || 'all'
+    dailyQuota.value = Number(settings.cyclic_inventory_daily_quota) || 50
     enableLots.value = settings.enable_lots ?? true
     enableStockControl.value = settings.enable_stock_control ?? true
   } catch (error) {
@@ -37,6 +41,8 @@ const updateSettings = async () => {
     await axios.post('/general-settings', {
       cyclic_inventory_mode: cyclicInventoryMode.value,
       cyclic_inventory_barcode_required: barcodeRequired.value,
+      cyclic_inventory_scope: cyclicInventoryScope.value,
+      cyclic_inventory_daily_quota: Number(dailyQuota.value) || 50,
       enable_lots: enableLots.value,
       enable_stock_control: enableStockControl.value,
     })
@@ -106,7 +112,7 @@ onMounted(() => {
     <VCardItem v-else class="py-6 px-6">
       <VRow>
         <!-- Modalidad de Inventario Cíclico -->
-        <VCol cols="12" md="6" lg="3">
+        <VCol cols="12" md="6" lg="4">
           <VCard variant="outlined" class="h-100 pa-5 rounded-xl border-light hover-card position-relative overflow-hidden d-flex flex-column justify-space-between transition-all">
             <div>
               <div class="d-flex align-center justify-space-between mb-4">
@@ -144,8 +150,66 @@ onMounted(() => {
           </VCard>
         </VCol>
 
+        <!-- Alcance del Inventario Cíclico (Todos vs Cuota Diaria) -->
+        <VCol cols="12" md="6" lg="4">
+          <VCard variant="outlined" class="h-100 pa-5 rounded-xl border-light hover-card position-relative overflow-hidden d-flex flex-column justify-space-between transition-all">
+            <div>
+              <div class="d-flex align-center justify-space-between mb-4">
+                <div class="p-2 rounded-lg d-flex align-center justify-center" style="width: 44px; height: 44px; background-color: rgba(156, 39, 176, 0.08);">
+                  <VIcon icon="tabler-target-arrow" class="text-purple" size="24" />
+                </div>
+                <VChip 
+                  :color="cyclicInventoryScope === 'quota' ? 'purple' : 'primary'" 
+                  size="x-small" 
+                  class="font-weight-bold uppercase"
+                  variant="tonal"
+                >
+                  {{ cyclicInventoryScope === 'quota' ? `Cuota (${dailyQuota}/día)` : 'Todos' }}
+                </VChip>
+              </div>
+              <h4 class="text-subtitle-1 font-weight-bold text-high-emphasis mb-1">Alcance de Productos</h4>
+              <p class="text-caption text-medium-emphasis mb-3">
+                Define si se muestran todos los productos del catálogo en el conteo cíclico o una cuota diaria progresiva.
+              </p>
+            </div>
+            
+            <div class="mt-auto pt-2">
+              <VRadioGroup
+                v-model="cyclicInventoryScope"
+                density="compact"
+                hide-details
+                class="mb-2"
+                :disabled="isSaving"
+                @update:model-value="updateSettings"
+              >
+                <VRadio label="Todos los productos" value="all" color="primary" class="mb-1" />
+                <VRadio label="Cuota diaria por conteo" value="quota" color="purple" />
+              </VRadioGroup>
+
+              <VExpandTransition>
+                <div v-if="cyclicInventoryScope === 'quota'" class="pt-2">
+                  <VTextField
+                    v-model.number="dailyQuota"
+                    type="number"
+                    min="1"
+                    max="10000"
+                    label="Cantidad de productos por día"
+                    density="compact"
+                    variant="outlined"
+                    prefix="📦"
+                    suffix="productos"
+                    hide-details="auto"
+                    :disabled="isSaving"
+                    @change="updateSettings"
+                  />
+                </div>
+              </VExpandTransition>
+            </div>
+          </VCard>
+        </VCol>
+
         <!-- Requerir Escaneo de Código de Barras -->
-        <VCol cols="12" md="6" lg="3">
+        <VCol cols="12" md="6" lg="4">
           <VCard variant="outlined" class="h-100 pa-5 rounded-xl border-light hover-card position-relative overflow-hidden d-flex flex-column justify-space-between transition-all">
             <div>
               <div class="d-flex align-center justify-space-between mb-4">
@@ -182,7 +246,7 @@ onMounted(() => {
         </VCol>
 
         <!-- Habilitar Uso de Lotes de Inventario -->
-        <VCol cols="12" md="6" lg="3">
+        <VCol cols="12" md="6" lg="6">
           <VCard variant="outlined" class="h-100 pa-5 rounded-xl border-light hover-card position-relative overflow-hidden d-flex flex-column justify-space-between transition-all">
             <div>
               <div class="d-flex align-center justify-space-between mb-4">
@@ -219,7 +283,7 @@ onMounted(() => {
         </VCol>
 
         <!-- Habilitar Control de Stock en Menú -->
-        <VCol cols="12" md="6" lg="3">
+        <VCol cols="12" md="6" lg="6">
           <VCard variant="outlined" class="h-100 pa-5 rounded-xl border-light hover-card position-relative overflow-hidden d-flex flex-column justify-space-between transition-all">
             <div>
               <div class="d-flex align-center justify-space-between mb-4">

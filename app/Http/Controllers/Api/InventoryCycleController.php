@@ -16,11 +16,13 @@ use App\Models\ProductDistribution;
 use App\Models\InvoiceCountDistribution;
 use App\Models\SaleCountDistribution;
 use App\Models\InventoryCycle;
+use App\Models\UserCyclicQuota;
 use App\Http\Requests\InventoryCycle\StoreProductCountRequest;
 use App\Http\Requests\InventoryCycle\StoreInvoiceCountRequest;
 use App\Http\Requests\InventoryCycle\StoreSaleCountRequest;
 use App\Http\Requests\InventoryCycle\ProcessCountActionRequest;
 use App\Http\Requests\InventoryCycle\UpdateDiscrepancyRequest;
+use App\Http\Requests\InventoryCycle\GetDailyQuotasMatrixRequest;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -43,6 +45,49 @@ class InventoryCycleController extends Controller
             $query = $this->inventoryCycleQueryService->getProductsFilteredQuery($request);
             $perPage = (int) $request->input('itemsPerPage', 10);
 
+            $settings = \App\Models\GeneralSetting::first();
+            $scope = $settings?->cyclic_inventory_scope ?? 'all';
+            $dailyQuota = (int) ($settings?->cyclic_inventory_daily_quota ?? 50);
+
+            $hasSearchFilters = $request->filled('q') || $request->filled('laboratoryId') || $request->filled('originId');
+
+            $activeCycleId = \App\Models\InventoryCycle::where('status', 'active')->value('id');
+
+            if ($scope === 'quota' && !$hasSearchFilters && $dailyQuota > 0 && $activeCycleId) {
+                $userId = Auth::id() ?? $request->user()?->id;
+                $today = now()->toDateString();
+
+                if ($userId) {
+                    // Obtener la cuota activa del día para el usuario (el tier más alto)
+                    $userQuota = UserCyclicQuota::where('user_id', $userId)
+                        ->where('cycle_id', $activeCycleId)
+                        ->where('quota_date', $today)
+                        ->orderBy('quota_tier', 'desc')
+                        ->first();
+
+                    // Si no existe cuota inicial para hoy, generar el primer lote aleatorio de 50
+                    if (!$userQuota) {
+                        // Obtener IDs aleatorios de productos disponibles
+                        $availableProductIds = (clone $query)->inRandomOrder()->limit($dailyQuota)->pluck('products.id')->toArray();
+                        $userQuota = UserCyclicQuota::create([
+                            'user_id'              => $userId,
+                            'cycle_id'             => $activeCycleId,
+                            'quota_date'           => $today,
+                            'quota_tier'           => 1,
+                            'assigned_quantity'    => count($availableProductIds),
+                            'assigned_product_ids' => $availableProductIds,
+                        ]);
+                    }
+
+                    $assignedIds = $userQuota->assigned_product_ids ?? [];
+                    if (!empty($assignedIds)) {
+                        $query->whereIn('products.id', $assignedIds);
+                    } else {
+                        $query->whereRaw('1 = 0');
+                    }
+                }
+            }
+
             if ($perPage < 1) {
                 $items = $query->get();
                 return response()->json(['data' => $items, 'total' => $items->count()]);
@@ -58,6 +103,143 @@ class InventoryCycleController extends Controller
                 'data' => [],
                 'total' => 0,
             ], 500);
+        }
+    }
+
+    public function getUserQuotaStatus(Request $request)
+    {
+        try {
+            $settings = \App\Models\GeneralSetting::first();
+            $scope = $settings?->cyclic_inventory_scope ?? 'all';
+            $dailyQuota = (int) ($settings?->cyclic_inventory_daily_quota ?? 50);
+
+            if ($scope !== 'quota' || $dailyQuota <= 0) {
+                return response()->json([
+                    'is_active' => false,
+                    'counted'   => 0,
+                    'total'     => 0,
+                    'tier'      => 1,
+                    'can_request_more' => false,
+                ]);
+            }
+
+            $activeCycleId = \App\Models\InventoryCycle::where('status', 'active')->value('id');
+            if (!$activeCycleId) {
+                return response()->json([
+                    'is_active' => false,
+                    'counted'   => 0,
+                    'total'     => 0,
+                    'tier'      => 1,
+                    'can_request_more' => false,
+                ]);
+            }
+
+            $userId = Auth::id() ?? $request->user()?->id;
+            $today = now()->toDateString();
+
+            $userQuota = UserCyclicQuota::where('user_id', $userId)
+                ->where('cycle_id', $activeCycleId)
+                ->where('quota_date', $today)
+                ->orderBy('quota_tier', 'desc')
+                ->first();
+
+            $assignedIds = $userQuota ? ($userQuota->assigned_product_ids ?? []) : [];
+            $totalAssigned = $userQuota ? (int) $userQuota->assigned_quantity : $dailyQuota;
+            $currentTier = $userQuota ? (int) $userQuota->quota_tier : 1;
+
+            // Contar cuántos productos del lote asignado ya fueron contados por el usuario
+            $countedInCurrentBatch = 0;
+            if (!empty($assignedIds)) {
+                $countedInCurrentBatch = ProductCount::where('cycle_id', $activeCycleId)
+                    ->where('user_id', $userId)
+                    ->whereIn('product_id', $assignedIds)
+                    ->count();
+            }
+
+            $canRequestMore = ($countedInCurrentBatch >= $totalAssigned) && ($totalAssigned > 0);
+
+            return response()->json([
+                'is_active'        => true,
+                'counted'          => $countedInCurrentBatch,
+                'total'            => $totalAssigned,
+                'tier'             => $currentTier,
+                'can_request_more' => $canRequestMore,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('getUserQuotaStatus error: ' . $e->getMessage());
+            return response()->json(['message' => 'Error al obtener estado de cuota'], 500);
+        }
+    }
+
+    public function requestMoreQuotaProducts(Request $request)
+    {
+        try {
+            $settings = \App\Models\GeneralSetting::first();
+            $scope = $settings?->cyclic_inventory_scope ?? 'all';
+            $dailyQuota = (int) ($settings?->cyclic_inventory_daily_quota ?? 50);
+
+            $activeCycleId = \App\Models\InventoryCycle::where('status', 'active')->value('id');
+            if (!$activeCycleId) {
+                return response()->json(['message' => 'No hay un ciclo de inventario activo.'], 422);
+            }
+
+            $userId = Auth::id() ?? $request->user()?->id;
+            $today = now()->toDateString();
+
+            $lastQuota = UserCyclicQuota::where('user_id', $userId)
+                ->where('cycle_id', $activeCycleId)
+                ->where('quota_date', $today)
+                ->orderBy('quota_tier', 'desc')
+                ->first();
+
+            $nextTier = $lastQuota ? ($lastQuota->quota_tier + 1) : 1;
+
+            // Obtener productos disponibles en el ciclo que el usuario aún no haya contado
+            $baseQuery = $this->inventoryCycleQueryService->getProductsFilteredQuery($request);
+            $newProductIds = $baseQuery->inRandomOrder()->limit($dailyQuota)->pluck('products.id')->toArray();
+
+            if (empty($newProductIds)) {
+                return response()->json(['message' => 'No hay más productos pendientes por contar en este ciclo.'], 400);
+            }
+
+            $newQuota = UserCyclicQuota::create([
+                'user_id'              => $userId,
+                'cycle_id'             => $activeCycleId,
+                'quota_date'           => $today,
+                'quota_tier'           => $nextTier,
+                'assigned_quantity'    => count($newProductIds),
+                'assigned_product_ids' => $newProductIds,
+            ]);
+
+            $pointsPerCount = match (true) {
+                $nextTier >= 3 => 4,
+                $nextTier === 2 => 2,
+                default => 1,
+            };
+
+            return response()->json([
+                'message' => "¡Nuevo lote asignado! Nivel {$nextTier}: cada conteo te otorgará +{$pointsPerCount} puntos.",
+                'data'    => $newQuota
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('requestMoreQuotaProducts error: ' . $e->getMessage());
+            return response()->json(['message' => 'Error al solicitar más productos: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function getDailyQuotasMatrix(GetDailyQuotasMatrixRequest $request)
+    {
+        try {
+            $month = (int) $request->input('month', now()->month);
+            $year = (int) $request->input('year', now()->year);
+            $type = (string) $request->input('type', 'products');
+
+            $data = $this->inventoryCycleQueryService->getDailyQuotasMatrixData($month, $year, $type);
+
+            return response()->json($data);
+        } catch (\Throwable $e) {
+            Log::error('getDailyQuotasMatrix error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json(['message' => 'Error al obtener matriz de cuotas: ' . $e->getMessage()], 500);
         }
     }
 

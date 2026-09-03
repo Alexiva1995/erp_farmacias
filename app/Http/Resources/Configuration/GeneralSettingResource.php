@@ -88,6 +88,8 @@ class GeneralSettingResource extends JsonResource
             'section3_button_text' => $this->section3_button_text ?? 'COMPRAR BRONCEADOR',
             'cyclic_inventory_mode' => $this->cyclic_inventory_mode ?? 'double',
             'cyclic_inventory_barcode_required' => $this->cyclic_inventory_barcode_required ?? true,
+            'cyclic_inventory_scope' => $this->cyclic_inventory_scope ?? 'all',
+            'cyclic_inventory_daily_quota' => (int) ($this->cyclic_inventory_daily_quota ?? 50),
             'enable_lots' => (bool) ($this->enable_lots ?? true),
             'tpv_mode' => $this->tpv_mode ?? 'complete',
             'enable_product_types' => (bool) ($this->enable_product_types ?? true),

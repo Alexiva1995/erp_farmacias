@@ -568,15 +568,31 @@ class InventoryCycleQueryService
         $activeCycleId   = $activeCycle->id;
         $afterCycleStart = Carbon::parse($activeCycle->start_date)->addSecond();
 
-        // Solo productos con facturas ordenadas después del inicio del ciclo
-        $query->whereHas('invoiceDetails.invoice', function ($subQuery) use ($afterCycleStart) {
-            $subQuery->where('status', 'ordered')
-                     ->where('created_invoice_date', '>', $afterCycleStart);
-        });
+        $query->addSelect([
+            'latest_invoice_date' => DB::table('invoice_details')
+                ->join('invoices', 'invoice_details.invoice_id', '=', 'invoices.id')
+                ->whereColumn('invoice_details.product_id', 'products.id')
+                ->where('invoices.status', 'ordered')
+                ->where('invoices.updated_at', '>', $afterCycleStart)
+                ->selectRaw('MAX(invoices.updated_at)')
+        ]);
 
-        // Excluir productos que ya tienen conteo de factura en el ciclo activo
-        $query->whereDoesntHave('invoiceCounts', function (Builder $subQuery) use ($activeCycleId) {
-            $subQuery->where('cycle_id', $activeCycleId);
+        $query->whereExists(function ($sub) use ($activeCycleId, $afterCycleStart) {
+            $sub->select(DB::raw(1))
+                ->from('invoice_details')
+                ->join('invoices', 'invoice_details.invoice_id', '=', 'invoices.id')
+                ->whereColumn('invoice_details.product_id', 'products.id')
+                ->where('invoices.status', 'ordered')
+                ->where('invoices.updated_at', '>', $afterCycleStart);
+
+            // Solo mostrar si no hay un conteo posterior a la fecha en que se ordenó la factura en el ciclo actual
+            $sub->whereNotExists(function ($countSub) use ($activeCycleId) {
+                $countSub->select(DB::raw(1))
+                    ->from('invoices_counts')
+                    ->whereColumn('invoices_counts.product_id', 'products.id')
+                    ->where('invoices_counts.cycle_id', $activeCycleId)
+                    ->whereRaw('invoices_counts.created_at >= invoices.updated_at');
+            });
         });
 
         $filters = [
@@ -1027,5 +1043,81 @@ class InventoryCycleQueryService
             ])
             ->where('counts.cycle_id', $cycleId)
             ->first();
+    }
+
+    public function getDailyQuotasMatrixData(int $month, int $year, string $type = 'products'): array
+    {
+        $settings = \App\Models\GeneralSetting::first();
+        $dailyQuota = (int) ($settings?->cyclic_inventory_daily_quota ?? 50);
+
+        $employees = \App\Models\Employee::where('is_active', true)
+            ->whereNotNull('user_id')
+            ->select(['id', 'name', 'last_name', 'user_id', 'photo'])
+            ->orderBy('name', 'asc')
+            ->get();
+
+        $userIds = $employees->pluck('user_id')->filter()->unique()->toArray();
+
+        $countsQuery = match ($type) {
+            'invoices' => InvoiceCount::query(),
+            'sales'    => SaleCount::query(),
+            'pending'  => ProductCount::where('status', 'pending'),
+            default    => ProductCount::query(),
+        };
+
+        $counts = $countsQuery
+            ->whereYear('created_at', $year)
+            ->whereMonth('created_at', $month)
+            ->whereIn('user_id', $userIds)
+            ->selectRaw('DATE(created_at) as count_date, user_id, COUNT(*) as total_counts')
+            ->groupBy('count_date', 'user_id')
+            ->get();
+
+        $matrixMap = [];
+        foreach ($counts as $item) {
+            $matrixMap[$item->count_date][$item->user_id] = (int) $item->total_counts;
+        }
+
+        $startDate = Carbon::create($year, $month, 1);
+        $daysInMonth = $startDate->daysInMonth;
+        $today = now()->toDateString();
+
+        $rows = [];
+        for ($d = $daysInMonth; $d >= 1; $d--) {
+            $currentDate = Carbon::create($year, $month, $d)->toDateString();
+            if ($currentDate > $today) {
+                continue;
+            }
+
+            $userCells = [];
+            $dayTotal = 0;
+
+            foreach ($employees as $emp) {
+                $uId = $emp->user_id;
+                $countVal = $matrixMap[$currentDate][$uId] ?? 0;
+                $dayTotal += $countVal;
+
+                $userCells[$uId] = [
+                    'count'     => $countVal,
+                    'quota'     => $dailyQuota,
+                    'fulfilled' => ($type === 'products') ? ($countVal >= $dailyQuota) : ($countVal > 0),
+                ];
+            }
+
+            $rows[] = [
+                'date'          => $currentDate,
+                'formatted_date'=> Carbon::parse($currentDate)->isoFormat('dddd, D [de] MMMM'),
+                'day_total'     => $dayTotal,
+                'users'         => $userCells,
+            ];
+        }
+
+        return [
+            'month'       => $month,
+            'year'        => $year,
+            'daily_quota' => $dailyQuota,
+            'employees'   => $employees,
+            'data'        => $rows,
+        ];
     }
 }

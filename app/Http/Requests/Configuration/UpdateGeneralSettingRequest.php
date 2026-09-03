@@ -54,6 +54,8 @@ class UpdateGeneralSettingRequest extends FormRequest
             'section3_button_text' => 'nullable|string|max:255',
             'cyclic_inventory_mode' => 'nullable|string|in:simple,double',
             'cyclic_inventory_barcode_required' => 'nullable|boolean',
+            'cyclic_inventory_scope' => 'nullable|string|in:all,quota',
+            'cyclic_inventory_daily_quota' => 'nullable|integer|min:1|max:10000',
             'enable_lots' => 'nullable|boolean',
             'tpv_mode' => 'nullable|string|in:simple,complete',
             'enable_product_types' => 'nullable|boolean',

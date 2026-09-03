@@ -116,19 +116,48 @@ class EmployeePerformanceQueryService
             ->get()
             ->groupBy('seller_id');
 
-        // 1c. Bulk Inventory Counts
-        $productCountMap = ProductCount::whereMonth('created_at', $month)->whereYear('created_at', $year)
-            ->groupBy('user_id')->selectRaw('user_id, COUNT(*) as total')->pluck('total', 'user_id');
+        // 1c. Bulk Inventory Counts y Puntuación Gamificada
+        // Puntos ganados por operador (ProductCount: según tier, SaleCount: 2 pts, InvoiceCount: 2 pts, Supervisor verificador: 3 pts)
+        $productPointsMap = ProductCount::whereMonth('created_at', $month)->whereYear('created_at', $year)
+            ->groupBy('user_id')->selectRaw('user_id, SUM(COALESCE(points_earned, 1)) as total')->pluck('total', 'user_id');
 
-        $saleCountMap = SaleCount::whereMonth('created_at', $month)->whereYear('created_at', $year)
-            ->groupBy('user_id')->selectRaw('user_id, COUNT(*) as total')->pluck('total', 'user_id');
+        $salePointsMap = SaleCount::whereMonth('created_at', $month)->whereYear('created_at', $year)
+            ->groupBy('user_id')->selectRaw('user_id, SUM(COALESCE(points_earned, 2)) as total')->pluck('total', 'user_id');
 
-        $invoiceCountMap = InvoiceCount::whereMonth('created_at', $month)->whereYear('created_at', $year)
-            ->groupBy('user_id')->selectRaw('user_id, COUNT(*) as total')->pluck('total', 'user_id');
+        $invoicePointsMap = InvoiceCount::whereMonth('created_at', $month)->whereYear('created_at', $year)
+            ->groupBy('user_id')->selectRaw('user_id, SUM(COALESCE(points_earned, 2)) as total')->pluck('total', 'user_id');
 
-        $productErrorMap = ProductCount::whereMonth('created_at', $month)->whereYear('created_at', $year)
-            ->where('status', 'approved')->where('correction_difference', '>', 0)
-            ->groupBy('user_id')->selectRaw('user_id, COUNT(*) as total')->pluck('total', 'user_id');
+        // Puntos como supervisor verificador en revisión de pendientes (+3 pts por conteo aprobado/corregido)
+        $supervisorProductPointsMap = ProductCount::whereMonth('updated_at', $month)->whereYear('updated_at', $year)
+            ->whereNotNull('supervisor_id')
+            ->where('status', 'approved')
+            ->groupBy('supervisor_id')
+            ->selectRaw('supervisor_id, COUNT(*) * 3 as total')
+            ->pluck('total', 'supervisor_id');
+
+        $supervisorSalePointsMap = SaleCount::whereMonth('updated_at', $month)->whereYear('updated_at', $year)
+            ->whereNotNull('supervisor_id')
+            ->where('status', 'approved')
+            ->groupBy('supervisor_id')
+            ->selectRaw('supervisor_id, COUNT(*) * 3 as total')
+            ->pluck('total', 'supervisor_id');
+
+        $supervisorInvoicePointsMap = InvoiceCount::whereMonth('updated_at', $month)->whereYear('updated_at', $year)
+            ->whereNotNull('supervisor_id')
+            ->where('status', 'approved')
+            ->groupBy('supervisor_id')
+            ->selectRaw('supervisor_id, COUNT(*) * 3 as total')
+            ->pluck('total', 'supervisor_id');
+
+        // Penalizaciones registradas (-20 por falsa discrepancia, -10 por discrepancia errónea)
+        $productPenaltyMap = ProductCount::whereMonth('created_at', $month)->whereYear('created_at', $year)
+            ->groupBy('user_id')->selectRaw('user_id, SUM(COALESCE(penalty_points, 0)) as total')->pluck('total', 'user_id');
+
+        $salePenaltyMap = SaleCount::whereMonth('created_at', $month)->whereYear('created_at', $year)
+            ->groupBy('user_id')->selectRaw('user_id, SUM(COALESCE(penalty_points, 0)) as total')->pluck('total', 'user_id');
+
+        $invoicePenaltyMap = InvoiceCount::whereMonth('created_at', $month)->whereYear('created_at', $year)
+            ->groupBy('user_id')->selectRaw('user_id, SUM(COALESCE(penalty_points, 0)) as total')->pluck('total', 'user_id');
 
         // 1d. Bulk Invoice Metrics
         $invoiceHeadersMap = Invoice::whereNotNull('registered_by')
@@ -154,8 +183,10 @@ class EmployeePerformanceQueryService
 
         // Map employee data without N+1 queries
         $employeesData = $employees->map(function ($employee) use (
-            $salesMap, $prevSalesMap, $orderDetailsGrouped, $productCountMap,
-            $saleCountMap, $invoiceCountMap, $productErrorMap,
+            $salesMap, $prevSalesMap, $orderDetailsGrouped,
+            $productPointsMap, $salePointsMap, $invoicePointsMap,
+            $supervisorProductPointsMap, $supervisorSalePointsMap, $supervisorInvoicePointsMap,
+            $productPenaltyMap, $salePenaltyMap, $invoicePenaltyMap,
             $invoiceHeadersMap, $invoiceItemsMap, $invoiceArchivedMap, $cleaningMap
         ) {
             $userId = $employee->user_id;
@@ -185,13 +216,25 @@ class EmployeePerformanceQueryService
                 }
             }
 
-            $inventoryCounted = $userId ? (
-                ($productCountMap[$userId] ?? 0) +
-                ($saleCountMap[$userId] ?? 0) +
-                ($invoiceCountMap[$userId] ?? 0)
+            // Puntos ganados en conteos regulares + facturas + ventas + rol de supervisor
+            $totalPointsEarned = $userId ? (
+                (int) ($productPointsMap[$userId] ?? 0) +
+                (int) ($salePointsMap[$userId] ?? 0) +
+                (int) ($invoicePointsMap[$userId] ?? 0) +
+                (int) ($supervisorProductPointsMap[$userId] ?? 0) +
+                (int) ($supervisorSalePointsMap[$userId] ?? 0) +
+                (int) ($supervisorInvoicePointsMap[$userId] ?? 0)
             ) : 0;
 
-            $inventoryErrors = $userId ? ($productErrorMap[$userId] ?? 0) : 0;
+            // Penalizaciones de inventario aisladas (no afectan ventas ni otras métricas)
+            $totalPenalties = $userId ? (
+                (int) ($productPenaltyMap[$userId] ?? 0) +
+                (int) ($salePenaltyMap[$userId] ?? 0) +
+                (int) ($invoicePenaltyMap[$userId] ?? 0)
+            ) : 0;
+
+            // Puntuación neta de inventario (métrica C.)
+            $inventoryPointsNet = max(0, $totalPointsEarned - $totalPenalties);
 
             $cleaning = $cleaningMap[$employee->id] ?? null;
 
@@ -199,8 +242,8 @@ class EmployeePerformanceQueryService
                 'sales' => $sales,
                 'growth' => $growth,
                 'expirations' => (int) $expirations,
-                'inventory_counted' => (int) $inventoryCounted,
-                'inventory_errors' => (int) $inventoryErrors,
+                'inventory_counted' => (int) $inventoryPointsNet,
+                'inventory_errors' => (int) $totalPenalties,
                 'premium_products' => (int) $premiumProducts,
                 'cleaning_assigned' => $cleaning ? (int) $cleaning->total_assigned : 0,
                 'cleaning_completed' => $cleaning ? (int) $cleaning->total_completed : 0,
@@ -249,7 +292,7 @@ class EmployeePerformanceQueryService
                 'sales' => ($metrics['sales'] / $maxSales) * 25,
                 'growth' => max(-15, min(15, $growthScore)),
                 'expiration' => ($metrics['expirations'] / $maxExpirations) * 15,
-                'inventory' => max(0, (($metrics['inventory_counted'] / $maxInventoryCount) * 10) - ($metrics['inventory_errors'] * 0.01)),
+                'inventory' => ($metrics['inventory_counted'] / $maxInventoryCount) * 10,
                 'premium' => ($metrics['premium_products'] / $maxPremium) * 10,
                 'invoice' => (($metrics['invoice_items'] / $maxInvoiceItems) * 5) + 
                              (($metrics['invoice_headers'] / $maxInvoiceHeaders) * 2.5) + 

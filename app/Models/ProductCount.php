@@ -17,12 +17,19 @@ class ProductCount extends Model
         'user_id',
         'supervisor_id',
         'correction_difference', // Nueva columna para correcciones
+        'quota_tier',
+        'points_earned',
+        'error_penalty_type',
+        'penalty_points',
     ];
 
     protected $casts = [
         'counted_quantity' => 'float',
         'system_quantity' => 'float',
         'discrepancy' => 'float',
+        'quota_tier' => 'integer',
+        'points_earned' => 'integer',
+        'penalty_points' => 'integer',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];

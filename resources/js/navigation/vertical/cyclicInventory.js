@@ -35,6 +35,12 @@ export default [
         action: "manage",
         subject: "cycli-user",
       },
+      {
+        title: "Cuota",
+        to: "cyclics-quota",
+        action: "manage",
+        subject: "cyclic-menu",
+      },
     ],
   },
 ];
