@@ -54,7 +54,7 @@ const headers = computed(() => {
       sortable: true,
       cellClass: "font-weight-black text-primary",
     },
-    { title: "PRODUCTO", key: "name", sortable: true, width: "35%" },
+    { title: "PRODUCTO", key: "name", sortable: true, width: "40%" },
     { title: "BARCODE", key: "barcode", sortable: true },
     { title: isRestaurant.value ? "MARCA" : "LABORATORIO", key: "laboratory", sortable: true },
   ];
@@ -62,12 +62,6 @@ const headers = computed(() => {
     list.push({ title: "ORIGEN", key: "origin", sortable: true });
   }
   list.push(
-    {
-      title: "STOCK",
-      key: "stock_calculado",
-      sortable: true,
-      align: "end",
-    },
     { title: "Accion", key: "actions", sortable: false, align: "center" }
   );
   return list;
@@ -402,64 +396,6 @@ const formatStock = (item) => {
               FALTA
             </VChip>
           </template>
-        </template>
-
-        <!-- STOCK con chip tonal y menú flotante -->
-        <template #item.stock_calculado="{ item }">
-          <div class="text-end">
-            <VMenu
-              v-if="item.lots && item.lots.length > 0 && brandingStore.settings?.enable_lots !== false"
-              open-on-hover
-              location="bottom end"
-              offset="8px"
-            >
-              <template #activator="{ props: menuProps }">
-                <VChip
-                  v-bind="menuProps"
-                  :color="item.stock_calculado > 0 ? 'success' : 'error'"
-                  label
-                  size="x-small"
-                  variant="tonal"
-                  class="font-weight-black cursor-pointer hover-chip"
-                >
-                  {{ formatStock(item) }}
-                  <VIcon icon="tabler-info-circle" size="12" class="ms-1" />
-                </VChip>
-              </template>
-              <VCard min-width="280" class="rounded-xl border shadow-lg pa-3">
-                <div class="text-xs font-weight-black text-primary uppercase letter-spacing-1 mb-2 d-flex align-center gap-1">
-                  <VIcon icon="tabler-clipboard-list" size="14" />
-                  Desglose de Lotes
-                </div>
-                <VDivider class="mb-2" />
-                <div style="max-height: 180px; overflow-y: auto;">
-                  <div 
-                    v-for="lot in item.lots" 
-                    :key="lot.id"
-                    class="d-flex align-center justify-space-between py-1 border-bottom-light"
-                  >
-                    <div class="d-flex flex-column text-left">
-                      <span class="text-xs font-weight-bold text-high-emphasis">Lote: {{ lot.lot_number }}</span>
-                      <span class="text-super-xs text-disabled">Exp: {{ formatDateSimple(lot.expiration_date) }}</span>
-                    </div>
-                    <VChip size="x-small" label color="secondary" variant="flat" class="font-weight-black">
-                      {{ lot.quantity }}
-                    </VChip>
-                  </div>
-                </div>
-              </VCard>
-            </VMenu>
-            <VChip
-              v-else
-              :color="item.stock_calculado > 0 ? 'success' : 'error'"
-              label
-              size="x-small"
-              variant="tonal"
-              class="font-weight-black"
-            >
-              {{ formatStock(item) }}
-            </VChip>
-          </div>
         </template>
 
         <!-- Columna Accion con IconBtn limpio -->
