@@ -2,6 +2,7 @@
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { generateDonationPDF } from "@/utils/donationPdfGenerator";
+import pdfSupplierReturnsGenerator from "@/utils/pdfSupplierReturnsGenerator";
 import Swal from "sweetalert2";
 import { computed, onMounted, ref, watch } from "vue";
 import { useBrandingStore } from "@/stores/useBrandingStore";
@@ -18,6 +19,48 @@ import ExpirationsFilters from "@/components/ExpirationsFilters.vue";
 import ExpirationsTable from "@/components/ExpirationsTable.vue";
 import ExpiredDetailView from "@/components/ExpiredDetailView.vue";
 import { formatMonth, formatPrice as formatCurrency, formatDateSimple } from "@/utils/formatters";
+
+// ── Estado para Solicitud de Canje Preventivo a Proveedores (PDF) ─────────────
+const isSupplierReturnsModalVisible = ref(false);
+const buyerNameForReturns = ref('Encargada de Compras');
+const isGeneratingReturnsPdf = ref(false);
+
+const openSupplierReturnsModal = () => {
+  isSupplierReturnsModalVisible.value = true;
+};
+
+const handleGenerateSupplierReturnsPdf = async () => {
+  isGeneratingReturnsPdf.value = true;
+  try {
+    const params = {};
+    if (selectedLaboratoryLots.value) {
+      params.laboratory_id = selectedLaboratoryLots.value;
+    }
+    if (searchQueryLots.value) {
+      params.search = searchQueryLots.value;
+    }
+
+    const response = await axios.get('/bi/supplier-returns', { params });
+    const reportData = response.data?.data ?? response.data;
+
+    if (!reportData?.groups?.length) {
+      toast.info('No hay lotes con vencimiento a 90 días para generar la solicitud de canje con los filtros actuales.');
+      return;
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 50));
+    pdfSupplierReturnsGenerator(reportData, {
+      buyerName: buyerNameForReturns.value,
+    });
+    toast.success('Solicitud de Canje en PDF generada exitosamente.');
+    isSupplierReturnsModalVisible.value = false;
+  } catch (error) {
+    console.error('Error generando PDF de devoluciones:', error);
+    toast.error('Error al generar el PDF de Solicitud de Canje.');
+  } finally {
+    isGeneratingReturnsPdf.value = false;
+  }
+};
 
 const lots = ref([]);
 const totalLots = ref(0);
@@ -574,11 +617,21 @@ onMounted(() => {
       />
 
       <VCard>
-        <VCardTitle class="d-flex align-center justify-space-between">
+        <VCardTitle class="d-flex align-center justify-space-between flex-wrap gap-2">
           <div>
             <h4 class="text-h4 mb-1">Productos por Caducar</h4>
-
+            <span class="text-caption text-medium-emphasis">Monitoreo de lotes próximos a vencer y control de sobrestock en riesgo</span>
           </div>
+          <VBtn
+            color="error"
+            variant="flat"
+            prepend-icon="tabler-file-type-pdf"
+            size="small"
+            class="rounded-lg shadow-sm"
+            @click="openSupplierReturnsModal"
+          >
+            Solicitud de Canje (PDF)
+          </VBtn>
         </VCardTitle>
 
         <VCardText class="pa-0">
@@ -872,5 +925,49 @@ onMounted(() => {
       :month-name="formatMonth(selectedMonthForAdjustment)"
       @adjust-prices="handleGeneratePriceAdjustment"
     />
+
+    <!-- Modal para Solicitud de Canje Preventivo a Proveedores (PDF) -->
+    <VDialog v-model="isSupplierReturnsModalVisible" max-width="440" persistent>
+      <VCard class="rounded-lg">
+        <VCardTitle class="pa-4 d-flex align-center gap-2">
+          <VIcon icon="tabler-file-type-pdf" color="error" />
+          Solicitud de Canje Preventivo (PDF)
+        </VCardTitle>
+        <VDivider />
+        <VCardText class="pa-4">
+          <p class="text-body-2 text-medium-emphasis mb-3">
+            Se generará una carta formal por cada laboratorio afectado con lotes próximos a vencer a 90 días para solicitar el canje o nota de crédito.
+          </p>
+          <AppTextField
+            v-model="buyerNameForReturns"
+            label="Nombre de quien firma (Encargada de Compras)"
+            prepend-inner-icon="tabler-user"
+            density="compact"
+            hide-details
+            autofocus
+          />
+        </VCardText>
+        <VCardActions class="pa-4 pt-0 d-flex gap-2 justify-end">
+          <VBtn
+            variant="text"
+            color="secondary"
+            :disabled="isGeneratingReturnsPdf"
+            @click="isSupplierReturnsModalVisible = false"
+          >
+            Cancelar
+          </VBtn>
+          <VBtn
+            variant="flat"
+            color="error"
+            prepend-icon="tabler-download"
+            :loading="isGeneratingReturnsPdf"
+            :disabled="isGeneratingReturnsPdf"
+            @click="handleGenerateSupplierReturnsPdf"
+          >
+            Generar y Descargar
+          </VBtn>
+        </VCardActions>
+      </VCard>
+    </VDialog>
   </div>
 </template>

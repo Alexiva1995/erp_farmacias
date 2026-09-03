@@ -77,6 +77,12 @@ class ExpirationActionService
                 'movement_date' => now(),
             ]);
 
+            // 4. Pasar automáticamente el producto al tipo "Redundante" (is_scarce = true)
+            if (!$product->is_scarce) {
+                $product->is_scarce = true;
+                $product->save();
+            }
+
             DB::commit();
 
         } catch (Exception $e) {

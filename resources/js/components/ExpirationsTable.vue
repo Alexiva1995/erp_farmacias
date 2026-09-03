@@ -149,6 +149,17 @@ const formatDate = (dateString) => {
                   {{ item.product?.laboratory?.name || 'S/L' }}
                 </span>
               </div>
+              <div v-if="item.has_overstock_risk" class="mt-1">
+                <VChip
+                  size="x-small"
+                  color="deep-orange"
+                  variant="flat"
+                  prepend-icon="tabler-clock-exclamation"
+                  class="risk-chip font-weight-black px-2 text-super-xs"
+                >
+                  {{ item.risk_label || 'Sobrestock en Riesgo' }}
+                </VChip>
+              </div>
             </div>
           </div>
         </template>
@@ -242,6 +253,17 @@ const formatDate = (dateString) => {
                   <span v-else class="text-medium-emphasis font-weight-medium text-truncate" style="max-inline-size: 150px;">{{ item.product?.presentation || "S/P" }}{{ item.product?.unit_of_measure ? ` (${item.product?.unit_of_measure})` : '' }}</span>
                   <span class="text-disabled">|</span>
                   <span class="text-primary font-weight-black text-uppercase text-truncate" style="max-inline-size: 120px;">{{ item.product?.laboratory?.name || 'S/L' }}</span>
+                </div>
+                <div v-if="item.has_overstock_risk" class="mt-1">
+                  <VChip
+                    size="x-small"
+                    color="deep-orange"
+                    variant="flat"
+                    prepend-icon="tabler-clock-exclamation"
+                    class="risk-chip font-weight-black px-2 text-super-xs"
+                  >
+                    {{ item.risk_label_short || item.risk_label || 'Sobrestock en Riesgo' }}
+                  </VChip>
                 </div>
               </div>
             </div>
