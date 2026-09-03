@@ -79,13 +79,22 @@ class SupplierIaAssistantReportController extends Controller
         }
 
         if ($request->filled("isColombian")) {
-            $filtros["isColombian"] = filter_var($validated["isColombian"], FILTER_VALIDATE_BOOLEAN);
+            $val = filter_var($validated["isColombian"], FILTER_VALIDATE_BOOLEAN);
+            if ($val === true) {
+                $filtros["isColombian"] = true;
+            }
         } elseif ($request->filled("is_colombia")) {
-            $filtros["isColombian"] = filter_var($validated["is_colombia"], FILTER_VALIDATE_BOOLEAN);
+            $val = filter_var($validated["is_colombia"], FILTER_VALIDATE_BOOLEAN);
+            if ($val === true) {
+                $filtros["isColombian"] = true;
+            }
         }
 
         if ($request->filled("isNovaventa")) {
-            $filtros["isNovaventa"] = filter_var($validated["isNovaventa"], FILTER_VALIDATE_BOOLEAN);
+            $val = filter_var($validated["isNovaventa"], FILTER_VALIDATE_BOOLEAN);
+            if ($val === true) {
+                $filtros["isNovaventa"] = true;
+            }
         }
 
         if ($request->filled("product")) {

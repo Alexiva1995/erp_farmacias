@@ -79,7 +79,7 @@ export function useProductComparator() {
   const searchQueryRight = ref("");
 
   // Variables filtro de productos sin proveedor
-  const con_descuento = ref(true);
+  const con_descuento = ref(false);
   const selectedLaboratory = ref([]);
   const selectedGroup = ref([]);
   const needsLaboratory = ref([]);
@@ -480,6 +480,7 @@ export function useProductComparator() {
   onUnmounted(() => {
     stopPolling();
     clearTimeout(supplierDebounceTimer);
+    clearTimeout(debounceTimerProducts);
     clearTimeout(debounceTimerProductsWithoutSupplier);
   });
 
@@ -503,13 +504,33 @@ export function useProductComparator() {
     }
   );
 
+  // Watcher independiente para el Catálogo de Proveedores (Izquierda)
+  let debounceTimerProducts;
   watch(
     [
-      selectedLaboratory,
-      selectedGroup,
+      filterSearchQuery,
+      searchedSupplier,
+      searchedLaboratory,
+      selectedOrigin,
+      stockStatusFilter,
+      isStrictSearch,
+      enableDiscounts,
+    ],
+    () => {
+      productsPage.value = 1;
+      clearTimeout(debounceTimerProducts);
+      debounceTimerProducts = setTimeout(() => {
+        fetchProducts();
+      }, 300);
+    }
+  );
+
+  // Watcher independiente para Necesidades IA (Derecha)
+  watch(
+    [
+      searchQueryRight,
       needsLaboratory,
       needsGroup,
-      tipo_de_vista,
       tipo_de_filtracion,
       lapso_de_tiempo,
       stock,
@@ -517,25 +538,16 @@ export function useProductComparator() {
       needsIsColombian,
       needsIsNovaventa,
       con_descuento,
-      searchQueryRight,
-      filterSearchQuery,
-      searchedSupplier,
-      searchedLaboratory,
-      selectedOrigin,
-      stockStatusFilter,
-      isStrictSearch,
     ],
     () => {
-      productsPage.value = 1;
+      pageProductsWithoutSupplier.value = 1;
       clearTimeout(debounceTimerProductsWithoutSupplier);
       debounceTimerProductsWithoutSupplier = setTimeout(() => {
         if (isNeedsVisible.value) {
           fetchProductsWithoutSupplier();
         }
-        fetchProducts();
-      }, 400);
-    },
-    { deep: true },
+      }, 350);
+    }
   );
 
   const updateTableOptions = (options) => {
@@ -598,7 +610,8 @@ export function useProductComparator() {
 
   const handleAddItemToAutoOrder = async (product, onComplete) => {
     quantityErrors[product.id] = null;
-    const mainProductId = selectedProductFromTop.value?.id ?? null;
+    const currentNeedsProduct = selectedProductFromTop.value;
+    const mainProductId = currentNeedsProduct?.id ?? null;
 
     const form = new FormData();
     form.append("productId", product.id);
@@ -613,7 +626,31 @@ export function useProductComparator() {
       if (message && message.warning) {
         toast.warning(message.warning, { timeout: 8000 });
       }
-      fetchProductsWithoutSupplier();
+
+      // Si teníamos un producto de Necesidades IA seleccionado, removerlo localmente y auto-seleccionar el siguiente
+      if (currentNeedsProduct) {
+        const currentIndex = listProductsWithoutSupplier.value.findIndex(p => p.id === currentNeedsProduct.id);
+        
+        // Remover de la lista local inmediatamente sin hacer petición de red completa
+        listProductsWithoutSupplier.value = listProductsWithoutSupplier.value.filter(p => p.id !== currentNeedsProduct.id);
+        if (totalProductsWithoutSupplier.value > 0) {
+          totalProductsWithoutSupplier.value--;
+        }
+
+        // Seleccionar automáticamente el siguiente producto de la lista
+        if (listProductsWithoutSupplier.value.length > 0) {
+          const nextIndex = Math.min(Math.max(0, currentIndex), listProductsWithoutSupplier.value.length - 1);
+          const nextProduct = listProductsWithoutSupplier.value[nextIndex];
+          handleSelectProductFromTop(nextProduct);
+        } else {
+          selectedProductFromTop.value = null;
+          filterSearchQuery.value = "";
+          // Si la página quedó vacía y aún hay elementos globales, recargar la lista
+          if (totalProductsWithoutSupplier.value > 0) {
+            fetchProductsWithoutSupplier();
+          }
+        }
+      }
     } catch (error) {
       if (error.response?.status === 422) {
         quantityErrors[product.id] = error.response.data.errors.quantity?.[0];
