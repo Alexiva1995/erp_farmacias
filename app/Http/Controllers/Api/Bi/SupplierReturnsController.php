@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api\Bi;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Bi\SupplierReturnsRequest;
+use App\Http\Resources\Bi\SupplierReturnsReportResource;
 use App\Services\Bi\SupplierReturnsService;
 use Illuminate\Http\JsonResponse;
 
@@ -17,7 +18,8 @@ class SupplierReturnsController extends Controller
 
     /**
      * Devuelve los lotes que vencen en los próximos 90 días agrupados por laboratorio.
-     * Incluye totales por grupo y resumen global para KPI cards y carta de canje en PDF.
+     * La respuesta pasa por SupplierReturnsReportResource para garantizar tipos
+     * estrictos y evitar serializar columnas innecesarias al frontend.
      */
     public function index(SupplierReturnsRequest $request): JsonResponse
     {
@@ -26,6 +28,8 @@ class SupplierReturnsController extends Controller
             days: 90
         );
 
-        return response()->json($data);
+        return (new SupplierReturnsReportResource($data))
+            ->response()
+            ->setStatusCode(200);
     }
 }
