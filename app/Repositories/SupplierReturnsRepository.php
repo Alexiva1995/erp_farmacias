@@ -19,6 +19,7 @@ class SupplierReturnsRepository implements SupplierReturnsRepositoryInterface
         $query = ProductLot::query()
             ->join('products', 'product_lots.product_id', '=', 'products.id')
             ->leftJoin('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
+            ->leftJoin('groups_laboratories', 'laboratories.group_id', '=', 'groups_laboratories.id')
             ->leftJoin('suppliers', 'product_lots.supplier_id', '=', 'suppliers.id')
             ->select(
                 'products.id as product_id',
@@ -28,6 +29,8 @@ class SupplierReturnsRepository implements SupplierReturnsRepositoryInterface
                 'products.presentation',
                 'laboratories.id as laboratory_id',
                 'laboratories.name as laboratory_name',
+                'groups_laboratories.id as group_id',
+                'groups_laboratories.name as group_name',
                 'suppliers.id as supplier_id',
                 'suppliers.name as supplier_name',
                 'product_lots.id as lot_id',

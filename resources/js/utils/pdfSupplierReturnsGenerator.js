@@ -178,25 +178,30 @@ const generateSingleLabPdf = (group, meta) => {
     'Monto USD',
   ]]
 
-  const tableRows = (group.lots || []).map(lot => [
-    {
-      content: lot.product_name + (lot.presentation ? `\n${lot.presentation}` : ''),
-      styles: { fontStyle: 'bold', fontSize: 7 }
-    },
-    lot.lot_number || '—',
-    lot.expiration_date
-      ? new Date(lot.expiration_date).toLocaleDateString('es-VE')
-      : '—',
-    { content: Number(lot.quantity).toLocaleString('es-VE'), styles: { halign: 'center', fontStyle: 'bold' } },
-    formatSupplierName(lot.supplier_name),
-    lot.purchase_date
-      ? new Date(lot.purchase_date).toLocaleDateString('es-VE')
-      : '—',
-    {
-      content: `$${Number(lot.total_amount ?? 0).toLocaleString('es-VE', { minimumFractionDigits: 2 })}`,
-      styles: { halign: 'right', fontStyle: 'bold', textColor: [180, 40, 40] }
-    },
-  ])
+  const tableRows = (group.lots || []).map(lot => {
+    const labSubtext = (group.is_group && lot.laboratory_name) ? ` (${lot.laboratory_name})` : ''
+    const presentationText = lot.presentation ? `\n${lot.presentation}` : ''
+
+    return [
+      {
+        content: `${lot.product_name}${labSubtext}${presentationText}`,
+        styles: { fontStyle: 'bold', fontSize: 7 }
+      },
+      lot.lot_number || '—',
+      lot.expiration_date
+        ? new Date(lot.expiration_date).toLocaleDateString('es-VE')
+        : '—',
+      { content: Number(lot.quantity).toLocaleString('es-VE'), styles: { halign: 'center', fontStyle: 'bold' } },
+      formatSupplierName(lot.supplier_name),
+      lot.purchase_date
+        ? new Date(lot.purchase_date).toLocaleDateString('es-VE')
+        : '—',
+      {
+        content: `$${Number(lot.total_amount ?? 0).toLocaleString('es-VE', { minimumFractionDigits: 2 })}`,
+        styles: { halign: 'right', fontStyle: 'bold', textColor: [180, 40, 40] }
+      },
+    ]
+  })
 
   const tableFoot = [[
     { content: 'TOTAL GENERAL:', colSpan: 3, styles: { halign: 'right', fontStyle: 'bold', fontSize: 7.5 } },

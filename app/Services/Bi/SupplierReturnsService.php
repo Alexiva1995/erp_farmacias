@@ -29,16 +29,21 @@ class SupplierReturnsService
             ];
         }
 
-        // Agrupar por laboratorio
+        // Agrupar por Grupo de Laboratorios (si pertenece a uno) o por Laboratorio individual
         $grouped = [];
         foreach ($lots as $lot) {
-            $labId   = $lot['laboratory_id'] ?? 0;
-            $labName = $lot['laboratory_name'] ?? 'SIN LABORATORIO';
+            $hasGroup = !empty($lot['group_id']) && !empty($lot['group_name']);
+            $key = $hasGroup ? ('G_' . $lot['group_id']) : ('L_' . ($lot['laboratory_id'] ?? 0));
+            $displayName = $hasGroup ? trim($lot['group_name']) : ($lot['laboratory_name'] ?? 'SIN LABORATORIO');
+            $groupId = $hasGroup ? (int) $lot['group_id'] : null;
+            $labId = $lot['laboratory_id'] ?? 0;
 
-            if (!isset($grouped[$labId])) {
-                $grouped[$labId] = [
+            if (!isset($grouped[$key])) {
+                $grouped[$key] = [
+                    'group_id'        => $groupId,
+                    'is_group'        => $hasGroup,
                     'laboratory_id'   => $labId,
-                    'laboratory_name' => $labName,
+                    'laboratory_name' => $displayName,
                     'lots'            => [],
                     'total_units'     => 0,
                     'total_amount'    => 0.0,
@@ -46,9 +51,9 @@ class SupplierReturnsService
                 ];
             }
 
-            $grouped[$labId]['lots'][]        = $lot;
-            $grouped[$labId]['total_units']   += (float) ($lot['quantity'] ?? 0);
-            $grouped[$labId]['total_amount']  += (float) ($lot['total_amount'] ?? 0);
+            $grouped[$key]['lots'][]        = $lot;
+            $grouped[$key]['total_units']   += (float) ($lot['quantity'] ?? 0);
+            $grouped[$key]['total_amount']  += (float) ($lot['total_amount'] ?? 0);
         }
 
         // Calcular productos únicos por laboratorio y ordenar por monto descendente

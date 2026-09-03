@@ -9,8 +9,8 @@ on:
       - mejora
 
 jobs:
-  test-build-deploy:
-    name: Test, Build & Deploy Pipeline
+  test-and-build:
+    name: Test & Build Pipeline
     runs-on: ubuntu-latest
 
     steps:
@@ -53,45 +53,91 @@ jobs:
       - name: Generate Application Key
         run: php artisan key:generate
 
-      # 7. Ejecutar suite de pruebas (95 tests)
+      # 7. Ejecutar suite de pruebas
       - name: Execute Tests via PHPUnit
         env:
           DB_CONNECTION: sqlite
           DB_DATABASE: database/database.sqlite
         run: php artisan test
 
-      # 7. Instalar dependencias de Frontend y Compilar con Vite en el Runner
+      # 8. Instalar dependencias de Frontend y Compilar con Vite
       - name: Build Frontend Assets (Vite)
         run: |
           pnpm install
           pnpm run build
 
-      # 8. Transferir archivos compilados (public/build) directamente al servidor vía SCP
+      # 9. Guardar assets compilados como artefacto para despliegue
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: compiled-assets
+          path: public/build
+          retention-days: 1
+
+  deploy:
+    name: Deploy to ${{ matrix.server.name }}
+    needs: test-and-build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        server:
+          - id: 1
+            name: "Servidor Principal"
+            host: ${{ secrets.SERVER_HOST || '162.240.166.50' }}
+            username: ${{ secrets.SERVER_USER || 'farmaciabs' }}
+            port: ${{ secrets.SERVER_PORT || 22022 }}
+            path: ${{ secrets.DEPLOY_PATH || '/home/farmaciabs/public_html/erp3' }}
+            key: ${{ secrets.SERVER_KEY || secrets.SSH_KEY }}
+            passphrase: ${{ secrets.SERVER_PASSPHRASE || secrets.SSH_PASSPHRASE }}
+            password: ${{ secrets.SERVER_PASSWORD || secrets.SSH_PASSWORD }}
+          - id: 2
+            name: "Servidor Secundario"
+            host: ${{ secrets.SERVER_2_HOST }}
+            username: ${{ secrets.SERVER_2_USER }}
+            port: ${{ secrets.SERVER_2_PORT || 22 }}
+            path: ${{ secrets.SERVER_2_DEPLOY_PATH }}
+            key: ${{ secrets.SERVER_2_KEY || secrets.SERVER_KEY || secrets.SSH_KEY }}
+            passphrase: ${{ secrets.SERVER_2_PASSPHRASE || secrets.SERVER_PASSPHRASE || secrets.SSH_PASSPHRASE }}
+            password: ${{ secrets.SERVER_2_PASSWORD || secrets.SERVER_PASSWORD || secrets.SSH_PASSWORD }}
+
+    steps:
+      # 1. Clonar el repositorio
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # 2. Descargar artefactos compilados en el job anterior
+      - name: Download Build Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: compiled-assets
+          path: public/build
+
+      # 3. Transferir archivos compilados vía SCP al servidor correspondiente
       - name: Transfer Compiled Assets to Server via SCP
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.SERVER_HOST || '162.240.166.50' }}
-          username: ${{ secrets.SERVER_USER || 'farmaciabs' }}
-          key: ${{ secrets.SERVER_KEY || secrets.SSH_KEY }}
-          passphrase: ${{ secrets.SERVER_PASSPHRASE || secrets.SSH_PASSPHRASE }}
-          password: ${{ secrets.SERVER_PASSWORD || secrets.SSH_PASSWORD }}
-          port: ${{ secrets.SERVER_PORT || 22022 }}
+          host: ${{ matrix.server.host }}
+          username: ${{ matrix.server.username }}
+          key: ${{ matrix.server.key }}
+          passphrase: ${{ matrix.server.passphrase }}
+          password: ${{ matrix.server.password }}
+          port: ${{ matrix.server.port }}
           source: "public/build"
-          target: ${{ secrets.DEPLOY_PATH || '/home/farmaciabs/public_html/erp3' }}
+          target: ${{ matrix.server.path }}
           strip_components: 0
 
-      # 9. Ejecutar actualización remota, migraciones y cachés en el Servidor (cPanel)
+      # 4. Ejecutar actualización remota, migraciones y cachés vía SSH
       - name: Execute Remote Deploy on Server via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.SERVER_HOST || '162.240.166.50' }}
-          username: ${{ secrets.SERVER_USER || 'farmaciabs' }}
-          key: ${{ secrets.SERVER_KEY || secrets.SSH_KEY }}
-          passphrase: ${{ secrets.SERVER_PASSPHRASE || secrets.SSH_PASSPHRASE }}
-          password: ${{ secrets.SERVER_PASSWORD || secrets.SSH_PASSWORD }}
-          port: ${{ secrets.SERVER_PORT || 22022 }}
+          host: ${{ matrix.server.host }}
+          username: ${{ matrix.server.username }}
+          key: ${{ matrix.server.key }}
+          passphrase: ${{ matrix.server.passphrase }}
+          password: ${{ matrix.server.password }}
+          port: ${{ matrix.server.port }}
           script: |
-            cd ${{ secrets.DEPLOY_PATH || '/home/farmaciabs/public_html/erp3' }}
+            cd ${{ matrix.server.path }}
             git pull origin ${{ github.ref_name }}
             composer install --no-dev --optimize-autoloader --no-interaction
             php artisan migrate --force
