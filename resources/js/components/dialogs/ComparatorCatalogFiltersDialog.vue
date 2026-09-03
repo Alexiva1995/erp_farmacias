@@ -13,6 +13,7 @@ const props = defineProps({
   enableUsdAmountCol: Boolean,
   enableDiscountCol: Boolean,
   isStrictSearch: Boolean,
+  isUpdatingAll: Boolean,
 
   // Opciones
   laboratories: { type: Array, default: () => [] },
@@ -144,10 +145,12 @@ const closeDialog = () => {
         <VBtn
           color="info"
           variant="tonal"
-          prepend-icon="tabler-cloud-download"
+          :prepend-icon="props.isUpdatingAll ? 'tabler-loader-2' : 'tabler-cloud-download'"
+          :loading="props.isUpdatingAll"
+          :disabled="props.isUpdatingAll"
           @click="emit('update-all-api')"
         >
-          Sincronizar APIs
+          {{ props.isUpdatingAll ? 'Sincronizando...' : 'Sincronizar APIs' }}
         </VBtn>
 
         <VSpacer />

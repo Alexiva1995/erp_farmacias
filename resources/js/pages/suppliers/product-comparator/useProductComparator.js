@@ -182,6 +182,8 @@ export function useProductComparator() {
     }).then(async (result) => {
       if (result.isConfirmed) {
         isUpdatingAllApi.value = true;
+        pollingSupplierId.value = 'ALL';
+        pollingStartTime.value = Date.now();
         try {
           const response = await axios.post("/suppliers/update-all-job");
           if (response.status === 200) {
@@ -190,14 +192,17 @@ export function useProductComparator() {
             );
             supplierConnectionStore.startConnection();
             startPolling();
+          } else {
+            isUpdatingAllApi.value = false;
+            pollingSupplierId.value = null;
+            pollingStartTime.value = null;
           }
         } catch (error) {
-          console.error(error);
+          console.error("Error iniciando actualización masiva de APIs:", error);
           toast.error("No se pudo iniciar el proceso de actualización.");
-        } finally {
-          setTimeout(() => {
-            isUpdatingAllApi.value = false;
-          }, 2500);
+          isUpdatingAllApi.value = false;
+          pollingSupplierId.value = null;
+          pollingStartTime.value = null;
         }
       }
     });
@@ -308,11 +313,34 @@ export function useProductComparator() {
   const fetchStatuses = async () => {
     try {
       const { data } = await axios.get("/suppliers/supplier-connection-statuses");
-      const newStatuses = data.statuses;
+      const newStatuses = data.statuses || [];
 
+      // Caso 1: Actualización masiva (todas las APIs)
+      if (pollingSupplierId.value === 'ALL') {
+        const recentStatuses = newStatuses.filter(
+          (s) => !pollingStartTime.value || new Date(s.created_at).getTime() >= (pollingStartTime.value - 10000)
+        );
+        const hasPendingJobs = recentStatuses.some((s) => ['pending', 'processing', 'in_progress'].includes(s.status));
+
+        // Si ya hay registros recientes y ninguno está pendiente/procesando
+        if (recentStatuses.length > 0 && !hasPendingJobs) {
+          isUpdatingAllApi.value = false;
+          pollingSupplierId.value = null;
+          pollingStartTime.value = null;
+          checkingApiSupplierId.value = null;
+          stopPolling();
+
+          await fetchSupplierConnections();
+          await fetchProducts();
+          toast.success("Actualización de todas las listas completada exitosamente.");
+        }
+        return;
+      }
+
+      // Caso 2: Proveedor individual
       const currentStatus = newStatuses.find(
         (s) => s.supplier_id === pollingSupplierId.value &&
-          (!pollingStartTime.value || new Date(s.created_at).getTime() >= pollingStartTime.value - 10000)
+          (!pollingStartTime.value || new Date(s.created_at).getTime() >= (pollingStartTime.value - 10000))
       );
       if (
         currentStatus &&
@@ -335,6 +363,7 @@ export function useProductComparator() {
     } catch (error) {
       console.error("Error al consultar estados de conexión:", error);
       stopPolling();
+      isUpdatingAllApi.value = false;
       pollingSupplierId.value = null;
       pollingStartTime.value = null;
       checkingApiSupplierId.value = null;

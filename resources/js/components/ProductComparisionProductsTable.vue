@@ -29,6 +29,7 @@ const props = defineProps({
   selectedSupplier: [Number, String, null],
   enableDiscounts: Boolean,
   isNeedsVisible: { type: Boolean, default: false },
+  isUpdatingAll: { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
@@ -239,10 +240,17 @@ const headers = computed(() => [
               color="info"
               size="38"
               class="rounded-circle shadow-sm"
+              :disabled="props.isUpdatingAll"
               @click="emit('sync-apis')"
             >
-              <VIcon icon="tabler-cloud-download" size="20" />
-              <VTooltip activator="parent" location="top">Actualizar APIs</VTooltip>
+              <VIcon
+                :icon="props.isUpdatingAll ? 'tabler-loader-2' : 'tabler-cloud-download'"
+                :class="{ 'spin-icon': props.isUpdatingAll }"
+                size="20"
+              />
+              <VTooltip activator="parent" location="top">
+                {{ props.isUpdatingAll ? 'Sincronizando APIs...' : 'Actualizar APIs' }}
+              </VTooltip>
             </VBtn>
 
             <VDivider vertical class="mx-1 my-2 border-opacity-10" />
