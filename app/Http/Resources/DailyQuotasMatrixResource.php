@@ -16,12 +16,19 @@ class DailyQuotasMatrixResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $rows = array_map(function ($row) {
+            if (isset($row['users']) && is_array($row['users'])) {
+                $row['users'] = (object) $row['users'];
+            }
+            return $row;
+        }, $this->resource['data'] ?? []);
+
         return [
             'month' => (int) ($this->resource['month'] ?? now()->month),
             'year' => (int) ($this->resource['year'] ?? now()->year),
             'daily_quota' => (int) ($this->resource['daily_quota'] ?? 50),
             'employees' => $this->resource['employees'] ?? [],
-            'data' => $this->resource['data'] ?? [],
+            'data' => $rows,
             'summary' => [
                 'total_month_counts' => (int) ($this->resource['summary']['total_month_counts'] ?? 0),
                 'active_days' => (int) ($this->resource['summary']['active_days'] ?? 0),

@@ -1164,7 +1164,7 @@ class InventoryCycleQueryService
                 'date'          => $currentDate,
                 'formatted_date'=> Carbon::parse($currentDate)->format('d/m/Y'),
                 'day_total'     => $dayTotal,
-                'users'         => $userCells,
+                'users'         => (object) $userCells,
             ];
         }
 
@@ -1178,8 +1178,11 @@ class InventoryCycleQueryService
             if ($row['day_total'] > 0) {
                 $activeDaysCount++;
             }
-            foreach ($row['users'] as $uId => $userData) {
-                $employeeTotals[$uId] = ($employeeTotals[$uId] ?? 0) + (int) $userData['count'];
+            $usersArr = (array) $row['users'];
+            foreach ($employees as $emp) {
+                $uId = (int) $emp->user_id;
+                $c = (int) ($usersArr[$uId]['count'] ?? 0);
+                $employeeTotals[$uId] = ($employeeTotals[$uId] ?? 0) + $c;
             }
         }
 

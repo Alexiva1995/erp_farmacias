@@ -585,7 +585,7 @@ class HomologateSlaveCatalogCommand extends Command
         DB::statement('
             CREATE TEMPORARY TABLE temp_generic_map (
                 old_id BIGINT UNSIGNED NOT NULL PRIMARY KEY,
-                new_id BIGINT UNSIGNED NOT NULL UNIQUE
+                new_id BIGINT UNSIGNED NOT NULL
             ) ENGINE=InnoDB
         ');
 
@@ -605,7 +605,7 @@ class HomologateSlaveCatalogCommand extends Command
         foreach ($foreignRelations as $relTable => $fkColumn) {
             if (in_array($relTable, $tableList)) {
                 DB::update("
-                    UPDATE `{$relTable}` t
+                    UPDATE IGNORE `{$relTable}` t
                     INNER JOIN temp_generic_map m ON t.{$fkColumn} = m.old_id
                     SET t.{$fkColumn} = m.new_id + {$offset}
                 ");
@@ -616,14 +616,24 @@ class HomologateSlaveCatalogCommand extends Command
         foreach ($foreignRelations as $relTable => $fkColumn) {
             if (in_array($relTable, $tableList)) {
                 DB::update("
-                    UPDATE `{$relTable}` t
+                    UPDATE IGNORE `{$relTable}` t
                     SET t.{$fkColumn} = t.{$fkColumn} - {$offset}
                     WHERE t.{$fkColumn} >= {$offset}
                 ");
             }
         }
 
-        // Actualizar tabla principal en 2 fases
+        // Si el registro destino new_id ya existe en la tabla principal (p. ej. descargado del Master en la etapa 0)
+        // y no está siendo remapeado a otro ID, el registro antiguo old_id es redundante y se elimina para evitar colisión de PK.
+        DB::delete("
+            DELETE p FROM `{$mainTable}` p
+            INNER JOIN temp_generic_map m ON p.{$primaryKey} = m.old_id
+            INNER JOIN `{$mainTable}` existing ON existing.{$primaryKey} = m.new_id
+            LEFT JOIN temp_generic_map target_mapped ON existing.{$primaryKey} = target_mapped.old_id
+            WHERE target_mapped.old_id IS NULL
+        ");
+
+        // Actualizar tabla principal en 2 fases para registros que no colisionan
         DB::update("
             UPDATE `{$mainTable}` p
             INNER JOIN temp_generic_map m ON p.{$primaryKey} = m.old_id
