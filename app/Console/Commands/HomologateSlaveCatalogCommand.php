@@ -78,8 +78,13 @@ class HomologateSlaveCatalogCommand extends Command
         try {
             // 0. Si la esclava no tiene datos o requiere poblarse, descargar en bloque del Master
             $this->info("\n--- [0/6] Descargando Catálogos Globales desde el Master ---");
-            $masterData = $masterClient->fetchMasterEntities(['laboratories', 'origins', 'groups', 'categories', 'suppliers']);
+            $fetchRes = $masterClient->fetchMasterEntities(['laboratories', 'origins', 'groups', 'categories', 'suppliers']);
+            $masterData = $fetchRes['data'] ?? [];
             
+            if (empty($fetchRes['success']) && !empty($fetchRes['error'])) {
+                $this->warn('• Aviso Master API: ' . $fetchRes['error']);
+            }
+
             if (!$isDryRun) {
                 if (!empty($masterData['laboratories'])) {
                     foreach ($masterData['laboratories'] as $mlab) {

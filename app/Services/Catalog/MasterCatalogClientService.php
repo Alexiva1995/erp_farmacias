@@ -380,20 +380,38 @@ class MasterCatalogClientService
                             'Accept'       => 'application/json',
                         ])
                         ->get("{$masterUrl}/bulk-export", [
-                            'entities' => implode(',', $entities)
+                            'entities' => implode(',', $entities),
+                            'api_key'  => $masterKey,
                         ]);
 
                     if ($response->successful()) {
                         $json = $response->json();
-                        return $json['data'] ?? [];
+                        return [
+                            'success' => true,
+                            'data'    => $json['data'] ?? [],
+                            'status'  => $response->status(),
+                        ];
+                    } else {
+                        Log::error("Error Master Catalog HTTP {$response->status()}: " . $response->body());
+                        return [
+                            'success' => false,
+                            'error'   => "HTTP {$response->status()}: " . $response->body(),
+                            'status'  => $response->status(),
+                            'data'    => [],
+                        ];
                     }
                 } catch (\Throwable $e) {
                     Log::error("Error al descargar entidades del Catálogo Maestro: " . $e->getMessage());
+                    return [
+                        'success' => false,
+                        'error'   => $e->getMessage(),
+                        'data'    => [],
+                    ];
                 }
             }
         }
 
-        return [];
+        return ['success' => false, 'data' => []];
     }
 }
 
