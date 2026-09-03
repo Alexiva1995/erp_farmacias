@@ -39,7 +39,7 @@ export default [
         title: "Cuota",
         to: "cyclics-quota",
         action: "manage",
-        subject: "cyclic-menu",
+        subject: "admin",
       },
     ],
   },

@@ -1058,24 +1058,59 @@ class InventoryCycleQueryService
 
         $userIds = $employees->pluck('user_id')->filter()->unique()->toArray();
 
-        $countsQuery = match ($type) {
-            'invoices' => InvoiceCount::query(),
-            'sales'    => SaleCount::query(),
-            'pending'  => ProductCount::where('status', 'pending'),
-            default    => ProductCount::query(),
-        };
-
-        $counts = $countsQuery
-            ->whereYear('created_at', $year)
-            ->whereMonth('created_at', $month)
-            ->whereIn('user_id', $userIds)
-            ->selectRaw('DATE(created_at) as count_date, user_id, COUNT(*) as total_counts')
-            ->groupBy('count_date', 'user_id')
-            ->get();
-
         $matrixMap = [];
-        foreach ($counts as $item) {
-            $matrixMap[$item->count_date][$item->user_id] = (int) $item->total_counts;
+
+        if ($type === 'totals') {
+            // Obtener conteos de productos regulares (aprobados o totales)
+            $pCounts = ProductCount::whereYear('created_at', $year)
+                ->whereMonth('created_at', $month)
+                ->whereIn('user_id', $userIds)
+                ->selectRaw('DATE(created_at) as count_date, user_id, COUNT(*) as total_counts')
+                ->groupBy('count_date', 'user_id')
+                ->get();
+
+            $iCounts = InvoiceCount::whereYear('created_at', $year)
+                ->whereMonth('created_at', $month)
+                ->whereIn('user_id', $userIds)
+                ->selectRaw('DATE(created_at) as count_date, user_id, COUNT(*) as total_counts')
+                ->groupBy('count_date', 'user_id')
+                ->get();
+
+            $sCounts = SaleCount::whereYear('created_at', $year)
+                ->whereMonth('created_at', $month)
+                ->whereIn('user_id', $userIds)
+                ->selectRaw('DATE(created_at) as count_date, user_id, COUNT(*) as total_counts')
+                ->groupBy('count_date', 'user_id')
+                ->get();
+
+            foreach ($pCounts as $item) {
+                $matrixMap[$item->count_date][$item->user_id] = ($matrixMap[$item->count_date][$item->user_id] ?? 0) + (int) $item->total_counts;
+            }
+            foreach ($iCounts as $item) {
+                $matrixMap[$item->count_date][$item->user_id] = ($matrixMap[$item->count_date][$item->user_id] ?? 0) + (int) $item->total_counts;
+            }
+            foreach ($sCounts as $item) {
+                $matrixMap[$item->count_date][$item->user_id] = ($matrixMap[$item->count_date][$item->user_id] ?? 0) + (int) $item->total_counts;
+            }
+        } else {
+            $countsQuery = match ($type) {
+                'invoices' => InvoiceCount::query(),
+                'sales'    => SaleCount::query(),
+                'pending'  => ProductCount::where('status', 'pending'),
+                default    => ProductCount::query(),
+            };
+
+            $counts = $countsQuery
+                ->whereYear('created_at', $year)
+                ->whereMonth('created_at', $month)
+                ->whereIn('user_id', $userIds)
+                ->selectRaw('DATE(created_at) as count_date, user_id, COUNT(*) as total_counts')
+                ->groupBy('count_date', 'user_id')
+                ->get();
+
+            foreach ($counts as $item) {
+                $matrixMap[$item->count_date][$item->user_id] = (int) $item->total_counts;
+            }
         }
 
         $startDate = Carbon::create($year, $month, 1);
@@ -1106,7 +1141,7 @@ class InventoryCycleQueryService
 
             $rows[] = [
                 'date'          => $currentDate,
-                'formatted_date'=> Carbon::parse($currentDate)->isoFormat('dddd, D [de] MMMM'),
+                'formatted_date'=> Carbon::parse($currentDate)->format('d/m/Y'),
                 'day_total'     => $dayTotal,
                 'users'         => $userCells,
             ];

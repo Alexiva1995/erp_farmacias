@@ -24,7 +24,7 @@ class GetDailyQuotasMatrixRequest extends FormRequest
         return [
             'month' => 'nullable|integer|between:1,12',
             'year'  => 'nullable|integer|min:2020|max:2099',
-            'type'  => 'nullable|string|in:products,invoices,sales,pending',
+            'type'  => 'nullable|string|in:totals,products,invoices,sales,pending',
         ];
     }
 }

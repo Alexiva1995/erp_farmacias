@@ -166,9 +166,14 @@ class OrderQueryService
         $generalSettings = DB::table('general_settings')->first();
         $isRestaurant = $generalSettings && $generalSettings->business_type === 'restaurant';
 
-        // Subconsulta agregada de lotes para stock y vencimiento sin correlación por fila en SELECT
+        // Subconsulta agregada de lotes para stock, vencimiento y ubicaciones sin correlación por fila en SELECT
         $lotsAggregate = DB::table('product_lots')
-            ->select('product_id', DB::raw('SUM(quantity) as valid_stock_sum'), DB::raw('MIN(expiration_date) as next_expiration'))
+            ->select(
+                'product_id',
+                DB::raw('SUM(quantity) as valid_stock_sum'),
+                DB::raw('MIN(expiration_date) as next_expiration'),
+                DB::raw("GROUP_CONCAT(DISTINCT NULLIF(TRIM(location), '') ORDER BY location SEPARATOR ', ') as lot_locations_str")
+            )
             ->where('quantity', '>', 0)
             ->groupBy('product_id');
 
@@ -232,6 +237,7 @@ class OrderQueryService
                 DB::raw("'product' as item_type"),
                 DB::raw('lots_agg.next_expiration as next_expiration'),
                 DB::raw('COALESCE(lots_agg.valid_stock_sum, 0) as valid_stock_sum'),
+                DB::raw('COALESCE(lots_agg.lot_locations_str, products.location) as location'),
                 DB::raw("GREATEST(COALESCE(exp_offers.max_discount, 0), COALESCE(ind_offers.max_discount, 0), COALESCE(cat_offers.max_discount, 0)) as discount_percentage"),
                 DB::raw("(CASE WHEN COALESCE(exp_offers.max_discount, 0) >= GREATEST(COALESCE(ind_offers.max_discount, 0), COALESCE(cat_offers.max_discount, 0)) AND COALESCE(exp_offers.max_discount, 0) > 0 THEN 'expiration' WHEN COALESCE(ind_offers.max_discount, 0) >= COALESCE(cat_offers.max_discount, 0) AND COALESCE(ind_offers.max_discount, 0) > 0 THEN 'individual' WHEN COALESCE(cat_offers.max_discount, 0) > 0 THEN 'category' ELSE NULL END) as discount_type"),
             ])
@@ -264,6 +270,7 @@ class OrderQueryService
                 DB::raw("'pack' as item_type"),
                 'product_packs.max_sale_date as next_expiration',
                 'product_packs.max_quantity as valid_stock_sum',
+                DB::raw('NULL as location'),
                 DB::raw('NULL as discount_percentage'),
                 DB::raw('NULL as discount_type'),
             ])->where('product_packs.is_active', true)
@@ -297,6 +304,7 @@ class OrderQueryService
                     DB::raw("'dish' as item_type"),
                     DB::raw('NULL as next_expiration'),
                     DB::raw('9999 as valid_stock_sum'),
+                    DB::raw('NULL as location'),
                     DB::raw('NULL as discount_percentage'),
                     DB::raw('NULL as discount_type'),
                 ])->where('dishes.status', '1');

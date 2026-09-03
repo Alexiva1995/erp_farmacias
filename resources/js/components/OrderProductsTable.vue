@@ -261,6 +261,10 @@ const getProductLocations = (item) => {
     return [...new Set(locs)];
   }
   if (item.location) {
+    if (typeof item.location === 'string') {
+      const parts = item.location.split(',').map(s => s.trim()).filter(Boolean);
+      return [...new Set(parts)];
+    }
     return [item.location];
   }
   return [];

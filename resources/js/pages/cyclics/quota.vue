@@ -4,7 +4,7 @@ import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 
 // ── Pestaña activa ──────────────────────────────────────────────────────────
-const activeTab = ref("products");
+const activeTab = ref("totals");
 
 // ── Filtros de Fecha ────────────────────────────────────────────────────────
 const now = new Date();
@@ -142,6 +142,11 @@ const totalMonthCounts = computed(() => {
     <!-- Card con Pestañas y Matriz -->
     <VCard variant="outlined" class="rounded-lg bg-surface overflow-hidden">
       <VTabs v-model="activeTab" color="primary" align-tabs="start" class="border-b">
+        <VTab value="totals" class="text-none font-weight-bold">
+          <VIcon start icon="mdi-sigma" />
+          Totales
+        </VTab>
+
         <VTab value="products" class="text-none font-weight-medium">
           <VIcon start icon="mdi-package-variant-closed" />
           Inventario Regular
@@ -238,8 +243,23 @@ const totalMonthCounts = computed(() => {
                 class="text-center px-2 py-2"
               >
                 <template v-if="row.users[emp.user_id]">
+                  <!-- Pestaña Totales: Mostrar total general sumado del día -->
+                  <template v-if="activeTab === 'totals'">
+                    <VChip
+                      v-if="row.users[emp.user_id].count > 0"
+                      size="small"
+                      color="primary"
+                      variant="flat"
+                      class="font-weight-bold"
+                    >
+                      <VIcon start icon="mdi-sigma" size="14" />
+                      {{ row.users[emp.user_id].count }}
+                    </VChip>
+                    <span v-else class="text-caption text-disabled">—</span>
+                  </template>
+
                   <!-- Pestaña Productos: Mostrar cuota (ej. 50/50) y color verde si cumple -->
-                  <template v-if="activeTab === 'products'">
+                  <template v-else-if="activeTab === 'products'">
                     <VChip
                       v-if="row.users[emp.user_id].count > 0"
                       size="small"
@@ -331,4 +351,10 @@ const totalMonthCounts = computed(() => {
   max-inline-size: 110px;
 }
 </style>
+
+<route lang="yaml">
+meta:
+  action: manage
+  subject: admin
+</route>
 
