@@ -18,6 +18,7 @@ class CleanPendingInvoicesCommand extends Command
     protected $signature = 'invoices:clean-pending 
                             {--dry-run : Ejecuta en modo simulación sin alterar la base de datos}
                             {--deduplicate : Elimina los registros duplicados más recientes dejando el original}
+                            {--clean-already-processed : Elimina facturas pendientes si ya existe una versión cargada, por ordenar u ordenada}
                             {--fix-dates : Asigna fechas por defecto a facturas que tengan fechas NULL}
                             {--close-settled-dronena : Marca como pagadas las facturas de Dronena que ya no existen en el portal activo}
                             {--delete-zero-amounts : Cierra facturas con monto 0 o negativo}';
@@ -33,11 +34,43 @@ class CleanPendingInvoicesCommand extends Command
     {
         $isDryRun = $this->option('dry-run');
         $deduplicate = $this->option('deduplicate');
+        $cleanProcessed = $this->option('clean-already-processed');
         $fixDates = $this->option('fix-dates');
         $closeSettled = $this->option('close-settled-dronena');
         $deleteZero = $this->option('delete-zero-amounts');
 
         $this->info($isDryRun ? '=== MODO SIMULACIÓN (DRY-RUN: NO SE MODIFICARÁ LA BD) ===' : '=== EJECUTANDO DEPURACIÓN Y LIMPIEZA ===');
+
+        // -1. Limpiar pendientes si ya existe otra factura idéntica ya cargada (loaded), por ordenar (to_order) u ordenada (ordered)
+        if ($cleanProcessed || $deduplicate) {
+            $this->info("\n--- Buscando facturas pendientes que ya fueron procesadas en Cargas/Ordenadas ---");
+            $pendingInvoices = Invoice::where('status', 'pending')->get();
+            $removedProcessed = 0;
+
+            foreach ($pendingInvoices as $pending) {
+                $cleanNum = ltrim((string)$pending->invoice_number, 'A');
+                
+                $existsProcessed = Invoice::where('supplier_id', $pending->supplier_id)
+                    ->where('id', '!=', $pending->id)
+                    ->whereIn('status', ['loaded', 'to_order', 'ordered'])
+                    ->where(function($q) use ($pending, $cleanNum) {
+                        $q->where('invoice_number', $pending->invoice_number)
+                          ->orWhere('invoice_number', 'LIKE', "%{$cleanNum}%");
+                    })
+                    ->first();
+
+                if ($existsProcessed) {
+                    $this->warn("  -> Factura Pendiente ID {$pending->id} (#{$pending->invoice_number}) ya existe procesada con ID {$existsProcessed->id} (Estado: {$existsProcessed->status}). Eliminando pendiente redundante...");
+                    if (!$isDryRun) {
+                        $pending->details()->delete();
+                        $pending->delete();
+                    }
+                    $removedProcessed++;
+                }
+            }
+
+            $this->info("✅ Se " . ($isDryRun ? 'detectaron' : 'eliminaron') . " {$removedProcessed} facturas pendientes que ya estaban cargadas.");
+        }
 
         // 0. Eliminación de facturas duplicadas (conservando la original más antigua o con datos completos)
         if ($deduplicate) {

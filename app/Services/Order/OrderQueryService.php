@@ -237,7 +237,7 @@ class OrderQueryService
                 DB::raw("'product' as item_type"),
                 DB::raw('lots_agg.next_expiration as next_expiration'),
                 DB::raw('COALESCE(lots_agg.valid_stock_sum, 0) as valid_stock_sum'),
-                DB::raw('COALESCE(lots_agg.lot_locations_str, products.location) as location'),
+                DB::raw('lots_agg.lot_locations_str as location'),
                 DB::raw("GREATEST(COALESCE(exp_offers.max_discount, 0), COALESCE(ind_offers.max_discount, 0), COALESCE(cat_offers.max_discount, 0)) as discount_percentage"),
                 DB::raw("(CASE WHEN COALESCE(exp_offers.max_discount, 0) >= GREATEST(COALESCE(ind_offers.max_discount, 0), COALESCE(cat_offers.max_discount, 0)) AND COALESCE(exp_offers.max_discount, 0) > 0 THEN 'expiration' WHEN COALESCE(ind_offers.max_discount, 0) >= COALESCE(cat_offers.max_discount, 0) AND COALESCE(ind_offers.max_discount, 0) > 0 THEN 'individual' WHEN COALESCE(cat_offers.max_discount, 0) > 0 THEN 'category' ELSE NULL END) as discount_type"),
             ])
