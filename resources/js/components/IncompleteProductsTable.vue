@@ -320,9 +320,7 @@ const formatStock = (item) => {
           </template>
           <template v-else>
             <span v-if="item.barcode" class="text-xs font-weight-medium">{{ item.barcode }}</span>
-            <VChip v-else size="x-small" color="error" variant="tonal" class="font-weight-black cursor-pointer" @click="startEdit(item)">
-              FALTA
-            </VChip>
+            <span v-else class="text-xs text-disabled font-weight-medium cursor-pointer" @click="startEdit(item)">—</span>
           </template>
         </template>
 
@@ -356,9 +354,7 @@ const formatStock = (item) => {
           </template>
           <template v-else>
             <span v-if="item.laboratory?.name" class="text-xs font-weight-medium">{{ item.laboratory.name }}</span>
-            <VChip v-else size="x-small" color="error" variant="tonal" class="font-weight-black cursor-pointer" @click="startEdit(item)">
-              FALTA
-            </VChip>
+            <span v-else class="text-xs text-disabled font-weight-medium cursor-pointer" @click="startEdit(item)">—</span>
           </template>
         </template>
 
@@ -392,9 +388,7 @@ const formatStock = (item) => {
           </template>
           <template v-else>
             <span v-if="item.origin?.name" class="text-xs font-weight-medium">{{ item.origin.name }}</span>
-            <VChip v-else size="x-small" color="error" variant="tonal" class="font-weight-black cursor-pointer" @click="startEdit(item)">
-              FALTA
-            </VChip>
+            <span v-else class="text-xs text-disabled font-weight-medium cursor-pointer" @click="startEdit(item)">—</span>
           </template>
         </template>
 
@@ -458,19 +452,10 @@ const formatStock = (item) => {
             <div class="d-flex align-center gap-1 min-width-0">
               <span class="text-xs font-weight-black text-primary">#{{ item.id }}</span>
               <span class="text-disabled">|</span>
-              <span class="text-xs font-weight-black text-primary uppercase truncate" style="max-inline-size: 150px;">
+              <span class="text-xs font-weight-black text-primary uppercase truncate" style="max-inline-size: 200px;">
                 {{ item.laboratory?.name || 'S/L' }}
               </span>
             </div>
-            <VChip
-              :color="item.stock_calculado > 0 ? 'success' : 'error'"
-              label
-              size="x-small"
-              variant="tonal"
-              class="font-weight-black"
-            >
-              {{ formatStock(item) }} UNDS
-            </VChip>
           </div>
 
           <h4 class="text-xs font-weight-black text-high-emphasis uppercase leading-tight mb-1 text-truncate">

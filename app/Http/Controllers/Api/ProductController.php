@@ -64,10 +64,16 @@ class ProductController extends Controller
 
         if ($perPage < 1) {
             $items = $query->get();
-            return response()->json(['data' => $items, 'total' => $items->count()]);
+            return response()->json([
+                'data' => \App\Http\Resources\ProductResource::collection($items),
+                'total' => $items->count(),
+            ]);
         }
         $paginatedResult = $query->paginate($perPage);
-        return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
+        return response()->json([
+            'data' => \App\Http\Resources\ProductResource::collection($paginatedResult->items()),
+            'total' => $paginatedResult->total(),
+        ]);
     }
 
     public function withoutGroup(Request $request)
@@ -77,10 +83,16 @@ class ProductController extends Controller
 
         if ($perPage < 1) {
             $items = $query->get();
-            return response()->json(['data' => $items, 'total' => $items->count()]);
+            return response()->json([
+                'data' => \App\Http\Resources\ProductResource::collection($items),
+                'total' => $items->count(),
+            ]);
         }
         $paginatedResult = $query->paginate($perPage);
-        return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
+        return response()->json([
+            'data' => \App\Http\Resources\ProductResource::collection($paginatedResult->items()),
+            'total' => $paginatedResult->total(),
+        ]);
     }
 
     public function store(StoreProductRequest $request)
