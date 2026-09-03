@@ -531,7 +531,10 @@ class SupplierQueryService
         $sortColumn = $sortableColumns[$sortBy] ?? 'product_suppliers.name';
 
         $results = ProductSupplier::query()
-            ->where('product_suppliers.created_at', '>=', now()->subDays(7))
+            ->where(function ($q) {
+                $q->where('product_suppliers.updated_at', '>=', now()->subDays(60))
+                  ->orWhere('product_suppliers.created_at', '>=', now()->subDays(60));
+            })
             ->where(function ($q) {
                 $q->where('product_suppliers.unit_cost_usd', '>', 0)
                   ->orWhere('product_suppliers.unit_cost', '>', 0);
@@ -643,6 +646,14 @@ class SupplierQueryService
     public function getAvailableSuppliers(): Collection
     {
         return Supplier::query()
+            ->where(function ($q) {
+                $q->where('is_active', true)
+                  ->orWhereNull('is_active');
+            })
+            ->where(function ($q) {
+                $q->whereNull('is_deleted')
+                  ->orWhere('is_deleted', false);
+            })
             ->whereHas('productSuppliers')
             ->select(["id", "name"])
             ->orderBy("name", "asc")
