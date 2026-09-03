@@ -582,15 +582,15 @@ defineExpose({
           variant="flat"
           class="product-mobile-card border mb-1"
         >
-          <div class="pa-3">
-            <div class="d-flex gap-3 align-start">
+          <div class="pa-2 pa-sm-3">
+            <div class="d-flex gap-2 align-start">
               <!-- Corazón interactivo de favorito para móvil -->
               <VBtn
                 v-if="((!isRestaurant && !isSportsRental) || isMiniMarket) && brandingStore.settings.enable_favorites"
                 icon
                 variant="text"
                 density="compact"
-                class="flex-shrink-0 mr-1"
+                class="flex-shrink-0 mt-0"
                 :color="item.is_favorite ? 'error' : 'secondary'"
                 @click.stop="toggleFavorite(item)"
               >
@@ -598,111 +598,116 @@ defineExpose({
               </VBtn>
               <div class="flex-grow-1 min-width-0">
                 <div class="d-flex align-center gap-1 mb-1">
-                  <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight truncate-2-lines">
+                  <h3 class="product-mobile-title font-weight-bold text-high-emphasis text-uppercase truncate-2-lines mb-0">
                     <a
                       :href="'/inventory/traceability?q=' + item.id"
                       target="_blank"
-                      class="text-decoration-none text-primary text-xs"
+                      class="text-decoration-none text-primary font-weight-black"
                     >
                       {{ item.id }}
                     </a>
-                    <span class="mx-1 text-disabled">|</span>
-                    {{ item.name.toUpperCase() }}
+                    <span class="mx-1 text-disabled font-weight-regular">|</span>
+                    <span>{{ item.name.toUpperCase() }}</span>
                   </h3>
                   <VChip v-if="item.psychotropic" color="warning" size="x-small" label variant="flat" class="text-super-xs flex-shrink-0">PSI</VChip>
                 </div>
                 
-                <div class="d-flex align-center flex-wrap gap-x-2 text-super-xs">
-                  <span v-if="!isRestaurant" class="text-medium-emphasis font-weight-medium text-truncate" style="max-inline-size: 150px;">{{ item.active_ingredient }}</span>
+                <div class="d-flex align-center flex-wrap gap-x-2 text-xs">
+                  <span v-if="!isRestaurant" class="text-medium-emphasis text-truncate" style="max-inline-size: 160px;">{{ item.active_ingredient || 'N/A' }}</span>
                   <span v-if="!isRestaurant" class="text-disabled">|</span>
-                  <span v-if="isRestaurant && item.presentation" class="text-medium-emphasis font-weight-medium text-truncate" style="max-inline-size: 150px;">
+                  <span v-if="isRestaurant && item.presentation" class="text-medium-emphasis text-truncate" style="max-inline-size: 160px;">
                     {{ item.presentation }} {{ item.unit_of_measure ? `(${item.unit_of_measure})` : '' }}
                   </span>
                   <span v-if="isRestaurant && item.presentation" class="text-disabled">|</span>
-                  <span class="text-primary font-weight-bold text-truncate" style="max-inline-size: 120px;">
+                  <span class="text-primary font-weight-bold text-truncate" style="max-inline-size: 140px;">
                     {{ isMiniMarket ? (item.category?.name || 'SIN CATEGORÍA') : (item.laboratory?.name || 'S/L') }}
                   </span>
                 </div>
               </div>
             </div>
 
-            <VDivider class="my-3 border-opacity-10" />
-
-            <div class="d-flex align-center justify-space-between bg-var-theme-background px-3 py-2 rounded border-dashed-thin">
-              <div class="d-flex flex-column">
-                <span class="text-super-xs text-disabled text-uppercase font-weight-black text-xs">Stock</span>
-                <span :class="(item.stock_calculado ?? 0) > 0 ? 'text-success' : 'text-error'" class="text-base font-weight-black">
+            <!-- Caja compacta de Stock y P.V.P -->
+            <div class="d-flex align-center justify-space-between bg-var-theme-background px-2 py-1 mt-2 rounded border-dashed-thin">
+              <div class="d-flex align-center gap-2">
+                <span class="text-super-xs text-disabled text-uppercase font-weight-bold letter-spacing-1">Stock:</span>
+                <span :class="(item.stock_calculado ?? 0) > 0 ? 'text-success' : 'text-error'" class="text-xs font-weight-bold">
                   {{ formatStock(item) }}
                 </span>
               </div>
-              <div v-if="!isRestaurant" class="d-flex flex-column text-right">
-                <span class="text-super-xs text-disabled text-uppercase font-weight-black text-xs">P.V.P ({{ item.iva == 1 ? 'IVA' : 'EX' }})</span>
-                <span class="text-base font-weight-black text-primary">
+              <div v-if="!isRestaurant" class="d-flex align-center gap-1.5 text-right">
+                <span class="text-super-xs text-disabled text-uppercase font-weight-bold letter-spacing-1">P.V.P ({{ item.iva == 1 ? 'IVA' : 'EX' }}):</span>
+                <span class="text-xs font-weight-black text-primary">
                   {{ formatPriceWithCurrency(calculateSalePriceWithIva(item).price, calculateSalePriceWithIva(item).isAlreadyConverted) }}
                 </span>
               </div>
             </div>
           </div>
 
-          <!-- Acciones Rectangulares al 100% -->
-          <div class="d-flex border-t border-opacity-10">
+          <!-- Acciones Rectangulares perfectamente centradas -->
+          <div class="d-flex align-center border-t border-opacity-10 mobile-actions-bar">
             <template v-if="mode === 'products'">
               <VBtn 
                 :color="item.is_active !== false && item.is_active !== 0 ? 'success' : 'error'" 
                 variant="text" 
-                class="flex-grow-1 rounded-0" 
-                height="40"
-                icon="tabler-power" 
+                class="flex-grow-1 rounded-0 mobile-action-btn d-flex align-center justify-center" 
+                height="38"
                 @click="toggleActiveProduct(item)"
-              />
+              >
+                <VIcon icon="tabler-power" size="18" />
+              </VBtn>
               <VDivider vertical class="border-opacity-10" />
               <VBtn 
                 color="primary" 
                 variant="text" 
-                class="flex-grow-1 rounded-0" 
-                height="40"
-                icon="tabler-eye" 
+                class="flex-grow-1 rounded-0 mobile-action-btn d-flex align-center justify-center" 
+                height="38"
                 @click="emit('view-stats', item)"
-              />
+              >
+                <VIcon icon="tabler-eye" size="18" />
+              </VBtn>
               <VDivider vertical class="border-opacity-10" />
               <VBtn 
                 color="warning" 
                 variant="text" 
-                class="flex-grow-1 rounded-0" 
-                height="40"
-                icon="tabler-edit" 
+                class="flex-grow-1 rounded-0 mobile-action-btn d-flex align-center justify-center" 
+                height="38"
                 @click="emit('edit-product', item)"
-              />
+              >
+                <VIcon icon="tabler-edit" size="18" />
+              </VBtn>
               <VDivider v-if="props.onlyDeleted" vertical class="border-opacity-10" />
               <VBtn 
                 v-if="props.onlyDeleted"
                 color="success" 
                 variant="text" 
-                class="flex-grow-1 rounded-0" 
-                height="40"
-                icon="tabler-rotate-clockwise" 
+                class="flex-grow-1 rounded-0 mobile-action-btn d-flex align-center justify-center" 
+                height="38"
                 @click="emit('restore-product', item.id)"
-              />
+              >
+                <VIcon icon="tabler-rotate-clockwise" size="18" />
+              </VBtn>
               <VDivider v-if="authStore.isAdmin && brandingStore.settings.enable_merge" vertical class="border-opacity-10" />
               <VBtn 
                 v-if="authStore.isAdmin && brandingStore.settings.enable_merge" 
                 color="info" 
                 variant="text" 
-                class="flex-grow-1 rounded-0" 
-                height="40"
-                icon="tabler-package" 
+                class="flex-grow-1 rounded-0 mobile-action-btn d-flex align-center justify-center" 
+                height="38"
                 @click="openMergeModal(item)"
-              />
+              >
+                <VIcon icon="tabler-package" size="18" />
+              </VBtn>
               <VDivider v-if="authStore.isAdmin" vertical class="border-opacity-10" />
               <VBtn 
                 v-if="authStore.isAdmin" 
                 color="error" 
                 variant="text" 
-                class="flex-grow-1 rounded-0" 
-                height="40"
-                icon="tabler-trash" 
+                class="flex-grow-1 rounded-0 mobile-action-btn d-flex align-center justify-center" 
+                height="38"
                 @click="emit('delete-product', item.id)"
-              />
+              >
+                <VIcon icon="tabler-trash" size="18" />
+              </VBtn>
             </template>
 
             <template v-else-if="mode === 'inventory'">
@@ -710,11 +715,12 @@ defineExpose({
                 block 
                 color="success" 
                 variant="flat" 
-                class="rounded-0"
-                height="44"
-                icon="tabler-scan" 
+                class="rounded-0 mobile-action-btn d-flex align-center justify-center"
+                height="40"
                 @click="emit('count-product', item)"
-              />
+              >
+                <VIcon icon="tabler-scan" size="20" />
+              </VBtn>
             </template>
 
             <template v-else-if="mode === 'add-to-invoice'">
@@ -722,11 +728,12 @@ defineExpose({
                 block 
                 color="success" 
                 variant="flat" 
-                class="rounded-0"
-                height="44"
-                icon="tabler-plus" 
+                class="rounded-0 mobile-action-btn d-flex align-center justify-center"
+                height="40"
                 @click="emit('add-product-to-invoice', item)"
-              />
+              >
+                <VIcon icon="tabler-plus" size="20" />
+              </VBtn>
             </template>
           </div>
         </VCard>
@@ -867,6 +874,29 @@ defineExpose({
   overflow: hidden;
   border-radius: 8px !important;
   background: rgb(var(--v-theme-surface));
+}
+
+.product-mobile-title {
+  font-size: 0.8125rem !important; /* 13px - armonioso y legible */
+  line-height: 1.25 !important;
+  letter-spacing: -0.01em;
+}
+
+.mobile-actions-bar {
+  min-height: 38px;
+}
+
+.mobile-action-btn {
+  padding: 0 !important;
+  min-width: 0 !important;
+}
+
+.mobile-action-btn :deep(.v-btn__content) {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  height: 100% !important;
 }
 
 .truncate-2-lines {

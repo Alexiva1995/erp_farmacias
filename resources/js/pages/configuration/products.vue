@@ -16,20 +16,21 @@ const hasError = ref(false)
 const errorMessage = ref('')
 
 // Campos de configuración
-const enableProductTypes  = ref(true)
-const enabledProductTypes = ref([])
-const enableFavorites     = ref(true)
-const enableVariations    = ref(true)
-const enableMerge         = ref(false)
-const enableGroups        = ref(true)
-const enableExpirations   = ref(true)
-const enableBrandGroups   = ref(false)
-const enableDonations     = ref(true)
-const enableLocations     = ref(true)
-const enableOptimization  = ref(true)
-const enableDishes        = ref(true)
-const traceabilityMode    = ref('units')
-const productFormFields   = ref([])
+const enableProductTypes      = ref(true)
+const enabledProductTypes     = ref([])
+const enableFavorites         = ref(true)
+const enableBulkToggleActive  = ref(true)
+const enableVariations        = ref(true)
+const enableMerge             = ref(false)
+const enableGroups            = ref(true)
+const enableExpirations       = ref(true)
+const enableBrandGroups       = ref(false)
+const enableDonations         = ref(true)
+const enableLocations         = ref(true)
+const enableOptimization      = ref(true)
+const enableDishes            = ref(true)
+const traceabilityMode        = ref('units')
+const productFormFields       = ref([])
 
 // Carga inicial optimizada mediante filtro 'only'
 const fetchSettings = async () => {
@@ -41,6 +42,7 @@ const fetchSettings = async () => {
     'enable_product_types',
     'enabled_product_types',
     'enable_favorites',
+    'enable_bulk_toggle_active',
     'enable_variations',
     'enable_merge',
     'enable_groups',
@@ -60,20 +62,21 @@ const fetchSettings = async () => {
     })
     const settings = response.data.data
     if (settings) {
-      enableProductTypes.value  = settings.enable_product_types  ?? true
-      enabledProductTypes.value = settings.enabled_product_types ?? []
-      enableFavorites.value     = settings.enable_favorites      ?? true
-      enableVariations.value    = settings.enable_variations     ?? true
-      enableMerge.value         = settings.enable_merge          ?? false
-      enableGroups.value        = settings.enable_groups         ?? true
-      enableExpirations.value   = settings.enable_expirations    ?? true
-      enableBrandGroups.value   = settings.enable_brand_groups   ?? false
-      enableDonations.value     = settings.enable_donations      ?? true
-      enableLocations.value     = settings.enable_locations      ?? true
-      enableOptimization.value  = settings.enable_optimization   ?? true
-      enableDishes.value        = settings.enable_dishes         ?? true
-      traceabilityMode.value    = settings.traceability_mode     ?? 'units'
-      productFormFields.value   = settings.product_form_fields   ?? []
+      enableProductTypes.value     = settings.enable_product_types     ?? true
+      enabledProductTypes.value    = settings.enabled_product_types    ?? []
+      enableFavorites.value        = settings.enable_favorites         ?? true
+      enableBulkToggleActive.value = settings.enable_bulk_toggle_active ?? true
+      enableVariations.value       = settings.enable_variations        ?? true
+      enableMerge.value            = settings.enable_merge             ?? false
+      enableGroups.value           = settings.enable_groups            ?? true
+      enableExpirations.value      = settings.enable_expirations       ?? true
+      enableBrandGroups.value      = settings.enable_brand_groups      ?? false
+      enableDonations.value        = settings.enable_donations         ?? true
+      enableLocations.value        = settings.enable_locations         ?? true
+      enableOptimization.value     = settings.enable_optimization      ?? true
+      enableDishes.value           = settings.enable_dishes            ?? true
+      traceabilityMode.value       = settings.traceability_mode        ?? 'units'
+      productFormFields.value      = settings.product_form_fields      ?? []
     }
   } catch (error) {
     console.error("Error cargando configuración de productos:", error)
@@ -95,20 +98,21 @@ const updateSettings = () => {
   saveDebounceTimer = setTimeout(async () => {
     try {
       await axios.post('/general-settings', {
-        enable_product_types:  enableProductTypes.value,
-        enabled_product_types: enabledProductTypes.value,
-        enable_favorites:      enableFavorites.value,
-        enable_variations:     enableVariations.value,
-        enable_merge:          enableMerge.value,
-        enable_groups:         enableGroups.value,
-        enable_expirations:    enableExpirations.value,
-        enable_brand_groups:   enableBrandGroups.value,
-        enable_donations:      enableDonations.value,
-        enable_locations:      enableLocations.value,
-        enable_optimization:   enableOptimization.value,
-        enable_dishes:         enableDishes.value,
-        traceability_mode:     traceabilityMode.value,
-        product_form_fields:   productFormFields.value,
+        enable_product_types:      enableProductTypes.value,
+        enabled_product_types:     enabledProductTypes.value,
+        enable_favorites:          enableFavorites.value,
+        enable_bulk_toggle_active: enableBulkToggleActive.value,
+        enable_variations:         enableVariations.value,
+        enable_merge:              enableMerge.value,
+        enable_groups:             enableGroups.value,
+        enable_expirations:        enableExpirations.value,
+        enable_brand_groups:       enableBrandGroups.value,
+        enable_donations:          enableDonations.value,
+        enable_locations:          enableLocations.value,
+        enable_optimization:       enableOptimization.value,
+        enable_dishes:             enableDishes.value,
+        traceability_mode:         traceabilityMode.value,
+        product_form_fields:       productFormFields.value,
       })
       await brandingStore.fetchSettings()
       toast.success("Configuración de productos actualizada exitosamente")
@@ -173,6 +177,7 @@ onMounted(fetchSettings)
       <ProductSettingsCard
         v-model:enable-product-types="enableProductTypes"
         v-model:enable-favorites="enableFavorites"
+        v-model:enable-bulk-toggle-active="enableBulkToggleActive"
         v-model:enable-variations="enableVariations"
         v-model:enable-merge="enableMerge"
         v-model:enable-groups="enableGroups"

@@ -178,6 +178,7 @@ const showExport = computed(() => props.mode === 'products');
   >
     <template #prepend-actions>
       <VBtn
+        v-if="brandingStore.settings.enable_bulk_toggle_active !== false"
         icon
         variant="tonal"
         color="warning"

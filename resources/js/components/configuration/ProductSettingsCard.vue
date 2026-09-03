@@ -2,6 +2,7 @@
 const props = defineProps({
   enableProductTypes: Boolean,
   enableFavorites: Boolean,
+  enableBulkToggleActive: Boolean,
   enableVariations: Boolean,
   enableMerge: Boolean,
   enableGroups: Boolean,
@@ -18,6 +19,7 @@ const props = defineProps({
 const emit = defineEmits([
   'update:enableProductTypes',
   'update:enableFavorites',
+  'update:enableBulkToggleActive',
   'update:enableVariations',
   'update:enableMerge',
   'update:enableGroups',
@@ -46,6 +48,7 @@ const toggleTraceability = (val) => {
 const features = [
   { key: 'enableProductTypes', title: 'Tipos de Productos', description: 'Clasificación por tipo (Redundantes, Exentos, Novaventa, etc.).', icon: 'tabler-category' },
   { key: 'enableFavorites', title: 'Productos Favoritos', description: 'Destaca productos frecuentes en el catálogo y tienda virtual.', icon: 'tabler-star' },
+  { key: 'enableBulkToggleActive', title: 'Botón Activar/Inactivar Lote', description: 'Muestra el botón para alternar el estado activo de productos seleccionados.', icon: 'tabler-power' },
   { key: 'enableVariations', title: 'Variaciones', description: 'Habilita pestañas de tallas, colores y presentaciones.', icon: 'tabler-versions' },
   { key: 'enableMerge', title: 'Fusión de Productos', description: 'Permite unificar productos duplicados en el inventario.', icon: 'tabler-git-merge' },
   { key: 'enableGroups', title: 'Grupos de Productos', description: 'Agrupación para combos, promociones y clasificaciones.', icon: 'tabler-packages' },

@@ -95,7 +95,6 @@ jobs:
             git pull origin ${{ github.ref_name }}
             composer install --no-dev --optimize-autoloader --no-interaction
             php artisan migrate --force
-            php artisan farmacia:consolidate-august-2026
             php artisan optimize:clear
             php artisan config:cache
             php artisan route:cache

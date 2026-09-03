@@ -59,6 +59,7 @@ class UpdateGeneralSettingRequest extends FormRequest
             'enable_product_types' => 'nullable|boolean',
             'enabled_product_types' => 'nullable|array',
             'enable_favorites' => 'nullable|boolean',
+            'enable_bulk_toggle_active' => 'nullable|boolean',
             'enable_variations' => 'nullable|boolean',
             'enable_groups' => 'nullable|boolean',
             'enable_merge' => 'nullable|boolean',
