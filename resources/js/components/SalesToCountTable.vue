@@ -68,6 +68,21 @@ const handleMobilePageChange = (newPage) => {
     sortBy: [],
   });
 };
+
+const getProductLocations = (product) => {
+  if (!product) return [];
+  if (product.lot_locations && Array.isArray(product.lot_locations) && product.lot_locations.length > 0) {
+    return product.lot_locations.filter(Boolean);
+  }
+  if (product.lots && Array.isArray(product.lots)) {
+    const locs = product.lots.map(l => l.location).filter(l => l && String(l).trim() !== '');
+    return [...new Set(locs)];
+  }
+  if (product.location) {
+    return [product.location];
+  }
+  return [];
+};
 </script>
 
 <template>
@@ -109,12 +124,18 @@ const handleMobilePageChange = (newPage) => {
                 <span v-if="item.iva == 1" class="text-xs text-disabled"> (G)</span>
                 <span v-if="item.is_colombian_origin == 1" class="text-xs text-disabled"> (COL)</span>
               </span>
-              <div class="d-flex align-center gap-1 text-super-xs mt-1">
+              <div class="d-flex align-center flex-wrap gap-1 text-super-xs mt-1">
                 <span class="text-disabled truncate" style="max-inline-size: 200px;">{{ item.active_ingredient }}</span>
                 <span class="text-disabled mx-1">|</span>
                 <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 150px;">
                   {{ item.laboratory?.name || 'S/L' }}
                 </span>
+                <template v-if="getProductLocations(item).length > 0">
+                  <span class="text-disabled mx-1">|</span>
+                  <span class="text-success font-weight-black text-uppercase">
+                    📍 {{ getProductLocations(item).join(', ') }}
+                  </span>
+                </template>
               </div>
             </div>
           </div>

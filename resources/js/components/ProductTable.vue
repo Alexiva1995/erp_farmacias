@@ -295,6 +295,19 @@ const toggleActiveProduct = async (item) => {
 defineExpose({
   selectedProducts,
 });
+const getProductLocations = (item) => {
+  if (item.lot_locations && Array.isArray(item.lot_locations) && item.lot_locations.length > 0) {
+    return item.lot_locations.filter(Boolean);
+  }
+  if (item.lots && Array.isArray(item.lots)) {
+    const locs = item.lots.map(l => l.location).filter(l => l && String(l).trim() !== '');
+    return [...new Set(locs)];
+  }
+  if (item.location) {
+    return [item.location];
+  }
+  return [];
+};
 </script>
 
 <template>
@@ -373,7 +386,7 @@ defineExpose({
                 <span v-if="item.iva == 1 || item.iva === true" class="text-xs text-disabled"> (G)</span>
                 <span v-if="item.is_colombian_origin == 1 || item.is_colombian_origin === true" class="text-xs text-disabled"> (COL)</span>
               </span>
-              <div class="d-flex align-center gap-1 text-super-xs">
+              <div class="d-flex align-center flex-wrap gap-1 text-super-xs">
                 <span v-if="!isRestaurant" class="text-disabled truncate" style="max-inline-size: 200px;">{{ item.active_ingredient }}</span>
                 <span v-if="!isRestaurant" class="text-disabled mx-1">|</span>
                 <span v-if="isRestaurant && item.presentation && isFieldEnabled('presentation')" class="text-disabled truncate" style="max-inline-size: 200px;">
@@ -383,6 +396,12 @@ defineExpose({
                 <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 150px;">
                   {{ isMiniMarket ? (item.category?.name || 'SIN CATEGORÍA') : (item.laboratory?.name || 'S/L') }}
                 </span>
+                <template v-if="getProductLocations(item).length > 0">
+                  <span class="text-disabled mx-1">|</span>
+                  <span class="text-success font-weight-black text-uppercase">
+                    📍 {{ getProductLocations(item).join(', ') }}
+                  </span>
+                </template>
               </div>
             </div>
           </div>

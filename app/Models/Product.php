@@ -508,10 +508,29 @@ class Product extends Model
     /**
      * Obtener el stock total disponible
      */
-    public function getAvailableStockAttribute(): int
+    /**
+     * Obtener las ubicaciones únicas de los lotes del producto.
+     */
+    public function getLotLocationsAttribute(): array
     {
-        return $this->lots()
-            ->withStock()
-            ->sum('quantity');
+        $locations = [];
+        if ($this->relationLoaded('lots')) {
+            $locations = $this->lots
+                ->pluck('location')
+                ->filter(fn($loc) => !empty(trim((string)$loc)))
+                ->unique()
+                ->values()
+                ->toArray();
+        } else {
+            $locations = $this->lots()
+                ->whereNotNull('location')
+                ->where('location', '!=', '')
+                ->pluck('location')
+                ->unique()
+                ->values()
+                ->toArray();
+        }
+
+        return $locations;
     }
 }

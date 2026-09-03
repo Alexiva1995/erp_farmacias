@@ -252,6 +252,20 @@ const getExpirationTooltip = (item) => {
   return `🟢 Vence a >6 meses (${expDateStr}) - Stock regular`;
 };
 
+const getProductLocations = (item) => {
+  if (item.lot_locations && Array.isArray(item.lot_locations) && item.lot_locations.length > 0) {
+    return item.lot_locations.filter(Boolean);
+  }
+  if (item.lots && Array.isArray(item.lots)) {
+    const locs = item.lots.map(l => l.location).filter(l => l && String(l).trim() !== '');
+    return [...new Set(locs)];
+  }
+  if (item.location) {
+    return [item.location];
+  }
+  return [];
+};
+
 const getRowClass = (item) => {
   let classes = [];
   if ((item.valid_stock_sum ?? 0) <= 0) classes.push('row-zero-stock');
@@ -347,7 +361,7 @@ const getRowClass = (item) => {
 
           <div
             class="text-super-xs mt-1"
-            :class="item.item_type === 'pack' ? 'd-flex flex-column' : 'd-flex align-center'"
+            :class="item.item_type === 'pack' ? 'd-flex flex-column' : 'd-flex align-center flex-wrap'"
             style="white-space: pre-wrap;"
           >
             <span v-if="!isSportsRental" class="text-disabled font-weight-medium text-uppercase">{{ item.active_ingredient || '—' }}</span>
@@ -359,6 +373,12 @@ const getRowClass = (item) => {
               >
                 {{ item.laboratory_name || 'Genérico' }}
               </span>
+              <template v-if="getProductLocations(item).length > 0">
+                <span class="text-disabled mx-1">|</span>
+                <span class="text-success font-weight-black text-uppercase">
+                  📍 {{ getProductLocations(item).join(', ') }}
+                </span>
+              </template>
             </template>
           </div>
         </div>
@@ -547,7 +567,7 @@ const getRowClass = (item) => {
             
             <div 
               class="text-super-xs mt-1" 
-              :class="item.item_type === 'pack' ? 'd-flex flex-column gap-1' : 'd-flex align-center'"
+              :class="item.item_type === 'pack' ? 'd-flex flex-column gap-1' : 'd-flex align-center flex-wrap'"
               style="white-space: pre-wrap;"
             >
               <span v-if="!isSportsRental" class="text-disabled text-uppercase">{{ item.active_ingredient || '—' }}</span>
@@ -556,6 +576,12 @@ const getRowClass = (item) => {
                 <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 120px;">
                   {{ item.laboratory_name || 'Genérico' }}
                 </span>
+                <template v-if="getProductLocations(item).length > 0">
+                  <span class="text-disabled mx-1">|</span>
+                  <span class="text-success font-weight-black text-uppercase">
+                    📍 {{ getProductLocations(item).join(', ') }}
+                  </span>
+                </template>
               </template>
             </div>
 

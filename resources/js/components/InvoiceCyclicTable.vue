@@ -66,6 +66,21 @@ const formatQuantity = (value, product) => {
   }
   return Math.trunc(Number(value)).toLocaleString('es-VE');
 };
+
+const getProductLocations = (product) => {
+  if (!product) return [];
+  if (product.lot_locations && Array.isArray(product.lot_locations) && product.lot_locations.length > 0) {
+    return product.lot_locations.filter(Boolean);
+  }
+  if (product.lots && Array.isArray(product.lots)) {
+    const locs = product.lots.map(l => l.location).filter(l => l && String(l).trim() !== '');
+    return [...new Set(locs)];
+  }
+  if (product.location) {
+    return [product.location];
+  }
+  return [];
+};
 </script>
 
 <template>
@@ -113,10 +128,16 @@ const formatQuantity = (value, product) => {
                 {{ item.product.name.toUpperCase() }}
                 <span v-if="item.product.is_colombian_origin == 1" class="text-info"> (COL)</span>
               </span>
-              <span class="text-super-xs font-weight-bold text-disabled uppercase">
+              <span class="text-super-xs font-weight-bold text-disabled uppercase d-flex align-center flex-wrap gap-1">
                 <span class="text-primary">{{ item.product.laboratory?.name || 'S/L' }}</span>
                 <span v-if="!isRestaurant" class="mx-1">|</span>
                 <span v-if="!isRestaurant">{{ item.product.active_ingredient }}</span>
+                <template v-if="getProductLocations(item.product).length > 0">
+                  <span class="mx-1">|</span>
+                  <span class="text-success font-weight-black">
+                    📍 {{ getProductLocations(item.product).join(', ') }}
+                  </span>
+                </template>
               </span>
             </div>
           </div>
@@ -197,10 +218,16 @@ const formatQuantity = (value, product) => {
                 <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight truncate mb-1">
                   {{ item.product?.name }}
                 </h3>
-                <div class="text-super-xs text-disabled font-weight-bold uppercase truncate">
+                <div class="text-super-xs text-disabled font-weight-bold uppercase d-flex align-center flex-wrap gap-1">
                   <span class="text-primary">{{ item.product.laboratory?.name || 'S/L' }}</span>
                   <span v-if="!isRestaurant" class="mx-1">|</span>
                   <span v-if="!isRestaurant">{{ item.product?.active_ingredient }}</span>
+                  <template v-if="getProductLocations(item.product).length > 0">
+                    <span class="mx-1">|</span>
+                    <span class="text-success font-weight-black">
+                      📍 {{ getProductLocations(item.product).join(', ') }}
+                    </span>
+                  </template>
                 </div>
               </div>
             </div>

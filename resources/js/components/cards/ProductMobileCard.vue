@@ -119,6 +119,20 @@ const formatPriceWithCurrency = (price, isAlreadyConverted = false) => {
 
   return formatCurrency(numPrice, currency);
 };
+
+const getProductLocations = (item) => {
+  if (item.lot_locations && Array.isArray(item.lot_locations) && item.lot_locations.length > 0) {
+    return item.lot_locations.filter(Boolean);
+  }
+  if (item.lots && Array.isArray(item.lots)) {
+    const locs = item.lots.map(l => l.location).filter(l => l && String(l).trim() !== '');
+    return [...new Set(locs)];
+  }
+  if (item.location) {
+    return [item.location];
+  }
+  return [];
+};
 </script>
 
 <template>
@@ -161,13 +175,19 @@ const formatPriceWithCurrency = (price, isAlreadyConverted = false) => {
             <VChip v-if="item.psychotropic" color="warning" size="x-small" label variant="flat" class="text-super-xs flex-shrink-0">PSI</VChip>
           </div>
           
-          <div v-if="(!isRestaurant && item.active_ingredient && item.active_ingredient !== 'N/A') || (isRestaurant && item.presentation)" class="d-flex align-center flex-wrap gap-x-2 text-xs">
+          <div v-if="(!isRestaurant && item.active_ingredient && item.active_ingredient !== 'N/A') || (isRestaurant && item.presentation) || getProductLocations(item).length > 0" class="d-flex align-center flex-wrap gap-x-1 text-xs">
             <span v-if="!isRestaurant && item.active_ingredient && item.active_ingredient !== 'N/A'" class="text-medium-emphasis text-truncate" style="max-inline-size: 260px;">
               {{ item.active_ingredient }}
             </span>
             <span v-if="isRestaurant && item.presentation" class="text-medium-emphasis text-truncate" style="max-inline-size: 260px;">
               {{ item.presentation }} {{ item.unit_of_measure ? `(${item.unit_of_measure})` : '' }}
             </span>
+            <template v-if="getProductLocations(item).length > 0">
+              <span class="text-disabled mx-1">|</span>
+              <span class="text-success font-weight-black text-uppercase">
+                📍 {{ getProductLocations(item).join(', ') }}
+              </span>
+            </template>
           </div>
         </div>
       </div>
