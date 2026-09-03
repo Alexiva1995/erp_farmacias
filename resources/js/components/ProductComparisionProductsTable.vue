@@ -196,14 +196,8 @@ const headers = computed(() => [
     <VCard class="mb-4 rounded-lg border shadow-sm overflow-hidden bg-surface">
       <VCardText class="pa-4">
         <VRow align="center" no-gutters class="gap-2">
-          <!-- Título/Icono -->
-          <div class="d-flex align-center gap-2 mr-4">
-            <VIcon icon="tabler-building-store" color="primary" size="20" />
-            <span class="text-subtitle-2 font-weight-bold text-uppercase d-none d-sm-inline">Catálogo Proveedores</span>
-          </div>
-
           <!-- Buscador Principal con botón integrado de Búsqueda Estricta -->
-          <VCol cols="12" sm="6" md="5" lg="4">
+          <VCol cols="12" sm="7" md="8" lg="7" class="flex-grow-1">
             <VTextField
               :model-value="props.searchQuery"
               @update:model-value="(val) => emit('update:searchQuery', val ?? '')"
