@@ -442,14 +442,32 @@ class PendingPaymentsController extends Controller
             }
 
             $submissionMessage = '';
-            if ($dronenaResult && !empty($dronenaResult['success'])) {
-                $submissionMessage = ' y enviado a Dronena';
-            } elseif ($mafartaResult && !empty($mafartaResult['success'])) {
-                $submissionMessage = ' y transmitido a Cobeca / Mafarta';
-            } elseif ($cristmedicalsResult && !empty($cristmedicalsResult['success'])) {
-                $submissionMessage = ' y transmitido a Cristmedicals';
-            } elseif ($dromegaResult && !empty($dromegaResult['success'])) {
-                $submissionMessage = ' y transmitido a Droguería Mega';
+            $portalWarning = '';
+
+            if ($dronenaResult) {
+                if (!empty($dronenaResult['success'])) {
+                    $submissionMessage = ' y transmitido exitosamente a Dronena';
+                } else {
+                    $portalWarning = ' (Aviso Dronena: ' . ($dronenaResult['message'] ?? 'Fallo al procesar') . ')';
+                }
+            } elseif ($mafartaResult) {
+                if (!empty($mafartaResult['success'])) {
+                    $submissionMessage = ' y transmitido exitosamente a Cobeca / Mafarta';
+                } else {
+                    $portalWarning = ' (Aviso Mafarta: ' . ($mafartaResult['message'] ?? 'Fallo al procesar') . ')';
+                }
+            } elseif ($cristmedicalsResult) {
+                if (!empty($cristmedicalsResult['success'])) {
+                    $submissionMessage = ' y transmitido exitosamente a Cristmedicals';
+                } else {
+                    $portalWarning = ' (Aviso Cristmedicals: ' . ($cristmedicalsResult['message'] ?? 'Fallo al procesar') . ')';
+                }
+            } elseif ($dromegaResult) {
+                if (!empty($dromegaResult['success'])) {
+                    $submissionMessage = ' y transmitido exitosamente a Droguería Mega';
+                } else {
+                    $portalWarning = ' (Aviso Dromega: ' . ($dromegaResult['message'] ?? 'Fallo al procesar') . ')';
+                }
             }
 
             return ApiResponse::success([
@@ -466,7 +484,8 @@ class PendingPaymentsController extends Controller
                 'dronena_submission' => $dronenaResult,
                 'mafarta_submission' => $mafartaResult,
                 'cristmedicals_submission' => $cristmedicalsResult,
-            ], 'Pago procesado exitosamente' . $submissionMessage);
+                'dromega_submission' => $dromegaResult,
+            ], 'Pago procesado' . $submissionMessage . $portalWarning);
         } catch (\Exception $e) {
             DB::rollBack();
             return ApiResponse::error('Error al procesar el pago: ' . $e->getMessage(), 500);

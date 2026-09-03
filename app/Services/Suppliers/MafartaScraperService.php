@@ -644,10 +644,33 @@ class MafartaScraperService implements MafartaScraperServiceInterface
             $fileName = 'comprobante_pago_' . time() . '.png';
             $fileMime = 'image/png';
 
-            if (!empty($receiptPath) && \Illuminate\Support\Facades\Storage::disk('public')->exists($receiptPath)) {
-                $fileContent = \Illuminate\Support\Facades\Storage::disk('public')->get($receiptPath);
-                $fileName = basename($receiptPath);
-            } else {
+            if (!empty($receiptPath)) {
+                $candidatePaths = [];
+                if (file_exists($receiptPath)) {
+                    $candidatePaths[] = $receiptPath;
+                }
+                $cleanRelative = preg_replace('#^https?://[^/]+/#i', '', $receiptPath);
+                $cleanRelative = ltrim($cleanRelative, '/');
+                if (str_starts_with($cleanRelative, 'storage/')) {
+                    $cleanRelative = substr($cleanRelative, 8);
+                }
+                $candidatePaths[] = storage_path('app/public/' . $cleanRelative);
+                $candidatePaths[] = storage_path('app/' . $cleanRelative);
+                $candidatePaths[] = public_path('storage/' . $cleanRelative);
+                $candidatePaths[] = public_path($cleanRelative);
+
+                foreach ($candidatePaths as $cand) {
+                    if (!empty($cand) && file_exists($cand) && is_file($cand)) {
+                        $fileContent = file_get_contents($cand);
+                        $fileName = basename($cand);
+                        $ext = strtolower(pathinfo($cand, PATHINFO_EXTENSION));
+                        $fileMime = ($ext === 'pdf') ? 'application/pdf' : (($ext === 'png') ? 'image/png' : 'image/jpeg');
+                        break;
+                    }
+                }
+            }
+
+            if (!$fileContent) {
                 // Generar un comprobante temporal en caso de no adjuntar archivo
                 $dummyImage = imagecreatetruecolor(400, 200);
                 $bgColor = imagecolorallocate($dummyImage, 240, 240, 240);

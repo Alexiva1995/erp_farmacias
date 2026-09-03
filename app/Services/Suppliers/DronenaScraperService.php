@@ -891,10 +891,36 @@ class DronenaScraperService implements DronenaScraperServiceInterface
     {
         $tempPdf = sys_get_temp_dir() . DIRECTORY_SEPARATOR . "soporte_{$reference}_" . time() . ".pdf";
 
-        // Si ya es un archivo PDF local existente
+        // Resolver la ruta física del comprobante
         if (!empty($receiptPathOrUrl)) {
-            $localPath = public_path(ltrim($receiptPathOrUrl, '/'));
-            if (file_exists($localPath)) {
+            $candidatePaths = [];
+            
+            // 1. Ruta absoluta directa
+            if (file_exists($receiptPathOrUrl)) {
+                $candidatePaths[] = $receiptPathOrUrl;
+            }
+
+            // 2. Extraer nombre relativo de storage si viene URL o prefijo /storage/
+            $cleanRelative = preg_replace('#^https?://[^/]+/#i', '', $receiptPathOrUrl);
+            $cleanRelative = ltrim($cleanRelative, '/');
+            if (str_starts_with($cleanRelative, 'storage/')) {
+                $cleanRelative = substr($cleanRelative, 8);
+            }
+
+            $candidatePaths[] = storage_path('app/public/' . $cleanRelative);
+            $candidatePaths[] = storage_path('app/' . $cleanRelative);
+            $candidatePaths[] = public_path('storage/' . $cleanRelative);
+            $candidatePaths[] = public_path($cleanRelative);
+
+            $localPath = null;
+            foreach ($candidatePaths as $cand) {
+                if (!empty($cand) && file_exists($cand) && is_file($cand)) {
+                    $localPath = $cand;
+                    break;
+                }
+            }
+
+            if ($localPath) {
                 $ext = strtolower(pathinfo($localPath, PATHINFO_EXTENSION));
                 if ($ext === 'pdf') {
                     return $localPath;

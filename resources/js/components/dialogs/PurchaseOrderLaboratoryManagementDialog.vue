@@ -75,9 +75,8 @@ const headers = [
   { title: "PRODUCTO", key: "product_name", sortable: false },
   { title: "PROVEEDOR", key: "supplier_name", sortable: false },
   { title: "CANTIDAD", key: "quantity", sortable: false, width: "130px" },
-  { title: "COSTO UNIT. (USD)", key: "unit_cost", sortable: false, width: "130px" },
-  { title: "SUBTOTAL (USD)", key: "subtotal", sortable: false, width: "130px" },
-  { title: "ESTADO", key: "status", sortable: false, align: "center", width: "120px" },
+  { title: "COST", key: "unit_cost", sortable: false, width: "130px" },
+  { title: "SUBTOTAL", key: "subtotal", sortable: false, width: "130px" },
   { title: "ACCIÓN", key: "actions", sortable: false, align: "end", width: "80px" },
 ];
 
@@ -365,18 +364,6 @@ const handleDeleteDetail = async (detail) => {
             <span class="text-sm font-weight-black text-high-emphasis">
               ${{ formatUsd(item.subtotal) }}
             </span>
-          </template>
-
-          <!-- Estado -->
-          <template #item.status="{ item }">
-            <VChip
-              size="x-small"
-              :color="getStatusColor(item.order_status)"
-              variant="tonal"
-              class="font-weight-black"
-            >
-              {{ getStatusLabel(item.order_status) }}
-            </VChip>
           </template>
 
           <!-- Acciones -->
