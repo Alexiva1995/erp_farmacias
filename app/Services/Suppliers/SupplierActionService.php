@@ -124,8 +124,6 @@ class SupplierActionService
         $factor = max(0, 1 - ($percentage / 100));
 
         if ($percentage <= 0) {
-            DB::table('supplier_discounts')->where('supplier_id', $supplier->id)->delete();
-
             return DB::table('product_suppliers')
                 ->where('supplier_id', $supplier->id)
                 ->update([
@@ -134,15 +132,6 @@ class SupplierActionService
                     'updated_at' => now(),
                 ]);
         }
-
-        DB::table('supplier_discounts')->updateOrInsert(
-            ['supplier_id' => $supplier->id],
-            [
-                'discount_percentage' => $percentage,
-                'updated_at' => now(),
-                'created_at' => now(),
-            ]
-        );
 
         return DB::table('product_suppliers')
             ->where('supplier_id', $supplier->id)
