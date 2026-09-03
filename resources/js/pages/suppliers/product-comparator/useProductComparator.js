@@ -45,6 +45,7 @@ export function useProductComparator() {
   const isNeedsFiltersDialogVisible = ref(false);
   const checkingApiSupplierId = ref(null);
   const pollingSupplierId = ref(null);
+  const pollingStatusId = ref(null);
   const pollingInterval = ref(null);
   const pollingStartTime = ref(null);
 
@@ -320,7 +321,7 @@ export function useProductComparator() {
       // Caso 1: Actualización masiva (todas las APIs)
       if (pollingSupplierId.value === 'ALL') {
         const recentStatuses = newStatuses.filter(
-          (s) => !pollingStartTime.value || new Date(s.created_at).getTime() >= (pollingStartTime.value - 10000)
+          (s) => !pollingStartTime.value || new Date(s.created_at).getTime() >= (pollingStartTime.value - 15000)
         );
         const hasPendingJobs = recentStatuses.some((s) => ['pending', 'processing', 'in_progress'].includes(s.status));
 
@@ -328,6 +329,7 @@ export function useProductComparator() {
         if (recentStatuses.length > 0 && !hasPendingJobs) {
           isUpdatingAllApi.value = false;
           pollingSupplierId.value = null;
+          pollingStatusId.value = null;
           pollingStartTime.value = null;
           checkingApiSupplierId.value = null;
           stopPolling();
@@ -340,16 +342,26 @@ export function useProductComparator() {
       }
 
       // Caso 2: Proveedor individual
-      const currentStatus = newStatuses.find(
-        (s) => s.supplier_id === pollingSupplierId.value &&
-          (!pollingStartTime.value || new Date(s.created_at).getTime() >= (pollingStartTime.value - 10000))
-      );
-      if (
-        currentStatus &&
-        ["completed", "failed"].includes(currentStatus.status)
-      ) {
+      let currentStatus = null;
+      if (pollingStatusId.value) {
+        currentStatus = newStatuses.find((s) => s.id === pollingStatusId.value);
+      }
+      if (!currentStatus && pollingSupplierId.value) {
+        currentStatus = newStatuses.find(
+          (s) => s.supplier_id === pollingSupplierId.value &&
+            (!pollingStartTime.value || new Date(s.created_at).getTime() >= (pollingStartTime.value - 15000))
+        );
+      }
+
+      // Si aún no se crea el registro o si continúa procesándose, mantener spinner y seguir esperando
+      if (!currentStatus || ["pending", "processing", "in_progress"].includes(currentStatus.status)) {
+        return;
+      }
+
+      if (["completed", "failed"].includes(currentStatus.status)) {
         stopPolling();
         pollingSupplierId.value = null;
+        pollingStatusId.value = null;
         pollingStartTime.value = null;
         checkingApiSupplierId.value = null;
 
@@ -364,11 +376,6 @@ export function useProductComparator() {
       }
     } catch (error) {
       console.error("Error al consultar estados de conexión:", error);
-      stopPolling();
-      isUpdatingAllApi.value = false;
-      pollingSupplierId.value = null;
-      pollingStartTime.value = null;
-      checkingApiSupplierId.value = null;
     }
   };
 
@@ -433,6 +440,8 @@ export function useProductComparator() {
       pollingInterval.value = null;
     }
     checkingApiSupplierId.value = null;
+    pollingSupplierId.value = null;
+    pollingStatusId.value = null;
   };
 
   const fetchOptions = async () => {
@@ -553,7 +562,10 @@ export function useProductComparator() {
       toast.info(
         `Procesando los datos de ${supplier.name}, le notificaremos al finalizar`,
       );
-      await axios.get(`/suppliers/${supplier.id}/connection`);
+      const response = await axios.get(`/suppliers/${supplier.id}/connection`);
+      if (response.data?.status_id) {
+        pollingStatusId.value = response.data.status_id;
+      }
       
       supplierConnectionStore.startConnection();
       startPolling();
@@ -561,15 +573,9 @@ export function useProductComparator() {
       const errorDetail = error?.response?.data?.message || error?.message || "";
       toast.error(`No se pudo iniciar la conexión con ${supplier.name}${errorDetail ? `: ${errorDetail}` : ""}`);
       pollingSupplierId.value = null;
+      pollingStatusId.value = null;
       pollingStartTime.value = null;
       checkingApiSupplierId.value = null;
-      return;
-    }
-
-    try {
-      await handleRefreshAll();
-    } catch (error) {
-      console.error("Error al refrescar tablas tras iniciar conexión:", error);
     }
   };
 

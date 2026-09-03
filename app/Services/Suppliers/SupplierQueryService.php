@@ -842,12 +842,11 @@ class SupplierQueryService
         return response()->json(["status" => "ok"]);
     }
 
-    public function getRecentConnectionStatusesForUser(int $userId, int $minutes = 10): Collection
+    public function getRecentConnectionStatusesForUser(int $userId, int $minutes = 15): Collection
     {
         return SupplierConnectionStatus::with('supplier')
-            ->whereIn('status', ['completed', 'failed'])
             ->where('created_at', '>=', now()->subMinutes($minutes))
-            ->latest()
+            ->latest('id')
             ->get();
     }
 

@@ -126,18 +126,24 @@ class SupplierController extends Controller
         \Log::info("🚀 [INICIO] Conexión FTP iniciada", ['supplier_id' => $supplier->id, 'supplier_name' => $supplier->name]);
         
         $userId = auth()->id() ?? 1;
-        $logMessage = "[" . date('Y-m-d H:i:s') . "] 👤 User ID: {$userId}\n";
-        $logMessage .= "[" . date('Y-m-d H:i:s') . "] 🔄 [CONTROLLER] Despachando Job FTP (SÍNCRONO para ver logs inmediatos)\n";
-        file_put_contents($logFile, $logMessage, FILE_APPEND);
-        
-        // Despachar de forma asíncrona para evitar timeouts en la interfaz web
-        ProcessSupplierConnectionJob::dispatch($supplier, $userId);
 
-        $logMessage = "[" . date('Y-m-d H:i:s') . "] ✅ [CONTROLLER] Job FTP despachado en segundo plano\n";
+        $status = \App\Models\SupplierConnectionStatus::create([
+            "supplier_id" => $supplier->id,
+            "user_id" => $userId,
+            "status" => "processing",
+        ]);
+
+        // Despachar de forma asíncrona pasando el status_id creado
+        ProcessSupplierConnectionJob::dispatch($supplier, $userId, null, [], null, $status->id);
+
+        $logMessage = "[" . date('Y-m-d H:i:s') . "] ✅ [CONTROLLER] Job FTP despachado en segundo plano con Status ID: {$status->id}\n";
         $logMessage .= "[" . date('Y-m-d H:i:s') . "] ========== 🏁 FIN DISPATCH CONEXIÓN FTP ==========\n";
         file_put_contents($logFile, $logMessage, FILE_APPEND);
 
-        return response()->json(["status" => "processing"]);
+        return response()->json([
+            "status" => "processing",
+            "status_id" => $status->id,
+        ]);
     }
     public function dispatchUpdateAllJob()
     {

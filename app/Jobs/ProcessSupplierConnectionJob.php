@@ -29,6 +29,7 @@ class ProcessSupplierConnectionJob implements ShouldQueue
         public string|array|null $filePath = null,
         public array $columnMap = [],
         public ?float $exchangeRate = null,
+        public ?int $statusId = null,
     ) {
     }
 
@@ -55,13 +56,16 @@ class ProcessSupplierConnectionJob implements ShouldQueue
             'file_path' => $this->filePath
         ]);
         
-        $status = SupplierConnectionStatus::create([
-            "supplier_id" => $this->supplier->id,
-            "user_id" => $this->userId,
-            "status" => "processing",
-        ]);
+        $status = $this->statusId ? SupplierConnectionStatus::find($this->statusId) : null;
+        if (!$status) {
+            $status = SupplierConnectionStatus::create([
+                "supplier_id" => $this->supplier->id,
+                "user_id" => $this->userId,
+                "status" => "processing",
+            ]);
+        }
         
-        $logMessage = "[" . date('Y-m-d H:i:s') . "] ✅ [JOB] Status creado - ID: {$status->id}, Status: processing\n";
+        $logMessage = "[" . date('Y-m-d H:i:s') . "] ✅ [JOB] Status activo - ID: {$status->id}, Status: processing\n";
         file_put_contents($logFile, $logMessage, FILE_APPEND);
 
         $supplierConnection = \App\Models\SupplierConnection::where('supplier_id', $this->supplier->id)->first();
