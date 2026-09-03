@@ -108,7 +108,7 @@ export function useProductComparator() {
     needsGroup.value = [];
   };
 
-  const handleSelectProductFromTop = (product) => {
+  const handleSelectProductFromTop = (product, showToast = true) => {
     if (!product) {
       selectedProductFromTop.value = null;
       filterSearchQuery.value = "";
@@ -123,9 +123,11 @@ export function useProductComparator() {
     
     filterSearchQuery.value = filter.length > 1 ? filter : String(product.id);
 
-    toast.success(
-      `Seleccionado: ${product.name}. Ahora busque el proveedor equivalente arriba.`,
-    );
+    if (showToast) {
+      toast.success(
+        `Seleccionado: ${product.name}. Ahora busque el proveedor equivalente arriba.`,
+      );
+    }
   };
 
   const handleShowDiscountDialog = (supplier) => {
@@ -608,6 +610,8 @@ export function useProductComparator() {
     enableDiscountCol.value = false;
   };
 
+  const isUpdatingLocally = ref(false);
+
   const handleAddItemToAutoOrder = async (product, onComplete) => {
     quantityErrors[product.id] = null;
     const currentNeedsProduct = selectedProductFromTop.value;
@@ -629,6 +633,7 @@ export function useProductComparator() {
 
       // Si teníamos un producto de Necesidades IA seleccionado, removerlo localmente y auto-seleccionar el siguiente
       if (currentNeedsProduct) {
+        isUpdatingLocally.value = true;
         const currentIndex = listProductsWithoutSupplier.value.findIndex(p => p.id === currentNeedsProduct.id);
         
         // Remover de la lista local inmediatamente sin hacer petición de red completa
@@ -641,7 +646,7 @@ export function useProductComparator() {
         if (listProductsWithoutSupplier.value.length > 0) {
           const nextIndex = Math.min(Math.max(0, currentIndex), listProductsWithoutSupplier.value.length - 1);
           const nextProduct = listProductsWithoutSupplier.value[nextIndex];
-          handleSelectProductFromTop(nextProduct);
+          handleSelectProductFromTop(nextProduct, false);
         } else {
           selectedProductFromTop.value = null;
           filterSearchQuery.value = "";
@@ -650,6 +655,7 @@ export function useProductComparator() {
             fetchProductsWithoutSupplier();
           }
         }
+        setTimeout(() => { isUpdatingLocally.value = false; }, 300);
       }
     } catch (error) {
       if (error.response?.status === 422) {
@@ -691,6 +697,7 @@ export function useProductComparator() {
 
   const handleToggleOrder = async (product) => {
     try {
+      isUpdatingLocally.value = true;
       // 1. Remover inmediatamente de la lista reactiva local sin recargar toda la tabla
       const currentIndex = listProductsWithoutSupplier.value.findIndex(p => p.id === product.id);
       listProductsWithoutSupplier.value = listProductsWithoutSupplier.value.filter(p => p.id !== product.id);
@@ -702,7 +709,7 @@ export function useProductComparator() {
       if (selectedProductFromTop.value?.id === product.id) {
         if (listProductsWithoutSupplier.value.length > 0) {
           const nextIndex = Math.min(Math.max(0, currentIndex), listProductsWithoutSupplier.value.length - 1);
-          handleSelectProductFromTop(listProductsWithoutSupplier.value[nextIndex]);
+          handleSelectProductFromTop(listProductsWithoutSupplier.value[nextIndex], false);
         } else {
           selectedProductFromTop.value = null;
           filterSearchQuery.value = "";
@@ -711,6 +718,8 @@ export function useProductComparator() {
           }
         }
       }
+
+      setTimeout(() => { isUpdatingLocally.value = false; }, 300);
 
       // 3. Enviar la petición asíncrona al backend
       const response = await axios.patch(`/suppliers/${product.id}/toggle-order`);
@@ -751,19 +760,27 @@ export function useProductComparator() {
   };
 
   const updateProductsWithoutSupplierOptions = (options) => {
-    if (pageProductsWithoutSupplier.value === options.page && 
-        itemsPerPageProductsWithoutSupplier.value === options.itemsPerPage &&
-        sortByProductsWithoutSupplier.value === options.sortBy?.[0]?.key &&
-        orderByProductsWithoutSupplier.value === options.sortBy?.[0]?.order) {
+    if (isUpdatingLocally.value) return;
+
+    const newPage = options.page || 1;
+    const newItemsPerPage = options.itemsPerPage || 10;
+    const newSortBy = options.sortBy?.[0]?.key ?? "solicitar";
+    const newOrderBy = options.sortBy?.[0]?.order ?? "desc";
+
+    if (
+      pageProductsWithoutSupplier.value === newPage &&
+      itemsPerPageProductsWithoutSupplier.value === newItemsPerPage &&
+      sortByProductsWithoutSupplier.value === newSortBy &&
+      orderByProductsWithoutSupplier.value === newOrderBy
+    ) {
       return;
     }
 
-    pageProductsWithoutSupplier.value = options.page;
-    itemsPerPageProductsWithoutSupplier.value = options.itemsPerPage;
-    if (options.sortBy && options.sortBy.length > 0) {
-      sortByProductsWithoutSupplier.value = options.sortBy[0].key;
-      orderByProductsWithoutSupplier.value = options.sortBy[0].order;
-    }
+    pageProductsWithoutSupplier.value = newPage;
+    itemsPerPageProductsWithoutSupplier.value = newItemsPerPage;
+    sortByProductsWithoutSupplier.value = newSortBy;
+    orderByProductsWithoutSupplier.value = newOrderBy;
+
     fetchProductsWithoutSupplier();
   };
 
