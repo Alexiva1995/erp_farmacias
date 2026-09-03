@@ -130,6 +130,14 @@ class GeneralSettingResource extends JsonResource
             'enable_invoices' => (bool) ($this->enable_invoices ?? true),
             'enable_invoice_locations' => (bool) ($this->enable_invoice_locations ?? true),
             'enabled_bi_views' => $this->enabled_bi_views ?? ['abc', 'dead-stock', 'sku', 'products', 'expiry', 'laboratories', 'pos', 'cyclic', 'customer', 'performance'],
+            'active_bot_suppliers' => \App\Models\Supplier::whereNull('deleted_at')
+                ->where(function ($q) {
+                    $q->where('name', 'like', '%DRONENA%')
+                      ->orWhere('name', 'like', '%DROCERCA%');
+                })
+                ->pluck('name')
+                ->map(fn($n) => strtoupper($n))
+                ->toArray(),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

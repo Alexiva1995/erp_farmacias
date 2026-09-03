@@ -337,8 +337,19 @@ const processedNavItems = computed(() => {
 
         // Filtrar Optimización si está desactivado en la configuración
         const enableOptimization = brandingStore.settings.enable_optimization ?? true;
-        if (!enableOptimization) {
-          childs = childs.filter((c) => c.title !== 'Optimización');
+        // Filtrar Bots si el proveedor correspondiente está inactivo/eliminado (soft-deleted)
+        if (copy.title === 'BOTS') {
+          const activeBots = (brandingStore.settings.active_bot_suppliers || ['DRONENA', 'DROCERCA']).map(b => b.toUpperCase());
+          childs = childs.filter(c => {
+            if (c.to === 'bots-dronena') {
+              return activeBots.some(name => name.includes('DRONENA') || name.includes('NENA'));
+            }
+            if (c.to === 'bots-drocerca') {
+              return activeBots.some(name => name.includes('DROCERCA') || name.includes('CERCA'));
+            }
+            return true;
+          });
+          if (childs.length === 0) return null;
         }
 
         copy.children = childs;
