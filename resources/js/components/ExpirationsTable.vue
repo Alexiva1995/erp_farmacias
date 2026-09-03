@@ -152,8 +152,8 @@ const formatDate = (dateString) => {
               <div v-if="item.has_overstock_risk" class="mt-1">
                 <VChip
                   size="x-small"
-                  color="deep-orange"
-                  variant="flat"
+                  color="error"
+                  variant="tonal"
                   prepend-icon="tabler-clock-exclamation"
                   class="risk-chip font-weight-black px-2 text-super-xs"
                 >
@@ -257,8 +257,8 @@ const formatDate = (dateString) => {
                 <div v-if="item.has_overstock_risk" class="mt-1">
                   <VChip
                     size="x-small"
-                    color="deep-orange"
-                    variant="flat"
+                    color="error"
+                    variant="tonal"
                     prepend-icon="tabler-clock-exclamation"
                     class="risk-chip font-weight-black px-2 text-super-xs"
                   >

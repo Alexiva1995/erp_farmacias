@@ -135,7 +135,7 @@ defineExpose({ aggregatedOverstock })
             <!-- Etiqueta visible cuando hay unidades que se van a perder antes del vencimiento -->
             <VChip
               v-if="item.risk_label"
-              color="deep-orange"
+              color="error"
               variant="tonal"
               size="x-small"
               class="mt-1 font-weight-bold risk-chip"
