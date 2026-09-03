@@ -797,11 +797,18 @@ class InventoryCycleQueryService
             return DB::query()->whereRaw('1 = 0');
         }
 
-        $unionQuery = $this->buildDiscrepanciesUnionQuery($cycleId, true);
+        $lotsAggregate = DB::table('product_lots')
+            ->where('quantity', '>', 0)
+            ->groupBy('product_id')
+            ->select([
+                'product_id',
+                DB::raw("GROUP_CONCAT(DISTINCT NULLIF(TRIM(location), '') ORDER BY location SEPARATOR ', ') as lot_locations_str"),
+            ]);
 
         $query = DB::query()->fromSub($unionQuery, 'counts')
             ->leftJoin('products', 'counts.product_id', '=', 'products.id')
             ->leftJoin('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
+            ->leftJoinSub($lotsAggregate, 'lots_agg', 'products.id', '=', 'lots_agg.product_id')
             ->leftJoin('users', 'counts.user_id', '=', 'users.id')
             ->leftJoin('employees as user_employees', 'users.id', '=', 'user_employees.user_id')
             ->leftJoin('users as supervisors', 'counts.supervisor_id', '=', 'supervisors.id')
@@ -827,7 +834,7 @@ class InventoryCycleQueryService
                 'products.sale_price as product_sale_price',
                 'products.is_colombian_origin as product_is_colombian_origin',
                 'products.active_ingredient as product_active_ingredient',
-                'products.location as product_location',
+                DB::raw("COALESCE(lots_agg.lot_locations_str, 'N/A') as product_location"),
                 'laboratories.name as laboratory_name',
                 'users.email as user_email',
                 'users.username as user_username',

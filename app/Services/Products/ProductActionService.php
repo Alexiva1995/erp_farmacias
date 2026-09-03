@@ -446,8 +446,12 @@ class ProductActionService
         $productToDeleteId = ($keepProductId === $productId1) ? $productId2 : $productId1;
 
         // Verificar que ambos productos existen (incluyendo productos con soft delete o is_deleted)
-        $productToKeep = Product::withoutGlobalScope('not_deleted')->withTrashed()->findOrFail($productToKeepId);
-        $productToDelete = Product::withoutGlobalScope('not_deleted')->withTrashed()->findOrFail($productToDeleteId);
+        $productToKeep = Product::withoutGlobalScopes()->withTrashed()->find($productToKeepId);
+        $productToDelete = Product::withoutGlobalScopes()->withTrashed()->find($productToDeleteId);
+
+        if (!$productToKeep || !$productToDelete) {
+            return false;
+        }
 
         DB::beginTransaction();
         try {
@@ -638,7 +642,7 @@ class ProductActionService
             return;
         }
 
-        $duplicateProduct = Product::withoutGlobalScope('not_deleted')
+        $duplicateProduct = Product::withoutGlobalScopes()
             ->withTrashed()
             ->where('barcode', $barcode)
             ->where('id', '!=', $excludeProductId)
