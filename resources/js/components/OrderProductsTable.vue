@@ -206,6 +206,52 @@ const getPriceClass = (item) => {
   return 'precio-oferta';
 };
 
+const getExpirationDate = (item) => {
+  if (item.ultima_fecha_vencimiento) return item.ultima_fecha_vencimiento;
+  if (item.next_expiration) return item.next_expiration;
+  if (item.lots && Array.isArray(item.lots) && item.lots.length > 0) {
+    const sortedLots = [...item.lots].filter(l => l.expiration_date && Number(l.quantity) > 0);
+    if (sortedLots.length > 0) {
+      sortedLots.sort((a, b) => new Date(a.expiration_date) - new Date(b.expiration_date));
+      return sortedLots[0].expiration_date;
+    }
+  }
+  return null;
+};
+
+const getExpirationColorClass = (item) => {
+  const expDateStr = getExpirationDate(item);
+  if (!expDateStr) {
+    // Si tiene descuento por expiración activo, considerarlo <3 meses (rojo)
+    if (item.discount_type === 'expiration' || item.is_expiration_discount) {
+      return 'exp-rojo';
+    }
+    return 'exp-verde';
+  }
+
+  const now = new Date();
+  const expDate = new Date(expDateStr);
+  const diffDays = Math.ceil((expDate - now) / (1000 * 60 * 60 * 24));
+  const diffMonths = diffDays / 30.44;
+
+  if (diffMonths <= 3) return 'exp-rojo';
+  if (diffMonths <= 6) return 'exp-amarillo';
+  return 'exp-verde';
+};
+
+const getExpirationTooltip = (item) => {
+  const expDateStr = getExpirationDate(item);
+  if (!expDateStr) return 'Vence a > 6 meses (Stock regular)';
+  const now = new Date();
+  const expDate = new Date(expDateStr);
+  const diffDays = Math.ceil((expDate - now) / (1000 * 60 * 60 * 24));
+  const diffMonths = diffDays / 30.44;
+
+  if (diffMonths <= 3) return `🔴 Vence en <3 meses (${expDateStr}) - Salida prioritaria`;
+  if (diffMonths <= 6) return `🟡 Vence en 3 a 6 meses (${expDateStr}) - Alerta rotación`;
+  return `🟢 Vence a >6 meses (${expDateStr}) - Stock regular`;
+};
+
 const getRowClass = (item) => {
   let classes = [];
   if ((item.valid_stock_sum ?? 0) <= 0) classes.push('row-zero-stock');
@@ -246,9 +292,13 @@ const getRowClass = (item) => {
         <a
           :href="'/inventory/traceability?q=' + item.id"
           target="_blank"
-          class="text-decoration-none font-weight-black text-primary"
+          class="text-decoration-none font-weight-black product-id-link"
+          :class="getExpirationColorClass(item)"
         >
           {{ item.id }}
+          <VTooltip activator="parent" location="top">
+            {{ getExpirationTooltip(item) }}
+          </VTooltip>
         </a>
       </template>
 
@@ -264,20 +314,24 @@ const getRowClass = (item) => {
       </template>
 
       <template #item.name="{ item }">
-        <div class="d-flex flex-column py-2" style="max-inline-size: 300px;">
+        <div class="d-flex flex-column py-2" style="max-inline-size: 320px;">
           <span
             class="text-subtitle-2 font-weight-black text-high-emphasis leading-tight text-uppercase"
             :class="{ 'text-primary': item.psychotropic == 1 }"
             style="white-space: normal;"
           >
             {{ item.name }}
-            <VChip v-if="item.iva == 1" size="x-small" color="primary" variant="tonal" class="ms-1 font-weight-bold">IVA</VChip>
-            <VChip v-if="item.is_colombian_origin == 1" size="x-small" color="info" variant="tonal" class="ms-1 font-weight-bold">COL</VChip>
+          </span>
+
+          <!-- Chips de estado y descuento ubicados ordenadamente debajo del nombre -->
+          <div class="d-flex align-center flex-wrap gap-1 mt-1">
+            <VChip v-if="item.iva == 1" size="x-small" color="primary" variant="tonal" class="font-weight-bold">IVA</VChip>
+            <VChip v-if="item.is_colombian_origin == 1" size="x-small" color="info" variant="tonal" class="font-weight-bold">COL</VChip>
             <VChip
               v-if="(item.discount_type === 'expiration' || item.is_expiration_discount) && (item.discount_percentage > 0 || item.discount_percentage_expiration > 0)"
               color="error"
               size="x-small"
-              class="ms-1 font-weight-black uppercase"
+              class="font-weight-black uppercase"
               label
             >
               Expira (-{{ item.discount_percentage || item.discount_percentage_expiration }}%)
@@ -286,12 +340,13 @@ const getRowClass = (item) => {
               v-else-if="item.discount_percentage > 0"
               color="success"
               size="x-small"
-              class="ms-1 font-weight-black uppercase"
+              class="font-weight-black uppercase"
               label
             >
               Oferta (-{{ item.discount_percentage }}%)
             </VChip>
-          </span>
+          </div>
+
           <div
             class="text-super-xs mt-1"
             :class="item.item_type === 'pack' ? 'd-flex flex-column' : 'd-flex align-center'"
@@ -451,9 +506,13 @@ const getRowClass = (item) => {
               <a
                 :href="'/inventory/traceability?q=' + item.id"
                 target="_blank"
-                class="text-decoration-none text-primary font-weight-black text-xs"
+                class="text-decoration-none font-weight-black text-xs product-id-link"
+                :class="getExpirationColorClass(item)"
               >
                 #{{ item.id }}
+                <VTooltip activator="parent" location="top">
+                  {{ getExpirationTooltip(item) }}
+                </VTooltip>
               </a>
               <VChip
                 :color="item.valid_stock_sum > 0 ? 'success' : 'error'"
@@ -468,24 +527,10 @@ const getRowClass = (item) => {
             <h3 class="text-subtitle-2 font-weight-950 text-high-emphasis text-uppercase leading-tight mb-1">
               {{ item.name }}
             </h3>
-            
-            <div 
-              class="text-super-xs mt-1" 
-              :class="item.item_type === 'pack' ? 'd-flex flex-column gap-1' : 'd-flex align-center'"
-              style="white-space: pre-wrap;"
-            >
-              <span v-if="!isSportsRental" class="text-disabled text-uppercase">{{ item.active_ingredient || '—' }}</span>
-              <template v-if="item.item_type !== 'pack'">
-                <span v-if="!isSportsRental" class="text-disabled mx-1">|</span>
-                <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 120px;">
-                  {{ item.laboratory_name || 'Genérico' }}
-                </span>
-              </template>
-            </div>
-            
-            <div class="d-flex gap-1 mb-3">
-              <VChip v-if="item.iva == 1" size="x-small" color="primary" variant="flat" class="font-weight-black">IVA</VChip>
-              <VChip v-if="item.is_colombian_origin == 1" size="x-small" color="info" variant="flat" class="font-weight-black">COL</VChip>
+
+            <div class="d-flex flex-wrap gap-1 my-1">
+              <VChip v-if="item.iva == 1" size="x-small" color="primary" variant="tonal" class="font-weight-black">IVA</VChip>
+              <VChip v-if="item.is_colombian_origin == 1" size="x-small" color="info" variant="tonal" class="font-weight-black">COL</VChip>
               <VChip
                 v-if="(item.discount_type === 'expiration' || item.is_expiration_discount) && (item.discount_percentage > 0 || item.discount_percentage_expiration > 0)"
                 color="error"
@@ -504,6 +549,20 @@ const getRowClass = (item) => {
               >
                 OFERTA (-{{ item.discount_percentage }}%)
               </VChip>
+            </div>
+            
+            <div 
+              class="text-super-xs mt-1" 
+              :class="item.item_type === 'pack' ? 'd-flex flex-column gap-1' : 'd-flex align-center'"
+              style="white-space: pre-wrap;"
+            >
+              <span v-if="!isSportsRental" class="text-disabled text-uppercase">{{ item.active_ingredient || '—' }}</span>
+              <template v-if="item.item_type !== 'pack'">
+                <span v-if="!isSportsRental" class="text-disabled mx-1">|</span>
+                <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 120px;">
+                  {{ item.laboratory_name || 'Genérico' }}
+                </span>
+              </template>
             </div>
 
             <VDivider class="my-3 border-opacity-10" />
@@ -659,6 +718,30 @@ const getRowClass = (item) => {
 
 .precio-expira {
   color: rgb(var(--v-theme-error));
+}
+
+/* Semáforo de Vencimiento para ID */
+.product-id-link {
+  transition: all 0.2s ease;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.product-id-link.exp-verde {
+  color: #10b981 !important; /* Verde: >6 meses */
+}
+
+.product-id-link.exp-amarillo {
+  color: #f59e0b !important; /* Amarillo / Ámbar: 3 a 6 meses */
+}
+
+.product-id-link.exp-rojo {
+  color: #ef4444 !important; /* Rojo: <3 meses */
+}
+
+.product-id-link:hover {
+  text-decoration: underline !important;
+  opacity: 0.85;
 }
 
 .leading-tight {
