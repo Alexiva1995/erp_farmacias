@@ -257,6 +257,9 @@ class MasterCatalogClientService
             }
         }
 
+        return null;
+    }
+
     /**
      * Asegura que el producto exista localmente consultándolo por código de barra en el Master.
      * Si no existe localmente pero sí en el Master, crea el producto y sus dependencias (laboratorio, categoría, origen)
