@@ -221,6 +221,12 @@ class AppServiceProvider extends ServiceProvider
             \App\Repositories\ExpiryReportRepository::class
         );
 
+        // Reporte de Devoluciones a Proveedores (canje preventivo 90 días)
+        $this->app->bind(
+            \App\Contracts\Repositories\SupplierReturnsRepositoryInterface::class,
+            \App\Repositories\SupplierReturnsRepository::class
+        );
+
         $this->app->bind(
             \App\Contracts\Repositories\GeneralSettingRepositoryInterface::class,
             \App\Repositories\Eloquent\GeneralSettingRepository::class

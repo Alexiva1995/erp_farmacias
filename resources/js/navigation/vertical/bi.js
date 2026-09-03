@@ -32,6 +32,10 @@ export default [
         to: 'bi-report-expiry',
       },
       {
+        title: 'Devoluciones Proveedores',
+        to: 'bi-report-supplier-returns',
+      },
+      {
         title: 'Marcas',
         to: 'bi-report-laboratories',
       },

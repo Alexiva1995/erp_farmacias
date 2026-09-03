@@ -797,6 +797,9 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
         // Dashboard de Vencimientos
         Route::get("/expiry", [\App\Http\Controllers\Api\Bi\ExpiryReportController::class, "index"]);
 
+        // Reporte de Devoluciones a Proveedores — canje preventivo por vencimiento 90 días
+        Route::get("/supplier-returns", [\App\Http\Controllers\Api\Bi\SupplierReturnsController::class, "index"]);
+
         // Dashboard de Inventarios Cíclicos
         Route::get("/inventory-cyclic", [\App\Http\Controllers\Api\Bi\InventoryCyclicReportController::class, "index"]);
 
