@@ -1,22 +1,23 @@
 <script setup>
+import { computed, ref } from "vue";
 import { useAuthStore } from "@/stores/auth";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 import { formatDateSimple } from "@/utils/formatters";
 import { formatCurrency } from "@/utils/currencyFormatter";
 import ProductMergeDialog from "@/components/dialogs/ProductMergeDialog.vue";
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
 import AppEmptyState from "@/components/AppEmptyState.vue";
-import { computed, ref } from "vue";
-import { useBrandingStore } from "@/stores/useBrandingStore";
+import ProductMobileCard from "@/components/cards/ProductMobileCard.vue";
+import ProductBulkActionsBar from "@/components/ProductBulkActionsBar.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-
 import Swal from "sweetalert2";
 
 const authStore = useAuthStore();
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
-const isMiniMarket = computed(() => brandingStore.settings.business_type === 'minimarket');
-const isSportsRental = computed(() => brandingStore.settings.business_type === 'sports_rental');
+const isRestaurant = computed(() => brandingStore.settings.business_type === "restaurant");
+const isMiniMarket = computed(() => brandingStore.settings.business_type === "minimarket");
+const isSportsRental = computed(() => brandingStore.settings.business_type === "sports_rental");
 
 const isFieldEnabled = (fieldKey) => {
   const fields = brandingStore.settings?.product_form_fields;
@@ -26,9 +27,8 @@ const isFieldEnabled = (fieldKey) => {
 
 // Selección reactiva para acciones en bloque
 const selectedProducts = ref([]);
-const isBulkCategoryMenuOpen = ref(false);
 
-// Emits adicionales para acciones masivas
+// Emits
 const emit = defineEmits([
   "update:options",
   "edit-product",
@@ -39,7 +39,7 @@ const emit = defineEmits([
   "view-stats",
   "restore-product",
   "toggle-active-product",
-  "bulk-action-completed"
+  "bulk-action-completed",
 ]);
 
 // Manejadores de acciones masivas
@@ -54,18 +54,18 @@ const handleBulkDelete = async () => {
     showCancelButton: true,
     confirmButtonText: "Eliminar",
     cancelButtonText: "Cancelar",
-    reverseButtons: true
+    reverseButtons: true,
   });
 
   if (result.isConfirmed) {
     try {
       await axios.post("/products/bulk-actions", {
         ids,
-        action: "delete"
+        action: "delete",
       });
       toast.success("Productos eliminados correctamente.");
       selectedProducts.value = [];
-      emit("product-merged"); // refresca lista principal de productos
+      emit("product-merged");
     } catch (e) {
       toast.error("Ocurrió un error al eliminar los productos.");
     }
@@ -80,18 +80,17 @@ const handleBulkChangeCategory = async (categoryId) => {
     await axios.post("/products/bulk-actions", {
       ids,
       action: "change-category",
-      value: categoryId
+      value: categoryId,
     });
     toast.success("Categoría actualizada correctamente.");
     selectedProducts.value = [];
-    isBulkCategoryMenuOpen.value = false;
     emit("product-merged");
   } catch (e) {
     toast.error("Error al actualizar la categoría.");
   }
 };
 
-// Props de Vuetify
+// Props
 const props = defineProps({
   products: { type: Array, required: true },
   loading: { type: Boolean, default: false },
@@ -103,17 +102,17 @@ const props = defineProps({
   mode: { type: String, default: "products" },
   title: { type: String, default: "" },
   onlyDeleted: { type: Boolean, default: false },
-  categories: { type: Array, default: () => [] }
+  categories: { type: Array, default: () => [] },
 });
 
 const headers = computed(() => [
-  { 
-    title: "id", 
-    key: "id", 
-    sortable: true, 
+  {
+    title: "id",
+    key: "id",
+    sortable: true,
     visible: true,
-    cellClass: 'font-weight-black text-primary d-none d-sm-table-cell',
-    headerClass: 'd-none d-sm-table-cell'
+    cellClass: "font-weight-black text-primary d-none d-sm-table-cell",
+    headerClass: "d-none d-sm-table-cell",
   },
   {
     title: "Producto",
@@ -127,8 +126,8 @@ const headers = computed(() => [
     key: "laboratory.name",
     sortable: true,
     visible: false,
-    cellClass: 'd-none d-md-table-cell',
-    headerClass: 'd-none d-md-table-cell'
+    cellClass: "d-none d-md-table-cell",
+    headerClass: "d-none d-md-table-cell",
   },
   { title: "Exp.", key: "next_expiration", sortable: true, visible: brandingStore.settings.enable_lots !== false },
   {
@@ -143,8 +142,8 @@ const headers = computed(() => [
     key: "unit_cost",
     sortable: true,
     visible: props.mode !== "inventory" && authStore.isAdmin,
-    cellClass: 'd-none d-lg-table-cell',
-    headerClass: 'd-none d-lg-table-cell'
+    cellClass: "d-none d-lg-table-cell",
+    headerClass: "d-none d-lg-table-cell",
   },
   {
     title: "P.V.P",
@@ -161,17 +160,10 @@ const headers = computed(() => [
   },
 ]);
 
-const visibleHeaders = computed(() =>
-  headers.value.filter((header) => header.visible)
-);
+const visibleHeaders = computed(() => headers.value.filter((header) => header.visible));
 
 const nextExpirationDate = (product) => {
-  if (
-    !product.lots ||
-    !Array.isArray(product.lots) ||
-    product.lots.length === 0
-  )
-    return "N/A";
+  if (!product.lots || !Array.isArray(product.lots) || product.lots.length === 0) return "N/A";
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const validLots = product.lots.filter((lot) => {
@@ -180,11 +172,9 @@ const nextExpirationDate = (product) => {
     return !isNaN(expirationDate.getTime()) && expirationDate >= today;
   });
   if (validLots.length === 0) return product.ultima_fecha_vencimiento || "EXPIRADO";
-  validLots.sort(
-    (a, b) => new Date(a.expiration_date) - new Date(b.expiration_date)
-  );
+  validLots.sort((a, b) => new Date(a.expiration_date) - new Date(b.expiration_date));
   const closestDate = new Date(validLots[0].expiration_date);
-  return formatDate(closestDate);
+  return formatDateSimple(closestDate);
 };
 
 const calculateSalePriceWithIva = (product) => {
@@ -205,34 +195,23 @@ const openMergeModal = (product) => {
   isMergeDialogVisible.value = true;
 };
 
-const handleMobilePageChange = (newPage) => {
-  emit('update:options', {
-    page: newPage,
-    itemsPerPage: props.itemsPerPage,
-    sortBy: props.sortBy ? [{ key: props.sortBy, order: props.orderBy || 'asc' }] : [],
-  });
-};
-
 const formatStock = (item) => {
   const stock = Number(item.stock_calculado ?? 0);
   if (isSportsRental.value || isMiniMarket.value) {
     return Math.round(stock).toString();
   }
   if (!isRestaurant.value) {
-    return stock % 1 === 0 ? stock.toString() : stock.toFixed(2).replace('.', ',');
+    return stock % 1 === 0 ? stock.toString() : stock.toFixed(2).replace(".", ",");
   }
   if (!item.unit_of_measure) {
-    const formatted = stock.toString().replace('.', ',');
+    const formatted = stock.toString().replace(".", ",");
     return `${formatted} UNDS`;
   }
-  // Modo dual: paquetes completos + gramos/ml restantes
   const presentation = Number(item.presentation) || 0;
-  if (presentation > 0 && (item.unit_of_measure === 'g' || item.unit_of_measure === 'ml')) {
+  if (presentation > 0 && (item.unit_of_measure === "g" || item.unit_of_measure === "ml")) {
     const unit = item.unit_of_measure;
-    // stock almacenado en kg → convertir a g/ml
     const totalUnits = Math.round(stock * 1000);
     if (totalUnits < 0) {
-      // Stock negativo: mostrar solo el total con signo
       return `${totalUnits} ${unit}`;
     }
     const fullPackages = Math.floor(totalUnits / presentation);
@@ -245,46 +224,45 @@ const formatStock = (item) => {
       return `${remainder} ${unit}`;
     }
   }
-  if (item.unit_of_measure === 'g') {
+  if (item.unit_of_measure === "g") {
     const val = Math.round(stock * 1000);
     return `${val} g`;
   }
-  if (item.unit_of_measure === 'ml') {
+  if (item.unit_of_measure === "ml") {
     const val = Math.round(stock * 1000);
     return `${val} ml`;
   }
-  if (item.unit_of_measure === 'und') {
-    const formatted = stock.toString().replace('.', ',');
+  if (item.unit_of_measure === "und") {
+    const formatted = stock.toString().replace(".", ",");
     return `${formatted} unidades`;
   }
-  const formatted = stock.toString().replace('.', ',');
+  const formatted = stock.toString().replace(".", ",");
   return `${formatted} UNDS`;
 };
 
 const formatPriceWithCurrency = (price, isAlreadyConverted = false) => {
   const numPrice = Number(price);
-  if (isNaN(numPrice)) return '—';
+  if (isNaN(numPrice)) return "—";
 
-  const currency = brandingStore.settings?.default_currency || 'USD';
+  const currency = brandingStore.settings?.default_currency || "USD";
 
-  if (isAlreadyConverted || currency === 'USD') {
+  if (isAlreadyConverted || currency === "USD") {
     return formatCurrency(numPrice, currency);
   }
 
   const rates = Array.isArray(brandingStore.exchangeRates) ? brandingStore.exchangeRates : [];
 
-  if (currency === 'COP') {
-    const copObj = rates.find(r => r && (r.currency_code === 'COP' || r.currency_code === 'COPC'));
+  if (currency === "COP") {
+    const copObj = rates.find((r) => r && (r.currency_code === "COP" || r.currency_code === "COPC"));
     const copRate = Number(copObj?.rate || 4000);
-    // Redondear al múltiplo de 100 más cercano hacia arriba (igual que el backend)
     const rounded = Math.ceil((numPrice * copRate) / 100) * 100;
-    return formatCurrency(rounded, 'COP');
+    return formatCurrency(rounded, "COP");
   }
 
-  if (currency === 'BS' || currency === 'Bs') {
-    const bsObj = rates.find(r => r && r.currency_code === 'BS');
+  if (currency === "BS" || currency === "Bs") {
+    const bsObj = rates.find((r) => r && r.currency_code === "BS");
     const bsRate = Number(bsObj?.rate || 1);
-    return formatCurrency(numPrice * bsRate, 'BS');
+    return formatCurrency(numPrice * bsRate, "BS");
   }
 
   return formatCurrency(numPrice, currency);
@@ -419,9 +397,9 @@ defineExpose({
               offset="8px"
               v-if="item.lots && item.lots.length > 0 && brandingStore.settings.enable_lots"
             >
-              <template #activator="{ props }">
+              <template #activator="{ props: menuProps }">
                 <VChip
-                  v-bind="props"
+                  v-bind="menuProps"
                   :color="item.stock_calculado > 0 ? 'success' : 'error'"
                   label
                   size="x-small"
@@ -568,7 +546,7 @@ defineExpose({
       </VDataTableServer>
     </div>
 
-    <!-- Vista de Móvil (Tarjetas Compactas) -->
+    <!-- Vista de Móvil (Tarjetas Compactas Modularizadas) -->
     <div class="d-block d-md-none pa-2">
       <VProgressLinear v-if="props.loading" indeterminate color="primary" class="mb-2" />
       
@@ -577,175 +555,22 @@ defineExpose({
       </div>
 
       <div class="d-flex flex-column gap-2">
-        <VCard
+        <ProductMobileCard
           v-for="item in props.products"
           :key="item.id"
-          variant="flat"
-          class="product-mobile-card border mb-1"
-        >
-          <div class="pa-2 pa-sm-3">
-            <div class="d-flex gap-2 align-start">
-              <!-- Corazón interactivo de favorito para móvil -->
-              <VBtn
-                v-if="((!isRestaurant && !isSportsRental) || isMiniMarket) && brandingStore.settings.enable_favorites"
-                icon
-                variant="text"
-                density="compact"
-                class="flex-shrink-0 mt-0"
-                :color="item.is_favorite ? 'error' : 'secondary'"
-                @click.stop="toggleFavorite(item)"
-              >
-                <VIcon :icon="item.is_favorite ? 'tabler-heart-filled' : 'tabler-heart'" size="18" />
-              </VBtn>
-              <div class="flex-grow-1 min-width-0">
-                <div class="d-flex align-center gap-1 mb-1">
-                  <h3 class="product-mobile-title font-weight-bold text-high-emphasis text-uppercase truncate-2-lines mb-0">
-                    <a
-                      :href="'/inventory/traceability?q=' + item.id"
-                      target="_blank"
-                      class="text-decoration-none text-primary font-weight-black"
-                    >
-                      {{ item.id }}
-                    </a>
-                    <template v-if="!isMiniMarket && item.laboratory?.name">
-                      <span class="mx-1 text-disabled font-weight-regular">|</span>
-                      <span class="text-primary font-weight-bold">{{ item.laboratory.name }}</span>
-                    </template>
-                    <template v-else-if="isMiniMarket && item.category?.name">
-                      <span class="mx-1 text-disabled font-weight-regular">|</span>
-                      <span class="text-primary font-weight-bold">{{ item.category.name }}</span>
-                    </template>
-                    <span class="mx-1 text-disabled font-weight-regular">|</span>
-                    <span>{{ item.name.toUpperCase() }}</span>
-                  </h3>
-                  <VChip v-if="item.psychotropic" color="warning" size="x-small" label variant="flat" class="text-super-xs flex-shrink-0">PSI</VChip>
-                </div>
-                
-                <div v-if="(!isRestaurant && item.active_ingredient && item.active_ingredient !== 'N/A') || (isRestaurant && item.presentation)" class="d-flex align-center flex-wrap gap-x-2 text-xs">
-                  <span v-if="!isRestaurant && item.active_ingredient && item.active_ingredient !== 'N/A'" class="text-medium-emphasis text-truncate" style="max-inline-size: 260px;">
-                    {{ item.active_ingredient }}
-                  </span>
-                  <span v-if="isRestaurant && item.presentation" class="text-medium-emphasis text-truncate" style="max-inline-size: 260px;">
-                    {{ item.presentation }} {{ item.unit_of_measure ? `(${item.unit_of_measure})` : '' }}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Caja compacta de Stock y P.V.P -->
-            <div class="d-flex align-center justify-space-between bg-var-theme-background px-2 py-1 mt-2 rounded border-dashed-thin">
-              <div class="d-flex align-center gap-2">
-                <span class="text-super-xs text-disabled text-uppercase font-weight-bold letter-spacing-1">Stock:</span>
-                <span :class="(item.stock_calculado ?? 0) > 0 ? 'text-success' : 'text-error'" class="text-xs font-weight-bold">
-                  {{ formatStock(item) }}
-                </span>
-              </div>
-              <div v-if="!isRestaurant" class="d-flex align-center gap-1.5 text-right">
-                <span class="text-super-xs text-disabled text-uppercase font-weight-bold letter-spacing-1">
-                  {{ item.iva == 1 ? 'P.V.P (IVA):' : 'P.V.P:' }}
-                </span>
-                <span class="text-xs font-weight-black text-primary">
-                  {{ formatPriceWithCurrency(calculateSalePriceWithIva(item).price, calculateSalePriceWithIva(item).isAlreadyConverted) }}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Acciones Rectangulares perfectamente centradas -->
-          <div class="d-flex align-center border-t border-opacity-10 mobile-actions-bar">
-            <template v-if="mode === 'products'">
-              <VBtn 
-                v-if="brandingStore.settings.enable_bulk_toggle_active !== false"
-                :color="item.is_active !== false && item.is_active !== 0 ? 'success' : 'error'" 
-                variant="text" 
-                class="flex-grow-1 rounded-0 mobile-action-btn d-flex align-center justify-center" 
-                height="38"
-                @click="toggleActiveProduct(item)"
-              >
-                <VIcon icon="tabler-power" size="18" />
-              </VBtn>
-              <VDivider v-if="brandingStore.settings.enable_bulk_toggle_active !== false" vertical class="border-opacity-10" />
-              <VBtn 
-                color="primary" 
-                variant="text" 
-                class="flex-grow-1 rounded-0 mobile-action-btn d-flex align-center justify-center" 
-                height="38"
-                @click="emit('view-stats', item)"
-              >
-                <VIcon icon="tabler-eye" size="18" />
-              </VBtn>
-              <VDivider vertical class="border-opacity-10" />
-              <VBtn 
-                color="warning" 
-                variant="text" 
-                class="flex-grow-1 rounded-0 mobile-action-btn d-flex align-center justify-center" 
-                height="38"
-                @click="emit('edit-product', item)"
-              >
-                <VIcon icon="tabler-edit" size="18" />
-              </VBtn>
-              <VDivider v-if="props.onlyDeleted" vertical class="border-opacity-10" />
-              <VBtn 
-                v-if="props.onlyDeleted"
-                color="success" 
-                variant="text" 
-                class="flex-grow-1 rounded-0 mobile-action-btn d-flex align-center justify-center" 
-                height="38"
-                @click="emit('restore-product', item.id)"
-              >
-                <VIcon icon="tabler-rotate-clockwise" size="18" />
-              </VBtn>
-              <VDivider v-if="authStore.isAdmin && brandingStore.settings.enable_merge" vertical class="border-opacity-10" />
-              <VBtn 
-                v-if="authStore.isAdmin && brandingStore.settings.enable_merge" 
-                color="info" 
-                variant="text" 
-                class="flex-grow-1 rounded-0 mobile-action-btn d-flex align-center justify-center" 
-                height="38"
-                @click="openMergeModal(item)"
-              >
-                <VIcon icon="tabler-package" size="18" />
-              </VBtn>
-              <VDivider v-if="authStore.isAdmin" vertical class="border-opacity-10" />
-              <VBtn 
-                v-if="authStore.isAdmin" 
-                color="error" 
-                variant="text" 
-                class="flex-grow-1 rounded-0 mobile-action-btn d-flex align-center justify-center" 
-                height="38"
-                @click="emit('delete-product', item.id)"
-              >
-                <VIcon icon="tabler-trash" size="18" />
-              </VBtn>
-            </template>
-
-            <template v-else-if="mode === 'inventory'">
-              <VBtn 
-                block 
-                color="success" 
-                variant="flat" 
-                class="rounded-0 mobile-action-btn d-flex align-center justify-center"
-                height="40"
-                @click="emit('count-product', item)"
-              >
-                <VIcon icon="tabler-scan" size="20" />
-              </VBtn>
-            </template>
-
-            <template v-else-if="mode === 'add-to-invoice'">
-              <VBtn 
-                block 
-                color="success" 
-                variant="flat" 
-                class="rounded-0 mobile-action-btn d-flex align-center justify-center"
-                height="40"
-                @click="emit('add-product-to-invoice', item)"
-              >
-                <VIcon icon="tabler-plus" size="20" />
-              </VBtn>
-            </template>
-          </div>
-        </VCard>
+          :item="item"
+          :mode="props.mode"
+          :only-deleted="props.onlyDeleted"
+          @toggle-favorite="toggleFavorite"
+          @toggle-active="toggleActiveProduct"
+          @view-stats="emit('view-stats', $event)"
+          @edit="emit('edit-product', $event)"
+          @restore="emit('restore-product', $event)"
+          @merge="openMergeModal"
+          @delete="emit('delete-product', $event)"
+          @count="emit('count-product', $event)"
+          @add-to-invoice="emit('add-product-to-invoice', $event)"
+        />
       </div>
 
       <div class="mt-4">
@@ -768,105 +593,19 @@ defineExpose({
       @merged="emit('product-merged')"
     />
 
-    <!-- Barra de Acciones Masivas Flotante (Glassmorphism) — Solo en modo products -->
-    <Transition name="fade-slide">
-      <div v-if="selectedProducts.length > 0 && props.mode === 'products'" class="bulk-actions-wrapper">
-        <VCard class="bulk-actions-bar px-6 py-3 d-flex align-center justify-space-between rounded-pill elevation-10">
-          <div class="d-flex align-center gap-3">
-            <VChip color="primary" class="font-weight-black">{{ selectedProducts.length }}</VChip>
-            <span class="text-subtitle-2 font-weight-black text-high-emphasis">Productos seleccionados</span>
-          </div>
-
-          <div class="d-flex align-center gap-2">
-            <!-- Cambiar Categoría Masivo -->
-            <VMenu v-model="isBulkCategoryMenuOpen" :close-on-content-click="false" location="top center" offset="12px">
-              <template #activator="{ props: menuProps }">
-                <VBtn
-                  v-bind="menuProps"
-                  color="secondary"
-                  variant="outlined"
-                  class="rounded-pill font-weight-black"
-                  size="small"
-                  prepend-icon="tabler-category"
-                >
-                  Cambiar Categoría
-                </VBtn>
-              </template>
-              <VCard class="rounded-xl border shadow-lg pa-3" min-width="240">
-                <div class="text-xs font-weight-bold text-high-emphasis mb-2">Seleccionar Categoría:</div>
-                <VList density="compact">
-                  <VListItem
-                    v-for="cat in props.categories"
-                    :key="cat.id"
-                    :title="cat.name"
-                    @click="handleBulkChangeCategory(cat.id)"
-                    class="rounded-lg"
-                  />
-                </VList>
-              </VCard>
-            </VMenu>
-
-            <!-- Eliminar Masivo -->
-            <VBtn
-              color="error"
-              class="rounded-pill font-weight-black"
-              size="small"
-              prepend-icon="tabler-trash"
-              @click="handleBulkDelete"
-            >
-              Eliminar
-            </VBtn>
-
-            <VDivider vertical class="mx-2 border-opacity-20" />
-
-            <!-- Deseleccionar Todo -->
-            <VBtn
-              icon="tabler-x"
-              variant="text"
-              density="compact"
-              color="secondary"
-              @click="selectedProducts = []"
-            />
-          </div>
-        </VCard>
-      </div>
-    </Transition>
+    <!-- Barra de Acciones Masivas Flotante Desacoplada -->
+    <ProductBulkActionsBar
+      v-if="props.mode === 'products'"
+      :selected-products="selectedProducts"
+      :categories="props.categories"
+      @change-category="handleBulkChangeCategory"
+      @delete-selected="handleBulkDelete"
+      @clear-selection="selectedProducts = []"
+    />
   </VCard>
 </template>
 
 <style scoped>
-.bulk-actions-wrapper {
-  position: fixed;
-  bottom: 24px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 1000;
-  width: 100%;
-  max-width: 680px;
-  padding: 0 16px;
-}
-
-.bulk-actions-bar {
-  background: rgba(var(--v-theme-surface), 0.85) !important;
-  backdrop-filter: blur(12px) saturate(190%);
-  border: 1px solid rgba(var(--v-border-color), 0.24) !important;
-}
-
-.fade-slide-enter-active,
-.fade-slide-leave-active {
-  transition: all 0.3s ease;
-}
-
-.fade-slide-enter-from {
-  opacity: 0;
-  transform: translate(-50%, 30px);
-}
-
-.fade-slide-leave-to {
-  opacity: 0;
-  transform: translate(-50%, 30px);
-}
-
 .hover-chip:hover {
   filter: brightness(0.95);
   box-shadow: 0 2px 4px rgba(0,0,0,0.08);
@@ -878,52 +617,6 @@ defineExpose({
 .border-bottom-light:last-child {
   border-bottom: none;
 }
-
-.product-mobile-card {
-  overflow: hidden;
-  border-radius: 8px !important;
-  background: rgb(var(--v-theme-surface));
-}
-
-.product-mobile-title {
-  font-size: 0.8125rem !important; /* 13px - armonioso y legible */
-  line-height: 1.25 !important;
-  letter-spacing: -0.01em;
-}
-
-.mobile-actions-bar {
-  min-height: 38px;
-}
-
-.mobile-action-btn {
-  padding: 0 !important;
-  min-width: 0 !important;
-}
-
-.mobile-action-btn :deep(.v-btn__content) {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  width: 100% !important;
-  height: 100% !important;
-}
-
-.truncate-2-lines {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-}
-
-.border-dashed-thin {
-  border: 1px dashed rgba(var(--v-border-color), 0.3) !important;
-}
-
-.bg-var-theme-background {
-  background-color: rgba(var(--v-border-color), 0.05);
-}
-
 
 .text-super-xs {
   font-size: 0.65rem !important;

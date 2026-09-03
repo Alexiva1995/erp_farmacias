@@ -38,7 +38,7 @@ class ProductController extends Controller
                 ->find((int) $productId);
             if ($product) {
                 $product->stock_calculado = $product->lots->sum('quantity');
-                return response()->json(['data' => [$product], 'total' => 1]);
+                return response()->json(['data' => [new \App\Http\Resources\ProductResource($product)], 'total' => 1]);
             }
             return response()->json(['data' => [], 'total' => 0]);
         }
@@ -48,10 +48,13 @@ class ProductController extends Controller
 
         if ($perPage < 1) {
             $items = $query->get();
-            return response()->json(['data' => $items, 'total' => $items->count()]);
+            return response()->json(['data' => \App\Http\Resources\ProductResource::collection($items), 'total' => $items->count()]);
         }
         $paginatedResult = $query->paginate($perPage);
-        return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
+        return response()->json([
+            'data' => \App\Http\Resources\ProductResource::collection($paginatedResult->items()),
+            'total' => $paginatedResult->total()
+        ]);
     }
 
     public function incomplete(Request $request)
