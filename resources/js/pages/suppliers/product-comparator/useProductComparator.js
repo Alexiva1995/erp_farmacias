@@ -227,6 +227,7 @@ export function useProductComparator() {
         toast.success(
           response.data.message || "Descuento aplicado correctamente.",
         );
+        enableDiscounts.value = true;
         await fetchProducts();
       }
     } catch (error) {
@@ -245,6 +246,7 @@ export function useProductComparator() {
       q: filterSearchQuery.value,
       originId: selectedOrigin.value,
       isStrictSearch: isStrictSearch.value,
+      enableDiscounts: enableDiscounts.value,
       ...(stockStatusFilter.value !== null && {
         hasStock: stockStatusFilter.value,
       }),

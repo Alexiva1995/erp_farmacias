@@ -516,15 +516,21 @@ class SupplierQueryService
 
         $isStrictSearch = filter_var($request->query("isStrictSearch"), FILTER_VALIDATE_BOOLEAN);
 
-        $sortBy = $request->query("sortBy", "name");
-        $sortOrder = $request->query("order", "asc");
+        $enableDiscounts = filter_var($request->query("enableDiscounts", false), FILTER_VALIDATE_BOOLEAN);
 
         $sortableColumns = [
             'name' => 'product_suppliers.name',
-            'unit_cost_bs' => 'product_suppliers.unit_cost',
-            'unit_cost_usd' => 'product_suppliers.unit_cost_usd',
-            'final_cost_bs' => 'final_cost_bs',
-            'final_cost_usd' => 'final_cost_usd',
+            'unit_cost' => $enableDiscounts 
+                ? DB::raw("CASE WHEN product_suppliers.unit_cost_usd_with_discount > 0 THEN product_suppliers.unit_cost_usd_with_discount ELSE product_suppliers.unit_cost_usd END")
+                : 'product_suppliers.unit_cost_usd',
+            'unit_cost_bs' => $enableDiscounts 
+                ? DB::raw("CASE WHEN product_suppliers.unit_cost_with_discount > 0 THEN product_suppliers.unit_cost_with_discount ELSE product_suppliers.unit_cost END")
+                : 'product_suppliers.unit_cost',
+            'unit_cost_usd' => $enableDiscounts 
+                ? DB::raw("CASE WHEN product_suppliers.unit_cost_usd_with_discount > 0 THEN product_suppliers.unit_cost_usd_with_discount ELSE product_suppliers.unit_cost_usd END")
+                : 'product_suppliers.unit_cost_usd',
+            'final_cost_bs' => DB::raw("CASE WHEN product_suppliers.unit_cost_with_discount > 0 THEN product_suppliers.unit_cost_with_discount ELSE product_suppliers.unit_cost END"),
+            'final_cost_usd' => DB::raw("CASE WHEN product_suppliers.unit_cost_usd_with_discount > 0 THEN product_suppliers.unit_cost_usd_with_discount ELSE product_suppliers.unit_cost_usd END"),
             'expiration' => 'product_suppliers.expiration'
         ];
 

@@ -121,22 +121,34 @@ class SupplierActionService
 
     public function applyGlobalDiscount(Supplier $supplier, float $percentage)
     {
-        $factor = 1 - ($percentage / 100);
+        $factor = max(0, 1 - ($percentage / 100));
+
+        if ($percentage <= 0) {
+            DB::table('supplier_discounts')->where('supplier_id', $supplier->id)->delete();
+
+            return DB::table('product_suppliers')
+                ->where('supplier_id', $supplier->id)
+                ->update([
+                    'unit_cost_with_discount' => DB::raw('unit_cost'),
+                    'unit_cost_usd_with_discount' => DB::raw('unit_cost_usd'),
+                    'updated_at' => now(),
+                ]);
+        }
+
+        DB::table('supplier_discounts')->updateOrInsert(
+            ['supplier_id' => $supplier->id],
+            [
+                'discount_percentage' => $percentage,
+                'updated_at' => now(),
+                'created_at' => now(),
+            ]
+        );
+
         return DB::table('product_suppliers')
             ->where('supplier_id', $supplier->id)
             ->update([
-                'unit_cost_with_discount' => DB::raw("
-                    ROUND(
-                        COALESCE(NULLIF(unit_cost_with_discount, 0), unit_cost) * {$factor}, 
-                        2
-                    )
-                "),
-                'unit_cost_usd_with_discount' => DB::raw("
-                    ROUND(
-                        COALESCE(NULLIF(unit_cost_usd_with_discount, 0), unit_cost_usd) * {$factor}, 
-                        2
-                    )
-                "),
+                'unit_cost_with_discount' => DB::raw("ROUND(unit_cost * {$factor}, 2)"),
+                'unit_cost_usd_with_discount' => DB::raw("ROUND(unit_cost_usd * {$factor}, 2)"),
                 'updated_at' => now(),
             ]);
     }
