@@ -386,18 +386,28 @@ const getUserDisplayName = (user) => {
 
                 <div class="d-flex align-center justify-space-between">
                   <div class="d-flex flex-column">
-                    <span class="text-caption font-weight-black text-disabled text-uppercase">Auditado y Aprobado por</span>
+                    <span class="text-caption font-weight-black text-disabled text-uppercase">
+                      {{ movementDetails.is_auto_approved ? 'Validación del Sistema' : 'Auditado y Aprobado por' }}
+                    </span>
                     <span v-if="movementDetails.approval_date" class="text-super-xs text-disabled">
                       Fecha: {{ formatDate(movementDetails.approval_date) }}
                     </span>
                   </div>
                   <div class="text-end">
-                    <span class="text-body-2 font-weight-black text-success d-block">
-                      {{ getUserDisplayName(movementDetails.approved_by || movementDetails.movement?.user) }}
-                    </span>
+                    <template v-if="movementDetails.is_auto_approved">
+                      <VChip size="small" color="primary" variant="tonal" class="font-weight-black">
+                        <VIcon start icon="tabler-robot" size="14" />
+                        Aprobación Automática (Exacto)
+                      </VChip>
+                    </template>
+                    <template v-else>
+                      <span class="text-body-2 font-weight-black text-success d-block">
+                        {{ getUserDisplayName(movementDetails.approved_by || movementDetails.movement?.user) }}
+                      </span>
+                    </template>
                     <div class="d-flex align-center justify-end gap-1 mt-1">
                       <span v-if="movementDetails.audited_quantity !== undefined" class="text-super-xs font-weight-bold text-medium-emphasis">
-                        Auditado: {{ movementDetails.audited_quantity }}
+                        {{ movementDetails.is_auto_approved ? 'Contado:' : 'Auditado:' }} {{ movementDetails.audited_quantity }}
                       </span>
                       <VChip v-if="movementDetails.discrepancy !== undefined" size="x-small" :color="movementDetails.discrepancy >= 0 ? 'success' : 'error'" variant="tonal" class="font-weight-black">
                         Discrepancia: {{ movementDetails.discrepancy >= 0 ? '+' : '' }}{{ movementDetails.discrepancy }}

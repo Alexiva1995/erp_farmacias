@@ -14,13 +14,13 @@ class ProductObserver
 {
     /**
      * Handle the Product "updated" event.
-     * SOLO para cambios manuales de stock (sin lotes involucrados)
+     * Gestiona únicamente alertas de stockouts y sincronización de lote único.
      */
     public function updated(Product $product): void
     {
         if ($product->isDirty('stock')) {
-            $newStock = $product->stock ?? 0;
-            $oldStock = $product->getOriginal('stock') ?? 0;
+            $newStock = (float) ($product->stock ?? 0);
+            $oldStock = (float) ($product->getOriginal('stock') ?? 0);
             \App\Services\Inventory\StockoutService::syncStockout($product, $newStock);
 
             if ($newStock == 0 && $oldStock > 0) {
@@ -42,28 +42,6 @@ class ProductObserver
                 } else {
                     $uniqueLot->update(['quantity' => $newStock]);
                 }
-                return;
-            }
-
-            if (!$product->lots()->exists()) {
-                $originalStock = $product->getOriginal('stock') ?? 0;
-                $difference = $newStock - $originalStock;
-
-                if ($difference != 0) {
-                    InventoryMovement::create([
-                        'product_id' => $product->id,
-                        'product_lot_id' => null,
-                        'movement_type' => 'adjustment',
-                        'quantity' => $difference,
-                        'invoice_id' => null,
-                        'supplier_id' => $product->supplier_id,
-                        'order_id' => null,
-                        'user_id' => Auth::id(),
-                        'stock_before' => $originalStock,
-                        'stock_after' => $newStock,
-                        'movement_date' => now(),
-                    ]);
-                }
             }
         }
     }
@@ -84,9 +62,9 @@ class ProductObserver
             if (!$product) {
                 continue;
             }
-            $stockBefore = $product->stock ?? 0;
-            $lotsSum = (int) $product->lots()->sum('quantity');
+            $lotsSum = (float) $product->lots()->sum('quantity');
             $stockAfter = $lotsSum;
+            $stockBefore = $lotsSum + (float) $detail->quantity;
 
             if ($stockAfter < 0) {
                 throw new InsufficientStockException(

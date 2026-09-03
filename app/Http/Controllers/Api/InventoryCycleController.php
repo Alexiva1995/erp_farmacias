@@ -53,9 +53,11 @@ class InventoryCycleController extends Controller
             $hasSearchFilters = $request->filled('q') || $request->filled('laboratoryId') || $request->filled('originId');
 
             $activeCycleId = \App\Models\InventoryCycle::where('status', 'active')->value('id');
+            $user = Auth::user() ?? $request->user();
+            $isAdmin = $user && ((int) $user->role_id === 1);
 
-            if ($scope === 'quota' && !$hasSearchFilters && $dailyQuota > 0 && $activeCycleId) {
-                $userId = Auth::id() ?? $request->user()?->id;
+            if (!$isAdmin && $scope === 'quota' && !$hasSearchFilters && $dailyQuota > 0 && $activeCycleId) {
+                $userId = $user?->id;
                 $today = now()->toDateString();
 
                 if ($userId) {
@@ -113,8 +115,10 @@ class InventoryCycleController extends Controller
             $settings = \App\Models\GeneralSetting::first();
             $scope = $settings?->cyclic_inventory_scope ?? 'all';
             $dailyQuota = (int) ($settings?->cyclic_inventory_daily_quota ?? 50);
+            $user = Auth::user() ?? $request->user();
+            $isAdmin = $user && ((int) $user->role_id === 1);
 
-            if ($scope !== 'quota' || $dailyQuota <= 0) {
+            if ($isAdmin || $scope !== 'quota' || $dailyQuota <= 0) {
                 return response()->json([
                     'is_active' => false,
                     'counted'   => 0,
