@@ -900,6 +900,27 @@ class ProductRepository
             }
         }
 
+        if (array_key_exists("hasStock", $filtros) && empty($filtros["ids_in"])) {
+            $hasStockVal = $filtros["hasStock"];
+            if ($hasStockVal === true || $hasStockVal === 'true' || $hasStockVal === 'with' || $hasStockVal === 1) {
+                $consulta->whereHas('lots', function ($lq) {
+                    $lq->where('quantity', '>', 0)
+                       ->where(function ($eq) {
+                           $eq->whereNull('expiration_date')
+                              ->orWhere('expiration_date', '>=', DB::connection()->getDriverName() === 'sqlite' ? DB::raw('DATE("now")') : DB::raw('CURDATE()'));
+                       });
+                });
+            } elseif ($hasStockVal === false || $hasStockVal === 'false' || $hasStockVal === 'without' || $hasStockVal === 0) {
+                $consulta->whereDoesntHave('lots', function ($lq) {
+                    $lq->where('quantity', '>', 0)
+                       ->where(function ($eq) {
+                           $eq->whereNull('expiration_date')
+                              ->orWhere('expiration_date', '>=', DB::connection()->getDriverName() === 'sqlite' ? DB::raw('DATE("now")') : DB::raw('CURDATE()'));
+                       });
+                });
+            }
+        }
+
         if (empty($filtros["ids_in"]) && array_key_exists("startDate", $filtros) && array_key_exists("endDate", $filtros)) {
             $consulta->whereHas("lots", function ($query) use ($filtros) {
                 $query->whereBetween("expiration_date", [$filtros["startDate"], $filtros["endDate"]]);
@@ -1215,6 +1236,27 @@ class ProductRepository
             }
             if ($filtros["stock"] == "fallas") {
                 $consulta->having("solicitar", ">", 0);
+            }
+        }
+
+        if (array_key_exists("hasStock", $filtros) && empty($filtros["ids_in"])) {
+            $hasStockVal = $filtros["hasStock"];
+            if ($hasStockVal === true || $hasStockVal === 'true' || $hasStockVal === 'with' || $hasStockVal === 1) {
+                $consulta->whereHas('lots', function ($lq) {
+                    $lq->where('quantity', '>', 0)
+                       ->where(function ($eq) {
+                           $eq->whereNull('expiration_date')
+                              ->orWhere('expiration_date', '>=', DB::connection()->getDriverName() === 'sqlite' ? DB::raw('DATE("now")') : DB::raw('CURDATE()'));
+                       });
+                });
+            } elseif ($hasStockVal === false || $hasStockVal === 'false' || $hasStockVal === 'without' || $hasStockVal === 0) {
+                $consulta->whereDoesntHave('lots', function ($lq) {
+                    $lq->where('quantity', '>', 0)
+                       ->where(function ($eq) {
+                           $eq->whereNull('expiration_date')
+                              ->orWhere('expiration_date', '>=', DB::connection()->getDriverName() === 'sqlite' ? DB::raw('DATE("now")') : DB::raw('CURDATE()'));
+                       });
+                });
             }
         }
 

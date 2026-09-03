@@ -101,6 +101,14 @@ class IaAssistantReportService
                 $procesado = $procesado->filter(fn($p) => (float)($p->solicitar ?? 0) < 0);
             }
 
+            if (array_key_exists('hasStock', $filtros)) {
+                if ($filtros['hasStock'] === true || $filtros['hasStock'] === 'with' || $filtros['hasStock'] === 'true') {
+                    $procesado = $procesado->filter(fn($p) => (float)($p->lote_quantity ?? $p->stock ?? 0) > 0);
+                } elseif ($filtros['hasStock'] === false || $filtros['hasStock'] === 'without' || $filtros['hasStock'] === 'false') {
+                    $procesado = $procesado->filter(fn($p) => (float)($p->lote_quantity ?? $p->stock ?? 0) <= 0);
+                }
+            }
+
             $shortBy = $filtros['sortBy'] ?? 'solicitar';
             $orderDir = strtolower($filtros['orderBy'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
 
