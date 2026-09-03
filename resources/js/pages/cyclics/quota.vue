@@ -91,10 +91,17 @@ const getInitials = (name, lastName) => {
   return (n + l).toUpperCase() || "U";
 };
 
+// Obtener datos de la celda de un empleado de manera segura
+const getEmployeeCell = (row, emp) => {
+  if (!row || !row.users || !emp) return null;
+  const uid = emp.user_id ?? emp.id;
+  return row.users[uid] ?? row.users[String(uid)] ?? row.users[Number(uid)] ?? null;
+};
+
 // Empleados filtrados
 const filteredEmployees = computed(() => {
   if (!filterEmployee.value) return employees.value;
-  return employees.value.filter((e) => e.user_id === filterEmployee.value);
+  return employees.value.filter((e) => (e.user_id ?? e.id) === filterEmployee.value);
 });
 
 // Exportar a CSV
@@ -419,17 +426,17 @@ const exportToCsv = () => {
                 :key="emp.id"
                 class="text-center px-2 py-2"
               >
-                <template v-if="row.users[emp.user_id]">
+                <template v-if="getEmployeeCell(row, emp)">
                   <!-- Pestaña Totales -->
                   <template v-if="activeTab === 'totals'">
                     <VChip
-                      v-if="row.users[emp.user_id].count > 0"
+                      v-if="getEmployeeCell(row, emp).count > 0"
                       size="small"
                       color="primary"
                       variant="flat"
                       class="font-weight-black"
                     >
-                      {{ row.users[emp.user_id].count }}
+                      {{ getEmployeeCell(row, emp).count }}
                     </VChip>
                     <span v-else class="text-caption text-disabled font-weight-bold">&mdash;</span>
                   </template>
@@ -437,18 +444,18 @@ const exportToCsv = () => {
                   <!-- Pestaña Productos (Con Meta y Cumplimiento) -->
                   <template v-else-if="activeTab === 'products'">
                     <VChip
-                      v-if="row.users[emp.user_id].count > 0"
+                      v-if="getEmployeeCell(row, emp).count > 0"
                       size="small"
-                      :color="row.users[emp.user_id].fulfilled ? 'success' : 'warning'"
+                      :color="getEmployeeCell(row, emp).fulfilled ? 'success' : 'warning'"
                       variant="flat"
                       class="font-weight-black"
                     >
                       <VIcon
                         start
-                        :icon="row.users[emp.user_id].fulfilled ? 'tabler-circle-check' : 'tabler-clock'"
+                        :icon="getEmployeeCell(row, emp).fulfilled ? 'tabler-circle-check' : 'tabler-clock'"
                         size="14"
                       />
-                      {{ row.users[emp.user_id].count }}/{{ row.users[emp.user_id].quota }}
+                      {{ getEmployeeCell(row, emp).count }}/{{ getEmployeeCell(row, emp).quota }}
                     </VChip>
                     <span v-else class="text-caption text-disabled font-weight-bold">&mdash;</span>
                   </template>
@@ -456,13 +463,13 @@ const exportToCsv = () => {
                   <!-- Otras pestañas -->
                   <template v-else>
                     <VChip
-                      v-if="row.users[emp.user_id].count > 0"
+                      v-if="getEmployeeCell(row, emp).count > 0"
                       size="small"
                       color="info"
                       variant="tonal"
                       class="font-weight-black"
                     >
-                      {{ row.users[emp.user_id].count }}
+                      {{ getEmployeeCell(row, emp).count }}
                     </VChip>
                     <span v-else class="text-caption text-disabled font-weight-bold">&mdash;</span>
                   </template>
@@ -497,7 +504,7 @@ const exportToCsv = () => {
             <div class="d-flex flex-wrap gap-2">
               <template v-for="emp in filteredEmployees" :key="emp.id">
                 <div
-                  v-if="row.users[emp.user_id] && row.users[emp.user_id].count > 0"
+                  v-if="getEmployeeCell(row, emp) && getEmployeeCell(row, emp).count > 0"
                   class="d-flex align-center gap-2 pa-2 rounded-lg border bg-var-theme-background flex-grow-1"
                 >
                   <VAvatar size="26" color="primary" variant="tonal">
@@ -505,8 +512,8 @@ const exportToCsv = () => {
                   </VAvatar>
                   <div class="d-flex flex-column flex-grow-1 min-width-0">
                     <span class="text-xs font-weight-bold text-truncate">{{ emp.name }}</span>
-                    <span class="text-super-xs font-weight-black" :class="row.users[emp.user_id].fulfilled ? 'text-success' : 'text-primary'">
-                      {{ row.users[emp.user_id].count }} {{ activeTab === 'products' ? `/${row.users[emp.user_id].quota}` : 'conteos' }}
+                    <span class="text-super-xs font-weight-black" :class="getEmployeeCell(row, emp).fulfilled ? 'text-success' : 'text-primary'">
+                      {{ getEmployeeCell(row, emp).count }} {{ activeTab === 'products' ? `/${getEmployeeCell(row, emp).quota}` : 'conteos' }}
                     </span>
                   </div>
                 </div>

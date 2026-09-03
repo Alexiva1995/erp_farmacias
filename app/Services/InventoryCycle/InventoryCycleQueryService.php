@@ -1059,6 +1059,7 @@ class InventoryCycleQueryService
         $settings = \App\Models\GeneralSetting::first();
         $dailyQuota = (int) ($settings?->cyclic_inventory_daily_quota ?? 50);
 
+        // Obtener todos los empleados con usuario vinculado
         $employees = \App\Models\Employee::where('is_active', true)
             ->whereNotNull('user_id')
             ->select(['id', 'name', 'last_name', 'user_id', 'photo'])
@@ -1070,36 +1071,36 @@ class InventoryCycleQueryService
         $matrixMap = [];
 
         if ($type === 'totals') {
-            // Obtener conteos de productos regulares (aprobados o totales)
+            // Obtener conteos de productos regulares, facturas y ventas
             $pCounts = ProductCount::whereYear('created_at', $year)
                 ->whereMonth('created_at', $month)
-                ->whereIn('user_id', $userIds)
                 ->selectRaw('DATE(created_at) as count_date, user_id, COUNT(*) as total_counts')
                 ->groupBy('count_date', 'user_id')
                 ->get();
 
             $iCounts = InvoiceCount::whereYear('created_at', $year)
                 ->whereMonth('created_at', $month)
-                ->whereIn('user_id', $userIds)
                 ->selectRaw('DATE(created_at) as count_date, user_id, COUNT(*) as total_counts')
                 ->groupBy('count_date', 'user_id')
                 ->get();
 
             $sCounts = SaleCount::whereYear('created_at', $year)
                 ->whereMonth('created_at', $month)
-                ->whereIn('user_id', $userIds)
                 ->selectRaw('DATE(created_at) as count_date, user_id, COUNT(*) as total_counts')
                 ->groupBy('count_date', 'user_id')
                 ->get();
 
             foreach ($pCounts as $item) {
-                $matrixMap[$item->count_date][$item->user_id] = ($matrixMap[$item->count_date][$item->user_id] ?? 0) + (int) $item->total_counts;
+                $uid = (int) $item->user_id;
+                $matrixMap[$item->count_date][$uid] = ($matrixMap[$item->count_date][$uid] ?? 0) + (int) $item->total_counts;
             }
             foreach ($iCounts as $item) {
-                $matrixMap[$item->count_date][$item->user_id] = ($matrixMap[$item->count_date][$item->user_id] ?? 0) + (int) $item->total_counts;
+                $uid = (int) $item->user_id;
+                $matrixMap[$item->count_date][$uid] = ($matrixMap[$item->count_date][$uid] ?? 0) + (int) $item->total_counts;
             }
             foreach ($sCounts as $item) {
-                $matrixMap[$item->count_date][$item->user_id] = ($matrixMap[$item->count_date][$item->user_id] ?? 0) + (int) $item->total_counts;
+                $uid = (int) $item->user_id;
+                $matrixMap[$item->count_date][$uid] = ($matrixMap[$item->count_date][$uid] ?? 0) + (int) $item->total_counts;
             }
         } else {
             $countsQuery = match ($type) {
@@ -1112,13 +1113,13 @@ class InventoryCycleQueryService
             $counts = $countsQuery
                 ->whereYear('created_at', $year)
                 ->whereMonth('created_at', $month)
-                ->whereIn('user_id', $userIds)
                 ->selectRaw('DATE(created_at) as count_date, user_id, COUNT(*) as total_counts')
                 ->groupBy('count_date', 'user_id')
                 ->get();
 
             foreach ($counts as $item) {
-                $matrixMap[$item->count_date][$item->user_id] = (int) $item->total_counts;
+                $uid = (int) $item->user_id;
+                $matrixMap[$item->count_date][$uid] = (int) $item->total_counts;
             }
         }
 
@@ -1137,7 +1138,7 @@ class InventoryCycleQueryService
             $dayTotal = 0;
 
             foreach ($employees as $emp) {
-                $uId = $emp->user_id;
+                $uId = (int) $emp->user_id;
                 $countVal = $matrixMap[$currentDate][$uId] ?? 0;
                 $dayTotal += $countVal;
 
@@ -1146,6 +1147,11 @@ class InventoryCycleQueryService
                     'quota'     => $dailyQuota,
                     'fulfilled' => ($type === 'products') ? ($countVal >= $dailyQuota) : ($countVal > 0),
                 ];
+            }
+
+            // Si hay conteos del día que no corresponden a empleados de la lista, sumarlos al total del día
+            if (!empty($matrixMap[$currentDate])) {
+                $dayTotal = array_sum($matrixMap[$currentDate]);
             }
 
             $rows[] = [
