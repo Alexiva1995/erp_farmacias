@@ -27,6 +27,20 @@ class MasterCatalogController extends Controller
     }
 
     /**
+     * Exportar en lote laboratorios, categorías, orígenes, grupos y proveedores hacia farmacias esclavas.
+     */
+    public function bulkExport(Request $request): JsonResponse
+    {
+        $entities = explode(',', (string) $request->query('entities', 'laboratories,origins,groups,categories,suppliers'));
+        $data = $this->masterCatalogService->exportEntities($entities);
+
+        return response()->json([
+            'success' => true,
+            'data'    => $data,
+        ]);
+    }
+
+    /**
      * Registrar un producto nuevo en el catálogo maestro y obtener ID oficial.
      */
     public function store(Request $request): JsonResponse

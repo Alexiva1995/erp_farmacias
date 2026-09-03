@@ -400,5 +400,53 @@ class MasterCatalogService
             ],
         ];
     }
+
+    /**
+     * Exporta en bloque laboratorios, orígenes, grupos, categorías y proveedores del Master.
+     */
+    public function exportEntities(array $entities): array
+    {
+        $result = [];
+
+        if (in_array('laboratories', $entities)) {
+            $result['laboratories'] = DB::table('laboratories')
+                ->whereNull('deleted_at')
+                ->orderBy('id')
+                ->get()
+                ->toArray();
+        }
+
+        if (in_array('origins', $entities)) {
+            $result['origins'] = DB::table('origins')
+                ->orderBy('id')
+                ->get()
+                ->toArray();
+        }
+
+        if (in_array('groups', $entities) || in_array('groups_products', $entities)) {
+            $result['groups'] = DB::table('groups_products')
+                ->orderBy('id')
+                ->get()
+                ->toArray();
+        }
+
+        if (in_array('categories', $entities)) {
+            $result['categories'] = DB::table('categories')
+                ->whereNull('deleted_at')
+                ->orderBy('id')
+                ->get()
+                ->toArray();
+        }
+
+        if (in_array('suppliers', $entities)) {
+            $result['suppliers'] = DB::table('suppliers')
+                ->whereNull('deleted_at')
+                ->orderBy('id')
+                ->get()
+                ->toArray();
+        }
+
+        return $result;
+    }
 }
 

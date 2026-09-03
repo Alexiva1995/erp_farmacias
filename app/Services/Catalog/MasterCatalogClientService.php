@@ -360,5 +360,40 @@ class MasterCatalogClientService
 
         return Product::find($masterId);
     }
+
+    /**
+     * Descarga en bloque catálogos del Master (laboratorios, categorías, proveedores, orígenes, grupos).
+     */
+    public function fetchMasterEntities(array $entities = ['laboratories', 'origins', 'groups', 'categories', 'suppliers']): array
+    {
+        $role = config('catalog.role', 'standalone');
+
+        if ($role === 'slave') {
+            $masterUrl = config('catalog.master_url');
+            $masterKey = config('catalog.master_key');
+
+            if (!empty($masterUrl)) {
+                try {
+                    $response = Http::timeout(20)
+                        ->withHeaders([
+                            'X-Master-Key' => $masterKey,
+                            'Accept'       => 'application/json',
+                        ])
+                        ->get("{$masterUrl}/bulk-export", [
+                            'entities' => implode(',', $entities)
+                        ]);
+
+                    if ($response->successful()) {
+                        $json = $response->json();
+                        return $json['data'] ?? [];
+                    }
+                } catch (\Throwable $e) {
+                    Log::error("Error al descargar entidades del Catálogo Maestro: " . $e->getMessage());
+                }
+            }
+        }
+
+        return [];
+    }
 }
 

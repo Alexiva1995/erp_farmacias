@@ -76,10 +76,101 @@ class HomologateSlaveCatalogCommand extends Command
         $startTime = microtime(true);
 
         try {
+            // 0. Si la esclava no tiene datos o requiere poblarse, descargar en bloque del Master
+            $this->info("\n--- [0/6] Descargando Catálogos Globales desde el Master ---");
+            $masterData = $masterClient->fetchMasterEntities(['laboratories', 'origins', 'groups', 'categories', 'suppliers']);
+            
+            if (!$isDryRun) {
+                if (!empty($masterData['laboratories'])) {
+                    foreach ($masterData['laboratories'] as $mlab) {
+                        $mlabArray = (array) $mlab;
+                        DB::table('laboratories')->updateOrInsert(
+                            ['id' => $mlabArray['id']],
+                            [
+                                'name'       => $mlabArray['name'] ?? '',
+                                'group_id'   => $mlabArray['group_id'] ?? null,
+                                'parent_id'  => $mlabArray['parent_id'] ?? null,
+                                'created_at' => $mlabArray['created_at'] ?? now(),
+                                'updated_at' => $mlabArray['updated_at'] ?? now(),
+                            ]
+                        );
+                    }
+                    $this->line('• Laboratorios sincronizados desde Master: <fg=green>' . count($masterData['laboratories']) . '</>');
+                }
+
+                if (!empty($masterData['origins'])) {
+                    foreach ($masterData['origins'] as $morig) {
+                        $morigArray = (array) $morig;
+                        DB::table('origins')->updateOrInsert(
+                            ['id' => $morigArray['id']],
+                            [
+                                'name'       => $morigArray['name'] ?? '',
+                                'created_at' => $morigArray['created_at'] ?? now(),
+                                'updated_at' => $morigArray['updated_at'] ?? now(),
+                            ]
+                        );
+                    }
+                    $this->line('• Orígenes sincronizados desde Master: <fg=green>' . count($masterData['origins']) . '</>');
+                }
+
+                if (!empty($masterData['groups'])) {
+                    foreach ($masterData['groups'] as $mgrp) {
+                        $mgrpArray = (array) $mgrp;
+                        DB::table('groups_products')->updateOrInsert(
+                            ['id' => $mgrpArray['id']],
+                            [
+                                'name'       => $mgrpArray['name'] ?? '',
+                                'created_at' => $mgrpArray['created_at'] ?? now(),
+                                'updated_at' => $mgrpArray['updated_at'] ?? now(),
+                            ]
+                        );
+                    }
+                    $this->line('• Grupos sincronizados desde Master: <fg=green>' . count($masterData['groups']) . '</>');
+                }
+
+                if (!empty($masterData['categories'])) {
+                    foreach ($masterData['categories'] as $mcat) {
+                        $mcatArray = (array) $mcat;
+                        DB::table('categories')->updateOrInsert(
+                            ['id' => $mcatArray['id']],
+                            [
+                                'name'       => $mcatArray['name'] ?? '',
+                                'created_at' => $mcatArray['created_at'] ?? now(),
+                                'updated_at' => $mcatArray['updated_at'] ?? now(),
+                            ]
+                        );
+                    }
+                    $this->line('• Categorías sincronizadas desde Master: <fg=green>' . count($masterData['categories']) . '</>');
+                }
+
+                if (!empty($masterData['suppliers'])) {
+                    foreach ($masterData['suppliers'] as $msup) {
+                        $msupArray = (array) $msup;
+                        DB::table('suppliers')->updateOrInsert(
+                            ['id' => $msupArray['id']],
+                            [
+                                'name'              => $msupArray['name'] ?? '',
+                                'social_reason'     => $msupArray['social_reason'] ?? ($msupArray['name'] ?? ''),
+                                'rif'               => $msupArray['rif'] ?? null,
+                                'sales_phone'       => $msupArray['sales_phone'] ?? null,
+                                'collections_phone' => $msupArray['collections_phone'] ?? null,
+                                'credit_days'       => $msupArray['credit_days'] ?? 0,
+                                'payment_method'    => $msupArray['payment_method'] ?? 'Bs',
+                                'cash_payment'      => $msupArray['cash_payment'] ?? 1,
+                                'charges_igtf'      => $msupArray['charges_igtf'] ?? 0,
+                                'created_at'        => $msupArray['created_at'] ?? now(),
+                                'updated_at'        => $msupArray['updated_at'] ?? now(),
+                            ]
+                        );
+                    }
+                    $this->line('• Proveedores sincronizados desde Master: <fg=green>' . count($masterData['suppliers']) . '</>');
+                }
+            }
+
             // ==========================================
             // ETAPA A: HOMOLOGAR LABORATORIOS
             // ==========================================
-            $this->info("\n--- [1/5] Homologando Laboratorios ---");
+            $this->info("\n--- [1/6] Homologando Laboratorios Locales ---");
             $labs = DB::table('laboratories')->orderBy('id')->get();
             $labMap = []; // old_id => new_id
 
