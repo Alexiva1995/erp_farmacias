@@ -66,7 +66,49 @@ class ExpirationQueryService
             ]);
         }
 
-        return $query->orderBy('expiration_date', 'asc');
+        $sortBy = $request->input('sortBy') ?? $request->input('sort_by');
+        $orderBy = $request->input('orderBy') ?? $request->input('order_by') ?? $request->input('order');
+
+        return $this->applySorting($query, $sortBy, $orderBy);
+    }
+
+    /**
+     * Aplica ordenamiento a la consulta de lotes según la columna solicitada.
+     */
+    private function applySorting($query, ?string $sortBy, ?string $orderBy)
+    {
+        $order = strtolower((string) $orderBy) === 'desc' ? 'desc' : 'asc';
+
+        switch ($sortBy) {
+            case 'product.id':
+            case 'product_id':
+                return $query->orderBy('product_lots.product_id', $order);
+
+            case 'product.name':
+            case 'name':
+                return $query->join('products', 'product_lots.product_id', '=', 'products.id')
+                    ->orderBy('products.name', $order)
+                    ->select('product_lots.*');
+
+            case 'laboratory_name':
+            case 'laboratory.name':
+            case 'product.laboratory.name':
+                return $query->join('products', 'product_lots.product_id', '=', 'products.id')
+                    ->leftJoin('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
+                    ->orderBy('laboratories.name', $order)
+                    ->select('product_lots.*');
+
+            case 'lot_number':
+                return $query->orderBy('product_lots.lot_number', $order);
+
+            case 'quantity':
+            case 'stock':
+                return $query->orderBy('product_lots.quantity', $order);
+
+            case 'expiration_date':
+            default:
+                return $query->orderBy('product_lots.expiration_date', $order);
+        }
     }
 
     /**

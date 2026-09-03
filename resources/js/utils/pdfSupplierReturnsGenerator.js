@@ -217,14 +217,26 @@ export default function pdfSupplierReturnsGenerator(reportData, options = {}) {
       y = 15
     }
 
+    const totalDoubleAmt = Number((group.total_amount ?? 0) * 2).toLocaleString('es-VE', { minimumFractionDigits: 2 })
+
     addLine(
-      'Agradecemos de antemano su gestión para procesar la sustitución de estos ítems por lotes de mayor vigencia, lo que nos permitirá seguir manteniendo el producto exhibido y asegurar su flujo de venta continuo en nuestra farmacia.',
-      { spacingAfter: 3 }
+      'Compromiso Comercial de Recompra:',
+      { style: 'bold', size: 8.5, spacingAfter: 1 }
     )
 
     addLine(
-      'Quedamos a la espera de sus instrucciones sobre la recolección o recepción del material.',
-      { spacingAfter: 6 }
+      `Con el firme propósito de fortalecer nuestra alianza comercial y dinamizar la rotación de sus líneas en nuestros anaqueles, nos comprometemos formalmente a emitir una nueva orden de compra por el doble del valor de la mercancía canjeada (aprox. $${totalDoubleAmt} USD) al ser aprobada y procesada la presente solicitud de canje.`,
+      { size: 8, spacingAfter: 3 }
+    )
+
+    addLine(
+      'Agradecemos de antemano su valiosa gestión para coordinar la sustitución de estos ítems por lotes de mayor vigencia o la nota de crédito correspondiente, asegurando así la presencia continua de su marca y el crecimiento comercial conjunto.',
+      { size: 8, spacingAfter: 3 }
+    )
+
+    addLine(
+      'Quedamos a su disposición para coordinar los detalles operativos y la respectiva orden de reposición.',
+      { size: 8, spacingAfter: 5 }
     )
 
     addLine('Atentamente,', { style: 'bold', spacingAfter: 1 })

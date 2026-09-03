@@ -57,7 +57,7 @@ const headers = computed(() => [
     visible: false,
     value: (item) => item.product?.laboratory?.name || "—"
   },
-  { title: "Nº Lote", key: "lot_number", sortable: false },
+  { title: "Nº Lote", key: "lot_number", sortable: true },
   { title: "Exp.", key: "expiration_date", sortable: true },
   { title: "Stock", key: "quantity", sortable: true },
   { title: "Acciones", key: "actions", sortable: false },
