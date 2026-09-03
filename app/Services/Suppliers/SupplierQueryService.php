@@ -218,33 +218,64 @@ class SupplierQueryService
             error_log($logMessage);
 
 
-            $invoiceNumbersToFilter = collect($invoices)->pluck('header.invoice_number')->filter()->unique()->toArray();
-            
-            // Expandir números posibles (ej. 43141520 y A43141520) para evitar duplicar facturas de Dronena
-            $allPossibleNumbers = [];
-            foreach ($invoiceNumbersToFilter as $num) {
-                $clean = ltrim((string)$num, 'A');
-                $allPossibleNumbers[] = $num;
-                $allPossibleNumbers[] = $clean;
-                $allPossibleNumbers[] = 'A' . $clean;
-            }
-            $allPossibleNumbers = array_unique($allPossibleNumbers);
+            // Cargar facturas y números de control existentes para este proveedor
+            $existingSupplierInvoices = Invoice::where('supplier_id', $supplier->id)
+                ->get(['invoice_number', 'control_number']);
 
-            $existingInvoices = Invoice::whereIn('invoice_number', $allPossibleNumbers)
-                ->pluck('invoice_number')
-                ->map(fn($n) => ltrim((string)$n, 'A'))
+            $existingControls = $existingSupplierInvoices
+                ->pluck('control_number')
+                ->filter()
+                ->map(fn($c) => strtoupper(trim((string)$c)))
+                ->flip()
                 ->toArray();
 
-            $filteredInvoices = collect($invoices)
-                ->filter(function ($invoice) use ($existingInvoices) {
-                    $number = $invoice['header']['invoice_number'] ?? null;
-                    if (!$number) return false;
-                    $cleanNumber = ltrim((string)$number, 'A');
-                    $isNew = !in_array($cleanNumber, $existingInvoices);
-                    if (!$isNew) {
-                        Log::warning("Factura filtrada (ya existe en ERP con o sin 'A')", ['number' => $number]);
+            $existingNormalizedNumbers = [];
+            foreach ($existingSupplierInvoices as $inv) {
+                $raw = strtoupper(trim((string)$inv->invoice_number));
+                if (!empty($raw)) {
+                    $existingNormalizedNumbers[$raw] = true;
+                    $stripped = ltrim($raw, 'ABFCD');
+                    $strippedNoZeroes = ltrim($stripped, '0');
+                    $existingNormalizedNumbers[$stripped] = true;
+                    if (!empty($strippedNoZeroes)) {
+                        $existingNormalizedNumbers[$strippedNoZeroes] = true;
                     }
-                    return $isNew;
+                    if (str_starts_with($raw, '70') && strlen($raw) >= 6) {
+                        $sub = ltrim(substr($raw, 2), '0');
+                        if (!empty($sub)) {
+                            $existingNormalizedNumbers[$sub] = true;
+                        }
+                    }
+                }
+            }
+
+            $filteredInvoices = collect($invoices)
+                ->filter(function ($invoice) use ($existingControls, $existingNormalizedNumbers) {
+                    $number = strtoupper(trim((string)($invoice['header']['invoice_number'] ?? '')));
+                    $control = strtoupper(trim((string)($invoice['header']['control_number'] ?? '')));
+
+                    if (empty($number)) {
+                        return false;
+                    }
+
+                    // 1. Validar por número de control fiscal idéntico
+                    if (!empty($control) && isset($existingControls[$control])) {
+                        Log::warning("Factura filtrada: Ya existe una factura con el número de control '{$control}' para este proveedor", ['number' => $number]);
+                        return false;
+                    }
+
+                    // 2. Validar por número de factura normalizado
+                    $stripped = ltrim($number, 'ABFCD');
+                    $strippedNoZeroes = ltrim($stripped, '0');
+
+                    if (isset($existingNormalizedNumbers[$number]) ||
+                        isset($existingNormalizedNumbers[$stripped]) ||
+                        (!empty($strippedNoZeroes) && isset($existingNormalizedNumbers[$strippedNoZeroes]))) {
+                        Log::warning("Factura filtrada: Ya existe en el ERP bajo número normalizado", ['number' => $number]);
+                        return false;
+                    }
+
+                    return true;
                 })->values()->toArray();
 
 

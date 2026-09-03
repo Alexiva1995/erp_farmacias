@@ -80,13 +80,19 @@ class CleanPendingInvoicesCommand extends Command
             $this->info("\n--- 0. Buscando y eliminando facturas duplicadas más recientes ---");
             $allInvoices = Invoice::withCount('details')->orderBy('id', 'asc')->get();
             $grouped = [];
+
             foreach ($allInvoices as $inv) {
-                $digits = preg_replace('/\D/', '', (string)$inv->invoice_number);
-                $cleanNum = ltrim($digits ?: (string)$inv->invoice_number, '0');
+                $raw = (string)$inv->invoice_number;
+                $digits = preg_replace('/\D/', '', $raw);
+                $cleanNum = ltrim($digits ?: $raw, '0');
+                if (str_starts_with($cleanNum, '70') && strlen($cleanNum) >= 6) {
+                    $cleanNum = ltrim(substr($cleanNum, 2), '0');
+                }
                 $key = "{$inv->supplier_id}_{$cleanNum}";
                 $grouped[$key][] = $inv;
             }
 
+            $deletedIds = [];
             $deletedCount = 0;
             foreach ($grouped as $key => $list) {
                 if (count($list) <= 1) continue;
@@ -100,16 +106,20 @@ class CleanPendingInvoicesCommand extends Command
                 });
 
                 $keeper = $list[0];
+                if (in_array($keeper->id, $deletedIds)) continue;
+
                 $this->line("Manteniendo Factura Principal: ID {$keeper->id} | {$keeper->invoice_number} | Control: " . ($keeper->control_number ?? 'NULL') . " | Items: {$keeper->details_count}");
 
                 for ($i = 1; $i < count($list); $i++) {
                     $dup = $list[$i];
+                    if (in_array($dup->id, $deletedIds)) continue;
+                    
                     $this->warn("  -> Eliminando Duplicado Reciente: ID {$dup->id} | {$dup->invoice_number} | Control: " . ($dup->control_number ?? 'NULL') . " | Creada: {$dup->created_at}");
                     if (!$isDryRun) {
-                        // Eliminar detalles huérfanos si los tuviera y borrar factura
                         $dup->details()->delete();
                         $dup->delete();
                     }
+                    $deletedIds[] = $dup->id;
                     $deletedCount++;
                 }
             }

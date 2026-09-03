@@ -717,6 +717,14 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
         Route::get("/history/{autoOrder}", [PurchaseOrderDetailController::class, "getPurchaseOrderDetailsHistory"]);
         Route::post("/{autoOrder}/reject-pending", [PurchaseOrderController::class, "rejectPendingDetails"]);
     });
+
+    Route::prefix("suppliers/purchase-orders-laboratory")->group(function () {
+        Route::get("/stats", [\App\Http\Controllers\Api\PurchaseOrderByLaboratoryController::class, "getStats"]);
+        Route::get("/", [\App\Http\Controllers\Api\PurchaseOrderByLaboratoryController::class, "getLaboratories"]);
+        Route::get("/{laboratoryId}/details", [\App\Http\Controllers\Api\PurchaseOrderByLaboratoryController::class, "getDetails"]);
+        Route::get("/{laboratoryId}/export", [\App\Http\Controllers\Api\PurchaseOrderByLaboratoryController::class, "getExportData"]);
+    });
+
     Route::prefix("supplier-laboratories")->group(function () {
         Route::get("/{supplier}/discount-rules", [SupplierLaboratoryController::class, "getDiscountRules"]);
         Route::post("/{supplier}/discount-rules", [SupplierLaboratoryController::class, "storeDiscountRule"]);

@@ -1156,12 +1156,49 @@ class InventoryCycleQueryService
             ];
         }
 
+        // Calcular resumen mensual
+        $totalMonthCounts = 0;
+        $activeDaysCount = 0;
+        $employeeTotals = [];
+
+        foreach ($rows as $row) {
+            $totalMonthCounts += (int) $row['day_total'];
+            if ($row['day_total'] > 0) {
+                $activeDaysCount++;
+            }
+            foreach ($row['users'] as $uId => $userData) {
+                $employeeTotals[$uId] = ($employeeTotals[$uId] ?? 0) + (int) $userData['count'];
+            }
+        }
+
+        $dailyAverage = $activeDaysCount > 0 ? round($totalMonthCounts / $activeDaysCount, 1) : 0.0;
+        $topEmployee = null;
+        if (!empty($employeeTotals)) {
+            arsort($employeeTotals);
+            $topUserId = array_key_first($employeeTotals);
+            $topEmpModel = $employees->firstWhere('user_id', $topUserId);
+            if ($topEmpModel) {
+                $topEmployee = [
+                    'id' => $topEmpModel->id,
+                    'user_id' => $topEmpModel->user_id,
+                    'name' => trim("{$topEmpModel->name} {$topEmpModel->last_name}"),
+                    'total_counts' => $employeeTotals[$topUserId],
+                ];
+            }
+        }
+
         return [
             'month'       => $month,
             'year'        => $year,
             'daily_quota' => $dailyQuota,
             'employees'   => $employees,
             'data'        => $rows,
+            'summary'     => [
+                'total_month_counts' => $totalMonthCounts,
+                'active_days'        => $activeDaysCount,
+                'daily_average'      => $dailyAverage,
+                'top_employee'       => $topEmployee,
+            ],
         ];
     }
 }

@@ -236,10 +236,10 @@ class InventoryCycleController extends Controller
 
             $data = $this->inventoryCycleQueryService->getDailyQuotasMatrixData($month, $year, $type);
 
-            return response()->json($data);
+            return ApiResponse::success(new \App\Http\Resources\DailyQuotasMatrixResource($data));
         } catch (\Throwable $e) {
             Log::error('getDailyQuotasMatrix error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
-            return response()->json(['message' => 'Error al obtener matriz de cuotas: ' . $e->getMessage()], 500);
+            return ApiResponse::error('Error al obtener matriz de cuotas: ' . $e->getMessage(), 500);
         }
     }
 

@@ -189,15 +189,31 @@ class SupplierConnectionService
                 return str_starts_with($name, $startsWith) && str_ends_with($name, $endsWith);
             });
 
-            // Optimización: Cargar facturas ya registradas en base de datos para no descargarlas repetidamente por FTP
-            $existingInvoicesMap = \App\Models\Invoice::where('supplier_id', $connection->supplier_id)
-                ->pluck('invoice_number')
-                ->map(fn($num) => strtoupper(trim((string)$num)))
-                ->filter()
-                ->flip()
-                ->toArray();
+            // Optimización: Cargar facturas y controles ya registrados en base de datos para no descargarlas repetidamente por FTP
+            $existingInvoicesData = \App\Models\Invoice::where('supplier_id', $connection->supplier_id)
+                ->get(['invoice_number', 'control_number']);
 
-            // Filtrar archivos cuya factura ya esté registrada en BD por nombre de archivo
+            $existingInvoicesMap = [];
+            foreach ($existingInvoicesData as $inv) {
+                $rawNum = strtoupper(trim((string)$inv->invoice_number));
+                if (!empty($rawNum)) {
+                    $existingInvoicesMap[$rawNum] = true;
+                    $stripped = ltrim($rawNum, 'ABFCD');
+                    $strippedNoZeroes = ltrim($stripped, '0');
+                    $existingInvoicesMap[$stripped] = true;
+                    if (!empty($strippedNoZeroes)) {
+                        $existingInvoicesMap[$strippedNoZeroes] = true;
+                    }
+                    if (str_starts_with($rawNum, '70') && strlen($rawNum) >= 6) {
+                        $sub = ltrim(substr($rawNum, 2), '0');
+                        if (!empty($sub)) {
+                            $existingInvoicesMap[$sub] = true;
+                        }
+                    }
+                }
+            }
+
+            // Filtrar archivos cuya factura ya esté registrada en BD por nombre de archivo o núcleo numérico
             $filesToProcess = [];
             foreach ($files as $filePath) {
                 if (!str_ends_with(strtolower($filePath), ".txt")) {
@@ -205,7 +221,7 @@ class SupplierConnectionService
                 }
                 $filename = pathinfo($filePath, PATHINFO_FILENAME);
                 $cleanFilename = strtoupper(trim($filename));
-                $cleanFilenameNoPrefix = strtoupper(ltrim($cleanFilename, 'F'));
+                $cleanFilenameNoPrefix = strtoupper(ltrim($cleanFilename, 'ABFCD'));
                 $cleanFilenameNoZeroes = strtoupper(ltrim($cleanFilenameNoPrefix, '0'));
 
                 if (isset($existingInvoicesMap[$cleanFilename]) || 

@@ -21,6 +21,12 @@ export default [
         // action: "manage",
         // subject: "suppliers-purchase-orders-list",
       },
+      {
+        title: "Órdenes por Laboratorio",
+        to: "suppliers-purchase-orders-laboratory-list",
+        // action: "manage",
+        // subject: "suppliers-purchase-orders-laboratory-list",
+      },
     ],
   },
   {
