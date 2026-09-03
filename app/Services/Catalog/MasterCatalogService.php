@@ -409,41 +409,43 @@ class MasterCatalogService
         $result = [];
 
         if (in_array('laboratories', $entities)) {
-            $result['laboratories'] = DB::table('laboratories')
-                ->whereNull('deleted_at')
-                ->orderBy('id')
-                ->get()
-                ->toArray();
+            $q = DB::table('laboratories');
+            if (\Illuminate\Support\Facades\Schema::hasColumn('laboratories', 'deleted_at')) {
+                $q->whereNull('deleted_at');
+            }
+            $result['laboratories'] = $q->orderBy('id')->get()->toArray();
         }
 
         if (in_array('origins', $entities)) {
-            $result['origins'] = DB::table('origins')
-                ->orderBy('id')
-                ->get()
-                ->toArray();
+            $q = DB::table('origins');
+            if (\Illuminate\Support\Facades\Schema::hasColumn('origins', 'deleted_at')) {
+                $q->whereNull('deleted_at');
+            }
+            $result['origins'] = $q->orderBy('id')->get()->toArray();
         }
 
         if (in_array('groups', $entities) || in_array('groups_products', $entities)) {
-            $result['groups'] = DB::table('groups_products')
-                ->orderBy('id')
-                ->get()
-                ->toArray();
+            $q = DB::table('groups_products');
+            if (\Illuminate\Support\Facades\Schema::hasColumn('groups_products', 'deleted_at')) {
+                $q->whereNull('deleted_at');
+            }
+            $result['groups'] = $q->orderBy('id')->get()->toArray();
         }
 
         if (in_array('categories', $entities)) {
-            $result['categories'] = DB::table('categories')
-                ->whereNull('deleted_at')
-                ->orderBy('id')
-                ->get()
-                ->toArray();
+            $q = DB::table('categories');
+            if (\Illuminate\Support\Facades\Schema::hasColumn('categories', 'deleted_at')) {
+                $q->whereNull('deleted_at');
+            }
+            $result['categories'] = $q->orderBy('id')->get()->toArray();
         }
 
         if (in_array('suppliers', $entities)) {
-            $result['suppliers'] = DB::table('suppliers')
-                ->whereNull('deleted_at')
-                ->orderBy('id')
-                ->get()
-                ->toArray();
+            $q = DB::table('suppliers');
+            if (\Illuminate\Support\Facades\Schema::hasColumn('suppliers', 'deleted_at')) {
+                $q->whereNull('deleted_at');
+            }
+            $result['suppliers'] = $q->orderBy('id')->get()->toArray();
         }
 
         return $result;
