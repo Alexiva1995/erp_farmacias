@@ -37,18 +37,13 @@ const headers = computed(() => [
     title: "PRODUCTO", 
     key: "name", 
     sortable: true,
-    width: "40%",
+    width: "45%",
   },
   { 
     title: "GRUPO", 
     key: "group", 
     sortable: true,
-    width: "25%",
-  },
-  { 
-    title: "EXP.", 
-    key: "next_expiration", 
-    sortable: false,
+    width: "30%",
   },
   {
     title: "STOCK",
@@ -300,11 +295,6 @@ const formatStock = (item) => {
           </template>
         </template>
 
-        <!-- EXP. -->
-        <template #item.next_expiration="{ item }">
-          <span class="text-xs font-weight-medium">{{ nextExpirationDate(item) }}</span>
-        </template>
-
         <!-- STOCK con chip tonal y menú flotante -->
         <template #item.stock_calculado="{ item }">
           <div class="text-end">
@@ -445,8 +435,7 @@ const formatStock = (item) => {
             </div>
           </div>
 
-          <div v-else class="d-flex align-center justify-space-between text-super-xs text-medium-emphasis mt-2 pt-2 border-t">
-            <span>Exp: {{ nextExpirationDate(item) }}</span>
+          <div v-else class="d-flex align-center justify-end text-super-xs text-medium-emphasis mt-2 pt-2 border-t">
             <IconBtn
               color="primary"
               size="small"
