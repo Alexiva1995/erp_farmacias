@@ -11,6 +11,7 @@ class ExpirationResource extends JsonResource
      * Transforma el recurso en un array.
      *
      * @return array<string, mixed>
+     */
     public function toArray(Request $request): array
     {
         $daysToExpire = $this->expiration_date ? (int) now()->diffInDays($this->expiration_date, false) : 0;

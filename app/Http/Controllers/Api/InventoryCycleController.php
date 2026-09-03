@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Exports\TraceabilityExport;
+use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Models\InvoiceCount;
 use App\Models\Product;
