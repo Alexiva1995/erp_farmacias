@@ -41,31 +41,54 @@ class SupplierConnectionService
 
     public function fetchFromFtp(SupplierConnection $connection)
     {
-        $host = $connection->host;
-        $port = (int) ($connection->port ?? 21);
+        $host = trim((string) ($connection->host ?? ''));
+        $port = (int) ($connection->port ?: 21);
         $user = (string) ($connection->username ?? '');
         $pass = (string) FtpCrypt::decrypt($connection->password ?? '');
+
+        if ($host === '') {
+            throw new Exception("Falta el host de FTP para la conexión.");
+        }
 
         if (trim($user) === '' || trim($pass) === '') {
             throw new Exception("Faltan el usuario o la contraseña de FTP para la conexión. Por favor edite el proveedor para agregar las credenciales.");
         }
 
-        // Valida la conexión en texto plano
-        $ftp = @ftp_connect($host, $port, 10);
+        // 1. Intento inicial de conexión (plano)
+        $ftp = @ftp_connect($host, $port, 15);
+        $isSsl = false;
+
+        // 2. Si falla la conexión inicial plana, probar SSL/TLS
         if ($ftp === false) {
-            Log::error("Fallo ftp_connect", ['host' => $host]);
-            throw new Exception('No se pudo conectar al servidor FTP');
+            try {
+                $ftp = @ftp_ssl_connect($host, $port, 20);
+                if ($ftp !== false) {
+                    $isSsl = true;
+                }
+            } catch (\Throwable $e) {
+                Log::warning("Fallo intento ftp_ssl_connect hacia {$host}:{$port} - " . $e->getMessage());
+            }
+        }
+
+        // 3. Si ambos fallaron, hacer un último reintento plano con 20s
+        if ($ftp === false) {
+            $ftp = @ftp_connect($host, $port, 20);
+        }
+
+        if ($ftp === false) {
+            Log::error("Fallo definitivo de conexión FTP hacia {$host}:{$port}");
+            throw new Exception("No se pudo conectar al servidor FTP {$host}:{$port}. El servidor no respondió a tiempo o no está disponible.");
         }
 
         $login = @ftp_login($ftp, $user, $pass);
-        if ($login === false) {
+        if ($login === false && !$isSsl) {
             Log::warning("Fallo ftp_login inicial para {$user}@{$host}, intentando SSL...");
             @ftp_close($ftp);
 
-            // Reintento seguro con SSL tolerante a politicas locales de servidores que deniegan TLS
+            // Reintento seguro con SSL
             $sslSuccess = false;
             try {
-                $sslFtp = @ftp_ssl_connect($host, $port, 15);
+                $sslFtp = @ftp_ssl_connect($host, $port, 20);
                 if ($sslFtp !== false) {
                     $sslLogin = @ftp_login($sslFtp, $user, $pass);
                     if ($sslLogin !== false) {
@@ -83,6 +106,9 @@ class SupplierConnectionService
             if (!$sslSuccess) {
                 throw new Exception("No se pudo iniciar sesión en el servidor FTP {$host}. Verifique que el usuario '{$user}' y la contraseña sean correctos.");
             }
+        } elseif ($login === false && $isSsl) {
+            @ftp_close($ftp);
+            throw new Exception("No se pudo iniciar sesión en el servidor FTP {$host} mediante SSL. Verifique el usuario y contraseña.");
         }
 
         ftp_pasv($ftp, $connection->pasv); // Modo pasivo
