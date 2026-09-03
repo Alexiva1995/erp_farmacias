@@ -118,7 +118,7 @@ const handleClear = () => {
         <VSpacer />
 
         <!-- ── Grupo de botones de acción ─────────────────────────────── -->
-        <div class="d-flex align-center gap-1">
+        <div class="d-flex align-center justify-center justify-sm-end flex-wrap w-100 w-sm-auto gap-1">
 
           <!-- Slot para acciones previas a filtros (ej. Inhabilitar/Habilitar masivo) -->
           <slot name="prepend-actions" />

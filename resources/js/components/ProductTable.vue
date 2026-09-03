@@ -606,21 +606,26 @@ defineExpose({
                     >
                       {{ item.id }}
                     </a>
+                    <template v-if="!isMiniMarket && item.laboratory?.name">
+                      <span class="mx-1 text-disabled font-weight-regular">|</span>
+                      <span class="text-primary font-weight-bold">{{ item.laboratory.name }}</span>
+                    </template>
+                    <template v-else-if="isMiniMarket && item.category?.name">
+                      <span class="mx-1 text-disabled font-weight-regular">|</span>
+                      <span class="text-primary font-weight-bold">{{ item.category.name }}</span>
+                    </template>
                     <span class="mx-1 text-disabled font-weight-regular">|</span>
                     <span>{{ item.name.toUpperCase() }}</span>
                   </h3>
                   <VChip v-if="item.psychotropic" color="warning" size="x-small" label variant="flat" class="text-super-xs flex-shrink-0">PSI</VChip>
                 </div>
                 
-                <div class="d-flex align-center flex-wrap gap-x-2 text-xs">
-                  <span v-if="!isRestaurant" class="text-medium-emphasis text-truncate" style="max-inline-size: 160px;">{{ item.active_ingredient || 'N/A' }}</span>
-                  <span v-if="!isRestaurant" class="text-disabled">|</span>
-                  <span v-if="isRestaurant && item.presentation" class="text-medium-emphasis text-truncate" style="max-inline-size: 160px;">
-                    {{ item.presentation }} {{ item.unit_of_measure ? `(${item.unit_of_measure})` : '' }}
+                <div v-if="(!isRestaurant && item.active_ingredient && item.active_ingredient !== 'N/A') || (isRestaurant && item.presentation)" class="d-flex align-center flex-wrap gap-x-2 text-xs">
+                  <span v-if="!isRestaurant && item.active_ingredient && item.active_ingredient !== 'N/A'" class="text-medium-emphasis text-truncate" style="max-inline-size: 260px;">
+                    {{ item.active_ingredient }}
                   </span>
-                  <span v-if="isRestaurant && item.presentation" class="text-disabled">|</span>
-                  <span class="text-primary font-weight-bold text-truncate" style="max-inline-size: 140px;">
-                    {{ isMiniMarket ? (item.category?.name || 'SIN CATEGORÍA') : (item.laboratory?.name || 'S/L') }}
+                  <span v-if="isRestaurant && item.presentation" class="text-medium-emphasis text-truncate" style="max-inline-size: 260px;">
+                    {{ item.presentation }} {{ item.unit_of_measure ? `(${item.unit_of_measure})` : '' }}
                   </span>
                 </div>
               </div>
@@ -635,7 +640,9 @@ defineExpose({
                 </span>
               </div>
               <div v-if="!isRestaurant" class="d-flex align-center gap-1.5 text-right">
-                <span class="text-super-xs text-disabled text-uppercase font-weight-bold letter-spacing-1">P.V.P ({{ item.iva == 1 ? 'IVA' : 'EX' }}):</span>
+                <span class="text-super-xs text-disabled text-uppercase font-weight-bold letter-spacing-1">
+                  {{ item.iva == 1 ? 'P.V.P (IVA):' : 'P.V.P:' }}
+                </span>
                 <span class="text-xs font-weight-black text-primary">
                   {{ formatPriceWithCurrency(calculateSalePriceWithIva(item).price, calculateSalePriceWithIva(item).isAlreadyConverted) }}
                 </span>
