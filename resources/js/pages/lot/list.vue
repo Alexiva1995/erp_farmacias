@@ -309,6 +309,8 @@ const handleCleanZeroQuantity = async () => {
     <LotDistributionModal
       v-model="isDistributionModalVisible"
       :product-name="currentProductForDistribution?.name || ''"
+      :product-id="currentProductForDistribution?.id || ''"
+      :laboratory="currentProductForDistribution?.laboratory?.name || ''"
       :lots="currentProductForDistribution?.lots || []"
       :target-quantity="currentProductForDistribution?.stock_calculado || 0"
       :locations="locations"
