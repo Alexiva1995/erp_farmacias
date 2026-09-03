@@ -56,7 +56,35 @@ class UpdateProductRequest extends FormRequest
             'sale_price' => 'nullable|numeric|min:0',
             'origin_id' => 'nullable|integer|exists:origins,id',
             'category_id' => 'nullable|integer|exists:categories,id',
-            'barcode' => ['nullable', 'string', 'max:255', 'unique:products,barcode,' . $productId],
+            'barcode' => [
+                'nullable',
+                'string',
+                'max:255',
+                function ($attribute, $value, $fail) use ($productId) {
+                    if (empty($value)) {
+                        return;
+                    }
+
+                    // Buscar si otro producto tiene este código de barras
+                    $existingProduct = \App\Models\Product::withoutGlobalScope('not_deleted')
+                        ->withTrashed()
+                        ->with('laboratory')
+                        ->where('barcode', $value)
+                        ->where('id', '!=', $productId)
+                        ->first();
+
+                    if ($existingProduct) {
+                        // Si el producto existente está eliminado, permitimos la validación para que se fusione automáticamente
+                        if ($existingProduct->is_deleted || $existingProduct->trashed()) {
+                            return;
+                        }
+
+                        // Si está activo, informamos ID, nombre y laboratorio
+                        $labName = $existingProduct->laboratory?->name ?? 'Sin Laboratorio';
+                        $fail("El código de barras '{$value}' ya está asignado al producto ID #{$existingProduct->id} - {$existingProduct->name} (Lab: {$labName}).");
+                    }
+                },
+            ],
             'psychotropic' => 'sometimes|boolean',
             'iva' => 'sometimes|boolean',
             'is_colombian_origin' => 'sometimes|boolean',
@@ -77,5 +105,18 @@ class UpdateProductRequest extends FormRequest
             'supplier_ids' => 'sometimes|array',
             'supplier_ids.*' => 'integer|exists:suppliers,id',
         ];
+    }
+
+    /**
+     * Handle a failed validation attempt.
+     */
+    protected function failedValidation(\Illuminate\Contracts\Validation\Validator $validator): void
+    {
+        throw new \Illuminate\Http\Exceptions\HttpResponseException(
+            response()->json([
+                'message' => 'Error de validación',
+                'errors' => $validator->errors()
+            ], 422)
+        );
     }
 }
