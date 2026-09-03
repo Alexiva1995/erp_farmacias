@@ -16,9 +16,36 @@ class ProductRepository
 
     private string $subConsultaParaCalcularStockPorLotes;
 
+    /**
+     * Subconsulta que detecta si un producto tiene lotes con stock > 0
+     * cuya fecha de vencimiento es menor o igual a 120 días desde hoy.
+     * Retorna 1 (bloqueado) o 0 (libre para comprar).
+     */
+    private string $subConsultaBloqueoVencimiento;
+
     public function __construct()
     {
         $this->subConsultaParaCalcularStockPorLotes = "COALESCE((SELECT SUM(quantity) FROM product_lots WHERE product_lots.product_id = products.id), 0)";
+
+        // Subconsulta compatible con MySQL y SQLite (tests)
+        $isSqlite = DB::connection()->getDriverName() === 'sqlite';
+        if ($isSqlite) {
+            $this->subConsultaBloqueoVencimiento = "EXISTS (
+                SELECT 1 FROM product_lots
+                WHERE product_lots.product_id = products.id
+                AND product_lots.quantity > 0
+                AND product_lots.expiration_date IS NOT NULL
+                AND product_lots.expiration_date <= DATE('now', '+120 days')
+            )";
+        } else {
+            $this->subConsultaBloqueoVencimiento = "EXISTS (
+                SELECT 1 FROM product_lots
+                WHERE product_lots.product_id = products.id
+                AND product_lots.quantity > 0
+                AND product_lots.expiration_date IS NOT NULL
+                AND product_lots.expiration_date <= DATE_ADD(CURDATE(), INTERVAL 120 DAY)
+            )";
+        }
     }
 
     public function consultProductById(int $id): ?Product
@@ -773,6 +800,8 @@ class ProductRepository
                        ->orWhere('products.ignore_until', '<=', now());
                 });
             })
+            // Excluir productos bloqueados por tener lotes con vencimiento <= 120 días
+            ->whereRaw("NOT ({$this->subConsultaBloqueoVencimiento})")
             ->with([
             "laboratory",
             "lots",
@@ -1074,6 +1103,8 @@ class ProductRepository
                        ->orWhere('products.ignore_until', '<=', now());
                 });
             })
+            // Excluir productos bloqueados por tener lotes con vencimiento <= 120 días
+            ->whereRaw("NOT ({$this->subConsultaBloqueoVencimiento})")
             ->with([
                 "laboratory",
                 "group",
@@ -1423,7 +1454,9 @@ class ProductRepository
                     $sq->whereNull('ignore_until')
                        ->orWhere('ignore_until', '<=', now());
                 });
-            });
+            })
+            // Excluir productos bloqueados por tener lotes con vencimiento <= 120 días
+            ->whereRaw("NOT ({$this->subConsultaBloqueoVencimiento})");
 
         // Aplicar filtros directos de producto en la cláusula WHERE (Reducen drásticamente el universo de datos)
         if (!empty($filtros["ids_in"])) {

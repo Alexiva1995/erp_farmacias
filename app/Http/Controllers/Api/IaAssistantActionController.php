@@ -41,6 +41,14 @@ class IaAssistantActionController extends Controller
         try {
             $product = Product::findOrFail($productId);
 
+            // Validación: bloquear compra si el producto tiene lotes venciendo en < 120 días con stock positivo
+            if ($product->hasExpiringLots(120)) {
+                return response()->json([
+                    'message' => '🚫 Este producto está bloqueado para nuevas compras porque tiene lotes con vencimiento en menos de 120 días. Gestiona el inventario actual antes de reponer.',
+                    'error_code' => 'PURCHASE_BLOCKED_BY_EXPIRY',
+                ], 422);
+            }
+
             // Si es origen colombiano (COL), forzar la adición a la orden del proveedor ID 48
             if ((int)$product->is_colombian_origin === 1) {
                 $supplierId = 48;
@@ -176,6 +184,12 @@ class IaAssistantActionController extends Controller
 
                 $product = Product::findOrFail($productId);
                 $ps = ProductSupplier::findOrFail($productSupplierId);
+
+                // Omitir si el producto está bloqueado por vencimiento < 120 días
+                if ($product->hasExpiringLots(120)) {
+                    \Log::info("[IaAssistantAction] addMultipleToOrder: producto {$productId} omitido por bloqueo de vencimiento.");
+                    continue;
+                }
 
                 // Forzar vinculación
                 if ($ps && $ps->product_id != $productId) {

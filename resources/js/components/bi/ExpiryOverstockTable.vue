@@ -36,26 +36,65 @@ const aggregatedOverstock = computed(() => {
         venta_mensual_promedio: parseFloat(curr.venta_mensual_promedio ?? 0),
         excedente_proyectado: 0,
         costo_excedente: 0,
+        // Etiqueta de riesgo: tomar el peor lote (mayor sobrestock)
+        has_overstock_risk: false,
+        risk_label: null,
+        // Semáforo: tomar el status más crítico
+        status: curr.status ?? 'estable',
+        color: curr.color ?? 'success',
       }
     }
 
-    acc[key].stock_actual += parseFloat(curr.stock_actual ?? 0)
+    acc[key].stock_actual         += parseFloat(curr.stock_actual ?? 0)
     acc[key].excedente_proyectado += parseFloat(curr.excedente_proyectado ?? 0)
-    acc[key].costo_excedente += parseFloat(curr.costo_excedente ?? 0)
+    acc[key].costo_excedente      += parseFloat(curr.costo_excedente ?? 0)
+
+    // Agregar label de riesgo si algún lote lo tiene
+    if (curr.has_overstock_risk) {
+      acc[key].has_overstock_risk = true
+    }
+
+    // Semáforo: priorizar el estado más crítico
+    const priority = { vencido: 4, critico: 3, moderado: 2, estable: 1 }
+    const currentP = priority[curr.status] ?? 1
+    const storedP  = priority[acc[key].status] ?? 1
+    if (currentP > storedP) {
+      acc[key].status = curr.status
+      acc[key].color  = curr.color
+    }
 
     return acc
   }, {})
 
-  return Object.values(grouped).sort((a, b) => b.costo_excedente - a.costo_excedente)
+  // Calcular label final a nivel de producto (total de unidades en riesgo del producto)
+  const result = Object.values(grouped).map(item => {
+    if (item.has_overstock_risk && item.excedente_proyectado > 0) {
+      const unidades = Math.ceil(item.excedente_proyectado)
+      item.risk_label = `Sobrestock en Riesgo: ${unidades} ${unidades === 1 ? 'unidad' : 'unidades'}`
+    } else {
+      item.risk_label = null
+    }
+    return item
+  })
+
+  return result.sort((a, b) => b.costo_excedente - a.costo_excedente)
 })
 
 const headers = [
   { title: 'PRODUCTO', key: 'name', align: 'start', sortable: true },
+  { title: 'ESTADO', key: 'status', align: 'center', sortable: true },
   { title: 'STOCK ACTUAL', key: 'stock_actual', align: 'end', sortable: true },
   { title: 'VTA. PROM', key: 'venta_mensual_promedio', align: 'end', sortable: true },
   { title: 'EXCEDENTE (U)', key: 'excedente_proyectado', align: 'end', sortable: true },
   { title: 'COSTO RIESGO', key: 'costo_excedente', align: 'end', sortable: true },
 ]
+
+const statusMap = {
+  vencido:  { label: 'Vencido',  color: 'error',   icon: 'tabler-circle-x' },
+  critico:  { label: 'Crítico',  color: 'error',   icon: 'tabler-alert-circle' },
+  moderado: { label: 'Moderado', color: 'warning',  icon: 'tabler-alert-triangle' },
+  estable:  { label: 'Estable',  color: 'success',  icon: 'tabler-circle-check' },
+}
 
 // Emitir el computed para que el padre pueda usarlo (exportar CSV)
 defineExpose({ aggregatedOverstock })
@@ -84,7 +123,7 @@ defineExpose({ aggregatedOverstock })
         class="overstock-table"
         no-data-text="✅ No se detectaron riesgos de sobrestock"
       >
-        <!-- Nombre del producto -->
+        <!-- Nombre del producto + badge "Sobrestock en Riesgo" -->
         <template #item.name="{ item }">
           <div class="d-flex flex-column py-2">
             <span class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate product-name">
@@ -93,7 +132,31 @@ defineExpose({ aggregatedOverstock })
             <span class="text-super-xs text-disabled">
               ID: {{ item.product_id }} | {{ item.laboratory_name ?? 'Sin laboratorio' }}
             </span>
+            <!-- Etiqueta visible cuando hay unidades que se van a perder antes del vencimiento -->
+            <VChip
+              v-if="item.risk_label"
+              color="deep-orange"
+              variant="tonal"
+              size="x-small"
+              class="mt-1 font-weight-bold risk-chip"
+              prepend-icon="tabler-clock-exclamation"
+            >
+              {{ item.risk_label }}
+            </VChip>
           </div>
+        </template>
+
+        <!-- Semáforo de estado por fecha de vencimiento -->
+        <template #item.status="{ item }">
+          <VChip
+            :color="statusMap[item.status]?.color ?? 'secondary'"
+            variant="tonal"
+            size="x-small"
+            class="font-weight-bold"
+          >
+            <VIcon :icon="statusMap[item.status]?.icon ?? 'tabler-circle'" size="12" class="me-1" />
+            {{ statusMap[item.status]?.label ?? item.status }}
+          </VChip>
         </template>
 
         <!-- Venta mensual promedio -->
@@ -106,7 +169,7 @@ defineExpose({ aggregatedOverstock })
           <span class="font-weight-black">{{ formatNumber(item.stock_actual) }}</span>
         </template>
 
-        <!-- Excedente proyectado — rojo si > 0 -->
+        <!-- Excedente proyectado — chip rojo si > 0 -->
         <template #item.excedente_proyectado="{ item }">
           <VChip
             :color="item.excedente_proyectado > 0 ? 'error' : 'success'"
@@ -155,6 +218,16 @@ defineExpose({ aggregatedOverstock })
 .text-super-xs {
   font-size: 0.65rem !important;
   line-height: 1.2;
+}
+
+/* Chip de alerta de sobrestock en riesgo */
+.risk-chip {
+  font-size: 0.6rem !important;
+  max-width: 320px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  align-self: flex-start;
 }
 
 /* Encabezados de tabla — compatible dark/light mode */

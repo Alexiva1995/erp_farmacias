@@ -48,8 +48,11 @@ class CleanPendingInvoicesCommand extends Command
             $removedProcessed = 0;
 
             foreach ($pendingInvoices as $pending) {
-                $cleanNum = ltrim((string)$pending->invoice_number, 'A');
+                $digits = preg_replace('/\D/', '', (string)$pending->invoice_number);
+                $cleanNum = ltrim($digits ?: (string)$pending->invoice_number, '0');
                 
+                if (empty($cleanNum)) continue;
+
                 $existsProcessed = Invoice::where('supplier_id', $pending->supplier_id)
                     ->where('id', '!=', $pending->id)
                     ->whereIn('status', ['loaded', 'to_order', 'ordered'])
@@ -60,7 +63,7 @@ class CleanPendingInvoicesCommand extends Command
                     ->first();
 
                 if ($existsProcessed) {
-                    $this->warn("  -> Factura Pendiente ID {$pending->id} (#{$pending->invoice_number}) ya existe procesada con ID {$existsProcessed->id} (Estado: {$existsProcessed->status}). Eliminando pendiente redundante...");
+                    $this->warn("  -> Factura Pendiente ID {$pending->id} (#{$pending->invoice_number}) ya existe procesada con ID {$existsProcessed->id} (#{$existsProcessed->invoice_number}, Estado: {$existsProcessed->status}). Eliminando pendiente redundante...");
                     if (!$isDryRun) {
                         $pending->details()->delete();
                         $pending->delete();
@@ -78,7 +81,8 @@ class CleanPendingInvoicesCommand extends Command
             $allInvoices = Invoice::withCount('details')->orderBy('id', 'asc')->get();
             $grouped = [];
             foreach ($allInvoices as $inv) {
-                $cleanNum = ltrim((string)$inv->invoice_number, 'A');
+                $digits = preg_replace('/\D/', '', (string)$inv->invoice_number);
+                $cleanNum = ltrim($digits ?: (string)$inv->invoice_number, '0');
                 $key = "{$inv->supplier_id}_{$cleanNum}";
                 $grouped[$key][] = $inv;
             }

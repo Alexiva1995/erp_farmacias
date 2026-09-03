@@ -83,7 +83,10 @@ class ExpiryReportRepository implements ExpiryReportRepositoryInterface
                 'product_lots.expiration_date',
                 'products.sales_average as venta_mensual_promedio',
                 'products.unit_cost',
-                DB::raw('TIMESTAMPDIFF(MONTH, NOW(), product_lots.expiration_date) as meses_restantes')
+                DB::raw('TIMESTAMPDIFF(MONTH, NOW(), product_lots.expiration_date) as meses_restantes'),
+                // Unidades en riesgo = stock actual − proyección de ventas hasta el vencimiento
+                // Si es positivo → hay sobrestock en riesgo de caducar
+                DB::raw('GREATEST(0, product_lots.quantity - GREATEST(0, TIMESTAMPDIFF(MONTH, NOW(), product_lots.expiration_date)) * products.sales_average) as unidades_en_riesgo')
             )
             ->where('product_lots.quantity', '>', 0)
             ->where('product_lots.expiration_date', '>=', now())

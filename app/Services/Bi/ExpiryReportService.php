@@ -31,27 +31,45 @@ class ExpiryReportService
     private function processOverstockData(array $data): array
     {
         $processed = array_map(function ($item) {
-            $mesesRestantes = max(0, $item['meses_restantes']);
+            $mesesRestantes  = max(0, $item['meses_restantes']);
             $ventaProyectada = $item['venta_mensual_promedio'] * $mesesRestantes;
-            $excedente = max(0, $item['stock_actual'] - $ventaProyectada);
-            
+
+            // Usar el campo precalculado en SQL si existe; sino calcular en PHP como fallback
+            if (isset($item['unidades_en_riesgo']) && $item['unidades_en_riesgo'] !== null) {
+                $excedente = (float) $item['unidades_en_riesgo'];
+            } else {
+                $excedente = max(0, $item['stock_actual'] - $ventaProyectada);
+            }
+
             $item['excedente_proyectado'] = round($excedente, 2);
-            $item['costo_excedente'] = round($excedente * $item['unit_cost'], 2);
-            
-            // Semaforización
+            $item['costo_excedente']      = round($excedente * $item['unit_cost'], 2);
+
+            // Etiqueta "Sobrestock en Riesgo" — se incluye solo cuando hay unidades que se perderán
+            if ($excedente > 0) {
+                $unidades = (int) ceil($excedente);
+                $item['risk_label']       = "Sobrestock en Riesgo: {$unidades} " . ($unidades === 1 ? 'unidad' : 'unidades');
+                $item['risk_label_short'] = "{$unidades} en riesgo";
+                $item['has_overstock_risk'] = true;
+            } else {
+                $item['risk_label']       = null;
+                $item['risk_label_short'] = null;
+                $item['has_overstock_risk'] = false;
+            }
+
+            // Semaforización por días restantes al vencimiento
             $daysToExpiry = Carbon::now()->diffInDays(Carbon::parse($item['expiration_date']), false);
             if ($daysToExpiry < 0) {
                 $item['status'] = 'vencido';
-                $item['color'] = 'error';
+                $item['color']  = 'error';
             } elseif ($daysToExpiry <= 90) {
                 $item['status'] = 'critico';
-                $item['color'] = 'error';
+                $item['color']  = 'error';
             } elseif ($daysToExpiry <= 180) {
                 $item['status'] = 'moderado';
-                $item['color'] = 'warning';
+                $item['color']  = 'warning';
             } else {
                 $item['status'] = 'estable';
-                $item['color'] = 'success';
+                $item['color']  = 'success';
             }
 
             return $item;

@@ -195,6 +195,32 @@ class Product extends Model
     }
 
     /**
+     * Lotes con stock positivo que vencen dentro de los próximos N días.
+     * Umbral por defecto: 120 días (4 meses).
+     * Se usa para la regla de Bloqueo de Compras.
+     */
+    public function expiringLots(int $days = 120): HasMany
+    {
+        return $this->hasMany(ProductLot::class)
+            ->where('quantity', '>', 0)
+            ->whereNotNull('expiration_date')
+            ->where('expiration_date', '<=', now()->addDays($days));
+    }
+
+    /**
+     * Verifica si el producto tiene lotes próximos a vencer dentro de N días.
+     * Retorna true → producto BLOQUEADO para nuevas compras.
+     */
+    public function hasExpiringLots(int $days = 120): bool
+    {
+        return $this->hasMany(ProductLot::class)
+            ->where('quantity', '>', 0)
+            ->whereNotNull('expiration_date')
+            ->where('expiration_date', '<=', now()->addDays($days))
+            ->exists();
+    }
+
+    /**
      * Un producto puede tener múltiples asociaciones con proveedores (ej. precios específicos por proveedor).
      */
     public function productSuppliers(): HasMany

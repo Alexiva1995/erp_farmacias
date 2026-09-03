@@ -160,6 +160,23 @@ class AutoReplenishmentCommand extends Command
             $bestSupplier    = $item->best_supplier;
             $productSupplier = $item->product_supplier ?? null;
 
+            // Validación de seguridad: omitir productos bloqueados por vencimiento < 120 días
+            $tieneBloqueo = DB::table('product_lots')
+                ->where('product_id', $product->id)
+                ->where('quantity', '>', 0)
+                ->whereNotNull('expiration_date')
+                ->where('expiration_date', '<=', now()->addDays(120)->toDateString())
+                ->exists();
+
+            if ($tieneBloqueo) {
+                $this->warn("     ⏩ [{$product->id}] {$product->name} — Bloqueado por vencimiento < 120 días. Se omite.");
+                Log::info("[AutoReplenishment] Producto ID {$product->id} omitido por bloqueo de vencimiento.", [
+                    'product_name' => $product->name,
+                    'config_id'    => $config->id,
+                ]);
+                continue;
+            }
+
             // Obtener el ProductSupplier completo si no vino hidratado
             if (!$productSupplier && $bestSupplier) {
                 $productSupplier = ProductSupplier::where('product_id', $product->id)
