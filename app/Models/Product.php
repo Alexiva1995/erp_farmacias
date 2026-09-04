@@ -73,6 +73,9 @@ class Product extends Model
         'unit_of_measure',
         'is_favorite',
         'price_lock_baseline',
+        'sales_average_updated_at',
+        'external_accumulated_sales',
+        'external_sales_date',
     ];
 
     /**
@@ -105,6 +108,8 @@ class Product extends Model
         'stock' => 'float',
         'is_favorite' => 'boolean',
         'price_lock_baseline' => 'float',
+        'external_accumulated_sales' => 'float',
+        'sales_average' => 'float',
     ];
 
 
