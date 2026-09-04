@@ -188,6 +188,33 @@ const updateTableOptionsTable = options => {
   }
 }
 
+async function cargarReporteCompleto() {
+  loading.value = true;
+  try {
+    await Promise.all([
+      consultarKpisGlobales(),
+      (async () => {
+        reportState.data = await consultarDataReport();
+        reportState.total = reportState.data?.data?.total || reportState.data?.total || 0;
+        reportState.items = [...(reportState.data?.data?.data || reportState.data?.data || [])];
+      })()
+    ]);
+  } catch (error) {
+    console.error("Error al cargar reporte:", error);
+  } finally {
+    loading.value = false;
+  }
+}
+
+onMounted(async () => {
+  await Promise.all([
+    consultarLaboratorios(),
+    consultarProveedores(),
+    consultarProductos(),
+  ]);
+  await cargarReporteCompleto();
+});
+
 // Watchers con debounce para filtros
 let filterTimeout = null;
 watch([
@@ -199,43 +226,24 @@ watch([
   stock,
   showIgnored,
   showGraphs,
-], async () => {
-  if (!selectedLaboratory.value || selectedLaboratory.value.length === 0) {
-    reportState.items = [];
-    reportState.total = 0;
-    kpiGlobal.necesitan = 0;
-    kpiGlobal.exceso = 0;
-    kpiGlobal.ok = 0;
-    return;
-  }
-
+], () => {
   clearTimeout(filterTimeout);
   filterTimeout = setTimeout(async () => {
-    loading.value = true;
     page.value = 1;
-    
-    await Promise.all([
-      consultarKpisGlobales(),
-      (async () => {
-        reportState.data = await consultarDataReport();
-        reportState.total = reportState.data.data.total;
-        reportState.items = [...reportState.data.data.data];
-      })()
-    ]);
-    
-    loading.value = false;
+    await cargarReporteCompleto();
   }, 400);
 });
 
 // Watch para paginación y ordenamiento
 watch([page, itemsPerPage, orderBy, sortBy], async () => {
-  if (!selectedLaboratory.value || selectedLaboratory.value.length === 0) return;
-
   loading.value = true;
-  reportState.data = await consultarDataReport();
-  reportState.total = reportState.data.data.total;
-  reportState.items = [...reportState.data.data.data];
-  loading.value = false;
+  try {
+    reportState.data = await consultarDataReport();
+    reportState.total = reportState.data?.data?.total || reportState.data?.total || 0;
+    reportState.items = [...(reportState.data?.data?.data || reportState.data?.data || [])];
+  } finally {
+    loading.value = false;
+  }
 });
 
 async function filtrarSinPaginar(dataFiltro){
