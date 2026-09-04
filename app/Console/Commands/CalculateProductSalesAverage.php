@@ -70,9 +70,15 @@ class CalculateProductSalesAverage extends Command
                             ->sum('order_details.quantity');
                     }
 
-                    // Si no hay ventas en la ventana, establecer promedio en 0
+                    // Si no hay ventas registradas en el sistema local, verificar si posee ventas externas acumuladas
                     if ($totalSold === null || $totalSold == 0) {
-                        $salesAverage = 0;
+                        if (!empty($product->external_accumulated_sales) && (float) $product->external_accumulated_sales > 0) {
+                            $extDate = $product->external_sales_date ? Carbon::parse($product->external_sales_date) : $now;
+                            $monthsElapsed = max(1, (int) $extDate->month);
+                            $salesAverage = round(((float) $product->external_accumulated_sales) / $monthsElapsed, 2);
+                        } else {
+                            $salesAverage = 0;
+                        }
                     } else {
                         // Fecha del primer ingreso a inventario (lotes o movimientos)
                         $firstStockDate = DB::table('product_lots')

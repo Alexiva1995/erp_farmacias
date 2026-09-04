@@ -201,8 +201,10 @@ class ExternalCatalogImportService
 
         // 3. Cálculo de Promedio de Ventas Mensual
         $salesAverage = 0.0;
-        if ($isInitialLoad || !$product || empty($product->external_sales_date)) {
-            // Primera carga del año: Promedio = Acumulado / Meses transcurridos
+        $prevAverage = (float) ($product->sales_average ?? 0);
+
+        if ($isInitialLoad || !$product || empty($product->external_sales_date) || $prevAverage <= 0) {
+            // Primera carga del año o producto sin promedio válido: Promedio = Acumulado / Meses transcurridos
             $salesAverage = round($currentSalesAccum / $monthsElapsed, 2);
         } else {
             // Carga periódica: Calcular delta de ventas
@@ -211,9 +213,11 @@ class ExternalCatalogImportService
             
             if ($delta > 0) {
                 // Incorporar el delta al promedio mensual
-                $salesAverage = round(($delta + ($product->sales_average ?? 0)) / 2, 2);
+                $salesAverage = round(($delta + $prevAverage) / 2, 2);
             } else {
-                $salesAverage = (float) ($product->sales_average ?? round($currentSalesAccum / $monthsElapsed, 2));
+                $salesAverage = $prevAverage > 0 
+                    ? $prevAverage 
+                    : round($currentSalesAccum / $monthsElapsed, 2);
             }
         }
 
