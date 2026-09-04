@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import axios from '@axios'
+import Swal from 'sweetalert2'
 import { toast } from '@/plugins/sweetalert'
 import { importTabs, fileSchemas } from './importSchemas'
 
@@ -10,37 +11,20 @@ const selectedFile = ref(null)
 const uploading = ref(false)
 const progress = ref(0)
 const isDragging = ref(false)
-const fileInputRef = ref(null) // Ref al input nativo, sin tocar el DOM directamente
+const fileInputRef = ref(null)
 const cutoffDate = ref(new Date().toISOString().substring(0, 10))
 const isInitialLoad = ref(true)
 const lastImportResult = ref(null)
-
 const tabs = importTabs
 
 // --- Computed ---
-
-/** Esquema de columnas del tab activo */
 const currentSchema = computed(() => fileSchemas[activeTab.value] ?? [])
-
-/** Patrón de nombre esperado para el tab activo */
-const currentFilePattern = computed(() =>
-  tabs.find(t => t.value === activeTab.value)?.filePattern ?? '',
-)
-
-/** Tamaño del archivo en KB formateado */
-const fileSizeKb = computed(() =>
-  selectedFile.value ? (selectedFile.value.size / 1024).toFixed(2) : '0',
-)
-
-/** Indica si el nombre del archivo coincide con el patrón del tab (advertencia no bloqueante) */
+const currentFilePattern = computed(() => tabs.find(t => t.value === activeTab.value)?.filePattern ?? '')
+const fileSizeKb = computed(() => selectedFile.value ? (selectedFile.value.size / 1024).toFixed(2) : '0')
 const fileNameMismatch = computed(() => {
   if (!selectedFile.value || activeTab.value === 'external_catalog') return false
-
-  return !selectedFile.value.name
-    .toLowerCase()
-    .includes(activeTab.value.toLowerCase())
+  return !selectedFile.value.name.toLowerCase().includes(activeTab.value.toLowerCase())
 })
-
 const acceptedFileTypes = computed(() => {
   if (activeTab.value === 'external_catalog') {
     return '.xlsx, .xls, .csv, text/csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel'
@@ -48,9 +32,7 @@ const acceptedFileTypes = computed(() => {
   return '.csv, text/plain, text/csv'
 })
 
-// --- Watchers ---
-
-/** Resetea el archivo seleccionado al cambiar de tab para evitar inconsistencia de estado */
+// --- Watchers & Métodos ---
 watch(activeTab, () => {
   clearFile()
   lastImportResult.value = null
@@ -139,7 +121,26 @@ const triggerImport = async () => {
         },
       })
 
-      lastImportResult.value = response.data?.data ?? null
+      const stats = response.data?.data ?? {}
+      lastImportResult.value = stats
+
+      Swal.fire({
+        icon: 'success',
+        title: '¡Importación Completada con Éxito!',
+        html: `
+          <div style="text-align: left; font-size: 0.95rem; line-height: 1.6;">
+            <p style="margin-bottom: 8px;"><strong>Total filas procesadas:</strong> ${stats.total_rows ?? 0}</p>
+            <p style="margin-bottom: 8px; color: #7367F0;"><strong>Nuevos productos creados:</strong> ${stats.created ?? 0}</p>
+            <p style="margin-bottom: 8px; color: #00CFE8;"><strong>Productos actualizados:</strong> ${stats.updated ?? 0}</p>
+            <p style="margin-bottom: 8px; color: #28C76F;"><strong>Homologados con Catálogo Maestro:</strong> ${stats.matched_with_master ?? 0}</p>
+            <p style="margin-bottom: 8px;"><strong>Lotes e inventario actualizados:</strong> ${stats.lots_updated ?? 0}</p>
+            <p style="margin-bottom: 0; color: #FF9F43;"><strong>Unidades totales de stock:</strong> ${Number(stats.total_stock ?? 0).toLocaleString('es-VE')}</p>
+          </div>
+        `,
+        confirmButtonText: 'Entendido',
+        confirmButtonColor: '#7367F0',
+      })
+
       toast.success(response.data.message ?? 'Catálogo y ventas procesados exitosamente.')
       clearFile()
     } catch (err) {
@@ -418,35 +419,65 @@ const triggerImport = async () => {
             </span>
           </div>
 
-          <!-- Resumen de resultados de la última importación -->
+          <!-- Resumen de resultados permanente de la última importación -->
           <VCard
             v-if="lastImportResult"
-            variant="outlined"
-            class="mt-6 border-success"
+            variant="tonal"
+            color="success"
+            class="mt-6 border"
           >
             <VCardItem>
-              <VCardTitle class="d-flex align-center gap-2 text-success">
-                <VIcon icon="tabler-circle-check" color="success" />
-                Resumen de Importación
+              <VCardTitle class="d-flex align-center justify-space-between text-success">
+                <div class="d-flex align-center gap-2">
+                  <VIcon icon="tabler-circle-check" size="24" color="success" />
+                  <span>Reporte de Importación Completada</span>
+                </div>
+                <VBtn
+                  size="x-small"
+                  variant="text"
+                  color="success"
+                  icon="tabler-x"
+                  @click="lastImportResult = null"
+                />
               </VCardTitle>
             </VCardItem>
-            <VCardText>
-              <VRow>
-                <VCol cols="6" sm="3">
-                  <div class="text-caption text-medium-emphasis">Total Procesados</div>
-                  <div class="text-h6 font-weight-bold">{{ lastImportResult.total_rows }}</div>
+            <VCardText class="pt-0">
+              <VRow dense>
+                <VCol cols="6" sm="4" md="2">
+                  <div class="pa-3 bg-surface rounded text-center border">
+                    <div class="text-caption text-medium-emphasis">Total Filas</div>
+                    <div class="text-h6 font-weight-black text-high-emphasis">{{ lastImportResult.total_rows }}</div>
+                  </div>
                 </VCol>
-                <VCol cols="6" sm="3">
-                  <div class="text-caption text-medium-emphasis">Productos Creados</div>
-                  <div class="text-h6 font-weight-bold text-primary">{{ lastImportResult.created }}</div>
+                <VCol cols="6" sm="4" md="2">
+                  <div class="pa-3 bg-surface rounded text-center border">
+                    <div class="text-caption text-primary font-weight-bold">Creados</div>
+                    <div class="text-h6 font-weight-black text-primary">{{ lastImportResult.created }}</div>
+                  </div>
                 </VCol>
-                <VCol cols="6" sm="3">
-                  <div class="text-caption text-medium-emphasis">Productos Actualizados</div>
-                  <div class="text-h6 font-weight-bold text-info">{{ lastImportResult.updated }}</div>
+                <VCol cols="6" sm="4" md="2">
+                  <div class="pa-3 bg-surface rounded text-center border">
+                    <div class="text-caption text-info font-weight-bold">Actualizados</div>
+                    <div class="text-h6 font-weight-black text-info">{{ lastImportResult.updated }}</div>
+                  </div>
                 </VCol>
-                <VCol cols="6" sm="3">
-                  <div class="text-caption text-medium-emphasis">Homologados con Master</div>
-                  <div class="text-h6 font-weight-bold text-success">{{ lastImportResult.matched_master }}</div>
+                <VCol cols="6" sm="4" md="2">
+                  <div class="pa-3 bg-surface rounded text-center border">
+                    <div class="text-caption text-success font-weight-bold">Con Master</div>
+                    <div class="text-h6 font-weight-black text-success">{{ lastImportResult.matched_with_master }}</div>
+                  </div>
+                </VCol>
+                <VCol cols="6" sm="4" md="2">
+                  <div class="pa-3 bg-surface rounded text-center border">
+                    <div class="text-caption text-secondary font-weight-bold">Lotes</div>
+                    <div class="text-h6 font-weight-black text-secondary">{{ lastImportResult.lots_updated ?? 0 }}</div>
+                  </div>
+                </VCol>
+                <VCol cols="6" sm="4" md="2">
+                  <div class="pa-3 bg-surface rounded text-center border">
+                    <div class="text-caption text-warning font-weight-bold">Total Stock</div>
+                    <div class="text-h6 font-weight-black text-warning">{{ Number(lastImportResult.total_stock ?? 0).toLocaleString('es-VE') }}</div>
+                  </div>
                 </VCol>
               </VRow>
             </VCardText>

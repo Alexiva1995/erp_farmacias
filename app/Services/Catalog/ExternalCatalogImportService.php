@@ -157,8 +157,8 @@ class ExternalCatalogImportService
             $stats['matched_with_master']++;
         }
 
-        // 2. Buscar producto existente localmente
-        $product = Product::where('barcode', $barcode)->first();
+        // 2. Buscar producto existente localmente (incluyendo eliminados)
+        $product = Product::withoutGlobalScope('not_deleted')->withTrashed()->where('barcode', $barcode)->first();
         $isNew = !$product;
 
         // 3. Cálculo de Promedio de Ventas Mensual
@@ -202,8 +202,16 @@ class ExternalCatalogImportService
             'external_sales_date'        => $date->format('Y-m-d'),
         ];
 
-        // Homologar relaciones si provienen del Master
+        // Homologar relaciones e ID unificado si provienen del Master
         if ($masterProduct) {
+            if ($isNew && !empty($masterProduct['id'])) {
+                $targetId = (int) $masterProduct['id'];
+                $idExists = Product::withoutGlobalScope('not_deleted')->withTrashed()->where('id', $targetId)->exists();
+                if (!$idExists) {
+                    $productData['id'] = $targetId;
+                }
+            }
+
             if (!empty($masterProduct['laboratory_id'])) {
                 $productData['laboratory_id'] = $masterProduct['laboratory_id'];
             }
@@ -222,6 +230,9 @@ class ExternalCatalogImportService
             $product = Product::create($productData);
             $stats['created']++;
         } else {
+            if ($product->trashed()) {
+                $product->restore();
+            }
             $product->update($productData);
             $stats['updated']++;
         }

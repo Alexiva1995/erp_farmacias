@@ -159,13 +159,36 @@ const isDrosymcaPayment = computed(() => {
   });
 });
 
+const isJohanPayment = computed(() => {
+  if (props.paymentGroup?.supplier_name) {
+    const name = String(props.paymentGroup.supplier_name).toUpperCase();
+    if (name.includes("JOHAN") || name.includes("COLOMBIANO") || name.includes("JC")) return true;
+  }
+  return props.invoices.some((inv) => {
+    const sName = String(inv.supplier?.name || inv.supplier_name || "").toUpperCase();
+    return sName.includes("JOHAN") || sName.includes("COLOMBIANO") || sName.includes("JC");
+  });
+});
+
+const shouldShowDestinationBank = computed(() => {
+  if (form.value.payment_method === 'cash' || form.value.payment_method === 'credit') return false;
+  if (isJohanPayment.value || isSumiandesPayment.value || isDrosymcaPayment.value) return false;
+  return isDromegaPayment.value || isCristmedicalsPayment.value || isMafartaPayment.value || isDronenaPayment.value;
+});
+
 const destinationBankOptions = computed(() => {
-  if (isSumiandesPayment.value || isDrosymcaPayment.value) return [];
+  if (!shouldShowDestinationBank.value) return [];
   if (isDromegaPayment.value) return dromegaBanks;
   if (isCristmedicalsPayment.value) return cristmedicalsBanks;
   if (isMafartaPayment.value) return mafartaBanks;
   if (isDronenaPayment.value) return dronenaBanks;
-  return [...dromegaBanks, ...cristmedicalsBanks, ...mafartaBanks, ...dronenaBanks];
+  return [];
+});
+
+watch(shouldShowDestinationBank, (show) => {
+  if (!show) {
+    form.value.destination_bank = null;
+  }
 });
 
 
@@ -456,6 +479,8 @@ watch(() => props.modelValue, (val) => {
       form.value.destination_bank = mafartaBanks[0].value;
     } else if (isDronenaPayment.value) {
       form.value.destination_bank = dronenaBanks[0].value;
+    } else {
+      form.value.destination_bank = null;
     }
   }
 });
@@ -699,7 +724,7 @@ watch(() => props.modelValue, (val) => {
                   </VSelect>
                 </VCol>
 
-                <VCol v-if="!isSumiandesPayment && !isDrosymcaPayment" cols="12">
+                <VCol v-if="shouldShowDestinationBank" cols="12">
                   <div class="d-flex align-center justify-space-between mb-1">
                     <span class="text-super-xs font-weight-black text-primary uppercase">
                       {{ isCristmedicalsPayment ? 'Banco Destino Cristmedicals' : (isMafartaPayment ? 'Banco Destino Cobeca / Mafarta' : (isDronenaPayment ? 'Banco Destino Dronena' : (isDromegaPayment ? 'Banco Destino Droguería Mega' : 'Banco Destino'))) }}
