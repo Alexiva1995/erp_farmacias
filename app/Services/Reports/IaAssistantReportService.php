@@ -460,6 +460,9 @@ class IaAssistantReportService
 
         $items->transform(function ($item) use ($ventasMap) {
             $ventasTotales = (float)($ventasMap->get($item->id) ?? 0);
+            $promedio = (float)($item->promedio_calculado ?? 0);
+            $stockActual = (float)($item->lote_quantity ?? 0);
+            $autoOrder = (float)($item->totalQuantityInAutoOrder ?? 0);
 
             // Demanda ponderada combinada: Si hay ventas locales > 0 y promedio > 0, pondera ambos. Si no hay ventas locales registradas, usa el promedio disponible.
             if ($ventasTotales > 0 && $promedio > 0) {
