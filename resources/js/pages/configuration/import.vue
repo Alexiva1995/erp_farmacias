@@ -48,45 +48,31 @@ const clearFile = () => {
   }
 }
 
-/** Selecciona el archivo desde el input nativo */
 const handleFileSelect = (e) => {
   const file = e.target.files[0]
-  if (file) {
-    selectedFile.value = file
-  }
+  if (file) selectedFile.value = file
 }
 
-/** Maneja el evento de arrastre sobre la zona de drop */
 const handleDrop = (e) => {
   isDragging.value = false
   const file = e.dataTransfer?.files[0]
   if (!file) return
-
   const isExcel = file.name.endsWith('.xlsx') || file.name.endsWith('.xls')
   const isCsv = file.type === 'text/csv' || file.name.endsWith('.csv') || file.type === 'text/plain'
-
   if (activeTab.value === 'external_catalog') {
-    if (isExcel || isCsv) {
-      selectedFile.value = file
-    } else {
-      toast.error('Solo se admiten archivos Excel (.xlsx, .xls) o CSV.')
-    }
+    if (isExcel || isCsv) selectedFile.value = file
+    else toast.error('Solo se admiten archivos Excel (.xlsx, .xls) o CSV.')
   } else {
-    if (isCsv) {
-      selectedFile.value = file
-    } else {
-      toast.error('Solo se admiten archivos CSV.')
-    }
+    if (isCsv) selectedFile.value = file
+    else toast.error('Solo se admiten archivos CSV.')
   }
 }
 
-/** Genera y descarga un CSV de plantilla con las columnas del tab activo */
 const downloadTemplate = () => {
   const headers = currentSchema.value.map(col => col.field).join(',')
   const blob = new Blob([headers + '\n'], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
-
   link.setAttribute('href', url)
   link.setAttribute('download', currentFilePattern.value)
   link.click()
@@ -127,17 +113,15 @@ const triggerImport = async () => {
       Swal.fire({
         icon: 'success',
         title: '¡Importación Completada con Éxito!',
-        html: `
-          <div style="text-align: left; font-size: 0.95rem; line-height: 1.6;">
-            <p style="margin-bottom: 8px;"><strong>Total filas procesadas:</strong> ${stats.total_rows ?? 0}</p>
-            <p style="margin-bottom: 8px; color: #7367F0;"><strong>Nuevos productos creados:</strong> ${stats.created ?? 0}</p>
-            <p style="margin-bottom: 8px; color: #00CFE8;"><strong>Productos actualizados:</strong> ${stats.updated ?? 0}</p>
-            <p style="margin-bottom: 8px; color: #28C76F;"><strong>Homologados con Catálogo Maestro:</strong> ${stats.matched_with_master ?? 0}</p>
-            <p style="margin-bottom: 8px;"><strong>Lotes e inventario actualizados:</strong> ${stats.lots_updated ?? 0}</p>
-            <p style="margin-bottom: 0; color: #FF9F43;"><strong>Unidades totales de stock:</strong> ${Number(stats.total_stock ?? 0).toLocaleString('es-VE')}</p>
-          </div>
-        `,
-        confirmButtonText: 'Entendido',
+        html: `<div style="text-align:left;font-size:0.95rem;line-height:1.7;">
+          <p class="mb-1"><strong>Total Filas Procesadas:</strong> ${Number(stats.total_rows ?? 0).toLocaleString('es-VE')}</p>
+          <p class="mb-1 text-primary"><strong>Nuevos Productos Creados:</strong> ${Number(stats.created ?? 0).toLocaleString('es-VE')}</p>
+          <p class="mb-1 text-info"><strong>Productos Actualizados:</strong> ${Number(stats.updated ?? 0).toLocaleString('es-VE')}</p>
+          <p class="mb-1 text-success"><strong>Homologados con Catálogo Maestro:</strong> ${Number(stats.matched_with_master ?? 0).toLocaleString('es-VE')}</p>
+          <p class="mb-1"><strong>Lotes de Inventario Registrados:</strong> ${Number(stats.lots_updated ?? 0).toLocaleString('es-VE')}</p>
+          <p class="mb-0 text-warning"><strong>Unidades Totales de Stock:</strong> ${Number(stats.total_stock ?? 0).toLocaleString('es-VE')} unidades</p>
+        </div>`,
+        confirmButtonText: 'Aceptar',
         confirmButtonColor: '#7367F0',
       })
 
@@ -236,35 +220,19 @@ const triggerImport = async () => {
               Estructura requerida del archivo
               <code class="text-caption ms-1 pa-1 rounded bg-surface">{{ currentFilePattern }}</code>
             </h3>
-
-            <VTable
-              density="compact"
-              class="border rounded"
-            >
+            <VTable density="compact" class="border rounded">
               <thead>
                 <tr>
-                  <th class="text-left font-weight-bold">
-                    Columna (Cabecera)
-                  </th>
-                  <th class="text-left font-weight-bold">
-                    Requerido
-                  </th>
-                  <th class="text-left font-weight-bold">
-                    Descripción
-                  </th>
+                  <th class="text-left font-weight-bold">Columna (Cabecera)</th>
+                  <th class="text-left font-weight-bold">Requerido</th>
+                  <th class="text-left font-weight-bold">Descripción</th>
                 </tr>
               </thead>
               <tbody>
-                <tr
-                  v-for="col in currentSchema"
-                  :key="col.field"
-                >
+                <tr v-for="col in currentSchema" :key="col.field">
                   <td><code>{{ col.field }}</code></td>
                   <td>
-                    <VChip
-                      size="x-small"
-                      :color="col.required ? 'error' : 'secondary'"
-                    >
+                    <VChip size="x-small" :color="col.required ? 'error' : 'secondary'">
                       {{ col.required ? 'Obligatorio' : 'Opcional' }}
                     </VChip>
                   </td>
@@ -273,7 +241,6 @@ const triggerImport = async () => {
               </tbody>
             </VTable>
           </div>
-
           <VDivider class="my-4" />
 
           <!-- Opciones específicas para Catálogo Externo / Excel -->
@@ -338,66 +305,22 @@ const triggerImport = async () => {
 
             <!-- Estado: archivo seleccionado -->
             <template v-else>
-              <span class="text-body-1 font-weight-bold mb-1">
-                {{ selectedFile.name }}
-              </span>
-              <span class="text-caption text-medium-emphasis mb-2">
-                {{ fileSizeKb }} KB
-              </span>
-
-              <!-- Advertencia no bloqueante si el nombre no coincide con el tab -->
-              <VAlert
-                v-if="fileNameMismatch"
-                type="warning"
-                variant="tonal"
-                density="compact"
-                class="mb-3 text-left"
-                style="max-width: 420px"
-              >
-                El nombre del archivo no coincide con el tipo
-                <strong>{{ currentFilePattern }}</strong>. Verifica que cargaste el archivo correcto.
+              <span class="text-body-1 font-weight-bold mb-1">{{ selectedFile.name }}</span>
+              <span class="text-caption text-medium-emphasis mb-2">{{ fileSizeKb }} KB</span>
+              <VAlert v-if="fileNameMismatch" type="warning" variant="tonal" density="compact" class="mb-3 text-left" style="max-width: 420px">
+                El nombre del archivo no coincide con el tipo <strong>{{ currentFilePattern }}</strong>.
               </VAlert>
             </template>
 
-            <!-- Input nativo oculto, controlado exclusivamente via template ref -->
-            <input
-              id="csv-file-input"
-              ref="fileInputRef"
-              type="file"
-              :accept="acceptedFileTypes"
-              class="d-none"
-              @change="handleFileSelect"
-            >
+            <!-- Input nativo oculto -->
+            <input id="csv-file-input" ref="fileInputRef" type="file" :accept="acceptedFileTypes" class="d-none" @change="handleFileSelect">
 
             <div class="d-flex gap-3 flex-wrap justify-center align-center">
-              <VBtn
-                color="secondary"
-                variant="tonal"
-                prepend-icon="tabler-upload"
-                :disabled="uploading"
-                @click="fileInputRef?.click()"
-              >
+              <VBtn color="secondary" variant="tonal" prepend-icon="tabler-upload" :disabled="uploading" @click="fileInputRef?.click()">
                 Buscar Archivo
               </VBtn>
-
-              <!-- Limpiar selección (solo visible con archivo) -->
-              <VBtn
-                v-if="selectedFile"
-                color="error"
-                variant="text"
-                icon="tabler-x"
-                size="small"
-                :disabled="uploading"
-                @click="clearFile"
-              />
-
-              <VBtn
-                color="primary"
-                prepend-icon="tabler-database-import"
-                :disabled="!selectedFile || uploading"
-                :loading="uploading"
-                @click="triggerImport"
-              >
+              <VBtn v-if="selectedFile" color="error" variant="text" icon="tabler-x" size="small" :disabled="uploading" @click="clearFile" />
+              <VBtn color="primary" prepend-icon="tabler-database-import" :disabled="!selectedFile || uploading" :loading="uploading" @click="triggerImport">
                 Comenzar Importación
               </VBtn>
             </div>
@@ -480,6 +403,42 @@ const triggerImport = async () => {
                   </div>
                 </VCol>
               </VRow>
+
+              <!-- Tabla detallada de resultados -->
+              <VTable density="compact" class="border rounded bg-surface mt-3">
+                <thead>
+                  <tr>
+                    <th class="text-left font-weight-bold">Concepto / Métrica</th>
+                    <th class="text-end font-weight-bold">Resultado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>Total Filas Procesadas</strong></td>
+                    <td class="text-end font-weight-bold">{{ Number(lastImportResult.total_rows ?? 0).toLocaleString('es-VE') }}</td>
+                  </tr>
+                  <tr>
+                    <td class="text-primary font-weight-medium">Nuevos Productos Creados</td>
+                    <td class="text-end font-weight-bold text-primary">{{ Number(lastImportResult.created ?? 0).toLocaleString('es-VE') }}</td>
+                  </tr>
+                  <tr>
+                    <td class="text-info font-weight-medium">Productos Actualizados (Costos, Existencias, Ventas)</td>
+                    <td class="text-end font-weight-bold text-info">{{ Number(lastImportResult.updated ?? 0).toLocaleString('es-VE') }}</td>
+                  </tr>
+                  <tr>
+                    <td class="text-success font-weight-medium">Homologados con Catálogo Maestro</td>
+                    <td class="text-end font-weight-bold text-success">{{ Number(lastImportResult.matched_with_master ?? 0).toLocaleString('es-VE') }}</td>
+                  </tr>
+                  <tr>
+                    <td class="text-medium-emphasis">Lotes de Inventario Registrados</td>
+                    <td class="text-end font-weight-bold">{{ Number(lastImportResult.lots_updated ?? 0).toLocaleString('es-VE') }}</td>
+                  </tr>
+                  <tr>
+                    <td class="text-warning"><strong>Unidades Totales de Stock Ingresadas</strong></td>
+                    <td class="text-end font-weight-black text-warning">{{ Number(lastImportResult.total_stock ?? 0).toLocaleString('es-VE') }} unidades</td>
+                  </tr>
+                </tbody>
+              </VTable>
             </VCardText>
           </VCard>
         </VCardText>
