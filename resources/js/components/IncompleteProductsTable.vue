@@ -1,15 +1,14 @@
 <script setup>
-import AppMobilePagination from "@/components/AppMobilePagination.vue";
 import AppEmptyState from "@/components/AppEmptyState.vue";
+import IncompleteProductsMobileCards from "@/components/IncompleteProductsMobileCards.vue";
+import BarcodeScannerDialog from "@/components/dialogs/BarcodeScannerDialog.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { ref, computed } from "vue";
-import BarcodeScannerDialog from "@/components/dialogs/BarcodeScannerDialog.vue";
-import { formatDateSimple } from "@/utils/formatters";
 import { useBrandingStore } from "@/stores/useBrandingStore";
+import { computed, ref } from "vue";
 
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => false);
+const isRestaurant = computed(() => brandingStore.settings.business_type === 'restaurant');
 
 const props = defineProps({
   products: { type: Array, required: true },
@@ -62,12 +61,13 @@ const headers = computed(() => {
     list.push({ title: "ORIGEN", key: "origin", sortable: true });
   }
   list.push(
-    { title: "Accion", key: "actions", sortable: false, align: "center" }
+    { title: "ACCIONES", key: "actions", sortable: false, align: "center" }
   );
   return list;
 });
 
 const isMissing = (product, field) => {
+  if (!product) return false;
   if (field === "barcode") return !product.barcode;
   if (field === "laboratory") return !product.laboratory_id;
   if (field === "origin") return !isRestaurant.value && !product.origin_id;
@@ -81,15 +81,11 @@ const createLaboratory = async (name) => {
     emit("laboratory-created", response.data.laboratory);
     return response.data.laboratory;
   } catch (err) {
-    if (err.response?.status === 422) {
-      const errorMsg =
-        err.response.data?.errors?.name?.[0] ||
-        err.response.data?.message ||
-        "Error al crear el laboratorio";
-      toast.error(errorMsg);
-    } else {
-      toast.error("Error al crear el laboratorio");
-    }
+    const errorMsg =
+      err.response?.data?.errors?.name?.[0] ||
+      err.response?.data?.message ||
+      "Error al crear el laboratorio";
+    toast.error(errorMsg);
     throw err;
   }
 };
@@ -101,20 +97,18 @@ const createOrigin = async (name) => {
     emit("origin-created", response.data.origin);
     return response.data.origin;
   } catch (err) {
-    if (err.response?.status === 422) {
-      const errorMsg =
-        err.response.data?.errors?.name?.[0] ||
-        err.response.data?.message ||
-        "Error al crear el origen";
-      toast.error(errorMsg);
-    } else {
-      toast.error("Error al crear el origen");
-    }
+    const errorMsg =
+      err.response?.data?.errors?.name?.[0] ||
+      err.response?.data?.message ||
+      "Error al crear el origen";
+    toast.error(errorMsg);
     throw err;
   }
 };
 
 const saveInlineEdit = async (product) => {
+  if (!product) return;
+
   const payload = {
     id: product.id,
   };
@@ -134,7 +128,7 @@ const saveInlineEdit = async (product) => {
     await emit("update-product", payload);
     cancelEdit();
   } catch (error) {
-    console.error(error);
+    console.error("Error saving product:", error);
   } finally {
     isSaving.value = false;
   }
@@ -168,48 +162,32 @@ const handleOriginSearch = (search) => {
 };
 
 const handleCreateLaboratoryOnEnter = async () => {
-  if (!searchInput.value || !searchInput.value.trim()) return;
-
+  if (!searchInput.value?.trim()) return;
   const labName = searchInput.value.trim();
-  const exists = props.laboratories.some(
-    (lab) => lab.name.toLowerCase() === labName.toLowerCase()
-  );
-
-  if (exists) {
+  if (props.laboratories.some((lab) => lab.name.toLowerCase() === labName.toLowerCase())) {
     toast.error("Ya existe un laboratorio con ese nombre");
     return;
   }
-
   try {
     const newLab = await createLaboratory(labName);
     editingLaboratoryId.value = newLab.id;
-    if (currentEditingProduct.value) {
-      await saveInlineEdit(currentEditingProduct.value);
-    }
+    if (currentEditingProduct.value) await saveInlineEdit(currentEditingProduct.value);
   } catch (err) {
     console.error(err);
   }
 };
 
 const handleCreateOriginOnEnter = async () => {
-  if (!searchInput.value || !searchInput.value.trim()) return;
-
+  if (!searchInput.value?.trim()) return;
   const originName = searchInput.value.trim();
-  const exists = props.origins.some(
-    (origin) => origin.name.toLowerCase() === originName.toLowerCase()
-  );
-
-  if (exists) {
+  if (props.origins.some((origin) => origin.name.toLowerCase() === originName.toLowerCase())) {
     toast.error("Ya existe un origen con ese nombre");
     return;
   }
-
   try {
     const newOrigin = await createOrigin(originName);
     editingOriginId.value = newOrigin.id;
-    if (currentEditingProduct.value) {
-      await saveInlineEdit(currentEditingProduct.value);
-    }
+    if (currentEditingProduct.value) await saveInlineEdit(currentEditingProduct.value);
   } catch (err) {
     console.error(err);
   }
@@ -227,16 +205,11 @@ const handleScan = (code) => {
     saveInlineEdit(currentEditingProduct.value);
   }
 };
-
-const formatStock = (item) => {
-  const stock = Number(item.stock_calculado ?? 0);
-  return stock % 1 === 0 ? stock.toString() : stock.toFixed(2).replace(".", ",");
-};
 </script>
 
 <template>
   <VCard class="rounded-lg border shadow-sm overflow-hidden bg-surface">
-    <!-- Desktop Table -->
+    <!-- Vista de Tabla para Escritorio -->
     <div class="d-none d-sm-block">
       <VDataTableServer
         :headers="headers"
@@ -259,7 +232,7 @@ const formatStock = (item) => {
           />
         </template>
 
-        <!-- ID sin símbolo # -->
+        <!-- ID con enlace directo a trazabilidad -->
         <template #item.id="{ item }">
           <a
             :href="'/inventory/traceability?q=' + item.id"
@@ -270,16 +243,15 @@ const formatStock = (item) => {
           </a>
         </template>
 
-        <!-- PRODUCTO con ingrediente y laboratorio subtitulado -->
+        <!-- PRODUCTO: Nombre, principio activo y laboratorio -->
         <template #item.name="{ item }">
           <div class="d-flex align-center gap-x-3 py-2">
             <div class="d-flex flex-column min-width-0">
               <span
-                class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate"
+                class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate product-title-max"
                 :class="{ 
                   'text-warning': item.psychotropic == 1 || item.psychotropic === true
                 }"
-                style="max-inline-size: 320px;"
                 :title="item.name"
               >
                 {{ item.name?.toUpperCase() || "—" }}
@@ -287,11 +259,11 @@ const formatStock = (item) => {
                 <span v-if="item.is_colombian_origin == 1 || item.is_colombian_origin === true" class="text-xs text-disabled"> (COL)</span>
               </span>
               <div class="d-flex align-center gap-1 text-super-xs">
-                <span class="text-disabled truncate" style="max-inline-size: 180px;">
+                <span class="text-disabled truncate active-ingredient-max">
                   {{ item.active_ingredient || item.presentation || 'Sin Especificación' }}
                 </span>
                 <span class="text-disabled mx-1">|</span>
-                <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 140px;">
+                <span class="text-primary font-weight-black text-uppercase truncate lab-name-max">
                   {{ item.laboratory?.name || 'S/L' }}
                 </span>
               </div>
@@ -307,14 +279,14 @@ const formatStock = (item) => {
                 v-model="editingBarcode"
                 density="compact"
                 variant="outlined"
-                style="max-inline-size: 180px; min-inline-size: 130px;"
-                @keyup.enter="saveInlineEdit(item)"
+                class="field-barcode-input"
                 autofocus
                 placeholder="Barcode..."
                 append-inner-icon="tabler-camera"
                 hide-details
-                @click:append-inner="openScanner(item)"
                 :error="props.productWithError === item.id"
+                @keyup.enter="saveInlineEdit(item)"
+                @click:append-inner="openScanner(item)"
               />
             </div>
           </template>
@@ -334,22 +306,22 @@ const formatStock = (item) => {
               item-value="id"
               density="compact"
               variant="outlined"
-              style="max-inline-size: 220px; min-inline-size: 150px;"
+              class="field-autocomplete-input"
               :placeholder="isRestaurant ? 'Buscar marca...' : 'Buscar lab...'"
               clearable
               hide-details
               autofocus
+              :no-data-text="
+                searchInput && searchInput.trim()
+                  ? 'Presiona Enter para crear ' + searchInput
+                  : 'No hay opciones disponibles.'
+              "
               @keydown.enter.prevent="
                 searchInput && searchInput.trim() && !editingLaboratoryId
                   ? handleCreateLaboratoryOnEnter()
                   : saveInlineEdit(item)
               "
               @update:search="handleLaboratorySearch"
-              :no-data-text="
-                searchInput && searchInput.trim()
-                  ? 'Presiona Enter para crear ' + searchInput
-                  : 'No hay opciones disponibles.'
-              "
             />
           </template>
           <template v-else>
@@ -368,22 +340,22 @@ const formatStock = (item) => {
               item-value="id"
               density="compact"
               variant="outlined"
-              style="max-inline-size: 200px; min-inline-size: 140px;"
+              class="field-autocomplete-input"
               placeholder="Buscar origen..."
               clearable
               hide-details
               autofocus
+              :no-data-text="
+                searchInput && searchInput.trim()
+                  ? 'Presiona Enter para crear ' + searchInput
+                  : 'No hay opciones disponibles.'
+              "
               @keydown.enter.prevent="
                 searchInput && searchInput.trim() && !editingOriginId
                   ? handleCreateOriginOnEnter()
                   : saveInlineEdit(item)
               "
               @update:search="handleOriginSearch"
-              :no-data-text="
-                searchInput && searchInput.trim()
-                  ? 'Presiona Enter para crear ' + searchInput
-                  : 'No hay opciones disponibles.'
-              "
             />
           </template>
           <template v-else>
@@ -392,7 +364,7 @@ const formatStock = (item) => {
           </template>
         </template>
 
-        <!-- Columna Accion con IconBtn limpio -->
+        <!-- ACCIONES -->
         <template #item.actions="{ item }">
           <div class="d-flex align-center justify-center gap-1">
             <template v-if="editingProductId === item.id">
@@ -430,112 +402,37 @@ const formatStock = (item) => {
       </VDataTableServer>
     </div>
 
-    <!-- Mobile Cards -->
-    <div class="d-block d-sm-none pa-2">
-      <VProgressLinear v-if="props.loading" indeterminate color="primary" class="mb-2" />
-      
-      <div v-if="props.products.length === 0 && !props.loading" class="text-center py-8 text-disabled">
-        <AppEmptyState
-          title="¡Todo Completo!"
-          message="No se encontraron productos con datos incompletos."
-          icon="tabler-circle-check"
-        />
-      </div>
+    <!-- Vista de Tarjetas para Móviles (Componente Desacoplado) -->
+    <IncompleteProductsMobileCards
+      :products="props.products"
+      :loading="props.loading"
+      :total-product="props.totalProduct"
+      :items-per-page="props.itemsPerPage"
+      :page="props.page"
+      :sort-by="props.sortBy"
+      :order-by="props.orderBy"
+      :product-with-error="props.productWithError"
+      :laboratories="props.laboratories"
+      :origins="props.origins"
+      :is-restaurant="isRestaurant"
+      :editing-product-id="editingProductId"
+      v-model:editing-barcode="editingBarcode"
+      v-model:editing-laboratory-id="editingLaboratoryId"
+      v-model:editing-origin-id="editingOriginId"
+      :is-saving="isSaving"
+      :search-input="searchInput"
+      @update:options="(opts) => emit('update:options', opts)"
+      @start-edit="startEdit"
+      @cancel-edit="cancelEdit"
+      @save-inline-edit="saveInlineEdit"
+      @open-scanner="openScanner"
+      @search-laboratory="handleLaboratorySearch"
+      @search-origin="handleOriginSearch"
+      @create-laboratory="handleCreateLaboratoryOnEnter"
+      @create-origin="handleCreateOriginOnEnter"
+    />
 
-      <div v-else class="d-flex flex-column gap-2">
-        <VCard
-          v-for="item in props.products"
-          :key="item.id"
-          class="product-mobile-card border rounded-lg bg-surface pa-3 shadow-none position-relative"
-        >
-          <div class="d-flex align-center justify-space-between mb-2">
-            <div class="d-flex align-center gap-1 min-width-0">
-              <span class="text-xs font-weight-black text-primary">#{{ item.id }}</span>
-              <span class="text-disabled">|</span>
-              <span class="text-xs font-weight-black text-primary uppercase truncate" style="max-inline-size: 200px;">
-                {{ item.laboratory?.name || 'S/L' }}
-              </span>
-            </div>
-          </div>
-
-          <h4 class="text-xs font-weight-black text-high-emphasis uppercase leading-tight mb-1 text-truncate">
-            {{ item.name }}
-          </h4>
-
-          <!-- Edición Móvil In-line -->
-          <div v-if="editingProductId === item.id" class="mt-3 pt-2 border-t d-flex flex-column gap-2">
-            <VTextField
-              v-if="isMissing(item, 'barcode')"
-              v-model="editingBarcode"
-              density="compact"
-              variant="outlined"
-              label="Barcode"
-              placeholder="Escribir barcode..."
-              hide-details
-              append-inner-icon="tabler-camera"
-              @click:append-inner="openScanner(item)"
-            />
-            <VAutocomplete
-              v-if="isMissing(item, 'laboratory')"
-              v-model="editingLaboratoryId"
-              :items="props.laboratories"
-              item-title="name"
-              item-value="id"
-              label="Laboratorio / Marca"
-              density="compact"
-              variant="outlined"
-              hide-details
-              placeholder="Buscar o crear..."
-              @update:search="handleLaboratorySearch"
-              @keydown.enter.prevent="handleCreateLaboratoryOnEnter"
-            />
-            <VAutocomplete
-              v-if="isMissing(item, 'origin') && !isRestaurant"
-              v-model="editingOriginId"
-              :items="props.origins"
-              item-title="name"
-              item-value="id"
-              label="Origen"
-              density="compact"
-              variant="outlined"
-              hide-details
-              placeholder="Buscar o crear..."
-              @update:search="handleOriginSearch"
-              @keydown.enter.prevent="handleCreateOriginOnEnter"
-            />
-            <div class="d-flex gap-2 justify-center mt-1">
-              <VBtn size="small" variant="tonal" color="secondary" class="flex-grow-1 font-weight-bold" :disabled="isSaving" @click="cancelEdit">Cancelar</VBtn>
-              <VBtn size="small" color="primary" class="flex-grow-1 font-weight-bold" :loading="isSaving" @click="saveInlineEdit(item)">Guardar</VBtn>
-            </div>
-          </div>
-
-          <div v-else class="d-flex align-center justify-end text-super-xs text-medium-emphasis mt-2 pt-2 border-t">
-            <IconBtn
-              color="primary"
-              size="small"
-              @click="startEdit(item)"
-            >
-              <VIcon icon="tabler-edit" size="18" />
-              <VTooltip activator="parent">Completar Datos</VTooltip>
-            </IconBtn>
-          </div>
-        </VCard>
-      </div>
-
-      <!-- Paginación Móvil -->
-      <div class="mt-4">
-        <AppMobilePagination
-          :page="props.page"
-          :items-per-page="props.itemsPerPage"
-          :total-items="props.totalProduct"
-          :loading="props.loading"
-          :sort-by="typeof props.sortBy === 'string' ? props.sortBy : (props.sortBy?.[0]?.key || undefined)"
-          :order-by="props.orderBy"
-          @change="(options) => emit('update:options', options)"
-        />
-      </div>
-    </div>
-
+    <!-- Diálogo Escáner de Código de Barras -->
     <BarcodeScannerDialog
       v-model="isScannerVisible"
       @scan="handleScan"
@@ -544,18 +441,6 @@ const formatStock = (item) => {
 </template>
 
 <style scoped>
-.hover-chip:hover {
-  filter: brightness(0.95);
-  box-shadow: 0 2px 4px rgba(0,0,0,0.08);
-}
-
-.border-bottom-light {
-  border-bottom: 1px solid rgba(var(--v-border-color), 0.08);
-}
-.border-bottom-light:last-child {
-  border-bottom: none;
-}
-
 .text-super-xs {
   font-size: 0.65rem !important;
   line-height: 1;
@@ -567,6 +452,28 @@ const formatStock = (item) => {
 
 .gap-1 { gap: 4px !important; }
 .gap-2 { gap: 8px !important; }
+
+.product-title-max {
+  max-inline-size: 320px;
+}
+
+.active-ingredient-max {
+  max-inline-size: 180px;
+}
+
+.lab-name-max {
+  max-inline-size: 140px;
+}
+
+.field-barcode-input {
+  max-inline-size: 180px;
+  min-inline-size: 130px;
+}
+
+.field-autocomplete-input {
+  max-inline-size: 220px;
+  min-inline-size: 140px;
+}
 
 :deep(.v-data-table th) {
   color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;

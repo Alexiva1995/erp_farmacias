@@ -10,6 +10,9 @@ const uploading = ref(false)
 const progress = ref(0)
 const isDragging = ref(false)
 const fileInputRef = ref(null) // Ref al input nativo, sin tocar el DOM directamente
+const cutoffDate = ref(new Date().toISOString().substring(0, 10))
+const isInitialLoad = ref(true)
+const lastImportResult = ref(null)
 
 // --- Definición de tabs y esquemas ---
 const tabs = [
@@ -19,6 +22,7 @@ const tabs = [
   { title: 'Inventario / Lotes', value: 'inventariolot', icon: 'tabler-clipboard-list', filePattern: 'inventariolot.csv' },
   { title: 'Gastos', value: 'gastos', icon: 'tabler-receipt-2', filePattern: 'gastos.csv' },
   { title: 'Cierres Diarios', value: 'cierres', icon: 'tabler-report-money', filePattern: 'cierres.csv' },
+  { title: 'Catálogo y Ventas Externas (Excel)', value: 'external_catalog', icon: 'tabler-file-spreadsheet', filePattern: 'inventario.xlsx' },
 ]
 
 const fileSchemas = {
@@ -85,6 +89,15 @@ const fileSchemas = {
     { field: 'cop_delivered', required: true, desc: 'Monto físico COP entregado a administración' },
     { field: 'bs_delivered', required: true, desc: 'Monto físico Bs entregado a administración' },
   ],
+  external_catalog: [
+    { field: 'PRD_CODIGO', required: false, desc: 'Código interno en el sistema externo' },
+    { field: 'PRD_REFERENCIA', required: true, desc: 'Código de barra del producto (Homologación con Master)' },
+    { field: 'PRD_DESCRIPCION', required: true, desc: 'Descripción / Nombre del producto' },
+    { field: 'EIN_EXISTENCIA', required: true, desc: 'Stock físico actual en tienda' },
+    { field: 'TPC_COSTOACTUAL', required: true, desc: 'Costo unitario actual en USD' },
+    { field: 'DIM_EXENTO', required: true, desc: 'Indicador de IVA (G = Gravable 16%, E = Exento 0%)' },
+    { field: 'EIN_EXISTENCIADIFERIDA', required: true, desc: 'Ventas totales acumuladas del año (para cálculo del sugerido)' },
+  ],
 }
 
 // --- Computed ---
@@ -104,11 +117,18 @@ const fileSizeKb = computed(() =>
 
 /** Indica si el nombre del archivo coincide con el patrón del tab (advertencia no bloqueante) */
 const fileNameMismatch = computed(() => {
-  if (!selectedFile.value) return false
+  if (!selectedFile.value || activeTab.value === 'external_catalog') return false
 
   return !selectedFile.value.name
     .toLowerCase()
     .includes(activeTab.value.toLowerCase())
+})
+
+const acceptedFileTypes = computed(() => {
+  if (activeTab.value === 'external_catalog') {
+    return '.xlsx, .xls, .csv, text/csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel'
+  }
+  return '.csv, text/plain, text/csv'
 })
 
 // --- Watchers ---
@@ -116,6 +136,7 @@ const fileNameMismatch = computed(() => {
 /** Resetea el archivo seleccionado al cambiar de tab para evitar inconsistencia de estado */
 watch(activeTab, () => {
   clearFile()
+  lastImportResult.value = null
 })
 
 // --- Métodos ---
@@ -140,10 +161,23 @@ const handleFileSelect = (e) => {
 const handleDrop = (e) => {
   isDragging.value = false
   const file = e.dataTransfer?.files[0]
-  if (file && (file.type === 'text/csv' || file.name.endsWith('.csv') || file.type === 'text/plain')) {
-    selectedFile.value = file
+  if (!file) return
+
+  const isExcel = file.name.endsWith('.xlsx') || file.name.endsWith('.xls')
+  const isCsv = file.type === 'text/csv' || file.name.endsWith('.csv') || file.type === 'text/plain'
+
+  if (activeTab.value === 'external_catalog') {
+    if (isExcel || isCsv) {
+      selectedFile.value = file
+    } else {
+      toast.error('Solo se admiten archivos Excel (.xlsx, .xls) o CSV.')
+    }
   } else {
-    toast.error('Solo se admiten archivos CSV.')
+    if (isCsv) {
+      selectedFile.value = file
+    } else {
+      toast.error('Solo se admiten archivos CSV.')
+    }
   }
 }
 
@@ -160,41 +194,67 @@ const downloadTemplate = () => {
   URL.revokeObjectURL(url)
 }
 
-/** Envía el CSV al servidor con progreso real reportado por axios */
+/** Envía el archivo al servidor con progreso real reportado por axios */
 const triggerImport = async () => {
   if (!selectedFile.value) {
-    toast.error('Por favor, selecciona un archivo CSV válido.')
+    toast.error('Por favor, selecciona un archivo válido.')
     return
   }
 
   uploading.value = true
   progress.value = 0
+  lastImportResult.value = null
 
   const formData = new FormData()
 
-  formData.append('type', activeTab.value)
-  formData.append('file', selectedFile.value)
+  if (activeTab.value === 'external_catalog') {
+    formData.append('file', selectedFile.value)
+    formData.append('cutoff_date', cutoffDate.value)
+    formData.append('is_initial_load', isInitialLoad.value ? '1' : '0')
 
-  try {
-    const response = await axios.post('/import-csv', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-      // Progreso real del upload (no simulado con valores fijos)
-      onUploadProgress: (evt) => {
-        if (evt.lengthComputable) {
-          progress.value = Math.round((evt.loaded / evt.total) * 100)
-        }
-      },
-    })
+    try {
+      const response = await axios.post('/import-external-catalog', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (evt) => {
+          if (evt.lengthComputable) {
+            progress.value = Math.round((evt.loaded / evt.total) * 100)
+          }
+        },
+      })
 
-    toast.success(response.data.message ?? 'Importación procesada exitosamente.')
-    clearFile()
-  } catch (err) {
-    const message = err.response?.data?.message ?? 'Error al procesar el archivo CSV. Verifica la estructura.'
+      lastImportResult.value = response.data?.data ?? null
+      toast.success(response.data.message ?? 'Catálogo y ventas procesados exitosamente.')
+      clearFile()
+    } catch (err) {
+      const message = err.response?.data?.message ?? 'Error al procesar el archivo. Verifica la estructura.'
+      toast.error(message)
+    } finally {
+      uploading.value = false
+      setTimeout(() => { progress.value = 0 }, 1500)
+    }
+  } else {
+    formData.append('type', activeTab.value)
+    formData.append('file', selectedFile.value)
 
-    toast.error(message)
-  } finally {
-    uploading.value = false
-    setTimeout(() => { progress.value = 0 }, 1500)
+    try {
+      const response = await axios.post('/import-csv', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (evt) => {
+          if (evt.lengthComputable) {
+            progress.value = Math.round((evt.loaded / evt.total) * 100)
+          }
+        },
+      })
+
+      toast.success(response.data.message ?? 'Importación procesada exitosamente.')
+      clearFile()
+    } catch (err) {
+      const message = err.response?.data?.message ?? 'Error al procesar el archivo CSV. Verifica la estructura.'
+      toast.error(message)
+    } finally {
+      uploading.value = false
+      setTimeout(() => { progress.value = 0 }, 1500)
+    }
   }
 }
 </script>
@@ -298,6 +358,38 @@ const triggerImport = async () => {
 
           <VDivider class="my-4" />
 
+          <!-- Opciones específicas para Catálogo Externo / Excel -->
+          <div
+            v-if="activeTab === 'external_catalog'"
+            class="mb-6 pa-4 bg-var-theme-background rounded border"
+          >
+            <h4 class="text-subtitle-2 font-weight-bold mb-3 d-flex align-center gap-2">
+              <VIcon icon="tabler-settings" size="18" color="primary" />
+              Parámetros de Cálculo y Homologación
+            </h4>
+            <VRow>
+              <VCol cols="12" md="6">
+                <VTextField
+                  v-model="cutoffDate"
+                  type="date"
+                  label="Fecha de Corte del Archivo"
+                  hint="Determina los meses transcurridos en el año para el promedio mensual de venta"
+                  persistent-hint
+                  density="compact"
+                />
+              </VCol>
+              <VCol cols="12" md="6" class="d-flex align-center">
+                <VSwitch
+                  v-model="isInitialLoad"
+                  color="primary"
+                  label="¿Es la primera carga del año?"
+                  hint="Si está activo, divide la venta acumulada entre los meses transcurridos. Si no, calcula solo el incremento."
+                  persistent-hint
+                />
+              </VCol>
+            </VRow>
+          </div>
+
           <!-- Zona de Drag & Drop con estados visuales reactivos -->
           <div
             class="drop-zone d-flex flex-column align-center justify-center rounded"
@@ -310,7 +402,7 @@ const triggerImport = async () => {
             @drop.prevent="handleDrop"
           >
             <VIcon
-              :icon="selectedFile ? 'tabler-file-check' : 'tabler-file-type-csv'"
+              :icon="selectedFile ? 'tabler-file-check' : (activeTab === 'external_catalog' ? 'tabler-file-spreadsheet' : 'tabler-file-type-csv')"
               size="52"
               :color="selectedFile ? 'success' : 'primary'"
               class="mb-3"
@@ -322,7 +414,7 @@ const triggerImport = async () => {
                 Arrastra tu archivo aquí
               </span>
               <span class="text-caption text-disabled mb-4">
-                o haz clic en "Buscar Archivo" · Solo se admiten archivos .csv
+                o haz clic en "Buscar Archivo" · {{ activeTab === 'external_catalog' ? 'Admite Excel (.xlsx, .xls) o .csv' : 'Solo se admiten archivos .csv' }}
               </span>
             </template>
 
@@ -354,7 +446,7 @@ const triggerImport = async () => {
               id="csv-file-input"
               ref="fileInputRef"
               type="file"
-              accept=".csv, text/plain"
+              :accept="acceptedFileTypes"
               class="d-none"
               @change="handleFileSelect"
             >
@@ -405,9 +497,43 @@ const triggerImport = async () => {
               v-if="uploading"
               class="text-caption text-medium-emphasis mt-1"
             >
-              Enviando... {{ progress }}%
+              Procesando archivo... {{ progress }}%
             </span>
           </div>
+
+          <!-- Resumen de resultados de la última importación -->
+          <VCard
+            v-if="lastImportResult"
+            variant="outlined"
+            class="mt-6 border-success"
+          >
+            <VCardItem>
+              <VCardTitle class="d-flex align-center gap-2 text-success">
+                <VIcon icon="tabler-circle-check" color="success" />
+                Resumen de Importación
+              </VCardTitle>
+            </VCardItem>
+            <VCardText>
+              <VRow>
+                <VCol cols="6" sm="3">
+                  <div class="text-caption text-medium-emphasis">Total Procesados</div>
+                  <div class="text-h6 font-weight-bold">{{ lastImportResult.total_rows }}</div>
+                </VCol>
+                <VCol cols="6" sm="3">
+                  <div class="text-caption text-medium-emphasis">Productos Creados</div>
+                  <div class="text-h6 font-weight-bold text-primary">{{ lastImportResult.created }}</div>
+                </VCol>
+                <VCol cols="6" sm="3">
+                  <div class="text-caption text-medium-emphasis">Productos Actualizados</div>
+                  <div class="text-h6 font-weight-bold text-info">{{ lastImportResult.updated }}</div>
+                </VCol>
+                <VCol cols="6" sm="3">
+                  <div class="text-caption text-medium-emphasis">Homologados con Master</div>
+                  <div class="text-h6 font-weight-bold text-success">{{ lastImportResult.matched_master }}</div>
+                </VCol>
+              </VRow>
+            </VCardText>
+          </VCard>
         </VCardText>
       </VCard>
     </VCol>

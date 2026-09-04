@@ -15,12 +15,47 @@ use App\Models\ExpenseCategory;
 use App\Models\DailyClosure;
 use Illuminate\Http\JsonResponse;
 use App\Http\Requests\Configuration\ImportCsvRequest;
+use App\Http\Requests\Configuration\ImportExternalCatalogRequest;
+use App\Services\Catalog\ExternalCatalogImportService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class DataImportController extends Controller
 {
+    public function __construct(
+        protected ?ExternalCatalogImportService $externalCatalogService = null
+    ) {}
+
+    /**
+     * Importa catálogo, existencias y ventas externas desde archivo Excel/CSV.
+     */
+    public function importExternalCatalog(ImportExternalCatalogRequest $request, ExternalCatalogImportService $service): JsonResponse
+    {
+        try {
+            $file = $request->file('file');
+            $cutoffDate = $request->input('cutoff_date');
+            $isInitialLoad = $request->boolean('is_initial_load', true);
+
+            $stats = $service->processImport($file, $cutoffDate, $isInitialLoad);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Catálogo procesado exitosamente. Creados: {$stats['created']}, Actualizados: {$stats['updated']}, Homologados con Master: {$stats['matched_with_master']}, Stock Total: {$stats['total_stock']} unidades.",
+                'data'    => $stats,
+            ], 200);
+        } catch (\Throwable $e) {
+            Log::error('Error en DataImportController@importExternalCatalog: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al procesar el archivo de catálogo: ' . $e->getMessage(),
+            ], 422);
+        }
+    }
+
     public function importCsv(ImportCsvRequest $request): JsonResponse
     {
         $type = $request->input('type');

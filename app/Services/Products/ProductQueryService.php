@@ -361,10 +361,6 @@ class ProductQueryService
                 'laboratory:id,name',
                 'origin:id,name',
                 'category:id,name',
-                'lots' => function ($query) {
-                    $query->select(['id', 'product_id', 'expiration_date', 'quantity'])
-                          ->where('quantity', '>', 0);
-                },
             ]);
 
         $isRestaurant = \App\Models\GeneralSetting::first()?->business_type === 'restaurant';
