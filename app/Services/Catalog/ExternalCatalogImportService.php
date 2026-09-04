@@ -175,7 +175,8 @@ class ExternalCatalogImportService
         array &$stats,
         array $masterMap,
         $existingProducts,
-        $existingLots
+        $existingLots,
+        array &$existingIds
     ): void {
         $barcode = $row['barcode'];
         $rawName = $row['name'];
@@ -264,7 +265,17 @@ class ExternalCatalogImportService
         }
 
         if ($isNew) {
-            $product = Product::create($productData);
+            try {
+                $product = Product::create($productData);
+            } catch (\Illuminate\Database\QueryException $e) {
+                // Si hubo colisión por ID unificado del máster, crear con auto-increment natural
+                if (isset($productData['id'])) {
+                    unset($productData['id']);
+                    $product = Product::create($productData);
+                } else {
+                    throw $e;
+                }
+            }
             $existingProducts->put($barcode, $product);
             $existingIds[$product->id] = true;
             $stats['created']++;
