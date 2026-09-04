@@ -10,7 +10,7 @@ return [
         return [
             'fechaInicio' => '2025-08-01T23:39:32.886Z',
             'fechaFin' => now()->toIso8601String(),
-            'cliente' => 31373,
+            'cliente' => !empty($connection->username) ? (int) preg_replace('/\D/', '', $connection->username) : (int) env('MAFARTA_CLIENTE', 31373),
             'drogueria' => 3,
         ];
     },

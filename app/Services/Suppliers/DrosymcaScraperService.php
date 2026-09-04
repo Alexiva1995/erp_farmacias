@@ -431,8 +431,8 @@ class DrosymcaScraperService implements DrosymcaScraperServiceInterface
             $pass = FtpCrypt::decrypt($conn->password);
         }
 
-        $user = $user ?: env('DROSYMCA_USERNAME', 'farmab.sucre2024@gmail.com');
-        $pass = $pass ?: env('DROSYMCA_PASSWORD', 'J505406957');
+        $user = $user ?: env('DROSYMCA_USERNAME');
+        $pass = $pass ?: env('DROSYMCA_PASSWORD');
 
         $documents = $this->fetchPendingInvoices($user, $pass);
 

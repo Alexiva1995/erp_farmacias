@@ -63,9 +63,9 @@ class DrocercaScraperService implements DrocercaScraperServiceInterface
             $pass = \App\Helpers\FtpCrypt::decrypt($conn->password);
         }
 
-        // Fallbacks por defecto para el portal de Drocerca
-        $user = $user ?: env('DROCERCA_USERNAME', 'W008B3');
-        $pass = $pass ?: env('DROCERCA_PASSWORD', 'J505406957');
+        // Fallbacks por variables de entorno si no están en BD
+        $user = $user ?: env('DROCERCA_USERNAME');
+        $pass = $pass ?: env('DROCERCA_PASSWORD');
 
         // 1. Obtener listado de facturas emitidas desde la sección Facturación
         $documents = $this->fetchDocuments($user, $pass);

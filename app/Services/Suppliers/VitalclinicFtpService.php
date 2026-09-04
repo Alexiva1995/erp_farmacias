@@ -94,8 +94,8 @@ class VitalclinicFtpService implements VitalclinicFtpServiceInterface
             throw new Exception("Faltan las credenciales FTP de Vitalclinic (usuario o contraseña vacíos).");
         }
 
-        // Extraer código de cliente de 4 caracteres (ej: de 'Facturas/3613' -> '3613')
-        $clientCode = '3613';
+        // Extraer código de cliente (ej: de username o invoice_path)
+        $clientCode = $user ?: '3613';
         if (!empty($connection->invoice_path)) {
             $parts = explode('/', trim($connection->invoice_path, '/'));
             $lastPart = end($parts);

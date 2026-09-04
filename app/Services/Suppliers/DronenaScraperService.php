@@ -41,16 +41,16 @@ class DronenaScraperService implements DronenaScraperServiceInterface
         $user = $username;
         $pass = $password;
 
-        if (!$user && $conn && $conn->type === 'dronena_bot' && !empty($conn->username)) {
+        if (!$user && $conn && !empty($conn->username)) {
             $user = $conn->username;
         }
-        if (!$pass && $conn && $conn->type === 'dronena_bot' && !empty($conn->password)) {
+        if (!$pass && $conn && !empty($conn->password)) {
             $pass = \App\Helpers\FtpCrypt::decrypt($conn->password);
         }
 
-        // Fallbacks a variables de entorno o credenciales oficiales por defecto
-        $user = $user ?: env('DRONENA_USERNAME', 'D719');
-        $pass = $pass ?: env('DRONENA_PASSWORD', 'dronena2025');
+        // Fallbacks a variables de entorno si no están en BD
+        $user = $user ?: env('DRONENA_USERNAME');
+        $pass = $pass ?: env('DRONENA_PASSWORD');
 
         $documents = $this->fetchDocuments($user, $pass);
 

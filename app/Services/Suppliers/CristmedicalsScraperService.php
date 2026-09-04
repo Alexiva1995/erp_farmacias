@@ -338,8 +338,8 @@ class CristmedicalsScraperService implements CristmedicalsScraperServiceInterfac
             }
         }
 
-        $user = $user ?: env('CRISTMEDICALS_USERNAME', 'FAR00818');
-        $pass = $pass ?: env('CRISTMEDICALS_PASSWORD', 'FAR00818');
+        $user = $user ?: env('CRISTMEDICALS_USERNAME');
+        $pass = $pass ?: env('CRISTMEDICALS_PASSWORD');
 
         $invoices = $this->fetchInvoices($user, $pass);
 

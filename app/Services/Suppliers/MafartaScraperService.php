@@ -52,8 +52,8 @@ class MafartaScraperService implements MafartaScraperServiceInterface
             $pass = \App\Helpers\FtpCrypt::decrypt($conn->password);
         }
 
-        $user = $user ?: env('MAFARTA_USERNAME', 'F31373');
-        $pass = $pass ?: env('MAFARTA_PASSWORD', 'Mafarta2026*');
+        $user = $user ?: env('MAFARTA_USERNAME');
+        $pass = $pass ?: env('MAFARTA_PASSWORD');
 
         $result = $this->fetchDocumentsWithToken($user, $pass);
         $documents = $result['documents'] ?? [];

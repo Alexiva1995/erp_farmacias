@@ -92,8 +92,8 @@ class DrocercaFtpService implements DrocercaFtpServiceInterface
 
         $host = $connection?->host ?: env('DROCERCA_FTP_HOST', 'drocerca.proteoerp.org');
         $port = (int) ($connection?->port ?? env('DROCERCA_FTP_PORT', 21));
-        $user = (string) ($connection?->username ?? env('DROCERCA_FTP_USER', 'W008B3'));
-        $pass = (string) ($connection?->password ? FtpCrypt::decrypt($connection->password) : env('DROCERCA_FTP_PASS', 'J505406957'));
+        $user = (string) ($connection?->username ?? env('DROCERCA_FTP_USER'));
+        $pass = (string) ($connection?->password ? FtpCrypt::decrypt($connection->password) : env('DROCERCA_FTP_PASS'));
 
         if (trim($user) === '' || trim($pass) === '') {
             throw new Exception("Faltan las credenciales FTP de Drocerca (usuario o contraseña vacíos).");

@@ -85,11 +85,45 @@ class DromegaScraperService implements DromegaScraperServiceInterface
     /**
      * Extrae las facturas directamente del estado de cuenta de Droguería Mega.
      */
-    public function fetchInvoices(?string $cookie = null, ?string $user = null, ?string $pass = null): array
+    public function fetchInvoices(?string $cookie = null, ?string $user = null, ?string $pass = null, ?int $supplierId = null): array
     {
-        $cookieString = $cookie ?: env('DROMEGA_COOKIE', 'wordpress_test_cookie=WP%20Cookie%20check; wp_lang=es_ES; wordpress_logged_in_39574764368bb892fdea55c61228e833=Farmacia_Barrio_Sucre%7C1789522005%7CYWx0d9WkwLcNilkn5JDCcVxXwC4xCWiXdW5dXvzvmCb%7Cd8a89bfde4906ecd86eabc0061b580cce09bb1b71de7a7f85fe54ec1657bed9d; _ga=GA1.1.786654209.1780670257; _ga_J50XJCL6NJ=GS2.1.s1780670257$o1$g0$t1780670272$j45$l0$h0; PHPSESSID=394ae3b6804e7d2b6e052a44b2cdd93d');
+        $supplier = null;
+        if ($supplierId) {
+            $supplier = Supplier::with('connections')->find($supplierId);
+        } else {
+            $supplier = Supplier::with('connections')
+                ->where('name', 'LIKE', '%DROMEGA%')
+                ->orWhere('name', 'LIKE', '%MEGA%')
+                ->orWhere('id', 1005)
+                ->first();
+        }
 
-        $res = $this->executeCurl(self::ESTADO_CUENTA_URL, $cookieString);
+        $conn = $supplier?->connections?->first();
+        $cookieString = $cookie;
+
+        if (!$cookieString && $conn) {
+            if (!empty($conn->password)) {
+                try {
+                    $cookieString = FtpCrypt::decrypt($conn->password);
+                } catch (\Throwable) {
+                    $cookieString = null;
+                }
+            }
+            if (!$cookieString && !empty($conn->path) && str_contains($conn->path, 'wordpress_logged_in_')) {
+                $cookieString = $conn->path;
+            }
+        }
+
+        $cookieString = $cookieString ?: env('DROMEGA_COOKIE');
+
+        if (empty($cookieString)) {
+            throw new \RuntimeException("No se encontraron credenciales ni cookie de sesión configurada para Droguería Mega.");
+        }
+
+        $clientCode = $user ?: ($conn?->username ?: '7586');
+        $targetUrl = self::BASE_URL . '/ventas/estado-de-cuenta/?cliente=' . urlencode($clientCode);
+
+        $res = $this->executeCurl($targetUrl, $cookieString);
 
         if ($res['status'] !== 200 || empty($res['body'])) {
             throw new \RuntimeException("No se pudo obtener el estado de cuenta de Droguería Mega (HTTP {$res['status']}).");
