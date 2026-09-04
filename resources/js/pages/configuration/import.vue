@@ -6,7 +6,7 @@ import { toast } from '@/plugins/sweetalert'
 import { importTabs, fileSchemas } from './importSchemas'
 
 // --- Estado ---
-const activeTab = ref('clientes')
+const activeTab = ref('external_catalog')
 const selectedFile = ref(null)
 const uploading = ref(false)
 const progress = ref(0)
@@ -14,7 +14,16 @@ const isDragging = ref(false)
 const fileInputRef = ref(null)
 const cutoffDate = ref(new Date().toISOString().substring(0, 10))
 const isInitialLoad = ref(true)
-const lastImportResult = ref(null)
+
+// Persistencia en localStorage para que el reporte sea visible tras recargar
+let initialSavedStats = null
+try {
+  const raw = localStorage.getItem('last_external_catalog_import_result')
+  if (raw) initialSavedStats = JSON.parse(raw)
+} catch (e) {
+  initialSavedStats = null
+}
+const lastImportResult = ref(initialSavedStats)
 const tabs = importTabs
 
 // --- Computed ---
@@ -35,17 +44,16 @@ const acceptedFileTypes = computed(() => {
 // --- Watchers & Métodos ---
 watch(activeTab, () => {
   clearFile()
-  lastImportResult.value = null
 })
 
-// --- Métodos ---
+const clearReport = () => {
+  lastImportResult.value = null
+  try { localStorage.removeItem('last_external_catalog_import_result') } catch (e) {}
+}
 
-/** Limpia el archivo seleccionado y resetea el input via template ref (sin tocar el DOM) */
 const clearFile = () => {
   selectedFile.value = null
-  if (fileInputRef.value) {
-    fileInputRef.value.value = ''
-  }
+  if (fileInputRef.value) fileInputRef.value.value = ''
 }
 
 const handleFileSelect = (e) => {
@@ -109,6 +117,7 @@ const triggerImport = async () => {
 
       const stats = response.data?.data ?? {}
       lastImportResult.value = stats
+      try { localStorage.setItem('last_external_catalog_import_result', JSON.stringify(stats)) } catch (e) {}
 
       Swal.fire({
         icon: 'success',
@@ -360,7 +369,7 @@ const triggerImport = async () => {
                   variant="text"
                   color="success"
                   icon="tabler-x"
-                  @click="lastImportResult = null"
+                  @click="clearReport"
                 />
               </VCardTitle>
             </VCardItem>
