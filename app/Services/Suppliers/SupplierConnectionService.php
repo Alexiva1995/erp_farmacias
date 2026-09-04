@@ -541,7 +541,7 @@ class SupplierConnectionService
 
         $splitLine = function (string $l) use ($headerOffsets) {
             if (str_contains($l, ';')) {
-                return explode(';', $l);
+                return str_getcsv($l, ';');
             }
             if (str_contains($l, "\t")) {
                 return explode("\t", $l);

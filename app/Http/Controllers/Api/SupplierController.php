@@ -643,6 +643,16 @@ class SupplierController extends Controller
                         [ "type" => "date", "field" => "expiration_date", "format" => "d/m/Y" ]
                     ]
                 ];
+            } elseif (stripos($supplier->name, 'CONTIN') !== false || $supplier->id === 1032) {
+                $data['structure'] = [
+                    [ "target" => "cod_supplier", "file_field" => "A", "type" => "string" ],
+                    [ "target" => "barcode_match", "file_field" => "B", "type" => "string" ],
+                    [ "target" => "name", "file_field" => "C", "type" => "string" ],
+                    [ "target" => "expiration", "file_field" => "D", "type" => "date", "format" => "d/m/Y" ],
+                    [ "target" => "unit_cost_usd", "file_field" => "G", "type" => "decimal" ],
+                    [ "target" => "quantity", "file_field" => "H", "type" => "integer" ],
+                    [ "target" => "laboratory", "file_field" => "I", "type" => "string" ]
+                ];
             } else {
                 $data['structure'] = [];
             }
