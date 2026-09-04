@@ -445,38 +445,32 @@ class IaAssistantReportService
         // OBTENEMOS TODOS LOS IDs de esta página/lote (Matamos el N+1)
         $productIds = $items->pluck('id')->toArray();
         
-        // Ejecutamos UNA sola consulta que traiga las "ventas" de estos IDs
-        $filtrosVentas = $filtros;
-        $filtrosVentas['ids_in'] = $productIds; // Nuevo filtro a implementar en Repo
-
-        $ventasDb = $this->productRepository->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtrosVentas);
-        
-        // Convertimos a array asociativo por ID (Hash Map / Memoria) -> O(1) search
-        // En lugar de hacer $col->first() en memoria O(N) lo hacemos O(1)
-        $ventasMap = collect($ventasDb)->keyBy('id');
+        // Ejecutamos UNA sola consulta agrupada directa y rápida para obtener ventas en el lapso
+        $ventasMap = \Illuminate\Support\Facades\DB::table('order_details')
+            ->join('orders', 'orders.id', '=', 'order_details.order_id')
+            ->whereIn('order_details.product_id', $productIds)
+            ->whereBetween('orders.created_at', [$filtros["previousDate"], $filtros["dateToday"]])
+            ->where('orders.status', 'Completed')
+            ->select('order_details.product_id', \Illuminate\Support\Facades\DB::raw('COALESCE(SUM(order_details.quantity), 0) as total_sold'))
+            ->groupBy('order_details.product_id')
+            ->pluck('total_sold', 'product_id');
 
         // Hidratación masiva de AO para evitar N+1
         $this->hydrateAutoOrderBulk($items, $filtros);
 
         $items->transform(function ($item) use ($ventasMap) {
-            // Buscar si tiene datos de venta en el mapa
-            $itemVentas = $ventasMap->get($item->id);
+            $ventasTotales = (float)($ventasMap->get($item->id) ?? 0);
 
-            $promedio = $item->promedio_calculado ?? 0;
-            $stockActual = $item->lote_quantity ?? 0;
-            $autoOrder = $item->totalQuantityInAutoOrder ?? 0;
-
-            if ($itemVentas) {
-                $itemVentas = $this->productRepository->calcularAOProduct($itemVentas);
-                $ventasTotales = $itemVentas->total_sold_completed ?? 0;
+            // Demanda ponderada combinada: Si hay ventas locales > 0 y promedio > 0, pondera ambos. Si no hay ventas locales registradas, usa el promedio disponible.
+            if ($ventasTotales > 0 && $promedio > 0) {
+                $item->demanda_ponderada = ($ventasTotales + $promedio) / 2;
+            } elseif ($ventasTotales > 0) {
+                $item->demanda_ponderada = $ventasTotales;
             } else {
-                $ventasTotales = 0;
+                $item->demanda_ponderada = $promedio;
             }
 
-            // Demanda ponderada combinada pura: siempre pondera (ventas + promedio) / 2
-            $item->demanda_ponderada = ($ventasTotales + $promedio) / 2;
-
-            // Fórmula combinada pura: ((ventas + promedio) / 2) - stock - AO
+            // Fórmula combinada: demanda_ponderada - stock - AO
             $resultado = $item->demanda_ponderada - $stockActual - $autoOrder;
 
             // Invertir el signo para el análisis visual (faltante => positivo)
@@ -683,7 +677,13 @@ class IaAssistantReportService
                 }
 
                 if ($totalSold === null || $totalSold == 0) {
-                    $salesAverage = 0.0;
+                    if (!empty($item->external_accumulated_sales) && (float) $item->external_accumulated_sales > 0) {
+                        $extDate = !empty($item->external_sales_date) ? \Carbon\Carbon::parse($item->external_sales_date) : $now;
+                        $monthsElapsed = max(1, (int) $extDate->month);
+                        $salesAverage = round(((float) $item->external_accumulated_sales) / $monthsElapsed, 2);
+                    } else {
+                        $salesAverage = 0.0;
+                    }
                 } else {
                     $createdAt    = $item->created_at ? \Carbon\Carbon::parse($item->created_at) : $now->copy()->subMonths(12);
                     $monthsOfLife = (int) ceil($createdAt->diffInMonths($now));
@@ -913,7 +913,9 @@ class IaAssistantReportService
                     $p->demanda_ponderada = $totalSales;
                     $resultado = $totalSales - $totalStock - $totalAO;
                 } elseif ($tipo === 'combinado') {
-                    $p->demanda_ponderada = ($totalSales + $totalPromedio) / 2;
+                    $p->demanda_ponderada = ($totalSales > 0 && $totalPromedio > 0)
+                        ? ($totalSales + $totalPromedio) / 2
+                        : ($totalSales > 0 ? $totalSales : $totalPromedio);
                     $resultado = $p->demanda_ponderada - $totalStock - $totalAO;
                 } else {
                     $p->demanda_ponderada = $totalPromedio;
@@ -1064,7 +1066,10 @@ class IaAssistantReportService
             if ($tipo === 'sales') {
                 $resultado = $totalSales - $totalStock - $totalAO;
             } elseif ($tipo === 'combinado') {
-                $resultado = (($totalSales + $totalPromedio) / 2) - $totalStock - $totalAO;
+                $demanda = ($totalSales > 0 && $totalPromedio > 0)
+                    ? ($totalSales + $totalPromedio) / 2
+                    : ($totalSales > 0 ? $totalSales : $totalPromedio);
+                $resultado = $demanda - $totalStock - $totalAO;
             } else {
                 $resultado = $totalPromedio - $totalStock - $totalAO;
             }
@@ -1125,7 +1130,9 @@ class IaAssistantReportService
                 if ($tipo === 'sales') {
                     $p->demanda_ponderada = $totalSales;
                 } elseif ($tipo === 'combinado') {
-                    $p->demanda_ponderada = ($totalSales + $totalPromedio) / 2;
+                    $p->demanda_ponderada = ($totalSales > 0 && $totalPromedio > 0)
+                        ? ($totalSales + $totalPromedio) / 2
+                        : ($totalSales > 0 ? $totalSales : $totalPromedio);
                 } else {
                     $p->demanda_ponderada = $totalPromedio;
                 }

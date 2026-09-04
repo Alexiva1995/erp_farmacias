@@ -669,6 +669,9 @@ class ProductRepository
             "products.active_ingredient",
             'products.manual_solicitar',
             'products.ignore_until',
+            'products.sales_average_updated_at',
+            'products.external_accumulated_sales',
+            'products.external_sales_date',
             DB::raw(DB::connection()->getDriverName() === 'sqlite'
                 ? '(SELECT CAST((julianday(MIN(expiration_date)) - julianday("now")) / 30 AS INTEGER) FROM product_lots WHERE product_lots.product_id = products.id AND expiration_date >= DATE("now")) AS meses_faltantes'
                 : '(SELECT TIMESTAMPDIFF(MONTH, CURDATE(), MIN(expiration_date)) FROM product_lots WHERE product_lots.product_id = products.id AND expiration_date >= CURDATE()) AS meses_faltantes'),
@@ -1033,6 +1036,9 @@ class ProductRepository
             "products.active_ingredient",
             'products.manual_solicitar',
             'products.ignore_until',
+            'products.sales_average_updated_at',
+            'products.external_accumulated_sales',
+            'products.external_sales_date',
             DB::raw("{$promedio_calculado} AS promedio_calculado"),
             DB::raw(DB::connection()->getDriverName() === 'sqlite'
                 ? '(SELECT CAST((julianday(MIN(expiration_date)) - julianday("now")) / 30 AS INTEGER) FROM product_lots WHERE product_lots.product_id = products.id AND expiration_date >= DATE("now")) AS meses_faltantes'

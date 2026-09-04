@@ -30,27 +30,54 @@ class CalculateProductSalesAverage extends Command
     {
         $this->info('Iniciando cálculo del promedio mensual de ventas de productos...');
 
-        $chunkSize = $this->option('chunk');
-        $totalProducts = Product::count();
-        $processedProducts = 0;
-        $updatedProducts = 0;
         $now = Carbon::now();
-
-        $this->info("Procesando {$totalProducts} productos en lotes de {$chunkSize}...");
-
-        $progressBar = $this->output->createProgressBar($totalProducts);
-        $progressBar->start();
 
         try {
             DB::beginTransaction();
 
-            Product::chunk($chunkSize, function ($products) use (&$processedProducts, &$updatedProducts, $progressBar, $now) {
+            // 1. Actualización instantánea en bloque para productos con ventas externas acumuladas del Excel
+            $isSqlite = DB::connection()->getDriverName() === 'sqlite';
+            if ($isSqlite) {
+                $externalUpdated = DB::table('products')
+                    ->where('external_accumulated_sales', '>', 0)
+                    ->update([
+                        'sales_average' => DB::raw('ROUND(external_accumulated_sales / MAX(1, CAST(strftime("%m", COALESCE(external_sales_date, DATE("now"))) AS INTEGER)), 2)'),
+                        'sales_average_updated_at' => $now,
+                    ]);
+            } else {
+                $externalUpdated = DB::table('products')
+                    ->where('external_accumulated_sales', '>', 0)
+                    ->update([
+                        'sales_average' => DB::raw('ROUND(external_accumulated_sales / GREATEST(1, MONTH(COALESCE(external_sales_date, CURDATE()))), 2)'),
+                        'sales_average_updated_at' => $now,
+                    ]);
+            }
+
+            $this->info("Productos con ventas acumuladas de catálogo externo actualizados: {$externalUpdated}");
+
+            // 2. Procesar productos con ventas reales locales en ordenes POS
+            $chunkSize = $this->option('chunk');
+            $windowMonths = 12;
+            $windowStart  = $now->copy()->subMonths($windowMonths);
+
+            $processedProducts = 0;
+            $updatedProducts = $externalUpdated;
+
+            // Consultar únicamente productos con ventas locales o sin ventas externas para no re-procesar innecesariamente
+            $productsToProcess = Product::where(function ($q) {
+                $q->whereNull('external_accumulated_sales')
+                  ->orWhere('external_accumulated_sales', '<=', 0);
+            });
+
+            $totalProducts = $productsToProcess->count();
+            $this->info("Procesando {$totalProducts} productos locales en lotes de {$chunkSize}...");
+
+            $progressBar = $this->output->createProgressBar($totalProducts);
+            $progressBar->start();
+
+            $productsToProcess->chunk($chunkSize, function ($products) use (&$processedProducts, &$updatedProducts, $progressBar, $now, $windowStart) {
                 foreach ($products as $product) {
                     $processedProducts++;
-
-                    // Ventana de análisis: siempre últimos 12 meses
-                    $windowMonths = 12;
-                    $windowStart  = $now->copy()->subMonths($windowMonths);
 
                     // Total de unidades vendidas o consumidas en los últimos 12 meses
                     $isRestaurant = \App\Models\GeneralSetting::first()?->business_type === 'restaurant';
@@ -70,15 +97,8 @@ class CalculateProductSalesAverage extends Command
                             ->sum('order_details.quantity');
                     }
 
-                    // Si no hay ventas registradas en el sistema local, verificar si posee ventas externas acumuladas
                     if ($totalSold === null || $totalSold == 0) {
-                        if (!empty($product->external_accumulated_sales) && (float) $product->external_accumulated_sales > 0) {
-                            $extDate = $product->external_sales_date ? Carbon::parse($product->external_sales_date) : $now;
-                            $monthsElapsed = max(1, (int) $extDate->month);
-                            $salesAverage = round(((float) $product->external_accumulated_sales) / $monthsElapsed, 2);
-                        } else {
-                            $salesAverage = 0;
-                        }
+                        $salesAverage = 0;
                     } else {
                         // Fecha del primer ingreso a inventario (lotes o movimientos)
                         $firstStockDate = DB::table('product_lots')
@@ -121,19 +141,11 @@ class CalculateProductSalesAverage extends Command
                         $salesAverage = round($totalSold / $actualMonths, 2);
                     }
 
-                    // Actualizar producto con timestamp de actualización del promedio
                     $product->update([
                         'sales_average'            => $salesAverage,
-                        'sales_average_updated_at' => $now, // Feature 3: marcar cuándo se actualizó
+                        'sales_average_updated_at' => $now,
                     ]);
                     $updatedProducts++;
-
-                    $this->info(
-                        "Producto ID {$product->id} ({$product->name}): " .
-                        "Total vendido: {$totalSold}, " .
-                        "Promedio mensual: {$salesAverage}",
-                        'v'
-                    );
 
                     $progressBar->advance();
                 }
