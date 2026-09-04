@@ -61,6 +61,44 @@ class MasterCatalogClientService
     }
 
     /**
+     * Consultar múltiples productos por códigos de barra en el catálogo maestro (Bulk Lookup).
+     */
+    public function lookupBulk(array $barcodes): array
+    {
+        $cleanBarcodes = array_values(array_filter(array_unique(array_map('trim', $barcodes))));
+        if (empty($cleanBarcodes)) {
+            return [];
+        }
+
+        $role = config('catalog.role', 'standalone');
+
+        if ($role === 'slave') {
+            $masterUrl = config('catalog.master_url');
+            $masterKey = config('catalog.master_key');
+
+            if (!empty($masterUrl)) {
+                try {
+                    $response = Http::timeout(10)
+                        ->withHeaders([
+                            'X-Master-Key' => $masterKey,
+                            'Accept'       => 'application/json',
+                        ])
+                        ->post("{$masterUrl}/lookup-bulk", ['barcodes' => $cleanBarcodes]);
+
+                    if ($response->successful()) {
+                        $json = $response->json();
+                        return $json['data'] ?? [];
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning("Error al consultar Catálogo Maestro remoto en bloque: " . $e->getMessage());
+                }
+            }
+        }
+
+        return $this->localMasterService->lookupBulk($cleanBarcodes);
+    }
+
+    /**
      * Registrar producto en el Catálogo Maestro para obtener ID oficial unificado.
      */
     public function registerProductInMaster(array $productData): ?array

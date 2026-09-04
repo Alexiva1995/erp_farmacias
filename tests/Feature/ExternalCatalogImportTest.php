@@ -36,18 +36,18 @@ class ExternalCatalogImportTest extends TestCase
     {
         // Mock de MasterCatalogClientService
         $mockMaster = $this->createMock(MasterCatalogClientService::class);
-        $mockMaster->method('lookupByBarcode')->willReturnCallback(function ($barcode) {
-            if ($barcode === '7703712035256') {
-                return [
-                    'found' => true,
-                    'product' => [
+        $mockMaster->method('lookupBulk')->willReturnCallback(function (array $barcodes) {
+            $res = [];
+            foreach ($barcodes as $b) {
+                if ($b === '7703712035256') {
+                    $res[$b] = [
                         'name' => 'ACICLOVIR 800MG OFICIAL MASTER',
                         'laboratory_id' => 1,
                         'category_id' => 1,
-                    ],
-                ];
+                    ];
+                }
             }
-            return ['found' => false, 'product' => null];
+            return $res;
         });
         $this->app->instance(MasterCatalogClientService::class, $mockMaster);
 
@@ -104,7 +104,7 @@ class ExternalCatalogImportTest extends TestCase
     public function test_updates_existing_product_stock_and_recalculates_sales_delta(): void
     {
         $mockMaster = $this->createMock(MasterCatalogClientService::class);
-        $mockMaster->method('lookupByBarcode')->willReturn(['found' => false, 'product' => null]);
+        $mockMaster->method('lookupBulk')->willReturn([]);
         $this->app->instance(MasterCatalogClientService::class, $mockMaster);
 
         $category = Category::factory()->create();

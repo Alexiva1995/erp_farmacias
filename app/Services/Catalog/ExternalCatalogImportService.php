@@ -27,7 +27,9 @@ class ExternalCatalogImportService
     public function processImport(UploadedFile $file, ?string $cutoffDate = null, bool $isInitialLoad = true): array
     {
         @ini_set('memory_limit', '1024M');
-        @set_time_limit(300);
+        @ini_set('max_execution_time', '600');
+        @set_time_limit(600);
+        @ignore_user_abort(true);
 
         $date = $cutoffDate ? Carbon::parse($cutoffDate) : Carbon::today();
         $monthsElapsed = max(1, (int) $date->month);
@@ -38,6 +40,13 @@ class ExternalCatalogImportService
             throw new \RuntimeException('El archivo no contiene filas de datos o el formato no es válido.');
         }
 
+        Log::info('[CatalogImport] Iniciando procesamiento de catálogo externo', [
+            'file_name' => $file->getClientOriginalName(),
+            'total_rows' => count($rows),
+            'cutoff_date' => $cutoffDate,
+            'is_initial_load' => $isInitialLoad,
+        ]);
+
         $stats = [
             'total_rows'           => count($rows),
             'created'              => 0,
@@ -47,16 +56,37 @@ class ExternalCatalogImportService
             'total_stock'          => 0,
         ];
 
-        // Lotes de 100 registros para alta velocidad y transacciones atómicas
-        $chunks = array_chunk($rows, 100);
+        // 1. Bulk Lookup al Catálogo Maestro (1 sola llamada de red en lugar de N peticiones)
+        $allBarcodes = array_values(array_filter(array_unique(array_column($rows, 'barcode'))));
+        $masterMap = $this->masterClient->lookupBulk($allBarcodes);
+
+        // 2. Pre-cargar productos locales existentes en memoria (1 sola query SQL)
+        $existingProducts = Product::withoutGlobalScope('not_deleted')
+            ->withTrashed()
+            ->whereIn('barcode', $allBarcodes)
+            ->get()
+            ->keyBy('barcode');
+
+        // 3. Pre-cargar lotes existentes en memoria (1 sola query SQL)
+        $existingLots = ProductLot::whereIn('product_id', $existingProducts->pluck('id'))
+            ->get()
+            ->keyBy('product_id');
+
+        // 4. Pre-cargar conjunto de IDs existentes en memoria para evitar queries O(N)
+        $existingIds = Product::withoutGlobalScope('not_deleted')->withTrashed()->pluck('id')->flip()->toArray();
+
+        // Lotes de 250 registros para alta velocidad y transacciones atómicas
+        $chunks = array_chunk($rows, 250);
 
         foreach ($chunks as $chunk) {
-            DB::transaction(function () use ($chunk, $date, $monthsElapsed, $isInitialLoad, &$stats) {
+            DB::transaction(function () use ($chunk, $date, $monthsElapsed, $isInitialLoad, &$stats, $masterMap, $existingProducts, $existingLots, &$existingIds) {
                 foreach ($chunk as $row) {
-                    $this->processRow($row, $date, $monthsElapsed, $isInitialLoad, $stats);
+                    $this->processRow($row, $date, $monthsElapsed, $isInitialLoad, $stats, $masterMap, $existingProducts, $existingLots, $existingIds);
                 }
             });
         }
+
+        Log::info('[CatalogImport] Importación de catálogo externo completada con éxito', $stats);
 
         return $stats;
     }
@@ -137,8 +167,16 @@ class ExternalCatalogImportService
     /**
      * Procesa una fila individual de producto, homologando con Master y calculando ventas.
      */
-    private function processRow(array $row, Carbon $date, int $monthsElapsed, bool $isInitialLoad, array &$stats): void
-    {
+    private function processRow(
+        array $row,
+        Carbon $date,
+        int $monthsElapsed,
+        bool $isInitialLoad,
+        array &$stats,
+        array $masterMap,
+        $existingProducts,
+        $existingLots
+    ): void {
         $barcode = $row['barcode'];
         $rawName = $row['name'];
         $stock = max(0, (int) round($row['stock']));
@@ -146,19 +184,18 @@ class ExternalCatalogImportService
         $isGravable = ($row['tax_type'] === 'G' || $row['tax_type'] === '1' || $row['tax_type'] === 'SI');
         $currentSalesAccum = max(0.0, (float) $row['sales_accum']);
 
-        // 1. Consultar Catálogo Maestro por código de barra
-        $masterLookup = $this->masterClient->lookupByBarcode($barcode);
-        $masterProduct = $masterLookup['found'] ? ($masterLookup['product'] ?? null) : null;
+        // 1. Obtener producto del Catálogo Maestro desde el mapa en memoria
+        $masterProduct = $masterMap[$barcode] ?? null;
 
         // Regla: Si está en Master, se mantiene el nombre oficial del Master; si no, el del archivo
         $finalName = !empty($masterProduct['name']) ? trim((string) $masterProduct['name']) : $rawName;
 
-        if ($masterLookup['found']) {
+        if ($masterProduct) {
             $stats['matched_with_master']++;
         }
 
-        // 2. Buscar producto existente localmente (incluyendo eliminados)
-        $product = Product::withoutGlobalScope('not_deleted')->withTrashed()->where('barcode', $barcode)->first();
+        // 2. Obtener producto local existente en memoria
+        $product = $existingProducts->get($barcode);
         $isNew = !$product;
 
         // 3. Cálculo de Promedio de Ventas Mensual
@@ -206,9 +243,9 @@ class ExternalCatalogImportService
         if ($masterProduct) {
             if ($isNew && !empty($masterProduct['id'])) {
                 $targetId = (int) $masterProduct['id'];
-                $idExists = Product::withoutGlobalScope('not_deleted')->withTrashed()->where('id', $targetId)->exists();
-                if (!$idExists) {
+                if (!isset($existingIds[$targetId])) {
                     $productData['id'] = $targetId;
+                    $existingIds[$targetId] = true;
                 }
             }
 
@@ -228,6 +265,8 @@ class ExternalCatalogImportService
 
         if ($isNew) {
             $product = Product::create($productData);
+            $existingProducts->put($barcode, $product);
+            $existingIds[$product->id] = true;
             $stats['created']++;
         } else {
             if ($product->trashed()) {
@@ -238,7 +277,7 @@ class ExternalCatalogImportService
         }
 
         // 5. Crear / Actualizar Lote de Inventario en product_lots
-        $lot = ProductLot::where('product_id', $product->id)->first();
+        $lot = $existingLots->get($product->id);
 
         if ($lot) {
             $lot->update([
@@ -247,7 +286,7 @@ class ExternalCatalogImportService
                 'amount_usd' => round($stock * $cost, 2),
             ]);
         } else {
-            ProductLot::create([
+            $lot = ProductLot::create([
                 'product_id'      => $product->id,
                 'lot_number'      => 'LOT-INICIAL',
                 'expiration_date' => '2028-12-31',
@@ -255,6 +294,7 @@ class ExternalCatalogImportService
                 'unit_cost'       => $cost,
                 'amount_usd'      => round($stock * $cost, 2),
             ]);
+            $existingLots->put($product->id, $lot);
         }
 
         $stats['lots_updated']++;

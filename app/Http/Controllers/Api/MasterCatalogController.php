@@ -27,6 +27,20 @@ class MasterCatalogController extends Controller
     }
 
     /**
+     * Buscar múltiples productos en el catálogo maestro por lista de códigos de barra (Bulk Lookup).
+     */
+    public function lookupBulk(Request $request): JsonResponse
+    {
+        $barcodes = (array) ($request->input('barcodes') ?? []);
+        $results = $this->masterCatalogService->lookupBulk($barcodes);
+
+        return response()->json([
+            'success' => true,
+            'data'    => $results,
+        ]);
+    }
+
+    /**
      * Exportar en lote laboratorios, categorías, orígenes, grupos y proveedores hacia farmacias esclavas.
      */
     public function bulkExport(Request $request): JsonResponse

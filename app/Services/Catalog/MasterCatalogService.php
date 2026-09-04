@@ -62,6 +62,50 @@ class MasterCatalogService
     }
 
     /**
+     * Buscar múltiples productos en el catálogo maestro por lista de códigos de barra (Bulk Lookup).
+     */
+    public function lookupBulk(array $barcodes): array
+    {
+        $cleanBarcodes = array_values(array_filter(array_unique(array_map('trim', $barcodes))));
+        if (empty($cleanBarcodes)) {
+            return [];
+        }
+
+        $products = Product::withoutGlobalScope('not_deleted')
+            ->withTrashed()
+            ->with(['laboratory:id,name', 'category:id,name', 'origin:id,name'])
+            ->whereIn('barcode', $cleanBarcodes)
+            ->whereNotNull('name')
+            ->where('name', '!=', '')
+            ->where('name', '!=', '.')
+            ->get();
+
+        $results = [];
+        foreach ($products as $product) {
+            $results[$product->barcode] = [
+                'id'                => $product->id,
+                'name'              => $product->name,
+                'barcode'           => $product->barcode,
+                'active_ingredient' => $product->active_ingredient,
+                'laboratory_id'     => $product->laboratory_id,
+                'laboratory_name'   => $product->laboratory?->name,
+                'category_id'       => $product->category_id,
+                'category_name'     => $product->category?->name,
+                'origin_id'         => $product->origin_id,
+                'origin_name'       => $product->origin?->name,
+                'description'       => $product->description,
+                'presentation'      => $product->presentation,
+                'unit_of_measure'   => $product->unit_of_measure,
+                'psychotropic'      => (bool) ($product->psychotropic ?? false),
+                'iva'               => (float) ($product->iva ?? 0),
+                'photo_url'         => $product->photo_url,
+            ];
+        }
+
+        return $results;
+    }
+
+    /**
      * Registrar o asegurar un producto en el Catálogo Maestro y devolver su ID oficial.
      */
     public function registerMasterProduct(array $data): array
