@@ -230,7 +230,7 @@ class MasterCatalogService
             'unit_of_measure'   => $data['unit_of_measure'] ?? null,
             'photo_url'         => $data['photo_url'] ?? null,
             'psychotropic'      => (bool) ($data['psychotropic'] ?? false),
-            'iva'               => is_numeric($data['iva'] ?? null) ? (float) $data['iva'] : ((bool) ($data['iva'] ?? false) ? 16.0 : 0.0),
+            'iva'               => (bool) ($data['iva'] ?? false),
             'is_deleted'        => true,
             'is_active'         => false,
             'deleted_at'        => now(),

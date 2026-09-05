@@ -113,7 +113,7 @@ class MasterCatalogClientService
                 try {
                     $payload = $productData;
                     if (isset($payload['iva'])) {
-                        $payload['iva'] = is_numeric($payload['iva']) ? (float) $payload['iva'] : ((bool) $payload['iva'] ? 16.0 : 0.0);
+                        $payload['iva'] = (bool) $payload['iva'];
                     }
 
                     $response = Http::timeout(5)
