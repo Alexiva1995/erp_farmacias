@@ -65,10 +65,10 @@ class UpdateSupplierRequest extends FormRequest
             'charges_igtf' => 'sometimes|boolean',
             //'supplier_payment_method' => 'required|string',
             //'supplier_payment_days' => 'sometimes|numeric|min:0',
-            'payment_due_type' => 'sometimes|in:invoice_date,early_payment,custom',
+            'payment_due_type' => 'sometimes|nullable|in:invoice_date,early_payment,custom',
             'custom_due_days' => 'nullable|integer|min:1',
-            'payment_due_reference' => 'in:receipt_date,issue_date',
-            'invoice_date_reference' => 'nullable|in:receipt_date,expiration_date,issue_date',
+            'payment_due_reference' => 'sometimes|nullable|in:receipt_date,issue_date',
+            'invoice_date_reference' => 'sometimes|nullable|in:receipt_date,expiration_date,issue_date',
         ];
     }
 
