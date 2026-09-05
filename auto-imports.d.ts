@@ -131,6 +131,7 @@ declare global {
   const pdfPurchaseOrderGenerator: typeof import('./resources/js/utils/pdfPurchaseOrderGenerator.js')['pdfPurchaseOrderGenerator']
   const pdfStockProductsGenerator: typeof import('./resources/js/utils/pdfStockProductsGenerator.js')['default']
   const pdfSupplierOrderReportGenerator: typeof import('./resources/js/utils/pdfSupplierOrderReportGenerator.js')['default']
+  const pdfSupplierReturnsGenerator: typeof import('./resources/js/utils/pdfSupplierReturnsGenerator.js')['default']
   const prefixWithPlus: typeof import('./resources/js/@core/utils/formatters.js')['prefixWithPlus']
   const provide: typeof import('vue')['provide']
   const provideLocal: typeof import('@vueuse/core')['provideLocal']
@@ -550,6 +551,7 @@ declare module 'vue' {
     readonly pdfPurchaseOrderGenerator: UnwrapRef<typeof import('./resources/js/utils/pdfPurchaseOrderGenerator.js')['pdfPurchaseOrderGenerator']>
     readonly pdfStockProductsGenerator: UnwrapRef<typeof import('./resources/js/utils/pdfStockProductsGenerator.js')['default']>
     readonly pdfSupplierOrderReportGenerator: UnwrapRef<typeof import('./resources/js/utils/pdfSupplierOrderReportGenerator.js')['default']>
+    readonly pdfSupplierReturnsGenerator: UnwrapRef<typeof import('./resources/js/utils/pdfSupplierReturnsGenerator.js')['default']>
     readonly prefixWithPlus: UnwrapRef<typeof import('./resources/js/@core/utils/formatters.js')['prefixWithPlus']>
     readonly provide: UnwrapRef<typeof import('vue')['provide']>
     readonly provideLocal: UnwrapRef<typeof import('@vueuse/core')['provideLocal']>

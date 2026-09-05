@@ -419,6 +419,7 @@
     "useCashClosurePrint": true,
     "useOrderPrint": true,
     "useRetentionDates": true,
-    "useExpiryCharts": true
+    "useExpiryCharts": true,
+    "pdfSupplierReturnsGenerator": true
   }
 }
