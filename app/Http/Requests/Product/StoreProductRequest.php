@@ -61,7 +61,7 @@ class StoreProductRequest extends FormRequest
             'initial_stock' => ['nullable', 'numeric', 'min:0'],
 
             'barcode' => [
-                'required',
+                'nullable',
                 'string',
                 'max:255',
                 function ($attribute, $value, $fail) use ($productId) {
