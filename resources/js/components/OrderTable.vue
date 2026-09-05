@@ -29,8 +29,15 @@ const sortByModel = computed(() => {
 const emit = defineEmits(["update:options", "print-order", "print-order-thermal", "view-order", "cancel-order"]);
 
 const date = (order) => {
+  if (!order) return "N/A";
+  if (typeof order === "string") {
+    return order.split("T")[0].split(" ")[0];
+  }
   const time = new Date(order);
-  return time.toISOString().split("T")[0];
+  const year = time.getFullYear();
+  const month = String(time.getMonth() + 1).padStart(2, "0");
+  const day = String(time.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 };
 
 const handleView = (orderId) => {

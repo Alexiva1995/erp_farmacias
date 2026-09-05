@@ -18,7 +18,7 @@ class OrderListItemResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'order_date' => $this->order_date,
+            'order_date' => $this->order_date ? (is_string($this->order_date) ? $this->order_date : $this->order_date->format('Y-m-d H:i:s')) : null,
             'total_amount' => $this->total_amount,
             'currency' => $this->currency,
             'status' => $this->status,
