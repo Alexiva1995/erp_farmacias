@@ -29,8 +29,8 @@ class SendUpcomingPaymentsTelegram extends Command
 
         $adminChatId = config('services.telegram.admin_chat_id') ?: config('services.telegram.chat_id');
         if (empty($adminChatId)) {
-            $this->error('TELEGRAM_ADMIN_CHAT_ID o TELEGRAM_CHAT_ID no configurados.');
-            return 1;
+            $this->warn('TELEGRAM_ADMIN_CHAT_ID o TELEGRAM_CHAT_ID no configurados. Omitiendo envío.');
+            return Command::SUCCESS;
         }
 
         $webhookService->sendOverduePayments($adminChatId);

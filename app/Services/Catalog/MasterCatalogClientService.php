@@ -111,12 +111,17 @@ class MasterCatalogClientService
 
             if (!empty($masterUrl)) {
                 try {
+                    $payload = $productData;
+                    if (isset($payload['iva'])) {
+                        $payload['iva'] = is_numeric($payload['iva']) ? (float) $payload['iva'] : ((bool) $payload['iva'] ? 16.0 : 0.0);
+                    }
+
                     $response = Http::timeout(5)
                         ->withHeaders([
                             'X-Master-Key' => $masterKey,
                             'Accept'       => 'application/json',
                         ])
-                        ->post("{$masterUrl}/products", $productData);
+                        ->post("{$masterUrl}/products", $payload);
 
                     if ($response->successful()) {
                         $data = $response->json();

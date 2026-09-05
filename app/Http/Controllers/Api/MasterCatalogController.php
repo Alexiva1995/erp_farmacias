@@ -76,7 +76,7 @@ class MasterCatalogController extends Controller
             'unit_cost'         => 'nullable|numeric',
             'sale_price'        => 'nullable|numeric',
             'psychotropic'      => 'nullable|boolean',
-            'iva'               => 'nullable|numeric',
+            'iva'               => 'nullable',
         ]);
 
         $result = $this->masterCatalogService->registerMasterProduct($data);
