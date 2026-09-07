@@ -1318,14 +1318,14 @@ class SupplierConnectionService
 
         // Escribir encabezados
         $first = (array) ($data[0] ?? []);
-        fputcsv($csv, array_keys($first), ';');
+        fputcsv($csv, array_keys($first), ';', '"', '\\');
 
         // Escribir filas
         foreach ($data as $row) {
             $rowArray = (array) $row;
             fputcsv($csv, array_map(function ($value) {
                 return is_array($value) ? json_encode($value, JSON_UNESCAPED_UNICODE) : $value;
-            }, $rowArray), ';');
+            }, $rowArray), ';', '"', '\\');
         }
 
         rewind($csv);

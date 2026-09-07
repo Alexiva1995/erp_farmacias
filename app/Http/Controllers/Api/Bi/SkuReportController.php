@@ -77,7 +77,7 @@ class SkuReportController extends Controller
             // BOM para UTF-8 en Excel
             fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
             
-            fputcsv($file, $columns, ';'); // Exportar con CSV europeo/excel
+            fputcsv($file, $columns, ';', '"', '\\'); // Exportar con CSV europeo/excel
 
             foreach ($items as $item) {
                 $row['ID/SKU']  = $item->barcode ?: $item->product_id;
@@ -96,7 +96,7 @@ class SkuReportController extends Controller
                     $row['ID/SKU'], $row['Producto'], $row['Vendidos'], $row['Costo Unit.'], 
                     $row['P. Lista'], $row['M. Bruto %'], $row['Descuento Prom %'], $row['M. Neto %'], 
                     $row['Mermas ($)'], $row['M. Real %'], $row['Semáforo']
-                ), ';');
+                ), ';', '"', '\\');
             }
 
             fclose($file);
