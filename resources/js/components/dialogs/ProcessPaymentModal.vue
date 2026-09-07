@@ -171,9 +171,12 @@ const isJohanPayment = computed(() => {
 });
 
 const shouldShowDestinationBank = computed(() => {
+  // Para Mafarta / Cobeca, SIEMPRE mostrar banco destino sin importar el método de pago
+  if (isMafartaPayment.value) return true;
+
   if (form.value.payment_method === 'cash' || form.value.payment_method === 'credit') return false;
   if (isJohanPayment.value || isSumiandesPayment.value || isDrosymcaPayment.value) return false;
-  return isDromegaPayment.value || isCristmedicalsPayment.value || isMafartaPayment.value || isDronenaPayment.value;
+  return isDromegaPayment.value || isCristmedicalsPayment.value || isDronenaPayment.value;
 });
 
 const destinationBankOptions = computed(() => {
@@ -188,6 +191,8 @@ const destinationBankOptions = computed(() => {
 watch(shouldShowDestinationBank, (show) => {
   if (!show) {
     form.value.destination_bank = null;
+  } else if (isMafartaPayment.value && !form.value.destination_bank) {
+    form.value.destination_bank = mafartaBanks[0].value;
   }
 });
 
@@ -209,6 +214,12 @@ watch(() => form.value.payment_method, (newMethod) => {
 watch(() => form.value.payment_date, (newDate) => {
   if (form.value.payment_method === 'cash') {
     form.value.reference = `EFECTIVO-${newDate}`;
+  }
+});
+
+watch(() => form.value.payment_currency, (newCurrency) => {
+  if (newCurrency === 'COP') {
+    form.value.payment_method = 'cash';
   }
 });
 
@@ -371,19 +382,34 @@ const processPayment = async () => {
   }
 };
 
+const selectedPaymentMethodIcon = computed(() => {
+  const method = availablePaymentMethods.value.find((m) => m.value === form.value.payment_method);
+  return method ? method.icon : "tabler-wallet";
+});
+
 const handleFileUpload = async (file) => {
   if (!file) return;
+  const actualFile = Array.isArray(file) ? file[0] : file;
+  if (!actualFile) return;
+
   uploading.value = true;
   const formData = new FormData();
-  formData.append("file", file);
+  formData.append("file", actualFile);
   try {
     const { data } = await axios.post("/finances/pending-payments/upload-receipt", formData, {
       headers: { "Content-Type": "multipart/form-data" }
     });
     form.value.photo_url = data.data.url;
-    toast.success("Comprobante subido");
+
+    // Si se detectó automáticamente el número de referencia
+    if (data.data.extracted_reference) {
+      form.value.reference = data.data.extracted_reference;
+      toast.success(`Comprobante subido. Referencia detectada: #${data.data.extracted_reference}`);
+    } else {
+      toast.success("Comprobante subido correctamente");
+    }
   } catch (error) {
-    toast.error("Error al subir archivo");
+    toast.error("Error al subir comprobante");
   } finally {
     uploading.value = false;
   }
@@ -710,6 +736,7 @@ watch(() => props.modelValue, (val) => {
                     :items="availablePaymentMethods"
                     item-title="label"
                     item-value="value"
+                    :prepend-inner-icon="selectedPaymentMethodIcon"
                     variant="outlined"
                     density="compact"
                     class="premium-input mb-3"
@@ -754,12 +781,19 @@ watch(() => props.modelValue, (val) => {
                 </VCol>
 
                 <VCol cols="12">
-                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Referencia</span>
+                  <div class="d-flex align-center justify-space-between mb-1">
+                    <span class="text-super-xs font-weight-black text-disabled uppercase">Referencia</span>
+                    <span v-if="uploading" class="text-super-xs font-weight-bold text-primary animate-pulse">
+                      <VIcon icon="tabler-scan" size="12" class="me-1" />
+                      Extrayendo referencia...
+                    </span>
+                  </div>
                   <VTextField
                     v-model="form.reference"
                     placeholder="# Transacción o Lote..."
                     variant="outlined"
                     density="compact"
+                    prepend-inner-icon="tabler-hash"
                     class="premium-input mb-3"
                     :hint="isCristmedicalsPayment ? 'Para Cristmedicals se validará automáticamente la referencia en el banco vía MovilPay' : (isDronenaPayment ? 'Para Dronena se tomarán automáticamente los últimos 10 dígitos' : (isMafartaPayment ? 'Para Cobeca/Mafarta se tomarán automáticamente los últimos 9 dígitos' : undefined))"
                     :persistent-hint="isCristmedicalsPayment || isDronenaPayment || isMafartaPayment"
@@ -767,15 +801,16 @@ watch(() => props.modelValue, (val) => {
                   />
                 </VCol>
 
-
                 <VCol cols="12">
-                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Comprobante</span>
+                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Comprobante (Imagen o PDF)</span>
                   <VFileInput
                     variant="outlined"
                     density="compact"
                     class="premium-input"
-                    prepend-icon="tabler-camera"
-                    placeholder="Adjuntar recibo..."
+                    prepend-icon=""
+                    prepend-inner-icon="tabler-camera"
+                    placeholder="Adjuntar recibo (extrae referencia auto)..."
+                    accept="image/*,application/pdf"
                     :error="form.payment_method !== 'cash' && form.reference && !form.photo_url"
                     :error-messages="form.payment_method !== 'cash' && form.reference && !form.photo_url ? ['Si hay referencia, el comprobante es obligatorio'] : []"
                     hide-details="auto"

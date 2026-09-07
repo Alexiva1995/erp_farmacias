@@ -602,9 +602,10 @@ const openInvoiceTab = (item) => {
                   color="success"
                   variant="flat"
                   size="small"
-                  class="rounded-lg text-super-xs font-weight-black shadow-sm px-4"
+                  class="rounded-lg text-super-xs font-weight-black shadow-sm px-4 d-inline-flex align-center gap-1"
                   @click.stop="emit('process-payment', item)"
                 >
+                  <VIcon icon="tabler-credit-card" size="16" />
                   PAGAR
                 </VBtn>
               </div>

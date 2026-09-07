@@ -25,6 +25,7 @@ use App\Http\Requests\PendingPayments\GetPaidAmountRequest;
 use App\Http\Requests\PendingPayments\GetCreditoFiscalRequest;
 use App\Http\Requests\PendingPayments\GetExpensesHistoryRequest;
 use App\Http\Requests\PendingPayments\UpdatePaymentDateRequest;
+use App\Http\Requests\PendingPayments\ResendPaymentToPortalRequest;
 use Carbon\Carbon;
 use Illuminate\Validation\Rule;
 
@@ -492,6 +493,102 @@ class PendingPaymentsController extends Controller
         }
     }
 
+    /**
+     * Reenviar un pago registrado previamente al portal oficial del proveedor (Cobeca/Mafarta, Dronena, Cristmedicals, Dromega).
+     */
+    public function resendPaymentToPortal(ResendPaymentToPortalRequest $request): JsonResponse
+    {
+        try {
+            $payment = InvoicePayment::with(['invoices.supplier'])->find($request->payment_id);
+            if (!$payment) {
+                return ApiResponse::error('El pago no fue encontrado en el sistema.', 404);
+            }
+
+            $invoices = $payment->invoices;
+            if ($invoices->isEmpty()) {
+                return ApiResponse::error('El pago no tiene facturas asociadas para reenviar.', 422);
+            }
+
+            // Actualizar referencia si el usuario ingresó una nueva
+            if ($request->filled('reference') && $request->reference !== $payment->reference) {
+                $payment->update(['reference' => $request->reference]);
+            }
+
+            $reference = $request->input('reference', $payment->reference);
+            $destinationBank = $request->input('destination_bank');
+            $paymentDate = $payment->payment_date ? ($payment->payment_date instanceof \DateTimeInterface ? $payment->payment_date->format('Y-m-d') : substr((string)$payment->payment_date, 0, 10)) : now()->toDateString();
+            $photoUrl = $payment->photo_url;
+            $paymentAmount = (float) $payment->amount;
+            $invoiceNumbers = $invoices->pluck('invoice_number')->toArray();
+
+            $supplierName = strtoupper($invoices->first()?->supplier?->name ?? '');
+            $supplierId = $invoices->first()?->supplier_id;
+
+            $result = null;
+
+            // 1. Cobeca / Mafarta
+            if (str_contains($supplierName, 'MAFARTA') || str_contains($supplierName, 'COBECA') || $supplierId === 1011 || $supplierId === 23) {
+                $mafartaService = app(\App\Contracts\Suppliers\MafartaScraperServiceInterface::class);
+                $result = $mafartaService->submitPayment(
+                    $invoiceNumbers,
+                    $paymentAmount,
+                    (string) ($reference ?? '000000'),
+                    (string) ($destinationBank ?: '01020219190006814326'),
+                    $paymentDate,
+                    $photoUrl,
+                    (string) ($request->input('id_type', 'V')),
+                    (string) ($request->input('id_number', '24150980'))
+                );
+            }
+            // 2. Dronena
+            elseif (str_contains($supplierName, 'DRONENA') || str_contains($supplierName, 'NENA') || $supplierId === 1010) {
+                $dronenaService = app(\App\Contracts\Suppliers\DronenaScraperServiceInterface::class);
+                $result = $dronenaService->submitPayment(
+                    $invoiceNumbers,
+                    $paymentAmount,
+                    (string) ($reference ?? '000000'),
+                    (string) ($destinationBank ?: '0134:01340326153261014466'),
+                    $paymentDate,
+                    $photoUrl
+                );
+            }
+            // 3. Cristmedicals
+            elseif (str_contains($supplierName, 'CRIST') || str_contains($supplierName, 'CRISTALMEDICALS') || $supplierId === 1002) {
+                $cristmedicalsService = app(\App\Contracts\Suppliers\CristmedicalsScraperServiceInterface::class);
+                $result = $cristmedicalsService->submitPayment(
+                    $invoiceNumbers,
+                    $paymentAmount,
+                    (string) ($reference ?? '000000'),
+                    (string) ($destinationBank ?: '30'),
+                    $paymentDate
+                );
+            }
+            // 4. Dromega
+            elseif (str_contains($supplierName, 'DROMEGA') || str_contains($supplierName, 'MEGA') || $supplierId === 1005) {
+                $dromegaService = app(\App\Contracts\Suppliers\DromegaScraperServiceInterface::class);
+                $result = $dromegaService->submitPayment(
+                    $invoiceNumbers,
+                    $paymentAmount,
+                    (string) ($reference ?? '000000'),
+                    (string) ($destinationBank ?: 'C1051'),
+                    $paymentDate,
+                    $photoUrl
+                );
+            } else {
+                return ApiResponse::error("El proveedor '{$supplierName}' no cuenta con integración directa de reporte automático por scraper.", 422);
+            }
+
+            if (!empty($result['success'])) {
+                return ApiResponse::success($result, $result['message'] ?? 'Pago reenviado exitosamente al portal del proveedor.');
+            } else {
+                return ApiResponse::error($result['message'] ?? 'No se pudo completar el reenvío del pago al portal.', 422, $result ?? []);
+            }
+        } catch (\Throwable $e) {
+            Log::error('Error reenviando pago a portal: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return ApiResponse::error('Error interno al reenviar pago: ' . $e->getMessage(), 500);
+        }
+    }
+
 
     /**
      * Obtener historial de pagos realizados
@@ -603,16 +700,20 @@ class PendingPaymentsController extends Controller
     /**
      * Subir comprobante de pago
      */
-    public function uploadReceipt(UploadReceiptRequest $request): JsonResponse
+    public function uploadReceipt(UploadReceiptRequest $request, \App\Contracts\ReceiptOcrServiceInterface $ocrService): JsonResponse
     {
         try {
             $file = $request->file('file');
             $filename = 'payment_receipt_' . time() . '.' . $file->getClientOriginalExtension();
             $path = $file->storeAs('payment_receipts', $filename, 'public');
 
+            // Extraer automáticamente el número de referencia bancario del comprobante
+            $extractedReference = $ocrService->extractReference($file);
+
             return ApiResponse::success([
                 'url' => Storage::url($path),
-                'filename' => $filename
+                'filename' => $filename,
+                'extracted_reference' => $extractedReference,
             ], 'Comprobante subido exitosamente');
         } catch (\Exception $e) {
             return ApiResponse::error('Error al subir el comprobante: ' . $e->getMessage(), 500);

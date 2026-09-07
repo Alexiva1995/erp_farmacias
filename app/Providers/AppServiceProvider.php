@@ -369,6 +369,11 @@ class AppServiceProvider extends ServiceProvider
             \App\Services\Suppliers\DrosymcaScraperService::class
         );
 
+        $this->app->bind(
+            \App\Contracts\ReceiptOcrServiceInterface::class,
+            \App\Services\ReceiptOcrService::class
+        );
+
 
         $this->app->when(LocationController::class)
             ->needs(LocationContract::class)

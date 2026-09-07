@@ -877,6 +877,7 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
             Route::patch('/invoices/{invoiceId}/mark-as-paid', [PendingPaymentsController::class, 'markAsPaidDirectly']);
             Route::post('/invoices/bulk-mark-as-paid', [PendingPaymentsController::class, 'bulkMarkAsPaid']);
             Route::post('/invoices/bulk-mark-as-pending', [PendingPaymentsController::class, 'bulkMarkAsPending']);
+            Route::post('/resend-to-portal', [PendingPaymentsController::class, 'resendPaymentToPortal']);
         });
 
 

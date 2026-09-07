@@ -292,7 +292,11 @@
       </div>
 
       <!-- Modales Desacoplados -->
-      <PaymentDetailModal v-model="showPaymentModal" :payment="selectedPayment" />
+      <PaymentDetailModal
+        v-model="showPaymentModal"
+        :payment="selectedPayment"
+        @payment-resent="fetchPaymentHistory"
+      />
       <ReceiptModal v-model="showReceiptModal" :receipt-url="receiptUrl" />
       
       <!-- Snackbar de error/UX -->
