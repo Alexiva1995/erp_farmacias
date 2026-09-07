@@ -128,6 +128,14 @@ class AbcReportService
                 $data = $data->filter(function ($item) {
                     return $item->class_sales === 'A' && $item->class_margin === 'A';
                 });
+            } elseif ($analysisType === 'critical_stock') {
+                // Quiebre Crítico y Riesgo de Quiebre: Productos Clase A o B con stock <= 0 o cobertura < 10 días
+                $data = $data->filter(function ($item) {
+                    $isClassAB = in_array($item->class_sales, ['A', 'B']);
+                    $isStockout = $item->current_stock <= 0;
+                    $isRisk = $item->inventory_days > 0 && $item->inventory_days < 10;
+                    return $isClassAB && ($isStockout || $isRisk);
+                });
             }
 
             // 6. Aplicar Filtros Ad-hoc (ROI y Stock)

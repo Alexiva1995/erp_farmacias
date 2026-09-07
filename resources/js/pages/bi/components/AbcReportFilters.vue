@@ -27,6 +27,8 @@ const emit = defineEmits([
   'fetch',
   'clear',
   'export',
+  'go-to-assistant',
+  'filter-critical',
 ]);
 
 const hasActiveAdvancedFilters = computed(() => {
@@ -47,6 +49,7 @@ const classificationOptions = [
 
 const analysisTypeOptions = [
   { title: 'Análisis Completo', value: 'all' },
+  { title: 'Quiebres y Riesgo de Stock (A/B)', value: 'critical_stock' },
   { title: 'Stock Muerto (0 Ventas)', value: 'dead_stock' },
   { title: 'Productos Estrella (AA)', value: 'star_products' },
 ];
@@ -210,6 +213,45 @@ const toggleAdvancedFilters = () => {
                 title="3. Matriz Rentabilidad GMROI"
                 subtitle="Ranking por retorno sobre stock"
                 @click="emit('export', 'gmroi')"
+              />
+            </VList>
+          </VMenu>
+
+          <!-- Botón de Asistente IA de Pedidos / Compras Críticas -->
+          <VMenu location="bottom end" :close-on-content-click="true">
+            <template #activator="{ props: menuProps }">
+              <VBtn
+                v-bind="menuProps"
+                icon
+                variant="tonal"
+                color="warning"
+                size="36"
+                class="rounded-circle"
+                :disabled="loading"
+              >
+                <VIcon icon="tabler-robot" size="18" />
+                <VTooltip activator="parent" location="top">Asistente IA de Pedidos / Quiebres</VTooltip>
+              </VBtn>
+            </template>
+            <VList density="compact" class="py-1 shadow-md border rounded-lg" min-width="280">
+              <VListSubheader class="text-uppercase text-caption font-weight-bold tracking-wider opacity-75">
+                Acciones de Reposición IA
+              </VListSubheader>
+              
+              <VListItem
+                prepend-icon="tabler-shopping-cart-plus"
+                title="Generar Pedido en Asistente IA"
+                subtitle="Ir al asistente con productos en falla"
+                @click="emit('go-to-assistant')"
+              />
+              
+              <VDivider class="my-1 opacity-10" />
+              
+              <VListItem
+                prepend-icon="tabler-alert-triangle"
+                title="Filtrar Quiebres y Riesgo (A/B)"
+                subtitle="Ver los productos críticos en esta tabla"
+                @click="emit('filter-critical')"
               />
             </VList>
           </VMenu>

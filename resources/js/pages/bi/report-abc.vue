@@ -1,5 +1,6 @@
 <script setup>
 import { ref, watch, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import axios from '@/plugins/axios';
 import { toast } from '@/plugins/sweetalert';
 import { formatCurrency } from '@/utils/currencyFormatter';
@@ -7,6 +8,7 @@ import AbcReportFilters from './components/AbcReportFilters.vue';
 import AbcReportKpiCards from './components/AbcReportKpiCards.vue';
 import AbcReportMobileView from './components/AbcReportMobileView.vue';
 
+const router = useRouter();
 const loading = ref(false);
 const exporting = ref(false);
 const errorMessage = ref(null);
@@ -216,6 +218,20 @@ const handleExport = async (exportType = 'all') => {
     exporting.value = false;
   }
 };
+
+const handleGoToAssistant = () => {
+  router.push({
+    name: 'suppliers-supplieriaorderassistant',
+    query: {
+      stock: 'fallas',
+      source: 'abc_critical',
+    },
+  });
+};
+
+const handleFilterCritical = () => {
+  selectedAnalysisType.value = 'critical_stock';
+};
 </script>
 
 <template>
@@ -236,6 +252,8 @@ const handleExport = async (exportType = 'all') => {
       @fetch="fetchReport"
       @clear="handleClearFilters"
       @export="handleExport"
+      @go-to-assistant="handleGoToAssistant"
+      @filter-critical="handleFilterCritical"
     />
 
     <!-- Banner de error -->
