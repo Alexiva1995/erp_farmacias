@@ -1,12 +1,14 @@
 <script setup>
 import { ref, watch, onMounted } from 'vue';
 import axios from '@/plugins/axios';
+import { toast } from '@/plugins/sweetalert';
 import { formatCurrency } from '@/utils/currencyFormatter';
 import AbcReportFilters from './components/AbcReportFilters.vue';
 import AbcReportKpiCards from './components/AbcReportKpiCards.vue';
 import AbcReportMobileView from './components/AbcReportMobileView.vue';
 
 const loading = ref(false);
+const exporting = ref(false);
 const errorMessage = ref(null);
 const items = ref([]);
 const totalItems = ref(0);
@@ -160,6 +162,60 @@ const handleClearFilters = () => {
   stockFilter.value = 'all';
   isAdvancedFiltersVisible.value = false;
 };
+
+const handleExport = async (exportType = 'all') => {
+  exporting.value = true;
+  try {
+    const dates = getDateRange(selectedDateRange.value);
+    const params = {
+      start_date: dates.start_date,
+      end_date: dates.end_date,
+      laboratory_id: selectedLaboratories.value?.length ? selectedLaboratories.value : null,
+      final_classification: selectedFinalClassification.value,
+      analysis_type: selectedAnalysisType.value,
+      min_gmroi: minGmroi.value,
+      stock_filter: stockFilter.value !== 'all' ? stockFilter.value : null,
+      sortBy: sortBy.value[0]?.key || 'total_sales',
+      orderBy: sortBy.value[0]?.order || 'desc',
+      export_type: exportType,
+      search: search.value || null,
+    };
+
+    // Filtrar parámetros nulos o indefinidos
+    Object.keys(params).forEach(key => (params[key] === null || params[key] === undefined || params[key] === '') && delete params[key]);
+
+    const response = await axios.get('/bi/abc/export', {
+      params,
+      responseType: 'blob',
+    });
+
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+
+    const contentDisposition = response.headers['content-disposition'];
+    let fileName = `reporte_abc_${exportType}_${new Date().toISOString().slice(0,10)}.xlsx`;
+    if (contentDisposition) {
+      const fileNameMatch = contentDisposition.match(/filename="?(.+)"?/);
+      if (fileNameMatch && fileNameMatch.length >= 2) {
+        fileName = fileNameMatch[1].replace(/"/g, '');
+      }
+    }
+
+    link.setAttribute('download', fileName);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+
+    toast.success('Reporte exportado con éxito a Excel.');
+  } catch (error) {
+    console.error('Error exportando reporte ABC:', error);
+    toast.error('Hubo un error al exportar el archivo Excel.');
+  } finally {
+    exporting.value = false;
+  }
+};
 </script>
 
 <template>
@@ -175,9 +231,11 @@ const handleClearFilters = () => {
       v-model:stock-filter="stockFilter"
       v-model:is-advanced-filters-visible="isAdvancedFiltersVisible"
       :loading="loading"
+      :exporting="exporting"
       :laboratories="laboratories"
       @fetch="fetchReport"
       @clear="handleClearFilters"
+      @export="handleExport"
     />
 
     <!-- Banner de error -->

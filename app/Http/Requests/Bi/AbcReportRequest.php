@@ -41,6 +41,7 @@ class AbcReportRequest extends FormRequest
             'min_gmroi' => ['nullable', 'numeric'],
             'stock_filter' => ['nullable', 'string', 'in:all,with_stock,out_of_stock'],
             'search' => ['nullable', 'string'],
+            'export_type' => ['nullable', 'string', 'in:all,ax_ay,frozen_capital,gmroi'],
         ];
     }
 }

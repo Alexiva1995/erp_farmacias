@@ -785,6 +785,7 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
     });
     Route::prefix("bi")->group(function () {
         Route::get("/abc", [\App\Http\Controllers\Api\Bi\AbcReportController::class, "generateReport"]);
+        Route::get("/abc/export", [\App\Http\Controllers\Api\Bi\AbcReportController::class, "export"]);
         Route::get("/sku-margin", [\App\Http\Controllers\Api\Bi\SkuReportController::class, "generateReport"]);
         Route::get("/sku-margin/export", [\App\Http\Controllers\Api\Bi\SkuReportController::class, "export"]);
         

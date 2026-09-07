@@ -15,29 +15,113 @@ use Illuminate\Support\Facades\Storage;
 
 class DromegaScraperService implements DromegaScraperServiceInterface
 {
-    private const BASE_URL = 'https://www.drogueriamega.com';
-    private const LOGIN_URL = 'https://www.drogueriamega.com/ventas/wp-login.php';
-    private const ESTADO_CUENTA_URL = 'https://www.drogueriamega.com/ventas/estado-de-cuenta/?cliente=7586';
+    private const BASE_URL = 'https://www.drogueriamega.com/mydas';
+    private const LOGIN_URL = 'https://www.drogueriamega.com/mydas/?admin_action=login';
+    private const ESTADO_CUENTA_URL = 'https://www.drogueriamega.com/mydas/clientes/estado-cuenta';
+    private const DATOS_FACTURA_URL = 'https://www.drogueriamega.com/mydas/clientes/datos-factura';
 
     /**
-     * Ejecuta una petición HTTP usando cURL nativo de PHP con cabeceras de navegador.
+     * Inicia sesión en el portal Droguería Mega (mydas) y retorna la ruta del archivo de cookies de sesión.
      */
-    private function executeCurl(string $url, string $cookieString, array $options = []): array
+    private function createAuthenticatedSession(string $username, string $password): string
+    {
+        $cookieDir = storage_path('framework/cache');
+        if (!is_dir($cookieDir)) {
+            @mkdir($cookieDir, 0777, true);
+        }
+        $cookieFile = $cookieDir . DIRECTORY_SEPARATOR . 'dromega_' . md5($username . microtime()) . '.txt';
+
+        // 1. GET login page para obtener token CSRF y cookies iniciales
+        $ch = curl_init();
+        curl_setopt_array($ch, [
+            CURLOPT_URL => self::BASE_URL . '/',
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HEADER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_SSL_VERIFYHOST => 0,
+            CURLOPT_COOKIEJAR => $cookieFile,
+            CURLOPT_COOKIEFILE => $cookieFile,
+            CURLOPT_TIMEOUT => 30,
+            CURLOPT_CONNECTTIMEOUT => 15,
+            CURLOPT_USERAGENT => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        ]);
+        $response = curl_exec($ch);
+        $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+        curl_close($ch);
+
+        $body = ($response !== false) ? substr($response, $headerSize) : '';
+        $csrfToken = null;
+
+        if (preg_match('/<input\s+type=["\']hidden["\']\s+name=["\']fwl_csrf["\']\s+value=["\']([^"\']+)["\']/i', $body, $m)) {
+            $csrfToken = $m[1];
+        } elseif (preg_match('/<meta\s+name=["\']csrf-token["\']\s+content=["\']([^"\']+)["\']/i', $body, $m)) {
+            $csrfToken = $m[1];
+        }
+
+        // 2. POST login
+        $postData = [
+            'fwl_csrf' => $csrfToken ?? '',
+            'username' => $username,
+            'password' => $password,
+            'remember-me' => 'on',
+        ];
+
+        $ch = curl_init();
+        curl_setopt_array($ch, [
+            CURLOPT_URL => self::LOGIN_URL,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => http_build_query($postData),
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HEADER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_SSL_VERIFYHOST => 0,
+            CURLOPT_COOKIEJAR => $cookieFile,
+            CURLOPT_COOKIEFILE => $cookieFile,
+            CURLOPT_TIMEOUT => 30,
+            CURLOPT_CONNECTTIMEOUT => 15,
+            CURLOPT_USERAGENT => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            CURLOPT_HTTPHEADER => [
+                'Referer: ' . self::BASE_URL . '/',
+                'Origin: https://www.drogueriamega.com',
+                'Content-Type: application/x-www-form-urlencoded',
+            ],
+        ]);
+        $loginRes = curl_exec($ch);
+        $loginCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $loginUrl = curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
+        curl_close($ch);
+
+        if ($loginRes === false || $loginCode >= 400 || str_contains($loginUrl, 'admin_action=login') || !str_contains($loginUrl, 'clientes')) {
+            // Verificar si el HTML retornado contiene mensaje de error o sigue en login
+            $loginBody = substr($loginRes ?: '', $headerSize);
+            if (str_contains($loginBody, 'password') && str_contains($loginBody, 'username') && !str_contains($loginBody, 'estado-cuenta')) {
+                if (file_exists($cookieFile)) {
+                    @unlink($cookieFile);
+                }
+                throw new \RuntimeException("Credenciales inválidas para Droguería Mega (usuario: {$username}).");
+            }
+        }
+
+        return $cookieFile;
+    }
+
+    /**
+     * Ejecuta una petición HTTP con el archivo de cookies de sesión.
+     */
+    private function executeCurlWithCookie(string $url, string $cookieFile, array $options = []): array
     {
         $headers = array_merge([
-            "Cookie: {$cookieString}",
-            'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+            'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
             'Accept-Language: es-VE,es-419;q=0.9,es;q=0.8',
             'Cache-Control: max-age=0',
-            'Referer: https://www.drogueriamega.com/ventas/',
+            'Referer: ' . self::BASE_URL . '/clientes/inicio',
             'Sec-Fetch-Dest: document',
             'Sec-Fetch-Mode: navigate',
             'Sec-Fetch-Site: same-origin',
-            'Sec-Fetch-User: ?1',
             'Upgrade-Insecure-Requests: 1',
-            'sec-ch-ua: "Chromium";v="152", "Not?A_Brand";v="24", "Google Chrome";v="152"',
-            'sec-ch-ua-mobile: ?0',
-            'sec-ch-ua-platform: "Windows"',
+            'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         ], $options['headers'] ?? []);
 
         $ch = curl_init();
@@ -51,7 +135,8 @@ class DromegaScraperService implements DromegaScraperServiceInterface
             CURLOPT_ENCODING => '',
             CURLOPT_TIMEOUT => 30,
             CURLOPT_CONNECTTIMEOUT => 15,
-            CURLOPT_USERAGENT => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36',
+            CURLOPT_COOKIEFILE => $cookieFile,
+            CURLOPT_COOKIEJAR => $cookieFile,
             CURLOPT_HTTPHEADER => $headers,
         ];
 
@@ -83,9 +168,9 @@ class DromegaScraperService implements DromegaScraperServiceInterface
     }
 
     /**
-     * Extrae las facturas directamente del estado de cuenta de Droguería Mega.
+     * Obtiene las credenciales descifradas del proveedor Droguería Mega desde la BD.
      */
-    public function fetchInvoices(?string $cookie = null, ?string $user = null, ?string $pass = null, ?int $supplierId = null): array
+    private function getCredentials(?int $supplierId = null): array
     {
         $supplier = null;
         if ($supplierId) {
@@ -99,45 +184,67 @@ class DromegaScraperService implements DromegaScraperServiceInterface
         }
 
         $conn = $supplier?->connections?->first();
-        $cookieString = $cookie;
+        $username = $conn?->username ?: env('DROMEGA_USERNAME', 'Farmacia_Barrio_Sucre');
+        $password = null;
 
-        if (!$cookieString && $conn) {
-            if (!empty($conn->password)) {
-                try {
-                    $cookieString = FtpCrypt::decrypt($conn->password);
-                } catch (\Throwable) {
-                    $cookieString = null;
-                }
-            }
-            if (!$cookieString && !empty($conn->path) && str_contains($conn->path, 'wordpress_logged_in_')) {
-                $cookieString = $conn->path;
+        if ($conn && !empty($conn->password)) {
+            try {
+                $password = FtpCrypt::decrypt($conn->password);
+            } catch (\Throwable) {
+                $password = null;
             }
         }
+        $password = $password ?: env('DROMEGA_PASSWORD', 'Dromega2026');
 
-        $cookieString = $cookieString ?: env('DROMEGA_COOKIE');
-
-        if (empty($cookieString)) {
-            throw new \RuntimeException("No se encontraron credenciales ni cookie de sesión configurada para Droguería Mega.");
+        if (empty($username) || empty($password)) {
+            throw new \RuntimeException("No se encontraron credenciales configuradas en la BD para Droguería Mega.");
         }
 
-        $clientCode = $user ?: ($conn?->username ?: '7586');
-        $targetUrl = self::BASE_URL . '/ventas/estado-de-cuenta/?cliente=' . urlencode($clientCode);
-
-        $res = $this->executeCurl($targetUrl, $cookieString);
-
-        if ($res['status'] !== 200 || empty($res['body'])) {
-            throw new \RuntimeException("No se pudo obtener el estado de cuenta de Droguería Mega (HTTP {$res['status']}).");
-        }
-
-        if (str_contains($res['body'], 'loginform') || str_contains($res['body'], 'user_login') || str_contains($res['url'], 'login')) {
-            throw new \RuntimeException("La sesión de Droguería Mega ha expirado o no es válida. Se requiere actualizar la cookie de sesión.");
-        }
-
-        return $this->parseInvoicesFromHtml($res['body']);
+        return [
+            'username' => $username,
+            'password' => $password,
+            'supplier' => $supplier,
+        ];
     }
 
     /**
-     * Parsea el HTML del estado de cuenta para extraer el detalle de cada factura.
+     * Extrae las facturas directamente del estado de cuenta de Droguería Mega.
+     */
+    public function fetchInvoices(?string $cookie = null, ?string $user = null, ?string $pass = null, ?int $supplierId = null): array
+    {
+        if ($user && $pass) {
+            $username = $user;
+            $password = $pass;
+        } else {
+            $creds = $this->getCredentials($supplierId);
+            $username = $user ?: $creds['username'];
+            $password = $pass ?: $creds['password'];
+        }
+
+        $cookieFile = $this->createAuthenticatedSession($username, $password);
+
+        try {
+            $targetUrl = self::ESTADO_CUENTA_URL;
+            $res = $this->executeCurlWithCookie($targetUrl, $cookieFile);
+
+            if ($res['status'] !== 200 || empty($res['body'])) {
+                throw new \RuntimeException("No se pudo obtener el estado de cuenta de Droguería Mega (HTTP {$res['status']}).");
+            }
+
+            if (str_contains($res['body'], 'admin_action=login') || str_contains($res['body'], 'Escribe tu usuario') || str_contains($res['url'], 'login')) {
+                throw new \RuntimeException("La sesión de Droguería Mega fue rechazada o ha expirado.");
+            }
+
+            return $this->parseInvoicesFromHtml($res['body']);
+        } finally {
+            if (file_exists($cookieFile)) {
+                @unlink($cookieFile);
+            }
+        }
+    }
+
+    /**
+     * Parsea el HTML del estado de cuenta de mydas para extraer el detalle de cada factura.
      */
     private function parseInvoicesFromHtml(string $html): array
     {
@@ -151,58 +258,101 @@ class DromegaScraperService implements DromegaScraperServiceInterface
         $xpath = new DOMXPath($dom);
         $tables = $xpath->query('//table');
 
-        $targetTable = null;
-        foreach ($tables as $table) {
-            $tableText = $table->textContent;
-            if (str_contains($tableText, 'VENCIMIENTOPROTECCIÓN') || str_contains($tableText, 'PROTECCIÓNTASA') || str_contains($tableText, 'SALDO BS.')) {
-                $targetTable = $table;
-                break;
-            }
-        }
-
-        if (!$targetTable) {
+        if ($tables->length === 0) {
             return [];
         }
 
+        $targetTable = $tables->item(0);
         $rows = $xpath->query('.//tr', $targetTable);
         $today = Carbon::today();
 
         foreach ($rows as $index => $row) {
             $cells = $xpath->query('.//td', $row);
-            if ($cells->length < 13) {
+            if ($cells->length < 5) {
                 continue;
             }
 
-            $emisionRaw = trim($cells->item(0)->textContent);
-            $entregaRaw = trim($cells->item(1)->textContent);
-            $vencimientoRaw = trim($cells->item(2)->textContent);
-            $diasCreditoRaw = trim($cells->item(3)->textContent);
-            $vencimientoProteccionRaw = trim($cells->item(4)->textContent);
-            $diasProteccionRaw = trim($cells->item(5)->textContent);
-            $documentoRaw = trim($cells->item(6)->textContent);
-            $tipoRaw = trim($cells->item(7)->textContent);
-            $montoBrutoRaw = trim($cells->item(8)->textContent);
-            $montoNetoRaw = trim($cells->item(9)->textContent);
-            $impuestoRaw = trim($cells->item(10)->textContent);
-            $saldoUsdRaw = trim($cells->item(11)->textContent);
-            $saldoBsRaw = trim($cells->item(12)->textContent);
+            $c0Text = trim($cells->item(0)->textContent);
+            $c1Text = trim($cells->item(1)->textContent);
+            $c2Text = trim($cells->item(2)->textContent);
+            $c3Text = trim($cells->item(3)->textContent);
+            $c4Text = trim($cells->item(4)->textContent);
 
-            // Ignorar fila de encabezado o total
-            if (
-                stripos($emisionRaw, 'TOTAL') !== false ||
-                stripos($emisionRaw, 'EMISIÓN') !== false ||
-                stripos($documentoRaw, 'DOCUMENTO') !== false ||
-                empty($documentoRaw) ||
-                !preg_match('/\d+/', $documentoRaw)
-            ) {
+            if (stripos($c0Text, 'Resumen de Cuenta') !== false || (stripos($c2Text, 'FACT') === false && !preg_match('/\d+/', $c2Text))) {
                 continue;
             }
+
+            // Col 0: Fechas
+            $emisionRaw = null;
+            $entregaRaw = null;
+            $vencimientoRaw = null;
+            if (preg_match('/Emis:\s*([\d\/]+)/i', $c0Text, $m)) {
+                $emisionRaw = $m[1];
+            }
+            if (preg_match('/Entr:\s*([\d\/]+)/i', $c0Text, $m)) {
+                $entregaRaw = $m[1];
+            }
+            if (preg_match('/Venc:\s*([\d\/]+)/i', $c0Text, $m)) {
+                $vencimientoRaw = $m[1];
+            }
+
+            // Col 1: Crédito y Protección
+            $diasCreditoRaw = 0;
+            $diasProteccionRaw = 0;
+            $vencProteccionRaw = null;
+            if (preg_match('/D[íi]as\s*Cr[ée]d:\s*(\d+)/iu', $c1Text, $m)) {
+                $diasCreditoRaw = (int) $m[1];
+            }
+            if (preg_match('/Prot\s*\(D[íi]as\):\s*(\d+)/iu', $c1Text, $m)) {
+                $diasProteccionRaw = (int) $m[1];
+            }
+            if (preg_match('/Venc\s*Prot:\s*([\d\/]+)/iu', $c1Text, $m)) {
+                $vencProteccionRaw = $m[1];
+            }
+
+            // Col 2: Documento
+            $documentoRaw = '';
+            if (preg_match('/#(\d+)/i', $c2Text, $m)) {
+                $documentoRaw = $m[1];
+            } elseif (preg_match('/(\d+)/', $c2Text, $m)) {
+                $documentoRaw = $m[1];
+            }
+
+            if (empty($documentoRaw)) {
+                continue;
+            }
+
+            // Col 3: Montos ($)
+            $montoBrutoRaw = '0';
+            $ivaRaw = '0';
+            $montoNetoRaw = '0';
+            if (preg_match('/BRUTO\s*([\d\.,]+)/i', $c3Text, $m)) {
+                $montoBrutoRaw = $m[1];
+            }
+            if (preg_match('/IVA\s*([\d\.,]+)/i', $c3Text, $m)) {
+                $ivaRaw = $m[1];
+            }
+            if (preg_match('/NETO\s*\$?([\d\.,]+)/i', $c3Text, $m)) {
+                $montoNetoRaw = $m[1];
+            }
+
+            // Col 4: Saldo USD / Bs.
+            $saldoUsdRaw = '0';
+            $saldoBsRaw = '0';
+            if (preg_match('/\$([\d\.,]+)/i', $c4Text, $m)) {
+                $saldoUsdRaw = $m[1];
+            }
+            if (preg_match('/Bs\.?\s*([\d\.,]+)/i', $c4Text, $m)) {
+                $saldoBsRaw = $m[1];
+            }
+
+            $isIndexedExplicit = (stripos($c4Text, 'Indexada') !== false);
 
             // Parsear fechas (formato d/m/Y)
             $emision = $this->parseDate($emisionRaw);
             $entrega = $this->parseDate($entregaRaw);
             $vencimiento = $this->parseDate($vencimientoRaw);
-            $vencimientoProteccion = $this->parseDate($vencimientoProteccionRaw);
+            $vencimientoProteccion = $this->parseDate($vencProteccionRaw);
 
             // Parsear números
             $montoBruto = $this->parseAmount($montoBrutoRaw);
@@ -215,16 +365,14 @@ class DromegaScraperService implements DromegaScraperServiceInterface
             $expDate = $vencimiento ?: ($vencimientoProteccion ?: $today->format('Y-m-d'));
 
             // 2. Fecha de pago: Es la fecha de protección de tasa, EXCEPTO si fecha de protección == fecha de entrega
-            // Si la fecha de protección de tasa es la misma que la fecha de entrega, la fecha de pago es la de vencimiento
             $isSameDayProtection = ($entrega && $vencimientoProteccion && $entrega === $vencimientoProteccion);
-            
+
             if ($isSameDayProtection) {
                 $paymentDate = $vencimiento ?: $expDate;
                 $isIndexed = true;
             } else {
                 $paymentDate = $vencimientoProteccion ?: $expDate;
-                // Indexada cuando ya pasó la fecha de protección de tasa
-                $isIndexed = $vencimientoProteccion ? $today->gt(Carbon::parse($vencimientoProteccion)) : false;
+                $isIndexed = $isIndexedExplicit || ($vencimientoProteccion ? $today->gt(Carbon::parse($vencimientoProteccion)) : false);
             }
 
             $invoices[] = [
@@ -233,9 +381,9 @@ class DromegaScraperService implements DromegaScraperServiceInterface
                 'entrega' => $entrega,
                 'vencimiento' => $vencimiento,
                 'vencimiento_proteccion' => $vencimientoProteccion,
-                'dias_credito' => (int) $diasCreditoRaw,
-                'dias_proteccion' => (int) $diasProteccionRaw,
-                'tipo' => $tipoRaw,
+                'dias_credito' => $diasCreditoRaw,
+                'dias_proteccion' => $diasProteccionRaw,
+                'tipo' => 'FACT',
                 'monto_bruto' => $montoBruto,
                 'monto_neto' => $montoNeto,
                 'saldo_usd' => $saldoUsd,
@@ -655,43 +803,53 @@ class DromegaScraperService implements DromegaScraperServiceInterface
      */
     public function fetchInvoiceDetail(string $invoiceNumber, ?string $cookie = null): ?array
     {
-        $cookieString = $cookie ?: env('DROMEGA_COOKIE', 'wordpress_test_cookie=WP%20Cookie%20check; wp_lang=es_ES; wordpress_logged_in_39574764368bb892fdea55c61228e833=Farmacia_Barrio_Sucre%7C1789522005%7CYWx0d9WkwLcNilkn5JDCcVxXwC4xCWiXdW5dXvzvmCb%7Cd8a89bfde4906ecd86eabc0061b580cce09bb1b71de7a7f85fe54ec1657bed9d; _ga=GA1.1.786654209.1780670257; _ga_J50XJCL6NJ=GS2.1.s1780670257$o1$g0$t1780670272$j45$l0$h0; PHPSESSID=394ae3b6804e7d2b6e052a44b2cdd93d');
+        $cookieFile = null;
+        $shouldCleanupCookie = false;
 
-        $url = self::BASE_URL . "/ventas/datos-factura/?factura={$invoiceNumber}";
-        $res = $this->executeCurl($url, $cookieString, [
-            'headers' => [
-                'Referer: ' . self::ESTADO_CUENTA_URL,
-            ],
-        ]);
-
-        if ($res['status'] !== 200 || empty($res['body'])) {
-            Log::warning("[DROMEGA SCRAPER] No se pudo obtener detalle para factura #{$invoiceNumber}");
-            return null;
+        if ($cookie && file_exists($cookie)) {
+            $cookieFile = $cookie;
+        } else {
+            $creds = $this->getCredentials();
+            $cookieFile = $this->createAuthenticatedSession($creds['username'], $creds['password']);
+            $shouldCleanupCookie = true;
         }
 
-        $html = $res['body'];
-        $detail = [
-            'nroFactura' => $invoiceNumber,
-            'fecha' => '',
-            'tasaCambio' => 0,
-            'operadorVentas' => 'Ventas 3',
-            'telefonoOperador' => '0414-7546671',
-            'operadorCobranza' => 'Yelitza Dávila',
-            'descCliente' => 'FARMACIA BARRIO SUCRE 2024, C.A',
-            'rifCliente' => 'J-50540695-7',
-            'codCliente' => '7586',
-            'items' => [],
-            'totales' => [
-                'subtotal_bs' => '0,00',
-                'subtotal_usd' => '0,00',
-                'descuento_bs' => '0,00',
-                'descuento_usd' => '0,00',
-                'iva_bs' => '0,00',
-                'iva_usd' => '0,00',
-                'total_bs' => '0,00',
-                'total_usd' => '0,00',
-            ],
-        ];
+        try {
+            $url = self::DATOS_FACTURA_URL . "?factura={$invoiceNumber}";
+            $res = $this->executeCurlWithCookie($url, $cookieFile, [
+                'headers' => [
+                    'Referer: ' . self::ESTADO_CUENTA_URL,
+                ],
+            ]);
+
+            if ($res['status'] !== 200 || empty($res['body'])) {
+                Log::warning("[DROMEGA SCRAPER] No se pudo obtener detalle para factura #{$invoiceNumber} (HTTP {$res['status']})");
+                return null;
+            }
+
+            $html = $res['body'];
+            $detail = [
+                'nroFactura' => $invoiceNumber,
+                'fecha' => '',
+                'tasaCambio' => 0,
+                'operadorVentas' => 'Ventas 3',
+                'telefonoOperador' => '0414-7546671',
+                'operadorCobranza' => 'Yelitza Dávila',
+                'descCliente' => 'FARMACIA BARRIO SUCRE 2024, C.A',
+                'rifCliente' => 'J-50540695-7',
+                'codCliente' => '7586',
+                'items' => [],
+                'totales' => [
+                    'subtotal_bs' => '0,00',
+                    'subtotal_usd' => '0,00',
+                    'descuento_bs' => '0,00',
+                    'descuento_usd' => '0,00',
+                    'iva_bs' => '0,00',
+                    'iva_usd' => '0,00',
+                    'total_bs' => '0,00',
+                    'total_usd' => '0,00',
+                ],
+            ];
 
         if (preg_match('/Fecha:\s*([\d\/]+)/i', $html, $m)) {
             $detail['fecha'] = trim($m[1]);
@@ -748,6 +906,11 @@ class DromegaScraperService implements DromegaScraperServiceInterface
         }
 
         return $detail;
+        } finally {
+            if ($shouldCleanupCookie && $cookieFile && file_exists($cookieFile)) {
+                @unlink($cookieFile);
+            }
+        }
     }
 
     /**

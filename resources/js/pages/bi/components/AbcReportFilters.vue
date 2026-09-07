@@ -12,6 +12,7 @@ const props = defineProps({
   stockFilter: { type: String, default: 'all' },
   laboratories: { type: Array, default: () => [] },
   isAdvancedFiltersVisible: { type: Boolean, default: false },
+  exporting: { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
@@ -25,6 +26,7 @@ const emit = defineEmits([
   'update:isAdvancedFiltersVisible',
   'fetch',
   'clear',
+  'export',
 ]);
 
 const hasActiveAdvancedFilters = computed(() => {
@@ -155,6 +157,62 @@ const toggleAdvancedFilters = () => {
             <VIcon icon="tabler-eraser" size="18" />
             <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
           </VBtn>
+
+          <VDivider vertical class="mx-1 my-2 border-opacity-10" />
+
+          <!-- Menú Desplegable de Exportación Excel -->
+          <VMenu location="bottom end" :close-on-content-click="true">
+            <template #activator="{ props: menuProps }">
+              <VBtn
+                v-bind="menuProps"
+                icon
+                variant="tonal"
+                color="success"
+                size="36"
+                class="rounded-circle"
+                :loading="exporting"
+                :disabled="loading || exporting"
+              >
+                <VIcon icon="tabler-download" size="18" />
+                <VTooltip activator="parent" location="top">Exportar a Excel</VTooltip>
+              </VBtn>
+            </template>
+            <VList density="compact" class="py-1 shadow-md border rounded-lg" min-width="270">
+              <VListSubheader class="text-uppercase text-caption font-weight-bold tracking-wider opacity-75">
+                Exportar a Excel (.xlsx)
+              </VListSubheader>
+              
+              <VListItem
+                prepend-icon="tabler-file-spreadsheet"
+                title="Vista / Filtros Actuales"
+                subtitle="Datos según los filtros seleccionados"
+                @click="emit('export', 'all')"
+              />
+              
+              <VDivider class="my-1 opacity-10" />
+              
+              <VListItem
+                prepend-icon="tabler-truck-delivery"
+                title="1. Prioridad Compras (AX / AY)"
+                subtitle="Clase A en riesgo de quiebre"
+                @click="emit('export', 'ax_ay')"
+              />
+              
+              <VListItem
+                prepend-icon="tabler-lock-square"
+                title="2. Capital Congelado (CZ / Muerto)"
+                subtitle="Stock inmovilizado sin rotación"
+                @click="emit('export', 'frozen_capital')"
+              />
+              
+              <VListItem
+                prepend-icon="tabler-chart-arrows-vertical"
+                title="3. Matriz Rentabilidad GMROI"
+                subtitle="Ranking por retorno sobre stock"
+                @click="emit('export', 'gmroi')"
+              />
+            </VList>
+          </VMenu>
         </VCol>
       </VRow>
 

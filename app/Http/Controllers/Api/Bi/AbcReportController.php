@@ -91,4 +91,65 @@ class AbcReportController extends Controller
             ]
         ]);
     }
+
+    /**
+     * Exporta los datos del Reporte ABC a Excel con soporte para los 3 cuadrantes estratégicos.
+     *
+     * @param AbcReportRequest $request
+     * @return \Symfony\Component\HttpFoundation\BinaryFileResponse
+     */
+    public function export(AbcReportRequest $request)
+    {
+        $filtros = $request->validated();
+        $exportType = $filtros['export_type'] ?? 'all';
+
+        // Obtener el cálculo completo de datos
+        $reportData = $this->service->getCalculatedAbcReport($filtros);
+
+        $sheetTitle = 'Reporte ABC';
+        $fileNamePrefix = 'reporte_abc';
+
+        if ($exportType === 'ax_ay') {
+            // 1. Cuadrante AX / AY: Clase A en Ventas con rotación X o Y (Top Prioridad Compras)
+            $reportData = $reportData->filter(function ($item) {
+                return $item->class_sales === 'A' && in_array($item->class_rotation, ['X', 'Y']);
+            })->sortBy('inventory_days')->values();
+            
+            $sheetTitle = 'Prioridad Compras AX-AY';
+            $fileNamePrefix = 'compras_prioritarias_ax_ay';
+        } elseif ($exportType === 'frozen_capital') {
+            // 2. Capital Congelado / CZ / Stock Muerto
+            $reportData = $reportData->filter(function ($item) {
+                return ($item->class_sales === 'C' && $item->class_rotation === 'Z') 
+                    || ($item->sold_units <= 0 && $item->current_stock > 0);
+            })->sortByDesc('inventory_value')->values();
+
+            $sheetTitle = 'Capital Congelado CZ';
+            $fileNamePrefix = 'capital_congelado_cz';
+        } elseif ($exportType === 'gmroi') {
+            // 3. Matriz de Rentabilidad GMROI (Top Retorno)
+            $reportData = $reportData->sortByDesc('gmroi')->values();
+
+            $sheetTitle = 'Rentabilidad GMROI';
+            $fileNamePrefix = 'rentabilidad_gmroi';
+        } else {
+            // Ordenamiento por defecto solicitado
+            $sortBy = $filtros['sortBy'] ?? 'total_sales';
+            $orderBy = $filtros['orderBy'] ?? 'desc';
+
+            if ($orderBy === 'desc') {
+                $reportData = $reportData->sortByDesc($sortBy)->values();
+            } else {
+                $reportData = $reportData->sortBy($sortBy)->values();
+            }
+        }
+
+        $fileName = $fileNamePrefix . '_' . now()->format('Ymd_His') . '.xlsx';
+
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new \App\Exports\AbcReportExport($reportData, $sheetTitle),
+            $fileName
+        );
+    }
 }
+
