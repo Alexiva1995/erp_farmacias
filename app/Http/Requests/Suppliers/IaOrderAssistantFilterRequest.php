@@ -35,6 +35,7 @@ class IaOrderAssistantFilterRequest extends FormRequest
             'laboratoryId' => 'nullable|array',
             'groups' => 'nullable|array',
             'supplier_id' => 'nullable|integer',
+            'product_ids' => 'nullable',
         ];
     }
 }

@@ -11,6 +11,7 @@ import AbcReportMobileView from './components/AbcReportMobileView.vue';
 const router = useRouter();
 const loading = ref(false);
 const exporting = ref(false);
+const navigatingAssistant = ref(false);
 const errorMessage = ref(null);
 const items = ref([]);
 const totalItems = ref(0);
@@ -219,14 +220,59 @@ const handleExport = async (exportType = 'all') => {
   }
 };
 
-const handleGoToAssistant = () => {
-  router.push({
-    name: 'suppliers-supplieriaorderassistant',
-    query: {
+const handleGoToAssistant = async (autoMatch = false) => {
+  navigatingAssistant.value = true;
+  try {
+    const dates = getDateRange(selectedDateRange.value);
+    const params = {
+      start_date: dates.start_date,
+      end_date: dates.end_date,
+      laboratory_id: selectedLaboratories.value?.length ? selectedLaboratories.value : null,
+      analysis_type: 'critical_stock',
+      itemsPerPage: -1,
+    };
+    Object.keys(params).forEach(key => (params[key] === null || params[key] === undefined || params[key] === '') && delete params[key]);
+
+    const res = await axios.get('/bi/abc', { params });
+    const criticalItems = res.data.data || [];
+    const criticalIds = criticalItems.map(i => i.id);
+
+    if (criticalIds.length === 0) {
+      toast.info('No se encontraron productos en quiebre o riesgo de stock bajo los filtros seleccionados.');
+      return;
+    }
+
+    const toastMsg = autoMatch 
+      ? `Iniciando cotización y pedido IA para ${criticalIds.length} productos críticos...`
+      : `Transfiriendo ${criticalIds.length} productos en quiebre/riesgo al Asistente IA...`;
+    toast.info(toastMsg);
+
+    const query = {
       stock: 'fallas',
       source: 'abc_critical',
-    },
-  });
+      product_ids: criticalIds.join(','),
+    };
+    if (autoMatch) {
+      query.auto_match = 'true';
+    }
+
+    router.push({
+      name: 'suppliers-supplieriaorderassistant',
+      query,
+    });
+  } catch (err) {
+    console.error('Error al transferir productos críticos al asistente:', err);
+    router.push({
+      name: 'suppliers-supplieriaorderassistant',
+      query: {
+        stock: 'fallas',
+        source: 'abc_critical',
+        ...(autoMatch ? { auto_match: 'true' } : {}),
+      },
+    });
+  } finally {
+    navigatingAssistant.value = false;
+  }
 };
 
 const handleFilterCritical = () => {
@@ -248,6 +294,7 @@ const handleFilterCritical = () => {
       v-model:is-advanced-filters-visible="isAdvancedFiltersVisible"
       :loading="loading"
       :exporting="exporting"
+      :navigating-assistant="navigatingAssistant"
       :laboratories="laboratories"
       @fetch="fetchReport"
       @clear="handleClearFilters"

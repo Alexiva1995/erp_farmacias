@@ -13,6 +13,7 @@ const props = defineProps({
   laboratories: { type: Array, default: () => [] },
   isAdvancedFiltersVisible: { type: Boolean, default: false },
   exporting: { type: Boolean, default: false },
+  navigatingAssistant: { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
@@ -227,30 +228,38 @@ const toggleAdvancedFilters = () => {
                 color="warning"
                 size="36"
                 class="rounded-circle"
-                :disabled="loading"
+                :loading="navigatingAssistant"
+                :disabled="loading || navigatingAssistant"
               >
                 <VIcon icon="tabler-robot" size="18" />
-                <VTooltip activator="parent" location="top">Asistente IA de Pedidos / Quiebres</VTooltip>
+                <VTooltip activator="parent" location="top">Asistente IA de Pedidos (Quiebres Críticos)</VTooltip>
               </VBtn>
             </template>
-            <VList density="compact" class="py-1 shadow-md border rounded-lg" min-width="280">
+            <VList density="compact" class="py-1 shadow-md border rounded-lg" min-width="310">
               <VListSubheader class="text-uppercase text-caption font-weight-bold tracking-wider opacity-75">
-                Acciones de Reposición IA
+                Reposición Automática IA
               </VListSubheader>
               
               <VListItem
+                prepend-icon="tabler-sparkles"
+                title="1. Pedir Automático con IA"
+                subtitle="Buscar mejor proveedor y cotizar con IA lo disponible"
+                @click="emit('go-to-assistant', true)"
+              />
+              
+              <VListItem
                 prepend-icon="tabler-shopping-cart-plus"
-                title="Generar Pedido en Asistente IA"
-                subtitle="Ir al asistente con productos en falla"
-                @click="emit('go-to-assistant')"
+                title="2. Revisar Manual en Asistente IA"
+                subtitle="Abrir asistente para ajustar cantidades y proveedores"
+                @click="emit('go-to-assistant', false)"
               />
               
               <VDivider class="my-1 opacity-10" />
               
               <VListItem
                 prepend-icon="tabler-alert-triangle"
-                title="Filtrar Quiebres y Riesgo (A/B)"
-                subtitle="Ver los productos críticos en esta tabla"
+                title="3. Filtrar Quiebres en esta Tabla"
+                subtitle="Ver los productos críticos en el reporte ABC"
                 @click="emit('filter-critical')"
               />
             </VList>

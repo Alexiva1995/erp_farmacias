@@ -16,7 +16,7 @@ class PaymentHistoryService
      */
     private function buildQuery(array $filters = []): Builder
     {
-        $query = InvoicePayment::with(['invoices.supplier', 'user'])
+        $query = InvoicePayment::with(['invoices.supplier', 'invoices.payments', 'user'])
             ->orderBy('created_at', 'desc');
 
         if (!empty($filters['supplier_id'])) {
@@ -84,6 +84,7 @@ class PaymentHistoryService
         $totalTransactions = $payments->count();
         $totalUSD = 0.0;
         $totalVES = 0.0;
+        $totalCOP = 0.0;
 
         foreach ($payments as $payment) {
             $method = strtoupper((string)$payment->payment_method);
@@ -135,10 +136,43 @@ class PaymentHistoryService
             }
 
             $totalInvoiceAmount = 0;
+            $allInvoicesPaid = true;
+            $hasInvoices = $payment->invoices->isNotEmpty();
+
             foreach ($payment->invoices as $invoice) {
                 $totalInvoiceAmount += (float) $invoice->total_usd;
+                if ((int) $invoice->status_payment !== 1) {
+                    $allInvoicesPaid = false;
+                }
             }
-            $payment->payment_type = $payment->amount_usd >= $totalInvoiceAmount ? 'full' : 'partial';
+
+            if ($hasInvoices) {
+                if ($allInvoicesPaid) {
+                    // Si las facturas están completamente liquidadas (status_payment === 1)
+                    $hasMultiplePayments = false;
+                    foreach ($payment->invoices as $invoice) {
+                        if ($invoice->relationLoaded('payments') && $invoice->payments->count() > 1) {
+                            $hasMultiplePayments = true;
+                            break;
+                        }
+                    }
+
+                    if ($hasMultiplePayments && $totalInvoiceAmount > 0) {
+                        // Si hubo múltiples pagos para la misma factura y este pago fue una fracción menor (abono previo)
+                        $payment->payment_type = ($payment->amount_usd >= ($totalInvoiceAmount * 0.70)) ? 'full' : 'partial';
+                    } else {
+                        // Si es el pago único/definitivo y las facturas quedaron pagadas
+                        $payment->payment_type = 'full';
+                    }
+                } else {
+                    // Si la factura no está completamente saldada (status_payment !== 1), es un abono parcial
+                    $payment->payment_type = 'partial';
+                }
+            } else {
+                // Fallback si no tiene facturas asociadas directamente
+                $payment->payment_type = ($payment->amount_usd >= ($totalInvoiceAmount - 0.05)) ? 'full' : 'partial';
+            }
+
             $payment->invoice_total_usd = $totalInvoiceAmount;
 
             return $payment;

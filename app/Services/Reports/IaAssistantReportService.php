@@ -109,6 +109,13 @@ class IaAssistantReportService
                 }
             }
 
+            if (!empty($filtros['product_ids'])) {
+                $ids = is_array($filtros['product_ids']) 
+                    ? array_map('intval', $filtros['product_ids'])
+                    : array_map('intval', explode(',', (string)$filtros['product_ids']));
+                $procesado = $procesado->filter(fn($p) => in_array((int)$p->id, $ids, true));
+            }
+
             $shortBy = $filtros['sortBy'] ?? 'solicitar';
             $orderDir = strtolower($filtros['orderBy'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
 

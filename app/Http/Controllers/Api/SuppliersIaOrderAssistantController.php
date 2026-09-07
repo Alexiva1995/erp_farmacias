@@ -177,6 +177,12 @@ class SuppliersIaOrderAssistantController extends Controller
             }
         }
 
+        if ($request->filled("product_ids")) {
+            $filtros["product_ids"] = is_array($request->product_ids)
+                ? $request->product_ids
+                : explode(',', (string) $request->product_ids);
+        }
+
         if ($request->filled("lapso_de_tiempo")) {
             $timeZone = new DateTimeZone(config("app.timezone"));
             $dateToday = new DateTime("now", $timeZone);

@@ -5,9 +5,19 @@ import SupplierIaOrderAssistantIndividualTable from "@/components/SupplierIaOrde
 import SupplierIaOrderAssistantComparatorModal from "@/components/SupplierIaOrderAssistantComparatorModal.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import Swal from "sweetalert2";
 import { computed, onMounted, reactive, ref, watch } from "vue";
+import { useRoute } from "vue-router";
 import { roundIaAnalysis } from "@/utils/iaAnalysisRounding";
+
+const route = useRoute();
+const productIdsFilter = ref(
+  route.query.product_ids
+    ? (Array.isArray(route.query.product_ids)
+        ? route.query.product_ids
+        : String(route.query.product_ids).split(',').filter(Boolean))
+    : null
+);
+const isFromAbcCritical = ref(route.query.source === 'abc_critical' || Boolean(productIdsFilter.value?.length));
 
 const statuModule = reactive({ total: 0, items: [] });
 const gruposData = reactive({ grupos: [], total_grupos: 0, per_page: 25, current_page: 1, last_page: 1 });
@@ -80,6 +90,15 @@ const handleClearFilters = () => {
   selectedSupplier.value = null;
   sortBy.value = "solicitar";
   orderBy.value = "desc";
+  productIdsFilter.value = null;
+  isFromAbcCritical.value = false;
+};
+
+const clearAbcCriticalFilter = () => {
+  productIdsFilter.value = null;
+  isFromAbcCritical.value = false;
+  page.value = 1;
+  actualizarTabla();
 };
 
 async function consultarLaboratorios() {
@@ -126,6 +145,7 @@ async function consultarProductosConPaginacion() {
     show_ignored: showIgnored.value,
     with_trend: showGraphs.value,
     supplier_id: selectedSupplier.value,
+    product_ids: productIdsFilter.value,
   };
 
   if (isColombian.value === true) data.isColombian = true;
@@ -470,12 +490,43 @@ const handleOpenComparator = ({ item, quantity }) => {
 
 onMounted(async () => {
   await Promise.all([consultarGruposProductos(), consultarLaboratorios(), consultarProveedores()]);
+  if (route.query.auto_match === 'true' || route.query.auto_order === 'true') {
+    withSuppliers.value = true;
+    skipAiMatch.value = false;
+    toast.info("Iniciando búsqueda automática de proveedores e IA para los productos críticos...");
+  }
   await actualizarTabla();
 });
 </script>
 
 <template>
   <div class="assistant-ia-view pb-12">
+    <!-- Banner Informativo: Modo Quiebre Crítico ABC -->
+    <VAlert
+      v-if="isFromAbcCritical && productIdsFilter"
+      type="warning"
+      variant="tonal"
+      class="mb-4 rounded-lg elevation-1"
+      closable
+      @click:close="clearAbcCriticalFilter"
+    >
+      <div class="d-flex align-center justify-space-between flex-wrap gap-2">
+        <div class="d-flex align-center gap-2">
+          <VIcon icon="tabler-alert-triangle" size="22" color="warning" />
+          <div>
+            <strong class="text-subtitle-2 font-weight-bold">Modo Quiebre Crítico ABC Activo:</strong>
+            <span class="text-body-2 ms-1">
+              Mostrando exclusivamente los <strong>{{ displayedTotal }}</strong> productos Clase A/B con quiebre o riesgo inminente de stock transferidos desde el Reporte ABC.
+            </span>
+          </div>
+        </div>
+        <VBtn size="small" variant="flat" color="warning" class="text-capitalize" @click="clearAbcCriticalFilter">
+          <VIcon icon="tabler-list" size="14" class="me-1" />
+          Ver Catálogo Completo
+        </VBtn>
+      </div>
+    </VAlert>
+
     <div class="d-flex flex-column gap-1 mt-1">
       <!-- Filtros -->
       <SupplierIaOrderAssistantFilter
