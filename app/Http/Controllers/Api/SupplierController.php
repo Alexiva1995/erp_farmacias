@@ -653,6 +653,44 @@ class SupplierController extends Controller
                     [ "target" => "quantity", "file_field" => "H", "type" => "integer" ],
                     [ "target" => "laboratory", "file_field" => "I", "type" => "string" ]
                 ];
+            } elseif (stripos($supplier->name, 'DROMEGA') !== false || $supplier->id === 1005 || $supplier->id === 9) {
+                $data['structure'] = [
+                    "0" => [ "file_field" => "codigo_producto", "type" => "string", "target" => "cod_supplier" ],
+                    "1" => [ "file_field" => "codigo_barras", "type" => "string", "target" => "barcode_match" ],
+                    "2" => [ "file_field" => "descripcion_producto", "type" => "string", "target" => "name" ],
+                    "3" => [ "file_field" => "fecha_lote", "type" => "date", "target" => "expiration" ],
+                    "4" => [ "file_field" => "precio_unitario", "type" => "decimal" ],
+                    "5" => [ "file_field" => "porcentaje_oferta_vigente", "type" => "decimal" ],
+                    "6" => [ "file_field" => "precio_unitario_final", "type" => "decimal", "target" => "unit_cost" ],
+                    "7" => [ "file_field" => "stock_disponible", "type" => "integer", "target" => "quantity" ]
+                ];
+                $data['invoice_structure'] = [
+                    "separator" => ";",
+                    "decimal_separator" => ".",
+                    "decimals" => 2,
+                    "header" => [
+                        "0" => [ "field" => "tipo", "type" => "string" ],
+                        "1" => [ "field" => "invoice_number", "type" => "integer" ],
+                        "2" => [ "field" => "control_number", "type" => "string" ],
+                        "3" => [ "field" => "created_invoice_date", "type" => "date", "format" => "d/m/Y" ],
+                        "8" => [ "field" => "total_amount", "type" => "decimal" ],
+                        "13" => [ "field" => "tax_amount", "type" => "decimal" ]
+                    ],
+                    "lines" => [
+                        "0" => [ "field" => "tipo", "type" => "string" ],
+                        "1" => [ "field" => "fact_num", "type" => "integer" ],
+                        "2" => [ "field" => "numcon", "type" => "string" ],
+                        "3" => [ "field" => "codigo_producto", "type" => "string" ],
+                        "4" => [ "field" => "barcode", "type" => "string" ],
+                        "5" => [ "field" => "descripcion_producto", "type" => "string" ],
+                        "6" => [ "field" => "quantity", "type" => "integer" ],
+                        "8" => [ "field" => "total_amount", "type" => "decimal" ],
+                        "10" => [ "field" => "unit_cost", "type" => "decimal" ],
+                        "11" => [ "field" => "lot_number", "type" => "string" ],
+                        "12" => [ "field" => "expiration_date", "type" => "date", "format" => "d/m/Y" ],
+                        "13" => [ "field" => "porcentaje_iva", "type" => "decimal" ]
+                    ]
+                ];
             } else {
                 $data['structure'] = [];
             }

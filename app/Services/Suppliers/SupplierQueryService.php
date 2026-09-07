@@ -218,7 +218,13 @@ class SupplierQueryService
             error_log($logMessage);
 
 
-            // Cargar facturas y números de control existentes para este proveedor
+            // Cargar facturas y números de control existentes globalmente y para este proveedor
+            $allInvoiceNumbers = Invoice::pluck('invoice_number')
+                ->filter()
+                ->map(fn($n) => strtoupper(trim((string)$n)))
+                ->flip()
+                ->toArray();
+
             $existingSupplierInvoices = Invoice::where('supplier_id', $supplier->id)
                 ->get(['invoice_number', 'control_number']);
 
@@ -250,11 +256,17 @@ class SupplierQueryService
             }
 
             $filteredInvoices = collect($invoices)
-                ->filter(function ($invoice) use ($existingControls, $existingNormalizedNumbers) {
+                ->filter(function ($invoice) use ($existingControls, $existingNormalizedNumbers, $allInvoiceNumbers) {
                     $number = strtoupper(trim((string)($invoice['header']['invoice_number'] ?? '')));
                     $control = strtoupper(trim((string)($invoice['header']['control_number'] ?? '')));
 
                     if (empty($number)) {
+                        return false;
+                    }
+
+                    // 0. Validar por número de factura existente a nivel global (evitar violar unicidad en DB)
+                    if (isset($allInvoiceNumbers[$number])) {
+                        Log::warning("Factura filtrada: Ya existe en la base de datos", ['number' => $number]);
                         return false;
                     }
 
@@ -348,84 +360,96 @@ class SupplierQueryService
             error_log($logMessage);
 
 
-            // Procesar facturas en su propia transacción
-            DB::transaction(function () use ($supplier, $filteredInvoices) {
-                foreach ($filteredInvoices as $invoice) {
-                    $header = $invoice['header'];
-                    $lines = $invoice['lines'];
+            // Procesar facturas de forma segura e individual
+            foreach ($filteredInvoices as $invoice) {
+                try {
+                    DB::transaction(function () use ($supplier, $invoice) {
+                        $header = $invoice['header'];
+                        $lines = $invoice['lines'];
 
-                    $totalAmount = $header['total_amount'] ?? null;
-                    if ($totalAmount === null || $totalAmount === '') {
-                        $totalUsd = floatval($header['total_usd'] ?? 0);
-                        $rate = floatval($header['exchange_rate'] ?? 1);
-                        $totalAmount = round($totalUsd * $rate, 2);
-                    }
+                        $totalAmount = $header['total_amount'] ?? null;
+                        if ($totalAmount === null || $totalAmount === '') {
+                            $totalUsd = floatval($header['total_usd'] ?? 0);
+                            $rate = floatval($header['exchange_rate'] ?? 1);
+                            $totalAmount = round($totalUsd * $rate, 2);
+                        }
 
-                    $invoiceModel = $supplier->invoices()->create([
-                        ...Arr::only($header, Invoice::FILLABLEHEADER),
-                        'total_amount' => $totalAmount,
-                        'status' => $invoice['status'] ?? 'pending',
-                        'uploaded_by' => auth()->id() ?? 1,
-                        'registered_by' => auth()->id() ?? 1,
-                    ]);
+                        $invoiceModel = $supplier->invoices()->create([
+                            ...Arr::only($header, Invoice::FILLABLEHEADER),
+                            'total_amount' => $totalAmount,
+                            'status' => $invoice['status'] ?? 'pending',
+                            'uploaded_by' => auth()->id() ?? 1,
+                            'registered_by' => auth()->id() ?? 1,
+                        ]);
 
-                    // ✅ Obtener exchange_rate del header
-                    $exchangeRate = floatval($header['exchange_rate'] ?? 1);
-                    $isVitaclinics = str_contains(strtolower($supplier->name ?? ''), 'vitalclinic')
-                        || str_contains(strtolower($supplier->name ?? ''), 'vitaclinic')
-                        || in_array($supplier->id, [15, 1009]);
+                        // ✅ Obtener exchange_rate del header
+                        $exchangeRate = floatval($header['exchange_rate'] ?? 1);
+                        $isVitaclinics = str_contains(strtolower($supplier->name ?? ''), 'vitalclinic')
+                            || str_contains(strtolower($supplier->name ?? ''), 'vitaclinic')
+                            || in_array($supplier->id, [15, 1009]);
 
-                    $details = [];
-                    foreach ($lines as $line) {
-                        $lineData = Arr::only($line, InvoiceDetail::FILLABLEDETAILS);
+                        $details = [];
+                        foreach ($lines as $line) {
+                            $lineData = Arr::only($line, InvoiceDetail::FILLABLEDETAILS);
 
-                        // 🔍 Vincular producto por barcode si no tiene product_id
-                        if (empty($lineData['product_id']) && !empty($line['barcode'])) {
-                            $product = Product::withoutGlobalScope('not_deleted')
-                                ->withTrashed()
-                                ->where('barcode', $line['barcode'])
-                                ->first();
-                            
-                            if ($product) {
-                                if ($product->trashed()) {
-                                    $product->restore();
+                            // 🔍 Vincular producto por barcode si no tiene product_id
+                            if (empty($lineData['product_id']) && !empty($line['barcode'])) {
+                                $product = Product::withoutGlobalScope('not_deleted')
+                                    ->withTrashed()
+                                    ->where('barcode', $line['barcode'])
+                                    ->first();
+                                
+                                if ($product) {
+                                    if ($product->trashed()) {
+                                        $product->restore();
+                                    }
+                                } elseif (!empty($line['name']) || !empty($line['descripcion_producto'])) {
+                                    // 🆕 Crear producto en modo borrador (no visible hasta finalizar factura)
+                                    $product = Product::create([
+                                        'name'       => $line['name'] ?? $line['descripcion_producto'] ?? 'PRODUCTO',
+                                        'barcode'    => $line['barcode'],
+                                        'unit_cost'  => floatval($line['unit_cost'] ?? 0),
+                                        'sale_price' => floatval($line['unit_cost'] ?? 0),
+                                        'is_active'  => true,
+                                        'is_deleted' => true,
+                                    ]);
                                 }
-                            } elseif (!empty($line['name'])) {
-                                // 🆕 Crear producto en modo borrador (no visible hasta finalizar factura)
-                                $product = Product::create([
-                                    'name'       => $line['name'],
-                                    'barcode'    => $line['barcode'],
-                                    'unit_cost'  => floatval($line['unit_cost'] ?? 0),
-                                    'sale_price' => floatval($line['unit_cost'] ?? 0),
-                                    'is_active'  => true,
-                                    'is_deleted' => true,
-                                ]);
+
+                                if ($product) {
+                                    $lineData['product_id'] = $product->id;
+                                }
                             }
 
-                            if ($product) {
-                                $lineData['product_id'] = $product->id;
+                            if (!isset($lineData['total_cost']) && isset($line['total_amount'])) {
+                                $lineData['total_cost'] = floatval($line['total_amount']);
                             }
+
+                            // ✅ Si es Vitaclinics y tiene exchange_rate, multiplicar unit_cost
+                            if ($isVitaclinics && $exchangeRate > 1) {
+                                $unitCost = floatval($lineData['unit_cost'] ?? 0);
+                                $lineData['unit_cost'] = number_format($unitCost * $exchangeRate, 2, '.', '');
+
+                                // Recalcular total_cost también
+                                $quantity = floatval($lineData['quantity'] ?? 0);
+                                $lineData['total_cost'] = number_format($lineData['unit_cost'] * $quantity, 2, '.', '');
+                            }
+
+                            $details[] = [
+                                ...$lineData,
+                                'invoice_id' => $invoiceModel->id,
+                            ];
                         }
 
-                        // ✅ Si es Vitaclinics y tiene exchange_rate, multiplicar unit_cost
-                        if ($isVitaclinics && $exchangeRate > 1) {
-                            $unitCost = floatval($lineData['unit_cost'] ?? 0);
-                            $lineData['unit_cost'] = number_format($unitCost * $exchangeRate, 2, '.', '');
-
-                            // Recalcular total_cost también
-                            $quantity = floatval($lineData['quantity'] ?? 0);
-                            $lineData['total_cost'] = number_format($lineData['unit_cost'] * $quantity, 2, '.', '');
-                        }
-
-                        $details[] = [
-                            ...$lineData,
-                            'invoice_id' => $invoiceModel->id,
-                        ];
-                    }
-
-                    $invoiceModel->details()->createMany($details);
+                        $invoiceModel->details()->createMany($details);
+                    });
+                } catch (\Throwable $invError) {
+                    Log::error("Error guardando factura individual", [
+                        'supplier_id' => $supplier->id,
+                        'invoice' => $invoice['header']['invoice_number'] ?? null,
+                        'error' => $invError->getMessage(),
+                    ]);
                 }
-            });
+            }
             return true;
         } catch (\Throwable $e) {
             Log::error("Error in storeSupplierConnectionData: " . $e->getMessage());

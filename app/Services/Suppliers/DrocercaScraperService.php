@@ -67,11 +67,22 @@ class DrocercaScraperService implements DrocercaScraperServiceInterface
         $user = $user ?: env('DROCERCA_USERNAME');
         $pass = $pass ?: env('DROCERCA_PASSWORD');
 
+        if (empty($user) || empty($pass)) {
+            \Illuminate\Support\Facades\Log::warning("[DrocercaScraper] No se encontraron credenciales configuradas para el bot de Drocerca (BD o .env). Sincronización omitida.");
+            return [
+                'total_extracted' => 0,
+                'updated' => 0,
+                'skipped' => 0,
+                'created' => 0,
+                'error' => 'Credenciales no configuradas'
+            ];
+        }
+
         // 1. Obtener listado de facturas emitidas desde la sección Facturación
-        $documents = $this->fetchDocuments($user, $pass);
+        $documents = $this->fetchDocuments((string) $user, (string) $pass);
 
         // 2. Obtener estado de cuenta y efectos por pagar en las 3 sedes (Mérida, Centro, Oriente)
-        $edoCuentaMap = $this->fetchEdoCuenta($user, $pass);
+        $edoCuentaMap = $this->fetchEdoCuenta((string) $user, (string) $pass);
 
         // Filtrar para procesar EXCLUSIVAMENTE las facturas que están pendientes en Estado de Cuenta (Efectos por Pagar)
         if (!empty($edoCuentaMap)) {
