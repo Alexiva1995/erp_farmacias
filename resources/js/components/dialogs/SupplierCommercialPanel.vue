@@ -71,7 +71,7 @@ const syncLocalData = () => {
 
 // --- LÓGICA DE PRONTO PAGO ---
 const addPaymentRule = () => {
-  editablePaymentRules.value.push({ id: tempIdCounter.value--, days: 0, discount_percentage: 0, _markedForDeletion: false })
+  editablePaymentRules.value.push({ id: tempIdCounter.value--, days: null, discount_percentage: null, _markedForDeletion: false })
 }
 
 const removePaymentRule = (index) => {
@@ -84,9 +84,9 @@ const addScaleRule = () => {
     id: tempIdCounter.value--,
     laboratory: { id: null, name: '' },
     scale_type: { id: 'units', name: 'Por unidades' },
-    min: 1,
-    max: 1,
-    discount_percentage: 0,
+    min: null,
+    max: null,
+    discount_percentage: null,
     _markedNew: true
   })
 }
@@ -97,7 +97,7 @@ const removeScaleRule = (index) => {
 
 // --- LÓGICA DE DESCUENTOS ---
 const addDiscount = () => {
-  editableDiscounts.value.push({ id: tempIdCounter.value--, name: '', discount_percentage: 0, _markedNew: true })
+  editableDiscounts.value.push({ id: tempIdCounter.value--, name: '', discount_percentage: null, _markedNew: true })
 }
 
 const removeDiscount = (index) => {
@@ -108,8 +108,8 @@ const removeDiscount = (index) => {
 const saveFinances = () => {
   const data = editablePaymentRules.value.map(r => ({
     id: r.id > 0 ? r.id : undefined,
-    days: r.days,
-    discount_percentage: r.discount_percentage
+    days: Number(r.days) || 0,
+    discount_percentage: Number(r.discount_percentage) || 0
   }))
   emit('save-payment-rules', data)
 }
@@ -120,9 +120,9 @@ const saveBrands = async () => {
     id: s.id > 0 ? s.id : undefined,
     laboratory: s.laboratory,
     scale_type: s.scale_type,
-    min: s.min,
-    max: s.max,
-    discount_percentage: s.discount_percentage
+    min: Number(s.min) || 1,
+    max: Number(s.max) || 1,
+    discount_percentage: Number(s.discount_percentage) || 0
   }))
   emit('save-discount-rules', scalesData)
 }
@@ -131,7 +131,7 @@ const saveDiscounts = () => {
   const data = editableDiscounts.value.map(d => ({
     id: d.id > 0 ? d.id : undefined,
     name: d.name,
-    discount_percentage: d.discount_percentage
+    discount_percentage: Number(d.discount_percentage) || 0
   }))
   emit('save-discounts', data)
 }
@@ -221,10 +221,10 @@ const close = () => {
                 <tbody>
                   <tr v-for="(rule, index) in editablePaymentRules" :key="index" class="hover-row">
                     <td>
-                      <AppTextField v-model="rule.days" type="number" density="compact" placeholder="0" hide-details class="centered-input-field" />
+                      <AppTextField v-model="rule.days" type="number" density="compact" placeholder="0" hide-details class="centered-input-field" @focus="$event.target?.select()" />
                     </td>
                     <td>
-                      <AppTextField v-model="rule.discount_percentage" type="number" density="compact" suffix="%" placeholder="0.00" hide-details class="centered-input-field" />
+                      <AppTextField v-model="rule.discount_percentage" type="number" density="compact" suffix="%" placeholder="0.00" hide-details class="centered-input-field" @focus="$event.target?.select()" />
                     </td>
                     <td class="text-center">
                       <VBtn icon="tabler-trash" variant="tonal" color="error" size="small" class="rounded-lg" @click="removePaymentRule(index)" />
@@ -293,13 +293,13 @@ const close = () => {
                     </td>
                     <td>
                       <div class="d-flex align-center gap-2">
-                        <AppTextField v-model="scale.min" type="number" density="compact" hide-details />
+                        <AppTextField v-model="scale.min" type="number" density="compact" placeholder="1" hide-details @focus="$event.target?.select()" />
                         <span class="text-disabled font-weight-black">–</span>
-                        <AppTextField v-model="scale.max" type="number" density="compact" hide-details />
+                        <AppTextField v-model="scale.max" type="number" density="compact" placeholder="1" hide-details @focus="$event.target?.select()" />
                       </div>
                     </td>
                     <td style="inline-size: 15%;">
-                      <AppTextField v-model="scale.discount_percentage" type="number" density="compact" suffix="%" hide-details class="centered-input-field" />
+                      <AppTextField v-model="scale.discount_percentage" type="number" density="compact" suffix="%" placeholder="0.00" hide-details class="centered-input-field" @focus="$event.target?.select()" />
                     </td>
                     <td class="text-center">
                       <VBtn icon="tabler-trash" variant="tonal" color="error" size="small" class="rounded-lg" @click="removeScaleRule(index)" />
@@ -346,10 +346,10 @@ const close = () => {
                 <tbody>
                   <tr v-for="(disc, index) in editableDiscounts" :key="index" class="hover-row">
                     <td style="inline-size: 75%;">
-                      <AppTextField v-model="disc.name" density="compact" placeholder="Ej: Descuento Comercial 2%" hide-details />
+                      <AppTextField v-model="disc.name" density="compact" placeholder="Ej: Descuento Comercial 2%" hide-details @focus="$event.target?.select()" />
                     </td>
                     <td>
-                      <AppTextField v-model="disc.discount_percentage" type="number" density="compact" suffix="%" hide-details class="centered-input-field" />
+                      <AppTextField v-model="disc.discount_percentage" type="number" density="compact" suffix="%" placeholder="0.00" hide-details class="centered-input-field" @focus="$event.target?.select()" />
                     </td>
                     <td class="text-center">
                       <VBtn icon="tabler-trash" variant="tonal" color="error" size="small" class="rounded-lg" @click="removeDiscount(index)" />
