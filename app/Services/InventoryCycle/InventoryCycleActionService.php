@@ -119,7 +119,7 @@ class InventoryCycleActionService
                 $productCount->load(['product', 'user', 'cycle']);
 
                 if ($status === 'approved') {
-                    $this->createVerificationMovement($product, $systemStock, $productCount->created_at, $productCount->id);
+                    $this->createVerificationMovement($product, $systemStock, $productCount->created_at, $productCount->id, 'product_count');
                 }
 
                 $message = $status === 'approved' 
@@ -169,7 +169,7 @@ class InventoryCycleActionService
     /**
      * Crea un movimiento de inventario tipo verificación cuando el conteo físico coincide con el stock en sistema.
      */
-    private function createVerificationMovement(Product $product, float|int $stockQuantity, \DateTimeInterface $movementDate, ?int $productCountId = null): void
+    private function createVerificationMovement(Product $product, float|int $stockQuantity, \DateTimeInterface $movementDate, ?int $productCountId = null, ?string $countType = null): void
     {
         InventoryMovement::create([
             'product_id' => $product->id,
@@ -178,6 +178,7 @@ class InventoryCycleActionService
             'quantity' => 0,
             'user_id' => Auth::id(),
             'product_count_id' => $productCountId,
+            'count_type' => $countType,
             'stock_before' => $stockQuantity,
             'stock_after' => $stockQuantity,
             'movement_date' => $movementDate,
@@ -357,12 +358,13 @@ class InventoryCycleActionService
                         'order_id'         => null,
                         'user_id'          => Auth::id(),
                         'product_count_id' => $productCount->id,
+                        'count_type'       => 'product_count',
                         'stock_before'     => $stockBefore,
                         'stock_after'      => $stockAfter,
                         'movement_date'    => now(),
                     ]);
                 } else {
-                    $this->createVerificationMovement($product, (int) $stockAfter, now(), $productCount->id);
+                    $this->createVerificationMovement($product, (int) $stockAfter, now(), $productCount->id, 'product_count');
                 }
             } else {
                 // Si no se creó ninguna distribución manual:
@@ -370,7 +372,7 @@ class InventoryCycleActionService
                     $stockAfter = $stockBefore;
                     $finalQuantity = (float) $stockBefore;
                     $product->updateQuietly(['stock' => $stockAfter]);
-                    $this->createVerificationMovement($product, (int) $stockAfter, now(), $productCount->id);
+                    $this->createVerificationMovement($product, (int) $stockAfter, now(), $productCount->id, 'product_count');
                 } else {
                     $targetLot = $product->lots()->where('quantity', '>', 0)->orderBy('id', 'desc')->first()
                         ?? $product->lots()->orderBy('id', 'desc')->first();
@@ -414,6 +416,7 @@ class InventoryCycleActionService
                         'order_id'         => null,
                         'user_id'          => Auth::id(),
                         'product_count_id' => $productCount->id,
+                        'count_type'       => 'product_count',
                         'stock_before'     => $stockBefore,
                         'stock_after'      => $stockAfter,
                         'movement_date'    => now(),
@@ -522,7 +525,7 @@ class InventoryCycleActionService
                 $invoiceCount->load(['product', 'user', 'cycle']);
 
                 if ($status === 'approved') {
-                    $this->createVerificationMovement($product, $data['system_quantity'], $invoiceCount->created_at);
+                    $this->createVerificationMovement($product, $data['system_quantity'], $invoiceCount->created_at, $invoiceCount->id, 'invoice_count');
                 }
 
                 $message = $status === 'approved' 
@@ -638,13 +641,14 @@ class InventoryCycleActionService
                         'supplier_id'      => null,
                         'order_id'         => null,
                         'user_id'          => Auth::id(),
-                        'product_count_id' => null,
+                        'product_count_id' => $invoiceCount->id,
+                        'count_type'       => 'invoice_count',
                         'stock_before'     => $stockBefore,
                         'stock_after'      => $stockAfter,
                         'movement_date'    => now(),
                     ]);
                 } else {
-                    $this->createVerificationMovement($product, (int) $stockAfter, now());
+                    $this->createVerificationMovement($product, (int) $stockAfter, now(), $invoiceCount->id, 'invoice_count');
                 }
             } else {
                 // Si no se creó ninguna distribución manual:
@@ -652,7 +656,7 @@ class InventoryCycleActionService
                     $stockAfter = $stockBefore;
                     $finalQuantity = (float) $stockBefore;
                     $product->updateQuietly(['stock' => $stockAfter]);
-                    $this->createVerificationMovement($product, (int) $stockAfter, now());
+                    $this->createVerificationMovement($product, (int) $stockAfter, now(), $invoiceCount->id, 'invoice_count');
                 } else {
                     $targetLot = $product->lots()->where('quantity', '>', 0)->orderBy('id', 'desc')->first()
                         ?? $product->lots()->orderBy('id', 'desc')->first();
@@ -695,7 +699,8 @@ class InventoryCycleActionService
                         'supplier_id'      => null,
                         'order_id'         => null,
                         'user_id'          => Auth::id(),
-                        'product_count_id' => null,
+                        'product_count_id' => $invoiceCount->id,
+                        'count_type'       => 'invoice_count',
                         'stock_before'     => $stockBefore,
                         'stock_after'      => $stockAfter,
                         'movement_date'    => now(),
@@ -860,7 +865,7 @@ class InventoryCycleActionService
                 $saleCount->load(['product', 'user', 'cycle']);
 
                 if ($status === 'approved') {
-                    $this->createVerificationMovement($product, $data['system_quantity'], $saleCount->created_at);
+                    $this->createVerificationMovement($product, $data['system_quantity'], $saleCount->created_at, $saleCount->id, 'sale_count');
                 }
 
                 $message = $status === 'approved' 
@@ -955,13 +960,14 @@ class InventoryCycleActionService
                         'supplier_id'      => null,
                         'order_id'         => null,
                         'user_id'          => Auth::id(),
-                        'product_count_id' => null,
+                        'product_count_id' => $saleCount->id,
+                        'count_type'       => 'sale_count',
                         'stock_before'     => $stockBefore,
                         'stock_after'      => $stockAfter,
                         'movement_date'    => now(),
                     ]);
                 } else {
-                    $this->createVerificationMovement($product, (int) $stockAfter, now());
+                    $this->createVerificationMovement($product, (int) $stockAfter, now(), $saleCount->id, 'sale_count');
                 }
             } else {
                 // Si no se creó ninguna distribución manual:
@@ -969,7 +975,7 @@ class InventoryCycleActionService
                     $stockAfter = $stockBefore;
                     $finalQuantity = (float) $stockBefore;
                     $product->updateQuietly(['stock' => $stockAfter]);
-                    $this->createVerificationMovement($product, (int) $stockAfter, now());
+                    $this->createVerificationMovement($product, (int) $stockAfter, now(), $saleCount->id, 'sale_count');
                 } else {
                     $targetLot = $product->lots()->where('quantity', '>', 0)->orderBy('id', 'desc')->first()
                         ?? $product->lots()->orderBy('id', 'desc')->first();
@@ -1012,7 +1018,8 @@ class InventoryCycleActionService
                         'supplier_id'      => null,
                         'order_id'         => null,
                         'user_id'          => Auth::id(),
-                        'product_count_id' => null,
+                        'product_count_id' => $saleCount->id,
+                        'count_type'       => 'sale_count',
                         'stock_before'     => $stockBefore,
                         'stock_after'      => $stockAfter,
                         'movement_date'    => now(),
@@ -1142,19 +1149,27 @@ class InventoryCycleActionService
                             $product->update(['stock' => $stockAfter]);
                         });
 
+                        $countType = match (get_class($model)) {
+                            \App\Models\InvoiceCount::class => 'invoice_count',
+                            \App\Models\SaleCount::class    => 'sale_count',
+                            default                         => 'product_count',
+                        };
+
                         // Registrar movimiento de ajuste en trazabilidad
                         InventoryMovement::create([
-                            'product_id'     => $product->id,
-                            'product_lot_id' => $targetLot?->id,
-                            'movement_type'  => $difference > 0 ? 'adjustment' : 'loss',
-                            'quantity'       => $difference,
-                            'invoice_id'     => null,
-                            'supplier_id'    => null,
-                            'order_id'       => null,
-                            'user_id'        => Auth::id(),
-                            'stock_before'   => $stockBefore,
-                            'stock_after'    => $stockAfter,
-                            'movement_date'  => now(),
+                            'product_id'       => $product->id,
+                            'product_lot_id'   => $targetLot?->id,
+                            'movement_type'    => $difference > 0 ? 'adjustment' : 'loss',
+                            'quantity'         => $difference,
+                            'invoice_id'       => null,
+                            'supplier_id'      => null,
+                            'order_id'         => null,
+                            'user_id'          => Auth::id(),
+                            'product_count_id' => $model->id,
+                            'count_type'       => $countType,
+                            'stock_before'     => $stockBefore,
+                            'stock_after'      => $stockAfter,
+                            'movement_date'    => now(),
                         ]);
                     }
                 }

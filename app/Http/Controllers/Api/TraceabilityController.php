@@ -197,12 +197,19 @@ class TraceabilityController extends Controller
             case 'verification':
                 $countRecord = null;
                 if ($movement->product_count_id) {
-                    $countRecord = \App\Models\ProductCount::with(['user.employee', 'supervisor.employee'])->find($movement->product_count_id);
+                    $countRecord = match ($movement->count_type) {
+                        'invoice_count' => \App\Models\InvoiceCount::with(['user.employee', 'supervisor.employee'])->find($movement->product_count_id),
+                        'sale_count'    => \App\Models\SaleCount::with(['user.employee', 'supervisor.employee'])->find($movement->product_count_id),
+                        'product_count' => \App\Models\ProductCount::with(['user.employee', 'supervisor.employee'])->find($movement->product_count_id),
+                        default         => \App\Models\ProductCount::with(['user.employee', 'supervisor.employee'])->find($movement->product_count_id)
+                            ?? \App\Models\InvoiceCount::with(['user.employee', 'supervisor.employee'])->find($movement->product_count_id)
+                            ?? \App\Models\SaleCount::with(['user.employee', 'supervisor.employee'])->find($movement->product_count_id),
+                    };
                 }
 
                 if (!$countRecord && $movement->product_lot_id) {
                     $expiredLog = \App\Models\ExpiredLog::where('lot_id', $movement->product_lot_id)
-                        ->where('created_at', '>=', Carbon::parse($movement->created_at ?? $movement->movement_date)->subMinutes(10))
+                        ->where('created_at', '>=', \Carbon\Carbon::parse($movement->created_at ?? $movement->movement_date)->subMinutes(10))
                         ->first();
                     if ($expiredLog) {
                         $details['type'] = 'expired';
@@ -215,7 +222,7 @@ class TraceabilityController extends Controller
                 if ($countRecord) {
                     $isAutoApproved = is_null($countRecord->supervisor_id) && ((float) $countRecord->discrepancy === 0.0);
                     $details['counted_by'] = $countRecord->user;
-                    $details['approved_by'] = $countRecord->supervisor;
+                    $details['approved_by'] = $countRecord->supervisor ?? $movement->user;
                     $details['is_auto_approved'] = $isAutoApproved;
                     $details['count_date'] = $countRecord->created_at;
                     $details['approval_date'] = $countRecord->updated_at ?? $movement->movement_date;
@@ -225,11 +232,15 @@ class TraceabilityController extends Controller
                     $details['discrepancy'] = (float) $countRecord->discrepancy;
                     $details['product_count'] = $countRecord;
                 } else {
-                    $details['type'] = 'general';
                     $details['counted_by'] = $movement->user;
                     $details['approved_by'] = $movement->user;
-                    $details['count_date'] = $movement->movement_date;
+                    $details['is_auto_approved'] = false;
+                    $details['count_date'] = $movement->created_at ?? $movement->movement_date;
                     $details['approval_date'] = $movement->movement_date;
+                    $details['counted_quantity'] = $movement->stock_after;
+                    $details['system_quantity'] = $movement->stock_before;
+                    $details['audited_quantity'] = $movement->stock_after;
+                    $details['discrepancy'] = $movement->quantity;
                 }
                 break;
 

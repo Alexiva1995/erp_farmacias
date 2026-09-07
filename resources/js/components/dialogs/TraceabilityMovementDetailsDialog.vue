@@ -147,12 +147,13 @@ const formatDate = (date) => {
 
 const getUserDisplayName = (user) => {
   if (!user) return "N/A";
+  if (typeof user === 'string') return user;
   if (user.employee?.name || user.employee?.last_name) {
     const name = user.employee.name ? user.employee.name.trim().split(" ")[0] : "";
     const lastName = user.employee.last_name ? user.employee.last_name.trim().split(" ")[0] : "";
-    return `${name} ${lastName}`.trim() || "N/A";
+    return `${name} ${lastName}`.trim() || user.name || user.username || user.email || "N/A";
   }
-  return user.username || user.email || "N/A";
+  return user.name || user.username || user.email || "N/A";
 };
 </script>
 
