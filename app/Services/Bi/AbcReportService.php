@@ -136,6 +136,11 @@ class AbcReportService
                     $isRisk = $item->inventory_days > 0 && $item->inventory_days < 10;
                     return $isClassAB && ($isStockout || $isRisk);
                 });
+            } elseif ($analysisType === 'negative_margin') {
+                // Margen Negativo / Pérdida: Productos con margen < 0% ordenados de menor a mayor
+                $data = $data->filter(function ($item) {
+                    return (float)$item->margin_percentage < 0 || (float)$item->margin_amount < 0;
+                })->sortBy('margin_percentage')->values();
             }
 
             // 6. Aplicar Filtros Ad-hoc (ROI y Stock)

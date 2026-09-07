@@ -406,7 +406,7 @@ const handleFilterCritical = () => {
           <template #item.margin_percentage="{ item }">
             <div class="d-flex flex-column align-end">
               <span class="font-weight-bold text-base" :class="item.margin_percentage > 0 ? 'text-primary' : 'text-error'">
-                Margen: {{ item.margin_percentage }}%
+                Margen: {{ typeof item.margin_percentage === 'number' ? item.margin_percentage.toFixed(2) : item.margin_percentage }}%
               </span>
               <div class="d-flex align-center gap-1">
                 <span class="text-super-xs text-info font-weight-bold">Aporte: {{ item.contribution_margin_pct ? item.contribution_margin_pct.toFixed(2) : '0.00' }}%</span>

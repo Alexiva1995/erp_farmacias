@@ -51,6 +51,7 @@ const classificationOptions = [
 const analysisTypeOptions = [
   { title: 'Análisis Completo', value: 'all' },
   { title: 'Quiebres y Riesgo de Stock (A/B)', value: 'critical_stock' },
+  { title: 'Margen Negativo / Pérdida (<0%)', value: 'negative_margin' },
   { title: 'Stock Muerto (0 Ventas)', value: 'dead_stock' },
   { title: 'Productos Estrella (AA)', value: 'star_products' },
 ];
@@ -214,6 +215,13 @@ const toggleAdvancedFilters = () => {
                 title="3. Matriz Rentabilidad GMROI"
                 subtitle="Ranking por retorno sobre stock"
                 @click="emit('export', 'gmroi')"
+              />
+              
+              <VListItem
+                prepend-icon="tabler-trending-down"
+                title="4. Margen Negativo (<0%)"
+                subtitle="Productos con margen o GMROI en pérdida"
+                @click="emit('export', 'negative_margin')"
               />
             </VList>
           </VMenu>
