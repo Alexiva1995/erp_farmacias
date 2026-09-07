@@ -280,12 +280,26 @@ class SupplierConnectionService
             $connector = new Connector(['timeout' => 1800]);
             $client = (new Browser($connector))->withTimeout(1800.0);
 
-            $token = null;
-            $isCristmedicals = str_contains(strtolower($connection->host ?? ''), 'cristmedicals')
-                || str_contains(strtolower($connection->supplier?->name ?? ''), 'crist')
-                || in_array($connection->supplier_id, [3, 21, 1002]);
+            $isCobeca = str_contains(strtolower($connection->host ?? ''), 'cobeca')
+                || str_contains(strtolower($connection->supplier?->name ?? ''), 'mafarta')
+                || str_contains(strtolower($connection->supplier?->name ?? ''), 'cobeca')
+                || in_array($connection->supplier_id, [23, 1011]);
 
-            if (!empty($connection->username) && !empty($connection->password) && !$isCristmedicals) {
+            if ($isCobeca && !empty($connection->username) && !empty($connection->password)) {
+                $decryptedPass = FtpCrypt::decrypt($connection->password);
+                $loginUrl = str_starts_with($connection->host, 'http') ? rtrim($connection->host, '/') : 'https://sic.drogueriascobeca.com';
+                if (!str_contains($loginUrl, '/api/auth/login')) {
+                    $loginUrl .= '/api/auth/login';
+                }
+                $loginResponse = Http::withHeaders([
+                    'Content-Type' => 'application/json',
+                    'Accept' => 'application/json',
+                ])->withoutVerifying()->timeout(30)->post($loginUrl, [
+                    'User' => $connection->username,
+                    'Password' => $decryptedPass,
+                ]);
+                $token = $loginResponse->json('token') ?? null;
+            } elseif (!empty($connection->username) && !empty($connection->password) && !$isCristmedicals) {
                 $loginResponse = Http::post($connection->host, [
                     "usuario" => $connection->username,
                     "clave" => FtpCrypt::decrypt($connection->password),
@@ -401,15 +415,18 @@ class SupplierConnectionService
                 $invoiceResponse = $this->fetchFromAPI($token, $requestDataInv, $client, $invoiceUrl, $invMethod);
                 Log::info("🔎 [FACTURAS] fetchFromAPI result", ['count' => is_countable($invoiceResponse) ? count($invoiceResponse) : 0]);
 
-                // Detectar si las facturas vienen en una clave específica (ej: 'facturas')
+                // Detectar si las facturas vienen en una clave específica (ej: 'facturas', 'estadoCuenta', 'documentos')
                 $invoicesRaw = $invoiceResponse;
-                if (isset($invoiceResponse['facturas']) && is_array($invoiceResponse['facturas'])) {
+                if (isset($invoiceResponse['estadoCuenta']) && is_array($invoiceResponse['estadoCuenta'])) {
+                    $invoicesRaw = $invoiceResponse['estadoCuenta'];
+                } elseif (isset($invoiceResponse['documentos']) && is_array($invoiceResponse['documentos'])) {
+                    $invoicesRaw = $invoiceResponse['documentos'];
+                } elseif (isset($invoiceResponse['facturas']) && is_array($invoiceResponse['facturas'])) {
                     $invoicesRaw = $invoiceResponse['facturas'];
                 }
 
-
                 foreach ($invoicesRaw as $invoice) {
-                    $cod_invoice = $invoice['fact_num'] ?? $invoice['InvoiceCode'] ?? null;
+                    $cod_invoice = $invoice['fact_num'] ?? $invoice['InvoiceCode'] ?? $invoice['numDoc'] ?? null;
 
                     if (!$cod_invoice || in_array($cod_invoice, $seenInvoiceNumbers)) {
                         Log::warning("Factura ignorada (sin código o duplicada en este lote)", ['cod_invoice' => $cod_invoice]);
@@ -431,9 +448,18 @@ class SupplierConnectionService
                     $payloadInvoiceDetails = $this->buildPayload($connection, 'factura_detalle', $cod_invoice);
                     $invoiceDetailsResponse = $this->fetchFromAPI($token, [], $client, $payloadInvoiceDetails['url'], 'get');
 
+                    $detailsArray = $invoiceDetailsResponse;
+                    if (isset($invoiceDetailsResponse['detalles']) && is_array($invoiceDetailsResponse['detalles'])) {
+                        $detailsArray = $invoiceDetailsResponse['detalles'];
+                    } elseif (isset($invoiceDetailsResponse['articulos']) && is_array($invoiceDetailsResponse['articulos'])) {
+                        $detailsArray = $invoiceDetailsResponse['articulos'];
+                    } elseif (isset($invoiceDetailsResponse['items']) && is_array($invoiceDetailsResponse['items'])) {
+                        $detailsArray = $invoiceDetailsResponse['items'];
+                    }
+
                     $flatData = [];
 
-                    foreach ($invoiceDetailsResponse as $detail) {
+                    foreach ($detailsArray as $detail) {
                         // Prefijar claves del encabezado
                         $prefixedHeader = [];
                         foreach ($invoice as $key => $value) {
