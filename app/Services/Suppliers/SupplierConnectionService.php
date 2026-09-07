@@ -1274,19 +1274,11 @@ class SupplierConnectionService
 
         // Aliases por contenido de nombre o host
         if (str_contains($host, 'cristmedicals') || str_contains($supplierName, 'crist')) {
-            $candidates[] = app_path("SupplierConfigs/cristalmedicals.php");
-            $candidates[] = app_path("SupplierConfigs/cristmedicals.php");
             $candidates[] = app_path("SupplierConfigs/1002.php");
-            $candidates[] = app_path("SupplierConfigs/3.php");
-            $candidates[] = app_path("SupplierConfigs/21.php");
         }
 
         if (str_contains($host, 'cobeca') || str_contains($supplierName, 'mafarta') || str_contains($supplierName, 'cobeca')) {
-            $candidates[] = app_path("SupplierConfigs/cobeca.php");
-            $candidates[] = app_path("SupplierConfigs/mafarta.php");
-            $candidates[] = app_path("SupplierConfigs/drogueriascobeca.php");
             $candidates[] = app_path("SupplierConfigs/1011.php");
-            $candidates[] = app_path("SupplierConfigs/23.php");
         }
 
         $configPath = null;
