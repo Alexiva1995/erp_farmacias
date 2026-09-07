@@ -468,6 +468,7 @@ onUnmounted(() => {
         v-model="isCommercialPanelVisible"
         :supplier="currentSupplier"
         :laboratories="laboratories"
+        :payment-rules="paymentRules"
         :supplier-discount="supplierDiscount"
         :discount-rules="discountRules"
         :loading="loading"
