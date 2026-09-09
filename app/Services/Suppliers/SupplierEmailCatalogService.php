@@ -58,13 +58,14 @@ class SupplierEmailCatalogService
             // Sincronizar proveedor específico
             $suppliersToProcess = [$targetSupplier];
         } else {
-            // Sincronizar todos los proveedores activos que tengan un email configurado en su conexión
+            // Sincronizar solo proveedores activos con conexión tipo file/email que tengan un correo configurado
             $suppliersToProcess = Supplier::where('is_active', true)
                 ->whereHas('connections', function ($q) {
-                    $q->where(function ($sq) {
-                        $sq->where('username', 'LIKE', '%@%')
-                           ->orWhere('host', 'LIKE', '%@%');
-                    });
+                    $q->whereIn('type', ['file', 'email'])
+                      ->where(function ($sq) {
+                          $sq->where('username', 'LIKE', '%@%')
+                             ->orWhere('host', 'LIKE', '%@%');
+                      });
                 })
                 ->get();
         }
@@ -77,7 +78,7 @@ class SupplierEmailCatalogService
                 $skipped[] = [
                     'supplier_id' => $supplier->id,
                     'supplier_name' => $supplier->name,
-                    'reason' => 'El proveedor no tiene un correo electrónico configurado en el campo Usuario o Host de su conexión.',
+                    'reason' => 'El proveedor no tiene conexión de tipo Archivo Excel con correo configurado.',
                 ];
                 continue;
             }
@@ -148,8 +149,8 @@ class SupplierEmailCatalogService
                         $status = SupplierConnectionStatus::create([
                             'supplier_id' => $supplier->id,
                             'user_id' => $userId,
-                            'status' => 'pending',
-                            'connection_type' => 'email_excel',
+                            'status' => 'processing',
+                            'message' => 'Procesando catálogo recibido por correo...',
                         ]);
 
                         // Obtener la tasa de cambio oficial del día en que llegó el correo
@@ -214,7 +215,7 @@ class SupplierEmailCatalogService
      */
     private function extractSupplierEmail(?SupplierConnection $connection): ?string
     {
-        if (!$connection) {
+        if (!$connection || !in_array($connection->type, ['file', 'email'])) {
             return null;
         }
 
