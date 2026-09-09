@@ -33,6 +33,7 @@ const errors              = ref({});
 
 const isFtp  = computed(() => ['ftp', 'sftp'].includes(form.value.type));
 const isHttp = computed(() => ['http', 'api'].includes(form.value.type));
+const isEmail = computed(() => ['file', 'email'].includes(form.value.type));
 const isDronenaBot = computed(() => form.value.type === 'dronena_bot' || (props.supplier?.name && props.supplier.name.toUpperCase().includes('NENA')));
 
 const typeOptions = computed(() => {
@@ -40,6 +41,7 @@ const typeOptions = computed(() => {
     { title: 'FTP',  value: 'ftp',  icon: 'tabler-server', description: 'Conexión por protocolo FTP estándar' },
     { title: 'SFTP', value: 'sftp', icon: 'tabler-lock',   description: 'FTP seguro sobre SSH' },
     { title: 'HTTP / API', value: 'api', icon: 'tabler-api', description: 'Endpoint REST con autenticación por token' },
+    { title: 'Correo Gmail (Excel)', value: 'file', icon: 'tabler-mail', description: 'Descarga automática de listas Excel desde tu correo Gmail' },
   ];
 
   if (props.supplier?.name && (props.supplier.name.toUpperCase().includes('NENA') || props.supplier.name.toUpperCase().includes('DRONENA'))) {
@@ -210,7 +212,8 @@ watch(() => props.modelValue, (isOpen) => {
                 v-for="opt in typeOptions"
                 :key="opt.value"
                 cols="12"
-                md="4"
+                sm="6"
+                md="3"
               >
                 <div
                   class="type-option-card pa-3 text-center rounded-xl border cursor-pointer"
@@ -225,15 +228,52 @@ watch(() => props.modelValue, (isOpen) => {
             </VRow>
           </VCard>
 
-          <!-- Sección 2: Servidor (Oculto o simplificado en Dronena Bot) -->
-          <div v-if="form.type !== 'dronena_bot'" class="d-flex align-center gap-2 mb-3">
+          <!-- Sección Correo Gmail (Excel) -->
+          <template v-if="isEmail">
+            <VAlert
+              type="info"
+              variant="tonal"
+              density="compact"
+              icon="tabler-mail"
+              class="mb-4 rounded-xl"
+            >
+              El sistema revisará automáticamente tu cuenta de Gmail y extraerá el <strong>último archivo Excel</strong> recibido desde el correo remitente configurado.
+            </VAlert>
+
+            <div class="d-flex align-center gap-2 mb-3">
+              <div class="header-indicator primary shadow-sm" />
+              <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Correo Remitente</span>
+            </div>
+
+            <VCard variant="flat" class="pa-4 bg-white rounded-xl border shadow-sm mb-4">
+              <VRow>
+                <VCol cols="12">
+                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">
+                    Correo del Proveedor (desde donde envían la lista)
+                  </span>
+                  <AppTextField
+                    v-model="form.username"
+                    placeholder="ejemplo: pedidos@proveedor.com"
+                    prepend-inner-icon="tabler-mail"
+                    :error-messages="errors.username"
+                  />
+                  <span class="text-xxs text-disabled mt-1 d-block">
+                    Los archivos adjuntos (.xlsx, .xls, .csv) de este remitente se procesarán automáticamente con el mapeo de este proveedor.
+                  </span>
+                </VCol>
+              </VRow>
+            </VCard>
+          </template>
+
+          <!-- Sección 2: Servidor (Oculto en Dronena Bot y Email) -->
+          <div v-else-if="form.type !== 'dronena_bot'" class="d-flex align-center gap-2 mb-3">
             <div class="header-indicator secondary shadow-sm" />
             <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">
               {{ isFtp ? 'Servidor FTP' : 'Endpoint de la API' }}
             </span>
           </div>
 
-          <VCard v-if="form.type !== 'dronena_bot'" variant="flat" class="pa-4 bg-white rounded-xl border shadow-sm mb-4">
+          <VCard v-if="!isEmail && form.type !== 'dronena_bot'" variant="flat" class="pa-4 bg-white rounded-xl border shadow-sm mb-4">
             <VRow>
               <VCol cols="12" :md="isFtp ? 8 : 12">
                 <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">
@@ -260,7 +300,7 @@ watch(() => props.modelValue, (isOpen) => {
           </VCard>
 
           <VAlert
-            v-else
+            v-else-if="form.type === 'dronena_bot'"
             type="info"
             variant="tonal"
             density="compact"
@@ -270,42 +310,44 @@ watch(() => props.modelValue, (isOpen) => {
             El <strong>Bot Dronena</strong> accederá automáticamente a <code>https://www.dronena.com/NuevaExperiencia/</code>. Solo necesitas ingresar el <strong>Usuario</strong> y la <strong>Contraseña</strong> de la cuenta.
           </VAlert>
 
-          <!-- Sección 3: Credenciales -->
-          <div class="d-flex align-center gap-2 mb-3">
-            <div class="header-indicator primary shadow-sm" />
-            <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Credenciales de Acceso</span>
-          </div>
+          <!-- Sección 3: Credenciales (Solo para FTP / API / Dronena Bot) -->
+          <template v-if="!isEmail">
+            <div class="d-flex align-center gap-2 mb-3">
+              <div class="header-indicator primary shadow-sm" />
+              <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Credenciales de Acceso</span>
+            </div>
 
-          <VCard variant="flat" class="pa-4 bg-white rounded-xl border shadow-sm mb-4">
-            <VRow>
-              <VCol cols="12" md="6">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Usuario</span>
-                <AppTextField
-                  v-model="form.username"
-                  placeholder="usuario_ftp"
-                  prepend-inner-icon="tabler-user"
-                  :error-messages="errors.username"
-                />
-              </VCol>
-              <VCol cols="12" md="6">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">
-                  {{ hasExistingPassword ? 'Nueva Contraseña (dejar vacío para no cambiar)' : 'Contraseña' }}
-                </span>
-                <AppTextField
-                  v-model="form.password"
-                  :type="showPassword ? 'text' : 'password'"
-                  :placeholder="hasExistingPassword ? '••••••••' : 'Contraseña de acceso'"
-                  prepend-inner-icon="tabler-lock"
-                  :append-inner-icon="showPassword ? 'tabler-eye-off' : 'tabler-eye'"
-                  :error-messages="errors.password"
-                  @click:append-inner="showPassword = !showPassword"
-                />
-              </VCol>
-            </VRow>
-          </VCard>
+            <VCard variant="flat" class="pa-4 bg-white rounded-xl border shadow-sm mb-4">
+              <VRow>
+                <VCol cols="12" md="6">
+                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Usuario</span>
+                  <AppTextField
+                    v-model="form.username"
+                    placeholder="usuario_ftp"
+                    prepend-inner-icon="tabler-user"
+                    :error-messages="errors.username"
+                  />
+                </VCol>
+                <VCol cols="12" md="6">
+                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">
+                    {{ hasExistingPassword ? 'Nueva Contraseña (dejar vacío para no cambiar)' : 'Contraseña' }}
+                  </span>
+                  <AppTextField
+                    v-model="form.password"
+                    :type="showPassword ? 'text' : 'password'"
+                    :placeholder="hasExistingPassword ? '••••••••' : 'Contraseña de acceso'"
+                    prepend-inner-icon="tabler-lock"
+                    :append-inner-icon="showPassword ? 'tabler-eye-off' : 'tabler-eye'"
+                    :error-messages="errors.password"
+                    @click:append-inner="showPassword = !showPassword"
+                  />
+                </VCol>
+              </VRow>
+            </VCard>
+          </template>
 
           <!-- Sección 4: Rutas (Solo para FTP / API estándar) -->
-          <template v-if="form.type !== 'dronena_bot'">
+          <template v-if="!isEmail && form.type !== 'dronena_bot'">
             <div class="d-flex align-center gap-2 mb-3">
               <div class="header-indicator secondary shadow-sm" />
               <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">
