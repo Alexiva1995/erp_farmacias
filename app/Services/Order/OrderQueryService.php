@@ -340,8 +340,10 @@ class OrderQueryService
                 // B├║squeda normal
                 else {
                     if ($isStrictSearch) {
-                        $subQuery->where('products.name', 'like', "%{$searchTerm}%")
-                            ->orWhere('products.active_ingredient', 'like', "%{$searchTerm}%");
+                        $escapedTerm = preg_quote($searchTerm, '/');
+                        $pattern = "(^|[^a-zA-Z0-9]){$escapedTerm}([^a-zA-Z0-9]|$)";
+                        $subQuery->whereRaw("products.name REGEXP ?", [$pattern])
+                            ->orWhereRaw("products.active_ingredient REGEXP ?", [$pattern]);
                     } else {
                         $words = explode(' ', $searchTerm);
                         foreach ($words as $word) {
@@ -359,7 +361,9 @@ class OrderQueryService
             if (!$isColombianSearch && !$isIvaSearch) {
                 $packsQuery->where(function ($subQuery) use ($searchTerm, $isStrictSearch) {
                     if ($isStrictSearch) {
-                        $subQuery->where('product_packs.name', 'like', "%{$searchTerm}%");
+                        $escapedTerm = preg_quote($searchTerm, '/');
+                        $pattern = "(^|[^a-zA-Z0-9]){$escapedTerm}([^a-zA-Z0-9]|$)";
+                        $subQuery->whereRaw("product_packs.name REGEXP ?", [$pattern]);
                     } else {
                         $words = explode(' ', $searchTerm);
                         foreach ($words as $word) {
@@ -373,7 +377,9 @@ class OrderQueryService
             if ($dishesQuery && !$isColombianSearch && !$isIvaSearch) {
                 $dishesQuery->where(function ($subQuery) use ($searchTerm, $isStrictSearch) {
                     if ($isStrictSearch) {
-                        $subQuery->where('dishes.name', 'like', "%{$searchTerm}%");
+                        $escapedTerm = preg_quote($searchTerm, '/');
+                        $pattern = "(^|[^a-zA-Z0-9]){$escapedTerm}([^a-zA-Z0-9]|$)";
+                        $subQuery->whereRaw("dishes.name REGEXP ?", [$pattern]);
                     } else {
                         $words = explode(' ', $searchTerm);
                         foreach ($words as $word) {
@@ -558,8 +564,10 @@ class OrderQueryService
 
             $query->where(function ($subQuery) use ($searchTerm, $isStrictSearch) {
                 if ($isStrictSearch) {
-                    $subQuery->where('products.name', 'like', "%{$searchTerm}%")
-                        ->orWhere('products.active_ingredient', 'like', "%{$searchTerm}%");
+                    $escapedTerm = preg_quote($searchTerm, '/');
+                    $pattern = "(^|[^a-zA-Z0-9]){$escapedTerm}([^a-zA-Z0-9]|$)";
+                    $subQuery->whereRaw("products.name REGEXP ?", [$pattern])
+                        ->orWhereRaw("products.active_ingredient REGEXP ?", [$pattern]);
                 } else {
                     $words = explode(' ', $searchTerm);
                     foreach ($words as $word) {

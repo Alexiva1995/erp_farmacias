@@ -248,30 +248,49 @@ class QuotationQueryService
                 } elseif ($isIvaSearch) {
                     $sub->where('products.iva', 1);
                 } else {
-                    $words = $isStrictSearch ? [$searchTerm] : explode(' ', $searchTerm);
-                    foreach ($words as $word) {
-                        $sub->where(function ($wq) use ($word) {
-                            $wq->where('products.name', 'like', "%{$word}%")
-                                ->orWhere('products.active_ingredient', 'like', "%{$word}%")
-                                ->orWhere('laboratories.name', 'like', "%{$word}%");
-                        });
+                    if ($isStrictSearch) {
+                        $escapedTerm = preg_quote($searchTerm, '/');
+                        $pattern = "(^|[^a-zA-Z0-9]){$escapedTerm}([^a-zA-Z0-9]|$)";
+                        $sub->whereRaw("products.name REGEXP ?", [$pattern])
+                            ->orWhereRaw("products.active_ingredient REGEXP ?", [$pattern]);
+                    } else {
+                        $words = explode(' ', $searchTerm);
+                        foreach ($words as $word) {
+                            $sub->where(function ($wq) use ($word) {
+                                $wq->where('products.name', 'like', "%{$word}%")
+                                    ->orWhere('products.active_ingredient', 'like', "%{$word}%")
+                                    ->orWhere('laboratories.name', 'like', "%{$word}%");
+                            });
+                        }
                     }
                 }
             });
 
             if (!$isColombianSearch && !$isIvaSearch) {
                 $packsQuery->where(function ($sub) use ($searchTerm, $isStrictSearch) {
-                    $words = $isStrictSearch ? [$searchTerm] : explode(' ', $searchTerm);
-                    foreach ($words as $word) {
-                        $sub->where('product_packs.name', 'like', "%{$word}%");
+                    if ($isStrictSearch) {
+                        $escapedTerm = preg_quote($searchTerm, '/');
+                        $pattern = "(^|[^a-zA-Z0-9]){$escapedTerm}([^a-zA-Z0-9]|$)";
+                        $sub->whereRaw("product_packs.name REGEXP ?", [$pattern]);
+                    } else {
+                        $words = explode(' ', $searchTerm);
+                        foreach ($words as $word) {
+                            $sub->where('product_packs.name', 'like', "%{$word}%");
+                        }
                     }
                 });
 
                 if ($dishesQuery) {
                     $dishesQuery->where(function ($sub) use ($searchTerm, $isStrictSearch) {
-                        $words = $isStrictSearch ? [$searchTerm] : explode(' ', $searchTerm);
-                        foreach ($words as $word) {
-                            $sub->where('dishes.name', 'like', "%{$word}%");
+                        if ($isStrictSearch) {
+                            $escapedTerm = preg_quote($searchTerm, '/');
+                            $pattern = "(^|[^a-zA-Z0-9]){$escapedTerm}([^a-zA-Z0-9]|$)";
+                            $sub->whereRaw("dishes.name REGEXP ?", [$pattern]);
+                        } else {
+                            $words = explode(' ', $searchTerm);
+                            foreach ($words as $word) {
+                                $sub->where('dishes.name', 'like', "%{$word}%");
+                            }
                         }
                     });
                 }

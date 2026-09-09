@@ -23,17 +23,19 @@ class GroupQueryService
         ];
 
         if (!empty($filters['q'])) {
-            $searchTerm = "%{$filters['q']}%";
+            $searchTerm = trim($filters['q']);
             $isStrictSearch = $filters['isStrictSearch'] ?? false;
 
             $query->where(function ($subQuery) use ($searchTerm, $isStrictSearch) {
                 if ($isStrictSearch) {
-                    $subQuery->where('groups_products.name', 'like', $searchTerm)
-                        ->orWhereHas('products', function ($productQuery) use ($searchTerm) {
-                            $productQuery->where('name', 'like', $searchTerm)
-                                ->orWhere('active_ingredient', 'like', $searchTerm)
-                                ->orWhere('barcode', 'like', $searchTerm)
-                                ->orWhere('id', 'like', $searchTerm);
+                    $escapedTerm = preg_quote($searchTerm, '/');
+                    $pattern = "(^|[^a-zA-Z0-9]){$escapedTerm}([^a-zA-Z0-9]|$)";
+                    $subQuery->whereRaw("groups_products.name REGEXP ?", [$pattern])
+                        ->orWhereHas('products', function ($productQuery) use ($pattern, $searchTerm) {
+                            $productQuery->whereRaw("name REGEXP ?", [$pattern])
+                                ->orWhereRaw("active_ingredient REGEXP ?", [$pattern])
+                                ->orWhere('barcode', '=', $searchTerm)
+                                ->orWhere('id', '=', $searchTerm);
                         });
                 } else {
                     $words = explode(' ', $searchTerm);

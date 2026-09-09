@@ -235,16 +235,18 @@ class InventoryCycleQueryService
         }*/
 
         if (!empty($filters['q'])) {
-            $searchTerm = "%{$filters['q']}%";
+            $searchTerm = trim($filters['q']);
             $isStrictSearch = $filters['isStrictSearch'] ?? false;
 
             $query->where(function ($subQuery) use ($searchTerm, $isStrictSearch) {
 
                 if ($isStrictSearch) {
-                    $subQuery->where('name', 'like', "%{$searchTerm}%")
-                        ->orWhere('active_ingredient', 'like', "%{$searchTerm}%")
-                        ->orWhere('barcode', 'like', $searchTerm)
-                        ->orWhere('id', 'like', $searchTerm);
+                    $escapedTerm = preg_quote($searchTerm, '/');
+                    $pattern = "(^|[^a-zA-Z0-9]){$escapedTerm}([^a-zA-Z0-9]|$)";
+                    $subQuery->whereRaw("name REGEXP ?", [$pattern])
+                        ->orWhereRaw("active_ingredient REGEXP ?", [$pattern])
+                        ->orWhere('barcode', '=', $searchTerm)
+                        ->orWhere('id', '=', $searchTerm);
                 } else {
                     $words = explode(' ', $searchTerm);
                     foreach ($words as $word) {

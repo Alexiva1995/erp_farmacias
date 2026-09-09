@@ -220,9 +220,11 @@ class ProductRepository
 
             $consulta->where(function ($query) use ($searchTerm, $isStrictSearch) {
                 if ($isStrictSearch) {
-                    $query->where("products.name", "like", "%" . $searchTerm . "%")
-                        ->orWhere("products.active_ingredient", "like", "%" . $searchTerm . "%")
-                        ->orWhere("products.id", "like", $searchTerm);
+                    $escapedTerm = preg_quote($searchTerm, '/');
+                    $pattern = "(^|[^a-zA-Z0-9]){$escapedTerm}([^a-zA-Z0-9]|$)";
+                    $query->whereRaw("products.name REGEXP ?", [$pattern])
+                        ->orWhereRaw("products.active_ingredient REGEXP ?", [$pattern])
+                        ->orWhere("products.id", "=", $searchTerm);
                 } else {
                     $words = explode(' ', trim($searchTerm));
                     foreach ($words as $word) {
@@ -863,10 +865,12 @@ class ProductRepository
 
             $consulta->where(function ($query) use ($searchTerm, $isStrictSearch) {
                 if ($isStrictSearch) {
-                    $query->where("name", "like", "%" . $searchTerm . "%")
-                        ->orWhere("active_ingredient", "like", "%" . $searchTerm . "%")
-                        ->orWhere("barcode", "like", $searchTerm)
-                        ->orWhere("id", "like", "%" . $searchTerm . "%");
+                    $escapedTerm = preg_quote($searchTerm, '/');
+                    $pattern = "(^|[^a-zA-Z0-9]){$escapedTerm}([^a-zA-Z0-9]|$)";
+                    $query->whereRaw("name REGEXP ?", [$pattern])
+                        ->orWhereRaw("active_ingredient REGEXP ?", [$pattern])
+                        ->orWhere("barcode", "=", $searchTerm)
+                        ->orWhere("id", "=", $searchTerm);
                 } else {
                     $words = explode(' ', trim($searchTerm));
                     foreach ($words as $word) {
@@ -1209,10 +1213,12 @@ class ProductRepository
 
             $consulta->where(function ($query) use ($searchTerm, $isStrictSearch) {
                 if ($isStrictSearch) {
-                    $query->where("name", "like", "%" . $searchTerm . "%")
-                        ->orWhere("active_ingredient", "like", "%" . $searchTerm . "%")
-                        ->orWhere("barcode", "like", $searchTerm)
-                        ->orWhere("id", "like", "%" . $searchTerm . "%");
+                    $escapedTerm = preg_quote($searchTerm, '/');
+                    $pattern = "(^|[^a-zA-Z0-9]){$escapedTerm}([^a-zA-Z0-9]|$)";
+                    $query->whereRaw("name REGEXP ?", [$pattern])
+                        ->orWhereRaw("active_ingredient REGEXP ?", [$pattern])
+                        ->orWhere("barcode", "=", $searchTerm)
+                        ->orWhere("id", "=", $searchTerm);
                 } else {
                     $words = explode(' ', trim($searchTerm));
                     foreach ($words as $word) {
