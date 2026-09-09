@@ -152,8 +152,8 @@ class AbcReportService
                 // Capital Congelado / Parado:
                 // 1) Stock atrapado sin ventas en el periodo (sold_units <= 0 y current_stock > 0)
                 // 2) Clase C con rotación Z (CZ) con stock > 0
-                // 3) Sobrestock severo (cobertura de inventario >= 180 días con stock > 0)
-                // 4) Riesgo de vencimiento por sobrestock (días de inventario > días restantes para vencer)
+                // 3) Sobrestock severo (>= 180 días de inventario) en productos de baja rotación / bajo volumen (Clase C o Rotación Z)
+                // 4) Riesgo de vencimiento por sobrestock en CUALQUIER producto (días de inventario > días restantes para vencer o por caducar)
                 $data = $data->filter(function ($item) {
                     if ((float) $item->current_stock <= 0) {
                         return false;
@@ -161,14 +161,14 @@ class AbcReportService
 
                     $isZeroSales = $item->sold_units <= 0;
                     $isCZ = ($item->class_sales === 'C' && $item->class_rotation === 'Z');
-                    $isExcessiveStock = (float) $item->inventory_days >= 180;
+                    $isLowRotationExcess = ($item->class_sales === 'C' || $item->class_rotation === 'Z') && (float) $item->inventory_days >= 180;
                     $isExpiringRisk = $item->is_expiring_soon || (
                         $item->days_to_expiration !== null 
                         && $item->days_to_expiration > 0 
                         && $item->inventory_days > $item->days_to_expiration
                     );
 
-                    return $isZeroSales || $isCZ || $isExcessiveStock || $isExpiringRisk;
+                    return $isZeroSales || $isCZ || $isLowRotationExcess || $isExpiringRisk;
                 });
             } elseif ($analysisType === 'star_products') {
                 // Productos Estrella: Ventas A y Margen A
