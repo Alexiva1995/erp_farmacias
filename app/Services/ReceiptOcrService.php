@@ -8,6 +8,13 @@ use Illuminate\Support\Facades\Log;
 
 class ReceiptOcrService implements ReceiptOcrServiceInterface
 {
+    protected GeminiService $geminiService;
+
+    public function __construct(GeminiService $geminiService)
+    {
+        $this->geminiService = $geminiService;
+    }
+
     /**
      * Extrae el número de referencia bancario desde un comprobante (imagen o PDF).
      */
@@ -19,6 +26,14 @@ class ReceiptOcrService implements ReceiptOcrServiceInterface
 
             if (!file_exists($filePath)) {
                 return null;
+            }
+
+            // 1. Si es imagen, intentar primero con Gemini AI (alta precisión)
+            if ($extension !== 'pdf') {
+                $geminiRef = $this->geminiService->extractPaymentReference($filePath);
+                if (!empty($geminiRef)) {
+                    return $geminiRef;
+                }
             }
 
             $rawText = "";
@@ -35,7 +50,7 @@ class ReceiptOcrService implements ReceiptOcrServiceInterface
 
             return $this->findReferenceInText($rawText);
         } catch (\Throwable $e) {
-            Log::warning("[receiptOcrService] Error procesando comprobante: " . $e->getMessage());
+            Log::warning("[ReceiptOcrService] Error procesando comprobante: " . $e->getMessage());
             return null;
         }
     }
@@ -68,7 +83,8 @@ class ReceiptOcrService implements ReceiptOcrServiceInterface
         }
 
         try {
-            $cmd = escapeshellcmd($tesseractBinary) . " " . escapeshellarg($path) . " stdout -l spa+eng --psm 6 2>&LKFHE";
+            $redirect = PHP_OS_FAMILY === 'Windows' ? '2>nul' : '2>/dev/null';
+            $cmd = escapeshellcmd($tesseractBinary) . " " . escapeshellarg($path) . " stdout -l spa+eng --psm 6 {$redirect}";
             $text = shell_exec($cmd);
             return is_string($text) ? $text : "";
         } catch (\Throwable $e) {

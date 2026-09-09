@@ -401,11 +401,19 @@ const handleFileUpload = async (file) => {
     });
     form.value.photo_url = data.data.url;
 
+    // Si estaba en efectivo, cambiar a transferencia al subir un comprobante bancario
+    if (form.value.payment_method === "cash") {
+      form.value.payment_method = "transfer";
+    }
+
     // Si se detectó automáticamente el número de referencia
     if (data.data.extracted_reference) {
       form.value.reference = data.data.extracted_reference;
       toast.success(`Comprobante subido. Referencia detectada: #${data.data.extracted_reference}`);
     } else {
+      if (form.value.reference && form.value.reference.startsWith("EFECTIVO-")) {
+        form.value.reference = "";
+      }
       toast.success("Comprobante subido correctamente");
     }
   } catch (error) {

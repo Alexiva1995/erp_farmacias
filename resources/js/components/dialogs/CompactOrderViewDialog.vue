@@ -52,6 +52,34 @@ const getLineTotal = (product) => {
   return price * (product.selectedQuantity || 0);
 };
 
+const getProductDiscount = (product) => {
+  const discountPct = parseFloat(product.discount_percentage) || 0;
+  if (discountPct <= 0) return null;
+
+  const unitPrice = getItemPriceByCurrency(product, props.selectedCurrency);
+  const qty = parseFloat(product.selectedQuantity) || 1;
+  // Monto de descuento por unidad y por línea total
+  // Si unitPrice es el precio con descuento ya aplicado (price = base * (1 - pct/100)):
+  // el descuento por unidad es unitPrice * (pct / (100 - pct)) o calculado desde price_before_discount
+  let unitDiscountAmount = 0;
+  if (product.price_before_discount && product.price_before_discount > unitPrice) {
+    // Si tenemos price_before_discount en la misma moneda o convertible
+    const basePrice = getItemPriceByCurrency({ ...product, price: product.price_before_discount, price_cop: product.price_before_discount, price_bs: product.price_before_discount_bs ?? product.price_before_discount }, props.selectedCurrency, true);
+    unitDiscountAmount = Math.max(0, basePrice - unitPrice);
+  } else {
+    unitDiscountAmount = (unitPrice / (1 - (discountPct / 100))) * (discountPct / 100);
+  }
+
+  const totalDiscountAmount = unitDiscountAmount * qty;
+
+  return {
+    percentage: discountPct,
+    type: product.discount_type || 'Gral',
+    unitAmount: unitDiscountAmount,
+    totalAmount: totalDiscountAmount,
+  };
+};
+
 const productId = (product) => product.id ?? product.product_id;
 
 const activeDiscount = computed(() => {
@@ -124,9 +152,9 @@ const activeDiscount = computed(() => {
                 <thead>
                   <tr>
                     <th class="ps-3 text-start">PRODUCTO</th>
-                    <th class="text-end" style="width: 80px;">UNIT.</th>
-                    <th class="text-center" style="width: 50px;">CANT.</th>
-                    <th class="text-end pe-3" style="width: 90px;">TOTAL</th>
+                    <th class="text-end" style="width: 100px;">UNIT.</th>
+                    <th class="text-center" style="width: 45px;">CANT.</th>
+                    <th class="text-end pe-3" style="width: 100px;">TOTAL</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -141,11 +169,32 @@ const activeDiscount = computed(() => {
                         </div>
                       </div>
                     </td>
-                    <td class="text-end text-xs font-weight-medium">{{ formatAmountOnly(getItemPriceByCurrency(product, selectedCurrency), selectedCurrency) }}</td>
+                    <td class="text-end text-xs font-weight-medium">
+                      <div class="d-flex flex-column align-end">
+                        <span>{{ formatAmountOnly(getItemPriceByCurrency(product, selectedCurrency), selectedCurrency) }}</span>
+                        <span
+                          v-if="getProductDiscount(product)"
+                          class="text-super-xs font-weight-bold text-error leading-tight"
+                          :title="`Desc: -${formatCurrency(getProductDiscount(product).unitAmount, selectedCurrency)} (${getProductDiscount(product).percentage}%)`"
+                        >
+                          -{{ formatAmountOnly(getProductDiscount(product).unitAmount, selectedCurrency) }} ({{ getProductDiscount(product).percentage }}%)
+                        </span>
+                      </div>
+                    </td>
                     <td class="text-center">
                       <span class="text-xs font-weight-black text-primary bg-primary-lighten-5 px-1 rounded">{{ product.selectedQuantity }}</span>
                     </td>
-                    <td class="text-end text-xs font-weight-black pe-3">{{ formatAmountOnly(getLineTotal(product), selectedCurrency) }}</td>
+                    <td class="text-end text-xs font-weight-black pe-3">
+                      <div class="d-flex flex-column align-end">
+                        <span>{{ formatAmountOnly(getLineTotal(product), selectedCurrency) }}</span>
+                        <span
+                          v-if="getProductDiscount(product) && product.selectedQuantity > 1"
+                          class="text-super-xs font-weight-bold text-error leading-tight"
+                        >
+                          Desc: -{{ formatAmountOnly(getProductDiscount(product).totalAmount, selectedCurrency) }}
+                        </span>
+                      </div>
+                    </td>
                   </tr>
                 </tbody>
               </table>

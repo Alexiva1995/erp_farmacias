@@ -195,35 +195,51 @@ const hasRecipeDiscount = computed(() => {
 });
 
 const orderDiscounts = computed(() => {
-  const totals = { company: 0, doctor: 0, recipe: 0 };
-  if (!props.orderData?.details) return totals;
+  let total = 0;
+  let label = "Descuento";
+  if (!props.orderData?.details) return { total: 0, label };
   props.orderData.details.forEach((detail) => {
-    const type = detail.discount_type?.toLowerCase();
+    const type = detail.discount_type || 'Gral';
     const price = parseFloat(detail.price) || 0;
     const quantity = parseInt(detail.quantity) || 0;
     const percentage = parseFloat(detail.discount_percentage) || 0;
     const discountAmount = price * quantity * (percentage / 100);
-    if (type === "Empresa" || type === "company") {
-      totals.company += discountAmount;
-    } else if (type === "Medico" || type === "doctor") {
-      totals.doctor += discountAmount;
-    } else if (type === "Recipe" || type === "recipe") {
-      totals.recipe += discountAmount;
+    if (discountAmount > 0) {
+      total += discountAmount;
+      label = `Descuento ${type}`;
     }
   });
-  return totals;
+  return { total, label };
 });
 
 const activeDiscount = computed(() => {
-  const discounts = orderDiscounts.value;
-  if (discounts.company > 0)
-    return { label: "Descuento Empresa", amount: discounts.company };
-  if (discounts.doctor > 0)
-    return { label: "Descuento Médico", amount: discounts.doctor };
-  if (discounts.recipe > 0)
-    return { label: "Descuento Recipe", amount: discounts.recipe };
-  return null;
+  const { total, label } = orderDiscounts.value;
+  return total > 0 ? { label, amount: total } : null;
 });
+
+const getProductDiscount = (product) => {
+  const discountPct = parseFloat(product.discount_percentage) || 0;
+  if (discountPct <= 0) return null;
+
+  const unitPrice = getItemPriceByCurrency(product, props.selectedCurrency);
+  const qty = parseFloat(product.selectedQuantity) || 1;
+  let unitDiscountAmount = 0;
+  if (product.price_before_discount && product.price_before_discount > unitPrice) {
+    const basePrice = getItemPriceByCurrency({ ...product, price: product.price_before_discount, price_cop: product.price_before_discount, price_bs: product.price_before_discount_bs ?? product.price_before_discount }, props.selectedCurrency, true);
+    unitDiscountAmount = Math.max(0, basePrice - unitPrice);
+  } else {
+    unitDiscountAmount = (unitPrice / (1 - (discountPct / 100))) * (discountPct / 100);
+  }
+
+  const totalDiscountAmount = unitDiscountAmount * qty;
+
+  return {
+    percentage: discountPct,
+    type: product.discount_type || 'Gral',
+    unitAmount: unitDiscountAmount,
+    totalAmount: totalDiscountAmount,
+  };
+};
 
 const getLineTotal = (product) => {
   const price = getItemPriceByCurrency(product, props.selectedCurrency);
@@ -364,11 +380,32 @@ const productLineLabel = (product) => {
                         </span>
                       </div>
                     </td>
-                    <td v-if="!isBlind" class="text-end table-amount text-caption font-weight-bold text-medium-emphasis py-1.5">{{ formatAmountOnly(getItemPriceByCurrency(product, selectedCurrency), selectedCurrency) }}</td>
+                    <td v-if="!isBlind" class="text-end table-amount text-caption font-weight-bold text-medium-emphasis py-1.5">
+                      <div class="d-flex flex-column align-end">
+                        <span>{{ formatAmountOnly(getItemPriceByCurrency(product, selectedCurrency), selectedCurrency) }}</span>
+                        <span
+                          v-if="getProductDiscount(product)"
+                          class="text-tiny font-weight-bold text-error leading-tight"
+                          :title="`Desc: -${formatCurrency(getProductDiscount(product).unitAmount, selectedCurrency)} (${getProductDiscount(product).percentage}%)`"
+                        >
+                          -{{ formatAmountOnly(getProductDiscount(product).unitAmount, selectedCurrency) }} ({{ getProductDiscount(product).percentage }}%)
+                        </span>
+                      </div>
+                    </td>
                     <td class="text-center py-1.5">
                       <VChip size="x-small" variant="tonal" color="primary" class="font-weight-black">{{ product.selectedQuantity }}</VChip>
                     </td>
-                    <td v-if="!isBlind" class="text-end table-amount text-caption font-weight-black pe-3 py-1.5">{{ formatAmountOnly(getLineTotal(product), selectedCurrency) }}</td>
+                    <td v-if="!isBlind" class="text-end table-amount text-caption font-weight-black pe-3 py-1.5">
+                      <div class="d-flex flex-column align-end">
+                        <span>{{ formatAmountOnly(getLineTotal(product), selectedCurrency) }}</span>
+                        <span
+                          v-if="getProductDiscount(product) && product.selectedQuantity > 1"
+                          class="text-tiny font-weight-bold text-error leading-tight"
+                        >
+                          Desc: -{{ formatAmountOnly(getProductDiscount(product).totalAmount, selectedCurrency) }}
+                        </span>
+                      </div>
+                    </td>
                   </tr>
                 </tbody>
               </table>
