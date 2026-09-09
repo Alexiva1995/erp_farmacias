@@ -102,6 +102,14 @@ Schedule::command('drosymca:sync-invoices')
         \Log::error('[DrosymcaSync] Falló la sincronización automática de facturas de Drosymca a las 04:45 AM');
     });
 
+Schedule::command('supplier:sync-email-catalogs')
+    ->dailyAt('10:00')
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->onFailure(function () {
+        \Log::error('[EmailSupplierSync] Falló la sincronización automática de catálogos desde Gmail');
+    });
+
 
 // Reposición automática de inventario: cada config activa define su propio cron
 // Se lee de BD para registrar cada expresión cron de forma independiente

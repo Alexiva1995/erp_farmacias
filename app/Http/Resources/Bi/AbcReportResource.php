@@ -41,6 +41,7 @@ class AbcReportResource extends JsonResource
             // Info adicional
             'current_stock' => round($this->current_stock, 2),
             'last_cost' => round($this->last_cost, 2),
+            'sale_price' => isset($this->sale_price) ? round((float)$this->sale_price, 2) : null,
             'gmroi' => round($this->gmroi, 2),
             'inventory_value' => round($this->inventory_value, 2),
             'sales_average' => round($this->sales_average ?? 0, 2),

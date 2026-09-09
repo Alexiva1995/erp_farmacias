@@ -33,7 +33,21 @@ class SupplierConnectionService
             case "api":
                 return $this->fetchFromHttp($connection);
             case "file":
-                throw new Exception("Esta conexión es de tipo 'Archivo Excel' (subida manual). Se requiere configurar una conexión FTP o API para la sincronización automática.");
+            case "email":
+                if (config('mail_sync.email') && config('mail_sync.password')) {
+                    $emailService = app(\App\Services\Suppliers\SupplierEmailCatalogService::class);
+                    $syncResult = $emailService->syncEmailCatalogs(false, $connection->supplier);
+                    if (!empty($syncResult['processed'])) {
+                        return [
+                            'products' => [],
+                            'invoices' => [],
+                            'message' => 'Catálogo recibido por correo procesado correctamente.'
+                        ];
+                    }
+                    $errMsg = $syncResult['errors'][0]['error'] ?? ($syncResult['skipped'][0]['reason'] ?? "No se encontraron correos con catálogo Excel para este proveedor en la bandeja de entrada.");
+                    throw new Exception($errMsg);
+                }
+                throw new Exception("Esta conexión es de tipo 'Archivo Excel'. Configure las credenciales de correo o suba el archivo manualmente.");
             default:
                 throw new Exception("Tipo de conexión no soportado: {$connection->type}");
         }

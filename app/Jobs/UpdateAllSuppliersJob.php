@@ -113,6 +113,14 @@ class UpdateAllSuppliersJob implements ShouldQueue
             }
         }
 
-        // 5. Log de finalización del Job completo
+        // Sincronizar también catálogos pendientes recibidos por correo Gmail
+        try {
+            if (config('mail_sync.email') && config('mail_sync.password')) {
+                $emailService = app(\App\Services\Suppliers\SupplierEmailCatalogService::class);
+                $emailService->syncEmailCatalogs();
+            }
+        } catch (\Throwable $e) {
+            Log::warning("No se pudo sincronizar catálogos por correo en la actualización masiva: " . $e->getMessage());
+        }
     }
 }

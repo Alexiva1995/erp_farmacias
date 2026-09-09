@@ -55,8 +55,20 @@ const offerErrors = reactive({
 
 const isAssignEmployeesDialogVisible = ref(false);
 const selectedProductForAssign = ref(null);
+const selectedProductForOffer = ref(null);
 
 const handleOpenIndividualOffer = (item) => {
+  selectedProductForOffer.value = {
+    id: item.id,
+    name: item.name || item.product_name,
+    active_ingredient: item.active_ingredient,
+    stock: item.current_stock,
+    sale_price: item.sale_price ?? (item.total_sales > 0 && item.sold_units > 0 ? (item.total_sales / item.sold_units) : item.last_cost),
+    last_cost: item.last_cost,
+    barcode: item.barcode,
+    laboratory: { name: item.laboratory_name },
+  };
+
   Object.assign(currentIndvOffer, {
     id: null,
     product_id: item.id,
@@ -732,6 +744,7 @@ const handleFilterCritical = () => {
     <IndividualCreateOffer
       v-model="isOfferDialogVisible"
       :form-data="currentIndvOffer"
+      :product="selectedProductForOffer"
       :form-errors="offerErrors"
       :is-editing="isEditingOffer"
       :loading="offerLoading"

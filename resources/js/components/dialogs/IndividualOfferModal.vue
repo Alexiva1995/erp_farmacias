@@ -9,6 +9,10 @@ const props = defineProps({
     type: Boolean,
     required: true,
   },
+  product: {
+    type: Object,
+    default: null,
+  },
   formData: {
     type: Object,
     default: () => ({}),
@@ -50,13 +54,13 @@ const selectedProduct = computed(() => {
   const pid = localFormData.value.product_id;
   if (!pid) return null;
   const fromList = availableProducts.value.find((p) => p.id === pid);
-  return fromList || props.productOfferToEdit?.product || null;
+  return fromList || props.product || props.productOfferToEdit?.product || null;
 });
 
 // Producto seleccionado en modo edición (usa productOfferToEdit.product)
 const selectedProductDisplay = computed(() => {
   if (!localFormData.value.product_id) return "";
-  const p = selectedProduct.value || props.productOfferToEdit?.product;
+  const p = selectedProduct.value || props.product || props.productOfferToEdit?.product;
   return p ? `${p.id} - ${p.name}` : `ID: ${localFormData.value.product_id}`;
 });
 
@@ -65,6 +69,7 @@ const priceInfo = computed(() => {
   const product = selectedProduct.value;
   if (!product || product.sale_price == null) return null;
   const salePrice = parseFloat(product.sale_price) || 0;
+  if (salePrice <= 0) return null;
   const discount = parseFloat(localFormData.value.discount_percent) || 0;
   const finalPrice = salePrice * (1 - discount / 100);
   return { salePrice, finalPrice };
@@ -163,7 +168,33 @@ watch(
           end_date: formatDateForInput(props.productOfferToEdit.end_date),
         };
       } else {
-        localFormData.value = { ...defaultIndividualOffer };
+        localFormData.value = {
+          ...defaultIndividualOffer,
+          ...(props.formData || {}),
+        };
+      }
+
+      // Si viene un producto preseleccionado por prop (ej. desde Reporte ABC)
+      const targetProduct = props.product || props.productOfferToEdit?.product;
+      if (targetProduct) {
+        const prodObj = {
+          id: targetProduct.id,
+          name: targetProduct.name || targetProduct.product_name,
+          active_ingredient: targetProduct.active_ingredient,
+          stock: targetProduct.current_stock ?? targetProduct.stock ?? 0,
+          sale_price: targetProduct.sale_price,
+          barcode: targetProduct.barcode,
+          laboratory: targetProduct.laboratory || { name: targetProduct.laboratory_name },
+        };
+        availableProducts.value = [prodObj];
+        localFormData.value.product_id = prodObj.id;
+      } else {
+        const preselectedId = props.formData?.product_id || localFormData.value?.product_id;
+        if (preselectedId) {
+          loadAvailableProducts(String(preselectedId));
+        } else {
+          loadAvailableProducts("");
+        }
       }
     }
   },
@@ -174,7 +205,7 @@ watch(
 watch(
   () => props.formData,
   (newFormData) => {
-    if (newFormData) {
+    if (newFormData && Object.keys(newFormData).length > 0) {
       Object.assign(localFormData.value, newFormData);
     }
   },
@@ -187,25 +218,6 @@ const endDateConfig = computed(() => ({
   dateFormat: "Y-m-d",
   minDate: localFormData.value.start_date || undefined,
 }));
-
-// Al abrir, cargar productos
-watch(
-  () => props.modelValue,
-  (isVisible) => {
-    if (isVisible) {
-      if (props.isEditing && props.productOfferToEdit?.product_id) {
-        loadAvailableProducts(String(props.productOfferToEdit.product_id));
-      } else if (!props.isEditing) {
-        const preselectedId = props.formData?.product_id || localFormData.value?.product_id;
-        if (preselectedId) {
-          loadAvailableProducts(String(preselectedId));
-        } else {
-          loadAvailableProducts("");
-        }
-      }
-    }
-  }
-);
 </script>
 
 <template>
@@ -231,7 +243,7 @@ watch(
             class="me-3 elevation-1"
           >
             <VIcon
-              icon="tabler-tag"
+              icon="tabler-tags"
               size="24"
               color="primary"
             />
