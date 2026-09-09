@@ -160,7 +160,7 @@ const fetchSnapshotDetails = async (snapshotId) => {
       is_overstock: onlyOverstock.value ? true : null,
     };
 
-    const response = await axios.get(/bi/snapshots/, { params });
+    const response = await axios.get(`/bi/snapshots/${snapshotId}`, { params });
     selectedSnapshot.value = response.data.snapshot;
     detailItems.value = response.data.items;
     totalDetailItems.value = response.data.meta.total;
@@ -175,7 +175,7 @@ const fetchSnapshotDetails = async (snapshotId) => {
 const fetchAuditModules = async (snapshotId) => {
   auditLoading.value = true;
   try {
-    const response = await axios.get(/bi/snapshots//audit);
+    const response = await axios.get(`/bi/snapshots/${snapshotId}/audit`);
     auditData.value = response.data;
   } catch (err) {
     console.error('Error loading audit modules:', err);
@@ -207,7 +207,7 @@ const handleOpenCreateDialog = () => {
   const today = new Date().toISOString().split('T')[0];
   createForm.cutoff_date = today;
   createForm.period_days = 30;
-  createForm.name = Foto Finish ;
+  createForm.name = `Foto Finish ${today}`;
   createErrors.cutoff_date = '';
   createErrors.period_days = '';
   createErrors.name = '';
@@ -254,7 +254,7 @@ const handleCreateSnapshot = async () => {
 const handleDeleteSnapshot = async (snapshot) => {
   const result = await Swal.fire({
     title: '¿Eliminar Foto Finish?',
-    text: Esta acción eliminará el registro histórico "" y todos sus datos calculados.,
+    text: `Esta acción eliminará el registro histórico "${snapshot.name}" y todos sus datos calculados.`,
     icon: 'warning',
     showCancelButton: true,
     confirmButtonText: 'Sí, eliminar',
@@ -267,7 +267,7 @@ const handleDeleteSnapshot = async (snapshot) => {
 
   if (result.isConfirmed) {
     try {
-      await axios.delete(/bi/snapshots/);
+      await axios.delete(`/bi/snapshots/${snapshot.id}`);
       toast.success('Foto Finish eliminada correctamente.');
       if (activeTab.value === 'detail') {
         handleBackToList();
@@ -284,7 +284,7 @@ const handleDeleteSnapshot = async (snapshot) => {
 const handleExportSnapshot = async (snapshotId) => {
   exportingExcel.value = true;
   try {
-    const response = await axios.get(/bi/snapshots//export, {
+    const response = await axios.get(`/bi/snapshots/${snapshotId}/export`, {
       responseType: 'blob',
     });
 
@@ -294,7 +294,7 @@ const handleExportSnapshot = async (snapshotId) => {
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', oto_finish__.xlsx);
+    link.setAttribute('download', `foto_finish_${snapshotId}_${new Date().toISOString().slice(0, 10)}.xlsx`);
     document.body.appendChild(link);
     link.click();
     link.remove();
