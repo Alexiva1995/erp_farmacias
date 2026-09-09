@@ -6,6 +6,7 @@ defineProps({
   loading: { type: Boolean, default: false },
   page: { type: Number, default: 1 },
   itemsPerPage: { type: Number, default: 10 },
+  selectedAnalysisType: { type: String, default: 'all' },
   getColorClass: { type: Function, required: true },
   getGmroiColor: { type: Function, required: true },
 });
@@ -33,6 +34,37 @@ const emit = defineEmits(['update:page']);
                   {{ item.name }}
                 </h3>
               </div>
+              
+              <!-- Badges de Alerta (Margen Negativo / Por Caducar / Oferta Individual) -->
+              <div
+                v-if="selectedAnalysisType === 'negative_margin' || item.margin_percentage < 0 || item.margin_amount < 0"
+                class="d-flex align-center flex-wrap gap-1 mb-2"
+              >
+                <VChip
+                  v-if="item.is_expiring_soon || (item.days_to_expiration !== null && item.days_to_expiration <= 180)"
+                  color="error"
+                  size="x-small"
+                  variant="flat"
+                  density="compact"
+                  class="font-weight-bold"
+                >
+                  <VIcon icon="tabler-clock-exclamation" size="12" class="me-1" />
+                  {{ item.days_to_expiration <= 0 ? 'Vencido' : (item.months_to_expiration ? `Vence en ${item.months_to_expiration} m` : 'Por vencer') }}
+                </VChip>
+
+                <VChip
+                  v-if="item.has_individual_offer || item.individual_offer_discount"
+                  color="warning"
+                  size="x-small"
+                  variant="flat"
+                  density="compact"
+                  class="font-weight-bold"
+                >
+                  <VIcon icon="tabler-tag" size="12" class="me-1" />
+                  Oferta Ind. -{{ Math.round(item.individual_offer_discount) }}%
+                </VChip>
+              </div>
+
               <div class="d-flex align-center flex-wrap gap-x-2 text-super-xs">
                 <span class="text-medium-emphasis font-weight-medium text-truncate" style="max-inline-size: 150px;">
                   {{ item.laboratory_name || 'S/L' }}

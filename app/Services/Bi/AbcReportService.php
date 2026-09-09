@@ -81,6 +81,28 @@ class AbcReportService
                     ? (float) ($item->std_dev_sales / $item->avg_daily_sales) 
                     : 999; 
 
+                // Lógica de Vencimiento próximo (menos o igual a 6 meses / 180 días con stock > 0)
+                $item->is_expiring_soon = false;
+                $item->months_to_expiration = null;
+                $item->days_to_expiration = null;
+                if (!empty($item->next_expiration_date) && $item->current_stock > 0) {
+                    $expDate = Carbon::parse($item->next_expiration_date)->startOfDay();
+                    $today = now()->startOfDay();
+                    $daysDiff = $today->diffInDays($expDate, false);
+                    $item->days_to_expiration = (int) $daysDiff;
+                    $item->months_to_expiration = round($daysDiff / 30.4375, 1);
+                    // Por caducar si faltan 180 días o menos (o ya venció)
+                    if ($daysDiff <= 180) {
+                        $item->is_expiring_soon = true;
+                    }
+                }
+
+                // Oferta individual
+                $item->individual_offer_discount = !empty($item->individual_offer_discount) 
+                    ? (float) $item->individual_offer_discount 
+                    : null;
+                $item->has_individual_offer = $item->individual_offer_discount !== null && $item->individual_offer_discount > 0;
+
                 // Determinar XYZ
                 // Regla de Relevancia: Menos de 3 unidades se considera impredecible (Z) por falta de muestra
                 if ($item->sold_units < 3) {

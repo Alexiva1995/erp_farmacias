@@ -378,9 +378,51 @@ const handleFilterCritical = () => {
 
           <template #item.name="{ item }">
             <div class="d-flex flex-column py-2">
-              <span class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate" :title="item.name">
-                {{ item.name.toUpperCase() }}
-              </span>
+              <div class="d-flex align-center flex-wrap gap-1 mb-1">
+                <span class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate" :title="item.name">
+                  {{ item.name.toUpperCase() }}
+                </span>
+                
+                <!-- Etiquetas específicas cuando el filtro es Margen Negativo o el margen del producto es negativo -->
+                <template v-if="selectedAnalysisType === 'negative_margin' || item.margin_percentage < 0 || item.margin_amount < 0">
+                  <!-- Etiqueta Por Caducar (<= 6 meses / 180 días) -->
+                  <VTooltip v-if="item.is_expiring_soon || (item.days_to_expiration !== null && item.days_to_expiration <= 180)" location="top">
+                    <template #activator="{ props: tipProps }">
+                      <VChip
+                        v-bind="tipProps"
+                        color="error"
+                        size="x-small"
+                        variant="flat"
+                        density="compact"
+                        class="font-weight-bold"
+                      >
+                        <VIcon icon="tabler-clock-exclamation" size="12" class="me-1" />
+                        {{ item.days_to_expiration <= 0 ? 'Vencido' : (item.months_to_expiration ? `Vence en ${item.months_to_expiration} m` : 'Por vencer') }}
+                      </VChip>
+                    </template>
+                    <span>Próximo vencimiento: {{ item.next_expiration_date }} ({{ item.days_to_expiration }} días restantes)</span>
+                  </VTooltip>
+
+                  <!-- Etiqueta Oferta Individual -->
+                  <VTooltip v-if="item.has_individual_offer || item.individual_offer_discount" location="top">
+                    <template #activator="{ props: tipProps }">
+                      <VChip
+                        v-bind="tipProps"
+                        color="warning"
+                        size="x-small"
+                        variant="flat"
+                        density="compact"
+                        class="font-weight-bold"
+                      >
+                        <VIcon icon="tabler-tag" size="12" class="me-1" />
+                        Oferta Ind. -{{ Math.round(item.individual_offer_discount) }}%
+                      </VChip>
+                    </template>
+                    <span>Descuento activo por oferta individual: {{ item.individual_offer_discount }}%</span>
+                  </VTooltip>
+                </template>
+              </div>
+
               <div class="d-flex align-center gap-1 text-super-xs">
                 <span class="text-disabled truncate" style="max-inline-size: 200px;">
                   {{ item.active_ingredient || item.active_ingredient_inventory || 'SIN INGREDIENTE' }}
@@ -469,6 +511,7 @@ const handleFilterCritical = () => {
         :items="items"
         :loading="loading"
         :items-per-page="itemsPerPage"
+        :selected-analysis-type="selectedAnalysisType"
         :get-color-class="getColorClass"
         :get-gmroi-color="getGmroiColor"
       />

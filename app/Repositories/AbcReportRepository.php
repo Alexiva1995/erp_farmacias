@@ -66,6 +66,26 @@ class AbcReportRepository implements AbcReportRepositoryInterface
             ->whereBetween('orders.order_date', [$startDate, $endDate])
             ->groupBy('order_details.product_id', 'order_details.dish_id');
 
+        // Subconsulta para fecha de vencimiento más próxima con stock > 0
+        $nextExpSubquery = DB::table('product_lots')
+            ->select('product_lots.product_id', DB::raw('MIN(product_lots.expiration_date) as next_expiration_date'))
+            ->where('product_lots.quantity', '>', 0)
+            ->whereNotNull('product_lots.expiration_date')
+            ->groupBy('product_lots.product_id');
+
+        // Subconsulta para ofertas individuales activas vigentes hoy
+        $individualOfferSubquery = DB::table('individual_offers')
+            ->select('individual_offers.product_id', DB::raw('MAX(individual_offers.discount_percent) as individual_offer_discount'))
+            ->where(function($q) {
+                $q->whereNull('individual_offers.start_date')
+                  ->orWhere('individual_offers.start_date', '<=', now()->toDateString());
+            })
+            ->where(function($q) {
+                $q->whereNull('individual_offers.end_date')
+                  ->orWhere('individual_offers.end_date', '>=', now()->toDateString());
+            })
+            ->groupBy('individual_offers.product_id');
+
         // Consulta 1: Productos de Inventario
         $productsQuery = DB::table('products')
             ->select(
@@ -81,6 +101,8 @@ class AbcReportRepository implements AbcReportRepositoryInterface
                 DB::raw('COALESCE(variance.std_dev_sales, 0) as std_dev_sales'),
                 DB::raw('COALESCE(variance.avg_daily_sales, 0) as avg_daily_sales'),
                 'sales.last_sale_date as last_sale_date',
+                'next_exp.next_expiration_date as next_expiration_date',
+                'ind_offer.individual_offer_discount as individual_offer_discount',
                 DB::raw("'product' as item_type")
             )
             ->leftJoin('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
@@ -89,6 +111,12 @@ class AbcReportRepository implements AbcReportRepositoryInterface
             })
             ->leftJoinSub($varianceSubquery, 'variance', function($join) {
                 $join->on('products.id', '=', 'variance.product_id');
+            })
+            ->leftJoinSub($nextExpSubquery, 'next_exp', function($join) {
+                $join->on('products.id', '=', 'next_exp.product_id');
+            })
+            ->leftJoinSub($individualOfferSubquery, 'ind_offer', function($join) {
+                $join->on('products.id', '=', 'ind_offer.product_id');
             });
 
         $analysisType = $filtros['analysis_type'] ?? 'all';
@@ -134,6 +162,8 @@ class AbcReportRepository implements AbcReportRepositoryInterface
                 DB::raw('COALESCE(variance.std_dev_sales, 0) as std_dev_sales'),
                 DB::raw('COALESCE(variance.avg_daily_sales, 0) as avg_daily_sales'),
                 'sales.last_sale_date as last_sale_date',
+                DB::raw('NULL as next_expiration_date'),
+                DB::raw('NULL as individual_offer_discount'),
                 DB::raw("'dish' as item_type")
             )
             ->leftJoin('categories', 'dishes.category_id', '=', 'categories.id')

@@ -45,6 +45,12 @@ class AbcReportResource extends JsonResource
             'inventory_value' => round($this->inventory_value, 2),
             'sales_average' => round($this->sales_average ?? 0, 2),
             'last_sale_date' => $this->last_sale_date,
+            'next_expiration_date' => $this->next_expiration_date,
+            'days_to_expiration' => $this->days_to_expiration,
+            'months_to_expiration' => $this->months_to_expiration,
+            'is_expiring_soon' => $this->is_expiring_soon ?? false,
+            'individual_offer_discount' => $this->individual_offer_discount,
+            'has_individual_offer' => $this->has_individual_offer ?? false,
         ];
     }
 }
