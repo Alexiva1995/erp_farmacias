@@ -140,10 +140,9 @@ class SupplierEmailCatalogService
                             continue;
                         }
 
-                        // Guardar archivo
-                        $storagePath = 'supplier-imports/' . Str::slug($supplier->name) . '_' . date('Ymd_His') . '_' . $filename;
-                        Storage::put($storagePath, $content);
-                        $fullDiskPath = Storage::path($storagePath);
+                        // Guardar archivo en disco local con ruta relativa a temp/
+                        $storagePath = 'temp/' . Str::slug($supplier->name) . '_' . date('Ymd_His') . '_' . $filename;
+                        Storage::disk('local')->put($storagePath, $content);
 
                         // Registrar estado
                         $status = SupplierConnectionStatus::create([
@@ -156,11 +155,11 @@ class SupplierEmailCatalogService
                         // Obtener la tasa de cambio oficial del día en que llegó el correo
                         $emailRate = $this->getExchangeRateForDate($emailData['date'] ?? null) ?: $rate;
 
-                        // Despachar Job
-                        ProcessSupplierConnectionJob::dispatch(
+                        // Despachar Job de forma síncrona para procesar los productos inmediatamente
+                        ProcessSupplierConnectionJob::dispatchSync(
                             $supplier,
                             $userId,
-                            $fullDiskPath,
+                            $storagePath,
                             $connection->structure,
                             $emailRate,
                             $status->id
