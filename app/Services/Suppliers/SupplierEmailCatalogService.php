@@ -152,13 +152,16 @@ class SupplierEmailCatalogService
                             'connection_type' => 'email_excel',
                         ]);
 
+                        // Obtener la tasa de cambio oficial del día en que llegó el correo
+                        $emailRate = $this->getExchangeRateForDate($emailData['date'] ?? null) ?: $rate;
+
                         // Despachar Job
                         ProcessSupplierConnectionJob::dispatch(
                             $supplier,
                             $userId,
                             $fullDiskPath,
                             $connection->structure,
-                            $rate,
+                            $emailRate,
                             $status->id
                         );
 
@@ -221,6 +224,34 @@ class SupplierEmailCatalogService
 
         if (!empty($connection->host) && str_contains($connection->host, '@')) {
             return trim($connection->host);
+        }
+
+        return null;
+    }
+
+    /**
+     * Obtiene la tasa de cambio en Bs del BCV correspondiente a la fecha en que se recibió el correo.
+     */
+    private function getExchangeRateForDate(?string $rawDate): ?float
+    {
+        if (empty($rawDate)) {
+            return null;
+        }
+
+        try {
+            $parsedDate = \Carbon\Carbon::parse($rawDate)->format('Y-m-d');
+
+            // Buscar la tasa del día o la inmediatamente anterior más cercana
+            $rateRecord = ExchangeRate::where('currency_code', 'BS')
+                ->whereDate('created_at', '<=', $parsedDate)
+                ->orderByDesc('created_at')
+                ->first();
+
+            if ($rateRecord) {
+                return (float) $rateRecord->rate;
+            }
+        } catch (\Throwable $e) {
+            Log::warning("No se pudo parsear la fecha del correo '{$rawDate}' para buscar tasa de cambio: " . $e->getMessage());
         }
 
         return null;
