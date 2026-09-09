@@ -86,17 +86,30 @@ class InventoryCycleActionService
                 $status = ($finalDiscrepancy == 0 && !$isSimple) ? 'approved' : 'pending';
                 $userId = Auth::id();
                 $today = now()->toDateString();
-                $activeQuota = UserCyclicQuota::where('user_id', $userId)
-                    ->where('cycle_id', $activeCycle->id)
-                    ->where('quota_date', $today)
-                    ->orderBy('quota_tier', 'desc')
-                    ->first();
+                // Calcular nivel y puntos basados en los conteos reales completados por el usuario hoy en el ciclo
+                $settings = \App\Models\GeneralSetting::first();
+                $dailyQuota = (int) ($settings?->cyclic_inventory_daily_quota ?? 50);
+                if ($dailyQuota <= 0) {
+                    $dailyQuota = 50;
+                }
 
-                $quotaTier = $activeQuota ? $activeQuota->quota_tier : 1;
+                $todayCountsCount = ProductCount::where('user_id', $userId)
+                    ->where('cycle_id', $activeCycle->id)
+                    ->whereDate('count_date', $today)
+                    ->count();
+
+                $currentCountIndex = $todayCountsCount + 1;
+
+                $quotaTier = match (true) {
+                    $currentCountIndex > 2 * $dailyQuota => 3,
+                    $currentCountIndex > $dailyQuota     => 2,
+                    default                              => 1,
+                };
+
                 $pointsEarned = match (true) {
                     $quotaTier >= 3 => 4,
                     $quotaTier === 2 => 2,
-                    default => 1,
+                    default          => 1,
                 };
                 $supervisorId = null;
 

@@ -148,6 +148,9 @@ class QuotationQueryService
                                     WHERE pl.product_id = products.id
                                       AND pl.quantity   > 0
                                       AND pl.expiration_date >= CURDATE()), 0) as valid_stock_sum'),
+                DB::raw('(SELECT GROUP_CONCAT(DISTINCT NULLIF(TRIM(pl.location), \'\') ORDER BY pl.location SEPARATOR \', \')
+                            FROM product_lots pl
+                           WHERE pl.product_id = products.id) as location'),
                 DB::raw($discountPercentageRaw),
                 DB::raw($discountTypeRaw),
             ])
@@ -183,6 +186,7 @@ class QuotationQueryService
                 DB::raw("'pack' as item_type"),
                 'product_packs.max_sale_date as next_expiration',
                 'product_packs.max_quantity as valid_stock_sum',
+                DB::raw('NULL as location'),
                 DB::raw('NULL as discount_percentage'),
                 DB::raw('NULL as discount_type'),
             ])
@@ -216,6 +220,7 @@ class QuotationQueryService
                     DB::raw("'dish' as item_type"),
                     DB::raw('NULL as next_expiration'),
                     DB::raw('9999 as valid_stock_sum'),
+                    DB::raw('NULL as location'),
                     DB::raw('NULL as discount_percentage'),
                     DB::raw('NULL as discount_type'),
                 ])->where('dishes.status', '1');

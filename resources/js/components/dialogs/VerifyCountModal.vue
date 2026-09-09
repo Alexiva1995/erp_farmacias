@@ -233,7 +233,11 @@ const handleVerify = async () => {
   isProcessing.value = true;
 
   if (difference.value === 0) {
-    emit("verify-no-discrepancy", { countRecord: props.countRecord });
+    emit("verify-no-discrepancy", {
+      countRecord: props.countRecord,
+      newCountedQuantity: newCountedQuantity.value,
+      currentStock: currentStock.value,
+    });
   } else {
     emit("verify-with-discrepancy", {
       countRecord: props.countRecord,

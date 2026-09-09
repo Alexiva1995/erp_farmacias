@@ -170,11 +170,10 @@ class OrderQueryService
         $lotsAggregate = DB::table('product_lots')
             ->select(
                 'product_id',
-                DB::raw('SUM(quantity) as valid_stock_sum'),
-                DB::raw('MIN(expiration_date) as next_expiration'),
+                DB::raw('SUM(CASE WHEN quantity > 0 THEN quantity ELSE 0 END) as valid_stock_sum'),
+                DB::raw('MIN(CASE WHEN quantity > 0 AND (expiration_date >= CURDATE() OR expiration_date IS NULL) THEN expiration_date ELSE NULL END) as next_expiration'),
                 DB::raw("GROUP_CONCAT(DISTINCT NULLIF(TRIM(location), '') ORDER BY location SEPARATOR ', ') as lot_locations_str")
             )
-            ->where('quantity', '>', 0)
             ->groupBy('product_id');
 
         // Subconsulta agregada para ofertas individuales activas

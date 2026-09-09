@@ -346,7 +346,7 @@ const handleLotsDistributed = async ({ updatedLots, newLots }) => {
               @click="handleRequestMoreProducts"
             >
               <VIcon start icon="mdi-plus-box-multiple" />
-              Solicitar más (+{{ quotaStatus.tier >= 2 ? 4 : 2 }} pts)
+              Solicitar más productos
             </VBtn>
           </div>
         </div>

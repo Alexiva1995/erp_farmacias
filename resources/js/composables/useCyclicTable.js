@@ -103,9 +103,16 @@ export function useCyclicTable(endpointPrefix, filters) {
     showVerifyModal.value = true;
   };
 
-  // El supervisor confirmó que no hay discrepancia → aprobar con ajuste 0
-  const onVerifyNoDiscrepancy = async ({ countRecord }) => {
-    await callProcessApi(countRecord.id, { action: 'approve' });
+  // El supervisor confirmó que no hay discrepancia → aprobar con ajuste 0 y registrar la cantidad auditada
+  const onVerifyNoDiscrepancy = async ({ countRecord, newCountedQuantity, currentStock }) => {
+    const qty = (newCountedQuantity !== undefined && newCountedQuantity !== null)
+      ? Number(newCountedQuantity)
+      : Number(currentStock ?? countRecord.system_quantity ?? 0);
+
+    await callProcessApi(countRecord.id, {
+      action: 'approve',
+      corrected_quantity: qty,
+    });
   };
 
   // El supervisor encontró diferencia → abrir modal de lotes
