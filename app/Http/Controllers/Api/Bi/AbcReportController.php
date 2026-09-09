@@ -72,8 +72,8 @@ class AbcReportController extends Controller
             'avg_margin' => $totalSalesGlobal > 0 ? ($totalMarginAmtGlobal / $totalSalesGlobal) * 100 : 0,
             'aax_products' => $reportData->filter(fn($i) => str_starts_with($i->final_classification, 'AA'))->count(),
             'frozen_capital' => (float) $reportData->sum('inventory_value'),
-            'expiring_risk_capital' => (float) $reportData->filter(fn($i) => (float)$i->current_stock > 0 && ($i->has_expiration_risk || $i->is_expiring_soon || ((int)($i->days_to_expiration ?? 9999) <= 180)))->sum('inventory_value'),
-            'expiring_risk_count' => $reportData->filter(fn($i) => (float)$i->current_stock > 0 && ($i->has_expiration_risk || $i->is_expiring_soon || ((int)($i->days_to_expiration ?? 9999) <= 180)))->count(),
+            'expiring_risk_capital' => (float) $reportData->filter(fn($i) => (float)$i->current_stock > 0 && $i->has_expiration_risk && (float)($i->risk_expiring_units ?? 0) > 0)->sum(fn($i) => (float)($i->risk_expiring_capital ?? $i->inventory_value)),
+            'expiring_risk_count' => $reportData->filter(fn($i) => (float)$i->current_stock > 0 && $i->has_expiration_risk && (float)($i->risk_expiring_units ?? 0) > 0)->count(),
             // Conteo por clasificación de ventas
             'count_a' => $reportData->filter(fn($i) => $i->class_sales === 'A')->count(),
             'count_b' => $reportData->filter(fn($i) => $i->class_sales === 'B')->count(),

@@ -171,17 +171,17 @@ const fullHeaders = [
   { title: 'ACCIONES', key: 'actions', align: 'center', sortable: false, width: '120px' },
 ];
 
-const simplifiedHeaders = [
+const simplifiedHeaders = computed(() => [
   { title: 'ID', key: 'id', sortable: true, width: '85px' },
   { title: 'PRODUCTO (LABORATORIO)', key: 'name', sortable: true },
-  { title: 'STOCK ACTUAL', key: 'current_stock', align: 'end', sortable: true, width: '150px' },
+  { title: selectedAnalysisType.value === 'expiring_risk' ? 'STOCK EN RIESGO' : 'STOCK ACTUAL', key: 'current_stock', align: 'end', sortable: true, width: '150px' },
   { title: 'VENTAS EN PERIODO', key: 'sold_units', align: 'end', sortable: true, width: '180px' },
-  { title: 'TOTAL CAPITAL PARADO ($)', key: 'inventory_value', align: 'end', sortable: true, width: '200px' },
+  { title: selectedAnalysisType.value === 'expiring_risk' ? 'CAPITAL POR EXPIRAR ($)' : 'TOTAL CAPITAL PARADO ($)', key: 'inventory_value', align: 'end', sortable: true, width: '200px' },
   { title: 'ACCIONES', key: 'actions', align: 'center', sortable: false, width: '120px' },
-];
+]);
 
 const activeHeaders = computed(() => {
-  return isSimplifiedView.value ? simplifiedHeaders : fullHeaders;
+  return isSimplifiedView.value ? simplifiedHeaders.value : fullHeaders;
 });
 
 const fetchCatalogs = async () => {
@@ -657,8 +657,13 @@ const handleFilterCritical = () => {
 
           <template #item.current_stock="{ item }">
              <div class="d-flex flex-column align-end">
-              <span class="font-weight-black" :class="isSimplifiedView ? 'text-body-1' : ''">{{ item.current_stock }} unds</span>
-              <span v-if="isSimplifiedView" class="text-super-xs text-medium-emphasis">
+              <span class="font-weight-black" :class="isSimplifiedView ? 'text-body-1' : ''">
+                {{ selectedAnalysisType === 'expiring_risk' && item.risk_expiring_units > 0 && item.risk_expiring_units < item.current_stock ? `${item.risk_expiring_units} de ${item.current_stock} unds` : `${item.current_stock} unds` }}
+              </span>
+              <span v-if="selectedAnalysisType === 'expiring_risk' && item.risk_expiring_units > 0 && item.risk_expiring_units < item.current_stock" class="text-super-xs text-warning font-weight-bold">
+                (En riesgo por lote)
+              </span>
+              <span v-else-if="isSimplifiedView" class="text-super-xs text-medium-emphasis">
                 Costo: {{ formatCurrency(item.last_cost) }}
               </span>
               <span v-else class="text-caption text-medium-emphasis mt-1">
@@ -671,10 +676,13 @@ const handleFilterCritical = () => {
 
           <template #item.inventory_value="{ item }">
             <div class="d-flex flex-column align-end">
-              <span class="font-weight-black text-h6 text-error">
-                {{ formatCurrency(item.inventory_value) }}
+              <span class="font-weight-black text-h6" :class="selectedAnalysisType === 'expiring_risk' ? 'text-warning' : 'text-error'">
+                {{ formatCurrency(selectedAnalysisType === 'expiring_risk' && item.risk_expiring_capital > 0 ? item.risk_expiring_capital : item.inventory_value) }}
               </span>
-              <span v-if="summaryStats.frozen_capital > 0" class="text-super-xs text-medium-emphasis">
+              <span v-if="selectedAnalysisType === 'expiring_risk' && summaryStats.expiring_risk_capital > 0" class="text-super-xs text-medium-emphasis">
+                {{ (((item.risk_expiring_capital > 0 ? item.risk_expiring_capital : item.inventory_value) / summaryStats.expiring_risk_capital) * 100).toFixed(1) }}% del dinero por expirar
+              </span>
+              <span v-else-if="summaryStats.frozen_capital > 0" class="text-super-xs text-medium-emphasis">
                 {{ ((item.inventory_value / summaryStats.frozen_capital) * 100).toFixed(1) }}% del dinero parado
               </span>
             </div>

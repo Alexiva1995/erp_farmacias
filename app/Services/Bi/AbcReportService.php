@@ -100,6 +100,7 @@ class AbcReportService
                 $item->days_to_expiration = null;
                 $item->risk_lot_date = null;
                 $item->risk_expiring_units = 0;
+                $item->risk_expiring_capital = 0;
 
                 $productLots = $lotsByProduct->get($item->id);
                 if ($productLots && $productLots->isNotEmpty() && $item->current_stock > 0) {
@@ -112,33 +113,49 @@ class AbcReportService
                     $item->months_to_expiration = round($daysDiffFirst / 30.4375, 1);
 
                     $cumQty = 0;
+                    $totalRiskUnits = 0;
+                    $firstRiskDate = null;
+
                     foreach ($productLots as $lot) {
-                        $cumQty += (float) $lot->quantity;
+                        $lotQty = (float) $lot->quantity;
+                        $cumQty += $lotQty;
                         $lotExpDate = Carbon::parse($lot->expiration_date)->startOfDay();
                         $daysToLotExp = (int) $today->diffInDays($lotExpDate, false);
 
                         if ($dailyRunRate > 0) {
-                            $daysToConsumeLot = $cumQty / $dailyRunRate;
-                            // Si las unidades acumuladas de este lote tardarán más en venderse que los días para vencer
-                            if ($daysToLotExp <= 0 || $daysToConsumeLot > $daysToLotExp) {
-                                $item->has_expiration_risk = true;
-                                $item->risk_lot_date = $lot->expiration_date;
-                                $item->risk_expiring_units = max(0, $cumQty - ($daysToLotExp > 0 ? ($daysToLotExp * $dailyRunRate) : 0));
-                                if ($daysToLotExp <= 180) {
-                                    $item->is_expiring_soon = true;
+                            // Unidades máximas que el ritmo de venta logrará consumir hasta la fecha de caducidad del lote
+                            $maxUnitsConsumable = max(0, $daysToLotExp > 0 ? ($daysToLotExp * $dailyRunRate) : 0);
+                            
+                            // Si el acumulado supera la capacidad de absorción del mercado, las unidades sobrantes vencen
+                            if ($daysToLotExp <= 0 || $cumQty > $maxUnitsConsumable) {
+                                $unconsumedInThisLot = min($lotQty, max(0, $cumQty - $maxUnitsConsumable));
+                                if ($unconsumedInThisLot > 0) {
+                                    $totalRiskUnits += $unconsumedInThisLot;
+                                    if (!$firstRiskDate) {
+                                        $firstRiskDate = $lot->expiration_date;
+                                    }
+                                    if ($daysToLotExp <= 180) {
+                                        $item->is_expiring_soon = true;
+                                    }
                                 }
-                                break;
                             }
                         } else {
-                            // Sin ventas en el periodo y el lote vence en <= 180 días
+                            // Sin ventas en el periodo: si el lote vence en <= 180 días o ya venció, todas sus unidades están en riesgo
                             if ($daysToLotExp <= 180) {
-                                $item->has_expiration_risk = true;
+                                $totalRiskUnits += $lotQty;
+                                if (!$firstRiskDate) {
+                                    $firstRiskDate = $lot->expiration_date;
+                                }
                                 $item->is_expiring_soon = true;
-                                $item->risk_lot_date = $lot->expiration_date;
-                                $item->risk_expiring_units = $cumQty;
-                                break;
                             }
                         }
+                    }
+
+                    if ($totalRiskUnits > 0) {
+                        $item->has_expiration_risk = true;
+                        $item->risk_lot_date = $firstRiskDate;
+                        $item->risk_expiring_units = min($item->current_stock, round($totalRiskUnits, 2));
+                        $item->risk_expiring_capital = round($item->risk_expiring_units * $item->last_cost, 2);
                     }
                 }
 
@@ -228,16 +245,15 @@ class AbcReportService
                         && (float)$item->current_stock > 0;
                 })->sortBy('margin_percentage')->values();
             } elseif ($analysisType === 'expiring_risk') {
-                // Capital Propenso a Vencerse por Expiración (Riesgo FEFO / Próximos a Vencer <= 180 días)
+                // Capital Propenso a Vencerse por Expiración (Riesgo FEFO / Lotes con unidades no absorbibles <= 180 días)
                 $data = $data->filter(function ($item) {
                     if ((float) $item->current_stock <= 0) {
                         return false;
                     }
                     $hasExpRisk = (bool) ($item->has_expiration_risk ?? false);
-                    $isExpiringSoon = (bool) ($item->is_expiring_soon ?? false);
-                    $daysToExp = $item->days_to_expiration !== null ? (int) $item->days_to_expiration : 9999;
+                    $riskUnits = (float) ($item->risk_expiring_units ?? 0);
 
-                    return $hasExpRisk || $isExpiringSoon || $daysToExp <= 180;
+                    return $hasExpRisk && $riskUnits > 0;
                 })->sortBy(function ($item) {
                     return $item->days_to_expiration ?? 9999;
                 })->values();
