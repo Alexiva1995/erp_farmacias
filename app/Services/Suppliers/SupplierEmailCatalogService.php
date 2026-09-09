@@ -107,10 +107,11 @@ class SupplierEmailCatalogService
                     continue;
                 }
 
-                // Ordenar del más reciente al más antiguo para encontrar el último con archivo Excel
+                // Ordenar del más reciente al más antiguo para encontrar los correos del día
                 rsort($messages);
 
-                $foundValidEmail = false;
+                $collectedEmails = [];
+                $latestEmailDate = null;
 
                 foreach ($messages as $msgNum) {
                     $emailData = $this->imapService->fetchMessage((int) $msgNum, $allowedExtensions);
