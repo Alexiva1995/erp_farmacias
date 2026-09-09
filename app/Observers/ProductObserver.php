@@ -130,8 +130,8 @@ class ProductObserver
             $product->load('profitability');
         }
 
-        $stockBefore = (float) ($product->stock ?? 0);
-        $stockAfter = $stockBefore + (float) $detail->quantity;
+        $stockAfter = (float) $product->lots()->sum('quantity');
+        $stockBefore = $stockAfter - (float) $detail->quantity;
 
         // Calcular costo promedio ponderado usando products.unit_cost como fuente de verdad
         $currentUnitCost = (float) ($product->unit_cost ?? 0);
