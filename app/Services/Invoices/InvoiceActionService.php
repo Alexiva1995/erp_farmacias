@@ -346,9 +346,9 @@ class InvoiceActionService
             // Cargar detalles con productos y rentabilidad
             $invoice->load(['details.product.profitability']);
 
-            // Crear lotes al aprobar (sin ubicación todavía, se actualizará después o se setea N/A)
+            // Crear lotes y movimientos al aprobar sincronizadamente por detalle
             // Se usa $skipMovementCreation = true para evitar movimientos automáticos redundantes de lotes,
-            // ya que handleInvoiceMovement gestiona el movimiento oficial de compra.
+            // ya que handleInvoiceDetailMovement gestiona el movimiento oficial de compra.
             \App\Observers\ProductLotObserver::$skipMovementCreation = true;
             try {
                 foreach ($invoice->details as $detail) {
@@ -366,14 +366,13 @@ class InvoiceActionService
                         $productLot->update(['location' => 'N/A']);
                         $detail->update(['location' => 'N/A']);
                     }
+
+                    // Registrar movimiento oficial de compra por cada renglón procesado
+                    \App\Observers\ProductObserver::handleInvoiceDetailMovement($invoice, $detail, $productLot->id);
                 }
             } finally {
                 \App\Observers\ProductLotObserver::$skipMovementCreation = false;
             }
-
-            // ÚNICO punto donde se crean movimientos de inventario (purchase) por factura.
-            // No se crean al cargar (loaded) ni al ordenar/archivar (ordered); solo al aprobar (loaded → to_order / ordered).
-            \App\Observers\ProductObserver::handleInvoiceMovement($invoice);
 
             return $invoice->fresh(['details.product', 'supplier']);
         });
