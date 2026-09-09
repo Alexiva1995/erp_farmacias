@@ -18,7 +18,7 @@ class InventorySnapshotRepository implements InventorySnapshotRepositoryInterfac
      */
     public function paginateSnapshots(array $filters): LengthAwarePaginator
     {
-        $query = InventorySnapshot::query()->with('creator:id,name');
+        $query = InventorySnapshot::query()->with('creator:id,username');
 
         if (!empty($filters['search'])) {
             $term = '%' . trim((string) $filters['search']) . '%';
@@ -53,7 +53,7 @@ class InventorySnapshotRepository implements InventorySnapshotRepositoryInterfac
      */
     public function getSnapshotWithItems(int $snapshotId, array $filters): array
     {
-        $snapshot = InventorySnapshot::with('creator:id,name')->findOrFail($snapshotId);
+        $snapshot = InventorySnapshot::with('creator:id,username')->findOrFail($snapshotId);
 
         $itemsQuery = InventorySnapshotItem::query()
             ->where('inventory_snapshot_id', $snapshotId);

@@ -60,7 +60,7 @@ class InventorySnapshotService
      */
     public function getSnapshotAuditModules(int $snapshotId): array
     {
-        $snapshot = InventorySnapshot::with('creator:id,name')->findOrFail($snapshotId);
+        $snapshot = InventorySnapshot::with('creator:id,username')->findOrFail($snapshotId);
         $snapshotItems = $this->repository->getSnapshotItemsForExport($snapshotId);
 
         // Obtener datos actuales de los productos en vivo

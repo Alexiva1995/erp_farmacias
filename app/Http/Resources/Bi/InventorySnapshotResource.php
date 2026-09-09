@@ -28,7 +28,7 @@ class InventorySnapshotResource extends JsonResource
             'overstock_inventory_value' => round((float) $this->overstock_inventory_value, 2),
             'is_automatic' => (bool) $this->is_automatic,
             'created_by_user_id' => $this->created_by_user_id,
-            'creator_name' => $this->creator ? $this->creator->name : null,
+            'creator_name' => $this->creator ? ($this->creator->username ?? $this->creator->name) : null,
             'created_at' => $this->created_at ? $this->created_at->toIso8601String() : null,
         ];
     }

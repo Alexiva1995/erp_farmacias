@@ -11,13 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('inventory_movements', function (Blueprint $table) {
-            try {
-                $table->dropForeign('inventory_movements_product_count_id_foreign');
-            } catch (\Throwable $e) {
-                // Prevenir error si la clave foránea no existe
-            }
-        });
+        if (DB::getDriverName() !== 'sqlite') {
+            Schema::table('inventory_movements', function (Blueprint $table) {
+                try {
+                    $table->dropForeign(['product_count_id']);
+                } catch (\Throwable $e) {
+                    // Prevenir error si la clave foránea no existe
+                }
+            });
+        }
     }
 
     /**
