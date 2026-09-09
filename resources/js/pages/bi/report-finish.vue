@@ -640,7 +640,7 @@ onMounted(() => {
               :color="auditData.module_3_ab_restock.still_stockout_count > 0 ? 'error' : 'success'"
               inline
               class="ms-1"
-              :content="${auditData.module_3_ab_restock.restocked_count}/"
+              :content="`${auditData.module_3_ab_restock.restocked_count}/${auditData.module_3_ab_restock.total_critical_items}`"
             />
           </VTab>
           <VTab value="module4" class="font-weight-bold">
