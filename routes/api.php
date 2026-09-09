@@ -608,7 +608,6 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
     });
 
     Route::get('/roles', [RoleController::class, 'list']);
-    Route::apiResource('employee-laboratories', EmployeeLaboratoryController::class);
 
     Route::prefix("orders")->group(function () {
         Route::get("/psychotropics/pagination", [OrderController::class, "filtrarOrderPorpsychotropicsConPaginacion"]);
@@ -997,6 +996,7 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
     Route::prefix('employee-laboratories')->group(function () {
         Route::get('/', [EmployeeLaboratoryController::class, 'index']);
         Route::post('/', [EmployeeLaboratoryController::class, 'store']);
+        Route::delete('/{employee}/all', [EmployeeLaboratoryController::class, 'destroyAll']);
         Route::delete('/{employee}/{laboratoryId}', [EmployeeLaboratoryController::class, 'destroy']);
     });
 

@@ -63,7 +63,9 @@ const getDateRange = (rangeType) => {
   };
 };
 
-const headers = [
+const isSimplifiedView = ref(false);
+
+const fullHeaders = [
   { title: 'ID', key: 'id', sortable: true, width: '80px' },
   { title: 'PRODUCTO', key: 'name', sortable: true },
   { title: 'Desempeño Comercial', key: 'sold_units', align: 'end', sortable: true },
@@ -73,6 +75,18 @@ const headers = [
   { title: 'Costo Unit.', key: 'last_cost', align: 'end', sortable: true },
   { title: 'Perfil ABC-XYZ', key: 'final_classification', align: 'center', sortable: true },
 ];
+
+const simplifiedHeaders = [
+  { title: 'ID', key: 'id', sortable: true, width: '85px' },
+  { title: 'PRODUCTO (LABORATORIO)', key: 'name', sortable: true },
+  { title: 'STOCK ACTUAL', key: 'current_stock', align: 'end', sortable: true, width: '150px' },
+  { title: 'VENTAS EN PERIODO', key: 'sold_units', align: 'end', sortable: true, width: '180px' },
+  { title: 'TOTAL CAPITAL PARADO ($)', key: 'inventory_value', align: 'end', sortable: true, width: '220px' },
+];
+
+const activeHeaders = computed(() => {
+  return isSimplifiedView.value ? simplifiedHeaders : fullHeaders;
+});
 
 const fetchCatalogs = async () => {
   try {
@@ -149,10 +163,13 @@ const getGmroiColor = (gmroi) => {
 watch(selectedAnalysisType, (newType) => {
   if (newType === 'frozen_capital' || newType === 'dead_stock') {
     sortBy.value = [{ key: 'inventory_value', order: 'desc' }];
+    isSimplifiedView.value = true;
   } else if (newType === 'negative_margin') {
     sortBy.value = [{ key: 'margin_percentage', order: 'asc' }];
+    isSimplifiedView.value = false;
   } else {
     sortBy.value = [{ key: 'total_sales', order: 'desc' }];
+    isSimplifiedView.value = false;
   }
 });
 
@@ -174,6 +191,7 @@ const handleClearFilters = () => {
   minGmroi.value = null;
   stockFilter.value = 'all';
   isAdvancedFiltersVisible.value = false;
+  isSimplifiedView.value = false;
 };
 
 const handleExport = async (exportType = 'all') => {
@@ -340,11 +358,37 @@ const handleFilterCritical = () => {
 
     <!-- Contenedor Principal de Resultados -->
     <VCard class="mb-6 rounded-lg border shadow-sm overflow-hidden bg-surface">
-      <VCardText class="d-flex justify-space-between align-center py-3">
-        <h2 class="text-h6 font-weight-bold d-flex align-center">
-          <VIcon icon="tabler-list-details" class="me-2 text-primary" size="22" />
-          Resultados del Análisis
-        </h2>
+      <VCardText class="d-flex justify-space-between align-center py-3 flex-wrap gap-2">
+        <div class="d-flex align-center flex-wrap gap-2">
+          <h2 class="text-h6 font-weight-bold d-flex align-center mb-0">
+            <VIcon icon="tabler-list-details" class="me-2 text-primary" size="22" />
+            {{ isSimplifiedView ? 'Datos de Interés: Capital Parado' : 'Resultados del Análisis' }}
+          </h2>
+          <VChip
+            v-if="isSimplifiedView"
+            color="warning"
+            size="small"
+            variant="tonal"
+            class="font-weight-black"
+          >
+            <VIcon icon="tabler-bolt" size="13" class="me-1" />
+            Vista Rápida (4 Datos Clave)
+          </VChip>
+        </div>
+
+        <!-- Botón Toggle de Datos de Interés / Vista Completa -->
+        <div class="d-flex align-center gap-2 ms-auto">
+          <VBtn
+            :color="isSimplifiedView ? 'warning' : 'primary'"
+            variant="tonal"
+            size="small"
+            class="font-weight-bold"
+            @click="isSimplifiedView = !isSimplifiedView"
+          >
+            <VIcon :icon="isSimplifiedView ? 'tabler-layout-list' : 'tabler-bulb'" size="16" class="me-1" />
+            {{ isSimplifiedView ? 'Ver Análisis Completo' : 'Datos de Interés (Capital Parado)' }}
+          </VBtn>
+        </div>
       </VCardText>
       <VDivider class="border-opacity-10" />
 
@@ -355,7 +399,7 @@ const handleFilterCritical = () => {
           v-model:page="page"
           v-model:sort-by="sortBy"
           :items-length="totalItems"
-          :headers="headers"
+          :headers="activeHeaders"
           :items="items"
           :search="search"
           :loading="loading"
@@ -447,10 +491,12 @@ const handleFilterCritical = () => {
 
           <template #item.sold_units="{ item }">
             <div class="d-flex flex-column align-end">
-               <span class="font-weight-bold text-success">{{ formatCurrency(item.total_sales) }}</span>
+               <span class="font-weight-bold" :class="item.sold_units > 0 ? 'text-success' : 'text-error'">
+                 {{ item.sold_units }} unds
+               </span>
                <div class="d-flex align-center gap-1">
-                 <span class="text-super-xs text-primary font-weight-bold">Aporte: {{ item.contribution_sales_pct ? item.contribution_sales_pct.toFixed(2) : '0.00' }}%</span>
-                 <span class="text-caption text-medium-emphasis"><VIcon icon="tabler-box" size="12" class="me-1"/>{{ item.sold_units }} unds</span>
+                 <span class="text-super-xs text-medium-emphasis">Fact: {{ formatCurrency(item.total_sales) }}</span>
+                 <span v-if="!isSimplifiedView" class="text-super-xs text-primary font-weight-bold">({{ item.contribution_sales_pct ? item.contribution_sales_pct.toFixed(1) : '0.0' }}%)</span>
                </div>
             </div>
           </template>
@@ -478,11 +524,25 @@ const handleFilterCritical = () => {
 
           <template #item.current_stock="{ item }">
              <div class="d-flex flex-column align-end">
-              <span class="font-weight-bold">{{ item.current_stock }} unds</span>
-              <span class="text-caption text-medium-emphasis mt-1">
+              <span class="font-weight-black" :class="isSimplifiedView ? 'text-body-1' : ''">{{ item.current_stock }} unds</span>
+              <span v-if="isSimplifiedView" class="text-super-xs text-medium-emphasis">
+                Costo: {{ formatCurrency(item.last_cost) }}
+              </span>
+              <span v-else class="text-caption text-medium-emphasis mt-1">
                 <VIcon icon="tabler-calendar-time" size="12" class="me-1" :class="item.inventory_days < 10 ? 'text-error' : ''"/>
                 <span v-if="item.inventory_days === 9999" class="text-warning">Incalculable</span>
                 <span v-else :class="item.inventory_days < 10 ? 'text-error' : ''">{{ Math.round(item.inventory_days) }} días d/inv</span>
+              </span>
+            </div>
+          </template>
+
+          <template #item.inventory_value="{ item }">
+            <div class="d-flex flex-column align-end">
+              <span class="font-weight-black text-h6 text-error">
+                {{ formatCurrency(item.inventory_value) }}
+              </span>
+              <span v-if="summaryStats.frozen_capital > 0" class="text-super-xs text-medium-emphasis">
+                {{ ((item.inventory_value / summaryStats.frozen_capital) * 100).toFixed(1) }}% del dinero parado
               </span>
             </div>
           </template>
@@ -527,6 +587,7 @@ const handleFilterCritical = () => {
         :loading="loading"
         :items-per-page="itemsPerPage"
         :selected-analysis-type="selectedAnalysisType"
+        :is-simplified-view="isSimplifiedView"
         :get-color-class="getColorClass"
         :get-gmroi-color="getGmroiColor"
       />

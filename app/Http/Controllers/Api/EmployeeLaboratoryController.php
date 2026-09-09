@@ -71,6 +71,23 @@ class EmployeeLaboratoryController extends Controller
     }
 
     /**
+     * Eliminar todas las asignaciones de laboratorio de un empleado
+     */
+    public function destroyAll(Employee $employee)
+    {
+        try {
+            $result = $this->actionService->removeAllLaboratories($employee);
+
+            return ApiResponse::success([
+                'status' => $result,
+                'message' => 'Todas las asignaciones fueron eliminadas correctamente'
+            ]);
+        } catch (\Exception $e) {
+            return ApiResponse::error($e->getMessage());
+        }
+    }
+
+    /**
      * Obtener estadísticas de asignaciones
      */
     public function stats()

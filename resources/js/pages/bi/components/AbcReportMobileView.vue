@@ -1,12 +1,13 @@
 <script setup>
 import { formatCurrency } from '@/utils/currencyFormatter';
 
-defineProps({
+const props = defineProps({
   items: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
   page: { type: Number, default: 1 },
   itemsPerPage: { type: Number, default: 10 },
   selectedAnalysisType: { type: String, default: 'all' },
+  isSimplifiedView: { type: Boolean, default: false },
   getColorClass: { type: Function, required: true },
   getGmroiColor: { type: Function, required: true },
 });
@@ -66,7 +67,7 @@ const emit = defineEmits(['update:page']);
               </div>
 
               <div class="d-flex align-center flex-wrap gap-x-2 text-super-xs">
-                <span class="text-medium-emphasis font-weight-medium text-truncate" style="max-inline-size: 150px;">
+                <span class="text-medium-emphasis font-weight-bold text-truncate" style="max-inline-size: 150px;">
                   {{ item.laboratory_name || 'S/L' }}
                 </span>
                 <span class="text-disabled">|</span>
@@ -76,6 +77,7 @@ const emit = defineEmits(['update:page']);
               </div>
             </div>
             <VChip
+              v-if="!isSimplifiedView"
               :color="getColorClass(item.final_classification)"
               class="text-uppercase font-weight-black flex-shrink-0"
               variant="elevated"
@@ -88,8 +90,35 @@ const emit = defineEmits(['update:page']);
 
           <VDivider class="my-3 border-opacity-10" />
 
-          <!-- Métricas en grilla -->
-          <div class="metrics-grid rounded border-dashed-thin bg-var-theme-background">
+          <!-- Grilla Simplificada de Capital Parado -->
+          <div v-if="isSimplifiedView" class="metrics-grid rounded border-dashed-thin bg-var-theme-background">
+            <VRow dense class="ma-0">
+              <VCol cols="6" class="pa-2 border-r border-b border-opacity-10">
+                <div class="text-super-xs text-disabled text-uppercase font-weight-black mb-1">Stock Actual</div>
+                <div class="text-sm font-weight-black text-high-emphasis">{{ item.current_stock }} unds</div>
+                <div class="text-super-xs text-medium-emphasis">Costo: {{ formatCurrency(item.last_cost) }}</div>
+              </VCol>
+              <VCol cols="6" class="pa-2 border-b border-opacity-10">
+                <div class="text-super-xs text-disabled text-uppercase font-weight-black mb-1">Ventas en Periodo</div>
+                <div class="text-sm font-weight-black" :class="item.sold_units > 0 ? 'text-success' : 'text-error'">
+                  {{ item.sold_units }} unds
+                </div>
+                <div class="text-super-xs text-medium-emphasis">Fact: {{ formatCurrency(item.total_sales) }}</div>
+              </VCol>
+              <VCol cols="12" class="pa-2.5 bg-error-lighten-5 d-flex justify-space-between align-center">
+                <div>
+                  <span class="text-super-xs text-error font-weight-black text-uppercase d-block leading-tight">Total Capital Parado</span>
+                  <span class="text-super-xs text-medium-emphasis">Dinero en bodega</span>
+                </div>
+                <div class="text-h6 font-weight-black text-error leading-none">
+                  {{ formatCurrency(item.inventory_value) }}
+                </div>
+              </VCol>
+            </VRow>
+          </div>
+
+          <!-- Métricas en grilla completa -->
+          <div v-else class="metrics-grid rounded border-dashed-thin bg-var-theme-background">
             <VRow dense class="ma-0">
               <VCol cols="6" class="pa-2 border-r border-b border-opacity-10">
                 <div class="text-super-xs text-disabled text-uppercase font-weight-black mb-1">
@@ -178,6 +207,10 @@ const emit = defineEmits(['update:page']);
 .text-super-xs {
   font-size: 0.65rem !important;
   line-height: 1.2;
+}
+
+.bg-error-lighten-5 {
+  background-color: rgba(var(--v-theme-error), 0.08) !important;
 }
 
 .gap-1 { gap: 4px !important; }

@@ -16,6 +16,7 @@ const emit = defineEmits([
   "update:options",
   "edit-assignment",
   "delete-assignment",
+  "delete-all-assignments",
 ]);
 
 const { mobile } = useDisplay();
@@ -141,6 +142,15 @@ const getAvatarColor = (index) => {
             </template>
             <VList density="compact" class="rounded-lg py-1 border shadow-lg">
               <VListItem
+                @click="emit('delete-all-assignments', item.employee_id, item.employee_name)"
+                class="border-b"
+              >
+                <template #prepend>
+                  <VIcon icon="tabler-trash-filled" size="16" color="error" class="me-2" />
+                </template>
+                <VListItemTitle class="text-xs font-weight-black text-error text-uppercase">Borrar todos</VListItemTitle>
+              </VListItem>
+              <VListItem
                 v-for="lab in item.laboratories"
                 :key="lab.id"
                 @click="emit('delete-assignment', item.employee_id, lab.id)"
@@ -220,6 +230,15 @@ const getAvatarColor = (index) => {
                         </IconBtn>
                       </template>
                       <VList density="compact" class="rounded-lg py-1 border shadow-lg">
+                        <VListItem
+                          @click="emit('delete-all-assignments', item.employee_id, item.employee_name)"
+                          class="border-b"
+                        >
+                          <template #prepend>
+                            <VIcon icon="tabler-trash-filled" size="16" color="error" class="me-2" />
+                          </template>
+                          <VListItemTitle class="text-xs font-weight-black text-error text-uppercase">Borrar todos</VListItemTitle>
+                        </VListItem>
                         <VListItem
                           v-for="lab in item.laboratories"
                           :key="lab.id"
