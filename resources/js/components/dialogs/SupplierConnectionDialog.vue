@@ -101,7 +101,13 @@ const saveConfig = async () => {
   saving.value = true;
   try {
     const payload = { ...form.value };
-    if (payload.type === 'dronena_bot' && !payload.host) {
+    if (payload.type === 'file') {
+      payload.host = payload.username;
+      payload.port = null;
+      payload.path = null;
+      payload.invoice_path = null;
+      delete payload.password;
+    } else if (payload.type === 'dronena_bot' && !payload.host) {
       payload.host = 'https://www.dronena.com/NuevaExperiencia/';
     }
     // Si no envió nueva contraseña y ya existía una, no mandamos el campo
@@ -153,8 +159,8 @@ watch(() => props.modelValue, (isOpen) => {
       <!-- Header Premium Institucional -->
       <VCardTitle class="pa-0">
         <div class="header-gradient pa-4 d-flex align-center shadow-sm">
-          <VAvatar color="white" variant="flat" size="40" class="me-3 elevation-1">
-            <VIcon icon="tabler-plug-connected" color="primary" size="22" />
+          <VAvatar color="white" variant="flat" size="40" class="me-3 elevation-1 text-primary">
+            <VIcon icon="tabler-plug" color="primary" size="22" />
           </VAvatar>
           <div class="d-flex flex-column leading-none text-white">
             <h2 class="text-h6 font-weight-black leading-tight mb-0 uppercase text-white">
