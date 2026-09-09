@@ -45,8 +45,17 @@ class AbcReportService
             $end = Carbon::parse($filtros['end_date'] ?? now()->endOfDay());
             $daysInPeriod = max(1, $start->diffInDays($end));
 
-            // 1. Preparar campos bases (Márgenes, Variaciones, GMROI)
-            $data->transform(function ($item) use ($daysInPeriod) {
+            // Cargar en bloque todos los lotes activos para evaluación FEFO precisa
+            $lotsByProduct = \Illuminate\Support\Facades\DB::table('product_lots')
+                ->select('product_id', 'quantity', 'expiration_date')
+                ->where('quantity', '>', 0)
+                ->whereNotNull('expiration_date')
+                ->orderBy('expiration_date', 'asc')
+                ->get()
+                ->groupBy('product_id');
+
+            // 1. Preparar campos bases (Márgenes, Variaciones, GMROI y FEFO)
+            $data->transform(function ($item) use ($daysInPeriod, $lotsByProduct) {
                 $item->total_sales = (float) $item->total_sales;
                 $item->total_cost = (float) $item->total_cost;
                 $item->sold_units = (float) $item->sold_units;
@@ -84,19 +93,52 @@ class AbcReportService
                     ? (float) ($item->std_dev_sales / $item->avg_daily_sales) 
                     : 999; 
 
-                // Lógica de Vencimiento próximo (menos o igual a 6 meses / 180 días con stock > 0)
+                // Lógica de Vencimiento FEFO (evaluación lote por lote contra el ritmo de venta)
                 $item->is_expiring_soon = false;
+                $item->has_expiration_risk = false;
                 $item->months_to_expiration = null;
                 $item->days_to_expiration = null;
-                if (!empty($item->next_expiration_date) && $item->current_stock > 0) {
-                    $expDate = Carbon::parse($item->next_expiration_date)->startOfDay();
+                $item->risk_lot_date = null;
+                $item->risk_expiring_units = 0;
+
+                $productLots = $lotsByProduct->get($item->id);
+                if ($productLots && $productLots->isNotEmpty() && $item->current_stock > 0) {
                     $today = now()->startOfDay();
-                    $daysDiff = $today->diffInDays($expDate, false);
-                    $item->days_to_expiration = (int) $daysDiff;
-                    $item->months_to_expiration = round($daysDiff / 30.4375, 1);
-                    // Por caducar si faltan 180 días o menos (o ya venció)
-                    if ($daysDiff <= 180) {
-                        $item->is_expiring_soon = true;
+                    $firstLot = $productLots->first();
+                    $expDateFirst = Carbon::parse($firstLot->expiration_date)->startOfDay();
+                    $daysDiffFirst = (int) $today->diffInDays($expDateFirst, false);
+                    $item->next_expiration_date = $firstLot->expiration_date;
+                    $item->days_to_expiration = $daysDiffFirst;
+                    $item->months_to_expiration = round($daysDiffFirst / 30.4375, 1);
+
+                    $cumQty = 0;
+                    foreach ($productLots as $lot) {
+                        $cumQty += (float) $lot->quantity;
+                        $lotExpDate = Carbon::parse($lot->expiration_date)->startOfDay();
+                        $daysToLotExp = (int) $today->diffInDays($lotExpDate, false);
+
+                        if ($dailyRunRate > 0) {
+                            $daysToConsumeLot = $cumQty / $dailyRunRate;
+                            // Si las unidades acumuladas de este lote tardarán más en venderse que los días para vencer
+                            if ($daysToLotExp <= 0 || $daysToConsumeLot > $daysToLotExp) {
+                                $item->has_expiration_risk = true;
+                                $item->risk_lot_date = $lot->expiration_date;
+                                $item->risk_expiring_units = max(0, $cumQty - ($daysToLotExp > 0 ? ($daysToLotExp * $dailyRunRate) : 0));
+                                if ($daysToLotExp <= 180) {
+                                    $item->is_expiring_soon = true;
+                                }
+                                break;
+                            }
+                        } else {
+                            // Sin ventas en el periodo y el lote vence en <= 180 días
+                            if ($daysToLotExp <= 180) {
+                                $item->has_expiration_risk = true;
+                                $item->is_expiring_soon = true;
+                                $item->risk_lot_date = $lot->expiration_date;
+                                $item->risk_expiring_units = $cumQty;
+                                break;
+                            }
+                        }
                     }
                 }
 
@@ -153,7 +195,7 @@ class AbcReportService
                 // 1) Stock atrapado sin ventas en el periodo (sold_units <= 0 y current_stock > 0)
                 // 2) Clase C con rotación Z (CZ) con stock > 0
                 // 3) Sobrestock severo (>= 180 días de inventario) en productos de baja rotación / bajo volumen (Clase C o Rotación Z)
-                // 4) Riesgo de vencimiento por sobrestock en CUALQUIER producto (días de inventario > días restantes para vencer o por caducar)
+                // 4) Riesgo real de vencimiento FEFO (unidades acumuladas del lote no se agotan antes de caducar)
                 $data = $data->filter(function ($item) {
                     if ((float) $item->current_stock <= 0) {
                         return false;
@@ -162,11 +204,7 @@ class AbcReportService
                     $isZeroSales = $item->sold_units <= 0;
                     $isCZ = ($item->class_sales === 'C' && $item->class_rotation === 'Z');
                     $isLowRotationExcess = ($item->class_sales === 'C' || $item->class_rotation === 'Z') && (float) $item->inventory_days >= 180;
-                    $isExpiringRisk = $item->is_expiring_soon || (
-                        $item->days_to_expiration !== null 
-                        && $item->days_to_expiration > 0 
-                        && $item->inventory_days > $item->days_to_expiration
-                    );
+                    $isExpiringRisk = (bool) ($item->has_expiration_risk ?? false);
 
                     return $isZeroSales || $isCZ || $isLowRotationExcess || $isExpiringRisk;
                 });

@@ -49,6 +49,9 @@ class AbcReportResource extends JsonResource
             'days_to_expiration' => $this->days_to_expiration,
             'months_to_expiration' => $this->months_to_expiration,
             'is_expiring_soon' => $this->is_expiring_soon ?? false,
+            'has_expiration_risk' => $this->has_expiration_risk ?? false,
+            'risk_lot_date' => $this->risk_lot_date,
+            'risk_expiring_units' => round($this->risk_expiring_units ?? 0, 1),
             'individual_offer_discount' => $this->individual_offer_discount,
             'has_individual_offer' => $this->has_individual_offer ?? false,
         ];

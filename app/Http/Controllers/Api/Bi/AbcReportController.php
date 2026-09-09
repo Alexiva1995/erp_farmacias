@@ -119,7 +119,7 @@ class AbcReportController extends Controller
             $sheetTitle = 'Prioridad Compras AX-AY';
             $fileNamePrefix = 'compras_prioritarias_ax_ay';
         } elseif ($exportType === 'frozen_capital') {
-            // 2. Capital Congelado / CZ / Stock Muerto / Sobrestock en baja rotación o riesgo caducidad
+            // 2. Capital Congelado / CZ / Stock Muerto / Sobrestock en baja rotación o riesgo caducidad FEFO
             $reportData = $reportData->filter(function ($item) {
                 if ((float) $item->current_stock <= 0) {
                     return false;
@@ -127,11 +127,7 @@ class AbcReportController extends Controller
                 $isZeroSales = $item->sold_units <= 0;
                 $isCZ = ($item->class_sales === 'C' && $item->class_rotation === 'Z');
                 $isLowRotationExcess = ($item->class_sales === 'C' || $item->class_rotation === 'Z') && (float) $item->inventory_days >= 180;
-                $isExpiringRisk = $item->is_expiring_soon || (
-                    $item->days_to_expiration !== null 
-                    && $item->days_to_expiration > 0 
-                    && $item->inventory_days > $item->days_to_expiration
-                );
+                $isExpiringRisk = (bool) ($item->has_expiration_risk ?? false);
 
                 return $isZeroSales || $isCZ || $isLowRotationExcess || $isExpiringRisk;
             })->sortByDesc('inventory_value')->values();
