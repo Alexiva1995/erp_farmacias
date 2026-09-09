@@ -123,6 +123,48 @@ class EmployeeProductActionService
     }
 
     /**
+     * Asigna un producto a múltiples empleados (sin reemplazar los productos existentes de cada empleado)
+     * 
+     * @param int $productId
+     * @param array $employeeIds
+     * @return bool
+     * @throws \Exception
+     */
+    public function assignProductToEmployees(int $productId, array $employeeIds): bool
+    {
+        try {
+            DB::beginTransaction();
+
+            // Buscar producto en products o dishes
+            $isDish = false;
+            $item = Product::find($productId);
+            if (!$item) {
+                $item = \App\Models\Dish::find($productId);
+                $isDish = true;
+            }
+
+            if (!$item) {
+                throw new \Exception('El producto o plato no existe');
+            }
+
+            foreach ($employeeIds as $employeeId) {
+                $employee = Employee::findOrFail((int) $employeeId);
+                if ($isDish) {
+                    $employee->dishes()->syncWithoutDetaching([$item->id]);
+                } else {
+                    $employee->products()->syncWithoutDetaching([$item->id]);
+                }
+            }
+
+            DB::commit();
+            return true;
+        } catch (\Exception $e) {
+            DB::rollBack();
+            throw new \Exception('Error al asignar producto a los empleados: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Valida los datos de asignación
      * 
      * @param array $data

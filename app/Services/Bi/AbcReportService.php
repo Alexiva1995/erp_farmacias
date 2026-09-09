@@ -68,12 +68,15 @@ class AbcReportService
                     ? ($item->margin_amount / $item->inventory_value) * (365 / $daysInPeriod) * 100
                     : ($item->margin_amount > 0 ? 9999 : 0);
 
-                // Días de Inventario usando el promedio mensual precalculado del producto (sales_average / 30)
-                // Este campo es independiente del filtro de fechas y refleja el comportamiento real histórico
+                // Días de Inventario / Cobertura:
+                // Se calcula con base en la velocidad de salida diaria (usando el promedio histórico o el periodo actual)
                 $monthlyAvg = (float) ($item->sales_average ?? 0);
                 $dailyAvgFromProduct = $monthlyAvg / 30;
-                $item->inventory_days = $dailyAvgFromProduct > 0
-                    ? (float) $item->current_stock / $dailyAvgFromProduct
+                $dailyAvgFromPeriod = $daysInPeriod > 0 ? ($item->sold_units / $daysInPeriod) : 0;
+                $dailyRunRate = $dailyAvgFromProduct > 0 ? $dailyAvgFromProduct : $dailyAvgFromPeriod;
+
+                $item->inventory_days = $dailyRunRate > 0
+                    ? (float) $item->current_stock / $dailyRunRate
                     : ($item->current_stock > 0 ? 9999 : 0);
 
                 // Coeficiente de Variación (CV)
@@ -146,12 +149,26 @@ class AbcReportService
                     return $item->sold_units <= 0 && $item->current_stock > 0;
                 });
             } elseif ($analysisType === 'frozen_capital') {
-                // Capital Congelado: Requiere existencias atrapadas (stock > 0) y baja/nula rotación (Clase C en Ventas con rotación Z [CZ] o sin ventas)
+                // Capital Congelado / Parado:
+                // 1) Stock atrapado sin ventas en el periodo (sold_units <= 0 y current_stock > 0)
+                // 2) Clase C con rotación Z (CZ) con stock > 0
+                // 3) Sobrestock severo (cobertura de inventario >= 180 días con stock > 0)
+                // 4) Riesgo de vencimiento por sobrestock (días de inventario > días restantes para vencer)
                 $data = $data->filter(function ($item) {
-                    return (float) $item->current_stock > 0 && (
-                        ($item->class_sales === 'C' && $item->class_rotation === 'Z') 
-                        || $item->sold_units <= 0
+                    if ((float) $item->current_stock <= 0) {
+                        return false;
+                    }
+
+                    $isZeroSales = $item->sold_units <= 0;
+                    $isCZ = ($item->class_sales === 'C' && $item->class_rotation === 'Z');
+                    $isExcessiveStock = (float) $item->inventory_days >= 180;
+                    $isExpiringRisk = $item->is_expiring_soon || (
+                        $item->days_to_expiration !== null 
+                        && $item->days_to_expiration > 0 
+                        && $item->inventory_days > $item->days_to_expiration
                     );
+
+                    return $isZeroSales || $isCZ || $isExcessiveStock || $isExpiringRisk;
                 });
             } elseif ($analysisType === 'star_products') {
                 // Productos Estrella: Ventas A y Margen A

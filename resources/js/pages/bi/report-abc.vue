@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, onMounted } from 'vue';
+import { ref, reactive, watch, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from '@/plugins/axios';
 import { toast } from '@/plugins/sweetalert';
@@ -7,6 +7,8 @@ import { formatCurrency } from '@/utils/currencyFormatter';
 import AbcReportFilters from './components/AbcReportFilters.vue';
 import AbcReportKpiCards from './components/AbcReportKpiCards.vue';
 import AbcReportMobileView from './components/AbcReportMobileView.vue';
+import IndividualCreateOffer from '@/components/dialogs/IndividualOfferModal.vue';
+import AssignProductToEmployeesDialog from './components/AssignProductToEmployeesDialog.vue';
 
 const router = useRouter();
 const loading = ref(false);
@@ -16,7 +18,7 @@ const errorMessage = ref(null);
 const items = ref([]);
 const totalItems = ref(0);
 
-// Filters
+// Filtros
 const selectedDateRange = ref('30 days');
 const selectedLaboratories = ref([]);
 const selectedFinalClassification = ref(null);
@@ -26,12 +28,90 @@ const stockFilter = ref('all');
 const search = ref('');
 const isAdvancedFiltersVisible = ref(false);
 
-// Pagination & Sorting
+// Paginación y Ordenamiento
 const page = ref(1);
 const itemsPerPage = ref(10);
 const sortBy = ref([{ key: 'total_sales', order: 'desc' }]);
 
-// Catalogs & Stats
+// Diálogos de Acciones Rápidas
+const isOfferDialogVisible = ref(false);
+const isEditingOffer = ref(false);
+const offerLoading = ref(false);
+const currentOfferToEdit = ref(null);
+const currentIndvOffer = reactive({
+  id: null,
+  product_id: null,
+  discount_percent: '',
+  start_date: '',
+  end_date: '',
+});
+const offerErrors = reactive({
+  id: '',
+  product_id: '',
+  discount_percent: '',
+  start_date: '',
+  end_date: '',
+});
+
+const isAssignEmployeesDialogVisible = ref(false);
+const selectedProductForAssign = ref(null);
+
+const handleOpenIndividualOffer = (item) => {
+  Object.assign(currentIndvOffer, {
+    id: null,
+    product_id: item.id,
+    discount_percent: item.individual_offer_discount || '',
+    start_date: new Date().toISOString().split('T')[0],
+    end_date: '',
+  });
+  Object.keys(offerErrors).forEach((key) => (offerErrors[key] = ''));
+  isEditingOffer.value = false;
+  currentOfferToEdit.value = null;
+  isOfferDialogVisible.value = true;
+};
+
+const handleSaveIndividualOffer = async (payload) => {
+  Object.keys(offerErrors).forEach((key) => (offerErrors[key] = ''));
+  offerLoading.value = true;
+  try {
+    let response;
+    if (currentIndvOffer.id) {
+      response = await axios.put(`/tpv/promotions/individual/${payload.id}`, payload);
+    } else {
+      response = await axios.post('/tpv/promotions/individual', payload);
+    }
+    if (response.status === 200 || response.status === 201) {
+      toast.success('Oferta guardada exitosamente.');
+      isOfferDialogVisible.value = false;
+      fetchReport();
+    }
+  } catch (error) {
+    if (error.response?.status === 422) {
+      const errors = error.response.data.errors;
+      Object.keys(errors).forEach((key) => {
+        if (offerErrors.hasOwnProperty(key)) {
+          offerErrors[key] = Array.isArray(errors[key]) ? errors[key][0] : errors[key];
+        }
+      });
+      toast.error('Por favor revise los errores en el formulario de la oferta.');
+    } else {
+      toast.error(error.response?.data?.message || 'Error al guardar la oferta.');
+    }
+  } finally {
+    offerLoading.value = false;
+  }
+};
+
+const handleOpenAssignEmployees = (item) => {
+  selectedProductForAssign.value = item;
+  isAssignEmployeesDialogVisible.value = true;
+};
+
+const handleAssignedEmployees = () => {
+  // Asignación completada
+};
+
+// Catálogos y Estadísticas
 const laboratories = ref([]);
 const summaryStats = ref({
   total_volume: 0,
@@ -74,6 +154,7 @@ const fullHeaders = [
   { title: 'Cobertura (Días)', key: 'current_stock', align: 'end', sortable: true },
   { title: 'Costo Unit.', key: 'last_cost', align: 'end', sortable: true },
   { title: 'Perfil ABC-XYZ', key: 'final_classification', align: 'center', sortable: true },
+  { title: 'ACCIONES', key: 'actions', align: 'center', sortable: false, width: '120px' },
 ];
 
 const simplifiedHeaders = [
@@ -81,7 +162,8 @@ const simplifiedHeaders = [
   { title: 'PRODUCTO (LABORATORIO)', key: 'name', sortable: true },
   { title: 'STOCK ACTUAL', key: 'current_stock', align: 'end', sortable: true, width: '150px' },
   { title: 'VENTAS EN PERIODO', key: 'sold_units', align: 'end', sortable: true, width: '180px' },
-  { title: 'TOTAL CAPITAL PARADO ($)', key: 'inventory_value', align: 'end', sortable: true, width: '220px' },
+  { title: 'TOTAL CAPITAL PARADO ($)', key: 'inventory_value', align: 'end', sortable: true, width: '200px' },
+  { title: 'ACCIONES', key: 'actions', align: 'center', sortable: false, width: '120px' },
 ];
 
 const activeHeaders = computed(() => {
@@ -110,12 +192,17 @@ const fetchReport = async () => {
       orderBy: sortBy.value[0]?.order || 'desc',
       start_date: dates.start_date,
       end_date: dates.end_date,
-      laboratory_id: selectedLaboratories.value,
+      laboratory_id: selectedLaboratories.value?.length ? selectedLaboratories.value : null,
       final_classification: selectedFinalClassification.value,
       analysis_type: selectedAnalysisType.value,
       min_gmroi: minGmroi.value,
       stock_filter: stockFilter.value !== 'all' ? stockFilter.value : null,
+      search: search.value || null,
     };
+
+    Object.keys(params).forEach(
+      (key) => (params[key] === null || params[key] === undefined || params[key] === '') && delete params[key],
+    );
 
     const response = await axios.get('/bi/abc', { params });
     const responseData = response.data.data;
@@ -171,6 +258,19 @@ watch(selectedAnalysisType, (newType) => {
     sortBy.value = [{ key: 'total_sales', order: 'desc' }];
     isSimplifiedView.value = false;
   }
+});
+
+let searchDebounceTimer;
+watch(search, () => {
+  page.value = 1;
+  clearTimeout(searchDebounceTimer);
+  searchDebounceTimer = setTimeout(() => {
+    fetchReport();
+  }, 350);
+});
+
+watch([selectedDateRange, selectedLaboratories, selectedFinalClassification, selectedAnalysisType, minGmroi, stockFilter], () => {
+  page.value = 1;
 });
 
 watch([page, itemsPerPage, sortBy, selectedDateRange, selectedLaboratories, selectedFinalClassification, selectedAnalysisType, minGmroi, stockFilter], () => {
@@ -478,11 +578,7 @@ const handleFilterCritical = () => {
               </div>
 
               <div class="d-flex align-center gap-1 text-super-xs">
-                <span class="text-disabled truncate" style="max-inline-size: 200px;">
-                  {{ item.active_ingredient || item.active_ingredient_inventory || 'SIN INGREDIENTE' }}
-                </span>
-                <span class="text-disabled mx-1">|</span>
-                <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 150px;">
+                <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 250px;">
                   {{ item.laboratory_name || 'S/L' }}
                 </span>
               </div>
@@ -577,6 +673,43 @@ const handleFilterCritical = () => {
             </VTooltip>
           </template>
 
+          <!-- Acciones Rápidas (Oferta Individual / Asignar Vendedores) -->
+          <template #item.actions="{ item }">
+            <div class="d-flex align-center justify-center gap-1">
+              <VTooltip location="top">
+                <template #activator="{ props: tooltipProps }">
+                  <VBtn
+                    v-bind="tooltipProps"
+                    icon
+                    size="small"
+                    variant="tonal"
+                    color="warning"
+                    @click="handleOpenIndividualOffer(item)"
+                  >
+                    <VIcon icon="tabler-tag" size="16" />
+                  </VBtn>
+                </template>
+                <span>Crear Oferta Individual</span>
+              </VTooltip>
+
+              <VTooltip location="top">
+                <template #activator="{ props: tooltipProps }">
+                  <VBtn
+                    v-bind="tooltipProps"
+                    icon
+                    size="small"
+                    variant="tonal"
+                    color="info"
+                    @click="handleOpenAssignEmployees(item)"
+                  >
+                    <VIcon icon="tabler-user-plus" size="16" />
+                  </VBtn>
+                </template>
+                <span>Asignar a Vendedores</span>
+              </VTooltip>
+            </div>
+          </template>
+
         </VDataTableServer>
       </div>
 
@@ -590,8 +723,29 @@ const handleFilterCritical = () => {
         :is-simplified-view="isSimplifiedView"
         :get-color-class="getColorClass"
         :get-gmroi-color="getGmroiColor"
+        @open-offer="handleOpenIndividualOffer"
+        @open-assign="handleOpenAssignEmployees"
       />
     </VCard>
+
+    <!-- Modal Oferta Individual -->
+    <IndividualCreateOffer
+      v-model="isOfferDialogVisible"
+      :form-data="currentIndvOffer"
+      :form-errors="offerErrors"
+      :is-editing="isEditingOffer"
+      :loading="offerLoading"
+      :product-offer-to-edit="currentOfferToEdit"
+      @save="handleSaveIndividualOffer"
+      @modal-closed="isOfferDialogVisible = false"
+    />
+
+    <!-- Diálogo Asignar a Vendedores -->
+    <AssignProductToEmployeesDialog
+      v-model="isAssignEmployeesDialogVisible"
+      :product="selectedProductForAssign"
+      @assigned="handleAssignedEmployees"
+    />
   </div>
 </template>
 

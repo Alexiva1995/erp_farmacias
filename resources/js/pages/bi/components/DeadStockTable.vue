@@ -101,11 +101,7 @@ const getColorClass = (classification) => {
             {{ item.name.toUpperCase() }}
           </span>
           <div class="d-flex align-center gap-1 text-super-xs">
-            <span class="text-disabled truncate" style="max-inline-size: 200px;">
-              {{ item.active_ingredient || item.active_ingredient_inventory || 'SIN INGREDIENTE' }}
-            </span>
-            <span class="text-disabled mx-1">|</span>
-            <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 150px;">
+            <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 250px;">
               {{ item.laboratory_name || 'S/L' }}
             </span>
           </div>

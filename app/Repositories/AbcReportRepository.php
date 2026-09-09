@@ -143,6 +143,7 @@ class AbcReportRepository implements AbcReportRepositoryInterface
             $productsQuery->where(function($q) use ($term) {
                 $q->where('products.name', 'like', $term)
                   ->orWhere('products.id', 'like', $term)
+                  ->orWhere('products.barcode', 'like', $term)
                   ->orWhere('laboratories.name', 'like', $term);
             });
         }

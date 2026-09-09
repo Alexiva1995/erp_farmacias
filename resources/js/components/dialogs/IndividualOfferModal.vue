@@ -196,7 +196,12 @@ watch(
       if (props.isEditing && props.productOfferToEdit?.product_id) {
         loadAvailableProducts(String(props.productOfferToEdit.product_id));
       } else if (!props.isEditing) {
-        loadAvailableProducts("");
+        const preselectedId = props.formData?.product_id || localFormData.value?.product_id;
+        if (preselectedId) {
+          loadAvailableProducts(String(preselectedId));
+        } else {
+          loadAvailableProducts("");
+        }
       }
     }
   }

@@ -88,6 +88,27 @@ class EmployeeProductController extends Controller
     }
 
     /**
+     * Asignar un producto específico a múltiples empleados
+     */
+    public function assignToEmployees(\App\Http\Requests\EmployeeProduct\AssignProductToEmployeesRequest $request)
+    {
+        try {
+            $validated = $request->validated();
+            $result = $this->actionService->assignProductToEmployees(
+                (int) $validated['product_id'],
+                (array) $validated['employee_ids']
+            );
+
+            return ApiResponse::success([
+                'status' => $result,
+                'message' => 'Producto asignado correctamente a los empleados seleccionados'
+            ]);
+        } catch (\Exception $e) {
+            return ApiResponse::error($e->getMessage());
+        }
+    }
+
+    /**
      * Obtener estadísticas de asignaciones
      */
     public function stats()

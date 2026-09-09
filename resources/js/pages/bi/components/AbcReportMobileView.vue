@@ -12,7 +12,7 @@ const props = defineProps({
   getGmroiColor: { type: Function, required: true },
 });
 
-const emit = defineEmits(['update:page']);
+const emit = defineEmits(['update:page', 'openOffer', 'openAssign']);
 </script>
 
 <template>
@@ -67,12 +67,8 @@ const emit = defineEmits(['update:page']);
               </div>
 
               <div class="d-flex align-center flex-wrap gap-x-2 text-super-xs">
-                <span class="text-medium-emphasis font-weight-bold text-truncate" style="max-inline-size: 150px;">
+                <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 200px;">
                   {{ item.laboratory_name || 'S/L' }}
-                </span>
-                <span class="text-disabled">|</span>
-                <span class="text-disabled truncate" style="max-inline-size: 120px;">
-                  {{ item.active_ingredient || 'Sin ingrediente' }}
                 </span>
               </div>
             </div>
@@ -158,19 +154,38 @@ const emit = defineEmits(['update:page']);
           </div>
         </div>
 
-        <!-- Acciones -->
+        <!-- Acciones Rápidas -->
         <div class="d-flex border-t border-opacity-10">
+          <VBtn 
+            color="warning" 
+            variant="text" 
+            class="rounded-0 text-caption font-weight-bold flex-grow-1 border-r border-opacity-10" 
+            height="40"
+            @click="emit('openOffer', item)"
+          >
+            <VIcon icon="tabler-tag" size="16" class="me-1" />
+            Oferta
+          </VBtn>
+          <VBtn 
+            color="info" 
+            variant="text" 
+            class="rounded-0 text-caption font-weight-bold flex-grow-1 border-r border-opacity-10" 
+            height="40"
+            @click="emit('openAssign', item)"
+          >
+            <VIcon icon="tabler-user-plus" size="16" class="me-1" />
+            Asignar
+          </VBtn>
           <VBtn 
             :href="'/inventory/traceability?q=' + item.id" 
             target="_blank"
-            block 
             color="primary" 
             variant="text" 
-            class="rounded-0 text-caption font-weight-bold" 
+            class="rounded-0 text-caption font-weight-bold flex-grow-1" 
             height="40"
           >
-            <VIcon icon="tabler-history" size="18" class="me-2" />
-            Ver Trazabilidad
+            <VIcon icon="tabler-history" size="16" class="me-1" />
+            Trazabilidad
           </VBtn>
         </div>
       </VCard>
