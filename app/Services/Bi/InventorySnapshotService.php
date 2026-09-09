@@ -319,14 +319,14 @@ class InventorySnapshotService
             ->get()
             ->keyBy('product_id');
 
-        // 2. Obtener fechas de vencimiento más próximas con stock disponible
-        $lotsData = DB::table('product_lots')
-            ->select('product_id', DB::raw('MIN(expiration_date) as next_expiration_date'))
+        // 2. Obtener todos los lotes activos agrupados por producto para evaluación cronológica FEFO
+        $lotsByProduct = DB::table('product_lots')
+            ->select('product_id', 'quantity', 'expiration_date')
             ->where('quantity', '>', 0)
             ->whereNotNull('expiration_date')
-            ->groupBy('product_id')
+            ->orderBy('expiration_date', 'asc')
             ->get()
-            ->keyBy('product_id');
+            ->groupBy('product_id');
 
         // 3. Obtener el catálogo de productos con sus costos, precios y laboratorios
         $products = DB::table('products')
@@ -347,7 +347,7 @@ class InventorySnapshotService
         foreach ($products as $prod) {
             $prodId = (int) $prod->id;
             $sales = $salesData->get($prodId);
-            $lot = $lotsData->get($prodId);
+            $productLots = $lotsByProduct->get($prodId);
 
             $currentStock = max(0, (float) ($prod->current_stock ?? 0));
             $soldUnits = $sales ? max(0, (float) $sales->sold_units) : 0.0;
@@ -391,11 +391,45 @@ class InventorySnapshotService
                 ? ($marginAmount / $inventoryValue) * (365 / max(1, $periodDays)) * 100
                 : ($marginAmount > 0 ? 9999.0 : 0.0);
 
-            // Días para vencer calculados con respecto a la fecha de corte
+            // 3. Simulación cronológica multi-lote FEFO (Mes a Mes) con deducción de mermas
             $daysToExpiration = null;
-            if ($lot && !empty($lot->next_expiration_date)) {
-                $lotExpDate = Carbon::parse($lot->next_expiration_date)->startOfDay();
-                $daysToExpiration = (int) $cutoffDate->copy()->startOfDay()->diffInDays($lotExpDate, false);
+            $riskExpiringUnits = 0.0;
+
+            if ($productLots && $productLots->isNotEmpty() && $currentStock > 0) {
+                $firstLot = $productLots->first();
+                $lotExpDateFirst = Carbon::parse($firstLot->expiration_date)->startOfDay();
+                $daysToExpiration = (int) $cutoffDate->copy()->startOfDay()->diffInDays($lotExpDateFirst, false);
+
+                $currentDay = 0;
+                foreach ($productLots as $lot) {
+                    $lotQty = (float) $lot->quantity;
+                    $lotExpDate = Carbon::parse($lot->expiration_date)->startOfDay();
+                    $daysToLotExp = (int) $cutoffDate->copy()->startOfDay()->diffInDays($lotExpDate, false);
+
+                    if ($daysToLotExp <= 0) {
+                        $riskExpiringUnits += $lotQty;
+                        continue;
+                    }
+
+                    if ($dailySales > 0) {
+                        $availableDays = max(0, $daysToLotExp - $currentDay);
+                        $maxSalesCapacity = $availableDays * $dailySales;
+
+                        if ($lotQty <= $maxSalesCapacity) {
+                            $daysUsed = $lotQty / $dailySales;
+                            $currentDay += $daysUsed;
+                        } else {
+                            $unitsSold = $maxSalesCapacity;
+                            $unitsExpired = $lotQty - $unitsSold;
+                            $riskExpiringUnits += $unitsExpired;
+                            $currentDay = $daysToLotExp;
+                        }
+                    } else {
+                        if ($daysToLotExp <= 180) {
+                            $riskExpiringUnits += $lotQty;
+                        }
+                    }
+                }
             }
 
             $itemsToProcess[] = [

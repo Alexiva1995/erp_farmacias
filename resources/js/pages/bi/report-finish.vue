@@ -6,6 +6,8 @@ import { toast } from '@/plugins/sweetalert';
 import Swal from 'sweetalert2';
 import { formatCurrency } from '@/utils/currencyFormatter';
 
+import SnapshotListTable from '@/components/bi/finish/SnapshotListTable.vue';
+import CreateSnapshotDialog from '@/components/bi/finish/CreateSnapshotDialog.vue';
 import FinishModule1General from '@/components/bi/FinishModule1General.vue';
 import FinishModule2CzRecovery from '@/components/bi/FinishModule2CzRecovery.vue';
 import FinishModule3AbRestock from '@/components/bi/FinishModule3AbRestock.vue';
@@ -25,11 +27,6 @@ const search = ref('');
 // --- Diálogo para Nueva Foto Finish ---
 const isCreateDialogOpen = ref(false);
 const creatingSnapshot = ref(false);
-const createForm = reactive({
-  cutoff_date: new Date().toISOString().split('T')[0],
-  period_days: 30,
-  name: '',
-});
 const createErrors = reactive({
   cutoff_date: '',
   period_days: '',
@@ -204,29 +201,15 @@ const handleBackToList = () => {
 
 // --- Crear Nueva Foto Finish ---
 const handleOpenCreateDialog = () => {
-  const today = new Date().toISOString().split('T')[0];
-  createForm.cutoff_date = today;
-  createForm.period_days = 30;
-  createForm.name = `Foto Finish ${today}`;
-  createErrors.cutoff_date = '';
-  createErrors.period_days = '';
-  createErrors.name = '';
+  Object.keys(createErrors).forEach(key => (createErrors[key] = ''));
   isCreateDialogOpen.value = true;
 };
 
-const handleCreateSnapshot = async () => {
-  createErrors.cutoff_date = '';
-  createErrors.period_days = '';
-  createErrors.name = '';
+const handleCreateSnapshot = async (payload) => {
+  Object.keys(createErrors).forEach(key => (createErrors[key] = ''));
   creatingSnapshot.value = true;
 
   try {
-    const payload = {
-      cutoff_date: createForm.cutoff_date,
-      period_days: Number(createForm.period_days),
-      name: createForm.name || null,
-    };
-
     const response = await axios.post('/bi/snapshots', payload);
     if (response.status === 201 || response.status === 200) {
       toast.success('Foto Finish generada y guardada con éxito.');
@@ -308,7 +291,7 @@ const handleExportSnapshot = async (snapshotId) => {
   }
 };
 
-// Filtros reactivos en memoria para listas de módulos 2, 3 y 4
+// Filtros reactivos en memoria para módulos 2, 3 y 4
 const filteredCzItems = computed(() => {
   const items = auditData.value.module_2_cz_recovery?.items || [];
   if (!czSearch.value) return items;
@@ -342,7 +325,7 @@ const filteredMarginAlerts = computed(() => {
   );
 });
 
-// Watchers
+// Watchers con Debounce
 let searchDebounce;
 watch(search, () => {
   page.value = 1;
@@ -382,7 +365,7 @@ onMounted(() => {
 
 <template>
   <div class="report-finish-view pb-12">
-    <!-- Breadcrumb & Header Principal -->
+    <!-- Header Principal -->
     <div class="d-flex align-center justify-space-between flex-wrap gap-3 mb-4">
       <div>
         <div class="d-flex align-center gap-2 mb-1">
@@ -434,181 +417,27 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- VISTA 1: LISTADO DE FOTOS FINISH HISTÓRICAS -->
-    <template v-if="activeTab === 'list'">
-      <VCard class="rounded-lg border shadow-sm overflow-hidden bg-surface mb-6">
-        <VCardText class="pa-4">
-          <VRow align="center" dense class="mb-2">
-            <VCol cols="12" md="4">
-              <AppTextField
-                v-model="search"
-                placeholder="Buscar por nombre o fecha (YYYY-MM-DD)..."
-                prepend-inner-icon="tabler-search"
-                clearable
-                density="compact"
-                hide-details
-                variant="outlined"
-                :disabled="loading"
-              />
-            </VCol>
-            <VCol cols="12" md="auto" class="ms-auto d-flex align-center gap-2">
-              <VBtn
-                icon
-                variant="text"
-                color="secondary"
-                size="36"
-                class="rounded-circle"
-                :disabled="loading"
-                @click="fetchSnapshots"
-              >
-                <VIcon icon="tabler-refresh" size="18" />
-                <VTooltip activator="parent" location="top">Refrescar listado</VTooltip>
-              </VBtn>
-            </VCol>
-          </VRow>
-
-          <VDataTableServer
-            v-model:items-per-page="itemsPerPage"
-            v-model:page="page"
-            v-model:sort-by="sortBy"
-            :items-length="totalSnapshots"
-            :headers="snapshotHeaders"
-            :items="snapshots"
-            :loading="loading"
-            class="premium-table"
-            hover
-            density="comfortable"
-          >
-            <!-- Empty state -->
-            <template #no-data>
-              <div class="py-10 text-center text-medium-emphasis">
-                <VIcon icon="tabler-camera-off" size="52" class="mb-3 opacity-40" />
-                <p class="text-body-1 font-weight-medium mb-1">Aún no se han generado Fotos Finish</p>
-                <p class="text-caption text-disabled mb-4">
-                  Las fotos se generan automáticamente el día 1 de cada mes a las 02:00 AM o manualmente con cualquier fecha de corte.
-                </p>
-                <VBtn size="small" color="primary" variant="flat" @click="handleOpenCreateDialog">
-                  <VIcon icon="tabler-camera-plus" size="16" class="me-1" />
-                  Tomar Primera Foto Finish
-                </VBtn>
-              </div>
-            </template>
-
-            <!-- ID -->
-            <template #item.id="{ item }">
-              <span class="font-weight-black text-primary">#{{ item.id }}</span>
-            </template>
-
-            <!-- Nombre -->
-            <template #item.name="{ item }">
-              <div class="d-flex flex-column py-2">
-                <span class="font-weight-bold text-high-emphasis text-base">{{ item.name }}</span>
-                <span class="text-caption text-medium-emphasis">
-                  Creado: {{ item.created_at ? new Date(item.created_at).toLocaleDateString() : 'N/D' }}
-                  <span v-if="item.creator_name"> por {{ item.creator_name }}</span>
-                </span>
-              </div>
-            </template>
-
-            <!-- Fecha de Corte -->
-            <template #item.cutoff_date="{ item }">
-              <VChip size="small" color="primary" variant="tonal" class="font-weight-bold">
-                <VIcon icon="tabler-calendar" size="14" class="me-1" />
-                {{ item.cutoff_date }}
-              </VChip>
-            </template>
-
-            <!-- SKUs -->
-            <template #item.total_products="{ item }">
-              <span class="font-weight-black">{{ item.total_products }}</span>
-            </template>
-
-            <!-- Stock Total -->
-            <template #item.total_inventory_units="{ item }">
-              <span class="font-weight-bold">{{ Number(item.total_inventory_units).toLocaleString() }}</span>
-            </template>
-
-            <!-- Valor Inventario -->
-            <template #item.total_inventory_value="{ item }">
-              <span class="font-weight-black text-primary text-base">{{ formatCurrency(item.total_inventory_value) }}</span>
-            </template>
-
-            <!-- Ventas 30d -->
-            <template #item.total_sales_value="{ item }">
-              <span class="font-weight-bold text-success">{{ formatCurrency(item.total_sales_value) }}</span>
-            </template>
-
-            <!-- Sobrestock -->
-            <template #item.overstock_products_count="{ item }">
-              <VTooltip location="top">
-                <template #activator="{ props: tipProps }">
-                  <VChip
-                    v-bind="tipProps"
-                    :color="item.overstock_products_count > 0 ? 'error' : 'success'"
-                    size="small"
-                    variant="tonal"
-                    class="font-weight-bold"
-                  >
-                    <VIcon :icon="item.overstock_products_count > 0 ? 'tabler-alert-triangle' : 'tabler-circle-check'" size="14" class="me-1" />
-                    {{ item.overstock_products_count }} SKUs
-                  </VChip>
-                </template>
-                <span>Capital en Sobrestock: {{ formatCurrency(item.overstock_inventory_value) }}</span>
-              </VTooltip>
-            </template>
-
-            <!-- Tipo -->
-            <template #item.is_automatic="{ item }">
-              <VChip size="x-small" :color="item.is_automatic ? 'info' : 'default'" variant="flat">
-                {{ item.is_automatic ? 'Automático' : 'Manual' }}
-              </VChip>
-            </template>
-
-            <!-- Acciones -->
-            <template #item.actions="{ item }">
-              <div class="d-flex align-center justify-center gap-1">
-                <VBtn
-                  icon
-                  variant="text"
-                  size="30"
-                  color="primary"
-                  @click="handleOpenDetail(item)"
-                >
-                  <VIcon icon="tabler-eye" size="18" />
-                  <VTooltip activator="parent" location="top">Ver 4 Módulos de Control</VTooltip>
-                </VBtn>
-
-                <VBtn
-                  icon
-                  variant="text"
-                  size="30"
-                  color="success"
-                  @click="handleExportSnapshot(item.id)"
-                >
-                  <VIcon icon="tabler-download" size="18" />
-                  <VTooltip activator="parent" location="top">Descargar Excel</VTooltip>
-                </VBtn>
-
-                <VBtn
-                  icon
-                  variant="text"
-                  size="30"
-                  color="error"
-                  @click="handleDeleteSnapshot(item)"
-                >
-                  <VIcon icon="tabler-trash" size="18" />
-                  <VTooltip activator="parent" location="top">Eliminar Foto Finish</VTooltip>
-                </VBtn>
-              </div>
-            </template>
-          </VDataTableServer>
-        </VCardText>
-      </VCard>
-    </template>
+    <!-- VISTA 1: LISTADO DE FOTOS FINISH HISTÓRICAS (Desacoplado) -->
+    <SnapshotListTable
+      v-if="activeTab === 'list'"
+      v-model:page="page"
+      v-model:items-per-page="itemsPerPage"
+      v-model:sort-by="sortBy"
+      v-model:search="search"
+      :snapshots="snapshots"
+      :total-snapshots="totalSnapshots"
+      :loading="loading"
+      :headers="snapshotHeaders"
+      @refresh="fetchSnapshots"
+      @open-create="handleOpenCreateDialog"
+      @open-detail="handleOpenDetail"
+      @export-excel="handleExportSnapshot"
+      @delete-snapshot="handleDeleteSnapshot"
+    />
 
     <!-- VISTA 2: DETALLE CON LOS 4 MÓDULOS DE CONTROL ESTRATÉGICO -->
     <template v-else-if="activeTab === 'detail' && selectedSnapshot">
-      <!-- PESTAÑAS DE NAVEGACIÓN ENTRE LOS 4 MÓDULOS -->
+      <!-- Pestañas de Navegación de los 4 Módulos -->
       <VCard class="mb-4 rounded-lg border shadow-sm overflow-hidden bg-surface">
         <VTabs
           v-model="activeModuleTab"
@@ -705,103 +534,17 @@ onMounted(() => {
       </VWindow>
     </template>
 
-    <!-- DIÁLOGO: TOMAR FOTO FINISH MANUAL -->
-    <VDialog v-model="isCreateDialogOpen" max-width="500" persistent>
-      <VCard class="rounded-xl overflow-hidden">
-        <VCardItem class="bg-primary text-white pa-4">
-          <div class="d-flex align-center justify-space-between">
-            <div class="d-flex align-center gap-2">
-              <VIcon icon="tabler-camera-plus" size="22" />
-              <h3 class="text-h6 font-weight-bold text-white mb-0">Tomar Foto Finish</h3>
-            </div>
-            <VBtn icon variant="text" size="30" color="white" :disabled="creatingSnapshot" @click="isCreateDialogOpen = false">
-              <VIcon icon="tabler-x" size="20" />
-            </VBtn>
-          </div>
-        </VCardItem>
-
-        <VCardText class="pa-5">
-          <p class="text-body-2 text-medium-emphasis mb-4">
-            Selecciona la fecha de corte para congelar la radiografía de inventario, existencias, ventas y cálculo de sobrestock.
-          </p>
-
-          <VRow dense>
-            <VCol cols="12">
-              <label class="text-caption font-weight-bold mb-1 d-block">Fecha de Corte *</label>
-              <AppTextField
-                v-model="createForm.cutoff_date"
-                type="date"
-                :max="new Date().toISOString().split('T')[0]"
-                density="compact"
-                variant="outlined"
-                :error-messages="createErrors.cutoff_date"
-                :disabled="creatingSnapshot"
-              />
-            </VCol>
-
-            <VCol cols="12">
-              <label class="text-caption font-weight-bold mb-1 d-block">Periodo de Ventas (Días)</label>
-              <AppTextField
-                v-model="createForm.period_days"
-                type="number"
-                min="7"
-                max="365"
-                density="compact"
-                variant="outlined"
-                placeholder="30"
-                :error-messages="createErrors.period_days"
-                :disabled="creatingSnapshot"
-              />
-              <span class="text-super-xs text-medium-emphasis">Ventana de días hacia atrás desde la fecha de corte (por defecto 30 días).</span>
-            </VCol>
-
-            <VCol cols="12" class="mt-2">
-              <label class="text-caption font-weight-bold mb-1 d-block">Nombre / Identificador (Opcional)</label>
-              <AppTextField
-                v-model="createForm.name"
-                placeholder="Ej: Cierre Agosto 2026, Auditoría Q3..."
-                density="compact"
-                variant="outlined"
-                :error-messages="createErrors.name"
-                :disabled="creatingSnapshot"
-              />
-            </VCol>
-          </VRow>
-        </VCardText>
-
-        <VDivider class="border-opacity-10" />
-
-        <VCardActions class="pa-4 d-flex justify-end gap-2">
-          <VBtn
-            variant="tonal"
-            color="secondary"
-            :disabled="creatingSnapshot"
-            @click="isCreateDialogOpen = false"
-          >
-            Cancelar
-          </VBtn>
-
-          <VBtn
-            variant="flat"
-            color="primary"
-            :loading="creatingSnapshot"
-            :disabled="creatingSnapshot"
-            @click="handleCreateSnapshot"
-          >
-            <VIcon icon="tabler-camera" size="18" class="me-1" />
-            Congelar Foto Finish
-          </VBtn>
-        </VCardActions>
-      </VCard>
-    </VDialog>
+    <!-- MODAL DESACOPLADO: TOMAR FOTO FINISH -->
+    <CreateSnapshotDialog
+      v-model="isCreateDialogOpen"
+      :loading="creatingSnapshot"
+      :errors="createErrors"
+      @submit="handleCreateSnapshot"
+    />
   </div>
 </template>
 
 <style scoped>
-.text-super-xs {
-  font-size: 0.6875rem !important;
-  line-height: 0.875rem !important;
-}
 .gap-1 { gap: 4px !important; }
 .gap-2 { gap: 8px !important; }
 .gap-3 { gap: 12px !important; }
