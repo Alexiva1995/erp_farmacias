@@ -114,10 +114,10 @@ const getClassColor = (c) => {
                 </VChip>
               </td>
               <td class="text-end font-weight-bold" :class="item.snapshot_stock <= 0 ? 'text-error' : ''">
-                {{ item.snapshot_stock <= 0 ? '0 (Agotado)' : ${item.snapshot_stock} unds }}
+                {{ item.snapshot_stock <= 0 ? '0 (Agotado)' : `${item.snapshot_stock} unds` }}
               </td>
               <td class="text-end text-caption">
-                {{ item.snapshot_coverage_days < 10 ? ${item.snapshot_coverage_days} días (Riesgo) : ${item.snapshot_coverage_days}d }}
+                {{ item.snapshot_coverage_days < 10 ? `${item.snapshot_coverage_days} días (Riesgo)` : `${item.snapshot_coverage_days}d` }}
               </td>
               <td class="text-end font-weight-black text-primary">
                 {{ item.current_stock }} unds

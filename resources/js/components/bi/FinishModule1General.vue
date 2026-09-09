@@ -276,21 +276,21 @@ const getClassColor = (c) => {
               variant="tonal"
               class="font-weight-bold"
             >
-              {{ item.cobertura_dias >= 999 ? '999d (Sin Ventas)' : ${Math.round(item.cobertura_dias)} días }}
+              {{ item.cobertura_dias >= 999 ? '999d (Sin Ventas)' : `${Math.round(item.cobertura_dias)} días` }}
             </VChip>
           </template>
 
           <!-- GMROI Anual -->
           <template #item.gmroi_anual_porcentaje="{ item }">
             <span class="font-weight-bold">
-              {{ item.gmroi_anual_porcentaje >= 9999 ? 'MAX' : ${Math.round(item.gmroi_anual_porcentaje)}% }}
+              {{ item.gmroi_anual_porcentaje >= 9999 ? 'MAX' : `${Math.round(item.gmroi_anual_porcentaje)}%` }}
             </span>
           </template>
 
           <!-- Días para Vencer -->
           <template #item.dias_para_vencer="{ item }">
             <span v-if="item.dias_para_vencer !== null" class="font-weight-bold" :class="item.dias_para_vencer <= 90 ? 'text-error' : 'text-medium-emphasis'">
-              {{ item.dias_para_vencer <= 0 ? 'Vencido' : ${item.dias_para_vencer}d }}
+              {{ item.dias_para_vencer <= 0 ? 'Vencido' : `${item.dias_para_vencer}d` }}
             </span>
             <span v-else class="text-disabled text-caption">S/F</span>
           </template>

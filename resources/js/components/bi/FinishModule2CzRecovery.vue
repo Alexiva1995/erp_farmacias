@@ -113,7 +113,7 @@ const emit = defineEmits(['update:search']);
               </td>
               <td class="text-end">{{ formatCurrency(item.current_value_usd) }}</td>
               <td class="text-end font-weight-black" :class="item.cash_released_usd > 0 ? 'text-success' : 'text-medium-emphasis'">
-                {{ item.cash_released_usd > 0 ? + : formatCurrency(item.cash_released_usd) }}
+                {{ item.cash_released_usd > 0 ? `+${formatCurrency(item.cash_released_usd)}` : formatCurrency(item.cash_released_usd) }}
               </td>
               <td class="text-center">
                 <VChip

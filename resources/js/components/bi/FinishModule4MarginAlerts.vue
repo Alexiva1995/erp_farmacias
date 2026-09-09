@@ -72,7 +72,7 @@ const emit = defineEmits(['update:search']);
               density="compact"
               hide-details
               variant="outlined"
-              @update:model-value="emit('update:search', )"
+              @update:model-value="emit('update:search', $event)"
             />
           </VCol>
         </VRow>
