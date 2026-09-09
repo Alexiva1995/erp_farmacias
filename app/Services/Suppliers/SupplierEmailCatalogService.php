@@ -122,7 +122,13 @@ class SupplierEmailCatalogService
                     // Encontramos el último correo con Excel de este proveedor
                     $foundValidEmail = true;
 
-                    foreach ($emailData['attachments'] as $attachment) {
+                    $fileItems = [];
+                    $primaryStructure = $connection->structure ?? [];
+                    $secondaryStructure = (!empty($connection->secondary_structure) && is_array($connection->secondary_structure))
+                        ? $connection->secondary_structure
+                        : $primaryStructure;
+
+                    foreach ($emailData['attachments'] as $index => $attachment) {
                         $filename = $attachment['filename'];
                         $content = $attachment['content'];
 
@@ -136,45 +142,65 @@ class SupplierEmailCatalogService
                                 'subject' => $emailData['subject'],
                                 'from' => $emailData['from_email'],
                                 'date' => $emailData['date'],
+                                'format_used' => ($index === 1 && !empty($connection->secondary_structure)) ? 'Formato 2' : 'Formato 1',
                             ];
                             continue;
                         }
 
                         // Guardar archivo en disco local con ruta relativa a temp/
-                        $storagePath = 'temp/' . Str::slug($supplier->name) . '_' . date('Ymd_His') . '_' . $filename;
+                        $storagePath = 'temp/' . Str::slug($supplier->name) . '_' . date('Ymd_His') . '_' . $index . '_' . $filename;
                         Storage::disk('local')->put($storagePath, $content);
 
-                        // Registrar estado
+                        $chosenMap = ($index === 1 && !empty($connection->secondary_structure))
+                            ? $secondaryStructure
+                            : $primaryStructure;
+
+                        $fileItems[] = [
+                            'path' => $storagePath,
+                            'column_map' => $chosenMap,
+                            'filename' => $filename,
+                        ];
+                    }
+
+                    if ($dryRun) {
+                        break;
+                    }
+
+                    if (!empty($fileItems)) {
+                        // Registrar estado único para el conjunto de archivos del correo
                         $status = SupplierConnectionStatus::create([
                             'supplier_id' => $supplier->id,
                             'user_id' => $userId,
                             'status' => 'processing',
-                            'message' => 'Procesando catálogo recibido por correo...',
+                            'message' => 'Procesando ' . count($fileItems) . ' archivo(s) de catálogo recibidos por correo...',
                         ]);
 
                         // Obtener la tasa de cambio oficial del día en que llegó el correo
                         $emailRate = $this->getExchangeRateForDate($emailData['date'] ?? null) ?: $rate;
 
-                        // Despachar Job de forma síncrona para procesar los productos inmediatamente
+                        // Despachar Job de forma síncrona combinando todos los archivos con sus respectivos formatos
                         ProcessSupplierConnectionJob::dispatchSync(
                             $supplier,
                             $userId,
-                            $storagePath,
-                            $connection->structure,
+                            $fileItems,
+                            $primaryStructure,
                             $emailRate,
                             $status->id
                         );
 
-                        $processed[] = [
-                            'supplier_id' => $supplier->id,
-                            'supplier_name' => $supplier->name,
-                            'filename' => $filename,
-                            'storage_path' => $storagePath,
-                            'status_id' => $status->id,
-                            'subject' => $emailData['subject'],
-                            'from' => $emailData['from_email'],
-                            'date' => $emailData['date'],
-                        ];
+                        foreach ($fileItems as $idx => $fItem) {
+                            $processed[] = [
+                                'supplier_id' => $supplier->id,
+                                'supplier_name' => $supplier->name,
+                                'filename' => $fItem['filename'],
+                                'storage_path' => $fItem['path'],
+                                'status_id' => $status->id,
+                                'subject' => $emailData['subject'],
+                                'from' => $emailData['from_email'],
+                                'date' => $emailData['date'],
+                                'format_used' => ($idx === 1 && !empty($connection->secondary_structure)) ? 'Formato 2' : 'Formato 1',
+                            ];
+                        }
                     }
 
                     // Detenerse al procesar el último correo válido

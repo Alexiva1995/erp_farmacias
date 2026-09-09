@@ -57,10 +57,11 @@ class SyncEmailSupplierCatalogsCommand extends Command
 
             if (!empty($result['processed'])) {
                 $this->table(
-                    ['Proveedor', 'Archivo', 'De', 'Asunto'],
+                    ['Proveedor', 'Archivo', 'Formato', 'De', 'Asunto'],
                     array_map(fn($p) => [
                         $p['supplier_name'] ?? 'N/A',
                         $p['filename'] ?? 'N/A',
+                        $p['format_used'] ?? 'Formato 1',
                         $p['from'] ?? 'N/A',
                         $p['subject'] ?? 'N/A',
                     ], $result['processed'])
