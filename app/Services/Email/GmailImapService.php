@@ -17,6 +17,9 @@ class GmailImapService
      */
     public function connect(string $host, int $port, string $email, string $password, int $timeout = 25): void
     {
+        // Elevar límite de memoria para procesar adjuntos y correos pesados en base64
+        @ini_set('memory_limit', '512M');
+
         $context = stream_context_create([
             'ssl' => [
                 'verify_peer' => false,

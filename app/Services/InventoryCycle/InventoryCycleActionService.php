@@ -95,7 +95,7 @@ class InventoryCycleActionService
 
                 $todayCountsCount = ProductCount::where('user_id', $userId)
                     ->where('cycle_id', $activeCycle->id)
-                    ->whereDate('count_date', $today)
+                    ->whereDate('created_at', $today)
                     ->count();
 
                 $currentCountIndex = $todayCountsCount + 1;
@@ -124,7 +124,6 @@ class InventoryCycleActionService
                     'status' => $status,
                     'supervisor_id' => $supervisorId,
                     'product_lot_id' => null,
-                    'count_date' => now(),
                     'quota_tier' => $quotaTier,
                     'points_earned' => $pointsEarned,
                 ]);

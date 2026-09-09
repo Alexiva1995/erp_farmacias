@@ -38,15 +38,60 @@ class AbcReportController extends Controller
         // El servicio maneja todo el cruce y generación del reporte
         $reportData = $this->service->getCalculatedAbcReport($filtros);
 
-        // Si se provee sortBy / orderBy, reordenamos en base a los cálculos finales
+        // Si se provee sortBy / orderBy, reordenamos en base a los cálculos finales con comparación tipada estricta
         $sortBy = $filtros['sortBy'] ?? 'total_sales';
-        $orderBy = $filtros['orderBy'] ?? 'desc';
+        $orderBy = strtolower((string) ($filtros['orderBy'] ?? 'desc')) === 'asc' ? 'asc' : 'desc';
+        $analysisType = $filtros['analysis_type'] ?? 'all';
 
-        if ($orderBy === 'desc') {
-            $reportData = $reportData->sortByDesc($sortBy)->values();
-        } else {
-            $reportData = $reportData->sortBy($sortBy)->values();
-        }
+        $numericFields = [
+            'id', 'sold_units', 'total_sales', 'total_cost', 'margin_amount',
+            'margin_percentage', 'inventory_days', 'current_stock', 'last_cost',
+            'sale_price', 'gmroi', 'inventory_value', 'sales_average',
+            'days_to_expiration', 'months_to_expiration', 'risk_expiring_units',
+            'risk_expiring_capital', 'contribution_sales_pct', 'contribution_margin_pct',
+            'individual_offer_discount',
+        ];
+
+        $reportData = $reportData->sort(function ($a, $b) use ($sortBy, $orderBy, $numericFields, $analysisType) {
+            $valA = null;
+            $valB = null;
+
+            // Mapeo dinámico cuando se está en vista de riesgo de vencimiento
+            if ($analysisType === 'expiring_risk') {
+                if ($sortBy === 'inventory_value' || $sortBy === 'risk_expiring_capital') {
+                    $valA = (float) (($a->risk_expiring_capital > 0) ? $a->risk_expiring_capital : $a->inventory_value);
+                    $valB = (float) (($b->risk_expiring_capital > 0) ? $b->risk_expiring_capital : $b->inventory_value);
+                } elseif ($sortBy === 'current_stock' || $sortBy === 'risk_expiring_units') {
+                    $valA = (float) (($a->risk_expiring_units > 0) ? $a->risk_expiring_units : $a->current_stock);
+                    $valB = (float) (($b->risk_expiring_units > 0) ? $b->risk_expiring_units : $b->current_stock);
+                }
+            }
+
+            if ($valA === null) {
+                $valA = $a->{$sortBy} ?? ($a->product_name ?? null);
+                $valB = $b->{$sortBy} ?? ($b->product_name ?? null);
+            }
+
+            // 1. Comparación Numérica (fuerza float para evitar orden lexicográfico como "90" > "1000")
+            if (in_array($sortBy, $numericFields, true) || is_numeric($valA) || is_numeric($valB)) {
+                $numA = $valA !== null ? (float) $valA : ($orderBy === 'desc' ? -PHP_FLOAT_MAX : PHP_FLOAT_MAX);
+                $numB = $valB !== null ? (float) $valB : ($orderBy === 'desc' ? -PHP_FLOAT_MAX : PHP_FLOAT_MAX);
+                return $orderBy === 'desc' ? ($numB <=> $numA) : ($numA <=> $numB);
+            }
+
+            // 2. Comparación de Fechas
+            if (in_array($sortBy, ['last_sale_date', 'next_expiration_date', 'risk_lot_date'], true)) {
+                $timeA = $valA ? strtotime((string) $valA) : ($orderBy === 'desc' ? -PHP_INT_MAX : PHP_INT_MAX);
+                $timeB = $valB ? strtotime((string) $valB) : ($orderBy === 'desc' ? -PHP_INT_MAX : PHP_INT_MAX);
+                return $orderBy === 'desc' ? ($timeB <=> $timeA) : ($timeA <=> $timeB);
+            }
+
+            // 3. Comparación Natural de Texto
+            $strA = (string) ($valA ?? '');
+            $strB = (string) ($valB ?? '');
+            $cmp = strnatcasecmp($strA, $strB);
+            return $orderBy === 'desc' ? -$cmp : $cmp;
+        })->values();
 
         // Paginación Manual (al requerir cálculos porcentuales masivos 
         // sobre el volumen total es más seguro procesar y luego paginar la colección)

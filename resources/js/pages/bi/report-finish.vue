@@ -140,7 +140,7 @@ const fetchSnapshots = async () => {
     totalSnapshots.value = response.data.meta.total;
   } catch (err) {
     console.error('Error fetching snapshots:', err);
-    toast.error('No se pudieron cargar las Fotos Finish.');
+    toast.error(err.response?.data?.message || 'No se pudieron cargar las Fotos Finish.');
   } finally {
     loading.value = false;
   }

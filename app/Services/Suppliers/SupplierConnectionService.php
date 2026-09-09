@@ -56,6 +56,12 @@ class SupplierConnectionService
     public function fetchFromFtp(SupplierConnection $connection)
     {
         $host = trim((string) ($connection->host ?? ''));
+        // Limpiar protocolos (https://, http://, ftp://, ftps://) y barras finales si fueron ingresados en la URL
+        $host = preg_replace('#^(https?|ftps?)://#i', '', $host);
+        $host = explode('/', $host)[0];
+        $host = explode(':', $host)[0];
+        $host = trim($host);
+
         $port = (int) ($connection->port ?: 21);
         $user = (string) ($connection->username ?? '');
         $pass = (string) FtpCrypt::decrypt($connection->password ?? '');

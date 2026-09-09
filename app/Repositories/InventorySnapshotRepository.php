@@ -28,9 +28,22 @@ class InventorySnapshotRepository implements InventorySnapshotRepositoryInterfac
             });
         }
 
-        $sortBy = $filters['sortBy'] ?? 'cutoff_date';
-        $orderBy = $filters['orderBy'] ?? 'desc';
-        $perPage = (int) ($filters['itemsPerPage'] ?? 10);
+        $allowedSorts = [
+            'id', 'name', 'cutoff_date', 'period_days', 'total_products',
+            'total_inventory_units', 'total_inventory_value', 'total_sales_units',
+            'total_sales_value', 'overstock_products_count', 'overstock_inventory_value', 'created_at',
+        ];
+
+        $rawSortBy = is_array($filters['sortBy'] ?? null) 
+            ? ($filters['sortBy'][0]['key'] ?? 'cutoff_date') 
+            : ($filters['sortBy'] ?? 'cutoff_date');
+        $sortBy = in_array($rawSortBy, $allowedSorts, true) ? $rawSortBy : 'cutoff_date';
+
+        $rawOrderBy = is_array($filters['sortBy'] ?? null) 
+            ? ($filters['sortBy'][0]['order'] ?? 'desc') 
+            : ($filters['orderBy'] ?? 'desc');
+        $orderBy = strtolower((string) $rawOrderBy) === 'asc' ? 'asc' : 'desc';
+        $perPage = max(1, (int) ($filters['itemsPerPage'] ?? 10));
 
         return $query->orderBy($sortBy, $orderBy)->paginate($perPage);
     }
@@ -63,9 +76,24 @@ class InventorySnapshotRepository implements InventorySnapshotRepositoryInterfac
             $itemsQuery->where('is_overstock', $isOverstock);
         }
 
-        $sortBy = $filters['sortBy'] ?? 'inventory_value_usd';
-        $orderBy = $filters['orderBy'] ?? 'desc';
-        $perPage = (int) ($filters['itemsPerPage'] ?? 15);
+        $allowedItemSorts = [
+            'id', 'product_id', 'product_name', 'laboratory_name', 'sales_class',
+            'sold_units_30d', 'total_sales_usd_30d', 'current_stock_units',
+            'unit_cost_usd', 'sale_price_usd', 'inventory_value_usd',
+            'margin_percentage', 'coverage_days', 'gmroi_annual_percentage',
+            'days_to_expiration', 'is_overstock',
+        ];
+
+        $rawSortBy = is_array($filters['sortBy'] ?? null) 
+            ? ($filters['sortBy'][0]['key'] ?? 'inventory_value_usd') 
+            : ($filters['sortBy'] ?? 'inventory_value_usd');
+        $sortBy = in_array($rawSortBy, $allowedItemSorts, true) ? $rawSortBy : 'inventory_value_usd';
+
+        $rawOrderBy = is_array($filters['sortBy'] ?? null) 
+            ? ($filters['sortBy'][0]['order'] ?? 'desc') 
+            : ($filters['orderBy'] ?? 'desc');
+        $orderBy = strtolower((string) $rawOrderBy) === 'asc' ? 'asc' : 'desc';
+        $perPage = max(1, (int) ($filters['itemsPerPage'] ?? 15));
 
         $itemsPaginator = $itemsQuery->orderBy($sortBy, $orderBy)->paginate($perPage);
 

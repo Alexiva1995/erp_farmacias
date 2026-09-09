@@ -150,7 +150,7 @@ class InventoryCycleController extends Controller
             // Total de conteos realizados por el usuario hoy en el ciclo activo
             $todayCountsCount = ProductCount::where('user_id', $userId)
                 ->where('cycle_id', $activeCycleId)
-                ->whereDate('count_date', $today)
+                ->whereDate('created_at', $today)
                 ->count();
 
             // Nivel según los conteos reales completados hoy
