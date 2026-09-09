@@ -146,10 +146,12 @@ class AbcReportService
                     return $item->sold_units <= 0 && $item->current_stock > 0;
                 });
             } elseif ($analysisType === 'frozen_capital') {
-                // Capital Congelado: Clase C en Ventas con rotación Z (CZ) o Stock Muerto (0 ventas con stock > 0)
+                // Capital Congelado: Requiere existencias atrapadas (stock > 0) y baja/nula rotación (Clase C en Ventas con rotación Z [CZ] o sin ventas)
                 $data = $data->filter(function ($item) {
-                    return ($item->class_sales === 'C' && $item->class_rotation === 'Z') 
-                        || ($item->sold_units <= 0 && $item->current_stock > 0);
+                    return (float) $item->current_stock > 0 && (
+                        ($item->class_sales === 'C' && $item->class_rotation === 'Z') 
+                        || $item->sold_units <= 0
+                    );
                 });
             } elseif ($analysisType === 'star_products') {
                 // Productos Estrella: Ventas A y Margen A

@@ -47,37 +47,72 @@ const paymentBadge = computed(() => {
   return { label: "Pagado", color: "success" };
 });
 
-const getLineTotal = (product) => {
-  const price = getItemPriceByCurrency(product, props.selectedCurrency);
-  return price * (product.selectedQuantity || 0);
-};
+const displayProducts = computed(() => {
+  const list = (props.orderProducts && props.orderProducts.length > 0)
+    ? props.orderProducts
+    : (props.orderData?.details || []);
+
+  return list.map((item) => {
+    // Si viene desde details directamente o mapeado
+    const detailMatch = props.orderData?.details?.find(
+      (d) => (d.product_id || d.dish_id || d.product?.id) == (item.product_id || item.id)
+    );
+
+    const discountPct = parseFloat(item.discount_percentage ?? detailMatch?.discount_percentage) || 0;
+    const discountType = item.discount_type || detailMatch?.discount_type || null;
+    const priceBefore = parseFloat(item.price_before_discount ?? detailMatch?.price_before_discount) || null;
+
+    return {
+      ...item,
+      id: item.id ?? item.product_id ?? detailMatch?.product_id ?? detailMatch?.dish_id,
+      product_id: item.product_id ?? item.id ?? detailMatch?.product_id ?? detailMatch?.dish_id,
+      title: item.title ?? item.name ?? detailMatch?.product?.name ?? detailMatch?.dish?.name ?? 'S/N',
+      laboratory: item.laboratory ?? detailMatch?.product?.laboratory?.name ?? detailMatch?.product?.laboratory ?? (detailMatch?.dish ? 'PLATO' : 'S/L'),
+      selectedQuantity: parseFloat(item.selectedQuantity ?? item.quantity ?? detailMatch?.quantity) || 1,
+      price: parseFloat(item.price ?? detailMatch?.price) || 0,
+      price_cop: parseFloat(item.price_cop ?? item.price ?? detailMatch?.price_cop ?? detailMatch?.price) || 0,
+      price_bs: parseFloat(item.price_bs ?? item.price ?? detailMatch?.price_bs ?? detailMatch?.price) || 0,
+      price_before_discount: priceBefore,
+      discount_percentage: discountPct,
+      discount_type: discountType,
+    };
+  });
+});
 
 const getProductDiscount = (product) => {
   const discountPct = parseFloat(product.discount_percentage) || 0;
   if (discountPct <= 0) return null;
 
-  const unitPrice = getItemPriceByCurrency(product, props.selectedCurrency);
+  const currentPrice = getItemPriceByCurrency(product, props.selectedCurrency);
   const qty = parseFloat(product.selectedQuantity) || 1;
-  // Monto de descuento por unidad y por línea total
-  // Si unitPrice es el precio con descuento ya aplicado (price = base * (1 - pct/100)):
-  // el descuento por unidad es unitPrice * (pct / (100 - pct)) o calculado desde price_before_discount
+  const discountType = product.discount_type || 'individual';
+
   let unitDiscountAmount = 0;
-  if (product.price_before_discount && product.price_before_discount > unitPrice) {
-    // Si tenemos price_before_discount en la misma moneda o convertible
-    const basePrice = getItemPriceByCurrency({ ...product, price: product.price_before_discount, price_cop: product.price_before_discount, price_bs: product.price_before_discount_bs ?? product.price_before_discount }, props.selectedCurrency, true);
-    unitDiscountAmount = Math.max(0, basePrice - unitPrice);
+  let basePrice = currentPrice;
+
+  if (product.price_before_discount && Number(product.price_before_discount) > currentPrice) {
+    basePrice = Number(product.price_before_discount);
+    unitDiscountAmount = basePrice - currentPrice;
   } else {
-    unitDiscountAmount = (unitPrice / (1 - (discountPct / 100))) * (discountPct / 100);
+    // Cálculo estándar proporcional al porcentaje de descuento
+    unitDiscountAmount = currentPrice * (discountPct / 100);
+    basePrice = currentPrice + unitDiscountAmount;
   }
 
   const totalDiscountAmount = unitDiscountAmount * qty;
 
   return {
     percentage: discountPct,
-    type: product.discount_type || 'Gral',
+    type: discountType,
+    basePrice,
     unitAmount: unitDiscountAmount,
     totalAmount: totalDiscountAmount,
   };
+};
+
+const getLineTotal = (product) => {
+  const price = getItemPriceByCurrency(product, props.selectedCurrency);
+  return price * (product.selectedQuantity || 0);
 };
 
 const productId = (product) => product.id ?? product.product_id;
@@ -85,14 +120,25 @@ const productId = (product) => product.id ?? product.product_id;
 const activeDiscount = computed(() => {
   let total = 0;
   let label = "Descuento";
-  if (!props.orderData?.details) return null;
-  props.orderData.details.forEach((detail) => {
-    const amount = (parseFloat(detail.price) || 0) * (parseInt(detail.quantity) || 0) * ((parseFloat(detail.discount_percentage) || 0) / 100);
-    if (amount > 0) {
-      total += amount;
-      label = `Descuento ${detail.discount_type || 'Gral'}`;
+
+  displayProducts.value.forEach((p) => {
+    const disc = getProductDiscount(p);
+    if (disc && disc.totalAmount > 0) {
+      total += disc.totalAmount;
+      label = `Descuento ${disc.type}`;
     }
   });
+
+  if (total <= 0 && props.orderData?.details) {
+    props.orderData.details.forEach((detail) => {
+      const amount = (parseFloat(detail.price) || 0) * (parseInt(detail.quantity) || 0) * ((parseFloat(detail.discount_percentage) || 0) / 100);
+      if (amount > 0) {
+        total += amount;
+        label = `Descuento ${detail.discount_type || 'individual'}`;
+      }
+    });
+  }
+
   return total > 0 ? { label, amount: total } : null;
 });
 </script>
@@ -152,14 +198,18 @@ const activeDiscount = computed(() => {
                 <thead>
                   <tr>
                     <th class="ps-3 text-start">PRODUCTO</th>
-                    <th class="text-end" style="width: 100px;">UNIT.</th>
+                    <th class="text-end" style="width: 105px;">UNIT.</th>
                     <th class="text-center" style="width: 45px;">CANT.</th>
-                    <th class="text-end pe-3" style="width: 100px;">TOTAL</th>
+                    <th class="text-end pe-3" style="width: 105px;">TOTAL</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="(product, idx) in orderProducts" :key="idx">
-                    <td class="ps-3 py-1">
+                  <tr
+                    v-for="(product, idx) in displayProducts"
+                    :key="idx"
+                    :class="{ 'discounted-row-highlight': !!getProductDiscount(product) }"
+                  >
+                    <td class="ps-3 py-1-5">
                       <div class="d-flex flex-column">
                         <span class="text-xs font-weight-black uppercase truncate leading-tight">{{ product.title }}</span>
                         <div class="d-flex align-center gap-1 text-super-xs text-disabled">
@@ -167,31 +217,59 @@ const activeDiscount = computed(() => {
                           <span>|</span>
                           <span class="truncate">{{ product.laboratory || 'S/L' }}</span>
                         </div>
+
+                        <!-- Badge destacado de Descuento en el Producto -->
+                        <div v-if="getProductDiscount(product)" class="d-flex align-center mt-1">
+                          <VChip
+                            color="error"
+                            size="x-small"
+                            variant="flat"
+                            density="compact"
+                            class="font-weight-black text-super-xs"
+                          >
+                            <VIcon icon="tabler-tag" size="11" class="me-1" />
+                            Desc. {{ (getProductDiscount(product).type || 'INDIVIDUAL').toUpperCase() }}: -{{ getProductDiscount(product).percentage }}%
+                          </VChip>
+                        </div>
                       </div>
                     </td>
+
+                    <!-- Columna Precio Unitario -->
                     <td class="text-end text-xs font-weight-medium">
                       <div class="d-flex flex-column align-end">
-                        <span>{{ formatAmountOnly(getItemPriceByCurrency(product, selectedCurrency), selectedCurrency) }}</span>
-                        <span
-                          v-if="getProductDiscount(product)"
-                          class="text-super-xs font-weight-bold text-error leading-tight"
-                          :title="`Desc: -${formatCurrency(getProductDiscount(product).unitAmount, selectedCurrency)} (${getProductDiscount(product).percentage}%)`"
-                        >
-                          -{{ formatAmountOnly(getProductDiscount(product).unitAmount, selectedCurrency) }} ({{ getProductDiscount(product).percentage }}%)
-                        </span>
+                        <template v-if="getProductDiscount(product)">
+                          <span class="font-weight-bold text-error">
+                            {{ formatAmountOnly(getItemPriceByCurrency(product, selectedCurrency), selectedCurrency) }}
+                          </span>
+                          <span class="text-super-xs text-disabled text-decoration-line-through">
+                            {{ formatAmountOnly(getProductDiscount(product).basePrice, selectedCurrency) }}
+                          </span>
+                          <span class="text-super-xs font-weight-bold text-error leading-tight">
+                            -{{ formatAmountOnly(getProductDiscount(product).unitAmount, selectedCurrency) }}
+                          </span>
+                        </template>
+                        <template v-else>
+                          <span>{{ formatAmountOnly(getItemPriceByCurrency(product, selectedCurrency), selectedCurrency) }}</span>
+                        </template>
                       </div>
                     </td>
+
+                    <!-- Columna Cantidad -->
                     <td class="text-center">
                       <span class="text-xs font-weight-black text-primary bg-primary-lighten-5 px-1 rounded">{{ product.selectedQuantity }}</span>
                     </td>
+
+                    <!-- Columna Total Línea -->
                     <td class="text-end text-xs font-weight-black pe-3">
                       <div class="d-flex flex-column align-end">
-                        <span>{{ formatAmountOnly(getLineTotal(product), selectedCurrency) }}</span>
+                        <span :class="getProductDiscount(product) ? 'text-error' : ''">
+                          {{ formatAmountOnly(getLineTotal(product), selectedCurrency) }}
+                        </span>
                         <span
-                          v-if="getProductDiscount(product) && product.selectedQuantity > 1"
+                          v-if="getProductDiscount(product)"
                           class="text-super-xs font-weight-bold text-error leading-tight"
                         >
-                          Desc: -{{ formatAmountOnly(getProductDiscount(product).totalAmount, selectedCurrency) }}
+                          Ahorro: -{{ formatAmountOnly(getProductDiscount(product).totalAmount, selectedCurrency) }}
                         </span>
                       </div>
                     </td>
@@ -303,8 +381,17 @@ const activeDiscount = computed(() => {
   border-block-end: 1px solid #f1f5f9;
 }
 
-.compact-table tr:hover {
-  background-color: rgba(var(--v-theme-primary), 0.03);
+.compact-table tr.discounted-row-highlight {
+  background-color: rgba(var(--v-theme-error), 0.05) !important;
+  border-inline-start: 3px solid rgb(var(--v-theme-error)) !important;
+}
+
+.compact-table tr.discounted-row-highlight:hover {
+  background-color: rgba(var(--v-theme-error), 0.09) !important;
+}
+
+.py-1-5 {
+  padding-block: 6px !important;
 }
 
 .border-t {

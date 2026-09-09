@@ -119,10 +119,12 @@ class AbcReportController extends Controller
             $sheetTitle = 'Prioridad Compras AX-AY';
             $fileNamePrefix = 'compras_prioritarias_ax_ay';
         } elseif ($exportType === 'frozen_capital') {
-            // 2. Capital Congelado / CZ / Stock Muerto
+            // 2. Capital Congelado / CZ / Stock Muerto (Requiere existencias atrapadas con stock > 0)
             $reportData = $reportData->filter(function ($item) {
-                return ($item->class_sales === 'C' && $item->class_rotation === 'Z') 
-                    || ($item->sold_units <= 0 && $item->current_stock > 0);
+                return (float) $item->current_stock > 0 && (
+                    ($item->class_sales === 'C' && $item->class_rotation === 'Z') 
+                    || $item->sold_units <= 0
+                );
             })->sortByDesc('inventory_value')->values();
 
             $sheetTitle = 'Capital Congelado CZ';
