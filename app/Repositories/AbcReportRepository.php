@@ -135,6 +135,10 @@ class AbcReportRepository implements AbcReportRepositoryInterface
             });
         }
 
+        if (!empty($filtros['laboratory_group_id'])) {
+            $productsQuery->whereIn('laboratories.group_id', (array) $filtros['laboratory_group_id']);
+        }
+
         if (!empty($filtros['laboratory_id'])) {
             $productsQuery->whereIn('products.laboratory_id', (array) $filtros['laboratory_id']);
         }
@@ -177,8 +181,8 @@ class AbcReportRepository implements AbcReportRepositoryInterface
                 $join->on('dishes.id', '=', 'variance.dish_id');
             });
 
-        if ($analysisType === 'dead_stock') {
-            // Los platos de menú no tienen stock de inventario físico
+        if ($analysisType === 'dead_stock' || !empty($filtros['laboratory_group_id']) || !empty($filtros['laboratory_id'])) {
+            // Los platos de menú no tienen stock de inventario físico ni pertenecen a laboratorios
             $dishesQuery->whereRaw('1 = 0');
         } else {
             $dishesQuery->where('sales.sold_units', '>', 0);

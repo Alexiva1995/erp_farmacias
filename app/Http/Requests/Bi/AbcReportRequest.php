@@ -32,16 +32,17 @@ class AbcReportRequest extends FormRequest
             'start_date' => ['nullable', 'date', 'before_or_equal:end_date'],
             'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
             'laboratory_id' => ['nullable'],
+            'laboratory_group_id' => ['nullable'],
             'final_classification' => ['nullable', 'string', 'size:3', 'regex:/^[ABC][ABC][XYZ]$/i'],
             'page' => ['nullable', 'integer', 'min:1'],
             'itemsPerPage' => ['nullable', 'integer', 'min:-1'],
             'sortBy' => ['nullable', 'string'],
             'orderBy' => ['nullable', 'string', 'in:asc,desc'],
-            'analysis_type' => ['nullable', 'string', 'in:all,dead_stock,star_products,critical_stock,negative_margin,frozen_capital'],
+            'analysis_type' => ['nullable', 'string', 'in:all,dead_stock,star_products,critical_stock,negative_margin,frozen_capital,expiring_risk'],
             'min_gmroi' => ['nullable', 'numeric'],
             'stock_filter' => ['nullable', 'string', 'in:all,with_stock,out_of_stock'],
             'search' => ['nullable', 'string'],
-            'export_type' => ['nullable', 'string', 'in:all,ax_ay,frozen_capital,gmroi,negative_margin'],
+            'export_type' => ['nullable', 'string', 'in:all,ax_ay,frozen_capital,gmroi,negative_margin,expiring_risk'],
         ];
     }
 }

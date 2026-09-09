@@ -21,6 +21,7 @@ const totalItems = ref(0);
 // Filtros
 const selectedDateRange = ref('30 days');
 const selectedLaboratories = ref([]);
+const selectedLaboratoryGroups = ref([]);
 const selectedFinalClassification = ref(null);
 const selectedAnalysisType = ref('all');
 const minGmroi = ref(null);
@@ -125,6 +126,7 @@ const handleAssignedEmployees = () => {
 
 // Catálogos y Estadísticas
 const laboratories = ref([]);
+const laboratoryGroups = ref([]);
 const summaryStats = ref({
   total_volume: 0,
   aax_products: 0,
@@ -184,8 +186,12 @@ const activeHeaders = computed(() => {
 
 const fetchCatalogs = async () => {
   try {
-    const labsRes = await axios.get('/laboratories');
+    const [labsRes, groupsRes] = await Promise.all([
+      axios.get('/laboratories'),
+      axios.get('/laboratory-groups'),
+    ]);
     laboratories.value = labsRes.data;
+    laboratoryGroups.value = groupsRes.data;
   } catch (err) {
     console.error('Error loading catalogs:', err);
   }
@@ -205,6 +211,7 @@ const fetchReport = async () => {
       start_date: dates.start_date,
       end_date: dates.end_date,
       laboratory_id: selectedLaboratories.value?.length ? selectedLaboratories.value : null,
+      laboratory_group_id: selectedLaboratoryGroups.value?.length ? selectedLaboratoryGroups.value : null,
       final_classification: selectedFinalClassification.value,
       analysis_type: selectedAnalysisType.value,
       min_gmroi: minGmroi.value,
@@ -263,6 +270,9 @@ watch(selectedAnalysisType, (newType) => {
   if (newType === 'frozen_capital' || newType === 'dead_stock') {
     sortBy.value = [{ key: 'inventory_value', order: 'desc' }];
     isSimplifiedView.value = true;
+  } else if (newType === 'expiring_risk') {
+    sortBy.value = [{ key: 'days_to_expiration', order: 'asc' }];
+    isSimplifiedView.value = true;
   } else if (newType === 'negative_margin') {
     sortBy.value = [{ key: 'margin_percentage', order: 'asc' }];
     isSimplifiedView.value = false;
@@ -281,11 +291,11 @@ watch(search, () => {
   }, 350);
 });
 
-watch([selectedDateRange, selectedLaboratories, selectedFinalClassification, selectedAnalysisType, minGmroi, stockFilter], () => {
+watch([selectedDateRange, selectedLaboratories, selectedLaboratoryGroups, selectedFinalClassification, selectedAnalysisType, minGmroi, stockFilter], () => {
   page.value = 1;
 });
 
-watch([page, itemsPerPage, sortBy, selectedDateRange, selectedLaboratories, selectedFinalClassification, selectedAnalysisType, minGmroi, stockFilter], () => {
+watch([page, itemsPerPage, sortBy, selectedDateRange, selectedLaboratories, selectedLaboratoryGroups, selectedFinalClassification, selectedAnalysisType, minGmroi, stockFilter], () => {
   fetchReport();
 }, { deep: true });
 
@@ -298,6 +308,7 @@ const handleClearFilters = () => {
   search.value = '';
   selectedDateRange.value = '30 days';
   selectedLaboratories.value = [];
+  selectedLaboratoryGroups.value = [];
   selectedFinalClassification.value = null;
   selectedAnalysisType.value = 'all';
   minGmroi.value = null;
@@ -314,6 +325,7 @@ const handleExport = async (exportType = 'all') => {
       start_date: dates.start_date,
       end_date: dates.end_date,
       laboratory_id: selectedLaboratories.value?.length ? selectedLaboratories.value : null,
+      laboratory_group_id: selectedLaboratoryGroups.value?.length ? selectedLaboratoryGroups.value : null,
       final_classification: selectedFinalClassification.value,
       analysis_type: selectedAnalysisType.value,
       min_gmroi: minGmroi.value,
@@ -428,6 +440,7 @@ const handleFilterCritical = () => {
       v-model:selected-date-range="selectedDateRange"
       v-model:selected-analysis-type="selectedAnalysisType"
       v-model:selected-laboratories="selectedLaboratories"
+      v-model:selected-laboratory-groups="selectedLaboratoryGroups"
       v-model:selected-final-classification="selectedFinalClassification"
       v-model:min-gmroi="minGmroi"
       v-model:stock-filter="stockFilter"
@@ -436,6 +449,7 @@ const handleFilterCritical = () => {
       :exporting="exporting"
       :navigating-assistant="navigatingAssistant"
       :laboratories="laboratories"
+      :laboratory-groups="laboratoryGroups"
       @fetch="fetchReport"
       @clear="handleClearFilters"
       @export="handleExport"
@@ -474,7 +488,7 @@ const handleFilterCritical = () => {
         <div class="d-flex align-center flex-wrap gap-2">
           <h2 class="text-h6 font-weight-bold d-flex align-center mb-0">
             <VIcon icon="tabler-list-details" class="me-2 text-primary" size="22" />
-            {{ isSimplifiedView ? 'Datos de Interés: Capital Parado' : 'Resultados del Análisis' }}
+            {{ isSimplifiedView ? (selectedAnalysisType === 'expiring_risk' ? 'Datos de Interés: Capital por Expirar' : 'Datos de Interés: Capital Parado') : 'Resultados del Análisis' }}
           </h2>
           <VChip
             v-if="isSimplifiedView"
@@ -498,7 +512,7 @@ const handleFilterCritical = () => {
             @click="isSimplifiedView = !isSimplifiedView"
           >
             <VIcon :icon="isSimplifiedView ? 'tabler-layout-list' : 'tabler-bulb'" size="16" class="me-1" />
-            {{ isSimplifiedView ? 'Ver Análisis Completo' : 'Datos de Interés (Capital Parado)' }}
+            {{ isSimplifiedView ? 'Ver Análisis Completo' : (selectedAnalysisType === 'expiring_risk' ? 'Datos de Interés (Capital por Expirar)' : 'Datos de Interés (Capital Parado)') }}
           </VBtn>
         </div>
       </VCardText>
@@ -549,24 +563,24 @@ const handleFilterCritical = () => {
                   {{ item.name.toUpperCase() }}
                 </span>
                 
-                <!-- Etiquetas específicas cuando el filtro es Margen Negativo o el margen del producto es negativo -->
-                <template v-if="selectedAnalysisType === 'negative_margin' || item.margin_percentage < 0 || item.margin_amount < 0">
-                  <!-- Etiqueta Por Caducar (<= 6 meses / 180 días) -->
-                  <VTooltip v-if="item.is_expiring_soon || (item.days_to_expiration !== null && item.days_to_expiration <= 180)" location="top">
+                <!-- Etiquetas específicas: Riesgo de Caducidad / Margen Negativo / Oferta Individual -->
+                <template v-if="selectedAnalysisType === 'negative_margin' || selectedAnalysisType === 'expiring_risk' || selectedAnalysisType === 'frozen_capital' || item.is_expiring_soon || item.has_expiration_risk || item.margin_percentage < 0">
+                  <!-- Etiqueta Por Caducar / Riesgo FEFO -->
+                  <VTooltip v-if="item.is_expiring_soon || (item.days_to_expiration !== null && item.days_to_expiration <= 180) || item.has_expiration_risk" location="top">
                     <template #activator="{ props: tipProps }">
                       <VChip
                         v-bind="tipProps"
-                        color="error"
+                        :color="item.days_to_expiration <= 60 || item.has_expiration_risk ? 'error' : 'warning'"
                         size="x-small"
                         variant="flat"
                         density="compact"
                         class="font-weight-bold"
                       >
                         <VIcon icon="tabler-clock-exclamation" size="12" class="me-1" />
-                        {{ item.days_to_expiration <= 0 ? 'Vencido' : (item.months_to_expiration ? `Vence en ${item.months_to_expiration} m` : 'Por vencer') }}
+                        {{ item.days_to_expiration <= 0 ? 'Vencido' : (item.days_to_expiration !== null ? `Vence en ${item.days_to_expiration}d` : 'Riesgo FEFO') }}
                       </VChip>
                     </template>
-                    <span>Próximo vencimiento: {{ item.next_expiration_date }} ({{ item.days_to_expiration }} días restantes)</span>
+                    <span>Próximo vencimiento: {{ item.next_expiration_date || 'Lote próximo' }} ({{ item.days_to_expiration }} días restantes)</span>
                   </VTooltip>
 
                   <!-- Etiqueta Oferta Individual -->

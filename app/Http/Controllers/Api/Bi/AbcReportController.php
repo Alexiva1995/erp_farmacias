@@ -72,6 +72,8 @@ class AbcReportController extends Controller
             'avg_margin' => $totalSalesGlobal > 0 ? ($totalMarginAmtGlobal / $totalSalesGlobal) * 100 : 0,
             'aax_products' => $reportData->filter(fn($i) => str_starts_with($i->final_classification, 'AA'))->count(),
             'frozen_capital' => (float) $reportData->sum('inventory_value'),
+            'expiring_risk_capital' => (float) $reportData->filter(fn($i) => (float)$i->current_stock > 0 && ($i->has_expiration_risk || $i->is_expiring_soon || ((int)($i->days_to_expiration ?? 9999) <= 180)))->sum('inventory_value'),
+            'expiring_risk_count' => $reportData->filter(fn($i) => (float)$i->current_stock > 0 && ($i->has_expiration_risk || $i->is_expiring_soon || ((int)($i->days_to_expiration ?? 9999) <= 180)))->count(),
             // Conteo por clasificación de ventas
             'count_a' => $reportData->filter(fn($i) => $i->class_sales === 'A')->count(),
             'count_b' => $reportData->filter(fn($i) => $i->class_sales === 'B')->count(),
@@ -134,14 +136,29 @@ class AbcReportController extends Controller
 
             $sheetTitle = 'Capital Congelado CZ';
             $fileNamePrefix = 'capital_congelado_cz';
+        } elseif ($exportType === 'expiring_risk') {
+            // 3. Riesgo de Expiración / FEFO (Capital próximo a caducar o con riesgo FEFO)
+            $reportData = $reportData->filter(function ($item) {
+                if ((float) $item->current_stock <= 0) {
+                    return false;
+                }
+                $hasExpRisk = (bool) ($item->has_expiration_risk ?? false);
+                $isExpiringSoon = (bool) ($item->is_expiring_soon ?? false);
+                $daysToExp = $item->days_to_expiration !== null ? (int) $item->days_to_expiration : 9999;
+
+                return $hasExpRisk || $isExpiringSoon || $daysToExp <= 180;
+            })->sortBy(fn($i) => $i->days_to_expiration ?? 9999)->values();
+
+            $sheetTitle = 'Riesgo Expiracion FEFO';
+            $fileNamePrefix = 'riesgo_expiracion_fefo';
         } elseif ($exportType === 'gmroi') {
-            // 3. Matriz de Rentabilidad GMROI (Top Retorno)
+            // 4. Matriz de Rentabilidad GMROI (Top Retorno)
             $reportData = $reportData->sortByDesc('gmroi')->values();
 
             $sheetTitle = 'Rentabilidad GMROI';
             $fileNamePrefix = 'rentabilidad_gmroi';
         } elseif ($exportType === 'negative_margin') {
-            // 4. Margen Negativo / Pérdida (< 0% con stock > 0)
+            // 5. Margen Negativo / Pérdida (< 0% con stock > 0)
             $reportData = $reportData->filter(function ($item) {
                 return ((float)$item->margin_percentage < 0 || (float)$item->margin_amount < 0)
                     && (float)$item->current_stock > 0;

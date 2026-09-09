@@ -26,6 +26,7 @@ declare module 'vue-router/auto-routes' {
     'bi-components-abc-report-filters': RouteRecordInfo<'bi-components-abc-report-filters', '/bi/components/AbcReportFilters', Record<never, never>, Record<never, never>>,
     'bi-components-abc-report-kpi-cards': RouteRecordInfo<'bi-components-abc-report-kpi-cards', '/bi/components/AbcReportKpiCards', Record<never, never>, Record<never, never>>,
     'bi-components-abc-report-mobile-view': RouteRecordInfo<'bi-components-abc-report-mobile-view', '/bi/components/AbcReportMobileView', Record<never, never>, Record<never, never>>,
+    'bi-components-assign-product-to-employees-dialog': RouteRecordInfo<'bi-components-assign-product-to-employees-dialog', '/bi/components/AssignProductToEmployeesDialog', Record<never, never>, Record<never, never>>,
     'bi-components-dead-stock-filters': RouteRecordInfo<'bi-components-dead-stock-filters', '/bi/components/DeadStockFilters', Record<never, never>, Record<never, never>>,
     'bi-components-dead-stock-kpi-cards': RouteRecordInfo<'bi-components-dead-stock-kpi-cards', '/bi/components/DeadStockKpiCards', Record<never, never>, Record<never, never>>,
     'bi-components-dead-stock-table': RouteRecordInfo<'bi-components-dead-stock-table', '/bi/components/DeadStockTable', Record<never, never>, Record<never, never>>,

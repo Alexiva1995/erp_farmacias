@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 const props = defineProps({
   loading: { type: Boolean, default: false },
@@ -7,10 +7,12 @@ const props = defineProps({
   selectedDateRange: { type: String, default: '30 days' },
   selectedAnalysisType: { type: String, default: 'all' },
   selectedLaboratories: { type: Array, default: () => [] },
+  selectedLaboratoryGroups: { type: Array, default: () => [] },
   selectedFinalClassification: { type: String, default: null },
   minGmroi: { type: [Number, String], default: null },
   stockFilter: { type: String, default: 'all' },
   laboratories: { type: Array, default: () => [] },
+  laboratoryGroups: { type: Array, default: () => [] },
   isAdvancedFiltersVisible: { type: Boolean, default: false },
   exporting: { type: Boolean, default: false },
   navigatingAssistant: { type: Boolean, default: false },
@@ -21,6 +23,7 @@ const emit = defineEmits([
   'update:selectedDateRange',
   'update:selectedAnalysisType',
   'update:selectedLaboratories',
+  'update:selectedLaboratoryGroups',
   'update:selectedFinalClassification',
   'update:minGmroi',
   'update:stockFilter',
@@ -32,8 +35,42 @@ const emit = defineEmits([
   'filter-critical',
 ]);
 
+// Orden de laboratorios por cantidad de productos: 'desc' (el que más productos tiene primero) o 'asc'
+const labSortOrder = ref('desc');
+
+const sortedAndFilteredLaboratories = computed(() => {
+  let list = Array.isArray(props.laboratories) ? [...props.laboratories] : [];
+
+  // Filtrar si hay grupos de laboratorios seleccionados
+  if (props.selectedLaboratoryGroups && props.selectedLaboratoryGroups.length > 0) {
+    const groupIds = props.selectedLaboratoryGroups.map((id) => Number(id));
+    list = list.filter((lab) => lab.group_id && groupIds.includes(Number(lab.group_id)));
+  }
+
+  // Ordenar por cantidad de productos (el que más productos tiene)
+  list.sort((a, b) => {
+    const countA = Number(a.products_count ?? 0);
+    const countB = Number(b.products_count ?? 0);
+    return labSortOrder.value === 'asc' ? countA - countB : countB - countA;
+  });
+
+  return list.map((lab) => ({
+    id: lab.id,
+    name: lab.name,
+    group_id: lab.group_id,
+    products_count: lab.products_count ?? 0,
+    displayName: `${lab.name} (${lab.products_count ?? 0} prods)`,
+  }));
+});
+
 const hasActiveAdvancedFilters = computed(() => {
-  return props.selectedLaboratories.length > 0 || props.selectedFinalClassification !== null;
+  return (
+    props.selectedLaboratories.length > 0 ||
+    props.selectedLaboratoryGroups.length > 0 ||
+    props.selectedFinalClassification !== null ||
+    props.minGmroi !== null ||
+    props.stockFilter !== 'all'
+  );
 });
 
 const dateRangeOptions = [
@@ -51,6 +88,7 @@ const classificationOptions = [
 const analysisTypeOptions = [
   { title: 'Análisis Completo', value: 'all' },
   { title: 'Capital Congelado (CZ / Sin Rotación)', value: 'frozen_capital' },
+  { title: 'Capital Propenso a Vencer (Expiración / FEFO)', value: 'expiring_risk' },
   { title: 'Quiebres y Riesgo de Stock (A/B)', value: 'critical_stock' },
   { title: 'Margen Negativo / Pérdida (<0%)', value: 'negative_margin' },
   { title: 'Stock Muerto (0 Ventas)', value: 'dead_stock' },
@@ -224,6 +262,13 @@ const toggleAdvancedFilters = () => {
                 subtitle="Productos con margen o GMROI en pérdida"
                 @click="emit('export', 'negative_margin')"
               />
+
+              <VListItem
+                prepend-icon="tabler-clock-exclamation"
+                title="5. Riesgo de Expiración (FEFO)"
+                subtitle="Capital próximo a vencer (<= 180 días)"
+                @click="emit('export', 'expiring_risk')"
+              />
             </VList>
           </VMenu>
 
@@ -281,13 +326,14 @@ const toggleAdvancedFilters = () => {
         <div v-show="isAdvancedFiltersVisible">
           <VDivider class="my-3 border-opacity-10" />
           <VRow align="center" dense>
-            <VCol cols="12" md="3">
+            <!-- Grupo de Laboratorios -->
+            <VCol cols="12" sm="6" md="3">
               <AppAutocomplete
-                :model-value="selectedLaboratories"
-                :items="laboratories"
+                :model-value="selectedLaboratoryGroups"
+                :items="laboratoryGroups"
                 item-title="name"
                 item-value="id"
-                placeholder="Laboratorio"
+                placeholder="Grupo de Laboratorios"
                 multiple
                 chips
                 closable-chips
@@ -295,13 +341,52 @@ const toggleAdvancedFilters = () => {
                 density="compact"
                 hide-details
                 variant="outlined"
-                prepend-inner-icon="tabler-flask"
+                prepend-inner-icon="tabler-folders"
                 :disabled="loading"
-                @update:model-value="emit('update:selectedLaboratories', $event)"
+                @update:model-value="emit('update:selectedLaboratoryGroups', $event)"
               />
             </VCol>
 
-            <VCol cols="12" md="3">
+            <!-- Laboratorio (Ordenado por cantidad de productos) -->
+            <VCol cols="12" sm="6" md="3">
+              <div class="d-flex align-center gap-1">
+                <AppAutocomplete
+                  :model-value="selectedLaboratories"
+                  :items="sortedAndFilteredLaboratories"
+                  item-title="displayName"
+                  item-value="id"
+                  placeholder="Laboratorio"
+                  multiple
+                  chips
+                  closable-chips
+                  clearable
+                  density="compact"
+                  hide-details
+                  variant="outlined"
+                  prepend-inner-icon="tabler-flask"
+                  class="flex-grow-1"
+                  :disabled="loading"
+                  @update:model-value="emit('update:selectedLaboratories', $event)"
+                />
+                <VBtn
+                  icon
+                  variant="text"
+                  size="28"
+                  :color="labSortOrder === 'desc' ? 'primary' : 'secondary'"
+                  class="flex-shrink-0"
+                  :disabled="loading"
+                  @click="labSortOrder = labSortOrder === 'desc' ? 'asc' : 'desc'"
+                >
+                  <VIcon :icon="labSortOrder === 'desc' ? 'tabler-sort-descending-numbers' : 'tabler-sort-ascending-numbers'" size="18" />
+                  <VTooltip activator="parent" location="top">
+                    {{ labSortOrder === 'desc' ? 'Orden: Más productos primero' : 'Orden: Menos productos primero' }}
+                  </VTooltip>
+                </VBtn>
+              </div>
+            </VCol>
+
+            <!-- Clasificación ABC-XYZ -->
+            <VCol cols="12" sm="6" md="2">
               <div class="d-flex align-center gap-1">
                 <AppAutocomplete
                   :model-value="selectedFinalClassification"
@@ -337,7 +422,8 @@ const toggleAdvancedFilters = () => {
               </div>
             </VCol>
 
-            <VCol cols="12" md="2">
+            <!-- ROI Mínimo -->
+            <VCol cols="12" sm="6" md="2">
               <AppTextField
                 :model-value="minGmroi"
                 type="number"
@@ -351,7 +437,8 @@ const toggleAdvancedFilters = () => {
               />
             </VCol>
 
-            <VCol cols="12" md="2">
+            <!-- Estado de Stock -->
+            <VCol cols="12" sm="6" md="2">
               <AppSelect
                 :model-value="stockFilter"
                 :items="[

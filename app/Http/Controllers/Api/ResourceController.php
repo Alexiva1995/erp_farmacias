@@ -22,6 +22,12 @@ class ResourceController extends Controller
         return response()->json($laboratories);
     }
 
+    public function getLaboratoryGroups()
+    {
+        $groups = $this->resourceService->getLaboratoryGroups();
+        return response()->json($groups);
+    }
+
     public function storeLaboratory(StoreLaboratoryRequest $request)
     {
         $data = $request->validated();

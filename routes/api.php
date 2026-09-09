@@ -256,6 +256,7 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
 
     // Rutas de Recursos Básicos (Laboratorios, Orígenes, Categorías, Proveedores, Códigos de Barras)
     Route::get("/laboratories", [ResourceController::class, "getLaboratories"]);
+    Route::get("/laboratory-groups", [ResourceController::class, "getLaboratoryGroups"]);
     Route::post("/laboratories", [ResourceController::class, "storeLaboratory"]);
 
     // Alias directo para Categorías de Gastos (/api/expenses/category)

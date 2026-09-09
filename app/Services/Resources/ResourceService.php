@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Resources;
 
+use App\Models\GroupsLaboratory;
 use App\Models\Category;
 use App\Models\Laboratory;
 use App\Models\Origin;
@@ -18,12 +19,24 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 class ResourceService
 {
     /**
-     * Obtiene una lista de todos los laboratorios, utilizando caché.
+     * Obtiene una lista de todos los laboratorios con su grupo y conteo de productos, utilizando caché.
      */
     public function getLaboratories(): Collection
     {
         return Cache::remember('resources.laboratories', now()->addDay(), function () {
-            return Laboratory::orderBy('name')->get(['id', 'name']);
+            return Laboratory::withCount('products')
+                ->orderBy('name')
+                ->get(['id', 'name', 'group_id']);
+        });
+    }
+
+    /**
+     * Obtiene una lista de todos los grupos de laboratorios, utilizando caché.
+     */
+    public function getLaboratoryGroups(): Collection
+    {
+        return Cache::remember('resources.laboratory_groups', now()->addDay(), function () {
+            return GroupsLaboratory::orderBy('name')->get(['id', 'name']);
         });
     }
 

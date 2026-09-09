@@ -227,6 +227,20 @@ class AbcReportService
                     return ((float)$item->margin_percentage < 0 || (float)$item->margin_amount < 0)
                         && (float)$item->current_stock > 0;
                 })->sortBy('margin_percentage')->values();
+            } elseif ($analysisType === 'expiring_risk') {
+                // Capital Propenso a Vencerse por Expiración (Riesgo FEFO / Próximos a Vencer <= 180 días)
+                $data = $data->filter(function ($item) {
+                    if ((float) $item->current_stock <= 0) {
+                        return false;
+                    }
+                    $hasExpRisk = (bool) ($item->has_expiration_risk ?? false);
+                    $isExpiringSoon = (bool) ($item->is_expiring_soon ?? false);
+                    $daysToExp = $item->days_to_expiration !== null ? (int) $item->days_to_expiration : 9999;
+
+                    return $hasExpRisk || $isExpiringSoon || $daysToExp <= 180;
+                })->sortBy(function ($item) {
+                    return $item->days_to_expiration ?? 9999;
+                })->values();
             }
 
             // 6. Aplicar Filtros Ad-hoc (ROI y Stock)

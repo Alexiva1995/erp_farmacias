@@ -62,6 +62,9 @@ class AbcReportExport implements FromCollection, WithHeadings, WithMapping, Shou
             'Rotación (XYZ)',
             'Perfil ABC-XYZ',
             'Estado Stock',
+            'Próximo Vencimiento',
+            'Días Restantes',
+            'Riesgo FEFO',
         ];
     }
 
@@ -87,6 +90,8 @@ class AbcReportExport implements FromCollection, WithHeadings, WithMapping, Shou
             $stockStatus = 'Stock Muerto';
         }
 
+        $fefoRisk = !empty($item->has_expiration_risk) ? 'ALTO RIESGO' : (!empty($item->is_expiring_soon) ? 'Por Vencer (<=180d)' : 'Normal');
+
         return [
             $item->id ?? 'N/A',
             $item->product_name ?? $item->name ?? 'N/A',
@@ -106,6 +111,9 @@ class AbcReportExport implements FromCollection, WithHeadings, WithMapping, Shou
             $item->class_rotation ?? 'Z',
             $item->final_classification ?? 'N/A',
             $stockStatus,
+            $item->next_expiration_date ?? 'N/D',
+            isset($item->days_to_expiration) ? (int) $item->days_to_expiration : 'N/D',
+            $fefoRisk,
         ];
     }
 

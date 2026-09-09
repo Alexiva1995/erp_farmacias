@@ -42,11 +42,19 @@ defineProps({
       <VCol
         v-for="(kpi, index) in [
           {
-            title: ['dead_stock', 'frozen_capital'].includes(selectedAnalysisType) ? 'Capital Inmovilizado' : 'Ventas Globales',
-            value: formatCurrency(['dead_stock', 'frozen_capital'].includes(selectedAnalysisType) ? summaryStats.frozen_capital : summaryStats.total_volume),
-            color: ['dead_stock', 'frozen_capital'].includes(selectedAnalysisType) ? 'error' : 'primary',
-            icon: ['dead_stock', 'frozen_capital'].includes(selectedAnalysisType) ? 'tabler-lock-square' : 'tabler-coin',
-            desc: ['dead_stock', 'frozen_capital'].includes(selectedAnalysisType) ? 'Dinero atrapado en stock' : 'Total facturado en el periodo'
+            title: selectedAnalysisType === 'expiring_risk' 
+              ? 'Capital por Vencer' 
+              : (['dead_stock', 'frozen_capital'].includes(selectedAnalysisType) ? 'Capital Inmovilizado' : 'Ventas Globales'),
+            value: formatCurrency(
+              selectedAnalysisType === 'expiring_risk'
+                ? (summaryStats.expiring_risk_capital ?? summaryStats.frozen_capital)
+                : (['dead_stock', 'frozen_capital'].includes(selectedAnalysisType) ? summaryStats.frozen_capital : summaryStats.total_volume)
+            ),
+            color: selectedAnalysisType === 'expiring_risk' ? 'warning' : (['dead_stock', 'frozen_capital'].includes(selectedAnalysisType) ? 'error' : 'primary'),
+            icon: selectedAnalysisType === 'expiring_risk' ? 'tabler-clock-exclamation' : (['dead_stock', 'frozen_capital'].includes(selectedAnalysisType) ? 'tabler-lock-square' : 'tabler-coin'),
+            desc: selectedAnalysisType === 'expiring_risk' 
+              ? 'Dinero en riesgo por caducidad' 
+              : (['dead_stock', 'frozen_capital'].includes(selectedAnalysisType) ? 'Dinero atrapado en stock' : 'Total facturado en el periodo')
           },
           {
             title: 'Prod. Estrella',
