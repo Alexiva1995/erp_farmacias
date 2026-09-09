@@ -19,6 +19,7 @@ class SupplierConnection extends Model
         "has_header",
         "structure",
         "secondary_structure",
+        "tertiary_structure",
         "invoice_path",
         "invoice_structure",
         "last_connection",
@@ -29,6 +30,7 @@ class SupplierConnection extends Model
         "has_header" => "boolean",
         "structure" => "array",
         "secondary_structure" => "array",
+        "tertiary_structure" => "array",
         "invoice_structure" => "array",
     ];
 

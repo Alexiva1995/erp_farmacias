@@ -119,18 +119,69 @@ class SupplierEmailCatalogService
                         continue;
                     }
 
-                    // Encontramos el último correo con Excel de este proveedor
-                    $foundValidEmail = true;
+                    $currentDateOnly = null;
+                    if (!empty($emailData['date'])) {
+                        try {
+                            $currentDateOnly = \Carbon\Carbon::parse($emailData['date'])->format('Y-m-d');
+                        } catch (\Throwable $e) {
+                            $currentDateOnly = null;
+                        }
+                    }
 
-                    $fileItems = [];
-                    $primaryStructure = $connection->structure ?? [];
-                    $secondaryStructure = (!empty($connection->secondary_structure) && is_array($connection->secondary_structure))
-                        ? $connection->secondary_structure
-                        : $primaryStructure;
+                    if ($latestEmailDate === null) {
+                        $latestEmailDate = $currentDateOnly;
+                    }
 
-                    foreach ($emailData['attachments'] as $index => $attachment) {
+                    // Si ya establecimos la fecha más reciente y este correo es de un día anterior, detener búsqueda
+                    if ($latestEmailDate !== null && $currentDateOnly !== null && $currentDateOnly !== $latestEmailDate) {
+                        break;
+                    }
+
+                    $collectedEmails[] = $emailData;
+
+                    // Si no tenemos fecha para comparar, recolectar hasta 3 correos recientes
+                    if (count($collectedEmails) >= 5) {
+                        break;
+                    }
+                }
+
+                if (empty($collectedEmails)) {
+                    $skipped[] = [
+                        'supplier_id' => $supplier->id,
+                        'supplier_name' => $supplier->name,
+                        'email' => $cleanEmail,
+                        'reason' => "Los correos recibidos de '{$cleanEmail}' no contienen archivos Excel compatibles (.xlsx, .xls, .csv).",
+                    ];
+                    continue;
+                }
+
+                $primaryStructure = $connection->structure ?? [];
+                $secondaryStructure = (!empty($connection->secondary_structure) && is_array($connection->secondary_structure))
+                    ? $connection->secondary_structure
+                    : null;
+                $tertiaryStructure = (!empty($connection->tertiary_structure) && is_array($connection->tertiary_structure))
+                    ? $connection->tertiary_structure
+                    : null;
+
+                $structures = [
+                    'primary' => $primaryStructure,
+                    'secondary' => $secondaryStructure,
+                    'tertiary' => $tertiaryStructure,
+                ];
+
+                $fileItems = [];
+                $globalAttachmentIndex = 0;
+
+                foreach ($collectedEmails as $emailData) {
+                    foreach ($emailData['attachments'] as $attachment) {
                         $filename = $attachment['filename'];
                         $content = $attachment['content'];
+                        $subject = $emailData['subject'] ?? '';
+
+                        // Resolver qué formato le corresponde (Formato 1, Formato 2 o Formato 3)
+                        $formatResolution = $this->resolveStructureForFile($filename, $subject, $globalAttachmentIndex, $structures);
+                        $chosenMap = $formatResolution['structure'];
+                        $formatName = $formatResolution['name'];
 
                         if ($dryRun) {
                             $processed[] = [
@@ -139,81 +190,73 @@ class SupplierEmailCatalogService
                                 'supplier_name' => $supplier->name,
                                 'filename' => $filename,
                                 'size' => strlen($content),
-                                'subject' => $emailData['subject'],
+                                'subject' => $subject,
                                 'from' => $emailData['from_email'],
                                 'date' => $emailData['date'],
-                                'format_used' => ($index === 1 && !empty($connection->secondary_structure)) ? 'Formato 2' : 'Formato 1',
+                                'format_used' => $formatName,
                             ];
+                            $globalAttachmentIndex++;
                             continue;
                         }
 
                         // Guardar archivo en disco local con ruta relativa a temp/
-                        $storagePath = 'temp/' . Str::slug($supplier->name) . '_' . date('Ymd_His') . '_' . $index . '_' . $filename;
+                        $storagePath = 'temp/' . Str::slug($supplier->name) . '_' . date('Ymd_His') . '_' . $globalAttachmentIndex . '_' . $filename;
                         Storage::disk('local')->put($storagePath, $content);
-
-                        $chosenMap = ($index === 1 && !empty($connection->secondary_structure))
-                            ? $secondaryStructure
-                            : $primaryStructure;
 
                         $fileItems[] = [
                             'path' => $storagePath,
                             'column_map' => $chosenMap,
                             'filename' => $filename,
+                            'format_used' => $formatName,
+                            'subject' => $subject,
+                            'from' => $emailData['from_email'],
+                            'date' => $emailData['date'],
                         ];
+
+                        $globalAttachmentIndex++;
                     }
-
-                    if ($dryRun) {
-                        break;
-                    }
-
-                    if (!empty($fileItems)) {
-                        // Registrar estado único para el conjunto de archivos del correo
-                        $status = SupplierConnectionStatus::create([
-                            'supplier_id' => $supplier->id,
-                            'user_id' => $userId,
-                            'status' => 'processing',
-                            'message' => 'Procesando ' . count($fileItems) . ' archivo(s) de catálogo recibidos por correo...',
-                        ]);
-
-                        // Obtener la tasa de cambio oficial del día en que llegó el correo
-                        $emailRate = $this->getExchangeRateForDate($emailData['date'] ?? null) ?: $rate;
-
-                        // Despachar Job de forma síncrona combinando todos los archivos con sus respectivos formatos
-                        ProcessSupplierConnectionJob::dispatchSync(
-                            $supplier,
-                            $userId,
-                            $fileItems,
-                            $primaryStructure,
-                            $emailRate,
-                            $status->id
-                        );
-
-                        foreach ($fileItems as $idx => $fItem) {
-                            $processed[] = [
-                                'supplier_id' => $supplier->id,
-                                'supplier_name' => $supplier->name,
-                                'filename' => $fItem['filename'],
-                                'storage_path' => $fItem['path'],
-                                'status_id' => $status->id,
-                                'subject' => $emailData['subject'],
-                                'from' => $emailData['from_email'],
-                                'date' => $emailData['date'],
-                                'format_used' => ($idx === 1 && !empty($connection->secondary_structure)) ? 'Formato 2' : 'Formato 1',
-                            ];
-                        }
-                    }
-
-                    // Detenerse al procesar el último correo válido
-                    break;
                 }
 
-                if (!$foundValidEmail) {
-                    $skipped[] = [
+                if ($dryRun) {
+                    continue;
+                }
+
+                if (!empty($fileItems)) {
+                    // Registrar estado único para el lote completo de catálogos
+                    $status = SupplierConnectionStatus::create([
                         'supplier_id' => $supplier->id,
-                        'supplier_name' => $supplier->name,
-                        'email' => $cleanEmail,
-                        'reason' => "Los correos recibidos de '{$cleanEmail}' no contienen archivos Excel compatibles (.xlsx, .xls, .csv).",
-                    ];
+                        'user_id' => $userId,
+                        'status' => 'processing',
+                        'message' => 'Procesando ' . count($fileItems) . ' archivo(s) de catálogo recibidos por correo...',
+                    ]);
+
+                    // Obtener la tasa oficial del día de los correos recibidos
+                    $firstEmailDate = $collectedEmails[0]['date'] ?? null;
+                    $emailRate = $this->getExchangeRateForDate($firstEmailDate) ?: $rate;
+
+                    // Despachar Job de forma síncrona combinando todos los archivos con sus respectivos formatos
+                    ProcessSupplierConnectionJob::dispatchSync(
+                        $supplier,
+                        $userId,
+                        $fileItems,
+                        $primaryStructure,
+                        $emailRate,
+                        $status->id
+                    );
+
+                    foreach ($fileItems as $fItem) {
+                        $processed[] = [
+                            'supplier_id' => $supplier->id,
+                            'supplier_name' => $supplier->name,
+                            'filename' => $fItem['filename'],
+                            'storage_path' => $fItem['path'],
+                            'status_id' => $status->id,
+                            'subject' => $fItem['subject'],
+                            'from' => $fItem['from'],
+                            'date' => $fItem['date'],
+                            'format_used' => $fItem['format_used'],
+                        ];
+                    }
                 }
 
             } catch (\Throwable $e) {
@@ -282,4 +325,54 @@ class SupplierEmailCatalogService
 
         return null;
     }
+
+    /**
+     * Resuelve cuál formato (Formato 1, Formato 2 o Formato 3) corresponde al archivo y correo dado.
+     */
+    private function resolveStructureForFile(string $filename, string $subject, int $index, array $structures): array
+    {
+        $primary = $structures['primary'] ?? [];
+        $secondary = $structures['secondary'] ?? null;
+        $tertiary = $structures['tertiary'] ?? null;
+
+        $targetText = strtoupper(Str::ascii($filename . ' ' . $subject));
+
+        // 1. Coincidencia con Formato 3 (si está configurado)
+        if (!empty($tertiary) && is_array($tertiary)) {
+            $keywordTertiary = !empty($tertiary['file_keyword']) ? strtoupper(Str::ascii(trim((string) $tertiary['file_keyword']))) : null;
+            if ($keywordTertiary && str_contains($targetText, $keywordTertiary)) {
+                return ['name' => 'Formato 3 (' . $keywordTertiary . ')', 'structure' => $tertiary];
+            }
+            // Si el nombre contiene explícitamente "GENIAL" y no hay keyword configurada
+            if (!$keywordTertiary && str_contains($targetText, 'GENIAL')) {
+                return ['name' => 'Formato 3 (Genial)', 'structure' => $tertiary];
+            }
+        }
+
+        // 2. Coincidencia con Formato 2 (si está configurado)
+        if (!empty($secondary) && is_array($secondary)) {
+            $keywordSecondary = !empty($secondary['file_keyword']) ? strtoupper(Str::ascii(trim((string) $secondary['file_keyword']))) : null;
+            if ($keywordSecondary && str_contains($targetText, $keywordSecondary)) {
+                return ['name' => 'Formato 2 (' . $keywordSecondary . ')', 'structure' => $secondary];
+            }
+        }
+
+        // 3. Coincidencia con Formato 1
+        $keywordPrimary = !empty($primary['file_keyword']) ? strtoupper(Str::ascii(trim((string) $primary['file_keyword']))) : null;
+        if ($keywordPrimary && str_contains($targetText, $keywordPrimary)) {
+            return ['name' => 'Formato 1 (' . $keywordPrimary . ')', 'structure' => $primary];
+        }
+
+        // 4. Asignación por orden de archivo / índice si no hubo coincidencia de palabras clave
+        if ($index === 2 && !empty($tertiary)) {
+            return ['name' => 'Formato 3', 'structure' => $tertiary];
+        }
+
+        if ($index === 1 && !empty($secondary)) {
+            return ['name' => 'Formato 2', 'structure' => $secondary];
+        }
+
+        return ['name' => 'Formato 1', 'structure' => $primary];
+    }
 }
+

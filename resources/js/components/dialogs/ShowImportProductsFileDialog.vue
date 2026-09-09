@@ -15,9 +15,9 @@ const emit = defineEmits([
 ]);
 
 const errors = ref({});
-const activeFormat = ref("primary"); // 'primary' | 'secondary'
+const activeFormat = ref("primary"); // 'primary' | 'secondary' | 'tertiary'
 
-// Estructuras reactivas para formato principal y secundario
+// Estructuras reactivas para formato principal, secundario y terciario
 const formats = reactive({
   primary: {
     start_row: 1,
@@ -30,6 +30,7 @@ const formats = reactive({
     expiration: null,
     quantity: null,
     currency: null,
+    file_keyword: "",
   },
   secondary: {
     start_row: 1,
@@ -42,6 +43,20 @@ const formats = reactive({
     expiration: null,
     quantity: null,
     currency: null,
+    file_keyword: "",
+  },
+  tertiary: {
+    start_row: 1,
+    cod_supplier: "",
+    name: "",
+    barcode_match: null,
+    unit_cost: "",
+    unit_cost_usd: "",
+    active_ingredient: "",
+    expiration: null,
+    quantity: null,
+    currency: null,
+    file_keyword: "",
   },
 });
 
@@ -76,8 +91,10 @@ const submitForm = async () => {
   form.append("unit_cost_usd", current.unit_cost_usd || "");
   form.append("active_ingredient", current.active_ingredient || "");
   form.append("expiration", current.expiration || "");
+  form.append("file_keyword", current.file_keyword || "");
   form.append("format_type", activeFormat.value);
   form.append("save_as_secondary", activeFormat.value === "secondary" ? "1" : "0");
+  form.append("save_as_tertiary", activeFormat.value === "tertiary" ? "1" : "0");
 
   if (current.currency !== null && current.currency !== "") {
     form.append("currency", current.currency);
@@ -105,7 +122,8 @@ const submitForm = async () => {
       },
     });
 
-    toast.success(`Datos cargados correctamente para ${props.selectedSupplier.name} (${activeFormat.value === 'secondary' ? 'Formato 2' : 'Formato 1'})`);
+    const formatLabel = activeFormat.value === 'tertiary' ? 'Formato 3' : (activeFormat.value === 'secondary' ? 'Formato 2' : 'Formato 1');
+    toast.success(`Datos cargados correctamente para ${props.selectedSupplier.name} (${formatLabel})`);
 
     file.value = null;
     emit("close-dialog");
@@ -127,6 +145,7 @@ const fetchSupplierConnection = async (id) => {
     const { data } = await axios.get(`suppliers/${id}/first-connection`);
     const structure = data.data?.structure || {};
     const secondaryStructure = data.data?.secondary_structure || {};
+    const tertiaryStructure = data.data?.tertiary_structure || {};
 
     formats.primary = {
       start_row: structure.start_row ?? 1,
@@ -139,6 +158,7 @@ const fetchSupplierConnection = async (id) => {
       expiration: structure.expiration != "null" ? structure.expiration : null,
       quantity: structure.quantity != "null" ? structure.quantity : null,
       currency: structure.currency ?? null,
+      file_keyword: structure.file_keyword ?? "",
     };
 
     formats.secondary = {
@@ -152,6 +172,21 @@ const fetchSupplierConnection = async (id) => {
       expiration: secondaryStructure.expiration != "null" ? secondaryStructure.expiration : null,
       quantity: secondaryStructure.quantity != "null" ? secondaryStructure.quantity : null,
       currency: secondaryStructure.currency ?? null,
+      file_keyword: secondaryStructure.file_keyword ?? "",
+    };
+
+    formats.tertiary = {
+      start_row: tertiaryStructure.start_row ?? structure.start_row ?? 1,
+      cod_supplier: tertiaryStructure.cod_supplier ?? "",
+      name: tertiaryStructure.name ?? "",
+      barcode_match: tertiaryStructure.barcode_match ?? null,
+      unit_cost: tertiaryStructure.unit_cost ?? "",
+      unit_cost_usd: tertiaryStructure.unit_cost_usd ?? "",
+      active_ingredient: tertiaryStructure.active_ingredient ?? "",
+      expiration: tertiaryStructure.expiration != "null" ? tertiaryStructure.expiration : null,
+      quantity: tertiaryStructure.quantity != "null" ? tertiaryStructure.quantity : null,
+      currency: tertiaryStructure.currency ?? null,
+      file_keyword: tertiaryStructure.file_keyword ?? "",
     };
   } catch (error) {
     console.error("Error al obtener estructura de conexión:", error);
@@ -237,7 +272,7 @@ watch(
           </VRow>
         </VCard>
 
-        <!-- Tabs para seleccionar Formato 1 o Formato 2 -->
+        <!-- Tabs para seleccionar Formato 1, Formato 2 o Formato 3 -->
         <VCard variant="flat" class="mb-4 bg-white rounded-xl border shadow-sm pa-1">
           <VTabs
             v-model="activeFormat"
@@ -254,24 +289,44 @@ watch(
               <VIcon start icon="tabler-file-plus" size="18" />
               Formato 2 (Secundario)
             </VTab>
+            <VTab value="tertiary" class="text-none font-weight-bold py-2">
+              <VIcon start icon="tabler-file-star" size="18" />
+              Formato 3 (Genial / Especial)
+            </VTab>
           </VTabs>
         </VCard>
 
         <VCard variant="flat" class="pa-4 bg-white rounded-xl border shadow-sm mb-4">
           <VAlert
-            :type="activeFormat === 'secondary' ? 'warning' : 'info'"
+            :type="activeFormat === 'tertiary' ? 'success' : (activeFormat === 'secondary' ? 'warning' : 'info')"
             variant="tonal"
             density="compact"
             icon="tabler-info-circle"
             class="rounded-xl mb-4"
           >
             <span class="text-super-xs font-weight-black">
-              Editando columnas para el <strong>{{ activeFormat === 'secondary' ? 'Formato 2 (Secundario / Alternativo)' : 'Formato 1 (Principal por Defecto)' }}</strong>.
+              Editando columnas para el <strong>{{ activeFormat === 'tertiary' ? 'Formato 3 (Genial / Tercero)' : (activeFormat === 'secondary' ? 'Formato 2 (Secundario / Alternativo)' : 'Formato 1 (Principal por Defecto)') }}</strong>.
               Indica la letra o número de columna en la que se encuentra cada campo en este archivo.
             </span>
           </VAlert>
 
           <VRow>
+            <VCol cols="12">
+              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">
+                Palabra Clave en Archivo / Asunto (Opcional para detección automática en Gmail, ej: GENIAL, NACIONAL, IMPORTADOS)
+              </span>
+              <VTextField
+                v-model="formats[activeFormat].file_keyword"
+                type="text"
+                placeholder="Ej: GENIAL"
+                variant="outlined"
+                density="comfortable"
+                hide-details="auto"
+                prepend-inner-icon="tabler-search"
+                class="rounded-lg font-weight-black"
+                :error-messages="errors.file_keyword"
+              />
+            </VCol>
             <VCol cols="6">
               <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Fila de Inicio</span>
               <VTextField
@@ -409,7 +464,9 @@ watch(
         <!-- Archivo Excel -->
         <div class="d-flex align-center gap-2 mb-3">
           <div class="header-indicator primary shadow-sm" />
-          <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Archivo de Productos ({{ activeFormat === 'secondary' ? 'Formato 2' : 'Formato 1' }})</span>
+          <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">
+            Archivo de Productos ({{ activeFormat === 'tertiary' ? 'Formato 3' : (activeFormat === 'secondary' ? 'Formato 2' : 'Formato 1') }})
+          </span>
         </div>
 
         <VCard variant="flat" class="pa-4 bg-white rounded-xl border shadow-sm">
