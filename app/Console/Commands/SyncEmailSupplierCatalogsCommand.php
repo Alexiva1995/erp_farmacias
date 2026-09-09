@@ -56,16 +56,23 @@ class SyncEmailSupplierCatalogsCommand extends Command
             $this->info("Proveedores/Correos revisados: " . (count($result['processed']) + count($result['skipped']) + count($result['errors'])));
 
             if (!empty($result['processed'])) {
+                $totalProductsImported = array_sum(array_column($result['processed'], 'products_count'));
+
                 $this->table(
-                    ['Proveedor', 'Archivo', 'Formato', 'De', 'Asunto'],
+                    ['Proveedor', 'Archivo', 'Formato', 'Productos', 'De', 'Asunto'],
                     array_map(fn($p) => [
                         $p['supplier_name'] ?? 'N/A',
                         $p['filename'] ?? 'N/A',
                         $p['format_used'] ?? 'Formato 1',
+                        isset($p['products_count']) ? ($p['products_count'] > 0 ? "{$p['products_count']} prods" : "0 (Revisar Mapeo)") : 'N/A',
                         $p['from'] ?? 'N/A',
                         $p['subject'] ?? 'N/A',
                     ], $result['processed'])
                 );
+
+                if (!$dryRun) {
+                    $this->info("📦 Total productos consolidados en catálogo: {$totalProductsImported}");
+                }
             }
 
             if (!empty($result['skipped'])) {

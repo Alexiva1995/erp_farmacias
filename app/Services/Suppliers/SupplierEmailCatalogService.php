@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Suppliers;
 
 use App\Jobs\ProcessSupplierConnectionJob;
+use App\Exports\SupplierImport;
 use App\Models\ExchangeRate;
 use App\Models\Supplier;
 use App\Models\SupplierConnection;
@@ -15,11 +16,13 @@ use Exception;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Maatwebsite\Excel\Facades\Excel;
 
 class SupplierEmailCatalogService
 {
     public function __construct(
-        protected GmailImapService $imapService
+        protected GmailImapService $imapService,
+        protected SupplierQueryService $queryService,
     ) {
     }
 
@@ -242,15 +245,75 @@ class SupplierEmailCatalogService
                     $firstEmailDate = $collectedEmails[0]['date'] ?? null;
                     $emailRate = $this->getExchangeRateForDate($firstEmailDate) ?: $rate;
 
-                    // Despachar Job de forma síncrona combinando todos los archivos con sus respectivos formatos
-                    ProcessSupplierConnectionJob::dispatchSync(
-                        $supplier,
-                        $userId,
-                        $fileItems,
-                        $primaryStructure,
-                        $emailRate,
-                        $status->id
-                    );
+                    $allProducts = [];
+
+                    foreach ($fileItems as &$fItem) {
+                        $singlePath = $fItem['path'];
+                        $map = $fItem['column_map'];
+
+                        if (!Storage::disk('local')->exists($singlePath)) {
+                            $fItem['products_count'] = 0;
+                            continue;
+                        }
+
+                        $absolutePath = Storage::disk('local')->path($singlePath);
+
+                        try {
+                            $nameCol = !empty($map["name"]) ? (string)$map["name"] : 'B';
+                            $startRow = !empty($map["start_row"]) ? (int)$map["start_row"] : 1;
+
+                            $import = new SupplierImport(
+                                supplierId: (int) $supplier->id,
+                                startRow: $startRow,
+                                codSupplierCol: !empty($map["cod_supplier"]) ? $map["cod_supplier"] : null,
+                                nameCol: $nameCol,
+                                barcodeCol: !empty($map["barcode_match"]) ? $map["barcode_match"] : null,
+                                qtyCol: !empty($map["quantity"]) ? $map["quantity"] : null,
+                                costBsCol: !empty($map["unit_cost"]) ? $map["unit_cost"] : null,
+                                costUsdCol: !empty($map["unit_cost_usd"]) ? $map["unit_cost_usd"] : null,
+                                activeIngredientCol: !empty($map["active_ingredient"]) ? $map["active_ingredient"] : null,
+                                expirationCol: !empty($map["expiration"]) ? $map["expiration"] : null,
+                                currencyCol: $emailRate ?? (!empty($map["currency"]) ? (float)$map["currency"] : null),
+                            );
+
+                            Excel::import($import, $absolutePath);
+
+                            $rows = $import->getRows();
+                            $fItem['products_count'] = $rows->count();
+
+                            if ($rows->isNotEmpty()) {
+                                $allProducts = array_merge($allProducts, $rows->toArray());
+                            }
+                        } catch (\Throwable $e) {
+                            $fItem['products_count'] = 0;
+                            $fItem['error'] = $e->getMessage();
+                            Log::error("Error importando archivo {$fItem['filename']}: " . $e->getMessage());
+                        }
+
+                        Storage::disk('local')->delete($singlePath);
+                    }
+                    unset($fItem);
+
+                    // Guardar todos los productos combinados en la base de datos (limpieza previa única)
+                    $this->queryService->storeSupplierConnectionData($supplier, [
+                        'products' => $allProducts,
+                        'invoices' => [],
+                    ]);
+
+                    $this->queryService->addDiscountsToProducts($supplier);
+
+                    \Illuminate\Support\Facades\DB::table('supplier_connections')
+                        ->where('supplier_id', $supplier->id)
+                        ->update(['last_connection' => now()->toDateString()]);
+
+                    $totalCount = count($allProducts);
+
+                    $status->update([
+                        'status' => 'completed',
+                        'message' => "Catálogo sincronizado exitosamente ({$totalCount} productos importados)",
+                        'count_product' => $totalCount,
+                        'count_invoice' => 0,
+                    ]);
 
                     foreach ($fileItems as $fItem) {
                         $processed[] = [
@@ -263,6 +326,7 @@ class SupplierEmailCatalogService
                             'from' => $fItem['from'],
                             'date' => $fItem['date'],
                             'format_used' => $fItem['format_used'],
+                            'products_count' => $fItem['products_count'] ?? 0,
                         ];
                     }
                 }
