@@ -1551,6 +1551,13 @@ class OrderActionService
 
     public function cancelledOrder(Order $order): Order
     {
+        if ($order->cash_closing_id) {
+            $cashClosing = $order->cashClosing ?? \App\Models\CashClosing::find($order->cash_closing_id);
+            if ($cashClosing && ($cashClosing->status === \App\Models\CashClosing::CLOSED || !empty($cashClosing->daily_closure_id))) {
+                throw new \Exception('No se puede cancelar una orden perteneciente a un cierre de caja ya cerrado o consolidado.');
+            }
+        }
+
         DB::beginTransaction();
         try {
             $order->status = Order::CANCELLED;

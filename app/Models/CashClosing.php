@@ -124,20 +124,25 @@ class CashClosing extends Model
      */
     public function recalculateTotals()
     {
-        // 1. Totales de Venta (Rendimiento Real - Basado en Órdenes completadas + Ajustes)
-        $this->total_cop = $this->orders()->where('currency', 'COP')->where('status', 'Completed')->sum('total_amount') + ($this->cop_spare ?? 0);
-        $this->total_usd = $this->orders()->where('currency', 'USD')->where('status', 'Completed')->sum('total_amount');
-        $this->total_bs  = $this->orders()->where('currency', 'BS')->where('status', 'Completed')->sum('total_amount');
+        // 1. Totales de Venta (Rendimiento Real - Basado en Órdenes completadas)
+        $this->total_cop = (float) $this->orders()->where('currency', 'COP')->where('status', 'Completed')->sum('total_amount');
+        $this->total_usd = (float) $this->orders()->where('currency', 'USD')->where('status', 'Completed')->sum('total_amount');
+        $this->total_bs  = (float) $this->orders()->where('currency', 'BS')->where('status', 'Completed')->sum('total_amount');
 
         // 2. Efectivo Neto Real a Entregar (Físico: Ventas Cash + Abonos Cash - Vueltos - Ajustes)
         $this->cop_delivered = $this->cop_cash + $this->cop_cash_payment_credit + ($this->cop_spare ?? 0);
         $this->usd_delivered = $this->usd_cash + $this->usd_cash_payment_credit;
         $this->bs_delivered  = $this->bs_cash + $this->bs_cash_payment_credit;
 
-        // 3. Venta Bruta (USD equivalente) - Refleja el rendimiento consolidado incluyendo créditos otorgados
-        $copInUsd = $this->getServiceExchangeRate('COP') > 0 ? ($this->total_cop / $this->getServiceExchangeRate('COP')) : 0;
-        $bsInUsd  = $this->getServiceExchangeRate('BS')  > 0 ? ($this->total_bs  / $this->getServiceExchangeRate('BS'))  : 0;
-        $this->total_sales = round($this->total_usd + $copInUsd + $bsInUsd, 2);
+        // 3. Venta Bruta (USD equivalente) - Basada en la sumatoria histórica real en USD de los pedidos completados
+        $ordersUsd = (float) $this->orders()->where('status', 'Completed')->sum('total_amount_usd');
+        if ($ordersUsd > 0 || ($this->total_usd == 0 && $this->total_cop == 0 && $this->total_bs == 0)) {
+            $this->total_sales = round($ordersUsd, 2);
+        } else {
+            $copInUsd = $this->getServiceExchangeRate('COP') > 0 ? ($this->total_cop / $this->getServiceExchangeRate('COP')) : 0;
+            $bsInUsd  = $this->getServiceExchangeRate('BS')  > 0 ? ($this->total_bs  / $this->getServiceExchangeRate('BS'))  : 0;
+            $this->total_sales = round($this->total_usd + $copInUsd + $bsInUsd, 2);
+        }
 
         $this->save();
         return $this;
