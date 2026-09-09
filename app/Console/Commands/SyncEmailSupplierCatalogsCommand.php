@@ -28,6 +28,8 @@ class SyncEmailSupplierCatalogsCommand extends Command
      */
     public function handle(SupplierEmailCatalogService $emailCatalogService): int
     {
+        @ini_set('memory_limit', '512M');
+
         $this->info('📧 Iniciando sincronización de catálogos desde Gmail...');
 
         $dryRun = (bool) $this->option('dry-run');

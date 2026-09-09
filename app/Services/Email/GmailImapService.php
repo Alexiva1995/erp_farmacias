@@ -102,18 +102,51 @@ class GmailImapService
     }
 
     /**
-     * Extrae el contenido completo, encabezados y archivos adjuntos de un mensaje específico.
+     * Extrae el contenido completo, encabezados y archivos adjuntos de un mensaje específico con bajo consumo de memoria.
      */
     public function fetchMessage(int $messageNumber, array $allowedExtensions = ['xlsx', 'xls', 'csv']): ?array
     {
-        $response = $this->sendCommand("FETCH {$messageNumber} (BODY.PEEK[])");
-        $rawMessage = implode("\r\n", $response);
+        $this->tagIndex++;
+        $tag = sprintf('A%04d', $this->tagIndex);
+        fwrite($this->socket, "{$tag} FETCH {$messageNumber} (BODY.PEEK[])\r\n");
+
+        $rawMessage = '';
+        while (!feof($this->socket)) {
+            $line = $this->readLine();
+            if ($line === null) {
+                break;
+            }
+
+            if (preg_match('/\{(\d+)\}$/', $line, $m)) {
+                $bytesToRead = (int) $m[1];
+                $readSoFar = 0;
+                while ($readSoFar < $bytesToRead && !feof($this->socket)) {
+                    $chunk = fread($this->socket, min(131072, $bytesToRead - $readSoFar));
+                    if ($chunk === false || strlen($chunk) === 0) {
+                        break;
+                    }
+                    $rawMessage .= $chunk;
+                    $readSoFar += strlen($chunk);
+                }
+            } else {
+                if (empty($rawMessage)) {
+                    $rawMessage .= $line . "\r\n";
+                }
+            }
+
+            if (str_starts_with($line, "{$tag} OK") || str_starts_with($line, "{$tag} NO") || str_starts_with($line, "{$tag} BAD")) {
+                break;
+            }
+        }
 
         if (empty($rawMessage)) {
             return null;
         }
 
-        return $this->parseEmailContent($rawMessage, $allowedExtensions, $messageNumber);
+        $result = $this->parseEmailContent($rawMessage, $allowedExtensions, $messageNumber);
+        unset($rawMessage);
+
+        return $result;
     }
 
     /**
@@ -207,17 +240,23 @@ class GmailImapService
     }
 
     /**
-     * Parsea encabezados y adjuntos de un mensaje MIME crudo.
+     * Parsea encabezados y adjuntos de un mensaje MIME crudo sin duplicar memoria.
      */
-    private function parseEmailContent(string $raw, array $allowedExtensions, int $messageNumber): array
+    private function parseEmailContent(string &$raw, array $allowedExtensions, int $messageNumber): array
     {
-        $parts = explode("\r\n\r\n", $raw, 2);
-        $headerSection = $parts[0] ?? '';
-        $bodySection = $parts[1] ?? '';
+        $headerEndPos = strpos($raw, "\r\n\r\n");
+        if ($headerEndPos === false) {
+            $headerEndPos = strpos($raw, "\n\n");
+            $separatorLen = 2;
+        } else {
+            $separatorLen = 4;
+        }
+
+        $headerSection = ($headerEndPos !== false) ? substr($raw, 0, $headerEndPos) : $raw;
 
         // Extraer encabezados principales
         $headers = [];
-        $headerLines = explode("\r\n", $headerSection);
+        $headerLines = explode("\n", str_replace("\r", "", $headerSection));
         $currentHeader = '';
 
         foreach ($headerLines as $hline) {
@@ -248,41 +287,60 @@ class GmailImapService
         $contentType = $headers['content-type'] ?? '';
 
         if (preg_match('/boundary=["\']?([^"\';\r\n]+)["\']?/i', $contentType, $matches)) {
-            $boundary = $matches[1];
-            $sections = explode("--{$boundary}", $bodySection);
+            $boundary = '--' . $matches[1];
+            $boundaryLen = strlen($boundary);
 
-            foreach ($sections as $section) {
-                if (empty(trim($section)) || trim($section) === '--') {
-                    continue;
-                }
+            $searchOffset = ($headerEndPos !== false) ? $headerEndPos + $separatorLen : 0;
+            $pos = strpos($raw, $boundary, $searchOffset);
 
-                $subParts = explode("\r\n\r\n", $section, 2);
-                $partHeaders = $subParts[0] ?? '';
-                $partBody = $subParts[1] ?? '';
+            while ($pos !== false) {
+                $nextPos = strpos($raw, $boundary, $pos + $boundaryLen);
+                $sectionLen = ($nextPos !== false) ? ($nextPos - ($pos + $boundaryLen)) : null;
+                $section = ($sectionLen !== null) ? substr($raw, $pos + $boundaryLen, $sectionLen) : substr($raw, $pos + $boundaryLen);
 
-                $filename = null;
-                if (preg_match('/filename\*?=["\']?(?:UTF-8\'\')?([^"\'\r\n;]+)["\']?/i', $partHeaders, $fnMatches)) {
-                    $filename = urldecode($fnMatches[1]);
-                } elseif (preg_match('/name=["\']?([^"\'\r\n;]+)["\']?/i', $partHeaders, $fnMatches)) {
-                    $filename = $fnMatches[1];
-                }
-
-                if ($filename) {
-                    $filename = $this->decodeMimeHeader($filename);
-                    $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
-
-                    if (in_array($ext, $allowedExtensions)) {
-                        $isBase64 = str_contains(strtolower($partHeaders), 'content-transfer-encoding: base64');
-                        $fileData = $isBase64 ? base64_decode(str_replace(["\r", "\n", " "], '', $partBody)) : $partBody;
-
-                        $attachments[] = [
-                            'filename' => $filename,
-                            'extension' => $ext,
-                            'content' => $fileData,
-                            'size' => strlen($fileData),
-                        ];
+                if (!empty($section) && trim($section) !== '--') {
+                    $subHeaderEndPos = strpos($section, "\r\n\r\n");
+                    if ($subHeaderEndPos === false) {
+                        $subHeaderEndPos = strpos($section, "\n\n");
+                        $subSepLen = 2;
+                    } else {
+                        $subSepLen = 4;
                     }
+
+                    $partHeaders = ($subHeaderEndPos !== false) ? substr($section, 0, $subHeaderEndPos) : '';
+                    $partBody = ($subHeaderEndPos !== false) ? substr($section, $subHeaderEndPos + $subSepLen) : '';
+
+                    $filename = null;
+                    if (preg_match('/filename\*?=["\']?(?:UTF-8\'\')?([^"\'\r\n;]+)["\']?/i', $partHeaders, $fnMatches)) {
+                        $filename = urldecode($fnMatches[1]);
+                    } elseif (preg_match('/name=["\']?([^"\'\r\n;]+)["\']?/i', $partHeaders, $fnMatches)) {
+                        $filename = $fnMatches[1];
+                    }
+
+                    if ($filename) {
+                        $filename = $this->decodeMimeHeader($filename);
+                        $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+
+                        if (in_array($ext, $allowedExtensions)) {
+                            $isBase64 = str_contains(strtolower($partHeaders), 'content-transfer-encoding: base64');
+                            $fileData = $isBase64 ? base64_decode(str_replace(["\r", "\n", " "], '', $partBody)) : $partBody;
+
+                            $attachments[] = [
+                                'filename' => $filename,
+                                'extension' => $ext,
+                                'content' => $fileData,
+                                'size' => strlen($fileData),
+                            ];
+                            unset($fileData);
+                        }
+                    }
+                    unset($partHeaders, $partBody, $section);
                 }
+
+                if ($nextPos === false) {
+                    break;
+                }
+                $pos = $nextPos;
             }
         }
 

@@ -32,6 +32,8 @@ class SupplierEmailCatalogService
      */
     public function syncEmailCatalogs(bool $dryRun = false, ?Supplier $targetSupplier = null): array
     {
+        @ini_set('memory_limit', '512M');
+
         $email = config('mail_sync.email');
         $password = config('mail_sync.password');
         $host = config('mail_sync.host', 'imap.gmail.com');
