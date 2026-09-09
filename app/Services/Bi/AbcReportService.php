@@ -112,35 +112,50 @@ class AbcReportService
                     $item->days_to_expiration = $daysDiffFirst;
                     $item->months_to_expiration = round($daysDiffFirst / 30.4375, 1);
 
-                    $cumQty = 0;
+                    $currentDay = 0;
                     $totalRiskUnits = 0;
                     $firstRiskDate = null;
 
                     foreach ($productLots as $lot) {
                         $lotQty = (float) $lot->quantity;
-                        $cumQty += $lotQty;
                         $lotExpDate = Carbon::parse($lot->expiration_date)->startOfDay();
                         $daysToLotExp = (int) $today->diffInDays($lotExpDate, false);
 
+                        if ($daysToLotExp <= 0) {
+                            // Lote ya vencido en inventario
+                            $totalRiskUnits += $lotQty;
+                            if (!$firstRiskDate) {
+                                $firstRiskDate = $lot->expiration_date;
+                            }
+                            $item->is_expiring_soon = true;
+                            continue;
+                        }
+
                         if ($dailyRunRate > 0) {
-                            // Unidades máximas que el ritmo de venta logrará consumir hasta la fecha de caducidad del lote
-                            $maxUnitsConsumable = max(0, $daysToLotExp > 0 ? ($daysToLotExp * $dailyRunRate) : 0);
-                            
-                            // Si el acumulado supera la capacidad de absorción del mercado, las unidades sobrantes vencen
-                            if ($daysToLotExp <= 0 || $cumQty > $maxUnitsConsumable) {
-                                $unconsumedInThisLot = min($lotQty, max(0, $cumQty - $maxUnitsConsumable));
-                                if ($unconsumedInThisLot > 0) {
-                                    $totalRiskUnits += $unconsumedInThisLot;
-                                    if (!$firstRiskDate) {
-                                        $firstRiskDate = $lot->expiration_date;
-                                    }
-                                    if ($daysToLotExp <= 180) {
-                                        $item->is_expiring_soon = true;
-                                    }
+                            // Días cronológicos disponibles hasta el vencimiento de este lote específico
+                            $availableDays = max(0, $daysToLotExp - $currentDay);
+                            $maxSalesCapacity = $availableDays * $dailyRunRate;
+
+                            if ($lotQty <= $maxSalesCapacity) {
+                                // El lote es completamente absorbido por el ritmo de ventas antes de expirar
+                                $daysUsed = $lotQty / $dailyRunRate;
+                                $currentDay += $daysUsed;
+                            } else {
+                                // El ritmo de ventas no logra absorber todo el lote: el remanente vence en su fecha
+                                $unitsSold = $maxSalesCapacity;
+                                $unitsExpired = $lotQty - $unitsSold;
+                                $totalRiskUnits += $unitsExpired;
+                                $currentDay = $daysToLotExp;
+
+                                if (!$firstRiskDate) {
+                                    $firstRiskDate = $lot->expiration_date;
+                                }
+                                if ($daysToLotExp <= 180) {
+                                    $item->is_expiring_soon = true;
                                 }
                             }
                         } else {
-                            // Sin ventas en el periodo: si el lote vence en <= 180 días o ya venció, todas sus unidades están en riesgo
+                            // Sin ventas registradas en el periodo
                             if ($daysToLotExp <= 180) {
                                 $totalRiskUnits += $lotQty;
                                 if (!$firstRiskDate) {
