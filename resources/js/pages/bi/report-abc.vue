@@ -146,6 +146,16 @@ const getGmroiColor = (gmroi) => {
   return 'text-error';
 };
 
+watch(selectedAnalysisType, (newType) => {
+  if (newType === 'frozen_capital' || newType === 'dead_stock') {
+    sortBy.value = [{ key: 'inventory_value', order: 'desc' }];
+  } else if (newType === 'negative_margin') {
+    sortBy.value = [{ key: 'margin_percentage', order: 'asc' }];
+  } else {
+    sortBy.value = [{ key: 'total_sales', order: 'desc' }];
+  }
+});
+
 watch([page, itemsPerPage, sortBy, selectedDateRange, selectedLaboratories, selectedFinalClassification, selectedAnalysisType, minGmroi, stockFilter], () => {
   fetchReport();
 }, { deep: true });
@@ -478,7 +488,12 @@ const handleFilterCritical = () => {
           </template>
           
           <template #item.last_cost="{ item }">
-            <span class="font-weight-medium">{{ formatCurrency(item.last_cost) }}</span>
+            <div class="d-flex flex-column align-end">
+              <span class="font-weight-medium">{{ formatCurrency(item.last_cost) }}</span>
+              <span v-if="item.inventory_value > 0" class="text-super-xs font-weight-bold" :class="['dead_stock', 'frozen_capital'].includes(selectedAnalysisType) ? 'text-error' : 'text-disabled'">
+                Inv: {{ formatCurrency(item.inventory_value) }}
+              </span>
+            </div>
           </template>
 
           <template #item.final_classification="{ item }">

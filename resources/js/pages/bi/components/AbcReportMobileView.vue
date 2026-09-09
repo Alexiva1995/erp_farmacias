@@ -114,9 +114,14 @@ const emit = defineEmits(['update:page']);
                 </div>
               </VCol>
               <VCol cols="6" class="pa-2">
-                <div class="text-super-xs text-disabled text-uppercase font-weight-black mb-1">Stock / Cobertura</div>
+                <div class="d-flex justify-space-between align-center mb-1">
+                  <span class="text-super-xs text-disabled text-uppercase font-weight-black">Stock / Inv</span>
+                </div>
                 <div class="text-sm font-weight-black" :class="item.current_stock === 0 ? 'text-error' : ''">{{ item.current_stock }} uds</div>
-                <div class="text-super-xs font-weight-bold" :class="item.inventory_days < 10 ? 'text-error' : 'text-disabled'">
+                <div v-if="item.inventory_value > 0" class="text-super-xs font-weight-bold" :class="['dead_stock', 'frozen_capital'].includes(selectedAnalysisType) ? 'text-error' : 'text-disabled'">
+                  Inv: {{ formatCurrency(item.inventory_value) }}
+                </div>
+                <div v-else class="text-super-xs font-weight-bold" :class="item.inventory_days < 10 ? 'text-error' : 'text-disabled'">
                   {{ item.inventory_days === 9999 ? 'Sin rotación' : Math.round(item.inventory_days) + ' días' }}
                 </div>
               </VCol>

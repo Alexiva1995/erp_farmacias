@@ -42,11 +42,11 @@ defineProps({
       <VCol
         v-for="(kpi, index) in [
           {
-            title: selectedAnalysisType === 'dead_stock' ? 'Capital Inmovilizado' : 'Ventas Globales',
-            value: formatCurrency(selectedAnalysisType === 'dead_stock' ? summaryStats.frozen_capital : summaryStats.total_volume),
-            color: selectedAnalysisType === 'dead_stock' ? 'error' : 'primary',
-            icon: selectedAnalysisType === 'dead_stock' ? 'tabler-lock-square' : 'tabler-coin',
-            desc: selectedAnalysisType === 'dead_stock' ? 'Dinero atrapado en stock' : 'Total facturado en el periodo'
+            title: ['dead_stock', 'frozen_capital'].includes(selectedAnalysisType) ? 'Capital Inmovilizado' : 'Ventas Globales',
+            value: formatCurrency(['dead_stock', 'frozen_capital'].includes(selectedAnalysisType) ? summaryStats.frozen_capital : summaryStats.total_volume),
+            color: ['dead_stock', 'frozen_capital'].includes(selectedAnalysisType) ? 'error' : 'primary',
+            icon: ['dead_stock', 'frozen_capital'].includes(selectedAnalysisType) ? 'tabler-lock-square' : 'tabler-coin',
+            desc: ['dead_stock', 'frozen_capital'].includes(selectedAnalysisType) ? 'Dinero atrapado en stock' : 'Total facturado en el periodo'
           },
           {
             title: 'Prod. Estrella',

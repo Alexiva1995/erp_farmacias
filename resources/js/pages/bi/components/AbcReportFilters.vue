@@ -50,6 +50,7 @@ const classificationOptions = [
 
 const analysisTypeOptions = [
   { title: 'Análisis Completo', value: 'all' },
+  { title: 'Capital Congelado (CZ / Sin Rotación)', value: 'frozen_capital' },
   { title: 'Quiebres y Riesgo de Stock (A/B)', value: 'critical_stock' },
   { title: 'Margen Negativo / Pérdida (<0%)', value: 'negative_margin' },
   { title: 'Stock Muerto (0 Ventas)', value: 'dead_stock' },

@@ -37,7 +37,7 @@ class AbcReportRequest extends FormRequest
             'itemsPerPage' => ['nullable', 'integer', 'min:-1'],
             'sortBy' => ['nullable', 'string'],
             'orderBy' => ['nullable', 'string', 'in:asc,desc'],
-            'analysis_type' => ['nullable', 'string', 'in:all,dead_stock,star_products,critical_stock,negative_margin'],
+            'analysis_type' => ['nullable', 'string', 'in:all,dead_stock,star_products,critical_stock,negative_margin,frozen_capital'],
             'min_gmroi' => ['nullable', 'numeric'],
             'stock_filter' => ['nullable', 'string', 'in:all,with_stock,out_of_stock'],
             'search' => ['nullable', 'string'],
