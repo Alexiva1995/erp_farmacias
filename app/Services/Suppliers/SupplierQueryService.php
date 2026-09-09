@@ -705,7 +705,7 @@ class SupplierQueryService
     }
 
     /**
-     * Obtiene los proveedores que tienen productos subidos en product_suppliers.
+     * Obtiene los proveedores activos disponibles en el sistema.
      */
     public function getAvailableSuppliers(): Collection
     {
@@ -718,7 +718,6 @@ class SupplierQueryService
                 $q->whereNull('is_deleted')
                   ->orWhere('is_deleted', false);
             })
-            ->whereHas('productSuppliers')
             ->select(["id", "name"])
             ->orderBy("name", "asc")
             ->get();

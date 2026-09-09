@@ -8,12 +8,20 @@ use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithBatchInserts;
 use Maatwebsite\Excel\Concerns\WithCalculatedFormulas;
 use Maatwebsite\Excel\Concerns\WithChunkReading;
+use Maatwebsite\Excel\Concerns\WithMultipleSheets;
 use Maatwebsite\Excel\Concerns\WithStartRow;
 use Illuminate\Support\Facades\Log;
 
-class SupplierImport implements ToCollection, WithStartRow, WithCalculatedFormulas, WithChunkReading, WithBatchInserts
+class SupplierImport implements ToCollection, WithStartRow, WithCalculatedFormulas, WithChunkReading, WithBatchInserts, WithMultipleSheets
 {
     private Collection $cleanedRows;
+
+    public function sheets(): array
+    {
+        return [
+            0 => $this,
+        ];
+    }
 
     public function __construct(
         private readonly int $supplierId,

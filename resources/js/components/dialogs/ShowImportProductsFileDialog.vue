@@ -187,8 +187,8 @@ watch(
       <!-- Header Premium Institucional -->
       <VCardTitle class="pa-0">
         <div class="header-gradient pa-4 d-flex align-center shadow-sm">
-          <VAvatar color="white" variant="flat" size="40" class="me-3 elevation-1">
-            <VIcon icon="tabler-file-spreadsheet" color="primary" size="22" />
+          <VAvatar color="white" variant="flat" size="40" class="me-3 elevation-1 text-primary">
+            <VIcon icon="tabler-file-upload" color="primary" size="22" />
           </VAvatar>
           <div class="d-flex flex-column leading-none text-white">
             <h2 class="text-h6 font-weight-black leading-tight mb-0 uppercase text-white">

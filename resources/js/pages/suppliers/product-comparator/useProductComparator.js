@@ -277,6 +277,7 @@ export function useProductComparator() {
 
   const handleRefreshAll = async () => {
     await Promise.all([
+      fetchOptions(),
       fetchSupplierConnections(),
       fetchProducts(),
       fetchProductsWithoutSupplier()
