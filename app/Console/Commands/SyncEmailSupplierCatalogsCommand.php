@@ -14,7 +14,7 @@ class SyncEmailSupplierCatalogsCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'supplier:sync-email-catalogs {--dry-run : Simula la lectura sin marcar los correos como leídos ni procesar}';
+    protected $signature = 'supplier:sync-email-catalogs {--supplier= : ID o nombre del proveedor a sincronizar} {--dry-run : Simula la lectura sin marcar los correos como leídos ni procesar}';
 
     /**
      * The console command description.
@@ -35,8 +35,22 @@ class SyncEmailSupplierCatalogsCommand extends Command
             $this->warn('Modo DRY-RUN activo: no se marcarán correos como leídos ni se modificarán datos.');
         }
 
+        $targetSupplier = null;
+        if ($supplierOpt = $this->option('supplier')) {
+            $targetSupplier = is_numeric($supplierOpt)
+                ? \App\Models\Supplier::find($supplierOpt)
+                : \App\Models\Supplier::where('name', 'LIKE', "%{$supplierOpt}%")->first();
+
+            if (!$targetSupplier) {
+                $this->error("No se encontró el proveedor '{$supplierOpt}'.");
+                return self::FAILURE;
+            }
+
+            $this->info("🎯 Proveedor seleccionado: {$targetSupplier->name} (ID: {$targetSupplier->id})");
+        }
+
         try {
-            $result = $emailCatalogService->syncEmailCatalogs($dryRun);
+            $result = $emailCatalogService->syncEmailCatalogs($dryRun, $targetSupplier);
 
             $this->info("Archivos/Catálogos detectados: " . count($result['processed']));
             $this->info("Proveedores/Correos revisados: " . (count($result['processed']) + count($result['skipped']) + count($result['errors'])));
