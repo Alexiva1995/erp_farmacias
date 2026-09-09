@@ -143,6 +143,45 @@ const handleDeleteAssignment = async (employeeId, productId) => {
   }
 };
 
+const handleDeleteAllAssignments = async (employeeId, employeeName) => {
+  const result = await Swal.fire({
+    title: "¿Estás seguro?",
+    text: `Se eliminarán todos los productos asignados a ${employeeName || "este empleado"}`,
+    icon: "warning",
+    showCancelButton: true,
+    cancelButtonText: "Cancelar",
+    confirmButtonText: "Sí, borrar todos",
+    reverseButtons: true,
+    didOpen: () => {
+      const actions = Swal.getActions();
+      const confirmButton = Swal.getConfirmButton();
+      const cancelButton = Swal.getCancelButton();
+
+      actions.style.display = "flex";
+      actions.style.gap = "10px";
+      actions.style.width = "100%";
+      actions.style.padding = "0 20px";
+
+      confirmButton.style.flex = "1";
+      confirmButton.style.width = "50%";
+
+      cancelButton.style.flex = "1";
+      cancelButton.style.width = "50%";
+    },
+  });
+
+  if (result.isConfirmed) {
+    try {
+      await axios.delete(`/employee-products/${employeeId}/all`);
+      toast.success("Todas las asignaciones fueron eliminadas con éxito.");
+      fetchEmployeeProducts();
+    } catch (error) {
+      console.error("Error al eliminar las asignaciones:", error);
+      toast.error("No se pudieron eliminar las asignaciones.");
+    }
+  }
+};
+
 const handleClearFilters = () => {
   searchQuery.value = "";
   selectedProduct.value = null;
@@ -232,6 +271,7 @@ const clearDialogErrors = () => {
       @view-products="handleViewProducts"
       @edit-assignment="handleEditAssignment"
       @delete-assignment="handleDeleteAssignment"
+      @delete-all-assignments="handleDeleteAllAssignments"
     />
 
     <EmployeeProductsViewDialog

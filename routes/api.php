@@ -1004,6 +1004,7 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
     Route::prefix('employee-products')->group(function () {
         Route::get('/', [EmployeeProductController::class, 'index']);
         Route::post('/', [EmployeeProductController::class, 'store']);
+        Route::delete('/{employee}/all', [EmployeeProductController::class, 'destroyAll']);
         Route::delete('/{employee}/{productId}', [EmployeeProductController::class, 'destroy']);
         Route::get('/stats', [EmployeeProductController::class, 'stats']);
     });

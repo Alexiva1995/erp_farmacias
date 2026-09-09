@@ -112,6 +112,7 @@ class EmployeeProductActionService
             DB::beginTransaction();
 
             $employee->products()->detach();
+            $employee->dishes()->detach();
 
             DB::commit();
             return true;

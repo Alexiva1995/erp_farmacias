@@ -12,7 +12,12 @@ const props = defineProps({
   page: { type: Number, required: true },
 });
 
-const emit = defineEmits(["update:options", "edit-assignment", "delete-assignment"]);
+const emit = defineEmits([
+  "update:options",
+  "edit-assignment",
+  "delete-assignment",
+  "delete-all-assignments",
+]);
 
 const { mobile } = useDisplay();
 
@@ -138,14 +143,23 @@ const getAvatarColor = (id) => {
             </template>
             <VList density="compact" class="rounded-lg py-1 border shadow-lg">
               <VListItem
+                @click="emit('delete-all-assignments', item.employee_id, item.employee_name)"
+                class="border-b"
+              >
+                <template #prepend>
+                  <VIcon icon="tabler-trash-filled" size="16" color="error" class="me-2" />
+                </template>
+                <VListItemTitle class="text-xs font-weight-black text-error text-uppercase">Borrar todos</VListItemTitle>
+              </VListItem>
+              <VListItem
                 v-for="prod in item.products"
                 :key="prod.id"
                 @click="emit('delete-assignment', item.employee_id, prod.id)"
               >
                 <template #prepend>
-                  <VIcon icon="tabler-trash" size="16" color="error" class="me-2" />
+                  <VIcon icon="tabler-circle-x" size="16" color="error" class="me-2" />
                 </template>
-                <VListItemTitle class="text-xs font-weight-black text-uppercase">{{ prod.name }}</VListItemTitle>
+                <VListItemTitle class="text-xs font-weight-black text-error text-uppercase">{{ prod.name }}</VListItemTitle>
               </VListItem>
             </VList>
           </VMenu>
@@ -220,14 +234,23 @@ const getAvatarColor = (id) => {
                     </template>
                     <VList density="compact" class="rounded-lg py-1 border shadow-lg">
                       <VListItem
+                        @click="emit('delete-all-assignments', item.employee_id, item.employee_name)"
+                        class="border-b"
+                      >
+                        <template #prepend>
+                          <VIcon icon="tabler-trash-filled" size="16" color="error" class="me-2" />
+                        </template>
+                        <VListItemTitle class="text-xs font-weight-black text-error text-uppercase">Borrar todos</VListItemTitle>
+                      </VListItem>
+                      <VListItem
                         v-for="prod in item.products"
                         :key="prod.id"
                         @click="emit('delete-assignment', item.employee_id, prod.id)"
                       >
                         <template #prepend>
-                          <VIcon icon="tabler-trash" size="16" color="error" class="me-2" />
+                          <VIcon icon="tabler-circle-x" size="16" color="error" class="me-2" />
                         </template>
-                        <VListItemTitle class="text-xs font-weight-black text-uppercase">{{ prod.name }}</VListItemTitle>
+                        <VListItemTitle class="text-xs font-weight-black text-error text-uppercase">{{ prod.name }}</VListItemTitle>
                       </VListItem>
                     </VList>
                   </VMenu>
