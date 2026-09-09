@@ -502,8 +502,19 @@ const handleFilterCritical = () => {
           </VChip>
         </div>
 
-        <!-- Botón Toggle de Datos de Interés / Vista Completa -->
+        <!-- Botón Toggle de Datos de Interés / Vista Completa y Acceso a Foto Finish -->
         <div class="d-flex align-center gap-2 ms-auto">
+          <VBtn
+            color="info"
+            variant="outlined"
+            size="small"
+            class="font-weight-bold"
+            @click="router.push('/bi/report-finish')"
+          >
+            <VIcon icon="tabler-camera" size="16" class="me-1" />
+            Foto Finish
+          </VBtn>
+
           <VBtn
             :color="isSimplifiedView ? 'warning' : 'primary'"
             variant="tonal"

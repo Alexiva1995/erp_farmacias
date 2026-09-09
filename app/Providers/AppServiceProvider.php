@@ -211,6 +211,11 @@ class AppServiceProvider extends ServiceProvider
         );
 
         $this->app->bind(
+            \App\Contracts\Repositories\InventorySnapshotRepositoryInterface::class,
+            \App\Repositories\InventorySnapshotRepository::class
+        );
+
+        $this->app->bind(
             \App\Contracts\Repositories\SkuReportRepositoryInterface::class,
             \App\Repositories\SkuReportRepository::class
         );

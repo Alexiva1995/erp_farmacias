@@ -16,6 +16,10 @@ export default [
         to: 'bi-report-abc', // Necesitará una entrada en el router o arreglar la ruta de vue
       },
       {
+        title: 'Foto Finish',
+        to: 'bi-report-finish',
+      },
+      {
         title: 'Reporte Stock Muerto',
         to: 'bi-report-dead-stock',
       },

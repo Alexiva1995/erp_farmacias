@@ -789,6 +789,16 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
         Route::get("/sku-margin", [\App\Http\Controllers\Api\Bi\SkuReportController::class, "generateReport"]);
         Route::get("/sku-margin/export", [\App\Http\Controllers\Api\Bi\SkuReportController::class, "export"]);
         
+        // BI: Foto Finish (Snapshots Históricos)
+        Route::prefix('snapshots')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\Bi\InventorySnapshotController::class, 'index']);
+            Route::post('/', [\App\Http\Controllers\Api\Bi\InventorySnapshotController::class, 'store']);
+            Route::get('/{id}', [\App\Http\Controllers\Api\Bi\InventorySnapshotController::class, 'show']);
+            Route::get('/{id}/audit', [\App\Http\Controllers\Api\Bi\InventorySnapshotController::class, 'auditModules']);
+            Route::get('/{id}/export', [\App\Http\Controllers\Api\Bi\InventorySnapshotController::class, 'export']);
+            Route::delete('/{id}', [\App\Http\Controllers\Api\Bi\InventorySnapshotController::class, 'destroy']);
+        });
+        
         // BI: Reportes de Productos
         Route::get("/products/dashboard", [\App\Http\Controllers\Api\Bi\ProductMasterReportController::class, "getDashboard"]);
         Route::get("/products/trends", [\App\Http\Controllers\Api\Bi\ProductMasterReportController::class, "getTrends"]);
