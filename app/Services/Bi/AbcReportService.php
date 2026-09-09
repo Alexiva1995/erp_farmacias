@@ -137,9 +137,10 @@ class AbcReportService
                     return $isClassAB && ($isStockout || $isRisk);
                 });
             } elseif ($analysisType === 'negative_margin') {
-                // Margen Negativo / Pérdida: Productos con margen < 0% ordenados de menor a mayor
+                // Margen Negativo / Pérdida: Productos con margen < 0% y existencias actuales (stock > 0)
                 $data = $data->filter(function ($item) {
-                    return (float)$item->margin_percentage < 0 || (float)$item->margin_amount < 0;
+                    return ((float)$item->margin_percentage < 0 || (float)$item->margin_amount < 0)
+                        && (float)$item->current_stock > 0;
                 })->sortBy('margin_percentage')->values();
             }
 

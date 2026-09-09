@@ -77,7 +77,7 @@ class AbcReportController extends Controller
             'count_b' => $reportData->filter(fn($i) => $i->class_sales === 'B')->count(),
             'count_c' => $reportData->filter(fn($i) => $i->class_sales === 'C')->count(),
             'critical_stockouts' => $reportData->filter(fn($i) => ($i->class_sales === 'A' || $i->class_sales === 'B') && $i->current_stock <= 0)->count(),
-            'negative_margin_count' => $reportData->filter(fn($i) => (float)($i->margin_percentage ?? 0) < 0 || (float)($i->margin_amount ?? 0) < 0)->count(),
+            'negative_margin_count' => $reportData->filter(fn($i) => ((float)($i->margin_percentage ?? 0) < 0 || (float)($i->margin_amount ?? 0) < 0) && (float)($i->current_stock ?? 0) > 0)->count(),
             'total_products' => $reportData->count(),
         ];
 
@@ -134,13 +134,14 @@ class AbcReportController extends Controller
             $sheetTitle = 'Rentabilidad GMROI';
             $fileNamePrefix = 'rentabilidad_gmroi';
         } elseif ($exportType === 'negative_margin') {
-            // 4. Margen Negativo / Pérdida (< 0%)
+            // 4. Margen Negativo / Pérdida (< 0% con stock > 0)
             $reportData = $reportData->filter(function ($item) {
-                return (float)$item->margin_percentage < 0 || (float)$item->margin_amount < 0;
+                return ((float)$item->margin_percentage < 0 || (float)$item->margin_amount < 0)
+                    && (float)$item->current_stock > 0;
             })->sortBy('margin_percentage')->values();
 
-            $sheetTitle = 'Margen Negativo';
-            $fileNamePrefix = 'margen_negativo';
+            $sheetTitle = 'Margen Negativo con Stock';
+            $fileNamePrefix = 'margen_negativo_con_stock';
         } else {
             // Ordenamiento por defecto solicitado
             $sortBy = $filtros['sortBy'] ?? 'total_sales';
