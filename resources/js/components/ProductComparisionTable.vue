@@ -242,7 +242,7 @@ const headers = [
           </template>
 
           <template #item.actions="{ item }">
-            <div class="d-flex align-center justify-end ga-2">
+            <div class="d-flex align-center justify-end ga-1">
               <!-- Si está activo: opciones completas + botón de desactivar -->
               <template v-if="item.is_active !== false">
                 <VTooltip text="Ver Productos" location="top">
@@ -258,27 +258,32 @@ const headers = [
                   </template>
                 </VTooltip>
 
-                <VTooltip :text="['API', 'FTP', 'SFTP', 'HTTP'].includes(item.type) ? 'Sincronizar' : 'Cargar Archivo'" location="top">
+                <!-- Sincronizar (Gmail / FTP / API) -->
+                <VTooltip :text="['API', 'FTP', 'SFTP', 'HTTP'].includes(item.type) ? 'Sincronizar (FTP / API)' : 'Sincronizar desde Gmail'" location="top">
                   <template #activator="{ props: tooltipProps }">
                     <VBtn
                       v-bind="tooltipProps"
-                      :icon="
-                        ['API', 'FTP', 'SFTP', 'HTTP'].includes(item.type)
-                          ? checkingApiId === item.id
-                            ? 'tabler-loader-2'
-                            : 'tabler-refresh'
-                          : 'tabler-upload'
-                      "
+                      :icon="checkingApiId === item.id ? 'tabler-loader-2' : 'tabler-refresh'"
                       variant="text"
                       color="info"
                       size="small"
                       :disabled="checkingApiId === item.id"
                       :class="{ 'spin-icon': checkingApiId === item.id }"
-                      @click="
-                        ['API', 'FTP', 'SFTP', 'HTTP'].includes(item.type)
-                          ? emit('update-products', item)
-                          : emit('load-products', item)
-                      "
+                      @click="emit('update-products', item)"
+                    />
+                  </template>
+                </VTooltip>
+
+                <!-- Cargar Archivo Excel Manual -->
+                <VTooltip text="Cargar Archivo Excel Manual" location="top">
+                  <template #activator="{ props: tooltipProps }">
+                    <VBtn
+                      v-bind="tooltipProps"
+                      icon="tabler-upload"
+                      variant="text"
+                      color="success"
+                      size="small"
+                      @click="emit('load-products', item)"
                     />
                   </template>
                 </VTooltip>
