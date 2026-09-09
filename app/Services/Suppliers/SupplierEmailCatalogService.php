@@ -170,52 +170,59 @@ class SupplierEmailCatalogService
                     'tertiary' => $tertiaryStructure,
                 ];
 
-                $fileItems = [];
-                $globalAttachmentIndex = 0;
-
+                // Recopilar todos los archivos adjuntos brutos de los correos recibidos
+                $rawAttachments = [];
                 foreach ($collectedEmails as $emailData) {
                     foreach ($emailData['attachments'] as $attachment) {
-                        $filename = $attachment['filename'];
-                        $content = $attachment['content'];
-                        $subject = $emailData['subject'] ?? '';
-
-                        // Resolver qué formato le corresponde (Formato 1, Formato 2 o Formato 3)
-                        $formatResolution = $this->resolveStructureForFile($filename, $subject, $globalAttachmentIndex, $structures);
-                        $chosenMap = $formatResolution['structure'];
-                        $formatName = $formatResolution['name'];
-
-                        if ($dryRun) {
-                            $processed[] = [
-                                'dry_run' => true,
-                                'supplier_id' => $supplier->id,
-                                'supplier_name' => $supplier->name,
-                                'filename' => $filename,
-                                'size' => strlen($content),
-                                'subject' => $subject,
-                                'from' => $emailData['from_email'],
-                                'date' => $emailData['date'],
-                                'format_used' => $formatName,
-                            ];
-                            $globalAttachmentIndex++;
-                            continue;
-                        }
-
-                        // Guardar archivo en disco local con ruta relativa a temp/
-                        $storagePath = 'temp/' . Str::slug($supplier->name) . '_' . date('Ymd_His') . '_' . $globalAttachmentIndex . '_' . $filename;
-                        Storage::disk('local')->put($storagePath, $content);
-
-                        $fileItems[] = [
-                            'path' => $storagePath,
-                            'column_map' => $chosenMap,
-                            'filename' => $filename,
-                            'format_used' => $formatName,
-                            'subject' => $subject,
+                        $rawAttachments[] = [
+                            'filename' => $attachment['filename'],
+                            'content' => $attachment['content'],
+                            'subject' => $emailData['subject'] ?? '',
                             'from' => $emailData['from_email'],
                             'date' => $emailData['date'],
                         ];
-
-                        $globalAttachmentIndex++;
                     }
+                }
+
+                // Resolver los formatos en lote asegurando que los archivos sin palabra clave tomen el formato sobrante (Formato 1)
+                $resolvedFormats = $this->resolveBatchStructures($rawAttachments, $structures);
+
+                $fileItems = [];
+                foreach ($rawAttachments as $index => $item) {
+                    $filename = $item['filename'];
+                    $content = $item['content'];
+                    $formatInfo = $resolvedFormats[$index];
+                    $chosenMap = $formatInfo['structure'];
+                    $formatName = $formatInfo['name'];
+
+                    if ($dryRun) {
+                        $processed[] = [
+                            'dry_run' => true,
+                            'supplier_id' => $supplier->id,
+                            'supplier_name' => $supplier->name,
+                            'filename' => $filename,
+                            'size' => strlen($content),
+                            'subject' => $item['subject'],
+                            'from' => $item['from'],
+                            'date' => $item['date'],
+                            'format_used' => $formatName,
+                        ];
+                        continue;
+                    }
+
+                    // Guardar archivo en disco local con ruta relativa a temp/
+                    $storagePath = 'temp/' . Str::slug($supplier->name) . '_' . date('Ymd_His') . '_' . $index . '_' . $filename;
+                    Storage::disk('local')->put($storagePath, $content);
+
+                    $fileItems[] = [
+                        'path' => $storagePath,
+                        'column_map' => $chosenMap,
+                        'filename' => $filename,
+                        'format_used' => $formatName,
+                        'subject' => $item['subject'],
+                        'from' => $item['from'],
+                        'date' => $item['date'],
+                    ];
                 }
 
                 if ($dryRun) {
@@ -328,52 +335,85 @@ class SupplierEmailCatalogService
     }
 
     /**
-     * Resuelve cuál formato (Formato 1, Formato 2 o Formato 3) corresponde al archivo y correo dado.
+     * Resuelve los formatos correspondientes para todo el lote de archivos adjuntos en 2 fases.
      */
-    private function resolveStructureForFile(string $filename, string $subject, int $index, array $structures): array
+    private function resolveBatchStructures(array $rawAttachments, array $structures): array
     {
         $primary = $structures['primary'] ?? [];
         $secondary = $structures['secondary'] ?? null;
         $tertiary = $structures['tertiary'] ?? null;
 
-        $targetText = strtoupper(Str::ascii($filename . ' ' . $subject));
+        $results = array_fill(0, count($rawAttachments), null);
+        $usedFormats = [
+            'primary' => false,
+            'secondary' => false,
+            'tertiary' => false,
+        ];
 
-        // 1. Coincidencia con Formato 3 (si está configurado)
-        if (!empty($tertiary) && is_array($tertiary)) {
-            $keywordTertiary = !empty($tertiary['file_keyword']) ? strtoupper(Str::ascii(trim((string) $tertiary['file_keyword']))) : null;
-            if ($keywordTertiary && str_contains($targetText, $keywordTertiary)) {
-                return ['name' => 'Formato 3 (' . $keywordTertiary . ')', 'structure' => $tertiary];
+        // FASE 1: Asignación por coincidencia explícita de palabra clave
+        foreach ($rawAttachments as $i => $item) {
+            $filename = $item['filename'];
+            $subject = $item['subject'] ?? '';
+            $targetText = strtoupper(Str::ascii($filename . ' ' . $subject));
+
+            // 1.1 Coincidencia con Formato 3
+            if (!empty($tertiary) && is_array($tertiary) && !$usedFormats['tertiary']) {
+                $keywordTertiary = !empty($tertiary['file_keyword']) ? strtoupper(Str::ascii(trim((string) $tertiary['file_keyword']))) : null;
+                if ($keywordTertiary && str_contains($targetText, $keywordTertiary)) {
+                    $results[$i] = ['name' => 'Formato 3 (' . $keywordTertiary . ')', 'structure' => $tertiary];
+                    $usedFormats['tertiary'] = true;
+                    continue;
+                }
+                if (!$keywordTertiary && str_contains($targetText, 'GENIAL')) {
+                    $results[$i] = ['name' => 'Formato 3 (GENIAL)', 'structure' => $tertiary];
+                    $usedFormats['tertiary'] = true;
+                    continue;
+                }
             }
-            // Si el nombre contiene explícitamente "GENIAL" y no hay keyword configurada
-            if (!$keywordTertiary && str_contains($targetText, 'GENIAL')) {
-                return ['name' => 'Formato 3 (Genial)', 'structure' => $tertiary];
+
+            // 1.2 Coincidencia con Formato 2
+            if (!empty($secondary) && is_array($secondary) && !$usedFormats['secondary']) {
+                $keywordSecondary = !empty($secondary['file_keyword']) ? strtoupper(Str::ascii(trim((string) $secondary['file_keyword']))) : null;
+                if ($keywordSecondary && str_contains($targetText, $keywordSecondary)) {
+                    $results[$i] = ['name' => 'Formato 2 (' . $keywordSecondary . ')', 'structure' => $secondary];
+                    $usedFormats['secondary'] = true;
+                    continue;
+                }
+            }
+
+            // 1.3 Coincidencia con Formato 1
+            if (!empty($primary) && is_array($primary) && !$usedFormats['primary']) {
+                $keywordPrimary = !empty($primary['file_keyword']) ? strtoupper(Str::ascii(trim((string) $primary['file_keyword']))) : null;
+                if ($keywordPrimary && str_contains($targetText, $keywordPrimary)) {
+                    $results[$i] = ['name' => 'Formato 1 (' . $keywordPrimary . ')', 'structure' => $primary];
+                    $usedFormats['primary'] = true;
+                    continue;
+                }
             }
         }
 
-        // 2. Coincidencia con Formato 2 (si está configurado)
-        if (!empty($secondary) && is_array($secondary)) {
-            $keywordSecondary = !empty($secondary['file_keyword']) ? strtoupper(Str::ascii(trim((string) $secondary['file_keyword']))) : null;
-            if ($keywordSecondary && str_contains($targetText, $keywordSecondary)) {
-                return ['name' => 'Formato 2 (' . $keywordSecondary . ')', 'structure' => $secondary];
+        // FASE 2: Asignación de los archivos restantes a los formatos no utilizados (sobrantes)
+        foreach ($rawAttachments as $i => $item) {
+            if ($results[$i] !== null) {
+                continue;
+            }
+
+            // El archivo sobrante (sin palabra clave específica) toma prioritariamente el Formato 1 (Principal)
+            if (!$usedFormats['primary']) {
+                $results[$i] = ['name' => 'Formato 1 (Principal)', 'structure' => $primary];
+                $usedFormats['primary'] = true;
+            } elseif (!$usedFormats['secondary'] && !empty($secondary)) {
+                $results[$i] = ['name' => 'Formato 2 (Secundario)', 'structure' => $secondary];
+                $usedFormats['secondary'] = true;
+            } elseif (!$usedFormats['tertiary'] && !empty($tertiary)) {
+                $results[$i] = ['name' => 'Formato 3 (Genial)', 'structure' => $tertiary];
+                $usedFormats['tertiary'] = true;
+            } else {
+                $results[$i] = ['name' => 'Formato 1 (Principal)', 'structure' => $primary];
             }
         }
 
-        // 3. Coincidencia con Formato 1
-        $keywordPrimary = !empty($primary['file_keyword']) ? strtoupper(Str::ascii(trim((string) $primary['file_keyword']))) : null;
-        if ($keywordPrimary && str_contains($targetText, $keywordPrimary)) {
-            return ['name' => 'Formato 1 (' . $keywordPrimary . ')', 'structure' => $primary];
-        }
-
-        // 4. Asignación por orden de archivo / índice si no hubo coincidencia de palabras clave
-        if ($index === 2 && !empty($tertiary)) {
-            return ['name' => 'Formato 3', 'structure' => $tertiary];
-        }
-
-        if ($index === 1 && !empty($secondary)) {
-            return ['name' => 'Formato 2', 'structure' => $secondary];
-        }
-
-        return ['name' => 'Formato 1', 'structure' => $primary];
+        return $results;
     }
 }
 
