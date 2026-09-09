@@ -400,12 +400,12 @@ onMounted(() => {
           </VBtn>
           <h1 class="text-h5 font-weight-black d-flex align-center mb-0">
             <VIcon icon="tabler-camera" class="me-2 text-primary" size="26" />
-            {{ activeTab === 'detail' ? Foto Finish:  : 'Foto Finish de Inventario & Control Mensual' }}
+            {{ activeTab === 'detail' ? `Foto Finish: ${selectedSnapshot?.name || ''}` : 'Foto Finish de Inventario & Control Mensual' }}
           </h1>
         </div>
         <p class="text-body-2 text-medium-emphasis mb-0">
           {{ activeTab === 'detail'
-            ? Corte:  ( días) — 4 Módulos de Control para Reemplazo Total de Excel.
+            ? `Corte: ${selectedSnapshot?.cutoff_date || ''} (${selectedSnapshot?.period_days || 30} días) — 4 Módulos de Control para Reemplazo Total de Excel.`
             : 'Historial de cierres mensuales congelados con los 4 módulos de auditoría: KPIs de Cierre, Capital Recuperado CZ, Compras A/B y Márgenes.' }}
         </p>
       </div>
