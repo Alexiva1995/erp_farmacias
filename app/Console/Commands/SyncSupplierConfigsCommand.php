@@ -80,8 +80,26 @@ class SyncSupplierConfigsCommand extends Command
                         'cobeca',
                         'drogueriascobeca',
                     ], $content);
+
+                    // Sincronizar estructura correcta en BD si está vacía o incompleta
+                    $structure = $connection->structure ?? [];
+                    if (empty($structure) || !isset($structure['barcode_match']) || !isset($structure['name'])) {
+                        $connection->update([
+                            'has_header' => true,
+                            'structure' => [
+                                'barcode_match' => 'cod_barra',
+                                'name' => 'desc_articulo',
+                                'unit_cost' => 'monto_final',
+                                'quantity' => 'existencia',
+                                'laboratory' => 'desc_proveedor',
+                                'expiration' => 'fecha_Expire_ned',
+                                'discount_percentage' => 'porcentaje_descuento',
+                            ],
+                        ]);
+                    }
+
                     $apiSynced++;
-                    $status = "<fg=green>OK (PHP: {$supplier->id}.php)</>";
+                    $status = "<fg=green>OK (PHP: {$supplier->id}.php + BD)</>";
                 } elseif ($connection->type === 'ftp') {
                     $ftpSynced++;
                     $hasPass = !empty($connection->password) ? 'Sí (Cifrada)' : 'No';

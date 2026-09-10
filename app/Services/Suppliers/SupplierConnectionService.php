@@ -306,13 +306,21 @@ class SupplierConnectionService
 
             if (!empty($connection->username) && !empty($connection->password) && !$isCristmedicals) {
                 $decryptedPass = FtpCrypt::decrypt($connection->password);
-                $loginResponse = Http::timeout(30)->post($connection->host, [
+                $loginResponse = Http::withoutVerifying()->timeout(30)->post($connection->host, [
                     "Usuario" => $connection->username,
                     "Clave" => $decryptedPass,
                     "usuario" => $connection->username,
                     "clave" => $decryptedPass,
                 ]);
-                $token = $loginResponse->json()["token"] ?? null;
+                $token = $loginResponse->json()["token"] ?? ($loginResponse->json()["Token"] ?? null);
+                if (empty($token)) {
+                    Log::error("Fallo de autenticación API para proveedor {$connection->supplier_id}", [
+                        'host' => $connection->host,
+                        'status' => $loginResponse->status(),
+                        'body' => substr($loginResponse->body(), 0, 500),
+                    ]);
+                    throw new Exception("Fallo de autenticación: No se pudo obtener token de acceso desde {$connection->host} (Status: {$loginResponse->status()})");
+                }
             } elseif (!empty($connection->password)) {
                 $token = FtpCrypt::decrypt($connection->password);
             }
