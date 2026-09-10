@@ -1024,6 +1024,21 @@ class ProductRepository
             $promedio_calculado = 'sales_average';
         }
 
+        $subqueryAO = '(
+            SELECT COALESCE(SUM(aod.quantity), 0)
+            FROM auto_order_details aod
+            JOIN auto_orders ao ON ao.id = aod.order_id
+            JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id
+            WHERE ps.product_id = products.id
+            AND ao.status IN (0, 1)
+            AND aod.status = 0
+            AND ao.deleted_at IS NULL
+            AND aod.deleted_at IS NULL
+        )';
+
+        $ceilFunc = DB::connection()->getDriverName() === 'sqlite' ? 'ROUND' : 'CEIL';
+        $floorFunc = DB::connection()->getDriverName() === 'sqlite' ? 'ROUND' : 'FLOOR';
+
         $columnas = [
             'products.id',
             'products.name',
@@ -1086,18 +1101,12 @@ class ProductRepository
                 AND p.is_scarce = 0 AND o.created_at BETWEEN \'' . $filtros["previousDate"] . '\' AND \'' . $filtros["dateToday"] . '\'
             ) 
             ),0)* 100 AS preferencia_product'),
-            DB::raw('(
-                SELECT COALESCE(SUM(aod.quantity), 0)
-                FROM auto_order_details aod
-                JOIN auto_orders ao ON ao.id = aod.order_id
-                JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id
-                WHERE ps.product_id = products.id
-                AND ao.status IN (0, 1)
-                AND aod.status = 0
-                AND ao.deleted_at IS NULL
-                AND aod.deleted_at IS NULL
-            ) AS totalQuantityInAutoOrder'),
-            DB::raw('( (' . $promedio_calculado . ') - (' . $this->subConsultaParaCalcularStockPorLotes . ') ) AS solicitar'),
+            DB::raw('(' . $subqueryAO . ') AS totalQuantityInAutoOrder'),
+            DB::raw('CASE 
+                WHEN ((' . $ventasIndividualDelProducto . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $subqueryAO . ') > 0 
+                THEN ' . (DB::connection()->getDriverName() === 'sqlite' ? 'ROUND' : 'CEIL') . '((' . $ventasIndividualDelProducto . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $subqueryAO . ')
+                ELSE ' . (DB::connection()->getDriverName() === 'sqlite' ? 'ROUND' : 'FLOOR') . '((' . $ventasIndividualDelProducto . ') - ' . $this->subConsultaParaCalcularStockPorLotes . ' - ' . $subqueryAO . ')
+            END AS solicitar'),
             // cost min solo tiene encuenta los lotes que su quantity sean mayor a 0
             DB::raw('(
                 SELECT COALESCE(MIN(unit_cost), 0)
