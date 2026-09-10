@@ -533,7 +533,8 @@ class IaAssistantReportService
             $rop = $vpd * ($effectiveLeadTime + $bufferDays); // ROP: 21 días (Colombia) / 14 días (Nacional)
             $stockObjetivo = $vpd * $coverageDays; // Stock Objetivo según días de cobertura
 
-            // Demanda asignada para la vista
+            // Demanda asignada para la vista y valor mostrado en columna PROM.
+            $item->promedio_calculado = round($monthlyWeighted, 2);
             $item->demanda_ponderada = round($stockObjetivo, 2);
 
             // Condición de compra: Solo sugerir si el stock actual + pedidos activos está en o por debajo del ROP
