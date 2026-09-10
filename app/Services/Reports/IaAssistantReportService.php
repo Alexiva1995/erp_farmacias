@@ -524,7 +524,7 @@ class IaAssistantReportService
             $isColombian = (bool)((int)($item->is_colombian_origin ?? 0) === 1);
             $effectiveLeadTime = $isColombian ? 14 : $leadTimeDays; // 14 días para importados de Colombia, 7 para locales
 
-            $monthlyWeighted = (float)($item->sales_average_weighted ?? $item->sales_average ?? 0);
+            $monthlyWeighted = (float)(($item->sales_average_weighted ?? 0) > 0 ? $item->sales_average_weighted : ($item->sales_average ?? 0));
             $vpd = $monthlyWeighted / 30; // Venta Promedio Diaria
             $stockActual = (float)($item->lote_quantity ?? $item->stock ?? 0);
             $autoOrder = (float)($item->totalQuantityInAutoOrder ?? 0);

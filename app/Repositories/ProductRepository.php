@@ -1486,6 +1486,36 @@ class ProductRepository
             $solicitarRaw = '(' . $demanda . ' - ' . $subqueryStock . ' - ' . $subqueryAO . ')';
         } elseif ($tipo === "sales") {
             $solicitarRaw = '(' . $subqueryTotalSold . ' - ' . $subqueryStock . ' - ' . $subqueryAO . ')';
+        } elseif ($tipo === "weighted") {
+            $sumSalesWeighted = 'CASE 
+                WHEN products.is_unified_group = 1 AND products.group_id IS NOT NULL THEN (
+                    SELECT COALESCE(SUM(COALESCE(NULLIF(sales_average_weighted, 0), sales_average, 0)), 0)
+                    FROM products as u_p
+                    WHERE u_p.group_id = products.group_id
+                    AND u_p.is_deleted = 0 
+                    AND u_p.is_scarce = 0
+                )
+                ELSE COALESCE(NULLIF(products.sales_average_weighted, 0), products.sales_average, 0)
+            END';
+            $vpdSql = "(($sumSalesWeighted) / 30)";
+            $ropDaysSql = "CASE WHEN products.is_colombian_origin = 1 THEN 21 ELSE 14 END";
+            $ropSql = "($vpdSql * $ropDaysSql)";
+            $coverageDays = match($lapso) {
+                "7 days"  => 7,
+                "15 days" => 15,
+                "1 month" => 30,
+                "2 month", "2 months" => 60,
+                "3 month", "3 months" => 90,
+                "6 month", "6 months" => 180,
+                "1 year", "12 month"  => 365,
+                default    => 30,
+            };
+            $targetStockSql = "($vpdSql * $coverageDays)";
+            $stockEfectivoSql = "($subqueryStock + $subqueryAO)";
+            $solicitarRaw = "CASE 
+                WHEN $stockEfectivoSql <= $ropSql THEN ($targetStockSql - $stockEfectivoSql)
+                ELSE (CASE WHEN ($targetStockSql - $stockEfectivoSql) < 0 THEN ($targetStockSql - $stockEfectivoSql) ELSE 0 END)
+            END";
         } else {
             $solicitarRaw = '(' . $promedio_calculado . ' - ' . $subqueryStock . ' - ' . $subqueryAO . ')';
         }
