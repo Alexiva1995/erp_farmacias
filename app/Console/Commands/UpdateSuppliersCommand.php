@@ -138,7 +138,7 @@ class UpdateSuppliersCommand extends Command
                     'message' => 'Error en actualización: ' . $e->getMessage(),
                 ]);
 
-                $this->error("   ✗ Error en {$duration}s: " . $e->getMessage());
+                $this->error("   ✗ Error en {$duration}s: " . $e->getMessage() . " (" . $e->getFile() . ":" . $e->getLine() . ")");
                 $failCount++;
             }
         }

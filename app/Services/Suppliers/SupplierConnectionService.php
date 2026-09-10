@@ -909,12 +909,52 @@ class SupplierConnectionService
     {
         $lines = array_filter(explode("\n", trim($content)), "trim");
         $structure = $connection->invoice_structure;
+
+        $isCobeca = str_contains(strtolower($connection->host ?? ''), 'cobeca')
+            || str_contains(strtolower($connection->supplier?->name ?? ''), 'mafarta')
+            || str_contains(strtolower($connection->supplier?->name ?? ''), 'cobeca')
+            || in_array($connection->supplier_id, [1011, 23]);
+
+        if (empty($structure) || empty($structure['lines'])) {
+            if ($isCobeca) {
+                $structure = [
+                    "separator" => ";",
+                    "decimal_separator" => ".",
+                    "decimals" => 2,
+                    "mode" => "flat",
+                    "header" => [
+                        "1" => ["field" => "invoice_number", "type" => "integer"],
+                        "13" => ["field" => "control_number", "type" => "string"],
+                        "6" => ["field" => "exp_date", "type" => "date", "format" => "d/m/Y"],
+                        "4" => ["field" => "total_amount", "type" => "decimal"],
+                        "16" => ["field" => "tax_amount", "type" => "decimal"],
+                        "15" => ["field" => "exchange_rate", "type" => "decimal"],
+                    ],
+                    "lines" => [
+                        "26" => ["field" => "fact_num", "type" => "integer"],
+                        "49" => ["field" => "numcon", "type" => "string"],
+                        "27" => ["field" => "codigo_producto", "type" => "string"],
+                        "48" => ["field" => "barcode", "type" => "string"],
+                        "28" => ["field" => "descripcion_producto", "type" => "string"],
+                        "33" => ["field" => "quantity", "type" => "integer"],
+                        "40" => ["field" => "unit_cost", "type" => "decimal"],
+                        "29" => ["field" => "lot_number", "type" => "string"],
+                        "30" => ["field" => "expiration_date", "type" => "date", "format" => "d/m/Y"],
+                        "37" => ["field" => "porcentaje_iva", "type" => "decimal"],
+                        "43" => ["field" => "total_cost", "type" => "decimal"],
+                    ],
+                ];
+            } else {
+                $structure = $structure ?: ['separator' => ';', 'lines' => [], 'header' => []];
+            }
+        }
+
         $separator = $structure["separator"] ?? ";";
 
         $invoices = [];
         $bufferLines = [];
 
-        $barcodeField = collect($structure["lines"])->pluck("field")->search("barcode");
+        $barcodeField = collect($structure["lines"] ?? [])->pluck("field")->search("barcode");
         $barcodes = [];
         $mode = $structure['mode'] ?? 'grouped';
 
