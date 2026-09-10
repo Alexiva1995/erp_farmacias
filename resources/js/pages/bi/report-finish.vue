@@ -93,16 +93,16 @@ const restockSearch = ref('');
 const marginSearch = ref('');
 
 const snapshotHeaders = [
-  { title: 'ID', key: 'id', width: '75px', sortable: true },
-  { title: 'NOMBRE / IDENTIFICADOR', key: 'name', sortable: true },
-  { title: 'FECHA DE CORTE', key: 'cutoff_date', align: 'center', sortable: true },
+  { title: 'ID', key: 'id', width: '70px', sortable: true },
+  { title: 'NOMBRE / IDENTIF.', key: 'name', sortable: true },
+  { title: 'FECHA CORTE', key: 'cutoff_date', align: 'center', sortable: true },
   { title: 'SKUS', key: 'total_products', align: 'end', sortable: true },
-  { title: 'STOCK (UND)', key: 'total_inventory_units', align: 'end', sortable: true },
+  { title: 'STOCK (U)', key: 'total_inventory_units', align: 'end', sortable: true },
   { title: 'VALOR INV. ($)', key: 'total_inventory_value', align: 'end', sortable: true },
   { title: 'VENTAS 30D ($)', key: 'total_sales_value', align: 'end', sortable: true },
-  { title: 'SOBRESTOCK (>90D)', key: 'overstock_products_count', align: 'center', sortable: true },
+  { title: 'SOBRESTOCK (>90D)', key: 'overstock_products_count', align: 'end', sortable: true },
   { title: 'TIPO', key: 'is_automatic', align: 'center', sortable: true },
-  { title: 'ACCIONES', key: 'actions', align: 'center', sortable: false, width: '130px' },
+  { title: 'ACCIONES', key: 'actions', align: 'center', sortable: false, width: '120px' },
 ];
 
 const itemHeaders = [

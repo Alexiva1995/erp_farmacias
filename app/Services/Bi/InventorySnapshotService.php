@@ -159,7 +159,7 @@ class InventorySnapshotService
             'total_units_released' => round($totalUnitsReleasedCz, 1),
             'recovery_percentage' => round($recoveryPercentage, 2),
             'items_count' => count($czMonitoringList),
-            'items' => array_slice($czMonitoringList, 0, 100), // Top 100 para visualización ágil
+            'items' => $czMonitoringList, // Lista completa sin recortes
         ];
 
         // =========================================================================

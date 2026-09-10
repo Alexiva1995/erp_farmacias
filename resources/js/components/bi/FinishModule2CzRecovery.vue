@@ -1,4 +1,5 @@
 <script setup>
+import { ref, computed } from 'vue';
 import { formatCurrency } from '@/utils/currencyFormatter';
 
 const props = defineProps({
@@ -17,6 +18,34 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['update:search']);
+
+const itemsPerPage = ref(15);
+const page = ref(1);
+const sortBy = ref([{ key: 'cash_released_usd', order: 'desc' }]);
+const statusFilter = ref('all');
+
+const headers = [
+  { title: 'ID / PRODUCTO', key: 'product_name', sortable: true },
+  { title: 'LABORATORIO', key: 'laboratory_name', sortable: true },
+  { title: 'STOCK FOTO', key: 'snapshot_stock', align: 'end', sortable: true },
+  { title: 'VALOR FOTO ($)', key: 'snapshot_value_usd', align: 'end', sortable: true },
+  { title: 'STOCK ACTUAL', key: 'current_stock', align: 'end', sortable: true },
+  { title: 'VALOR ACTUAL ($)', key: 'current_value_usd', align: 'end', sortable: true },
+  { title: 'DINERO LIBERADO ($)', key: 'cash_released_usd', align: 'end', sortable: true },
+  { title: 'ESTADO', key: 'status', align: 'center', sortable: true },
+];
+
+const filteredItems = computed(() => {
+  let list = props.items || [];
+  if (statusFilter.value === 'released') {
+    list = list.filter(i => Number(i.cash_released_usd) > 0);
+  } else if (statusFilter.value === 'no_movement') {
+    list = list.filter(i => Number(i.cash_released_usd) === 0 && Number(i.current_stock) === Number(i.snapshot_stock));
+  } else if (statusFilter.value === 'stock_increase') {
+    list = list.filter(i => Number(i.current_stock) > Number(i.snapshot_stock));
+  }
+  return list;
+});
 </script>
 
 <template>
@@ -59,75 +88,119 @@ const emit = defineEmits(['update:search']);
       </VRow>
     </VCard>
 
-    <!-- Tabla Comparativa de Productos CZ -->
+    <!-- Tabla Comparativa de Productos CZ con VDataTable Interactivo -->
     <VCard class="rounded-lg border shadow-sm overflow-hidden bg-surface mb-6">
       <VCardText class="pa-4">
         <VRow align="center" dense class="mb-3">
-          <VCol cols="12" md="4">
+          <VCol cols="12" md="5">
             <AppTextField
               :model-value="search"
-              placeholder="Buscar producto CZ o laboratorio..."
+              placeholder="Buscar por producto, laboratorio o ID..."
               prepend-inner-icon="tabler-search"
               clearable
               density="compact"
               hide-details
               variant="outlined"
-              @update:model-value="emit('update:search', )"
+              @update:model-value="val => emit('update:search', val || '')"
             />
+          </VCol>
+
+          <VCol cols="12" md="4">
+            <AppSelect
+              v-model="statusFilter"
+              :items="[
+                { title: 'Todos los estados', value: 'all' },
+                { title: 'Solo con Dinero Liberado (> $0)', value: 'released' },
+                { title: 'Sin Movimiento (Stock Inmóvil)', value: 'no_movement' },
+                { title: 'Aumento de Stock (Entradas)', value: 'stock_increase' },
+              ]"
+              density="compact"
+              hide-details
+              variant="outlined"
+            />
+          </VCol>
+
+          <VCol cols="12" md="3" class="text-end">
+            <span class="text-caption text-medium-emphasis">
+              Total: <strong>{{ filteredItems.length }}</strong> productos
+            </span>
           </VCol>
         </VRow>
 
-        <VTable density="compact" hover class="premium-table">
-          <thead>
-            <tr>
-              <th class="text-start">ID / PRODUCTO</th>
-              <th class="text-start">LABORATORIO</th>
-              <th class="text-end">STOCK FOTO</th>
-              <th class="text-end">VALOR FOTO ($)</th>
-              <th class="text-end">STOCK ACTUAL</th>
-              <th class="text-end">VALOR ACTUAL ($)</th>
-              <th class="text-end font-weight-black text-success">DINERO LIBERADO ($)</th>
-              <th class="text-center">ESTADO</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-if="items.length === 0">
-              <td colspan="8" class="text-center py-6 text-medium-emphasis">
-                No se encontraron productos CZ registrados en esta Foto Finish.
-              </td>
-            </tr>
-            <tr v-for="item in items" :key="'cz-' + item.product_id">
-              <td>
-                <div class="d-flex flex-column py-1">
-                  <span class="font-weight-black text-sm text-uppercase text-truncate" style="max-width: 260px;">
-                    {{ item.product_name }}
-                  </span>
-                  <span class="text-caption text-primary">#{{ item.product_id }}</span>
-                </div>
-              </td>
-              <td class="font-weight-medium text-caption">{{ item.laboratory_name }}</td>
-              <td class="text-end font-weight-bold">{{ item.snapshot_stock }}</td>
-              <td class="text-end">{{ formatCurrency(item.snapshot_value_usd) }}</td>
-              <td class="text-end font-weight-bold" :class="item.current_stock < item.snapshot_stock ? 'text-success' : ''">
-                {{ item.current_stock }}
-              </td>
-              <td class="text-end">{{ formatCurrency(item.current_value_usd) }}</td>
-              <td class="text-end font-weight-black" :class="item.cash_released_usd > 0 ? 'text-success' : 'text-medium-emphasis'">
-                {{ item.cash_released_usd > 0 ? `+${formatCurrency(item.cash_released_usd)}` : formatCurrency(item.cash_released_usd) }}
-              </td>
-              <td class="text-center">
-                <VChip
-                  size="x-small"
-                  :color="item.cash_released_usd > 0 ? 'success' : (item.current_stock > item.snapshot_stock ? 'warning' : 'secondary')"
-                  variant="flat"
-                  class="font-weight-bold"
-                >
-                  {{ item.status }}
-                </VChip>
-              </td>
-            </tr>
-          </tbody>
-        </VTable>
+        <VDataTable
+          v-model:page="page"
+          v-model:items-per-page="itemsPerPage"
+          v-model:sort-by="sortBy"
+          :headers="headers"
+          :items="filteredItems"
+          :items-per-page-options="[10, 15, 25, 50, 100, -1]"
+          density="compact"
+          hover
+          class="text-no-wrap premium-datatable"
+        >
+          <!-- Columna Producto / ID -->
+          <template #item.product_name="{ item }">
+            <div class="d-flex flex-column py-1">
+              <span class="font-weight-black text-sm text-uppercase text-truncate" style="max-width: 260px;">
+                {{ item.product_name }}
+              </span>
+              <span class="text-caption text-primary">#{{ item.product_id }}</span>
+            </div>
+          </template>
+
+          <!-- Columna Laboratorio -->
+          <template #item.laboratory_name="{ item }">
+            <span class="font-weight-medium text-caption">{{ item.laboratory_name }}</span>
+          </template>
+
+          <!-- Columna Stock Foto -->
+          <template #item.snapshot_stock="{ item }">
+            <span class="font-weight-bold">{{ item.snapshot_stock }}</span>
+          </template>
+
+          <!-- Columna Valor Foto -->
+          <template #item.snapshot_value_usd="{ item }">
+            <span>{{ formatCurrency(item.snapshot_value_usd) }}</span>
+          </template>
+
+          <!-- Columna Stock Actual -->
+          <template #item.current_stock="{ item }">
+            <span class="font-weight-bold" :class="item.current_stock < item.snapshot_stock ? 'text-success' : ''">
+              {{ item.current_stock }}
+            </span>
+          </template>
+
+          <!-- Columna Valor Actual -->
+          <template #item.current_value_usd="{ item }">
+            <span>{{ formatCurrency(item.current_value_usd) }}</span>
+          </template>
+
+          <!-- Columna Dinero Liberado -->
+          <template #item.cash_released_usd="{ item }">
+            <span class="font-weight-black" :class="item.cash_released_usd > 0 ? 'text-success' : 'text-medium-emphasis'">
+              {{ item.cash_released_usd > 0 ? `+${formatCurrency(item.cash_released_usd)}` : formatCurrency(item.cash_released_usd) }}
+            </span>
+          </template>
+
+          <!-- Columna Estado -->
+          <template #item.status="{ item }">
+            <VChip
+              size="x-small"
+              :color="item.cash_released_usd > 0 ? 'success' : (item.current_stock > item.snapshot_stock ? 'warning' : 'secondary')"
+              variant="flat"
+              class="font-weight-bold"
+            >
+              {{ item.status }}
+            </VChip>
+          </template>
+
+          <!-- Estado Vacío -->
+          <template #no-data>
+            <div class="text-center py-6 text-medium-emphasis">
+              No se encontraron productos CZ registrados en esta Foto Finish.
+            </div>
+          </template>
+        </VDataTable>
       </VCardText>
     </VCard>
   </div>

@@ -1,4 +1,5 @@
 <script setup>
+import { ref } from 'vue';
 
 const props = defineProps({
   restockSummary: {
@@ -16,6 +17,20 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['update:search']);
+
+const itemsPerPage = ref(15);
+const page = ref(1);
+const sortBy = ref([{ key: 'snapshot_stock', order: 'asc' }]);
+
+const headers = [
+  { title: 'ID / PRODUCTO', key: 'product_name', sortable: true },
+  { title: 'LABORATORIO', key: 'laboratory_name', sortable: true },
+  { title: 'CLASIFICACIÓN', key: 'sales_class', align: 'center', sortable: true },
+  { title: 'STOCK EN FOTO', key: 'snapshot_stock', align: 'end', sortable: true },
+  { title: 'COBERTURA CORTE', key: 'snapshot_coverage_days', align: 'end', sortable: true },
+  { title: 'STOCK ACTUAL', key: 'current_stock', align: 'end', sortable: true },
+  { title: 'ESTADO DE REABASTECIMIENTO', key: 'restock_status', align: 'center', sortable: true },
+];
 
 const getClassColor = (c) => {
   if (c === 'A') return 'success';
@@ -62,79 +77,103 @@ const getClassColor = (c) => {
       </VRow>
     </VCard>
 
-    <!-- Tabla de Seguimiento de Compras A/B -->
+    <!-- Tabla de Seguimiento de Compras A/B con VDataTable Interactivo -->
     <VCard class="rounded-lg border shadow-sm overflow-hidden bg-surface mb-6">
       <VCardText class="pa-4">
         <VRow align="center" dense class="mb-3">
-          <VCol cols="12" md="4">
+          <VCol cols="12" md="5">
             <AppTextField
               :model-value="search"
-              placeholder="Buscar producto A/B en riesgo..."
+              placeholder="Buscar por producto, laboratorio o ID..."
               prepend-inner-icon="tabler-search"
               clearable
               density="compact"
               hide-details
               variant="outlined"
-              @update:model-value="emit('update:search', )"
+              @update:model-value="val => emit('update:search', val || '')"
             />
+          </VCol>
+
+          <VCol cols="12" md="7" class="text-end">
+            <span class="text-caption text-medium-emphasis">
+              Total: <strong>{{ items.length }}</strong> productos en riesgo
+            </span>
           </VCol>
         </VRow>
 
-        <VTable density="compact" hover class="premium-table">
-          <thead>
-            <tr>
-              <th class="text-start">ID / PRODUCTO</th>
-              <th class="text-start">LABORATORIO</th>
-              <th class="text-center">CLASIFICACIÓN</th>
-              <th class="text-end">STOCK EN FOTO</th>
-              <th class="text-end">COBERTURA CORTE</th>
-              <th class="text-end font-weight-black text-primary">STOCK ACTUAL</th>
-              <th class="text-center">ESTADO DE REABASTECIMIENTO</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-if="items.length === 0">
-              <td colspan="7" class="text-center py-6 text-medium-emphasis">
-                No hubo productos A/B en quiebre o riesgo en la fecha de corte evaluada.
-              </td>
-            </tr>
-            <tr v-for="item in items" :key="'restock-' + item.product_id">
-              <td>
-                <div class="d-flex flex-column py-1">
-                  <span class="font-weight-black text-sm text-uppercase text-truncate" style="max-width: 260px;">
-                    {{ item.product_name }}
-                  </span>
-                  <span class="text-caption text-primary">#{{ item.product_id }}</span>
-                </div>
-              </td>
-              <td class="font-weight-medium text-caption">{{ item.laboratory_name }}</td>
-              <td class="text-center">
-                <VChip size="x-small" :color="getClassColor(item.sales_class)" class="font-weight-bold">
-                  Clase {{ item.sales_class }}
-                </VChip>
-              </td>
-              <td class="text-end font-weight-bold" :class="item.snapshot_stock <= 0 ? 'text-error' : ''">
-                {{ item.snapshot_stock <= 0 ? '0 (Agotado)' : `${item.snapshot_stock} unds` }}
-              </td>
-              <td class="text-end text-caption">
-                {{ item.snapshot_coverage_days < 10 ? `${item.snapshot_coverage_days} días (Riesgo)` : `${item.snapshot_coverage_days}d` }}
-              </td>
-              <td class="text-end font-weight-black text-primary">
-                {{ item.current_stock }} unds
-              </td>
-              <td class="text-center">
-                <VChip
-                  size="small"
-                  :color="item.status_color"
-                  variant="flat"
-                  class="font-weight-bold"
-                >
-                  {{ item.restock_status }}
-                </VChip>
-              </td>
-            </tr>
-          </tbody>
-        </VTable>
+        <VDataTable
+          v-model:page="page"
+          v-model:items-per-page="itemsPerPage"
+          v-model:sort-by="sortBy"
+          :headers="headers"
+          :items="items"
+          :items-per-page-options="[10, 15, 25, 50, 100, -1]"
+          density="compact"
+          hover
+          class="text-no-wrap premium-datatable"
+        >
+          <!-- Columna Producto / ID -->
+          <template #item.product_name="{ item }">
+            <div class="d-flex flex-column py-1">
+              <span class="font-weight-black text-sm text-uppercase text-truncate" style="max-width: 260px;">
+                {{ item.product_name }}
+              </span>
+              <span class="text-caption text-primary">#{{ item.product_id }}</span>
+            </div>
+          </template>
+
+          <!-- Columna Laboratorio -->
+          <template #item.laboratory_name="{ item }">
+            <span class="font-weight-medium text-caption">{{ item.laboratory_name }}</span>
+          </template>
+
+          <!-- Columna Clasificación -->
+          <template #item.sales_class="{ item }">
+            <VChip size="x-small" :color="getClassColor(item.sales_class)" class="font-weight-bold">
+              Clase {{ item.sales_class }}
+            </VChip>
+          </template>
+
+          <!-- Columna Stock Foto -->
+          <template #item.snapshot_stock="{ item }">
+            <span class="font-weight-bold" :class="item.snapshot_stock <= 0 ? 'text-error' : ''">
+              {{ item.snapshot_stock <= 0 ? '0 (Agotado)' : `${item.snapshot_stock} unds` }}
+            </span>
+          </template>
+
+          <!-- Columna Cobertura Corte -->
+          <template #item.snapshot_coverage_days="{ item }">
+            <span class="text-caption">
+              {{ item.snapshot_coverage_days < 10 ? `${item.snapshot_coverage_days} días (Riesgo)` : `${item.snapshot_coverage_days}d` }}
+            </span>
+          </template>
+
+          <!-- Columna Stock Actual -->
+          <template #item.current_stock="{ item }">
+            <span class="font-weight-black text-primary">
+              {{ item.current_stock }} unds
+            </span>
+          </template>
+
+          <!-- Columna Estado Reabastecimiento -->
+          <template #item.restock_status="{ item }">
+            <VChip
+              size="small"
+              :color="item.status_color"
+              variant="flat"
+              class="font-weight-bold"
+            >
+              {{ item.restock_status }}
+            </VChip>
+          </template>
+
+          <!-- Estado Vacío -->
+          <template #no-data>
+            <div class="text-center py-6 text-medium-emphasis">
+              No hubo productos A/B en quiebre o riesgo en la fecha de corte evaluada.
+            </div>
+          </template>
+        </VDataTable>
       </VCardText>
     </VCard>
   </div>

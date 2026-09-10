@@ -174,18 +174,22 @@ const emit = defineEmits([
           <template #item.overstock_products_count="{ item }">
             <VTooltip location="top">
               <template #activator="{ props: tipProps }">
-                <VChip
-                  v-bind="tipProps"
-                  :color="item.overstock_products_count > 0 ? 'error' : 'success'"
-                  size="small"
-                  variant="tonal"
-                  class="font-weight-bold"
-                >
-                  <VIcon :icon="item.overstock_products_count > 0 ? 'tabler-alert-triangle' : 'tabler-circle-check'" size="14" class="me-1" />
-                  {{ item.overstock_products_count }} SKUs
-                </VChip>
+                <div v-bind="tipProps" class="d-flex flex-column align-end cursor-pointer py-1">
+                  <VChip
+                    :color="item.overstock_products_count > 0 ? 'error' : 'success'"
+                    size="small"
+                    variant="tonal"
+                    class="font-weight-black"
+                  >
+                    <VIcon :icon="item.overstock_products_count > 0 ? 'tabler-alert-triangle' : 'tabler-circle-check'" size="14" class="me-1" />
+                    {{ formatCurrency(item.overstock_inventory_value || 0) }}
+                  </VChip>
+                  <span class="text-caption text-medium-emphasis mt-0-5">
+                    {{ item.overstock_products_count }} SKUs
+                  </span>
+                </div>
               </template>
-              <span>Capital en Sobrestock: {{ formatCurrency(item.overstock_inventory_value) }}</span>
+              <span>{{ item.overstock_products_count }} productos con cobertura mayor a 90 días (Capital estancado: {{ formatCurrency(item.overstock_inventory_value || 0) }})</span>
             </VTooltip>
           </template>
 
@@ -304,8 +308,8 @@ const emit = defineEmits([
               </div>
               <div class="d-flex justify-space-between py-1 text-caption mb-3">
                 <span class="text-medium-emphasis">Sobrestock (>90d):</span>
-                <span :class="item.overstock_products_count > 0 ? 'text-error font-weight-bold' : 'text-success'">
-                  {{ item.overstock_products_count }} SKUs
+                <span :class="item.overstock_products_count > 0 ? 'text-error font-weight-black' : 'text-success font-weight-bold'">
+                  {{ formatCurrency(item.overstock_inventory_value || 0) }} ({{ item.overstock_products_count }} SKUs)
                 </span>
               </div>
 

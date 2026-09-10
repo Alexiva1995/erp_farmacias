@@ -152,7 +152,7 @@ const getClassColor = (c) => {
               hide-details
               variant="outlined"
               :disabled="loading"
-              @update:model-value="emit('update:detailSearch', )"
+              @update:model-value="val => { emit('update:page', 1); emit('update:detailSearch', val || ''); }"
             />
           </VCol>
 
@@ -173,7 +173,7 @@ const getClassColor = (c) => {
               prepend-inner-icon="tabler-tags"
               clearable
               :disabled="loading"
-              @update:model-value="emit('update:selectedSalesClass', )"
+              @update:model-value="val => { emit('update:page', 1); emit('update:selectedSalesClass', val); }"
             />
           </VCol>
 
@@ -185,7 +185,7 @@ const getClassColor = (c) => {
               density="compact"
               hide-details
               :disabled="loading"
-              @update:model-value="emit('update:onlyOverstock', )"
+              @update:model-value="val => { emit('update:page', 1); emit('update:onlyOverstock', Boolean(val)); }"
             />
           </VCol>
         </VRow>
@@ -201,9 +201,9 @@ const getClassColor = (c) => {
           class="premium-table"
           hover
           density="compact"
-          @update:items-per-page="emit('update:itemsPerPage', )"
-          @update:page="emit('update:page', )"
-          @update:sort-by="emit('update:sortBy', )"
+          @update:items-per-page="val => emit('update:itemsPerPage', val)"
+          @update:page="val => emit('update:page', val)"
+          @update:sort-by="val => emit('update:sortBy', val)"
         >
           <!-- ID -->
           <template #item.id_producto="{ item }">
