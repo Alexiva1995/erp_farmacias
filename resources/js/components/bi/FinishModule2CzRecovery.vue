@@ -48,43 +48,63 @@ const filteredItems = computed(() => {
 
 <template>
   <div>
-    <!-- Hero Card Métrica Automática de Dinero Liberado -->
-    <VCard class="pa-5 mb-4 rounded-lg border shadow-sm bg-surface">
-      <VRow align="center" dense>
-        <VCol cols="12" md="4" class="text-center text-md-start">
-          <span class="text-caption font-weight-bold text-uppercase text-medium-emphasis d-block mb-1">
-            Métrica Automática de Desinmovilización
-          </span>
-          <div class="d-flex align-baseline gap-2 justify-center justify-md-start">
-            <h2 class="text-h4 font-weight-black text-success mb-0">
+    <!-- Tarjetas de Resumen Rápido (Capital Recuperado CZ) -->
+    <VRow dense class="mb-4">
+      <!-- 1. Dinero Liberado a Caja ($) -->
+      <VCol cols="12" sm="6" md="4">
+        <VCard class="pa-4 rounded-lg border shadow-sm h-full">
+          <div class="d-flex align-center justify-space-between mb-2">
+            <span class="text-caption font-weight-bold text-uppercase text-medium-emphasis">Dinero Liberado a Caja</span>
+            <VAvatar color="success" variant="tonal" size="36" class="rounded-lg">
+              <VIcon icon="tabler-cash" size="20" />
+            </VAvatar>
+          </div>
+          <div class="d-flex align-baseline gap-2 mb-1">
+            <h3 class="text-h5 font-weight-black text-success mb-0">
               {{ formatCurrency(czSummary?.total_cash_released || 0) }}
-            </h2>
-            <VChip size="small" color="success" class="font-weight-black">
+            </h3>
+            <VChip size="x-small" color="success" class="font-weight-black">
               {{ czSummary?.recovery_percentage || 0 }}% Liberado
             </VChip>
           </div>
           <span class="text-caption text-success font-weight-bold">
-            [Capital Inicial CZ: {{ formatCurrency(czSummary?.total_initial_cz_capital || 0) }}] - [Capital Actual CZ: {{ formatCurrency(czSummary?.total_current_cz_capital || 0) }}] = Dinero Liberado a Caja
+            Recuperado de productos CZ inmovilizados
           </span>
-        </VCol>
+        </VCard>
+      </VCol>
 
-        <VCol cols="12" sm="6" md="4">
-          <div class="pa-3 bg-light-primary rounded-lg border">
-            <span class="text-caption font-weight-bold text-medium-emphasis d-block">Unidades Descongeladas Vendidas</span>
-            <span class="text-h6 font-weight-black text-primary">{{ Number(czSummary?.total_units_released || 0).toLocaleString() }} unidades</span>
-            <span class="text-super-xs text-medium-emphasis d-block">Reducción efectiva de inventario parado</span>
+      <!-- 2. Unidades Descongeladas Vendidas -->
+      <VCol cols="12" sm="6" md="4">
+        <VCard class="pa-4 rounded-lg border shadow-sm h-full">
+          <div class="d-flex align-center justify-space-between mb-2">
+            <span class="text-caption font-weight-bold text-uppercase text-medium-emphasis">Unidades Descongeladas</span>
+            <VAvatar color="primary" variant="tonal" size="36" class="rounded-lg">
+              <VIcon icon="tabler-packages" size="20" />
+            </VAvatar>
           </div>
-        </VCol>
+          <h3 class="text-h5 font-weight-black text-primary mb-0">
+            {{ Number(czSummary?.total_units_released || 0).toLocaleString() }} unids
+          </h3>
+          <span class="text-caption text-medium-emphasis">Reducción efectiva de inventario parado</span>
+        </VCard>
+      </VCol>
 
-        <VCol cols="12" sm="6" md="4">
-          <div class="pa-3 bg-light-warning rounded-lg border">
-            <span class="text-caption font-weight-bold text-medium-emphasis d-block">Capital Pendiente por Liberar</span>
-            <span class="text-h6 font-weight-black text-warning">{{ formatCurrency(czSummary?.total_current_cz_capital || 0) }}</span>
-            <span class="text-super-xs text-medium-emphasis d-block">En {{ czSummary?.items_count || 0 }} SKUs CZ monitoreados</span>
+      <!-- 3. Capital Pendiente por Liberar ($) -->
+      <VCol cols="12" sm="6" md="4">
+        <VCard class="pa-4 rounded-lg border shadow-sm h-full">
+          <div class="d-flex align-center justify-space-between mb-2">
+            <span class="text-caption font-weight-bold text-uppercase text-medium-emphasis">Capital Pendiente (CZ)</span>
+            <VAvatar color="warning" variant="tonal" size="36" class="rounded-lg">
+              <VIcon icon="tabler-lock-square" size="20" />
+            </VAvatar>
           </div>
-        </VCol>
-      </VRow>
-    </VCard>
+          <h3 class="text-h5 font-weight-black text-warning mb-0">
+            {{ formatCurrency(czSummary?.total_current_cz_capital || 0) }}
+          </h3>
+          <span class="text-caption text-medium-emphasis">En {{ czSummary?.items_count || 0 }} SKUs CZ monitoreados</span>
+        </VCard>
+      </VCol>
+    </VRow>
 
     <!-- Tabla Comparativa de Productos CZ con VDataTable Interactivo -->
     <VCard class="rounded-lg border shadow-sm overflow-hidden bg-surface mb-6">

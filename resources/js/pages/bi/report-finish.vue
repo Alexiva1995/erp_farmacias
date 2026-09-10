@@ -444,11 +444,11 @@ onMounted(() => {
         >
           <VTab value="module1" class="font-weight-bold">
             <VIcon icon="tabler-photo" size="18" class="me-2" />
-            Módulo 1: Fotografía General
+            M1: Fotografía General
           </VTab>
           <VTab value="module2" class="font-weight-bold">
             <VIcon icon="tabler-cash" size="18" class="me-2 text-success" />
-            Módulo 2: Capital Recuperado CZ
+            M2: Capital Recuperado CZ
             <VBadge
               v-if="auditData.module_2_cz_recovery?.total_cash_released > 0"
               color="success"
@@ -459,7 +459,7 @@ onMounted(() => {
           </VTab>
           <VTab value="module3" class="font-weight-bold">
             <VIcon icon="tabler-truck-delivery" size="18" class="me-2 text-primary" />
-            Módulo 3: Compras Prioritarias A/B
+            M3: Compras Prioritarias A/B
             <VBadge
               v-if="auditData.module_3_ab_restock?.total_critical_items > 0"
               :color="auditData.module_3_ab_restock.still_stockout_count > 0 ? 'error' : 'success'"
@@ -470,7 +470,7 @@ onMounted(() => {
           </VTab>
           <VTab value="module4" class="font-weight-bold">
             <VIcon icon="tabler-percentage" size="18" class="me-2 text-warning" />
-            Módulo 4: Alerta de Márgenes
+            M4: Alerta de Márgenes
             <VBadge
               v-if="auditData.module_4_margin_alerts?.negative_margin_count > 0"
               color="error"
