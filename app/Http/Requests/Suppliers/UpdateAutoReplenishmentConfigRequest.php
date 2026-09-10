@@ -44,7 +44,7 @@ class UpdateAutoReplenishmentConfigRequest extends FormRequest
         return [
             'name'                => ['sometimes', 'string', 'max:100'],
             'is_active'           => ['sometimes', 'boolean'],
-            'tipo_filtracion'     => ['sometimes', 'in:average,sales,combinado'],
+            'tipo_filtracion'     => ['sometimes', 'in:average,sales,combinado,weighted'],
             'lapso_de_tiempo'     => ['sometimes', 'string', 'in:7 days,15 days,1 month,3 month,6 month,1 year'],
             'min_solicitar'       => ['sometimes', 'nullable', 'numeric', 'min:0'],
             'con_descuento'       => ['sometimes', 'boolean'],

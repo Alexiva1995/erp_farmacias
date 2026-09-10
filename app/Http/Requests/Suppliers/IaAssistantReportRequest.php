@@ -22,7 +22,7 @@ class IaAssistantReportRequest extends FormRequest
         return [
             'itemsPerPage' => 'nullable|integer|min:-1',
             'page' => 'nullable|integer|min:1',
-            'tipo_filtracion' => 'nullable|string|in:average,sales,combinado',
+            'tipo_filtracion' => 'nullable|string|in:average,sales,combinado,weighted',
             'tipo_vista' => 'nullable|boolean',
             'lapso_de_tiempo' => 'nullable|string',
             'with_suppliers' => 'nullable|boolean',

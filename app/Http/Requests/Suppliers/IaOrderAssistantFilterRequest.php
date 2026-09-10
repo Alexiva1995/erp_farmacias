@@ -16,7 +16,7 @@ class IaOrderAssistantFilterRequest extends FormRequest
         return [
             'page' => 'nullable|integer|min:1',
             'itemsPerPage' => 'nullable|integer|min:-1|max:1000000',
-            'tipo_filtracion' => 'nullable|string|in:average,sales,combinado',
+            'tipo_filtracion' => 'nullable|string|in:average,sales,combinado,weighted',
             'tipo_vista' => 'nullable|boolean',
             'lapso_de_tiempo' => 'nullable|string',
             'stock' => 'nullable|string|in:exceso,fallas,all',

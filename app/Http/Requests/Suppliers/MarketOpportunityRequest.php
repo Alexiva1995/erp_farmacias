@@ -41,7 +41,7 @@ class MarketOpportunityRequest extends FormRequest
             'hideDuplicates' => ['nullable'],
             'withDiscount' => ['nullable'],
             'lapso_de_tiempo' => ['nullable', 'string'],
-            'tipo_filtracion' => ['nullable', 'string', 'in:average,sales,combinado'],
+            'tipo_filtracion' => ['nullable', 'string', 'in:average,sales,combinado,weighted'],
             'stock' => ['nullable', 'string', 'in:all,fallas,exceso'],
             'is_colombia' => ['nullable'],
         ];

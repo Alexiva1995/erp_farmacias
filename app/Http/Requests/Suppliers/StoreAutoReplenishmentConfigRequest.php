@@ -37,7 +37,7 @@ class StoreAutoReplenishmentConfigRequest extends FormRequest
         return [
             'name'                => ['required', 'string', 'max:100'],
             'is_active'           => ['boolean'],
-            'tipo_filtracion'     => ['required', 'in:average,sales,combinado'],
+            'tipo_filtracion'     => ['required', 'in:average,sales,combinado,weighted'],
             'lapso_de_tiempo'     => ['required', 'string', 'in:7 days,15 days,1 month,3 month,6 month,1 year'],
             'min_solicitar'       => ['nullable', 'numeric', 'min:0'],
             'con_descuento'       => ['boolean'],

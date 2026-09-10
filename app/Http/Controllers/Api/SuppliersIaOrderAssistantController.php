@@ -289,7 +289,7 @@ class SuppliersIaOrderAssistantController extends Controller
         }
 
 
-        if ($filtros["tipo_filtracion"] == "average" || $filtros["tipo_filtracion"] == "combinado") {
+        if ($filtros["tipo_filtracion"] == "average" || $filtros["tipo_filtracion"] == "combinado" || $filtros["tipo_filtracion"] == "weighted") {
             $productos = $this->product->filtrarIaOrderAssistantTypeAverageWithoutPaginate($filtros);
         } elseif ($filtros["tipo_filtracion"] == "sales") {
             $productos = $this->product->filtrarIaOrderAssistantTypeSalesWithoutPaginate($filtros);
