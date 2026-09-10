@@ -24,15 +24,20 @@ const page = ref(1);
 const sortBy = ref([{ key: 'margin_percentage', order: 'asc' }]);
 
 const headers = [
-  { title: 'ID / PRODUCTO', key: 'product_name', sortable: true },
-  { title: 'LABORATORIO', key: 'laboratory_name', sortable: true },
-  { title: 'COSTO UNIT. ($)', key: 'unit_cost_usd', align: 'end', sortable: true },
-  { title: 'PRECIO VENTA ($)', key: 'sale_price_usd', align: 'end', sortable: true },
-  { title: 'MARGEN REAL (%)', key: 'margin_percentage', align: 'end', sortable: true },
-  { title: 'STOCK ACTUAL', key: 'current_stock', align: 'end', sortable: true },
-  { title: 'CAPITAL EN RIESGO ($)', key: 'inventory_value_usd', align: 'end', sortable: true },
-  { title: 'DIAGNÓSTICO', key: 'risk_level', align: 'center', sortable: true },
+  { title: 'PRODUCTO / LABORATORIO', key: 'product_name', sortable: true, cellProps: { class: 'sticky-col' }, headerProps: { class: 'sticky-col' } },
+  { title: 'COSTO', key: 'unit_cost_usd', align: 'end', sortable: true },
+  { title: 'P.V.P.', key: 'sale_price_usd', align: 'end', sortable: true },
+  { title: 'MARGEN', key: 'margin_percentage', align: 'end', sortable: true },
+  { title: 'STOCK', key: 'current_stock', align: 'end', sortable: true },
+  { title: 'CAP. RIESGO', key: 'inventory_value_usd', align: 'end', sortable: true },
+  { title: 'ESTADO', key: 'risk_level', align: 'center', sortable: true },
 ];
+
+const getMarginBadgeClass = (riskLevel) => {
+  if (riskLevel === 'Pérdida') return 'badge-margin-loss';
+  if (riskLevel === 'Margen Bajo') return 'badge-margin-low';
+  return 'badge-margin-healthy';
+};
 </script>
 
 <template>
@@ -92,7 +97,7 @@ const headers = [
     <VCard class="rounded-lg border shadow-sm overflow-hidden bg-surface mb-6">
       <VCardText class="pa-4">
         <VRow align="center" dense class="mb-3">
-          <VCol cols="12" md="5">
+          <VCol cols="12" sm="6" md="5">
             <AppTextField
               :model-value="search"
               placeholder="Buscar por producto, laboratorio o ID..."
@@ -105,9 +110,9 @@ const headers = [
             />
           </VCol>
 
-          <VCol cols="12" md="7" class="text-end">
+          <VCol cols="12" sm="6" md="7" class="text-end">
             <span class="text-caption text-medium-emphasis">
-              Total: <strong>{{ alerts.length }}</strong> alertas evaluadas
+              Total: <strong class="text-high-emphasis">{{ alerts.length }}</strong> alertas evaluadas
             </span>
           </VCol>
         </VRow>
@@ -123,58 +128,60 @@ const headers = [
           hover
           class="text-no-wrap premium-datatable"
         >
-          <!-- Columna Producto / ID -->
+          <!-- 1. Columna Producto / Laboratorio (Sticky a la izquierda) -->
           <template #item.product_name="{ item }">
-            <div class="d-flex flex-column py-1">
-              <span class="font-weight-black text-sm text-uppercase text-truncate" style="max-width: 260px;">
-                {{ item.product_name }}
+            <div class="d-flex flex-column py-1" style="min-width: 240px; max-width: 320px;">
+              <a
+                :href="`/inventory/traceability?q=${item.product_id}`"
+                target="_blank"
+                class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate text-decoration-none id-link cursor-pointer"
+                :title="item.product_name"
+              >
+                <span class="text-primary font-weight-black me-1">{{ item.product_id }}</span>
+                - {{ item.product_name }}
+              </a>
+              <span class="text-xs font-weight-medium text-primary text-uppercase text-truncate mt-0.5">
+                {{ item.laboratory_name || 'SIN LABORATORIO' }}
               </span>
-              <span class="text-caption text-primary">#{{ item.product_id }}</span>
             </div>
           </template>
 
-          <!-- Columna Laboratorio -->
-          <template #item.laboratory_name="{ item }">
-            <span class="font-weight-medium text-caption">{{ item.laboratory_name }}</span>
-          </template>
-
-          <!-- Columna Costo Unitario -->
+          <!-- 2. Columna Costo -->
           <template #item.unit_cost_usd="{ item }">
-            <span>{{ formatCurrency(item.unit_cost_usd) }}</span>
+            <span class="text-sm font-weight-bold">{{ formatCurrency(item.unit_cost_usd) }}</span>
           </template>
 
-          <!-- Columna Precio Venta -->
+          <!-- 3. Columna P.V.P. -->
           <template #item.sale_price_usd="{ item }">
-            <span class="font-weight-bold">{{ formatCurrency(item.sale_price_usd) }}</span>
+            <span class="text-sm font-weight-black text-high-emphasis">{{ formatCurrency(item.sale_price_usd) }}</span>
           </template>
 
-          <!-- Columna Margen Real -->
+          <!-- 4. Columna Margen -->
           <template #item.margin_percentage="{ item }">
-            <span class="font-weight-black" :class="item.margin_percentage < 0 ? 'text-error' : 'text-warning'">
+            <span class="text-sm font-weight-black" :class="item.margin_percentage < 0 ? 'text-error' : 'text-warning'">
               {{ Number(item.margin_percentage || 0).toFixed(2) }}%
             </span>
           </template>
 
-          <!-- Columna Stock Actual -->
+          <!-- 5. Columna Stock -->
           <template #item.current_stock="{ item }">
-            <span>{{ item.current_stock }}</span>
+            <span class="text-sm font-weight-bold">{{ Number(item.current_stock).toLocaleString() }}</span>
           </template>
 
-          <!-- Columna Capital en Riesgo -->
+          <!-- 6. Columna Cap. Riesgo -->
           <template #item.inventory_value_usd="{ item }">
-            <span>{{ formatCurrency(item.inventory_value_usd) }}</span>
+            <span class="text-sm font-weight-bold" :class="item.margin_percentage < 0 ? 'text-error' : 'text-warning'">
+              {{ formatCurrency(item.inventory_value_usd) }}
+            </span>
           </template>
 
-          <!-- Columna Diagnóstico -->
+          <!-- 7. Columna Estado / Diagnóstico (Badge pill sólido) -->
           <template #item.risk_level="{ item }">
-            <VChip
-              size="small"
-              :color="item.severity"
-              variant="flat"
-              class="font-weight-bold"
-            >
-              {{ item.risk_level }}
-            </VChip>
+            <div class="d-flex justify-center">
+              <span class="badge-pill font-weight-black text-xs" :class="getMarginBadgeClass(item.risk_level)">
+                {{ item.risk_level }}
+              </span>
+            </div>
           </template>
 
           <!-- Estado Vacío -->
@@ -194,5 +201,57 @@ const headers = [
 .text-super-xs {
   font-size: 0.6875rem !important;
   line-height: 0.875rem !important;
+}
+
+.id-link {
+  transition: opacity 0.2s ease;
+}
+
+.id-link:hover {
+  text-decoration: underline !important;
+  opacity: 0.85;
+}
+
+/* Badges redondeados (pill) */
+.badge-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 22px;
+  font-size: 0.75rem;
+  line-height: 1;
+  border-radius: 9999px;
+  padding: 0 10px;
+  white-space: nowrap;
+}
+
+/* Diagnósticos de Margen */
+.badge-margin-loss {
+  background-color: #FFEBEE !important;
+  color: #D32F2F !important;
+}
+
+.badge-margin-low {
+  background-color: #FEF7E0 !important;
+  color: #B06000 !important;
+}
+
+.badge-margin-healthy {
+  background-color: #E6F4EA !important;
+  color: #137333 !important;
+}
+
+:deep(.premium-datatable) table {
+  table-layout: auto;
+}
+
+:deep(.premium-datatable th:nth-child(1)),
+:deep(.premium-datatable td:nth-child(1)) {
+  position: sticky;
+  left: 0;
+  background-color: rgb(var(--v-theme-surface)) !important;
+  z-index: 2;
+  box-shadow: 2px 0 5px -2px rgba(0, 0, 0, 0.1);
 }
 </style>

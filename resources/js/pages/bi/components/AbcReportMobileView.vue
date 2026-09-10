@@ -8,7 +8,8 @@ const props = defineProps({
   itemsPerPage: { type: Number, default: 10 },
   selectedAnalysisType: { type: String, default: 'all' },
   isSimplifiedView: { type: Boolean, default: false },
-  getColorClass: { type: Function, required: true },
+  getColorClass: { type: Function, required: false, default: () => 'default' },
+  getAbcBadgeStyle: { type: Function, required: false, default: () => ({}) },
   getGmroiColor: { type: Function, required: true },
 });
 
@@ -72,16 +73,13 @@ const emit = defineEmits(['update:page', 'openOffer', 'openAssign']);
                 </span>
               </div>
             </div>
-            <VChip
+            <span
               v-if="!isSimplifiedView"
-              :color="getColorClass(item.final_classification)"
-              class="text-uppercase font-weight-black flex-shrink-0"
-              variant="elevated"
-              size="x-small"
-              label
+              class="abc-badge-pill flex-shrink-0"
+              :style="getAbcBadgeStyle(item.final_classification)"
             >
               {{ item.final_classification }}
-            </VChip>
+            </span>
           </div>
 
           <VDivider class="my-3 border-opacity-10" />
@@ -127,10 +125,12 @@ const emit = defineEmits(['update:page', 'openOffer', 'openAssign']);
                 <div class="text-super-xs text-disabled text-uppercase font-weight-black mb-1">
                   Margen ({{ item.contribution_margin_pct ? item.contribution_margin_pct.toFixed(1) : '0.0' }}%)
                 </div>
-                <div class="text-sm font-weight-black" :class="item.margin_percentage > 0 ? 'text-primary' : 'text-error'">
-                  {{ item.margin_percentage }}%
+                <div class="text-sm font-weight-black" :class="(item.margin_percentage ?? 0) >= 0 ? 'text-success' : 'text-error'">
+                  {{ typeof item.margin_percentage === 'number' ? item.margin_percentage.toFixed(2) : item.margin_percentage }}%
                 </div>
-                <div class="text-super-xs text-disabled">{{ formatCurrency(item.margin_amount) }}</div>
+                <div class="text-super-xs text-medium-emphasis">
+                  {{ (item.margin_amount ?? 0) > 0 ? '+' : '' }}{{ formatCurrency(item.margin_amount) }}
+                </div>
               </VCol>
               <VCol cols="6" class="pa-2 border-r border-opacity-10">
                 <div class="text-super-xs text-disabled text-uppercase font-weight-black mb-1">ROI Anual</div>
@@ -140,14 +140,13 @@ const emit = defineEmits(['update:page', 'openOffer', 'openAssign']);
               </VCol>
               <VCol cols="6" class="pa-2">
                 <div class="d-flex justify-space-between align-center mb-1">
-                  <span class="text-super-xs text-disabled text-uppercase font-weight-black">Stock / Inv</span>
+                  <span class="text-super-xs text-disabled text-uppercase font-weight-black">Cobertura</span>
                 </div>
-                <div class="text-sm font-weight-black" :class="item.current_stock === 0 ? 'text-error' : ''">{{ item.current_stock }} uds</div>
-                <div v-if="item.inventory_value > 0" class="text-super-xs font-weight-bold" :class="['dead_stock', 'frozen_capital'].includes(selectedAnalysisType) ? 'text-error' : 'text-disabled'">
-                  Inv: {{ formatCurrency(item.inventory_value) }}
-                </div>
-                <div v-else class="text-super-xs font-weight-bold" :class="item.inventory_days < 10 ? 'text-error' : 'text-disabled'">
+                <div class="text-sm font-weight-black" :class="item.inventory_days < 10 || item.current_stock === 0 ? 'text-error' : 'text-high-emphasis'">
                   {{ item.inventory_days === 9999 ? 'Sin rotación' : Math.round(item.inventory_days) + ' días' }}
+                </div>
+                <div class="text-super-xs font-weight-medium text-medium-emphasis">
+                  {{ item.current_stock }} unds | {{ formatCurrency(item.inventory_value ?? (item.current_stock * (item.last_cost ?? 0))) }}
                 </div>
               </VCol>
             </VRow>
@@ -221,6 +220,18 @@ const emit = defineEmits(['update:page', 'openOffer', 'openAssign']);
 
 .text-super-xs {
   font-size: 0.65rem !important;
+  line-height: 1.2;
+}
+
+.abc-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
   line-height: 1.2;
 }
 

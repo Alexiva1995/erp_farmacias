@@ -165,7 +165,7 @@ const fullHeaders = [
   { title: 'Desempeño Comercial', key: 'sold_units', align: 'end', sortable: true },
   { title: 'Rentabilidad Bruta', key: 'margin_percentage', align: 'end', sortable: true },
   { title: 'GMROI (Retorno)', key: 'gmroi', align: 'center', sortable: true },
-  { title: 'Cobertura (Días)', key: 'current_stock', align: 'end', sortable: true },
+  { title: 'Cobertura', key: 'current_stock', align: 'end', sortable: true },
   { title: 'Costo Unit.', key: 'last_cost', align: 'end', sortable: true },
   { title: 'Perfil ABC-XYZ', key: 'final_classification', align: 'center', sortable: true },
   { title: 'ACCIONES', key: 'actions', align: 'center', sortable: false, width: '120px' },
@@ -249,6 +249,70 @@ const fetchReport = async () => {
   } finally {
     loading.value = false;
   }
+};
+
+const getAbcBadgeStyle = (classification) => {
+  if (!classification) {
+    return {
+      backgroundColor: '#F1F3F4',
+      color: '#5F6368',
+      border: '1px solid #DADCE0',
+    };
+  }
+
+  const code = classification.toUpperCase();
+
+  // Tier 1: Productos Estrella (A en ventas y A en margen) -> Verde Menta Suave
+  if (['AAX', 'AAY'].includes(code)) {
+    return {
+      backgroundColor: '#E6F4EA',
+      color: '#137333',
+      border: '1px solid #CEEAD6',
+    };
+  }
+
+  // Tier 2: Alto Desempeño / Volumen Seguro -> Azul Suave
+  if (['AAZ', 'ABX', 'ABY', 'BAX', 'BAY'].includes(code)) {
+    return {
+      backgroundColor: '#E8F0FE',
+      color: '#1A73E8',
+      border: '1px solid #D2E3FC',
+    };
+  }
+
+  // Tier 3: Margen o Ventas Moderadas -> Lavanda / Violeta Suave
+  if (['ABZ', 'BBX', 'BBY', 'CAX', 'CAY'].includes(code)) {
+    return {
+      backgroundColor: '#F3E8FD',
+      color: '#7627BB',
+      border: '1px solid #E9D2FD',
+    };
+  }
+
+  // Tier 4: Margen Bajo / Rotación Fluctuante -> Amarillo/Ámbar Suave
+  if (['ACX', 'ACY', 'BAZ', 'BBZ', 'BCX', 'BCY', 'CBX', 'CBY'].includes(code)) {
+    return {
+      backgroundColor: '#FEF7E0',
+      color: '#B06000',
+      border: '1px solid #FEEFC3',
+    };
+  }
+
+  // Tier 5: Críticos / Riesgo / Baja Rotación / Margen Mínimo -> Rosa/Rojo Pastel Suave
+  if (['ACZ', 'BCZ', 'CCX', 'CCY', 'CCZ', 'CBZ'].includes(code)) {
+    return {
+      backgroundColor: '#FCE8E6',
+      color: '#C5221F',
+      border: '1px solid #FAD2CF',
+    };
+  }
+
+  // Por defecto (Gris ejecutivo suave)
+  return {
+    backgroundColor: '#F1F3F4',
+    color: '#3C4043',
+    border: '1px solid #DADCE0',
+  };
 };
 
 const getColorClass = (classification) => {
@@ -635,15 +699,25 @@ const handleFilterCritical = () => {
           </template>
           
           <template #item.margin_percentage="{ item }">
-            <div class="d-flex flex-column align-end">
-              <span class="font-weight-bold text-base" :class="item.margin_percentage > 0 ? 'text-primary' : 'text-error'">
-                Margen: {{ typeof item.margin_percentage === 'number' ? item.margin_percentage.toFixed(2) : item.margin_percentage }}%
-              </span>
-              <div class="d-flex align-center gap-1">
-                <span class="text-super-xs text-info font-weight-bold">Aporte: {{ item.contribution_margin_pct ? item.contribution_margin_pct.toFixed(2) : '0.00' }}%</span>
-                <span class="text-caption text-medium-emphasis">Ganancia: {{ formatCurrency(item.margin_amount) }}</span>
-              </div>
-            </div>
+            <VTooltip location="top">
+              <template #activator="{ props: tipProps }">
+                <div v-bind="tipProps" class="d-flex flex-column align-end cursor-help">
+                  <span
+                    class="font-weight-black text-sm"
+                    :class="(item.margin_percentage ?? 0) >= 0 ? 'text-success' : 'text-error'"
+                  >
+                    {{ typeof item.margin_percentage === 'number' ? item.margin_percentage.toFixed(2) : item.margin_percentage }}%
+                  </span>
+                  <span
+                    class="text-super-xs font-weight-medium"
+                    :class="(item.margin_amount ?? 0) >= 0 ? 'text-medium-emphasis' : 'text-error'"
+                  >
+                    {{ (item.margin_amount ?? 0) > 0 ? '+' : '' }}{{ formatCurrency(item.margin_amount) }}
+                  </span>
+                </div>
+              </template>
+              <span>Aporte al margen total: {{ item.contribution_margin_pct ? item.contribution_margin_pct.toFixed(2) : '0.00' }}%</span>
+            </VTooltip>
           </template>
 
           <template #item.gmroi="{ item }">
@@ -656,21 +730,29 @@ const handleFilterCritical = () => {
           </template>
 
           <template #item.current_stock="{ item }">
-             <div class="d-flex flex-column align-end">
-              <span class="font-weight-black" :class="isSimplifiedView ? 'text-body-1' : ''">
-                {{ selectedAnalysisType === 'expiring_risk' && item.risk_expiring_units > 0 && item.risk_expiring_units < item.current_stock ? `${item.risk_expiring_units} de ${item.current_stock} unds` : `${item.current_stock} unds` }}
-              </span>
-              <span v-if="selectedAnalysisType === 'expiring_risk' && item.risk_expiring_units > 0 && item.risk_expiring_units < item.current_stock" class="text-super-xs text-warning font-weight-bold">
-                (En riesgo por lote)
-              </span>
-              <span v-else-if="isSimplifiedView" class="text-super-xs text-medium-emphasis">
-                Costo: {{ formatCurrency(item.last_cost) }}
-              </span>
-              <span v-else class="text-caption text-medium-emphasis mt-1">
-                <VIcon icon="tabler-calendar-time" size="12" class="me-1" :class="item.inventory_days < 10 ? 'text-error' : ''"/>
-                <span v-if="item.inventory_days === 9999" class="text-warning">Incalculable</span>
-                <span v-else :class="item.inventory_days < 10 ? 'text-error' : ''">{{ Math.round(item.inventory_days) }} días d/inv</span>
-              </span>
+            <div class="d-flex flex-column align-end">
+              <template v-if="isSimplifiedView">
+                <span class="font-weight-black text-body-1">
+                  {{ selectedAnalysisType === 'expiring_risk' && item.risk_expiring_units > 0 && item.risk_expiring_units < item.current_stock ? `${item.risk_expiring_units} de ${item.current_stock} unds` : `${item.current_stock} unds` }}
+                </span>
+                <span v-if="selectedAnalysisType === 'expiring_risk' && item.risk_expiring_units > 0 && item.risk_expiring_units < item.current_stock" class="text-super-xs text-warning font-weight-bold">
+                  (En riesgo por lote)
+                </span>
+                <span v-else class="text-super-xs text-medium-emphasis">
+                  Costo: {{ formatCurrency(item.last_cost) }}
+                </span>
+              </template>
+              <template v-else>
+                <span
+                  class="font-weight-black text-sm"
+                  :class="item.inventory_days < 10 || item.current_stock === 0 ? 'text-error' : 'text-high-emphasis'"
+                >
+                  {{ item.inventory_days === 9999 ? 'Sin rotación' : `${Math.round(item.inventory_days)} días` }}
+                </span>
+                <span class="text-super-xs font-weight-medium text-medium-emphasis mt-0.5">
+                  {{ item.current_stock }} unds | {{ formatCurrency(item.inventory_value ?? (item.current_stock * (item.last_cost ?? 0))) }}
+                </span>
+              </template>
             </div>
           </template>
 
@@ -699,16 +781,14 @@ const handleFilterCritical = () => {
 
           <template #item.final_classification="{ item }">
             <VTooltip location="top" content-class="bg-grey-900 border-opacity-100">
-              <template #activator="{ props }">
-                 <VChip
-                  size="large"
-                  v-bind="props"
-                  :color="getColorClass(item.final_classification)"
-                  class="text-uppercase font-weight-black elevation-1"
-                  variant="elevated"
+              <template #activator="{ props: tipProps }">
+                <span
+                  v-bind="tipProps"
+                  class="abc-badge-pill cursor-help"
+                  :style="getAbcBadgeStyle(item.final_classification)"
                 >
                   {{ item.final_classification }}
-                </VChip>
+                </span>
               </template>
               <div class="d-flex flex-column gap-1 text-caption text-left text-white pa-1">
                 <span><strong>A</strong>porte Ventas: {{ item.class_sales === 'A' ? 'Alto (80%)' : (item.class_sales === 'B' ? 'Medio (15%)' : 'Bajo (5%)') }}</span>
@@ -767,6 +847,7 @@ const handleFilterCritical = () => {
         :selected-analysis-type="selectedAnalysisType"
         :is-simplified-view="isSimplifiedView"
         :get-color-class="getColorClass"
+        :get-abc-badge-style="getAbcBadgeStyle"
         :get-gmroi-color="getGmroiColor"
         @open-offer="handleOpenIndividualOffer"
         @open-assign="handleOpenAssignEmployees"
@@ -813,6 +894,22 @@ const handleFilterCritical = () => {
 
 .report-abc-view {
   min-block-size: 100vh;
+}
+
+.abc-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  line-height: 1.2;
+}
+
+.cursor-help {
+  cursor: help;
 }
 
 .gap-1 { gap: 4px !important; }

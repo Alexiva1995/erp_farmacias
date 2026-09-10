@@ -308,7 +308,7 @@ class InventorySnapshotService
                     'margin_percentage' => round($marginPct, 2),
                     'current_stock' => round($stock, 1),
                     'inventory_value_usd' => round((float)$item->inventory_value_usd, 2),
-                    'risk_level' => 'Pérdida / Margen Negativo (<0%)',
+                    'risk_level' => 'Pérdida',
                     'severity' => 'error',
                 ];
             } elseif ($marginPct >= 0 && $marginPct < 15 && $stock > 0) {
@@ -322,7 +322,7 @@ class InventorySnapshotService
                     'margin_percentage' => round($marginPct, 2),
                     'current_stock' => round($stock, 1),
                     'inventory_value_usd' => round((float)$item->inventory_value_usd, 2),
-                    'risk_level' => 'Margen Bajo (<15%)',
+                    'risk_level' => 'Margen Bajo',
                     'severity' => 'warning',
                 ];
             } else {
