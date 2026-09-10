@@ -296,6 +296,15 @@ class SupplierEmailCatalogService
                     }
                     unset($fItem);
 
+                    if (empty($allProducts)) {
+                        $skipped[] = [
+                            'supplier_id' => $supplier->id,
+                            'supplier_name' => $supplier->name,
+                            'reason' => "No se pudieron extraer productos válidos de los archivos adjuntos. Se conserva el catálogo previo.",
+                        ];
+                        continue;
+                    }
+
                     // Guardar todos los productos combinados en la base de datos (limpieza previa única)
                     $this->queryService->storeSupplierConnectionData($supplier, [
                         'products' => $allProducts,
