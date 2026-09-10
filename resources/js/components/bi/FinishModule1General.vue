@@ -261,13 +261,6 @@ const getClassColor = (c) => {
             </span>
           </template>
 
-          <!-- Margen -->
-          <template #item.margen_porcentaje="{ item }">
-            <span class="font-weight-bold" :class="item.margen_porcentaje > 0 ? 'text-primary' : 'text-error'">
-              {{ item.margen_porcentaje.toFixed(1) }}%
-            </span>
-          </template>
-
           <!-- Cobertura Días -->
           <template #item.cobertura_dias="{ item }">
             <VChip
@@ -316,5 +309,26 @@ const getClassColor = (c) => {
 .text-super-xs {
   font-size: 0.6875rem !important;
   line-height: 0.875rem !important;
+}
+
+:deep(.premium-table) table {
+  table-layout: auto;
+}
+
+:deep(.premium-table th:nth-child(2)),
+:deep(.premium-table td:nth-child(2)) {
+  position: sticky;
+  left: 70px;
+  background-color: rgb(var(--v-theme-surface)) !important;
+  z-index: 2;
+  box-shadow: 2px 0 5px -2px rgba(0, 0, 0, 0.1);
+}
+
+:deep(.premium-table th:nth-child(1)),
+:deep(.premium-table td:nth-child(1)) {
+  position: sticky;
+  left: 0;
+  background-color: rgb(var(--v-theme-surface)) !important;
+  z-index: 3;
 }
 </style>
