@@ -133,13 +133,7 @@ const emit = defineEmits([
 
           <!-- Nombre -->
           <template #item.name="{ item }">
-            <div class="d-flex flex-column py-2">
-              <span class="font-weight-bold text-high-emphasis text-base">{{ item.name }}</span>
-              <span class="text-caption text-medium-emphasis">
-                Creado: {{ item.created_at ? new Date(item.created_at).toLocaleDateString('es-ES') : 'N/D' }}
-                <span v-if="item.creator_name"> por {{ item.creator_name }}</span>
-              </span>
-            </div>
+            <span class="font-weight-bold text-high-emphasis text-base">{{ item.name }}</span>
           </template>
 
           <!-- Fecha de Corte -->
@@ -165,7 +159,7 @@ const emit = defineEmits([
             <span class="font-weight-black text-primary text-base">{{ formatCurrency(item.total_inventory_value) }}</span>
           </template>
 
-          <!-- Ventas 30d -->
+          <!-- Ventas Mes -->
           <template #item.total_sales_value="{ item }">
             <span class="font-weight-bold text-success">{{ formatCurrency(item.total_sales_value) }}</span>
           </template>
@@ -191,19 +185,6 @@ const emit = defineEmits([
               </template>
               <span>{{ item.overstock_products_count }} productos con cobertura mayor a 90 días (Capital estancado: {{ formatCurrency(item.overstock_inventory_value || 0) }})</span>
             </VTooltip>
-          </template>
-
-          <!-- Tipo -->
-          <template #item.is_automatic="{ item }">
-            <VChip
-              size="small"
-              :color="item.is_automatic ? 'info' : 'secondary'"
-              variant="tonal"
-              class="font-weight-bold"
-            >
-              <VIcon :icon="item.is_automatic ? 'tabler-cpu' : 'tabler-user'" size="14" class="me-1" />
-              {{ item.is_automatic ? 'Automático' : 'Manual' }}
-            </VChip>
           </template>
 
           <!-- Acciones -->

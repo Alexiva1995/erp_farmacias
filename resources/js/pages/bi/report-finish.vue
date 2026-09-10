@@ -94,19 +94,17 @@ const marginSearch = ref('');
 
 const snapshotHeaders = [
   { title: 'ID', key: 'id', width: '70px', sortable: true },
-  { title: 'NOMBRE / IDENTIF.', key: 'name', sortable: true },
-  { title: 'FECHA CORTE', key: 'cutoff_date', align: 'center', sortable: true },
+  { title: 'NOMBRE', key: 'name', sortable: true },
+  { title: 'FECHA', key: 'cutoff_date', align: 'center', sortable: true },
   { title: 'SKUS', key: 'total_products', align: 'end', sortable: true },
-  { title: 'STOCK (U)', key: 'total_inventory_units', align: 'end', sortable: true },
-  { title: 'VALOR INV. ($)', key: 'total_inventory_value', align: 'end', sortable: true },
-  { title: 'VENTAS 30D ($)', key: 'total_sales_value', align: 'end', sortable: true },
-  { title: 'SOBRESTOCK (>90D)', key: 'overstock_products_count', align: 'end', sortable: true },
-  { title: 'TIPO', key: 'is_automatic', align: 'center', sortable: true },
+  { title: 'STOCK', key: 'total_inventory_units', align: 'end', sortable: true },
+  { title: 'VALOR INV.', key: 'total_inventory_value', align: 'end', sortable: true },
+  { title: 'VENTAS MES', key: 'total_sales_value', align: 'end', sortable: true },
+  { title: 'SOBRESTOCK', key: 'overstock_products_count', align: 'end', sortable: true },
   { title: 'ACCIONES', key: 'actions', align: 'center', sortable: false, width: '120px' },
 ];
 
 const itemHeaders = [
-  { title: 'ID', key: 'id_producto', width: '70px', sortable: true },
   { title: 'PRODUCTO / LABORATORIO', key: 'nombre_producto', sortable: true },
   { title: 'CLASIF.', key: 'clasificacion_ventas', align: 'center', sortable: true },
   { title: 'VENTAS (30D)', key: 'ventas_unidades_30d', align: 'end', sortable: true },

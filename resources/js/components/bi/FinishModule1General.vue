@@ -205,18 +205,25 @@ const getClassColor = (c) => {
           @update:page="val => emit('update:page', val)"
           @update:sort-by="val => emit('update:sortBy', val)"
         >
-          <!-- ID -->
-          <template #item.id_producto="{ item }">
-            <span class="font-weight-black text-primary">#{{ item.id_producto }}</span>
-          </template>
-
-          <!-- Nombre Producto -->
+          <!-- Nombre Producto + ID y Laboratorio -->
           <template #item.nombre_producto="{ item }">
             <div class="d-flex flex-column py-1">
-              <span class="font-weight-black text-sm text-high-emphasis text-uppercase text-truncate" :title="item.nombre_producto">
-                {{ item.nombre_producto }}
-              </span>
-              <span class="text-caption text-primary font-weight-bold">
+              <div class="d-flex align-center gap-1">
+                <RouterLink
+                  v-if="item.id_producto"
+                  :to="`/inventory/traceability?q=${item.id_producto}`"
+                  target="_blank"
+                  class="font-weight-black text-primary text-decoration-none text-caption cursor-pointer id-link"
+                  title="Ver trazabilidad de movimientos"
+                >
+                  {{ item.id_producto }}
+                </RouterLink>
+                <span v-if="item.id_producto" class="text-caption text-medium-emphasis font-weight-bold">-</span>
+                <span class="font-weight-black text-sm text-high-emphasis text-uppercase text-truncate" :title="item.nombre_producto" style="max-width: 320px;">
+                  {{ item.nombre_producto }}
+                </span>
+              </div>
+              <span class="text-caption text-secondary font-weight-medium">
                 {{ item.laboratorio }}
               </span>
             </div>
@@ -311,17 +318,17 @@ const getClassColor = (c) => {
   line-height: 0.875rem !important;
 }
 
-:deep(.premium-table) table {
-  table-layout: auto;
+.id-link {
+  transition: opacity 0.2s ease;
 }
 
-:deep(.premium-table th:nth-child(2)),
-:deep(.premium-table td:nth-child(2)) {
-  position: sticky;
-  left: 70px;
-  background-color: rgb(var(--v-theme-surface)) !important;
-  z-index: 2;
-  box-shadow: 2px 0 5px -2px rgba(0, 0, 0, 0.1);
+.id-link:hover {
+  text-decoration: underline !important;
+  opacity: 0.85;
+}
+
+:deep(.premium-table) table {
+  table-layout: auto;
 }
 
 :deep(.premium-table th:nth-child(1)),
@@ -329,6 +336,7 @@ const getClassColor = (c) => {
   position: sticky;
   left: 0;
   background-color: rgb(var(--v-theme-surface)) !important;
-  z-index: 3;
+  z-index: 2;
+  box-shadow: 2px 0 5px -2px rgba(0, 0, 0, 0.1);
 }
 </style>
