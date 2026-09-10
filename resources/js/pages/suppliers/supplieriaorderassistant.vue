@@ -126,7 +126,14 @@ async function consultarProveedores() {
   }
 }
 
+let abortController = null;
+
 async function consultarProductosConPaginacion() {
+  if (abortController) {
+    abortController.abort();
+  }
+  abortController = new AbortController();
+
   const data = {
     laboratoryId: selectedLaboratory.value,
     groups: selectedGroup.value,
@@ -156,6 +163,7 @@ async function consultarProductosConPaginacion() {
   const resp = await axios.post(
     `/suppliers-ia-order-assistant/filtrar-paginate?page=${page.value}`,
     data,
+    { signal: abortController.signal }
   );
   if (resp.status !== 200) toast.error("Error al filtrar los datos");
   return { ...resp.data };
@@ -182,6 +190,9 @@ async function actualizarTabla() {
       gruposData.total_grupos = 0;
     }
   } catch (e) {
+    if (axios.isCancel(e) || e.name === 'CanceledError' || e.code === 'ERR_CANCELED') {
+      return;
+    }
     console.error("Error al cargar los productos:", e);
     const mensajeError = e.response?.data?.message || e.message || "Error al cargar los productos.";
     toast.error(mensajeError);

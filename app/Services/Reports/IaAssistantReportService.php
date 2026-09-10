@@ -754,66 +754,11 @@ class IaAssistantReportService
      */
     private function hydrateProductFlags($item): void
     {
-        // Feature 3: sales_average obsoleto (más de 48 horas sin recalcular)
+        // Feature 3: sales_average obsoleto (más de 48 horas sin recalcular por el cron nocturno)
         $updatedAt = isset($item->sales_average_updated_at) && $item->sales_average_updated_at
             ? \Carbon\Carbon::parse($item->sales_average_updated_at)
             : null;
-        $isStale = !$updatedAt || $updatedAt->lt(now()->subHours(48));
-
-        if ($isStale) {
-            try {
-                $now = now();
-                $windowStart = $now->copy()->subMonths(12);
-
-                $isRestaurant = \App\Models\GeneralSetting::first()?->business_type === 'restaurant';
-                if ($isRestaurant) {
-                    $totalSoldRaw = \Illuminate\Support\Facades\DB::table('inventory_movements')
-                        ->where('product_id', $item->id)
-                        ->where('quantity', '<', 0)
-                        ->where('created_at', '>=', $windowStart)
-                        ->sum('quantity');
-                    $totalSold = $totalSoldRaw ? abs($totalSoldRaw) : 0;
-                } else {
-                    $totalSold = \Illuminate\Support\Facades\DB::table('order_details')
-                        ->join('orders', 'order_details.order_id', '=', 'orders.id')
-                        ->where('order_details.product_id', $item->id)
-                        ->where('orders.status', 'Completed')
-                        ->where('orders.created_at', '>=', $windowStart)
-                        ->sum('order_details.quantity');
-                }
-
-                if ($totalSold === null || $totalSold == 0) {
-                    if (!empty($item->external_accumulated_sales) && (float) $item->external_accumulated_sales > 0) {
-                        $extDate = !empty($item->external_sales_date) ? \Carbon\Carbon::parse($item->external_sales_date) : $now;
-                        $monthsElapsed = max(1, (int) $extDate->month);
-                        $salesAverage = round(((float) $item->external_accumulated_sales) / $monthsElapsed, 2);
-                    } else {
-                        $salesAverage = 0.0;
-                    }
-                } else {
-                    $createdAt    = $item->created_at ? \Carbon\Carbon::parse($item->created_at) : $now->copy()->subMonths(12);
-                    $monthsOfLife = (int) ceil($createdAt->diffInMonths($now));
-                    $actualMonths = max(1, min(12, $monthsOfLife));
-                    $salesAverage = round($totalSold / $actualMonths, 2);
-                }
-
-                // Guardar en caliente en la base de datos de manera atómica
-                \Illuminate\Support\Facades\DB::table('products')->where('id', $item->id)->update([
-                    'sales_average'            => $salesAverage,
-                    'sales_average_updated_at' => $now,
-                ]);
-
-                // Actualizar en memoria para el reporte actual
-                $item->sales_average = $salesAverage;
-                $item->sales_average_updated_at = $now->toDateTimeString();
-                $item->is_stale_average = false;
-            } catch (\Exception $e) {
-                \Log::error("[IaAssistantReportService] Error en recálculo caliente para producto {$item->id}: " . $e->getMessage());
-                $item->is_stale_average = true;
-            }
-        } else {
-            $item->is_stale_average = false;
-        }
+        $item->is_stale_average = !$updatedAt || $updatedAt->lt(now()->subHours(48));
 
         // Feature 2: producto nuevo sin historial de ventas
         // Condición: sales_average == 0, stock == 0 y fue creado hace menos de 90 días

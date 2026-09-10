@@ -895,26 +895,26 @@ class ProductRepository
             $isStrictSearch = $filtros["isStrictSearch"] ?? false;
             $searchTerm = $filtros["q"];
 
+            $consulta->leftJoin("laboratories", "laboratories.id", "=", "products.laboratory_id");
+
             $consulta->where(function ($query) use ($searchTerm, $isStrictSearch) {
                 if ($isStrictSearch) {
                     $escapedTerm = preg_quote($searchTerm, '/');
                     $pattern = "(^|[^a-zA-Z0-9]){$escapedTerm}([^a-zA-Z0-9]|$)";
-                    $query->whereRaw("name REGEXP ?", [$pattern])
-                        ->orWhereRaw("active_ingredient REGEXP ?", [$pattern])
-                        ->orWhere("barcode", "=", $searchTerm)
-                        ->orWhere("id", "=", $searchTerm);
+                    $query->whereRaw("products.name REGEXP ?", [$pattern])
+                        ->orWhereRaw("products.active_ingredient REGEXP ?", [$pattern])
+                        ->orWhere("products.barcode", "=", $searchTerm)
+                        ->orWhere("products.id", "=", $searchTerm);
                 } else {
                     $words = explode(' ', trim($searchTerm));
                     foreach ($words as $word) {
                         $word = trim($word);
                         if (empty($word)) continue;
                         $query->where(function ($wordQuery) use ($word) {
-                            $wordQuery->where("name", "like", "%" . $word . "%")
-                                ->orWhere("active_ingredient", "like", "%" . $word . "%")
-                                ->orWhere("id", "like", "%" . $word . "%")
-                                ->orWhereHas("laboratory", function ($labQuery) use ($word) {
-                                    $labQuery->where("name", "like", "%" . $word . "%");
-                                });
+                            $wordQuery->where("products.name", "like", "%" . $word . "%")
+                                ->orWhere("products.active_ingredient", "like", "%" . $word . "%")
+                                ->orWhere("products.id", "like", "%" . $word . "%")
+                                ->orWhere("laboratories.name", "like", "%" . $word . "%");
                         });
                     }
                 }
@@ -1264,26 +1264,26 @@ class ProductRepository
             $isStrictSearch = $filtros["isStrictSearch"] ?? false;
             $searchTerm = $filtros["q"];
 
+            $consulta->leftJoin("laboratories", "laboratories.id", "=", "products.laboratory_id");
+
             $consulta->where(function ($query) use ($searchTerm, $isStrictSearch) {
                 if ($isStrictSearch) {
                     $escapedTerm = preg_quote($searchTerm, '/');
                     $pattern = "(^|[^a-zA-Z0-9]){$escapedTerm}([^a-zA-Z0-9]|$)";
-                    $query->whereRaw("name REGEXP ?", [$pattern])
-                        ->orWhereRaw("active_ingredient REGEXP ?", [$pattern])
-                        ->orWhere("barcode", "=", $searchTerm)
-                        ->orWhere("id", "=", $searchTerm);
+                    $query->whereRaw("products.name REGEXP ?", [$pattern])
+                        ->orWhereRaw("products.active_ingredient REGEXP ?", [$pattern])
+                        ->orWhere("products.barcode", "=", $searchTerm)
+                        ->orWhere("products.id", "=", $searchTerm);
                 } else {
                     $words = explode(' ', trim($searchTerm));
                     foreach ($words as $word) {
                         $word = trim($word);
                         if (empty($word)) continue;
                         $query->where(function ($wordQuery) use ($word) {
-                            $wordQuery->where("name", "like", "%" . $word . "%")
-                                ->orWhere("active_ingredient", "like", "%" . $word . "%")
-                                ->orWhere("id", "like", "%" . $word . "%")
-                                ->orWhereHas("laboratory", function ($labQuery) use ($word) {
-                                    $labQuery->where("name", "like", "%" . $word . "%");
-                                });
+                            $wordQuery->where("products.name", "like", "%" . $word . "%")
+                                ->orWhere("products.active_ingredient", "like", "%" . $word . "%")
+                                ->orWhere("products.id", "like", "%" . $word . "%")
+                                ->orWhere("laboratories.name", "like", "%" . $word . "%");
                         });
                     }
                 }
