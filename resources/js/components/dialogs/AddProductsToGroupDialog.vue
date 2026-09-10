@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { ref, onMounted, watch, computed } from "vue";
@@ -300,7 +300,7 @@ onMounted(() => {
                 target="_blank"
                 class="text-decoration-none font-weight-black text-primary"
               >
-                #{{ item.id }}
+                {{ item.id }}
               </a>
             </template>
 
@@ -387,7 +387,7 @@ onMounted(() => {
                 
                 <div class="flex-grow-1 overflow-hidden">
                   <div class="d-flex justify-space-between align-start">
-                    <span class="text-xs font-weight-black text-primary mb-1">#{{ item.id }}</span>
+                    <span class="text-xs font-weight-black text-primary mb-1">{{ item.id }}</span>
                     <VChip v-if="selectedProducts.has(item.id)" color="success" size="x-super-small" variant="flat" class="font-weight-black uppercase">Seleccionado</VChip>
                   </div>
                   <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase truncate leading-none">

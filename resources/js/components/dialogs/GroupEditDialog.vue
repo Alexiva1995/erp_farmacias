@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { computed, ref, watch } from "vue";
@@ -168,7 +168,7 @@ const nextExpirationDate = (product) => {
       <VCardTitle class="pa-0">
         <div class="header-gradient pa-4 d-flex align-center shadow-sm">
           <VAvatar color="white" variant="flat" size="44" class="me-4 elevation-2">
-            <VIcon :icon="isNewGroup ? 'tabler-folder-plus' : 'tabler-folders'" color="primary" size="26" />
+            <VIcon :icon="isNewGroup ? 'tabler-folder-plus' : 'tabler-category'" color="primary" size="26" />
           </VAvatar>
           <div class="flex-grow-1 overflow-hidden">
             <h2 class="text-h6 font-weight-black text-white leading-tight mb-0 truncate">
@@ -246,7 +246,7 @@ const nextExpirationDate = (product) => {
                   class="premium-table border-0"
                 >
                   <template #item.id="{ item }">
-                    <span class="text-xs font-weight-black text-primary">#{{ item.id }}</span>
+                    <span class="text-xs font-weight-black text-primary">{{ item.id }}</span>
                   </template>
 
                   <template #item.name="{ item }">
@@ -349,7 +349,7 @@ const nextExpirationDate = (product) => {
                     
                     <div class="flex-grow-1 overflow-hidden">
                       <div class="d-flex justify-space-between align-center mb-1">
-                        <span class="text-xs font-weight-black text-primary">#{{ item.id }}</span>
+                        <span class="text-xs font-weight-black text-primary">{{ item.id }}</span>
                         <VChip size="x-super-small" color="info" variant="tonal" class="font-weight-black">{{ item.stock_calculado || 0 }} UNID</VChip>
                       </div>
                       <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase truncate leading-tight">

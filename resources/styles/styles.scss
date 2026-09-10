@@ -227,10 +227,23 @@ h6, .text-h6,
   background: var(--brand-gradient) !important;
 }
 
-// Los headers de modales con gradiente SIEMPRE muestran texto blanco
+// Los headers de modales con gradiente muestran texto blanco por defecto (excepto avatares con fondo blanco)
 .header-gradient,
-.header-gradient * {
+.header-gradient > *,
+.header-gradient h1,
+.header-gradient h2,
+.header-gradient h3,
+.header-gradient h4,
+.header-gradient h5,
+.header-gradient h6,
+.header-gradient span,
+.header-gradient p {
   color: white !important;
+}
+
+.header-gradient .v-avatar .v-icon,
+.header-gradient .v-avatar i {
+  color: rgb(var(--v-theme-primary)) !important;
 }
 
 // Párrafos, textos descriptivos y de énfasis medio (marino profundo de alta legibilidad)

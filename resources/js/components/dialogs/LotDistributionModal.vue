@@ -578,19 +578,11 @@ const handleScan = (code) => {
 
 <style scoped>
 .header-gradient {
-  background: linear-gradient(
-    135deg,
-    rgb(var(--v-theme-primary)) 0%,
-    rgb(var(--v-theme-gradient-end)) 100%
-  ) !important;
+  background: var(--brand-gradient) !important;
 }
 
 .modal-avatar-icon {
-  color: #7A0099 !important;
-}
-
-:deep(.modal-avatar-icon) {
-  color: #7A0099 !important;
+  color: rgb(var(--v-theme-primary)) !important;
 }
 
 .detail-dialog-card {

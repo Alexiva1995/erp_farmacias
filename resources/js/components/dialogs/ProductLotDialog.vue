@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 import { computed, ref, watch } from "vue";
 import { formatDateSimple } from "@/utils/formatters";
 import { useBrandingStore } from "@/stores/useBrandingStore";
@@ -104,13 +104,13 @@ const onCancel = () => emit("update:modelValue", false);
             <VAvatar
               color="white"
               variant="flat"
-              size="32"
-              class="me-3 elevation-1"
+              size="40"
+              class="me-3 elevation-2"
             >
               <VIcon
-                :icon="props.isEditing ? 'tabler-edit' : 'tabler-circle-plus'"
+                :icon="props.isEditing ? 'tabler-edit' : 'tabler-plus'"
                 color="primary"
-                size="18"
+                size="22"
               />
             </VAvatar>
             <div>

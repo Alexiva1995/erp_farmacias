@@ -92,7 +92,13 @@ class GroupQueryService
                 'products.laboratory_id',
                 'products.group_id',
                 \Illuminate\Support\Facades\DB::raw('CAST(COALESCE((SELECT SUM(quantity) FROM product_lots WHERE product_lots.product_id = products.id), 0) AS UNSIGNED) as stock_calculado')
-            ])->with('laboratory:id,name');
+            ])->with([
+                'laboratory:id,name',
+                'lots' => function ($lotQuery) {
+                    $lotQuery->select(['id', 'product_id', 'lot_number', 'expiration_date', 'quantity', 'location'])
+                        ->where('quantity', '>', 0);
+                }
+            ]);
         }]);
         
         $this->applyFilters($query, $request);

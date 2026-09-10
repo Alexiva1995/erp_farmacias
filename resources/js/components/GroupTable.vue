@@ -2,12 +2,15 @@
 import { ref, computed } from "vue";
 import { useAbility } from "@casl/vue";
 import { useBrandingStore } from "@/stores/useBrandingStore";
+import { formatDateSimple } from "@/utils/formatters";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import Swal from "sweetalert2";
 
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => false);
+const isRestaurant = computed(() => brandingStore.settings?.business_type === "restaurant");
+const isMiniMarket = computed(() => brandingStore.settings?.business_type === "minimarket");
+const isSportsRental = computed(() => brandingStore.settings?.business_type === "sports_rental");
 
 const { can } = useAbility();
 
@@ -116,6 +119,67 @@ const handleItemsPerPageChange = (val) => {
     groupBy: [],
   });
 };
+
+const nextExpirationDate = (product) => {
+  if (!product.lots || !Array.isArray(product.lots) || product.lots.length === 0) return "N/A";
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const validLots = product.lots.filter((lot) => {
+    if (!lot.expiration_date) return false;
+    const expirationDate = new Date(lot.expiration_date);
+    return !isNaN(expirationDate.getTime()) && expirationDate >= today;
+  });
+  if (validLots.length === 0) return product.ultima_fecha_vencimiento ? formatDateSimple(product.ultima_fecha_vencimiento) : "EXPIRADO";
+  validLots.sort((a, b) => new Date(a.expiration_date) - new Date(b.expiration_date));
+  const closestDate = new Date(validLots[0].expiration_date);
+  return formatDateSimple(closestDate);
+};
+
+const formatStock = (item) => {
+  const stock = Number(item.stock_calculado ?? 0);
+  if (isSportsRental.value || isMiniMarket.value) {
+    return Math.round(stock).toString();
+  }
+  if (!isRestaurant.value) {
+    return stock % 1 === 0 ? stock.toString() : stock.toFixed(2).replace(".", ",");
+  }
+  if (!item.unit_of_measure) {
+    const formatted = stock.toString().replace(".", ",");
+    return `${formatted} UNDS`;
+  }
+  const presentation = Number(item.presentation) || 0;
+  if (presentation > 0 && (item.unit_of_measure === "g" || item.unit_of_measure === "ml")) {
+    const unit = item.unit_of_measure;
+    const totalUnits = Math.round(stock * 1000);
+    if (totalUnits < 0) {
+      return `${totalUnits} ${unit}`;
+    }
+    const fullPackages = Math.floor(totalUnits / presentation);
+    const remainder = totalUnits % presentation;
+    if (fullPackages > 0 && remainder > 0) {
+      return `${fullPackages} paq + ${remainder} ${unit}`;
+    } else if (fullPackages > 0) {
+      return `${fullPackages} paq`;
+    } else {
+      return `${remainder} ${unit}`;
+    }
+  }
+  return `${stock} UNDS`;
+};
+
+const getProductLocations = (item) => {
+  if (item.lot_locations && Array.isArray(item.lot_locations)) {
+    return item.lot_locations.filter(Boolean);
+  }
+  if (item.lots && Array.isArray(item.lots)) {
+    const locs = item.lots.map(l => l.location).filter(l => l && String(l).trim() !== '');
+    return [...new Set(locs)];
+  }
+  if (item.location) {
+    return [item.location];
+  }
+  return [];
+};
 </script>
 
 <template>
@@ -147,7 +211,7 @@ const handleItemsPerPageChange = (val) => {
           @click="toggleGroup(group.id)"
         >
           <div class="d-flex align-center gap-3">
-            <!-- Checkbox de Selección Masiva (Evita expandir al hacer clic) -->
+            <!-- Checkbox de Selección Masiva -->
             <VCheckboxBtn
               v-model="selectedGroups"
               :value="group.id"
@@ -165,7 +229,7 @@ const handleItemsPerPageChange = (val) => {
                 {{ group.name }}
               </span>
               <div class="d-flex align-center gap-1 mt-1">
-                <span class="text-super-xs text-primary font-weight-bold">#{{ group.id }}</span>
+                <span class="text-super-xs text-primary font-weight-bold">{{ group.id }}</span>
                 <span class="text-super-xs text-disabled">|</span>
                 <!-- Chip de Conteo Estilizado -->
                 <VChip
@@ -183,9 +247,9 @@ const handleItemsPerPageChange = (val) => {
           <!-- Acciones de Cabecera -->
           <div class="d-flex align-center gap-1 mt-2 mt-sm-0" @click.stop>
             <VTooltip text="Añadir Productos" location="top">
-              <template #activator="{ props }">
+              <template #activator="{ props: tooltipProps }">
                 <VBtn
-                  v-bind="props"
+                  v-bind="tooltipProps"
                   icon="tabler-plus"
                   variant="tonal"
                   color="success"
@@ -197,9 +261,9 @@ const handleItemsPerPageChange = (val) => {
             </VTooltip>
 
             <VTooltip text="Editar Grupo" location="top">
-              <template #activator="{ props }">
+              <template #activator="{ props: tooltipProps }">
                 <VBtn
-                  v-bind="props"
+                  v-bind="tooltipProps"
                   icon="tabler-edit"
                   variant="tonal"
                   color="warning"
@@ -211,9 +275,9 @@ const handleItemsPerPageChange = (val) => {
             </VTooltip>
 
             <VTooltip v-if="can('manage', 'admin')" text="Eliminar Grupo" location="top">
-              <template #activator="{ props }">
+              <template #activator="{ props: tooltipProps }">
                 <VBtn
-                  v-bind="props"
+                  v-bind="tooltipProps"
                   icon="tabler-trash"
                   variant="tonal"
                   color="error"
@@ -230,67 +294,153 @@ const handleItemsPerPageChange = (val) => {
         <div v-if="isExpanded(group.id)" class="group-body bg-light pa-0 animate-fade-in">
           <VDivider />
           
-          <!-- Desktop Table -->
+          <!-- Vista Desktop (Tabla Idéntica a ProductTable) -->
           <div class="d-none d-sm-block pa-2">
-            <VTable density="compact" class="bg-transparent border rounded-lg overflow-hidden premium-inner-table">
+            <VTable density="compact" class="bg-surface border rounded-lg overflow-hidden premium-inner-table">
               <thead>
                 <tr>
-                  <th class="text-super-xs font-weight-black uppercase text-center" style="width: 60px;">ID</th>
-                  <th class="text-super-xs font-weight-black uppercase">Nombre del Producto</th>
-                  <th class="text-super-xs font-weight-black uppercase">{{ isRestaurant ? 'Marca' : 'Laboratorio' }}</th>
-                  <th class="text-super-xs font-weight-black uppercase text-center" style="width: 100px;">S. Actual</th>
-                  <th class="text-super-xs font-weight-black uppercase text-center" style="width: 80px;">Acciones</th>
+                  <th class="text-super-xs font-weight-black uppercase" style="inline-size: 70px;">ID</th>
+                  <th class="text-super-xs font-weight-black uppercase" style="inline-size: 50%;">PRODUCTO</th>
+                  <th
+                    v-if="brandingStore.settings?.enable_lots !== false"
+                    class="text-super-xs font-weight-black uppercase"
+                    style="inline-size: 110px;"
+                  >
+                    EXP.
+                  </th>
+                  <th class="text-super-xs font-weight-black uppercase text-end" style="inline-size: 110px;">STOCK</th>
+                  <th class="text-super-xs font-weight-black uppercase text-center" style="inline-size: 80px;">ACCIONES</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="product in group.products" :key="product.id" class="product-row-hover">
-                  <td class="text-center">
-                    <a :href="'/inventory/traceability?q=' + product.id" target="_blank" class="text-xs font-weight-bold text-primary text-decoration-none">
-                      #{{ product.id }}
+                  <!-- ID -->
+                  <td>
+                    <a
+                      :href="'/inventory/traceability?q=' + product.id"
+                      target="_blank"
+                      class="text-decoration-none font-weight-black text-primary text-xs"
+                    >
+                      {{ product.id }}
                     </a>
                   </td>
+
+                  <!-- PRODUCTO -->
                   <td>
-                    <div class="d-flex flex-column py-1">
-                      <span class="text-xs font-weight-black uppercase text-high-emphasis">
-                        {{ product.name }}
-                        <VChip v-if="product.iva == 1" size="x-super-small" color="success" variant="flat" class="ms-1 font-weight-black">G</VChip>
-                      </span>
-                      <span v-if="!isRestaurant" class="text-super-xs text-disabled uppercase truncate" style="max-inline-size: 300px;">{{ product.active_ingredient || 'Sin componente' }}</span>
-                      <span v-if="isRestaurant && product.presentation" class="text-super-xs text-disabled uppercase truncate" style="max-inline-size: 300px;">
-                        {{ product.presentation }} {{ product.unit_of_measure ? `(${product.unit_of_measure})` : '' }}
-                      </span>
+                    <div class="d-flex align-center gap-x-3 py-2">
+                      <div class="d-flex flex-column min-width-0">
+                        <span
+                          class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate"
+                          :class="{ 
+                            'text-warning': product.psychotropic == 1 || product.psychotropic === true
+                          }"
+                          style="max-inline-size: 340px;"
+                          :title="product.name"
+                        >
+                          {{ product.name?.toUpperCase() || "—" }}
+                          <span v-if="product.iva == 1 || product.iva === true" class="text-xs text-disabled"> (G)</span>
+                          <span v-if="product.is_colombian_origin == 1 || product.is_colombian_origin === true" class="text-xs text-disabled"> (COL)</span>
+                        </span>
+                        <div class="d-flex align-center flex-wrap gap-1 text-super-xs">
+                          <span v-if="!isRestaurant" class="text-disabled truncate" style="max-inline-size: 200px;">
+                            {{ product.active_ingredient || product.presentation || 'Sin Especificación' }}
+                          </span>
+                          <span v-if="isRestaurant && product.presentation" class="text-disabled truncate" style="max-inline-size: 200px;">
+                            {{ product.presentation }} {{ product.unit_of_measure ? `(${product.unit_of_measure})` : '' }}
+                          </span>
+                          <span class="text-disabled mx-1">|</span>
+                          <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 150px;">
+                            {{ product.laboratory?.name || 'S/L' }}
+                          </span>
+                          <template v-if="getProductLocations(product).length > 0">
+                            <span class="text-disabled mx-1">|</span>
+                            <span class="text-success font-weight-black text-uppercase">
+                              📍 {{ getProductLocations(product).join(', ') }}
+                            </span>
+                          </template>
+                        </div>
+                      </div>
                     </div>
                   </td>
-                  <td>
-                    <span class="text-xs font-weight-bold text-disabled uppercase">{{ product.laboratory?.name || 'S/L' }}</span>
+
+                  <!-- EXP. / VENCIMIENTO -->
+                  <td v-if="brandingStore.settings?.enable_lots !== false">
+                    <span class="text-xs font-weight-medium">
+                      {{ nextExpirationDate(product) }}
+                    </span>
                   </td>
-                  <td class="text-center">
+
+                  <!-- STOCK -->
+                  <td class="text-end">
+                    <!-- Menú flotante interactivo para ver desglose de lotes -->
+                    <VMenu
+                      v-if="product.lots && product.lots.length > 0 && brandingStore.settings?.enable_lots !== false"
+                      open-on-hover
+                      location="bottom end"
+                      offset="8px"
+                    >
+                      <template #activator="{ props: menuProps }">
+                        <VChip
+                          v-bind="menuProps"
+                          :color="(product.stock_calculado || 0) > 0 ? 'success' : 'error'"
+                          label
+                          size="x-small"
+                          variant="tonal"
+                          class="font-weight-black cursor-pointer hover-chip"
+                        >
+                          {{ formatStock(product) }}
+                          <VIcon icon="tabler-info-circle" size="12" class="ms-1" />
+                        </VChip>
+                      </template>
+                      <VCard min-width="280" class="rounded-xl border shadow-lg pa-3">
+                        <div class="text-xs font-weight-black text-primary uppercase letter-spacing-1 mb-2 d-flex align-center gap-1">
+                          <VIcon icon="tabler-clipboard-list" size="14" />
+                          Desglose de Lotes
+                        </div>
+                        <VDivider class="mb-2" />
+                        <div style="max-height: 180px; overflow-y: auto;">
+                          <div 
+                            v-for="lot in product.lots" 
+                            :key="lot.id"
+                            class="d-flex align-center justify-space-between py-1 border-bottom-light"
+                          >
+                            <div class="d-flex flex-column text-left">
+                              <span class="text-xs font-weight-bold text-high-emphasis">Lote: {{ lot.lot_number }}</span>
+                              <span class="text-super-xs text-disabled">Exp: {{ formatDateSimple(lot.expiration_date) }}</span>
+                            </div>
+                            <VChip size="x-small" label color="secondary" variant="flat" class="font-weight-black">
+                              {{ lot.quantity }}
+                            </VChip>
+                          </div>
+                        </div>
+                      </VCard>
+                    </VMenu>
                     <VChip
-                      :color="(product.stock_calculado || 0) > 0 ? 'info' : 'error'"
-                      variant="tonal"
+                      v-else
+                      :color="(product.stock_calculado || 0) > 0 ? 'success' : 'error'"
+                      label
                       size="x-small"
+                      variant="tonal"
                       class="font-weight-black"
                     >
-                      {{ Math.round(product.stock_calculado || 0) }} UNID
+                      {{ formatStock(product) }}
                     </VChip>
                   </td>
+
+                  <!-- ACCIONES -->
                   <td class="text-center">
-                    <VTooltip text="Desvincular del Grupo" location="top">
-                      <template #activator="{ props }">
-                        <VBtn
-                          v-bind="props"
-                          icon="tabler-link-off"
-                          variant="text"
-                          color="error"
-                          density="compact"
-                          @click="handleUnassign(product, group)"
-                        />
-                      </template>
-                    </VTooltip>
+                    <IconBtn
+                      color="error"
+                      size="small"
+                      @click="handleUnassign(product, group)"
+                    >
+                      <VIcon icon="tabler-link-off" size="18" />
+                      <VTooltip activator="parent" location="top">Desvincular del Grupo</VTooltip>
+                    </IconBtn>
                   </td>
                 </tr>
                 <tr v-if="group.products?.length === 0">
-                  <td colspan="5" class="text-center py-4 text-disabled font-weight-bold uppercase text-xs">
+                  <td :colspan="brandingStore.settings?.enable_lots !== false ? 5 : 4" class="text-center py-6 text-disabled font-weight-bold uppercase text-xs">
                     No hay productos vinculados a este grupo
                   </td>
                 </tr>
@@ -298,34 +448,62 @@ const handleItemsPerPageChange = (val) => {
             </VTable>
           </div>
 
-          <!-- Mobile Cards -->
+          <!-- Vista Móvil (Tarjetas de Productos) -->
           <div class="d-block d-sm-none pa-2 d-flex flex-column gap-2">
-             <div v-for="product in group.products" :key="product.id" class="pa-2 bg-white rounded border d-flex align-center gap-3">
-                <VAvatar color="primary" variant="tonal" size="32" rounded>
-                   <VIcon icon="tabler-package" size="16" />
-                </VAvatar>
-                <div class="flex-grow-1 overflow-hidden">
-                   <div class="d-flex justify-space-between align-center">
-                      <span class="text-super-xs font-weight-bold text-primary">#{{ product.id }}</span>
-                      <span class="text-super-xs font-weight-black" :class="(product.stock_calculado || 0) > 0 ? 'text-info' : 'text-error'">
-                        {{ Math.round(product.stock_calculado || 0) }} UNID
-                      </span>
-                   </div>
-                   <h4 class="text-xs font-weight-black uppercase truncate leading-none mt-1">{{ product.name }}</h4>
+            <div
+              v-for="product in group.products"
+              :key="product.id"
+              class="pa-3 bg-surface rounded-lg border d-flex flex-column gap-2 shadow-none position-relative"
+            >
+              <div class="d-flex align-center justify-space-between">
+                <div class="d-flex align-center gap-1 min-width-0">
+                  <a
+                    :href="'/inventory/traceability?q=' + product.id"
+                    target="_blank"
+                    class="text-xs font-weight-black text-primary text-decoration-none"
+                  >
+                    {{ product.id }}
+                  </a>
+                  <span class="text-disabled">|</span>
+                  <span class="text-xs font-weight-black text-primary uppercase truncate" style="max-inline-size: 150px;">
+                    {{ product.laboratory?.name || 'S/L' }}
+                  </span>
                 </div>
-                <!-- Botón desvincular móvil -->
-                <VBtn
-                  icon="tabler-link-off"
-                  variant="text"
+                <VChip
+                  :color="(product.stock_calculado || 0) > 0 ? 'success' : 'error'"
+                  label
+                  size="x-small"
+                  variant="tonal"
+                  class="font-weight-black"
+                >
+                  {{ formatStock(product) }} UNDS
+                </VChip>
+              </div>
+
+              <h4 class="text-xs font-weight-black text-high-emphasis uppercase leading-tight mb-0 text-truncate">
+                {{ product.name }}
+                <span v-if="product.iva == 1 || product.iva === true" class="text-super-xs text-disabled"> (G)</span>
+                <span v-if="product.is_colombian_origin == 1 || product.is_colombian_origin === true" class="text-super-xs text-disabled"> (COL)</span>
+              </h4>
+
+              <div class="d-flex align-center justify-space-between text-super-xs text-disabled pt-1 border-t">
+                <span v-if="brandingStore.settings?.enable_lots !== false">
+                  Vence: <strong class="text-high-emphasis font-weight-bold">{{ nextExpirationDate(product) }}</strong>
+                </span>
+                <IconBtn
                   color="error"
-                  density="compact"
-                  class="flex-shrink-0"
+                  size="small"
+                  class="ms-auto"
                   @click="handleUnassign(product, group)"
-                />
-             </div>
-             <div v-if="group.products?.length === 0" class="text-center py-4 text-disabled text-xs font-weight-bold">
-                SIN PRODUCTOS
-             </div>
+                >
+                  <VIcon icon="tabler-link-off" size="16" />
+                  <VTooltip activator="parent">Desvincular</VTooltip>
+                </IconBtn>
+              </div>
+            </div>
+            <div v-if="group.products?.length === 0" class="text-center py-4 text-disabled text-xs font-weight-bold">
+              SIN PRODUCTOS
+            </div>
           </div>
         </div>
       </div>
@@ -396,6 +574,18 @@ const handleItemsPerPageChange = (val) => {
 </template>
 
 <style scoped>
+.hover-chip:hover {
+  filter: brightness(0.95);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+}
+
+.border-bottom-light {
+  border-bottom: 1px solid rgba(var(--v-border-color), 0.08);
+}
+.border-bottom-light:last-child {
+  border-bottom: none;
+}
+
 .bulk-actions-wrapper {
   position: fixed;
   bottom: 24px;
@@ -476,14 +666,12 @@ const handleItemsPerPageChange = (val) => {
 }
 
 .text-super-xs {
-  font-size: 0.62rem !important;
+  font-size: 0.65rem !important;
   line-height: normal;
 }
 
-.x-super-small {
-  height: 14px !important;
-  font-size: 0.6rem !important;
-  padding: 0 4px !important;
+.text-xs {
+  font-size: 0.75rem !important;
 }
 
 .leading-tight {
@@ -521,5 +709,11 @@ const handleItemsPerPageChange = (val) => {
 
 :deep(.v-pagination__list) {
   justify-content: flex-end;
+}
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>

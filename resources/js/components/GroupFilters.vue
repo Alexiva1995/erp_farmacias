@@ -20,7 +20,7 @@ const emit = defineEmits([
   <AppFilterBase
     :search="props.searchQuery"
     :show-add="false"
-    :show-advanced="true"
+    :show-advanced="false"
     search-placeholder="Buscar grupos o productos vinculados..."
     class="py-1 premium-filter"
     @update:search="emit('update:searchQuery', $event)"
@@ -55,20 +55,6 @@ const emit = defineEmits([
         <VIcon icon="tabler-plus" size="22" />
         <VTooltip activator="parent" location="top">Crear Nuevo Grupo</VTooltip>
       </VBtn>
-    </template>
-
-    <template #advanced-filters>
-      <VCol cols="12" sm="6" md="4" lg="3">
-        <VCard variant="flat" class="pa-4 bg-var-theme-background rounded-lg border">
-          <div class="d-flex align-center gap-3">
-             <VIcon icon="tabler-info-circle" color="primary" />
-             <div class="d-flex flex-column">
-                <span class="text-xs font-weight-black text-uppercase">Tip de Búsqueda</span>
-                <span class="text-super-xs text-disabled">Puedes buscar por ID del grupo, nombre o productos que contenga.</span>
-             </div>
-          </div>
-        </VCard>
-      </VCol>
     </template>
   </AppFilterBase>
 </template>
