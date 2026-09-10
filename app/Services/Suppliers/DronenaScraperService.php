@@ -102,8 +102,8 @@ class DronenaScraperService implements DronenaScraperServiceInterface
                 continue;
             }
 
-            // Regla: Se marca como indexada si es tipo FA$/ND$ O si la fecha de vencimiento ya pasó (ayer o antes)
-            $isOverdue = ($expDate < $today);
+            // Regla: Se marca como indexada si es tipo FA$/ND$ O si la fecha de vencimiento ya pasó o es hoy
+            $isOverdue = ($expDate <= $today);
             $isIndexed = ($isFaDollar || $isOverdue);
 
             // Identificador y búsqueda en el ERP
@@ -212,6 +212,7 @@ class DronenaScraperService implements DronenaScraperServiceInterface
                     'claim_amount' => $claimAmount,
                     'nd_referential_amount' => $ndRefAmount,
                     'net_payable_amount' => $netPayable,
+                    'total_usd' => (float) ($invoice->total_usd ?? 0),
                 ];
             } else {
                 // Documento (Factura o Nota de Débito) no encontrado previamente en el ERP:
@@ -259,6 +260,7 @@ class DronenaScraperService implements DronenaScraperServiceInterface
                     'exp_date' => $expDate,
                     'payment_date' => $expDate,
                     'is_indexed' => $isIndexed,
+                    'total_usd' => (float) ($newInvoice->total_usd ?? 0),
                 ];
             }
         }

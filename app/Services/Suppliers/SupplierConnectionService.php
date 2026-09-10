@@ -304,6 +304,7 @@ class SupplierConnectionService
                 || str_contains(strtolower($connection->supplier?->name ?? ''), 'crist')
                 || in_array($connection->supplier_id, [3, 21, 1002]);
 
+            $token = null;
             if (!empty($connection->username) && !empty($connection->password) && !$isCristmedicals) {
                 $decryptedPass = FtpCrypt::decrypt($connection->password);
                 $loginResponse = Http::timeout(30)->post($connection->host, [
@@ -311,8 +312,14 @@ class SupplierConnectionService
                     "Clave" => $decryptedPass,
                     "usuario" => $connection->username,
                     "clave" => $decryptedPass,
+                    "User" => $connection->username,
+                    "Password" => $decryptedPass,
                 ]);
-                $token = $loginResponse->json()["token"] ?? null;
+
+                if ($loginResponse->successful()) {
+                    $json = $loginResponse->json();
+                    $token = is_array($json) ? ($json["token"] ?? null) : null;
+                }
             } elseif (!empty($connection->password)) {
                 $token = FtpCrypt::decrypt($connection->password);
             }

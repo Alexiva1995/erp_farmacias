@@ -26,6 +26,7 @@ use App\Http\Requests\PendingPayments\GetCreditoFiscalRequest;
 use App\Http\Requests\PendingPayments\GetExpensesHistoryRequest;
 use App\Http\Requests\PendingPayments\UpdatePaymentDateRequest;
 use App\Http\Requests\PendingPayments\ResendPaymentToPortalRequest;
+use App\Http\Requests\PendingPayments\BulkUpdateInvoiceStatusRequest;
 use Carbon\Carbon;
 use Illuminate\Validation\Rule;
 
@@ -1392,15 +1393,11 @@ class PendingPaymentsController extends Controller
     /**
      * Marcar un conjunto de facturas como pagadas en lote (sin generar gastos)
      */
-    public function bulkMarkAsPaid(Request $request): JsonResponse
+    public function bulkMarkAsPaid(BulkUpdateInvoiceStatusRequest $request): JsonResponse
     {
         try {
-            $invoiceIds = $request->input('invoice_ids', []);
-            $invoiceNumbers = $request->input('invoice_numbers', []);
-
-            if (empty($invoiceIds) && empty($invoiceNumbers)) {
-                return ApiResponse::error('No se especificaron facturas a marcar.', 422);
-            }
+            $invoiceIds = $request->validated('invoice_ids', []);
+            $invoiceNumbers = $request->validated('invoice_numbers', []);
 
             $query = Invoice::query();
             if (!empty($invoiceIds) && is_array($invoiceIds)) {
@@ -1428,15 +1425,11 @@ class PendingPaymentsController extends Controller
     /**
      * Marcar un conjunto de facturas como pendientes (status_payment = 0) en lote
      */
-    public function bulkMarkAsPending(Request $request): JsonResponse
+    public function bulkMarkAsPending(BulkUpdateInvoiceStatusRequest $request): JsonResponse
     {
         try {
-            $invoiceIds = $request->input('invoice_ids', []);
-            $invoiceNumbers = $request->input('invoice_numbers', []);
-
-            if (empty($invoiceIds) && empty($invoiceNumbers)) {
-                return ApiResponse::error('No se especificaron facturas a marcar.', 422);
-            }
+            $invoiceIds = $request->validated('invoice_ids', []);
+            $invoiceNumbers = $request->validated('invoice_numbers', []);
 
             $query = Invoice::query();
             if (!empty($invoiceIds) && is_array($invoiceIds)) {

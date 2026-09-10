@@ -96,33 +96,6 @@
 </head>
 <body>
 
-    <table class="header-table">
-        <tr>
-            <td>
-                <div class="company-name">{{ config('app.name', 'ERP Farmacias') }}</div>
-                <div>Orden de Reabastecimiento Automático IA</div>
-                <div>Fecha de Emisión: {{ now()->format('d/m/Y g:i A') }}</div>
-            </td>
-            <td class="order-title">
-                ORDEN DE COMPRA<br>
-                <span style="color: #696cff;">#ORD-{{ str_pad((string)($orderId ?? 1), 6, '0', STR_PAD_LEFT) }}</span>
-            </td>
-        </tr>
-    </table>
-
-    <div class="details-box">
-        <table class="details-table">
-            <tr>
-                <td><strong>Proveedor:</strong> {{ $supplierName ?? 'N/A' }}</td>
-                <td><strong>Estatus:</strong> Pendiente de Aprobación</td>
-            </tr>
-            <tr>
-                <td><strong>RIF / Identificación:</strong> {{ $supplierRif ?? 'S/R' }}</td>
-                <td><strong>Fecha de Generación:</strong> {{ now()->format('Y-m-d') }}</td>
-            </tr>
-        </table>
-    </div>
-
     <table class="items-table">
         <thead>
             <tr>
@@ -154,25 +127,6 @@
             @endforelse
         </tbody>
     </table>
-
-    <table class="totals-table">
-        <tr>
-            <td>Total Ítems Solicitados:</td>
-            <td class="text-end">{{ $totalItems ?? 0 }}</td>
-        </tr>
-        <tr>
-            <td>Total Unidades:</td>
-            <td class="text-end">{{ number_format($totalQuantity ?? 0, 0) }}</td>
-        </tr>
-        <tr class="total-row">
-            <td>Monto Total USD:</td>
-            <td class="text-end">${{ number_format($totalAmount ?? 0, 2) }}</td>
-        </tr>
-    </table>
-
-    <div class="footer">
-        Documento generado automáticamente por el Asistente Inteligente de Reabastecimiento del ERP Farmacias.
-    </div>
 
 </body>
 </html>
