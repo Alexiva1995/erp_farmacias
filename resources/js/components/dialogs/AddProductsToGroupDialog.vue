@@ -23,7 +23,7 @@ const loading = ref(false);
 const selectedProducts = ref(new Set());
 
 const page = ref(1);
-const itemsPerPage = ref(10);
+const itemsPerPage = ref(5);
 const sortBy = ref();
 const orderBy = ref();
 
@@ -137,23 +137,24 @@ const headers = [
     title: "ID", 
     key: "id", 
     sortable: true,
+    width: "90px",
     cellClass: "font-weight-black text-primary d-none d-sm-table-cell",
     headerClass: "d-none d-sm-table-cell"
   },
-  { title: "Producto", key: "name", sortable: true, width: "450px" },
+  { title: "Producto", key: "name", sortable: true },
   {
     title: "Acciones",
     key: "actions",
     sortable: false,
     align: 'end',
-    width: "120px",
+    width: "100px",
   },
 ];
 
 const handleClearForm = () => {
   selectedProducts.value.clear();
   page.value = 1;
-  itemsPerPage.value = 10;
+  itemsPerPage.value = 5;
 
   fetchProducts();
   handleClearFilters();
@@ -286,11 +287,13 @@ onMounted(() => {
         <VCard variant="flat" class="d-none d-sm-block rounded-lg border overflow-hidden bg-white elevation-1">
           <VDataTableServer
             :items-per-page="itemsPerPage"
+            :items-per-page-options="[5, 10, 25]"
             :page="page"
             :headers="headers"
             :items="products"
             :items-length="totalProduct"
             :loading="loading"
+            density="compact"
             class="text-no-wrap premium-table"
             @update:options="(options) => updateTableOptions(options)"
           >
@@ -305,12 +308,12 @@ onMounted(() => {
             </template>
 
             <template #item.name="{ item }">
-              <div class="d-flex align-center gap-x-3 py-2">
+              <div class="d-flex align-center gap-x-2 py-1">
                 <div class="d-flex flex-column min-width-0">
                   <span
                     class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate"
                     :class="{ 'text-warning': item.psychotropic == 1 || item.psychotropic === true }"
-                    style="max-inline-size: 440px;"
+                    style="max-inline-size: 500px;"
                     :title="item.name"
                   >
                     {{ item.name?.toUpperCase() || '—' }}
@@ -318,14 +321,14 @@ onMounted(() => {
                     <span v-if="item.is_colombian_origin == 1 || item.is_colombian_origin === true" class="text-xs text-disabled"> (COL)</span>
                   </span>
                   <div class="d-flex align-center gap-1 text-super-xs">
-                    <span v-if="!isRestaurant" class="text-disabled truncate" style="max-inline-size: 220px;">
+                    <span v-if="!isRestaurant" class="text-disabled truncate" style="max-inline-size: 260px;">
                       {{ item.active_ingredient || item.presentation || "Sin Especificación" }}
                     </span>
-                    <span v-else class="text-disabled truncate" style="max-inline-size: 220px;">
+                    <span v-else class="text-disabled truncate" style="max-inline-size: 260px;">
                       {{ item.presentation || "S/P" }}{{ item.unit_of_measure ? ` (${item.unit_of_measure})` : '' }}
                     </span>
                     <span class="text-disabled mx-1">|</span>
-                    <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 160px;">
+                    <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 200px;">
                       {{ item.laboratory?.name || 'S/L' }}
                     </span>
                   </div>
@@ -334,23 +337,25 @@ onMounted(() => {
             </template>
 
             <template #item.actions="{ item }">
-              <div class="d-flex gap-2 justify-end">
+              <div class="d-flex gap-1 justify-end">
                 <IconBtn
                   v-if="!selectedProducts.has(item.id)"
                   @click="handleAddProduct(item)"
                   color="success"
+                  size="small"
                   class="rounded-lg bg-success-light"
                 >
-                  <VIcon icon="tabler-square-plus" />
+                  <VIcon icon="tabler-square-plus" size="18" />
                   <VTooltip activator="parent">Añadir al Grupo</VTooltip>
                 </IconBtn>
                 <IconBtn
                   v-else
                   @click="handleRemoveProduct(item)"
                   color="error"
+                  size="small"
                   class="rounded-lg bg-error-light shadow-soft"
                 >
-                  <VIcon icon="tabler-square-minus" />
+                  <VIcon icon="tabler-square-minus" size="18" />
                   <VTooltip activator="parent">Quitar del Grupo</VTooltip>
                 </IconBtn>
               </div>
@@ -507,7 +512,7 @@ onMounted(() => {
 }
 
 .premium-table :deep(td) {
-  padding-block: 10px !important;
+  padding-block: 4px !important;
 }
 
 .text-super-xs {

@@ -29,7 +29,10 @@ class TraceabilityIndexRequest extends FormRequest
             'orderBy' => ['nullable', 'string', 'in:asc,desc,ASC,DESC'],
             'startDate' => ['nullable', 'date_format:Y-m-d'],
             'endDate' => ['nullable', 'date_format:Y-m-d'],
-            'movement_type' => ['nullable', 'string', 'in:sale,purchase,return,adjustment,loss,expired,verification'],
+            'movement_type' => ['nullable'],
+            'movement_type.*' => ['string', 'in:sale,purchase,return,adjustment,loss,expired,verification'],
+            'exclude_movement_types' => ['nullable'],
+            'exclude_movement_types.*' => ['string', 'in:sale,purchase,return,adjustment,loss,expired,verification'],
             'is_psychotropic' => ['nullable', 'boolean'],
             'laboratoryId' => ['nullable', 'integer', 'exists:laboratories,id'],
             'hasStock' => ['nullable', 'boolean'],
@@ -47,10 +50,24 @@ class TraceabilityIndexRequest extends FormRequest
             ]);
         }
 
-        if ($this->has('is_psychotropic')) {
-            $this->merge([
-                'is_psychotropic' => filter_var($this->input('is_psychotropic'), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE),
-            ]);
+        if ($this->has('movement_type')) {
+            $val = $this->input('movement_type');
+            if (is_string($val)) {
+                $val = array_filter(explode(',', $val));
+            }
+            if (is_array($val)) {
+                $this->merge(['movement_type' => array_values($val)]);
+            }
+        }
+
+        if ($this->has('exclude_movement_types')) {
+            $val = $this->input('exclude_movement_types');
+            if (is_string($val)) {
+                $val = array_filter(explode(',', $val));
+            }
+            if (is_array($val)) {
+                $this->merge(['exclude_movement_types' => array_values($val)]);
+            }
         }
     }
 }

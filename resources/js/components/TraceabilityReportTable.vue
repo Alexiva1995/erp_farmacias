@@ -48,15 +48,14 @@ const getUserDisplayName = (user) => {
 };
 
 const headers = [
-  { title: "ID Prod", key: "id", sortable: true, cellClass: "font-weight-black text-primary", width: "90px" },
-  { title: "Producto", key: "product.name", sortable: true, width: "320px" },
-  { title: "S. Ant", key: "stock_before", sortable: true, align: "center" },
-  { title: "Cant.", key: "quantity", sortable: false, align: "center" },
-  { title: "S. Fin", key: "stock_after", sortable: true, align: "center" },
-  { title: "Fecha Mov.", key: "movement_date", sortable: true },
-  { title: "Tipo", key: "movement_type", sortable: true },
-  { title: "Operador", key: "user.email", sortable: true },
-  { title: "Acción", key: "reference", sortable: false, align: "center" },
+  { title: "id", key: "id", sortable: true, cellClass: "font-weight-black text-primary", width: "80px" },
+  { title: "Producto", key: "product.name", sortable: true, width: "350px" },
+  { title: "Transición Stock", key: "stock_transition", sortable: false, align: "center", width: "160px" },
+  { title: "Cant.", key: "quantity", sortable: false, align: "center", width: "90px" },
+  { title: "Fecha Mov.", key: "movement_date", sortable: true, width: "130px" },
+  { title: "Tipo", key: "movement_type", sortable: true, align: "center", width: "110px" },
+  { title: "Operador", key: "user.email", sortable: true, width: "130px" },
+  { title: "Acción", key: "reference", sortable: false, align: "center", width: "80px" },
 ];
 </script>
 
@@ -71,6 +70,7 @@ const headers = [
         :items="props.sales"
         :items-length="props.totalSales"
         :loading="props.loading"
+        density="compact"
         class="text-no-wrap"
         @update:options="(options) => emit('update:options', options)"
       >
@@ -85,43 +85,34 @@ const headers = [
         </template>
 
         <template #item.id="{ item }">
-          <VBtn
-            variant="text"
-            color="primary"
-            size="small"
-            class="px-1 font-weight-black text-decoration-none"
+          <a
+            href="#"
+            class="text-decoration-none font-weight-black text-primary"
             @click.prevent="emit('filter-product', item.product_id)"
           >
-            #{{ item.product_id }}
-          </VBtn>
+            {{ item.product_id }}
+          </a>
         </template>
 
         <template #item.product.name="{ item }">
-          <div class="d-flex align-center gap-x-3 py-2">
-            <VAvatar
-              v-if="item.product?.photo_url"
-              size="40"
-              variant="tonal"
-              rounded
-              :image="item.product.photo_url"
-              class="border elevation-1 flex-shrink-0"
-            />
-            <div class="d-flex flex-column truncate" style="max-inline-size: 280px;">
+          <div class="d-flex align-center gap-x-2 py-1">
+            <div class="d-flex flex-column truncate" style="max-inline-size: 330px;">
               <span
-                class="text-sm font-weight-black text-high-emphasis text-uppercase truncate"
+                class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate"
                 :class="{ 'text-warning': item.product?.psychotropic }"
+                :title="item.product?.name"
               >
-                {{ item.product?.name || 'N/A' }}
+                {{ item.product?.name?.toUpperCase() || 'N/A' }}
                 <span v-if="item.dish" class="text-primary font-weight-black text-none"> - {{ item.dish.name }}</span>
-                <span v-if="item.product?.iva" class="text-caption text-medium-emphasis"> (G)</span>
-                <span v-if="item.product?.is_colombian_origin" class="text-caption text-info"> (COL)</span>
+                <span v-if="item.product?.iva" class="text-xs text-disabled"> (G)</span>
+                <span v-if="item.product?.is_colombian_origin" class="text-xs text-disabled"> (COL)</span>
               </span>
-              <div class="d-flex align-center gap-1 text-caption text-medium-emphasis">
-                <span class="truncate" style="max-inline-size: 140px;">
+              <div class="d-flex align-center flex-wrap gap-1 text-super-xs">
+                <span class="text-disabled truncate" style="max-inline-size: 150px;">
                   {{ item.product?.active_ingredient || "Sin principio" }}
                 </span>
-                <span>|</span>
-                <span class="text-primary font-weight-bold text-uppercase truncate" style="max-inline-size: 100px;">
+                <span class="text-disabled mx-1">|</span>
+                <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 130px;">
                   {{ item.product?.laboratory?.name || 'S/L' }}
                 </span>
               </div>
@@ -129,24 +120,16 @@ const headers = [
           </div>
         </template>
 
-        <template #item.stock_before="{ item }">
-          <span class="text-body-2 font-weight-bold">
-            {{ formatStockValue(item.global_stock_before) }}
-          </span>
-        </template>
-
-        <template #item.stock_after="{ item }">
-          <span class="text-body-2 font-weight-bold" :class="item.global_stock_after > 0 ? 'text-primary' : 'text-error'">
-            {{ formatStockValue(item.global_stock_after) }}
-          </span>
-        </template>
-
-        <template #item.movement_date="{ item }">
-          <span class="text-no-wrap text-body-2">{{ formatDateSimple(item.movement_date) }}</span>
-        </template>
-
-        <template #item.user.email="{ item }">
-          <span class="text-body-2 font-weight-medium">{{ getUserDisplayName(item.user) }}</span>
+        <template #item.stock_transition="{ item }">
+          <div class="d-flex align-center justify-center gap-1 font-weight-bold">
+            <span class="text-medium-emphasis text-body-2">
+              {{ formatStockValue(item.global_stock_before) }}
+            </span>
+            <VIcon icon="tabler-arrow-narrow-right" size="18" class="text-disabled mx-1" />
+            <span class="text-body-2 font-weight-black" :class="item.global_stock_after > 0 ? 'text-primary' : 'text-error'">
+              {{ formatStockValue(item.global_stock_after) }}
+            </span>
+          </div>
         </template>
 
         <template #item.quantity="{ item }">
@@ -161,16 +144,26 @@ const headers = [
           </VChip>
         </template>
 
+        <template #item.movement_date="{ item }">
+          <span class="text-no-wrap text-body-2">{{ formatDateSimple(item.movement_date) }}</span>
+        </template>
+
         <template #item.movement_type="{ item }">
-          <VChip size="x-small" variant="outlined" color="primary" class="text-uppercase font-weight-bold">
+          <VChip size="x-small" variant="tonal" color="primary" class="text-uppercase font-weight-black">
             {{ item.movement_type }}
           </VChip>
+        </template>
+
+        <template #item.user.email="{ item }">
+          <span class="text-body-2 font-weight-medium truncate" style="max-inline-size: 120px;" :title="getUserDisplayName(item.user)">
+            {{ getUserDisplayName(item.user) }}
+          </span>
         </template>
 
         <template #item.reference="{ item }">
           <VBtn
             icon
-            variant="tonal"
+            variant="text"
             color="primary"
             size="small"
             @click="handleReferenceClick(item)"
@@ -212,37 +205,27 @@ const headers = [
           class="border rounded-lg overflow-hidden"
         >
           <div class="pa-3">
-            <div class="d-flex gap-3 align-start mb-2">
-              <VAvatar
-                v-if="item.product?.photo_url"
-                size="44"
-                variant="tonal"
-                rounded
-                :image="item.product.photo_url"
-                class="flex-shrink-0 border"
-              />
+            <div class="d-flex gap-2 align-start mb-2">
               <div class="flex-grow-1 min-width-0">
                 <div class="d-flex align-center gap-1">
-                  <VBtn
-                    variant="text"
-                    color="primary"
-                    size="x-small"
-                    class="px-0 font-weight-black min-width-0"
+                  <a
+                    href="#"
+                    class="text-caption font-weight-black text-primary text-decoration-none"
                     @click.prevent="emit('filter-product', item.product_id)"
                   >
-                    #{{ item.product_id }}
-                  </VBtn>
+                    {{ item.product_id }}
+                  </a>
                   <span class="text-disabled">|</span>
                   <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate mb-0">
                     {{ item.product?.name || 'S/N' }}
                   </h3>
                 </div>
-                <div class="d-flex align-center flex-wrap gap-x-2 text-caption text-medium-emphasis mt-1">
-                  <span class="text-truncate" style="max-inline-size: 140px;">
+                <div class="d-flex align-center flex-wrap gap-1 text-super-xs mt-1">
+                  <span class="text-disabled truncate" style="max-inline-size: 140px;">
                     {{ item.product?.active_ingredient || 'Sin principio' }}
                   </span>
-                  <span>|</span>
-                  <span class="text-primary font-weight-bold text-uppercase text-truncate" style="max-inline-size: 110px;">
+                  <span class="text-disabled mx-1">|</span>
+                  <span class="text-primary font-weight-black text-uppercase text-truncate" style="max-inline-size: 120px;">
                     {{ item.product?.laboratory?.name || 'S/L' }}
                   </span>
                 </div>
@@ -344,4 +327,9 @@ const headers = [
 .gap-1 { gap: 4px !important; }
 .gap-2 { gap: 8px !important; }
 .gap-3 { gap: 12px !important; }
+
+.text-super-xs {
+  font-size: 0.72rem !important;
+  line-height: 1.1;
+}
 </style>

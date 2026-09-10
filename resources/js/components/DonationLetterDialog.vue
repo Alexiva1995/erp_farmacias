@@ -26,15 +26,11 @@ watch(
 );
 
 const donationHeaders = [
-  { title: "Producto", key: "product_name" },
-  { 
-    title: "Laboratorio", 
-    key: "laboratory_name", 
-    sortable: false,
-    value: (item) => item.product?.laboratory?.name || "—"
-  },
-  { title: "Unds.", key: "expired_quantity", align: "end" },
-  { title: "Acción", key: "actions", sortable: false, align: "center" },
+  { title: "ID", key: "product_id", sortable: false, width: "80px", cellClass: "font-weight-black text-primary" },
+  { title: "PRODUCTO", key: "product_name", sortable: false, width: "45%" },
+  { title: "# LOTE", key: "lot_number", align: "center", sortable: false },
+  { title: "CANT. DONADA", key: "expired_quantity", align: "center", sortable: false },
+  { title: "ACCIÓN", key: "actions", sortable: false, align: "center", width: "80px" },
 ];
 
 const discardProduct = (productToDiscard) => {
@@ -76,48 +72,49 @@ const closeDialog = () => {
     :fullscreen="$vuetify.display.smAndDown"
     transition="dialog-bottom-transition"
   >
-    <VCard class="donation-dialog">
+    <VCard class="donation-dialog rounded-lg overflow-hidden">
       <!-- Cabecera con Gradiente Premium -->
       <VCardTitle class="pa-0">
-        <div class="header-gradient px-6 py-5 d-flex align-center">
+        <div class="header-gradient px-4 py-3 d-flex align-center">
           <div class="d-flex align-center">
-            <VAvatar color="rgba(255,255,255,0.2)" size="44" class="me-4 rounded-lg">
-              <VIcon icon="tabler-file-text" color="white" size="24" />
+            <VAvatar color="white" variant="flat" size="36" class="me-3 elevation-1">
+              <VIcon icon="tabler-file-text" color="primary" size="20" />
             </VAvatar>
             <div>
-              <h3 class="text-h5 font-weight-bold text-white mb-0">Generar Carta de Donación</h3>
-              <p class="text-caption text-white opacity-75 mb-0">Documentación oficial de entrega</p>
+              <h3 class="text-subtitle-1 font-weight-black text-white mb-0" style="color: white !important;">Generar Carta de Donación</h3>
+              <p class="text-caption text-white opacity-75 mb-0" style="color: white !important;">Documentación oficial de entrega</p>
             </div>
           </div>
           <VSpacer />
           <VBtn
             icon
-            variant="tonal"
+            variant="text"
             color="white"
             size="small"
+            density="compact"
             @click="closeDialog"
-            class="rounded-circle"
           >
-            <VIcon>tabler-x</VIcon>
+            <VIcon size="20">tabler-x</VIcon>
           </VBtn>
         </div>
       </VCardTitle>
 
       <VCardText class="pa-0" style="overflow-y: auto;">
-        <div class="pa-6">
+        <div class="pa-4">
           <!-- Sección de Institución -->
-          <div class="mb-8">
-            <div class="d-flex align-center mb-4">
-              <div class="section-badge me-3">1</div>
-              <h4 class="text-h6 font-weight-bold color-primary-dark">Información de la Institución</h4>
+          <div class="mb-4">
+            <div class="d-flex align-center mb-2">
+              <VIcon icon="tabler-building" size="18" class="text-primary me-2" />
+              <h4 class="text-subtitle-2 font-weight-black text-uppercase">Información de la Institución</h4>
             </div>
-            <VCard variant="outlined" class="pa-4 bg-var-theme-background border-dashed rounded-xl">
+            <VCard variant="flat" class="pa-3 bg-light border rounded-lg">
               <AppTextField
                 v-model="institutionName"
                 label="Nombre de la Institución Receptora"
                 placeholder="Ej. Fundación Hospital de Niños"
                 variant="outlined"
-                density="comfortable"
+                density="compact"
+                hide-details
                 prepend-inner-icon="tabler-building-estate"
                 autofocus
               />
@@ -126,12 +123,12 @@ const closeDialog = () => {
 
           <!-- Sección de Productos -->
           <div>
-            <div class="d-flex align-center justify-space-between mb-4">
+            <div class="d-flex align-center justify-space-between mb-2">
               <div class="d-flex align-center">
-                <div class="section-badge me-3">2</div>
-                <h4 class="text-h6 font-weight-bold color-primary-dark">Productos a Donar</h4>
+                <VIcon icon="tabler-package" size="18" class="text-primary me-2" />
+                <h4 class="text-subtitle-2 font-weight-black text-uppercase">Productos a Donar</h4>
               </div>
-              <VChip color="primary" variant="tonal" size="small" class="font-weight-bold px-3">
+              <VChip color="primary" variant="tonal" size="small" class="font-weight-black">
                 {{ donationProducts.length }} ITEMS SELECCIONADOS
               </VChip>
             </div>
@@ -141,36 +138,70 @@ const closeDialog = () => {
               <VDataTable
                 :headers="donationHeaders"
                 :items="donationProducts"
-                class="donation-table elevation-0 rounded-xl overflow-hidden border"
+                class="elevation-0 rounded-lg overflow-hidden border"
+                density="compact"
                 no-data-text="No hay productos seleccionados."
                 hide-default-footer
               >
+                <!-- ID con enlace a trazabilidad -->
+                <template #item.product_id="{ item }">
+                  <a
+                    :href="'/inventory/traceability?q=' + (item.product?.id || item.product_id)"
+                    target="_blank"
+                    class="text-decoration-none font-weight-black text-primary"
+                  >
+                    {{ item.product?.id || item.product_id }}
+                  </a>
+                </template>
+
+                <!-- PRODUCTO: formato unificado igual a inventario -->
                 <template #item.product_name="{ item }">
-                  <div class="py-2">
-                    <p class="font-weight-black mb-0 text-primary">{{ item.product_name?.toUpperCase() }}</p>
-                    <p class="text-xs text-medium-emphasis mb-0">{{ item.lot_number || 'S/L' }}</p>
+                  <div class="d-flex align-center gap-x-2 py-1">
+                    <div class="d-flex flex-column min-width-0">
+                      <span
+                        class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate"
+                        :class="{ 
+                          'text-warning': item.product?.psychotropic == 1 || item.product?.psychotropic === true 
+                        }"
+                        style="max-inline-size: 360px;"
+                        :title="item.product_name || item.product?.name"
+                      >
+                        {{ (item.product_name || item.product?.name || '—').toUpperCase() }}
+                        <span v-if="item.product?.iva == 1 || item.product?.iva === true" class="text-xs text-disabled"> (G)</span>
+                        <span v-if="item.product?.is_colombian_origin == 1 || item.product?.is_colombian_origin === true" class="text-xs text-disabled"> (COL)</span>
+                      </span>
+                      <div class="d-flex align-center gap-1 text-super-xs">
+                        <span class="text-disabled truncate" style="max-inline-size: 160px;">
+                          {{ item.product?.active_ingredient || item.product?.presentation || "Sin principio" }}
+                        </span>
+                        <span class="text-disabled mx-1">|</span>
+                        <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 140px;">
+                          {{ item.product?.laboratory?.name || 'S/L' }}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </template>
 
-                <template #item.laboratory_name="{ item }">
-                  <VChip size="x-small" label class="text-uppercase font-weight-bold px-2">
-                    {{ item.product?.laboratory?.name || "—" }}
-                  </VChip>
+                <template #item.lot_number="{ item }">
+                  <span class="font-weight-medium text-caption">{{ item.lot_number || "—" }}</span>
                 </template>
 
                 <template #item.expired_quantity="{ item }">
-                  <span class="text-h6 font-weight-black">{{ item.expired_quantity }}</span>
+                  <VChip size="small" label variant="tonal" color="success" class="font-weight-black">
+                    {{ Math.trunc(item.expired_quantity ?? 0) }} UNDS
+                  </VChip>
                 </template>
 
                 <template #item.actions="{ item }">
                   <IconBtn
                     color="error"
-                    variant="tonal"
+                    variant="text"
                     size="small"
                     @click="discardProduct(item)"
-                    class="rounded-lg"
                   >
-                    <VIcon icon="tabler-trash-x" />
+                    <VIcon icon="tabler-trash" size="18" />
+                    <VTooltip activator="parent">Quitar de donación</VTooltip>
                   </IconBtn>
                 </template>
               </VDataTable>
@@ -179,46 +210,57 @@ const closeDialog = () => {
             <!-- Vista de Móvil (Tarjetas) -->
             <div class="d-block d-md-none">
               <div v-if="donationProducts.length === 0" class="text-center py-8 opacity-50">
-                <VIcon icon="tabler-package-off" size="48" class="mb-2" />
-                <p>No hay productos para mostrar</p>
+                <VIcon icon="tabler-package-off" size="36" class="mb-2" />
+                <p class="text-caption mb-0">No hay productos para mostrar</p>
               </div>
-              <div v-else class="d-flex flex-column gap-3">
+              <div v-else class="d-flex flex-column gap-2">
                 <VCard
                   v-for="item in donationProducts"
                   :key="item.id"
-                  variant="outlined"
-                  class="mobile-product-card rounded-xl border-dashed-thin"
+                  variant="flat"
+                  class="rounded-lg border overflow-hidden"
                 >
-                  <div class="pa-4">
-                    <div class="d-flex justify-space-between align-start mb-2">
-                      <div class="flex-grow-1 pe-2">
-                        <p class="text-subtitle-1 font-weight-black text-primary mb-1 line-height-tight">
-                          {{ item.product_name?.toUpperCase() }}
-                        </p>
-                        <div class="d-flex align-center">
-                          <VIcon icon="tabler-flask" size="14" class="me-1 text-medium-emphasis" />
-                          <span class="text-caption font-weight-medium text-medium-emphasis">
-                            {{ item.product?.laboratory?.name || "SIN LAB" }}
+                  <div class="pa-3">
+                    <div class="d-flex justify-space-between align-start mb-1">
+                      <div class="flex-grow-1 min-width-0 pe-2">
+                        <div class="d-flex align-center gap-1 mb-1">
+                          <a
+                            :href="'/inventory/traceability?q=' + (item.product?.id || item.product_id)"
+                            target="_blank"
+                            class="text-decoration-none font-weight-black text-primary text-xs"
+                          >
+                            {{ item.product?.id || item.product_id }}
+                          </a>
+                          <span class="mx-1 text-disabled">|</span>
+                          <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate mb-0">
+                            {{ item.product_name || item.product?.name || '—' }}
+                          </h3>
+                        </div>
+                        <div class="d-flex align-center flex-wrap gap-1 text-super-xs">
+                          <span class="text-disabled truncate" style="max-inline-size: 140px;">
+                            {{ item.product?.active_ingredient || item.product?.presentation || "Sin principio" }}
+                          </span>
+                          <span class="text-disabled mx-1">|</span>
+                          <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 120px;">
+                            {{ item.product?.laboratory?.name || "S/L" }}
                           </span>
                         </div>
                       </div>
                       <IconBtn
                         color="error"
-                        variant="tonal"
+                        variant="text"
                         size="small"
                         @click="discardProduct(item)"
-                        class="rounded-lg ms-2"
                       >
-                        <VIcon icon="tabler-trash-x" size="20" />
+                        <VIcon icon="tabler-trash" size="18" />
                       </IconBtn>
                     </div>
                     
-                    <div class="d-flex justify-space-between align-center mt-3 bg-light rounded-lg pa-2">
-                      <span class="text-xs text-uppercase font-weight-bold text-disabled ps-2">Cantidad</span>
-                      <div class="d-flex align-center">
-                        <span class="text-h5 font-weight-black pe-2">{{ item.expired_quantity }}</span>
-                        <VChip size="x-small" color="secondary" label font-weight-bold>UNDS</VChip>
-                      </div>
+                    <div class="d-flex justify-space-between align-center mt-2 bg-light rounded pa-2">
+                      <span class="text-super-xs text-uppercase font-weight-bold text-disabled">Lote: {{ item.lot_number || '—' }}</span>
+                      <VChip size="x-small" color="success" label variant="tonal" class="font-weight-black">
+                        {{ Math.trunc(item.expired_quantity ?? 0) }} UNDS
+                      </VChip>
                     </div>
                   </div>
                 </VCard>
@@ -231,14 +273,14 @@ const closeDialog = () => {
       <VDivider />
 
       <!-- Acciones de Pie de Página -->
-      <VCardActions class="pa-6 bg-var-theme-background">
+      <VCardActions class="pa-4 bg-light border-t">
         <VBtn
           color="secondary"
           variant="tonal"
           @click="closeDialog"
-          class="rounded-xl px-6"
+          class="rounded-lg font-weight-black"
           :class="{ 'flex-grow-1': $vuetify.display.smAndDown }"
-          height="50"
+          height="44"
         >
           <VIcon icon="tabler-arrow-left" class="me-2" />
           Cancelar
@@ -248,9 +290,9 @@ const closeDialog = () => {
           color="primary"
           variant="flat"
           @click="handleGenerate"
-          class="rounded-xl px-8 elevation-4"
-          :class="{ 'flex-grow-1': $vuetify.display.smAndDown, 'ms-4': $vuetify.display.smAndDown }"
-          height="50"
+          class="rounded-lg font-weight-black elevation-2"
+          :class="{ 'flex-grow-1': $vuetify.display.smAndDown, 'ms-3': $vuetify.display.smAndDown }"
+          height="44"
           :loading="props.loading"
         >
           <VIcon icon="tabler-file-check" class="me-2" />
@@ -263,72 +305,21 @@ const closeDialog = () => {
 
 <style scoped>
 .header-gradient {
-  background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+  background: var(--brand-gradient) !important;
   color: white;
 }
 
-.section-badge {
-  width: 28px;
-  height: 28px;
-  background: rgba(var(--v-theme-primary), 0.1);
-  color: rgb(var(--v-theme-primary));
-  border-radius: 8px;
-  display: flex;
-  align-center: center;
-  justify-content: center;
-  font-weight: 800;
-  font-size: 0.9rem;
-}
-
-.color-primary-dark {
-  color: #1e3a8a;
-}
-
-.donation-table :deep(thead) {
-  background-color: rgba(var(--v-theme-primary), 0.03);
-}
-
-.donation-table :deep(th) {
-  font-weight: 700 !important;
-  text-transform: uppercase;
-  font-size: 0.75rem !important;
-  color: #64748b !important;
-}
-
-.line-height-tight {
-  line-height: 1.2;
-}
-
-.mobile-product-card {
-  transition: all 0.2s ease;
-  background-color: white;
-  border-color: rgba(0,0,0,0.08) !important;
-}
-
-.mobile-product-card:active {
-  transform: scale(0.98);
-  background-color: rgba(var(--v-theme-primary), 0.02);
+.text-super-xs {
+  font-size: 0.72rem !important;
+  line-height: 1.1;
 }
 
 .bg-light {
-  background-color: #f8fafc;
+  background-color: #f8fafc !important;
 }
 
-.border-dashed-thin {
-  border-style: dashed !important;
-}
-
-.line-clamp-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-@media (max-width: 600px) {
-  .donation-dialog {
-    border-radius: 0 !important;
-  }
-}
+.gap-1 { gap: 4px !important; }
+.gap-2 { gap: 8px !important; }
+.gap-3 { gap: 12px !important; }
 </style>
 

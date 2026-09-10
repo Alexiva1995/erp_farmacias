@@ -41,10 +41,8 @@ class TraceabilityQueryService
                 if ($isNumeric) {
                     $productId = (int) $rawTerm;
                     $subQuery->where('inventory_movements.product_id', '=', $productId)
-                        ->orWhere('inventory_movements.id', '=', $productId)
                         ->orWhereHas('product', function ($product) use ($rawTerm) {
-                            $product->where('barcode', '=', $rawTerm)
-                                ->orWhere('name', 'like', "%{$rawTerm}%");
+                            $product->where('barcode', '=', $rawTerm);
                         });
                 } else {
                     $searchTerm = "%{$rawTerm}%";
@@ -68,7 +66,21 @@ class TraceabilityQueryService
         }
 
         if ($request->filled('movement_type')) {
-            $query->where('movement_type', $request->input('movement_type'));
+            $types = $request->input('movement_type');
+            if (is_array($types)) {
+                $query->whereIn('movement_type', $types);
+            } else {
+                $query->where('movement_type', $types);
+            }
+        }
+
+        if ($request->filled('exclude_movement_types')) {
+            $excludeTypes = $request->input('exclude_movement_types');
+            if (is_array($excludeTypes)) {
+                $query->whereNotIn('movement_type', $excludeTypes);
+            } elseif (is_string($excludeTypes)) {
+                $query->whereNotIn('movement_type', explode(',', $excludeTypes));
+            }
         }
 
         if ($request->filled('is_psychotropic')) {

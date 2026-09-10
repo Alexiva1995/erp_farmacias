@@ -24,7 +24,8 @@ const isAdmin = computed(() => authStore.user?.role_id === 1);
 const startDate = ref(null);
 const endDate = ref(null);
 const searchQuery = ref(route.query.q ? String(route.query.q) : "");
-const movementType = ref(null);
+const movementType = ref([]);
+const excludeMovementTypes = ref([]);
 
 const fetchSales = async () => {
   loading.value = true;
@@ -36,7 +37,8 @@ const fetchSales = async () => {
     orderBy: orderBy.value || undefined,
     startDate: startDate.value || undefined,
     endDate: endDate.value || undefined,
-    movement_type: movementType.value || undefined,
+    movement_type: movementType.value && movementType.value.length > 0 ? movementType.value : undefined,
+    exclude_movement_types: excludeMovementTypes.value && excludeMovementTypes.value.length > 0 ? excludeMovementTypes.value : undefined,
   };
 
   try {
@@ -60,7 +62,7 @@ const triggerSearch = () => {
   }, 350);
 };
 
-watch([searchQuery, startDate, endDate, movementType], () => {
+watch([searchQuery, startDate, endDate, movementType, excludeMovementTypes], () => {
   triggerSearch();
 });
 
@@ -93,7 +95,8 @@ const handleClearFilters = () => {
   searchQuery.value = "";
   startDate.value = null;
   endDate.value = null;
-  movementType.value = null;
+  movementType.value = [];
+  excludeMovementTypes.value = [];
 };
 
 const handleSelectProduct = (productId) => {
@@ -121,7 +124,8 @@ const handleExport = async (format) => {
     q: searchQuery.value || undefined,
     startDate: startDate.value || undefined,
     endDate: endDate.value || undefined,
-    movement_type: movementType.value || undefined,
+    movement_type: movementType.value && movementType.value.length > 0 ? movementType.value : undefined,
+    exclude_movement_types: excludeMovementTypes.value && excludeMovementTypes.value.length > 0 ? excludeMovementTypes.value : undefined,
     format: format,
   };
 
@@ -202,6 +206,7 @@ const handleExport = async (format) => {
       v-model:startDate="startDate"
       v-model:endDate="endDate"
       v-model:selectedMovementType="movementType"
+      v-model:excludeMovementTypes="excludeMovementTypes"
       :is-exporting="isExporting"
       @clear="handleClearFilters"
       @export="handleExport"

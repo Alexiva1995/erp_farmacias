@@ -28,6 +28,12 @@ class ExpiredLogResource extends JsonResource
                 return [
                     'id' => $this->product->id,
                     'name' => $this->product->name,
+                    'active_ingredient' => $this->product->active_ingredient,
+                    'iva' => $this->product->iva,
+                    'is_colombian_origin' => $this->product->is_colombian_origin,
+                    'psychotropic' => $this->product->psychotropic,
+                    'presentation' => $this->product->presentation,
+                    'unit_of_measure' => $this->product->unit_of_measure,
                     'laboratory' => $this->product->laboratory ? [
                         'id' => $this->product->laboratory->id,
                         'name' => $this->product->laboratory->name,

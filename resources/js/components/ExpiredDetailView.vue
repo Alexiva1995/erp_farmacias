@@ -23,24 +23,24 @@ const emit = defineEmits([
 ]);
 
 const headers = computed(() => [
-  { title: "ID", key: "product.id", sortable: true },
-  { title: "Producto", key: "product_name", sortable: false },
   { 
-    title: isRestaurant.value ? "Marca" : "Laboratorio", 
-    key: "laboratory_name", 
-    sortable: false,
-    value: (item) => item.product?.laboratory?.name || "—"
+    title: "ID", 
+    key: "product_id", 
+    sortable: true,
+    cellClass: "font-weight-black text-primary",
+    width: "80px",
   },
-  { title: "Lote", key: "lot_number", align: "center", sortable: false },
-  { title: "Vencimiento", key: "expired_at", align: "center", sortable: true },
+  { title: "PRODUCTO", key: "product_name", sortable: false, width: "38%" },
+  { title: "# LOTE", key: "lot_number", align: "center", sortable: false },
+  { title: "VENCIMIENTO", key: "expired_at", align: "center", sortable: true },
   {
-    title: "Cant. Caducada",
+    title: "CANT. CADUCADA",
     key: "expired_quantity",
     align: "center",
     sortable: false,
   },
   {
-    title: "Costo Total",
+    title: "COSTO TOTAL",
     key: "total_lost_value",
     align: "end",
     sortable: false,
@@ -73,11 +73,13 @@ const toggleSelection = (id) => {
 </script>
 
 <template>
-  <VCard variant="flat">
-    <VCardText v-if="!isRestaurant" class="d-flex justify-end pa-4 bg-var-theme-background">
+  <VCard variant="flat" class="rounded-lg border shadow-sm overflow-hidden">
+    <VCardText v-if="!isRestaurant" class="d-flex justify-end pa-3 bg-var-theme-background border-b">
       <VBtn
         color="success"
         variant="elevated"
+        size="small"
+        class="font-weight-black"
         :disabled="selected.length === 0"
         prepend-icon="tabler-gift"
         @click="emit('generate-donation')"
@@ -85,8 +87,6 @@ const toggleSelection = (id) => {
         GENERAR DONACIÓN ({{ selected.length }})
       </VBtn>
     </VCardText>
-
-    <VDivider />
 
     <!-- Vista de Escritorio (Tabla) -->
     <div class="d-none d-md-block">
@@ -100,39 +100,66 @@ const toggleSelection = (id) => {
         :items-per-page="props.itemsPerPage"
         item-value="id"
         :show-select="!isRestaurant"
+        density="compact"
         class="text-no-wrap"
         @update:options="(options) => emit('update:options', options)"
       >
+        <!-- ID con enlace a trazabilidad sin # -->
+        <template #item.product_id="{ item }">
+          <a
+            :href="'/inventory/traceability?q=' + (item.product?.id || item.product_id)"
+            target="_blank"
+            class="text-decoration-none font-weight-black text-primary"
+          >
+            {{ item.product?.id || item.product_id }}
+          </a>
+        </template>
+
+        <!-- PRODUCTO: formato unificado igual a inventario -->
         <template #item.product_name="{ item }">
-          <div class="d-flex align-center">
-            <div class="d-flex flex-column">
-              <span class="text-body-1 font-weight-medium text-uppercase">{{
-                item.product_name || ""
-              }}</span>
-              <span v-if="item.product && !isRestaurant" class="text-sm text-disabled">{{
-                item.product.active_ingredient
-              }}</span>
-              <span v-else-if="item.product && isRestaurant" class="text-sm text-disabled">{{
-                item.product.presentation || "S/P" }}{{ item.product.unit_of_measure ? ` (${item.product.unit_of_measure})` : ''
-              }}</span>
+          <div class="d-flex align-center gap-x-2 py-1">
+            <div class="d-flex flex-column min-width-0">
+              <span
+                class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate product-title-max"
+                :class="{ 
+                  'text-warning': item.product?.psychotropic == 1 || item.product?.psychotropic === true 
+                }"
+                :title="item.product_name || item.product?.name"
+              >
+                {{ (item.product_name || item.product?.name || '—').toUpperCase() }}
+                <span v-if="item.product?.iva == 1 || item.product?.iva === true" class="text-xs text-disabled"> (G)</span>
+                <span v-if="item.product?.is_colombian_origin == 1 || item.product?.is_colombian_origin === true" class="text-xs text-disabled"> (COL)</span>
+              </span>
+              <div class="d-flex align-center gap-1 text-super-xs">
+                <span v-if="!isRestaurant" class="text-disabled truncate active-ingredient-max">
+                  {{ item.product?.active_ingredient || item.product?.presentation || "Sin principio" }}
+                </span>
+                <span v-else class="text-disabled truncate active-ingredient-max">
+                  {{ item.product?.presentation || "S/P" }}{{ item.product?.unit_of_measure ? ` (${item.product?.unit_of_measure})` : '' }}
+                </span>
+                <span class="text-disabled mx-1">|</span>
+                <span class="text-primary font-weight-black text-uppercase truncate lab-name-max">
+                  {{ item.product?.laboratory?.name || 'S/L' }}
+                </span>
+              </div>
             </div>
           </div>
         </template>
 
-        <template #item.laboratory_name="{ item }">
-          <span class="text-uppercase">{{ item.product?.laboratory?.name || "—" }}</span>
+        <template #item.lot_number="{ item }">
+          <span class="font-weight-medium text-caption">{{ item.lot_number || "—" }}</span>
         </template>
 
         <template #item.expired_at="{ item }">
-          <span class="font-weight-medium">{{ formatDate(item.expired_at) }}</span>
+          <span class="text-caption font-weight-medium">{{ formatDate(item.expired_at || item.created_at) }}</span>
         </template>
 
         <template #item.total_lost_value="{ item }">
-          <span class="font-weight-black text-primary">{{ formatCurrency(item.total_lost_value) }}</span>
+          <span class="font-weight-black text-primary text-body-2">{{ formatCurrency(item.total_lost_value) }}</span>
         </template>
 
         <template #item.expired_quantity="{ item }">
-          <VChip size="small" label variant="tonal" color="error" class="font-weight-bold">
+          <VChip size="small" label variant="tonal" color="error" class="font-weight-black">
             {{ Math.trunc(item.expired_quantity ?? 0) }} UNDS
           </VChip>
         </template>
@@ -161,17 +188,30 @@ const toggleSelection = (id) => {
             <div class="d-flex justify-space-between align-start mb-2">
               <div class="d-flex flex-column flex-grow-1 min-width-0">
                 <div class="d-flex align-center gap-1 mb-1">
-                  <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight">
-                    <span class="text-primary">#{{ item.product?.id || '—' }}</span>
-                    <span class="mx-1 text-disabled">|</span>
-                    {{ item.product_name }}
+                  <a
+                    :href="'/inventory/traceability?q=' + (item.product?.id || item.product_id)"
+                    target="_blank"
+                    class="text-decoration-none font-weight-black text-primary text-xs"
+                    @click.stop
+                  >
+                    {{ item.product?.id || item.product_id }}
+                  </a>
+                  <span class="mx-1 text-disabled">|</span>
+                  <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate mb-0">
+                    {{ item.product_name || item.product?.name || '—' }}
                   </h3>
                 </div>
-                <div class="d-flex align-center flex-wrap gap-x-2 text-super-xs">
-                  <span v-if="!isRestaurant" class="text-medium-emphasis font-weight-medium">{{ item.product?.active_ingredient }}</span>
-                  <span v-else class="text-medium-emphasis font-weight-medium">{{ item.product?.presentation || "S/P" }}{{ item.product?.unit_of_measure ? ` (${item.product?.unit_of_measure})` : '' }}</span>
-                  <span class="text-disabled">|</span>
-                  <span class="text-primary font-weight-bold text-uppercase">{{ item.product?.laboratory?.name || 'S/L' }}</span>
+                <div class="d-flex align-center flex-wrap gap-1 text-super-xs">
+                  <span v-if="!isRestaurant" class="text-disabled truncate" style="max-inline-size: 150px;">
+                    {{ item.product?.active_ingredient || item.product?.presentation || "Sin principio" }}
+                  </span>
+                  <span v-else class="text-disabled truncate" style="max-inline-size: 150px;">
+                    {{ item.product?.presentation || "S/P" }}{{ item.product?.unit_of_measure ? ` (${item.product?.unit_of_measure})` : '' }}
+                  </span>
+                  <span class="text-disabled mx-1">|</span>
+                  <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 130px;">
+                    {{ item.product?.laboratory?.name || 'S/L' }}
+                  </span>
                 </div>
               </div>
               <VCheckboxBtn
@@ -184,26 +224,26 @@ const toggleSelection = (id) => {
               />
             </div>
 
-            <VDivider class="my-3 border-opacity-10" />
+            <VDivider class="my-2 border-opacity-10" />
 
             <div class="d-flex align-center justify-space-between bg-var-theme-background px-3 py-2 rounded">
               <div class="d-flex flex-column">
                 <span class="text-super-xs text-disabled text-uppercase font-weight-black">Venció el</span>
-                <span class="text-base font-weight-black text-error">
-                  {{ formatDate(item.expired_at) }}
+                <span class="text-sm font-weight-black text-error">
+                  {{ formatDate(item.expired_at || item.created_at) }}
                 </span>
               </div>
               <div class="d-flex flex-column text-right">
                 <span class="text-super-xs text-disabled text-uppercase font-weight-black">Cant. Final</span>
-                <span class="text-base font-weight-black text-error">
+                <span class="text-sm font-weight-black text-error">
                   {{ Math.trunc(item.expired_quantity ?? 0) }} <small class="text-super-xs">UNDS</small>
                 </span>
               </div>
             </div>
 
-            <div class="d-flex justify-space-between align-center mt-3">
+            <div class="d-flex justify-space-between align-center mt-2">
               <div class="d-flex flex-column">
-                <span class="text-super-xs text-disabled text-uppercase font-weight-bold">Lote: {{ item.lot_number }}</span>
+                <span class="text-super-xs text-disabled text-uppercase font-weight-bold">Lote: {{ item.lot_number || "—" }}</span>
               </div>
               <div class="d-flex flex-column text-right">
                 <span class="text-super-xs text-disabled text-uppercase font-weight-black">Pérdida (Costo)</span>
@@ -231,8 +271,20 @@ const toggleSelection = (id) => {
 
 <style scoped>
 .text-super-xs {
-  font-size: 0.65rem !important;
-  line-height: 1;
+  font-size: 0.72rem !important;
+  line-height: 1.1;
+}
+
+.product-title-max {
+  max-inline-size: 380px;
+}
+
+.active-ingredient-max {
+  max-inline-size: 180px;
+}
+
+.lab-name-max {
+  max-inline-size: 150px;
 }
 
 .bg-var-theme-background {
@@ -247,6 +299,7 @@ const toggleSelection = (id) => {
   background-color: rgba(var(--v-theme-primary), 0.03) !important;
 }
 
+.gap-1 { gap: 4px !important; }
 .gap-2 { gap: 8px !important; }
 .gap-3 { gap: 12px !important; }
 </style>
