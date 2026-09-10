@@ -22,26 +22,24 @@ const emit = defineEmits(['update:search']);
 const itemsPerPage = ref(15);
 const page = ref(1);
 const sortBy = ref([{ key: 'cash_released_usd', order: 'desc' }]);
-const statusFilter = ref('all');
+const quickFilter = ref('released'); // 'released' | 'all' | 'no_movement' | 'stock_increase'
 
 const headers = [
-  { title: 'ID / PRODUCTO', key: 'product_name', sortable: true },
-  { title: 'LABORATORIO', key: 'laboratory_name', sortable: true },
-  { title: 'STOCK FOTO', key: 'snapshot_stock', align: 'end', sortable: true },
-  { title: 'VALOR FOTO ($)', key: 'snapshot_value_usd', align: 'end', sortable: true },
-  { title: 'STOCK ACTUAL', key: 'current_stock', align: 'end', sortable: true },
-  { title: 'VALOR ACTUAL ($)', key: 'current_value_usd', align: 'end', sortable: true },
-  { title: 'DINERO LIBERADO ($)', key: 'cash_released_usd', align: 'end', sortable: true },
-  { title: 'ESTADO', key: 'status', align: 'center', sortable: true },
+  { title: 'PRODUCTO / LABORATORIO', key: 'product_name', sortable: true },
+  { title: 'STOCK I', key: 'snapshot_stock', align: 'end', sortable: true },
+  { title: 'STOCK F', key: 'current_stock', align: 'end', sortable: true },
+  { title: 'VALOR I ($)', key: 'snapshot_value_usd', align: 'end', sortable: true },
+  { title: 'VALOR F ($)', key: 'current_value_usd', align: 'end', sortable: true },
+  { title: 'LIBERADO ($)', key: 'cash_released_usd', align: 'end', sortable: true },
 ];
 
 const filteredItems = computed(() => {
   let list = props.items || [];
-  if (statusFilter.value === 'released') {
+  if (quickFilter.value === 'released') {
     list = list.filter(i => Number(i.cash_released_usd) > 0);
-  } else if (statusFilter.value === 'no_movement') {
+  } else if (quickFilter.value === 'no_movement') {
     list = list.filter(i => Number(i.cash_released_usd) === 0 && Number(i.current_stock) === Number(i.snapshot_stock));
-  } else if (statusFilter.value === 'stock_increase') {
+  } else if (quickFilter.value === 'stock_increase') {
     list = list.filter(i => Number(i.current_stock) > Number(i.snapshot_stock));
   }
   return list;
@@ -91,8 +89,9 @@ const filteredItems = computed(() => {
     <!-- Tabla Comparativa de Productos CZ con VDataTable Interactivo -->
     <VCard class="rounded-lg border shadow-sm overflow-hidden bg-surface mb-6">
       <VCardText class="pa-4">
+        <!-- Filtros Rápidos y Buscador -->
         <VRow align="center" dense class="mb-3">
-          <VCol cols="12" md="5">
+          <VCol cols="12" md="4">
             <AppTextField
               :model-value="search"
               placeholder="Buscar por producto, laboratorio o ID..."
@@ -105,24 +104,29 @@ const filteredItems = computed(() => {
             />
           </VCol>
 
-          <VCol cols="12" md="4">
-            <AppSelect
-              v-model="statusFilter"
-              :items="[
-                { title: 'Todos los estados', value: 'all' },
-                { title: 'Solo con Dinero Liberado (> $0)', value: 'released' },
-                { title: 'Sin Movimiento (Stock Inmóvil)', value: 'no_movement' },
-                { title: 'Aumento de Stock (Entradas)', value: 'stock_increase' },
-              ]"
+          <VCol cols="12" md="8" class="d-flex align-center justify-md-end flex-wrap gap-2">
+            <VBtnToggle
+              v-model="quickFilter"
+              mandatory
               density="compact"
-              hide-details
+              color="primary"
               variant="outlined"
-            />
-          </VCol>
+              class="rounded-lg"
+            >
+              <VBtn value="released" size="small" class="font-weight-bold" color="success">
+                <VIcon icon="tabler-sparkles" size="16" class="me-1 text-success" />
+                Solo Liberados (> $0)
+              </VBtn>
+              <VBtn value="all" size="small" class="font-weight-bold">
+                Todos ({{ items.length }})
+              </VBtn>
+              <VBtn value="no_movement" size="small" class="font-weight-bold">
+                Sin Movimiento
+              </VBtn>
+            </VBtnToggle>
 
-          <VCol cols="12" md="3" class="text-end">
-            <span class="text-caption text-medium-emphasis">
-              Total: <strong>{{ filteredItems.length }}</strong> productos
+            <span class="text-caption text-medium-emphasis ms-2">
+              Mostrando: <strong>{{ filteredItems.length }}</strong> productos
             </span>
           </VCol>
         </VRow>
@@ -138,66 +142,74 @@ const filteredItems = computed(() => {
           hover
           class="text-no-wrap premium-datatable"
         >
-          <!-- Columna Producto / ID -->
+          <!-- Columna Producto / ID unificada al estilo del Módulo 1 -->
           <template #item.product_name="{ item }">
             <div class="d-flex flex-column py-1">
-              <span class="font-weight-black text-sm text-uppercase text-truncate" style="max-width: 260px;">
-                {{ item.product_name }}
+              <div class="d-flex align-center gap-1">
+                <RouterLink
+                  v-if="item.product_id"
+                  :to="`/inventory/traceability?q=${item.product_id}`"
+                  target="_blank"
+                  class="font-weight-black text-primary text-decoration-none text-sm cursor-pointer id-link"
+                  title="Ver trazabilidad de movimientos"
+                >
+                  {{ item.product_id }}
+                </RouterLink>
+                <span v-if="item.product_id" class="text-sm text-medium-emphasis font-weight-bold">-</span>
+                <span class="font-weight-black text-sm text-high-emphasis text-uppercase text-truncate" :title="item.product_name" style="max-width: 320px;">
+                  {{ item.product_name }}
+                </span>
+              </div>
+              <span class="text-caption text-secondary font-weight-medium">
+                {{ item.laboratory_name }}
               </span>
-              <span class="text-caption text-primary">#{{ item.product_id }}</span>
             </div>
           </template>
 
-          <!-- Columna Laboratorio -->
-          <template #item.laboratory_name="{ item }">
-            <span class="font-weight-medium text-caption">{{ item.laboratory_name }}</span>
-          </template>
-
-          <!-- Columna Stock Foto -->
+          <!-- Columna Stock Inicial (Foto) -->
           <template #item.snapshot_stock="{ item }">
-            <span class="font-weight-bold">{{ item.snapshot_stock }}</span>
+            <span class="font-weight-bold">{{ Number(item.snapshot_stock || 0).toLocaleString() }}</span>
           </template>
 
-          <!-- Columna Valor Foto -->
-          <template #item.snapshot_value_usd="{ item }">
-            <span>{{ formatCurrency(item.snapshot_value_usd) }}</span>
-          </template>
-
-          <!-- Columna Stock Actual -->
+          <!-- Columna Stock Final (Actual) -->
           <template #item.current_stock="{ item }">
-            <span class="font-weight-bold" :class="item.current_stock < item.snapshot_stock ? 'text-success' : ''">
-              {{ item.current_stock }}
+            <span class="font-weight-bold" :class="item.current_stock < item.snapshot_stock ? 'text-success' : (item.current_stock > item.snapshot_stock ? 'text-warning' : '')">
+              {{ Number(item.current_stock || 0).toLocaleString() }}
             </span>
           </template>
 
-          <!-- Columna Valor Actual -->
+          <!-- Columna Valor Inicial (Foto) -->
+          <template #item.snapshot_value_usd="{ item }">
+            <span class="text-medium-emphasis font-weight-medium">{{ formatCurrency(item.snapshot_value_usd) }}</span>
+          </template>
+
+          <!-- Columna Valor Final (Actual) -->
           <template #item.current_value_usd="{ item }">
-            <span>{{ formatCurrency(item.current_value_usd) }}</span>
+            <span class="font-weight-bold text-high-emphasis">{{ formatCurrency(item.current_value_usd) }}</span>
           </template>
 
-          <!-- Columna Dinero Liberado -->
+          <!-- Columna Liberado ($): Verde brillante para valores desinmovilizados -->
           <template #item.cash_released_usd="{ item }">
-            <span class="font-weight-black" :class="item.cash_released_usd > 0 ? 'text-success' : 'text-medium-emphasis'">
-              {{ item.cash_released_usd > 0 ? `+${formatCurrency(item.cash_released_usd)}` : formatCurrency(item.cash_released_usd) }}
-            </span>
-          </template>
-
-          <!-- Columna Estado -->
-          <template #item.status="{ item }">
-            <VChip
-              size="x-small"
-              :color="item.cash_released_usd > 0 ? 'success' : (item.current_stock > item.snapshot_stock ? 'warning' : 'secondary')"
-              variant="flat"
-              class="font-weight-bold"
-            >
-              {{ item.status }}
-            </VChip>
+            <div class="d-flex align-center justify-end">
+              <VChip
+                v-if="item.cash_released_usd > 0"
+                color="success"
+                size="small"
+                variant="flat"
+                class="font-weight-black shadow-sm"
+              >
+                +{{ formatCurrency(item.cash_released_usd) }}
+              </VChip>
+              <span v-else class="text-disabled font-weight-medium">
+                {{ formatCurrency(0) }}
+              </span>
+            </div>
           </template>
 
           <!-- Estado Vacío -->
           <template #no-data>
             <div class="text-center py-6 text-medium-emphasis">
-              No se encontraron productos CZ registrados en esta Foto Finish.
+              No se encontraron productos CZ registrados o no coinciden con el filtro aplicado.
             </div>
           </template>
         </VDataTable>
@@ -210,5 +222,27 @@ const filteredItems = computed(() => {
 .text-super-xs {
   font-size: 0.6875rem !important;
   line-height: 0.875rem !important;
+}
+
+.id-link {
+  transition: opacity 0.2s ease;
+}
+
+.id-link:hover {
+  text-decoration: underline !important;
+  opacity: 0.85;
+}
+
+:deep(.premium-datatable) table {
+  table-layout: auto;
+}
+
+:deep(.premium-datatable th:nth-child(1)),
+:deep(.premium-datatable td:nth-child(1)) {
+  position: sticky;
+  left: 0;
+  background-color: rgb(var(--v-theme-surface)) !important;
+  z-index: 2;
+  box-shadow: 2px 0 5px -2px rgba(0, 0, 0, 0.1);
 }
 </style>

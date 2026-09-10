@@ -63,6 +63,15 @@ class InventorySnapshotService
         $snapshot = InventorySnapshot::with('creator:id,username')->findOrFail($snapshotId);
         $snapshotItems = $this->repository->getSnapshotItemsForExport($snapshotId);
 
+        // Obtener la sumatoria real de lotes activos por producto (con fallback a products.stock)
+        $lotsSumByProduct = DB::table('product_lots')
+            ->select('product_id', DB::raw('SUM(quantity) as total_lot_stock'))
+            ->where('quantity', '>', 0)
+            ->whereNotNull('expiration_date')
+            ->groupBy('product_id')
+            ->get()
+            ->keyBy('product_id');
+
         // Obtener datos actuales de los productos en vivo
         $currentProducts = DB::table('products')
             ->select('id', 'name', 'stock', 'unit_cost', 'sale_price')
@@ -108,7 +117,8 @@ class InventorySnapshotService
 
         foreach ($czItems as $item) {
             $currProd = $currentProducts->get($item->product_id);
-            $currStock = $currProd ? max(0, (float)$currProd->stock) : 0.0;
+            $lotStock = $lotsSumByProduct->has($item->product_id) ? (float) $lotsSumByProduct->get($item->product_id)->total_lot_stock : null;
+            $currStock = $lotStock !== null ? max(0, $lotStock) : ($currProd ? max(0, (float)$currProd->stock) : 0.0);
             $currCost = $currProd ? (float)$currProd->unit_cost : (float)$item->unit_cost_usd;
             $currValue = $currStock * $currCost;
 
@@ -328,7 +338,17 @@ class InventorySnapshotService
             ->get()
             ->groupBy('product_id');
 
-        // 3. Obtener el catálogo de productos con sus costos, precios y laboratorios
+        // 3. Obtener movimientos posteriores al corte para reconstruir el stock histórico exacto
+        // Stock al corte = Stock actual - (Entradas después del corte) + (Salidas después del corte)
+        // O lo que es lo mismo: Stock al corte = Stock actual - SUM(quantity posteriores a cutoffDate)
+        $movementsAfterCutoff = DB::table('inventory_movements')
+            ->select('product_id', DB::raw('SUM(quantity) as net_movement_after'))
+            ->where('movement_date', '>', $cutoffDate->toDateTimeString())
+            ->groupBy('product_id')
+            ->get()
+            ->keyBy('product_id');
+
+        // 4. Obtener el catálogo de productos con sus costos, precios y laboratorios
         $products = DB::table('products')
             ->select(
                 'products.id',
@@ -349,30 +369,38 @@ class InventorySnapshotService
             $sales = $salesData->get($prodId);
             $productLots = $lotsByProduct->get($prodId);
 
-            $currentStock = max(0, (float) ($prod->current_stock ?? 0));
+            $lotStockSum = ($productLots && $productLots->isNotEmpty()) ? (float) $productLots->sum('quantity') : null;
+            $currentStockAlive = $lotStockSum !== null ? max(0, $lotStockSum) : max(0, (float) ($prod->current_stock ?? 0));
+            $netMovementAfter = $movementsAfterCutoff->has($prodId) 
+                ? (float) $movementsAfterCutoff->get($prodId)->net_movement_after 
+                : 0.0;
+
+            // Reconstrucción del stock histórico al día y hora de corte
+            $snapshotHistoricalStock = max(0, $currentStockAlive - $netMovementAfter);
+
             $soldUnits = $sales ? max(0, (float) $sales->sold_units) : 0.0;
             $totalSalesUsd = $sales ? max(0, (float) $sales->total_sales_usd) : 0.0;
             $totalCostSalesUsd = $sales ? max(0, (float) $sales->total_cost_usd) : 0.0;
 
-            // Filtro de inclusión: stock > 0 o ventas > 0 en el periodo
-            if ($currentStock <= 0 && $soldUnits <= 0) {
+            // Filtro de inclusión: stock al corte > 0 o ventas > 0 en el periodo
+            if ($snapshotHistoricalStock <= 0 && $soldUnits <= 0) {
                 continue;
             }
 
             $unitCost = (float) ($prod->unit_cost_usd ?? 0);
             $salePrice = (float) ($prod->sale_price_usd ?? 0);
-            $inventoryValue = $currentStock * $unitCost;
+            $inventoryValue = $snapshotHistoricalStock * $unitCost;
 
-            // 1. Regla de Cobertura en Días: stock / (ventas_30d / 30). Si ventas_30d es 0 => 999
+            // 1. Regla de Cobertura en Días: stock_al_corte / (ventas_30d / 30). Si ventas_30d es 0 => 999
             $dailySales = $soldUnits / max(1, $periodDays);
             if ($dailySales > 0) {
-                $coverageDays = round($currentStock / $dailySales, 2);
+                $coverageDays = round($snapshotHistoricalStock / $dailySales, 2);
             } else {
-                $coverageDays = $currentStock > 0 ? 999.0 : 0.0;
+                $coverageDays = $snapshotHistoricalStock > 0 ? 999.0 : 0.0;
             }
 
-            // 2. Regla de Sobrestock: TRUE si (cobertura_dias > 90 Y stock_actual > 0)
-            $isOverstock = ($coverageDays > 90 && $currentStock > 0);
+            // 2. Regla de Sobrestock: TRUE si (cobertura_dias > 90 Y stock_al_corte > 0)
+            $isOverstock = ($coverageDays > 90 && $snapshotHistoricalStock > 0);
 
             // Margen porcentual
             if ($totalSalesUsd > 0) {
@@ -441,7 +469,7 @@ class InventorySnapshotService
                 'laboratory_name' => $prod->laboratory_name,
                 'sold_units_30d' => round($soldUnits, 2),
                 'total_sales_usd_30d' => round($totalSalesUsd, 2),
-                'current_stock_units' => round($currentStock, 2),
+                'current_stock_units' => round($snapshotHistoricalStock, 2),
                 'unit_cost_usd' => round($unitCost, 4),
                 'sale_price_usd' => round($salePrice, 4),
                 'inventory_value_usd' => round($inventoryValue, 2),
