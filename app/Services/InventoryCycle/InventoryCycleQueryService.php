@@ -1143,74 +1143,40 @@ class InventoryCycleQueryService
                 $matrixMap[$item->count_date][$sid] = ($matrixMap[$item->count_date][$sid] ?? 0) + (int) $item->total_counts;
             }
         } elseif ($type === 'products') {
-            // Conteos de inventario regular por operador y por supervisor
+            // Inventario regular: únicamente conteos directos realizados por el operador
             $counts = ProductCount::whereYear('created_at', $year)
                 ->whereMonth('created_at', $month)
                 ->selectRaw('DATE(created_at) as count_date, user_id, COUNT(*) as total_counts')
                 ->groupBy('count_date', 'user_id')
                 ->get();
 
-            $audits = ProductCount::whereYear('updated_at', $year)
-                ->whereMonth('updated_at', $month)
-                ->whereNotNull('supervisor_id')
-                ->where('status', 'approved')
-                ->selectRaw('DATE(updated_at) as count_date, supervisor_id, COUNT(*) as total_counts')
-                ->groupBy('count_date', 'supervisor_id')
-                ->get();
-
             foreach ($counts as $item) {
                 $uid = (int) $item->user_id;
                 $matrixMap[$item->count_date][$uid] = ($matrixMap[$item->count_date][$uid] ?? 0) + (int) $item->total_counts;
             }
-            foreach ($audits as $item) {
-                $sid = (int) $item->supervisor_id;
-                $matrixMap[$item->count_date][$sid] = ($matrixMap[$item->count_date][$sid] ?? 0) + (int) $item->total_counts;
-            }
         } elseif ($type === 'invoices') {
+            // Por factura: únicamente conteos directos realizados por el operador
             $counts = InvoiceCount::whereYear('created_at', $year)
                 ->whereMonth('created_at', $month)
                 ->selectRaw('DATE(created_at) as count_date, user_id, COUNT(*) as total_counts')
                 ->groupBy('count_date', 'user_id')
                 ->get();
 
-            $audits = InvoiceCount::whereYear('updated_at', $year)
-                ->whereMonth('updated_at', $month)
-                ->whereNotNull('supervisor_id')
-                ->where('status', 'approved')
-                ->selectRaw('DATE(updated_at) as count_date, supervisor_id, COUNT(*) as total_counts')
-                ->groupBy('count_date', 'supervisor_id')
-                ->get();
-
             foreach ($counts as $item) {
                 $uid = (int) $item->user_id;
                 $matrixMap[$item->count_date][$uid] = ($matrixMap[$item->count_date][$uid] ?? 0) + (int) $item->total_counts;
             }
-            foreach ($audits as $item) {
-                $sid = (int) $item->supervisor_id;
-                $matrixMap[$item->count_date][$sid] = ($matrixMap[$item->count_date][$sid] ?? 0) + (int) $item->total_counts;
-            }
         } elseif ($type === 'sales') {
+            // Punto de venta: únicamente conteos directos realizados por el operador
             $counts = SaleCount::whereYear('created_at', $year)
                 ->whereMonth('created_at', $month)
                 ->selectRaw('DATE(created_at) as count_date, user_id, COUNT(*) as total_counts')
                 ->groupBy('count_date', 'user_id')
                 ->get();
 
-            $audits = SaleCount::whereYear('updated_at', $year)
-                ->whereMonth('updated_at', $month)
-                ->whereNotNull('supervisor_id')
-                ->where('status', 'approved')
-                ->selectRaw('DATE(updated_at) as count_date, supervisor_id, COUNT(*) as total_counts')
-                ->groupBy('count_date', 'supervisor_id')
-                ->get();
-
             foreach ($counts as $item) {
                 $uid = (int) $item->user_id;
                 $matrixMap[$item->count_date][$uid] = ($matrixMap[$item->count_date][$uid] ?? 0) + (int) $item->total_counts;
-            }
-            foreach ($audits as $item) {
-                $sid = (int) $item->supervisor_id;
-                $matrixMap[$item->count_date][$sid] = ($matrixMap[$item->count_date][$sid] ?? 0) + (int) $item->total_counts;
             }
         } else {
             // Discrepancias: conteos auditados por el supervisor (acreditados al supervisor en updated_at) y conteos pendientes del operador (created_at)
