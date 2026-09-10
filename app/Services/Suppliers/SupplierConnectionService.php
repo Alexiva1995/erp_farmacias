@@ -431,7 +431,7 @@ class SupplierConnectionService
                 Log::info("🔎 [FACTURAS] fetchFromAPI result", ['count' => is_countable($invoiceResponse) ? count($invoiceResponse) : 0]);
 
                 // Detectar si las facturas vienen en una clave específica (ej: 'facturas', 'estadoCuenta', 'documentos')
-                $invoicesRaw = $invoiceResponse;
+                $invoicesRaw = is_array($invoiceResponse) ? $invoiceResponse : [];
                 if (isset($invoiceResponse['estadoCuenta']) && is_array($invoiceResponse['estadoCuenta'])) {
                     $invoicesRaw = $invoiceResponse['estadoCuenta'];
                 } elseif (isset($invoiceResponse['documentos']) && is_array($invoiceResponse['documentos'])) {
@@ -440,67 +440,83 @@ class SupplierConnectionService
                     $invoicesRaw = $invoiceResponse['facturas'];
                 }
 
-                foreach ($invoicesRaw as $invoice) {
-                    $cod_invoice = $invoice['fact_num'] ?? $invoice['InvoiceCode'] ?? $invoice['numDoc'] ?? null;
+                if (is_iterable($invoicesRaw)) {
+                    foreach ($invoicesRaw as $invoice) {
+                        if (!is_array($invoice)) {
+                            continue;
+                        }
 
-                    if (!$cod_invoice || in_array($cod_invoice, $seenInvoiceNumbers)) {
-                        Log::warning("Factura ignorada (sin código o duplicada en este lote)", ['cod_invoice' => $cod_invoice]);
-                        continue;
-                    }
+                        $cod_invoice = $invoice['fact_num'] ?? $invoice['InvoiceCode'] ?? $invoice['numDoc'] ?? null;
 
-                    // Si la factura ya trae los artículos (caso Cristmedicals y otros)
-                    if (isset($invoice['articulos']) && is_array($invoice['articulos'])) {
-                        $parsed = $this->parseNestedInvoice($invoice, $connection);
-                        if (!empty($parsed)) {
+                        if (!$cod_invoice || in_array($cod_invoice, $seenInvoiceNumbers)) {
+                            Log::warning("Factura ignorada (sin código o duplicada en este lote)", ['cod_invoice' => $cod_invoice]);
+                            continue;
+                        }
+
+                        // Si la factura ya trae los artículos (caso Cristmedicals y otros)
+                        if (isset($invoice['articulos']) && is_array($invoice['articulos'])) {
+                            $parsed = $this->parseNestedInvoice($invoice, $connection);
+                            if (!empty($parsed)) {
+                                $invoiceResults[] = $parsed;
+                                $seenInvoiceNumbers[] = $cod_invoice;
+                            } else {
+                                Log::error("Fallo al parsear factura anidada", ['cod_invoice' => $cod_invoice]);
+                            }
+                            continue;
+                        }
+
+                        $payloadInvoiceDetails = $this->buildPayload($connection, 'factura_detalle', $cod_invoice);
+                        if (!$payloadInvoiceDetails || empty($payloadInvoiceDetails['url'])) {
+                            continue;
+                        }
+
+                        $invoiceDetailsResponse = $this->fetchFromAPI($token, [], $client, $payloadInvoiceDetails['url'], 'get');
+
+                        $detailsArray = is_array($invoiceDetailsResponse) ? $invoiceDetailsResponse : [];
+                        if (isset($invoiceDetailsResponse['detalles']) && is_array($invoiceDetailsResponse['detalles'])) {
+                            $detailsArray = $invoiceDetailsResponse['detalles'];
+                        } elseif (isset($invoiceDetailsResponse['articulos']) && is_array($invoiceDetailsResponse['articulos'])) {
+                            $detailsArray = $invoiceDetailsResponse['articulos'];
+                        } elseif (isset($invoiceDetailsResponse['items']) && is_array($invoiceDetailsResponse['items'])) {
+                            $detailsArray = $invoiceDetailsResponse['items'];
+                        }
+
+                        $flatData = [];
+
+                        if (is_iterable($detailsArray)) {
+                            foreach ($detailsArray as $detail) {
+                                if (!is_array($detail)) {
+                                    continue;
+                                }
+
+                                // Prefijar claves del encabezado
+                                $prefixedHeader = [];
+                                foreach ($invoice as $key => $value) {
+                                    if (!is_array($value)) {
+                                        $prefixedHeader["header_$key"] = $value;
+                                    }
+                                }
+
+                                // Prefijar claves del detalle
+                                $prefixedDetail = [];
+                                foreach ($detail as $key => $value) {
+                                    if (!is_array($value)) {
+                                        $prefixedDetail["detail_$key"] = $value;
+                                    }
+                                }
+
+                                // Combinar sin colisión
+                                $flatRow = array_merge($prefixedHeader, $prefixedDetail);
+                                $flatData[] = $flatRow;
+                            }
+                        }
+
+                        $invoiceCsvString = $this->convertJsonArrayToCsvString($flatData);
+                        $parsed = $this->invoiceTxtParser($invoiceCsvString, $connection, $seenInvoiceNumbers);
+
+                        if (!empty($parsed) && !empty($parsed['header'])) {
                             $invoiceResults[] = $parsed;
-                            $seenInvoiceNumbers[] = $cod_invoice;
-                        } else {
-                            Log::error("Fallo al parsear factura anidada", ['cod_invoice' => $cod_invoice]);
                         }
-                        continue;
-                    }
-
-                    $payloadInvoiceDetails = $this->buildPayload($connection, 'factura_detalle', $cod_invoice);
-                    $invoiceDetailsResponse = $this->fetchFromAPI($token, [], $client, $payloadInvoiceDetails['url'], 'get');
-
-                    $detailsArray = $invoiceDetailsResponse;
-                    if (isset($invoiceDetailsResponse['detalles']) && is_array($invoiceDetailsResponse['detalles'])) {
-                        $detailsArray = $invoiceDetailsResponse['detalles'];
-                    } elseif (isset($invoiceDetailsResponse['articulos']) && is_array($invoiceDetailsResponse['articulos'])) {
-                        $detailsArray = $invoiceDetailsResponse['articulos'];
-                    } elseif (isset($invoiceDetailsResponse['items']) && is_array($invoiceDetailsResponse['items'])) {
-                        $detailsArray = $invoiceDetailsResponse['items'];
-                    }
-
-                    $flatData = [];
-
-                    foreach ($detailsArray as $detail) {
-                        // Prefijar claves del encabezado
-                        $prefixedHeader = [];
-                        foreach ($invoice as $key => $value) {
-                            if (!is_array($value)) {
-                                $prefixedHeader["header_$key"] = $value;
-                            }
-                        }
-
-                        // Prefijar claves del detalle
-                        $prefixedDetail = [];
-                        foreach ($detail as $key => $value) {
-                            if (!is_array($value)) {
-                                $prefixedDetail["detail_$key"] = $value;
-                            }
-                        }
-
-                        // Combinar sin colisión
-                        $flatRow = array_merge($prefixedHeader, $prefixedDetail);
-                        $flatData[] = $flatRow;
-                    }
-
-                    $invoiceCsvString = $this->convertJsonArrayToCsvString($flatData);
-                    $parsed = $this->invoiceTxtParser($invoiceCsvString, $connection, $seenInvoiceNumbers);
-
-                    if (!empty($parsed) && !empty($parsed['header'])) {
-                        $invoiceResults[] = $parsed;
                     }
                 }
             }
