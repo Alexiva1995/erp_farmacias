@@ -23,7 +23,7 @@ class IaAssistantReportService
     public function getProcessedCollection(array $filtros): Collection
     {
         $filtros = $this->prepareDateFilters($filtros);
-        $tipo = $filtros['tipo_filtracion'] ?? 'average';
+        $tipo = $filtros['tipo_filtracion'] ?? 'weighted';
 
         $filtrosCacheKey = $filtros;
         unset(
@@ -211,7 +211,7 @@ class IaAssistantReportService
     public function getFilteredReportWithoutPaginate(array $filtros)
     {
         $filtros = $this->prepareDateFilters($filtros);
-        $tipo = $filtros['tipo_filtracion'] ?? 'average';
+        $tipo = $filtros['tipo_filtracion'] ?? 'weighted';
         
         // Obtener los IDs filtrados (Fallas, etc.) para asegurar que el conteo coincida
         $allIds = $this->getFilteredIds($filtros, false);
