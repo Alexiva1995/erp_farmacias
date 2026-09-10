@@ -160,8 +160,7 @@ const getDateRange = (rangeType) => {
 const isSimplifiedView = ref(false);
 
 const fullHeaders = [
-  { title: 'ID', key: 'id', sortable: true, width: '80px' },
-  { title: 'PRODUCTO', key: 'name', sortable: true },
+  { title: 'PRODUCTO / LABORATORIO', key: 'name', sortable: true },
   { title: 'Desempeño Comercial', key: 'sold_units', align: 'end', sortable: true },
   { title: 'Rentabilidad Bruta', key: 'margin_percentage', align: 'end', sortable: true },
   { title: 'GMROI (Retorno)', key: 'gmroi', align: 'center', sortable: true },
@@ -172,8 +171,7 @@ const fullHeaders = [
 ];
 
 const simplifiedHeaders = computed(() => [
-  { title: 'ID', key: 'id', sortable: true, width: '85px' },
-  { title: 'PRODUCTO (LABORATORIO)', key: 'name', sortable: true },
+  { title: 'PRODUCTO / LABORATORIO', key: 'name', sortable: true },
   { title: selectedAnalysisType.value === 'expiring_risk' ? 'STOCK EN RIESGO' : 'STOCK ACTUAL', key: 'current_stock', align: 'end', sortable: true, width: '150px' },
   { title: 'VENTAS EN PERIODO', key: 'sold_units', align: 'end', sortable: true, width: '180px' },
   { title: selectedAnalysisType.value === 'expiring_risk' ? 'CAPITAL POR EXPIRAR ($)' : 'TOTAL CAPITAL PARADO ($)', key: 'inventory_value', align: 'end', sortable: true, width: '200px' },
@@ -621,67 +619,58 @@ const handleFilterCritical = () => {
             </div>
           </template>
 
-          <template #item.id="{ item }">
-            <a
-              :href="'/inventory/traceability?q=' + item.id"
-              target="_blank"
-              class="text-decoration-none font-weight-black text-primary"
-            >
-              {{ item.id }}
-            </a>
-          </template>
-
           <template #item.name="{ item }">
-            <div class="d-flex flex-column py-2">
-              <div class="d-flex align-center flex-wrap gap-1 mb-1">
-                <span class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate" :title="item.name">
-                  {{ item.name.toUpperCase() }}
-                </span>
-                
-                <!-- Etiquetas específicas: Riesgo de Caducidad / Margen Negativo / Oferta Individual -->
-                <template v-if="selectedAnalysisType === 'negative_margin' || selectedAnalysisType === 'expiring_risk' || selectedAnalysisType === 'frozen_capital' || item.is_expiring_soon || item.has_expiration_risk || item.margin_percentage < 0">
-                  <!-- Etiqueta Por Caducar / Riesgo FEFO -->
-                  <VTooltip v-if="item.is_expiring_soon || (item.days_to_expiration !== null && item.days_to_expiration <= 180) || item.has_expiration_risk" location="top">
-                    <template #activator="{ props: tipProps }">
-                      <VChip
-                        v-bind="tipProps"
-                        :color="item.days_to_expiration <= 60 || item.has_expiration_risk ? 'error' : 'warning'"
-                        size="x-small"
-                        variant="flat"
-                        density="compact"
-                        class="font-weight-bold"
-                      >
-                        <VIcon icon="tabler-clock-exclamation" size="12" class="me-1" />
-                        {{ item.days_to_expiration <= 0 ? 'Vencido' : (item.days_to_expiration !== null ? `Vence en ${item.days_to_expiration}d` : 'Riesgo FEFO') }}
-                      </VChip>
-                    </template>
-                    <span>Próximo vencimiento: {{ item.next_expiration_date || 'Lote próximo' }} ({{ item.days_to_expiration }} días restantes)</span>
-                  </VTooltip>
+            <div class="d-flex flex-column py-1.5" style="min-width: 230px; max-width: 340px;">
+              <a
+                :href="`/inventory/traceability?q=${item.id}`"
+                target="_blank"
+                class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate text-decoration-none id-link cursor-pointer"
+                :title="item.name"
+              >
+                <span class="text-primary font-weight-black me-1">{{ item.id }}</span>
+                - {{ item.name }}
+              </a>
 
-                  <!-- Etiqueta Oferta Individual -->
-                  <VTooltip v-if="item.has_individual_offer || item.individual_offer_discount" location="top">
-                    <template #activator="{ props: tipProps }">
-                      <VChip
-                        v-bind="tipProps"
-                        color="warning"
-                        size="x-small"
-                        variant="flat"
-                        density="compact"
-                        class="font-weight-bold"
-                      >
-                        <VIcon icon="tabler-tag" size="12" class="me-1" />
-                        Oferta Ind. -{{ Math.round(item.individual_offer_discount) }}%
-                      </VChip>
-                    </template>
-                    <span>Descuento activo por oferta individual: {{ item.individual_offer_discount }}%</span>
-                  </VTooltip>
-                </template>
-              </div>
-
-              <div class="d-flex align-center gap-1 text-super-xs">
-                <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 250px;">
-                  {{ item.laboratory_name || 'S/L' }}
+              <div class="d-flex align-center flex-wrap gap-1 mt-0.5">
+                <span class="text-xs font-weight-medium text-primary text-uppercase truncate" style="max-width: 200px;">
+                  {{ item.laboratory_name || 'SIN LABORATORIO' }}
                 </span>
+
+                <!-- Oferta Individual al lado del laboratorio -->
+                <VTooltip v-if="item.has_individual_offer || item.individual_offer_discount" location="top">
+                  <template #activator="{ props: tipProps }">
+                    <VChip
+                      v-bind="tipProps"
+                      color="warning"
+                      size="x-small"
+                      variant="flat"
+                      density="compact"
+                      class="font-weight-bold"
+                    >
+                      <VIcon icon="tabler-tag" size="11" class="me-1" />
+                      Oferta -{{ Math.round(item.individual_offer_discount) }}%
+                    </VChip>
+                  </template>
+                  <span>Descuento activo por oferta individual: {{ item.individual_offer_discount }}%</span>
+                </VTooltip>
+
+                <!-- Etiqueta Por Caducar / Riesgo FEFO -->
+                <VTooltip v-if="item.is_expiring_soon || (item.days_to_expiration !== null && item.days_to_expiration <= 180) || item.has_expiration_risk" location="top">
+                  <template #activator="{ props: tipProps }">
+                    <VChip
+                      v-bind="tipProps"
+                      :color="item.days_to_expiration <= 60 || item.has_expiration_risk ? 'error' : 'warning'"
+                      size="x-small"
+                      variant="flat"
+                      density="compact"
+                      class="font-weight-bold"
+                    >
+                      <VIcon icon="tabler-clock-exclamation" size="11" class="me-1" />
+                      {{ item.days_to_expiration <= 0 ? 'Vencido' : (item.days_to_expiration !== null ? `Vence en ${item.days_to_expiration}d` : 'Riesgo FEFO') }}
+                    </VChip>
+                  </template>
+                  <span>Próximo vencimiento: {{ item.next_expiration_date || 'Lote próximo' }} ({{ item.days_to_expiration }} días restantes)</span>
+                </VTooltip>
               </div>
             </div>
           </template>
@@ -906,6 +895,14 @@ const handleFilterCritical = () => {
   font-weight: 800;
   letter-spacing: 0.5px;
   line-height: 1.2;
+}
+
+.id-link {
+  transition: color 0.15s ease-in-out;
+}
+.id-link:hover {
+  color: rgb(var(--v-theme-primary)) !important;
+  text-decoration: underline !important;
 }
 
 .cursor-help {
