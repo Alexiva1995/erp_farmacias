@@ -12,12 +12,17 @@ export default [
     subject: 'admin',
     children: [
       {
-        title: 'Reporte ABC',
-        to: 'bi-report-abc', // Necesitará una entrada en el router o arreglar la ruta de vue
-      },
-      {
-        title: 'Foto Finish',
-        to: 'bi-report-finish',
+        title: 'ABC-XYZ',
+        children: [
+          {
+            title: 'Reporte',
+            to: 'bi-report-abc',
+          },
+          {
+            title: 'Finish',
+            to: 'bi-report-finish',
+          },
+        ],
       },
       {
         title: 'Reporte Stock Muerto',
