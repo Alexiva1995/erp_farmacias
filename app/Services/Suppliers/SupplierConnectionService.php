@@ -305,24 +305,40 @@ class SupplierConnectionService
                 || in_array($connection->supplier_id, [3, 21, 1002]);
 
             if (!empty($connection->username) && !empty($connection->password) && !$isCristmedicals) {
-                $decryptedPass = FtpCrypt::decrypt($connection->password);
+                $rawPass = (string) $connection->password;
+                $decryptedPass = $rawPass;
+                try {
+                    $decryptedPass = FtpCrypt::decrypt($rawPass);
+                } catch (\Throwable $e) {
+                    $decryptedPass = $rawPass;
+                }
+                if (empty($decryptedPass)) {
+                    $decryptedPass = $rawPass;
+                }
+
                 $loginResponse = Http::withoutVerifying()->timeout(30)->post($connection->host, [
                     "Usuario" => $connection->username,
                     "Clave" => $decryptedPass,
-                    "usuario" => $connection->username,
-                    "clave" => $decryptedPass,
                 ]);
-                $token = $loginResponse->json()["token"] ?? ($loginResponse->json()["Token"] ?? null);
+                $loginData = $loginResponse->json();
+                $token = $loginData["token"] ?? ($loginData["Token"] ?? null);
                 if (empty($token)) {
+                    $apiMsg = $loginData["message"] ?? ($loginData["Message"] ?? "Respuesta sin token de acceso");
                     Log::error("Fallo de autenticación API para proveedor {$connection->supplier_id}", [
                         'host' => $connection->host,
+                        'username' => $connection->username,
                         'status' => $loginResponse->status(),
+                        'api_message' => $apiMsg,
                         'body' => substr($loginResponse->body(), 0, 500),
                     ]);
-                    throw new Exception("Fallo de autenticación: No se pudo obtener token de acceso desde {$connection->host} (Status: {$loginResponse->status()})");
+                    throw new Exception("Fallo de autenticación en {$connection->host}: {$apiMsg}. Verifique el usuario y la contraseña en la configuración de la conexión.");
                 }
             } elseif (!empty($connection->password)) {
-                $token = FtpCrypt::decrypt($connection->password);
+                try {
+                    $token = FtpCrypt::decrypt($connection->password);
+                } catch (\Throwable $e) {
+                    $token = $connection->password;
+                }
             }
 
             // Productos
@@ -1353,15 +1369,30 @@ class SupplierConnectionService
             return '';
         }
 
+        // Normalizar filas y sumar stock regional si existe
+        $normalizedData = [];
+        foreach ($data as $row) {
+            $rowArray = (array) $row;
+            if (isset($rowArray['stock_por_region']) && is_array($rowArray['stock_por_region'])) {
+                $totalStock = 0;
+                foreach ($rowArray['stock_por_region'] as $region) {
+                    $totalStock += (int) (is_array($region) ? ($region['disponible'] ?? 0) : ($region->disponible ?? 0));
+                }
+                $rowArray['existencia'] = $totalStock;
+                $rowArray['stock'] = $totalStock;
+                $rowArray['quantity'] = $totalStock;
+            }
+            $normalizedData[] = $rowArray;
+        }
+
         $csv = fopen('php://temp', 'r+');
 
         // Escribir encabezados
-        $first = (array) ($data[0] ?? []);
+        $first = (array) ($normalizedData[0] ?? []);
         fputcsv($csv, array_keys($first), ';', '"', '\\');
 
         // Escribir filas
-        foreach ($data as $row) {
-            $rowArray = (array) $row;
+        foreach ($normalizedData as $rowArray) {
             fputcsv($csv, array_map(function ($value) {
                 return is_array($value) ? json_encode($value, JSON_UNESCAPED_UNICODE) : $value;
             }, $rowArray), ';', '"', '\\');

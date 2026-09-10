@@ -71,8 +71,25 @@ class SyncSupplierConfigsCommand extends Command
                         'cristalmedicals',
                         'cristmedicals',
                     ], $content);
+
+                    $structure = $connection->structure ?? [];
+                    if (empty($structure) || !isset($structure['barcode_match']) || !isset($structure['name'])) {
+                        $connection->update([
+                            'has_header' => true,
+                            'structure' => [
+                                'barcode_match' => 'codigo_barra',
+                                'name' => 'des_art',
+                                'unit_cost_usd' => 'precio_con_descuento',
+                                'unit_cost' => 'precio_base',
+                                'quantity' => 'existencia',
+                                'cod_supplier' => 'co_art',
+                                'discount_percentage' => 'porc_descuento',
+                            ],
+                        ]);
+                    }
+
                     $apiSynced++;
-                    $status = "<fg=green>OK (PHP: {$supplier->id}.php)</>";
+                    $status = "<fg=green>OK (PHP: {$supplier->id}.php + BD)</>";
                 } elseif (str_contains($hostLower, 'cobeca') || str_contains($supplierNameLower, 'mafarta') || str_contains($supplierNameLower, 'cobeca')) {
                     $content = $this->getCobecaTemplate();
                     $this->writeConfigFiles($configsDir, (string) $supplier->id, [
