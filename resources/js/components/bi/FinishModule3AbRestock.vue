@@ -23,20 +23,21 @@ const page = ref(1);
 const sortBy = ref([{ key: 'snapshot_stock', order: 'asc' }]);
 
 const headers = [
-  { title: 'ID / PRODUCTO', key: 'product_name', sortable: true },
-  { title: 'LABORATORIO', key: 'laboratory_name', sortable: true },
-  { title: 'CLASIFICACIÓN', key: 'sales_class', align: 'center', sortable: true },
-  { title: 'STOCK EN FOTO', key: 'snapshot_stock', align: 'end', sortable: true },
-  { title: 'COBERTURA CORTE', key: 'snapshot_coverage_days', align: 'end', sortable: true },
-  { title: 'STOCK ACTUAL', key: 'current_stock', align: 'end', sortable: true },
-  { title: 'ESTADO DE REABASTECIMIENTO', key: 'restock_status', align: 'center', sortable: true },
+  { title: 'PRODUCTO / LABORATORIO', key: 'product_name', sortable: true, cellProps: { class: 'sticky-col' }, headerProps: { class: 'sticky-col' } },
+  { title: 'CLASIF.', key: 'sales_class', align: 'center', sortable: true },
+  { title: 'STOCK I', key: 'snapshot_stock', align: 'end', sortable: true },
+  { title: 'COB. I', key: 'snapshot_coverage_days', align: 'center', sortable: true },
+  { title: 'STOCK F', key: 'current_stock', align: 'end', sortable: true },
+  { title: 'COB. F', key: 'current_coverage_days', align: 'center', sortable: true },
+  { title: 'DÍAS QUIEBRE', key: 'days_in_stockout', align: 'center', sortable: true },
+  { title: 'ESTADO', key: 'restock_status', align: 'center', sortable: false },
 ];
 
-const getClassColor = (c) => {
-  if (c === 'A') return 'success';
-  if (c === 'B') return 'warning';
-  if (c === 'C') return 'secondary';
-  return 'error';
+const getSalesClassColor = (c) => {
+  if (c === 'A') return 'text-success';
+  if (c === 'B') return 'text-warning';
+  if (c === 'C') return 'text-info';
+  return 'text-error';
 };
 </script>
 
@@ -104,7 +105,7 @@ const getClassColor = (c) => {
     <VCard class="rounded-lg border shadow-sm overflow-hidden bg-surface mb-6">
       <VCardText class="pa-4">
         <VRow align="center" dense class="mb-3">
-          <VCol cols="12" md="5">
+          <VCol cols="12" sm="6" md="5">
             <AppTextField
               :model-value="search"
               placeholder="Buscar por producto, laboratorio o ID..."
@@ -117,9 +118,9 @@ const getClassColor = (c) => {
             />
           </VCol>
 
-          <VCol cols="12" md="7" class="text-end">
+          <VCol cols="12" sm="6" md="7" class="text-end">
             <span class="text-caption text-medium-emphasis">
-              Total: <strong>{{ items.length }}</strong> productos en riesgo
+              Total: <strong class="text-high-emphasis">{{ items.length }}</strong> productos en riesgo
             </span>
           </VCol>
         </VRow>
@@ -135,65 +136,118 @@ const getClassColor = (c) => {
           hover
           class="text-no-wrap premium-datatable"
         >
-          <!-- Columna Producto / ID -->
+          <!-- 1. Columna Producto / Laboratorio (Sticky a la izquierda) -->
           <template #item.product_name="{ item }">
-            <div class="d-flex flex-column py-1">
-              <span class="font-weight-black text-sm text-uppercase text-truncate" style="max-width: 260px;">
-                {{ item.product_name }}
+            <div class="d-flex flex-column py-1" style="min-width: 240px; max-width: 320px;">
+              <a
+                :href="`/inventory/traceability?q=${item.product_id}`"
+                target="_blank"
+                class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate text-decoration-none id-link cursor-pointer"
+                :title="item.product_name"
+              >
+                <span class="text-primary font-weight-black me-1">{{ item.product_id }}</span>
+                - {{ item.product_name }}
+              </a>
+              <span class="text-xs font-weight-medium text-primary text-uppercase text-truncate mt-0.5">
+                {{ item.laboratory_name || 'SIN LABORATORIO' }}
               </span>
-              <span class="text-caption text-primary">#{{ item.product_id }}</span>
             </div>
           </template>
 
-          <!-- Columna Laboratorio -->
-          <template #item.laboratory_name="{ item }">
-            <span class="font-weight-medium text-caption">{{ item.laboratory_name }}</span>
-          </template>
-
-          <!-- Columna Clasificación -->
+          <!-- 2. Columna Clasificación Pareto (Solo letra) -->
           <template #item.sales_class="{ item }">
-            <VChip size="x-small" :color="getClassColor(item.sales_class)" class="font-weight-bold">
-              Clase {{ item.sales_class }}
-            </VChip>
+            <span class="text-sm font-weight-bold" :class="getSalesClassColor(item.sales_class)">
+              {{ item.sales_class }}
+            </span>
           </template>
 
-          <!-- Columna Stock Foto -->
+          <!-- 3. Columna Stock Inicial -->
           <template #item.snapshot_stock="{ item }">
-            <span class="font-weight-bold" :class="item.snapshot_stock <= 0 ? 'text-error' : ''">
-              {{ item.snapshot_stock <= 0 ? '0 (Agotado)' : `${item.snapshot_stock} unds` }}
+            <span class="text-sm font-weight-bold" :class="Number(item.snapshot_stock) <= 0 ? 'text-error' : 'text-high-emphasis'">
+              {{ Number(item.snapshot_stock).toLocaleString() }}
             </span>
           </template>
 
-          <!-- Columna Cobertura Corte -->
+          <!-- 4. Columna Cobertura Inicial (al corte) -->
           <template #item.snapshot_coverage_days="{ item }">
-            <span class="text-caption">
-              {{ item.snapshot_coverage_days < 10 ? `${item.snapshot_coverage_days} días (Riesgo)` : `${item.snapshot_coverage_days}d` }}
+            <span class="text-sm font-weight-bold" :class="Number(item.snapshot_coverage_days) < 10 ? 'text-error' : (Number(item.snapshot_coverage_days) < 30 ? 'text-warning' : 'text-high-emphasis')">
+              {{ Math.round(Number(item.snapshot_coverage_days)) }}D
             </span>
           </template>
 
-          <!-- Columna Stock Actual -->
+          <!-- 5. Columna Stock Actual (Stock Final) -->
           <template #item.current_stock="{ item }">
-            <span class="font-weight-black text-primary">
-              {{ item.current_stock }} unds
+            <span class="text-sm font-weight-black" :class="Number(item.current_stock) > Number(item.snapshot_stock) ? 'text-success' : (Number(item.current_stock) <= 0 ? 'text-error' : 'text-primary')">
+              {{ Number(item.current_stock).toLocaleString() }}
             </span>
           </template>
 
-          <!-- Columna Estado Reabastecimiento -->
+          <!-- 6. Columna Cobertura Actual (hoy) -->
+          <template #item.current_coverage_days="{ item }">
+            <span class="text-sm font-weight-bold" :class="Number(item.current_coverage_days) >= 20 ? 'text-success' : (Number(item.current_coverage_days) > 0 ? 'text-warning' : 'text-error')">
+              {{ Math.round(Number(item.current_coverage_days)) }}D
+            </span>
+          </template>
+
+          <!-- 7. Columna Días en Quiebre -->
+          <template #item.days_in_stockout="{ item }">
+            <span class="text-sm font-weight-bold" :class="Number(item.days_in_stockout) > 0 ? 'text-error' : 'text-medium-emphasis'">
+              {{ Number(item.days_in_stockout) > 0 ? `${item.days_in_stockout}D` : '0D' }}
+            </span>
+          </template>
+
+          <!-- 6. Columna Estado Reabastecimiento con Avatar e Ícono -->
           <template #item.restock_status="{ item }">
-            <VChip
-              size="small"
-              :color="item.status_color"
-              variant="flat"
-              class="font-weight-bold"
-            >
-              {{ item.restock_status }}
-            </VChip>
+            <div class="d-flex justify-center align-center">
+              <!-- Reabastecido con Éxito: Check Verde -->
+              <VAvatar
+                v-if="Number(item.current_stock) >= 10"
+                color="success"
+                variant="tonal"
+                size="28"
+                class="cursor-pointer"
+              >
+                <VIcon icon="tabler-check" size="18" />
+                <VTooltip activator="parent" location="top">
+                  Reabastecido con Éxito ({{ item.current_stock }} unids)
+                </VTooltip>
+              </VAvatar>
+
+              <!-- Reabastecimiento Parcial: Alerta Naranja -->
+              <VAvatar
+                v-else-if="Number(item.current_stock) > 0"
+                color="warning"
+                variant="tonal"
+                size="28"
+                class="cursor-pointer"
+              >
+                <VIcon icon="tabler-alert-triangle" size="18" />
+                <VTooltip activator="parent" location="top">
+                  Reabastecimiento Parcial ({{ item.current_stock }} unids)
+                </VTooltip>
+              </VAvatar>
+
+              <!-- Aún en Quiebre: X Roja -->
+              <VAvatar
+                v-else
+                color="error"
+                variant="tonal"
+                size="28"
+                class="cursor-pointer"
+              >
+                <VIcon icon="tabler-x" size="18" />
+                <VTooltip activator="parent" location="top">
+                  Aún en Quiebre Crítico (0 unids)
+                </VTooltip>
+              </VAvatar>
+            </div>
           </template>
 
           <!-- Estado Vacío -->
           <template #no-data>
-            <div class="text-center py-6 text-medium-emphasis">
-              No hubo productos A/B en quiebre o riesgo en la fecha de corte evaluada.
+            <div class="text-center py-6 text-success font-weight-bold">
+              <VIcon icon="tabler-circle-check" size="24" class="me-2" />
+              ¡Excelente! No hay productos clase A/B en quiebre de stock o riesgo de cobertura.
             </div>
           </template>
         </VDataTable>
@@ -206,5 +260,27 @@ const getClassColor = (c) => {
 .text-super-xs {
   font-size: 0.6875rem !important;
   line-height: 0.875rem !important;
+}
+
+.id-link {
+  transition: opacity 0.2s ease;
+}
+
+.id-link:hover {
+  text-decoration: underline !important;
+  opacity: 0.85;
+}
+
+:deep(.premium-datatable) table {
+  table-layout: auto;
+}
+
+:deep(.premium-datatable th:nth-child(1)),
+:deep(.premium-datatable td:nth-child(1)) {
+  position: sticky;
+  left: 0;
+  background-color: rgb(var(--v-theme-surface)) !important;
+  z-index: 2;
+  box-shadow: 2px 0 5px -2px rgba(0, 0, 0, 0.1);
 }
 </style>

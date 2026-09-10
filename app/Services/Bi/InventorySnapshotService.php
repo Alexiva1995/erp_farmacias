@@ -197,28 +197,63 @@ class InventorySnapshotService
         // =========================================================================
         // MÓDULO 3: CONTROL DE COMPRAS PRIORITARIAS (REABASTECIMIENTO A/B)
         // =========================================================================
-        $criticalAbItems = $snapshotItems->filter(function ($i) {
+        $thresholdDays = max(30, (int) ($snapshot->period_days ?? 30));
+        $criticalAbItems = $snapshotItems->filter(function ($i) use ($thresholdDays) {
             $isAb = in_array($i->sales_class, ['A', 'B']);
             $isStockout = (float) $i->current_stock_units <= 0;
-            $isCriticalCoverage = (float) $i->coverage_days > 0 && (float) $i->coverage_days < 10;
+            $isCriticalCoverage = (float) $i->coverage_days < $thresholdDays;
             return $isAb && ($isStockout || $isCriticalCoverage);
         });
 
+        // Obtener primer movimiento de reabastecimiento posterior al corte
+        $firstRestockMovements = DB::table('inventory_movements')
+            ->select('product_id', DB::raw('MIN(movement_date) as first_restock_date'))
+            ->where('quantity', '>', 0)
+            ->where('movement_date', '>', $cutoffDateTime->toDateTimeString())
+            ->whereIn('product_id', $criticalAbItems->pluck('product_id'))
+            ->groupBy('product_id')
+            ->get()
+            ->keyBy('product_id');
+
+        $now = now();
         $abRestockList = [];
         $restockedCount = 0;
 
         foreach ($criticalAbItems as $item) {
             $currProd = $currentProducts->get($item->product_id);
-            $currStock = $currProd ? max(0, (float)$currProd->stock) : 0.0;
+            $lotStock = $lotsSumByProduct->has($item->product_id) ? (float) $lotsSumByProduct->get($item->product_id)->total_lot_stock : null;
+            $currStock = $lotStock !== null ? max(0, $lotStock) : ($currProd ? max(0, (float)$currProd->stock) : 0.0);
             $snapStock = (float) $item->current_stock_units;
+
+            // 1. Cálculo de Días en Quiebre
+            $daysInStockout = 0;
+            if ($snapStock <= 0) {
+                if ($firstRestockMovements->has($item->product_id)) {
+                    $restockDate = Carbon::parse($firstRestockMovements->get($item->product_id)->first_restock_date);
+                    $daysInStockout = max(1, (int) $cutoffDateTime->diffInDays($restockDate));
+                } else {
+                    $daysInStockout = max(1, (int) $cutoffDateTime->diffInDays($now));
+                }
+            }
+
+            // 2. Cálculo de Cobertura Actual (Días de stock hoy)
+            $dailySales = ((float)$item->sold_units_30d > 0) ? ((float)$item->sold_units_30d / 30) : 0.0;
+            if ($dailySales > 0) {
+                $currentCoverageDays = round($currStock / $dailySales);
+            } else {
+                $currentCoverageDays = $currStock > 0 ? 999 : 0;
+            }
 
             $status = 'Aún en Quiebre';
             $color = 'error';
-            if ($currStock >= 10) {
+            if ($currStock <= 0) {
+                $status = 'Aún en Quiebre';
+                $color = 'error';
+            } elseif ($currentCoverageDays >= 20 || $currStock >= 15) {
                 $status = 'Reabastecido con Éxito';
                 $color = 'success';
                 $restockedCount++;
-            } elseif ($currStock > 0) {
+            } elseif ($currStock > $snapStock || $currStock > 0) {
                 $status = 'Reabastecimiento Parcial';
                 $color = 'warning';
                 $restockedCount++;
@@ -232,6 +267,8 @@ class InventorySnapshotService
                 'snapshot_stock' => round($snapStock, 1),
                 'snapshot_coverage_days' => round((float)$item->coverage_days, 1),
                 'current_stock' => round($currStock, 1),
+                'days_in_stockout' => $daysInStockout,
+                'current_coverage_days' => $currentCoverageDays,
                 'restock_status' => $status,
                 'status_color' => $color,
             ];
