@@ -33,11 +33,18 @@ const headers = [
   { title: 'ESTADO', key: 'restock_status', align: 'center', sortable: false },
 ];
 
-const getSalesClassColor = (c) => {
-  if (c === 'A') return 'text-success';
-  if (c === 'B') return 'text-warning';
-  if (c === 'C') return 'text-info';
-  return 'text-error';
+const getSalesClassBadgeClass = (c) => {
+  if (c === 'A') return 'badge-class-a';
+  if (c === 'B') return 'badge-class-b';
+  if (c === 'C') return 'badge-class-c';
+  return 'badge-class-z';
+};
+
+const getCoverageBadgeClass = (days) => {
+  const d = Math.round(Number(days) || 0);
+  if (d <= 0) return 'badge-coverage-zero';
+  if (d <= 7) return 'badge-coverage-warning';
+  return 'badge-coverage-healthy';
 };
 </script>
 
@@ -154,11 +161,13 @@ const getSalesClassColor = (c) => {
             </div>
           </template>
 
-          <!-- 2. Columna Clasificación Pareto (Solo letra) -->
+          <!-- 2. Columna Clasificación Pareto (Badge sólido pill) -->
           <template #item.sales_class="{ item }">
-            <span class="text-sm font-weight-bold" :class="getSalesClassColor(item.sales_class)">
-              {{ item.sales_class }}
-            </span>
+            <div class="d-flex justify-center">
+              <span class="badge-pill font-weight-black text-xs" :class="getSalesClassBadgeClass(item.sales_class)">
+                {{ item.sales_class }}
+              </span>
+            </div>
           </template>
 
           <!-- 3. Columna Stock Inicial -->
@@ -168,11 +177,13 @@ const getSalesClassColor = (c) => {
             </span>
           </template>
 
-          <!-- 4. Columna Cobertura Inicial (al corte) -->
+          <!-- 4. Columna Cobertura Inicial (Mini Badge Tenue) -->
           <template #item.snapshot_coverage_days="{ item }">
-            <span class="text-sm font-weight-bold" :class="Number(item.snapshot_coverage_days) < 10 ? 'text-error' : (Number(item.snapshot_coverage_days) < 30 ? 'text-warning' : 'text-high-emphasis')">
-              {{ Math.round(Number(item.snapshot_coverage_days)) }}D
-            </span>
+            <div class="d-flex justify-center">
+              <span class="badge-pill font-weight-bold text-xs" :class="getCoverageBadgeClass(item.snapshot_coverage_days)">
+                {{ Math.round(Number(item.snapshot_coverage_days)) }}D
+              </span>
+            </div>
           </template>
 
           <!-- 5. Columna Stock Actual (Stock Final) -->
@@ -182,21 +193,35 @@ const getSalesClassColor = (c) => {
             </span>
           </template>
 
-          <!-- 6. Columna Cobertura Actual (hoy) -->
+          <!-- 6. Columna Cobertura Actual (Mini Badge Tenue) -->
           <template #item.current_coverage_days="{ item }">
-            <span class="text-sm font-weight-bold" :class="Number(item.current_coverage_days) >= 20 ? 'text-success' : (Number(item.current_coverage_days) > 0 ? 'text-warning' : 'text-error')">
-              {{ Math.round(Number(item.current_coverage_days)) }}D
-            </span>
+            <div class="d-flex justify-center">
+              <span class="badge-pill font-weight-bold text-xs" :class="getCoverageBadgeClass(item.current_coverage_days)">
+                {{ Math.round(Number(item.current_coverage_days)) }}D
+              </span>
+            </div>
           </template>
 
-          <!-- 7. Columna Días en Quiebre -->
+          <!-- 7. Columna Días en Quiebre (Badge de alerta) -->
           <template #item.days_in_stockout="{ item }">
-            <span class="text-sm font-weight-bold" :class="Number(item.days_in_stockout) > 0 ? 'text-error' : 'text-medium-emphasis'">
-              {{ Number(item.days_in_stockout) > 0 ? `${item.days_in_stockout}D` : '0D' }}
-            </span>
+            <div class="d-flex justify-center">
+              <span
+                v-if="Number(item.days_in_stockout) > 0"
+                class="badge-pill badge-stockout-alert font-weight-black text-xs d-inline-flex align-center gap-1"
+              >
+                <VIcon icon="tabler-clock" size="13" />
+                {{ item.days_in_stockout }}D
+              </span>
+              <span
+                v-else
+                class="badge-pill badge-stockout-zero font-weight-medium text-xs"
+              >
+                0D
+              </span>
+            </div>
           </template>
 
-          <!-- 6. Columna Estado Reabastecimiento con Avatar e Ícono -->
+          <!-- 8. Columna Estado Reabastecimiento con Avatar e Ícono -->
           <template #item.restock_status="{ item }">
             <div class="d-flex justify-center align-center">
               <!-- Reabastecido con Éxito: Check Verde -->
@@ -269,6 +294,68 @@ const getSalesClassColor = (c) => {
 .id-link:hover {
   text-decoration: underline !important;
   opacity: 0.85;
+}
+
+/* Badges redondeados (pill) */
+.badge-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 22px;
+  font-size: 0.75rem;
+  line-height: 1;
+  border-radius: 9999px;
+  padding: 0 8px;
+  white-space: nowrap;
+}
+
+/* Clasificación Pareto */
+.badge-class-a {
+  background-color: #E6F4EA !important;
+  color: #137333 !important;
+}
+
+.badge-class-b {
+  background-color: #E8F0FE !important;
+  color: #1A73E8 !important;
+}
+
+.badge-class-c {
+  background-color: #FEF7E0 !important;
+  color: #B06000 !important;
+}
+
+.badge-class-z {
+  background-color: #FCE8E6 !important;
+  color: #C5221F !important;
+}
+
+/* Coberturas */
+.badge-coverage-zero {
+  background-color: #FCE8E6 !important;
+  color: #C5221F !important;
+}
+
+.badge-coverage-warning {
+  background-color: #FEF7E0 !important;
+  color: #B06000 !important;
+}
+
+.badge-coverage-healthy {
+  background-color: #E6F4EA !important;
+  color: #137333 !important;
+}
+
+/* Días Quiebre */
+.badge-stockout-alert {
+  background-color: #FFEBEE !important;
+  color: #D32F2F !important;
+}
+
+.badge-stockout-zero {
+  background-color: #F1F3F4 !important;
+  color: #5F6368 !important;
 }
 
 :deep(.premium-datatable) table {
