@@ -205,6 +205,7 @@ class ProductRepository
 
         // Construcción de la Consulta
         $consulta = Product::select($columnas)
+            ->leftJoin('laboratories', 'laboratories.id', '=', 'products.laboratory_id')
             ->leftJoinSub($salesSubquery, 'sales_agg', 'sales_agg.product_id', '=', 'products.id')
             ->leftJoinSub($aoSubquery, 'ao_agg', 'ao_agg.product_id', '=', 'products.id');
 
@@ -235,6 +236,7 @@ class ProductRepository
                     $pattern = "(^|[^a-zA-Z0-9]){$escapedTerm}([^a-zA-Z0-9]|$)";
                     $query->whereRaw("products.name REGEXP ?", [$pattern])
                         ->orWhereRaw("products.active_ingredient REGEXP ?", [$pattern])
+                        ->orWhereRaw("laboratories.name REGEXP ?", [$pattern])
                         ->orWhere("products.id", "=", $searchTerm);
                 } else {
                     $words = explode(' ', trim($searchTerm));
@@ -244,6 +246,7 @@ class ProductRepository
                         $query->where(function ($wordQuery) use ($word) {
                             $wordQuery->where("products.name", "like", "%" . $word . "%")
                                 ->orWhere("products.active_ingredient", "like", "%" . $word . "%")
+                                ->orWhere("laboratories.name", "like", "%" . $word . "%")
                                 ->orWhere("products.id", "like", "%" . $word . "%");
                         });
                     }
