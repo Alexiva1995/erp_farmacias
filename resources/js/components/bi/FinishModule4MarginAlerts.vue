@@ -37,40 +37,53 @@ const headers = [
 
 <template>
   <div>
+    <!-- Tarjetas de Resumen Rápido (Alertas de Margen) -->
     <VRow dense class="mb-4">
-      <VCol cols="12" sm="4">
-        <VCard class="pa-4 rounded-lg border shadow-sm">
-          <span class="text-caption font-weight-bold text-uppercase text-medium-emphasis d-block mb-1">
-            Venta con Margen Negativo (<0%)
-          </span>
+      <!-- 1. Margen Negativo (<0%) -->
+      <VCol cols="12" sm="6" md="4">
+        <VCard class="pa-4 rounded-lg border shadow-sm h-full">
+          <div class="d-flex align-center justify-space-between mb-2">
+            <span class="text-caption font-weight-bold text-uppercase text-medium-emphasis">Margen Negativo (<0%)</span>
+            <VAvatar color="error" variant="tonal" size="36" class="rounded-lg">
+              <VIcon icon="tabler-alert-octagon" size="20" />
+            </VAvatar>
+          </div>
           <h3 class="text-h5 font-weight-black text-error mb-0">
             {{ marginSummary?.negative_margin_count || 0 }} SKUs
           </h3>
-          <span class="text-caption text-error font-weight-bold">Productos vendiéndose a pérdida con existencias</span>
+          <span class="text-caption text-error font-weight-bold">Venta a pérdida con existencias</span>
         </VCard>
       </VCol>
 
-      <VCol cols="12" sm="4">
-        <VCard class="pa-4 rounded-lg border shadow-sm">
-          <span class="text-caption font-weight-bold text-uppercase text-medium-emphasis d-block mb-1">
-            Margen Bajo Crítico (<15%)
-          </span>
+      <!-- 2. Margen Bajo Crítico (<15%) -->
+      <VCol cols="12" sm="6" md="4">
+        <VCard class="pa-4 rounded-lg border shadow-sm h-full">
+          <div class="d-flex align-center justify-space-between mb-2">
+            <span class="text-caption font-weight-bold text-uppercase text-medium-emphasis">Margen Bajo (<15%)</span>
+            <VAvatar color="warning" variant="tonal" size="36" class="rounded-lg">
+              <VIcon icon="tabler-alert-triangle" size="20" />
+            </VAvatar>
+          </div>
           <h3 class="text-h5 font-weight-black text-warning mb-0">
             {{ marginSummary?.low_margin_count || 0 }} SKUs
           </h3>
-          <span class="text-caption text-medium-emphasis">Por debajo del umbral mínimo de rentabilidad</span>
+          <span class="text-caption text-medium-emphasis">Por debajo del umbral mínimo</span>
         </VCard>
       </VCol>
 
-      <VCol cols="12" sm="4">
-        <VCard class="pa-4 rounded-lg border shadow-sm">
-          <span class="text-caption font-weight-bold text-uppercase text-medium-emphasis d-block mb-1">
-            Márgenes Saludables (>=15%)
-          </span>
+      <!-- 3. Márgenes Saludables (>=15%) -->
+      <VCol cols="12" sm="6" md="4">
+        <VCard class="pa-4 rounded-lg border shadow-sm h-full">
+          <div class="d-flex align-center justify-space-between mb-2">
+            <span class="text-caption font-weight-bold text-uppercase text-medium-emphasis">Márgenes Saludables</span>
+            <VAvatar color="success" variant="tonal" size="36" class="rounded-lg">
+              <VIcon icon="tabler-percentage" size="20" />
+            </VAvatar>
+          </div>
           <h3 class="text-h5 font-weight-black text-success mb-0">
             {{ marginSummary?.healthy_margin_count || 0 }} SKUs
           </h3>
-          <span class="text-caption text-medium-emphasis">Operando dentro de rangos óptimos</span>
+          <span class="text-caption text-medium-emphasis">Operando en rangos óptimos</span>
         </VCard>
       </VCol>
     </VRow>

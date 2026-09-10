@@ -78,6 +78,18 @@ class InventorySnapshotService
             ->get()
             ->keyBy('id');
 
+        // Obtener ventas reales en POS posteriores a la fecha de corte para auditar dinero real liberado a caja
+        $cutoffDateTime = Carbon::parse($snapshot->cutoff_date)->endOfDay();
+        $salesSinceCutoff = DB::table('order_details')
+            ->join('orders', 'order_details.order_id', '=', 'orders.id')
+            ->where('orders.status', 'Completed')
+            ->where('orders.created_at', '>', $cutoffDateTime)
+            ->whereNotNull('order_details.product_id')
+            ->select('order_details.product_id', DB::raw('SUM(order_details.quantity) as sold_qty'))
+            ->groupBy('order_details.product_id')
+            ->get()
+            ->keyBy('product_id');
+
         // =========================================================================
         // MÓDULO 1: FOTOGRAFÍA GENERAL (KPIS DE CIERRE)
         // =========================================================================
@@ -114,13 +126,14 @@ class InventorySnapshotService
         $totalInitialCzCapital = 0.0;
         $totalCurrentCzCapital = 0.0;
         $totalUnitsReleasedCz = 0.0;
+        $totalCashReleasedCz = 0.0;
 
         foreach ($czItems as $item) {
             $currProd = $currentProducts->get($item->product_id);
             $lotStock = $lotsSumByProduct->has($item->product_id) ? (float) $lotsSumByProduct->get($item->product_id)->total_lot_stock : null;
             $currStock = $lotStock !== null ? max(0, $lotStock) : ($currProd ? max(0, (float)$currProd->stock) : 0.0);
-            $currCost = $currProd ? (float)$currProd->unit_cost : (float)$item->unit_cost_usd;
-            $currValue = $currStock * $currCost;
+            $unitCost = (float) $item->unit_cost_usd;
+            $currValue = $currStock * $unitCost;
 
             $initialStock = (float) $item->current_stock_units;
             $initialValue = (float) $item->inventory_value_usd;
@@ -128,15 +141,24 @@ class InventorySnapshotService
             $totalInitialCzCapital += $initialValue;
             $totalCurrentCzCapital += $currValue;
 
-            $cashReleased = $initialValue - $currValue; // Dinero liberado a caja ($)
-            $unitsReleased = max(0, $initialStock - $currStock);
+            // Unidades vendidas realmente en POS desde el corte
+            $soldSince = $salesSinceCutoff->has($item->product_id) ? (float) $salesSinceCutoff->get($item->product_id)->sold_qty : 0.0;
+            $stockReduction = max(0, $initialStock - $currStock);
+
+            // Dinero liberado a caja = Unidades vendidas (hasta el tope de reducción de inventario inmovilizado) * Costo Unitario
+            $unitsReleased = min($stockReduction, $soldSince);
+            $cashReleased = $unitsReleased * $unitCost;
+
             $totalUnitsReleasedCz += $unitsReleased;
+            $totalCashReleasedCz += $cashReleased;
 
             $status = 'Sin Movimiento';
-            if ($currStock <= 0) {
+            if ($unitsReleased > 0 && $currStock <= 0) {
                 $status = 'Liberado Total (Agotado)';
-            } elseif ($currStock < $initialStock) {
-                $status = 'Liberado Parcial';
+            } elseif ($unitsReleased > 0) {
+                $status = 'Liberado por Ventas';
+            } elseif ($currStock < $initialStock && $soldSince <= 0) {
+                $status = 'Baja por Ajuste/Merma';
             } elseif ($currStock > $initialStock) {
                 $status = 'Incrementó Stock';
             }
@@ -152,6 +174,7 @@ class InventorySnapshotService
                 'current_value_usd' => round($currValue, 2),
                 'units_released' => round($unitsReleased, 1),
                 'cash_released_usd' => round($cashReleased, 2),
+                'sold_since_cutoff' => round($soldSince, 1),
                 'status' => $status,
             ];
         }
@@ -159,13 +182,12 @@ class InventorySnapshotService
         // Ordenar los que más dinero liberaron primero
         usort($czMonitoringList, fn($a, $b) => $b['cash_released_usd'] <=> $a['cash_released_usd']);
 
-        $totalCashReleased = max(0, $totalInitialCzCapital - $totalCurrentCzCapital);
-        $recoveryPercentage = $totalInitialCzCapital > 0 ? ($totalCashReleased / $totalInitialCzCapital) * 100 : 0.0;
+        $recoveryPercentage = $totalInitialCzCapital > 0 ? ($totalCashReleasedCz / $totalInitialCzCapital) * 100 : 0.0;
 
         $module2 = [
             'total_initial_cz_capital' => round($totalInitialCzCapital, 2),
             'total_current_cz_capital' => round($totalCurrentCzCapital, 2),
-            'total_cash_released' => round($totalCashReleased, 2),
+            'total_cash_released' => round($totalCashReleasedCz, 2),
             'total_units_released' => round($totalUnitsReleasedCz, 1),
             'recovery_percentage' => round($recoveryPercentage, 2),
             'items_count' => count($czMonitoringList),

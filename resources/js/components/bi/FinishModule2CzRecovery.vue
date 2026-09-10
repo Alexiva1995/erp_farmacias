@@ -111,7 +111,7 @@ const filteredItems = computed(() => {
       <VCardText class="pa-4">
         <!-- Filtros Rápidos y Buscador -->
         <VRow align="center" dense class="mb-3">
-          <VCol cols="12" md="4">
+          <VCol cols="12" sm="6" md="5">
             <AppTextField
               :model-value="search"
               placeholder="Buscar por producto, laboratorio o ID..."
@@ -124,29 +124,25 @@ const filteredItems = computed(() => {
             />
           </VCol>
 
-          <VCol cols="12" md="8" class="d-flex align-center justify-md-end flex-wrap gap-2">
-            <VBtnToggle
+          <VCol cols="12" sm="6" md="4">
+            <AppSelect
               v-model="quickFilter"
-              mandatory
+              :items="[
+                { title: 'Solo Liberados por Ventas (> $0)', value: 'released' },
+                { title: 'Todos los productos CZ (' + items.length + ')', value: 'all' },
+                { title: 'Sin Movimiento de Stock', value: 'no_movement' },
+                { title: 'Con Incremento de Stock', value: 'stock_increase' },
+              ]"
               density="compact"
-              color="primary"
+              hide-details
               variant="outlined"
-              class="rounded-lg"
-            >
-              <VBtn value="released" size="small" class="font-weight-bold" color="success">
-                <VIcon icon="tabler-sparkles" size="16" class="me-1 text-success" />
-                Solo Liberados (> $0)
-              </VBtn>
-              <VBtn value="all" size="small" class="font-weight-bold">
-                Todos ({{ items.length }})
-              </VBtn>
-              <VBtn value="no_movement" size="small" class="font-weight-bold">
-                Sin Movimiento
-              </VBtn>
-            </VBtnToggle>
+              prepend-inner-icon="tabler-filter"
+            />
+          </VCol>
 
-            <span class="text-caption text-medium-emphasis ms-2">
-              Mostrando: <strong>{{ filteredItems.length }}</strong> productos
+          <VCol cols="12" md="3" class="text-end">
+            <span class="text-caption text-medium-emphasis">
+              Mostrando: <strong class="text-high-emphasis">{{ filteredItems.length }}</strong> productos
             </span>
           </VCol>
         </VRow>

@@ -42,40 +42,63 @@ const getClassColor = (c) => {
 
 <template>
   <div>
-    <VCard class="pa-5 mb-4 rounded-lg border shadow-sm bg-surface">
-      <VRow align="center" dense>
-        <VCol cols="12" md="4">
-          <span class="text-caption font-weight-bold text-uppercase text-medium-emphasis d-block mb-1">
-            Efectividad de Reabastecimiento A/B
-          </span>
-          <div class="d-flex align-baseline gap-2">
-            <h2 class="text-h4 font-weight-black mb-0" :class="restockSummary?.effectiveness_rate >= 80 ? 'text-success' : 'text-warning'">
+    <!-- Tarjetas de Resumen Rápido (Reabastecimiento A/B) -->
+    <VRow dense class="mb-4">
+      <!-- 1. Efectividad de Reabastecimiento A/B -->
+      <VCol cols="12" sm="6" md="4">
+        <VCard class="pa-4 rounded-lg border shadow-sm h-full">
+          <div class="d-flex align-center justify-space-between mb-2">
+            <span class="text-caption font-weight-bold text-uppercase text-medium-emphasis">Efectividad de Reabastecimiento</span>
+            <VAvatar :color="restockSummary?.effectiveness_rate >= 80 ? 'success' : 'warning'" variant="tonal" size="36" class="rounded-lg">
+              <VIcon icon="tabler-truck-delivery" size="20" />
+            </VAvatar>
+          </div>
+          <div class="d-flex align-baseline gap-2 mb-1">
+            <h3 class="text-h5 font-weight-black mb-0" :class="restockSummary?.effectiveness_rate >= 80 ? 'text-success' : 'text-warning'">
               {{ restockSummary?.effectiveness_rate || 0 }}%
-            </h2>
-            <span class="text-caption font-weight-bold">Tasa de Cumplimiento</span>
+            </h3>
+            <VChip size="x-small" :color="restockSummary?.effectiveness_rate >= 80 ? 'success' : 'warning'" class="font-weight-black">
+              Tasa de Cumplimiento
+            </VChip>
           </div>
           <span class="text-caption text-medium-emphasis">
-            {{ restockSummary?.restocked_count || 0 }} de {{ restockSummary?.total_critical_items || 0 }} productos críticos reabastecidos.
+            {{ restockSummary?.restocked_count || 0 }} de {{ restockSummary?.total_critical_items || 0 }} productos reabastecidos
           </span>
-        </VCol>
+        </VCard>
+      </VCol>
 
-        <VCol cols="12" sm="6" md="4">
-          <div class="pa-3 bg-light-success rounded-lg border">
-            <span class="text-caption font-weight-bold text-medium-emphasis d-block">SKUs Reabastecidos con Éxito</span>
-            <span class="text-h6 font-weight-black text-success">{{ restockSummary?.restocked_count || 0 }} productos</span>
-            <span class="text-super-xs text-medium-emphasis d-block">Stock actual recuperado y saludable</span>
+      <!-- 2. SKUs Reabastecidos con Éxito -->
+      <VCol cols="12" sm="6" md="4">
+        <VCard class="pa-4 rounded-lg border shadow-sm h-full">
+          <div class="d-flex align-center justify-space-between mb-2">
+            <span class="text-caption font-weight-bold text-uppercase text-medium-emphasis">Reabastecidos con Éxito</span>
+            <VAvatar color="success" variant="tonal" size="36" class="rounded-lg">
+              <VIcon icon="tabler-circle-check" size="20" />
+            </VAvatar>
           </div>
-        </VCol>
+          <h3 class="text-h5 font-weight-black text-success mb-0">
+            {{ restockSummary?.restocked_count || 0 }} SKUs
+          </h3>
+          <span class="text-caption text-medium-emphasis">Stock recuperado y saludable</span>
+        </VCard>
+      </VCol>
 
-        <VCol cols="12" sm="6" md="4">
-          <div class="pa-3 bg-light-error rounded-lg border">
-            <span class="text-caption font-weight-bold text-medium-emphasis d-block">SKUs Aún en Quiebre Crítico</span>
-            <span class="text-h6 font-weight-black text-error">{{ restockSummary?.still_stockout_count || 0 }} productos</span>
-            <span class="text-super-xs text-error font-weight-bold d-block">Requieren seguimiento urgente con compras</span>
+      <!-- 3. SKUs Aún en Quiebre Crítico -->
+      <VCol cols="12" sm="6" md="4">
+        <VCard class="pa-4 rounded-lg border shadow-sm h-full">
+          <div class="d-flex align-center justify-space-between mb-2">
+            <span class="text-caption font-weight-bold text-uppercase text-medium-emphasis">Aún en Quiebre Crítico</span>
+            <VAvatar color="error" variant="tonal" size="36" class="rounded-lg">
+              <VIcon icon="tabler-alert-triangle" size="20" />
+            </VAvatar>
           </div>
-        </VCol>
-      </VRow>
-    </VCard>
+          <h3 class="text-h5 font-weight-black text-error mb-0">
+            {{ restockSummary?.still_stockout_count || 0 }} SKUs
+          </h3>
+          <span class="text-caption text-error font-weight-bold">Requieren compra urgente</span>
+        </VCard>
+      </VCol>
+    </VRow>
 
     <!-- Tabla de Seguimiento de Compras A/B con VDataTable Interactivo -->
     <VCard class="rounded-lg border shadow-sm overflow-hidden bg-surface mb-6">
