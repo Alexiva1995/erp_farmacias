@@ -1073,7 +1073,7 @@ class InventoryCycleQueryService
         $matrixMap = [];
 
         if ($type === 'totals') {
-            // Obtener conteos de productos regulares, facturas y ventas
+            // 1. Conteos realizados directamente por el operador (ProductCount, InvoiceCount, SaleCount)
             $pCounts = ProductCount::whereYear('created_at', $year)
                 ->whereMonth('created_at', $month)
                 ->selectRaw('DATE(created_at) as count_date, user_id, COUNT(*) as total_counts')
@@ -1092,6 +1092,31 @@ class InventoryCycleQueryService
                 ->groupBy('count_date', 'user_id')
                 ->get();
 
+            // 2. Conteos auditados/verificados por el supervisor (acreditados al supervisor_id en la fecha de verificación)
+            $pAudits = ProductCount::whereYear('updated_at', $year)
+                ->whereMonth('updated_at', $month)
+                ->whereNotNull('supervisor_id')
+                ->where('status', 'approved')
+                ->selectRaw('DATE(updated_at) as count_date, supervisor_id, COUNT(*) as total_counts')
+                ->groupBy('count_date', 'supervisor_id')
+                ->get();
+
+            $iAudits = InvoiceCount::whereYear('updated_at', $year)
+                ->whereMonth('updated_at', $month)
+                ->whereNotNull('supervisor_id')
+                ->where('status', 'approved')
+                ->selectRaw('DATE(updated_at) as count_date, supervisor_id, COUNT(*) as total_counts')
+                ->groupBy('count_date', 'supervisor_id')
+                ->get();
+
+            $sAudits = SaleCount::whereYear('updated_at', $year)
+                ->whereMonth('updated_at', $month)
+                ->whereNotNull('supervisor_id')
+                ->where('status', 'approved')
+                ->selectRaw('DATE(updated_at) as count_date, supervisor_id, COUNT(*) as total_counts')
+                ->groupBy('count_date', 'supervisor_id')
+                ->get();
+
             foreach ($pCounts as $item) {
                 $uid = (int) $item->user_id;
                 $matrixMap[$item->count_date][$uid] = ($matrixMap[$item->count_date][$uid] ?? 0) + (int) $item->total_counts;
@@ -1104,24 +1129,137 @@ class InventoryCycleQueryService
                 $uid = (int) $item->user_id;
                 $matrixMap[$item->count_date][$uid] = ($matrixMap[$item->count_date][$uid] ?? 0) + (int) $item->total_counts;
             }
-        } else {
-            $countsQuery = match ($type) {
-                'invoices' => InvoiceCount::query(),
-                'sales'    => SaleCount::query(),
-                'pending'  => ProductCount::where('status', 'pending'),
-                default    => ProductCount::query(),
-            };
 
-            $counts = $countsQuery
+            foreach ($pAudits as $item) {
+                $sid = (int) $item->supervisor_id;
+                $matrixMap[$item->count_date][$sid] = ($matrixMap[$item->count_date][$sid] ?? 0) + (int) $item->total_counts;
+            }
+            foreach ($iAudits as $item) {
+                $sid = (int) $item->supervisor_id;
+                $matrixMap[$item->count_date][$sid] = ($matrixMap[$item->count_date][$sid] ?? 0) + (int) $item->total_counts;
+            }
+            foreach ($sAudits as $item) {
+                $sid = (int) $item->supervisor_id;
+                $matrixMap[$item->count_date][$sid] = ($matrixMap[$item->count_date][$sid] ?? 0) + (int) $item->total_counts;
+            }
+        } elseif ($type === 'products') {
+            // Conteos de inventario regular por operador y por supervisor
+            $counts = ProductCount::whereYear('created_at', $year)
+                ->whereMonth('created_at', $month)
+                ->selectRaw('DATE(created_at) as count_date, user_id, COUNT(*) as total_counts')
+                ->groupBy('count_date', 'user_id')
+                ->get();
+
+            $audits = ProductCount::whereYear('updated_at', $year)
+                ->whereMonth('updated_at', $month)
+                ->whereNotNull('supervisor_id')
+                ->where('status', 'approved')
+                ->selectRaw('DATE(updated_at) as count_date, supervisor_id, COUNT(*) as total_counts')
+                ->groupBy('count_date', 'supervisor_id')
+                ->get();
+
+            foreach ($counts as $item) {
+                $uid = (int) $item->user_id;
+                $matrixMap[$item->count_date][$uid] = ($matrixMap[$item->count_date][$uid] ?? 0) + (int) $item->total_counts;
+            }
+            foreach ($audits as $item) {
+                $sid = (int) $item->supervisor_id;
+                $matrixMap[$item->count_date][$sid] = ($matrixMap[$item->count_date][$sid] ?? 0) + (int) $item->total_counts;
+            }
+        } elseif ($type === 'invoices') {
+            $counts = InvoiceCount::whereYear('created_at', $year)
+                ->whereMonth('created_at', $month)
+                ->selectRaw('DATE(created_at) as count_date, user_id, COUNT(*) as total_counts')
+                ->groupBy('count_date', 'user_id')
+                ->get();
+
+            $audits = InvoiceCount::whereYear('updated_at', $year)
+                ->whereMonth('updated_at', $month)
+                ->whereNotNull('supervisor_id')
+                ->where('status', 'approved')
+                ->selectRaw('DATE(updated_at) as count_date, supervisor_id, COUNT(*) as total_counts')
+                ->groupBy('count_date', 'supervisor_id')
+                ->get();
+
+            foreach ($counts as $item) {
+                $uid = (int) $item->user_id;
+                $matrixMap[$item->count_date][$uid] = ($matrixMap[$item->count_date][$uid] ?? 0) + (int) $item->total_counts;
+            }
+            foreach ($audits as $item) {
+                $sid = (int) $item->supervisor_id;
+                $matrixMap[$item->count_date][$sid] = ($matrixMap[$item->count_date][$sid] ?? 0) + (int) $item->total_counts;
+            }
+        } elseif ($type === 'sales') {
+            $counts = SaleCount::whereYear('created_at', $year)
+                ->whereMonth('created_at', $month)
+                ->selectRaw('DATE(created_at) as count_date, user_id, COUNT(*) as total_counts')
+                ->groupBy('count_date', 'user_id')
+                ->get();
+
+            $audits = SaleCount::whereYear('updated_at', $year)
+                ->whereMonth('updated_at', $month)
+                ->whereNotNull('supervisor_id')
+                ->where('status', 'approved')
+                ->selectRaw('DATE(updated_at) as count_date, supervisor_id, COUNT(*) as total_counts')
+                ->groupBy('count_date', 'supervisor_id')
+                ->get();
+
+            foreach ($counts as $item) {
+                $uid = (int) $item->user_id;
+                $matrixMap[$item->count_date][$uid] = ($matrixMap[$item->count_date][$uid] ?? 0) + (int) $item->total_counts;
+            }
+            foreach ($audits as $item) {
+                $sid = (int) $item->supervisor_id;
+                $matrixMap[$item->count_date][$sid] = ($matrixMap[$item->count_date][$sid] ?? 0) + (int) $item->total_counts;
+            }
+        } else {
+            // Discrepancias: conteos auditados por el supervisor (acreditados al supervisor en updated_at) y conteos pendientes del operador (created_at)
+            $pendingCounts = ProductCount::where('status', 'pending')
                 ->whereYear('created_at', $year)
                 ->whereMonth('created_at', $month)
                 ->selectRaw('DATE(created_at) as count_date, user_id, COUNT(*) as total_counts')
                 ->groupBy('count_date', 'user_id')
                 ->get();
 
-            foreach ($counts as $item) {
+            $auditedCounts = ProductCount::whereYear('updated_at', $year)
+                ->whereMonth('updated_at', $month)
+                ->whereNotNull('supervisor_id')
+                ->selectRaw('DATE(updated_at) as count_date, supervisor_id, COUNT(*) as total_counts')
+                ->groupBy('count_date', 'supervisor_id')
+                ->get();
+
+            $auditedInvoices = InvoiceCount::whereYear('updated_at', $year)
+                ->whereMonth('updated_at', $month)
+                ->whereNotNull('supervisor_id')
+                ->selectRaw('DATE(updated_at) as count_date, supervisor_id, COUNT(*) as total_counts')
+                ->groupBy('count_date', 'supervisor_id')
+                ->get();
+
+            $auditedSales = SaleCount::whereYear('updated_at', $year)
+                ->whereMonth('updated_at', $month)
+                ->whereNotNull('supervisor_id')
+                ->selectRaw('DATE(updated_at) as count_date, supervisor_id, COUNT(*) as total_counts')
+                ->groupBy('count_date', 'supervisor_id')
+                ->get();
+
+            foreach ($pendingCounts as $item) {
                 $uid = (int) $item->user_id;
-                $matrixMap[$item->count_date][$uid] = (int) $item->total_counts;
+                $matrixMap[$item->count_date][$uid] = ($matrixMap[$item->count_date][$uid] ?? 0) + (int) $item->total_counts;
+            }
+
+            foreach ($auditedCounts as $item) {
+                $sid = (int) $item->supervisor_id;
+                $matrixMap[$item->count_date][$sid] = ($matrixMap[$item->count_date][$sid] ?? 0) + (int) $item->total_counts;
+            }
+
+            foreach ($auditedInvoices as $item) {
+                $sid = (int) $item->supervisor_id;
+                $matrixMap[$item->count_date][$sid] = ($matrixMap[$item->count_date][$sid] ?? 0) + (int) $item->total_counts;
+            }
+
+            foreach ($auditedSales as $item) {
+                $sid = (int) $item->supervisor_id;
+                $matrixMap[$item->count_date][$sid] = ($matrixMap[$item->count_date][$sid] ?? 0) + (int) $item->total_counts;
             }
         }
 

@@ -544,6 +544,27 @@ class SupplierConnectionService
     {
         $now = now();
         $supplierId = $connection->supplier_id;
+        $supplierName = strtoupper($connection->supplier?->name ?? '');
+
+        // Si es Mafarta o Cobeca y no tiene mapeado el active_ingredient en la estructura de BD, auto-asignar estructura estándar
+        if (str_contains($supplierName, 'MAFARTA') || str_contains($supplierName, 'COBECA') || (int)$supplierId === 23 || (int)$supplierId === 1011) {
+            $hasActiveIngredient = collect($connection->structure)->contains(fn($m, $k) => ($m['target'] ?? $k) === 'active_ingredient');
+            if (!$hasActiveIngredient) {
+                $standardMafartaStructure = [
+                    "12" => [ "type" => "string", "target" => "cod_supplier", "file_field" => "cod_articulo" ],
+                    "13" => [ "type" => "string", "target" => "barcode_match", "file_field" => "cod_barra" ],
+                    "14" => [ "type" => "string", "target" => "name", "file_field" => "desc_articulo" ],
+                    "17" => [ "type" => "integer", "target" => "quantity", "file_field" => "existencia" ],
+                    "20" => [ "type" => "decimal", "target" => "unit_cost", "file_field" => "monto_final" ],
+                    "28" => [ "type" => "date", "target" => "expiration", "file_field" => "fecha_Expire_ned" ],
+                    "29" => [ "type" => "string", "target" => "active_ingredient", "file_field" => "desc_componente_base" ],
+                    "30" => [ "type" => "string", "target" => "laboratory", "file_field" => "desc_proveedor" ]
+                ];
+                $connection->update(['structure' => $standardMafartaStructure]);
+                $connection->structure = $standardMafartaStructure;
+            }
+        }
+
         $structure = $connection->structure;
         $has_header = $connection->has_header;
 

@@ -655,6 +655,8 @@ class SupplierQueryService
                         $escapedSearch = preg_quote($search, '/');
                         $q->whereRaw("product_suppliers.name REGEXP ?", ['(^|[[:space:][:punct:]])' . $escapedSearch . '([[:space:][:punct:]]|$)'])
                             ->orWhereRaw("product_suppliers.active_ingredient REGEXP ?", ['(^|[[:space:][:punct:]])' . $escapedSearch . '([[:space:][:punct:]]|$)'])
+                            ->orWhereRaw("product_suppliers.laboratory REGEXP ?", ['(^|[[:space:][:punct:]])' . $escapedSearch . '([[:space:][:punct:]]|$)'])
+                            ->orWhereRaw("laboratories.name REGEXP ?", ['(^|[[:space:][:punct:]])' . $escapedSearch . '([[:space:][:punct:]]|$)'])
                             ->orWhere('product_suppliers.barcode_match', '=', $search)
                             ->orWhere('product_suppliers.id', '=', $search)
                             ->orWhere('product_suppliers.product_id', '=', $search);
@@ -665,6 +667,8 @@ class SupplierQueryService
                         $query->where(function ($wordQuery) use ($word) {
                             $wordQuery->where('product_suppliers.name', 'like', "%{$word}%")
                                 ->orWhere('product_suppliers.active_ingredient', 'like', "%{$word}%")
+                                ->orWhere('product_suppliers.laboratory', 'like', "%{$word}%")
+                                ->orWhere('laboratories.name', 'like', "%{$word}%")
                                 ->orWhere('product_suppliers.barcode_match', 'like', "%{$word}%");
                         });
                     }

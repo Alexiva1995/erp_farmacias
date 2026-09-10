@@ -18,6 +18,7 @@ class SupplierProductResource extends JsonResource
             'id' => $this->id,
             'product_id' => $this->product_id,
             'name' => $this->name,
+            'active_ingredient' => $this->active_ingredient ?? null,
             'laboratory_name' => $this->laboratory_name ?? $this->laboratory ?? 'N/A',
             'unit_cost' => $this->unit_cost_bs ?? $this->unit_cost ?? 0,
             'unit_cost_usd' => $this->unit_cost_usd ?? 0,

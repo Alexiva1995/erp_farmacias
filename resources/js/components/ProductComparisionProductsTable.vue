@@ -472,10 +472,14 @@ const headers = computed(() => [
               </div>
                 
               <div class="d-flex align-center flex-wrap gap-x-2 text-super-xs font-weight-bold">
+                <span v-if="item.active_ingredient" class="text-disabled uppercase">
+                  {{ item.active_ingredient.toUpperCase() }}
+                </span>
+                <span v-if="item.active_ingredient && item.laboratory_name" class="text-disabled">|</span>
                 <span v-if="item.laboratory_name" class="text-primary uppercase">
                   {{ item.laboratory_name.toUpperCase() }}
                 </span>
-                <span v-if="item.laboratory_name && item.supplier_name" class="text-disabled">|</span>
+                <span v-if="(item.laboratory_name || item.active_ingredient) && item.supplier_name" class="text-disabled">|</span>
                 <div class="d-flex align-center gap-1">
                   <VIcon icon="tabler-building-warehouse" size="10" class="text-disabled" />
                   <span class="text-disabled uppercase">{{ item.supplier_name }}</span>
@@ -668,10 +672,14 @@ const headers = computed(() => [
                   </VChip>
                 </div>
                 <div class="d-flex align-center flex-wrap gap-x-2 text-super-xs font-weight-bold">
+                  <span v-if="item.active_ingredient" class="text-disabled uppercase">
+                    {{ item.active_ingredient.toUpperCase() }}
+                  </span>
+                  <span v-if="item.active_ingredient && item.laboratory_name" class="text-disabled">|</span>
                   <span v-if="item.laboratory_name" class="text-primary uppercase">
                     {{ item.laboratory_name.toUpperCase() }}
                   </span>
-                  <span v-if="item.laboratory_name && item.supplier_name" class="text-disabled">|</span>
+                  <span v-if="(item.laboratory_name || item.active_ingredient) && item.supplier_name" class="text-disabled">|</span>
                   <div class="d-flex align-center gap-1">
                     <VIcon icon="tabler-building-warehouse" size="10" class="text-disabled" />
                     <span class="text-disabled uppercase">{{ item.supplier_name }}</span>

@@ -659,6 +659,17 @@ class SupplierController extends Controller
                         "13" => [ "field" => "porcentaje_iva", "type" => "decimal" ]
                     ]
                 ];
+            } elseif (stripos($supplier->name, 'MAFARTA') !== false || stripos($supplier->name, 'COBECA') !== false || $supplier->id === 23 || $supplier->id === 1011) {
+                $data['structure'] = [
+                    "12" => [ "type" => "string", "target" => "cod_supplier", "file_field" => "cod_articulo" ],
+                    "13" => [ "type" => "string", "target" => "barcode_match", "file_field" => "cod_barra" ],
+                    "14" => [ "type" => "string", "target" => "name", "file_field" => "desc_articulo" ],
+                    "17" => [ "type" => "integer", "target" => "quantity", "file_field" => "existencia" ],
+                    "20" => [ "type" => "decimal", "target" => "unit_cost", "file_field" => "monto_final" ],
+                    "28" => [ "type" => "date", "target" => "expiration", "file_field" => "fecha_Expire_ned" ],
+                    "29" => [ "type" => "string", "target" => "active_ingredient", "file_field" => "desc_componente_base" ],
+                    "30" => [ "type" => "string", "target" => "laboratory", "file_field" => "desc_proveedor" ]
+                ];
             } else {
                 $data['structure'] = [];
             }
