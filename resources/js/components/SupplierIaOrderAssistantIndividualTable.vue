@@ -404,6 +404,7 @@ function rowClass(item) {
                   </span>
                 </span>
                 <span v-if="item.is_colombian_origin == 1" class="text-info font-weight-bold ml-1">(COL)</span>
+                <VIcon v-if="item.is_favorite == 1" icon="tabler-star-filled" color="warning" size="13" class="ml-1" title="Producto Favorito" />
                 <!-- Advertencia: promedio desactualizado (> 48h) -->
                 <VTooltip v-if="item.is_stale_average" location="top">
                   <template #activator="{ props: tooltipProps }">

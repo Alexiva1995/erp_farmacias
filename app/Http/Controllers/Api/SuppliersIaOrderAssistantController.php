@@ -177,6 +177,13 @@ class SuppliersIaOrderAssistantController extends Controller
             }
         }
 
+        if (!array_key_exists("isFavorite", $filtros) && $request->has("isFavorite")) {
+            $val = filter_var($request->isFavorite, FILTER_VALIDATE_BOOLEAN);
+            if ($val === true) {
+                $filtros["isFavorite"] = true;
+            }
+        }
+
         if ($request->filled("product_ids")) {
             $filtros["product_ids"] = is_array($request->product_ids)
                 ? $request->product_ids

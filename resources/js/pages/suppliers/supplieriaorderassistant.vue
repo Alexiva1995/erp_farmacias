@@ -42,6 +42,7 @@ const hasStock = ref("all");
 const con_descuento = ref(false);
 const isColombian = ref(false);
 const isNovaventa = ref(false);
+const isFavorite = ref(false);
 const tipoExclusion = ref([]);
 const ordenarAhorro = ref(false);
 const searchQuery = ref("");
@@ -80,6 +81,7 @@ const handleClearFilters = () => {
   hasStock.value = "all";
   isColombian.value = false;
   isNovaventa.value = false;
+  isFavorite.value = false;
   tipoExclusion.value = [];
   ordenarAhorro.value = false;
   selectedLaboratory.value = [];
@@ -150,6 +152,7 @@ async function consultarProductosConPaginacion() {
 
   if (isColombian.value === true) data.isColombian = true;
   if (isNovaventa.value === true) data.isNovaventa = true;
+  if (isFavorite.value === true) data.isFavorite = true;
   const resp = await axios.post(
     `/suppliers-ia-order-assistant/filtrar-paginate?page=${page.value}`,
     data,
@@ -304,6 +307,7 @@ watch(
     hasStock,
     isColombian,
     isNovaventa,
+    isFavorite,
     tipoExclusion,
     searchQuery,
     con_descuento,
@@ -544,6 +548,7 @@ onMounted(async () => {
         v-model:showGraphs="showGraphs"
         v-model:isColombian="isColombian"
         v-model:isNovaventa="isNovaventa"
+        v-model:isFavorite="isFavorite"
         v-model:tipoExclusion="tipoExclusion"
         v-model:ordenarAhorro="ordenarAhorro"
         v-model:selectedSupplier="selectedSupplier"

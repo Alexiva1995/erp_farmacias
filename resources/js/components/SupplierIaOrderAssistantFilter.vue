@@ -20,11 +20,13 @@ const props = defineProps({
   groups:               { type: Array,   default: () => [] },
   isColombian:          Boolean,
   isNovaventa:          Boolean,
+  isFavorite:           Boolean,
   tipoExclusion:        { type: Array,   default: () => [] },
   showIgnored:          { type: Boolean, default: false },
   showGraphs:           { type: Boolean, default: false },
   selectedSupplier:     { type: [Number, String, Object, null], default: null },
   suppliers:            { type: Array,   default: () => [] },
+  withSuppliers:        { type: Boolean, default: false },
   hasStock:             { type: String,  default: "all" },
   ordenarAhorro:        Boolean,
   isOrderingAhorro:     Boolean,
@@ -44,6 +46,7 @@ const emit = defineEmits([
   "update:selectedGroup",
   "update:isColombian",
   "update:isNovaventa",
+  "update:isFavorite",
   "update:tipoExclusion",
   "update:showIgnored",
   "update:showGraphs",
@@ -102,7 +105,7 @@ const tipoExclusionOpciones = [
 ];
 
 const hasAdvancedFilters = computed(() => (
-  !!(props.selectedGroup?.length || props.isColombian || props.isNovaventa || props.tipoExclusion?.length || props.tipo_de_filtracion !== 'combinado' || props.stock !== 'fallas' || props.selectedSupplier || props.hasStock !== 'all')
+  !!(props.selectedGroup?.length || props.isColombian || props.isNovaventa || props.isFavorite || props.tipoExclusion?.length || props.tipo_de_filtracion !== 'combinado' || props.stock !== 'fallas' || props.selectedSupplier || props.hasStock !== 'all')
 ));
 </script>
 
@@ -169,10 +172,12 @@ const hasAdvancedFilters = computed(() => (
         @click="emit('fetchAiMatches')"
       >
         <VIcon icon="tabler-sparkles" size="20" />
-        <VTooltip activator="parent" location="top">Buscar Coincidencias por IA</VTooltip>
+        <VTooltip activator="parent" location="top">Búsqueda Inteligente por IA (Lento)</VTooltip>
       </VBtn>
 
+      <!-- Pedir Todo en Ahorro -->
       <VBtn
+        v-if="props.withSuppliers"
         icon
         color="primary"
         variant="flat"
@@ -183,10 +188,10 @@ const hasAdvancedFilters = computed(() => (
         @click="emit('pedirAhorro')"
       >
         <VIcon icon="tabler-shopping-cart-plus" size="20" />
-        <VTooltip activator="parent" location="top">Pedir Todo Ahorro</VTooltip>
+        <VTooltip activator="parent" location="top">Pedir Todo en Ahorro (Automático)</VTooltip>
       </VBtn>
 
-      <!-- Exportar Colombia: visible solo cuando el toggle Colombia está activo -->
+      <!-- Exportar Excel Colombia -->
       <VBtn
         v-if="props.isColombian"
         icon
@@ -204,12 +209,13 @@ const hasAdvancedFilters = computed(() => (
     </template>
 
     <template #advanced-filters>
+      <!-- ── FILA 1: Orígenes y Jerarquía ──────────────────────────────── -->
       <!-- Proveedor Destino -->
-      <VCol cols="12" sm="6" md="3">
+      <VCol cols="12" sm="6" md="4">
         <VAutocomplete
           :model-value="props.selectedSupplier"
           :items="props.suppliers"
-          label="Proveedor Destino"
+          placeholder="Proveedor Destino"
           item-title="name"
           item-value="id"
           clearable
@@ -221,11 +227,11 @@ const hasAdvancedFilters = computed(() => (
       </VCol>
 
       <!-- Laboratorio (múltiple) -->
-      <VCol cols="12" sm="6" md="3">
+      <VCol cols="12" sm="6" md="4">
         <VAutocomplete
           :model-value="props.selectedLaboratory"
           :items="props.laboratories"
-          :label="isRestaurant ? 'Marcas' : 'Laboratorios'"
+          :placeholder="isRestaurant ? 'Marcas' : 'Laboratorios'"
           item-title="name"
           item-value="id"
           clearable
@@ -240,11 +246,11 @@ const hasAdvancedFilters = computed(() => (
       </VCol>
 
       <!-- Grupo (múltiple) -->
-      <VCol cols="12" sm="6" md="3">
+      <VCol cols="12" sm="6" md="4">
         <VAutocomplete
           :model-value="props.selectedGroup"
           :items="props.groups"
-          label="Grupos"
+          placeholder="Grupos"
           item-title="name"
           item-value="id"
           clearable
@@ -258,12 +264,13 @@ const hasAdvancedFilters = computed(() => (
         />
       </VCol>
 
-      <!-- Lapso Tiempo -->
-      <VCol cols="12" sm="6" md="2">
+      <!-- ── FILA 2: Parámetros del Reporte ────────────────────────────── -->
+      <!-- Periodo -->
+      <VCol cols="12" sm="6" md="3">
         <VSelect
           :model-value="props.lapso_de_tiempo"
           :items="lapsoDeTiempoOpciones"
-          label="Periodo"
+          placeholder="Periodo"
           density="compact"
           hide-details
           prepend-inner-icon="tabler-calendar-time"
@@ -271,12 +278,12 @@ const hasAdvancedFilters = computed(() => (
         />
       </VCol>
 
-      <!-- Calcular Por -->
-      <VCol cols="12" sm="6" md="2">
+      <!-- Método de Cálculo -->
+      <VCol cols="12" sm="6" md="3">
         <VSelect
           :model-value="props.tipo_de_filtracion"
           :items="tipoFiltracionOpcion"
-          label="Cálculo"
+          placeholder="Cálculo"
           density="compact"
           hide-details
           prepend-inner-icon="tabler-math-function"
@@ -284,12 +291,12 @@ const hasAdvancedFilters = computed(() => (
         />
       </VCol>
 
-      <!-- Vista -->
-      <VCol cols="12" sm="6" md="2">
+      <!-- Tipo de Vista -->
+      <VCol cols="12" sm="6" md="3">
         <VSelect
           :model-value="props.tipo_de_vista"
           :items="tipoDeVistaOpcion"
-          label="Vista"
+          placeholder="Vista"
           density="compact"
           hide-details
           prepend-inner-icon="tabler-layout-grid"
@@ -297,12 +304,12 @@ const hasAdvancedFilters = computed(() => (
         />
       </VCol>
 
-      <!-- Precio -->
-      <VCol cols="12" sm="6" md="2">
+      <!-- Tipo de Precio -->
+      <VCol cols="12" sm="6" md="3">
         <VSelect
           :model-value="props.selectConDescuento"
           :items="precio"
-          label="Precios"
+          placeholder="Precios"
           density="compact"
           hide-details
           prepend-inner-icon="tabler-currency-dollar"
@@ -310,12 +317,13 @@ const hasAdvancedFilters = computed(() => (
         />
       </VCol>
 
-      <!-- Stock -->
-      <VCol cols="12" sm="6" md="2">
+      <!-- ── FILA 3: Estado de Inventario y Exclusiones ─────────────────── -->
+      <!-- Análisis de Stock -->
+      <VCol cols="12" sm="6" md="4">
         <VSelect
           :model-value="props.stock"
           :items="stockOpciones"
-          label="Análisis Stock"
+          placeholder="Análisis Stock"
           density="compact"
           hide-details
           prepend-inner-icon="tabler-box"
@@ -323,12 +331,12 @@ const hasAdvancedFilters = computed(() => (
         />
       </VCol>
 
-      <!-- Disponibilidad Inventario -->
-      <VCol cols="12" sm="6" md="2">
+      <!-- Disponibilidad en Almacén -->
+      <VCol cols="12" sm="6" md="4">
         <VSelect
           :model-value="props.hasStock"
           :items="hasStockOpciones"
-          label="Disponibilidad"
+          placeholder="Disponibilidad"
           density="compact"
           hide-details
           prepend-inner-icon="tabler-package"
@@ -336,12 +344,12 @@ const hasAdvancedFilters = computed(() => (
         />
       </VCol>
 
-      <!-- Exclusión de Productos (Múltiple) -->
-      <VCol cols="12" sm="6" md="3">
+      <!-- Excluir Tipos -->
+      <VCol cols="12" sm="6" md="4">
         <VSelect
           :model-value="props.tipoExclusion"
           :items="tipoExclusionOpciones"
-          label="Excluir Tipos"
+          placeholder="Excluir Tipos"
           multiple
           chips
           closable-chips
@@ -354,67 +362,80 @@ const hasAdvancedFilters = computed(() => (
         />
       </VCol>
 
-      <!-- Switch: Solo Colombia -->
-      <VCol cols="12" sm="6" md="2">
-        <div class="d-flex align-center h-100 px-3 rounded-lg border bg-var-theme-background">
-          <VSwitch
-            :model-value="props.isColombian"
-            label="Colombia"
-            color="info"
-            hide-details
-            density="compact"
-            class="ms-1 font-weight-bold text-xs"
-            @update:model-value="emit('update:isColombian', $event)"
-          />
-          <VTooltip activator="parent" location="top">Filtrar solo origen Colombia</VTooltip>
-        </div>
-      </VCol>
+      <!-- ── FILA 4: Filtros Rápidos (Chips Interactivos) ─────────────── -->
+      <VCol cols="12">
+        <div class="d-flex align-center flex-wrap gap-2 pt-1">
+          <span class="text-caption text-medium-emphasis font-weight-medium me-1">Filtros Rápidos:</span>
 
-      <!-- Switch: Solo Novaventa -->
-      <VCol cols="12" sm="6" md="2">
-        <div class="d-flex align-center h-100 px-3 rounded-lg border bg-var-theme-background">
-          <VSwitch
-            :model-value="props.isNovaventa"
-            label="Novaventa"
-            color="secondary"
-            hide-details
-            density="compact"
-            class="ms-1 font-weight-bold text-xs"
-            @update:model-value="emit('update:isNovaventa', $event)"
-          />
-          <VTooltip activator="parent" location="top">Filtrar solo productos Novaventa</VTooltip>
-        </div>
-      </VCol>
+          <!-- Chip Favoritos -->
+          <VChip
+            filter
+            :color="props.isFavorite ? 'warning' : undefined"
+            :variant="props.isFavorite ? 'flat' : 'tonal'"
+            size="small"
+            class="cursor-pointer font-weight-medium"
+            @click="emit('update:isFavorite', !props.isFavorite)"
+          >
+            <VIcon start icon="tabler-star" size="14" />
+            Favoritos
+            <VTooltip activator="parent" location="top">Filtrar solo productos marcados como favoritos</VTooltip>
+          </VChip>
 
-      <!-- Switch: Ordenar Ahorro -->
-      <VCol cols="12" sm="6" md="2">
-        <div class="d-flex align-center h-100 px-3 rounded-lg border bg-var-theme-background">
-          <VSwitch
-            :model-value="props.ordenarAhorro"
-            label="Ordenar Ahorro"
-            color="success"
-            hide-details
-            density="compact"
-            class="ms-1 font-weight-bold text-xs"
-            @update:model-value="emit('update:ordenarAhorro', $event)"
-          />
-          <VTooltip activator="parent" location="top">Ordenar por mayor ahorro (descuento/variación de precio)</VTooltip>
-        </div>
-      </VCol>
+          <!-- Chip Colombia -->
+          <VChip
+            filter
+            :color="props.isColombian ? 'info' : undefined"
+            :variant="props.isColombian ? 'flat' : 'tonal'"
+            size="small"
+            class="cursor-pointer font-weight-medium"
+            @click="emit('update:isColombian', !props.isColombian)"
+          >
+            <VIcon start icon="tabler-flag" size="14" />
+            Colombia
+            <VTooltip activator="parent" location="top">Filtrar solo origen Colombia</VTooltip>
+          </VChip>
 
-      <!-- Switch: Solo Coincidencias -->
-      <VCol cols="12" sm="6" md="2">
-        <div class="d-flex align-center h-100 px-3 rounded-lg border bg-var-theme-background">
-          <VSwitch
-            :model-value="props.soloConCoincidencias"
-            label="Coincidencias"
-            color="purple"
-            hide-details
-            density="compact"
-            class="ms-1 font-weight-bold text-xs"
-            @update:model-value="emit('update:soloConCoincidencias', $event)"
-          />
-          <VTooltip activator="parent" location="top">Mostrar solo productos con proveedor encontrado</VTooltip>
+          <!-- Chip Novaventa -->
+          <VChip
+            filter
+            :color="props.isNovaventa ? 'secondary' : undefined"
+            :variant="props.isNovaventa ? 'flat' : 'tonal'"
+            size="small"
+            class="cursor-pointer font-weight-medium"
+            @click="emit('update:isNovaventa', !props.isNovaventa)"
+          >
+            <VIcon start icon="tabler-building-store" size="14" />
+            Novaventa
+            <VTooltip activator="parent" location="top">Filtrar solo productos Novaventa</VTooltip>
+          </VChip>
+
+          <!-- Chip Ordenar Ahorro -->
+          <VChip
+            filter
+            :color="props.ordenarAhorro ? 'success' : undefined"
+            :variant="props.ordenarAhorro ? 'flat' : 'tonal'"
+            size="small"
+            class="cursor-pointer font-weight-medium"
+            @click="emit('update:ordenarAhorro', !props.ordenarAhorro)"
+          >
+            <VIcon start icon="tabler-percentage" size="14" />
+            Ordenar Mayor Ahorro
+            <VTooltip activator="parent" location="top">Ordenar por mayor descuento o variación favorable</VTooltip>
+          </VChip>
+
+          <!-- Chip Solo Coincidencias -->
+          <VChip
+            filter
+            :color="props.soloConCoincidencias ? 'primary' : undefined"
+            :variant="props.soloConCoincidencias ? 'flat' : 'tonal'"
+            size="small"
+            class="cursor-pointer font-weight-medium"
+            @click="emit('update:soloConCoincidencias', !props.soloConCoincidencias)"
+          >
+            <VIcon start icon="tabler-link" size="14" />
+            Solo con Coincidencias
+            <VTooltip activator="parent" location="top">Mostrar solo productos con proveedor encontrado</VTooltip>
+          </VChip>
         </div>
       </VCol>
     </template>

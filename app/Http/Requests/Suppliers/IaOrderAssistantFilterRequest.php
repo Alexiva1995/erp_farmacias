@@ -23,6 +23,7 @@ class IaOrderAssistantFilterRequest extends FormRequest
             'hasStock' => 'nullable|string',
             'isColombian' => 'nullable|boolean',
             'isNovaventa' => 'nullable|boolean',
+            'isFavorite' => 'nullable|boolean',
             'tipo_exclusion' => 'nullable',
             'con_descuento' => 'nullable|boolean',
             'with_suppliers' => 'nullable|boolean',

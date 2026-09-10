@@ -254,8 +254,12 @@ class ProductRepository
             });
         }
 
-        if (array_key_exists("laboratoryId", $filtros) && $filtros["laboratoryId"]) {
-            $consulta->where("products.laboratory_id", "=", $filtros["laboratoryId"]);
+        if (array_key_exists("laboratoryId", $filtros) && !empty($filtros["laboratoryId"])) {
+            if (is_array($filtros["laboratoryId"])) {
+                $consulta->whereIn("products.laboratory_id", $filtros["laboratoryId"]);
+            } else {
+                $consulta->where("products.laboratory_id", "=", $filtros["laboratoryId"]);
+            }
         }
 
         if (array_key_exists("hasStock", $filtros)) {
@@ -416,6 +420,7 @@ class ProductRepository
             "products.unit_cost",
             "products.psychotropic",
             "products.is_colombian_origin",
+            "products.is_favorite",
             "products.is_ordered",
             "products.active_ingredient",
             "products.ignore_until",
@@ -629,6 +634,17 @@ class ProductRepository
             }
         }
 
+        if (array_key_exists("isFavorite", $filtros)) {
+            if ($filtros["isFavorite"] == true || $filtros["isFavorite"] === "true") {
+                $consulta->where("products.is_favorite", "=", 1);
+            } elseif ($filtros["isFavorite"] === false || $filtros["isFavorite"] === "false") {
+                $consulta->where(function ($q) {
+                    $q->where("products.is_favorite", "=", 0)
+                      ->orWhereNull("products.is_favorite");
+                });
+            }
+        }
+
         if (array_key_exists("sortBy", $filtros) && array_key_exists("orderBy", $filtros)) {
             $consulta->orderBy($filtros["sortBy"], $filtros["orderBy"]);
         } else {
@@ -682,6 +698,7 @@ class ProductRepository
             "products.unit_cost",
             "products.psychotropic",
             "products.is_colombian_origin",
+            "products.is_favorite",
             "products.is_unified_group",
             "products.active_ingredient",
             'products.manual_solicitar',
@@ -939,6 +956,17 @@ class ProductRepository
                            $eq->whereNull('expiration_date')
                               ->orWhere('expiration_date', '>=', DB::connection()->getDriverName() === 'sqlite' ? DB::raw('DATE("now")') : DB::raw('CURDATE()'));
                        });
+                });
+            }
+        }
+
+        if (array_key_exists("isFavorite", $filtros) && empty($filtros["ids_in"])) {
+            if ($filtros["isFavorite"] == true || $filtros["isFavorite"] === "true") {
+                $consulta->where("products.is_favorite", "=", 1);
+            } elseif ($filtros["isFavorite"] === false || $filtros["isFavorite"] === "false") {
+                $consulta->where(function ($q) {
+                    $q->where("products.is_favorite", "=", 0)
+                      ->orWhereNull("products.is_favorite");
                 });
             }
         }

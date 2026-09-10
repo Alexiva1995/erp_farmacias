@@ -66,6 +66,13 @@ class IaAssistantReportService
                     $procesado = $procesado->filter(fn($p) => (int)($p->is_novaventa ?? 0) !== 1);
                 }
             }
+            if (array_key_exists('isFavorite', $filtros)) {
+                if ($filtros['isFavorite'] === true || $filtros['isFavorite'] === 'true') {
+                    $procesado = $procesado->filter(fn($p) => (int)($p->is_favorite ?? 0) === 1);
+                } elseif ($filtros['isFavorite'] === false || $filtros['isFavorite'] === 'false') {
+                    $procesado = $procesado->filter(fn($p) => (int)($p->is_favorite ?? 0) !== 1);
+                }
+            }
 
             $procesado = $this->consolidateCollection($procesado, $filtros);
 
@@ -81,6 +88,13 @@ class IaAssistantReportService
                     $procesado = $procesado->filter(fn($p) => (int)($p->is_novaventa ?? 0) === 1);
                 } elseif ($filtros['isNovaventa'] === false || $filtros['isNovaventa'] === 'false') {
                     $procesado = $procesado->filter(fn($p) => (int)($p->is_novaventa ?? 0) !== 1);
+                }
+            }
+            if (array_key_exists('isFavorite', $filtros)) {
+                if ($filtros['isFavorite'] === true || $filtros['isFavorite'] === 'true') {
+                    $procesado = $procesado->filter(fn($p) => (int)($p->is_favorite ?? 0) === 1);
+                } elseif ($filtros['isFavorite'] === false || $filtros['isFavorite'] === 'false') {
+                    $procesado = $procesado->filter(fn($p) => (int)($p->is_favorite ?? 0) !== 1);
                 }
             }
 
