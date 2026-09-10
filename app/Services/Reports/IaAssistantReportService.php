@@ -518,15 +518,19 @@ class IaAssistantReportService
         // Determinar días de cobertura del filtro lapso_de_tiempo (default: 30 días)
         $coverageDays = $this->extractCoverageDays($filtros['lapso_de_tiempo'] ?? '1 month');
         $leadTimeDays = 7;
+        $bufferDays = 7; // Colchón de seguridad (Stock de Seguridad)
 
-        $items->transform(function ($item) use ($coverageDays, $leadTimeDays) {
+        $items->transform(function ($item) use ($coverageDays, $leadTimeDays, $bufferDays) {
+            $isColombian = (bool)((int)($item->is_colombian_origin ?? 0) === 1);
+            $effectiveLeadTime = $isColombian ? 14 : $leadTimeDays; // 14 días para importados de Colombia, 7 para locales
+
             $monthlyWeighted = (float)($item->sales_average_weighted ?? $item->sales_average ?? 0);
             $vpd = $monthlyWeighted / 30; // Venta Promedio Diaria
             $stockActual = (float)($item->lote_quantity ?? $item->stock ?? 0);
             $autoOrder = (float)($item->totalQuantityInAutoOrder ?? 0);
             $stockEfectivo = $stockActual + $autoOrder;
 
-            $rop = $vpd * $leadTimeDays; // Punto de Reorden = 7 días de venta
+            $rop = $vpd * ($effectiveLeadTime + $bufferDays); // ROP: 21 días (Colombia) / 14 días (Nacional)
             $stockObjetivo = $vpd * $coverageDays; // Stock Objetivo según días de cobertura
 
             // Demanda asignada para la vista
