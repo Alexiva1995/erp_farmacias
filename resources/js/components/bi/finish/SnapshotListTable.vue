@@ -191,7 +191,13 @@ const emit = defineEmits([
 
           <!-- Tipo -->
           <template #item.is_automatic="{ item }">
-            <VChip size="x-small" :color="item.is_automatic ? 'info' : 'default'" variant="flat">
+            <VChip
+              size="small"
+              :color="item.is_automatic ? 'info' : 'secondary'"
+              variant="tonal"
+              class="font-weight-bold"
+            >
+              <VIcon :icon="item.is_automatic ? 'tabler-cpu' : 'tabler-user'" size="14" class="me-1" />
               {{ item.is_automatic ? 'Automático' : 'Manual' }}
             </VChip>
           </template>
@@ -267,7 +273,13 @@ const emit = defineEmits([
               <div class="d-flex align-center justify-space-between mb-2">
                 <div class="d-flex align-center gap-1">
                   <span class="font-weight-black text-primary">#{{ item.id }}</span>
-                  <VChip size="x-small" :color="item.is_automatic ? 'info' : 'default'" variant="flat">
+                  <VChip
+                    size="x-small"
+                    :color="item.is_automatic ? 'info' : 'secondary'"
+                    variant="tonal"
+                    class="font-weight-bold"
+                  >
+                    <VIcon :icon="item.is_automatic ? 'tabler-cpu' : 'tabler-user'" size="12" class="me-1" />
                     {{ item.is_automatic ? 'Auto' : 'Manual' }}
                   </VChip>
                 </div>
