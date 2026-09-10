@@ -310,7 +310,22 @@ class SupplierConnectionService
                 || in_array($connection->supplier_id, [1011, 23]);
 
             $token = null;
-            if (!empty($connection->username) && !empty($connection->password) && !$isCristmedicals && !$isCobeca) {
+            if ($isCobeca && !empty($connection->username) && !empty($connection->password)) {
+                $decryptedPass = FtpCrypt::decrypt($connection->password);
+                $loginUrl = str_ends_with(rtrim($connection->host, '/'), '/api/Login')
+                    ? $connection->host
+                    : (str_contains($connection->host ?? '', '/api') ? rtrim($connection->host, '/') . '/Login' : 'https://comparadores.drogueriascobeca.com/api/Login');
+
+                $loginResponse = Http::withoutVerifying()->timeout(30)->post($loginUrl, [
+                    "Usuario" => $connection->username,
+                    "Clave" => $decryptedPass,
+                ]);
+
+                if ($loginResponse->successful()) {
+                    $json = $loginResponse->json();
+                    $token = is_array($json) ? ($json["token"] ?? null) : null;
+                }
+            } elseif (!empty($connection->username) && !empty($connection->password) && !$isCristmedicals) {
                 $decryptedPass = FtpCrypt::decrypt($connection->password);
                 $loginResponse = Http::timeout(30)->post($connection->host, [
                     "Usuario" => $connection->username,
@@ -325,7 +340,7 @@ class SupplierConnectionService
                     $json = $loginResponse->json();
                     $token = is_array($json) ? ($json["token"] ?? null) : null;
                 }
-            } elseif (!empty($connection->password) && !$isCobeca) {
+            } elseif (!empty($connection->password)) {
                 $token = FtpCrypt::decrypt($connection->password);
             }
 
