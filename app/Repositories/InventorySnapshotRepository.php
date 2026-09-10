@@ -76,18 +76,45 @@ class InventorySnapshotRepository implements InventorySnapshotRepositoryInterfac
             $itemsQuery->where('is_overstock', $isOverstock);
         }
 
-        $allowedItemSorts = [
-            'id', 'product_id', 'product_name', 'laboratory_name', 'sales_class',
-            'sold_units_30d', 'total_sales_usd_30d', 'current_stock_units',
-            'unit_cost_usd', 'sale_price_usd', 'inventory_value_usd',
-            'margin_percentage', 'coverage_days', 'gmroi_annual_percentage',
-            'days_to_expiration', 'is_overstock',
+        $columnMap = [
+            'id' => 'id',
+            'id_producto' => 'product_id',
+            'product_id' => 'product_id',
+            'nombre_producto' => 'product_name',
+            'product_name' => 'product_name',
+            'laboratorio' => 'laboratory_name',
+            'laboratory_name' => 'laboratory_name',
+            'clasificacion_ventas' => 'sales_class',
+            'sales_class' => 'sales_class',
+            'ventas_unidades_30d' => 'sold_units_30d',
+            'sold_units_30d' => 'sold_units_30d',
+            'ventas_totales_usd_30d' => 'total_sales_usd_30d',
+            'total_sales_usd_30d' => 'total_sales_usd_30d',
+            'stock_actual_unidades' => 'current_stock_units',
+            'current_stock_units' => 'current_stock_units',
+            'costo_unitario_usd' => 'unit_cost_usd',
+            'unit_cost_usd' => 'unit_cost_usd',
+            'precio_venta_usd' => 'sale_price_usd',
+            'sale_price_usd' => 'sale_price_usd',
+            'valor_inventario_usd' => 'inventory_value_usd',
+            'inventory_value_usd' => 'inventory_value_usd',
+            'margen_porcentaje' => 'margin_percentage',
+            'margin_percentage' => 'margin_percentage',
+            'cobertura_dias' => 'coverage_days',
+            'coverage_days' => 'coverage_days',
+            'gmroi_anual_porcentaje' => 'gmroi_annual_percentage',
+            'gmroi_annual_percentage' => 'gmroi_annual_percentage',
+            'dias_para_vencer' => 'days_to_expiration',
+            'days_to_expiration' => 'days_to_expiration',
+            'es_sobrestock' => 'is_overstock',
+            'is_overstock' => 'is_overstock',
         ];
 
-        $rawSortBy = is_array($filters['sortBy'] ?? null) 
+        $rawSortKey = is_array($filters['sortBy'] ?? null) 
             ? ($filters['sortBy'][0]['key'] ?? 'inventory_value_usd') 
             : ($filters['sortBy'] ?? 'inventory_value_usd');
-        $sortBy = in_array($rawSortBy, $allowedItemSorts, true) ? $rawSortBy : 'inventory_value_usd';
+        
+        $sortBy = $columnMap[$rawSortKey] ?? 'inventory_value_usd';
 
         $rawOrderBy = is_array($filters['sortBy'] ?? null) 
             ? ($filters['sortBy'][0]['order'] ?? 'desc') 

@@ -163,7 +163,7 @@ const fetchSnapshotDetails = async (snapshotId) => {
     totalDetailItems.value = response.data.meta.total;
   } catch (err) {
     console.error('Error loading snapshot details:', err);
-    toast.error('Error al cargar los detalles de la Foto Finish.');
+    toast.error(err.response?.data?.message || 'Error al cargar los detalles de la Foto Finish.');
   } finally {
     detailLoading.value = false;
   }
@@ -176,7 +176,7 @@ const fetchAuditModules = async (snapshotId) => {
     auditData.value = response.data;
   } catch (err) {
     console.error('Error loading audit modules:', err);
-    toast.error('Error al cargar los 4 módulos de control.');
+    toast.error(err.response?.data?.message || 'Error al cargar los 4 módulos de control.');
   } finally {
     auditLoading.value = false;
   }
