@@ -1016,12 +1016,11 @@ class ProductRepository
                 )';
                 $subqueryVariation = "CASE 
                     WHEN products.unit_cost > 0 THEN 
-                        ((($subqueryBestSupplierPrice) - products.unit_cost) / products.unit_cost) * 100
+                        ((products.unit_cost - ($subqueryBestSupplierPrice)) / products.unit_cost) * 100
                     ELSE 0
                 END";
-                $dbSortDir = $sortDir === 'desc' ? 'asc' : 'desc';
                 $consulta->whereRaw("($subqueryBestSupplierPrice) > 0");
-                $consulta->orderByRaw("($subqueryVariation) $dbSortDir");
+                $consulta->orderByRaw("($subqueryVariation) $sortDir");
             } else {
                 $consulta->orderBy($sortCol, $sortDir);
             }
@@ -1376,12 +1375,11 @@ class ProductRepository
                 )';
                 $subqueryVariation = "CASE 
                     WHEN products.unit_cost > 0 THEN 
-                        ((($subqueryBestSupplierPrice) - products.unit_cost) / products.unit_cost) * 100
+                        ((products.unit_cost - ($subqueryBestSupplierPrice)) / products.unit_cost) * 100
                     ELSE 0
                 END";
-                $dbSortDir = $sortDir === 'desc' ? 'asc' : 'desc';
                 $consulta->whereRaw("($subqueryBestSupplierPrice) > 0");
-                $consulta->orderByRaw("($subqueryVariation) $dbSortDir");
+                $consulta->orderByRaw("($subqueryVariation) $sortDir");
             } else {
                 $consulta->orderBy($sortCol, $sortDir);
             }

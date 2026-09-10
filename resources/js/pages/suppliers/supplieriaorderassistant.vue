@@ -5,6 +5,7 @@ import SupplierIaOrderAssistantIndividualTable from "@/components/SupplierIaOrde
 import SupplierIaOrderAssistantComparatorModal from "@/components/SupplierIaOrderAssistantComparatorModal.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
+import Swal from "sweetalert2";
 import { computed, onMounted, reactive, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { roundIaAnalysis } from "@/utils/iaAnalysisRounding";
@@ -272,7 +273,8 @@ const handleClearIgnore = async () => {
       await actualizarTabla();
     }
   } catch (error) {
-    toast.error("Error al restaurar productos.");
+    console.error("Error al restaurar productos:", error);
+    toast.error("Error al restaurar productos", error);
   }
 };
 
