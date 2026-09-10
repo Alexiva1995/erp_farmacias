@@ -14,20 +14,29 @@ const emit = defineEmits(['update:modelValue', 'saved']);
 const loading       = ref(false);
 const saving        = ref(false);
 const showPassword  = ref(false);
+const showFtpOrdersPassword = ref(false);
 
 const form = ref({
-  type:         'ftp',
-  host:         '',
-  port:         '',
-  username:     '',
-  password:     '',
-  path:         '',
-  invoice_path: '',
-  pasv:         true,
-  has_header:   false,
+  type:                 'ftp',
+  host:                 '',
+  port:                 '',
+  username:             '',
+  password:             '',
+  path:                 '',
+  invoice_path:         '',
+  pasv:                 true,
+  has_header:           false,
+  // FTP complementario para pedidos (ej. Mafarta / Cobeca)
+  ftp_orders_enabled:   false,
+  ftp_orders_host:      '',
+  ftp_orders_port:      21,
+  ftp_orders_username:  '',
+  ftp_orders_password:  '',
+  ftp_orders_path:      '',
 });
 
 const hasExistingPassword = ref(false);
+const hasExistingFtpOrdersPassword = ref(false);
 const lastConnection      = ref(null);
 const errors              = ref({});
 
@@ -35,6 +44,7 @@ const isFtp  = computed(() => ['ftp', 'sftp'].includes(form.value.type));
 const isHttp = computed(() => ['http', 'api'].includes(form.value.type));
 const isEmail = computed(() => ['file', 'email'].includes(form.value.type));
 const isDronenaBot = computed(() => form.value.type === 'dronena_bot' || (props.supplier?.name && props.supplier.name.toUpperCase().includes('NENA')));
+const isMafarta = computed(() => props.supplier?.name && (props.supplier.name.toUpperCase().includes('MAFARTA') || props.supplier.name.toUpperCase().includes('COBECA') || props.supplier.id === 23));
 
 const typeOptions = computed(() => {
   const options = [
@@ -71,22 +81,46 @@ const fetchConfig = async () => {
     const { data } = await axios.get(`/suppliers/${props.supplier.id}/connection-config`);
     if (data) {
       form.value = {
-        type:         data.type         ?? 'ftp',
-        host:         data.host         ?? '',
-        port:         data.port         ?? '',
-        username:     data.username     ?? '',
-        password:     '',
-        path:         data.path         ?? '',
-        invoice_path: data.invoice_path ?? '',
-        pasv:         data.pasv         ?? true,
-        has_header:   data.has_header   ?? false,
+        type:                 data.type                 ?? 'ftp',
+        host:                 data.host                 ?? '',
+        port:                 data.port                 ?? '',
+        username:             data.username             ?? '',
+        password:             '',
+        path:                 data.path                 ?? '',
+        invoice_path:         data.invoice_path         ?? '',
+        pasv:                 data.pasv                 ?? true,
+        has_header:           data.has_header           ?? false,
+        ftp_orders_enabled:   data.ftp_orders_enabled   ?? false,
+        ftp_orders_host:      data.ftp_orders_host      ?? '',
+        ftp_orders_port:      data.ftp_orders_port      ?? 21,
+        ftp_orders_username:  data.ftp_orders_username  ?? '',
+        ftp_orders_password:  '',
+        ftp_orders_path:      data.ftp_orders_path      ?? '',
       };
       hasExistingPassword.value = data.has_password ?? false;
+      hasExistingFtpOrdersPassword.value = data.ftp_orders_has_pass ?? false;
       lastConnection.value      = data.last_connection;
     } else {
       // Sin configuración: reset al default
-      form.value = { type: 'ftp', host: '', port: '', username: '', password: '', path: '', invoice_path: '', pasv: true, has_header: false };
+      form.value = {
+        type: 'ftp',
+        host: '',
+        port: '',
+        username: '',
+        password: '',
+        path: '',
+        invoice_path: '',
+        pasv: true,
+        has_header: false,
+        ftp_orders_enabled: false,
+        ftp_orders_host: '',
+        ftp_orders_port: 21,
+        ftp_orders_username: '',
+        ftp_orders_password: '',
+        ftp_orders_path: '',
+      };
       hasExistingPassword.value = false;
+      hasExistingFtpOrdersPassword.value = false;
       lastConnection.value      = null;
     }
   } catch {
@@ -113,6 +147,9 @@ const saveConfig = async () => {
     // Si no envió nueva contraseña y ya existía una, no mandamos el campo
     if (!payload.password && hasExistingPassword.value) {
       delete payload.password;
+    }
+    if (!payload.ftp_orders_password && hasExistingFtpOrdersPassword.value) {
+      delete payload.ftp_orders_password;
     }
     await axios.post(`/suppliers/${props.supplier.id}/connection-config`, payload);
     toast.success('Configuración guardada correctamente.');
@@ -415,6 +452,99 @@ watch(() => props.modelValue, (isOpen) => {
                     </div>
                     <VSwitch v-model="form.has_header" color="primary" hide-details density="compact" />
                   </div>
+                </VCol>
+              </VRow>
+            </VCard>
+          </template>
+
+          <!-- Sección 6: Transmisión de Pedidos FTP / SFTP (PC-CORREO) para API / Mafarta -->
+          <template v-if="isHttp || isMafarta">
+            <div class="d-flex align-center justify-space-between mb-3 mt-4">
+              <div class="d-flex align-center gap-2">
+                <div class="header-indicator primary shadow-sm" />
+                <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">
+                  Transmisión de Pedidos FTP / SFTP (PC-CORREO)
+                </span>
+              </div>
+              <VSwitch
+                v-model="form.ftp_orders_enabled"
+                color="primary"
+                hide-details
+                density="compact"
+                :label="form.ftp_orders_enabled ? 'Habilitado' : 'Deshabilitado'"
+              />
+            </div>
+
+            <VCard v-if="form.ftp_orders_enabled" variant="flat" class="pa-4 bg-white rounded-xl border shadow-sm mb-4">
+              <VAlert
+                type="info"
+                variant="tonal"
+                density="compact"
+                icon="tabler-info-circle"
+                class="mb-3 rounded-lg"
+              >
+                Permite enviar pedidos automáticamente en formato de texto plano <strong>PC-CORREO</strong> vía FTP/SFTP mientras mantienes la sincronización de catálogo y facturas por la <strong>API REST</strong>.
+              </VAlert>
+
+              <VRow>
+                <VCol cols="12" md="8">
+                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">
+                    Host FTP de Pedidos
+                  </span>
+                  <AppTextField
+                    v-model="form.ftp_orders_host"
+                    placeholder="ej: ftp.drogueriascobeca.com"
+                    prepend-inner-icon="tabler-server"
+                    :error-messages="errors.ftp_orders_host"
+                  />
+                </VCol>
+                <VCol cols="12" md="4">
+                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">
+                    Puerto
+                  </span>
+                  <AppTextField
+                    v-model.number="form.ftp_orders_port"
+                    type="number"
+                    placeholder="21"
+                    prepend-inner-icon="tabler-hash"
+                    :error-messages="errors.ftp_orders_port"
+                  />
+                </VCol>
+                <VCol cols="12" md="6">
+                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">
+                    Usuario / Código de Cliente
+                  </span>
+                  <AppTextField
+                    v-model="form.ftp_orders_username"
+                    placeholder="ej: 31373"
+                    prepend-inner-icon="tabler-user"
+                    :error-messages="errors.ftp_orders_username"
+                  />
+                </VCol>
+                <VCol cols="12" md="6">
+                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">
+                    {{ hasExistingFtpOrdersPassword ? 'Nueva Contraseña (dejar vacío para no cambiar)' : 'Contraseña FTP' }}
+                  </span>
+                  <AppTextField
+                    v-model="form.ftp_orders_password"
+                    :type="showFtpOrdersPassword ? 'text' : 'password'"
+                    :placeholder="hasExistingFtpOrdersPassword ? '••••••••' : 'Contraseña FTP'"
+                    prepend-inner-icon="tabler-lock"
+                    :append-inner-icon="showFtpOrdersPassword ? 'tabler-eye-off' : 'tabler-eye'"
+                    :error-messages="errors.ftp_orders_password"
+                    @click:append-inner="showFtpOrdersPassword = !showFtpOrdersPassword"
+                  />
+                </VCol>
+                <VCol cols="12">
+                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">
+                    Ruta Remota de Pedidos (opcional)
+                  </span>
+                  <AppTextField
+                    v-model="form.ftp_orders_path"
+                    placeholder="ej: /pedidos o dejar vacío para la raíz"
+                    prepend-inner-icon="tabler-folder"
+                    :error-messages="errors.ftp_orders_path"
+                  />
                 </VCol>
               </VRow>
             </VCard>

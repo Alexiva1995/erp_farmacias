@@ -23,6 +23,13 @@ class SaveConnectionConfigRequest extends FormRequest
             'pasv'          => 'boolean',
             'has_header'    => 'boolean',
             'invoice_path'  => 'nullable|string|max:500',
+            // Configuración FTP complementaria para transmisión de pedidos (PC-CORREO)
+            'ftp_orders_enabled'  => 'nullable|boolean',
+            'ftp_orders_host'     => 'nullable|string|max:500',
+            'ftp_orders_port'     => 'nullable|numeric|min:1|max:65535',
+            'ftp_orders_username' => 'nullable|string|max:255',
+            'ftp_orders_password' => 'nullable|string',
+            'ftp_orders_path'     => 'nullable|string|max:500',
         ];
     }
 }

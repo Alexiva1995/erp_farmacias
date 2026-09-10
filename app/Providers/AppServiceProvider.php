@@ -360,6 +360,11 @@ class AppServiceProvider extends ServiceProvider
         );
 
         $this->app->bind(
+            \App\Contracts\Suppliers\MarfartaPcCorreoServiceInterface::class,
+            \App\Services\Suppliers\MarfartaPcCorreoService::class
+        );
+
+        $this->app->bind(
             \App\Contracts\Suppliers\CristmedicalsScraperServiceInterface::class,
             \App\Services\Suppliers\CristmedicalsScraperService::class
         );

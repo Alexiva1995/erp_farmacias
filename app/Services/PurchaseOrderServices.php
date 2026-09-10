@@ -20,6 +20,7 @@ class PurchaseOrderServices implements PurchaseOrder
     protected \App\Contracts\Suppliers\DronenaEdiServiceInterface $dronenaEdiService,
     protected \App\Contracts\Suppliers\VitalclinicFtpServiceInterface $vitalclinicFtpService,
     protected \App\Contracts\Suppliers\DrocercaFtpServiceInterface $drocercaFtpService,
+    protected \App\Contracts\Suppliers\MarfartaPcCorreoServiceInterface $marfartaPcCorreoService,
   ) {
   }
 
@@ -69,10 +70,11 @@ class PurchaseOrderServices implements PurchaseOrder
   {
     $supplier = $autoOrder->supplier ?: \App\Models\Supplier::find($autoOrder->supplier_id);
     
-    // Identificar proveedor automatizado (Dronena, Vitalclinic, Drocerca)
+    // Identificar proveedor automatizado (Dronena, Vitalclinic, Drocerca, Mafarta)
     $isDronena = false;
     $isVitalclinic = false;
     $isDrocerca = false;
+    $isMafarta = false;
 
     if ($supplier) {
       $supplierName = strtoupper($supplier->name);
@@ -109,6 +111,15 @@ class PurchaseOrderServices implements PurchaseOrder
           $isDrocerca = true;
         }
       }
+
+      if (str_contains($supplierName, 'MAFARTA') || str_contains($supplierName, 'COBECA') || (int)$supplier->id === 23) {
+        // Verificar si tiene configuración FTP o variables de entorno para envío de pedidos PC-CORREO
+        $hasMafartaFtp = $supplier->connections()->whereIn('type', ['ftp', 'sftp'])->exists() 
+          || !empty(env('MAFARTA_FTP_HOST'));
+        if ($hasMafartaFtp) {
+          $isMafarta = true;
+        }
+      }
     }
 
     if ($isDronena) {
@@ -135,6 +146,15 @@ class PurchaseOrderServices implements PurchaseOrder
       } catch (\Throwable $e) {
         \Illuminate\Support\Facades\Log::error("[DROCERCA FTP] Error transmitiendo pedido automático #{$autoOrder->id}: " . $e->getMessage());
         throw new \Exception("Error al transmitir el pedido a Drocerca por FTP: " . $e->getMessage());
+      }
+    }
+
+    if ($isMafarta) {
+      try {
+        $this->marfartaPcCorreoService->sendOrderFtp($autoOrder);
+      } catch (\Throwable $e) {
+        \Illuminate\Support\Facades\Log::error("[MAFARTA PC-CORREO] Error transmitiendo pedido automático #{$autoOrder->id}: " . $e->getMessage());
+        throw new \Exception("Error al transmitir el pedido a Mafarta / Cobeca por PC-CORREO (FTP): " . $e->getMessage());
       }
     }
 

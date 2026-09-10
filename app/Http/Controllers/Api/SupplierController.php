@@ -491,18 +491,30 @@ class SupplierController extends Controller
             return response()->json(null);
         }
 
+        // Buscar si existe una conexión FTP secundaria para pedidos (ej. Mafarta API + FTP)
+        $ftpOrdersConn = $supplier->connections()
+            ->whereIn('type', ['ftp', 'sftp'])
+            ->where('id', '!=', $connection->id)
+            ->first();
+
         return response()->json([
-            'id'                => $connection->id,
-            'type'              => $connection->type,
-            'host'              => $connection->host,
-            'port'              => $connection->port,
-            'username'          => $connection->username,
-            'has_password'      => !empty($connection->password),
-            'path'              => $connection->path,
-            'pasv'              => (bool) $connection->pasv,
-            'has_header'        => (bool) $connection->has_header,
-            'invoice_path'      => $connection->invoice_path,
-            'last_connection'   => $connection->last_connection,
+            'id'                  => $connection->id,
+            'type'                => $connection->type,
+            'host'                => $connection->host,
+            'port'                => $connection->port,
+            'username'            => $connection->username,
+            'has_password'        => !empty($connection->password),
+            'path'                => $connection->path,
+            'pasv'                => (bool) $connection->pasv,
+            'has_header'          => (bool) $connection->has_header,
+            'invoice_path'        => $connection->invoice_path,
+            'last_connection'     => $connection->last_connection,
+            'ftp_orders_enabled'  => $ftpOrdersConn ? true : false,
+            'ftp_orders_host'     => $ftpOrdersConn?->host,
+            'ftp_orders_port'     => $ftpOrdersConn?->port,
+            'ftp_orders_username' => $ftpOrdersConn?->username,
+            'ftp_orders_has_pass' => !empty($ftpOrdersConn?->password),
+            'ftp_orders_path'     => $ftpOrdersConn?->path,
         ]);
     }
 
@@ -655,6 +667,32 @@ class SupplierController extends Controller
                 ['supplier_id' => $supplier->id],
                 $data
             );
+
+            // Gestionar conexión FTP secundaria para órdenes si fue enviada (ej. Mafarta API + Pedidos FTP)
+            if ($request->has('ftp_orders_enabled')) {
+                if ($request->boolean('ftp_orders_enabled') && !empty($validated['ftp_orders_host'])) {
+                    $ftpData = [
+                        'supplier_id' => $supplier->id,
+                        'type'        => 'ftp',
+                        'host'        => $validated['ftp_orders_host'],
+                        'port'        => !empty($validated['ftp_orders_port']) ? (int) $validated['ftp_orders_port'] : 21,
+                        'username'    => $validated['ftp_orders_username'] ?? null,
+                        'path'        => $validated['ftp_orders_path'] ?? null,
+                        'pasv'        => true,
+                        'has_header'  => false,
+                    ];
+                    if (!empty($validated['ftp_orders_password'])) {
+                        $ftpData['password'] = \App\Helpers\FtpCrypt::encrypt($validated['ftp_orders_password']);
+                    }
+                    $supplier->connections()->updateOrCreate(
+                        ['supplier_id' => $supplier->id, 'type' => 'ftp'],
+                        $ftpData
+                    );
+                } elseif (!$request->boolean('ftp_orders_enabled') && $validated['type'] !== 'ftp' && $validated['type'] !== 'sftp') {
+                    // Si se desmarca y la principal no es FTP, eliminar la conexión FTP secundaria
+                    $supplier->connections()->where('type', 'ftp')->delete();
+                }
+            }
 
             return response()->json([
                 'message'    => 'Configuración guardada correctamente.',
