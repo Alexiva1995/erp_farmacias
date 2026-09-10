@@ -423,7 +423,7 @@ class InventorySnapshotService
             $daysToExpiration = null;
             $riskExpiringUnits = 0.0;
 
-            if ($productLots && $productLots->isNotEmpty() && $currentStock > 0) {
+            if ($productLots && $productLots->isNotEmpty() && $snapshotHistoricalStock > 0) {
                 $firstLot = $productLots->first();
                 $lotExpDateFirst = Carbon::parse($firstLot->expiration_date)->startOfDay();
                 $daysToExpiration = (int) $cutoffDate->copy()->startOfDay()->diffInDays($lotExpDateFirst, false);
