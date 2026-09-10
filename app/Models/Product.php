@@ -58,6 +58,7 @@ class Product extends Model
         'barcode',
         'photo_url',
         'sales_average',
+        'sales_average_weighted',
         'cycle_id',
         'is_ordered',
         'is_scarce',
@@ -110,6 +111,7 @@ class Product extends Model
         'price_lock_baseline' => 'float',
         'external_accumulated_sales' => 'float',
         'sales_average' => 'float',
+        'sales_average_weighted' => 'float',
     ];
 
 

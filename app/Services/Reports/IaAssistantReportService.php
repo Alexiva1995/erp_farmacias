@@ -46,6 +46,8 @@ class IaAssistantReportService
 
             if ($tipo === 'combinado') {
                 $procesado = $this->processCombinedReport($resultado, $filtros);
+            } elseif ($tipo === 'weighted') {
+                $procesado = $this->processWeightedReport($resultado, $filtros);
             } else {
                 $procesado = $this->processRegularReport($resultado, $tipo, $filtros);
             }
@@ -226,6 +228,8 @@ class IaAssistantReportService
             $resultado = $this->productRepository->filtrarIndividualProductForAssistantReportTypeAveragesWithoutPaginate($filtrosHidratacion);
             if ($tipo === 'combinado') {
                 $procesado = $this->processCombinedReport($resultado, $filtros);
+            } elseif ($tipo === 'weighted') {
+                $procesado = $this->processWeightedReport($resultado, $filtros);
             } else {
                 $procesado = $this->processRegularReport($resultado, $tipo, $filtros);
             }
@@ -494,6 +498,79 @@ class IaAssistantReportService
         });
 
         return $items;
+    }
+
+    /**
+     * Procesa el reporte PONDERADO (Óptimo ROP con Lead Time 7 días y Cobertura Dinámica)
+     */
+    private function processWeightedReport($resultados, array $filtros)
+    {
+        $isPaginator = $resultados instanceof LengthAwarePaginator;
+        $items = $isPaginator ? $resultados->getCollection() : collect($resultados);
+
+        if ($items->isEmpty()) {
+            return $resultados;
+        }
+
+        // Hidratación masiva de AO para evitar N+1
+        $this->hydrateAutoOrderBulk($items, $filtros);
+
+        // Determinar días de cobertura del filtro lapso_de_tiempo (default: 30 días)
+        $coverageDays = $this->extractCoverageDays($filtros['lapso_de_tiempo'] ?? '1 month');
+        $leadTimeDays = 7;
+
+        $items->transform(function ($item) use ($coverageDays, $leadTimeDays) {
+            $monthlyWeighted = (float)($item->sales_average_weighted ?? $item->sales_average ?? 0);
+            $vpd = $monthlyWeighted / 30; // Venta Promedio Diaria
+            $stockActual = (float)($item->lote_quantity ?? $item->stock ?? 0);
+            $autoOrder = (float)($item->totalQuantityInAutoOrder ?? 0);
+            $stockEfectivo = $stockActual + $autoOrder;
+
+            $rop = $vpd * $leadTimeDays; // Punto de Reorden = 7 días de venta
+            $stockObjetivo = $vpd * $coverageDays; // Stock Objetivo según días de cobertura
+
+            // Demanda asignada para la vista
+            $item->demanda_ponderada = round($stockObjetivo, 2);
+
+            // Condición de compra: Solo sugerir si el stock actual + pedidos activos está en o por debajo del ROP
+            if ($stockEfectivo <= $rop) {
+                $sugerido = $stockObjetivo - $stockEfectivo;
+                $item->solicitar = $sugerido > 0 ? ceil($sugerido) : 0;
+            } else {
+                // Si el stock excede el ROP, sugerido es 0 (o negativo para la pestaña de exceso)
+                $exceso = $stockObjetivo - $stockEfectivo;
+                $item->solicitar = $exceso < 0 ? floor($exceso) : 0;
+            }
+
+            // Feature 2 y 3: hidratar flags de calidad del dato
+            $this->hydrateProductFlags($item);
+
+            return $item;
+        });
+
+        if ($isPaginator) {
+            $resultados->setCollection($items);
+            return $resultados;
+        }
+
+        return $items;
+    }
+
+    /**
+     * Extrae el número de días de cobertura según el lapso de tiempo seleccionado.
+     */
+    private function extractCoverageDays(string $lapso): int
+    {
+        return match ($lapso) {
+            '7 days' => 7,
+            '15 days' => 15,
+            '1 month' => 30,
+            '2 month', '2 months' => 60,
+            '3 month', '3 months' => 90,
+            '6 month', '6 months' => 180,
+            '1 year', '12 month' => 365,
+            default => 30,
+        };
     }
 
     /**

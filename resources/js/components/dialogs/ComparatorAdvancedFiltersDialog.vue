@@ -54,6 +54,7 @@ const precioOpciones = [
 ]
 
 const tipoFiltracionOpciones = [
+  { title: "Ponderado (Óptimo ROP)", value: "weighted" },
   { title: "Promedio", value: "average" },
   { title: "Ventas", value: "sales" },
   { title: "Combinado", value: "combinado" },

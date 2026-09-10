@@ -42,6 +42,7 @@ class CalculateProductSalesAverage extends Command
                     ->where('external_accumulated_sales', '>', 0)
                     ->update([
                         'sales_average' => DB::raw('ROUND(external_accumulated_sales / MAX(1, CAST(strftime("%m", COALESCE(external_sales_date, DATE("now"))) AS INTEGER)), 2)'),
+                        'sales_average_weighted' => DB::raw('ROUND(external_accumulated_sales / MAX(1, CAST(strftime("%m", COALESCE(external_sales_date, DATE("now"))) AS INTEGER)), 2)'),
                         'sales_average_updated_at' => $now,
                     ]);
             } else {
@@ -49,6 +50,7 @@ class CalculateProductSalesAverage extends Command
                     ->where('external_accumulated_sales', '>', 0)
                     ->update([
                         'sales_average' => DB::raw('ROUND(external_accumulated_sales / GREATEST(1, MONTH(COALESCE(external_sales_date, CURDATE()))), 2)'),
+                        'sales_average_weighted' => DB::raw('ROUND(external_accumulated_sales / GREATEST(1, MONTH(COALESCE(external_sales_date, CURDATE()))), 2)'),
                         'sales_average_updated_at' => $now,
                     ]);
             }
@@ -75,12 +77,44 @@ class CalculateProductSalesAverage extends Command
             $progressBar = $this->output->createProgressBar($totalProducts);
             $progressBar->start();
 
-            $productsToProcess->chunk($chunkSize, function ($products) use (&$processedProducts, &$updatedProducts, $progressBar, $now, $windowStart) {
+            $isRestaurant = \App\Models\GeneralSetting::first()?->business_type === 'restaurant';
+            $dateM1 = $now->copy()->subDays(30)->format('Y-m-d H:i:s');
+            $dateM2 = $now->copy()->subDays(60)->format('Y-m-d H:i:s');
+            $dateM3 = $now->copy()->subDays(90)->format('Y-m-d H:i:s');
+
+            $productsToProcess->chunk($chunkSize, function ($products) use (&$processedProducts, &$updatedProducts, $progressBar, $now, $windowStart, $isRestaurant, $dateM1, $dateM2, $dateM3) {
+                $productIds = $products->pluck('id')->toArray();
+
+                // Carga optimizada de ventas por trimestres para promedio ponderado móvil
+                $weightedSalesMap = [];
+                if (!$isRestaurant && !empty($productIds)) {
+                    $weightedSales = DB::table('order_details')
+                        ->join('orders', 'order_details.order_id', '=', 'orders.id')
+                        ->whereIn('order_details.product_id', $productIds)
+                        ->where('orders.status', 'Completed')
+                        ->where('orders.created_at', '>=', $dateM3)
+                        ->select(
+                            'order_details.product_id',
+                            DB::raw('SUM(CASE WHEN orders.created_at >= "' . $dateM1 . '" THEN order_details.quantity ELSE 0 END) as m1'),
+                            DB::raw('SUM(CASE WHEN orders.created_at >= "' . $dateM2 . '" AND orders.created_at < "' . $dateM1 . '" THEN order_details.quantity ELSE 0 END) as m2'),
+                            DB::raw('SUM(CASE WHEN orders.created_at >= "' . $dateM3 . '" AND orders.created_at < "' . $dateM2 . '" THEN order_details.quantity ELSE 0 END) as m3')
+                        )
+                        ->groupBy('order_details.product_id')
+                        ->get();
+
+                    foreach ($weightedSales as $ws) {
+                        $weightedSalesMap[$ws->product_id] = [
+                            'm1' => (float) ($ws->m1 ?? 0),
+                            'm2' => (float) ($ws->m2 ?? 0),
+                            'm3' => (float) ($ws->m3 ?? 0),
+                        ];
+                    }
+                }
+
                 foreach ($products as $product) {
                     $processedProducts++;
 
                     // Total de unidades vendidas o consumidas en los últimos 12 meses
-                    $isRestaurant = \App\Models\GeneralSetting::first()?->business_type === 'restaurant';
                     if ($isRestaurant) {
                         $totalSoldRaw = DB::table('inventory_movements')
                             ->where('product_id', $product->id)
@@ -99,6 +133,7 @@ class CalculateProductSalesAverage extends Command
 
                     if ($totalSold === null || $totalSold == 0) {
                         $salesAverage = 0;
+                        $salesAverageWeighted = 0;
                     } else {
                         // Fecha del primer ingreso a inventario (lotes o movimientos)
                         $firstStockDate = DB::table('product_lots')
@@ -139,10 +174,23 @@ class CalculateProductSalesAverage extends Command
 
                         // Promedio mensual = ventas en ventana / meses reales transcurridos
                         $salesAverage = round($totalSold / $actualMonths, 2);
+
+                        // Promedio ponderado móvil últimos 3 meses: 50% M1, 30% M2, 20% M3
+                        $m1 = $weightedSalesMap[$product->id]['m1'] ?? 0;
+                        $m2 = $weightedSalesMap[$product->id]['m2'] ?? 0;
+                        $m3 = $weightedSalesMap[$product->id]['m3'] ?? 0;
+
+                        if ($m1 > 0 || $m2 > 0 || $m3 > 0) {
+                            $salesAverageWeighted = round(($m1 * 0.50) + ($m2 * 0.30) + ($m3 * 0.20), 2);
+                        } else {
+                            // Fallback al promedio simple si las ventas ocurrieron antes de los últimos 3 meses
+                            $salesAverageWeighted = $salesAverage;
+                        }
                     }
 
                     $product->update([
                         'sales_average'            => $salesAverage,
+                        'sales_average_weighted'   => $salesAverageWeighted,
                         'sales_average_updated_at' => $now,
                     ]);
                     $updatedProducts++;

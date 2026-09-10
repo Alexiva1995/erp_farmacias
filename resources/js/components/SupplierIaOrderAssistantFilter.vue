@@ -69,9 +69,10 @@ const tipoDeVistaOpcion = [
 ];
 
 const tipoFiltracionOpcion = [
-  { title: "Promedio",  value: "average"   },
-  { title: "Ventas",    value: "sales"     },
-  { title: "Combinado", value: "combinado" },
+  { title: "Ponderado (Óptimo ROP)", value: "weighted"  },
+  { title: "Promedio",              value: "average"   },
+  { title: "Ventas",                value: "sales"     },
+  { title: "Combinado",             value: "combinado" },
 ];
 
 const lapsoDeTiempoOpciones = [

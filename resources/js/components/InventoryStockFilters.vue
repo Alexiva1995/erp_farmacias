@@ -64,6 +64,7 @@ const diasVencimientos = [
 ];
 
 const tipoFiltracionOpcion = computed(() => [
+  { title: "Ponderado (Óptimo ROP)", value: "weighted" },
   { title: "Promedio", value: "average" },
   { title: isRestaurant.value ? "Consumido" : "Ventas", value: "sales" },
   { title: "Combinado", value: "combinado" },

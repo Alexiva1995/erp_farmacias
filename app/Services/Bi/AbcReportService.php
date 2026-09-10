@@ -78,8 +78,8 @@ class AbcReportService
                     : ($item->margin_amount > 0 ? 9999 : 0);
 
                 // Días de Inventario / Cobertura:
-                // Se calcula con base en la velocidad de salida diaria (usando el promedio histórico o el periodo actual)
-                $monthlyAvg = (float) ($item->sales_average ?? 0);
+                // Se calcula con base en la velocidad de salida diaria (usando el promedio ponderado histórico o el periodo actual)
+                $monthlyAvg = (float) ($item->sales_average_weighted ?? $item->sales_average ?? 0);
                 $dailyAvgFromProduct = $monthlyAvg / 30;
                 $dailyAvgFromPeriod = $daysInPeriod > 0 ? ($item->sold_units / $daysInPeriod) : 0;
                 $dailyRunRate = $dailyAvgFromProduct > 0 ? $dailyAvgFromProduct : $dailyAvgFromPeriod;
