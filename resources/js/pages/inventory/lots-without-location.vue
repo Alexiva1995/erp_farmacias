@@ -187,6 +187,8 @@ const handleSort = (sortOptions) => {
       :total-lots="totalLots"
       :items-per-page="itemsPerPage"
       :page="page"
+      :sort-by="sortBy"
+      :order-by="orderBy"
       :lot-with-error="lotWithError"
       :error-message="errorMessage"
       @update:options="updateTableOptions"
