@@ -304,42 +304,15 @@ class SupplierConnectionService
                 || str_contains(strtolower($connection->supplier?->name ?? ''), 'crist')
                 || in_array($connection->supplier_id, [3, 21, 1002]);
 
-            $isCobeca = str_contains(strtolower($connection->host ?? ''), 'cobeca')
-                || str_contains(strtolower($connection->supplier?->name ?? ''), 'mafarta')
-                || str_contains(strtolower($connection->supplier?->name ?? ''), 'cobeca')
-                || in_array($connection->supplier_id, [1011, 23]);
-
-            $token = null;
-            if ($isCobeca && !empty($connection->username) && !empty($connection->password)) {
-                $decryptedPass = FtpCrypt::decrypt($connection->password);
-                $loginUrl = str_ends_with(rtrim($connection->host, '/'), '/api/Login')
-                    ? $connection->host
-                    : (str_contains($connection->host ?? '', '/api') ? rtrim($connection->host, '/') . '/Login' : 'https://comparadores.drogueriascobeca.com/api/Login');
-
-                $loginResponse = Http::withoutVerifying()->timeout(30)->post($loginUrl, [
-                    "Usuario" => $connection->username,
-                    "Clave" => $decryptedPass,
-                ]);
-
-                if ($loginResponse->successful()) {
-                    $json = $loginResponse->json();
-                    $token = is_array($json) ? ($json["token"] ?? null) : null;
-                }
-            } elseif (!empty($connection->username) && !empty($connection->password) && !$isCristmedicals) {
+            if (!empty($connection->username) && !empty($connection->password) && !$isCristmedicals) {
                 $decryptedPass = FtpCrypt::decrypt($connection->password);
                 $loginResponse = Http::timeout(30)->post($connection->host, [
                     "Usuario" => $connection->username,
                     "Clave" => $decryptedPass,
                     "usuario" => $connection->username,
                     "clave" => $decryptedPass,
-                    "User" => $connection->username,
-                    "Password" => $decryptedPass,
                 ]);
-
-                if ($loginResponse->successful()) {
-                    $json = $loginResponse->json();
-                    $token = is_array($json) ? ($json["token"] ?? null) : null;
-                }
+                $token = $loginResponse->json()["token"] ?? null;
             } elseif (!empty($connection->password)) {
                 $token = FtpCrypt::decrypt($connection->password);
             }
@@ -451,7 +424,7 @@ class SupplierConnectionService
                 Log::info("🔎 [FACTURAS] fetchFromAPI result", ['count' => is_countable($invoiceResponse) ? count($invoiceResponse) : 0]);
 
                 // Detectar si las facturas vienen en una clave específica (ej: 'facturas', 'estadoCuenta', 'documentos')
-                $invoicesRaw = is_array($invoiceResponse) ? $invoiceResponse : [];
+                $invoicesRaw = $invoiceResponse;
                 if (isset($invoiceResponse['estadoCuenta']) && is_array($invoiceResponse['estadoCuenta'])) {
                     $invoicesRaw = $invoiceResponse['estadoCuenta'];
                 } elseif (isset($invoiceResponse['documentos']) && is_array($invoiceResponse['documentos'])) {
@@ -460,83 +433,67 @@ class SupplierConnectionService
                     $invoicesRaw = $invoiceResponse['facturas'];
                 }
 
-                if (is_iterable($invoicesRaw)) {
-                    foreach ($invoicesRaw as $invoice) {
-                        if (!is_array($invoice)) {
-                            continue;
-                        }
+                foreach ($invoicesRaw as $invoice) {
+                    $cod_invoice = $invoice['fact_num'] ?? $invoice['InvoiceCode'] ?? $invoice['numDoc'] ?? null;
 
-                        $cod_invoice = $invoice['fact_num'] ?? $invoice['InvoiceCode'] ?? $invoice['numDoc'] ?? null;
+                    if (!$cod_invoice || in_array($cod_invoice, $seenInvoiceNumbers)) {
+                        Log::warning("Factura ignorada (sin código o duplicada en este lote)", ['cod_invoice' => $cod_invoice]);
+                        continue;
+                    }
 
-                        if (!$cod_invoice || in_array($cod_invoice, $seenInvoiceNumbers)) {
-                            Log::warning("Factura ignorada (sin código o duplicada en este lote)", ['cod_invoice' => $cod_invoice]);
-                            continue;
-                        }
-
-                        // Si la factura ya trae los artículos (caso Cristmedicals y otros)
-                        if (isset($invoice['articulos']) && is_array($invoice['articulos'])) {
-                            $parsed = $this->parseNestedInvoice($invoice, $connection);
-                            if (!empty($parsed)) {
-                                $invoiceResults[] = $parsed;
-                                $seenInvoiceNumbers[] = $cod_invoice;
-                            } else {
-                                Log::error("Fallo al parsear factura anidada", ['cod_invoice' => $cod_invoice]);
-                            }
-                            continue;
-                        }
-
-                        $payloadInvoiceDetails = $this->buildPayload($connection, 'factura_detalle', $cod_invoice);
-                        if (!$payloadInvoiceDetails || empty($payloadInvoiceDetails['url'])) {
-                            continue;
-                        }
-
-                        $invoiceDetailsResponse = $this->fetchFromAPI($token, [], $client, $payloadInvoiceDetails['url'], 'get');
-
-                        $detailsArray = is_array($invoiceDetailsResponse) ? $invoiceDetailsResponse : [];
-                        if (isset($invoiceDetailsResponse['detalles']) && is_array($invoiceDetailsResponse['detalles'])) {
-                            $detailsArray = $invoiceDetailsResponse['detalles'];
-                        } elseif (isset($invoiceDetailsResponse['articulos']) && is_array($invoiceDetailsResponse['articulos'])) {
-                            $detailsArray = $invoiceDetailsResponse['articulos'];
-                        } elseif (isset($invoiceDetailsResponse['items']) && is_array($invoiceDetailsResponse['items'])) {
-                            $detailsArray = $invoiceDetailsResponse['items'];
-                        }
-
-                        $flatData = [];
-
-                        if (is_iterable($detailsArray)) {
-                            foreach ($detailsArray as $detail) {
-                                if (!is_array($detail)) {
-                                    continue;
-                                }
-
-                                // Prefijar claves del encabezado
-                                $prefixedHeader = [];
-                                foreach ($invoice as $key => $value) {
-                                    if (!is_array($value)) {
-                                        $prefixedHeader["header_$key"] = $value;
-                                    }
-                                }
-
-                                // Prefijar claves del detalle
-                                $prefixedDetail = [];
-                                foreach ($detail as $key => $value) {
-                                    if (!is_array($value)) {
-                                        $prefixedDetail["detail_$key"] = $value;
-                                    }
-                                }
-
-                                // Combinar sin colisión
-                                $flatRow = array_merge($prefixedHeader, $prefixedDetail);
-                                $flatData[] = $flatRow;
-                            }
-                        }
-
-                        $invoiceCsvString = $this->convertJsonArrayToCsvString($flatData);
-                        $parsed = $this->invoiceTxtParser($invoiceCsvString, $connection, $seenInvoiceNumbers);
-
-                        if (!empty($parsed) && !empty($parsed['header'])) {
+                    // Si la factura ya trae los artículos (caso Cristmedicals y otros)
+                    if (isset($invoice['articulos']) && is_array($invoice['articulos'])) {
+                        $parsed = $this->parseNestedInvoice($invoice, $connection);
+                        if (!empty($parsed)) {
                             $invoiceResults[] = $parsed;
+                            $seenInvoiceNumbers[] = $cod_invoice;
+                        } else {
+                            Log::error("Fallo al parsear factura anidada", ['cod_invoice' => $cod_invoice]);
                         }
+                        continue;
+                    }
+
+                    $payloadInvoiceDetails = $this->buildPayload($connection, 'factura_detalle', $cod_invoice);
+                    $invoiceDetailsResponse = $this->fetchFromAPI($token, [], $client, $payloadInvoiceDetails['url'], 'get');
+
+                    $detailsArray = $invoiceDetailsResponse;
+                    if (isset($invoiceDetailsResponse['detalles']) && is_array($invoiceDetailsResponse['detalles'])) {
+                        $detailsArray = $invoiceDetailsResponse['detalles'];
+                    } elseif (isset($invoiceDetailsResponse['articulos']) && is_array($invoiceDetailsResponse['articulos'])) {
+                        $detailsArray = $invoiceDetailsResponse['articulos'];
+                    } elseif (isset($invoiceDetailsResponse['items']) && is_array($invoiceDetailsResponse['items'])) {
+                        $detailsArray = $invoiceDetailsResponse['items'];
+                    }
+
+                    $flatData = [];
+
+                    foreach ($detailsArray as $detail) {
+                        // Prefijar claves del encabezado
+                        $prefixedHeader = [];
+                        foreach ($invoice as $key => $value) {
+                            if (!is_array($value)) {
+                                $prefixedHeader["header_$key"] = $value;
+                            }
+                        }
+
+                        // Prefijar claves del detalle
+                        $prefixedDetail = [];
+                        foreach ($detail as $key => $value) {
+                            if (!is_array($value)) {
+                                $prefixedDetail["detail_$key"] = $value;
+                            }
+                        }
+
+                        // Combinar sin colisión
+                        $flatRow = array_merge($prefixedHeader, $prefixedDetail);
+                        $flatData[] = $flatRow;
+                    }
+
+                    $invoiceCsvString = $this->convertJsonArrayToCsvString($flatData);
+                    $parsed = $this->invoiceTxtParser($invoiceCsvString, $connection, $seenInvoiceNumbers);
+
+                    if (!empty($parsed) && !empty($parsed['header'])) {
+                        $invoiceResults[] = $parsed;
                     }
                 }
             }
@@ -559,24 +516,6 @@ class SupplierConnectionService
         $structure = $connection->structure;
         $has_header = $connection->has_header;
 
-        $isCobeca = str_contains(strtolower($connection->host ?? ''), 'cobeca')
-            || str_contains(strtolower($connection->supplier?->name ?? ''), 'mafarta')
-            || str_contains(strtolower($connection->supplier?->name ?? ''), 'cobeca')
-            || in_array($connection->supplier_id, [1011, 23]);
-
-        // Si la conexión es de Cobeca y no tiene estructura mapeada en BD, asignar mapeo por defecto
-        if ($isCobeca && (empty($structure) || !is_array($structure))) {
-            $structure = [
-                'barcode_match' => 'cod_barra',
-                'name' => 'desc_articulo',
-                'unit_cost' => 'monto_final',
-                'quantity' => 'existencia',
-                'laboratory' => 'desc_proveedor',
-                'discount_percentage' => 'porcentaje_descuento',
-            ];
-            $has_header = true;
-        }
-
         // Normalizar la estructura para soportar tanto el formato antiguo (estructurado) 
         // como el nuevo (plano de importaciones manuales)
         $normalizedStructure = collect($structure)->map(function ($meta, $key) {
@@ -587,31 +526,12 @@ class SupplierConnectionService
             return [
                 'target' => $key,
                 'file_field' => $meta,
-                'type' => in_array($key, ['unit_cost', 'unit_cost_usd', 'discount_percentage']) ? 'decimal' : (in_array($key, ['quantity']) ? 'integer' : 'string')
+                'type' => in_array($key, ['unit_cost', 'unit_cost_usd']) ? 'decimal' : (in_array($key, ['quantity']) ? 'integer' : 'string')
             ];
         })->filter(function($f, $k) {
             $target = $f["target"] ?? null;
             return $target && !is_numeric($target);
         });
-
-        // Asegurar campos esenciales para Cobeca si faltan en normalizedStructure
-        if ($isCobeca) {
-            if (!$normalizedStructure->contains('target', 'barcode_match')) {
-                $normalizedStructure->push(['target' => 'barcode_match', 'file_field' => 'cod_barra', 'type' => 'string']);
-            }
-            if (!$normalizedStructure->contains('target', 'name')) {
-                $normalizedStructure->push(['target' => 'name', 'file_field' => 'desc_articulo', 'type' => 'string']);
-            }
-            if (!$normalizedStructure->contains('target', 'unit_cost')) {
-                $normalizedStructure->push(['target' => 'unit_cost', 'file_field' => 'monto_final', 'type' => 'decimal']);
-            }
-            if (!$normalizedStructure->contains('target', 'quantity')) {
-                $normalizedStructure->push(['target' => 'quantity', 'file_field' => 'existencia', 'type' => 'integer']);
-            }
-            if (!$normalizedStructure->contains('target', 'laboratory')) {
-                $normalizedStructure->push(['target' => 'laboratory', 'file_field' => 'desc_proveedor', 'type' => 'string']);
-            }
-        }
 
         $lines = array_filter(explode("\n", trim($content)), "trim");
 
@@ -909,52 +829,12 @@ class SupplierConnectionService
     {
         $lines = array_filter(explode("\n", trim($content)), "trim");
         $structure = $connection->invoice_structure;
-
-        $isCobeca = str_contains(strtolower($connection->host ?? ''), 'cobeca')
-            || str_contains(strtolower($connection->supplier?->name ?? ''), 'mafarta')
-            || str_contains(strtolower($connection->supplier?->name ?? ''), 'cobeca')
-            || in_array($connection->supplier_id, [1011, 23]);
-
-        if (empty($structure) || empty($structure['lines'])) {
-            if ($isCobeca) {
-                $structure = [
-                    "separator" => ";",
-                    "decimal_separator" => ".",
-                    "decimals" => 2,
-                    "mode" => "flat",
-                    "header" => [
-                        "1" => ["field" => "invoice_number", "type" => "integer"],
-                        "13" => ["field" => "control_number", "type" => "string"],
-                        "6" => ["field" => "exp_date", "type" => "date", "format" => "d/m/Y"],
-                        "4" => ["field" => "total_amount", "type" => "decimal"],
-                        "16" => ["field" => "tax_amount", "type" => "decimal"],
-                        "15" => ["field" => "exchange_rate", "type" => "decimal"],
-                    ],
-                    "lines" => [
-                        "26" => ["field" => "fact_num", "type" => "integer"],
-                        "49" => ["field" => "numcon", "type" => "string"],
-                        "27" => ["field" => "codigo_producto", "type" => "string"],
-                        "48" => ["field" => "barcode", "type" => "string"],
-                        "28" => ["field" => "descripcion_producto", "type" => "string"],
-                        "33" => ["field" => "quantity", "type" => "integer"],
-                        "40" => ["field" => "unit_cost", "type" => "decimal"],
-                        "29" => ["field" => "lot_number", "type" => "string"],
-                        "30" => ["field" => "expiration_date", "type" => "date", "format" => "d/m/Y"],
-                        "37" => ["field" => "porcentaje_iva", "type" => "decimal"],
-                        "43" => ["field" => "total_cost", "type" => "decimal"],
-                    ],
-                ];
-            } else {
-                $structure = $structure ?: ['separator' => ';', 'lines' => [], 'header' => []];
-            }
-        }
-
         $separator = $structure["separator"] ?? ";";
 
         $invoices = [];
         $bufferLines = [];
 
-        $barcodeField = collect($structure["lines"] ?? [])->pluck("field")->search("barcode");
+        $barcodeField = collect($structure["lines"])->pluck("field")->search("barcode");
         $barcodes = [];
         $mode = $structure['mode'] ?? 'grouped';
 

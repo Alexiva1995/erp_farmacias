@@ -80,26 +80,8 @@ class SyncSupplierConfigsCommand extends Command
                         'cobeca',
                         'drogueriascobeca',
                     ], $content);
-
-                    // Sincronizar estructura de BD si está vacía
-                    if (empty($connection->structure) || empty($connection->host)) {
-                        $connection->update([
-                            'host' => !empty($connection->host) ? $connection->host : 'https://comparadores.drogueriascobeca.com/api/Login',
-                            'has_header' => true,
-                            'structure' => [
-                                'barcode_match' => 'cod_barra',
-                                'name' => 'desc_articulo',
-                                'unit_cost' => 'monto_final',
-                                'quantity' => 'existencia',
-                                'laboratory' => 'desc_proveedor',
-                                'expiration' => 'fecha_Expire_ned',
-                                'discount_percentage' => 'porcentaje_descuento',
-                            ],
-                        ]);
-                    }
-
                     $apiSynced++;
-                    $status = "<fg=green>OK (PHP: {$supplier->id}.php + BD)</>";
+                    $status = "<fg=green>OK (PHP: {$supplier->id}.php)</>";
                 } elseif ($connection->type === 'ftp') {
                     $ftpSynced++;
                     $hasPass = !empty($connection->password) ? 'Sí (Cifrada)' : 'No';
