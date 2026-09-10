@@ -31,7 +31,8 @@ class InventorySnapshotRepository implements InventorySnapshotRepositoryInterfac
         $allowedSorts = [
             'id', 'name', 'cutoff_date', 'period_days', 'total_products',
             'total_inventory_units', 'total_inventory_value', 'total_sales_units',
-            'total_sales_value', 'overstock_products_count', 'overstock_inventory_value', 'created_at',
+            'total_sales_value', 'overstock_products_count', 'overstock_inventory_value',
+            'expiring_risk_products_count', 'expiring_risk_inventory_value', 'created_at',
         ];
 
         $rawSortBy = is_array($filters['sortBy'] ?? null) 

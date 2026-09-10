@@ -101,19 +101,18 @@ const snapshotHeaders = [
   { title: 'VALOR INV.', key: 'total_inventory_value', align: 'end', sortable: true },
   { title: 'VENTAS MES', key: 'total_sales_value', align: 'end', sortable: true },
   { title: 'SOBRESTOCK', key: 'overstock_products_count', align: 'end', sortable: true },
+  { title: 'RIESGO VENCE', key: 'expiring_risk_products_count', align: 'end', sortable: true },
   { title: 'ACCIONES', key: 'actions', align: 'center', sortable: false, width: '120px' },
 ];
 
 const itemHeaders = [
   { title: 'PRODUCTO / LABORATORIO', key: 'nombre_producto', sortable: true },
   { title: 'CLASIF.', key: 'clasificacion_ventas', align: 'center', sortable: true },
-  { title: 'VENTAS (30D)', key: 'ventas_unidades_30d', align: 'end', sortable: true },
-  { title: 'VENTAS ($)', key: 'ventas_totales_usd_30d', align: 'end', sortable: true },
+  { title: 'VEN.', key: 'ventas_unidades_30d', align: 'end', sortable: true },
   { title: 'STOCK', key: 'stock_actual_unidades', align: 'end', sortable: true },
-  { title: 'VALOR INV. ($)', key: 'valor_inventario_usd', align: 'end', sortable: true },
+  { title: 'VAL INV.', key: 'valor_inventario_usd', align: 'end', sortable: true },
   { title: 'COBERTURA', key: 'cobertura_dias', align: 'center', sortable: true },
   { title: 'GMROI (%)', key: 'gmroi_anual_porcentaje', align: 'center', sortable: true },
-  { title: 'VENCE', key: 'dias_para_vencer', align: 'center', sortable: true },
   { title: 'ESTADO', key: 'es_sobrestock', align: 'center', sortable: false },
 ];
 

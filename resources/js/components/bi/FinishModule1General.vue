@@ -213,12 +213,12 @@ const getClassColor = (c) => {
                   v-if="item.id_producto"
                   :to="`/inventory/traceability?q=${item.id_producto}`"
                   target="_blank"
-                  class="font-weight-black text-primary text-decoration-none text-caption cursor-pointer id-link"
+                  class="font-weight-black text-primary text-decoration-none text-sm cursor-pointer id-link"
                   title="Ver trazabilidad de movimientos"
                 >
                   {{ item.id_producto }}
                 </RouterLink>
-                <span v-if="item.id_producto" class="text-caption text-medium-emphasis font-weight-bold">-</span>
+                <span v-if="item.id_producto" class="text-sm text-medium-emphasis font-weight-bold">-</span>
                 <span class="font-weight-black text-sm text-high-emphasis text-uppercase text-truncate" :title="item.nombre_producto" style="max-width: 320px;">
                   {{ item.nombre_producto }}
                 </span>
@@ -229,55 +229,68 @@ const getClassColor = (c) => {
             </div>
           </template>
 
-          <!-- Clasificación -->
+          <!-- Clasificación: Solo letra (A, B, C, Z) -->
           <template #item.clasificacion_ventas="{ item }">
             <VChip
               size="small"
               :color="getClassColor(item.clasificacion_ventas)"
-              class="font-weight-black"
+              class="font-weight-black px-3"
               variant="elevated"
             >
-              Clase {{ item.clasificacion_ventas }}
+              {{ item.clasificacion_ventas }}
             </VChip>
           </template>
 
-          <!-- Ventas 30d -->
+          <!-- VEN.: Unidades arriba y Total USD abajo -->
           <template #item.ventas_unidades_30d="{ item }">
-            <span class="font-weight-bold" :class="item.ventas_unidades_30d > 0 ? 'text-success' : 'text-disabled'">
-              {{ item.ventas_unidades_30d }} unds
-            </span>
-          </template>
-
-          <!-- Ventas Totales USD -->
-          <template #item.ventas_totales_usd_30d="{ item }">
-            <span class="font-weight-bold">{{ formatCurrency(item.ventas_totales_usd_30d) }}</span>
-          </template>
-
-          <!-- Stock Actual -->
-          <template #item.stock_actual_unidades="{ item }">
-            <div class="d-flex flex-column align-end">
-              <span class="font-weight-black">{{ item.stock_actual_unidades }}</span>
-              <span class="text-super-xs text-medium-emphasis">Costo: {{ formatCurrency(item.costo_unitario_usd) }}</span>
+            <div class="d-flex flex-column align-end py-1">
+              <span class="font-weight-black" :class="item.ventas_unidades_30d > 0 ? 'text-success' : 'text-disabled'">
+                {{ Number(item.ventas_unidades_30d || 0).toLocaleString() }}
+              </span>
+              <span class="text-super-xs font-weight-bold text-medium-emphasis">
+                {{ formatCurrency(item.ventas_totales_usd_30d || 0) }}
+              </span>
             </div>
           </template>
 
-          <!-- Valor Inventario -->
-          <template #item.valor_inventario_usd="{ item }">
-            <span class="font-weight-black text-high-emphasis" :class="item.es_sobrestock ? 'text-error' : ''">
-              {{ formatCurrency(item.valor_inventario_usd) }}
+          <!-- Stock: Solo unidades físicas -->
+          <template #item.stock_actual_unidades="{ item }">
+            <span class="font-weight-black">
+              {{ Number(item.stock_actual_unidades || 0).toLocaleString() }}
             </span>
           </template>
 
-          <!-- Cobertura Días -->
+          <!-- VAL INV.: Valor total arriba y Costo unitario abajo -->
+          <template #item.valor_inventario_usd="{ item }">
+            <div class="d-flex flex-column align-end py-1">
+              <span class="font-weight-black text-high-emphasis" :class="item.es_sobrestock ? 'text-error' : ''">
+                {{ formatCurrency(item.valor_inventario_usd || 0) }}
+              </span>
+              <span class="text-super-xs text-medium-emphasis">
+                Costo: {{ formatCurrency(item.costo_unitario_usd || 0) }}
+              </span>
+            </div>
+          </template>
+
+          <!-- Cobertura: Días (ej: 272D o 999D) + Días de Vencimiento debajo en rojo -->
           <template #item.cobertura_dias="{ item }">
-            <VChip
-              size="small"
-              :color="item.cobertura_dias >= 999 ? 'error' : (item.cobertura_dias > 90 ? 'warning' : 'success')"
-              variant="tonal"
-              class="font-weight-bold"
-            >
-              {{ item.cobertura_dias >= 999 ? '999d (Sin Ventas)' : `${Math.round(item.cobertura_dias)} días` }}
-            </VChip>
+            <div class="d-flex flex-column align-center py-1">
+              <VChip
+                size="small"
+                :color="item.cobertura_dias >= 999 ? 'error' : (item.cobertura_dias > 90 ? 'warning' : 'success')"
+                variant="tonal"
+                class="font-weight-black"
+              >
+                {{ Math.round(item.cobertura_dias) }}D
+              </VChip>
+              <span
+                v-if="item.dias_para_vencer !== null"
+                class="text-super-xs font-weight-bold mt-0-5"
+                :class="item.dias_para_vencer <= 90 ? 'text-error font-weight-black' : 'text-medium-emphasis'"
+              >
+                {{ item.dias_para_vencer <= 0 ? 'Vencido' : `Vence: ${item.dias_para_vencer}d` }}
+              </span>
+            </div>
           </template>
 
           <!-- GMROI Anual -->
@@ -287,24 +300,37 @@ const getClassColor = (c) => {
             </span>
           </template>
 
-          <!-- Días para Vencer -->
-          <template #item.dias_para_vencer="{ item }">
-            <span v-if="item.dias_para_vencer !== null" class="font-weight-bold" :class="item.dias_para_vencer <= 90 ? 'text-error' : 'text-medium-emphasis'">
-              {{ item.dias_para_vencer <= 0 ? 'Vencido' : `${item.dias_para_vencer}d` }}
-            </span>
-            <span v-else class="text-disabled text-caption">S/F</span>
-          </template>
-
-          <!-- Es Sobrestock -->
+          <!-- Estado con Íconos Visuales (Sobrestock, Quiebre, Óptimo) -->
           <template #item.es_sobrestock="{ item }">
-            <VChip
-              size="x-small"
-              :color="item.es_sobrestock ? 'error' : 'success'"
-              variant="flat"
-              class="font-weight-bold"
-            >
-              {{ item.es_sobrestock ? 'SOBRESTOCK' : 'ÓPTIMO' }}
-            </VChip>
+            <!-- Caso 1: Sobrestock (>90 días) -> Flecha hacia arriba roja -->
+            <VTooltip v-if="item.es_sobrestock" location="top">
+              <template #activator="{ props: tipProps }">
+                <VAvatar v-bind="tipProps" color="error" variant="tonal" size="28">
+                  <VIcon icon="tabler-arrow-up" size="18" class="text-error font-weight-black" />
+                </VAvatar>
+              </template>
+              <span>Sobrestock (>90 días de cobertura)</span>
+            </VTooltip>
+
+            <!-- Caso 2: Quiebre / Stock bajo (Stock <= 0) -> X roja -->
+            <VTooltip v-else-if="item.stock_actual_unidades <= 0" location="top">
+              <template #activator="{ props: tipProps }">
+                <VAvatar v-bind="tipProps" color="error" variant="tonal" size="28">
+                  <VIcon icon="tabler-x" size="18" class="text-error font-weight-black" />
+                </VAvatar>
+              </template>
+              <span>Agotado / Quiebre de stock</span>
+            </VTooltip>
+
+            <!-- Caso 3: Óptimo -> Check verde -->
+            <VTooltip v-else location="top">
+              <template #activator="{ props: tipProps }">
+                <VAvatar v-bind="tipProps" color="success" variant="tonal" size="28">
+                  <VIcon icon="tabler-check" size="18" class="text-success font-weight-black" />
+                </VAvatar>
+              </template>
+              <span>Nivel de stock óptimo</span>
+            </VTooltip>
           </template>
         </VDataTableServer>
       </VCardText>

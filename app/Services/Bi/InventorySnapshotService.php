@@ -432,6 +432,9 @@ class InventorySnapshotService
                 }
             }
 
+            $riskExpiringValue = round($riskExpiringUnits * $unitCost, 2);
+            $hasExpRisk = ($riskExpiringUnits > 0);
+
             $itemsToProcess[] = [
                 'product_id' => $prodId,
                 'product_name' => $prod->product_name ?? ('Producto #' . $prodId),
@@ -446,6 +449,9 @@ class InventorySnapshotService
                 'coverage_days' => round($coverageDays, 2),
                 'gmroi_annual_percentage' => round($gmroiAnnual, 2),
                 'days_to_expiration' => $daysToExpiration,
+                'risk_expiring_units' => round($riskExpiringUnits, 2),
+                'risk_expiring_value_usd' => $riskExpiringValue,
+                'has_expiration_risk' => $hasExpRisk,
                 'is_overstock' => $isOverstock,
             ];
 
@@ -487,6 +493,10 @@ class InventorySnapshotService
         $overstockCount = count($overstockItems);
         $overstockInventoryValue = array_sum(array_column($overstockItems, 'inventory_value_usd'));
 
+        $expRiskItems = array_filter($itemsToProcess, fn($i) => !empty($i['has_expiration_risk']));
+        $expRiskCount = count($expRiskItems);
+        $expRiskInventoryValue = array_sum(array_column($expRiskItems, 'risk_expiring_value_usd'));
+
         $headerData = [
             'name' => $snapshotName,
             'cutoff_date' => $cutoffDate->toDateString(),
@@ -498,6 +508,8 @@ class InventorySnapshotService
             'total_sales_value' => round($totalSalesValue, 2),
             'overstock_products_count' => $overstockCount,
             'overstock_inventory_value' => round($overstockInventoryValue, 2),
+            'expiring_risk_products_count' => $expRiskCount,
+            'expiring_risk_inventory_value' => round($expRiskInventoryValue, 2),
             'is_automatic' => $isAutomatic,
             'created_by_user_id' => $userId,
         ];

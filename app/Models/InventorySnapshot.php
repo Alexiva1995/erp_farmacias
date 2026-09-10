@@ -26,6 +26,8 @@ class InventorySnapshot extends Model
         'total_sales_value',
         'overstock_products_count',
         'overstock_inventory_value',
+        'expiring_risk_products_count',
+        'expiring_risk_inventory_value',
         'is_automatic',
         'created_by_user_id',
     ];
@@ -40,6 +42,8 @@ class InventorySnapshot extends Model
         'total_sales_value' => 'float',
         'overstock_products_count' => 'integer',
         'overstock_inventory_value' => 'float',
+        'expiring_risk_products_count' => 'integer',
+        'expiring_risk_inventory_value' => 'float',
         'is_automatic' => 'boolean',
     ];
 

@@ -187,6 +187,29 @@ const emit = defineEmits([
             </VTooltip>
           </template>
 
+          <!-- Riesgo Vencimiento (Multi-lote FEFO) -->
+          <template #item.expiring_risk_products_count="{ item }">
+            <VTooltip location="top">
+              <template #activator="{ props: tipProps }">
+                <div v-bind="tipProps" class="d-flex flex-column align-end cursor-pointer py-1">
+                  <VChip
+                    :color="item.expiring_risk_products_count > 0 ? 'warning' : 'success'"
+                    size="small"
+                    variant="tonal"
+                    class="font-weight-black"
+                  >
+                    <VIcon :icon="item.expiring_risk_products_count > 0 ? 'tabler-clock-exclamation' : 'tabler-shield-check'" size="14" class="me-1" />
+                    {{ formatCurrency(item.expiring_risk_inventory_value || 0) }}
+                  </VChip>
+                  <span class="text-caption text-medium-emphasis mt-0-5">
+                    {{ item.expiring_risk_products_count }} SKUs
+                  </span>
+                </div>
+              </template>
+              <span>{{ item.expiring_risk_products_count }} productos con riesgo de merma/vencimiento FEFO (Capital en riesgo: {{ formatCurrency(item.expiring_risk_inventory_value || 0) }})</span>
+            </VTooltip>
+          </template>
+
           <!-- Acciones -->
           <template #item.actions="{ item }">
             <div class="d-flex align-center justify-center gap-1">
@@ -287,10 +310,16 @@ const emit = defineEmits([
                 <span class="text-medium-emphasis">SKUs / Stock Total:</span>
                 <span>{{ item.total_products }} SKUs ({{ Number(item.total_inventory_units).toLocaleString() }} u)</span>
               </div>
-              <div class="d-flex justify-space-between py-1 text-caption mb-3">
+              <div class="d-flex justify-space-between py-1 border-b text-caption">
                 <span class="text-medium-emphasis">Sobrestock (>90d):</span>
                 <span :class="item.overstock_products_count > 0 ? 'text-error font-weight-black' : 'text-success font-weight-bold'">
                   {{ formatCurrency(item.overstock_inventory_value || 0) }} ({{ item.overstock_products_count }} SKUs)
+                </span>
+              </div>
+              <div class="d-flex justify-space-between py-1 text-caption mb-3">
+                <span class="text-medium-emphasis">Riesgo Vence:</span>
+                <span :class="item.expiring_risk_products_count > 0 ? 'text-warning font-weight-black' : 'text-success font-weight-bold'">
+                  {{ formatCurrency(item.expiring_risk_inventory_value || 0) }} ({{ item.expiring_risk_products_count }} SKUs)
                 </span>
               </div>
 

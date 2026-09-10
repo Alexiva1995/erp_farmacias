@@ -30,6 +30,9 @@ class InventorySnapshotItem extends Model
         'coverage_days',
         'gmroi_annual_percentage',
         'days_to_expiration',
+        'risk_expiring_units',
+        'risk_expiring_value_usd',
+        'has_expiration_risk',
         'is_overstock',
     ];
 
@@ -44,6 +47,9 @@ class InventorySnapshotItem extends Model
         'coverage_days' => 'float',
         'gmroi_annual_percentage' => 'float',
         'days_to_expiration' => 'integer',
+        'risk_expiring_units' => 'float',
+        'risk_expiring_value_usd' => 'float',
+        'has_expiration_risk' => 'boolean',
         'is_overstock' => 'boolean',
     ];
 
