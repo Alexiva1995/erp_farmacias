@@ -559,6 +559,24 @@ class SupplierConnectionService
         $structure = $connection->structure;
         $has_header = $connection->has_header;
 
+        $isCobeca = str_contains(strtolower($connection->host ?? ''), 'cobeca')
+            || str_contains(strtolower($connection->supplier?->name ?? ''), 'mafarta')
+            || str_contains(strtolower($connection->supplier?->name ?? ''), 'cobeca')
+            || in_array($connection->supplier_id, [1011, 23]);
+
+        // Si la conexión es de Cobeca y no tiene estructura mapeada en BD, asignar mapeo por defecto
+        if ($isCobeca && (empty($structure) || !is_array($structure))) {
+            $structure = [
+                'barcode_match' => 'cod_barra',
+                'name' => 'desc_articulo',
+                'unit_cost' => 'monto_final',
+                'quantity' => 'existencia',
+                'laboratory' => 'desc_proveedor',
+                'discount_percentage' => 'porcentaje_descuento',
+            ];
+            $has_header = true;
+        }
+
         // Normalizar la estructura para soportar tanto el formato antiguo (estructurado) 
         // como el nuevo (plano de importaciones manuales)
         $normalizedStructure = collect($structure)->map(function ($meta, $key) {
@@ -569,12 +587,31 @@ class SupplierConnectionService
             return [
                 'target' => $key,
                 'file_field' => $meta,
-                'type' => in_array($key, ['unit_cost', 'unit_cost_usd']) ? 'decimal' : (in_array($key, ['quantity']) ? 'integer' : 'string')
+                'type' => in_array($key, ['unit_cost', 'unit_cost_usd', 'discount_percentage']) ? 'decimal' : (in_array($key, ['quantity']) ? 'integer' : 'string')
             ];
         })->filter(function($f, $k) {
             $target = $f["target"] ?? null;
             return $target && !is_numeric($target);
         });
+
+        // Asegurar campos esenciales para Cobeca si faltan en normalizedStructure
+        if ($isCobeca) {
+            if (!$normalizedStructure->contains('target', 'barcode_match')) {
+                $normalizedStructure->push(['target' => 'barcode_match', 'file_field' => 'cod_barra', 'type' => 'string']);
+            }
+            if (!$normalizedStructure->contains('target', 'name')) {
+                $normalizedStructure->push(['target' => 'name', 'file_field' => 'desc_articulo', 'type' => 'string']);
+            }
+            if (!$normalizedStructure->contains('target', 'unit_cost')) {
+                $normalizedStructure->push(['target' => 'unit_cost', 'file_field' => 'monto_final', 'type' => 'decimal']);
+            }
+            if (!$normalizedStructure->contains('target', 'quantity')) {
+                $normalizedStructure->push(['target' => 'quantity', 'file_field' => 'existencia', 'type' => 'integer']);
+            }
+            if (!$normalizedStructure->contains('target', 'laboratory')) {
+                $normalizedStructure->push(['target' => 'laboratory', 'file_field' => 'desc_proveedor', 'type' => 'string']);
+            }
+        }
 
         $lines = array_filter(explode("\n", trim($content)), "trim");
 
