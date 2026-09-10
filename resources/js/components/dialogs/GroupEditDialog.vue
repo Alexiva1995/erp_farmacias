@@ -251,36 +251,31 @@ const nextExpirationDate = (product) => {
 
                   <template #item.name="{ item }">
                     <div class="d-flex align-center gap-x-3 py-2">
-                      <VAvatar
-                        v-if="item.photo_url"
-                        size="34"
-                        variant="tonal"
-                        rounded
-                        :image="item.photo_url"
-                        class="elevation-1 border"
-                      />
-                      <VAvatar
-                        v-else
-                        size="34"
-                        variant="tonal"
-                        color="primary"
-                        rounded
-                        class="elevation-1"
-                      >
-                        <VIcon icon="tabler-package" size="18" />
-                      </VAvatar>
-                      <div class="d-flex flex-column">
+                      <div class="d-flex flex-column min-width-0">
                         <span
-                          class="text-body-2 font-weight-black text-high-emphasis leading-tight truncate uppercase"
-                          style="max-inline-size: 250px;"
+                          class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate"
+                          style="max-inline-size: 320px;"
                           :class="{ 
-                            'text-warning': item.psychotropic == 1
+                            'text-warning': item.psychotropic == 1 || item.psychotropic === true
                           }"
+                          :title="item.name"
                         >
-                          {{ item.name }}
+                          {{ item.name?.toUpperCase() || "—" }}
+                          <span v-if="item.iva == 1 || item.iva === true" class="text-xs text-disabled"> (G)</span>
+                          <span v-if="item.is_colombian_origin == 1 || item.is_colombian_origin === true" class="text-xs text-disabled"> (COL)</span>
                         </span>
-                        <span v-if="!isRestaurant" class="text-super-xs text-disabled font-weight-bold uppercase truncate" style="max-inline-size: 200px;">{{ item.active_ingredient }}</span>
-                        <span v-else class="text-super-xs text-disabled font-weight-bold uppercase truncate" style="max-inline-size: 200px;">{{ item.presentation || "S/P" }}{{ item.unit_of_measure ? ` (${item.unit_of_measure})` : '' }}</span>
+                        <div class="d-flex align-center gap-1 text-super-xs">
+                          <span v-if="!isRestaurant" class="text-disabled truncate" style="max-inline-size: 200px;">
+                            {{ item.active_ingredient || item.presentation || "Sin Especificación" }}
+                          </span>
+                          <span v-else class="text-disabled truncate" style="max-inline-size: 200px;">
+                            {{ item.presentation || "S/P" }}{{ item.unit_of_measure ? ` (${item.unit_of_measure})` : '' }}
+                          </span>
+                          <span class="text-disabled mx-1">|</span>
+                          <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 150px;">
+                            {{ item.laboratory?.name || 'S/L' }}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </template>
@@ -321,6 +316,7 @@ const nextExpirationDate = (product) => {
                         size="16"
                       />
                       <VIcon v-else icon="tabler-trash-x" />
+                      <VTooltip activator="parent">Quitar del Grupo</VTooltip>
                     </IconBtn>
                   </template>
                 </VDataTable>
@@ -334,33 +330,27 @@ const nextExpirationDate = (product) => {
                   variant="flat"
                   class="rounded-lg border bg-white overflow-hidden shadow-sm"
                 >
-                  <div class="pa-3 d-flex align-center gap-3">
-                    <VAvatar
-                      v-if="item.photo_url"
-                      size="44"
-                      variant="tonal"
-                      rounded
-                      :image="item.photo_url"
-                      class="border"
-                    />
-                    <VAvatar v-else size="44" variant="tonal" color="primary" rounded>
-                        <VIcon icon="tabler-package" size="20" />
-                    </VAvatar>
-                    
-                    <div class="flex-grow-1 overflow-hidden">
-                      <div class="d-flex justify-space-between align-center mb-1">
+                  <div class="pa-3">
+                    <div class="d-flex justify-space-between align-center mb-1">
+                      <div class="d-flex align-center gap-1 min-width-0">
                         <span class="text-xs font-weight-black text-primary">{{ item.id }}</span>
-                        <VChip size="x-super-small" color="info" variant="tonal" class="font-weight-black">{{ item.stock_calculado || 0 }} UNID</VChip>
-                      </div>
-                      <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase truncate leading-tight">
-                        {{ item.name }}
-                      </h3>
-                      <div class="d-flex align-center justify-space-between mt-1">
-                        <span class="text-super-xs text-disabled uppercase font-weight-bold truncate" style="max-inline-size: 150px;">{{ item.laboratory?.name || 'S/L' }}</span>
-                        <span class="text-super-xs font-weight-black" :class="new Date(nextExpirationDate(item)) < new Date() ? 'text-error' : 'text-secondary'">
-                            {{ formatDateSimple(nextExpirationDate(item)) }}
+                        <span class="text-disabled">|</span>
+                        <span class="text-xs font-weight-black text-primary uppercase truncate" style="max-inline-size: 150px;">
+                          {{ item.laboratory?.name || 'S/L' }}
                         </span>
                       </div>
+                      <VChip size="x-super-small" color="info" variant="tonal" class="font-weight-black">{{ item.stock_calculado || 0 }} UNID</VChip>
+                    </div>
+                    <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase truncate leading-tight mt-1">
+                      {{ item.name }}
+                      <span v-if="item.iva == 1 || item.iva === true" class="text-super-xs text-disabled"> (G)</span>
+                      <span v-if="item.is_colombian_origin == 1 || item.is_colombian_origin === true" class="text-super-xs text-disabled"> (COL)</span>
+                    </h3>
+                    <div class="d-flex align-center justify-space-between mt-1 text-super-xs text-disabled">
+                      <span>{{ item.active_ingredient || "Sin Especificación" }}</span>
+                      <span class="font-weight-black" :class="new Date(nextExpirationDate(item)) < new Date() ? 'text-error' : 'text-secondary'">
+                        {{ formatDateSimple(nextExpirationDate(item)) }}
+                      </span>
                     </div>
                   </div>
 

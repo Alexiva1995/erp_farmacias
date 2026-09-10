@@ -642,6 +642,8 @@ onMounted(() => {
             :total-lots="totalLots"
             :items-per-page="itemsPerPageLots"
             :page="pageLots"
+            :sort-by="sortByLots"
+            :order-by="orderByLots"
             @update:options="updateTableOptionsLots"
             @expire-lot="handleExpireLot"
           />

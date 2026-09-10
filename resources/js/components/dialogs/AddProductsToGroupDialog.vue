@@ -306,30 +306,26 @@ onMounted(() => {
 
             <template #item.name="{ item }">
               <div class="d-flex align-center gap-x-3 py-2">
-                <VAvatar
-                  v-if="item.photo_url"
-                  size="38"
-                  variant="tonal"
-                  rounded
-                  :image="item.photo_url"
-                  class="border flex-shrink-0"
-                />
-                <VAvatar v-else size="38" variant="tonal" color="primary" rounded class="flex-shrink-0">
-                  <VIcon icon="tabler-package" size="20" />
-                </VAvatar>
-                <div class="d-flex flex-column truncate" style="max-inline-size: 400px;">
+                <div class="d-flex flex-column min-width-0">
                   <span
-                    class="text-sm font-weight-black text-high-emphasis leading-tight text-uppercase truncate"
-                    :class="{ 'text-warning': item.psychotropic == 1 }"
+                    class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate"
+                    :class="{ 'text-warning': item.psychotropic == 1 || item.psychotropic === true }"
+                    style="max-inline-size: 440px;"
+                    :title="item.name"
                   >
-                    {{ item.name || 'N/A' }}
-                    <VChip v-if="item.iva == 1" size="x-small" color="success" variant="flat" density="compact" class="ms-1 font-weight-black">G</VChip>
+                    {{ item.name?.toUpperCase() || '—' }}
+                    <span v-if="item.iva == 1 || item.iva === true" class="text-xs text-disabled"> (G)</span>
+                    <span v-if="item.is_colombian_origin == 1 || item.is_colombian_origin === true" class="text-xs text-disabled"> (COL)</span>
                   </span>
-                  <div class="d-flex align-center gap-x-1 text-super-xs mt-1">
-                    <span v-if="!isRestaurant" class="text-disabled truncate">{{ item.active_ingredient || "Sin Componente" }}</span>
-                    <span v-else class="text-disabled truncate">{{ item.presentation || "S/P" }}{{ item.unit_of_measure ? ` (${item.unit_of_measure})` : '' }}</span>
-                    <span class="text-disabled">|</span>
-                    <span class="text-primary font-weight-black text-uppercase truncate">
+                  <div class="d-flex align-center gap-1 text-super-xs">
+                    <span v-if="!isRestaurant" class="text-disabled truncate" style="max-inline-size: 220px;">
+                      {{ item.active_ingredient || item.presentation || "Sin Especificación" }}
+                    </span>
+                    <span v-else class="text-disabled truncate" style="max-inline-size: 220px;">
+                      {{ item.presentation || "S/P" }}{{ item.unit_of_measure ? ` (${item.unit_of_measure})` : '' }}
+                    </span>
+                    <span class="text-disabled mx-1">|</span>
+                    <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 160px;">
                       {{ item.laboratory?.name || 'S/L' }}
                     </span>
                   </div>
@@ -346,6 +342,7 @@ onMounted(() => {
                   class="rounded-lg bg-success-light"
                 >
                   <VIcon icon="tabler-square-plus" />
+                  <VTooltip activator="parent">Añadir al Grupo</VTooltip>
                 </IconBtn>
                 <IconBtn
                   v-else
@@ -354,6 +351,7 @@ onMounted(() => {
                   class="rounded-lg bg-error-light shadow-soft"
                 >
                   <VIcon icon="tabler-square-minus" />
+                  <VTooltip activator="parent">Quitar del Grupo</VTooltip>
                 </IconBtn>
               </div>
             </template>
@@ -372,31 +370,25 @@ onMounted(() => {
               variant="flat"
               class="rounded-lg border bg-white overflow-hidden shadow-sm"
             >
-              <div class="pa-3 d-flex align-center gap-3">
-                <VAvatar
-                  v-if="item.photo_url"
-                  size="50"
-                  variant="tonal"
-                  rounded
-                  :image="item.photo_url"
-                  class="border"
-                />
-                <VAvatar v-else size="50" variant="tonal" color="primary" rounded>
-                    <VIcon icon="tabler-package" size="24" />
-                </VAvatar>
-                
-                <div class="flex-grow-1 overflow-hidden">
-                  <div class="d-flex justify-space-between align-start">
-                    <span class="text-xs font-weight-black text-primary mb-1">{{ item.id }}</span>
-                    <VChip v-if="selectedProducts.has(item.id)" color="success" size="x-super-small" variant="flat" class="font-weight-black uppercase">Seleccionado</VChip>
+              <div class="pa-3">
+                <div class="d-flex justify-space-between align-start mb-1">
+                  <div class="d-flex align-center gap-1 min-width-0">
+                    <span class="text-xs font-weight-black text-primary">{{ item.id }}</span>
+                    <span class="text-disabled">|</span>
+                    <span class="text-xs font-weight-black text-primary uppercase truncate" style="max-inline-size: 150px;">
+                      {{ item.laboratory?.name || 'S/L' }}
+                    </span>
                   </div>
-                  <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase truncate leading-none">
-                    {{ item.name }}
-                  </h3>
-                  <div class="text-super-xs text-disabled truncate mt-1 uppercase font-weight-bold">
-                    {{ item.laboratory?.name || 'S/L' }} | <span v-if="!isRestaurant">{{ item.active_ingredient || "S/C" }}</span>
-                    <span v-else>{{ item.presentation || "S/P" }}{{ item.unit_of_measure ? ` (${item.unit_of_measure})` : '' }}</span>
-                  </div>
+                  <VChip v-if="selectedProducts.has(item.id)" color="success" size="x-super-small" variant="flat" class="font-weight-black uppercase">Seleccionado</VChip>
+                </div>
+                <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase truncate leading-tight mt-1">
+                  {{ item.name }}
+                  <span v-if="item.iva == 1 || item.iva === true" class="text-super-xs text-disabled"> (G)</span>
+                  <span v-if="item.is_colombian_origin == 1 || item.is_colombian_origin === true" class="text-super-xs text-disabled"> (COL)</span>
+                </h3>
+                <div class="text-super-xs text-disabled truncate mt-1">
+                  <span v-if="!isRestaurant">{{ item.active_ingredient || "Sin Especificación" }}</span>
+                  <span v-else>{{ item.presentation || "S/P" }}{{ item.unit_of_measure ? ` (${item.unit_of_measure})` : '' }}</span>
                 </div>
               </div>
 
