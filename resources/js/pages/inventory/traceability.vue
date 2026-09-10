@@ -103,21 +103,6 @@ const handleSelectProduct = (productId) => {
   searchQuery.value = String(productId);
 };
 
-const registeringBaseline = ref(false);
-const handleRegisterBaseline = async () => {
-  registeringBaseline.value = true;
-  try {
-    const { data } = await axios.post("/sales/report/register-baseline-adjustments");
-    toast.success(data.message ?? "Ajustes iniciales registrados correctamente.");
-    await fetchSales();
-  } catch (error) {
-    const msg = error.response?.data?.message ?? error.response?.data?.error ?? "Error al registrar ajustes.";
-    toast.error(msg);
-  } finally {
-    registeringBaseline.value = false;
-  }
-};
-
 const handleExport = async (format) => {
   isExporting.value = true;
   const params = {
@@ -180,22 +165,6 @@ const handleExport = async (format) => {
               Auditoría cronológica de movimientos de inventario, stock inicial, final y responsables.
             </p>
           </div>
-        </div>
-
-        <div class="d-flex align-center gap-2 flex-wrap">
-          <VBtn
-            v-if="isAdmin"
-            variant="tonal"
-            color="warning"
-            prepend-icon="tabler-adjustments-alt"
-            :loading="registeringBaseline"
-            @click="handleRegisterBaseline"
-          >
-            Ajuste Inicial Masivo
-            <VTooltip activator="parent" location="bottom">
-              Registrar baseline inicial de stock actual para trazabilidad
-            </VTooltip>
-          </VBtn>
         </div>
       </div>
     </VCard>

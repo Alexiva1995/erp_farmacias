@@ -24,7 +24,8 @@ class InventoryStockFilterRequest extends FormRequest
         return [
             'q' => ['nullable', 'string'],
             'hasStock' => ['nullable', 'boolean'],
-            'laboratoryId' => ['nullable', 'integer', 'exists:laboratories,id'],
+            'laboratoryId' => ['nullable'],
+            'laboratoryId.*' => ['integer', 'exists:laboratories,id'],
             'viewType' => ['nullable', 'string', 'in:individual,group'],
             'stock' => ['nullable', 'string', 'in:exceso,fallas,all'],
             'expProd' => ['nullable', 'boolean'],
@@ -40,5 +41,23 @@ class InventoryStockFilterRequest extends FormRequest
             'itemsPerPage' => ['nullable', 'integer', 'min:1'],
             'formato' => ['nullable', 'string', 'in:xlsx,csv,pdf'],
         ];
+    }
+
+    /**
+     * Prepare the data for validation.
+     */
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('laboratoryId') && $this->input('laboratoryId') !== null && $this->input('laboratoryId') !== '') {
+            $lab = $this->input('laboratoryId');
+            if (is_numeric($lab)) {
+                $this->merge(['laboratoryId' => [(int) $lab]]);
+            } elseif (is_string($lab)) {
+                $ids = array_map('intval', array_filter(explode(',', $lab), 'is_numeric'));
+                $this->merge(['laboratoryId' => array_values($ids)]);
+            } elseif (is_array($lab)) {
+                $this->merge(['laboratoryId' => array_values(array_map('intval', $lab))]);
+            }
+        }
     }
 }

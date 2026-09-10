@@ -189,7 +189,7 @@ const closeDialog = () => {
 
                 <template #item.expired_quantity="{ item }">
                   <VChip size="small" label variant="tonal" color="success" class="font-weight-black">
-                    {{ Math.trunc(item.expired_quantity ?? 0) }} UNDS
+                    {{ Math.trunc(item.expired_quantity ?? 0) }}
                   </VChip>
                 </template>
 
@@ -259,7 +259,7 @@ const closeDialog = () => {
                     <div class="d-flex justify-space-between align-center mt-2 bg-light rounded pa-2">
                       <span class="text-super-xs text-uppercase font-weight-bold text-disabled">Lote: {{ item.lot_number || '—' }}</span>
                       <VChip size="x-small" color="success" label variant="tonal" class="font-weight-black">
-                        {{ Math.trunc(item.expired_quantity ?? 0) }} UNDS
+                        {{ Math.trunc(item.expired_quantity ?? 0) }}
                       </VChip>
                     </div>
                   </div>

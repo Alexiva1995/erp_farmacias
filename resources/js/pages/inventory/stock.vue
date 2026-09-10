@@ -27,7 +27,7 @@ const filters = reactive({
   stock: isRestaurant.value ? "fallas" : "all",
   expProd: false,
   isStrictSearch: false,
-  tipoFiltracion: isRestaurant.value ? "sales" : "average",
+  tipoFiltracion: isRestaurant.value ? "sales" : "weighted",
   isColombian: false,
 });
 
@@ -99,7 +99,7 @@ const handleClearFilters = () => {
   filters.days = 30;
   filters.expProd = false;
   filters.isStrictSearch = false;
-  filters.tipoFiltracion = isRestaurant.value ? "sales" : "average";
+  filters.tipoFiltracion = isRestaurant.value ? "sales" : "weighted";
   filters.isColombian = false;
 };
 

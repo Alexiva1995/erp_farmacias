@@ -6,7 +6,7 @@ import { useBrandingStore } from "@/stores/useBrandingStore";
 
 const props = defineProps({
   searchQuery: String,
-  selectedLaboratory: [Number, String, null],
+  selectedLaboratory: [Array, Number, String, null],
   stockStatusFilter: [Boolean, null],
   expProd: [Boolean, null],
   viewType: { type: String, default: "individual" },
@@ -15,7 +15,7 @@ const props = defineProps({
   days: [String, Number, null],
   stock: [String, null],
   isStrictSearch: { type: Boolean, default: false },
-  tipoFiltracion: { type: String, default: "average" },
+  tipoFiltracion: { type: String, default: "weighted" },
   isColombian: { type: Boolean, default: false },
   isExportingPdf: { type: Boolean, default: false },
   isExportingExcel: { type: Boolean, default: false },
@@ -86,7 +86,7 @@ const handleClear = () => {
 <template>
   <AppFilterBase
     :search="props.searchQuery"
-    :has-advanced-filters="isAdvancedFiltersVisible || !!(props.selectedLaboratory || props.stockStatusFilter !== null || props.stock || props.days || props.tipoFiltracion !== 'average' || props.expProd || props.isColombian)"
+    :has-advanced-filters="isAdvancedFiltersVisible || !!(props.selectedLaboratory || props.stockStatusFilter !== null || props.stock || props.days || props.tipoFiltracion !== 'weighted' || props.expProd || props.isColombian)"
     :show-export="true"
     :export-loading="props.isExportingPdf || props.isExportingExcel"
     search-placeholder="ID, Producto, C. Activo..."
@@ -120,6 +120,9 @@ const handleClear = () => {
           item-title="name"
           item-value="id"
           clearable
+          multiple
+          chips
+          closable-chips
           density="compact"
           hide-details
           :prepend-inner-icon="isRestaurant ? 'tabler-tags' : 'tabler-flask'"

@@ -105,7 +105,8 @@ class ProductRepository
         $subqueryStockLotes = $this->subConsultaParaCalcularStockPorLotes;
         $subqueryTotalSold = 'COALESCE(sales_agg.total_sold, 0)';
         $subqueryAO = 'COALESCE(ao_agg.total_ao, 0)';
-        $prefPorcentajeSql = '100';
+
+        $tipoFiltracion = $filtros["tipo_filtracion"] ?? "average";
 
         $lapso = $filtros["lapso_de_tiempo"] ?? $filtros["days"] ?? 30;
         if (!is_string($lapso)) $lapso = $lapso . " days";
@@ -117,8 +118,19 @@ class ProductRepository
                             AND im_avg.quantity < 0 
                             AND im_avg.created_at >= DATE_SUB(NOW(), INTERVAL 12 MONTH))';
         } else {
-            $baseAverage = 'products.sales_average';
+            if ($tipoFiltracion === "weighted") {
+                $baseAverage = 'COALESCE(products.sales_average_weighted, products.sales_average)';
+            } else {
+                $baseAverage = 'products.sales_average';
+            }
         }
+
+        // Cálculo de porcentaje de preferencia respecto al grupo (si tiene grupo y total > 0, cuota sobre la suma del grupo)
+        $prefPorcentajeSql = '(CASE 
+            WHEN products.group_id IS NOT NULL AND SUM(CASE WHEN products.is_scarce = 0 THEN ' . $baseAverage . ' ELSE 0 END) OVER (PARTITION BY products.group_id) > 0 
+            THEN (' . $baseAverage . ') / SUM(CASE WHEN products.is_scarce = 0 THEN ' . $baseAverage . ' ELSE 0 END) OVER (PARTITION BY products.group_id) * 100
+            ELSE 100 
+        END)';
 
         if (str_contains($lapso, "7")) {
             $promedioCalculadoSql = '(' . $baseAverage . ') / 4';
@@ -169,7 +181,6 @@ class ProductRepository
             ];
         }
 
-        $tipoFiltracion = $filtros["tipo_filtracion"] ?? "average";
         $stockEfectivo = '(' . $subqueryStockLotes . ' + ' . $subqueryAO . ')';
         
         if ($tipoFiltracion == "sales") {

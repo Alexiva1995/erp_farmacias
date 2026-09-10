@@ -160,7 +160,7 @@ const toggleSelection = (id) => {
 
         <template #item.expired_quantity="{ item }">
           <VChip size="small" label variant="tonal" color="error" class="font-weight-black">
-            {{ Math.trunc(item.expired_quantity ?? 0) }} UNDS
+            {{ Math.trunc(item.expired_quantity ?? 0) }}
           </VChip>
         </template>
       </VDataTableServer>
@@ -236,7 +236,7 @@ const toggleSelection = (id) => {
               <div class="d-flex flex-column text-right">
                 <span class="text-super-xs text-disabled text-uppercase font-weight-black">Cant. Final</span>
                 <span class="text-sm font-weight-black text-error">
-                  {{ Math.trunc(item.expired_quantity ?? 0) }} <small class="text-super-xs">UNDS</small>
+                  {{ Math.trunc(item.expired_quantity ?? 0) }}
                 </span>
               </div>
             </div>

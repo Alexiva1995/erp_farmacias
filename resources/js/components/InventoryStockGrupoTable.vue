@@ -219,7 +219,7 @@ const getDiffColor = (val) => {
                     <td class="text-center text-xs font-weight-bold text-primary">
                       {{ parseFloat(item.preferencia_product || 0).toFixed(2) }}%
                     </td>
-                    <td class="text-center text-xs text-disabled">{{ parseFloat(item.promedio_calculado || 0).toFixed(2) }}%</td>
+                    <td class="text-center text-xs text-medium-emphasis">{{ parseFloat(item.promedio_calculado || 0).toFixed(2) }}</td>
                     <td v-if="!isRestaurant" class="text-center">
                       <VChip :color="item.totalQuantityInAutoOrder > 0 ? 'info' : 'default'" variant="tonal" size="x-small">
                         {{ item.totalQuantityInAutoOrder || 0 }}

@@ -236,7 +236,7 @@ const formatDifference = (val, item) => {
         </template>
 
         <template #item.promedio_calculado="{ item }">
-          <span class="font-weight-bold text-disabled">{{ parseFloat(item.promedio_calculado || 0).toFixed(2) }}%</span>
+          <span class="font-weight-bold text-medium-emphasis">{{ parseFloat(item.promedio_calculado || 0).toFixed(2) }}</span>
         </template>
 
         <template #item.diferencia_product="{ item }">

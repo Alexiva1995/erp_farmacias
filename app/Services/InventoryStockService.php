@@ -64,7 +64,7 @@ class InventoryStockService
         if (isset($validated['isStrictSearch'])) {
             $filtros['isStrictSearch'] = (bool) $validated['isStrictSearch'];
         }
-        $filtros['tipo_filtracion'] = $validated['tipo_filtracion'] ?? 'average';
+        $filtros['tipo_filtracion'] = $validated['tipo_filtracion'] ?? 'weighted';
 
         if (isset($validated['isColombian'])) {
             $filtros['isColombian'] = (bool) $validated['isColombian'];
