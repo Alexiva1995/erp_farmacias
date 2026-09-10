@@ -37,6 +37,9 @@ class UpdateSuppliersCommand extends Command
     ): int {
         $supplierOption = $this->option('supplier');
         $userId = (int) $this->option('user');
+        if (!\App\Models\User::where('id', $userId)->exists()) {
+            $userId = (int) (\App\Models\User::first()?->id ?? 1);
+        }
 
         $query = Supplier::where(function ($q) {
             $q->where('is_active', true)->orWhereNull('is_active');

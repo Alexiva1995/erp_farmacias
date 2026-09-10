@@ -465,9 +465,16 @@ class SupplierConnectionService
                         $detailsArray = $invoiceDetailsResponse['items'];
                     }
 
+                    if (!is_array($detailsArray) || empty($detailsArray)) {
+                        continue;
+                    }
+
                     $flatData = [];
 
                     foreach ($detailsArray as $detail) {
+                        if (!is_array($detail)) {
+                            continue;
+                        }
                         // Prefijar claves del encabezado
                         $prefixedHeader = [];
                         foreach ($invoice as $key => $value) {
@@ -827,8 +834,12 @@ class SupplierConnectionService
 
     public function invoiceTxtParser(string $content, SupplierConnection $connection, array &$seenInvoiceNumbers = [], ?string $overrideInvoiceNumber = null): array
     {
-        $lines = array_filter(explode("\n", trim($content)), "trim");
         $structure = $connection->invoice_structure;
+        if (empty($structure) || empty($structure['lines']) || !is_array($structure['lines'])) {
+            return [];
+        }
+
+        $lines = array_filter(explode("\n", trim($content)), "trim");
         $separator = $structure["separator"] ?? ";";
 
         $invoices = [];
