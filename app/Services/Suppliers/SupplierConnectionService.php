@@ -304,8 +304,13 @@ class SupplierConnectionService
                 || str_contains(strtolower($connection->supplier?->name ?? ''), 'crist')
                 || in_array($connection->supplier_id, [3, 21, 1002]);
 
+            $isCobeca = str_contains(strtolower($connection->host ?? ''), 'cobeca')
+                || str_contains(strtolower($connection->supplier?->name ?? ''), 'mafarta')
+                || str_contains(strtolower($connection->supplier?->name ?? ''), 'cobeca')
+                || in_array($connection->supplier_id, [1011, 23]);
+
             $token = null;
-            if (!empty($connection->username) && !empty($connection->password) && !$isCristmedicals) {
+            if (!empty($connection->username) && !empty($connection->password) && !$isCristmedicals && !$isCobeca) {
                 $decryptedPass = FtpCrypt::decrypt($connection->password);
                 $loginResponse = Http::timeout(30)->post($connection->host, [
                     "Usuario" => $connection->username,
@@ -320,7 +325,7 @@ class SupplierConnectionService
                     $json = $loginResponse->json();
                     $token = is_array($json) ? ($json["token"] ?? null) : null;
                 }
-            } elseif (!empty($connection->password)) {
+            } elseif (!empty($connection->password) && !$isCobeca) {
                 $token = FtpCrypt::decrypt($connection->password);
             }
 
