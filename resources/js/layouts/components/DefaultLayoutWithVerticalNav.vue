@@ -221,10 +221,9 @@ const processedNavItems = computed(() => {
 
         // Filtrado dinámico de submenús de BI según enabled_bi_views
         if (copy.title === 'BI') {
-          const enabledBi = brandingStore.settings.enabled_bi_views || ['abc', 'dead-stock', 'sku', 'products', 'expiry', 'laboratories', 'pos', 'cyclic', 'customer', 'performance'];
+          const enabledBi = brandingStore.settings.enabled_bi_views || ['abc', 'sku', 'products', 'expiry', 'laboratories', 'pos', 'cyclic', 'customer', 'performance'];
           const biRouteMap = {
-            'abc': 'bi-report-abc',
-            'dead-stock': 'bi-report-dead-stock',
+            'abc': ['bi-report-abc', 'bi-report-finish'],
             'sku': 'bi-report-sku',
             'products': 'bi-report-products',
             'expiry': 'bi-report-expiry',
@@ -235,8 +234,12 @@ const processedNavItems = computed(() => {
             'performance': 'bi-employee-performance',
           };
           childs = childs.filter(c => {
+            if (c.children && Array.isArray(c.children)) {
+              return enabledBi.includes('abc');
+            }
             for (const [key, name] of Object.entries(biRouteMap)) {
-              if (c.to === name) {
+              const matches = Array.isArray(name) ? name.includes(c.to) : c.to === name;
+              if (matches) {
                 return enabledBi.includes(key);
               }
             }

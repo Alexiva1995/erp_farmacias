@@ -86,13 +86,13 @@ const classificationOptions = [
 ];
 
 const analysisTypeOptions = [
-  { title: 'Análisis Completo', value: 'all' },
+  { title: 'Análisis Completo (Catálogo total)', value: 'all' },
   { title: 'Capital Congelado (CZ / Sin Rotación)', value: 'frozen_capital' },
-  { title: 'Capital Propenso a Vencer (Expiración / FEFO)', value: 'expiring_risk' },
-  { title: 'Quiebres y Riesgo de Stock (A/B)', value: 'critical_stock' },
-  { title: 'Margen Negativo / Pérdida (<0%)', value: 'negative_margin' },
-  { title: 'Stock Muerto (0 Ventas)', value: 'dead_stock' },
-  { title: 'Productos Estrella (AA)', value: 'star_products' },
+  { title: 'Stock Muerto (0 Ventas en el período)', value: 'dead_stock' },
+  { title: 'Capital Propenso a Vencer (Algoritmo FEFO)', value: 'expiring_risk' },
+  { title: 'Quiebres y Riesgo de Stock (Prioridad A/B)', value: 'critical_stock' },
+  { title: 'Margen Negativo / Pérdida (< 0%)', value: 'negative_margin' },
+  { title: 'Productos Estrella (Clase AA)', value: 'star_products' },
 ];
 
 const toggleAdvancedFilters = () => {

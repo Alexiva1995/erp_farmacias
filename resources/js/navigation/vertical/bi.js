@@ -12,21 +12,17 @@ export default [
     subject: 'admin',
     children: [
       {
-        title: 'ABC-XYZ',
+        title: 'Matriz ABC-XYZ & Foto Finish',
         children: [
           {
-            title: 'Reporte',
+            title: 'Pestaña General',
             to: 'bi-report-abc',
           },
           {
-            title: 'Finish',
+            title: 'Módulo Foto Finish',
             to: 'bi-report-finish',
           },
         ],
-      },
-      {
-        title: 'Reporte Stock Muerto',
-        to: 'bi-report-dead-stock',
       },
       {
         title: 'Reporte de Margen SKU',

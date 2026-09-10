@@ -17,8 +17,7 @@ const enabledBiViews = ref([])
 
 // Lista estática de vistas configurables de BI
 const availableBiViews = [
-  { key: 'abc', title: 'Reporte ABC', description: 'Categorización de inventario ABC según valor y rotación.', icon: 'tabler-abc' },
-  { key: 'dead-stock', title: 'Stock Muerto', description: 'Detección de productos sin movimiento o de baja rotación.', icon: 'tabler-package-off' },
+  { key: 'abc', title: 'Matriz ABC-XYZ & Foto Finish', description: 'Categorización estratégica de inventario y auditoría de Foto Finish.', icon: 'tabler-abc' },
   { key: 'sku', title: 'Margen SKU', description: 'Detalle de utilidad y rendimiento individual por SKU.', icon: 'tabler-calculator' },
   { key: 'products', title: 'Dashboard Maestro', description: 'Visión consolidada y analíticas globales de ventas de productos.', icon: 'tabler-chart-pie' },
   { key: 'expiry', title: 'BI Caducidad', description: 'Predicciones y alertas de productos próximos a vencer.', icon: 'tabler-calendar' },
