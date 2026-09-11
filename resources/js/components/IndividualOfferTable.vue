@@ -25,17 +25,36 @@ const headers = [
     headerClass: "d-none d-sm-table-cell",
   },
   { title: "Producto",      key: "product.name",    sortable: true, width: "35%" },
-  { title: "% DESC",        key: "discount_percent", sortable: true, align: "center", width: "90px" },
-  { title: "P. Normal",     key: "sale_price",      sortable: false, align: "end",   width: "110px" },
-  { title: "P. Oferta",     key: "discount_price",  sortable: false, align: "end",   width: "110px" },
-  { title: "Ventas",        key: "sales_count",     sortable: false, align: "center", width: "90px" },
+  { title: "% DESC",        key: "discount_percent", sortable: true, align: "center", width: "95px" },
+  { title: "P. Normal",     key: "sale_price",      sortable: false, align: "end",   width: "105px" },
+  { title: "P. Oferta",     key: "discount_price",  sortable: false, align: "end",   width: "105px" },
+  { title: "Ventas",        key: "sales_count",     sortable: false, align: "end",   width: "90px" },
   { title: "Vigencia",      key: "validity",        sortable: false, align: "center", width: "160px" },
   { title: "Acciones",      key: "actions",         sortable: false, align: "center", width: "90px" },
 ];
 
 const formatDate = (dateString) => {
   if (!dateString) return "—";
-  return new Date(dateString).toLocaleDateString();
+  return new Date(dateString).toLocaleDateString("es-ES", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric"
+  });
+};
+
+const isExpired = (endDateStr) => {
+  if (!endDateStr) return false;
+  const end = new Date(endDateStr);
+  const now = new Date();
+  return end < now;
+};
+
+const isExpiringSoon = (endDateStr) => {
+  if (!endDateStr) return false;
+  const end = new Date(endDateStr);
+  const now = new Date();
+  const diffHours = (end - now) / (1000 * 60 * 60);
+  return diffHours >= 0 && diffHours <= 24;
 };
 
 const calculateDiscountPrice = (price, discount) => {
@@ -75,14 +94,15 @@ const calculateDiscountPrice = (price, discount) => {
           />
         </template>
 
-        <!-- ID Column -->
+        <!-- ID Column (ID del Producto) -->
         <template #item.id="{ item }">
           <a
             :href="'/inventory/traceability?q=' + item.product?.id"
             target="_blank"
             class="text-decoration-none font-weight-black text-primary"
+            :title="'Ver trazabilidad de producto #' + item.product?.id"
           >
-            {{ item.id }}
+            {{ item.product?.id || item.id }}
           </a>
         </template>
 
@@ -102,7 +122,7 @@ const calculateDiscountPrice = (price, discount) => {
                   {{ item.product?.active_ingredient || "—" }}
                 </span>
                 <span class="text-disabled mx-1">|</span>
-                <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 180px;">
+                <span class="text-medium-emphasis font-weight-bold text-uppercase truncate" style="max-inline-size: 180px;">
                   {{ item.product?.laboratory?.name || "S/L" }}
                 </span>
               </div>
@@ -124,41 +144,36 @@ const calculateDiscountPrice = (price, discount) => {
 
         <!-- Sale Price -->
         <template #item.sale_price="{ item }">
-          <span class="text-xs font-weight-bold text-medium-emphasis text-decoration-line-through">
+          <span class="text-sm font-weight-medium text-medium-emphasis text-decoration-line-through">
             ${{ (parseFloat(item.product?.sale_price) || 0).toFixed(2) }}
           </span>
         </template>
 
         <!-- Discount Price -->
         <template #item.discount_price="{ item }">
-          <span class="text-sm font-weight-black text-success">
+          <span class="text-sm font-weight-bold text-high-emphasis">
             ${{ calculateDiscountPrice(item.product?.sale_price, item.discount_percent) }}
           </span>
         </template>
 
         <!-- Sales Count Column -->
         <template #item.sales_count="{ item }">
-          <div class="d-flex justify-center">
-            <VChip
-              size="small"
-              color="info"
-              variant="tonal"
-              class="font-weight-black rounded"
-              prepend-icon="tabler-shopping-cart"
-            >
-              {{ item.sales_count ?? 0 }}
-            </VChip>
-          </div>
+          <span class="text-sm font-weight-medium text-high-emphasis pe-1">
+            {{ item.sales_count ?? 0 }}
+          </span>
         </template>
 
         <!-- Validity Column -->
         <template #item.validity="{ item }">
           <div class="d-flex flex-column align-center">
-            <span class="text-super-xs font-weight-bold text-primary uppercase">
-              INICIO: {{ formatDate(item.start_date) }}
+            <span class="text-xs font-weight-medium text-medium-emphasis">
+              {{ formatDate(item.start_date) }} - {{ formatDate(item.end_date) }}
             </span>
-            <span class="text-super-xs font-weight-bold text-error uppercase">
-              FIN: {{ formatDate(item.end_date) }}
+            <span v-if="isExpired(item.end_date)" class="text-super-xs font-weight-bold text-error uppercase mt-0-5">
+              Vencida
+            </span>
+            <span v-else-if="isExpiringSoon(item.end_date)" class="text-super-xs font-weight-bold text-warning uppercase mt-0-5">
+              Vence pronto
             </span>
           </div>
         </template>
@@ -211,16 +226,16 @@ const calculateDiscountPrice = (price, discount) => {
                     target="_blank"
                     class="text-decoration-none text-primary font-weight-black text-super-xs bg-primary-lighten-5 px-1-5 py-0-5 rounded flex-shrink-0"
                   >
-                    ID: {{ item.id }}
+                    ID: {{ item.product?.id || item.id }}
                   </a>
-                  <span v-if="item.product?.laboratory?.name" class="text-primary font-weight-bold text-super-xs text-uppercase truncate" style="max-inline-size: 140px;">
+                  <span v-if="item.product?.laboratory?.name" class="text-medium-emphasis font-weight-bold text-super-xs text-uppercase truncate" style="max-inline-size: 140px;">
                     {{ item.product.laboratory.name }}
                   </span>
                   <VSpacer />
                   <VChip
                     size="x-small"
                     color="success"
-                    variant="flat"
+                    variant="tonal"
                     class="font-weight-black text-super-xs flex-shrink-0"
                   >
                     {{ item.discount_percent }}% OFF
@@ -250,23 +265,24 @@ const calculateDiscountPrice = (price, discount) => {
 
               <div class="d-flex flex-column text-center">
                 <span class="text-super-xs text-disabled text-uppercase font-weight-bold letter-spacing-1">Oferta:</span>
-                <span class="text-xs font-weight-black text-success">
+                <span class="text-xs font-weight-bold text-high-emphasis">
                   ${{ calculateDiscountPrice(item.product?.sale_price, item.discount_percent) }}
                 </span>
               </div>
 
               <div class="d-flex flex-column text-end">
                 <span class="text-super-xs text-disabled text-uppercase font-weight-bold letter-spacing-1">Ventas:</span>
-                <span class="text-xs font-weight-bold text-info">
+                <span class="text-xs font-weight-medium text-high-emphasis">
                   {{ item.sales_count ?? 0 }}
                 </span>
               </div>
             </div>
 
             <!-- Vigencia Móvil -->
-            <div class="d-flex justify-space-between align-center px-1 mt-1 text-super-xs font-weight-bold">
-              <span class="text-primary">INI: {{ formatDate(item.start_date) }}</span>
-              <span class="text-error">FIN: {{ formatDate(item.end_date) }}</span>
+            <div class="d-flex justify-space-between align-center px-1 mt-1 text-super-xs font-weight-medium text-medium-emphasis">
+              <span>{{ formatDate(item.start_date) }} - {{ formatDate(item.end_date) }}</span>
+              <span v-if="isExpired(item.end_date)" class="text-error font-weight-bold uppercase">Vencida</span>
+              <span v-else-if="isExpiringSoon(item.end_date)" class="text-warning font-weight-bold uppercase">Vence pronto</span>
             </div>
           </div>
 
