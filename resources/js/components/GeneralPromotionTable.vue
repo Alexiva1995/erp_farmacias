@@ -109,29 +109,23 @@ const getCategoryNames = (categoryIds) => {
 
         <!-- Actions Column -->
         <template #item.actions="{ item }">
-          <div class="d-flex align-center justify-center gap-1">
-            <VBtn
-              icon
-              size="x-small"
-              color="warning"
-              variant="tonal"
-              class="rounded-circle shadow-sm"
+          <div class="d-flex justify-center gap-1">
+            <IconBtn
               @click="$emit('edit-offer', item)"
+              color="warning"
+              size="small"
             >
               <VIcon icon="tabler-edit" size="18" />
-              <VTooltip activator="parent" location="top">Editar Oferta</VTooltip>
-            </VBtn>
-            <VBtn
-              icon
-              size="x-small"
-              color="error"
-              variant="tonal"
-              class="rounded-circle shadow-sm"
+              <VTooltip activator="parent">Editar</VTooltip>
+            </IconBtn>
+            <IconBtn
               @click="$emit('delete-offer', item.id)"
+              color="error"
+              size="small"
             >
               <VIcon icon="tabler-trash" size="18" />
-              <VTooltip activator="parent" location="top">Eliminar Oferta</VTooltip>
-            </VBtn>
+              <VTooltip activator="parent">Eliminar</VTooltip>
+            </IconBtn>
           </div>
         </template>
       </VDataTableServer>
@@ -170,23 +164,23 @@ const getCategoryNames = (categoryIds) => {
               </h3>
             </div>
 
-            <div class="d-flex gap-2">
-              <VBtn
-                icon="tabler-edit"
-                size="x-small"
+            <div class="d-flex gap-1">
+              <IconBtn
+                size="small"
                 color="warning"
-                variant="tonal"
-                class="rounded-circle shadow-sm"
                 @click="$emit('edit-offer', item)"
-              />
-              <VBtn
-                icon="tabler-trash"
-                size="x-small"
+              >
+                <VIcon icon="tabler-edit" size="18" />
+                <VTooltip activator="parent">Editar</VTooltip>
+              </IconBtn>
+              <IconBtn
+                size="small"
                 color="error"
-                variant="tonal"
-                class="rounded-circle shadow-sm"
                 @click="$emit('delete-offer', item.id)"
-              />
+              >
+                <VIcon icon="tabler-trash" size="18" />
+                <VTooltip activator="parent">Eliminar</VTooltip>
+              </IconBtn>
             </div>
           </div>
 

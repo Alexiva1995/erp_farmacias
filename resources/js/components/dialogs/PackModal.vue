@@ -639,7 +639,23 @@ watch(
                 <VRow dense class="align-center">
                   <!-- Buscador de Producto -->
                   <VCol cols="12" md="6">
-                    <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Producto #{{ index + 1 }}</span>
+                    <div class="d-flex align-center justify-space-between flex-wrap gap-1 mb-1">
+                      <span class="text-super-xs font-weight-black text-high-emphasis uppercase">Producto #{{ index + 1 }}</span>
+                      
+                      <!-- Resumen de precio y stock al lado de la etiqueta del producto -->
+                      <div v-if="item.product" class="d-flex align-center flex-wrap gap-1">
+                        <span class="text-super-xs font-weight-black text-primary bg-primary-lighten-5 px-1-5 py-0-5 rounded">
+                          {{ formatCurrency(item.product.sale_price, 'USD') }}
+                        </span>
+                        <span class="text-super-xs font-weight-black text-success bg-success-lighten-5 px-1-5 py-0-5 rounded">
+                          Stock: {{ item.product.stock }}
+                        </span>
+                        <span class="text-super-xs font-weight-bold text-medium-emphasis uppercase">
+                          {{ item.product.laboratory?.name || item.product.laboratory || 'S/L' }}
+                        </span>
+                      </div>
+                    </div>
+
                     <AppAutocomplete
                       v-model="item.product"
                       :items="availableProducts"
@@ -655,7 +671,7 @@ watch(
                       clearable
                       @update:search="handleProductSearch"
                       @update:model-value="calculateTotalPrice()"
-                      class="rounded-lg font-weight-bold"
+                      class="rounded font-weight-bold"
                       :error="!!formErrors[`product_${index}`]"
                       :error-messages="formErrors[`product_${index}`]"
                       :disabled="isSaving"
@@ -668,24 +684,11 @@ watch(
                         />
                       </template>
                     </AppAutocomplete>
-
-                    <!-- Resumen del producto seleccionado -->
-                    <div v-if="item.product" class="d-flex align-center flex-wrap gap-1 mt-1-5">
-                      <span class="text-super-xs font-weight-bold text-primary bg-primary-lighten-5 px-1-5 py-0-5 rounded">
-                        Precio: {{ formatCurrency(item.product.sale_price, 'USD') }}
-                      </span>
-                      <span class="text-super-xs font-weight-bold text-success bg-success-lighten-5 px-1-5 py-0-5 rounded">
-                        Stock: {{ item.product.stock }}
-                      </span>
-                      <span class="text-super-xs font-weight-medium text-medium-emphasis">
-                        {{ item.product.laboratory?.name || item.product.laboratory || 'S/L' }}
-                      </span>
-                    </div>
                   </VCol>
 
                   <!-- Cantidad -->
                   <VCol cols="5" sm="3" md="2">
-                    <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Cantidad</span>
+                    <span class="text-super-xs font-weight-black text-high-emphasis uppercase mb-1 d-block">Cantidad</span>
                     <VTextField
                       v-model.number="item.quantity"
                       type="number"
@@ -694,7 +697,7 @@ watch(
                       density="compact"
                       hide-details="auto"
                       @update:model-value="calculateTotalPrice()"
-                      class="rounded-lg font-weight-black text-center"
+                      class="rounded font-weight-black text-center"
                       :error="!!formErrors[`quantity_${index}`] || !!formErrors[`stock_${index}`]"
                       :error-messages="formErrors[`quantity_${index}`] || formErrors[`stock_${index}`]"
                       :disabled="isSaving"
@@ -703,7 +706,7 @@ watch(
 
                   <!-- Descuento % -->
                   <VCol cols="5" sm="3" md="2">
-                    <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">% Desc.</span>
+                    <span class="text-super-xs font-weight-black text-high-emphasis uppercase mb-1 d-block">% Desc.</span>
                     <VTextField
                       v-model.number="item.discount_percentage"
                       type="number"
@@ -715,7 +718,7 @@ watch(
                       hide-details="auto"
                       prepend-inner-icon="tabler-percentage"
                       @update:model-value="calculateTotalPrice()"
-                      class="rounded-lg font-weight-black"
+                      class="rounded font-weight-black"
                       :disabled="isSaving"
                     />
                   </VCol>
@@ -752,29 +755,29 @@ watch(
       <!-- Footer y Acciones -->
       <VCardActions class="pa-3 pa-sm-4 bg-surface border-t">
         <div class="d-flex flex-column flex-md-row align-center justify-space-between w-100 gap-3">
-          <!-- Tarjeta / Bloque de Totales Equilibrado -->
-          <div class="d-flex align-center gap-3 pa-2-5 rounded-lg border bg-var-theme-background w-100 w-md-auto flex-wrap justify-space-between justify-sm-start">
+          <!-- Tarjeta / Bloque de Totales Equilibrado con Padding Adecuado -->
+          <div class="d-flex align-center gap-4 pa-3 px-4 rounded border bg-var-theme-background w-100 w-md-auto flex-wrap justify-space-between justify-sm-start">
             <div class="d-flex flex-column">
-              <span class="text-super-xs font-weight-bold text-disabled uppercase">Precio Base</span>
+              <span class="text-super-xs font-weight-black text-disabled uppercase">Precio Base</span>
               <span class="text-xs font-weight-bold text-medium-emphasis text-decoration-line-through">
                 {{ formatCurrency(regularTotalPrice, 'USD') }}
               </span>
             </div>
 
-            <VDivider vertical class="mx-1 d-none d-sm-block" style="height: 24px;" />
+            <VDivider vertical class="mx-1 d-none d-sm-block" style="height: 28px;" />
 
             <div v-if="totalSavings > 0" class="d-flex flex-column">
-              <span class="text-super-xs font-weight-bold text-success uppercase">Ahorro</span>
+              <span class="text-super-xs font-weight-black text-success uppercase">Ahorro</span>
               <span class="text-xs font-weight-black text-success">
                 -{{ formatCurrency(totalSavings, 'USD') }}
               </span>
             </div>
 
-            <VDivider v-if="totalSavings > 0" vertical class="mx-1 d-none d-sm-block" style="height: 24px;" />
+            <VDivider v-if="totalSavings > 0" vertical class="mx-1 d-none d-sm-block" style="height: 28px;" />
 
             <div class="d-flex flex-column pe-2">
-              <span class="text-super-xs font-weight-bold text-disabled uppercase">Total del Pack</span>
-              <span class="text-h6 font-weight-black text-high-emphasis leading-none">
+              <span class="text-super-xs font-weight-black text-disabled uppercase">Total del Pack</span>
+              <span class="text-h6 font-weight-black text-primary leading-none">
                 {{ formatCurrency(formData.total_price, 'USD') }}
               </span>
             </div>
@@ -786,7 +789,7 @@ watch(
               color="secondary"
               variant="outlined"
               height="44"
-              class="font-weight-bold rounded-lg text-button uppercase flex-grow-1 flex-md-grow-0 px-5"
+              class="font-weight-bold rounded text-button uppercase flex-grow-1 flex-md-grow-0 px-5"
               @click="closeModal"
               :disabled="isSaving"
             >
@@ -796,7 +799,7 @@ watch(
               color="primary"
               variant="flat"
               height="44"
-              class="font-weight-black rounded-lg shadow-primary text-button uppercase flex-grow-1 flex-md-grow-0 px-6"
+              class="font-weight-black rounded shadow-primary text-button uppercase flex-grow-1 flex-md-grow-0 px-6"
               @click="savePack"
               :loading="isSaving || props.loading"
             >
@@ -820,13 +823,13 @@ watch(
 }
 
 .detail-dialog-card {
-  border-radius: 12px !important;
+  border-radius: 5px !important;
 }
 
 .header-indicator {
   inline-size: 3px;
   block-size: 14px;
-  border-radius: 4px;
+  border-radius: 2px;
 }
 
 .header-indicator.primary { background-color: rgb(var(--v-theme-primary)); }
@@ -867,6 +870,7 @@ watch(
 .pack-item-row {
   transition: all 0.2s ease;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  border-radius: 5px !important;
 }
 
 .pack-item-row:hover {

@@ -123,13 +123,13 @@ const calculatePriceWithDiscount = (item) => {
         <!-- Métricas Principales del Pack -->
         <VRow dense class="mb-4">
           <VCol cols="12" sm="4">
-            <div class="pa-3-5 rounded-lg border bg-surface elevation-0 h-100 d-flex flex-column justify-space-between stat-box">
+            <div class="pa-3 rounded-lg border bg-surface elevation-0 h-100 d-flex flex-column justify-space-between stat-box">
               <div class="d-flex align-center gap-1-5 mb-2">
                 <div class="header-indicator primary" />
                 <span class="text-super-xs font-weight-black text-disabled uppercase letter-spacing-1">Inversión Final</span>
               </div>
               <div>
-                <span class="text-h5 font-weight-950 text-high-emphasis leading-tight d-block">
+                <span class="text-h6 font-weight-black text-primary leading-tight d-block">
                   {{ formatCurrency(parseFloat(props.pack.total_price || 0), 'USD') }}
                 </span>
                 <span class="text-super-xs text-disabled font-weight-bold uppercase mt-0-5 d-block">Precio Promocional</span>
@@ -138,41 +138,38 @@ const calculatePriceWithDiscount = (item) => {
           </VCol>
 
           <VCol cols="12" sm="4">
-            <div class="pa-3-5 rounded-lg border bg-surface elevation-0 h-100 d-flex flex-column justify-space-between stat-box">
+            <div class="pa-3 rounded-lg border bg-surface elevation-0 h-100 d-flex flex-column justify-space-between stat-box">
               <div class="d-flex align-center gap-1-5 mb-2">
-                <div class="header-indicator secondary" />
+                <div class="header-indicator primary" />
                 <span class="text-super-xs font-weight-black text-disabled uppercase letter-spacing-1">Items Incluidos</span>
               </div>
               <div>
-                <span class="text-h5 font-weight-950 text-high-emphasis leading-tight d-block">
-                  {{ totalProductsCount }} <span class="text-caption font-weight-bold text-disabled">UND</span>
+                <span class="text-h6 font-weight-black text-high-emphasis leading-tight d-block">
+                  {{ totalProductsCount }} <span class="text-caption font-weight-bold text-disabled">UNDS</span>
                 </span>
-                <span class="text-super-xs text-disabled font-weight-bold uppercase mt-0-5 d-block">Suma de Cantidades</span>
+                <span class="text-super-xs text-disabled font-weight-bold uppercase mt-0-5 d-block">Total en Pack</span>
               </div>
             </div>
           </VCol>
 
           <VCol cols="12" sm="4">
-            <div class="pa-3-5 rounded-lg border bg-surface elevation-0 h-100 d-flex flex-column justify-space-between stat-box">
+            <div class="pa-3 rounded-lg border bg-surface elevation-0 h-100 d-flex flex-column justify-space-between stat-box">
               <div class="d-flex align-center gap-1-5 mb-2">
                 <div class="header-indicator" :class="props.pack.is_active ? 'success' : 'error'" />
                 <span class="text-super-xs font-weight-black text-disabled uppercase letter-spacing-1">Estado</span>
               </div>
               <div class="d-flex align-center justify-space-between">
                 <div>
-                  <span class="text-h6 font-weight-950 leading-tight d-block" :class="props.pack.is_active ? 'text-success' : 'text-error'">
-                    {{ props.pack.is_active ? "ACTIVO" : "INACTIVO" }}
-                  </span>
-                  <span class="text-super-xs text-disabled font-weight-bold uppercase mt-0-5 d-block">Disponibilidad TPV</span>
+                  <VChip
+                    :color="props.pack.is_active ? 'success' : 'secondary'"
+                    variant="tonal"
+                    size="small"
+                    class="font-weight-black rounded"
+                  >
+                    {{ props.pack.is_active ? 'HABILITADO' : 'DESACTIVADO' }}
+                  </VChip>
                 </div>
-                <VChip
-                  :color="props.pack.is_active ? 'success' : 'error'"
-                  variant="tonal"
-                  size="x-small"
-                  class="font-weight-black rounded"
-                >
-                  {{ props.pack.is_active ? 'HABILITADO' : 'DESACTIVADO' }}
-                </VChip>
+                <span class="text-super-xs text-disabled font-weight-bold uppercase">Disponibilidad TPV</span>
               </div>
             </div>
           </VCol>
