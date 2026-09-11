@@ -5,11 +5,11 @@ import { useBrandingStore } from "@/stores/useBrandingStore";
 import { computed } from "vue";
 
 const props = defineProps({
-  products: { type: Array, required: true },
+  products: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
-  totalProduct: { type: Number, required: true },
-  itemsPerPage: { type: Number, required: true },
-  page: { type: Number, required: true },
+  totalProduct: { type: Number, default: 0 },
+  itemsPerPage: { type: Number, default: 10 },
+  page: { type: Number, default: 1 },
   sortBy: { type: [String, Array], default: () => [] },
   orderBy: { type: String, default: "asc" },
   viewType: { type: String, default: "individual" },

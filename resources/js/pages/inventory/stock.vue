@@ -48,20 +48,24 @@ const orderBy = ref(undefined);
 
 const laboratories = ref([]);
 
+let abortController = null;
+
 const fetchSelectOptions = async () => {
-  loading.value = true;
   try {
     const labResponse = await axios.get("/laboratories");
-    laboratories.value = labResponse.data;
+    laboratories.value = labResponse.data ?? [];
   } catch (error) {
     console.error("Error al cargar opciones de los selects:", error);
     toast.error("No se pudieron cargar los filtros.");
-  } finally {
-    loading.value = false;
   }
 };
 
 const fetchProducts = async () => {
+  if (abortController) {
+    abortController.abort();
+  }
+  abortController = new AbortController();
+
   const data = {
     q: filters.searchQuery,
     hasStock: filters.stockStatusFilter,
@@ -78,15 +82,22 @@ const fetchProducts = async () => {
     tipo_filtracion: filters.tipoFiltracion,
     isColombian: filters.isColombian,
   };
+
   loading.value = true;
   try {
-    const apiResponse = await axios.post("/inventory/stock/filter", data);
-    loading.value = false;
+    const apiResponse = await axios.post("/inventory/stock/filter", data, {
+      signal: abortController.signal,
+    });
     return { ...apiResponse.data.data };
   } catch (error) {
+    if (axios.isCancel(error) || error.name === 'CanceledError' || error.code === 'ERR_CANCELED') {
+      return null;
+    }
+    console.error("Error al consultar el stock:", error);
     toast.error("Error al consultar el stock.");
-    loading.value = false;
     return { data: [], total: 0 };
+  } finally {
+    loading.value = false;
   }
 };
 
@@ -157,10 +168,10 @@ async function actualizarTabla() {
   const currentRequestId = ++requestId;
   const dataTabla = await fetchProducts();
 
-  if (currentRequestId !== requestId) return;
+  if (!dataTabla || currentRequestId !== requestId) return;
 
-  modulo.items = dataTabla.data;
-  modulo.totalItems = dataTabla.total;
+  modulo.items = dataTabla.data ?? [];
+  modulo.totalItems = dataTabla.total ?? 0;
 }
 
 const updateTableOptions = (options) => {
@@ -178,13 +189,14 @@ const updateTableOptions = (options) => {
 
 onMounted(async () => {
   await fetchSelectOptions();
-  const dataTabla = await fetchProducts();
-  modulo.items = dataTabla.data;
-  modulo.totalItems = dataTabla.total;
+  await actualizarTabla();
 });
 
 onUnmounted(() => {
   clearTimeout(debounceTimer);
+  if (abortController) {
+    abortController.abort();
+  }
 });
 
 async function filtrarSinPaginar(dataFiltro) {

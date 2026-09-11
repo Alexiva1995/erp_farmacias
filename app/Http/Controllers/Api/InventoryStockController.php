@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\InventoryStockFilterRequest;
+use App\Http\Resources\StockProductResource;
 use App\Services\InventoryStockService;
 
 class InventoryStockController extends Controller
@@ -19,6 +20,8 @@ class InventoryStockController extends Controller
         $filtros = $this->stockService->extractFilters($request);
         $respuestaConsulta = $this->stockService->getFilteredStock($filtros);
 
+        $respuestaConsulta->through(fn($item) => (new StockProductResource($item))->resolve());
+
         return ApiResponse::success($respuestaConsulta, 'ok', 200);
     }
 
@@ -27,7 +30,7 @@ class InventoryStockController extends Controller
         $filtros = $this->stockService->extractFilters($request);
         $respuestaConsulta = $this->stockService->getFilteredStockWithoutPaginate($filtros);
 
-        return ApiResponse::success($respuestaConsulta, 'ok', 200);
+        return ApiResponse::success(StockProductResource::collection($respuestaConsulta), 'ok', 200);
     }
 
     public function exportarExcel(InventoryStockFilterRequest $request)

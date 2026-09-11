@@ -93,6 +93,10 @@ class ProductRepository
                 ->groupBy('order_details.product_id');
         }
 
+        $lotsSubquery = DB::table('product_lots')
+            ->select('product_id', DB::raw('COALESCE(SUM(quantity), 0) as total_lots_stock'))
+            ->groupBy('product_id');
+
         $aoSubquery = DB::table('auto_order_details as aod')
             ->join('auto_orders as ao', 'ao.id', '=', 'aod.order_id')
             ->select('aod.product_id', DB::raw('COALESCE(SUM(aod.quantity), 0) as total_ao'))
@@ -102,7 +106,7 @@ class ProductRepository
             ->whereNull('aod.deleted_at')
             ->groupBy('aod.product_id');
 
-        $subqueryStockLotes = $this->subConsultaParaCalcularStockPorLotes;
+        $subqueryStockLotes = 'COALESCE(lots_agg.total_lots_stock, 0)';
         $subqueryTotalSold = 'COALESCE(sales_agg.total_sold, 0)';
         $subqueryAO = 'COALESCE(ao_agg.total_ao, 0)';
 
@@ -206,6 +210,7 @@ class ProductRepository
         // Construcción de la Consulta
         $consulta = Product::select($columnas)
             ->leftJoin('laboratories', 'laboratories.id', '=', 'products.laboratory_id')
+            ->leftJoinSub($lotsSubquery, 'lots_agg', 'lots_agg.product_id', '=', 'products.id')
             ->leftJoinSub($salesSubquery, 'sales_agg', 'sales_agg.product_id', '=', 'products.id')
             ->leftJoinSub($aoSubquery, 'ao_agg', 'ao_agg.product_id', '=', 'products.id');
 
@@ -223,7 +228,17 @@ class ProductRepository
                        ->orWhere('products.ignore_until', '<=', now());
                 });
             })
-            ->with(["laboratory", "lots"]);
+            ->with(["laboratory"]);
+
+        if (array_key_exists("expProd", $filtros) && ($filtros["expProd"] === true || $filtros["expProd"] === "true" || $filtros["expProd"] === 1)) {
+            $consulta->whereExists(function ($query) use ($days) {
+                $query->select(DB::raw(1))
+                    ->from('product_lots')
+                    ->whereColumn('product_lots.product_id', 'products.id')
+                    ->where('product_lots.quantity', '>', 0)
+                    ->where('product_lots.expiration_date', '<=', now()->addDays((int)$days)->format('Y-m-d'));
+            });
+        }
 
         // Filtros adicionales
         if (array_key_exists("q", $filtros) && $filtros["q"] != "") {
