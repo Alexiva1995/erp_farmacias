@@ -270,7 +270,7 @@ const handleDeleteItem = async (item) => {
 </script>
 
 <template>
-  <div>
+  <VContainer fluid class="pa-0">
     <!-- Dashboard de Control de Cierre Consolidado -->
     <VCard v-if="hasActiveCycle && activeCycle" class="mb-6 elevation-1 overflow-hidden">
       <VCardText class="pa-3">
@@ -418,7 +418,7 @@ const handleDeleteItem = async (item) => {
       @delete="handleDeleteItem"
       @refresh="fetchData"
     />
-  </div>
+  </VContainer>
 </template>
 
 <style scoped>

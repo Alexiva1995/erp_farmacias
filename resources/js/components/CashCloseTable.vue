@@ -1,5 +1,6 @@
 <script setup>
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
+import AppEmptyState from "@/components/AppEmptyState.vue";
 import { useAbility } from "@casl/vue";
 import { formatDateSimple, formatPrice } from "@/utils/formatters";
 import { useBrandingStore } from "@/stores/useBrandingStore";
@@ -24,21 +25,29 @@ const isRestaurant = computed(() => false);
 
 const headers = computed(() => {
   const list = [
-    { title: "#", key: "product_id", sortable: true, width: "70px", align: "center" },
+    {
+      title: "#",
+      key: "product_id",
+      sortable: true,
+      width: "80px",
+      align: "start",
+      cellClass: 'font-weight-black text-primary d-none d-sm-table-cell',
+      headerClass: 'd-none d-sm-table-cell',
+    },
     { title: "Producto", key: "product.name", sortable: true, width: "320px" },
-    { title: "Cantidad", key: "discrepancy", align: "center", sortable: true },
-    { title: "Costo", key: "product.unit_cost", align: "end", sortable: true },
-    { title: "Usuario", key: "user.name", sortable: true },
+    { title: "Cantidad", key: "discrepancy", align: "center", sortable: true, width: "110px" },
+    { title: "Costo", key: "product.unit_cost", align: "end", sortable: true, width: "110px" },
+    { title: "Usuario", key: "user.name", sortable: true, width: "140px" },
   ];
 
   const enableLots = brandingStore.settings?.enable_lots ?? true;
   if (enableLots) {
-    list.push({ title: "Supervisión", key: "supervisor.name", sortable: true });
+    list.push({ title: "Supervisión", key: "supervisor.name", sortable: true, width: "140px" });
   }
 
   list.push(
-    { title: "Monto", key: "amount", align: "end", sortable: true },
-    { title: "Acciones", key: "actions", sortable: false, align: "center" }
+    { title: "Monto", key: "amount", align: "end", sortable: true, width: "120px" },
+    { title: "Acciones", key: "actions", sortable: false, align: "center", width: "130px" }
   );
   return list;
 });
@@ -84,18 +93,21 @@ const saveEdit = async (item) => {
 const handleDelete = (item) => {
   emit("delete", item);
 };
-
-const handleMobilePageChange = (newPage) => {
-  emit('update:options', {
-    page: newPage,
-    itemsPerPage: props.itemsPerPage,
-    sortBy: [],
-  });
-};
 </script>
 
 <template>
-  <VCard>
+  <VCard class="rounded-lg border shadow-sm overflow-hidden">
+    <!-- Cabecera Estándar (igual a Productos / Inventario) -->
+    <VCardTitle class="d-flex align-center pa-4">
+      <span class="text-h6 font-weight-bold">Diferencias de Inventario para Cierre</span>
+      <VSpacer />
+      <VChip size="small" color="primary" variant="tonal" class="font-weight-black">
+        {{ props.totalItems }} DIFERENCIAS
+      </VChip>
+    </VCardTitle>
+
+    <VDivider />
+
     <!-- Vista de Escritorio (Tabla) -->
     <div class="d-none d-md-block">
       <VDataTableServer
@@ -108,36 +120,41 @@ const handleMobilePageChange = (newPage) => {
         item-value="id"
         density="compact"
         class="text-no-wrap"
-        no-data-text="No hay diferencias registradas para el cierre."
+        hover
         @update:options="(options) => emit('update:options', options)"
       >
         <template #item.product_id="{ item }">
-          <a
-            :href="'/inventory/traceability?q=' + (item.productId || item.product_id)"
-            target="_blank"
-            class="text-decoration-none font-weight-black text-primary"
-          >
-            {{ item.productId || item.product_id || "—" }}
-          </a>
+          <div class="d-flex align-center gap-2 py-2">
+            <div class="header-indicator success rounded-pill"></div>
+            <a
+              :href="'/inventory/traceability?q=' + (item.productId || item.product_id)"
+              target="_blank"
+              class="text-decoration-none font-weight-black text-primary"
+            >
+              #{{ item.productId || item.product_id || "—" }}
+            </a>
+          </div>
         </template>
 
         <template #item.product.name="{ item }">
-          <div class="d-flex flex-column text-normal-white py-1" style="max-inline-size: 320px;">
-            <span class="text-subtitle-2 font-weight-black text-high-emphasis leading-tight uppercase text-truncate" :title="item.product.name">
-              {{ item.product.name.toUpperCase() }}
+          <div class="d-flex flex-column py-1" style="max-inline-size: 320px;">
+            <span class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate" :title="item.product.name">
+              {{ item.product.name }}
             </span>
             <div class="d-flex align-center gap-1 text-super-xs mt-1">
-              <span v-if="!isRestaurant" class="text-disabled truncate" style="max-inline-size: 200px;">{{ item.product.activeIngredient }}</span>
-              <span v-if="!isRestaurant" class="text-disabled mx-1">|</span>
-              <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 150px;">
-                {{ item.product.laboratory?.name || 'S/L' }}
+              <span v-if="!isRestaurant && item.product.activeIngredient" class="text-medium-emphasis text-truncate" style="max-inline-size: 180px;">
+                {{ item.product.activeIngredient }}
               </span>
+              <span v-if="!isRestaurant && item.product.activeIngredient" class="text-disabled mx-1">|</span>
+              <VChip size="x-small" color="primary" variant="tonal" class="font-weight-bold uppercase" style="max-inline-size: 140px;">
+                {{ item.product.laboratory?.name || 'S/L' }}
+              </VChip>
             </div>
           </div>
         </template>
 
         <template #item.discrepancy="{ item }">
-          <div v-if="editingId === item.id" class="d-flex align-center justify-center gap-1" style="inline-size: 150px;">
+          <div v-if="editingId === item.id" class="d-flex align-center justify-center gap-1" style="inline-size: 120px;">
             <AppTextField
               v-model.number="editingValue"
               type="number"
@@ -148,16 +165,17 @@ const handleMobilePageChange = (newPage) => {
               @keyup.esc="cancelEdit"
             />
           </div>
-          <VChip
-            v-else
-            :color="item.discrepancy > 0 ? 'success' : 'error'"
-            label
-            size="x-small"
-            variant="tonal"
-            class="font-weight-black"
-          >
-            {{ item.discrepancy > 0 ? `+${item.discrepancy}` : item.discrepancy }}
-          </VChip>
+          <div v-else class="text-center">
+            <VChip
+              :color="item.discrepancy > 0 ? 'success' : 'error'"
+              label
+              size="x-small"
+              variant="tonal"
+              class="font-weight-black"
+            >
+              {{ item.discrepancy > 0 ? `+${item.discrepancy}` : item.discrepancy }}
+            </VChip>
+          </div>
         </template>
 
         <template #item.product.unit_cost="{ item }">
@@ -167,13 +185,13 @@ const handleMobilePageChange = (newPage) => {
         </template>
 
         <template #item.user.name="{ item }">
-          <span class="text-xs text-capitalize">
+          <span class="text-xs text-capitalize font-weight-medium">
             {{ (item.user?.employee_name || '') + (item.user?.employee_last_name ? ` ${item.user.employee_last_name}` : '') || item.user?.name || '—' }}
           </span>
         </template>
 
         <template #item.supervisor.name="{ item }">
-          <span class="text-xs text-capitalize">
+          <span class="text-xs text-capitalize font-weight-medium">
             {{ (item.supervisor?.employee_name || '') + (item.supervisor?.employee_last_name ? ` ${item.supervisor.employee_last_name}` : '') || '—' }}
           </span>
         </template>
@@ -188,238 +206,232 @@ const handleMobilePageChange = (newPage) => {
         </template>
 
         <template #item.actions="{ item }">
-          <div class="d-flex align-center justify-center gap-1">
+          <div class="d-flex align-center justify-center gap-1 px-2">
             <template v-if="editingId === item.id">
               <IconBtn color="success" size="small" :loading="isSaving" @click="saveEdit(item)">
-                <VIcon icon="tabler-check" />
+                <VIcon icon="tabler-check" size="18" />
                 <VTooltip activator="parent">Guardar</VTooltip>
               </IconBtn>
               <IconBtn color="secondary" size="small" @click="cancelEdit">
-                <VIcon icon="tabler-x" />
+                <VIcon icon="tabler-x" size="18" />
                 <VTooltip activator="parent">Cancelar</VTooltip>
               </IconBtn>
             </template>
             <template v-else>
-              <!-- Indicador de concordancia con trazabilidad (Check azul o X roja) -->
-              <VIcon
-                v-if="item.hasTraceability"
-                icon="tabler-circle-check"
-                size="20"
-                color="info"
-              >
-                <VTooltip activator="parent">Coincide con movimiento registrado en trazabilidad</VTooltip>
-              </VIcon>
-              <VIcon
-                v-else
-                icon="tabler-circle-x"
-                size="20"
-                color="error"
-              >
-                <VTooltip activator="parent">Sin movimiento registrado en trazabilidad</VTooltip>
-              </VIcon>
+              <!-- Indicador de concordancia con trazabilidad -->
+              <VTooltip :text="item.hasTraceability ? 'Coincide con movimiento registrado' : 'Sin movimiento en trazabilidad'" location="top">
+                <template #activator="{ props: tooltipProps }">
+                  <VIcon
+                    v-bind="tooltipProps"
+                    :icon="item.hasTraceability ? 'tabler-circle-check' : 'tabler-circle-x'"
+                    size="18"
+                    :color="item.hasTraceability ? 'info' : 'error'"
+                  />
+                </template>
+              </VTooltip>
 
-              <IconBtn
-                v-if="can('manage', 'admin')"
-                color="primary"
-                size="small"
-                @click="startEdit(item)"
-              >
-                <VIcon icon="tabler-edit" />
-                <VTooltip activator="parent">Editar cantidad</VTooltip>
-              </IconBtn>
+              <VTooltip v-if="can('manage', 'admin')" text="Editar cantidad" location="top">
+                <template #activator="{ props: tooltipProps }">
+                  <IconBtn
+                    v-bind="tooltipProps"
+                    color="warning"
+                    size="small"
+                    @click="startEdit(item)"
+                  >
+                    <VIcon icon="tabler-edit" size="18" />
+                  </IconBtn>
+                </template>
+              </VTooltip>
 
-              <IconBtn
-                v-if="!item.hasTraceability"
-                color="error"
-                size="small"
-                @click="handleDelete(item)"
-              >
-                <VIcon icon="tabler-trash" />
-                <VTooltip activator="parent">Eliminar registro</VTooltip>
-              </IconBtn>
+              <VTooltip v-if="!item.hasTraceability" text="Eliminar registro" location="top">
+                <template #activator="{ props: tooltipProps }">
+                  <IconBtn
+                    v-bind="tooltipProps"
+                    color="error"
+                    size="small"
+                    @click="handleDelete(item)"
+                  >
+                    <VIcon icon="tabler-trash" size="18" />
+                  </IconBtn>
+                </template>
+              </VTooltip>
             </template>
           </div>
+        </template>
+
+        <template #no-data>
+          <AppEmptyState
+            title="No hay diferencias registradas"
+            message="No se encontraron discrepancias pendientes para el cierre de este ciclo."
+            icon="tabler-clipboard-check"
+          />
         </template>
       </VDataTableServer>
     </div>
 
     <!-- Vista de Móvil (Cards) -->
     <div class="d-block d-md-none pa-2">
-      <VProgressLinear v-if="props.loading" indeterminate color="primary" class="mb-2" />
-      
-      <div v-if="props.items.length === 0 && !props.loading" class="text-center py-8 text-disabled text-sm">
-        No hay diferencias registradas.
+      <div v-if="props.loading" class="d-flex flex-column gap-2">
+        <VProgressLinear indeterminate color="primary" class="mb-2" />
+        <VSkeletonLoader v-for="i in 3" :key="i" type="list-item-two-line" class="mb-2 rounded-lg border" />
       </div>
-
-      <div class="d-flex flex-column gap-2">
+      
+      <div v-else-if="props.items.length" class="d-flex flex-column gap-2">
         <VCard
           v-for="item in props.items"
           :key="item.id"
           variant="flat"
-          class="cash-close-mobile-card border mb-1"
+          class="border mb-1 rounded-lg pa-3"
         >
-          <div class="pa-3">
-            <!-- Cabecera: Producto | Acciones -->
-            <div class="d-flex align-start justify-space-between mb-3">
-              <div class="d-flex flex-column min-width-0">
+          <!-- Cabecera: Producto | Acciones -->
+          <div class="d-flex align-start justify-space-between mb-2">
+            <div class="d-flex flex-column min-width-0">
+              <div class="d-flex align-center gap-2 mb-1">
                 <a
                   :href="'/inventory/traceability?q=' + (item.productId || item.product_id)"
                   target="_blank"
-                  class="text-decoration-none text-sm font-weight-black text-primary text-uppercase leading-tight text-truncate-1 mb-1"
+                  class="text-decoration-none text-xs font-weight-black text-primary"
                 >
                   #{{ item.productId || item.product_id }}
                 </a>
-                <span class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight text-truncate-1 mb-1">
-                  {{ item.product.name.toUpperCase() }}
+                <VTooltip :text="item.hasTraceability ? 'Coincide con trazabilidad' : 'Sin movimiento en trazabilidad'" location="top">
+                  <template #activator="{ props: tooltipProps }">
+                    <VIcon
+                      v-bind="tooltipProps"
+                      :icon="item.hasTraceability ? 'tabler-circle-check' : 'tabler-circle-x'"
+                      size="16"
+                      :color="item.hasTraceability ? 'info' : 'error'"
+                    />
+                  </template>
+                </VTooltip>
+              </div>
+              <span class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight text-truncate mb-1">
+                {{ item.product.name }}
+              </span>
+              <div class="d-flex align-center flex-wrap gap-x-2 text-super-xs">
+                <span v-if="!isRestaurant && item.product.activeIngredient" class="text-medium-emphasis font-weight-medium text-truncate" style="max-inline-size: 150px;">
+                  {{ item.product.activeIngredient }}
                 </span>
-                <div class="d-flex align-center flex-wrap gap-x-2 text-super-xs">
-                  <span v-if="!isRestaurant" class="text-medium-emphasis font-weight-medium text-truncate" style="max-inline-size: 150px;">{{ item.product.activeIngredient }}</span>
-                  <span v-if="!isRestaurant" class="text-disabled">|</span>
-                  <span class="text-primary font-weight-bold text-truncate" style="max-inline-size: 120px;">{{ item.product.laboratory?.name || 'S/L' }}</span>
-                </div>
-              </div>
-              <div class="d-flex align-start gap-1">
-                <template v-if="editingId === item.id">
-                  <IconBtn color="success" variant="tonal" size="32" :loading="isSaving" @click="saveEdit(item)">
-                    <VIcon icon="tabler-check" size="18" />
-                  </IconBtn>
-                  <IconBtn color="secondary" variant="tonal" size="32" @click="cancelEdit">
-                    <VIcon icon="tabler-x" size="18" />
-                  </IconBtn>
-                </template>
-                <template v-else>
-                  <!-- Indicador de concordancia con trazabilidad en móvil -->
-                  <VIcon
-                    v-if="item.hasTraceability"
-                    icon="tabler-circle-check"
-                    size="20"
-                    color="info"
-                    class="mt-1"
-                  >
-                    <VTooltip activator="parent">Coincide con trazabilidad</VTooltip>
-                  </VIcon>
-                  <VIcon
-                    v-else
-                    icon="tabler-circle-x"
-                    size="20"
-                    color="error"
-                    class="mt-1"
-                  >
-                    <VTooltip activator="parent">Sin movimiento en trazabilidad</VTooltip>
-                  </VIcon>
-
-                  <IconBtn
-                    v-if="can('manage', 'admin')"
-                    variant="tonal"
-                    color="primary"
-                    size="32"
-                    class="rounded"
-                    @click="startEdit(item)"
-                  >
-                    <VIcon icon="tabler-edit" size="18" />
-                    <VTooltip activator="parent">Editar cantidad</VTooltip>
-                  </IconBtn>
-                  <IconBtn
-                    v-if="!item.hasTraceability"
-                    variant="tonal"
-                    color="error"
-                    size="32"
-                    class="rounded"
-                    @click="handleDelete(item)"
-                  >
-                    <VIcon icon="tabler-trash" size="18" />
-                  </IconBtn>
-                </template>
-              </div>
-            </div>
-
-            <VDivider class="my-3 border-opacity-10" />
-
-            <!-- Resumen de Cantidades y Montos -->
-            <div class="d-flex align-center justify-space-between bg-var-theme-background px-3 py-2 rounded border-dashed-thin">
-              <div class="d-flex flex-column" style="min-inline-size: 80px;">
-                <span class="text-super-xs text-disabled text-uppercase font-weight-black">Diferencia</span>
-                <div v-if="editingId === item.id" class="mt-1">
-                  <AppTextField
-                    v-model.number="editingValue"
-                    type="number"
-                    density="compact"
-                    hide-details
-                    @keyup.enter="saveEdit(item)"
-                  />
-                </div>
-                <VChip
-                  v-else
-                  :color="item.discrepancy > 0 ? 'success' : 'error'"
-                  size="x-small"
-                  label
-                  variant="flat"
-                  class="text-super-xs font-weight-black mt-1"
-                >
-                  {{ item.discrepancy > 0 ? `+${item.discrepancy}` : item.discrepancy }}
-                </VChip>
-              </div>
-              <div class="d-flex flex-column text-center px-2">
-                <span class="text-super-xs text-disabled text-uppercase font-weight-black">Costo U.</span>
-                <span class="text-xs font-weight-medium">
-                  {{ formatPrice(item.product.unit_cost) }}
-                </span>
-              </div>
-              <div class="d-flex flex-column text-right">
-                <span class="text-super-xs text-disabled text-uppercase font-weight-black">Monto Total</span>
-                <span 
-                  class="text-sm font-weight-black"
-                  :class="(editingId === item.id ? editingValue : item.discrepancy) > 0 ? 'text-success' : 'text-error'"
-                >
-                  {{ formatPrice(item.product.sale_price * (editingId === item.id ? editingValue : item.discrepancy)) }}
+                <span v-if="!isRestaurant && item.product.activeIngredient" class="text-disabled">|</span>
+                <span class="text-primary font-weight-bold text-truncate" style="max-inline-size: 120px;">
+                  {{ item.product.laboratory?.name || 'S/L' }}
                 </span>
               </div>
             </div>
+            <div class="d-flex align-start gap-1">
+              <template v-if="editingId === item.id">
+                <IconBtn color="success" variant="tonal" size="small" :loading="isSaving" @click="saveEdit(item)">
+                  <VIcon icon="tabler-check" size="18" />
+                </IconBtn>
+                <IconBtn color="secondary" variant="tonal" size="small" @click="cancelEdit">
+                  <VIcon icon="tabler-x" size="18" />
+                </IconBtn>
+              </template>
+              <template v-else>
+                <IconBtn
+                  v-if="can('manage', 'admin')"
+                  variant="tonal"
+                  color="warning"
+                  size="small"
+                  @click="startEdit(item)"
+                >
+                  <VIcon icon="tabler-edit" size="18" />
+                </IconBtn>
+                <IconBtn
+                  v-if="!item.hasTraceability"
+                  variant="tonal"
+                  color="error"
+                  size="small"
+                  @click="handleDelete(item)"
+                >
+                  <VIcon icon="tabler-trash" size="18" />
+                </IconBtn>
+              </template>
+            </div>
+          </div>
 
-            <!-- Usuarios Responsables -->
-            <div class="mt-3 d-flex align-center justify-space-between text-capitalize">
-              <div class="d-flex align-center gap-1">
-                <VIcon icon="tabler-user" size="12" class="text-disabled" />
-                <span class="text-super-xs font-weight-medium">
-                  {{ item.user?.employee_name }} {{ item.user?.employee_last_name || '' }}
-                </span>
+          <VDivider class="my-2" />
+
+          <!-- Resumen de Cantidades y Montos -->
+          <div class="d-flex align-center justify-space-between bg-var-theme-background px-3 py-2 rounded">
+            <div class="d-flex flex-column" style="min-inline-size: 80px;">
+              <span class="text-super-xs text-disabled text-uppercase font-weight-black">Diferencia</span>
+              <div v-if="editingId === item.id" class="mt-1">
+                <AppTextField
+                  v-model.number="editingValue"
+                  type="number"
+                  density="compact"
+                  hide-details
+                  @keyup.enter="saveEdit(item)"
+                />
               </div>
-              <div v-if="item.supervisor" class="d-flex align-center gap-1">
-                <VIcon icon="tabler-user-check" size="12" class="text-disabled" />
-                <span class="text-super-xs font-weight-medium">
-                  {{ item.supervisor.employee_name }} {{ item.supervisor.employee_last_name || '' }}
-                </span>
-              </div>
+              <VChip
+                v-else
+                :color="item.discrepancy > 0 ? 'success' : 'error'"
+                size="x-small"
+                label
+                variant="tonal"
+                class="font-weight-black mt-1"
+              >
+                {{ item.discrepancy > 0 ? `+${item.discrepancy}` : item.discrepancy }}
+              </VChip>
+            </div>
+            <div class="d-flex flex-column text-center px-2">
+              <span class="text-super-xs text-disabled text-uppercase font-weight-black">Costo U.</span>
+              <span class="text-xs font-weight-bold">
+                {{ formatPrice(item.product.unit_cost) }}
+              </span>
+            </div>
+            <div class="d-flex flex-column text-right">
+              <span class="text-super-xs text-disabled text-uppercase font-weight-black">Monto Total</span>
+              <span 
+                class="text-sm font-weight-black"
+                :class="(editingId === item.id ? editingValue : item.discrepancy) > 0 ? 'text-success' : 'text-error'"
+              >
+                {{ formatPrice(item.product.sale_price * (editingId === item.id ? editingValue : item.discrepancy)) }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Usuarios Responsables -->
+          <div class="mt-2 d-flex align-center justify-space-between text-capitalize">
+            <div class="d-flex align-center gap-1">
+              <VIcon icon="tabler-user" size="14" class="text-disabled" />
+              <span class="text-super-xs font-weight-medium">
+                {{ item.user?.employee_name }} {{ item.user?.employee_last_name || '' }}
+              </span>
+            </div>
+            <div v-if="item.supervisor" class="d-flex align-center gap-1">
+              <VIcon icon="tabler-user-check" size="14" class="text-disabled" />
+              <span class="text-super-xs font-weight-medium">
+                {{ item.supervisor.employee_name }} {{ item.supervisor.employee_last_name || '' }}
+              </span>
             </div>
           </div>
         </VCard>
+
+        <!-- Paginación Móvil -->
+        <AppMobilePagination
+          :page="props.page"
+          :items-per-page="props.itemsPerPage"
+          :total-items="props.totalItems"
+          :loading="props.loading"
+          @change="(options) => emit('update:options', { ...options, sortBy: [], groupBy: [] })"
+        />
       </div>
 
-      <!-- Paginación Móvil -->
-      <div class="d-flex justify-center mt-4">
-         <AppMobilePagination
-            :page="props.page"
-            :items-per-page="props.itemsPerPage"
-            :total-items="props.totalItems"
-            :loading="props.loading"
-            @change="(options) => emit('update:options', { ...options, sortBy: [], groupBy: [] })"
-          />
+      <div v-else>
+        <AppEmptyState
+          title="No hay diferencias registradas"
+          message="No se encontraron discrepancias pendientes para el cierre."
+          icon="tabler-clipboard-check"
+        />
       </div>
     </div>
   </VCard>
 </template>
 
 <style scoped>
-.cash-close-mobile-card {
-  overflow: hidden;
-  border-radius: 8px !important;
-  background: rgb(var(--v-theme-surface));
-}
-
-.border-dashed-thin {
-  border: 1px dashed rgba(var(--v-border-color), 0.3) !important;
-}
-
 .bg-var-theme-background {
   background-color: rgba(var(--v-border-color), 0.05);
 }
@@ -429,32 +441,20 @@ const handleMobilePageChange = (newPage) => {
   line-height: 1;
 }
 
-.text-truncate-1 {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 1;
-  line-clamp: 1;
-}
-
-.text-normal-white {
-  overflow-wrap: break-word;
-  white-space: normal;
-}
-
 .leading-tight {
   line-height: 1.25 !important;
 }
 
-.gap-1 { gap: 4px !important; }
-.gap-2 { gap: 8px !important; }
+.header-indicator {
+  block-size: 16px;
+  inline-size: 3px;
+}
 
-:deep(.v-data-table) {
-  font-size: 0.8125rem;
+.header-indicator.success {
+  background: linear-gradient(to bottom, #10b981, #059669);
 }
 
 :deep(.v-data-table th) {
-  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
   font-size: 0.75rem !important;
   font-weight: 700 !important;
   text-transform: uppercase;
