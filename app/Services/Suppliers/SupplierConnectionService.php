@@ -736,7 +736,7 @@ class SupplierConnectionService
         $barcodes = array_unique(array_filter($barcodes));
         $products = Product::with(['laboratory' => fn($q) => $q->select(['id', 'name'])])
             ->whereIn("barcode", $barcodes)
-            ->select(['id', 'barcode', 'laboratory_id'])
+            ->select(['id', 'barcode', 'laboratory_id', 'active_ingredient'])
             ->get()
             ->keyBy("barcode");
 
@@ -872,6 +872,9 @@ class SupplierConnectionService
                     if ($product) {
                         $entry["laboratory"] = $product?->laboratory?->name ?? $entry["laboratory"] ?? null;
                         $entry["product_id"] = $product?->id;
+                        if (empty($entry["active_ingredient"]) && !empty($product->active_ingredient)) {
+                            $entry["active_ingredient"] = $product->active_ingredient;
+                        }
                     } else {
                         $missingBarcode = true; // lo marcamos para crear luego
                     }

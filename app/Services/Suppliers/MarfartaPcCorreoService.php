@@ -11,6 +11,7 @@ use App\Models\Supplier;
 use App\Models\SupplierConnection;
 use Carbon\Carbon;
 use Exception;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class MarfartaPcCorreoService implements MarfartaPcCorreoServiceInterface
@@ -73,10 +74,42 @@ class MarfartaPcCorreoService implements MarfartaPcCorreoServiceInterface
 
         // Detalle del Pedido (D)
         foreach ($autoOrder->details as $detail) {
-            // D001: Código de artículo en Mafarta
-            $supplierItemCode = $detail->productSupplier?->cod_supplier 
-                ?? $detail->product?->barcode 
-                ?? (string) $detail->product_id;
+            // D001: Código Interno del Artículo en el Proveedor (Mafarta/Cobeca)
+            $supplierItemCode = $detail->productSupplier?->cod_supplier;
+            if (empty($supplierItemCode) || $supplierItemCode === '0' || $supplierItemCode === 0) {
+                if (!empty($detail->product_suppliers_id)) {
+                    $psDirect = \App\Models\ProductSupplier::find($detail->product_suppliers_id);
+                    $codeDirect = $psDirect?->cod_supplier;
+                    if (!empty($codeDirect) && $codeDirect !== '0' && $codeDirect !== 0) {
+                        $supplierItemCode = $codeDirect;
+                    }
+                }
+            }
+
+            // Si sigue en 0 o vacío, buscar en el catálogo de Mafarta/Cobeca por código de barras
+            if (empty($supplierItemCode) || $supplierItemCode === '0' || $supplierItemCode === 0) {
+                $barcode = $detail->product?->barcode;
+                if (!empty($barcode)) {
+                    $psMafarta = \App\Models\ProductSupplier::where('supplier_id', $autoOrder->supplier_id)
+                        ->where(function ($q) use ($barcode) {
+                            $q->where('barcode_match', $barcode);
+                        })
+                        ->whereNotNull('cod_supplier')
+                        ->where('cod_supplier', '!=', '')
+                        ->where('cod_supplier', '!=', '0')
+                        ->first();
+                    if ($psMafarta) {
+                        $supplierItemCode = $psMafarta->cod_supplier;
+                    }
+                }
+            }
+
+            // Si no tiene código interno de Mafarta, usar el código de barras o ID de producto como último recurso
+            if (empty($supplierItemCode) || $supplierItemCode === '0' || $supplierItemCode === 0) {
+                $supplierItemCode = $detail->productSupplier?->barcode_match 
+                    ?? $detail->product?->barcode 
+                    ?? (string) $detail->product_id;
+            }
             $supplierItemCode = trim((string) $supplierItemCode);
 
             // D002: Cantidad pedida (entero)
@@ -213,4 +246,186 @@ class MarfartaPcCorreoService implements MarfartaPcCorreoServiceInterface
             'message' => "Pedido transmitido con éxito a Mafarta bajo protocolo PC-CORREO ({$filename}).",
         ];
     }
+
+    /**
+     * Transmite la orden de compra a Droguerías Cobeca / Mafarta mediante su API REST (comparadores).
+     */
+    public function sendOrderApi(AutoOrder $autoOrder): array
+    {
+        $autoOrder->loadMissing(['details.productSupplier', 'details.product']);
+
+        $supplier = $autoOrder->supplier;
+        if (!$supplier) {
+            $supplier = Supplier::with('connections')->find($autoOrder->supplier_id);
+        }
+
+        if (!$supplier) {
+            throw new Exception("No se encontró el proveedor asociado a la orden #{$autoOrder->id}");
+        }
+
+        // Obtener conexión API para Mafarta / Cobeca
+        $connection = $supplier->connections()
+            ->whereIn('type', ['api', 'http'])
+            ->first()
+            ?? $supplier->connections()->first();
+
+        $username = $connection?->username ?: env('MAFARTA_USERNAME', 'F31373');
+        $password = null;
+        if ($connection && !empty($connection->password)) {
+            try {
+                $password = FtpCrypt::decrypt($connection->password);
+            } catch (\Throwable $e) {
+                $password = $connection->password;
+            }
+        }
+        $password = $password ?: env('MAFARTA_PASSWORD', 'Mafarta2026*');
+
+        // Obtener token mediante POST /api/Login o /api/auth/login
+        $token = null;
+        $loginUrl = 'https://comparadores.drogueriascobeca.com/api/Login';
+
+        try {
+            $loginResponse = Http::withoutVerifying()
+                ->timeout(30)
+                ->post($loginUrl, [
+                    'Usuario' => $username,
+                    'Clave' => $password,
+                ]);
+
+            if ($loginResponse->successful()) {
+                $loginData = $loginResponse->json();
+                $token = $loginData['token'] ?? $loginData['Token'] ?? null;
+            }
+
+            // Fallback con nombres alternativos de campos
+            if (empty($token)) {
+                $loginResponseAlt = Http::withoutVerifying()
+                    ->timeout(30)
+                    ->post($loginUrl, [
+                        'User' => $username,
+                        'Password' => $password,
+                    ]);
+                if ($loginResponseAlt->successful()) {
+                    $loginData = $loginResponseAlt->json();
+                    $token = $loginData['token'] ?? $loginData['Token'] ?? null;
+                }
+            }
+
+            // Fallback al portal SIC de Cobeca si no retorna token
+            if (empty($token)) {
+                $sicLogin = Http::withoutVerifying()
+                    ->timeout(30)
+                    ->post('https://sic.drogueriascobeca.com/api/auth/login', [
+                        'User' => $username,
+                        'Password' => $password,
+                    ]);
+                if ($sicLogin->successful()) {
+                    $token = $sicLogin->json('token');
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::error("[MAFARTA API PEDIDO] Error al autenticar en Cobeca: " . $e->getMessage());
+        }
+
+        if (empty($token)) {
+            throw new Exception("Error de autenticación con la API de Droguerías Cobeca. No se pudo obtener el token de acceso.");
+        }
+
+        $clientCode = (int) (preg_replace('/\D/', '', (string) $username) ?: env('MAFARTA_CLIENTE', 31373));
+        $drugstoreCode = (int) env('MAFARTA_COD_DROGUERIA', 3); // 3 = Droguería Mafarta
+
+        // Construir detalles del pedido
+        $detalles = [];
+        $secuencia = 1;
+        $orderDateIso = ($autoOrder->created_at ? Carbon::parse($autoOrder->created_at) : Carbon::now())->toIso8601String();
+
+        foreach ($autoOrder->details as $detail) {
+            // Código interno del artículo en Cobeca/Mafarta
+            $supplierItemCode = $detail->productSupplier?->cod_supplier;
+            if (empty($supplierItemCode) || $supplierItemCode === '0' || $supplierItemCode === 0) {
+                if (!empty($detail->product_suppliers_id)) {
+                    $psDirect = \App\Models\ProductSupplier::find($detail->product_suppliers_id);
+                    $codeDirect = $psDirect?->cod_supplier;
+                    if (!empty($codeDirect) && $codeDirect !== '0' && $codeDirect !== 0) {
+                        $supplierItemCode = $codeDirect;
+                    }
+                }
+            }
+
+            // Buscar por código de barras si falta
+            if (empty($supplierItemCode) || $supplierItemCode === '0' || $supplierItemCode === 0) {
+                $barcode = $detail->product?->barcode;
+                if (!empty($barcode)) {
+                    $psMafarta = \App\Models\ProductSupplier::where('supplier_id', $autoOrder->supplier_id)
+                        ->where('barcode_match', $barcode)
+                        ->whereNotNull('cod_supplier')
+                        ->where('cod_supplier', '!=', '')
+                        ->where('cod_supplier', '!=', '0')
+                        ->first();
+                    if ($psMafarta) {
+                        $supplierItemCode = $psMafarta->cod_supplier;
+                    }
+                }
+            }
+
+            $codArticuloNum = (int) (preg_replace('/\D/', '', (string)$supplierItemCode) ?: ($detail->product_id ?? 0));
+            $qty = (int) $detail->quantity;
+
+            if ($qty > 0 && $codArticuloNum > 0) {
+                $detalles[] = [
+                    'Secuencia' => $secuencia++,
+                    'Cod_articulo' => $codArticuloNum,
+                    'Cantidad' => $qty,
+                    'Fecha' => $orderDateIso,
+                ];
+            }
+        }
+
+        if (empty($detalles)) {
+            throw new Exception("La orden #{$autoOrder->id} no contiene renglones válidos para transmitir a Droguerías Cobeca.");
+        }
+
+        $payload = [
+            'Cod_cliente' => $clientCode,
+            'Cod_drogueria' => $drugstoreCode,
+            'Fecha' => $orderDateIso,
+            'Odc' => (string) ($autoOrder->id ?? 1),
+            'Detalles' => $detalles,
+        ];
+
+        Log::info("[MAFARTA API PEDIDO] Enviando orden #{$autoOrder->id} a Cobeca", [
+            'url' => 'https://comparadores.drogueriascobeca.com/api/pedidos/comparador',
+            'payload' => $payload,
+        ]);
+
+        $orderResponse = Http::withHeaders([
+            'Authorization' => "Bearer {$token}",
+            'Accept' => 'application/json',
+            'Content-Type' => 'application/json',
+        ])->withoutVerifying()
+          ->timeout(60)
+          ->post('https://comparadores.drogueriascobeca.com/api/pedidos/comparador', $payload);
+
+        $responseStatus = $orderResponse->status();
+        $responseBody = $orderResponse->json() ?? $orderResponse->body();
+
+        Log::info("[MAFARTA API PEDIDO] Respuesta de Cobeca para orden #{$autoOrder->id}", [
+            'status' => $responseStatus,
+            'response' => $responseBody,
+        ]);
+
+        if ($orderResponse->successful()) {
+            $resultado = is_array($responseBody) ? ($responseBody['Resultado'] ?? $responseBody['resultado'] ?? 'OK') : 'OK';
+
+            return [
+                'success' => true,
+                'data' => $responseBody,
+                'message' => "Pedido #{$autoOrder->id} transmitido exitosamente a Droguerías Cobeca (Mafarta) vía API REST. Resultado: {$resultado}",
+            ];
+        }
+
+        $errorMsg = is_array($responseBody) ? ($responseBody['Message'] ?? $responseBody['message'] ?? json_encode($responseBody)) : $responseBody;
+        throw new Exception("Error al transmitir el pedido a Droguerías Cobeca (HTTP {$responseStatus}): {$errorMsg}");
+    }
 }
+
