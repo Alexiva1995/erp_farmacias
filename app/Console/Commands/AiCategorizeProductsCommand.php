@@ -85,53 +85,72 @@ Analiza la siguiente lista de productos y clasifica CADA UNO en el category_id m
 IMPORTANTE: Responde ÚNICAMENTE un JSON válido (sin markdown, sin bloques ```json, solo texto plano JSON) con un array de objetos con formato exacto:
 [{\"id\": 1001, \"category_id\": 3}, ...]";
 
-            $response = \Illuminate\Support\Facades\Http::withHeaders([
-                'x-goog-api-key' => $apiKey,
-                'Content-Type' => 'application/json',
-            ])->timeout(45)->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={$apiKey}", [
-                'contents' => [
-                    [
-                        'parts' => [
-                            ['text' => $prompt]
+            $maxRetries = 3;
+            $attempt = 0;
+            $success = false;
+
+            while ($attempt < $maxRetries && !$success) {
+                $attempt++;
+                $response = \Illuminate\Support\Facades\Http::withHeaders([
+                    'x-goog-api-key' => $apiKey,
+                    'Content-Type' => 'application/json',
+                ])->timeout(45)->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={$apiKey}", [
+                    'contents' => [
+                        [
+                            'parts' => [
+                                ['text' => $prompt]
+                            ]
                         ]
+                    ],
+                    'generationConfig' => [
+                        'temperature' => 0.1,
+                        'responseMimeType' => 'application/json',
                     ]
-                ],
-                'generationConfig' => [
-                    'temperature' => 0.1,
-                    'responseMimeType' => 'application/json',
-                ]
-            ]);
+                ]);
 
-            if ($response->successful()) {
-                $resultText = $response->json('candidates.0.content.parts.0.text');
-                $cleanedJson = preg_replace('/^```(?:json)?\s*|\s*```$/m', '', trim($resultText));
-                $assignments = json_decode($cleanedJson, true);
+                if ($response->successful()) {
+                    $resultText = $response->json('candidates.0.content.parts.0.text');
+                    $cleanedJson = preg_replace('/^```(?:json)?\s*|\s*```$/m', '', trim($resultText));
+                    $assignments = json_decode($cleanedJson, true);
 
-                if (is_array($assignments)) {
-                    foreach ($assignments as $item) {
-                        if (!empty($item['id']) && !empty($item['category_id'])) {
-                            \App\Models\Product::withoutGlobalScope('not_deleted')
-                                ->where('id', $item['id'])
-                                ->update(['category_id' => $item['category_id']]);
+                    if (is_array($assignments)) {
+                        foreach ($assignments as $item) {
+                            if (!empty($item['id']) && !empty($item['category_id'])) {
+                                \App\Models\Product::withoutGlobalScope('not_deleted')
+                                    ->where('id', $item['id'])
+                                    ->update(['category_id' => $item['category_id']]);
+                            }
                         }
+                        $processed += count($assignments);
+                        $this->info("Procesados con IA: {$processed} / {$totalPending}");
+                        $success = true;
+                    } else {
+                        $this->warn("La IA devolvió una respuesta que no pudo ser procesada como JSON en el intento {$attempt}.");
                     }
-                    $processed += count($assignments);
-                    $this->info("Procesados con IA: {$processed} / {$totalPending}");
                 } else {
-                    $this->error("La IA devolvió una respuesta que no pudo ser procesada como JSON.");
-                    throw new \RuntimeException("La IA devolvió una respuesta que no pudo ser procesada como JSON.");
+                    $errorData = $response->json('error');
+                    $status = $response->status();
+                    $errorMsg = $errorData['message'] ?? $response->body();
+
+                    if ($status === 400 || $status === 401 || $status === 403) {
+                        $errorMsg .= " (Verifica que la clave GEMINI_API_KEY en el archivo .env sea una API Key válida).";
+                        $this->error("Error de autenticación Gemini API: " . $errorMsg);
+                        \Illuminate\Support\Facades\Log::error("Gemini API auth error: " . $errorMsg);
+                        break; // No reintentar si las credenciales son inválidas
+                    }
+
+                    $this->warn("Gemini API alta demanda/error ({$status}): {$errorMsg}. Reintento {$attempt}/{$maxRetries}...");
+                    \Illuminate\Support\Facades\Log::warning("Gemini API (Google AI) reportó alta demanda/error: {$errorMsg} (Intento {$attempt})");
+
+                    if ($attempt < $maxRetries) {
+                        sleep($attempt * 3);
+                    }
                 }
-            } else {
-                $errorData = $response->json('error');
-                $status = $response->status();
-                $errorMsg = $errorData['message'] ?? $response->body();
-                
-                if ($status === 400 || $status === 401 || $status === 403) {
-                    $errorMsg .= " (Verifica que la clave GEMINI_API_KEY en el archivo .env de producción sea una API Key válida de Google AI Studio que comience por 'AIzaSy...')";
-                }
-                
-                $this->error("Error en llamada a Gemini API: " . $errorMsg);
-                throw new \RuntimeException("Gemini API (Google AI) reportó error: " . $errorMsg);
+            }
+
+            if (!$success && ($status === 400 || $status === 401 || $status === 403)) {
+                $this->error("Proceso abortado por error de credenciales en Gemini API.");
+                return 1;
             }
 
             sleep(1);

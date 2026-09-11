@@ -304,6 +304,39 @@ class SupplierConnectionService
                 || str_contains(strtolower($connection->supplier?->name ?? ''), 'crist')
                 || in_array($connection->supplier_id, [3, 21, 1002]);
 
+            $isDrosymca = str_contains(strtolower($connection->host ?? ''), 'drosymca')
+                || str_contains(strtolower($connection->supplier?->name ?? ''), 'drosymca')
+                || (int)$connection->supplier_id === 1006;
+
+            if ($isDrosymca) {
+                try {
+                    $rawPass = (string) $connection->password;
+                    $decryptedPass = $rawPass;
+                    try {
+                        $decryptedPass = FtpCrypt::decrypt($rawPass);
+                    } catch (\Throwable $e) {
+                        $decryptedPass = $rawPass;
+                    }
+                    if (empty($decryptedPass)) {
+                        $decryptedPass = $rawPass;
+                    }
+
+                    $scraper = app(\App\Contracts\Suppliers\DrosymcaScraperServiceInterface::class);
+                    $syncResult = $scraper->syncInvoices($connection->username, $decryptedPass, (int)$connection->supplier_id);
+                    Log::info("Drosymca sincronizado via Scraper Bot", ['result' => $syncResult]);
+                    return [
+                        "products" => [],
+                        "invoices" => $syncResult['invoices'] ?? [],
+                    ];
+                } catch (\Throwable $e) {
+                    Log::warning("No se pudo sincronizar Drosymca via bot web: " . $e->getMessage());
+                    return [
+                        "products" => [],
+                        "invoices" => [],
+                    ];
+                }
+            }
+
             if (!empty($connection->username) && !empty($connection->password) && !$isCristmedicals) {
                 $rawPass = (string) $connection->password;
                 $decryptedPass = $rawPass;
@@ -316,22 +349,26 @@ class SupplierConnectionService
                     $decryptedPass = $rawPass;
                 }
 
-                $loginResponse = Http::withoutVerifying()->timeout(30)->post($connection->host, [
+                $authPayloadDef = $this->buildPayload($connection, 'auth') ?? $this->buildPayload($connection, 'login');
+                $loginUrl = $authPayloadDef['url'] ?? $connection->host;
+                $loginBody = $authPayloadDef['payload'] ?? [
                     "Usuario" => $connection->username,
                     "Clave" => $decryptedPass,
-                ]);
+                ];
+
+                $loginResponse = Http::withoutVerifying()->timeout(30)->post($loginUrl, $loginBody);
                 $loginData = $loginResponse->json();
                 $token = $loginData["token"] ?? ($loginData["Token"] ?? null);
                 if (empty($token)) {
                     $apiMsg = $loginData["message"] ?? ($loginData["Message"] ?? "Respuesta sin token de acceso");
                     Log::error("Fallo de autenticación API para proveedor {$connection->supplier_id}", [
-                        'host' => $connection->host,
+                        'host' => $loginUrl,
                         'username' => $connection->username,
                         'status' => $loginResponse->status(),
                         'api_message' => $apiMsg,
                         'body' => substr($loginResponse->body(), 0, 500),
                     ]);
-                    throw new Exception("Fallo de autenticación en {$connection->host}: {$apiMsg}. Verifique el usuario y la contraseña en la configuración de la conexión.");
+                    throw new Exception("Fallo de autenticación en {$loginUrl}: {$apiMsg}. Verifique el usuario y la contraseña en la configuración de la conexión.");
                 }
             } elseif (!empty($connection->password)) {
                 try {

@@ -479,10 +479,6 @@ const productLineLabel = (product) => {
                   <span class="summary-label">Desc.</span>
                   <span class="summary-value text-error font-weight-bold">- {{ formatCurrency(activeDiscount.amount, selectedCurrency) }}</span>
                 </div>
-                <div v-if="isSpecialTaxpayer" class="summary-row">
-                  <span class="summary-label">SPE</span>
-                  <span class="summary-value font-weight-bold">{{ props.orderData?.spe_surcharge_amount }} {{ selectedCurrency }}</span>
-                </div>
                 <div v-if="credit" class="summary-row">
                   <span class="summary-label">Crédito</span>
                   <span class="summary-value text-primary font-weight-black">{{ formatCurrency(creditAmount, selectedCurrency) }}</span>

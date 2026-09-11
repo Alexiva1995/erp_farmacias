@@ -21,13 +21,19 @@ class StoreProductIntoAutoOrderRequest extends FormRequest
                 "min:1",
 
                 function ($attribute, $value, $fail) {
-                    $exists = \DB::table("product_suppliers")
+                    $productSupplier = \DB::table("product_suppliers")
                         ->where("id", $this->productId)
-                        ->where("quantity", ">=", $value)
-                        ->exists();
+                        ->first(['quantity']);
 
-                    if (!$exists) {
-                        $fail("Cantidad no disponible.");
+                    if (!$productSupplier) {
+                        return;
+                    }
+
+                    // Solo validar disponibilidad si el proveedor especifica una cantidad en inventario mayor a 0
+                    if ($productSupplier->quantity !== null && (int)$productSupplier->quantity > 0) {
+                        if ((int)$value > (int)$productSupplier->quantity) {
+                            $fail("Cantidad no disponible. El proveedor solo dispone de {$productSupplier->quantity} unidades.");
+                        }
                     }
                 },
             ],
