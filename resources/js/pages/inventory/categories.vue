@@ -4,19 +4,21 @@ import { useRouter } from 'vue-router'
 import axios from '@/plugins/axios'
 import AppFilterBase from "@/components/AppFilterBase.vue"
 import AppMobilePagination from "@/components/AppMobilePagination.vue"
+import AppEmptyState from "@/components/AppEmptyState.vue"
 import { toast } from "@/plugins/sweetalert"
 import Swal from "sweetalert2"
 import { useAbility } from "@casl/vue"
-
 import { useBrandingStore } from "@/stores/useBrandingStore"
 
 const { can } = useAbility()
 const router = useRouter()
 const brandingStore = useBrandingStore()
 
-const hasIngredients = computed(() => {
+const showDishesColumn = computed(() => {
+  const enableDishes = brandingStore.settings.enable_dishes ?? false
   const types = brandingStore.settings.enabled_product_types || []
-  return Array.isArray(types) && types.includes('ingredients')
+  const hasIngredients = Array.isArray(types) && types.includes('ingredients')
+  return Boolean(enableDishes && hasIngredients)
 })
 
 // --- Estados ---
@@ -34,20 +36,56 @@ let debounceTimer = null
 
 const isDialogOpen = ref(false)
 const categoryForm = ref({ id: null, name: '' })
+const isRunningAi = ref(false)
+
+// Ejecutar categorización con IA manualmente
+const runAiCategorize = async () => {
+  const result = await Swal.fire({
+    title: "¿Categorizar productos con IA?",
+    text: "La Inteligencia Artificial (Gemini) analizará los productos que aún no tienen categoría y los asignará automáticamente.",
+    icon: "info",
+    showCancelButton: true,
+    confirmButtonText: "Sí, analizar y categorizar",
+    cancelButtonText: "Cancelar",
+    confirmButtonColor: "v-theme-primary",
+    reverseButtons: true,
+  })
+
+  if (result.isConfirmed) {
+    isRunningAi.value = true
+    try {
+      const { data } = await axios.post('/inventory/categories-manage/ai-categorize')
+      toast.success(data.message || "Categorización con IA completada exitosamente.")
+      await fetchCategories()
+    } catch (error) {
+      console.error("Error al categorizar con IA:", error)
+      toast.error(error.response?.data?.message || "Ocurrió un error al categorizar con IA.")
+    } finally {
+      isRunningAi.value = false
+    }
+  }
+}
 
 // Cabeceras de la tabla
 const headers = computed(() => {
   const list = [
-    { title: "ID", key: "id", sortable: true, cellClass: 'font-weight-black text-primary', width: '80px' },
-    { title: "Categoría de Inventario", key: "name", sortable: true },
+    {
+      title: "ID",
+      key: "id",
+      sortable: true,
+      cellClass: 'font-weight-black text-primary d-none d-sm-table-cell',
+      headerClass: 'd-none d-sm-table-cell',
+      width: '80px',
+    },
+    { title: "Categoría de Inventario", key: "name", sortable: true, width: '40%' },
     { title: "Productos", key: "products_count", sortable: true, align: 'center', width: '120px' },
   ]
   
-  if (hasIngredients.value) {
+  if (showDishesColumn.value) {
     list.push({ title: "Platos / Menú", key: "dishes_count", sortable: true, align: 'center', width: '140px' })
   }
   
-  list.push({ title: "Acciones", key: "actions", sortable: false, align: 'right', width: '140px' })
+  list.push({ title: "Acciones", key: "actions", sortable: false, align: 'center', width: '140px' })
   return list
 })
 
@@ -79,6 +117,10 @@ const openEdit = (category = null) => {
   isDialogOpen.value = true
 }
 
+const goToProducts = (category) => {
+  router.push({ path: '/inventory/products', query: { categoryId: category.id } })
+}
+
 // Guardar categoría
 const saveCategory = async () => {
   if (!categoryForm.value.name.trim()) {
@@ -107,10 +149,8 @@ const deleteCategory = async (id) => {
     showCancelButton: true,
     confirmButtonText: "Sí, eliminar",
     cancelButtonText: "Cancelar",
-    customClass: {
-      confirmButton: 'v-btn v-btn--variant-flat bg-error text-white h-auto py-2 px-6 rounded-lg font-weight-black uppercase ms-3',
-      cancelButton: 'v-btn v-btn--variant-tonal text-secondary h-auto py-2 px-6 rounded-lg font-weight-black uppercase'
-    }
+    confirmButtonColor: "v-theme-error",
+    reverseButtons: true,
   })
   if (result.isConfirmed) {
     try {
@@ -153,7 +193,7 @@ onUnmounted(() => clearTimeout(debounceTimer))
 </script>
 
 <template>
-  <div>
+  <VContainer fluid class="pa-0">
     <!-- Encabezado con Filtros -->
     <AppFilterBase
       v-model:search="searchQuery"
@@ -161,10 +201,37 @@ onUnmounted(() => clearTimeout(debounceTimer))
       add-button-text="Añadir Categoría"
       @clear="searchQuery = ''; fetchCategories()"
       @add="openEdit()"
-    />
+    >
+      <template #actions-extra>
+        <VBtn
+          icon
+          color="purple"
+          variant="tonal"
+          size="38"
+          rounded="circle"
+          :loading="isRunningAi"
+          :disabled="isRunningAi"
+          @click="runAiCategorize"
+        >
+          <VIcon icon="tabler-sparkles" />
+          <VTooltip activator="parent" location="top">Categorizar con IA (Gemini)</VTooltip>
+        </VBtn>
+      </template>
+    </AppFilterBase>
 
     <!-- Card de la Tabla -->
     <VCard class="rounded-lg border shadow-sm mt-4 overflow-hidden">
+      <!-- Cabecera Estándar -->
+      <VCardTitle class="d-flex align-center pa-4">
+        <span class="text-h6 font-weight-bold">Listado de Categorías de Inventario</span>
+        <VSpacer />
+        <VChip size="small" color="primary" variant="tonal" class="font-weight-black">
+          {{ totalCategories }} CATEGORÍAS
+        </VChip>
+      </VCardTitle>
+
+      <VDivider />
+
       <!-- Versión Escritorio -->
       <div class="d-none d-md-block">
         <VDataTableServer
@@ -174,57 +241,181 @@ onUnmounted(() => clearTimeout(debounceTimer))
           :loading="loading"
           @update:options="updateTableOptions"
           density="compact"
+          hover
+          class="text-no-wrap"
         >
+          <template #item.id="{ item }">
+            <span class="font-weight-black text-primary">
+              {{ item.id }}
+            </span>
+          </template>
+
+          <template #item.name="{ item }">
+            <div class="d-flex align-center gap-2 py-2">
+              <div class="header-indicator success rounded-pill"></div>
+              <span class="text-sm font-weight-black text-high-emphasis text-uppercase">{{ item.name }}</span>
+            </div>
+          </template>
+
           <template #item.products_count="{ item }">
-            <VChip size="x-small" color="info" variant="flat" class="font-weight-bold">
-              {{ item.products_count }}
-            </VChip>
+            <div class="text-center">
+              <VChip
+                :color="item.products_count > 0 ? 'primary' : 'secondary'"
+                size="x-small"
+                variant="tonal"
+                label
+                class="font-weight-black"
+              >
+                {{ item.products_count }}
+              </VChip>
+            </div>
           </template>
 
           <template #item.dishes_count="{ item }">
-            <VChip size="x-small" color="success" variant="flat" class="font-weight-bold">
-              {{ item.dishes_count }}
-            </VChip>
+            <div class="text-center">
+              <VChip
+                :color="item.dishes_count > 0 ? 'success' : 'secondary'"
+                size="x-small"
+                variant="tonal"
+                label
+                class="font-weight-black"
+              >
+                {{ item.dishes_count }}
+              </VChip>
+            </div>
           </template>
 
           <template #item.actions="{ item }">
-            <div class="d-flex justify-end gap-1 px-2">
-              <IconBtn @click="openEdit(item)" color="primary" v-tooltip="'Editar'">
-                <VIcon icon="tabler-edit" size="18" />
-              </IconBtn>
-              <IconBtn v-if="can('manage', 'admin')" @click="deleteCategory(item.id)" color="error" v-tooltip="'Eliminar'">
-                <VIcon icon="tabler-trash" size="18" />
-              </IconBtn>
+            <div class="d-flex align-center justify-center gap-1 px-2">
+              <VTooltip text="Ver productos" location="top">
+                <template #activator="{ props: tooltipProps }">
+                  <IconBtn v-bind="tooltipProps" @click="goToProducts(item)" color="info" size="small">
+                    <VIcon icon="tabler-eye" size="18" />
+                  </IconBtn>
+                </template>
+              </VTooltip>
+              <VTooltip text="Editar" location="top">
+                <template #activator="{ props: tooltipProps }">
+                  <IconBtn v-bind="tooltipProps" @click="openEdit(item)" color="warning" size="small">
+                    <VIcon icon="tabler-edit" size="18" />
+                  </IconBtn>
+                </template>
+              </VTooltip>
+              <VTooltip v-if="can('manage', 'admin')" text="Eliminar" location="top">
+                <template #activator="{ props: tooltipProps }">
+                  <IconBtn v-bind="tooltipProps" @click="deleteCategory(item.id)" color="error" size="small">
+                    <VIcon icon="tabler-trash" size="18" />
+                  </IconBtn>
+                </template>
+              </VTooltip>
             </div>
+          </template>
+
+          <template #no-data>
+            <AppEmptyState
+              title="No se encontraron categorías"
+              message="Registra categorías para clasificar tus productos y facilitar su búsqueda en el inventario."
+              icon="tabler-category"
+            >
+              <template #actions>
+                <VBtn
+                  color="primary"
+                  variant="flat"
+                  prepend-icon="tabler-plus"
+                  @click="openEdit()"
+                >
+                  Crear Categoría
+                </VBtn>
+              </template>
+            </AppEmptyState>
           </template>
         </VDataTableServer>
       </div>
 
       <!-- Versión Móvil -->
       <div class="d-block d-md-none pa-2">
-        <div class="d-flex flex-column gap-2">
-          <VCard v-for="item in categories" :key="item.id" variant="flat" class="border mb-1 rounded-lg">
-            <div class="pa-3">
-              <div class="d-flex justify-space-between align-start mb-2">
-                <div>
-                  <div class="text-xs font-weight-black text-primary mb-1">ID: {{ item.id }}</div>
-                  <h3 class="text-sm font-weight-black text-uppercase leading-tight">{{ item.name }}</h3>
-                </div>
+        <div v-if="loading" class="d-flex flex-column gap-2">
+          <VProgressLinear indeterminate color="primary" class="mb-2" />
+          <VSkeletonLoader v-for="i in 3" :key="i" type="list-item-two-line" class="mb-2 rounded-lg border" />
+        </div>
+
+        <div v-else-if="categories.length" class="d-flex flex-column gap-2">
+          <VCard
+            v-for="item in categories"
+            :key="item.id"
+            variant="flat"
+            class="border mb-1 rounded-lg pa-3"
+          >
+            <div class="d-flex justify-space-between align-center mb-2">
+              <div class="d-flex align-center gap-2">
+                <span class="text-xs font-weight-black text-primary">#{{ item.id }}</span>
+                <span class="text-sm font-weight-black text-high-emphasis text-uppercase">{{ item.name }}</span>
               </div>
-              <div class="d-flex align-center justify-space-between bg-var-theme-background px-3 py-2 rounded">
-                <div class="d-flex gap-2">
-                  <span class="text-xs font-weight-bold">Prod: <b>{{ item.products_count }}</b></span>
-                  <span v-if="hasIngredients" class="text-xs font-weight-bold">Platos: <b>{{ item.dishes_count }}</b></span>
-                </div>
-                <div class="d-flex gap-1">
-                  <VBtn icon="tabler-edit" color="primary" variant="tonal" size="small" @click="openEdit(item)" />
-                  <VBtn v-if="can('manage', 'admin')" icon="tabler-trash" color="error" variant="tonal" size="small" @click="deleteCategory(item.id)" />
-                </div>
+              <div class="d-flex gap-1">
+                <IconBtn size="small" color="info" @click="goToProducts(item)">
+                  <VIcon icon="tabler-eye" size="18" />
+                </IconBtn>
+                <IconBtn size="small" color="warning" @click="openEdit(item)">
+                  <VIcon icon="tabler-edit" size="18" />
+                </IconBtn>
+                <IconBtn v-if="can('manage', 'admin')" size="small" color="error" @click="deleteCategory(item.id)">
+                  <VIcon icon="tabler-trash" size="18" />
+                </IconBtn>
+              </div>
+            </div>
+
+            <VDivider class="my-2" />
+
+            <div class="d-flex justify-space-between align-center bg-var-theme-background px-3 py-2 rounded">
+              <div class="d-flex flex-column">
+                <span class="text-super-xs text-medium-emphasis text-uppercase font-weight-bold">Productos</span>
+                <VChip
+                  :color="item.products_count > 0 ? 'primary' : 'secondary'"
+                  size="x-small"
+                  variant="tonal"
+                  label
+                  class="font-weight-black mt-1"
+                >
+                  {{ item.products_count }}
+                </VChip>
+              </div>
+
+              <div v-if="showDishesColumn" class="d-flex flex-column align-end">
+                <span class="text-super-xs text-medium-emphasis text-uppercase font-weight-bold">Platos / Menú</span>
+                <VChip
+                  :color="item.dishes_count > 0 ? 'success' : 'secondary'"
+                  size="x-small"
+                  variant="tonal"
+                  label
+                  class="font-weight-black mt-1"
+                >
+                  {{ item.dishes_count }}
+                </VChip>
               </div>
             </div>
           </VCard>
+          <AppMobilePagination :page="page" :items-per-page="itemsPerPage" :total-items="totalCategories" @change="updateTableOptions" />
         </div>
-        <AppMobilePagination :page="page" :items-per-page="itemsPerPage" :total-items="totalCategories" @change="updateTableOptions" />
+
+        <div v-else>
+          <AppEmptyState
+            title="No hay categorías registradas"
+            message="Registra tu primera categoría para comenzar."
+            icon="tabler-category"
+          >
+            <template #actions>
+              <VBtn
+                color="primary"
+                variant="flat"
+                size="small"
+                prepend-icon="tabler-plus"
+                @click="openEdit()"
+              >
+                Crear Categoría
+              </VBtn>
+            </template>
+          </AppEmptyState>
+        </div>
       </div>
     </VCard>
 

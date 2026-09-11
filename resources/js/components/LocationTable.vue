@@ -112,7 +112,7 @@ const formatUnits = (units) => {
                 label
                 class="font-weight-black"
               >
-                {{ item.products_count }} {{ item.products_count === 1 ? 'REF' : 'REFS' }}
+                {{ item.products_count }}
               </VChip>
             </div>
           </template>
@@ -126,7 +126,7 @@ const formatUnits = (units) => {
                 label
                 class="font-weight-black"
               >
-                {{ formatUnits(item.units_count) }} UNDS
+                {{ formatUnits(item.units_count) }}
               </VChip>
             </div>
           </template>
@@ -204,7 +204,7 @@ const formatUnits = (units) => {
                     label
                     class="font-weight-black"
                   >
-                    {{ location.products_count }} {{ location.products_count === 1 ? 'REF' : 'REFS' }}
+                    {{ location.products_count }}
                   </VChip>
                 </div>
                 <div class="d-flex align-center gap-2">
@@ -216,7 +216,7 @@ const formatUnits = (units) => {
                     label
                     class="font-weight-black"
                   >
-                    {{ formatUnits(location.units_count) }} UNDS
+                    {{ formatUnits(location.units_count) }}
                   </VChip>
                 </div>
               </div>

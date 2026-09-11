@@ -79,6 +79,37 @@ class CategoryManagementController extends Controller
     }
 
     /**
+     * Ejecutar la categorización automática de productos mediante Inteligencia Artificial.
+     *
+     * @return JsonResponse
+     */
+    public function aiCategorize(): JsonResponse
+    {
+        try {
+            $exitCode = \Illuminate\Support\Facades\Artisan::call('products:ai-categorize', [
+                '--limit' => 60,
+                '--batch' => 30,
+            ]);
+
+            $output = \Illuminate\Support\Facades\Artisan::output();
+
+            \Cache::forget('resources.categories');
+            \Cache::forget('resources.categories.dishes');
+
+            return response()->json([
+                'success' => $exitCode === 0,
+                'message' => 'Proceso de categorización con IA ejecutado con éxito.',
+                'output' => trim($output),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al ejecutar la categorización con IA: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Eliminar una categoría y desvincular productos y platos.
      *
      * @param Category $category

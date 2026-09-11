@@ -280,6 +280,7 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
     // Gestión Administrativa de Categorías de Inventario
     Route::prefix('inventory/categories-manage')->group(function () {
         Route::get('/', [\App\Http\Controllers\Api\Inventory\CategoryManagementController::class, 'index']);
+        Route::post('/ai-categorize', [\App\Http\Controllers\Api\Inventory\CategoryManagementController::class, 'aiCategorize']);
         Route::post('/', [\App\Http\Controllers\Api\Inventory\CategoryManagementController::class, 'store']);
         Route::delete('/{category}', [\App\Http\Controllers\Api\Inventory\CategoryManagementController::class, 'destroy']);
     });
