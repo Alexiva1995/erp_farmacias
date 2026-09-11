@@ -832,6 +832,8 @@ class InventoryCycleQueryService
                 'counts.updated_at',
                 'products.name as product_name',
                 'products.photo_url as product_photo_url',
+                'products.barcode as product_barcode',
+                'products.stock as product_stock',
                 'products.iva as product_iva',
                 'products.psychotropic as product_psychotropic',
                 'products.unit_cost as product_unit_cost',

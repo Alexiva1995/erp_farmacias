@@ -1,5 +1,6 @@
-<script setup>
 import AppTextField from "@/@core/components/app-form-elements/AppTextField.vue";
+import AppMobilePagination from "@/components/AppMobilePagination.vue";
+import AppEmptyState from "@/components/AppEmptyState.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { formatDateSimple, formatPrice } from "@/utils/formatters";
@@ -51,15 +52,24 @@ const newDiscrepancy = ref(0);
 const isSaving = ref(false);
 
 const headers = computed(() => [
-  { title: "#", key: "product_id", value: "product_id", sortable: true, align: "center", width: 60 },
-  { title: "Producto", key: "product.name", value: "product.name", sortable: true, width: "280px" },
-  { title: "Sistema", key: "system_quantity", value: "system_quantity", sortable: true, align: "center" },
-  { title: "Físico", key: "final_quantity", sortable: true, align: "center" },
-  { title: "Discrepancia", key: "discrepancy", sortable: true, align: "center" },
-  { title: "P. Venta", key: "product.sale_price", value: "product.sale_price", sortable: true, align: "right" },
-  { title: "Monto (PVP)", key: "amount", sortable: true, align: "right" },
-  { title: "Usuario / Supervisor", key: "user.email", value: "user.email", sortable: true },
-  { title: "Acciones", key: "actions", sortable: false, align: "center" },
+  {
+    title: "#",
+    key: "product_id",
+    value: "product_id",
+    sortable: true,
+    width: "70px",
+    align: "start",
+    cellClass: "font-weight-black text-primary d-none d-sm-table-cell",
+    headerClass: "d-none d-sm-table-cell",
+  },
+  { title: "Producto", key: "product.name", value: "product.name", sortable: true, width: "300px" },
+  { title: "Sistema", key: "system_quantity", value: "system_quantity", sortable: true, align: "center", width: "100px" },
+  { title: "Físico", key: "final_quantity", sortable: true, align: "center", width: "100px" },
+  { title: "Discrepancia", key: "discrepancy", sortable: true, align: "center", width: "120px" },
+  { title: "P. Venta", key: "product.sale_price", value: "product.sale_price", sortable: true, align: "end", width: "110px" },
+  { title: "Monto (PVP)", key: "amount", sortable: true, align: "end", width: "120px" },
+  { title: "Usuario / Supervisor", key: "user.email", value: "user.email", sortable: true, width: "160px" },
+  { title: "Acciones", key: "actions", sortable: false, align: "center", width: "100px" },
 ]);
 
 const getProductLocations = (product) => {
@@ -243,7 +253,7 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
 </script>
 
 <template>
-  <div>
+  <VContainer fluid class="pa-0">
     <VCard class="mb-6 overflow-hidden elevation-1">
       <VCardText class="pa-3">
         <!-- Fila de Búsqueda y Acciones (Limpia) -->
@@ -389,7 +399,18 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
       </template>
     </VAlert>
 
-    <VCard>
+    <VCard class="rounded-lg border shadow-sm overflow-hidden">
+      <!-- Cabecera Estándar (igual a Inventario / Productos) -->
+      <VCardTitle class="d-flex align-center pa-4">
+        <span class="text-h6 font-weight-bold">Detalles del Ciclo de Inventario</span>
+        <VSpacer />
+        <VChip size="small" color="primary" variant="tonal" class="font-weight-black">
+          {{ totalProducts }} PRODUCTOS
+        </VChip>
+      </VCardTitle>
+
+      <VDivider />
+
       <div class="d-none d-md-block">
         <VDataTableServer
           :headers="headers"
@@ -403,29 +424,30 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
           density="compact"
           @update:options="handleUpdateOptions"
         >
-          <!-- Cargador limpio -->
-          <template #loading>
-            <tr class="bg-white">
-              <td colspan="9" class="pa-8 text-center">
-                <VProgressCircular indeterminate color="primary" size="36" class="mb-2" />
-                <div class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Cargando detalles del inventario...</div>
-              </td>
-            </tr>
+          <template #no-data>
+            <AppEmptyState
+              title="No se encontraron productos"
+              message="No hay productos contados que coincidan con la búsqueda o filtros aplicados en este ciclo."
+              icon="tabler-clipboard-off"
+            >
+              <template #actions v-if="hasActiveAdvancedFilters">
+                <VBtn color="primary" size="small" variant="tonal" class="rounded-lg font-weight-black text-xs" @click="handleClearFilters">
+                  Limpiar Filtros
+                </VBtn>
+              </template>
+            </AppEmptyState>
           </template>
 
-          <!-- Estado Vacío Premium -->
-          <template #no-data>
-            <div class="d-flex flex-column align-center justify-center py-12 px-4 text-center">
-              <VAvatar color="primary" variant="tonal" size="64" class="mb-4">
-                <VIcon icon="tabler-clipboard-off" size="32" class="text-primary" />
-              </VAvatar>
-              <h3 class="text-base font-weight-black text-high-emphasis mb-1">Sin registros encontrados</h3>
-              <p class="text-xs text-medium-emphasis mb-4" style="max-inline-size: 320px;">
-                No hay productos contados que coincidan con la búsqueda o filtros aplicados en este ciclo.
-              </p>
-              <VBtn v-if="hasActiveAdvancedFilters" color="primary" size="small" variant="tonal" class="rounded-lg font-weight-black text-xs" @click="handleClearFilters">
-                Limpiar Filtros
-              </VBtn>
+          <template #item.product_id="{ item }">
+            <div class="d-flex align-center gap-2 py-2">
+              <div class="header-indicator success rounded-pill"></div>
+              <a
+                :href="'/inventory/traceability?q=' + (item.product?.id || item.product_id)"
+                target="_blank"
+                class="text-decoration-none font-weight-black text-primary"
+              >
+                #{{ item.product?.id || item.product_id || "—" }}
+              </a>
             </div>
           </template>
 
@@ -433,9 +455,13 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
             <div class="d-flex align-center gap-x-3 py-2" style="max-inline-size: 320px; min-inline-size: 200px;">
               <VAvatar v-if="item.product?.photo_url" size="34" variant="tonal" rounded :image="item.product.photo_url" class="flex-shrink-0" />
               <div class="d-flex flex-column" style="word-break: break-word; line-height: 1.25;">
-                <span class="text-sm font-weight-black text-high-emphasis">{{ item.product?.name?.toUpperCase() || 'N/A' }}</span>
+                <span class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate" :title="item.product?.name">
+                  {{ item.product?.name?.toUpperCase() || 'N/A' }}
+                </span>
                 <div class="d-flex align-center flex-wrap gap-1 text-super-xs mt-1">
-                  <span class="text-xs text-primary font-weight-bold">{{ item.product?.laboratory?.name || '—' }}</span>
+                  <VChip size="x-small" color="primary" variant="tonal" class="font-weight-bold uppercase" style="max-inline-size: 140px;">
+                    {{ item.product?.laboratory?.name || (isRestaurant ? 'S/M' : 'S/L') }}
+                  </VChip>
                   <template v-if="getProductLocations(item.product).length > 0">
                     <span class="text-disabled mx-1">|</span>
                     <span class="text-success font-weight-black">
@@ -467,7 +493,7 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
           </template>
 
           <template #item.product.sale_price="{ item }">
-            <span class="text-sm font-weight-medium text-secondary">{{ formatPrice(item.product?.sale_price || 0) }}</span>
+            <span class="text-sm font-weight-medium">{{ formatPrice(item.product?.sale_price || 0) }}</span>
           </template>
 
           <template #item.amount="{ item }">
@@ -489,26 +515,42 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
           </template>
 
           <template #item.actions="{ item }">
-            <IconBtn size="small" color="primary" variant="tonal" class="rounded" @click="openEditModal(item)">
-              <VIcon icon="tabler-edit" />
-              <VTooltip activator="parent">Editar Discrepancia</VTooltip>
-            </IconBtn>
+            <div class="d-flex align-center justify-center gap-1">
+              <IconBtn size="small" color="primary" variant="tonal" class="rounded" @click="openEditModal(item)">
+                <VIcon icon="tabler-edit" size="18" />
+                <VTooltip activator="parent">Editar Discrepancia</VTooltip>
+              </IconBtn>
+            </div>
           </template>
         </VDataTableServer>
       </div>
 
       <!-- Vista de Móvil -->
       <div class="d-block d-md-none pa-2">
-        <VProgressLinear v-if="loading" indeterminate color="primary" class="mb-2" />
-        <div v-if="products.length === 0 && !loading" class="text-center py-8 text-disabled text-sm">No se encontraron registros.</div>
-        <div class="d-flex flex-column gap-2">
+        <div v-if="loading" class="d-flex flex-column gap-2">
+          <VProgressLinear indeterminate color="primary" class="mb-2" />
+          <VSkeletonLoader v-for="i in 3" :key="i" type="list-item-two-line" class="mb-2 rounded-lg border" />
+        </div>
+
+        <div v-else-if="products.length" class="d-flex flex-column gap-2">
           <VCard v-for="item in products" :key="item.id" variant="flat" class="count-mobile-card border mb-1">
             <div class="pa-3">
-              <div class="d-flex align-start justify-space-between mb-3">
+              <div class="d-flex align-start justify-space-between mb-2">
                 <div class="d-flex flex-column min-width-0">
-                  <span class="text-sm font-weight-black text-primary truncate-1-line">{{ item.product?.name?.toUpperCase() }}</span>
-                  <div class="text-super-xs text-medium-emphasis d-flex align-center flex-wrap gap-1">
-                    <span class="text-primary font-weight-bold">{{ item.product?.laboratory?.name }}</span>
+                  <div class="d-flex align-center gap-2 mb-1">
+                    <a
+                      :href="'/inventory/traceability?q=' + (item.product?.id || item.product_id)"
+                      target="_blank"
+                      class="text-decoration-none text-xs font-weight-black text-primary"
+                    >
+                      #{{ item.product?.id || item.product_id }}
+                    </a>
+                  </div>
+                  <span class="text-sm font-weight-black text-primary truncate-1-line text-uppercase">{{ item.product?.name }}</span>
+                  <div class="text-super-xs text-medium-emphasis d-flex align-center flex-wrap gap-1 mt-1">
+                    <VChip size="x-small" color="primary" variant="tonal" class="font-weight-bold uppercase">
+                      {{ item.product?.laboratory?.name || (isRestaurant ? 'S/M' : 'S/L') }}
+                    </VChip>
                     <template v-if="getProductLocations(item.product).length > 0">
                       <span class="text-disabled">|</span>
                       <span class="text-success font-weight-black">
@@ -520,13 +562,24 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
                   </div>
                 </div>
                 <IconBtn size="small" color="primary" variant="tonal" @click="openEditModal(item)">
-                  <VIcon icon="tabler-edit" />
+                  <VIcon icon="tabler-edit" size="18" />
+                  <VTooltip activator="parent">Editar</VTooltip>
                 </IconBtn>
               </div>
-              <div class="d-flex align-center justify-space-between bg-var-theme-background px-3 py-2 rounded border-dashed-thin mb-3">
+
+              <VDivider class="my-2" />
+
+              <div class="d-flex align-center justify-space-between bg-var-theme-background px-3 py-2 rounded mb-2">
                 <div class="d-flex flex-column">
                   <span class="text-super-xs text-disabled text-uppercase font-weight-black">FÍSICO</span>
                   <span class="text-base font-weight-black text-primary">{{ item.final_quantity ?? item.counted_quantity ?? 0 }}</span>
+                </div>
+                <div class="d-flex flex-column text-center">
+                  <span class="text-super-xs text-disabled text-uppercase font-weight-black">DISCREPANCIA</span>
+                  <VChip v-if="item.discrepancy !== 0" :color="item.discrepancy > 0 ? 'success' : 'error'" size="x-small" label variant="tonal" class="font-weight-black mt-1">
+                    {{ item.discrepancy > 0 ? `+${item.discrepancy}` : item.discrepancy }}
+                  </VChip>
+                  <span v-else class="text-xs text-disabled mt-1">0</span>
                 </div>
                 <div class="d-flex flex-column text-right">
                   <span class="text-super-xs text-disabled text-uppercase font-weight-black">MONTO</span>
@@ -535,26 +588,39 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
                   </span>
                 </div>
               </div>
+
               <div class="d-flex align-center justify-space-between text-capitalize">
-                <div class="d-flex flex-column">
-                  <span class="text-super-xs font-weight-medium d-flex align-center gap-1">
-                    <VIcon icon="tabler-user" size="12" class="text-disabled" />
-                    {{ item.user?.employee_name }} {{ item.user?.employee_last_name }}
-                  </span>
-                  <span v-if="item.supervisor" class="text-super-xs text-disabled font-weight-medium d-flex align-center gap-1">
-                    <VIcon icon="tabler-user-check" size="12" class="text-disabled" />
-                    {{ item.supervisor?.employee_name }} {{ item.supervisor?.employee_last_name }}
+                <div class="d-flex align-center gap-1">
+                  <VIcon icon="tabler-user" size="12" class="text-disabled" />
+                  <span class="text-super-xs font-weight-medium">
+                    {{ item.user?.employee_name }} {{ item.user?.employee_last_name || '' }}
                   </span>
                 </div>
-                <VChip v-if="item.discrepancy !== 0" :color="item.discrepancy > 0 ? 'success' : 'error'" size="x-small" label variant="flat">
-                  {{ item.discrepancy > 0 ? `+${item.discrepancy}` : item.discrepancy }}
-                </VChip>
+                <div v-if="item.supervisor" class="d-flex align-center gap-1">
+                  <VIcon icon="tabler-user-check" size="12" class="text-disabled" />
+                  <span class="text-super-xs text-disabled font-weight-medium">
+                    {{ item.supervisor?.employee_name }} {{ item.supervisor?.employee_last_name || '' }}
+                  </span>
+                </div>
               </div>
             </div>
           </VCard>
+
+          <AppMobilePagination
+            :page="page"
+            :items-per-page="itemsPerPage"
+            :total-items="totalProducts"
+            :loading="loading"
+            @change="handleUpdateOptions"
+          />
         </div>
-        <div class="d-flex justify-center mt-4">
-          <VPagination v-model="page" :length="Math.ceil(totalProducts / itemsPerPage)" :total-visible="3" density="compact" size="small" />
+
+        <div v-else>
+          <AppEmptyState
+            title="No se encontraron productos"
+            message="No hay productos contados que coincidan con la búsqueda o filtros aplicados."
+            icon="tabler-clipboard-off"
+          />
         </div>
       </div>
     </VCard>
@@ -678,13 +744,22 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
         </VCardActions>
       </VCard>
     </VDialog>
-  </div>
+  </VContainer>
 </template>
 
 <style scoped>
 .count-mobile-card { overflow: hidden; border-radius: 8px !important; background: rgb(var(--v-theme-surface)); }
 .border-dashed-thin { border: 1px dashed rgba(var(--v-border-color), 0.3) !important; }
 .bg-var-theme-background { background-color: rgba(var(--v-border-color), 0.05); }
+
+.header-indicator {
+  block-size: 16px;
+  inline-size: 3px;
+}
+
+.header-indicator.success {
+  background: linear-gradient(to bottom, #10b981, #059669);
+}
 
 /* Premium Modal Styles */
 /* El fondo del header es dinámico via CSS vars del branding store */

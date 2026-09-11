@@ -63,6 +63,8 @@ class CycleDetailProductResource extends JsonResource
             'product' => isset($item->product) ? [
                 'id' => $item->product['id'] ?? $item->product->id ?? null,
                 'name' => $item->product['name'] ?? $item->product->name ?? '',
+                'barcode' => $item->product['barcode'] ?? $item->product->barcode ?? null,
+                'stock' => (float) ($item->product['stock'] ?? $item->product->stock ?? 0),
                 'photo_url' => $item->product['photo_url'] ?? $item->product->photo_url ?? null,
                 'unit_cost' => (float) ($item->product['unit_cost'] ?? $item->product->unit_cost ?? 0),
                 'sale_price' => (float) ($item->product['sale_price'] ?? $item->product->sale_price ?? 0),

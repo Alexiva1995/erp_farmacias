@@ -273,19 +273,25 @@ const handleDeleteItem = async (item) => {
   <VContainer fluid class="pa-0">
     <!-- Dashboard de Control de Cierre Consolidado -->
     <VCard v-if="hasActiveCycle && activeCycle" class="mb-6 elevation-1 overflow-hidden">
-      <VCardText class="pa-3">
+      <VCardText class="pa-4">
         <!-- Fila de Control: Info + Búsqueda + Acciones -->
-        <div class="d-flex align-center flex-wrap gap-3 mb-2">
-          <!-- Información del Ciclo (Compacta) -->
-          <div class="d-none d-sm-flex align-center me-2">
-            <VIcon icon="tabler-refresh" color="primary" size="20" class="me-2" />
-            <span class="text-xs font-weight-black text-high-emphasis text-uppercase letter-spacing-05">
-              Ciclo Activo ({{ formatDateSimple(activeCycle.start_date) }})
-            </span>
-          </div>
+        <VRow dense align="center" class="mb-1">
+          <!-- Información del Ciclo -->
+          <VCol cols="12" md="4" class="d-flex align-center">
+            <VChip
+              color="primary"
+              variant="tonal"
+              size="default"
+              class="font-weight-black text-uppercase px-3 w-100 justify-start"
+            >
+              <VIcon start icon="tabler-refresh" size="18" />
+              Ciclo Activo
+              <span class="text-disabled font-weight-medium ms-1">({{ formatDateSimple(activeCycle.start_date) }})</span>
+            </VChip>
+          </VCol>
 
           <!-- Buscador Central -->
-          <div class="flex-grow-1" style="min-inline-size: 200px;">
+          <VCol cols="12" sm="7" md="5">
             <AppTextField
               v-model="filters.searchQuery"
               placeholder="Buscar producto, usuario..."
@@ -295,47 +301,52 @@ const handleDeleteItem = async (item) => {
               hide-details
               variant="outlined"
             />
-          </div>
+          </VCol>
 
-          <!-- Botones de Acción (Estilo Inventario) -->
-          <div class="d-flex align-center gap-1">
+          <!-- Botones de Acción -->
+          <VCol cols="12" sm="5" md="3" class="d-flex align-center justify-end gap-2">
             <VBtn
-              icon variant="tonal"
+              variant="tonal"
               :color="isAdvancedFiltersVisible ? 'primary' : 'secondary'"
-              size="38"
-              class="rounded-circle shadow-sm"
+              size="small"
+              class="font-weight-bold"
               @click="toggleAdvancedFilters"
             >
-              <VIcon :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" size="22" />
-              <VTooltip activator="parent">Filtros Avanzados</VTooltip>
+              <VIcon start :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" size="16" />
+              Filtros
               <VBadge v-if="hasActiveAdvancedFilters && !isAdvancedFiltersVisible" color="error" dot offset-x="3" offset-y="-3" />
             </VBtn>
 
             <VBtn
-              icon variant="flat"
+              variant="flat"
               color="success"
-              size="38"
-              class="rounded-circle shadow-sm"
+              size="small"
+              class="font-weight-bold"
               :disabled="loading || isClosing"
               :loading="isClosing"
               @click="handleCashClose"
             >
-              <VIcon icon="tabler-lock-check" size="22" />
-              <VTooltip activator="parent">Generar Cierre</VTooltip>
+              <VIcon start icon="tabler-lock-check" size="16" />
+              Cerrar
+              <VTooltip activator="parent">Generar Cierre de Ciclo</VTooltip>
             </VBtn>
 
-            <VDivider vertical class="mx-1 my-2" />
-
-            <VBtn icon variant="text" color="secondary" size="38" class="rounded-circle" @click="handleClearFilters">
-              <VIcon icon="tabler-eraser" size="22" />
+            <IconBtn
+              variant="text"
+              color="secondary"
+              size="34"
+              class="rounded-circle"
+              @click="handleClearFilters"
+            >
+              <VIcon icon="tabler-eraser" size="18" />
               <VTooltip activator="parent">Limpiar Filtros</VTooltip>
-            </VBtn>
-          </div>
-        </div>
+            </IconBtn>
+          </VCol>
+        </VRow>
 
         <!-- Filtros Avanzados (Expandibles) -->
         <VExpandTransition>
-          <div v-show="isAdvancedFiltersVisible" class="py-2">
+          <div v-show="isAdvancedFiltersVisible" class="py-3">
             <VDivider class="my-2 border-opacity-10" />
             <VRow dense>
               <VCol cols="12" sm="6">
@@ -364,31 +375,53 @@ const handleDeleteItem = async (item) => {
           </div>
         </VExpandTransition>
 
-        <!-- Métricas Financieras (Footer Integrado - Solo montos) -->
-        <div v-if="globalTotals" class="d-flex align-center justify-space-around py-2 mt-2 border-t border-dashed-metrics">
-          <div class="d-flex align-center gap-1 px-3 border-e border-opacity-10 flex-grow-1 justify-center">
-            <span class="text-super-xs font-weight-bold text-disabled uppercase">Sobrante:</span>
-            <span class="text-xs font-weight-black text-success">{{ formatPrice(globalTotals.surplus) }}</span>
-          </div>
-          
-          <VDivider vertical class="mx-1" />
+        <!-- Métricas Financieras (KPI Cards Modernos) -->
+        <div v-if="globalTotals" class="pt-3 mt-2 border-t">
+          <VRow dense>
+            <!-- Sobrante -->
+            <VCol cols="12" sm="4">
+              <div class="kpi-metric-card d-flex align-center justify-space-between pa-2 px-3 rounded-lg border bg-surface">
+                <div class="d-flex align-center gap-2">
+                  <VAvatar size="28" color="success" variant="tonal" class="rounded">
+                    <VIcon icon="tabler-trending-up" size="16" />
+                  </VAvatar>
+                  <span class="text-caption font-weight-bold text-medium-emphasis text-uppercase">Sobrante</span>
+                </div>
+                <span class="text-sm font-weight-black text-success">{{ formatPrice(globalTotals.surplus) }}</span>
+              </div>
+            </VCol>
 
-          <div class="d-flex align-center gap-1 px-3 border-e border-opacity-10 flex-grow-1 justify-center">
-            <span class="text-super-xs font-weight-bold text-disabled uppercase">Faltante:</span>
-            <span class="text-xs font-weight-black text-error">{{ formatPrice(globalTotals.shortage) }}</span>
-          </div>
-          
-          <VDivider vertical class="mx-1" />
+            <!-- Faltante -->
+            <VCol cols="12" sm="4">
+              <div class="kpi-metric-card d-flex align-center justify-space-between pa-2 px-3 rounded-lg border bg-surface">
+                <div class="d-flex align-center gap-2">
+                  <VAvatar size="28" color="error" variant="tonal" class="rounded">
+                    <VIcon icon="tabler-trending-down" size="16" />
+                  </VAvatar>
+                  <span class="text-caption font-weight-bold text-medium-emphasis text-uppercase">Faltante</span>
+                </div>
+                <span class="text-sm font-weight-black text-error">{{ formatPrice(globalTotals.shortage) }}</span>
+              </div>
+            </VCol>
 
-          <div class="d-flex align-center gap-2 px-3 flex-grow-1 justify-center">
-            <span class="text-super-xs font-weight-bold text-disabled uppercase">Balance:</span>
-            <span 
-              class="text-xs font-weight-black"
-              :class="globalTotals.netTotal >= 0 ? 'text-primary' : 'text-warning'"
-            >
-              {{ formatPrice(globalTotals.netTotal) }}
-            </span>
-          </div>
+            <!-- Balance Neto -->
+            <VCol cols="12" sm="4">
+              <div class="kpi-metric-card d-flex align-center justify-space-between pa-2 px-3 rounded-lg border bg-surface">
+                <div class="d-flex align-center gap-2">
+                  <VAvatar size="28" :color="globalTotals.netTotal >= 0 ? 'primary' : 'warning'" variant="tonal" class="rounded">
+                    <VIcon icon="tabler-scale" size="16" />
+                  </VAvatar>
+                  <span class="text-caption font-weight-bold text-medium-emphasis text-uppercase">Balance Neto</span>
+                </div>
+                <span 
+                  class="text-sm font-weight-black"
+                  :class="globalTotals.netTotal >= 0 ? 'text-primary' : 'text-warning'"
+                >
+                  {{ formatPrice(globalTotals.netTotal) }}
+                </span>
+              </div>
+            </VCol>
+          </VRow>
         </div>
       </VCardText>
     </VCard>
@@ -424,6 +457,16 @@ const handleDeleteItem = async (item) => {
 <style scoped>
 .border-dashed {
   border: 1px dashed rgba(var(--v-border-color), 0.5) !important;
+}
+
+.kpi-metric-card {
+  transition: all 0.2s ease;
+  border-color: rgba(var(--v-border-color), 0.12) !important;
+}
+
+.kpi-metric-card:hover {
+  border-color: rgba(var(--v-theme-primary), 0.3) !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
 }
 
 .gap-x-6 {

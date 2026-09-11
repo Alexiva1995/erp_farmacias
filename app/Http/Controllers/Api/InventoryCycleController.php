@@ -395,6 +395,8 @@ class InventoryCycleController extends Controller
                 'product' => [
                     'id' => data_get($item, 'product_id'),
                     'name' => data_get($item, 'product_name', data_get($item, 'name')),
+                    'barcode' => data_get($item, 'product_barcode', data_get($item, 'barcode')),
+                    'stock' => data_get($item, 'product_stock', data_get($item, 'stock', 0)),
                     'photo_url' => data_get($item, 'product_photo_url', data_get($item, 'photo_url')),
                     'iva' => data_get($item, 'product_iva', data_get($item, 'iva')),
                     'psychotropic' => data_get($item, 'product_psychotropic', data_get($item, 'psychotropic')),
