@@ -61,7 +61,8 @@ return new class extends Migration
                       ->orWhere('host', 'LIKE', '%dronena%');
             })
             ->update([
-                'structure' => json_encode($dronenaStructure)
+                'structure' => json_encode($dronenaStructure),
+                'parse_using' => null,
             ]);
     }
 

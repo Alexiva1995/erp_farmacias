@@ -700,15 +700,21 @@ class SupplierConnectionService
 
         // Helper para obtener el índice de la columna basado en el mapeo y los encabezados
         $getIdx = function ($meta, $originalKey) use ($headerMap) {
+            $fileField = isset($meta['file_field']) && is_string($meta['file_field']) ? trim($meta['file_field']) : null;
+            $excelColIdx = $fileField !== null ? $this->colIndex($fileField) : null;
+
+            // Si la clave original es numérica y coincide exactamente con la letra de columna (A=0, B=1, etc.), usar índice directo
+            if ($excelColIdx !== null && is_numeric($originalKey) && (int) $originalKey === $excelColIdx) {
+                return $excelColIdx;
+            }
+
             // Prioridad 1: Coincidencia por nombre de encabezado si está disponible
-            if (!empty($headerMap) && isset($meta['file_field']) && is_string($meta['file_field']) && isset($headerMap[trim($meta['file_field'])])) {
-                return $headerMap[trim($meta['file_field'])];
+            if (!empty($headerMap) && $fileField !== null && isset($headerMap[$fileField])) {
+                return $headerMap[$fileField];
             }
             // Prioridad 2: Si file_field es una letra (estilo Excel), convertir a índice
-            if (isset($meta['file_field']) && is_string($meta['file_field'])) {
-                $idx = $this->colIndex($meta['file_field']);
-                if ($idx !== null)
-                    return $idx;
+            if ($excelColIdx !== null) {
+                return $excelColIdx;
             }
             // Prioridad 3: Usar la clave original como índice numérico si es posible
             return is_numeric($originalKey) ? (int) $originalKey : null;
