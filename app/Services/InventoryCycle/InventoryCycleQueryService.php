@@ -799,6 +799,8 @@ class InventoryCycleQueryService
             return DB::query()->whereRaw('1 = 0');
         }
 
+        $unionQuery = $this->buildDiscrepanciesUnionQuery($cycleId, true);
+
         $lotsAggregate = DB::table('product_lots')
             ->where('quantity', '>', 0)
             ->groupBy('product_id')

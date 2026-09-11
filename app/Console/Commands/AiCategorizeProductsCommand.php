@@ -25,7 +25,7 @@ class AiCategorizeProductsCommand extends Command
      */
     public function handle()
     {
-        $apiKey = config('services.gemini.api_key') ?: env('GEMINI_API_KEY');
+        $apiKey = trim(config('services.gemini.api_key') ?: config('services.telegram.gemini_api_key') ?: env('GEMINI_API_KEY') ?: '');
         if (empty($apiKey)) {
             $this->error('No se encontró GEMINI_API_KEY en el archivo .env.');
             return 1;
@@ -123,7 +123,13 @@ IMPORTANTE: Responde ÚNICAMENTE un JSON válido (sin markdown, sin bloques ```j
                 }
             } else {
                 $errorData = $response->json('error');
+                $status = $response->status();
                 $errorMsg = $errorData['message'] ?? $response->body();
+                
+                if ($status === 400 || $status === 401 || $status === 403) {
+                    $errorMsg .= " (Verifica que la clave GEMINI_API_KEY en el archivo .env de producción sea una API Key válida de Google AI Studio que comience por 'AIzaSy...')";
+                }
+                
                 $this->error("Error en llamada a Gemini API: " . $errorMsg);
                 throw new \RuntimeException("Gemini API (Google AI) reportó error: " . $errorMsg);
             }
