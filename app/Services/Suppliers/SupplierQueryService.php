@@ -306,42 +306,64 @@ class SupplierQueryService
             $logMessage = "[" . date('Y-m-d H:i:s') . "] 🚨 Iniciando inserción de productos - Total: {$totalProductos}\n";
             file_put_contents($logFile, $logMessage, FILE_APPEND);
 
-            $allowedColumns = [
-                'product_id', 'supplier_id', 'barcode_match', 'name', 'laboratory', 
-                'expiration', 'unit_cost', 'unit_cost_usd', 'connection_date', 
-                'quantity', 'unit_cost_with_discount', 'unit_cost_usd_with_discount', 
-                'cod_supplier', 'active_ingredient', 'created_at', 'updated_at'
-            ];
-            $allowedSet = array_flip($allowedColumns);
             $nowStr = now()->toDateTimeString();
             $todayStr = now()->toDateString();
 
+            $templateRow = [
+                'supplier_id' => $supplier->id,
+                'product_id' => null,
+                'cod_supplier' => null,
+                'barcode_match' => null,
+                'name' => null,
+                'laboratory' => null,
+                'active_ingredient' => null,
+                'expiration' => null,
+                'quantity' => 1000,
+                'unit_cost' => 0,
+                'unit_cost_usd' => 0,
+                'unit_cost_with_discount' => 0,
+                'unit_cost_usd_with_discount' => 0,
+                'connection_date' => $todayStr,
+                'created_at' => $nowStr,
+                'updated_at' => $nowStr,
+            ];
+
             $batchRows = [];
             foreach ($uniqueProducts as $productData) {
-                if (!isset($productData['supplier_id'])) {
-                    $productData['supplier_id'] = $supplier->id;
-                }
-                if (!isset($productData['connection_date'])) {
-                    $productData['connection_date'] = $todayStr;
-                }
-                if (!isset($productData['unit_cost'])) {
-                    $productData['unit_cost'] = 0;
-                }
-                if (!isset($productData['unit_cost_usd'])) {
-                    $productData['unit_cost_usd'] = 0;
-                }
-                if (!isset($productData['created_at'])) {
-                    $productData['created_at'] = $nowStr;
-                }
-                if (!isset($productData['updated_at'])) {
-                    $productData['updated_at'] = $nowStr;
+                $row = $templateRow;
+                foreach ($templateRow as $key => $defaultVal) {
+                    if (array_key_exists($key, $productData) && $productData[$key] !== null) {
+                        $row[$key] = $productData[$key];
+                    }
                 }
 
-                if (!isset($productData['quantity']) || empty($productData['quantity']) || $productData['quantity'] <= 0) {
-                    $productData['quantity'] = 1000;
+                $row['supplier_id'] = $supplier->id;
+                $row['unit_cost'] = is_numeric($row['unit_cost']) ? (float)$row['unit_cost'] : 0;
+                $row['unit_cost_usd'] = is_numeric($row['unit_cost_usd']) ? (float)$row['unit_cost_usd'] : 0;
+
+                if (empty($row['unit_cost_with_discount']) || !is_numeric($row['unit_cost_with_discount'])) {
+                    $row['unit_cost_with_discount'] = $row['unit_cost'];
+                } else {
+                    $row['unit_cost_with_discount'] = (float)$row['unit_cost_with_discount'];
                 }
 
-                $batchRows[] = array_intersect_key($productData, $allowedSet);
+                if (empty($row['unit_cost_usd_with_discount']) || !is_numeric($row['unit_cost_usd_with_discount'])) {
+                    $row['unit_cost_usd_with_discount'] = $row['unit_cost_usd'];
+                } else {
+                    $row['unit_cost_usd_with_discount'] = (float)$row['unit_cost_usd_with_discount'];
+                }
+
+                if (empty($row['quantity']) || !is_numeric($row['quantity']) || (float)$row['quantity'] <= 0) {
+                    $row['quantity'] = 1000;
+                } else {
+                    $row['quantity'] = (float)$row['quantity'];
+                }
+
+                if (empty($row['connection_date'])) {
+                    $row['connection_date'] = $todayStr;
+                }
+
+                $batchRows[] = $row;
             }
 
             foreach (array_chunk($batchRows, 500) as $chunk) {
@@ -518,7 +540,7 @@ class SupplierQueryService
                 "product_suppliers.unit_cost_usd",
                 "product_suppliers.unit_cost_with_discount",
                 "product_suppliers.unit_cost_usd_with_discount",
-                "product_suppliers.discount_percentage",
+                DB::raw("ROUND(CASE WHEN product_suppliers.unit_cost > 0 AND product_suppliers.unit_cost_with_discount > 0 AND product_suppliers.unit_cost_with_discount < product_suppliers.unit_cost THEN (1 - (product_suppliers.unit_cost_with_discount / product_suppliers.unit_cost)) * 100 ELSE 0 END, 2) as discount_percentage"),
                 "product_suppliers.quantity",
                 "product_suppliers.expiration",
                 DB::raw("COALESCE(NULLIF(product_suppliers.name, ''), products.name, 'N/A') as name"),
