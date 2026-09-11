@@ -23,21 +23,26 @@ const headers = [
     cellClass: "font-weight-black text-primary d-none d-sm-table-cell",
     headerClass: "d-none d-sm-table-cell",
   },
-  { title: "Tipo de Oferta", key: "type",        sortable: true, width: "35%" },
-  { title: "Beneficio",      key: "fixed_price", sortable: true, align: "center", width: "160px" },
-  { title: "Categorías",     key: "categories",  sortable: false },
-  { title: "Estado",         key: "is_active",   sortable: true, align: "center", width: "110px" },
-  { title: "Acciones",       key: "actions",     sortable: false, align: "center", width: "100px" },
+  { title: "Tipo de Oferta", key: "type",       sortable: true, width: "40%" },
+  { title: "Categorías",     key: "categories", sortable: false },
+  { title: "Estado",         key: "is_active",  sortable: true, align: "center", width: "110px" },
+  { title: "Acciones",       key: "actions",    sortable: false, align: "center", width: "100px" },
 ];
 
-const getPromoTypeName = (type) => {
-  switch (type) {
-    case "general": return "Oferta General (%)";
-    case "2x1": return "Oferta 2X1";
-    case "3x2": return "Oferta 3X2";
-    case "50_second": return "50% en el segundo";
-    case "fixed_price": return "Precio Fijo";
-    default: return type;
+const getPromoTypeName = (item) => {
+  switch (item.type) {
+    case "general":
+      return `Oferta General (${parseFloat(item.fixed_price || 0).toFixed(1)}% OFF)`;
+    case "fixed_price":
+      return `Precio Fijo ($${parseFloat(item.fixed_price || 0).toFixed(2)})`;
+    case "2x1":
+      return "Oferta 2X1";
+    case "3x2":
+      return "Oferta 3X2";
+    case "50_second":
+      return "50% en el segundo";
+    default:
+      return item.type;
   }
 };
 
@@ -80,32 +85,14 @@ const getCategoryNames = (categoryIds) => {
 
         <!-- Type Column -->
         <template #item.type="{ item }">
-          <div class="d-flex flex-column py-2">
-            <span class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate" style="max-inline-size: 380px;">
-              {{ getPromoTypeName(item.type) }}
-            </span>
-            <span class="text-super-xs text-medium-emphasis text-uppercase font-weight-bold mt-0-5">
-              Promoción General
-            </span>
-          </div>
-        </template>
-
-        <!-- Fixed Price / Beneficio Column -->
-        <template #item.fixed_price="{ item }">
-          <span v-if="item.type === 'general'" class="font-weight-black text-success text-sm">
-            {{ parseFloat(item.fixed_price).toFixed(1) }}% OFF
-          </span>
-          <span v-else-if="item.type === 'fixed_price'" class="font-weight-black text-success text-sm">
-            ${{ parseFloat(item.fixed_price).toFixed(2) }}
-          </span>
-          <span v-else class="text-super-xs font-weight-bold text-medium-emphasis uppercase">
-            {{ item.type === '2x1' ? 'Paga 1 Lleva 2' : item.type === '3x2' ? 'Paga 2 Lleva 3' : '50% en 2do' }}
+          <span class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate d-block py-2">
+            {{ getPromoTypeName(item) }}
           </span>
         </template>
 
         <!-- Categories Column -->
         <template #item.categories="{ item }">
-          <div class="text-xs truncate uppercase font-weight-bold text-high-emphasis" :title="getCategoryNames(item.categories)">
+          <div class="text-sm truncate uppercase font-weight-medium text-high-emphasis" :title="getCategoryNames(item.categories)">
             {{ getCategoryNames(item.categories) }}
           </div>
         </template>
@@ -175,7 +162,7 @@ const getCategoryNames = (categoryIds) => {
               <span class="text-primary font-weight-black text-xs">#{{ item.id }}</span>
               <span class="text-disabled mx-1">|</span>
               <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase mb-0">
-                {{ getPromoTypeName(item.type) }}
+                {{ getPromoTypeName(item) }}
               </h3>
             </div>
 
