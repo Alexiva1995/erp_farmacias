@@ -25,4 +25,12 @@ interface MarfartaPcCorreoServiceInterface
      * @return array{success: bool, filename: string, remote_path: string, message: string}
      */
     public function sendOrderFtp(AutoOrder $autoOrder): array;
+
+    /**
+     * Transmite el pedido a la API REST de Droguerías Cobeca / Mafarta (comparadores).
+     *
+     * @return array{success: bool, data?: mixed, message: string}
+     */
+    public function sendOrderApi(AutoOrder $autoOrder): array;
 }
+

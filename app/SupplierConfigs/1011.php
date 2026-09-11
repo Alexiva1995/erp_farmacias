@@ -28,4 +28,10 @@ return [
             'method' => 'get',
         ];
     },
+    'pedidos' => function ($connection) {
+        return [
+            'url' => 'https://comparadores.drogueriascobeca.com/api/pedidos/comparador',
+            'method' => 'post',
+        ];
+    },
 ];

@@ -113,12 +113,7 @@ class PurchaseOrderServices implements PurchaseOrder
       }
 
       if (str_contains($supplierName, 'MAFARTA') || str_contains($supplierName, 'COBECA') || (int)$supplier->id === 23) {
-        // Verificar si tiene configuración FTP o variables de entorno para envío de pedidos PC-CORREO
-        $hasMafartaFtp = $supplier->connections()->whereIn('type', ['ftp', 'sftp'])->exists() 
-          || !empty(env('MAFARTA_FTP_HOST'));
-        if ($hasMafartaFtp) {
-          $isMafarta = true;
-        }
+        $isMafarta = true;
       }
     }
 
@@ -151,10 +146,10 @@ class PurchaseOrderServices implements PurchaseOrder
 
     if ($isMafarta) {
       try {
-        $this->marfartaPcCorreoService->sendOrderFtp($autoOrder);
+        $this->marfartaPcCorreoService->sendOrderApi($autoOrder);
       } catch (\Throwable $e) {
-        \Illuminate\Support\Facades\Log::error("[MAFARTA PC-CORREO] Error transmitiendo pedido automático #{$autoOrder->id}: " . $e->getMessage());
-        throw new \Exception("Error al transmitir el pedido a Mafarta / Cobeca por PC-CORREO (FTP): " . $e->getMessage());
+        \Illuminate\Support\Facades\Log::error("[MAFARTA API] Error transmitiendo pedido automático #{$autoOrder->id}: " . $e->getMessage());
+        throw new \Exception("Error al transmitir el pedido a Droguerías Cobeca / Mafarta por API: " . $e->getMessage());
       }
     }
 
