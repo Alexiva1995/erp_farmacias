@@ -7,6 +7,8 @@ use Illuminate\Http\Request;
 use App\Models\Quotation;
 use App\Services\Quotation\QuotationActionService;
 use App\Services\Quotation\QuotationQueryService;
+use App\Services\Order\OrderQueryService;
+use App\Services\Order\OrderActionService;
 use App\Models\Product;
 use App\Http\Requests\StoreQuotationRequest;
 use Illuminate\Support\Facades\Log;
@@ -16,27 +18,33 @@ class QuotationController extends Controller
 {
     public function __construct(
         private QuotationQueryService $quotationQueryService,
-        private QuotationActionService $quotationActionService
+        private QuotationActionService $quotationActionService,
+        private OrderQueryService $orderQueryService,
+        private OrderActionService $orderActionService,
     ) {
     }
 
     public function index(Request $request)
     {
         $perPage = (int) $request->input('itemsPerPage', 10);
-        $page    = (int) $request->input('page', 1);
+        $page    = max(1, (int) $request->input('page', 1));
 
-        // Construir el query filtrado una sola vez; se reutiliza para count y datos.
-        $filteredQuery = $this->quotationQueryService->getFilteredQuery($request);
+        $countQuery = $this->orderQueryService->getCountQueryProduct($request);
+        $total = $countQuery->count();
+
+        $dataQuery = $this->orderQueryService->getFilteredQueryProduct($request);
 
         if ($perPage < 1) {
-            $items = $filteredQuery->get();
+            $items = $dataQuery->get();
+            $this->orderActionService->applyGeneralPromotionsToProducts($items);
             return response()->json(['data' => $items, 'total' => $items->count()]);
         }
 
-        // Clonar para el count sin ORDER BY ni LIMIT (más eficiente)
-        $total  = $this->quotationQueryService->getCountQueryProduct($request)->count();
         $offset = ($page - 1) * $perPage;
-        $items  = $filteredQuery->skip($offset)->take($perPage)->get();
+        $items = $dataQuery->skip($offset)->take($perPage)->get();
+
+        // Aplicar promociones generales activas
+        $this->orderActionService->applyGeneralPromotionsToProducts($items);
 
         return response()->json([
             'data'  => $items,

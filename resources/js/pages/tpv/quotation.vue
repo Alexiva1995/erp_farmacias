@@ -1,10 +1,10 @@
 <script setup>
 import QuotationCard from "@/components/cards/QuotationCard.vue";
 import QuotationProducts from "@/components/cards/QuotationProducts.vue";
-import OrderFilters from "@/components/OrderFilters.vue";
-import OrderProductsTable from "@/components/OrderProductsTable.vue";
+import TpvCatalogSection from "@/components/tpv/TpvCatalogSection.vue";
 import QuotationTicket from "@/components/QuotationTicket.vue";
 import RegisterClientModal from "@/components/dialogs/ClientFormDialoge.vue";
+import PackDetailsModal from "@/components/dialogs/PackDetailsModal.vue";
 import axios from "@/plugins/axios";
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { toast } from "@/plugins/sweetalert";
@@ -12,6 +12,7 @@ import { useBrandingStore } from "@/stores/useBrandingStore";
 import { useQuotationClient } from "@/composables/useQuotationClient";
 import { useTpvRates } from "@/composables/useTpvRates";
 import { useTpvPromotions } from "@/composables/useTpvPromotions";
+import { useTpvCatalog } from "@/composables/useTpvCatalog";
 import { getItemPriceByCurrency } from "@/composables/useTpvItemFormatter";
 import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
 
@@ -50,9 +51,13 @@ const loadQuotationFromLocalStorage = () => {
   }
 };
 
-watch(quotationItems, () => {
-  saveQuotationToLocalStorage();
-}, { deep: true });
+watch(
+  quotationItems,
+  () => {
+    saveQuotationToLocalStorage();
+  },
+  { deep: true },
+);
 
 // ─── Promociones y Ofertas (Mismo comportamiento que /tpv/orderUser) ─────────
 const {
@@ -95,30 +100,60 @@ const globalDiscountPercentage = computed(() => {
   return 0;
 });
 
-// ─── Catálogo de Productos y Filtros ─────────────────────────────────────────
-const products = ref([]);
-const totalProduct = ref(0);
-const loading = ref(false);
-const isLoadingFilters = ref(false);
-const isSaving = ref(false);
-
-const page = ref(1);
-const itemsPerPage = ref(10);
-const sortBy = ref();
-const orderBy = ref();
-const isStrictSearch = ref(false);
-
+// ─── Catálogo de Productos y Filtros Centralizados ───────────────────────────
 const filterSearchQuery = ref("");
 const selectedLaboratory = ref(null);
 const selectedOrigin = ref(null);
 const selectedCategory = ref(null);
 const stockStatusFilter = ref(null);
-const selectedGroupId = ref(null);
+const isStrictSearch = ref(false);
+const sortBy = ref();
+const orderBy = ref();
+const page = ref(1);
+const itemsPerPage = ref(10);
+const currentGroupId = ref(null);
 
-const laboratories = ref([]);
-const origins = ref([]);
-const categories = ref([]);
+const tableOptions = computed(() => ({
+  page: page.value,
+  itemsPerPage: itemsPerPage.value,
+  sortBy: sortBy.value ? [{ key: sortBy.value, order: orderBy.value || "asc" }] : [],
+}));
 
+const {
+  products,
+  totalProduct,
+  loading,
+  laboratories,
+  origins,
+  categories,
+  isLoadingFilters,
+  fetchProducts,
+  fetchSelectOptions,
+  handleClearFilters,
+  handleClearSortOrder,
+  updateTableOptions,
+  handleSort,
+  fetchGroupProducts,
+  fetchFailuresProducts,
+  handleBackFromGroupView,
+  handleExternalSort,
+} = useTpvCatalog({
+  filterSearchQuery,
+  selectedLaboratory,
+  selectedOrigin,
+  selectedCategory,
+  stockStatusFilter,
+  isStrictSearch,
+  sortBy,
+  orderBy,
+  page,
+  itemsPerPage,
+  currentGroupId,
+  tableOptions,
+});
+
+// Modales y Detalles
+const isSaving = ref(false);
 const showRegisterClientModal = ref(false);
 const quotationDetails = ref(null);
 const isPrinting = ref(false);
@@ -126,18 +161,15 @@ const barcodeSearchQuery = ref("");
 let barcodeInputTimer;
 const BARCODE_LENGTH_THRESHOLD = 10;
 
+const selectedPack = ref(null);
+const showPackDetailsModal = ref(false);
+
 // Platos / Restaurante
 const dishes = ref([]);
 const dishesLoading = ref(false);
 const dishFilterQuery = ref("");
 const selectedDishCategory = ref(null);
 const activeTab = ref("products");
-
-const tableOptions = computed(() => ({
-  page: page.value,
-  itemsPerPage: itemsPerPage.value,
-  sortBy: sortBy.value ? [{ key: sortBy.value, order: orderBy.value || "asc" }] : [],
-}));
 
 // ─── Monedas Disponibles ──────────────────────────────────────────────────────
 const availableCurrencies = computed(() => {
@@ -297,89 +329,7 @@ const buildPayload = computed(() => {
   };
 });
 
-// ─── Carga de Datos desde Backend ─────────────────────────────────────────────
-const fetchSelectOptions = async () => {
-  isLoadingFilters.value = true;
-  try {
-    const [labResponse, originResponse, categoryResponse] = await Promise.all([
-      axios.get("/laboratories"),
-      axios.get("/origins"),
-      axios.get("/categories"),
-    ]);
-    laboratories.value = labResponse.data?.data || labResponse.data || [];
-    origins.value = originResponse.data?.data || originResponse.data || [];
-    categories.value = categoryResponse.data?.data || categoryResponse.data || [];
-  } catch (error) {
-    console.error("Error al cargar opciones de los selects:", error);
-    toast.error("No se pudieron cargar los filtros.");
-  } finally {
-    isLoadingFilters.value = false;
-  }
-};
-
-const fetchProducts = async () => {
-  loading.value = true;
-  const params = {
-    q: filterSearchQuery.value,
-    laboratoryId: selectedLaboratory.value,
-    originId: selectedOrigin.value,
-    categoryId: selectedCategory.value,
-    groupId: selectedGroupId.value,
-    is_strict_search: isStrictSearch.value ? 1 : 0,
-    ...(stockStatusFilter.value !== null && {
-      hasStock: stockStatusFilter.value,
-    }),
-    page: page.value,
-    itemsPerPage: itemsPerPage.value,
-    sortBy: sortBy.value,
-    orderBy: orderBy.value,
-  };
-
-  Object.keys(params).forEach(
-    (key) => (params[key] === null || params[key] === "" || params[key] === undefined) && delete params[key],
-  );
-
-  try {
-    const response = await axios.get("/tpv/quotation", { params });
-    products.value = response.data.data || [];
-    totalProduct.value = response.data.total || 0;
-  } catch (error) {
-    console.error("Hubo un error al obtener los productos:", error);
-    toast.error("Error al obtener los productos.");
-  } finally {
-    loading.value = false;
-  }
-};
-
-let debounceTimer;
-watch(
-  [
-    page,
-    itemsPerPage,
-    sortBy,
-    orderBy,
-    filterSearchQuery,
-    selectedLaboratory,
-    selectedOrigin,
-    selectedCategory,
-    stockStatusFilter,
-    isStrictSearch,
-    selectedGroupId,
-  ],
-  () => {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => fetchProducts(), 300);
-  },
-  { deep: true },
-);
-
-watch(
-  [filterSearchQuery, selectedLaboratory, selectedOrigin, selectedCategory, stockStatusFilter, isStrictSearch, selectedGroupId],
-  () => {
-    page.value = 1;
-  },
-);
-
+// ─── Carga de Configuración General ──────────────────────────────────────────
 const fetchGeneralSettings = async () => {
   try {
     const { data } = await axios.get("/general-settings");
@@ -431,7 +381,9 @@ const addProductToQuotation = async ({ productId, quantity, productData = null }
       return;
     }
 
-    const existingItemIndex = quotationItems.value.findIndex((item) => item.id === productId || item.product_id === productId);
+    const existingItemIndex = quotationItems.value.findIndex(
+      (item) => item.id === productId || item.product_id === productId,
+    );
     if (existingItemIndex !== -1) {
       const currentSelectedQuantity = quotationItems.value[existingItemIndex].selectedQuantity;
       const newTotalSelectedQuantity = currentSelectedQuantity + quantity;
@@ -548,6 +500,46 @@ const handleAddDishToQuotation = async ({ dish, quantity }) => {
   }
 };
 
+const handleViewPackDetails = async (item) => {
+  try {
+    const response = await axios.get(`/tpv/promotions/product-packs/${item.id}`);
+    selectedPack.value = response.data.data;
+    showPackDetailsModal.value = true;
+  } catch (error) {
+    console.error("Error al obtener detalles del pack:", error);
+  }
+};
+
+const handleAddPackToQuotation = async ({ pack, quantity }) => {
+  let configStr = pack.pack_config;
+  if (!configStr) {
+    const itemWithConfig = quotationItems.value.find(
+      (i) => i.pack_id === pack.id && i.original_pack_config,
+    );
+    configStr = itemWithConfig?.original_pack_config;
+  }
+
+  if (!configStr) {
+    console.error("No se encontró la configuración del pack ID:", pack.id);
+    return;
+  }
+
+  try {
+    const productsToAdd = JSON.parse(configStr);
+    for (const [productId, config] of Object.entries(productsToAdd)) {
+      const unitsPerPack = typeof config === "object" ? config.quantity || 1 : config;
+      await addProductToQuotation({
+        productId: parseInt(productId),
+        quantity: unitsPerPack * quantity,
+      });
+    }
+    toast.success("Pack agregado a la cotización.");
+  } catch (e) {
+    console.error("Error al procesar pack:", e);
+    toast.error("Error al agregar el pack a la cotización.");
+  }
+};
+
 const addProductToQuotationByBarcode = async (barcode) => {
   try {
     const response = await axios.get(`/barcode/${barcode}`);
@@ -579,59 +571,6 @@ const removeQuotationItem = (productId) => {
 
 const removeQuotation = () => {
   quotationItems.value = [];
-};
-
-const updateTableOptions = (options) => {
-  page.value = options.page;
-  itemsPerPage.value = options.itemsPerPage;
-  sortBy.value = options.sortBy[0]?.key;
-  orderBy.value = options.sortBy[0]?.order;
-};
-
-const handleSort = (sortOptions) => {
-  sortBy.value = sortOptions.key;
-  orderBy.value = sortOptions.order;
-};
-
-const handleClearFilters = () => {
-  filterSearchQuery.value = "";
-  selectedLaboratory.value = null;
-  selectedOrigin.value = null;
-  selectedCategory.value = null;
-  selectedGroupId.value = null;
-  stockStatusFilter.value = null;
-  isStrictSearch.value = false;
-  sortBy.value = undefined;
-  orderBy.value = undefined;
-};
-
-const handleClearSortOrder = () => {
-  sortBy.value = undefined;
-  orderBy.value = undefined;
-};
-
-const fetchGroupProducts = async (groupId) => {
-  if (!groupId) {
-    toast.info("Este producto no pertenece a un grupo.");
-    return;
-  }
-  selectedGroupId.value = groupId;
-  page.value = 1;
-};
-
-const clearGroupFilter = () => {
-  selectedGroupId.value = null;
-  page.value = 1;
-};
-
-const fetchFailuresProducts = async (productId) => {
-  try {
-    await axios.post("/tpv/product-failure", { product_id: productId });
-    toast.success("Reporte de falla guardado correctamente.");
-  } catch (error) {
-    console.error("Error al reportar falla:", error);
-    toast.error("Hubo un problema al procesar su reporte de falla.");
-  }
 };
 
 const handleCurrencyChanged = (newCurrency) => {
@@ -820,71 +759,50 @@ onUnmounted(() => {
       </VCol>
     </VRow>
 
-    <!-- Filtros de Búsqueda Homologados -->
-    <OrderFilters
-      :search-query="filterSearchQuery"
-      :selected-laboratory="selectedLaboratory"
-      :selected-origin="selectedOrigin"
-      :selected-category="selectedCategory"
-      :stock-status-filter="stockStatusFilter"
-      :is-strict-search="isStrictSearch"
+    <!-- Sección de Catálogo Idéntica a /tpv/orderUser -->
+    <TpvCatalogSection
+      v-model:filter-search-query="filterSearchQuery"
+      v-model:selected-laboratory="selectedLaboratory"
+      v-model:selected-origin="selectedOrigin"
+      v-model:selected-category="selectedCategory"
+      v-model:stock-status-filter="stockStatusFilter"
+      v-model:is-strict-search="isStrictSearch"
       :laboratories="laboratories || []"
       :origins="origins || []"
       :categories="categories || []"
-      :is-restaurant="isRestaurant"
-      :loading="isLoadingFilters"
+      :is-restaurant="isRestaurant || false"
+      :is-loading-filters="isLoadingFilters || false"
       :sort-by="sortBy"
       :order-by="orderBy"
-      @update:search-query="filterSearchQuery = $event"
-      @update:selected-laboratory="selectedLaboratory = $event"
-      @update:selected-origin="selectedOrigin = $event"
-      @update:selected-category="selectedCategory = $event"
-      @update:stock-status-filter="stockStatusFilter = $event"
-      @update:is-strict-search="isStrictSearch = $event"
-      @clear="handleClearFilters"
-      @clear-sort="handleClearSortOrder"
-      @sort="handleSort($event)"
-      @back="clearGroupFilter"
-    />
-
-    <!-- Indicador de Grupo Seleccionado -->
-    <div v-if="selectedGroupId" class="d-flex align-center gap-2 mb-4 animate__animated animate__fadeIn">
-      <VBtn
-        variant="tonal"
-        color="secondary"
-        size="small"
-        prepend-icon="tabler-arrow-left"
-        class="rounded-lg font-weight-black"
-        @click="clearGroupFilter"
-      >
-        VOLVER A LA LISTA GENERAL
-      </VBtn>
-      <VChip color="info" size="small" variant="flat" class="font-weight-black shadow-sm">
-        VIENDO PRODUCTOS DEL GRUPO #{{ selectedGroupId }}
-      </VChip>
-    </div>
-
-    <!-- Tabla Homologada de Productos (Idéntica a /tpv/orderUser) -->
-    <OrderProductsTable
+      @handle-clear-filters="handleClearFilters"
+      @handle-clear-sort-order="handleClearSortOrder"
+      @handle-external-sort="handleExternalSort"
+      @handle-back-from-group-view="handleBackFromGroupView"
       :products="products || []"
       :loading="loading"
       :total-product="totalProduct || 0"
-      :items-per-page="itemsPerPage"
-      :page="page"
+      v-model:items-per-page="itemsPerPage"
+      v-model:page="page"
       :discount-min-products="0"
       :discount-max-products="0"
-      :current-discount="globalDiscountPercentage"
+      :discount="globalDiscountPercentage || 0"
       :order-items="quotationItems || []"
-      :options="tableOptions"
+      :table-options="tableOptions"
       :exchange-rates="exchangeRates"
-      :currency="selectedDisplayCurrency"
-      @update:items-per-page="itemsPerPage = $event"
-      @update:page="page = $event"
-      @update:options="updateTableOptions"
-      @add-product="addProductToQuotation"
-      @add-dish="handleAddDishToQuotation"
-      @view-group-products="fetchGroupProducts"
-      @failures-products="fetchFailuresProducts"
+      :selected-display-currency="selectedDisplayCurrency"
+      @update-table-options="updateTableOptions"
+      @add-product-to-order="addProductToQuotation"
+      @handle-add-dish-to-order="handleAddDishToQuotation"
+      @fetch-group-products="fetchGroupProducts"
+      @fetch-failures-products="fetchFailuresProducts"
+      @handle-view-pack-details="handleViewPackDetails"
+      @handle-add-pack-to-order="handleAddPackToQuotation"
+    />
+
+    <!-- Modal de Detalles de Pack -->
+    <PackDetailsModal
+      v-model:is-dialog-visible="showPackDetailsModal"
+      :pack="selectedPack"
     />
 
     <!-- Área de Impresión Térmica de Cotización -->
@@ -909,3 +827,4 @@ onUnmounted(() => {
     />
   </div>
 </template>
+
