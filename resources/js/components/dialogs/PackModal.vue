@@ -485,7 +485,7 @@ watch(
 <template>
   <VDialog
     :model-value="dialogVisible"
-    max-width="840"
+    max-width="680"
     persistent
     scrollable
     transition="dialog-bottom-transition"
@@ -494,7 +494,7 @@ watch(
     @click:outside.prevent
     @keydown.esc.prevent="closeModal"
   >
-    <VCard :class="mobile ? 'rounded-0' : 'detail-dialog-card rounded-xl border-0 shadow-xl overflow-hidden bg-surface'">
+    <VCard :class="mobile ? 'rounded-0' : 'detail-dialog-card rounded border-0 shadow-xl overflow-hidden bg-surface'">
       <!-- Header Premium -->
       <VCardTitle class="pa-0">
         <div class="header-gradient pa-4 d-flex align-center shadow-sm">
