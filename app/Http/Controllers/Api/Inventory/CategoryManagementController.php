@@ -86,6 +86,15 @@ class CategoryManagementController extends Controller
     public function aiCategorize(): JsonResponse
     {
         try {
+            $apiKey = config('services.gemini.api_key') ?: env('GEMINI_API_KEY');
+            if (empty($apiKey)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se ha configurado la clave GEMINI_API_KEY en el servidor.',
+                ], 422);
+            }
+
+            // Ejecutar categorización con IA mediante Gemini
             $exitCode = \Illuminate\Support\Facades\Artisan::call('products:ai-categorize', [
                 '--limit' => 60,
                 '--batch' => 30,
@@ -96,15 +105,22 @@ class CategoryManagementController extends Controller
             \Cache::forget('resources.categories');
             \Cache::forget('resources.categories.dishes');
 
+            if ($exitCode !== 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se pudo completar la categorización con IA: ' . trim($output),
+                ], 500);
+            }
+
             return response()->json([
-                'success' => $exitCode === 0,
-                'message' => 'Proceso de categorización con IA ejecutado con éxito.',
+                'success' => true,
+                'message' => 'Productos categorizados con Inteligencia Artificial exitosamente.',
                 'output' => trim($output),
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Error al ejecutar la categorización con IA: ' . $e->getMessage(),
+                'message' => $e->getMessage(),
             ], 500);
         }
     }

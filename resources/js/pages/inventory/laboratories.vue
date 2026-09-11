@@ -492,6 +492,7 @@ onMounted(async () => {
             <VDataTable
               :headers="groupHeaders"
               :items="filteredGroups"
+              :sort-by="[{ key: 'units_count', order: 'desc' }]"
               density="compact"
               hover
               class="text-no-wrap"

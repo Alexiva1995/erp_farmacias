@@ -156,7 +156,7 @@ const getDiffColor = (val) => {
 
         <!-- Cuerpo del grupo (Responsivo) -->
         <VExpandTransition>
-          <div v-if="isExpanded(grupo.group_id || grupo.id)" class="grupo-body border-t bg-var-theme-background-light">
+          <div v-if="isExpanded(getGroupKey(grupo))" class="grupo-body border-t bg-var-theme-background-light">
             <!-- Vista Desktop (Tabla) -->
             <div class="table-container overflow-x-auto d-none d-md-block">
               <VTable density="compact" class="child-products-table bg-transparent">

@@ -169,21 +169,24 @@ class AutoAssignProductCategoriesCommand extends Command
             // Si aún no hace match con reglas específicas, aplicar discriminador por forma farmacéutica
             if (!$matchedCategoryId) {
                 if (str_contains($textToMatch, 'jbe') || str_contains($textToMatch, 'jarabe') || str_contains($textToMatch, 'susp') || str_contains($textToMatch, 'antitus')) {
-                    $matchedCategoryId = $categories['Respiratorio y Gripe']->id ?? 4;
+                    $matchedCategoryId = $categories['Respiratorio y Gripe']->id ?? $categories->first()?->id;
                 } elseif (str_contains($textToMatch, 'iny') || str_contains($textToMatch, 'amp') || str_contains($textToMatch, 'comp') || str_contains($textToMatch, 'tab') || str_contains($textToMatch, 'cap')) {
-                    $matchedCategoryId = $categories['Dolor, Inflamación y Fiebre']->id ?? 3;
+                    $matchedCategoryId = $categories['Dolor, Inflamación y Fiebre']->id ?? $categories->first()?->id;
                 } elseif (str_contains($textToMatch, 'crem') || str_contains($textToMatch, 'gel') || str_contains($textToMatch, 'ung') || str_contains($textToMatch, 'loc')) {
-                    $matchedCategoryId = $categories['Dermatología y Cuidado de la Piel']->id ?? 7;
+                    $matchedCategoryId = $categories['Dermatología y Cuidado de la Piel']->id ?? $categories->first()?->id;
                 } elseif (str_contains($textToMatch, 'jabon') || str_contains($textToMatch, 'desod') || str_contains($textToMatch, 'shamp')) {
-                    $matchedCategoryId = $categories['Higiene y Cuidado Diario']->id ?? 15;
+                    $matchedCategoryId = $categories['Higiene y Cuidado Diario']->id ?? $categories->first()?->id;
                 } else {
-                    $matchedCategoryId = $categories['Botiquín y Primeros Auxilios']->id ?? 14;
+                    $matchedCategoryId = $categories['Botiquín y Primeros Auxilios']->id 
+                        ?? ($categories['Varios']->id ?? $categories->first()?->id);
                 }
             }
 
-            $product->category_id = $matchedCategoryId;
-            $product->save();
-            $assignedCount++;
+            if ($matchedCategoryId) {
+                $product->category_id = $matchedCategoryId;
+                $product->save();
+                $assignedCount++;
+            }
         }
 
         $this->info("¡Proceso completado con éxito!");

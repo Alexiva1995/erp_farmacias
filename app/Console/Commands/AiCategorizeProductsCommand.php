@@ -85,54 +85,49 @@ Analiza la siguiente lista de productos y clasifica CADA UNO en el category_id m
 IMPORTANTE: Responde ÚNICAMENTE un JSON válido (sin markdown, sin bloques ```json, solo texto plano JSON) con un array de objetos con formato exacto:
 [{\"id\": 1001, \"category_id\": 3}, ...]";
 
-            try {
-                $response = \Illuminate\Support\Facades\Http::withHeaders([
-                    'x-goog-api-key' => $apiKey,
-                    'Content-Type' => 'application/json',
-                ])->timeout(45)->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={$apiKey}", [
-                    'contents' => [
-                        [
-                            'parts' => [
-                                ['text' => $prompt]
-                            ]
+            $response = \Illuminate\Support\Facades\Http::withHeaders([
+                'x-goog-api-key' => $apiKey,
+                'Content-Type' => 'application/json',
+            ])->timeout(45)->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={$apiKey}", [
+                'contents' => [
+                    [
+                        'parts' => [
+                            ['text' => $prompt]
                         ]
-                    ],
-                    'generationConfig' => [
-                        'temperature' => 0.1,
-                        'responseMimeType' => 'application/json',
                     ]
-                ]);
+                ],
+                'generationConfig' => [
+                    'temperature' => 0.1,
+                    'responseMimeType' => 'application/json',
+                ]
+            ]);
 
-                if ($response->successful()) {
-                    $resultText = $response->json('candidates.0.content.parts.0.text');
-                    // Limpiar posibles bloques markdown
-                    $cleanedJson = preg_replace('/^```(?:json)?\s*|\s*```$/m', '', trim($resultText));
-                    $assignments = json_decode($cleanedJson, true);
+            if ($response->successful()) {
+                $resultText = $response->json('candidates.0.content.parts.0.text');
+                $cleanedJson = preg_replace('/^```(?:json)?\s*|\s*```$/m', '', trim($resultText));
+                $assignments = json_decode($cleanedJson, true);
 
-                    if (is_array($assignments)) {
-                        foreach ($assignments as $item) {
-                            if (!empty($item['id']) && !empty($item['category_id'])) {
-                                \App\Models\Product::withoutGlobalScope('not_deleted')
-                                    ->where('id', $item['id'])
-                                    ->update(['category_id' => $item['category_id']]);
-                            }
+                if (is_array($assignments)) {
+                    foreach ($assignments as $item) {
+                        if (!empty($item['id']) && !empty($item['category_id'])) {
+                            \App\Models\Product::withoutGlobalScope('not_deleted')
+                                ->where('id', $item['id'])
+                                ->update(['category_id' => $item['category_id']]);
                         }
-                        $processed += count($assignments);
-                        $this->info("Procesados con IA: {$processed} / {$totalPending}");
-                    } else {
-                        $this->warn("Respuesta de IA no parseable en este lote, reintentando...");
-                        break;
                     }
+                    $processed += count($assignments);
+                    $this->info("Procesados con IA: {$processed} / {$totalPending}");
                 } else {
-                    $this->error("Error en llamada a Gemini API: " . $response->body());
-                    break;
+                    $this->error("La IA devolvió una respuesta que no pudo ser procesada como JSON.");
+                    throw new \RuntimeException("La IA devolvió una respuesta que no pudo ser procesada como JSON.");
                 }
-            } catch (\Exception $e) {
-                $this->error("Excepción durante categorización con IA: " . $e->getMessage());
-                break;
+            } else {
+                $errorData = $response->json('error');
+                $errorMsg = $errorData['message'] ?? $response->body();
+                $this->error("Error en llamada a Gemini API: " . $errorMsg);
+                throw new \RuntimeException("Gemini API (Google AI) reportó error: " . $errorMsg);
             }
 
-            // Pausa preventiva de 1 segundo entre lotes para respetar rate limits
             sleep(1);
         }
 

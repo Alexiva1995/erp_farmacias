@@ -79,7 +79,7 @@ class LaboratoryManagementController extends Controller
             ])
             ->selectRaw('COUNT(DISTINCT laboratories.id) as labs_count, COUNT(DISTINCT products.id) as products_count, COALESCE(SUM(product_lots.quantity), 0) as units_count')
             ->groupBy('groups_laboratories.id', 'groups_laboratories.name')
-            ->orderBy('groups_laboratories.name')
+            ->orderByDesc('units_count')
             ->get();
 
         return response()->json($groups);
