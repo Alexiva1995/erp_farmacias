@@ -163,18 +163,13 @@ const getProductLocations = (product) => {
         </template>
 
         <template #item.user.username="{ item }">
-          <div class="d-flex align-center gap-2">
-            <VAvatar size="24" color="primary" variant="tonal">
-              <span class="text-super-xs font-weight-black">{{ (item.user?.username || 'U').charAt(0).toUpperCase() }}</span>
-            </VAvatar>
-            <span class="text-caption font-weight-bold text-medium-emphasis">{{ formatOperatorName(item.user) }}</span>
-          </div>
+          <span class="text-caption font-weight-bold text-medium-emphasis text-capitalize">{{ formatOperatorName(item.user) }}</span>
         </template>
 
         <template #item.actions="{ item }">
-          <IconBtn @click="handleVerifyProduct(item)" size="small" color="success" variant="tonal" class="rounded">
-            <VIcon icon="tabler-scan" size="18" />
-            <VTooltip activator="parent" location="top">Contar producto</VTooltip>
+          <IconBtn @click="handleVerifyProduct(item)" size="small" color="primary">
+            <VIcon icon="tabler-clipboard-check" size="18" />
+            <VTooltip activator="parent" location="top">Verificar conteo</VTooltip>
           </IconBtn>
         </template>
       </VDataTableServer>

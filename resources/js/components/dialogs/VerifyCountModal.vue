@@ -333,18 +333,18 @@ const handleClose = () => {
         </div>
 
         <template v-else>
-          <!-- Perfil del Producto Estructurado (Diseño UI/UX Limpio y Jerárquico) -->
+          <!-- 1. Perfil del Producto Estructurado (Jerarquía Limpia y Neutra) -->
           <VCard
             variant="flat"
-            class="pa-3 bg-white rounded-xl border shadow-sm"
+            class="pa-4 bg-white rounded-xl border shadow-sm d-flex flex-column gap-2"
           >
-            <!-- Pastillas ID + Laboratorio / Categoría -->
-            <div class="d-flex align-center justify-space-between gap-2 mb-2">
+            <!-- Pastillas ID (Discreto/Gris) + Laboratorio/Marca -->
+            <div class="d-flex align-center justify-space-between gap-2">
               <VChip
-                color="primary"
+                color="secondary"
                 variant="tonal"
                 size="x-small"
-                class="font-weight-black"
+                class="font-weight-bold px-2 rounded-md"
               >
                 ID: {{ countRecord.product?.id || countRecord.product_id }}
               </VChip>
@@ -353,192 +353,179 @@ const handleClose = () => {
                 color="secondary"
                 variant="tonal"
                 size="x-small"
-                class="font-weight-bold text-uppercase truncate"
-                style="max-inline-size: 220px;"
+                class="font-weight-bold text-uppercase truncate px-2 rounded-md"
+                style="max-inline-size: 200px;"
               >
-                <VIcon icon="tabler-building-factory-2" size="12" class="me-1" />
-                {{ countRecord.product?.laboratory?.name || 'SIN LABORATORIO' }}
+                {{ countRecord.product?.laboratory?.name || 'S/L' }}
               </VChip>
             </div>
 
-            <!-- Nombre de Producto Dominante en Negrita -->
-            <h3 class="text-subtitle-1 font-weight-black text-high-emphasis text-uppercase leading-tight mb-1" :title="countRecord.product?.name">
-              {{ countRecord.product?.name }}
-              <span v-if="countRecord.product?.iva == 1 || countRecord.product?.iva === true" class="text-xs text-disabled font-weight-regular"> (G)</span>
-              <span v-if="countRecord.product?.is_colombian_origin == 1 || countRecord.product?.is_colombian_origin === true" class="text-xs text-disabled font-weight-regular"> (COL)</span>
-            </h3>
+            <!-- Nombre de Producto Dominante (Grande y en Negrita) -->
+            <div>
+              <h3 class="text-subtitle-1 font-weight-black text-high-emphasis text-uppercase leading-tight mb-1" :title="countRecord.product?.name">
+                {{ countRecord.product?.name }}
+                <span v-if="countRecord.product?.iva == 1 || countRecord.product?.iva === true" class="text-xs text-disabled font-weight-regular"> (G)</span>
+                <span v-if="countRecord.product?.is_colombian_origin == 1 || countRecord.product?.is_colombian_origin === true" class="text-xs text-disabled font-weight-regular"> (COL)</span>
+              </h3>
 
-            <!-- Principio Activo / Presentación -->
-            <div class="d-flex align-center gap-1 text-super-xs text-medium-emphasis mb-2">
-              <VIcon icon="tabler-pill" size="13" color="primary" class="opacity-70" />
-              <span class="truncate" style="max-inline-size: 300px;">
-                {{ countRecord.product?.active_ingredient || "Sin principio activo registrado" }}
-              </span>
+              <!-- Principio Activo Directo Debajo del Título -->
+              <div v-if="countRecord.product?.active_ingredient" class="text-xs text-disabled text-uppercase font-weight-medium">
+                {{ countRecord.product.active_ingredient }}
+              </div>
             </div>
 
-            <!-- Divisor y Datos del Contador -->
-            <div class="pt-2 border-t d-flex align-center justify-space-between text-super-xs">
+            <!-- Footer Balanceado: Operador a la izquierda, Fecha a la derecha -->
+            <div class="pt-2 mt-1 border-t d-flex align-center justify-space-between text-caption">
               <div class="d-flex align-center gap-1 text-medium-emphasis">
-                <VIcon icon="tabler-user-check" size="14" color="primary" />
-                <span class="text-disabled text-uppercase">Contado por:</span>
-                <strong class="text-high-emphasis text-capitalize font-weight-black">{{ counterUserName }}</strong>
+                <span class="text-disabled text-uppercase font-weight-medium text-super-xs">Contado por:</span>
+                <strong class="text-high-emphasis text-capitalize font-weight-bold text-xs">{{ counterUserName }}</strong>
               </div>
-              <div v-if="countRecord.created_at" class="d-flex align-center gap-1 text-disabled font-weight-medium">
-                <VIcon icon="tabler-calendar-time" size="13" />
-                <span>{{ formatDateSimple(countRecord.created_at) }}</span>
-              </div>
+              <span v-if="countRecord.created_at" class="text-medium-emphasis text-xs font-weight-medium">
+                {{ formatDateSimple(countRecord.created_at) }}
+              </span>
             </div>
           </VCard>
 
-          <!-- Modo de Ingreso / Escaneo de Código de Barras (Fondo Blanco Limpio) -->
-          <div
-            v-if="canBypassBarcode"
-            class="pa-2 px-3 rounded-xl border bg-white shadow-xs d-flex align-center justify-space-between"
-          >
-            <div class="d-flex align-center gap-2">
-              <VAvatar
-                :color="allowWithoutBarcode ? 'warning' : 'primary'"
-                variant="tonal"
-                size="28"
-                class="rounded-lg"
-              >
-                <VIcon
-                  :icon="allowWithoutBarcode ? 'tabler-keyboard' : 'tabler-scan'"
-                  size="16"
+          <!-- 2. Campo de Escaneo de Código de Barras Unificado (Fusionado) -->
+          <div class="d-flex flex-column gap-1">
+            <!-- Si puede bypass/sin código, mostramos switch discreto -->
+            <div
+              v-if="canBypassBarcode"
+              class="d-flex align-center justify-space-between px-1 mb-1"
+            >
+              <span class="text-super-xs font-weight-bold text-disabled text-uppercase">
+                {{ allowWithoutBarcode ? "Modo ingreso manual activo" : "Escaneo de código de barras" }}
+              </span>
+              <div class="d-flex align-center gap-1">
+                <span class="text-super-xs text-medium-emphasis font-weight-bold">Ingreso manual</span>
+                <VSwitch
+                  v-model="allowWithoutBarcode"
+                  color="primary"
+                  hide-details
+                  density="compact"
                 />
-              </VAvatar>
-              <div class="d-flex flex-column">
-                <span class="text-super-xs font-weight-black text-uppercase" :class="allowWithoutBarcode ? 'text-warning' : 'text-primary'">
-                  {{ allowWithoutBarcode ? "Ingreso Manual (Sin Código)" : "Modo Escaneo Activo" }}
-                </span>
-                <span class="text-super-xs text-disabled" style="font-size: 0.6rem !important;">
-                  {{ allowWithoutBarcode ? "Ingreso directo de unidades" : "Escanea el código de barras" }}
-                </span>
               </div>
             </div>
-            <VSwitch
-              v-model="allowWithoutBarcode"
-              :color="allowWithoutBarcode ? 'warning' : 'primary'"
-              hide-details
-              density="compact"
-            />
-          </div>
 
-          <div
-            v-else
-            class="pa-2 px-3 rounded-xl border bg-white shadow-xs d-flex align-center gap-2"
-          >
-            <VAvatar color="primary" variant="tonal" size="28" class="rounded-lg">
-              <VIcon icon="tabler-scan" size="16" />
-            </VAvatar>
-            <div class="d-flex flex-column">
-              <span class="text-super-xs font-weight-black uppercase text-primary">
-                Modo Escaneo Obligatorio
-              </span>
-              <span class="text-super-xs text-disabled" style="font-size: 0.6rem !important;">
-                Verifica leyendo el código de barras del producto
-              </span>
+            <!-- Input Principal de Escaneo -->
+            <div v-if="!isManualEntryAllowed">
+              <VTextField
+                id="verify-barcode-input"
+                v-model="barcodeInput"
+                placeholder="ESCANEAR O INGRESAR CÓDIGO..."
+                :error-messages="barcodeError"
+                variant="outlined"
+                density="compact"
+                hide-details="auto"
+                bg-color="white"
+                prepend-inner-icon="tabler-scan"
+                class="rounded-xl font-weight-black text-xs barcode-field"
+                @keyup.enter="handleBarcodeEnter"
+              >
+                <template #append-inner>
+                  <VBtn
+                    icon="tabler-camera"
+                    variant="tonal"
+                    color="primary"
+                    size="small"
+                    class="rounded-lg me-n1"
+                    @click="isScannerVisible = true"
+                  >
+                    <VIcon icon="tabler-camera" size="18" />
+                    <VTooltip activator="parent" location="top">Escanear con cámara</VTooltip>
+                  </VBtn>
+                </template>
+              </VTextField>
             </div>
           </div>
 
-          <!-- Campo de Escaneo de Código de Barras (Fondo Blanco Limpio) -->
-          <div v-if="!isManualEntryAllowed" class="mb-1">
-            <VTextField
-              id="verify-barcode-input"
-              v-model="barcodeInput"
-              placeholder="ESCANEAR CÓDIGO DE BARRAS..."
-              :error-messages="barcodeError"
-              variant="outlined"
-              density="compact"
-              hide-details="auto"
-              bg-color="white"
-              prepend-inner-icon="tabler-barcode"
-              class="rounded-lg font-weight-black text-xs barcode-field"
-              @keyup.enter="handleBarcodeEnter"
-            >
-              <template #append-inner>
-                <VBtn
-                  icon="tabler-camera"
-                  variant="tonal"
-                  color="primary"
-                  size="x-small"
-                  class="rounded"
-                  @click="isScannerVisible = true"
-                />
-              </template>
-            </VTextField>
-          </div>
-
-          <!-- Comparativa de Stock Premium -->
+          <!-- 3. Auditoría de Existencias (Etiquetas y Tarjetas Integradas) -->
           <VCard
             variant="flat"
-            class="pa-3 pa-sm-4 bg-white rounded-xl border shadow-sm"
+            class="pa-4 bg-white rounded-xl border shadow-sm"
           >
             <div class="d-flex align-center gap-2 mb-3">
               <div class="header-indicator primary shadow-sm" />
               <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">Auditoría de Existencias</span>
             </div>
 
-            <div class="d-flex justify-space-around align-center">
-              <div class="text-center">
-                <span class="text-super-xs font-weight-black text-disabled d-block uppercase mb-1">Sistema</span>
-                <VAvatar
-                  color="grey-lighten-4"
-                  size="52"
-                  class="rounded-xl border mb-1"
-                >
-                  <span class="text-subtitle-1 font-weight-black text-high-emphasis">{{ formatNumber(currentStock) }}</span>
-                </VAvatar>
+            <div class="d-flex justify-space-around align-center gap-2">
+              <!-- Tarjeta Sistema -->
+              <div class="d-flex flex-column align-center flex-1">
+                <div class="stock-box border bg-grey-50 rounded-xl pa-3 w-100 text-center">
+                  <span class="text-super-xs font-weight-black text-disabled text-uppercase d-block mb-1">
+                    Sistema
+                  </span>
+                  <span class="text-h6 font-weight-black text-high-emphasis leading-tight">
+                    {{ formatNumber(currentStock) }}
+                  </span>
+                </div>
               </div>
 
-              <div class="d-flex flex-column align-center">
+              <!-- Icono de Comparación -->
+              <div class="d-flex justify-center px-1">
                 <VIcon
-                  icon="tabler-transfer-in"
-                  color="primary"
+                  icon="tabler-arrow-right"
+                  color="secondary"
                   size="20"
                   class="opacity-40"
                 />
               </div>
 
-              <div class="text-center">
-                <span class="text-super-xs font-weight-black text-disabled d-block uppercase mb-1">Operador</span>
-                <VAvatar
-                  color="warning"
-                  variant="tonal"
-                  size="52"
-                  class="rounded-xl border-warning border-opacity-25 mb-1"
+              <!-- Tarjeta Operador -->
+              <div class="d-flex flex-column align-center flex-1">
+                <div
+                  class="stock-box rounded-xl pa-3 w-100 text-center border"
+                  :class="countRecord.discrepancy !== 0 ? 'bg-error-light border-error' : 'bg-grey-50'"
                 >
-                  <span class="text-subtitle-1 font-weight-black text-warning">{{ formatNumber((countRecord.system_quantity || 0) + (countRecord.discrepancy || 0)) }}</span>
-                </VAvatar>
+                  <span
+                    class="text-super-xs font-weight-black text-uppercase d-block mb-1"
+                    :class="countRecord.discrepancy !== 0 ? 'text-error' : 'text-disabled'"
+                  >
+                    Operador
+                  </span>
+                  <span
+                    class="text-h6 font-weight-black leading-tight"
+                    :class="countRecord.discrepancy !== 0 ? 'text-error' : 'text-high-emphasis'"
+                  >
+                    {{ formatNumber((countRecord.system_quantity || 0) + (countRecord.discrepancy || 0)) }}
+                  </span>
+                </div>
               </div>
             </div>
           </VCard>
 
-          <!-- Sección de Re-conteo Premium -->
+          <!-- 4. Conteo Definitivo (Input Evidente y Sólido) -->
           <VCard
             variant="flat"
-            class="pa-3 pa-sm-4 rounded-xl border-dashed-2 bg-white text-center shadow-sm"
+            class="pa-4 rounded-xl border bg-white shadow-sm"
           >
-            <div class="d-flex align-center justify-center gap-2 mb-2">
-              <VIcon
-                icon="tabler-edit"
-                size="14"
-                color="primary"
-              />
-              <span class="text-super-xs font-weight-black text-primary uppercase letter-spacing-1">Conteo Definitivo</span>
+            <div class="d-flex align-center justify-space-between mb-2">
+              <div class="d-flex align-center gap-2">
+                <VIcon
+                  icon="tabler-edit"
+                  size="16"
+                  color="primary"
+                />
+                <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">Conteo Definitivo</span>
+              </div>
+              <span class="text-super-xs text-disabled font-weight-bold uppercase">
+                Ingrese unidades físicas
+              </span>
             </div>
 
-            <div class="d-flex justify-center align-center">
+            <!-- Input Destacado -->
+            <div class="solid-input-container mt-1">
               <VTextField
                 id="recounter-quantity-input"
                 v-model.number="newCountedQuantity"
                 type="number"
                 min="0"
                 placeholder="0"
-                variant="plain"
+                variant="outlined"
                 bg-color="white"
-                class="ultra-huge-input-text h-auto font-weight-950"
-                density="compact"
+                class="conteo-definitivo-input font-weight-black"
+                density="comfortable"
                 hide-details
                 autofocus
                 :disabled="!isBarcodeValid"
@@ -550,7 +537,7 @@ const handleClose = () => {
             <VExpandTransition>
               <div
                 v-if="difference !== null"
-                class="mt-2 pt-2 border-t border-dashed d-flex flex-column align-center gap-1 animate__animated animate__fadeIn"
+                class="mt-3 pt-2 border-t d-flex flex-column align-center gap-1 animate__animated animate__fadeIn"
               >
                 <div
                   class="d-flex align-center gap-2 px-3 py-1 rounded-pill"
@@ -558,11 +545,11 @@ const handleClose = () => {
                 >
                   <VIcon
                     :icon="differenceIcon"
-                    size="14"
+                    size="16"
                     :color="differenceColor"
                   />
                   <span
-                    class="text-super-xs font-weight-black uppercase"
+                    class="text-xs font-weight-black uppercase"
                     :class="`text-${differenceColor}`"
                   >
                     {{ differenceText }}
@@ -588,7 +575,7 @@ const handleClose = () => {
       <VDivider />
 
       <!-- Acciones de Modal -->
-      <VCardActions class="pa-2 bg-white border-t px-4">
+      <VCardActions class="pa-3 bg-white border-t px-4">
         <VRow
           dense
           class="w-100 ma-0"
@@ -626,7 +613,7 @@ const handleClose = () => {
               <VIcon
                 start
                 :icon="difference === 0 ? 'tabler-circle-check' : 'tabler-adjustments-alt'"
-                size="16"
+                size="18"
               />
               {{ difference === 0 ? "Aceptar" : "Ajustar" }}
             </VBtn>
@@ -691,46 +678,47 @@ const handleClose = () => {
   border: 1px dashed rgba(var(--v-border-color), 0.2) !important;
 }
 
-.border-dashed-2 {
-  border: 1px dashed rgba(var(--v-border-color), 0.3) !important;
+.stock-box {
+  transition: all 0.2s ease;
 }
 
-.ultra-huge-input-text :deep(input) {
-  border: none;
-  background: transparent;
-  block-size: auto;
-  color: rgb(var(--v-theme-primary)) !important;
-  font-size: 1.5rem !important;
-  font-weight: 950 !important;
-  inline-size: 100%;
-  line-height: 1.2;
-  outline: none;
+.bg-grey-50 {
+  background-color: #f8fafc !important;
+}
+
+.bg-error-light {
+  background-color: rgba(var(--v-theme-error), 0.08) !important;
+}
+
+.border-error {
+  border-color: rgba(var(--v-theme-error), 0.3) !important;
+}
+
+.flex-1 {
+  flex: 1 1 0;
+}
+
+.conteo-definitivo-input :deep(input) {
+  font-size: 1.75rem !important;
+  font-weight: 900 !important;
   text-align: center !important;
-  padding: 8px 0 !important;
+  color: rgb(var(--v-theme-primary)) !important;
+  letter-spacing: 1px;
 }
 
-@media (min-width: 600px) {
-  .ultra-huge-input-text :deep(input) {
-    font-size: 2rem !important;
-    padding: 10px 0 !important;
-  }
-}
-
-.ultra-huge-input-text :deep(input::placeholder) {
-  color: rgba(var(--v-theme-on-surface), 0.25) !important;
+.conteo-definitivo-input :deep(input::placeholder) {
+  color: rgba(var(--v-theme-on-surface), 0.35) !important;
   font-weight: 700;
 }
 
-.ultra-huge-input-text :deep(.v-field__input) {
-  padding: 0 !important;
+.conteo-definitivo-input :deep(.v-field) {
+  border-radius: 12px !important;
+  background-color: #ffffff !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05) !important;
 }
 
 .barcode-field :deep(.v-field) {
   background-color: #ffffff !important;
   border-radius: 10px !important;
-}
-
-.italic {
-  font-style: italic;
 }
 </style>
