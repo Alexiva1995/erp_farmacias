@@ -513,7 +513,7 @@ const imagePreviewUrl = computed(() => {
           <VCol cols="6" class="pa-1">
             <VBtn
               color="secondary"
-              variant="tonal"
+              variant="outlined"
               :height="xs ? 44 : 50"
               block
               class="font-weight-black rounded-lg text-button uppercase"

@@ -335,7 +335,7 @@ const checkExistenceAndSave = async () => {
           >
             <VBtn
               color="secondary"
-              variant="tonal"
+              variant="outlined"
               height="50"
               block
               class="font-weight-black rounded-lg text-button uppercase"

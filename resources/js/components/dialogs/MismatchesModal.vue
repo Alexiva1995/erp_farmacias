@@ -361,7 +361,7 @@ const handleAcceptMismatch = async (closingId, item) => {
       </VCardText>
       <VCardActions class="pa-4 bg-light border-t d-flex gap-2">
         <VSpacer />
-        <VBtn variant="tonal" color="secondary" class="rounded-lg font-weight-bold" @click="isEditModalOpen = false">
+        <VBtn variant="outlined" color="secondary" class="rounded-lg font-weight-bold" @click="isEditModalOpen = false">
           Cancelar
         </VBtn>
         <VBtn color="warning" variant="flat" class="rounded-lg font-weight-bold" :loading="savingRectification" @click="handleSaveRectification">

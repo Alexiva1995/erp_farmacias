@@ -895,7 +895,7 @@ onMounted(() => {
         <VCardActions class="pa-4 bg-light">
           <VRow no-gutters class="w-100">
             <VCol cols="12" sm="6" class="pa-1">
-              <VBtn color="secondary" variant="tonal" size="large" block height="50" class="font-weight-black rounded-lg uppercase" @click="isEditDialogVisible = false">
+              <VBtn color="secondary" variant="outlined" size="large" block height="50" class="font-weight-black rounded-lg uppercase" @click="isEditDialogVisible = false">
                 Cancelar
               </VBtn>
             </VCol>

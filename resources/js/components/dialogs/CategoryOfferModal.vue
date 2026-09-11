@@ -147,51 +147,69 @@ watch(
       </VCardTitle>
 
       <VCardText class="pa-4 pa-sm-5 bg-surface">
-        <!-- Sección Categoría -->
-        <div class="mb-4">
+        <!-- Bloque 1: Categoría en Oferta -->
+        <div class="mb-5">
           <div class="d-flex align-center gap-1-5 mb-2">
             <div class="header-indicator primary" />
             <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">Categoría en Oferta</span>
           </div>
 
+          <!-- Modo Edición: Tarjeta Resumen -->
           <div v-if="props.isEditing" class="pa-3 rounded-lg border bg-var-theme-background">
-            <div class="d-flex align-center gap-2 mb-1">
-              <span class="text-xs font-weight-black text-primary bg-primary-lighten-5 px-1-5 py-0-5 rounded">
-                ID: {{ localFormData.category_id }}
+            <div class="d-flex align-center justify-space-between mb-1">
+              <span class="text-xs font-weight-black text-primary bg-primary-lighten-5 px-2 py-0-5 rounded">
+                ID: #{{ localFormData.category_id }}
               </span>
             </div>
-            <div class="text-sm font-weight-black text-high-emphasis text-uppercase">
+            <div class="text-sm font-weight-black text-high-emphasis text-uppercase mt-1">
               {{ selectedCategoryDisplay }}
             </div>
           </div>
 
-          <VAutocomplete
-            v-else
-            v-model="localFormData.category_id"
-            :items="props.categoriesData"
-            :item-title="(item) => `${item.id} - ${item.name}`"
-            item-value="id"
-            placeholder="BUSCAR CATEGORÍA POR ID O NOMBRE..."
-            variant="outlined"
-            density="compact"
-            hide-details
-            clearable
-            :disabled="props.loading"
-            class="rounded-lg font-weight-medium"
-            :error="!!props.formErrors.category_id"
-            :error-messages="props.formErrors.category_id"
-          />
+          <!-- Modo Creación: Autocomplete Ancho Completo -->
+          <div v-else>
+            <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Seleccionar Categoría</span>
+            <VAutocomplete
+              v-model="localFormData.category_id"
+              :items="props.categoriesData"
+              :item-title="(item) => `${item.id} - ${item.name}`"
+              item-value="id"
+              placeholder="BUSCAR CATEGORÍA POR ID O NOMBRE..."
+              variant="outlined"
+              density="compact"
+              hide-details="auto"
+              clearable
+              :disabled="props.loading"
+              class="rounded-lg font-weight-bold"
+              :error="!!props.formErrors.category_id"
+              :error-messages="props.formErrors.category_id"
+            />
+          </div>
         </div>
 
-        <!-- Sección Parámetros -->
-        <div class="mb-4">
-          <div class="d-flex align-center gap-1-5 mb-2">
-            <div class="header-indicator primary" />
-            <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">Parámetros de la Oferta</span>
+        <!-- Bloque 2: Parámetros de la Oferta -->
+        <div class="mb-2">
+          <div class="d-flex align-center justify-space-between mb-2">
+            <div class="d-flex align-center gap-1-5">
+              <div class="header-indicator primary" />
+              <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">Parámetros de la Oferta</span>
+            </div>
+            <div class="d-flex align-center gap-2">
+              <span class="text-super-xs font-weight-bold text-disabled uppercase">Estado:</span>
+              <VSwitch
+                v-model="localFormData.is_active"
+                color="success"
+                hide-details
+                density="compact"
+                inset
+                :label="localFormData.is_active ? 'ACTIVA' : 'INACTIVA'"
+                class="font-weight-black text-xs"
+              />
+            </div>
           </div>
 
           <VRow dense>
-            <VCol cols="12" sm="6">
+            <VCol cols="12" sm="4">
               <div class="mb-2 mb-sm-0">
                 <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">% Descuento</span>
                 <VTextField
@@ -202,7 +220,7 @@ watch(
                   step="0.01"
                   variant="outlined"
                   density="compact"
-                  hide-details
+                  hide-details="auto"
                   prepend-inner-icon="tabler-percentage"
                   class="rounded-lg font-weight-black"
                   :error="!!props.formErrors.discount_percentage"
@@ -212,29 +230,7 @@ watch(
               </div>
             </VCol>
 
-            <VCol cols="12" sm="6">
-              <div class="mb-2 mb-sm-0">
-                <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Estado</span>
-                <VSelect
-                  v-model="localFormData.is_active"
-                  :items="[
-                    { value: true, title: 'ACTIVA' },
-                    { value: false, title: 'INACTIVA' },
-                  ]"
-                  item-title="title"
-                  item-value="value"
-                  variant="outlined"
-                  density="compact"
-                  hide-details
-                  class="rounded-lg font-weight-bold"
-                  :error="!!props.formErrors.is_active"
-                  :error-messages="props.formErrors.is_active"
-                  :disabled="props.loading"
-                />
-              </div>
-            </VCol>
-
-            <VCol cols="12" sm="6" class="mt-2">
+            <VCol cols="12" sm="4">
               <div class="mb-2 mb-sm-0">
                 <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Fecha Inicio</span>
                 <AppDateTimePicker
@@ -242,7 +238,7 @@ watch(
                   placeholder="SELECCIONAR FECHA"
                   prepend-inner-icon="tabler-calendar-event"
                   density="compact"
-                  hide-details
+                  hide-details="auto"
                   class="rounded-lg"
                   :error="!!props.formErrors.start_date"
                   :error-messages="props.formErrors.start_date"
@@ -252,7 +248,7 @@ watch(
               </div>
             </VCol>
 
-            <VCol cols="12" sm="6" class="mt-2">
+            <VCol cols="12" sm="4">
               <div>
                 <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Fecha Final</span>
                 <AppDateTimePicker
@@ -260,7 +256,7 @@ watch(
                   placeholder="SELECCIONAR FECHA"
                   prepend-inner-icon="tabler-calendar-off"
                   density="compact"
-                  hide-details
+                  hide-details="auto"
                   class="rounded-lg"
                   :error="!!props.formErrors.end_date"
                   :error-messages="props.formErrors.end_date"

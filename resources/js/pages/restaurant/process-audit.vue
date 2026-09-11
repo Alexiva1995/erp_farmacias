@@ -873,7 +873,7 @@ watch([page, itemsPerPage, startDate, endDate, selectedFlowIdFilter], () => {
         </VCardText>
         <VDivider />
         <VCardActions class="pa-4 justify-end">
-          <VBtn color="secondary" variant="tonal" class="rounded-lg px-6" @click="flowConfigDialog = false">
+          <VBtn color="secondary" variant="outlined" class="rounded-lg px-6" @click="flowConfigDialog = false">
             Cancelar
           </VBtn>
           <VBtn color="primary" class="rounded-lg px-6 font-weight-bold" @click="saveFlow">

@@ -215,7 +215,7 @@ function formatearFechaCompleta(fechaInput) {
           <VCol cols="6">
             <VBtn
               color="secondary"
-              variant="tonal"
+              variant="outlined"
               block
               height="48"
               class="font-weight-black rounded-lg text-button uppercase"

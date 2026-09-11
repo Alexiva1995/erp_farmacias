@@ -737,7 +737,7 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
         <VCardActions class="pa-4 bg-white border-t px-6">
           <VBtn
             color="secondary"
-            variant="tonal"
+            variant="outlined"
             height="50"
             class="font-weight-black rounded-lg text-button uppercase flex-grow-1"
             @click="isDiscrepancyModalVisible = false"

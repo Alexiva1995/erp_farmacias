@@ -546,7 +546,7 @@ const handleSave = async () => {
           <VCol cols="6" class="pa-1">
             <VBtn
               color="secondary"
-              variant="tonal"
+              variant="outlined"
               height="44"
               block
               class="font-weight-black rounded-lg text-button uppercase"

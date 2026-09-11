@@ -220,7 +220,7 @@ function handleSave() {
           <VCol cols="6" class="pa-1">
             <VBtn
               color="secondary"
-              variant="tonal"
+              variant="outlined"
               height="50"
               block
               class="font-weight-black rounded-lg uppercase"

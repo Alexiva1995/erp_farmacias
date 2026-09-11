@@ -362,7 +362,7 @@ onUnmounted(() => {
         </VCardText>
 
         <VCardActions class="px-0 pb-0 gap-2">
-          <VBtn color="secondary" variant="tonal" class="flex-grow-1 font-weight-black" @click="isAdjustmentModalOpen = false" :disabled="isAdjusting">
+          <VBtn color="secondary" variant="outlined" class="flex-grow-1 font-weight-black" @click="isAdjustmentModalOpen = false" :disabled="isAdjusting">
             CANCELAR
           </VBtn>
           <VBtn color="primary" variant="elevated" class="flex-grow-1 font-weight-black shadow-primary" :loading="isAdjusting" @click="submitAdjustment">

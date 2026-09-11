@@ -159,7 +159,7 @@ const handleSubmit = async () => {
 
       <VCardActions class="mt-2">
         <VSpacer />
-        <VBtn color="secondary" text @click="handleClose"> Cancelar </VBtn>
+        <VBtn variant="outlined" color="secondary" text @click="handleClose"> Cancelar </VBtn>
       </VCardActions>
     </VCard>
   </VDialog>

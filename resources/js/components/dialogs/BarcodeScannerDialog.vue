@@ -124,7 +124,7 @@ watch(() => props.modelValue, (newVal) => {
 
       <VCardActions class="pa-4">
         <VSpacer />
-        <VBtn variant="tonal" color="secondary" @click="close">
+        <VBtn variant="outlined" color="secondary" @click="close">
           Cancelar
         </VBtn>
       </VCardActions>

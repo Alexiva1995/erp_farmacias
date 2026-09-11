@@ -1125,7 +1125,7 @@ const copyWeeklyReservations = async () => {
           <VSpacer />
           <VBtn
             color="grey-darken-1"
-            variant="text"
+            variant="outlined"
             @click="isDialogOpen = false"
           >
             Cancelar
@@ -1245,7 +1245,7 @@ const copyWeeklyReservations = async () => {
           <VSpacer />
           <VBtn
             color="grey-darken-1"
-            variant="text"
+            variant="outlined"
             @click="isFixedScheduleDialogOpen = false"
           >
             Cancelar

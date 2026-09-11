@@ -70,7 +70,6 @@ const loadAvailableProducts = async (search = "") => {
     const response = await axios.get("/products", { params });
     const items = Array.isArray(response.data?.data) ? response.data.data : [];
     if (items.length > 0) {
-      // Mantener los productos ya seleccionados en el pack para que no desaparezcan de la lista
       const currentSelectedProducts = formData.value.pack_products
         .filter(item => item && item.product)
         .map(item => item.product);
@@ -89,7 +88,6 @@ const loadAvailableProducts = async (search = "") => {
           stock: product.stock_calculado || product.stock || 0,
         }));
     } else {
-      // Si no hay resultados nuevos, al menos mantenemos los seleccionados
       const currentSelectedProducts = formData.value.pack_products
         .filter(item => item && item.product)
         .map(item => item.product);
@@ -161,13 +159,27 @@ const removeProductRow = (index) => {
 const calculateProductPrice = (product) => {
   if (!product.product) return 0;
   const discount = product.discount_percentage || 0;
-  const originalPrice = product.product.sale_price;
+  const originalPrice = Number(product.product.sale_price) || 0;
   const discountedPrice = originalPrice * (1 - discount / 100);
-  product.calculated_price = discountedPrice * product.quantity;
+  product.calculated_price = discountedPrice * (Number(product.quantity) || 1);
   return product.calculated_price;
 };
 
-// Calcular precio total del pack
+// Calcular precio total del pack y ahorro
+const regularTotalPrice = computed(() => {
+  return formData.value.pack_products.reduce((acc, item) => {
+    if (!item.product) return acc;
+    const base = Number(item.product.sale_price) || 0;
+    const qty = Number(item.quantity) || 1;
+    return acc + (base * qty);
+  }, 0);
+});
+
+const totalSavings = computed(() => {
+  const savings = regularTotalPrice.value - formData.value.total_price;
+  return savings > 0 ? savings : 0;
+});
+
 const calculateTotalPrice = () => {
   let total = 0;
   formData.value.pack_products.forEach((product) => {
@@ -194,7 +206,6 @@ const preparePackData = () => {
     }
   });
 
-  // Validar que haya al menos un producto en el pack
   if (Object.keys(packConfig).length === 0) {
     throw new Error("Debe agregar al menos un producto al pack");
   }
@@ -208,7 +219,6 @@ const preparePackData = () => {
     is_active: formData.value.is_active !== undefined ? formData.value.is_active : true,
   };
 
-  // Si es edición, agregar el ID
   if (formData.value.id) {
     packData.id = formData.value.id;
   }
@@ -276,55 +286,39 @@ const savePack = async () => {
 
   isSaving.value = true;
   try {
-    // Calcular precio total antes de preparar datos
     calculateTotalPrice();
     
-    // Validar que el precio total sea mayor a 0
     if (formData.value.total_price <= 0) {
       toast.error("El precio total del pack debe ser mayor a 0");
-      loading.value = false;
+      isSaving.value = false;
       return;
     }
 
     const packData = preparePackData();
     
-    // Validar que pack_config no esté vacío
     if (!packData.pack_config || Object.keys(packData.pack_config).length === 0) {
       toast.error("Debe agregar al menos un producto al pack");
-      loading.value = false;
+      isSaving.value = false;
       return;
     }
 
     emit("pack-saved", packData);
-    
-    // Resetear isSaving para permitir re-intentos si el padre no cierra el modal
     isSaving.value = false;
-    
   } catch (error) {
     console.error("Error saving pack:", error);
-    const errorMessage = error.response?.data?.message || error.message || "Error al guardar el pack";
-    toast.error(errorMessage);
-    
-    // Mostrar errores de validación si existen
-    if (error.response?.data?.errors) {
-      const errors = error.response.data.errors;
-      Object.keys(errors).forEach((key) => {
-        formErrors.value[key] = Array.isArray(errors[key]) ? errors[key][0] : errors[key];
-      });
-    }
+    toast.error(error.message || "Error al guardar el pack");
     isSaving.value = false;
   }
 };
 
+// Cerrar modal
 const closeModal = () => {
-  if (props.loading) {
-    return; // Solo bloquear si hay una carga activa del servidor
-  }
   emit("update:isDialogVisible", false);
   emit("modal-closed");
   resetForm();
 };
 
+// Resetear formulario
 const resetForm = () => {
   formData.value = {
     id: null,
@@ -337,201 +331,185 @@ const resetForm = () => {
     total_price: 0,
   };
   formErrors.value = {};
+  availableProducts.value = [];
   productSearchQuery.value = "";
-  isSaving.value = false;
+  initializePackProducts();
 };
 
 // Cargar datos del pack para edición
 const loadPackData = async (packId) => {
+  isLoadingData.value = true;
   try {
     const response = await getPack(packId);
-    if (response.success) {
-      const pack = response.data;
+    const pack = response.success ? response.data : response;
 
-      formData.value = {
-        id: pack.id,
-        name: pack.name,
-        products_count: pack.products_count || Object.keys(pack.pack_config || {}).length,
-        max_quantity: pack.max_quantity,
-        max_sale_date: formatDateForInput(pack.max_sale_date),
-        is_active: pack.is_active,
-        pack_products: [],
-        total_price: pack.total_price,
-      };
+    formData.value = {
+      id: pack.id,
+      name: pack.name,
+      products_count: pack.products_count || 1,
+      max_quantity: pack.max_quantity || null,
+      max_sale_date: pack.max_sale_date ? formatDateForInput(pack.max_sale_date) : null,
+      is_active: pack.is_active !== undefined ? pack.is_active : true,
+      total_price: parseFloat(pack.total_price) || 0,
+      pack_products: [],
+    };
 
-      // Reconstruir pack_products desde pack_config
-      if (pack.pack_config) {
-        const configEntries = Object.entries(pack.pack_config);
-        
-        formData.value.pack_products = configEntries.map(([productId, config]) => {
-          // Primero buscar en availableProducts
-          let product = availableProducts.value.find(p => p.id == productId);
+    const productsList = pack.products || (pack.products_info ? pack.products_info.map(i => ({
+      id: i.product_id,
+      name: i.product_name,
+      sale_price: i.sale_price_original || i.sale_price,
+      stock: i.product_info?.stock || 0,
+      laboratory: i.product_info?.laboratory || 'S/L'
+    })) : []);
+
+    if (productsList && productsList.length > 0) {
+      formData.value.pack_products = productsList.map((product) => {
+        let discountPercentage = 0;
+        let quantity = 1;
+        let calculatedPrice = product.sale_price;
+
+        if (pack.pack_config && typeof pack.pack_config === 'object') {
+          const configKey = String(product.id || product.product_id);
+          const config = pack.pack_config[configKey] || pack.pack_config[product.id] || pack.pack_config[product.product_id];
           
-          // Si no está, buscar en products_info del pack
-          if (!product && pack.products_info) {
-            const info = pack.products_info.find(i => i.product_id == productId);
-            if (info) {
-              product = {
-                id: info.product_id,
-                name: info.product_name,
-                sale_price: info.sale_price_original || info.sale_price, // El original si existiera, sino el del pack
-                stock: info.product_info?.stock || 0,
-                barcode: info.product_info?.barcode || ""
-              };
+          if (config) {
+            discountPercentage = parseFloat(config.discount_percentage) || 0;
+            quantity = parseInt(config.quantity) || 1;
+            
+            if (config.sale_price !== undefined) {
+              calculatedPrice = parseFloat(config.sale_price) * quantity;
+            } else {
+              const unitPrice = product.sale_price * (1 - discountPercentage / 100);
+              calculatedPrice = unitPrice * quantity;
             }
           }
-          
-          return {
-            product: product || null,
-            quantity: config.quantity || 1,
-            discount_percentage: config.discount_percentage || 0,
-            calculated_price: (config.sale_price || 0) * (config.quantity || 1),
-          };
-        });
-
-        // Intentar recargar la lista de todos modos para tener la info completa si faltaba
-        if (formData.value.pack_products.some(p => !p.product)) {
-          loadAvailableProducts().then(() => {
-            configEntries.forEach(([productId, config], index) => {
-              if (!formData.value.pack_products[index].product) {
-                const foundProduct = availableProducts.value.find(p => p.id == productId);
-                if (foundProduct) {
-                  formData.value.pack_products[index].product = foundProduct;
-                }
-              }
-            });
-          });
         }
 
-        // Completar con productos vacíos si es necesario
-        while (
-          formData.value.pack_products.length < formData.value.products_count
-        ) {
-          formData.value.pack_products.push({
-            product: null,
-            quantity: 1,
-            discount_percentage: 0,
-            calculated_price: 0,
-          });
-        }
-      }
+        const formattedProduct = {
+          ...product,
+          id: product.id || product.product_id,
+          name: product.name || product.product_name,
+          stock: product.stock_calculado || product.stock || 0,
+        };
+
+        return {
+          product: formattedProduct,
+          quantity: quantity,
+          discount_percentage: discountPercentage,
+          calculated_price: parseFloat(calculatedPrice.toFixed(2)),
+        };
+      });
+
+      const existingProducts = formData.value.pack_products.map(item => item.product);
+      availableProducts.value = existingProducts;
+      calculateTotalPrice();
+    } else {
+      initializePackProducts();
     }
   } catch (error) {
     console.error("Error loading pack data:", error);
     toast.error("Error al cargar los datos del pack");
+    initializePackProducts();
   } finally {
     isLoadingData.value = false;
-  }
-};
-
-// Carga rápida desde props para evitar modal vacío
-const quickLoadFromProps = () => {
-  if (!props.packData) return;
-  const pack = props.packData;
-  
-  formData.value = {
-    id: pack.id,
-    name: pack.name,
-    products_count: pack.products_count || (pack.pack_config ? Object.keys(pack.pack_config).length : 0),
-    max_quantity: pack.max_quantity,
-    max_sale_date: formatDateForInput(pack.max_sale_date),
-    is_active: pack.is_active,
-    pack_products: [],
-    total_price: pack.total_price,
-  };
-
-  if (pack.products_info && pack.pack_config) {
-    const configEntries = Object.entries(pack.pack_config);
-    formData.value.pack_products = configEntries.map(([productId, config]) => {
-      const info = pack.products_info.find(i => i.product_id == productId);
-      return {
-        product: info ? {
-          id: info.product_id,
-          name: info.product_name,
-          sale_price: info.sale_price_original || info.sale_price,
-          stock: info.product_info?.stock || 0,
-          barcode: info.product_info?.barcode || ""
-        } : null,
-        quantity: config.quantity || 1,
-        discount_percentage: config.discount_percentage || 0,
-        calculated_price: (config.sale_price || 0) * (config.quantity || 1),
-      };
-    });
   }
 };
 
 // Watchers
 watch(
   () => props.isDialogVisible,
-  async (newVal) => {
-    if (newVal) {
-      resetForm(); 
-      isLoadingData.value = true;
-      
-      const promises = [];
-      
-      // Si no tenemos productos cargados o es una búsqueda nueva, cargamos
-      promises.push(loadAvailableProducts());
-
+  async (isVisible) => {
+    if (isVisible) {
       if (props.packData && props.packData.id) {
-        quickLoadFromProps();
-        promises.push(loadPackData(props.packData.id));
+        await loadPackData(props.packData.id);
       } else {
-        initializePackProducts();
-        isLoadingData.value = false;
+        resetForm();
+        await loadAvailableProducts();
       }
-
-      if (promises.length > 0) {
-        await Promise.all(promises);
-      }
-      
-      isLoadingData.value = false;
+    } else {
+      resetForm();
     }
-  }
+  },
+  { immediate: true }
+);
+
+watch(
+  () => props.packData,
+  async (newPackData) => {
+    if (newPackData && newPackData.id && props.isDialogVisible) {
+      await loadPackData(newPackData.id);
+    }
+  },
+  { deep: true }
+);
+
+// Watch para recalcular precio cuando cambien los productos
+watch(
+  () => formData.value.pack_products,
+  () => {
+    nextTick(() => {
+      calculateTotalPrice();
+    });
+  },
+  { deep: true }
 );
 </script>
 
 <template>
   <VDialog
     :model-value="dialogVisible"
-    :max-inline-size="mobile ? '100%' : '1000px'"
-    :fullscreen="mobile"
+    max-width="840"
     persistent
     scrollable
     transition="dialog-bottom-transition"
+    class="premium-dialog"
+    :fullscreen="mobile"
+    @click:outside.prevent
     @keydown.esc.prevent="closeModal"
   >
-    <VCard class="detail-dialog-card overflow-hidden border-0 elevation-12">
-      <!-- Header Premium Standard -->
+    <VCard :class="mobile ? 'rounded-0' : 'detail-dialog-card rounded-xl border-0 shadow-xl overflow-hidden bg-surface'">
+      <!-- Header Premium -->
       <VCardTitle class="pa-0">
         <div class="header-gradient pa-4 d-flex align-center shadow-sm">
-          <VAvatar color="white" variant="flat" size="40" class="me-3 elevation-2">
-            <VIcon icon="tabler-package" color="primary" size="24" />
+          <VAvatar
+            color="white"
+            variant="flat"
+            size="38"
+            class="me-3 elevation-1"
+          >
+            <VIcon
+              icon="tabler-packages"
+              size="22"
+              color="primary"
+            />
           </VAvatar>
-          <div>
+          <div class="d-flex flex-column leading-none">
             <h2 class="text-h6 font-weight-black text-white leading-tight mb-0">
-              {{ isEditing ? "Editar Pack de Oferta" : "Crear Nuevo Pack" }}
+              {{ isEditing ? "Editar Pack de Productos" : "Crear Nuevo Pack" }}
             </h2>
-            <span class="text-super-xs text-white opacity-75 uppercase font-weight-bold letter-spacing-1">
-              Configuración de Promociones
-            </span>
+            <div class="d-flex align-center gap-2 mt-1">
+              <span
+                class="text-white opacity-75 uppercase font-weight-bold"
+                style="font-size: 0.65rem; letter-spacing: 0.05em;"
+              >
+                Configuración de Promociones y Combos
+              </span>
+            </div>
           </div>
-
           <VSpacer />
           <VBtn
-            icon
-            variant="tonal"
+            icon="tabler-x"
+            variant="outlined"
             color="white"
             size="small"
-            @click="closeModal"
             class="rounded-lg"
-          >
-            <VIcon size="20">tabler-x</VIcon>
-          </VBtn>
+            @click="closeModal"
+            :disabled="isSaving"
+          />
         </div>
       </VCardTitle>
 
-      <VCardText class="pa-0 bg-light position-relative">
+      <VCardText class="pa-4 pa-sm-5 bg-surface position-relative">
         <!-- Overlay de Carga -->
         <VOverlay
           :model-value="isLoadingData"
@@ -545,182 +523,279 @@ watch(
             <VProgressCircular
               indeterminate
               color="primary"
-              size="64"
-              width="6"
+              size="48"
+              width="4"
             />
-            <span class="mt-4 font-weight-black text-primary uppercase letter-spacing-1">Cargando detalles del pack...</span>
+            <span class="mt-3 font-weight-black text-primary text-xs uppercase letter-spacing-1">Cargando detalles del pack...</span>
           </div>
         </VOverlay>
 
-        <div class="pa-3 pa-sm-4" :style="{ opacity: isLoadingData ? 0.3 : 1, pointerEvents: isLoadingData ? 'none' : 'auto' }">
-          <!-- Información del Pack -->
-          <div class="d-flex align-center gap-2 mb-4">
-            <div class="header-indicator primary shadow-sm"></div>
-            <span class="text-subtitle-2 font-weight-black text-primary uppercase letter-spacing-1">Datos Generales del Pack</span>
-          </div>
+        <div :style="{ opacity: isLoadingData ? 0.3 : 1, pointerEvents: isLoadingData ? 'none' : 'auto' }">
+          <!-- Bloque 1: Datos Generales -->
+          <div class="mb-5">
+            <div class="d-flex align-center justify-space-between mb-2">
+              <div class="d-flex align-center gap-1-5">
+                <div class="header-indicator primary" />
+                <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">Datos Generales del Pack</span>
+              </div>
+              <div class="d-flex align-center gap-2">
+                <span class="text-super-xs font-weight-bold text-disabled uppercase">Estado:</span>
+                <VSwitch
+                  v-model="formData.is_active"
+                  color="success"
+                  hide-details
+                  density="compact"
+                  inset
+                  :label="formData.is_active ? 'ACTIVO' : 'INACTIVO'"
+                  class="font-weight-black text-xs"
+                />
+              </div>
+            </div>
 
-          <VCard variant="flat" class="pa-5 bg-white rounded-lg elevation-1 border mb-6">
-            <VRow>
+            <VRow dense>
               <VCol cols="12" md="6">
-                <AppTextField
-                  v-model="formData.name"
-                  label="Nombre del Pack"
-                  placeholder="Ej: Trío de Vitaminas..."
-                  :error-messages="formErrors.name"
-                  class="shadow-sm"
-                />
-              </VCol>
-              <VCol cols="12" md="3">
-                <AppTextField
-                  v-model.number="formData.max_quantity"
-                  label="Límite de Ventas"
-                  type="number"
-                  placeholder="Ilimitado"
-                  class="shadow-sm"
-                />
-              </VCol>
-              <VCol cols="12" md="3">
-                <AppTextField
-                  v-model="formData.max_sale_date"
-                  label="Fecha de Vencimiento"
-                  type="date"
-                  class="shadow-sm"
-                />
-              </VCol>
-            </VRow>
-            <VRow class="mt-2">
-              <VCol cols="12">
-                <div class="d-flex align-center gap-2">
-                  <VCheckbox
-                    v-model="formData.is_active"
-                    label="Oferta Activa"
-                    hide-details
+                <div>
+                  <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Nombre del Pack *</span>
+                  <VTextField
+                    v-model="formData.name"
+                    placeholder="Ej: Trío de Vitaminas..."
+                    variant="outlined"
                     density="compact"
+                    hide-details="auto"
+                    class="rounded-lg font-weight-bold"
+                    :error="!!formErrors.name"
+                    :error-messages="formErrors.name"
+                    :disabled="isSaving"
                   />
-                  <span class="text-xs text-disabled italic">(Si se desactiva, el pack no aparecerá en el TPV)</span>
+                </div>
+              </VCol>
+              <VCol cols="12" sm="6" md="3">
+                <div>
+                  <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Límite de Ventas</span>
+                  <VTextField
+                    v-model.number="formData.max_quantity"
+                    type="number"
+                    min="1"
+                    placeholder="Ilimitado"
+                    variant="outlined"
+                    density="compact"
+                    hide-details="auto"
+                    prepend-inner-icon="tabler-hash"
+                    class="rounded-lg font-weight-bold"
+                    :disabled="isSaving"
+                  />
+                </div>
+              </VCol>
+              <VCol cols="12" sm="6" md="3">
+                <div>
+                  <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Fecha de Vencimiento</span>
+                  <AppDateTimePicker
+                    v-model="formData.max_sale_date"
+                    placeholder="SELECCIONAR FECHA"
+                    prepend-inner-icon="tabler-calendar-event"
+                    density="compact"
+                    hide-details="auto"
+                    class="rounded-lg"
+                    :disabled="isSaving"
+                    :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
+                  />
                 </div>
               </VCol>
             </VRow>
-          </VCard>
-
-          <!-- Productos -->
-          <div class="d-flex align-center justify-space-between mb-4">
-            <div class="d-flex align-center gap-2">
-              <div class="header-indicator secondary shadow-sm"></div>
-              <span class="text-subtitle-2 font-weight-black text-secondary uppercase letter-spacing-1">Productos Incluidos</span>
-            </div>
-            <VBtn
-              variant="tonal"
-              color="primary"
-              size="small"
-              class="rounded-lg font-weight-black"
-              @click="addProductRow"
-              :disabled="formData.pack_products.length >= 10"
-            >
-              <VIcon start size="18">tabler-plus</VIcon>
-              Añadir Producto
-            </VBtn>
           </div>
 
-          <div v-for="(item, index) in formData.pack_products" :key="index" class="mb-2">
-            <VCard v-if="item" variant="flat" class="border pa-2 pa-sm-3 bg-white rounded-lg elevation-1 relative overflow-visible">
-              <!-- Botón eliminar flotante -->
+          <!-- Bloque 2: Productos Incluidos -->
+          <div class="mb-2">
+            <div class="d-flex align-center justify-space-between mb-3">
+              <div class="d-flex align-center gap-1-5">
+                <div class="header-indicator primary" />
+                <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">Productos Incluidos</span>
+                <span class="text-super-xs font-weight-bold text-disabled">({{ formData.pack_products.length }}/10)</span>
+              </div>
               <VBtn
-                v-if="formData.pack_products.length > 1"
-                icon="tabler-trash"
-                color="error"
-                variant="flat"
-                size="x-small"
-                class="position-absolute rounded-circle elevation-2 shadow-sm"
-                style="inset-inline-end: -8px; inset-block-start: -8px; z-index: 2;"
-                @click="removeProductRow(index)"
-              />
+                variant="outlined"
+                color="primary"
+                size="small"
+                class="rounded-lg font-weight-black"
+                @click="addProductRow"
+                :disabled="formData.pack_products.length >= 10 || isSaving"
+              >
+                <VIcon start size="16">tabler-plus</VIcon>
+                Añadir Producto
+              </VBtn>
+            </div>
 
-              <VRow dense class="align-center-mobile py-1">
-                <VCol cols="12" md="6">
-                  <AppAutocomplete
-                    v-model="item.product"
-                    :items="availableProducts"
-                    item-title="name"
-                    item-value="id"
-                    label="Producto"
-                    placeholder="Buscar por nombre, ID o código..."
-                    variant="outlined"
-                    density="compact"
-                    hide-details
-                    :loading="loadingProducts"
-                    :no-filter="true"
-                    return-object
-                    clearable
-                    @update:search="handleProductSearch"
-                    @update:model-value="calculateTotalPrice()"
-                    class="shadow-sm"
-                  >
-                    <template #item="{ props: itemProps, item: productItem }">
-                      <VListItem
-                        v-bind="itemProps"
-                        :title="productItem.raw.name"
-                        :subtitle="`ID: #${productItem.raw.id} | Lab: ${productItem.raw.laboratory?.name || productItem.raw.laboratory || 'S/L'} | Stock: ${productItem.raw.stock} | Código: ${productItem.raw.barcode || 'N/A'}`"
-                      />
-                    </template>
-                  </AppAutocomplete>
-                </VCol>
-                <VCol cols="4" md="2">
-                  <AppTextField
-                    v-model.number="item.quantity"
-                    label="Cant."
-                    type="number"
-                    min="1"
-                    density="compact"
-                    hide-details
-                    @update:model-value="calculateTotalPrice()"
-                    class="shadow-sm text-center"
-                  />
-                </VCol>
-                <VCol cols="4" md="2">
-                  <AppTextField
-                    v-model.number="item.discount_percentage"
-                    label="Desc. %"
-                    type="number"
-                    min="0"
-                    max="100"
-                    density="compact"
-                    hide-details
-                    @update:model-value="calculateTotalPrice()"
-                    class="shadow-sm text-center"
-                  />
-                </VCol>
-                <VCol cols="4" md="2" class="text-end">
-                  <div class="d-flex flex-column pe-2">
-                    <span class="text-super-xs text-disabled uppercase font-weight-black">Subtotal</span>
-                    <span class="text-subtitle-1 font-weight-black text-success leading-none">
-                      {{ formatCurrency(calculateProductPrice(item), 'USD') }}
-                    </span>
-                  </div>
-                </VCol>
-              </VRow>
-            </VCard>
+            <div class="d-flex flex-column gap-2">
+              <div
+                v-for="(item, index) in formData.pack_products"
+                :key="index"
+                class="pack-item-row pa-3 rounded-lg border bg-var-theme-background"
+              >
+                <VRow dense class="align-center">
+                  <!-- Buscador de Producto -->
+                  <VCol cols="12" md="6">
+                    <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Producto #{{ index + 1 }}</span>
+                    <AppAutocomplete
+                      v-model="item.product"
+                      :items="availableProducts"
+                      item-title="name"
+                      item-value="id"
+                      placeholder="Buscar por nombre, ID o código..."
+                      variant="outlined"
+                      density="compact"
+                      hide-details="auto"
+                      :loading="loadingProducts"
+                      :no-filter="true"
+                      return-object
+                      clearable
+                      @update:search="handleProductSearch"
+                      @update:model-value="calculateTotalPrice()"
+                      class="rounded-lg font-weight-bold"
+                      :error="!!formErrors[`product_${index}`]"
+                      :error-messages="formErrors[`product_${index}`]"
+                      :disabled="isSaving"
+                    >
+                      <template #item="{ props: itemProps, item: productItem }">
+                        <VListItem
+                          v-bind="itemProps"
+                          :title="productItem.raw.name"
+                          :subtitle="`ID: #${productItem.raw.id} | Lab: ${productItem.raw.laboratory?.name || productItem.raw.laboratory || 'S/L'} | Stock: ${productItem.raw.stock} | Precio: ${formatCurrency(productItem.raw.sale_price, 'USD')}`"
+                        />
+                      </template>
+                    </AppAutocomplete>
+
+                    <!-- Resumen del producto seleccionado -->
+                    <div v-if="item.product" class="d-flex align-center flex-wrap gap-1 mt-1-5">
+                      <span class="text-super-xs font-weight-bold text-primary bg-primary-lighten-5 px-1-5 py-0-5 rounded">
+                        Precio: {{ formatCurrency(item.product.sale_price, 'USD') }}
+                      </span>
+                      <span class="text-super-xs font-weight-bold text-success bg-success-lighten-5 px-1-5 py-0-5 rounded">
+                        Stock: {{ item.product.stock }}
+                      </span>
+                      <span class="text-super-xs font-weight-medium text-medium-emphasis">
+                        {{ item.product.laboratory?.name || item.product.laboratory || 'S/L' }}
+                      </span>
+                    </div>
+                  </VCol>
+
+                  <!-- Cantidad -->
+                  <VCol cols="5" sm="3" md="2">
+                    <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Cantidad</span>
+                    <VTextField
+                      v-model.number="item.quantity"
+                      type="number"
+                      min="1"
+                      variant="outlined"
+                      density="compact"
+                      hide-details="auto"
+                      @update:model-value="calculateTotalPrice()"
+                      class="rounded-lg font-weight-black text-center"
+                      :error="!!formErrors[`quantity_${index}`] || !!formErrors[`stock_${index}`]"
+                      :error-messages="formErrors[`quantity_${index}`] || formErrors[`stock_${index}`]"
+                      :disabled="isSaving"
+                    />
+                  </VCol>
+
+                  <!-- Descuento % -->
+                  <VCol cols="5" sm="3" md="2">
+                    <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">% Desc.</span>
+                    <VTextField
+                      v-model.number="item.discount_percentage"
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      variant="outlined"
+                      density="compact"
+                      hide-details="auto"
+                      prepend-inner-icon="tabler-percentage"
+                      @update:model-value="calculateTotalPrice()"
+                      class="rounded-lg font-weight-black"
+                      :disabled="isSaving"
+                    />
+                  </VCol>
+
+                  <!-- Subtotal y Acción Eliminar -->
+                  <VCol cols="2" sm="6" md="2" class="d-flex align-center justify-space-between ps-md-2">
+                    <div class="d-flex flex-column text-end flex-grow-1 me-2">
+                      <span class="text-super-xs text-disabled uppercase font-weight-bold">Subtotal</span>
+                      <span class="text-sm font-weight-black text-success leading-tight">
+                        {{ formatCurrency(calculateProductPrice(item), 'USD') }}
+                      </span>
+                    </div>
+
+                    <IconBtn
+                      v-if="formData.pack_products.length > 1"
+                      color="error"
+                      size="small"
+                      @click="removeProductRow(index)"
+                      :disabled="isSaving"
+                    >
+                      <VIcon icon="tabler-trash" size="18" />
+                      <VTooltip activator="parent">Eliminar Producto</VTooltip>
+                    </IconBtn>
+                  </VCol>
+                </VRow>
+              </div>
+            </div>
           </div>
         </div>
       </VCardText>
 
       <VDivider />
-      <VCardActions class="pa-4 bg-white border-t">
-        <div class="d-flex align-center flex-grow-1">
-          <div class="d-flex flex-column">
-            <span class="text-super-xs text-disabled font-weight-black uppercase leading-none mb-1">Inversión Final Pack</span>
-            <span class="text-h4 font-weight-950 text-primary leading-none">
-              {{ formatCurrency(formData.total_price, 'USD') }}
-            </span>
+
+      <!-- Footer y Acciones -->
+      <VCardActions class="pa-4 bg-surface border-t">
+        <div class="d-flex flex-column flex-sm-row align-center justify-space-between w-100 gap-3">
+          <!-- Resumen de Costos y Ahorro -->
+          <div class="d-flex align-center gap-4 flex-wrap">
+            <div class="d-flex flex-column">
+              <span class="text-super-xs font-weight-bold text-disabled uppercase">Precio Regular</span>
+              <span class="text-xs font-weight-bold text-medium-emphasis text-decoration-line-through">
+                {{ formatCurrency(regularTotalPrice, 'USD') }}
+              </span>
+            </div>
+
+            <VChip
+              v-if="totalSavings > 0"
+              color="success"
+              variant="flat"
+              size="small"
+              class="font-weight-black px-2 rounded"
+            >
+              AHORRO: {{ formatCurrency(totalSavings, 'USD') }}
+            </VChip>
+
+            <div class="d-flex flex-column">
+              <span class="text-super-xs font-weight-black text-primary uppercase">Total del Pack</span>
+              <span class="text-h5 font-weight-950 text-primary leading-none">
+                {{ formatCurrency(formData.total_price, 'USD') }}
+              </span>
+            </div>
           </div>
-          <VSpacer />
-          <div class="d-flex gap-3">
-            <VBtn color="secondary" variant="tonal" class="rounded-lg font-weight-black px-6" @click="closeModal">
-              CANCELAR
+
+          <!-- Botones de Acción -->
+          <div class="d-flex gap-2 w-100 w-sm-auto justify-end">
+            <VBtn
+              color="secondary"
+              variant="outlined"
+              height="44"
+              class="font-weight-bold rounded-lg text-button uppercase px-5"
+              @click="closeModal"
+              :disabled="isSaving"
+            >
+              Cancelar
             </VBtn>
-            <VBtn color="primary" variant="flat" class="rounded-lg font-weight-950 shadow-primary px-8" @click="savePack" :loading="isSaving || props.loading">
-              <VIcon start>tabler-device-floppy</VIcon>
-              {{ isEditing ? "ACTUALIZAR" : "CREAR PACK" }}
+            <VBtn
+              color="primary"
+              variant="flat"
+              height="44"
+              class="font-weight-black rounded-lg shadow-primary text-button uppercase px-6"
+              @click="savePack"
+              :loading="isSaving || props.loading"
+            >
+              <VIcon start icon="tabler-device-floppy" size="18" />
+              {{ isEditing ? "Guardar Cambios" : "Crear Pack" }}
             </VBtn>
           </div>
         </div>
@@ -731,21 +806,24 @@ watch(
 
 <style scoped>
 .header-gradient {
-  background: var(--brand-gradient) !important;
+  background: linear-gradient(
+    135deg,
+    rgb(var(--v-theme-primary)) 0%,
+    rgb(var(--v-theme-gradient-end, var(--v-theme-primary))) 100%
+  );
 }
 
 .detail-dialog-card {
-  border-radius: 16px !important;
+  border-radius: 12px !important;
 }
 
 .header-indicator {
-  inline-size: 4px;
-  block-size: 16px;
-  border-radius: 10px;
+  inline-size: 3px;
+  block-size: 14px;
+  border-radius: 4px;
 }
 
 .header-indicator.primary { background-color: rgb(var(--v-theme-primary)); }
-.header-indicator.secondary { background-color: rgb(var(--v-theme-secondary)); }
 
 .shadow-primary {
   box-shadow: 0 4px 14px 0 rgba(var(--v-theme-primary), 0.39) !important;
@@ -757,11 +835,35 @@ watch(
 }
 
 .letter-spacing-1 {
-  letter-spacing: 1px !important;
+  letter-spacing: 0.5px !important;
 }
 
 .leading-none { line-height: 1 !important; }
+.leading-tight { line-height: 1.25 !important; }
 .font-weight-950 { font-weight: 950 !important; }
+
+.gap-1-5 { gap: 6px !important; }
+.mt-1-5 { margin-top: 6px !important; }
+
+.bg-primary-lighten-5 {
+  background-color: rgba(var(--v-theme-primary), 0.08) !important;
+}
+
+.bg-success-lighten-5 {
+  background-color: rgba(var(--v-theme-success), 0.08) !important;
+}
+
+.bg-var-theme-background {
+  background-color: rgba(var(--v-border-color), 0.03);
+}
+
+.pack-item-row {
+  transition: all 0.2s ease;
+}
+
+.pack-item-row:hover {
+  background-color: rgba(var(--v-theme-primary), 0.02);
+}
 
 .border-t {
   border-block-start: 1px solid rgba(var(--v-border-color), 0.08) !important;

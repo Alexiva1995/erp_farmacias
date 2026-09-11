@@ -527,7 +527,7 @@ const handleSyncDrosymca = async () => {
         <VDivider />
         <VCardActions class="pa-3 bg-surface">
           <VSpacer />
-          <VBtn variant="tonal" color="secondary" class="rounded-lg" @click="isBulkDeleteDialogVisible = false">
+          <VBtn variant="outlined" color="secondary" class="rounded-lg" @click="isBulkDeleteDialogVisible = false">
             Cancelar
           </VBtn>
           <VBtn

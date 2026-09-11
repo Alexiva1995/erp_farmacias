@@ -293,7 +293,7 @@ const handleMerge = async () => {
           <VRow dense class="w-100 ma-0">
             <VCol cols="6">
               <VBtn
-                variant="tonal"
+                variant="outlined"
                 color="secondary"
                 height="44"
                 block
@@ -522,7 +522,7 @@ const handleMerge = async () => {
           <VRow dense class="w-100 ma-0">
             <VCol cols="6">
               <VBtn
-                variant="tonal"
+                variant="outlined"
                 color="secondary"
                 height="44"
                 block

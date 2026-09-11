@@ -474,7 +474,7 @@ const completeClosure = async () => {
       <VDivider />
 
       <VCardActions class="pa-4 d-flex gap-3">
-        <VBtn color="secondary" variant="tonal" @click="closeModal" class="flex-grow-1" size="large">
+        <VBtn color="secondary" variant="outlined" @click="closeModal" class="flex-grow-1" size="large">
           Cancelar
         </VBtn>
         <VBtn color="error" variant="flat" @click="completeClosure" class="flex-grow-1" size="large"

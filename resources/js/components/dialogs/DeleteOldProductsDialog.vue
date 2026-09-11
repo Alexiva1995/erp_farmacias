@@ -57,7 +57,7 @@ const handleSubmit = () => {
         <!-- Botón Cancelar (50%) -->
         <VBtn
           color="secondary"
-          variant="tonal"
+          variant="outlined"
           class="flex-grow-1"
           @click="handleClose"
         >

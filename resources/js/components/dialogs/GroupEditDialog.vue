@@ -381,7 +381,7 @@ const nextExpirationDate = (product) => {
           <VCol cols="12" sm="6" class="pa-1">
             <VBtn
               color="secondary"
-              variant="tonal"
+              variant="outlined"
               size="large"
               block
               height="50"

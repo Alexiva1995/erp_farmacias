@@ -160,7 +160,7 @@ function submitForm(){
           <VCol cols="6" class="pa-1">
             <VBtn
               color="secondary"
-              variant="tonal"
+              variant="outlined"
               size="large"
               block
               height="50"

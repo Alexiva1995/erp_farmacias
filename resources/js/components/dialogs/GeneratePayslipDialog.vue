@@ -110,7 +110,7 @@ const periodInfo = computed(() => {
       <VCardActions class="pa-4 bg-light">
         <VSpacer />
         <VBtn
-          variant="tonal"
+          variant="outlined"
           color="secondary"
           class="rounded-lg px-6"
           @click="close"

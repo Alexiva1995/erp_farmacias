@@ -371,7 +371,7 @@ const resetFilters = () => {
           />
         </VCardText>
         <VCardActions class="pa-4 pt-0 d-flex gap-2 justify-end">
-          <VBtn variant="text" color="secondary" @click="buyerNameDialog = false">
+          <VBtn variant="outlined" color="secondary" @click="buyerNameDialog = false">
             Cancelar
           </VBtn>
           <VBtn

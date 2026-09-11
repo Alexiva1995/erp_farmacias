@@ -153,7 +153,7 @@ const closeDialog = () => emit('update:modelValue', false);
           <VCol cols="6" class="pe-2">
             <VBtn
               block
-              variant="tonal"
+              variant="outlined"
               color="secondary"
               height="44"
               class="font-weight-black rounded-lg"

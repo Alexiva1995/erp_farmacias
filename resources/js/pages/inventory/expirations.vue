@@ -951,7 +951,7 @@ onMounted(() => {
         </VCardText>
         <VCardActions class="pa-4 pt-0 d-flex gap-2 justify-end">
           <VBtn
-            variant="text"
+            variant="outlined"
             color="secondary"
             :disabled="isGeneratingReturnsPdf"
             @click="isSupplierReturnsModalVisible = false"

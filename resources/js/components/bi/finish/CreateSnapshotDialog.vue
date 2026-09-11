@@ -128,7 +128,7 @@ const handleSubmit = () => {
 
       <VCardActions class="pa-4 d-flex justify-end gap-2">
         <VBtn
-          variant="tonal"
+          variant="outlined"
           color="secondary"
           :disabled="loading"
           @click="handleClose"

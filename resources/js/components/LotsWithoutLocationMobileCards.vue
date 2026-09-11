@@ -111,7 +111,7 @@ const formatStock = (quantity) => {
           <div class="d-flex gap-2 justify-center mt-1">
             <VBtn
               size="small"
-              variant="tonal"
+              variant="outlined"
               color="secondary"
               class="flex-grow-1 font-weight-bold"
               :disabled="props.isSaving"

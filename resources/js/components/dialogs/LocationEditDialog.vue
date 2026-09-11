@@ -146,7 +146,7 @@ const close = () => {
         <VRow dense class="w-100 ma-0">
           <VCol cols="12" sm="4" class="pa-1">
             <VBtn
-              variant="tonal"
+              variant="outlined"
               color="secondary"
               block
               height="48"

@@ -430,7 +430,7 @@ const formatStock = (item) => {
               @keydown.enter.prevent="handleCreateGroupOnEnter"
             />
             <div class="d-flex gap-2 justify-center">
-              <VBtn size="small" variant="tonal" color="secondary" class="flex-grow-1 font-weight-bold" :disabled="isSavingProductGroup" @click="cancelEdit">Cancelar</VBtn>
+              <VBtn size="small" variant="outlined" color="secondary" class="flex-grow-1 font-weight-bold" :disabled="isSavingProductGroup" @click="cancelEdit">Cancelar</VBtn>
               <VBtn size="small" color="primary" class="flex-grow-1 font-weight-bold" :loading="isSavingProductGroup" @click="saveInlineEdit(item)">Guardar</VBtn>
             </div>
           </div>
