@@ -112,7 +112,7 @@ class PurchaseOrderServices implements PurchaseOrder
         }
       }
 
-      if (str_contains($supplierName, 'MAFARTA') || str_contains($supplierName, 'COBECA') || (int)$supplier->id === 23) {
+      if (str_contains($supplierName, 'MAFARTA') || str_contains($supplierName, 'COBECA') || (int)$supplier->id === 23 || (int)$supplier->id === 1011) {
         $isMafarta = true;
       }
     }
