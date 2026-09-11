@@ -62,24 +62,33 @@ const headers = computed(() => {
       headerClass: 'd-none d-sm-table-cell',
       width: '80px',
     },
-    { title: isRestaurant.value ? "Marca" : "Laboratorio", key: "name", sortable: true, width: '35%' },
+    { title: isRestaurant.value ? "Marca" : "Laboratorio", key: "name", sortable: true, width: '30%' },
   ];
   if (enableBrandGroups.value) {
     list.push({ title: isRestaurant.value ? "Grupo de Marcas" : "Grupo Corporativo", key: "group.name", sortable: false });
   }
   list.push(
-    { title: "Productos", key: "products_count", sortable: true, align: 'center' },
-    { title: "Unidades", key: "units_count", sortable: true, align: 'end' },
-    { title: "Acciones", key: "actions", sortable: false, align: 'center', width: '130px' }
+    { title: "Productos", key: "products_count", sortable: true, align: 'center', width: '120px' },
+    { title: "Unidades", key: "units_count", sortable: true, align: 'end', width: '120px' },
+    { title: "Acciones", key: "actions", sortable: false, align: 'center', width: '140px' }
   );
   return list;
 })
 
 const groupHeaders = [
-  { title: "ID", key: "id", sortable: true, cellClass: 'font-weight-black text-primary' },
-  { title: "Grupo", key: "name", sortable: true },
-  { title: "Laboratorios", key: "labs_count", sortable: false, align: 'center' },
-  { title: "Acciones", key: "actions", sortable: false, align: 'right' },
+  {
+    title: "ID",
+    key: "id",
+    sortable: true,
+    cellClass: 'font-weight-black text-primary d-none d-sm-table-cell',
+    headerClass: 'd-none d-sm-table-cell',
+    width: '80px',
+  },
+  { title: "Grupo Corporativo", key: "name", sortable: true, width: '30%' },
+  { title: "Laboratorios", key: "labs_count", sortable: true, align: 'center', width: '130px' },
+  { title: "Productos", key: "products_count", sortable: true, align: 'center', width: '120px' },
+  { title: "Unidades", key: "units_count", sortable: true, align: 'end', width: '120px' },
+  { title: "Acciones", key: "actions", sortable: false, align: 'center', width: '140px' },
 ]
 
 // --- Filtro de grupos en la pestaña ---
@@ -341,7 +350,7 @@ onMounted(async () => {
                     label
                     class="font-weight-black"
                   >
-                    {{ item.products_count }} {{ item.products_count === 1 ? 'REF' : 'REFS' }}
+                    {{ item.products_count }}
                   </VChip>
                 </div>
               </template>
@@ -355,7 +364,7 @@ onMounted(async () => {
                     label
                     class="font-weight-black"
                   >
-                    {{ formatUnits(item.units_count) }} UNDS
+                    {{ formatUnits(item.units_count) }}
                   </VChip>
                 </div>
               </template>
@@ -467,56 +476,188 @@ onMounted(async () => {
         />
 
         <VCard class="rounded-lg border shadow-sm overflow-hidden mt-4">
+          <!-- Cabecera Estándar -->
+          <VCardTitle class="d-flex align-center pa-4">
+            <span class="text-h6 font-weight-bold">Listado de Grupos Corporativos</span>
+            <VSpacer />
+            <VChip size="small" color="primary" variant="tonal" class="font-weight-black">
+              {{ filteredGroups.length }} GRUPOS
+            </VChip>
+          </VCardTitle>
+
+          <VDivider />
+
           <!-- Desktop -->
           <div class="d-none d-md-block">
             <VDataTable
               :headers="groupHeaders"
               :items="filteredGroups"
               density="compact"
-              :loading="loading"
+              hover
+              class="text-no-wrap"
             >
-              <template #item.labs_count="{ item }">
-                <VChip size="x-small" color="primary" variant="tonal">
-                  {{ item.laboratories?.length ?? 0 }}
-                </VChip>
+              <template #item.id="{ item }">
+                <span class="font-weight-black text-primary">
+                  {{ item.id }}
+                </span>
               </template>
-              <template #item.actions="{ item }">
-                <div class="d-flex justify-end gap-1 px-2">
-                  <IconBtn @click="openGroupEdit(item)" color="primary" v-tooltip="'Editar grupo'">
-                    <VIcon icon="tabler-edit" size="18" />
-                  </IconBtn>
-                  <IconBtn v-if="can('manage', 'admin')" @click="deleteGroup(item.id)" color="error" v-tooltip="'Eliminar grupo'">
-                    <VIcon icon="tabler-trash" size="18" />
-                  </IconBtn>
+
+              <template #item.name="{ item }">
+                <div class="d-flex align-center gap-2 py-2">
+                  <div class="header-indicator success rounded-pill"></div>
+                  <span class="text-sm font-weight-black text-high-emphasis text-uppercase">{{ item.name }}</span>
                 </div>
+              </template>
+
+              <template #item.labs_count="{ item }">
+                <div class="text-center">
+                  <VChip
+                    :color="(item.labs_count || item.laboratories?.length) > 0 ? 'info' : 'secondary'"
+                    size="x-small"
+                    variant="tonal"
+                    label
+                    class="font-weight-black"
+                  >
+                    {{ item.labs_count ?? (item.laboratories?.length || 0) }}
+                  </VChip>
+                </div>
+              </template>
+
+              <template #item.products_count="{ item }">
+                <div class="text-center">
+                  <VChip
+                    :color="Number(item.products_count || 0) > 0 ? 'primary' : 'secondary'"
+                    size="x-small"
+                    variant="tonal"
+                    label
+                    class="font-weight-black"
+                  >
+                    {{ item.products_count || 0 }}
+                  </VChip>
+                </div>
+              </template>
+
+              <template #item.units_count="{ item }">
+                <div class="text-end">
+                  <VChip
+                    :color="Number(item.units_count || 0) > 0 ? 'success' : 'secondary'"
+                    size="x-small"
+                    variant="tonal"
+                    label
+                    class="font-weight-black"
+                  >
+                    {{ formatUnits(item.units_count) }}
+                  </VChip>
+                </div>
+              </template>
+
+              <template #item.actions="{ item }">
+                <div class="d-flex align-center justify-center gap-1 px-2">
+                  <VTooltip text="Editar" location="top">
+                    <template #activator="{ props: tooltipProps }">
+                      <IconBtn v-bind="tooltipProps" @click="openGroupEdit(item)" color="warning" size="small">
+                        <VIcon icon="tabler-edit" size="18" />
+                      </IconBtn>
+                    </template>
+                  </VTooltip>
+                  <VTooltip v-if="can('manage', 'admin')" text="Eliminar" location="top">
+                    <template #activator="{ props: tooltipProps }">
+                      <IconBtn v-bind="tooltipProps" @click="deleteGroup(item.id)" color="error" size="small">
+                        <VIcon icon="tabler-trash" size="18" />
+                      </IconBtn>
+                    </template>
+                  </VTooltip>
+                </div>
+              </template>
+
+              <template #no-data>
+                <AppEmptyState
+                  title="No se encontraron grupos corporativos"
+                  message="Registra grupos corporativos para agrupar laboratorios y marcas de un mismo titular."
+                  icon="tabler-layers-intersect"
+                >
+                  <template #actions>
+                    <VBtn
+                      color="primary"
+                      variant="flat"
+                      prepend-icon="tabler-plus"
+                      @click="openGroupEdit()"
+                    >
+                      Crear Grupo Corporativo
+                    </VBtn>
+                  </template>
+                </AppEmptyState>
               </template>
             </VDataTable>
           </div>
 
           <!-- Mobile grupos -->
           <div class="d-block d-md-none pa-2">
-            <VCard
-              v-for="group in filteredGroups"
-              :key="group.id"
-              variant="flat"
-              class="border mb-2 rounded-lg"
-            >
-              <div class="pa-3 d-flex align-center justify-space-between">
-                <div>
-                  <div class="text-xs font-weight-black text-primary mb-1">ID: {{ group.id }}</div>
-                  <div class="font-weight-black text-sm text-uppercase">{{ group.name }}</div>
-                  <VChip size="x-small" color="primary" variant="tonal" class="mt-1">
-                    {{ group.laboratories?.length ?? 0 }} labs
-                  </VChip>
+            <div v-if="filteredGroups.length" class="d-flex flex-column gap-2">
+              <VCard
+                v-for="group in filteredGroups"
+                :key="group.id"
+                variant="flat"
+                class="border rounded-lg pa-3"
+              >
+                <div class="d-flex align-center justify-space-between mb-2">
+                  <div class="d-flex align-center gap-2">
+                    <span class="text-xs font-weight-black text-primary">#{{ group.id }}</span>
+                    <span class="font-weight-black text-sm text-uppercase">{{ group.name }}</span>
+                  </div>
+                  <div class="d-flex gap-1">
+                    <IconBtn size="small" color="warning" @click="openGroupEdit(group)">
+                      <VIcon icon="tabler-edit" size="18" />
+                    </IconBtn>
+                    <IconBtn v-if="can('manage', 'admin')" size="small" color="error" @click="deleteGroup(group.id)">
+                      <VIcon icon="tabler-trash" size="18" />
+                    </IconBtn>
+                  </div>
                 </div>
-                <div class="d-flex gap-1">
-                  <VBtn icon="tabler-edit" color="primary" variant="tonal" size="small" @click="openGroupEdit(group)" />
-                  <VBtn v-if="can('manage', 'admin')" icon="tabler-trash" color="error" variant="tonal" size="small" @click="deleteGroup(group.id)" />
+
+                <VDivider class="my-2" />
+
+                <div class="d-flex justify-space-between align-center">
+                  <div class="d-flex flex-column">
+                    <span class="text-super-xs text-medium-emphasis text-uppercase font-weight-bold">Laboratorios</span>
+                    <VChip size="x-small" color="info" variant="tonal" label class="font-weight-black mt-1">
+                      {{ group.labs_count ?? (group.laboratories?.length || 0) }}
+                    </VChip>
+                  </div>
+                  <div class="d-flex flex-column align-center">
+                    <span class="text-super-xs text-medium-emphasis text-uppercase font-weight-bold">Productos</span>
+                    <VChip size="x-small" color="primary" variant="tonal" label class="font-weight-black mt-1">
+                      {{ group.products_count || 0 }}
+                    </VChip>
+                  </div>
+                  <div class="d-flex flex-column align-end">
+                    <span class="text-super-xs text-medium-emphasis text-uppercase font-weight-bold">Unidades</span>
+                    <VChip size="x-small" color="success" variant="tonal" label class="font-weight-black mt-1">
+                      {{ formatUnits(group.units_count) }}
+                    </VChip>
+                  </div>
                 </div>
-              </div>
-            </VCard>
-            <div v-if="!filteredGroups.length" class="text-center pa-6 text-disabled">
-              Sin grupos registrados
+              </VCard>
+            </div>
+
+            <div v-else>
+              <AppEmptyState
+                title="No hay grupos registrados"
+                message="Registra tu primer grupo corporativo para comenzar."
+                icon="tabler-layers-intersect"
+              >
+                <template #actions>
+                  <VBtn
+                    color="primary"
+                    variant="flat"
+                    size="small"
+                    prepend-icon="tabler-plus"
+                    @click="openGroupEdit()"
+                  >
+                    Crear Grupo Corporativo
+                  </VBtn>
+                </template>
+              </AppEmptyState>
             </div>
           </div>
         </VCard>

@@ -70,7 +70,16 @@ class LaboratoryManagementController extends Controller
     public function groups(): JsonResponse
     {
         $groups = GroupsLaboratory::with(['laboratories:id,name,group_id'])
-            ->orderBy('name')
+            ->leftJoin('laboratories', 'groups_laboratories.id', '=', 'laboratories.group_id')
+            ->leftJoin('products', 'laboratories.id', '=', 'products.laboratory_id')
+            ->leftJoin('product_lots', 'products.id', '=', 'product_lots.product_id')
+            ->select([
+                'groups_laboratories.id',
+                'groups_laboratories.name',
+            ])
+            ->selectRaw('COUNT(DISTINCT laboratories.id) as labs_count, COUNT(DISTINCT products.id) as products_count, COALESCE(SUM(product_lots.quantity), 0) as units_count')
+            ->groupBy('groups_laboratories.id', 'groups_laboratories.name')
+            ->orderBy('groups_laboratories.name')
             ->get();
 
         return response()->json($groups);

@@ -44,7 +44,7 @@ const formatUnits = (units) => {
             label
             class="font-weight-black"
           >
-            {{ item.products_count }} {{ item.products_count === 1 ? 'REF' : 'REFS' }}
+            {{ item.products_count || 0 }}
           </VChip>
         </div>
         <div class="d-flex align-center gap-2">
@@ -56,7 +56,7 @@ const formatUnits = (units) => {
             label
             class="font-weight-black"
           >
-            {{ formatUnits(item.units_count) }} UNDS
+            {{ formatUnits(item.units_count) }}
           </VChip>
         </div>
       </div>
