@@ -262,8 +262,8 @@ class GeminiService
                     break;
                 }
 
-                if ($response->status() === 429) {
-                    Log::warning("[GeminiService::matchProduct] Límite de cuota alcanzado (429). Reintento {$attempt} de {$maxRetries} en {$retryDelay} segundos...");
+                if (in_array($response->status(), [429, 503, 500], true)) {
+                    Log::warning("[GeminiService::matchProduct] Respuesta temporal ({$response->status()}). Reintento {$attempt} de {$maxRetries} en {$retryDelay} segundos...");
                     sleep($retryDelay);
                     $retryDelay *= 2;
                     continue;

@@ -69,57 +69,6 @@ watch(
 
 const handleSendToAutoOrder = async ({ id, quantity, item }) => {
   try {
-    const nuestroBarcode = props.product?.barcode ? String(props.product.barcode).trim() : "";
-    const listadoBarcode = item?.barcode_match ? String(item.barcode_match).trim() : "";
-
-    if (listadoBarcode && nuestroBarcode !== listadoBarcode) {
-      const { isConfirmed } = await Swal.fire({
-        title: "¿Reemplazar código de barras?",
-        html: `Nuestro producto actual tiene el código: <strong>${nuestroBarcode || "vacío"}</strong>.<br>El del listado del proveedor es: <strong>${listadoBarcode}</strong>.<br><br>¿Desea actualizar nuestro código de barras por el del listado?`,
-        icon: "question",
-        showCancelButton: true,
-        confirmButtonText: "Sí, reemplazar",
-        cancelButtonText: "No, mantener actual",
-      });
-
-      if (isConfirmed) {
-        try {
-          await axios.post(`/suppliers-ia-order-assistant/products/${props.product.id}/update-barcode`, {
-            barcode: listadoBarcode,
-          });
-          toast.success("Código de barras actualizado correctamente.");
-          if (props.product) props.product.barcode = listadoBarcode;
-        } catch (updateError) {
-          console.error("Error updating barcode:", updateError);
-          if (updateError.response?.status === 409 && updateError.response?.data?.conflict) {
-            const { isConfirmed: confirmForce } = await Swal.fire({
-              title: "Código duplicado",
-              text: updateError.response.data.message,
-              icon: "warning",
-              showCancelButton: true,
-              confirmButtonText: "Sí, desvincular y asignar",
-              cancelButtonText: "Cancelar",
-            });
-            if (confirmForce) {
-              try {
-                await axios.post(`/suppliers-ia-order-assistant/products/${props.product.id}/update-barcode`, {
-                  barcode: listadoBarcode,
-                  force: true,
-                });
-                toast.success("Código de barras actualizado correctamente.");
-                if (props.product) props.product.barcode = listadoBarcode;
-              } catch (forceError) {
-                console.error("Error forcing barcode update:", forceError);
-                toast.error("No se pudo forzar el reajuste del código de barras.");
-              }
-            }
-          } else {
-            toast.error("No se pudo actualizar el código de barras, pero se procederá con el pedido.");
-          }
-        }
-      }
-    }
-
     const form = new FormData();
     form.append("productId", id);
     form.append("main_product_id", props.product.id);

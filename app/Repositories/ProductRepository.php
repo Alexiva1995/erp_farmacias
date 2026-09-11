@@ -855,14 +855,30 @@ class ProductRepository
         $consulta->where('is_deleted', false)->where('is_scarce', false)
             ->where(function ($q) {
                 $q->whereNull('products.group_id')
-                  ->orWhere('products.is_unified_group', '=', 1)
-                  ->orWhereNotExists(function ($sq) {
-                      $sq->select(\Illuminate\Support\Facades\DB::raw(1))
-                          ->from('products as u')
-                          ->whereColumn('u.group_id', 'products.group_id')
-                          ->where('u.is_unified_group', '=', 1)
-                          ->where('u.is_deleted', false)
-                          ->where('u.is_scarce', false);
+                  ->orWhere(function ($uq) {
+                      $uq->where('products.is_unified_group', '=', 1)
+                         ->whereRaw('products.id = (
+                             SELECT MIN(u.id) 
+                             FROM products as u 
+                             WHERE u.group_id = products.group_id 
+                             AND u.is_unified_group = 1 
+                             AND u.is_deleted = 0 
+                             AND u.is_scarce = 0
+                         )');
+                  })
+                  ->orWhere(function ($nuq) {
+                      $nuq->where(function ($sub) {
+                          $sub->where('products.is_unified_group', '=', 0)
+                              ->orWhereNull('products.is_unified_group');
+                      })
+                      ->whereNotExists(function ($sq) {
+                          $sq->select(\Illuminate\Support\Facades\DB::raw(1))
+                              ->from('products as u')
+                              ->whereColumn('u.group_id', 'products.group_id')
+                              ->where('u.is_unified_group', '=', 1)
+                              ->where('u.is_deleted', false)
+                              ->where('u.is_scarce', false);
+                      });
                   });
             })
             ->when(!($filtros['show_ignored'] ?? false), function ($q) {
@@ -1204,14 +1220,30 @@ class ProductRepository
         $consulta->where('is_deleted', false)->where('is_scarce', false)
             ->where(function ($q) {
                 $q->whereNull('products.group_id')
-                  ->orWhere('products.is_unified_group', '=', 1)
-                  ->orWhereNotExists(function ($sq) {
-                      $sq->select(\Illuminate\Support\Facades\DB::raw(1))
-                          ->from('products as u')
-                          ->whereColumn('u.group_id', 'products.group_id')
-                          ->where('u.is_unified_group', '=', 1)
-                          ->where('u.is_deleted', false)
-                          ->where('u.is_scarce', false);
+                  ->orWhere(function ($uq) {
+                      $uq->where('products.is_unified_group', '=', 1)
+                         ->whereRaw('products.id = (
+                             SELECT MIN(u.id) 
+                             FROM products as u 
+                             WHERE u.group_id = products.group_id 
+                             AND u.is_unified_group = 1 
+                             AND u.is_deleted = 0 
+                             AND u.is_scarce = 0
+                         )');
+                  })
+                  ->orWhere(function ($nuq) {
+                      $nuq->where(function ($sub) {
+                          $sub->where('products.is_unified_group', '=', 0)
+                              ->orWhereNull('products.is_unified_group');
+                      })
+                      ->whereNotExists(function ($sq) {
+                          $sq->select(\Illuminate\Support\Facades\DB::raw(1))
+                              ->from('products as u')
+                              ->whereColumn('u.group_id', 'products.group_id')
+                              ->where('u.is_unified_group', '=', 1)
+                              ->where('u.is_deleted', false)
+                              ->where('u.is_scarce', false);
+                      });
                   });
             })
             ->when(!($filtros['show_ignored'] ?? false), function ($q) {
@@ -1613,14 +1645,30 @@ class ProductRepository
             ->where('is_scarce', false)
             ->where(function ($q) {
                 $q->whereNull('products.group_id')
-                  ->orWhere('products.is_unified_group', '=', 1)
-                  ->orWhereNotExists(function ($sq) {
-                      $sq->select(\Illuminate\Support\Facades\DB::raw(1))
-                          ->from('products as u')
-                          ->whereColumn('u.group_id', 'products.group_id')
-                          ->where('u.is_unified_group', '=', 1)
-                          ->where('u.is_deleted', false)
-                          ->where('u.is_scarce', false);
+                  ->orWhere(function ($uq) {
+                      $uq->where('products.is_unified_group', '=', 1)
+                         ->whereRaw('products.id = (
+                             SELECT MIN(u.id) 
+                             FROM products as u 
+                             WHERE u.group_id = products.group_id 
+                             AND u.is_unified_group = 1 
+                             AND u.is_deleted = 0 
+                             AND u.is_scarce = 0
+                         )');
+                  })
+                  ->orWhere(function ($nuq) {
+                      $nuq->where(function ($sub) {
+                          $sub->where('products.is_unified_group', '=', 0)
+                              ->orWhereNull('products.is_unified_group');
+                      })
+                      ->whereNotExists(function ($sq) {
+                          $sq->select(\Illuminate\Support\Facades\DB::raw(1))
+                              ->from('products as u')
+                              ->whereColumn('u.group_id', 'products.group_id')
+                              ->where('u.is_unified_group', '=', 1)
+                              ->where('u.is_deleted', false)
+                              ->where('u.is_scarce', false);
+                      });
                   });
             })
             ->when(!($filtros['show_ignored'] ?? false), function ($q) {

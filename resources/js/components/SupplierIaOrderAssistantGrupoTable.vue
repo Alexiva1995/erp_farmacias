@@ -125,59 +125,6 @@ const onActionClick = async (item, action) => {
       if (!isConfirmed) return;
     }
     
-    // Validar código de barras diferente y preguntar por reemplazo si el listado tiene uno
-    const nuestroBarcode = item.barcode ? String(item.barcode).trim() : '';
-    const cheapestBarcode = item.cheapest_barcode ? String(item.cheapest_barcode).trim() : '';
-
-    if (cheapestBarcode && nuestroBarcode !== cheapestBarcode) {
-      const { isConfirmed } = await Swal.fire({
-        title: "¿Reemplazar código de barras?",
-        html: `Nuestro producto actual tiene el código: <strong>${nuestroBarcode || 'vacío'}</strong>.<br>El del listado del proveedor es: <strong>${cheapestBarcode}</strong>.<br><br>¿Desea actualizar nuestro código de barras por el del listado?`,
-        icon: "question",
-        showCancelButton: true,
-        confirmButtonText: "Sí, reemplazar",
-        cancelButtonText: "No, mantener actual",
-      });
-
-      if (isConfirmed) {
-        try {
-          await axios.post(`/suppliers-ia-order-assistant/products/${item.id}/update-barcode`, {
-            barcode: cheapestBarcode
-          });
-          // Actualizamos la propiedad barcode localmente
-          item.barcode = cheapestBarcode;
-          toast.success("Código de barras actualizado.");
-        } catch (updateError) {
-          console.error("Error updating barcode:", updateError);
-          if (updateError.response?.status === 409 && updateError.response?.data?.conflict) {
-            const { isConfirmed: confirmForce } = await Swal.fire({
-              title: "Código duplicado",
-              text: updateError.response.data.message,
-              icon: "warning",
-              showCancelButton: true,
-              confirmButtonText: "Sí, desvincular y asignar",
-              cancelButtonText: "Cancelar",
-            });
-            if (confirmForce) {
-              try {
-                await axios.post(`/suppliers-ia-order-assistant/products/${item.id}/update-barcode`, {
-                  barcode: cheapestBarcode,
-                  force: true
-                });
-                item.barcode = cheapestBarcode;
-                toast.success("Código de barras asignado y desvinculado.");
-              } catch (forceError) {
-                console.error("Error forcing barcode update:", forceError);
-                toast.error("No se pudo forzar el reajuste del código de barras.");
-              }
-            }
-          } else {
-            toast.error("No se pudo actualizar el código de barras.");
-          }
-        }
-      }
-    }
-
     isProcessing.value[item.id] = 'adding';
     try {
       const payload = {

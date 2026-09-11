@@ -35,18 +35,40 @@ class DronenaEdiService implements DronenaEdiServiceInterface
         $lines[] = "D000 {$orderNumber}";
 
         foreach ($autoOrder->details as $detail) {
-            // Obtener código de producto de Droguería Nena (cod_supplier)
+            // 1. Priorizar código interno asignado por Droguería Nena (cod_supplier)
             $code = $detail->productSupplier?->cod_supplier;
+
+            // 2. Si no está en la relación, buscar por product_suppliers_id directo
+            if (empty($code) && !empty($detail->product_suppliers_id)) {
+                $psDirect = \App\Models\ProductSupplier::find($detail->product_suppliers_id);
+                $code = $psDirect?->cod_supplier;
+            }
+
+            // 3. Buscar en el catálogo de Nena por barcode del producto local o barcode_match
             if (empty($code)) {
+                $barcode = $detail->product?->barcode;
                 $nenaPs = \App\Models\ProductSupplier::where('supplier_id', $autoOrder->supplier_id)
-                    ->where('product_id', $detail->product_id)
+                    ->where(function ($q) use ($detail, $barcode) {
+                        if (!empty($detail->product_id)) {
+                            $q->where('product_id', $detail->product_id);
+                        }
+                        if (!empty($barcode)) {
+                            $q->orWhere('barcode_match', $barcode);
+                        }
+                    })
                     ->whereNotNull('cod_supplier')
                     ->where('cod_supplier', '!=', '')
+                    ->orderByRaw('CASE WHEN product_id = ? THEN 0 ELSE 1 END', [$detail->product_id ?? 0])
                     ->first();
+
                 $code = $nenaPs?->cod_supplier;
             }
+
+            // 4. Fallback si no hay cod_supplier
             if (empty($code)) {
-                $code = $detail->product?->barcode ?? (string) $detail->product_id;
+                $code = $detail->productSupplier?->barcode_match 
+                    ?? $detail->product?->barcode 
+                    ?? (string) $detail->product_id;
             }
             $code = trim((string) $code);
 
