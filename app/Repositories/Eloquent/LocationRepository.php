@@ -17,7 +17,18 @@ class LocationRepository implements LocationContract
      */
     public function getAll(): Collection
     {
-        return Location::select(['id', 'name', 'created_at', 'updated_at'])->orderBy('name')->get();
+        return Location::query()
+            ->select([
+                'locations.id',
+                'locations.name',
+                'locations.created_at',
+                'locations.updated_at',
+            ])
+            ->leftJoin('product_lots', 'locations.name', '=', 'product_lots.location')
+            ->selectRaw('COUNT(DISTINCT product_lots.product_id) as products_count, COALESCE(SUM(product_lots.quantity), 0) as units_count')
+            ->groupBy('locations.id', 'locations.name', 'locations.created_at', 'locations.updated_at')
+            ->orderBy('locations.name')
+            ->get();
     }
 
     /**

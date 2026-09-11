@@ -211,7 +211,7 @@ class ProductRepository
 
         if ($isGroup) {
             $consulta->leftJoin('groups_products', 'products.group_id', '=', 'groups_products.id')
-                ->groupBy(DB::raw('COALESCE(products.group_id, CONCAT("p_", products.id))'));
+                ->groupBy(DB::raw('COALESCE(CONCAT("g_", products.group_id), CONCAT("p_", products.id))'));
         }
 
         $consulta->where(function ($q) {

@@ -22,15 +22,19 @@ const emit = defineEmits(["update:options"]);
 
 // Estado de expansión
 const expandedGroupId = ref(null);
-const toggleGroup = (groupId) => {
-  if (expandedGroupId.value === groupId) {
+const getGroupKey = (grupo) => {
+  return grupo.group_id ? `g_${grupo.group_id}` : `p_${grupo.id}`;
+};
+
+const toggleGroup = (key) => {
+  if (expandedGroupId.value === key) {
     expandedGroupId.value = null;
   } else {
-    expandedGroupId.value = groupId;
+    expandedGroupId.value = key;
   }
 };
 
-const isExpanded = (groupId) => expandedGroupId.value === groupId;
+const isExpanded = (key) => expandedGroupId.value === key;
 
 const formatPriceWithDecimals = (price) => {
   const numPrice = Number(price);
@@ -43,8 +47,9 @@ const formatPriceWithDecimals = (price) => {
   }).format(numPrice);
 };
 
-const formatInteger = (val) => {
+const formatQuantity = (val) => {
   const num = Number(val || 0);
+  if (isNaN(num)) return '0';
   return Math.round(num).toString();
 };
 
@@ -75,19 +80,19 @@ const getDiffColor = (val) => {
     <div v-else class="groups-container">
       <div
         v-for="grupo in props.products"
-        :key="grupo.group_id || grupo.id"
+        :key="getGroupKey(grupo)"
         class="grupo-card mb-3 rounded-lg border overflow-hidden bg-surface"
       >
         <!-- Cabecera del grupo -->
         <div
           class="grupo-header d-flex flex-column flex-sm-row align-start align-sm-center justify-space-between pa-4 pa-sm-5 cursor-pointer"
-          :class="isExpanded(grupo.group_id || grupo.id) ? 'grupo-header--expanded' : ''"
-          @click="toggleGroup(grupo.group_id || grupo.id)"
+          :class="isExpanded(getGroupKey(grupo)) ? 'grupo-header--expanded' : ''"
+          @click="toggleGroup(getGroupKey(grupo))"
         >
           <!-- Información del Grupo (Izquierda) -->
           <div class="d-flex align-center gap-3 min-width-0 mb-3 mb-sm-0 flex-grow-1">
             <VIcon
-              :icon="isExpanded(grupo.group_id || grupo.id) ? 'tabler-chevron-down' : 'tabler-chevron-right'"
+              :icon="isExpanded(getGroupKey(grupo)) ? 'tabler-chevron-down' : 'tabler-chevron-right'"
               size="20"
               color="primary"
               class="flex-shrink-0"
@@ -111,7 +116,7 @@ const getDiffColor = (val) => {
               <span class="text-super-xs text-disabled d-block font-weight-black uppercase leading-none mb-1">Stock</span>
               <div class="d-flex align-center justify-center gap-x-1">
                 <span class="text-sm font-weight-black" :class="parseFloat(grupo.lote_quantity) === 0 ? 'text-error' : (parseFloat(grupo.diferencia_product) < 0 ? 'text-warning' : 'text-success')">
-                  {{ isMiniMarket ? formatInteger(grupo.lote_quantity) : grupo.lote_quantity }}
+                  {{ formatQuantity(grupo.lote_quantity) }}
                 </span>
                 <VIcon
                   v-if="parseFloat(grupo.diferencia_product) < 0"
@@ -128,7 +133,7 @@ const getDiffColor = (val) => {
             <div class="text-center min-width-indicator">
               <span class="text-super-xs text-disabled d-block font-weight-black uppercase leading-none mb-1">{{ isRestaurant ? 'Consumido' : 'Ventas' }}</span>
               <span class="text-sm font-weight-black text-high-emphasis">
-                {{ isMiniMarket ? formatInteger(grupo.total_sold_completed) : grupo.total_sold_completed }}
+                {{ formatQuantity(grupo.total_sold_completed) }}
               </span>
             </div>
 
@@ -143,7 +148,7 @@ const getDiffColor = (val) => {
                 variant="flat"
                 class="font-weight-black text-super-xs px-2"
               >
-                {{ parseFloat(grupo.diferencia_product) > 0 ? '+' : '' }}{{ Math.ceil(parseFloat(grupo.diferencia_product)) }}
+                {{ parseFloat(grupo.diferencia_product) > 0 ? '+' : '' }}{{ formatQuantity(grupo.diferencia_product) }}
               </VChip>
             </div>
           </div>
@@ -191,8 +196,8 @@ const getDiffColor = (val) => {
                     <td class="text-right text-xs font-weight-medium">
                       {{ isMiniMarket ? formatPriceWithDecimals(item.unit_cost) : formatPrice(item.unit_cost) }}
                     </td>
-                    <td class="text-center text-xs">
-                      {{ isMiniMarket ? formatInteger(item.total_sold_completed) : item.total_sold_completed }}
+                    <td class="text-center text-xs font-weight-bold">
+                      {{ formatQuantity(item.total_sold_completed) }}
                     </td>
                     <td class="text-center text-xs">
                       <div class="d-flex align-center justify-center gap-x-1">
@@ -202,7 +207,7 @@ const getDiffColor = (val) => {
                           variant="tonal"
                           class="font-weight-black"
                         >
-                          {{ isMiniMarket ? formatInteger(item.lote_quantity) : item.lote_quantity }}
+                          {{ formatQuantity(item.lote_quantity) }}
                         </VChip>
                         <VIcon
                           v-if="parseFloat(item.diferencia_product) < 0"
@@ -222,12 +227,12 @@ const getDiffColor = (val) => {
                     <td class="text-center text-xs text-medium-emphasis">{{ parseFloat(item.promedio_calculado || 0).toFixed(2) }}</td>
                     <td v-if="!isRestaurant" class="text-center">
                       <VChip :color="item.totalQuantityInAutoOrder > 0 ? 'info' : 'default'" variant="tonal" size="x-small">
-                        {{ item.totalQuantityInAutoOrder || 0 }}
+                        {{ formatQuantity(item.totalQuantityInAutoOrder) }}
                       </VChip>
                     </td>
                     <td class="text-center">
                       <span class="text-xs font-weight-black" :class="'text-' + getDiffColor(item.diferencia_product)">
-                        {{ parseFloat(item.diferencia_product) > 0 ? '+' : '' }}{{ Math.ceil(parseFloat(item.diferencia_product)) }}
+                        {{ parseFloat(item.diferencia_product) > 0 ? '+' : '' }}{{ formatQuantity(item.diferencia_product) }}
                       </span>
                     </td>
                   </tr>
@@ -264,7 +269,7 @@ const getDiffColor = (val) => {
                     <span class="text-super-xs text-disabled d-block uppercase font-weight-black leading-none mb-1">Stock</span>
                     <div class="d-flex align-center justify-center gap-x-1">
                       <span class="text-xs font-weight-black" :class="parseFloat(item.lote_quantity) === 0 ? 'text-error' : (parseFloat(item.diferencia_product) < 0 ? 'text-warning' : 'text-success')">
-                        {{ isMiniMarket ? formatInteger(item.lote_quantity) : item.lote_quantity }}
+                        {{ formatQuantity(item.lote_quantity) }}
                       </span>
                       <VIcon
                         v-if="parseFloat(item.diferencia_product) < 0"
@@ -281,7 +286,7 @@ const getDiffColor = (val) => {
                   <div class="bg-var-theme-background-light rounded px-2 py-1 flex-1 text-center border-dashed-thin">
                     <span class="text-super-xs text-disabled d-block uppercase font-weight-black leading-none mb-1">Dif.</span>
                     <span class="text-xs font-weight-black" :class="'text-' + getDiffColor(item.diferencia_product)">
-                        {{ parseFloat(item.diferencia_product) > 0 ? '+' : '' }}{{ Math.ceil(parseFloat(item.diferencia_product)) }}
+                        {{ parseFloat(item.diferencia_product) > 0 ? '+' : '' }}{{ formatQuantity(item.diferencia_product) }}
                     </span>
                   </div>
                 </div>

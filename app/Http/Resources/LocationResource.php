@@ -17,6 +17,8 @@ class LocationResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
+            'products_count' => (int) ($this->products_count ?? 0),
+            'units_count' => (float) ($this->units_count ?? 0),
         ];
     }
 }

@@ -86,7 +86,7 @@ const handleClear = () => {
 <template>
   <AppFilterBase
     :search="props.searchQuery"
-    :has-advanced-filters="isAdvancedFiltersVisible || !!(props.selectedLaboratory || props.stockStatusFilter !== null || props.stock || props.days || props.tipoFiltracion !== 'weighted' || props.expProd || props.isColombian)"
+    :has-advanced-filters="isAdvancedFiltersVisible || !!(props.selectedLaboratory || props.stockStatusFilter !== null || props.stock || props.days || props.tipoFiltracion !== 'weighted' || props.expProd || props.isColombian || props.isStrictSearch)"
     :show-export="true"
     :export-loading="props.isExportingPdf || props.isExportingExcel"
     search-placeholder="ID, Producto, C. Activo..."
@@ -96,21 +96,26 @@ const handleClear = () => {
     @export="ext => ext === 'xlsx' ? emit('export-excel', ext) : emit('export-pdf')"
   >
     <template #search-extra>
-      <!-- Búsqueda Estricta -->
+      <!-- Búsqueda Estricta Rápida en barra principal -->
       <VCol cols="auto" class="d-none d-lg-flex">
-        <VCheckbox
-          :model-value="props.isStrictSearch"
-          label="Estricta"
-          color="primary"
-          density="compact"
-          hide-details
-          @update:model-value="emit('update:isStrictSearch', $event)"
-        />
+        <VChip
+          filter
+          :color="props.isStrictSearch ? 'primary' : undefined"
+          :variant="props.isStrictSearch ? 'flat' : 'tonal'"
+          size="small"
+          class="cursor-pointer font-weight-medium"
+          @click="emit('update:isStrictSearch', !props.isStrictSearch)"
+        >
+          <VIcon start icon="tabler-zoom-check" size="14" />
+          Estricta
+          <VTooltip activator="parent" location="top">Búsqueda exacta por coincidencia estricta</VTooltip>
+        </VChip>
       </VCol>
     </template>
 
     <template #advanced-filters>
-      <!-- Filtros Primera Fila -->
+      <!-- ── FILA 1: Jerarquía y Estado de Stock ────────────────────────── -->
+      <!-- Laboratorio / Marca -->
       <VCol cols="12" sm="6" md="4">
         <VAutocomplete
           :model-value="props.selectedLaboratory"
@@ -130,6 +135,7 @@ const handleClear = () => {
         />
       </VCol>
 
+      <!-- Estado Stock (Con / Sin Stock) -->
       <VCol cols="12" sm="6" md="4">
         <VSelect
           :model-value="props.stockStatusFilter"
@@ -143,6 +149,7 @@ const handleClear = () => {
         />
       </VCol>
 
+      <!-- Nivel Stock (Exceso / Fallas / Todos) -->
       <VCol cols="12" sm="6" md="4">
         <VSelect
           :model-value="props.stock"
@@ -156,8 +163,9 @@ const handleClear = () => {
         />
       </VCol>
 
-      <!-- Filtros Segunda Fila -->
-      <VCol cols="12" sm="6" md="3">
+      <!-- ── FILA 2: Parámetros de Visualización y Cálculo ──────────────── -->
+      <!-- Vista (Individual / Grupal) -->
+      <VCol cols="12" sm="6" md="4">
         <VSelect
           :model-value="props.viewType"
           :items="viewTypeOptions"
@@ -169,7 +177,8 @@ const handleClear = () => {
         />
       </VCol>
 
-      <VCol cols="12" sm="6" md="3">
+      <!-- Días Proyección -->
+      <VCol cols="12" sm="6" md="4">
         <VSelect
           :model-value="props.days"
           placeholder="Días Proyección"
@@ -181,7 +190,8 @@ const handleClear = () => {
         />
       </VCol>
 
-      <VCol cols="12" sm="6" md="3">
+      <!-- Método de Cálculo -->
+      <VCol cols="12" sm="6" md="4">
         <VSelect
           :model-value="props.tipoFiltracion"
           placeholder="Cálculo Por"
@@ -193,23 +203,53 @@ const handleClear = () => {
         />
       </VCol>
 
-      <VCol cols="12" sm="6" md="3" class="d-flex flex-wrap align-center gap-x-3 ps-4">
-        <VCheckbox
-          :model-value="props.expProd"
-          label="Prox. Exp."
-          color="error"
-          density="compact"
-          hide-details
-          @update:model-value="emit('update:expProd', $event)"
-        />
-        <VCheckbox
-          :model-value="props.isColombian"
-          label="COL"
-          color="info"
-          density="compact"
-          hide-details
-          @update:model-value="emit('update:isColombian', $event)"
-        />
+      <!-- ── FILA 3: Filtros Rápidos (Chips Interactivos) ──────────────── -->
+      <VCol cols="12">
+        <div class="d-flex align-center flex-wrap gap-2 pt-1">
+          <span class="text-caption text-medium-emphasis font-weight-medium me-1">Filtros Rápidos:</span>
+
+          <!-- Chip Búsqueda Estricta (Móvil y Desktop) -->
+          <VChip
+            filter
+            :color="props.isStrictSearch ? 'primary' : undefined"
+            :variant="props.isStrictSearch ? 'flat' : 'tonal'"
+            size="small"
+            class="cursor-pointer font-weight-medium"
+            @click="emit('update:isStrictSearch', !props.isStrictSearch)"
+          >
+            <VIcon start icon="tabler-zoom-check" size="14" />
+            Búsqueda Estricta
+            <VTooltip activator="parent" location="top">Búsqueda exacta de producto</VTooltip>
+          </VChip>
+
+          <!-- Chip Próximos a Vencer -->
+          <VChip
+            filter
+            :color="props.expProd ? 'error' : undefined"
+            :variant="props.expProd ? 'flat' : 'tonal'"
+            size="small"
+            class="cursor-pointer font-weight-medium"
+            @click="emit('update:expProd', !props.expProd)"
+          >
+            <VIcon start icon="tabler-calendar-time" size="14" />
+            Próximos a Vencer
+            <VTooltip activator="parent" location="top">Filtrar lotes y productos próximos a expirar</VTooltip>
+          </VChip>
+
+          <!-- Chip Origen Colombia (COL) -->
+          <VChip
+            filter
+            :color="props.isColombian ? 'info' : undefined"
+            :variant="props.isColombian ? 'flat' : 'tonal'"
+            size="small"
+            class="cursor-pointer font-weight-medium"
+            @click="emit('update:isColombian', !props.isColombian)"
+          >
+            <VIcon start icon="tabler-flag" size="14" />
+            Colombia (COL)
+            <VTooltip activator="parent" location="top">Filtrar solo productos de origen Colombia</VTooltip>
+          </VChip>
+        </div>
       </VCol>
     </template>
   </AppFilterBase>
