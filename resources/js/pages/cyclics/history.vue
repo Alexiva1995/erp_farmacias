@@ -108,7 +108,7 @@ const viewCycleDetails = (cycleId) => {
 </script>
 
 <template>
-  <div>
+  <VContainer fluid class="pa-0">
     <CycleSummaryFilters
       v-model:startDate="startDate"
       v-model:endDate="endDate"
@@ -149,5 +149,5 @@ const viewCycleDetails = (cycleId) => {
       @update:options="updateTableOptions"
       @view-cycle-details="viewCycleDetails"
     />
-  </div>
+  </VContainer>
 </template>

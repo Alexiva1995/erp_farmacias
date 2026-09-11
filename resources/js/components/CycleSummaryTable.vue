@@ -1,5 +1,6 @@
 <script setup>
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
+import AppEmptyState from "@/components/AppEmptyState.vue";
 import { formatDateSimple, formatPrice } from "@/utils/formatters";
 import { ref } from "vue";
 
@@ -33,39 +34,44 @@ const headers = ref([
     title: "#", 
     key: "cycle_id", 
     sortable: true, 
-    align: "center",
-    cellClass: "font-weight-black text-primary",
+    align: "start",
+    cellClass: "font-weight-black text-primary d-none d-sm-table-cell",
+    headerClass: "d-none d-sm-table-cell",
+    width: "70px",
   },
-  { title: "Fec. Inicio", key: "start_date", sortable: true, align: "center" },
-  { title: "Fec. Fin", key: "end_date", sortable: true, align: "center" },
-  { title: "Estado", key: "cycle_status", sortable: true, align: "center" },
+  { title: "Fec. Inicio", key: "start_date", sortable: true, align: "center", width: "130px" },
+  { title: "Fec. Fin", key: "end_date", sortable: true, align: "center", width: "130px" },
+  { title: "Estado", key: "cycle_status", sortable: true, align: "center", width: "110px" },
   {
-    title: "Tot. Productos",
+    title: "Productos",
     key: "total_products",
     sortable: true,
     align: "center",
+    width: "110px",
   },
   {
-    title: "Tot. Sobrante",
+    title: "Sobrante",
     key: "total_surplus",
     sortable: true,
-    align: "center",
+    align: "end",
+    width: "130px",
   },
   {
-    title: "Tot. Faltante",
+    title: "Faltante",
     key: "total_shortage",
     sortable: true,
-    align: "center",
+    align: "end",
+    width: "130px",
   },
-  { title: "Total", key: "net_total", sortable: true, align: "center" },
-  { title: "Acciones", key: "actions", sortable: false, align: "center" },
+  { title: "Total Neto", key: "net_total", sortable: true, align: "end", width: "130px" },
+  { title: "Acciones", key: "actions", sortable: false, align: "center", width: "110px" },
 ]);
 
 const getCycleStatusColor = (status) => {
   if (status === "active") return "success";
   if (status === "closed") return "info";
   if (status === "cancelled") return "error";
-  return "grey";
+  return "secondary";
 };
 
 const getCycleStatusText = (status) => {
@@ -85,18 +91,21 @@ const viewCycleDetails = (item) => {
     emit("view-cycle-details", id);
   }
 };
-
-const handleMobilePageChange = (newPage) => {
-  emit('update:options', {
-    page: newPage,
-    itemsPerPage: props.itemsPerPage,
-    sortBy: [],
-  });
-};
 </script>
 
 <template>
-  <VCard class="mt-4 rounded-lg">
+  <VCard class="mt-4 rounded-lg border shadow-sm overflow-hidden">
+    <!-- Cabecera Estándar (igual a Inventario / Productos) -->
+    <VCardTitle class="d-flex align-center pa-4">
+      <span class="text-h6 font-weight-bold">Historial de Ciclos de Inventario</span>
+      <VSpacer />
+      <VChip size="small" color="primary" variant="tonal" class="font-weight-black">
+        {{ props.totalCycles }} CICLOS
+      </VChip>
+    </VCardTitle>
+
+    <VDivider />
+
     <!-- Vista de Escritorio (Tabla) -->
     <div class="d-none d-md-block">
       <VDataTableServer
@@ -113,7 +122,10 @@ const handleMobilePageChange = (newPage) => {
         density="compact"
       >
         <template #item.cycle_id="{ item: cycle }">
-          <span class="font-weight-black text-primary">{{ cycle.cycle_id }}</span>
+          <div class="d-flex align-center gap-2 py-2">
+            <div class="header-indicator success rounded-pill"></div>
+            <span class="font-weight-black text-primary">#{{ cycle.cycle_id }}</span>
+          </div>
         </template>
 
         <template #item.start_date="{ item: cycle }">
@@ -134,35 +146,42 @@ const handleMobilePageChange = (newPage) => {
           <VChip
             :color="getCycleStatusColor(cycle.cycle_status)"
             size="x-small"
+            variant="tonal"
             label
-            class="text-xs"
+            class="font-weight-black text-uppercase"
           >
             {{ getCycleStatusText(cycle.cycle_status) }}
           </VChip>
         </template>
 
         <template #item.total_products="{ item: cycle }">
-          <span class="text-sm font-weight-medium">
+          <VChip
+            :color="Number(cycle.total_products || 0) > 0 ? 'primary' : 'secondary'"
+            size="x-small"
+            variant="tonal"
+            label
+            class="font-weight-black"
+          >
             {{ cycle.total_products || 0 }}
-          </span>
+          </VChip>
         </template>
 
         <template #item.total_surplus="{ item: cycle }">
           <span
-            v-if="cycle.total_surplus > 0"
-            class="text-sm text-success font-weight-medium"
+            v-if="Number(cycle.total_surplus || 0) > 0"
+            class="text-sm text-success font-weight-bold"
           >
-            {{ formatPrice(cycle.total_surplus) }}
+            +{{ formatPrice(cycle.total_surplus) }}
           </span>
           <span v-else class="text-sm text-disabled">{{ formatPrice(0) }}</span>
         </template>
 
         <template #item.total_shortage="{ item: cycle }">
           <span
-            v-if="cycle.total_shortage > 0"
-            class="text-sm text-error font-weight-medium"
+            v-if="Number(cycle.total_shortage || 0) > 0"
+            class="text-sm text-error font-weight-bold"
           >
-            {{ formatPrice(cycle.total_shortage) }}
+            -{{ formatPrice(cycle.total_shortage) }}
           </span>
           <span v-else class="text-sm text-disabled">{{ formatPrice(0) }}</span>
         </template>
@@ -171,9 +190,9 @@ const handleMobilePageChange = (newPage) => {
           <span
             class="text-sm font-weight-black"
             :class="{
-              'text-success': cycle.net_total > 0,
-              'text-error': cycle.net_total < 0,
-              'text-medium-emphasis': cycle.net_total === 0,
+              'text-success': Number(cycle.net_total || 0) > 0,
+              'text-error': Number(cycle.net_total || 0) < 0,
+              'text-medium-emphasis': Number(cycle.net_total || 0) === 0,
             }"
           >
             {{ formatPrice(cycle.net_total) }}
@@ -181,138 +200,134 @@ const handleMobilePageChange = (newPage) => {
         </template>
 
         <template #item.actions="{ item }">
-          <IconBtn
-            size="small"
-            color="primary"
-            variant="tonal"
-            @click.stop="viewCycleDetails(item)"
-          >
-            <VIcon icon="tabler-eye" />
-            <VTooltip activator="parent">Ver Detalles</VTooltip>
-          </IconBtn>
+          <div class="d-flex align-center justify-center">
+            <VTooltip text="Ver detalles" location="top">
+              <template #activator="{ props: tooltipProps }">
+                <IconBtn
+                  v-bind="tooltipProps"
+                  size="small"
+                  color="info"
+                  variant="tonal"
+                  @click.stop="viewCycleDetails(item)"
+                >
+                  <VIcon icon="tabler-eye" size="18" />
+                </IconBtn>
+              </template>
+            </VTooltip>
+          </div>
         </template>
 
-        <template #bottom>
-          <VDivider />
-          <div class="d-flex align-center justify-space-between pa-2">
-            <div class="text-xs text-disabled">
-              Mostrando {{ props.cycles.length }} de
-              {{ props.totalCycles }} ciclos
-            </div>
-          </div>
+        <template #no-data>
+          <AppEmptyState
+            title="No se encontraron ciclos de inventario"
+            message="No hay ciclos registrados o no coinciden con los filtros aplicados."
+            icon="tabler-clipboard-list"
+          />
         </template>
       </VDataTableServer>
     </div>
 
-    <!-- Vista de Móvil (Tarjetas Compactas) -->
+    <!-- Vista de Móvil (Tarjetas Compactas con estilo de inventario) -->
     <div class="d-block d-md-none pa-2">
-      <VProgressLinear v-if="props.loading" indeterminate color="primary" class="mb-2" />
-      
-      <div v-if="props.cycles.length === 0 && !props.loading" class="text-center py-8 text-disabled">
-        No se encontraron ciclos.
+      <div v-if="props.loading" class="d-flex flex-column gap-2">
+        <VProgressLinear indeterminate color="primary" class="mb-2" />
+        <VSkeletonLoader v-for="i in 3" :key="i" type="list-item-two-line" class="mb-2 rounded-lg border" />
       </div>
-
-      <div class="d-flex flex-column gap-2">
+      
+      <div v-else-if="props.cycles.length" class="d-flex flex-column gap-2">
         <VCard
           v-for="cycle in props.cycles"
           :key="cycle.cycle_id"
           variant="flat"
-          class="cycle-mobile-card border mb-2 premium-card"
+          class="border mb-1 rounded-lg pa-3"
         >
-          <div class="pa-3">
-            <!-- Cabecera Compacta: ID + Fechas | Acciones + Estado -->
-            <div class="d-flex align-start justify-space-between mb-3">
-              <div class="d-flex flex-column min-width-0">
-                <div class="d-flex align-center gap-2 mb-1">
-                  <span class="text-sm font-weight-black text-primary">#{{ cycle.cycle_id }}</span>
-                  <VChip
-                    :color="getCycleStatusColor(cycle.cycle_status)"
-                    size="x-small"
-                    label
-                    variant="flat"
-                    class="text-super-xs font-weight-bold"
-                  >
-                    {{ getCycleStatusText(cycle.cycle_status).toUpperCase() }}
-                  </VChip>
-                </div>
-                <div class="text-super-xs text-medium-emphasis d-flex align-center flex-wrap gap-x-2">
-                  <span class="d-flex align-center">
-                    <VIcon icon="tabler-calendar-plus" size="10" class="me-1" />
-                    {{ formatDateSimple(cycle.start_date) }}
-                  </span>
-                  <span class="text-disabled">|</span>
-                  <span class="d-flex align-center">
-                    <VIcon icon="tabler-calendar-check" size="10" class="me-1" />
-                    {{ formatDateSimple(cycle.end_date) }}
-                  </span>
-                </div>
-              </div>
-
-              <div class="d-flex align-center">
-                <IconBtn
+          <!-- Cabecera Compacta: ID + Fechas | Acciones + Estado -->
+          <div class="d-flex align-start justify-space-between mb-2">
+            <div class="d-flex flex-column min-width-0">
+              <div class="d-flex align-center gap-2 mb-1">
+                <span class="text-sm font-weight-black text-primary">#{{ cycle.cycle_id }}</span>
+                <VChip
+                  :color="getCycleStatusColor(cycle.cycle_status)"
+                  size="x-small"
+                  label
                   variant="tonal"
-                  color="primary"
-                  size="32"
-                  class="rounded"
-                  @click.stop="viewCycleDetails(cycle)"
+                  class="font-weight-black text-uppercase"
                 >
-                  <VIcon icon="tabler-eye" size="18" />
-                </IconBtn>
+                  {{ getCycleStatusText(cycle.cycle_status) }}
+                </VChip>
+              </div>
+              <div class="text-super-xs text-medium-emphasis d-flex align-center flex-wrap gap-x-2">
+                <span class="d-flex align-center">
+                  <VIcon icon="tabler-calendar-plus" size="12" class="me-1 text-disabled" />
+                  {{ formatDateSimple(cycle.start_date) }}
+                </span>
+                <span class="text-disabled">|</span>
+                <span class="d-flex align-center">
+                  <VIcon icon="tabler-calendar-check" size="12" class="me-1 text-disabled" />
+                  {{ formatDateSimple(cycle.end_date) }}
+                </span>
               </div>
             </div>
 
-            <VDivider class="my-3 border-opacity-10" />
+            <div class="d-flex align-center">
+              <IconBtn
+                variant="tonal"
+                color="info"
+                size="small"
+                @click.stop="viewCycleDetails(cycle)"
+              >
+                <VIcon icon="tabler-eye" size="18" />
+              </IconBtn>
+            </div>
+          </div>
 
-            <!-- Resumen Financiero -->
-            <div class="d-flex align-center justify-space-between bg-var-theme-background px-3 py-2 rounded border-dashed-thin">
-              <div class="d-flex flex-column">
-                <span class="text-super-xs text-disabled text-uppercase font-weight-black">Bal. Neto</span>
-                <span 
-                  class="text-base font-weight-black"
-                  :class="{
-                    'text-success': cycle.net_total > 0,
-                    'text-error': cycle.net_total < 0
-                  }"
-                >
-                  {{ formatPrice(cycle.net_total) }}
-                </span>
-              </div>
-              <div class="d-flex flex-column text-right">
-                <span class="text-super-xs text-disabled text-uppercase font-weight-black">Productos</span>
-                <span class="text-base font-weight-black text-primary">
-                  {{ cycle.total_products || 0 }} <small class="text-super-xs">UNDS</small>
-                </span>
-              </div>
+          <VDivider class="my-2" />
+
+          <!-- Resumen Financiero y Productos -->
+          <div class="d-flex align-center justify-space-between bg-var-theme-background px-3 py-2 rounded">
+            <div class="d-flex flex-column">
+              <span class="text-super-xs text-disabled text-uppercase font-weight-black">Bal. Neto</span>
+              <span 
+                class="text-sm font-weight-black"
+                :class="{
+                  'text-success': Number(cycle.net_total || 0) > 0,
+                  'text-error': Number(cycle.net_total || 0) < 0
+                }"
+              >
+                {{ formatPrice(cycle.net_total) }}
+              </span>
+            </div>
+            <div class="d-flex flex-column align-end">
+              <span class="text-super-xs text-disabled text-uppercase font-weight-black">Productos</span>
+              <VChip size="x-small" color="primary" variant="tonal" label class="font-weight-black mt-1">
+                {{ cycle.total_products || 0 }}
+              </VChip>
             </div>
           </div>
         </VCard>
+
+        <!-- Paginación Móvil -->
+        <AppMobilePagination
+          :page="props.page"
+          :items-per-page="props.itemsPerPage"
+          :total-items="props.totalCycles"
+          :loading="props.loading"
+          @change="(options) => emit('update:options', { ...options, sortBy: [], groupBy: [] })"
+        />
       </div>
 
-      <!-- Paginación Móvil -->
-      <div class="d-flex justify-center mt-4">
-         <AppMobilePagination
-            :page="props.page"
-            :items-per-page="props.itemsPerPage"
-            :total-items="props.totalCycles"
-            :loading="props.loading"
-            @change="(options) => emit('update:options', { ...options, sortBy: [], groupBy: [] })"
-          />
+      <div v-else>
+        <AppEmptyState
+          title="No se encontraron ciclos"
+          message="No hay registros de ciclos de inventario."
+          icon="tabler-clipboard-list"
+        />
       </div>
     </div>
   </VCard>
 </template>
 
 <style scoped>
-.cycle-mobile-card {
-  overflow: hidden;
-  border-radius: 8px !important;
-  background: rgb(var(--v-theme-surface));
-}
-
-.border-dashed-thin {
-  border: 1px dashed rgba(var(--v-border-color), 0.3) !important;
-}
-
 .bg-var-theme-background {
   background-color: rgba(var(--v-border-color), 0.05);
 }
@@ -322,33 +337,18 @@ const handleMobilePageChange = (newPage) => {
   line-height: 1;
 }
 
-.gap-1 { gap: 4px !important; }
-.gap-2 { gap: 8px !important; }
-.gap-4 { gap: 16px !important; }
-
-:deep(.v-data-table) {
-  font-size: 0.875rem;
-}
-
-:deep(.v-data-table td) {
-  block-size: auto !important;
-  padding-block: 10px !important;
-  padding-inline: 16px !important;
-}
-
 :deep(.v-data-table th) {
   font-size: 0.75rem !important;
-  font-weight: 600 !important;
-  padding-block: 10px !important;
-  padding-inline: 16px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
 }
 
-.premium-card {
-  border-radius: 12px !important;
-  transition: transform 0.2s ease;
+.header-indicator {
+  block-size: 16px;
+  inline-size: 3px;
 }
 
-.premium-card:active {
-  transform: scale(0.98);
+.header-indicator.success {
+  background: linear-gradient(to bottom, #10b981, #059669);
 }
 </style>
