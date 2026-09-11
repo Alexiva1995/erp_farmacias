@@ -58,10 +58,10 @@ const updateTableOptionsOffer = (options) => {
 const fetchCategories = async () => {
   if (categories.value.length > 0) return;
   try {
-    const res = await axios.get("/categories", { params: { type: "dishes" } });
+    const res = await axios.get("/categories");
     categories.value = res.data;
   } catch (error) {
-    console.error("Error al cargar categorías de platos:", error);
+    console.error("Error al cargar categorías:", error);
     toast.error("Error al cargar las categorías");
   }
 };

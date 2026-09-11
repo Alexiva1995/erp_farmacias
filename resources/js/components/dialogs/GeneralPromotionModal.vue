@@ -60,7 +60,7 @@ const onCancel = () => {
 <template>
   <VDialog
     :model-value="props.modelValue"
-    max-width="700px"
+    max-width="680px"
     persistent
     scrollable
     transition="dialog-bottom-transition"
@@ -72,24 +72,24 @@ const onCancel = () => {
     <VCard :class="mobile ? 'rounded-0' : 'detail-dialog-card rounded-xl border-0 shadow-xl overflow-hidden bg-surface'">
       <!-- Header Premium con Gradiente -->
       <VCardTitle class="pa-0">
-        <div class="premium-header pa-4 d-flex align-center shadow-sm">
-          <VAvatar color="white" variant="flat" size="40" class="me-3 elevation-1">
-            <VIcon icon="tabler-tag" size="24" color="primary" />
+        <div class="header-gradient pa-4 d-flex align-center shadow-sm">
+          <VAvatar color="white" variant="flat" size="38" class="me-3 elevation-1">
+            <VIcon icon="tabler-tags" size="22" color="primary" />
           </VAvatar>
           <div class="d-flex flex-column leading-none">
             <h2 class="text-h6 font-weight-black text-white leading-tight mb-0">
               {{ props.isEditing ? 'Editar Promoción General' : 'Nueva Promoción General' }}
             </h2>
             <div class="d-flex align-center gap-2 mt-1">
-              <span class="text-white opacity-75 uppercase font-weight-bold" style="font-size: 0.6rem; letter-spacing: 0.05em;">
-                Promociones Generales de Categorías
+              <span class="text-white opacity-75 uppercase font-weight-bold" style="font-size: 0.65rem; letter-spacing: 0.05em;">
+                Promociones y Reglas de Descuento Masivo
               </span>
             </div>
           </div>
           <VSpacer />
           <VBtn
             icon="tabler-x"
-            variant="tonal"
+            variant="outlined"
             color="white"
             size="small"
             class="rounded-lg"
@@ -99,26 +99,39 @@ const onCancel = () => {
         </div>
       </VCardTitle>
 
-      <VCardText class="pa-4 pa-sm-6 bg-light">
-        <div class="d-flex align-center gap-2 mb-4">
-          <div class="header-indicator primary shadow-sm" />
-          <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Configuración de la Promoción</span>
-        </div>
+      <VCardText class="pa-4 pa-sm-5 bg-surface">
+        <!-- Bloque 1: Configuración de la Regla -->
+        <div class="mb-5">
+          <div class="d-flex align-center justify-space-between mb-2">
+            <div class="d-flex align-center gap-1-5">
+              <div class="header-indicator primary" />
+              <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">Regla de Promoción</span>
+            </div>
+            <div class="d-flex align-center gap-2">
+              <span class="text-super-xs font-weight-bold text-disabled uppercase">Activa</span>
+              <VSwitch
+                v-model="localFormData.is_active"
+                color="primary"
+                hide-details
+                density="compact"
+                inset
+              />
+            </div>
+          </div>
 
-        <VCard variant="flat" class="pa-5 bg-white rounded-xl border shadow-sm mb-0">
           <VRow dense>
             <!-- Tipo de Promoción -->
-            <VCol cols="12">
-              <div class="mb-4">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Tipo de Oferta</span>
+            <VCol cols="12" :sm="localFormData.type === 'general' || localFormData.type === 'fixed_price' ? 7 : 12">
+              <div class="mb-2 mb-sm-0">
+                <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Tipo de Oferta</span>
                 <VSelect
                   v-model="localFormData.type"
                   :items="promoTypes"
                   item-title="title"
                   item-value="value"
                   variant="outlined"
-                  density="comfortable"
-                  hide-details
+                  density="compact"
+                  hide-details="auto"
                   class="rounded-lg font-weight-bold"
                   :disabled="props.loading"
                 />
@@ -126,9 +139,9 @@ const onCancel = () => {
             </VCol>
 
             <!-- Porcentaje de Descuento (Si es Oferta General) -->
-            <VCol v-if="localFormData.type === 'general'" cols="12">
-              <div class="mb-4">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Porcentaje de Descuento (%)</span>
+            <VCol v-if="localFormData.type === 'general'" cols="12" sm="5">
+              <div class="mb-2 mb-sm-0">
+                <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">% Descuento</span>
                 <VTextField
                   v-model.number="localFormData.fixed_price"
                   type="number"
@@ -138,97 +151,96 @@ const onCancel = () => {
                   suffix="%"
                   placeholder="Ej: 10"
                   variant="outlined"
-                  density="comfortable"
-                  hide-details
-                  class="rounded-lg font-weight-bold"
+                  density="compact"
+                  hide-details="auto"
+                  prepend-inner-icon="tabler-percentage"
+                  class="rounded-lg font-weight-black"
                   :disabled="props.loading"
                   :error="!!props.formErrors.fixed_price"
                   :error-messages="props.formErrors.fixed_price"
                 />
-                <span class="text-caption text-medium-emphasis mt-1 d-block">Si no seleccionas categorías, este porcentaje se aplicará a TODOS los productos.</span>
               </div>
             </VCol>
 
             <!-- Precio Fijo (Solo si aplica) -->
-            <VCol v-if="localFormData.type === 'fixed_price'" cols="12">
-              <div class="mb-4">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Precio Fijo para Categoría</span>
+            <VCol v-if="localFormData.type === 'fixed_price'" cols="12" sm="5">
+              <div class="mb-2 mb-sm-0">
+                <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Precio Fijo</span>
                 <VTextField
                   v-model.number="localFormData.fixed_price"
                   type="number"
                   min="0"
                   step="0.01"
                   prefix="$"
+                  placeholder="0.00"
                   variant="outlined"
-                  density="comfortable"
-                  hide-details
-                  class="rounded-lg font-weight-bold"
+                  density="compact"
+                  hide-details="auto"
+                  class="rounded-lg font-weight-black"
                   :disabled="props.loading"
                   :error="!!props.formErrors.fixed_price"
                   :error-messages="props.formErrors.fixed_price"
                 />
               </div>
             </VCol>
-
-            <!-- Categorías Aplicables (Multiselect) -->
-            <VCol cols="12">
-              <div class="mb-4">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Categorías Aplicables</span>
-                <VSelect
-                  v-model="localFormData.categories"
-                  :items="props.categories"
-                  item-title="name"
-                  item-value="id"
-                  multiple
-                  chips
-                  closable-chips
-                  placeholder="Selecciona una o más categorías"
-                  variant="outlined"
-                  density="comfortable"
-                  hide-details
-                  class="rounded-lg"
-                  :disabled="props.loading"
-                  :error="!!props.formErrors.categories"
-                  :error-messages="props.formErrors.categories"
-                />
-              </div>
-            </VCol>
-
-            <!-- Switch Activo -->
-            <VCol cols="12">
-              <VSwitch
-                v-model="localFormData.is_active"
-                label="¿Activar promoción?"
-                color="primary"
-                hide-details
-              />
-            </VCol>
           </VRow>
-        </VCard>
+        </div>
+
+        <!-- Bloque 2: Alcance y Categorías -->
+        <div class="mb-2">
+          <div class="d-flex align-center gap-1-5 mb-2">
+            <div class="header-indicator primary" />
+            <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">Categorías Aplicables</span>
+          </div>
+
+          <div>
+            <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Seleccionar Categorías (Opcional si aplica a todo)</span>
+            <VAutocomplete
+              v-model="localFormData.categories"
+              :items="props.categories"
+              :item-title="(item) => `${item.id} - ${item.name}`"
+              item-value="id"
+              multiple
+              chips
+              closable-chips
+              placeholder="SELECCIONA UNA O MÁS CATEGORÍAS..."
+              variant="outlined"
+              density="compact"
+              hide-details="auto"
+              class="rounded-lg font-weight-medium"
+              :disabled="props.loading"
+              :error="!!props.formErrors.categories"
+              :error-messages="props.formErrors.categories"
+            />
+            <span v-if="localFormData.type === 'general' && (!localFormData.categories || localFormData.categories.length === 0)" class="text-super-xs text-primary font-weight-medium mt-1 d-block">
+              ℹ️ Si no seleccionas ninguna categoría, el descuento se aplicará de forma global a todos los productos.
+            </span>
+          </div>
+        </div>
       </VCardText>
 
       <VDivider />
 
-      <VCardActions class="pa-4 bg-white border-t px-6">
+      <VCardActions class="pa-3 pa-sm-4 bg-surface border-t">
         <VRow dense class="w-100 ma-0">
-          <VCol cols="12" sm="6" class="pa-1">
+          <VCol cols="6" class="pa-1">
             <VBtn
               color="secondary"
               variant="outlined"
-              height="50"
+              height="44"
               block
-              class="font-weight-black rounded-lg text-button uppercase"
+              class="font-weight-bold rounded-lg text-button uppercase"
               @click="onCancel"
               :disabled="props.loading"
             >
               Cancelar
             </VBtn>
           </VCol>
-          <VCol cols="12" sm="6" class="pa-1">
+          <VCol cols="6" class="pa-1">
             <VBtn
               color="primary"
               variant="flat"
-              height="50"
+              height="44"
               block
               class="font-weight-black rounded-lg shadow-primary text-button uppercase"
               :loading="props.loading"
@@ -245,13 +257,12 @@ const onCancel = () => {
 </template>
 
 <style scoped>
-.premium-header {
-  background: var(--brand-gradient, linear-gradient(135deg, #7A0099, #E20074)) !important;
-}
-
-.premium-header h2,
-.premium-header span {
-  color: #ffffff !important;
+.header-gradient {
+  background: linear-gradient(
+    135deg,
+    rgb(var(--v-theme-primary)) 0%,
+    rgb(var(--v-theme-gradient-end, var(--v-theme-primary))) 100%
+  );
 }
 
 .detail-dialog-card {
@@ -259,13 +270,13 @@ const onCancel = () => {
 }
 
 .header-indicator {
-  inline-size: 4px;
-  block-size: 16px;
-  border-radius: 10px;
+  inline-size: 3px;
+  block-size: 14px;
+  border-radius: 4px;
 }
 
 .header-indicator.primary {
-  background-color: #3b82f6;
+  background-color: rgb(var(--v-theme-primary));
 }
 
 .shadow-primary {
@@ -278,10 +289,18 @@ const onCancel = () => {
 }
 
 .letter-spacing-1 {
-  letter-spacing: 1px !important;
+  letter-spacing: 0.5px !important;
 }
 
 .leading-none {
   line-height: 1 !important;
+}
+
+.gap-1-5 {
+  gap: 6px !important;
+}
+
+.border-t {
+  border-block-start: 1px solid rgba(var(--v-border-color), 0.08) !important;
 }
 </style>

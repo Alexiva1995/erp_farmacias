@@ -255,10 +255,17 @@ const validateForm = () => {
   }
 
   let isValid = true;
+  const seenProductIds = new Set();
   formData.value.pack_products.forEach((product, index) => {
     if (!product.product) {
       formErrors.value[`product_${index}`] = "Selecciona un producto";
       isValid = false;
+    } else {
+      if (seenProductIds.has(product.product.id)) {
+        formErrors.value[`product_${index}`] = "Este producto ya está en el pack. Modifica su cantidad en lugar de añadirlo dos veces.";
+        isValid = false;
+      }
+      seenProductIds.add(product.product.id);
     }
 
     if (!product.quantity || product.quantity < 1) {
@@ -539,15 +546,13 @@ watch(
                 <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">Datos Generales del Pack</span>
               </div>
               <div class="d-flex align-center gap-2">
-                <span class="text-super-xs font-weight-bold text-disabled uppercase">Estado:</span>
+                <span class="text-super-xs font-weight-bold text-disabled uppercase">Activo</span>
                 <VSwitch
                   v-model="formData.is_active"
-                  color="success"
+                  color="primary"
                   hide-details
                   density="compact"
                   inset
-                  :label="formData.is_active ? 'ACTIVO' : 'INACTIVO'"
-                  class="font-weight-black text-xs"
                 />
               </div>
             </div>
@@ -745,42 +750,43 @@ watch(
       <VDivider />
 
       <!-- Footer y Acciones -->
-      <VCardActions class="pa-4 bg-surface border-t">
-        <div class="d-flex flex-column flex-sm-row align-center justify-space-between w-100 gap-3">
-          <!-- Resumen de Costos y Ahorro -->
-          <div class="d-flex align-center gap-4 flex-wrap">
+      <VCardActions class="pa-3 pa-sm-4 bg-surface border-t">
+        <div class="d-flex flex-column flex-md-row align-center justify-space-between w-100 gap-3">
+          <!-- Tarjeta / Bloque de Totales Equilibrado -->
+          <div class="d-flex align-center gap-3 pa-2-5 rounded-lg border bg-var-theme-background w-100 w-md-auto flex-wrap justify-space-between justify-sm-start">
             <div class="d-flex flex-column">
-              <span class="text-super-xs font-weight-bold text-disabled uppercase">Precio Regular</span>
+              <span class="text-super-xs font-weight-bold text-disabled uppercase">Precio Base</span>
               <span class="text-xs font-weight-bold text-medium-emphasis text-decoration-line-through">
                 {{ formatCurrency(regularTotalPrice, 'USD') }}
               </span>
             </div>
 
-            <VChip
-              v-if="totalSavings > 0"
-              color="success"
-              variant="flat"
-              size="small"
-              class="font-weight-black px-2 rounded"
-            >
-              AHORRO: {{ formatCurrency(totalSavings, 'USD') }}
-            </VChip>
+            <VDivider vertical class="mx-1 d-none d-sm-block" style="height: 24px;" />
 
-            <div class="d-flex flex-column">
-              <span class="text-super-xs font-weight-black text-primary uppercase">Total del Pack</span>
-              <span class="text-h5 font-weight-950 text-primary leading-none">
+            <div v-if="totalSavings > 0" class="d-flex flex-column">
+              <span class="text-super-xs font-weight-bold text-success uppercase">Ahorro</span>
+              <span class="text-xs font-weight-black text-success">
+                -{{ formatCurrency(totalSavings, 'USD') }}
+              </span>
+            </div>
+
+            <VDivider v-if="totalSavings > 0" vertical class="mx-1 d-none d-sm-block" style="height: 24px;" />
+
+            <div class="d-flex flex-column pe-2">
+              <span class="text-super-xs font-weight-bold text-disabled uppercase">Total del Pack</span>
+              <span class="text-h6 font-weight-black text-high-emphasis leading-none">
                 {{ formatCurrency(formData.total_price, 'USD') }}
               </span>
             </div>
           </div>
 
           <!-- Botones de Acción -->
-          <div class="d-flex gap-2 w-100 w-sm-auto justify-end">
+          <div class="d-flex gap-2 w-100 w-md-auto justify-end">
             <VBtn
               color="secondary"
               variant="outlined"
               height="44"
-              class="font-weight-bold rounded-lg text-button uppercase px-5"
+              class="font-weight-bold rounded-lg text-button uppercase flex-grow-1 flex-md-grow-0 px-5"
               @click="closeModal"
               :disabled="isSaving"
             >
@@ -790,7 +796,7 @@ watch(
               color="primary"
               variant="flat"
               height="44"
-              class="font-weight-black rounded-lg shadow-primary text-button uppercase px-6"
+              class="font-weight-black rounded-lg shadow-primary text-button uppercase flex-grow-1 flex-md-grow-0 px-6"
               @click="savePack"
               :loading="isSaving || props.loading"
             >
@@ -854,15 +860,18 @@ watch(
 }
 
 .bg-var-theme-background {
-  background-color: rgba(var(--v-border-color), 0.03);
+  background-color: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-border-color), 0.12) !important;
 }
 
 .pack-item-row {
   transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
 }
 
 .pack-item-row:hover {
-  background-color: rgba(var(--v-theme-primary), 0.02);
+  border-color: rgba(var(--v-theme-primary), 0.3) !important;
+  background-color: rgba(var(--v-theme-primary), 0.015);
 }
 
 .border-t {

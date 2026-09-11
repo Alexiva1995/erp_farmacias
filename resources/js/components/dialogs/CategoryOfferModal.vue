@@ -46,7 +46,7 @@ const dialogTitle = computed(() => {
 const selectedCategoryDisplay = computed(() => {
   if (!localFormData.value.category_id) return '';
   const category = props.categoriesData.find(c => c.id === localFormData.value.category_id);
-  return category ? `${category.id} - ${category.name}` : `ID: ${localFormData.value.category_id}`;
+  return category ? category.name : '';
 });
 
 const formatDateForInput = (dateString) => {
@@ -154,15 +154,15 @@ watch(
             <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">Categoría en Oferta</span>
           </div>
 
-          <!-- Modo Edición: Tarjeta Resumen -->
-          <div v-if="props.isEditing" class="pa-3 rounded-lg border bg-var-theme-background">
-            <div class="d-flex align-center justify-space-between mb-1">
-              <span class="text-xs font-weight-black text-primary bg-primary-lighten-5 px-2 py-0-5 rounded">
-                ID: #{{ localFormData.category_id }}
+          <!-- Modo Edición: Tarjeta Resumen en una sola línea -->
+          <div v-if="props.isEditing" class="pa-3 rounded-lg border bg-var-theme-background d-flex align-center justify-space-between">
+            <div class="d-flex align-center gap-2">
+              <span class="text-xs font-weight-bold text-primary bg-primary-lighten-5 px-2 py-0-5 rounded">
+                ID {{ localFormData.category_id }}
               </span>
-            </div>
-            <div class="text-sm font-weight-black text-high-emphasis text-uppercase mt-1">
-              {{ selectedCategoryDisplay }}
+              <span class="text-sm font-weight-black text-high-emphasis text-uppercase">
+                {{ selectedCategoryDisplay }}
+              </span>
             </div>
           </div>
 
@@ -195,15 +195,13 @@ watch(
               <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">Parámetros de la Oferta</span>
             </div>
             <div class="d-flex align-center gap-2">
-              <span class="text-super-xs font-weight-bold text-disabled uppercase">Estado:</span>
+              <span class="text-super-xs font-weight-bold text-disabled uppercase">Activa</span>
               <VSwitch
                 v-model="localFormData.is_active"
-                color="success"
+                color="primary"
                 hide-details
                 density="compact"
                 inset
-                :label="localFormData.is_active ? 'ACTIVA' : 'INACTIVA'"
-                class="font-weight-black text-xs"
               />
             </div>
           </div>
