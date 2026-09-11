@@ -194,6 +194,7 @@ watch(
   <VDialog
     :model-value="props.modelValue"
     max-width="680px"
+    width="680px"
     persistent
     scrollable
     :retain-focus="false"

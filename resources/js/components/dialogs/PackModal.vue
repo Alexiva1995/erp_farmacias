@@ -485,7 +485,8 @@ watch(
 <template>
   <VDialog
     :model-value="dialogVisible"
-    max-width="680"
+    max-width="680px"
+    width="680px"
     persistent
     scrollable
     transition="dialog-bottom-transition"
@@ -775,29 +776,29 @@ watch(
       <!-- Footer y Acciones -->
       <VCardActions class="pa-3 pa-sm-4 bg-surface border-t">
         <div class="d-flex flex-column flex-md-row align-center justify-space-between w-100 gap-3">
-          <!-- Tarjeta / Bloque de Totales Equilibrado con Padding Adecuado -->
-          <div class="d-flex align-center gap-4 pa-3 px-4 rounded border bg-var-theme-background w-100 w-md-auto flex-wrap justify-space-between justify-sm-start">
-            <div class="d-flex flex-column">
+          <!-- Tarjeta / Bloque de Totales en una sola línea integrada -->
+          <div class="d-flex align-center flex-nowrap gap-3 pa-2-5 px-3 rounded border bg-var-theme-background flex-grow-1 flex-md-grow-0">
+            <div class="d-flex flex-column text-start">
               <span class="text-super-xs font-weight-black text-disabled uppercase">Precio Base</span>
-              <span class="text-xs font-weight-bold text-medium-emphasis text-decoration-line-through">
+              <span class="text-xs font-weight-bold text-medium-emphasis text-decoration-line-through leading-tight">
                 {{ formatCurrency(regularTotalPrice, 'USD') }}
               </span>
             </div>
 
-            <VDivider vertical class="mx-1 d-none d-sm-block" style="height: 28px;" />
+            <VDivider vertical class="mx-1" style="height: 24px;" />
 
-            <div v-if="totalSavings > 0" class="d-flex flex-column">
+            <div v-if="totalSavings > 0" class="d-flex flex-column text-start">
               <span class="text-super-xs font-weight-black text-success uppercase">Ahorro</span>
-              <span class="text-xs font-weight-black text-success">
+              <span class="text-xs font-weight-black text-success leading-tight">
                 -{{ formatCurrency(totalSavings, 'USD') }}
               </span>
             </div>
 
-            <VDivider v-if="totalSavings > 0" vertical class="mx-1 d-none d-sm-block" style="height: 28px;" />
+            <VDivider v-if="totalSavings > 0" vertical class="mx-1" style="height: 24px;" />
 
-            <div class="d-flex flex-column pe-2">
-              <span class="text-super-xs font-weight-black text-disabled uppercase">Total del Pack</span>
-              <span class="text-h6 font-weight-black text-primary leading-none">
+            <div class="d-flex flex-column text-start">
+              <span class="text-super-xs font-weight-black text-disabled uppercase">Total Pack</span>
+              <span class="text-subtitle-1 font-weight-black text-primary leading-tight">
                 {{ formatCurrency(formData.total_price, 'USD') }}
               </span>
             </div>

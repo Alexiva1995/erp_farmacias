@@ -56,7 +56,8 @@ const isOfferActive = computed(() => {
 <template>
   <VDialog
     :model-value="props.modelValue"
-    :max-inline-size="mobile ? '100%' : '680px'"
+    max-width="680px"
+    width="680px"
     :fullscreen="mobile"
     persistent
     scrollable

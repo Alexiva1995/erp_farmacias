@@ -56,146 +56,156 @@ const closeModal = () => {
 <template>
   <VDialog
     v-model="dialogVisible"
-    :max-inline-size="mobile ? '100%' : '800px'"
+    max-width="680px"
+    width="680px"
     :fullscreen="mobile"
     persistent
     scrollable
     transition="dialog-bottom-transition"
+    class="premium-dialog"
     @keydown.esc.prevent="closeModal"
   >
-    <VCard v-if="props.prescriptionData" class="detail-dialog-card overflow-hidden border-0 elevation-12">
+    <VCard v-if="props.prescriptionData" :class="mobile ? 'rounded-0' : 'rounded overflow-hidden border-0 shadow-xl bg-surface'">
       <!-- Header Premium Standard -->
       <VCardTitle class="pa-0">
         <div class="header-gradient pa-4 d-flex align-center shadow-sm">
-          <VAvatar color="white" variant="flat" size="40" class="me-3 elevation-2">
-            <VIcon icon="tabler-prescription" color="primary" size="24" />
+          <VAvatar color="white" variant="flat" size="38" class="me-3 elevation-1 text-primary font-weight-black">
+            <VIcon icon="tabler-prescription" size="22" />
           </VAvatar>
-          <div>
+          <div class="d-flex flex-column leading-none">
             <h2 class="text-h6 font-weight-black text-white leading-tight mb-0 uppercase">
               {{ (props.prescriptionData.name || 'Detalle de Oferta').toUpperCase() }}
             </h2>
-            <span class="text-super-xs text-white opacity-75 uppercase font-weight-bold letter-spacing-1">
-              Oferta por Récipe Médico (ID #{{ props.prescriptionData.id }})
-            </span>
+            <div class="d-flex align-center gap-2 mt-1">
+              <span class="text-white opacity-75 uppercase font-weight-bold" style="font-size: 0.65rem; letter-spacing: 0.05em;">
+                Oferta por Récipe Médico (ID #{{ props.prescriptionData.id }})
+              </span>
+            </div>
           </div>
 
           <VSpacer />
           <VBtn
-            icon
-            variant="tonal"
+            icon="tabler-x"
+            variant="outlined"
             color="white"
             size="small"
+            class="rounded"
             @click="closeModal"
-            class="rounded-lg"
-          >
-            <VIcon size="20">tabler-x</VIcon>
-          </VBtn>
+          />
         </div>
       </VCardTitle>
 
-      <VCardText class="pa-0 bg-light">
-        <div class="pa-6">
-          <!-- Tarjetas de Información Rápida -->
-          <VRow class="mb-6">
-            <VCol cols="12" sm="4">
-              <VCard variant="flat" class="pa-4 rounded-lg border bg-white elevation-1 relative overflow-hidden h-100">
-                <div class="d-flex align-center gap-2 mb-3">
-                  <div class="header-indicator primary"></div>
-                  <span class="text-super-xs font-weight-black text-primary uppercase letter-spacing-1">Campaña</span>
-                </div>
-                <div class="d-flex flex-column pt-1">
-                  <span class="text-subtitle-1 font-weight-black text-high-emphasis text-uppercase truncate leading-tight">
-                    {{ props.prescriptionData.name || "Sin nombre" }}
-                  </span>
-                  <span class="text-super-xs text-disabled font-weight-bold uppercase mt-1">ID Campaña: {{ props.prescriptionData.id }}</span>
-                </div>
-              </VCard>
+      <VCardText class="pa-4 pa-sm-5 bg-surface">
+        <!-- Barra de Resumen Integrada centrada -->
+        <div class="pa-3 px-3 rounded border bg-var-theme-background mb-4">
+          <VRow dense class="align-center text-center">
+            <!-- Campaña -->
+            <VCol cols="6" sm="4" class="d-flex align-center justify-center gap-2 py-1">
+              <VAvatar size="32" color="primary" variant="tonal" class="rounded">
+                <VIcon icon="tabler-prescription" size="16" />
+              </VAvatar>
+              <div class="d-flex flex-column text-start">
+                <span class="text-super-xs font-weight-black text-disabled uppercase">Campaña</span>
+                <span class="text-sm font-weight-black text-high-emphasis leading-tight truncate" style="max-inline-size: 130px;" :title="props.prescriptionData.name">
+                  {{ props.prescriptionData.name || "Sin nombre" }}
+                </span>
+                <span class="text-super-xs text-disabled font-weight-bold uppercase">ID: #{{ props.prescriptionData.id }}</span>
+              </div>
             </VCol>
 
-            <VCol cols="12" sm="4">
-              <VCard variant="flat" class="pa-4 rounded-lg border bg-white elevation-1 relative overflow-hidden h-100">
-                <div class="d-flex align-center gap-2 mb-3">
-                  <div class="header-indicator secondary"></div>
-                  <span class="text-super-xs font-weight-black text-secondary uppercase letter-spacing-1">Descuento</span>
-                </div>
-                <div class="d-flex flex-column pt-1">
-                  <span class="text-h4 font-weight-950 text-success leading-tight">
-                    {{ props.prescriptionData.discount_percentage }}% OFF
-                  </span>
-                  <span class="text-super-xs text-disabled font-weight-bold uppercase mt-1">Ahorro en Récipe</span>
-                </div>
-              </VCard>
+            <!-- Descuento -->
+            <VCol cols="6" sm="4" class="d-flex align-center justify-center gap-2 py-1">
+              <VAvatar size="32" color="success" variant="tonal" class="rounded">
+                <VIcon icon="tabler-percentage" size="16" />
+              </VAvatar>
+              <div class="d-flex flex-column text-start">
+                <span class="text-super-xs font-weight-black text-disabled uppercase">Descuento</span>
+                <span class="text-sm font-weight-black text-success leading-tight">
+                  {{ props.prescriptionData.discount_percentage }}% OFF
+                </span>
+                <span class="text-super-xs text-disabled font-weight-bold uppercase">Ahorro Récipe</span>
+              </div>
             </VCol>
 
-            <VCol cols="12" sm="4">
-              <VCard variant="flat" class="pa-4 rounded-lg border bg-white elevation-1 relative overflow-hidden h-100">
-                <div class="d-flex align-center gap-2 mb-3">
-                  <div class="header-indicator success"></div>
-                  <span class="text-super-xs font-weight-black text-success uppercase letter-spacing-1">Estado</span>
-                </div>
-                <div class="d-flex align-center gap-2 pt-1">
+            <!-- Estado -->
+            <VCol cols="12" sm="4" class="d-flex align-center justify-center py-1 mt-2 mt-sm-0">
+              <div class="d-flex flex-column align-center">
+                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">Disponibilidad</span>
+                <div class="d-flex align-center gap-1">
                   <VChip
                     :color="getStatusColor(props.prescriptionData.is_active)"
-                    size="small"
-                    variant="flat"
+                    size="x-small"
+                    variant="tonal"
                     class="font-weight-black rounded"
                   >
                     {{ getStatusText(props.prescriptionData.is_active) }}
                   </VChip>
                   <VChip
                     :color="isOfferCurrentlyActive ? 'success' : 'error'"
-                    size="small"
+                    size="x-small"
                     variant="tonal"
                     class="font-weight-black rounded"
                   >
                     {{ isOfferCurrentlyActive ? 'VIGENTE' : 'NO VIGENTE' }}
                   </VChip>
                 </div>
-              </VCard>
+              </div>
             </VCol>
           </VRow>
+        </div>
 
-          <VDivider class="border-dashed mb-6" />
-
-          <!-- Fechas de Vigencia -->
-          <div class="d-flex align-center gap-2 mb-4">
-            <div class="header-indicator primary shadow-sm"></div>
-            <span class="text-subtitle-2 font-weight-black text-primary uppercase letter-spacing-1">Periodo de Validez</span>
+        <!-- Periodo de Validez -->
+        <div class="mb-2">
+          <div class="d-flex align-center gap-1-5 mb-3">
+            <div class="header-indicator primary" />
+            <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">Periodo de Validez</span>
           </div>
 
-          <VRow>
+          <VRow dense>
             <VCol cols="12" sm="6">
-              <VCard variant="flat" class="pa-4 rounded-lg border bg-white elevation-1">
-                <div class="d-flex align-center gap-2 mb-2">
-                  <VIcon icon="tabler-calendar-event" size="18" color="success" />
-                  <span class="text-caption font-weight-black text-disabled uppercase">Fecha de Inicio</span>
+              <div class="pa-3 rounded border bg-var-theme-background d-flex align-center gap-3">
+                <VAvatar size="34" color="success" variant="tonal" class="rounded">
+                  <VIcon icon="tabler-calendar-event" size="18" />
+                </VAvatar>
+                <div class="d-flex flex-column">
+                  <span class="text-super-xs font-weight-bold text-disabled uppercase">Fecha de Inicio</span>
+                  <span class="text-sm font-weight-black text-high-emphasis">
+                    {{ formatDate(props.prescriptionData.start_date) }}
+                  </span>
                 </div>
-                <span class="text-subtitle-1 font-weight-black text-high-emphasis">
-                  {{ formatDate(props.prescriptionData.start_date) }}
-                </span>
-              </VCard>
+              </div>
             </VCol>
 
             <VCol cols="12" sm="6">
-              <VCard variant="flat" class="pa-4 rounded-lg border bg-white elevation-1">
-                <div class="d-flex align-center gap-2 mb-2">
-                  <VIcon icon="tabler-calendar-off" size="18" color="error" />
-                  <span class="text-caption font-weight-black text-disabled uppercase">Fecha de Finalización</span>
+              <div class="pa-3 rounded border bg-var-theme-background d-flex align-center gap-3 mt-2 mt-sm-0">
+                <VAvatar size="34" color="error" variant="tonal" class="rounded">
+                  <VIcon icon="tabler-calendar-off" size="18" />
+                </VAvatar>
+                <div class="d-flex flex-column">
+                  <span class="text-super-xs font-weight-bold text-disabled uppercase">Fecha de Finalización</span>
+                  <span class="text-sm font-weight-black text-high-emphasis">
+                    {{ formatDate(props.prescriptionData.end_date) }}
+                  </span>
                 </div>
-                <span class="text-subtitle-1 font-weight-black text-high-emphasis">
-                  {{ formatDate(props.prescriptionData.end_date) }}
-                </span>
-              </VCard>
+              </div>
             </VCol>
           </VRow>
         </div>
       </VCardText>
 
       <VDivider />
-      <VCardActions class="pa-6 bg-white">
-        <VBtn color="primary" variant="flat" class="rounded-lg font-weight-black px-12 shadow-primary text-button uppercase" block size="large" @click="closeModal">
-          <VIcon start>tabler-check</VIcon>
-          ENTENDIDO
+
+      <VCardActions class="pa-3 pa-sm-4 bg-surface border-t">
+        <VBtn
+          color="primary"
+          variant="flat"
+          height="44"
+          block
+          class="font-weight-black rounded shadow-primary text-button uppercase"
+          @click="closeModal"
+        >
+          <VIcon start icon="tabler-check" size="18" />
+          Cerrar Detalle
         </VBtn>
       </VCardActions>
     </VCard>
@@ -204,25 +214,29 @@ const closeModal = () => {
 
 <style scoped>
 .header-gradient {
-  background: var(--brand-gradient) !important;
-}
-
-.detail-dialog-card {
-  border-radius: 16px !important;
+  background: linear-gradient(
+    135deg,
+    rgb(var(--v-theme-primary)) 0%,
+    rgb(var(--v-theme-gradient-end, var(--v-theme-primary))) 100%
+  );
 }
 
 .header-indicator {
-  inline-size: 4px;
-  block-size: 16px;
-  border-radius: 10px;
+  inline-size: 3px;
+  block-size: 14px;
+  border-radius: 2px;
 }
 
 .header-indicator.primary { background-color: rgb(var(--v-theme-primary)); }
-.header-indicator.secondary { background-color: rgb(var(--v-theme-secondary)); }
-.header-indicator.success { background-color: rgb(var(--v-theme-success)); }
 
 .shadow-primary {
   box-shadow: 0 4px 14px 0 rgba(var(--v-theme-primary), 0.39) !important;
+}
+
+.bg-var-theme-background {
+  background-color: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-border-color), 0.12) !important;
+  border-radius: 5px !important;
 }
 
 .text-super-xs {
@@ -231,15 +245,11 @@ const closeModal = () => {
 }
 
 .letter-spacing-1 {
-  letter-spacing: 1px !important;
+  letter-spacing: 0.5px !important;
 }
 
-.leading-tight { line-height: 1.25 !important; }
-.leading-none { line-height: 1 !important; }
-.font-weight-950 { font-weight: 950 !important; }
-
-.border-dashed {
-  border-block-end: 1px dashed rgba(var(--v-border-color), 0.3) !important;
+.border-t {
+  border-block-start: 1px solid rgba(var(--v-border-color), 0.08) !important;
 }
 
 .truncate {

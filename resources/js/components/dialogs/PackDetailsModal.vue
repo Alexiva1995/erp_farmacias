@@ -103,7 +103,8 @@ const calculatePriceWithDiscount = (item) => {
 <template>
   <VDialog
     v-model="dialogVisible"
-    :max-inline-size="mobile ? '100%' : '680px'"
+    max-width="680px"
+    width="680px"
     :fullscreen="mobile"
     persistent
     scrollable
@@ -173,7 +174,7 @@ const calculatePriceWithDiscount = (item) => {
             <!-- Ahorro del Pack -->
             <VCol cols="6" sm="3" class="d-flex align-center justify-center gap-2 py-1">
               <VAvatar size="32" :color="totalSavings > 0 ? 'success' : 'secondary'" variant="tonal" class="rounded">
-                <VIcon :icon="totalSavings > 0 ? 'tabler-discount-check' : 'tabler-tag'" size="16" />
+                <VIcon :icon="totalSavings > 0 ? 'tabler-percentage' : 'tabler-tag'" size="16" />
               </VAvatar>
               <div class="d-flex flex-column text-start">
                 <span class="text-super-xs font-weight-black text-disabled uppercase">Ahorro</span>

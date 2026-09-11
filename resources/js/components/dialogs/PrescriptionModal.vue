@@ -83,9 +83,7 @@ const onSave = () => {
   };
 
   emit("prescription-saved", payload);
-  // El padre se encarga de cerrar el modal y resetear el isSaving si es necesario, 
-  // pero aquí lo bajamos por si acaso hay un error inmediato o validación síncrona.
-  isSaving.value = false; 
+  isSaving.value = false;
 };
 
 const onCancel = () => {
@@ -101,6 +99,12 @@ const formatDateForInput = (dateString) => {
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 };
+
+const endDateConfig = computed(() => ({
+  altFormat: "Y-m-d",
+  dateFormat: "Y-m-d",
+  minDate: formData.value.start_date || undefined,
+}));
 
 // Watcher para cargar datos al editar
 watch(
@@ -129,7 +133,8 @@ watch(
 <template>
   <VDialog
     v-model="dialogVisible"
-    max-width="700px"
+    max-width="680px"
+    width="680px"
     persistent
     scrollable
     :retain-focus="false"
@@ -139,20 +144,19 @@ watch(
     @click:outside.prevent
     @keydown.esc.prevent="onCancel"
   >
-    <VCard :class="mobile ? 'rounded-0' : 'detail-dialog-card rounded-xl border-0 shadow-xl overflow-hidden bg-surface'">
+    <VCard v-if="dialogVisible" :class="mobile ? 'rounded-0' : 'rounded overflow-hidden border-0 shadow-xl bg-surface'">
       <!-- Header Premium -->
       <VCardTitle class="pa-0">
         <div class="header-gradient pa-4 d-flex align-center shadow-sm">
           <VAvatar
             color="white"
             variant="flat"
-            size="40"
-            class="me-3 elevation-1"
+            size="38"
+            class="me-3 elevation-1 text-primary font-weight-black"
           >
             <VIcon
               icon="tabler-prescription"
-              size="24"
-              color="primary"
+              size="22"
             />
           </VAvatar>
           <div class="d-flex flex-column leading-none">
@@ -162,99 +166,74 @@ watch(
             <div class="d-flex align-center gap-2 mt-1">
               <span
                 class="text-white opacity-75 uppercase font-weight-bold"
-                style="font-size: 0.6rem; letter-spacing: 0.05em;"
+                style="font-size: 0.65rem; letter-spacing: 0.05em;"
               >
-                Campaña de Descuentos por Recetas Médicas • Barrio Sucre
+                Campaña de Descuentos por Recetas Médicas
               </span>
             </div>
           </div>
           <VSpacer />
           <VBtn
             icon="tabler-x"
-            variant="tonal"
+            variant="outlined"
             color="white"
             size="small"
-            class="rounded-lg"
+            class="rounded"
             @click="onCancel"
             :disabled="isSaving"
           />
         </div>
       </VCardTitle>
 
-      <VCardText class="pa-4 pa-sm-6 bg-light">
-        <!-- Configuración de la Campaña -->
-        <div class="d-flex align-center gap-2 mb-4">
-          <div class="header-indicator primary shadow-sm" />
-          <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Configuración de la Campaña</span>
-        </div>
+      <VCardText class="pa-4 pa-sm-5 bg-surface">
+        <!-- Bloque 1: Configuración de la Campaña -->
+        <div class="mb-5">
+          <div class="d-flex align-center justify-space-between mb-2">
+            <div class="d-flex align-center gap-1-5">
+              <div class="header-indicator primary" />
+              <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">Información de la Campaña</span>
+            </div>
+            <div class="d-flex align-center gap-2">
+              <span class="text-super-xs font-weight-bold text-disabled uppercase">Activa</span>
+              <VSwitch
+                v-model="formData.is_active"
+                color="primary"
+                hide-details
+                density="compact"
+                inset
+              />
+            </div>
+          </div>
 
-        <VCard
-          variant="flat"
-          class="pa-5 bg-white rounded-xl border shadow-sm mb-0"
-        >
           <VRow dense>
             <VCol cols="12">
-              <div class="mb-4">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Nombre Descriptivo de la Oferta</span>
-                <VTextField
-                  v-model="formData.name"
-                  placeholder="EJ: CAMPAÑA RECETAS ENERO 2024"
-                  variant="outlined"
-                  density="comfortable"
-                  hide-details
-                  class="rounded-lg font-weight-black"
-                  :error="!!formErrors.name"
-                  :disabled="isSaving"
-                />
-              </div>
+              <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Nombre Descriptivo de la Oferta *</span>
+              <VTextField
+                v-model="formData.name"
+                placeholder="EJ: CAMPAÑA RECETAS ENERO..."
+                variant="outlined"
+                density="compact"
+                hide-details="auto"
+                class="rounded font-weight-bold"
+                :error="!!formErrors.name"
+                :error-messages="formErrors.name"
+                :disabled="isSaving"
+              />
             </VCol>
+          </VRow>
+        </div>
 
-            <VCol
-              cols="12"
-              sm="6"
-            >
-              <div class="mb-4">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Fecha Inicio</span>
-                <AppDateTimePicker
-                  v-model="formData.start_date"
-                  placeholder="SELECCIONAR FECHA"
-                  prepend-inner-icon="tabler-calendar-event"
-                  density="comfortable"
-                  hide-details
-                  class="rounded-lg"
-                  :error="!!formErrors.start_date"
-                  :disabled="isSaving"
-                  :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
-                />
-              </div>
-            </VCol>
+        <!-- Bloque 2: Parámetros y Vigencia -->
+        <div class="mb-2">
+          <div class="d-flex align-center gap-1-5 mb-2">
+            <div class="header-indicator primary" />
+            <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">Parámetros y Vigencia</span>
+          </div>
 
-            <VCol
-              cols="12"
-              sm="6"
-            >
-              <div class="mb-4">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Fecha Final</span>
-                <AppDateTimePicker
-                  v-model="formData.end_date"
-                  placeholder="SELECCIONAR FECHA"
-                  prepend-inner-icon="tabler-calendar-off"
-                  density="comfortable"
-                  hide-details
-                  class="rounded-lg"
-                  :error="!!formErrors.end_date"
-                  :disabled="isSaving"
-                  :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
-                />
-              </div>
-            </VCol>
-
-            <VCol
-              cols="12"
-              sm="6"
-            >
-              <div class="mb-4 mb-sm-0">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">% Descuento Aplicable</span>
+          <VRow dense>
+            <VCol cols="12" sm="4">
+              <div class="mb-2 mb-sm-0">
+                <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">% Descuento Aplicable *</span>
                 <VTextField
                   v-model="formData.discount_percentage"
                   type="number"
@@ -263,111 +242,83 @@ watch(
                   step="0.01"
                   placeholder="0.00"
                   variant="outlined"
-                  density="comfortable"
-                  hide-details
+                  density="compact"
+                  hide-details="auto"
                   prepend-inner-icon="tabler-percentage"
-                  class="rounded-lg font-weight-black"
+                  class="rounded font-weight-black"
                   :error="!!formErrors.discount_percentage"
+                  :error-messages="formErrors.discount_percentage"
                   :disabled="isSaving"
                 />
               </div>
             </VCol>
 
-            <VCol
-              cols="12"
-              sm="6"
-            >
-              <div>
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Estado Administrativo</span>
-                <VSelect
-                  v-model="formData.is_active"
-                  :items="[
-                    { value: true, title: 'CAMPAÑA ACTIVA' },
-                    { value: false, title: 'CAMPAÑA INACTIVA' },
-                  ]"
-                  item-title="title"
-                  item-value="value"
-                  variant="outlined"
-                  density="comfortable"
-                  hide-details
-                  class="rounded-lg font-weight-black"
+            <VCol cols="12" sm="4">
+              <div class="mb-2 mb-sm-0">
+                <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Fecha Inicio *</span>
+                <AppDateTimePicker
+                  v-model="formData.start_date"
+                  placeholder="SELECCIONAR FECHA"
+                  prepend-inner-icon="tabler-calendar-event"
+                  density="compact"
+                  hide-details="auto"
+                  class="rounded"
+                  :error="!!formErrors.start_date"
+                  :error-messages="formErrors.start_date"
                   :disabled="isSaving"
+                  :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
+                />
+              </div>
+            </VCol>
+
+            <VCol cols="12" sm="4">
+              <div>
+                <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Fecha Final *</span>
+                <AppDateTimePicker
+                  v-model="formData.end_date"
+                  placeholder="SELECCIONAR FECHA"
+                  prepend-inner-icon="tabler-calendar-off"
+                  density="compact"
+                  hide-details="auto"
+                  class="rounded"
+                  :error="!!formErrors.end_date"
+                  :error-messages="formErrors.end_date"
+                  :disabled="isSaving"
+                  :config="endDateConfig"
                 />
               </div>
             </VCol>
           </VRow>
-        </VCard>
-
-        <!-- Mensaje de Soporte -->
-        <div class="mt-6 pa-4 rounded-xl bg-primary bg-opacity-10 border-dashed-2 d-flex align-center gap-4">
-          <VAvatar
-            color="primary"
-            variant="tonal"
-            size="40"
-            class="rounded-lg"
-          >
-            <VIcon
-              icon="tabler-info-circle"
-              size="24"
-            />
-          </VAvatar>
-          <div class="d-flex flex-column leading-none">
-            <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1 mb-1">Nota de Aplicación</span>
-            <p class="text-super-xs text-medium-emphasis mb-0 leading-tight">
-              Los descuentos por recetas se aplicarán durante el periodo de vigencia establecido en el Punto de Venta.
-            </p>
-          </div>
         </div>
       </VCardText>
 
       <VDivider />
 
       <!-- Acciones de Modal -->
-      <VCardActions class="pa-4 bg-white border-t px-6">
-        <VRow
-          dense
-          class="w-100 ma-0"
-        >
-          <VCol
-            cols="12"
-            sm="6"
-            class="pa-1"
+      <VCardActions class="pa-3 pa-sm-4 bg-surface border-t">
+        <div class="d-flex gap-2 w-100 justify-end">
+          <VBtn
+            color="secondary"
+            variant="outlined"
+            height="44"
+            class="font-weight-bold rounded text-button uppercase flex-grow-1 flex-sm-grow-0 px-5"
+            @click="onCancel"
+            :disabled="isSaving"
           >
-            <VBtn
-              color="secondary"
-              variant="outlined"
-              height="50"
-              block
-              class="font-weight-black rounded-lg text-button uppercase"
-              @click="onCancel"
-              :disabled="isSaving"
-            >
-              Cancelar
-            </VBtn>
-          </VCol>
-          <VCol
-            cols="12"
-            sm="6"
-            class="pa-1"
+            Cancelar
+          </VBtn>
+          <VBtn
+            color="primary"
+            variant="flat"
+            height="44"
+            prepend-icon="tabler-device-floppy"
+            class="font-weight-black rounded shadow-primary text-button uppercase flex-grow-1 flex-sm-grow-0 px-6"
+            :loading="isSaving"
+            @click="onSave"
           >
-            <VBtn
-              color="primary"
-              variant="flat"
-              height="50"
-              block
-              class="font-weight-black rounded-lg shadow-primary text-button uppercase"
-              :loading="isSaving"
-              @click="onSave"
-            >
-              <VIcon
-                start
-                icon="tabler-device-floppy"
-                size="18"
-              />
-              {{ isEditing ? "Guardar Cambios" : "Crear Oferta" }}
-            </VBtn>
-          </VCol>
-        </VRow>
+            {{ isEditing ? "Guardar Cambios" : "Crear Oferta" }}
+          </VBtn>
+        </div>
       </VCardActions>
     </VCard>
   </VDialog>
@@ -378,18 +329,14 @@ watch(
   background: linear-gradient(
     135deg,
     rgb(var(--v-theme-primary)) 0%,
-    rgb(var(--v-theme-gradient-end)) 100%
+    rgb(var(--v-theme-gradient-end, var(--v-theme-primary))) 100%
   );
 }
 
-.detail-dialog-card {
-  border-radius: 12px !important;
-}
-
 .header-indicator {
-  inline-size: 4px;
-  block-size: 16px;
-  border-radius: 10px;
+  inline-size: 3px;
+  block-size: 14px;
+  border-radius: 2px;
 }
 
 .header-indicator.primary {
@@ -406,22 +353,10 @@ watch(
 }
 
 .letter-spacing-1 {
-  letter-spacing: 1px !important;
-}
-
-.leading-none {
-  line-height: 1 !important;
+  letter-spacing: 0.5px !important;
 }
 
 .border-t {
   border-block-start: 1px solid rgba(var(--v-border-color), 0.08) !important;
-}
-
-.border-dashed-2 {
-  border: 1px dashed rgba(var(--v-border-color), 0.3) !important;
-}
-
-.italic {
-  font-style: italic;
 }
 </style>
