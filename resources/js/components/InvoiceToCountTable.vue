@@ -17,8 +17,8 @@ const emit = defineEmits(["update:options", "count-product"]);
 
 const headers = computed(() => {
   const baseHeaders = [
-    { title: "ID",           key: "id",               sortable: true,  width: "80px"  },
-    { title: "Producto",     key: "name",              sortable: true,  width: "40%"   },
+    { title: "ID",           key: "id",               sortable: true,  width: "75px", cellClass: "font-weight-black text-xs text-primary" },
+    { title: "Producto",     key: "name",              sortable: true },
     { title: "Laboratorio",  key: "laboratory.name",   sortable: true,  width: "15%"   },
     { title: "Expiración",   key: "next_expiration",   sortable: true,  width: "120px" },
     { title: "Acciones",     key: "actions",           sortable: false, align: "center", width: "100px" },
@@ -102,7 +102,7 @@ const getProductLocations = (product) => {
           <a
             :href="'/inventory/traceability?q=' + item.id"
             target="_blank"
-            class="text-decoration-none font-weight-black text-primary"
+            class="text-decoration-none font-weight-black text-xs text-primary bg-primary-lighten-5 px-2 py-1 rounded"
           >
             {{ item.id }}
           </a>
@@ -110,16 +110,16 @@ const getProductLocations = (product) => {
 
         <template #item.name="{ item }">
           <div class="d-flex align-center gap-x-3 py-2">
-            <div class="d-flex flex-column min-width-0">
-              <span class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate" style="max-inline-size: 320px;">
+            <div class="d-flex flex-column min-width-0 flex-grow-1">
+              <span class="text-body-2 font-weight-black text-high-emphasis text-uppercase text-truncate" style="max-inline-size: 420px;">
                 {{ item.name.toUpperCase() }}
                 <span v-if="item.iva == 1" class="text-xs text-disabled"> (G)</span>
                 <span v-if="item.is_colombian_origin == 1" class="text-xs text-disabled"> (COL)</span>
               </span>
               <div class="d-flex align-center flex-wrap gap-1 text-super-xs mt-1">
-                <span class="text-disabled truncate" style="max-inline-size: 200px;">{{ item.active_ingredient }}</span>
+                <span class="text-disabled truncate" style="max-inline-size: 240px;">{{ item.active_ingredient }}</span>
                 <span class="text-disabled mx-1">|</span>
-                <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 150px;">
+                <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 180px;">
                   {{ item.laboratory?.name || 'S/L' }}
                 </span>
                 <template v-if="getProductLocations(item).length > 0">
@@ -265,6 +265,10 @@ const getProductLocations = (product) => {
 
 .bg-var-theme-background {
   background-color: rgba(var(--v-border-color), 0.05);
+}
+
+.bg-primary-lighten-5 {
+  background-color: rgba(var(--v-theme-primary), 0.08) !important;
 }
 
 .text-super-xs {

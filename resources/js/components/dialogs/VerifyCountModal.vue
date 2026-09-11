@@ -489,7 +489,7 @@ const handleClose = () => {
                 v-model.number="newCountedQuantity"
                 type="number"
                 min="0"
-                placeholder="Ingrese cantidad..."
+                placeholder="0"
                 variant="plain"
                 class="ultra-huge-input-text h-auto font-weight-950"
                 density="compact"
@@ -654,18 +654,25 @@ const handleClose = () => {
   background: transparent;
   block-size: auto;
   color: rgb(var(--v-theme-primary)) !important;
-  font-size: 1.8rem !important;
+  font-size: 1.5rem !important;
   font-weight: 950 !important;
   inline-size: 100%;
-  line-height: 1;
+  line-height: 1.2;
   outline: none;
   text-align: center !important;
+  padding: 8px 0 !important;
 }
 
 @media (min-width: 600px) {
   .ultra-huge-input-text :deep(input) {
-    font-size: 2.2rem !important;
+    font-size: 2rem !important;
+    padding: 10px 0 !important;
   }
+}
+
+.ultra-huge-input-text :deep(input::placeholder) {
+  color: rgba(var(--v-theme-on-surface), 0.25) !important;
+  font-weight: 700;
 }
 
 .ultra-huge-input-text :deep(.v-field__input) {

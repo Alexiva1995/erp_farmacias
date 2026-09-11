@@ -107,18 +107,18 @@ const props = defineProps({
 
 const headers = computed(() => [
   {
-    title: "id",
+    title: "ID",
     key: "id",
     sortable: true,
+    width: "75px",
     visible: true,
-    cellClass: "font-weight-black text-primary d-none d-sm-table-cell",
+    cellClass: "font-weight-black text-xs text-primary d-none d-sm-table-cell",
     headerClass: "d-none d-sm-table-cell",
   },
   {
     title: "Producto",
     key: "name",
     sortable: true,
-    width: "40%",
     visible: true,
   },
   {
@@ -348,14 +348,14 @@ const getProductLocations = (item) => {
           <a
             :href="'/inventory/traceability?q=' + item.id"
             target="_blank"
-            class="text-decoration-none font-weight-black text-primary"
+            class="text-decoration-none font-weight-black text-xs text-primary bg-primary-lighten-5 px-2 py-1 rounded"
           >
             {{ item.id }}
           </a>
         </template>
 
         <template #item.name="{ item }">
-          <div class="d-flex align-center gap-x-3 py-2">
+          <div class="d-flex align-center gap-x-2 py-2">
             <!-- Corazón interactivo de favorito para administración -->
             <VBtn
               v-slot:default
@@ -373,27 +373,27 @@ const getProductLocations = (item) => {
               </VTooltip>
             </VBtn>
             
-            <div class="d-flex flex-column min-width-0">
+            <div class="d-flex flex-column min-width-0 flex-grow-1">
               <span
-                class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate"
+                class="text-body-2 font-weight-black text-high-emphasis text-uppercase text-truncate"
                 :class="{ 
                   'text-warning': item.psychotropic == 1 || item.psychotropic === true
                 }"
-                style="max-inline-size: 320px;"
+                style="max-inline-size: 420px;"
                 :title="item.name"
               >
                 {{ item.name.toUpperCase() }}
                 <span v-if="item.iva == 1 || item.iva === true" class="text-xs text-disabled"> (G)</span>
                 <span v-if="item.is_colombian_origin == 1 || item.is_colombian_origin === true" class="text-xs text-disabled"> (COL)</span>
               </span>
-              <div class="d-flex align-center flex-wrap gap-1 text-super-xs">
-                <span v-if="!isRestaurant" class="text-disabled truncate" style="max-inline-size: 200px;">{{ item.active_ingredient }}</span>
+              <div class="d-flex align-center flex-wrap gap-1 text-super-xs mt-0-5">
+                <span v-if="!isRestaurant" class="text-disabled truncate" style="max-inline-size: 240px;">{{ item.active_ingredient }}</span>
                 <span v-if="!isRestaurant" class="text-disabled mx-1">|</span>
-                <span v-if="isRestaurant && item.presentation && isFieldEnabled('presentation')" class="text-disabled truncate" style="max-inline-size: 200px;">
+                <span v-if="isRestaurant && item.presentation && isFieldEnabled('presentation')" class="text-disabled truncate" style="max-inline-size: 240px;">
                   {{ item.presentation }} {{ (item.unit_of_measure && isFieldEnabled('unit_of_measure')) ? `(${item.unit_of_measure})` : '' }}
                 </span>
                 <span v-if="isRestaurant && item.presentation && isFieldEnabled('presentation')" class="text-disabled mx-1">|</span>
-                <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 150px;">
+                <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 180px;">
                   {{ isMiniMarket ? (item.category?.name || 'SIN CATEGORÍA') : (item.laboratory?.name || 'S/L') }}
                 </span>
                 <template v-if="getProductLocations(item).length > 0">
@@ -635,6 +635,14 @@ const getProductLocations = (item) => {
 }
 .border-bottom-light:last-child {
   border-bottom: none;
+}
+
+.bg-primary-lighten-5 {
+  background-color: rgba(var(--v-theme-primary), 0.08) !important;
+}
+
+.mt-0-5 {
+  margin-top: 2px !important;
 }
 
 .text-super-xs {

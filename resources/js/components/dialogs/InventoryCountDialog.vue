@@ -479,7 +479,7 @@ const handleSave = async () => {
                   type="number"
                   min="0"
                   step="any"
-                  placeholder="Ingrese cantidad..."
+                  placeholder="0"
                   variant="plain"
                   class="audit-huge-input font-weight-black"
                   density="compact"
@@ -600,15 +600,22 @@ const handleSave = async () => {
   font-size: 1.5rem !important;
   font-weight: 900 !important;
   inline-size: 100%;
-  line-height: 1;
+  line-height: 1.2;
   outline: none;
   text-align: center !important;
+  padding: 8px 0 !important;
 }
 
 @media (min-width: 600px) {
   .audit-huge-input :deep(input) {
-    font-size: 3rem !important;
+    font-size: 2rem !important;
+    padding: 10px 0 !important;
   }
+}
+
+.audit-huge-input :deep(input::placeholder) {
+  color: rgba(var(--v-theme-on-surface), 0.25) !important;
+  font-weight: 700;
 }
 
 .audit-huge-input :deep(.v-field__input) {

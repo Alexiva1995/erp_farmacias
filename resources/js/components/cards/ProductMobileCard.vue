@@ -153,29 +153,34 @@ const getProductLocations = (item) => {
         </VBtn>
         <div class="flex-grow-1 min-width-0">
           <div class="d-flex align-center gap-1 mb-1">
-            <h3 class="product-mobile-title font-weight-bold text-high-emphasis text-uppercase truncate-2-lines mb-0">
-              <a
-                :href="'/inventory/traceability?q=' + item.id"
-                target="_blank"
-                class="text-decoration-none text-primary font-weight-black"
-              >
-                {{ item.id }}
-              </a>
-              <template v-if="!isMiniMarket && item.laboratory?.name">
-                <span class="mx-1 text-disabled font-weight-regular">|</span>
-                <span class="text-primary font-weight-bold">{{ item.laboratory.name }}</span>
-              </template>
-              <template v-else-if="isMiniMarket && item.category?.name">
-                <span class="mx-1 text-disabled font-weight-regular">|</span>
-                <span class="text-primary font-weight-bold">{{ item.category.name }}</span>
-              </template>
-              <span class="mx-1 text-disabled font-weight-regular">|</span>
-              <span>{{ item.name.toUpperCase() }}</span>
-            </h3>
+            <a
+              :href="'/inventory/traceability?q=' + item.id"
+              target="_blank"
+              class="text-decoration-none text-primary font-weight-black text-super-xs bg-primary-lighten-5 px-1-5 py-0-5 rounded flex-shrink-0"
+            >
+              ID: {{ item.id }}
+            </a>
+            <template v-if="!isMiniMarket && item.laboratory?.name">
+              <span class="text-primary font-weight-bold text-super-xs text-uppercase truncate" style="max-inline-size: 140px;">
+                {{ item.laboratory.name }}
+              </span>
+            </template>
+            <template v-else-if="isMiniMarket && item.category?.name">
+              <span class="text-primary font-weight-bold text-super-xs text-uppercase truncate" style="max-inline-size: 140px;">
+                {{ item.category.name }}
+              </span>
+            </template>
+            <VSpacer />
             <VChip v-if="item.psychotropic" color="warning" size="x-small" label variant="flat" class="text-super-xs flex-shrink-0">PSI</VChip>
           </div>
+
+          <h3 class="product-mobile-title font-weight-black text-high-emphasis text-uppercase truncate-2-lines mb-1 text-body-2">
+            {{ item.name.toUpperCase() }}
+            <span v-if="item.iva == 1 || item.iva === true" class="text-xs text-disabled font-weight-regular"> (G)</span>
+            <span v-if="item.is_colombian_origin == 1 || item.is_colombian_origin === true" class="text-xs text-disabled font-weight-regular"> (COL)</span>
+          </h3>
           
-          <div v-if="(!isRestaurant && item.active_ingredient && item.active_ingredient !== 'N/A') || (isRestaurant && item.presentation) || getProductLocations(item).length > 0" class="d-flex align-center flex-wrap gap-x-1 text-xs">
+          <div v-if="(!isRestaurant && item.active_ingredient && item.active_ingredient !== 'N/A') || (isRestaurant && item.presentation) || getProductLocations(item).length > 0" class="d-flex align-center flex-wrap gap-x-1 text-super-xs">
             <span v-if="!isRestaurant && item.active_ingredient && item.active_ingredient !== 'N/A'" class="text-medium-emphasis text-truncate" style="max-inline-size: 260px;">
               {{ item.active_ingredient }}
             </span>
@@ -344,6 +349,20 @@ const getProductLocations = (item) => {
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   line-clamp: 2;
+}
+
+.bg-primary-lighten-5 {
+  background-color: rgba(var(--v-theme-primary), 0.08) !important;
+}
+
+.px-1-5 {
+  padding-left: 6px !important;
+  padding-right: 6px !important;
+}
+
+.py-0-5 {
+  padding-top: 2px !important;
+  padding-bottom: 2px !important;
 }
 
 .border-dashed-thin {
