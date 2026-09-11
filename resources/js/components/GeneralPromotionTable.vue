@@ -23,11 +23,11 @@ const headers = [
     cellClass: "font-weight-black text-primary d-none d-sm-table-cell",
     headerClass: "d-none d-sm-table-cell",
   },
-  { title: "Tipo de Oferta", key: "type",        sortable: true, width: "30%" },
-  { title: "Beneficio",      key: "fixed_price", sortable: true, align: "center", width: "130px" },
-  { title: "Categorías",     key: "categories",  sortable: false, width: "40%" },
-  { title: "Estado",         key: "is_active",   sortable: true, align: "center", width: "100px" },
-  { title: "Acciones",       key: "actions",     sortable: false, align: "center", width: "110px" },
+  { title: "Tipo de Oferta", key: "type",        sortable: true, width: "35%" },
+  { title: "Beneficio",      key: "fixed_price", sortable: true, align: "center", width: "160px" },
+  { title: "Categorías",     key: "categories",  sortable: false },
+  { title: "Estado",         key: "is_active",   sortable: true, align: "center", width: "110px" },
+  { title: "Acciones",       key: "actions",     sortable: false, align: "center", width: "100px" },
 ];
 
 const getPromoTypeName = (type) => {
@@ -105,7 +105,7 @@ const getCategoryNames = (categoryIds) => {
 
         <!-- Categories Column -->
         <template #item.categories="{ item }">
-          <div class="text-xs truncate uppercase font-weight-bold text-high-emphasis" style="max-inline-size: 350px" :title="getCategoryNames(item.categories)">
+          <div class="text-xs truncate uppercase font-weight-bold text-high-emphasis" :title="getCategoryNames(item.categories)">
             {{ getCategoryNames(item.categories) }}
           </div>
         </template>
