@@ -30,22 +30,28 @@ class DronenaEdiService implements DronenaEdiServiceInterface
 
         $lines = [];
 
-        // Encabezado: Identificador D000 + Espacio + Número de Pedido (formateado a 6 dígitos o caracteres)
-        $orderNumber = str_pad((string) $autoOrder->id, 6, '0', STR_PAD_LEFT);
-        if (strlen($orderNumber) > 6) {
-            $orderNumber = substr($orderNumber, -6);
-        }
+        // Encabezado: Identificador D000 + Espacio + Número de Pedido
+        $orderNumber = (string) $autoOrder->id;
         $lines[] = "D000 {$orderNumber}";
 
         foreach ($autoOrder->details as $detail) {
-            // Obtener código de producto de Droguería Nena
-            $code = $detail->productSupplier?->cod_supplier 
-                ?? $detail->product?->barcode 
-                ?? (string) $detail->product_id;
+            // Obtener código de producto de Droguería Nena (cod_supplier)
+            $code = $detail->productSupplier?->cod_supplier;
+            if (empty($code)) {
+                $nenaPs = \App\Models\ProductSupplier::where('supplier_id', $autoOrder->supplier_id)
+                    ->where('product_id', $detail->product_id)
+                    ->whereNotNull('cod_supplier')
+                    ->where('cod_supplier', '!=', '')
+                    ->first();
+                $code = $nenaPs?->cod_supplier;
+            }
+            if (empty($code)) {
+                $code = $detail->product?->barcode ?? (string) $detail->product_id;
+            }
             $code = trim((string) $code);
 
-            // Cantidad
-            $quantity = (int) $detail->quantity;
+            // Cantidad: garantizar siempre valor entero positivo
+            $quantity = max(1, (int) round((float) ($detail->quantity ?? 1)));
 
             // Descripción (máximo 51 caracteres)
             $name = $detail->productSupplier?->name 
@@ -63,7 +69,7 @@ class DronenaEdiService implements DronenaEdiServiceInterface
     }
 
     /**
-     * Conecta al servidor FTP de Dronena y sube el archivo FACTUXX al directorio del cliente.
+     * Conecta al servidor FTP de Dronena y sube el archivo {order_id}.txt al directorio del cliente.
      */
     public function sendOrderFtp(AutoOrder $autoOrder): array
     {
@@ -102,7 +108,6 @@ class DronenaEdiService implements DronenaEdiServiceInterface
         }
 
         // Determinar carpeta de destino
-        // Si en la conexión el path es Clientes/d719/Inventario.txt, extraemos la carpeta base del cliente: Clientes/d719
         $remoteDir = 'Clientes/' . strtolower(explode('-', $user)[0]);
         if (!empty($connection->path)) {
             $dirName = dirname($connection->path);
@@ -136,37 +141,16 @@ class DronenaEdiService implements DronenaEdiServiceInterface
 
         ftp_pasv($ftp, (bool) ($connection->pasv ?? true));
 
-        // Listar archivos en la carpeta remota para calcular correlativo FACTUXX
-        $fileList = @ftp_nlist($ftp, $remoteDir);
-        if ($fileList === false) {
-            // Si falla con pasv actual, intentar invertir pasv
-            ftp_pasv($ftp, !($connection->pasv ?? true));
-            $fileList = @ftp_nlist($ftp, $remoteDir) ?: [];
-        }
-
-        $nextNumber = 1;
-        $existingFactu = [];
-
-        foreach ($fileList as $file) {
-            $base = basename($file);
-            if (preg_match('/^FACTU(\d+)(\.txt)?$/i', $base, $matches)) {
-                $existingFactu[] = (int) $matches[1];
-            }
-        }
-
-        if (!empty($existingFactu)) {
-            $nextNumber = max($existingFactu) + 1;
-        }
-
-        // Formato FACTUXX.txt con 2 dígitos mínimo (ej. FACTU01.txt, FACTU02.txt)
-        $fileName = sprintf('FACTU%02d.txt', $nextNumber);
+        // En Droguería Nena el archivo se nombra como {order_number}.txt (ej. 318856.txt)
+        $orderNumber = (string) $autoOrder->id;
+        $fileName = "{$orderNumber}.txt";
         $remoteFilePath = rtrim($remoteDir, '/') . '/' . $fileName;
 
         // Generar contenido plano
         $content = $this->generateOrderContent($autoOrder);
 
         // Crear archivo temporal
-        $tempPath = tempnam(sys_get_temp_dir(), 'edi_factu_');
+        $tempPath = tempnam(sys_get_temp_dir(), 'edi_dronena_');
         file_put_contents($tempPath, $content);
 
         // Subir vía FTP en modo BINARY

@@ -854,6 +854,7 @@ class IaAssistantReportService
         $allGroupProducts = \App\Models\Product::whereIn('group_id', $groupIds)
             ->where('is_deleted', false)
             ->where('is_scarce', false)
+            ->where('is_unified_group', true)
             ->get()
             ->groupBy('group_id');
 
@@ -862,6 +863,9 @@ class IaAssistantReportService
             ->join('products', 'products.id', '=', 'product_lots.product_id')
             ->select('products.group_id', \Illuminate\Support\Facades\DB::raw('SUM(product_lots.quantity) as total_quantity'))
             ->whereIn('products.group_id', $groupIds)
+            ->where('products.is_unified_group', 1)
+            ->where('products.is_deleted', 0)
+            ->where('products.is_scarce', 0)
             ->where(function($q) {
                 $q->where('product_lots.expiration_date', '>=', now()->toDateString())
                   ->orWhereNull('product_lots.expiration_date');
@@ -875,6 +879,9 @@ class IaAssistantReportService
             ->join('products', 'products.id', '=', 'order_details.product_id')
             ->select('products.group_id', \Illuminate\Support\Facades\DB::raw('SUM(order_details.quantity) as total_quantity'))
             ->whereIn('products.group_id', $groupIds)
+            ->where('products.is_unified_group', 1)
+            ->where('products.is_deleted', 0)
+            ->where('products.is_scarce', 0)
             ->where('orders.status', 'Completed')
             ->whereBetween('orders.created_at', [$filtros['previousDate'], $filtros['dateToday']])
             ->groupBy('products.group_id')
@@ -887,6 +894,9 @@ class IaAssistantReportService
             ->join('products', 'products.id', '=', 'product_suppliers.product_id')
             ->select('products.group_id', \Illuminate\Support\Facades\DB::raw('SUM(auto_order_details.quantity) as total_quantity'))
             ->whereIn('products.group_id', $groupIds)
+            ->where('products.is_unified_group', 1)
+            ->where('products.is_deleted', 0)
+            ->where('products.is_scarce', 0)
             ->whereIn('auto_orders.status', [0, 1])
             ->where('auto_order_details.status', 0)
             ->whereNull('auto_orders.deleted_at')
@@ -904,6 +914,7 @@ class IaAssistantReportService
             ->join('laboratories', 'laboratories.id', '=', 'products.laboratory_id')
             ->select('products.group_id', 'laboratories.name')
             ->whereIn('products.group_id', $groupIds)
+            ->where('products.is_unified_group', 1)
             ->where('products.is_deleted', 0)
             ->where('products.is_scarce', 0)
             ->get()
@@ -1034,6 +1045,7 @@ class IaAssistantReportService
         $allGroupProducts = \App\Models\Product::whereIn('group_id', $groupIds)
             ->where('is_deleted', false)
             ->where('is_scarce', false)
+            ->where('is_unified_group', true)
             ->get()
             ->groupBy('group_id');
 
@@ -1042,6 +1054,9 @@ class IaAssistantReportService
             ->join('products', 'products.id', '=', 'product_lots.product_id')
             ->select('products.group_id', \Illuminate\Support\Facades\DB::raw('SUM(product_lots.quantity) as total_quantity'))
             ->whereIn('products.group_id', $groupIds)
+            ->where('products.is_unified_group', 1)
+            ->where('products.is_deleted', 0)
+            ->where('products.is_scarce', 0)
             ->where(function($q) {
                 $q->where('product_lots.expiration_date', '>=', now()->toDateString())
                   ->orWhereNull('expiration_date');
@@ -1055,6 +1070,9 @@ class IaAssistantReportService
             ->join('products', 'products.id', '=', 'order_details.product_id')
             ->select('products.group_id', \Illuminate\Support\Facades\DB::raw('SUM(order_details.quantity) as total_quantity'))
             ->whereIn('products.group_id', $groupIds)
+            ->where('products.is_unified_group', 1)
+            ->where('products.is_deleted', 0)
+            ->where('products.is_scarce', 0)
             ->where('orders.status', 'Completed')
             ->whereBetween('orders.created_at', [$filtros['previousDate'], $filtros['dateToday']])
             ->groupBy('products.group_id')
@@ -1067,6 +1085,9 @@ class IaAssistantReportService
             ->join('products', 'products.id', '=', 'product_suppliers.product_id')
             ->select('products.group_id', \Illuminate\Support\Facades\DB::raw('SUM(auto_order_details.quantity) as total_quantity'))
             ->whereIn('products.group_id', $groupIds)
+            ->where('products.is_unified_group', 1)
+            ->where('products.is_deleted', 0)
+            ->where('products.is_scarce', 0)
             ->whereIn('auto_orders.status', [0, 1])
             ->where('auto_order_details.status', 0)
             ->whereNull('auto_orders.deleted_at')
@@ -1084,6 +1105,7 @@ class IaAssistantReportService
             ->join('laboratories', 'laboratories.id', '=', 'products.laboratory_id')
             ->select('products.group_id', 'laboratories.name')
             ->whereIn('products.group_id', $groupIds)
+            ->where('products.is_unified_group', 1)
             ->where('products.is_deleted', 0)
             ->where('products.is_scarce', 0)
             ->get()

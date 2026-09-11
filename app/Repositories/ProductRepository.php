@@ -1469,6 +1469,7 @@ class ProductRepository
                 FROM product_lots 
                 JOIN products as u_p ON u_p.id = product_lots.product_id
                 WHERE u_p.group_id = products.group_id 
+                AND u_p.is_unified_group = 1
                 AND u_p.is_deleted = 0 
                 AND u_p.is_scarce = 0
             )
@@ -1487,6 +1488,7 @@ class ProductRepository
                 JOIN product_suppliers ps ON ps.id = aod.product_suppliers_id
                 JOIN products as u_p ON u_p.id = ps.product_id
                 WHERE u_p.group_id = products.group_id
+                AND u_p.is_unified_group = 1
                 AND u_p.is_deleted = 0 
                 AND u_p.is_scarce = 0
                 AND ao.status IN (0, 1)
@@ -1514,6 +1516,7 @@ class ProductRepository
                 JOIN orders ON orders.id = order_details.order_id
                 JOIN products as u_p ON u_p.id = order_details.product_id
                 WHERE u_p.group_id = products.group_id
+                AND u_p.is_unified_group = 1
                 AND u_p.is_deleted = 0 
                 AND u_p.is_scarce = 0
                 AND orders.created_at BETWEEN \'' . ($filtros["previousDate"] ?? date('Y-m-d', strtotime('-30 days'))) . '\' AND \'' . ($filtros["dateToday"] ?? date('Y-m-d H:i:s')) . '\'
@@ -1536,6 +1539,7 @@ class ProductRepository
                 SELECT COALESCE(SUM(sales_average), 0)
                 FROM products as u_p
                 WHERE u_p.group_id = products.group_id
+                AND u_p.is_unified_group = 1
                 AND u_p.is_deleted = 0 
                 AND u_p.is_scarce = 0
             )
@@ -1566,6 +1570,7 @@ class ProductRepository
                     SELECT COALESCE(SUM(COALESCE(NULLIF(sales_average_weighted, 0), sales_average, 0)), 0)
                     FROM products as u_p
                     WHERE u_p.group_id = products.group_id
+                    AND u_p.is_unified_group = 1
                     AND u_p.is_deleted = 0 
                     AND u_p.is_scarce = 0
                 )

@@ -90,11 +90,12 @@ const isProcessing = ref({});
 
 // Rechazar un match sugerido por IA para que el sistema aprenda
 const rejectAiMatch = async (item) => {
-  if (!item.best_supplier?.is_ai_matched || !item.best_supplier?.id) return;
+  const psId = item.best_supplier?.product_suppliers_id || item.best_supplier?.product_supplier_id || item.best_supplier?.id;
+  if (!item.best_supplier?.is_ai_matched || !psId) return;
   try {
     await axios.post('/supplier-ai-match/reject', {
       product_id:          item.id,
-      product_supplier_id: item.best_supplier.id,
+      product_supplier_id: psId,
     });
     // Ignorar por 7 días al rechazar coincidencia
     await axios.post(`/suppliers-ia-order-assistant/products/${item.id}/ignore`);
