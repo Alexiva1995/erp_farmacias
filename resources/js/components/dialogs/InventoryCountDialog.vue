@@ -314,8 +314,8 @@ const handleSave = async () => {
             </h2>
             <div class="d-flex align-center gap-2 mt-1">
               <span
-                class="text-white opacity-75 uppercase font-weight-bold"
-                style="font-size: 0.6rem; letter-spacing: 0.05em;"
+                class="text-white opacity-75 text-uppercase font-weight-bold"
+                style="font-size: 0.65rem; letter-spacing: 0.05em;"
               >
                 Validación Física • Auditoría de Stock
               </span>
@@ -334,125 +334,143 @@ const handleSave = async () => {
       </VCardTitle>
 
       <VCardText class="pa-3 pa-sm-4 bg-light d-flex flex-column gap-3">
-        <!-- Perfil del Producto Estructurado (Estilo Inventario de Productos) -->
+        <!-- 1. Perfil del Producto Estructurado (Jerarquía Limpia y Neutra) -->
         <VCard
           variant="flat"
-          class="pa-3 bg-white rounded-xl border shadow-sm"
+          class="pa-4 bg-white rounded-xl border shadow-sm d-flex flex-column gap-2"
         >
-          <!-- Pastilla ID + Laboratorio / Categoría -->
-          <div class="d-flex align-center justify-space-between gap-2 mb-1">
-            <span class="text-primary font-weight-black text-xs">
+          <!-- Pastillas ID (Discreto/Gris) + Laboratorio/Marca -->
+          <div class="d-flex align-center justify-space-between gap-2">
+            <VChip
+              color="secondary"
+              variant="tonal"
+              size="x-small"
+              class="font-weight-bold px-2 rounded-md"
+            >
               ID: {{ product.id }}
-            </span>
-            <span class="text-primary font-weight-black text-super-xs text-uppercase truncate" style="max-inline-size: 180px;">
+            </VChip>
+
+            <VChip
+              color="secondary"
+              variant="tonal"
+              size="x-small"
+              class="font-weight-bold text-uppercase truncate px-2 rounded-md"
+              style="max-inline-size: 200px;"
+            >
               {{ product.laboratory?.name || 'S/L' }}
-            </span>
+            </VChip>
           </div>
 
-          <!-- Nombre de Producto Dominante -->
-          <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight mb-1" :title="product.name">
-            {{ product.name }}
-            <span v-if="product.iva == 1 || product.iva === true" class="text-xs text-disabled font-weight-regular"> (G)</span>
-            <span v-if="product.is_colombian_origin == 1 || product.is_colombian_origin === true" class="text-xs text-disabled font-weight-regular"> (COL)</span>
-          </h3>
+          <!-- Nombre de Producto Dominante (Grande y en Negrita) -->
+          <div>
+            <h3 class="text-subtitle-1 font-weight-black text-high-emphasis text-uppercase leading-tight mb-1" :title="product.name">
+              {{ product.name }}
+              <span v-if="product.iva == 1 || product.iva === true" class="text-xs text-disabled font-weight-regular"> (G)</span>
+              <span v-if="product.is_colombian_origin == 1 || product.is_colombian_origin === true" class="text-xs text-disabled font-weight-regular"> (COL)</span>
+            </h3>
 
-          <!-- Principio Activo / Presentación -->
-          <div class="d-flex align-center gap-1 text-super-xs text-disabled">
-            <span class="truncate" style="max-inline-size: 260px;">
-              {{ product.active_ingredient || "Sin principio activo" }}
-            </span>
+            <!-- Principio Activo Directo Debajo del Título -->
+            <div v-if="product.active_ingredient" class="text-xs text-disabled text-uppercase font-weight-medium">
+              {{ product.active_ingredient }}
+            </div>
           </div>
         </VCard>
 
         <VForm @submit.prevent="handleSave">
-          <!-- Modo de Ingreso Compacto (solo visible si el producto permite bypass sin código de barras) -->
-          <div
-            v-if="canBypassBarcode && barcodeRequiredGlobal"
-            class="pa-2 mb-3 rounded-lg border bg-white shadow-xs d-flex align-center justify-space-between"
-          >
-            <div class="d-flex align-center gap-2">
-              <VIcon
-                :icon="allowWithoutBarcode ? 'tabler-keyboard' : 'tabler-scan'"
-                :color="allowWithoutBarcode ? 'warning' : 'primary'"
-                size="18"
-              />
-              <span class="text-super-xs font-weight-black uppercase" :class="allowWithoutBarcode ? 'text-warning' : 'text-primary'">
-                {{ allowWithoutBarcode ? "Ingreso Manual (Sin Código)" : "Modo Escaneo" }}
-              </span>
-            </div>
-            <VSwitch
-              v-model="allowWithoutBarcode"
-              :color="allowWithoutBarcode ? 'warning' : 'primary'"
-              hide-details
-              density="compact"
-            />
-          </div>
-
-          <div
-            v-else-if="!canBypassBarcode"
-            class="pa-2 mb-3 rounded-lg border bg-white shadow-xs d-flex align-center gap-2"
-          >
-            <VIcon icon="tabler-scan" color="primary" size="18" />
-            <span class="text-super-xs font-weight-black uppercase text-primary">
-              Modo Escaneo Obligatorio
-            </span>
-          </div>
-
-          <!-- Campo de Escaneo Ultra Compacto (solo si la config global lo requiere y el usuario no eligió ingreso manual) -->
-          <div v-if="!isManualEntryAllowed" class="mb-2">
-            <AppTextField
-              id="barcode-input"
-              v-model="barcodeInput"
-              placeholder="ESCANEAR CÓDIGO..."
-              :error-messages="barcodeError"
-              variant="outlined"
-              density="compact"
-              hide-details="auto"
-              prepend-inner-icon="tabler-barcode"
-              class="rounded-lg font-weight-black text-xs"
-              @keyup.enter="handleBarcodeEnter"
+          <!-- 2. Campo de Escaneo de Código de Barras Unificado (Fusionado) -->
+          <div class="d-flex flex-column gap-1 mb-3">
+            <!-- Si puede bypass/sin código, mostramos switch discreto -->
+            <div
+              v-if="canBypassBarcode && barcodeRequiredGlobal"
+              class="d-flex align-center justify-space-between px-1 mb-1"
             >
-              <template #append-inner>
-                <VBtn
-                  icon="tabler-camera"
-                  variant="tonal"
+              <span class="text-super-xs font-weight-bold text-disabled text-uppercase">
+                {{ allowWithoutBarcode ? "Modo ingreso manual activo" : "Escaneo de código de barras" }}
+              </span>
+              <div class="d-flex align-center gap-1">
+                <span class="text-super-xs text-medium-emphasis font-weight-bold">Ingreso manual</span>
+                <VSwitch
+                  v-model="allowWithoutBarcode"
                   color="primary"
-                  size="x-small"
-                  class="rounded"
-                  @click="isScannerVisible = true"
+                  hide-details
+                  density="compact"
                 />
-              </template>
-            </AppTextField>
+              </div>
+            </div>
+
+            <!-- Input Principal de Escaneo -->
+            <div v-if="!isManualEntryAllowed">
+              <VTextField
+                id="barcode-input"
+                v-model="barcodeInput"
+                placeholder="ESCANEAR O INGRESAR CÓDIGO..."
+                :error-messages="barcodeError"
+                variant="outlined"
+                density="compact"
+                hide-details="auto"
+                bg-color="white"
+                prepend-inner-icon="tabler-scan"
+                class="rounded-xl font-weight-black text-xs barcode-field"
+                @keyup.enter="handleBarcodeEnter"
+              >
+                <template #append-inner>
+                  <VBtn
+                    icon="tabler-camera"
+                    variant="tonal"
+                    color="primary"
+                    size="small"
+                    class="rounded-lg me-n1"
+                    @click="isScannerVisible = true"
+                  >
+                    <VIcon icon="tabler-camera" size="18" />
+                    <VTooltip activator="parent" location="top">Escanear con cámara</VTooltip>
+                  </VBtn>
+                </template>
+              </VTextField>
+            </div>
           </div>
 
-          <!-- Cantidad Auditada -->
-          <div class="pa-2 rounded-lg bg-white border shadow-xs">
-            <div class="d-flex align-center gap-2 mb-1">
-              <div class="header-indicator secondary" style="block-size: 10px;" />
-              <span class="text-super-xs font-weight-black text-high-emphasis uppercase">Auditado</span>
+          <!-- 3. Conteo Físico / Definitivo (Input Evidente y Sólido) -->
+          <VCard
+            variant="flat"
+            class="pa-4 rounded-xl border bg-white shadow-sm"
+          >
+            <div class="d-flex align-center justify-space-between mb-2">
+              <div class="d-flex align-center gap-2">
+                <VIcon
+                  icon="tabler-edit"
+                  size="16"
+                  color="primary"
+                />
+                <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">Conteo Físico</span>
+              </div>
+              <span class="text-super-xs text-disabled font-weight-bold uppercase">
+                Ingrese unidades físicas
+              </span>
             </div>
 
             <!-- Modo Dual (Restaurante): Paquetes Completos + Contenido Destapado -->
             <template v-if="isDualCountMode">
-              <div class="d-flex flex-column gap-2">
+              <div class="d-flex flex-column gap-2 mt-1">
                 <!-- Paquetes completos sin destapar -->
-                <div class="bg-light rounded border-dashed-2 pa-1">
-                  <div class="d-flex align-center gap-1 mb-1 px-1">
-                    <VIcon icon="tabler-package" size="14" color="primary" />
-                    <span class="text-super-xs font-weight-black text-primary uppercase">
+                <div class="bg-grey-50 rounded-xl border pa-3">
+                  <div class="d-flex align-center gap-1 mb-1">
+                    <VIcon icon="tabler-package" size="16" color="primary" />
+                    <span class="text-xs font-weight-black text-primary uppercase">
                       Paquetes completos ({{ productPresentation }} {{ productUnit }} c/u)
                     </span>
                   </div>
-                  <AppTextField
+                  <VTextField
                     id="packages-input"
                     v-model.number="packagesCount"
                     type="number"
                     min="0"
                     step="1"
                     placeholder="0"
-                    variant="plain"
-                    class="audit-huge-input font-weight-black"
-                    density="compact"
+                    variant="outlined"
+                    bg-color="white"
+                    class="conteo-definitivo-input font-weight-black"
+                    density="comfortable"
                     hide-details
                     :disabled="barcodeRequiredGlobal && !allowWithoutBarcode && (!barcodeInput.trim() || !!barcodeError)"
                     @keyup.enter="$el.querySelector('#opened-input')?.focus()"
@@ -460,23 +478,24 @@ const handleSave = async () => {
                 </div>
 
                 <!-- Contenido ya destapado -->
-                <div class="bg-light rounded border-dashed-2 pa-1">
-                  <div class="d-flex align-center gap-1 mb-1 px-1">
-                    <VIcon icon="tabler-box-seam" size="14" color="warning" />
-                    <span class="text-super-xs font-weight-black text-warning uppercase">
+                <div class="bg-grey-50 rounded-xl border pa-3">
+                  <div class="d-flex align-center gap-1 mb-1">
+                    <VIcon icon="tabler-box-seam" size="16" color="warning" />
+                    <span class="text-xs font-weight-black text-warning uppercase">
                       Contenido destapado / parcial ({{ productUnit }})
                     </span>
                   </div>
-                  <AppTextField
+                  <VTextField
                     id="opened-input"
                     v-model.number="openedQuantity"
                     type="number"
                     min="0"
                     step="any"
                     placeholder="0"
-                    variant="plain"
-                    class="audit-huge-input font-weight-black"
-                    density="compact"
+                    variant="outlined"
+                    bg-color="white"
+                    class="conteo-definitivo-input font-weight-black"
+                    density="comfortable"
                     hide-details
                     :disabled="barcodeRequiredGlobal && !allowWithoutBarcode && (!barcodeInput.trim() || !!barcodeError)"
                     @keyup.enter="handleSave"
@@ -485,9 +504,9 @@ const handleSave = async () => {
 
                 <!-- Total calculado -->
                 <div v-if="packagesCount !== '' || openedQuantity !== ''"
-                  class="d-flex align-center justify-space-between rounded pa-2 bg-primary-lighten-5 border"
+                  class="d-flex align-center justify-space-between rounded-xl pa-3 bg-primary-lighten-5 border mt-1"
                 >
-                  <span class="text-super-xs font-weight-black text-primary uppercase">Total calculado</span>
+                  <span class="text-xs font-weight-black text-primary uppercase">Total calculado</span>
                   <VChip size="small" color="primary" variant="flat" class="font-weight-black">
                     {{ dualTotalQuantity }} {{ productUnit }}
                   </VChip>
@@ -497,17 +516,18 @@ const handleSave = async () => {
 
             <!-- Modo Normal: Un solo campo -->
             <template v-else>
-              <div class="bg-light rounded border-dashed-2">
-                <AppTextField
+              <div class="solid-input-container mt-1">
+                <VTextField
                   id="quantity-input"
                   v-model.number="countedQuantity"
                   type="number"
                   min="0"
                   step="any"
                   placeholder="0"
-                  variant="plain"
-                  class="audit-huge-input font-weight-black"
-                  density="compact"
+                  variant="outlined"
+                  bg-color="white"
+                  class="conteo-definitivo-input font-weight-black"
+                  density="comfortable"
                   hide-details
                   :disabled="barcodeRequiredGlobal && !allowWithoutBarcode && (!barcodeInput.trim() || !!barcodeError)"
                   @keyup.enter="handleSave"
@@ -515,36 +535,37 @@ const handleSave = async () => {
                 />
               </div>
             </template>
-          </div>
+          </VCard>
         </VForm>
       </VCardText>
 
       <VDivider />
 
-      <VCardActions class="pa-2 bg-white border-t">
+      <VCardActions class="pa-3 bg-white border-t px-4">
         <VRow dense class="w-100 ma-0">
           <VCol cols="6" class="pa-1">
             <VBtn
               color="secondary"
               variant="tonal"
-              height="38"
+              height="44"
               block
-              class="font-weight-black rounded-lg text-super-xs uppercase"
+              class="font-weight-black rounded-lg text-button uppercase"
               @click="handleCancel"
             >
-              Cerrar
+              Cancelar
             </VBtn>
           </VCol>
           <VCol cols="6" class="pa-1">
             <VBtn
               color="primary"
               variant="flat"
-              height="38"
+              height="44"
               block
-              class="font-weight-black rounded-lg shadow-primary text-super-xs uppercase"
+              class="font-weight-black rounded-lg shadow-primary text-button uppercase"
               :disabled="!canSave"
               @click="handleSave"
             >
+              <VIcon start icon="tabler-clipboard-check" size="18" />
               Guardar
             </VBtn>
           </VCol>
@@ -552,16 +573,18 @@ const handleSave = async () => {
       </VCardActions>
     </VCard>
 
-    <BarcodeScannerDialog v-model="isScannerVisible" @scan="onBarcodeScanned" />
+    <BarcodeScannerDialog v-model="isScannerVisible" @scanned="onBarcodeScanned" />
   </VDialog>
 </template>
 
 <style scoped>
-/* El fondo del header es dinámico via CSS vars del branding store */
 .header-gradient {
-  background: var(--brand-gradient) !important;
+  background: linear-gradient(
+    135deg,
+    rgb(var(--v-theme-gradient-end)) 0%,
+    rgb(var(--v-theme-primary)) 100%
+  );
 }
-
 
 .detail-dialog-card {
   border-radius: 12px !important;
@@ -569,7 +592,7 @@ const handleSave = async () => {
 
 .header-indicator {
   inline-size: 4px;
-  block-size: 16px;
+  block-size: 14px;
   border-radius: 10px;
 }
 
@@ -577,16 +600,8 @@ const handleSave = async () => {
   background-color: rgb(var(--v-theme-primary));
 }
 
-.header-indicator.secondary {
-  background-color: rgb(var(--v-theme-secondary));
-}
-
 .shadow-primary {
   box-shadow: 0 4px 14px 0 rgba(var(--v-theme-primary), 0.39) !important;
-}
-
-.shadow-xs {
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
 }
 
 .text-super-xs {
@@ -606,56 +621,35 @@ const handleSave = async () => {
   border-block-start: 1px solid rgba(var(--v-border-color), 0.08) !important;
 }
 
-.border-dashed-2 {
-  border: 1px dashed rgba(var(--v-border-color), 0.15) !important;
+.bg-grey-50 {
+  background-color: #f8fafc !important;
 }
 
 .bg-primary-lighten-5 {
   background-color: rgba(var(--v-theme-primary), 0.05) !important;
 }
 
-.bg-warning-lighten-5 {
-  background-color: rgba(var(--v-theme-warning), 0.05) !important;
-}
-
-.audit-huge-input :deep(input) {
-  border: none;
-  background: transparent;
-  color: rgb(var(--v-theme-primary)) !important;
-  font-size: 1.5rem !important;
+.conteo-definitivo-input :deep(input) {
+  font-size: 1.75rem !important;
   font-weight: 900 !important;
-  inline-size: 100%;
-  line-height: 1.2;
-  outline: none;
   text-align: center !important;
-  padding: 8px 0 !important;
+  color: rgb(var(--v-theme-primary)) !important;
+  letter-spacing: 1px;
 }
 
-@media (min-width: 600px) {
-  .audit-huge-input :deep(input) {
-    font-size: 2rem !important;
-    padding: 10px 0 !important;
-  }
-}
-
-.audit-huge-input :deep(input::placeholder) {
-  color: rgba(var(--v-theme-on-surface), 0.25) !important;
+.conteo-definitivo-input :deep(input::placeholder) {
+  color: rgba(var(--v-theme-on-surface), 0.35) !important;
   font-weight: 700;
 }
 
-.audit-huge-input :deep(.v-field__input) {
-  padding: 0 !important;
+.conteo-definitivo-input :deep(.v-field) {
+  border-radius: 12px !important;
+  background-color: #ffffff !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05) !important;
 }
 
-.truncate-1-line {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 1;
-  line-clamp: 1;
-}
-
-.uppercase {
-  text-transform: uppercase;
+.barcode-field :deep(.v-field) {
+  background-color: #ffffff !important;
+  border-radius: 10px !important;
 }
 </style>

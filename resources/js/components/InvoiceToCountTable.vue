@@ -17,7 +17,7 @@ const emit = defineEmits(["update:options", "count-product"]);
 
 const headers = computed(() => {
   const baseHeaders = [
-    { title: "ID",           key: "id",               sortable: true,  width: "60px", cellClass: "font-weight-black text-primary" },
+    { title: "ID",           key: "id",               sortable: true,  align: "center", width: "70px", cellClass: "font-weight-black text-primary d-none d-sm-table-cell", headerClass: "d-none d-sm-table-cell" },
     { title: "Producto",     key: "name",              sortable: true },
     { title: "Laboratorio",  key: "laboratory.name",   sortable: true,  width: "15%"   },
     { title: "Expiración",   key: "next_expiration",   sortable: true,  width: "120px" },
@@ -160,7 +160,7 @@ const getProductLocations = (product) => {
                 color="primary"
                 size="small"
               >
-                <VIcon icon="tabler-scan" size="18" />
+                <VIcon icon="tabler-clipboard-check" size="18" />
                 <VTooltip activator="parent" location="top">Contar producto de factura</VTooltip>
               </IconBtn>
             </template>

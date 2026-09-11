@@ -539,11 +539,10 @@ const getProductLocations = (item) => {
             <template v-else-if="mode === 'inventory'">
               <IconBtn 
                 @click="emit('count-product', item)" 
-                color="success"
-                variant="tonal"
+                color="primary"
                 size="small"
               >
-                <VIcon icon="tabler-scan" size="18" />
+                <VIcon icon="tabler-clipboard-check" size="18" />
                 <VTooltip activator="parent" location="top">Contar producto</VTooltip>
               </IconBtn>
             </template>
