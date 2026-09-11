@@ -44,7 +44,7 @@ class DronenaEdiService implements DronenaEdiServiceInterface
                 $code = $psDirect?->cod_supplier;
             }
 
-            // 3. Buscar en el catálogo de Nena por barcode del producto local o barcode_match
+            // 3. Buscar en el catálogo de Nena por barcode_match o por relación
             if (empty($code)) {
                 $barcode = $detail->product?->barcode;
                 $nenaPs = \App\Models\ProductSupplier::where('supplier_id', $autoOrder->supplier_id)
@@ -53,13 +53,29 @@ class DronenaEdiService implements DronenaEdiServiceInterface
                             $q->where('product_id', $detail->product_id);
                         }
                         if (!empty($barcode)) {
-                            $q->orWhere('barcode_match', $barcode);
+                            $q->orWhere('barcode_match', $barcode)
+                              ->orWhere('cod_supplier', $barcode);
                         }
                     })
                     ->whereNotNull('cod_supplier')
                     ->where('cod_supplier', '!=', '')
                     ->orderByRaw('CASE WHEN product_id = ? THEN 0 ELSE 1 END', [$detail->product_id ?? 0])
                     ->first();
+
+                // Si aún no se encuentra y el supplier_id no coincide con el ID exacto registrado para Nena en la BD
+                if (!$nenaPs && !empty($barcode)) {
+                    $nenaPs = \App\Models\ProductSupplier::where(function ($q) {
+                            $q->whereHas('supplier', function ($sq) {
+                                $sq->where('name', 'LIKE', '%NENA%');
+                            });
+                        })
+                        ->where(function ($q) use ($barcode) {
+                            $q->where('barcode_match', $barcode);
+                        })
+                        ->whereNotNull('cod_supplier')
+                        ->where('cod_supplier', '!=', '')
+                        ->first();
+                }
 
                 $code = $nenaPs?->cod_supplier;
             }
