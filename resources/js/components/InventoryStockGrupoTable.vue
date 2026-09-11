@@ -58,12 +58,22 @@ const getDiffColor = (val) => {
   if (isNaN(num) || num === 0) return 'secondary';
   return num > 0 ? 'success' : 'error';
 };
+
+const uniqueProducts = computed(() => {
+  const seen = new Set();
+  return (props.products || []).filter(item => {
+    const key = getGroupKey(item);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+});
 </script>
 
 <template>
   <div class="inventory-stock-grouped">
     <!-- Estado vacío -->
-    <div v-if="!loading && products.length === 0" class="d-flex flex-column align-center py-16 text-disabled bg-surface border rounded-lg">
+    <div v-if="!loading && uniqueProducts.length === 0" class="d-flex flex-column align-center py-16 text-disabled bg-surface border rounded-lg">
       <VIcon icon="tabler-package-off" size="48" class="mb-3" />
       <span class="text-body-1 font-weight-medium">No se encontraron productos o grupos filtrados</span>
     </div>
@@ -79,7 +89,7 @@ const getDiffColor = (val) => {
     <!-- Acordeón de grupos -->
     <div v-else class="groups-container">
       <div
-        v-for="grupo in props.products"
+        v-for="grupo in uniqueProducts"
         :key="getGroupKey(grupo)"
         class="grupo-card mb-3 rounded-lg border overflow-hidden bg-surface"
       >

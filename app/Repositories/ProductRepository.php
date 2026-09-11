@@ -342,11 +342,12 @@ class ProductRepository
         $paginacion = $consulta->paginate($perPage);
 
         if ($isGroup && $paginacion->count() > 0) {
-            $groupIds = $paginacion->pluck('group_id')->filter()->toArray();
-            $productIds = $paginacion->whereNull('group_id')->pluck('id')->toArray();
+            $groupIds = $paginacion->pluck('group_id')->filter()->unique()->toArray();
+            $productIds = $paginacion->whereNull('group_id')->pluck('id')->filter()->unique()->toArray();
 
             $filtrosHijos = $filtros;
             $filtrosHijos['viewType'] = 'individual';
+            unset($filtrosHijos['page'], $filtrosHijos['itemsPerPage']);
             
             $consultaHijos = $this->builerFiltrarProductforStock($filtrosHijos);
             
@@ -359,11 +360,23 @@ class ProductRepository
                 return $item->group_id ? "g_" . $item->group_id : "p_" . $item->id;
             });
 
-            $paginacion->getCollection()->transform(function($grupo) use ($hijos) {
+            $vistos = [];
+            $coleccionUnica = $paginacion->getCollection()->filter(function($grupo) use (&$vistos) {
+                $key = $grupo->group_id ? "g_" . $grupo->group_id : "p_" . $grupo->id;
+                if (isset($vistos[$key])) {
+                    return false;
+                }
+                $vistos[$key] = true;
+                return true;
+            });
+
+            $coleccionUnica->transform(function($grupo) use ($hijos) {
                 $key = $grupo->group_id ? "g_" . $grupo->group_id : "p_" . $grupo->id;
                 $grupo->productos = $hijos->get($key, collect([]));
                 return $grupo;
             });
+
+            $paginacion->setCollection($coleccionUnica->values());
         }
 
         return $paginacion;
