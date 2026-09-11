@@ -97,60 +97,53 @@ const isOfferActive = computed(() => {
 
       <VCardText class="pa-4 pa-sm-5 bg-surface">
         <!-- Barra de Resumen Integrada centrada -->
-        <div class="pa-3 px-3 rounded border bg-var-theme-background mb-4">
-          <VRow dense class="align-center text-center">
+        <div class="pa-3 px-4 rounded border bg-var-theme-background mb-4">
+          <VRow dense class="align-center">
             <!-- Empresa -->
-            <VCol cols="6" sm="4" class="d-flex align-center justify-center gap-2 py-1">
-              <VAvatar size="32" color="primary" variant="tonal" class="rounded">
-                <VIcon icon="tabler-building" size="16" />
+            <VCol cols="12" sm="4" class="d-flex align-center gap-3 py-1">
+              <VAvatar size="34" color="primary" variant="tonal" class="rounded">
+                <VIcon icon="tabler-building" size="18" />
               </VAvatar>
               <div class="d-flex flex-column text-start">
-                <span class="text-super-xs font-weight-black text-disabled uppercase">Empresa</span>
-                <span class="text-sm font-weight-black text-high-emphasis leading-tight truncate" style="max-inline-size: 130px;" :title="props.offerData.company_name">
+                <span class="text-super-xs font-weight-bold text-disabled uppercase">Empresa Beneficiaria</span>
+                <span class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight truncate" style="max-inline-size: 160px;" :title="props.offerData.company_name">
                   {{ props.offerData.company_name }}
                 </span>
-                <span class="text-super-xs text-disabled font-weight-bold uppercase">ID: #{{ props.offerData.company_id }}</span>
+                <span class="text-super-xs text-disabled font-weight-bold uppercase">ID #{{ props.offerData.company_id }}</span>
               </div>
             </VCol>
 
             <!-- Vigencia -->
-            <VCol cols="6" sm="4" class="d-flex align-center justify-center gap-2 py-1">
-              <VAvatar size="32" color="secondary" variant="tonal" class="rounded">
-                <VIcon icon="tabler-calendar-event" size="16" />
+            <VCol cols="12" sm="5" class="d-flex align-center gap-3 py-1">
+              <VAvatar size="34" color="secondary" variant="tonal" class="rounded">
+                <VIcon icon="tabler-calendar-event" size="18" />
               </VAvatar>
               <div class="d-flex flex-column text-start">
-                <span class="text-super-xs font-weight-black text-disabled uppercase">Vigencia</span>
-                <span class="text-super-xs font-weight-black text-success uppercase leading-tight">
-                  INI: {{ formatDate(props.offerData.start_date) }}
-                </span>
-                <span class="text-super-xs font-weight-black text-error uppercase leading-tight">
-                  FIN: {{ formatDate(props.offerData.end_date) }}
+                <span class="text-super-xs font-weight-bold text-disabled uppercase">Periodo de Vigencia</span>
+                <div class="d-flex align-center gap-1 text-xs font-weight-bold text-high-emphasis leading-tight">
+                  <span>{{ formatDate(props.offerData.start_date) }}</span>
+                  <span class="text-disabled font-weight-regular">—</span>
+                  <span>{{ formatDate(props.offerData.end_date) }}</span>
+                </div>
+                <span class="text-super-xs font-weight-bold" :class="isOfferActive ? 'text-success' : 'text-error'">
+                  {{ isOfferActive ? '• Oferta vigente actualmente' : '• Fuera de periodo de vigencia' }}
                 </span>
               </div>
             </VCol>
 
             <!-- Estado -->
-            <VCol cols="12" sm="4" class="d-flex align-center justify-center py-1 mt-2 mt-sm-0">
-              <div class="d-flex flex-column align-center">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">Disponibilidad</span>
-                <div class="d-flex align-center gap-1">
-                  <VChip
-                    :color="getStatusColor(props.offerData.is_active)"
-                    size="x-small"
-                    variant="tonal"
-                    class="font-weight-black rounded"
-                  >
-                    {{ getStatusText(props.offerData.is_active) }}
-                  </VChip>
-                  <VChip
-                    :color="isOfferActive ? 'success' : 'error'"
-                    size="x-small"
-                    variant="tonal"
-                    class="font-weight-black rounded"
-                  >
-                    {{ isOfferActive ? 'VIGENTE' : 'NO VIGENTE' }}
-                  </VChip>
-                </div>
+            <VCol cols="12" sm="3" class="d-flex align-center justify-start justify-sm-end py-1">
+              <div class="d-flex flex-column align-start align-sm-end">
+                <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1">Estado</span>
+                <VChip
+                  :color="getStatusColor(props.offerData.is_active)"
+                  size="small"
+                  variant="tonal"
+                  class="font-weight-black rounded"
+                >
+                  <VIcon start size="14" :icon="props.offerData.is_active ? 'tabler-check' : 'tabler-x'" />
+                  {{ getStatusText(props.offerData.is_active) }}
+                </VChip>
               </div>
             </VCol>
           </VRow>

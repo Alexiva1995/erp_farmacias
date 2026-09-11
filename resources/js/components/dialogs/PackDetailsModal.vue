@@ -103,8 +103,8 @@ const calculatePriceWithDiscount = (item) => {
 <template>
   <VDialog
     v-model="dialogVisible"
-    max-width="680px"
-    width="680px"
+    max-width="780px"
+    width="780px"
     :fullscreen="mobile"
     persistent
     scrollable
@@ -214,16 +214,16 @@ const calculatePriceWithDiscount = (item) => {
           <VDataTable
             v-if="!mobile"
             :headers="[
-              { title: 'CANT', key: 'quantity', align: 'center', width: '70px', sortable: false },
+              { title: 'CANT', key: 'quantity', align: 'center', width: '60px', sortable: false },
               { title: 'PRODUCTO', key: 'name', sortable: false },
-              { title: 'UNITARIO', key: 'unit_price', align: 'end', sortable: false },
-              { title: 'DESC.', key: 'discount_percentage', align: 'center', sortable: false },
-              { title: 'CON DESC.', key: 'price_with_discount', align: 'end', sortable: false },
-              { title: 'SUBTOTAL', key: 'subtotal', align: 'end', sortable: false },
+              { title: 'UNITARIO', key: 'unit_price', align: 'end', width: '100px', sortable: false },
+              { title: 'DESC.', key: 'discount_percentage', align: 'center', width: '80px', sortable: false },
+              { title: 'CON DESC.', key: 'price_with_discount', align: 'end', width: '100px', sortable: false },
+              { title: 'SUBTOTAL', key: 'subtotal', align: 'end', width: '100px', sortable: false },
             ]"
             :items="packProducts"
             density="compact"
-            class="internal-table rounded-lg border shadow-none bg-surface"
+            class="internal-table rounded border shadow-none bg-surface"
             no-data-text="No hay productos registrados"
             hide-default-footer
           >
@@ -234,14 +234,22 @@ const calculatePriceWithDiscount = (item) => {
             </template>
 
             <template #item.name="{ item }">
-              <div class="d-flex flex-column py-2">
-                <span class="text-body-2 font-weight-black text-high-emphasis text-uppercase leading-tight">
-                  {{ item.name }}
+              <div class="d-flex flex-column py-2 min-width-0 flex-grow-1">
+                <span
+                  class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate"
+                  style="max-inline-size: 340px;"
+                  :title="item.name"
+                >
+                  {{ item.name?.toUpperCase() || '—' }}
                 </span>
-                <div class="d-flex align-center gap-1 text-super-xs mt-1">
-                  <span class="text-disabled truncate">{{ item.active_ingredient || 'Principio No Registrado' }}</span>
-                  <span class="text-disabled mx-1">•</span>
-                  <span class="text-medium-emphasis font-weight-bold uppercase">{{ item.laboratory || 'Genérico' }}</span>
+                <div class="d-flex align-center flex-wrap gap-1 text-super-xs mt-0-5">
+                  <span class="text-disabled font-weight-normal truncate" style="max-inline-size: 180px;">
+                    {{ item.active_ingredient || '—' }}
+                  </span>
+                  <span class="text-disabled mx-1">|</span>
+                  <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 140px;">
+                    {{ item.laboratory || 'S/L' }}
+                  </span>
                 </div>
               </div>
             </template>

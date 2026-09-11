@@ -96,100 +96,80 @@ const closeModal = () => {
       </VCardTitle>
 
       <VCardText class="pa-4 pa-sm-5 bg-surface">
-        <!-- Barra de Resumen Integrada centrada -->
-        <div class="pa-3 px-3 rounded border bg-var-theme-background mb-4">
-          <VRow dense class="align-center text-center">
+        <!-- Barra de Resumen Integrada -->
+        <div class="pa-3 px-4 rounded border bg-var-theme-background mb-4">
+          <VRow dense class="align-center">
             <!-- Campaña -->
-            <VCol cols="6" sm="4" class="d-flex align-center justify-center gap-2 py-1">
-              <VAvatar size="32" color="primary" variant="tonal" class="rounded">
-                <VIcon icon="tabler-prescription" size="16" />
+            <VCol cols="12" sm="4" class="d-flex align-center gap-3 py-1">
+              <VAvatar size="34" color="primary" variant="tonal" class="rounded">
+                <VIcon icon="tabler-prescription" size="18" />
               </VAvatar>
               <div class="d-flex flex-column text-start">
-                <span class="text-super-xs font-weight-black text-disabled uppercase">Campaña</span>
-                <span class="text-sm font-weight-black text-high-emphasis leading-tight truncate" style="max-inline-size: 130px;" :title="props.prescriptionData.name">
-                  {{ props.prescriptionData.name || "Sin nombre" }}
+                <span class="text-super-xs font-weight-bold text-disabled uppercase">Campaña</span>
+                <span class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight truncate" style="max-inline-size: 160px;" :title="props.prescriptionData.name">
+                  {{ props.prescriptionData.name }}
                 </span>
-                <span class="text-super-xs text-disabled font-weight-bold uppercase">ID: #{{ props.prescriptionData.id }}</span>
+                <span class="text-super-xs text-disabled font-weight-bold uppercase">ID #{{ props.prescriptionData.id }}</span>
               </div>
             </VCol>
 
-            <!-- Descuento -->
-            <VCol cols="6" sm="4" class="d-flex align-center justify-center gap-2 py-1">
-              <VAvatar size="32" color="success" variant="tonal" class="rounded">
-                <VIcon icon="tabler-percentage" size="16" />
+            <!-- Vigencia -->
+            <VCol cols="12" sm="5" class="d-flex align-center gap-3 py-1">
+              <VAvatar size="34" color="secondary" variant="tonal" class="rounded">
+                <VIcon icon="tabler-calendar-event" size="18" />
               </VAvatar>
               <div class="d-flex flex-column text-start">
-                <span class="text-super-xs font-weight-black text-disabled uppercase">Descuento</span>
-                <span class="text-sm font-weight-black text-success leading-tight">
-                  {{ props.prescriptionData.discount_percentage }}% OFF
+                <span class="text-super-xs font-weight-bold text-disabled uppercase">Periodo de Vigencia</span>
+                <div class="d-flex align-center gap-1 text-xs font-weight-bold text-high-emphasis leading-tight">
+                  <span>{{ formatDate(props.prescriptionData.start_date) }}</span>
+                  <span class="text-disabled font-weight-regular">—</span>
+                  <span>{{ formatDate(props.prescriptionData.end_date) }}</span>
+                </div>
+                <span class="text-super-xs font-weight-bold" :class="isOfferCurrentlyActive ? 'text-success' : 'text-error'">
+                  {{ isOfferCurrentlyActive ? '• Oferta vigente actualmente' : '• Fuera de periodo de vigencia' }}
                 </span>
-                <span class="text-super-xs text-disabled font-weight-bold uppercase">Ahorro Récipe</span>
               </div>
             </VCol>
 
             <!-- Estado -->
-            <VCol cols="12" sm="4" class="d-flex align-center justify-center py-1 mt-2 mt-sm-0">
-              <div class="d-flex flex-column align-center">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">Disponibilidad</span>
-                <div class="d-flex align-center gap-1">
-                  <VChip
-                    :color="getStatusColor(props.prescriptionData.is_active)"
-                    size="x-small"
-                    variant="tonal"
-                    class="font-weight-black rounded"
-                  >
-                    {{ getStatusText(props.prescriptionData.is_active) }}
-                  </VChip>
-                  <VChip
-                    :color="isOfferCurrentlyActive ? 'success' : 'error'"
-                    size="x-small"
-                    variant="tonal"
-                    class="font-weight-black rounded"
-                  >
-                    {{ isOfferCurrentlyActive ? 'VIGENTE' : 'NO VIGENTE' }}
-                  </VChip>
-                </div>
+            <VCol cols="12" sm="3" class="d-flex align-center justify-start justify-sm-end py-1">
+              <div class="d-flex flex-column align-start align-sm-end">
+                <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1">Estado</span>
+                <VChip
+                  :color="getStatusColor(props.prescriptionData.is_active)"
+                  size="small"
+                  variant="tonal"
+                  class="font-weight-black rounded"
+                >
+                  <VIcon start size="14" :icon="props.prescriptionData.is_active ? 'tabler-check' : 'tabler-x'" />
+                  {{ getStatusText(props.prescriptionData.is_active) }}
+                </VChip>
               </div>
             </VCol>
           </VRow>
         </div>
 
-        <!-- Periodo de Validez -->
+        <!-- Parámetro de Descuento -->
         <div class="mb-2">
           <div class="d-flex align-center gap-1-5 mb-3">
             <div class="header-indicator primary" />
-            <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">Periodo de Validez</span>
+            <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">Beneficio por Récipe</span>
           </div>
 
-          <VRow dense>
-            <VCol cols="12" sm="6">
-              <div class="pa-3 rounded border bg-var-theme-background d-flex align-center gap-3">
-                <VAvatar size="34" color="success" variant="tonal" class="rounded">
-                  <VIcon icon="tabler-calendar-event" size="18" />
-                </VAvatar>
-                <div class="d-flex flex-column">
-                  <span class="text-super-xs font-weight-bold text-disabled uppercase">Fecha de Inicio</span>
-                  <span class="text-sm font-weight-black text-high-emphasis">
-                    {{ formatDate(props.prescriptionData.start_date) }}
-                  </span>
-                </div>
+          <div class="pa-3 rounded border bg-var-theme-background d-flex align-center justify-space-between">
+            <div class="d-flex align-center gap-3">
+              <VAvatar size="34" color="success" variant="tonal" class="rounded">
+                <VIcon icon="tabler-percentage" size="18" />
+              </VAvatar>
+              <div class="d-flex flex-column">
+                <span class="text-super-xs font-weight-bold text-disabled uppercase">Descuento Otorgado</span>
+                <span class="text-caption font-weight-medium text-medium-emphasis">Aplica al presentar prescripción médica válida</span>
               </div>
-            </VCol>
-
-            <VCol cols="12" sm="6">
-              <div class="pa-3 rounded border bg-var-theme-background d-flex align-center gap-3 mt-2 mt-sm-0">
-                <VAvatar size="34" color="error" variant="tonal" class="rounded">
-                  <VIcon icon="tabler-calendar-off" size="18" />
-                </VAvatar>
-                <div class="d-flex flex-column">
-                  <span class="text-super-xs font-weight-bold text-disabled uppercase">Fecha de Finalización</span>
-                  <span class="text-sm font-weight-black text-high-emphasis">
-                    {{ formatDate(props.prescriptionData.end_date) }}
-                  </span>
-                </div>
-              </div>
-            </VCol>
-          </VRow>
+            </div>
+            <span class="text-h6 font-weight-black text-success">
+              {{ props.prescriptionData.discount_percentage }}% OFF
+            </span>
+          </div>
         </div>
       </VCardText>
 

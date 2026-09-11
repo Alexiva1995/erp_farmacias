@@ -88,7 +88,7 @@ const handleDelete = (doctorOffer) => emit("delete", doctorOffer);
             <span class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate" style="max-inline-size: 380px;">
               {{ item.doctor?.name || "N/A" }}
             </span>
-            <span class="text-super-xs font-weight-bold text-primary text-uppercase mt-0-5">
+            <span class="text-super-xs font-weight-bold text-medium-emphasis text-uppercase mt-0-5">
               ID MÉDICO: {{ item.doctor_id }}
             </span>
           </div>
@@ -96,20 +96,16 @@ const handleDelete = (doctorOffer) => emit("delete", doctorOffer);
 
         <!-- Discount Column -->
         <template #item.discount="{ item }">
-          <VChip color="success" size="small" variant="tonal" class="font-weight-black rounded">
-            {{ item.discount }}% OFF
-          </VChip>
+          <span class="font-weight-black text-success text-sm">
+            {{ item.discount }}%
+          </span>
         </template>
 
         <!-- Validity Column -->
         <template #item.validity="{ item }">
-          <div class="d-flex flex-column align-center">
-            <span class="text-super-xs font-weight-bold text-primary uppercase">
-              INI: {{ formatDate(item.start_date) }}
-            </span>
-            <span class="text-super-xs font-weight-bold text-error uppercase">
-              FIN: {{ formatDate(item.end_date) }}
-            </span>
+          <div class="d-flex flex-column align-center text-super-xs font-weight-bold text-medium-emphasis">
+            <span>{{ formatDate(item.start_date) }}</span>
+            <span class="text-disabled">al {{ formatDate(item.end_date) }}</span>
           </div>
         </template>
 
@@ -118,7 +114,7 @@ const handleDelete = (doctorOffer) => emit("delete", doctorOffer);
           <VChip
             :color="getStatusColor(item.is_active)"
             size="x-small"
-            variant="flat"
+            variant="tonal"
             class="font-weight-black px-2 rounded"
           >
             {{ getStatusText(item.is_active) }}

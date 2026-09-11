@@ -187,7 +187,7 @@ watch(
 
       <VCardText class="pa-4 pa-sm-5 bg-surface">
         <!-- Bloque 1: Configuración de la Campaña -->
-        <div class="mb-5">
+        <div class="mb-4">
           <div class="d-flex align-center justify-space-between mb-2">
             <div class="d-flex align-center gap-1-5">
               <div class="header-indicator primary" />
@@ -205,22 +205,24 @@ watch(
             </div>
           </div>
 
-          <VRow dense>
-            <VCol cols="12">
-              <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Nombre Descriptivo de la Oferta *</span>
-              <VTextField
-                v-model="formData.name"
-                placeholder="EJ: CAMPAÑA RECETAS ENERO..."
-                variant="outlined"
-                density="compact"
-                hide-details="auto"
-                class="rounded font-weight-bold"
-                :error="!!formErrors.name"
-                :error-messages="formErrors.name"
-                :disabled="isSaving"
-              />
-            </VCol>
-          </VRow>
+          <div class="pa-3 rounded border bg-var-theme-background">
+            <VRow dense>
+              <VCol cols="12">
+                <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Nombre Descriptivo de la Oferta *</span>
+                <VTextField
+                  v-model="formData.name"
+                  placeholder="EJ: CAMPAÑA RECETAS ENERO..."
+                  variant="outlined"
+                  density="compact"
+                  hide-details="auto"
+                  class="rounded font-weight-bold"
+                  :error="!!formErrors.name"
+                  :error-messages="formErrors.name"
+                  :disabled="isSaving"
+                />
+              </VCol>
+            </VRow>
+          </div>
         </div>
 
         <!-- Bloque 2: Parámetros y Vigencia -->
@@ -230,65 +232,67 @@ watch(
             <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">Parámetros y Vigencia</span>
           </div>
 
-          <VRow dense>
-            <VCol cols="12" sm="4">
-              <div class="mb-2 mb-sm-0">
-                <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">% Descuento Aplicable *</span>
-                <VTextField
-                  v-model="formData.discount_percentage"
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.01"
-                  placeholder="0.00"
-                  variant="outlined"
-                  density="compact"
-                  hide-details="auto"
-                  prepend-inner-icon="tabler-percentage"
-                  class="rounded font-weight-black"
-                  :error="!!formErrors.discount_percentage"
-                  :error-messages="formErrors.discount_percentage"
-                  :disabled="isSaving"
-                />
-              </div>
-            </VCol>
+          <div class="pa-3 rounded border bg-var-theme-background">
+            <VRow dense>
+              <VCol cols="12" sm="4">
+                <div class="mb-2 mb-sm-0">
+                  <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">% Descuento Aplicable *</span>
+                  <VTextField
+                    v-model="formData.discount_percentage"
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    placeholder="0.00"
+                    variant="outlined"
+                    density="compact"
+                    hide-details="auto"
+                    prepend-inner-icon="tabler-percentage"
+                    class="rounded font-weight-black"
+                    :error="!!formErrors.discount_percentage"
+                    :error-messages="formErrors.discount_percentage"
+                    :disabled="isSaving"
+                  />
+                </div>
+              </VCol>
 
-            <VCol cols="12" sm="4">
-              <div class="mb-2 mb-sm-0">
-                <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Fecha Inicio *</span>
-                <AppDateTimePicker
-                  v-model="formData.start_date"
-                  placeholder="SELECCIONAR FECHA"
-                  prepend-inner-icon="tabler-calendar-event"
-                  density="compact"
-                  hide-details="auto"
-                  class="rounded"
-                  :error="!!formErrors.start_date"
-                  :error-messages="formErrors.start_date"
-                  :disabled="isSaving"
-                  :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
-                />
-              </div>
-            </VCol>
+              <VCol cols="12" sm="4">
+                <div class="mb-2 mb-sm-0">
+                  <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Fecha Inicio *</span>
+                  <AppDateTimePicker
+                    v-model="formData.start_date"
+                    placeholder="SELECCIONAR FECHA"
+                    prepend-inner-icon="tabler-calendar-event"
+                    density="compact"
+                    hide-details="auto"
+                    class="rounded font-weight-bold"
+                    :error="!!formErrors.start_date"
+                    :error-messages="formErrors.start_date"
+                    :disabled="isSaving"
+                    :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
+                  />
+                </div>
+              </VCol>
 
-            <VCol cols="12" sm="4">
-              <div>
-                <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Fecha Final *</span>
-                <AppDateTimePicker
-                  v-model="formData.end_date"
-                  placeholder="SELECCIONAR FECHA"
-                  prepend-inner-icon="tabler-calendar-off"
-                  density="compact"
-                  hide-details="auto"
-                  class="rounded"
-                  :error="!!formErrors.end_date"
-                  :error-messages="formErrors.end_date"
-                  :disabled="isSaving"
-                  :config="endDateConfig"
-                />
-              </div>
-            </VCol>
-          </VRow>
+              <VCol cols="12" sm="4">
+                <div>
+                  <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Fecha Final *</span>
+                  <AppDateTimePicker
+                    v-model="formData.end_date"
+                    placeholder="SELECCIONAR FECHA"
+                    prepend-inner-icon="tabler-calendar-off"
+                    density="compact"
+                    hide-details="auto"
+                    class="rounded font-weight-bold"
+                    :error="!!formErrors.end_date"
+                    :error-messages="formErrors.end_date"
+                    :disabled="isSaving"
+                    :config="endDateConfig"
+                  />
+                </div>
+              </VCol>
+            </VRow>
+          </div>
         </div>
       </VCardText>
 
@@ -358,5 +362,11 @@ watch(
 
 .border-t {
   border-block-start: 1px solid rgba(var(--v-border-color), 0.08) !important;
+}
+
+.bg-var-theme-background {
+  background-color: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-border-color), 0.12) !important;
+  border-radius: 5px !important;
 }
 </style>

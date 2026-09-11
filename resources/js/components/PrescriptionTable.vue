@@ -95,7 +95,7 @@ const handleView = (prescription) => emit("view-prescription", prescription);
             <span class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate" style="max-inline-size: 380px;">
               {{ item.name }}
             </span>
-            <span class="text-super-xs font-weight-bold text-primary text-uppercase mt-0-5">
+            <span class="text-super-xs text-medium-emphasis text-uppercase font-weight-bold mt-0-5">
               Descuento por Récipe
             </span>
           </div>
@@ -103,21 +103,24 @@ const handleView = (prescription) => emit("view-prescription", prescription);
 
         <!-- Discount Column -->
         <template #item.discount_percentage="{ item }">
-          <VChip color="success" size="small" variant="tonal" class="font-weight-black rounded">
-            {{ item.discount_percentage }}% OFF
-          </VChip>
+          <span class="font-weight-black text-success text-sm">
+            {{ item.discount_percentage }}%
+          </span>
         </template>
 
         <!-- Validity Column -->
         <template #item.validity="{ item }">
-          <div class="d-flex flex-column align-center">
-            <span class="text-super-xs font-weight-bold text-primary uppercase">
-              INI: {{ formatDate(item.start_date) }}
-            </span>
-            <span class="text-super-xs font-weight-bold text-error uppercase">
-              FIN: {{ formatDate(item.end_date) }}
-            </span>
+          <div class="d-flex flex-column align-center text-super-xs font-weight-bold text-medium-emphasis">
+            <span>{{ formatDate(item.start_date) }}</span>
+            <span class="text-disabled">al {{ formatDate(item.end_date) }}</span>
           </div>
+        </template>
+
+        <!-- Sales Count Column -->
+        <template #item.sales_count="{ item }">
+          <span class="text-xs font-weight-bold text-medium-emphasis">
+            {{ item.sales_count ?? 0 }}
+          </span>
         </template>
 
         <!-- Active Status Column -->
@@ -125,37 +128,22 @@ const handleView = (prescription) => emit("view-prescription", prescription);
           <VChip
             :color="getStatusColor(item.is_active)"
             size="x-small"
-            variant="flat"
+            variant="tonal"
             class="font-weight-black px-2 rounded"
           >
             {{ getStatusText(item.is_active) }}
           </VChip>
         </template>
 
-        <!-- Sales Count Column -->
-        <template #item.sales_count="{ item }">
-          <div class="d-flex justify-center">
-            <VChip
-              size="small"
-              color="info"
-              variant="tonal"
-              class="font-weight-black rounded"
-              prepend-icon="tabler-shopping-cart"
-            >
-              {{ item.sales_count ?? 0 }} uds.
-            </VChip>
-          </div>
-        </template>
-
         <!-- Currently Active Column -->
         <template #item.is_currently_active="{ item }">
           <VChip
-            :color="item.is_currently_active ? 'success' : 'warning'"
+            :color="item.is_currently_active ? 'success' : 'secondary'"
             size="x-small"
             variant="tonal"
             class="font-weight-black rounded"
           >
-            {{ item.is_currently_active ? 'VIGENTE' : 'FUERA' }}
+            {{ item.is_currently_active ? 'VIGENTE' : 'FINALIZADA' }}
           </VChip>
         </template>
 
@@ -240,22 +228,22 @@ const handleView = (prescription) => emit("view-prescription", prescription);
               <div class="d-flex flex-column">
                 <span class="text-super-xs text-disabled text-uppercase font-weight-bold letter-spacing-1">Descuento:</span>
                 <span class="text-xs font-weight-black text-success">
-                  {{ item.discount_percentage }}% OFF
+                  {{ item.discount_percentage }}%
                 </span>
               </div>
 
               <div class="d-flex flex-column text-end">
                 <span class="text-super-xs text-disabled text-uppercase font-weight-bold letter-spacing-1">Ventas:</span>
-                <span class="text-xs font-weight-bold text-info">
-                  {{ item.sales_count ?? 0 }} uds.
+                <span class="text-xs font-weight-bold text-medium-emphasis">
+                  {{ item.sales_count ?? 0 }}
                 </span>
               </div>
             </div>
 
             <!-- Vigencia Móvil -->
-            <div class="d-flex justify-space-between align-center px-1 mt-1 text-super-xs font-weight-bold">
-              <span class="text-primary">INI: {{ formatDate(item.start_date) }}</span>
-              <span class="text-error">FIN: {{ formatDate(item.end_date) }}</span>
+            <div class="d-flex justify-space-between align-center px-1 mt-1 text-super-xs font-weight-bold text-medium-emphasis">
+              <span>{{ formatDate(item.start_date) }}</span>
+              <span class="text-disabled">al {{ formatDate(item.end_date) }}</span>
             </div>
           </div>
 

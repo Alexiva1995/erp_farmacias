@@ -141,13 +141,9 @@ const getVolumeRange = (scales) => {
 
         <!-- Validity Column -->
         <template #item.validity="{ item }">
-          <div class="d-flex flex-column align-center">
-            <span class="text-super-xs font-weight-bold text-primary uppercase">
-              INI: {{ formatDate(item.start_date) }}
-            </span>
-            <span class="text-super-xs font-weight-bold text-error uppercase">
-              FIN: {{ formatDate(item.end_date) }}
-            </span>
+          <div class="d-flex flex-column align-center text-super-xs font-weight-bold text-medium-emphasis">
+            <span>{{ formatDate(item.start_date) }}</span>
+            <span class="text-disabled">al {{ formatDate(item.end_date) }}</span>
           </div>
         </template>
 
@@ -156,7 +152,7 @@ const getVolumeRange = (scales) => {
           <VChip
             :color="getStatusColor(item.is_active)"
             size="x-small"
-            variant="flat"
+            variant="tonal"
             class="font-weight-black px-2 rounded"
           >
             {{ getStatusText(item.is_active) }}

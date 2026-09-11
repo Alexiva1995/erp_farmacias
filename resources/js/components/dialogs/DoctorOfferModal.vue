@@ -194,42 +194,44 @@ watch(
 
       <VCardText class="pa-4 pa-sm-5 bg-surface">
         <!-- Bloque 1: Médico Aliado -->
-        <div class="mb-5">
+        <div class="mb-4">
           <div class="d-flex align-center gap-1-5 mb-2">
             <div class="header-indicator primary" />
             <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">Médico Aliado</span>
           </div>
 
-          <!-- Modo Edición: Resumen de Médico -->
-          <div v-if="props.isEditing" class="pa-3 rounded border bg-var-theme-background d-flex align-center justify-space-between">
-            <div class="d-flex align-center gap-2">
-              <span class="text-xs font-weight-bold text-primary bg-primary-lighten-5 px-2 py-0-5 rounded">
-                ID #{{ doctorsOfferData.doctor_id }}
-              </span>
-              <span class="text-sm font-weight-black text-high-emphasis text-uppercase">
-                {{ selectedDoctorDisplay }}
-              </span>
+          <div class="pa-3 rounded border bg-var-theme-background">
+            <!-- Modo Edición: Resumen de Médico -->
+            <div v-if="props.isEditing" class="d-flex align-center justify-space-between">
+              <div class="d-flex align-center gap-2">
+                <span class="text-xs font-weight-bold text-primary bg-primary-lighten-5 px-2 py-0-5 rounded">
+                  ID #{{ doctorsOfferData.doctor_id }}
+                </span>
+                <span class="text-sm font-weight-black text-high-emphasis text-uppercase">
+                  {{ selectedDoctorDisplay }}
+                </span>
+              </div>
             </div>
-          </div>
 
-          <!-- Modo Creación: Autocomplete -->
-          <div v-else>
-            <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Seleccionar Médico *</span>
-            <VAutocomplete
-              v-model="doctorsOfferData.doctor_id"
-              :items="props.doctorsData"
-              :item-title="(item) => `${item.id} - ${item.name}`"
-              item-value="id"
-              placeholder="BUSCAR MÉDICO POR ID O NOMBRE..."
-              variant="outlined"
-              density="compact"
-              hide-details="auto"
-              clearable
-              :disabled="isSaving"
-              class="rounded font-weight-bold"
-              :error="!!formErrors.doctor_id"
-              :error-messages="formErrors.doctor_id"
-            />
+            <!-- Modo Creación: Autocomplete -->
+            <div v-else>
+              <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Seleccionar Médico *</span>
+              <VAutocomplete
+                v-model="doctorsOfferData.doctor_id"
+                :items="props.doctorsData"
+                :item-title="(item) => `${item.id} - ${item.name}`"
+                item-value="id"
+                placeholder="BUSCAR MÉDICO POR ID O NOMBRE..."
+                variant="outlined"
+                density="compact"
+                hide-details="auto"
+                clearable
+                :disabled="isSaving"
+                class="rounded font-weight-bold"
+                :error="!!formErrors.doctor_id"
+                :error-messages="formErrors.doctor_id"
+              />
+            </div>
           </div>
         </div>
 
@@ -252,65 +254,67 @@ watch(
             </div>
           </div>
 
-          <VRow dense>
-            <VCol cols="12" sm="4">
-              <div class="mb-2 mb-sm-0">
-                <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">% Descuento *</span>
-                <VTextField
-                  v-model.number="doctorsOfferData.discount"
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.01"
-                  placeholder="0.00"
-                  variant="outlined"
-                  density="compact"
-                  hide-details="auto"
-                  prepend-inner-icon="tabler-percentage"
-                  class="rounded font-weight-black"
-                  :error="!!formErrors.discount"
-                  :error-messages="formErrors.discount"
-                  :disabled="isSaving"
-                />
-              </div>
-            </VCol>
+          <div class="pa-3 rounded border bg-var-theme-background">
+            <VRow dense>
+              <VCol cols="12" sm="4">
+                <div class="mb-2 mb-sm-0">
+                  <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">% Descuento *</span>
+                  <VTextField
+                    v-model.number="doctorsOfferData.discount"
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    placeholder="0.00"
+                    variant="outlined"
+                    density="compact"
+                    hide-details="auto"
+                    prepend-inner-icon="tabler-percentage"
+                    class="rounded font-weight-black"
+                    :error="!!formErrors.discount"
+                    :error-messages="formErrors.discount"
+                    :disabled="isSaving"
+                  />
+                </div>
+              </VCol>
 
-            <VCol cols="12" sm="4">
-              <div class="mb-2 mb-sm-0">
-                <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Vigencia Inicio</span>
-                <AppDateTimePicker
-                  v-model="doctorsOfferData.start_date"
-                  placeholder="SELECCIONAR FECHA"
-                  prepend-inner-icon="tabler-calendar-event"
-                  density="compact"
-                  hide-details="auto"
-                  class="rounded"
-                  :error="!!formErrors.start_date"
-                  :error-messages="formErrors.start_date"
-                  :disabled="isSaving"
-                  :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
-                />
-              </div>
-            </VCol>
+              <VCol cols="12" sm="4">
+                <div class="mb-2 mb-sm-0">
+                  <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Vigencia Inicio</span>
+                  <AppDateTimePicker
+                    v-model="doctorsOfferData.start_date"
+                    placeholder="SELECCIONAR FECHA"
+                    prepend-inner-icon="tabler-calendar-event"
+                    density="compact"
+                    hide-details="auto"
+                    class="rounded font-weight-bold"
+                    :error="!!formErrors.start_date"
+                    :error-messages="formErrors.start_date"
+                    :disabled="isSaving"
+                    :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
+                  />
+                </div>
+              </VCol>
 
-            <VCol cols="12" sm="4">
-              <div>
-                <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Vigencia Cierre</span>
-                <AppDateTimePicker
-                  v-model="doctorsOfferData.end_date"
-                  placeholder="SELECCIONAR FECHA"
-                  prepend-inner-icon="tabler-calendar-off"
-                  density="compact"
-                  hide-details="auto"
-                  class="rounded"
-                  :error="!!formErrors.end_date"
-                  :error-messages="formErrors.end_date"
-                  :disabled="isSaving"
-                  :config="endDateConfig"
-                />
-              </div>
-            </VCol>
-          </VRow>
+              <VCol cols="12" sm="4">
+                <div>
+                  <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Vigencia Cierre</span>
+                  <AppDateTimePicker
+                    v-model="doctorsOfferData.end_date"
+                    placeholder="SELECCIONAR FECHA"
+                    prepend-inner-icon="tabler-calendar-off"
+                    density="compact"
+                    hide-details="auto"
+                    class="rounded font-weight-bold"
+                    :error="!!formErrors.end_date"
+                    :error-messages="formErrors.end_date"
+                    :disabled="isSaving"
+                    :config="endDateConfig"
+                  />
+                </div>
+              </VCol>
+            </VRow>
+          </div>
         </div>
       </VCardText>
 
