@@ -295,8 +295,8 @@ const handleClose = () => {
             </h2>
             <div class="d-flex align-center gap-2 mt-1">
               <span
-                class="text-white opacity-75 uppercase font-weight-bold"
-                style="font-size: 0.6rem; letter-spacing: 0.05em;"
+                class="text-white opacity-75 text-uppercase font-weight-bold"
+                style="font-size: 0.65rem; letter-spacing: 0.05em;"
               >
                 Validación Física • Auditoría de Stock
               </span>
@@ -333,62 +333,88 @@ const handleClose = () => {
         </div>
 
         <template v-else>
-          <!-- Perfil del Producto Estructurado (Estilo Inventario de Productos) -->
+          <!-- Perfil del Producto Estructurado (Diseño UI/UX Limpio y Jerárquico) -->
           <VCard
             variant="flat"
             class="pa-3 bg-white rounded-xl border shadow-sm"
           >
-            <!-- Pastilla ID + Laboratorio / Categoría -->
-            <div class="d-flex align-center justify-space-between gap-2 mb-1">
-              <span class="text-primary font-weight-black text-xs">
+            <!-- Pastillas ID + Laboratorio / Categoría -->
+            <div class="d-flex align-center justify-space-between gap-2 mb-2">
+              <VChip
+                color="primary"
+                variant="tonal"
+                size="x-small"
+                class="font-weight-black"
+              >
                 ID: {{ countRecord.product?.id || countRecord.product_id }}
-              </span>
-              <span class="text-primary font-weight-black text-super-xs text-uppercase truncate" style="max-inline-size: 180px;">
-                {{ countRecord.product?.laboratory?.name || 'S/L' }}
-              </span>
+              </VChip>
+
+              <VChip
+                color="secondary"
+                variant="tonal"
+                size="x-small"
+                class="font-weight-bold text-uppercase truncate"
+                style="max-inline-size: 220px;"
+              >
+                <VIcon icon="tabler-building-factory-2" size="12" class="me-1" />
+                {{ countRecord.product?.laboratory?.name || 'SIN LABORATORIO' }}
+              </VChip>
             </div>
 
-            <!-- Nombre de Producto Dominante -->
-            <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight mb-1" :title="countRecord.product?.name">
+            <!-- Nombre de Producto Dominante en Negrita -->
+            <h3 class="text-subtitle-1 font-weight-black text-high-emphasis text-uppercase leading-tight mb-1" :title="countRecord.product?.name">
               {{ countRecord.product?.name }}
               <span v-if="countRecord.product?.iva == 1 || countRecord.product?.iva === true" class="text-xs text-disabled font-weight-regular"> (G)</span>
               <span v-if="countRecord.product?.is_colombian_origin == 1 || countRecord.product?.is_colombian_origin === true" class="text-xs text-disabled font-weight-regular"> (COL)</span>
             </h3>
 
             <!-- Principio Activo / Presentación -->
-            <div class="d-flex align-center gap-1 text-super-xs text-disabled mb-2">
-              <span class="truncate" style="max-inline-size: 260px;">
-                {{ countRecord.product?.active_ingredient || "Sin principio activo" }}
+            <div class="d-flex align-center gap-1 text-super-xs text-medium-emphasis mb-2">
+              <VIcon icon="tabler-pill" size="13" color="primary" class="opacity-70" />
+              <span class="truncate" style="max-inline-size: 300px;">
+                {{ countRecord.product?.active_ingredient || "Sin principio activo registrado" }}
               </span>
             </div>
 
             <!-- Divisor y Datos del Contador -->
             <div class="pt-2 border-t d-flex align-center justify-space-between text-super-xs">
               <div class="d-flex align-center gap-1 text-medium-emphasis">
-                <VIcon icon="tabler-user" size="13" color="primary" />
-                <span class="text-disabled uppercase">Contado por:</span>
+                <VIcon icon="tabler-user-check" size="14" color="primary" />
+                <span class="text-disabled text-uppercase">Contado por:</span>
                 <strong class="text-high-emphasis text-capitalize font-weight-black">{{ counterUserName }}</strong>
               </div>
-              <span v-if="countRecord.created_at" class="text-disabled font-weight-medium">
-                {{ formatDateSimple(countRecord.created_at) }}
-              </span>
+              <div v-if="countRecord.created_at" class="d-flex align-center gap-1 text-disabled font-weight-medium">
+                <VIcon icon="tabler-calendar-time" size="13" />
+                <span>{{ formatDateSimple(countRecord.created_at) }}</span>
+              </div>
             </div>
           </VCard>
 
           <!-- Modo de Ingreso / Escaneo de Código de Barras (Fondo Blanco Limpio) -->
           <div
             v-if="canBypassBarcode"
-            class="pa-2 rounded-lg border bg-white shadow-xs d-flex align-center justify-space-between"
+            class="pa-2 px-3 rounded-xl border bg-white shadow-xs d-flex align-center justify-space-between"
           >
             <div class="d-flex align-center gap-2">
-              <VIcon
-                :icon="allowWithoutBarcode ? 'tabler-keyboard' : 'tabler-scan'"
+              <VAvatar
                 :color="allowWithoutBarcode ? 'warning' : 'primary'"
-                size="18"
-              />
-              <span class="text-super-xs font-weight-black uppercase" :class="allowWithoutBarcode ? 'text-warning' : 'text-primary'">
-                {{ allowWithoutBarcode ? "Ingreso Manual (Sin Código)" : "Modo Escaneo" }}
-              </span>
+                variant="tonal"
+                size="28"
+                class="rounded-lg"
+              >
+                <VIcon
+                  :icon="allowWithoutBarcode ? 'tabler-keyboard' : 'tabler-scan'"
+                  size="16"
+                />
+              </VAvatar>
+              <div class="d-flex flex-column">
+                <span class="text-super-xs font-weight-black text-uppercase" :class="allowWithoutBarcode ? 'text-warning' : 'text-primary'">
+                  {{ allowWithoutBarcode ? "Ingreso Manual (Sin Código)" : "Modo Escaneo Activo" }}
+                </span>
+                <span class="text-super-xs text-disabled" style="font-size: 0.6rem !important;">
+                  {{ allowWithoutBarcode ? "Ingreso directo de unidades" : "Escanea el código de barras" }}
+                </span>
+              </div>
             </div>
             <VSwitch
               v-model="allowWithoutBarcode"
@@ -400,15 +426,22 @@ const handleClose = () => {
 
           <div
             v-else
-            class="pa-2 rounded-lg border bg-white shadow-xs d-flex align-center gap-2"
+            class="pa-2 px-3 rounded-xl border bg-white shadow-xs d-flex align-center gap-2"
           >
-            <VIcon icon="tabler-scan" color="primary" size="18" />
-            <span class="text-super-xs font-weight-black uppercase text-primary">
-              Modo Escaneo Obligatorio
-            </span>
+            <VAvatar color="primary" variant="tonal" size="28" class="rounded-lg">
+              <VIcon icon="tabler-scan" size="16" />
+            </VAvatar>
+            <div class="d-flex flex-column">
+              <span class="text-super-xs font-weight-black uppercase text-primary">
+                Modo Escaneo Obligatorio
+              </span>
+              <span class="text-super-xs text-disabled" style="font-size: 0.6rem !important;">
+                Verifica leyendo el código de barras del producto
+              </span>
+            </div>
           </div>
 
-          <!-- Campo de Escaneo de Código de Barras -->
+          <!-- Campo de Escaneo de Código de Barras (Fondo Blanco Limpio) -->
           <div v-if="!isManualEntryAllowed" class="mb-1">
             <VTextField
               id="verify-barcode-input"
@@ -418,8 +451,9 @@ const handleClose = () => {
               variant="outlined"
               density="compact"
               hide-details="auto"
+              bg-color="white"
               prepend-inner-icon="tabler-barcode"
-              class="rounded-lg font-weight-black text-xs"
+              class="rounded-lg font-weight-black text-xs barcode-field"
               @keyup.enter="handleBarcodeEnter"
             >
               <template #append-inner>
@@ -502,6 +536,7 @@ const handleClose = () => {
                 min="0"
                 placeholder="0"
                 variant="plain"
+                bg-color="white"
                 class="ultra-huge-input-text h-auto font-weight-950"
                 density="compact"
                 hide-details
@@ -688,6 +723,11 @@ const handleClose = () => {
 
 .ultra-huge-input-text :deep(.v-field__input) {
   padding: 0 !important;
+}
+
+.barcode-field :deep(.v-field) {
+  background-color: #ffffff !important;
+  border-radius: 10px !important;
 }
 
 .italic {

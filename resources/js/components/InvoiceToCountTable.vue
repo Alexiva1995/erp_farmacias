@@ -17,7 +17,7 @@ const emit = defineEmits(["update:options", "count-product"]);
 
 const headers = computed(() => {
   const baseHeaders = [
-    { title: "ID",           key: "id",               sortable: true,  width: "75px", cellClass: "font-weight-black text-xs text-primary" },
+    { title: "ID",           key: "id",               sortable: true,  width: "60px", cellClass: "font-weight-black text-primary" },
     { title: "Producto",     key: "name",              sortable: true },
     { title: "Laboratorio",  key: "laboratory.name",   sortable: true,  width: "15%"   },
     { title: "Expiración",   key: "next_expiration",   sortable: true,  width: "120px" },
@@ -102,7 +102,7 @@ const getProductLocations = (product) => {
           <a
             :href="'/inventory/traceability?q=' + item.id"
             target="_blank"
-            class="text-decoration-none font-weight-black text-xs text-primary bg-primary-lighten-5 px-2 py-1 rounded"
+            class="text-decoration-none font-weight-black text-primary"
           >
             {{ item.id }}
           </a>
@@ -157,8 +157,7 @@ const getProductLocations = (product) => {
             <template v-if="mode === 'inventory'">
               <IconBtn 
                 @click="emit('count-product', item)" 
-                color="success"
-                variant="tonal"
+                color="primary"
                 size="small"
               >
                 <VIcon icon="tabler-scan" size="18" />

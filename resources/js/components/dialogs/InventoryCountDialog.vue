@@ -295,55 +295,80 @@ const handleSave = async () => {
     <VCard class="detail-dialog-card rounded-xl overflow-hidden border-0 shadow-xl bg-surface">
       <!-- Cabecera Premium -->
       <VCardTitle class="pa-0">
-        <div class="header-gradient pa-4 d-flex align-center">
-          <div class="d-flex align-center">
-            <VAvatar color="white" variant="flat" size="40" class="me-3 elevation-2">
-              <VIcon icon="tabler-clipboard-check" color="primary" size="24" />
-            </VAvatar>
-            <div>
-              <h2 class="text-h6 font-weight-black leading-tight mb-0" style="color: white !important;">
-                Conteo de Inventario
-              </h2>
-              <span class="text-caption opacity-75" style="color: white !important;">
+        <div class="header-gradient pa-4 d-flex align-center shadow-sm">
+          <VAvatar
+            color="white"
+            variant="flat"
+            size="40"
+            class="me-3 elevation-1"
+          >
+            <VIcon
+              icon="tabler-clipboard-check"
+              size="24"
+              color="primary"
+            />
+          </VAvatar>
+          <div class="d-flex flex-column leading-none">
+            <h2 class="text-h6 font-weight-black text-white leading-tight mb-0">
+              Conteo de Inventario
+            </h2>
+            <div class="d-flex align-center gap-2 mt-1">
+              <span
+                class="text-white opacity-75 uppercase font-weight-bold"
+                style="font-size: 0.6rem; letter-spacing: 0.05em;"
+              >
                 Validación Física • Auditoría de Stock
               </span>
             </div>
           </div>
           <VSpacer />
-          <VBtn icon variant="tonal" color="white" size="small" @click="handleCancel">
-            <VIcon>tabler-x</VIcon>
-          </VBtn>
+          <VBtn
+            icon="tabler-x"
+            variant="tonal"
+            color="white"
+            size="small"
+            class="rounded-lg"
+            @click="handleCancel"
+          />
         </div>
       </VCardTitle>
 
-      <VCardText class="pa-2 pa-sm-4 bg-light d-flex flex-column gap-2 gap-sm-4">
-        <!-- Perfil del Producto Compacto -->
-        <div class="pa-2 pa-sm-3 bg-white rounded-lg border shadow-xs">
-          <div class="d-flex align-center justify-space-between mb-1">
-            <VChip
-              size="x-small"
-              color="primary"
-              variant="flat"
-              class="font-weight-black px-2 rounded"
-            >
+      <VCardText class="pa-3 pa-sm-4 bg-light d-flex flex-column gap-3">
+        <!-- Perfil del Producto Estructurado (Estilo Inventario de Productos) -->
+        <VCard
+          variant="flat"
+          class="pa-3 bg-white rounded-xl border shadow-sm"
+        >
+          <!-- Pastilla ID + Laboratorio / Categoría -->
+          <div class="d-flex align-center justify-space-between gap-2 mb-1">
+            <span class="text-primary font-weight-black text-xs">
               ID: {{ product.id }}
-            </VChip>
-            <span class="text-super-xs font-weight-black text-disabled uppercase truncate" style="max-inline-size: 150px;">
-              {{ product.laboratory?.name || "Sin Lab" }}
+            </span>
+            <span class="text-primary font-weight-black text-super-xs text-uppercase truncate" style="max-inline-size: 180px;">
+              {{ product.laboratory?.name || 'S/L' }}
             </span>
           </div>
 
-          <h3 class="text-xs font-weight-black text-high-emphasis leading-tight uppercase mb-0">
+          <!-- Nombre de Producto Dominante -->
+          <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight mb-1" :title="product.name">
             {{ product.name }}
+            <span v-if="product.iva == 1 || product.iva === true" class="text-xs text-disabled font-weight-regular"> (G)</span>
+            <span v-if="product.is_colombian_origin == 1 || product.is_colombian_origin === true" class="text-xs text-disabled font-weight-regular"> (COL)</span>
           </h3>
-        </div>
+
+          <!-- Principio Activo / Presentación -->
+          <div class="d-flex align-center gap-1 text-super-xs text-disabled">
+            <span class="truncate" style="max-inline-size: 260px;">
+              {{ product.active_ingredient || "Sin principio activo" }}
+            </span>
+          </div>
+        </VCard>
 
         <VForm @submit.prevent="handleSave">
           <!-- Modo de Ingreso Compacto (solo visible si el producto permite bypass sin código de barras) -->
           <div
             v-if="canBypassBarcode && barcodeRequiredGlobal"
-            class="pa-2 mb-2 rounded-lg border shadow-xs d-flex align-center justify-space-between"
-            :class="allowWithoutBarcode ? 'bg-warning-lighten-5' : 'bg-primary-lighten-5'"
+            class="pa-2 mb-3 rounded-lg border bg-white shadow-xs d-flex align-center justify-space-between"
           >
             <div class="d-flex align-center gap-2">
               <VIcon
@@ -351,8 +376,8 @@ const handleSave = async () => {
                 :color="allowWithoutBarcode ? 'warning' : 'primary'"
                 size="18"
               />
-              <span class="text-super-xs font-weight-black uppercase">
-                {{ allowWithoutBarcode ? "Ingreso Manual" : "Modo Escaneo" }}
+              <span class="text-super-xs font-weight-black uppercase" :class="allowWithoutBarcode ? 'text-warning' : 'text-primary'">
+                {{ allowWithoutBarcode ? "Ingreso Manual (Sin Código)" : "Modo Escaneo" }}
               </span>
             </div>
             <VSwitch
@@ -365,7 +390,7 @@ const handleSave = async () => {
 
           <div
             v-else-if="!canBypassBarcode"
-            class="pa-2 mb-2 rounded-lg border shadow-xs d-flex align-center gap-2 bg-primary-lighten-5"
+            class="pa-2 mb-3 rounded-lg border bg-white shadow-xs d-flex align-center gap-2"
           >
             <VIcon icon="tabler-scan" color="primary" size="18" />
             <span class="text-super-xs font-weight-black uppercase text-primary">

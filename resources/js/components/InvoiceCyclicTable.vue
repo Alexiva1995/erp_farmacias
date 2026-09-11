@@ -172,9 +172,9 @@ const getProductLocations = (product) => {
         </template>
 
         <template #item.actions="{ item }">
-          <IconBtn @click="handleVerifyProduct(item)" size="small" color="primary" variant="tonal" class="rounded">
-            <VIcon icon="tabler-clipboard-check" />
-            <VTooltip activator="parent" location="top">Verificar conteo</VTooltip>
+          <IconBtn @click="handleVerifyProduct(item)" size="small" color="success" variant="tonal" class="rounded">
+            <VIcon icon="tabler-scan" size="18" />
+            <VTooltip activator="parent" location="top">Contar producto</VTooltip>
           </IconBtn>
         </template>
       </VDataTableServer>

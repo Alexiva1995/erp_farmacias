@@ -29,11 +29,12 @@ const headers = computed(() => {
       title: "ID",
       key: "product_id",
       sortable: true,
-      align: "start",
+      align: "center",
+      width: "80px",
       cellClass: 'font-weight-black text-primary d-none d-sm-table-cell',
       headerClass: 'd-none d-sm-table-cell',
     },
-    { title: "Producto", key: "product.name", sortable: true, width: "320px" },
+    { title: "Producto", key: "product.name", sortable: true, minWidth: "260px" },
     { title: "Cantidad", key: "discrepancy", align: "center", sortable: true, width: "110px" },
     { title: "Costo", key: "product.unit_cost", align: "end", sortable: true, width: "110px" },
     { title: "Usuario", key: "user.name", sortable: true, width: "140px" },
@@ -123,13 +124,15 @@ const handleDelete = (item) => {
         @update:options="(options) => emit('update:options', options)"
       >
         <template #item.product_id="{ item }">
-          <a
-            :href="'/inventory/traceability?q=' + (item.productId || item.product_id)"
-            target="_blank"
-            class="text-decoration-none font-weight-black text-primary"
-          >
-            {{ item.productId || item.product_id || "—" }}
-          </a>
+          <div class="d-flex justify-center">
+            <a
+              :href="'/inventory/traceability?q=' + (item.productId || item.product_id)"
+              target="_blank"
+              class="text-decoration-none font-weight-black text-primary"
+            >
+              {{ item.productId || item.product_id || "—" }}
+            </a>
+          </div>
         </template>
 
         <template #item.product.name="{ item }">

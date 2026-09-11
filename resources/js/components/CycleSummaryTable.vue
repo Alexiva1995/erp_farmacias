@@ -34,7 +34,8 @@ const headers = ref([
     title: "ID", 
     key: "cycle_id", 
     sortable: true, 
-    align: "start",
+    align: "center",
+    width: "80px",
     cellClass: "font-weight-black text-primary d-none d-sm-table-cell",
     headerClass: "d-none d-sm-table-cell",
   },
@@ -62,7 +63,7 @@ const headers = ref([
     align: "end",
     width: "130px",
   },
-  { title: "Total Neto", key: "net_total", sortable: true, align: "end", width: "130px" },
+  { title: "Total Neto", key: "net_total", sortable: true, align: "end" },
   { title: "Acciones", key: "actions", sortable: false, align: "center", width: "110px" },
 ]);
 
@@ -121,9 +122,11 @@ const viewCycleDetails = (item) => {
         density="compact"
       >
         <template #item.cycle_id="{ item: cycle }">
-          <span class="font-weight-black text-primary">
-            {{ cycle.cycle_id }}
-          </span>
+          <div class="d-flex justify-center">
+            <span class="font-weight-black text-primary">
+              {{ cycle.cycle_id }}
+            </span>
+          </div>
         </template>
 
         <template #item.start_date="{ item: cycle }">

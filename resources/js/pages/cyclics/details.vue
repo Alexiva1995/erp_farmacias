@@ -58,11 +58,12 @@ const headers = computed(() => [
     key: "product_id",
     value: "product_id",
     sortable: true,
-    align: "start",
+    align: "center",
+    width: "80px",
     cellClass: "font-weight-black text-primary d-none d-sm-table-cell",
     headerClass: "d-none d-sm-table-cell",
   },
-  { title: "Producto", key: "product.name", value: "product.name", sortable: true, width: "300px" },
+  { title: "Producto", key: "product.name", value: "product.name", sortable: true, minWidth: "260px" },
   { title: "Sistema", key: "system_quantity", value: "system_quantity", sortable: true, align: "center", width: "100px" },
   { title: "Físico", key: "final_quantity", sortable: true, align: "center", width: "100px" },
   { title: "Discrepancia", key: "discrepancy", sortable: true, align: "center", width: "120px" },
@@ -439,13 +440,15 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
           </template>
 
           <template #item.product_id="{ item }">
-            <a
-              :href="'/inventory/traceability?q=' + (item.product?.id || item.product_id)"
-              target="_blank"
-              class="text-decoration-none font-weight-black text-primary"
-            >
-              {{ item.product?.id || item.product_id || "—" }}
-            </a>
+            <div class="d-flex justify-center">
+              <a
+                :href="'/inventory/traceability?q=' + (item.product?.id || item.product_id)"
+                target="_blank"
+                class="text-decoration-none font-weight-black text-primary"
+              >
+                {{ item.product?.id || item.product_id || "—" }}
+              </a>
+            </div>
           </template>
 
           <template #item.product.name="{ item }">
