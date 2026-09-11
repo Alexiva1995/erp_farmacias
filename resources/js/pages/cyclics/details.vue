@@ -1,3 +1,4 @@
+<script setup>
 import AppTextField from "@/@core/components/app-form-elements/AppTextField.vue";
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
 import AppEmptyState from "@/components/AppEmptyState.vue";
