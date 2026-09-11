@@ -56,11 +56,16 @@ class ProcessSupplierConnectionJob implements ShouldQueue
             'file_path' => $this->filePath
         ]);
         
+        $validUserId = $this->userId;
+        if (!$validUserId || !\App\Models\User::where('id', $validUserId)->exists()) {
+            $validUserId = \App\Models\User::first()?->id;
+        }
+
         $status = $this->statusId ? SupplierConnectionStatus::find($this->statusId) : null;
         if (!$status) {
             $status = SupplierConnectionStatus::create([
                 "supplier_id" => $this->supplier->id,
-                "user_id" => $this->userId,
+                "user_id" => $validUserId,
                 "status" => "processing",
             ]);
         }
@@ -227,30 +232,48 @@ class ProcessSupplierConnectionJob implements ShouldQueue
             $logMessage = "[" . date('Y-m-d H:i:s') . "] 🚨 [JOB] ANTES de llamar storeSupplierConnectionData - Supplier ID: {$this->supplier->id}, Products: " . count($results["products"] ?? []) . "\n";
             file_put_contents($logFile, $logMessage, FILE_APPEND);
             
-            $queryService->storeSupplierConnectionData($this->supplier, $results);
+            $saveResult = $queryService->storeSupplierConnectionData($this->supplier, $results);
             
             // Log DESPUÉS de llamar a storeSupplierConnectionData
             Log::info("🚨 [JOB] DESPUÉS de llamar storeSupplierConnectionData", [
                 'supplier_id' => $this->supplier->id,
+                'save_result' => $saveResult,
             ]);
             
-            $logMessage = "[" . date('Y-m-d H:i:s') . "] 🚨 [JOB] DESPUÉS de llamar storeSupplierConnectionData - Supplier ID: {$this->supplier->id}\n";
+            $logMessage = "[" . date('Y-m-d H:i:s') . "] 🚨 [JOB] DESPUÉS de llamar storeSupplierConnectionData - Supplier ID: {$this->supplier->id}, Insertados: " . ($saveResult['inserted_products'] ?? 0) . "\n";
             file_put_contents($logFile, $logMessage, FILE_APPEND);
 
             $queryService->addDiscountsToProducts($this->supplier);
 
-            
             \Illuminate\Support\Facades\DB::table('supplier_connections')
                 ->where('supplier_id', $this->supplier->id)
                 ->update(['last_connection' => now()->toDateString()]);
-            
 
-            $status->update([
-                "status" => "completed",
-                "message" => "Conexión procesada correctamente",
-                "count_product" => count($results["products"]),
-                "count_invoice" => count($results["invoices"]),
-            ]);
+            $insertedProducts = $saveResult['inserted_products'] ?? count($results["products"] ?? []);
+            $totalFoundProducts = $saveResult['total_products'] ?? count($results["products"] ?? []);
+            $errorsCount = $saveResult['errors_count'] ?? 0;
+            $invoicesCount = $saveResult['invoices_count'] ?? count($results["invoices"] ?? []);
+
+            if ($totalFoundProducts > 0 && $insertedProducts === 0) {
+                $status->update([
+                    "status" => "failed",
+                    "message" => "Se descargaron {$totalFoundProducts} productos pero ninguno pudo ser guardado en la base de datos.",
+                    "count_product" => 0,
+                    "count_invoice" => $invoicesCount,
+                ]);
+            } else {
+                $msg = "Conexión procesada correctamente";
+                if ($errorsCount > 0) {
+                    $msg .= " ({$insertedProducts} de {$totalFoundProducts} productos guardados, {$errorsCount} fallaron)";
+                }
+
+                $status->update([
+                    "status" => "completed",
+                    "message" => $msg,
+                    "count_product" => $insertedProducts,
+                    "count_invoice" => $invoicesCount,
+                ]);
+            }
 
         } catch (\Throwable $e) {
             // ... (Manejo de errores existente) ...

@@ -450,11 +450,18 @@ class SupplierQueryService
                     ]);
                 }
             }
-            return true;
+
+            return [
+                'success' => true,
+                'inserted_products' => $insertados,
+                'total_products' => $totalProductos,
+                'errors_count' => $errores,
+                'invoices_count' => count($filteredInvoices),
+            ];
         } catch (\Throwable $e) {
             Log::error("Error in storeSupplierConnectionData: " . $e->getMessage());
             report($e);
-            return false;
+            throw new \Exception("Error al guardar los datos del proveedor en base de datos: " . $e->getMessage(), 0, $e);
         }
     }
 
@@ -503,17 +510,22 @@ class SupplierQueryService
         $paginated = DB::table("product_suppliers")
             ->select(
                 DB::raw("COALESCE(product_suppliers.product_id, 'N/A') as product_id"),
-                DB::raw("COALESCE(product_suppliers.laboratory, 'N/A') as laboratory"),
+                "product_suppliers.cod_supplier",
+                "product_suppliers.barcode_match",
+                DB::raw("COALESCE(NULLIF(product_suppliers.laboratory, ''), 'N/A') as laboratory"),
                 "product_suppliers.id",
                 "product_suppliers.unit_cost",
                 "product_suppliers.unit_cost_usd",
-                DB::raw("COALESCE(products.name, 'N/A') as name"),
+                "product_suppliers.unit_cost_with_discount",
+                "product_suppliers.unit_cost_usd_with_discount",
+                "product_suppliers.discount_percentage",
+                "product_suppliers.quantity",
+                "product_suppliers.expiration",
+                DB::raw("COALESCE(NULLIF(product_suppliers.name, ''), products.name, 'N/A') as name"),
             )
             ->leftJoin("products", "products.id", "=", "product_suppliers.product_id")
             ->where("product_suppliers.supplier_id", "=", $supplier->id)
-            ->where("product_suppliers.created_at", ">=", now()->subDays(7))
-            ->orderByRaw("CASE WHEN COALESCE(products.name, 'N/A') = 'N/A' THEN 1 ELSE 0 END")
-            ->orderBy("name", "asc")
+            ->orderBy("product_suppliers.name", "asc")
             ->paginate($perPage);
 
         return $paginated;

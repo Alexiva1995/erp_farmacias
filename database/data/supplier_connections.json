@@ -880,7 +880,7 @@
             },
             "3": {
                 "file_field": "cantidad",
-                "type": "integer",
+                "type": "decimal",
                 "target": "quantity"
             },
             "4": {
@@ -893,7 +893,8 @@
             },
             "6": {
                 "file_field": "dcto_ufi",
-                "type": "decimal"
+                "type": "decimal",
+                "target": "discount_percentage"
             },
             "7": {
                 "file_field": "empaque",
