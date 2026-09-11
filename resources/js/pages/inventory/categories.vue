@@ -494,7 +494,7 @@ onUnmounted(() => clearTimeout(debounceTimer))
         </VCardActions>
       </VCard>
     </VDialog>
-  </div>
+  </VContainer>
 </template>
 
 <style scoped>
