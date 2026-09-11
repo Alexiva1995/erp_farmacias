@@ -77,6 +77,7 @@ const formatUnits = (units) => {
           :headers="headers"
           :items="props.locations"
           :loading="props.loading"
+          :sort-by="[{ key: 'units_count', order: 'desc' }]"
           class="text-no-wrap"
           density="compact"
           hover

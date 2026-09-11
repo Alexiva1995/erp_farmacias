@@ -17,21 +17,41 @@ class LaboratoryManagementController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Laboratory::select(['id', 'name', 'group_id'])
+        $query = Laboratory::query()
+            ->select([
+                'laboratories.id',
+                'laboratories.name',
+                'laboratories.group_id',
+                'laboratories.created_at',
+                'laboratories.updated_at',
+            ])
             ->with(['group:id,name'])
-            ->withCount('products');
+            ->leftJoin('products', 'laboratories.id', '=', 'products.laboratory_id')
+            ->leftJoin('product_lots', 'products.id', '=', 'product_lots.product_id')
+            ->selectRaw('COUNT(DISTINCT products.id) as products_count, COALESCE(SUM(product_lots.quantity), 0) as units_count')
+            ->groupBy(
+                'laboratories.id',
+                'laboratories.name',
+                'laboratories.group_id',
+                'laboratories.created_at',
+                'laboratories.updated_at'
+            );
 
         if ($request->search) {
-            $query->where('name', 'like', "%{$request->search}%");
+            $query->where('laboratories.name', 'like', "%{$request->search}%");
         }
 
-        $sortBy = $request->get('sortBy', 'name');
-        $orderBy = $request->get('orderBy', 'asc');
+        $sortBy = $request->get('sortBy', 'units_count');
+        $orderBy = $request->get('orderBy', 'desc');
         $itemsPerPage = (int) $request->get('itemsPerPage', 10);
 
         // Si es -1 (opción "All" de Vuetify), paginamos con el total de registros
         if ($itemsPerPage === -1) {
             $itemsPerPage = Laboratory::count() ?: 10;
+        }
+
+        if ($sortBy === 'id' || $sortBy === 'name') {
+            $sortBy = "laboratories.{$sortBy}";
         }
 
         $laboratories = $query->orderBy($sortBy, $orderBy)->paginate($itemsPerPage);

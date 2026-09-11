@@ -24,7 +24,8 @@ class LaboratoryManageResource extends JsonResource
                     'name' => $this->group->name,
                 ] : null;
             }),
-            'products_count' => $this->products_count ?? 0,
+            'products_count' => (int) ($this->products_count ?? 0),
+            'units_count' => (float) ($this->units_count ?? 0),
         ];
     }
 }

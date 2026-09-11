@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import axios from '@/plugins/axios'
 import AppFilterBase from "@/components/AppFilterBase.vue"
 import AppMobilePagination from "@/components/AppMobilePagination.vue"
+import AppEmptyState from "@/components/AppEmptyState.vue"
 import { toast } from "@/plugins/sweetalert"
 import Swal from "sweetalert2"
 import { useAbility } from "@casl/vue"
@@ -25,8 +26,8 @@ const totalLabs = ref(0)
 const searchQuery = ref('')
 const page = ref(1)
 const itemsPerPage = ref(10)
-const sortBy = ref('name')
-const orderBy = ref('asc')
+const sortBy = ref('units_count')
+const orderBy = ref('desc')
 
 // --- Grupos tab ---
 const groupSearch = ref('')
@@ -41,17 +42,30 @@ const brandingStore = useBrandingStore()
 const isRestaurant = computed(() => false)
 const enableBrandGroups = computed(() => brandingStore.settings.enable_brand_groups ?? false)
 
+const formatUnits = (units) => {
+  const num = Number(units || 0)
+  return num % 1 === 0 ? num.toString() : num.toFixed(2).replace('.', ',')
+}
+
 const headers = computed(() => {
   const list = [
-    { title: "ID", key: "id", sortable: true, cellClass: 'font-weight-black text-primary' },
-    { title: isRestaurant.value ? "Marca" : "Laboratorio", key: "name", sortable: true },
+    {
+      title: "ID",
+      key: "id",
+      sortable: true,
+      cellClass: 'font-weight-black text-primary d-none d-sm-table-cell',
+      headerClass: 'd-none d-sm-table-cell',
+      width: '80px',
+    },
+    { title: isRestaurant.value ? "Marca" : "Laboratorio", key: "name", sortable: true, width: '35%' },
   ];
   if (enableBrandGroups.value) {
     list.push({ title: isRestaurant.value ? "Grupo de Marcas" : "Grupo Corporativo", key: "group.name", sortable: false });
   }
   list.push(
     { title: "Productos", key: "products_count", sortable: true, align: 'center' },
-    { title: "Acciones", key: "actions", sortable: false, align: 'right' }
+    { title: "Unidades", key: "units_count", sortable: true, align: 'end' },
+    { title: "Acciones", key: "actions", sortable: false, align: 'center', width: '130px' }
   );
   return list;
 })
@@ -247,6 +261,17 @@ watch([page, itemsPerPage, sortBy, orderBy], () => fetchLabs())
         />
 
         <VCard class="rounded-lg border shadow-sm mt-4 overflow-hidden">
+          <!-- Cabecera Estándar -->
+          <VCardTitle class="d-flex align-center pa-4">
+            <span class="text-h6 font-weight-bold">Listado de {{ isRestaurant ? 'Marcas' : 'Laboratorios' }}</span>
+            <VSpacer />
+            <VChip size="small" color="primary" variant="tonal" class="font-weight-black">
+              {{ totalLabs }} {{ isRestaurant ? 'MARCAS' : 'LABORATORIOS' }}
+            </VChip>
+          </VCardTitle>
+
+          <VDivider />
+
           <!-- Desktop -->
           <div class="d-none d-md-block">
             <VDataTableServer
@@ -254,54 +279,103 @@ watch([page, itemsPerPage, sortBy, orderBy], () => fetchLabs())
               :items="laboratories"
               :items-length="totalLabs"
               :loading="loading"
+              :sort-by="[{ key: sortBy, order: orderBy }]"
               @update:options="updateTableOptions"
               density="compact"
+              hover
+              class="text-no-wrap"
             >
+              <template #item.id="{ item }">
+                <span class="font-weight-black text-primary">
+                  {{ item.id }}
+                </span>
+              </template>
+
+              <template #item.name="{ item }">
+                <div class="d-flex align-center gap-2 py-2">
+                  <div class="header-indicator success rounded-pill"></div>
+                  <span class="text-sm font-weight-black text-high-emphasis text-uppercase">{{ item.name }}</span>
+                </div>
+              </template>
+
               <template #item.group.name="{ item }">
                 <VChip v-if="item.group" color="primary" size="x-small" variant="tonal" class="font-weight-bold uppercase">{{ item.group.name }}</VChip>
                 <span v-else class="text-caption opacity-50">Sin grupo</span>
               </template>
 
               <template #item.products_count="{ item }">
-                <VChip size="x-small" color="info" variant="flat">{{ item.products_count }}</VChip>
+                <div class="text-center">
+                  <VChip
+                    :color="item.products_count > 0 ? 'primary' : 'secondary'"
+                    size="x-small"
+                    variant="tonal"
+                    label
+                    class="font-weight-black"
+                  >
+                    {{ item.products_count }} {{ item.products_count === 1 ? 'REF' : 'REFS' }}
+                  </VChip>
+                </div>
+              </template>
+
+              <template #item.units_count="{ item }">
+                <div class="text-end">
+                  <VChip
+                    :color="item.units_count > 0 ? 'success' : 'secondary'"
+                    size="x-small"
+                    variant="tonal"
+                    label
+                    class="font-weight-black"
+                  >
+                    {{ formatUnits(item.units_count) }} UNDS
+                  </VChip>
+                </div>
               </template>
 
               <template #item.actions="{ item }">
-                <div class="d-flex justify-end gap-1 px-2">
-                  <IconBtn @click="goToProducts(item)" color="info" v-tooltip="'Ver productos'">
-                    <VIcon icon="tabler-eye" size="18" />
-                  </IconBtn>
-                  <IconBtn @click="openLabEdit(item)" color="primary" v-tooltip="'Editar'">
-                    <VIcon icon="tabler-edit" size="18" />
-                  </IconBtn>
-                  <IconBtn v-if="can('manage', 'admin')" @click="deleteLab(item.id)" color="error" v-tooltip="'Eliminar'">
-                    <VIcon icon="tabler-trash" size="18" />
-                  </IconBtn>
+                <div class="d-flex align-center justify-center gap-1 px-2">
+                  <VTooltip text="Ver productos" location="top">
+                    <template #activator="{ props: tooltipProps }">
+                      <IconBtn v-bind="tooltipProps" @click="goToProducts(item)" color="info" size="small">
+                        <VIcon icon="tabler-eye" size="18" />
+                      </IconBtn>
+                    </template>
+                  </VTooltip>
+                  <VTooltip text="Editar" location="top">
+                    <template #activator="{ props: tooltipProps }">
+                      <IconBtn v-bind="tooltipProps" @click="openLabEdit(item)" color="warning" size="small">
+                        <VIcon icon="tabler-edit" size="18" />
+                      </IconBtn>
+                    </template>
+                  </VTooltip>
+                  <VTooltip v-if="can('manage', 'admin')" text="Eliminar" location="top">
+                    <template #activator="{ props: tooltipProps }">
+                      <IconBtn v-bind="tooltipProps" @click="deleteLab(item.id)" color="error" size="small">
+                        <VIcon icon="tabler-trash" size="18" />
+                      </IconBtn>
+                    </template>
+                  </VTooltip>
                 </div>
               </template>
 
               <template #no-data>
-                <div class="d-flex flex-column align-center justify-center pa-8 text-center">
-                  <VAvatar size="64" color="primary" variant="tonal" class="mb-4">
-                    <VIcon :icon="isRestaurant ? 'tabler-tags' : 'tabler-flask'" size="32" />
-                  </VAvatar>
-                  <h3 class="text-h6 font-weight-bold mb-1">
-                    No se encontraron {{ isRestaurant ? 'marcas' : 'laboratorios' }}
-                  </h3>
-                  <p class="text-caption text-medium-emphasis mb-4" style="max-width: 320px;">
-                    {{ isRestaurant 
-                      ? 'Registra tus marcas para clasificar tus productos y facilitar su búsqueda en el inventario.' 
-                      : 'Registra laboratorios para asociar la procedencia de tus productos farmacéuticos.' }}
-                  </p>
-                  <VBtn
-                    color="primary"
-                    variant="flat"
-                    prepend-icon="tabler-plus"
-                    @click="openLabEdit()"
-                  >
-                    Crear {{ isRestaurant ? 'Marca' : 'Laboratorio' }}
-                  </VBtn>
-                </div>
+                <AppEmptyState
+                  :title="`No se encontraron ${isRestaurant ? 'marcas' : 'laboratorios'}`"
+                  :message="isRestaurant 
+                    ? 'Registra tus marcas para clasificar tus productos y facilitar su búsqueda en el inventario.' 
+                    : 'Registra laboratorios para asociar la procedencia de tus productos farmacéuticos.'"
+                  :icon="isRestaurant ? 'tabler-tags' : 'tabler-flask'"
+                >
+                  <template #actions>
+                    <VBtn
+                      color="primary"
+                      variant="flat"
+                      prepend-icon="tabler-plus"
+                      @click="openLabEdit()"
+                    >
+                      Crear {{ isRestaurant ? 'Marca' : 'Laboratorio' }}
+                    </VBtn>
+                  </template>
+                </AppEmptyState>
               </template>
             </VDataTableServer>
           </div>
@@ -310,44 +384,88 @@ watch([page, itemsPerPage, sortBy, orderBy], () => fetchLabs())
           <div class="d-block d-md-none pa-2">
             <!-- Mobile Loader (Skeleton) -->
             <div v-if="loading" class="d-flex flex-column gap-2">
-              <VCard v-for="i in 3" :key="i" variant="flat" class="border mb-1 rounded-lg">
-                <div class="pa-3">
-                  <div class="d-flex justify-space-between align-start mb-2">
-                    <div class="w-75">
-                      <VSkeletonLoader type="text" width="40%" class="mb-1" />
-                      <VSkeletonLoader type="heading" width="80%" />
-                    </div>
-                    <VSkeletonLoader type="avatar" size="24" />
-                  </div>
-                  <div class="d-flex align-center justify-space-between bg-var-theme-background px-3 py-2 rounded">
-                    <VSkeletonLoader type="text" width="30%" />
-                    <div class="d-flex gap-1">
-                      <VSkeletonLoader type="avatar" size="32" class="rounded" />
-                      <VSkeletonLoader type="avatar" size="32" class="rounded" />
-                    </div>
-                  </div>
-                </div>
-              </VCard>
+              <VProgressLinear indeterminate color="primary" class="mb-2" />
+              <VSkeletonLoader v-for="i in 3" :key="i" type="list-item-two-line" class="mb-2 rounded-lg border" />
             </div>
 
             <!-- Mobile List (Data loaded) -->
             <div v-else-if="laboratories.length" class="d-flex flex-column gap-2">
               <VCard v-for="item in laboratories" :key="item.id" variant="flat" class="border mb-1 rounded-lg">
-                <div class="pa-3">
-                  <div class="d-flex justify-space-between align-start mb-2">
-                    <div>
-                      <div class="text-xs font-weight-black text-primary mb-1">ID: {{ item.id }}</div>
-                      <h3 class="text-sm font-weight-black text-uppercase leading-tight">{{ item.name }}</h3>
+                <div class="pa-2 pa-sm-3">
+                  <div class="d-flex justify-space-between align-center mb-1">
+                    <div class="d-flex align-center gap-2">
+                      <span class="text-xs font-weight-black text-primary">{{ item.id }}</span>
+                      <span class="mx-1 text-disabled font-weight-regular">|</span>
+                      <span class="text-sm font-weight-black text-high-emphasis text-uppercase">{{ item.name }}</span>
                     </div>
                     <VChip v-if="item.group && enableBrandGroups" color="primary" size="x-small" variant="tonal" class="font-weight-bold uppercase">{{ item.group.name }}</VChip>
                   </div>
-                  <div class="d-flex align-center justify-space-between bg-var-theme-background px-3 py-2 rounded">
-                    <span class="text-base font-weight-black text-info">{{ item.products_count }} <small>SKUS</small></span>
-                    <div class="d-flex gap-1">
-                      <VBtn icon="tabler-eye" color="info" variant="tonal" size="small" @click="goToProducts(item)" />
-                      <VBtn icon="tabler-edit" color="primary" variant="tonal" size="small" @click="openLabEdit(item)" />
-                      <VBtn v-if="can('manage', 'admin')" icon="tabler-trash" color="error" variant="tonal" size="small" @click="deleteLab(item.id)" />
+
+                  <!-- Caja compacta de Referencias y Unidades -->
+                  <div class="d-flex align-center justify-space-between bg-var-theme-background px-2 py-1 mt-2 rounded border-dashed-thin">
+                    <div class="d-flex align-center gap-2">
+                      <span class="text-super-xs text-disabled text-uppercase font-weight-bold letter-spacing-1">Productos:</span>
+                      <VChip
+                        :color="item.products_count > 0 ? 'primary' : 'secondary'"
+                        size="x-small"
+                        variant="tonal"
+                        label
+                        class="font-weight-black"
+                      >
+                        {{ item.products_count }} {{ item.products_count === 1 ? 'REF' : 'REFS' }}
+                      </VChip>
                     </div>
+                    <div class="d-flex align-center gap-2">
+                      <span class="text-super-xs text-disabled text-uppercase font-weight-bold letter-spacing-1">Unidades:</span>
+                      <VChip
+                        :color="item.units_count > 0 ? 'success' : 'secondary'"
+                        size="x-small"
+                        variant="tonal"
+                        label
+                        class="font-weight-black"
+                      >
+                        {{ formatUnits(item.units_count) }} UNDS
+                      </VChip>
+                    </div>
+                  </div>
+
+                  <VDivider class="my-2 border-opacity-10" />
+
+                  <div class="d-flex gap-2">
+                    <VBtn
+                      color="info"
+                      variant="text"
+                      class="flex-grow-1 rounded-0"
+                      height="36"
+                      prepend-icon="tabler-eye"
+                      @click="goToProducts(item)"
+                    >
+                      Ver
+                    </VBtn>
+                    <VDivider vertical class="border-opacity-10" />
+                    <VBtn
+                      color="warning"
+                      variant="text"
+                      class="flex-grow-1 rounded-0"
+                      height="36"
+                      prepend-icon="tabler-edit"
+                      @click="openLabEdit(item)"
+                    >
+                      Editar
+                    </VBtn>
+                    <template v-if="can('manage', 'admin')">
+                      <VDivider vertical class="border-opacity-10" />
+                      <VBtn
+                        color="error"
+                        variant="text"
+                        class="flex-grow-1 rounded-0"
+                        height="36"
+                        prepend-icon="tabler-trash"
+                        @click="deleteLab(item.id)"
+                      >
+                        Eliminar
+                      </VBtn>
+                    </template>
                   </div>
                 </div>
               </VCard>
@@ -355,25 +473,24 @@ watch([page, itemsPerPage, sortBy, orderBy], () => fetchLabs())
             </div>
 
             <!-- Mobile Empty State -->
-            <div v-else class="d-flex flex-column align-center justify-center pa-8 text-center">
-              <VAvatar size="56" color="primary" variant="tonal" class="mb-3">
-                <VIcon :icon="isRestaurant ? 'tabler-tags' : 'tabler-flask'" size="28" />
-              </VAvatar>
-              <h3 class="text-sm font-weight-bold mb-1">
-                No hay {{ isRestaurant ? 'marcas' : 'laboratorios' }}
-              </h3>
-              <p class="text-xs text-medium-emphasis mb-3" style="max-width: 250px;">
-                Registra tu primer elemento para comenzar.
-              </p>
-              <VBtn
-                color="primary"
-                variant="flat"
-                size="small"
-                prepend-icon="tabler-plus"
-                @click="openLabEdit()"
+            <div v-else>
+              <AppEmptyState
+                :title="`No hay ${isRestaurant ? 'marcas' : 'laboratorios'}`"
+                message="Registra tu primer elemento para comenzar."
+                :icon="isRestaurant ? 'tabler-tags' : 'tabler-flask'"
               >
-                Crear {{ isRestaurant ? 'Marca' : 'Laboratorio' }}
-              </VBtn>
+                <template #actions>
+                  <VBtn
+                    color="primary"
+                    variant="flat"
+                    size="small"
+                    prepend-icon="tabler-plus"
+                    @click="openLabEdit()"
+                  >
+                    Crear {{ isRestaurant ? 'Marca' : 'Laboratorio' }}
+                  </VBtn>
+                </template>
+              </AppEmptyState>
             </div>
           </div>
         </VCard>
@@ -600,8 +717,21 @@ watch([page, itemsPerPage, sortBy, orderBy], () => fetchLabs())
 
 <style scoped>
 .bg-var-theme-background { background-color: rgba(var(--v-border-color), 0.05); }
+.border-dashed-thin {
+  border: 1px dashed rgba(var(--v-border-color), 0.15);
+}
 .text-super-xs { font-size: 0.65rem !important; }
+.text-xs { font-size: 0.75rem !important; }
 :deep(.v-data-table th) { font-size: 0.75rem !important; font-weight: 700 !important; text-transform: uppercase; }
+
+.header-indicator {
+  block-size: 16px;
+  inline-size: 3px;
+}
+
+.header-indicator.success {
+  background: linear-gradient(to bottom, #10b981, #059669);
+}
 
 .header-gradient {
   background: var(--brand-gradient) !important;

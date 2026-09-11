@@ -27,6 +27,7 @@ class LocationRepository implements LocationContract
             ->leftJoin('product_lots', 'locations.name', '=', 'product_lots.location')
             ->selectRaw('COUNT(DISTINCT product_lots.product_id) as products_count, COALESCE(SUM(product_lots.quantity), 0) as units_count')
             ->groupBy('locations.id', 'locations.name', 'locations.created_at', 'locations.updated_at')
+            ->orderByDesc('units_count')
             ->orderBy('locations.name')
             ->get();
     }
