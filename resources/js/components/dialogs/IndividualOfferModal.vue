@@ -3,6 +3,7 @@ import { computed, watch, ref } from "vue";
 import { useDisplay } from "vuetify";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
+import { formatCurrency } from "@/utils/currencyFormatter";
 
 const props = defineProps({
   modelValue: {
@@ -49,7 +50,7 @@ const dialogTitle = computed(() => {
   return props.isEditing ? "Editar Oferta" : "Nueva Oferta Individual";
 });
 
-// Producto seleccionado (para mostrar info de precios)
+// Producto seleccionado
 const selectedProduct = computed(() => {
   const pid = localFormData.value.product_id;
   if (!pid) return null;
@@ -57,14 +58,14 @@ const selectedProduct = computed(() => {
   return fromList || props.product || props.productOfferToEdit?.product || null;
 });
 
-// Producto seleccionado en modo edición (usa productOfferToEdit.product)
+// Producto seleccionado en modo edición
 const selectedProductDisplay = computed(() => {
   if (!localFormData.value.product_id) return "";
   const p = selectedProduct.value || props.product || props.productOfferToEdit?.product;
   return p ? `${p.id} - ${p.name}` : `ID: ${localFormData.value.product_id}`;
 });
 
-// Precio con descuento (para info debajo)
+// Precio con descuento
 const priceInfo = computed(() => {
   const product = selectedProduct.value;
   if (!product || product.sale_price == null) return null;
@@ -72,10 +73,11 @@ const priceInfo = computed(() => {
   if (salePrice <= 0) return null;
   const discount = parseFloat(localFormData.value.discount_percent) || 0;
   const finalPrice = salePrice * (1 - discount / 100);
-  return { salePrice, finalPrice };
+  const savings = salePrice - finalPrice;
+  return { salePrice, finalPrice, savings };
 });
 
-// Cargar productos con búsqueda (igual que Pack)
+// Cargar productos con búsqueda
 const loadAvailableProducts = async (search = "") => {
   const trimmedSearch = String(search ?? "").trim();
   if (trimmedSearch.length > 0 && trimmedSearch.length < 2) return;
@@ -111,7 +113,7 @@ const loadAvailableProducts = async (search = "") => {
           stock: product.stock_calculado || product.stock || 0,
           sale_price: product.sale_price,
           barcode: product.barcode,
-          laboratory: product.laboratory
+          laboratory: product.laboratory,
         }));
     } else {
       availableProducts.value = [];
@@ -143,9 +145,9 @@ const formatDateForInput = (dateString) => {
 function onSave() {
   const dataToSend = {
     ...localFormData.value,
-    discount_percent: parseFloat(localFormData.value.discount_percent) || 0
+    discount_percent: parseFloat(localFormData.value.discount_percent) || 0,
   };
-  
+
   emit("save", dataToSend);
 }
 
@@ -154,7 +156,7 @@ const onCancel = () => {
   emit("modal-closed");
 };
 
-// Resetear formulario cuando se abre el modal
+// Resetear formulario al abrir el modal
 watch(
   () => props.modelValue,
   (isVisible) => {
@@ -174,7 +176,6 @@ watch(
         };
       }
 
-      // Si viene un producto preseleccionado por prop (ej. desde Reporte ABC)
       const targetProduct = props.product || props.productOfferToEdit?.product;
       if (targetProduct) {
         const prodObj = {
@@ -212,7 +213,6 @@ watch(
   { deep: true, immediate: true }
 );
 
-// Configuración dinámica para la fecha de fin (no permitir antes de la de inicio)
 const endDateConfig = computed(() => ({
   altFormat: "Y-m-d",
   dateFormat: "Y-m-d",
@@ -276,31 +276,45 @@ const endDateConfig = computed(() => ({
 
       <VCardText class="pa-4 pa-sm-5 bg-surface">
         <!-- Sección Producto en Oferta -->
-        <div class="mb-4">
+        <div class="mb-5">
           <div class="d-flex align-center gap-1-5 mb-2">
             <div class="header-indicator primary" />
             <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">Producto en Oferta</span>
           </div>
 
-          <div v-if="props.isEditing" class="pa-3 rounded-lg border bg-var-theme-background">
-            <div class="d-flex align-center gap-2 mb-1">
-              <span class="text-xs font-weight-black text-primary bg-primary-lighten-5 px-1-5 py-0-5 rounded">
-                ID: {{ selectedProduct?.id || localFormData.product_id }}
+          <!-- Producto Seleccionado (Edición o con Selección) -->
+          <div v-if="props.isEditing || selectedProduct" class="selected-product-box pa-3 rounded-lg border bg-surface">
+            <div class="d-flex align-center gap-2 mb-1-5 flex-wrap">
+              <span class="text-xs font-weight-black text-primary bg-primary-lighten-5 px-2 py-0-5 rounded">
+                ID: #{{ selectedProduct?.id || localFormData.product_id }}
               </span>
               <span v-if="selectedProduct?.laboratory?.name" class="text-xs font-weight-black text-primary text-uppercase">
-                {{ selectedProduct.laboratory.name }}
+                LAB: {{ selectedProduct.laboratory.name }}
               </span>
+              <VSpacer />
+              <VChip
+                v-if="selectedProduct?.sale_price"
+                size="x-small"
+                color="primary"
+                variant="tonal"
+                class="font-weight-black"
+              >
+                Precio Actual: {{ formatCurrency(selectedProduct.sale_price, 'USD') }}
+              </VChip>
             </div>
-            <div class="text-sm font-weight-black text-high-emphasis text-uppercase">
+
+            <div class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight mb-1">
               {{ selectedProduct?.name || selectedProductDisplay }}
             </div>
-            <div v-if="selectedProduct?.active_ingredient" class="text-super-xs text-disabled mt-0-5">
-              {{ selectedProduct.active_ingredient }}
+
+            <div v-if="selectedProduct?.active_ingredient" class="text-super-xs text-medium-emphasis">
+              Principio Activo: <strong class="text-high-emphasis">{{ selectedProduct.active_ingredient }}</strong>
             </div>
           </div>
 
+          <!-- Buscador de Producto -->
           <VAutocomplete
-            v-else
+            v-if="!props.isEditing"
             v-model="localFormData.product_id"
             placeholder="BUSCAR POR NOMBRE, ID O CÓDIGO..."
             variant="outlined"
@@ -314,7 +328,7 @@ const endDateConfig = computed(() => ({
             :custom-filter="() => true"
             density="compact"
             hide-details
-            class="rounded-lg font-weight-medium"
+            class="rounded-lg font-weight-medium mt-2"
             :error="!!props.formErrors.product_id"
             :error-messages="props.formErrors.product_id"
             @update:search="handleProductSearch"
@@ -333,7 +347,7 @@ const endDateConfig = computed(() => ({
         </div>
 
         <!-- Sección Parámetros de la Oferta -->
-        <div class="mb-4">
+        <div class="mb-5">
           <div class="d-flex align-center gap-1-5 mb-2">
             <div class="header-indicator primary" />
             <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">Parámetros de la Oferta</span>
@@ -341,8 +355,8 @@ const endDateConfig = computed(() => ({
 
           <VRow dense>
             <!-- Descuento -->
-            <VCol cols="12" md="4">
-              <div class="mb-2 mb-md-0">
+            <VCol cols="12" sm="4">
+              <div class="mb-2 mb-sm-0">
                 <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">% Descuento</span>
                 <VTextField
                   v-model="localFormData.discount_percent"
@@ -350,6 +364,7 @@ const endDateConfig = computed(() => ({
                   min="0"
                   max="100"
                   step="0.01"
+                  placeholder="0.00"
                   variant="outlined"
                   density="compact"
                   hide-details
@@ -363,8 +378,8 @@ const endDateConfig = computed(() => ({
             </VCol>
 
             <!-- Fecha Inicio -->
-            <VCol cols="12" sm="6" md="4">
-              <div class="mb-2 mb-md-0">
+            <VCol cols="12" sm="4">
+              <div class="mb-2 mb-sm-0">
                 <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Fecha Inicio</span>
                 <AppDateTimePicker
                   v-model="localFormData.start_date"
@@ -382,7 +397,7 @@ const endDateConfig = computed(() => ({
             </VCol>
 
             <!-- Fecha Final -->
-            <VCol cols="12" sm="6" md="4">
+            <VCol cols="12" sm="4">
               <div>
                 <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Fecha Final</span>
                 <AppDateTimePicker
@@ -406,46 +421,44 @@ const endDateConfig = computed(() => ({
         <VExpandTransition>
           <div
             v-if="priceInfo"
-            class="pa-4 rounded-lg border border-dashed bg-var-theme-background"
+            class="pa-4 rounded-lg border bg-surface elevation-1 simulation-box"
           >
             <div class="d-flex align-center justify-space-between mb-3">
-              <div class="d-flex align-center gap-2">
+              <div class="d-flex align-center gap-1-5">
                 <VIcon
                   icon="tabler-calculator"
                   size="18"
-                  color="primary"
+                  color="success"
                 />
-                <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Simulación de la Oferta</span>
+                <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">Simulación de la Oferta</span>
               </div>
               <VChip
-                v-if="priceInfo.salePrice > priceInfo.finalPrice"
+                v-if="priceInfo.savings > 0"
                 color="success"
                 variant="flat"
-                size="small"
-                class="font-weight-black px-2 shadow-sm rounded"
+                size="x-small"
+                class="font-weight-black px-2 rounded"
               >
-                AHORRO: ${{ (priceInfo.salePrice - priceInfo.finalPrice).toFixed(2) }}
+                AHORRO: {{ formatCurrency(priceInfo.savings, 'USD') }}
               </VChip>
             </div>
 
-            <VRow dense align="center">
-              <VCol cols="6">
-                <div class="d-flex flex-column">
-                  <span class="text-super-xs font-weight-bold text-disabled uppercase mb-0-5">Precio Lista (Normal)</span>
-                  <span class="text-base font-weight-bold text-medium-emphasis text-decoration-line-through">
-                    ${{ priceInfo.salePrice.toFixed(2) }}
-                  </span>
-                </div>
-              </VCol>
-              <VCol cols="6" class="text-end">
-                <div class="d-flex flex-column">
-                  <span class="text-super-xs font-weight-black text-success uppercase mb-0-5">Precio Final con Oferta</span>
-                  <span class="text-h5 font-weight-black text-success leading-none">
-                    ${{ priceInfo.finalPrice.toFixed(2) }}
-                  </span>
-                </div>
-              </VCol>
-            </VRow>
+            <div class="d-flex align-center justify-space-between flex-wrap gap-2">
+              <!-- Comparativa de Precios Integrada -->
+              <div class="d-flex flex-column">
+                <span class="text-super-xs font-weight-bold text-disabled uppercase">Precio Normal</span>
+                <span class="text-sm font-weight-bold text-medium-emphasis text-decoration-line-through">
+                  {{ formatCurrency(priceInfo.salePrice, 'USD') }}
+                </span>
+              </div>
+
+              <div class="d-flex flex-column align-end">
+                <span class="text-super-xs font-weight-black text-success uppercase">Precio Final de Oferta</span>
+                <span class="text-h4 font-weight-950 text-success leading-none">
+                  {{ formatCurrency(priceInfo.finalPrice, 'USD') }}
+                </span>
+              </div>
+            </div>
           </div>
         </VExpandTransition>
       </VCardText>
@@ -515,6 +528,16 @@ const endDateConfig = computed(() => ({
   background-color: rgb(var(--v-theme-primary));
 }
 
+.selected-product-box {
+  background-color: rgba(var(--v-theme-primary), 0.02) !important;
+  border-color: rgba(var(--v-theme-primary), 0.2) !important;
+}
+
+.simulation-box {
+  border-color: rgba(var(--v-theme-success), 0.3) !important;
+  background-color: rgba(var(--v-theme-success), 0.02) !important;
+}
+
 .shadow-primary {
   box-shadow: 0 4px 14px 0 rgba(var(--v-theme-primary), 0.39) !important;
 }
@@ -544,11 +567,11 @@ const endDateConfig = computed(() => ({
   background-color: rgba(var(--v-theme-primary), 0.08) !important;
 }
 
-.bg-var-theme-background {
-  background-color: rgba(var(--v-border-color), 0.04);
-}
-
 .border-t {
   border-block-start: 1px solid rgba(var(--v-border-color), 0.08) !important;
+}
+
+.font-weight-950 {
+  font-weight: 950 !important;
 }
 </style>
