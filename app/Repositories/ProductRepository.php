@@ -245,7 +245,7 @@ class ProductRepository
             $isStrictSearch = $filtros["isStrictSearch"] ?? false;
             $searchTerm = $filtros["q"];
 
-            $consulta->where(function ($query) use ($searchTerm, $isStrictSearch) {
+            $consulta->where(function ($query) use ($searchTerm, $isStrictSearch, $isGroup) {
                 if ($isStrictSearch) {
                     $escapedTerm = preg_quote($searchTerm, '/');
                     $pattern = "(^|[^a-zA-Z0-9]){$escapedTerm}([^a-zA-Z0-9]|$)";
@@ -253,16 +253,22 @@ class ProductRepository
                         ->orWhereRaw("products.active_ingredient REGEXP ?", [$pattern])
                         ->orWhereRaw("laboratories.name REGEXP ?", [$pattern])
                         ->orWhere("products.id", "=", $searchTerm);
+                    if ($isGroup) {
+                        $query->orWhereRaw("groups_products.name REGEXP ?", [$pattern]);
+                    }
                 } else {
                     $words = explode(' ', trim($searchTerm));
                     foreach ($words as $word) {
                         $word = trim($word);
                         if (empty($word)) continue;
-                        $query->where(function ($wordQuery) use ($word) {
+                        $query->where(function ($wordQuery) use ($word, $isGroup) {
                             $wordQuery->where("products.name", "like", "%" . $word . "%")
                                 ->orWhere("products.active_ingredient", "like", "%" . $word . "%")
                                 ->orWhere("laboratories.name", "like", "%" . $word . "%")
                                 ->orWhere("products.id", "like", "%" . $word . "%");
+                            if ($isGroup) {
+                                $wordQuery->orWhere("groups_products.name", "like", "%" . $word . "%");
+                            }
                         });
                     }
                 }
