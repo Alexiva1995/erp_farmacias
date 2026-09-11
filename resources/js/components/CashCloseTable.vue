@@ -29,9 +29,8 @@ const headers = computed(() => {
       title: "ID",
       key: "product_id",
       sortable: true,
-      width: "75px",
       align: "start",
-      cellClass: 'font-weight-black text-xs text-primary d-none d-sm-table-cell',
+      cellClass: 'font-weight-black text-primary d-none d-sm-table-cell',
       headerClass: 'd-none d-sm-table-cell',
     },
     { title: "Producto", key: "product.name", sortable: true, width: "320px" },
@@ -127,7 +126,7 @@ const handleDelete = (item) => {
           <a
             :href="'/inventory/traceability?q=' + (item.productId || item.product_id)"
             target="_blank"
-            class="text-decoration-none font-weight-black text-xs text-primary bg-primary-lighten-5 px-2 py-1 rounded"
+            class="text-decoration-none font-weight-black text-primary"
           >
             {{ item.productId || item.product_id || "—" }}
           </a>

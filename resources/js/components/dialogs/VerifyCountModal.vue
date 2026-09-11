@@ -47,6 +47,15 @@ const isManualEntryAllowed = computed(() => {
   return canBypassBarcode.value && allowWithoutBarcode.value;
 });
 
+const counterUserName = computed(() => {
+  const u = props.countRecord?.user;
+  if (!u) return "Sistema";
+  if (u.employee_name && u.employee_last_name) {
+    return `${u.employee_name.trim()} ${u.employee_last_name.trim()}`;
+  }
+  return u.employee_name || u.name || u.username || u.email || "Operador";
+});
+
 const isBarcodeValid = computed(() => {
   if (isManualEntryAllowed.value) return true;
   const expectedBc = props.countRecord?.product?.barcode ? String(props.countRecord.product.barcode).trim() : "";
@@ -289,7 +298,7 @@ const handleClose = () => {
                 class="text-white opacity-75 uppercase font-weight-bold"
                 style="font-size: 0.6rem; letter-spacing: 0.05em;"
               >
-                Validación Física de Inventario • Barrio Sucre
+                Validación Física • Auditoría de Stock
               </span>
             </div>
           </div>
@@ -324,50 +333,52 @@ const handleClose = () => {
         </div>
 
         <template v-else>
-          <!-- Perfil del Producto Premium -->
+          <!-- Perfil del Producto Estructurado (Estilo Inventario de Productos) -->
           <VCard
             variant="flat"
             class="pa-3 bg-white rounded-xl border shadow-sm"
           >
-            <div class="d-flex align-center justify-space-between mb-2">
-              <VChip
-                size="x-small"
-                color="primary"
-                variant="flat"
-                class="font-weight-black px-2 rounded-lg"
-              >
+            <!-- Pastilla ID + Laboratorio / Categoría -->
+            <div class="d-flex align-center justify-space-between gap-2 mb-1">
+              <span class="text-primary font-weight-black text-xs">
                 ID: {{ countRecord.product?.id || countRecord.product_id }}
-              </VChip>
-              <div class="d-flex align-center gap-1 text-disabled leading-none">
-                <VIcon
-                  icon="tabler-user-check"
-                  size="12"
-                />
-                <span class="text-super-xs font-weight-black uppercase truncate" style="max-inline-size: 150px;">
-                   {{ countRecord.user?.username || "Sistema" }}
-                </span>
-              </div>
+              </span>
+              <span class="text-primary font-weight-black text-super-xs text-uppercase truncate" style="max-inline-size: 180px;">
+                {{ countRecord.product?.laboratory?.name || 'S/L' }}
+              </span>
             </div>
-            <h3 class="text-subtitle-1 font-weight-black text-high-emphasis leading-tight uppercase mb-1">
+
+            <!-- Nombre de Producto Dominante -->
+            <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight mb-1" :title="countRecord.product?.name">
               {{ countRecord.product?.name }}
+              <span v-if="countRecord.product?.iva == 1 || countRecord.product?.iva === true" class="text-xs text-disabled font-weight-regular"> (G)</span>
+              <span v-if="countRecord.product?.is_colombian_origin == 1 || countRecord.product?.is_colombian_origin === true" class="text-xs text-disabled font-weight-regular"> (COL)</span>
             </h3>
-            <div class="d-flex align-center gap-2">
-              <VIcon
-                icon="tabler-barcode"
-                size="12"
-                color="disabled"
-              />
-              <p class="text-super-xs text-disabled font-weight-bold mb-0 uppercase letter-spacing-05 truncate">
+
+            <!-- Principio Activo / Presentación -->
+            <div class="d-flex align-center gap-1 text-super-xs text-disabled mb-2">
+              <span class="truncate" style="max-inline-size: 260px;">
                 {{ countRecord.product?.active_ingredient || "Sin principio activo" }}
-              </p>
+              </span>
+            </div>
+
+            <!-- Divisor y Datos del Contador -->
+            <div class="pt-2 border-t d-flex align-center justify-space-between text-super-xs">
+              <div class="d-flex align-center gap-1 text-medium-emphasis">
+                <VIcon icon="tabler-user" size="13" color="primary" />
+                <span class="text-disabled uppercase">Contado por:</span>
+                <strong class="text-high-emphasis text-capitalize font-weight-black">{{ counterUserName }}</strong>
+              </div>
+              <span v-if="countRecord.created_at" class="text-disabled font-weight-medium">
+                {{ formatDateSimple(countRecord.created_at) }}
+              </span>
             </div>
           </VCard>
 
-          <!-- Modo de Ingreso / Escaneo de Código de Barras -->
+          <!-- Modo de Ingreso / Escaneo de Código de Barras (Fondo Blanco Limpio) -->
           <div
             v-if="canBypassBarcode"
-            class="pa-2 rounded-lg border shadow-xs d-flex align-center justify-space-between"
-            :class="allowWithoutBarcode ? 'bg-warning-lighten-5' : 'bg-primary-lighten-5'"
+            class="pa-2 rounded-lg border bg-white shadow-xs d-flex align-center justify-space-between"
           >
             <div class="d-flex align-center gap-2">
               <VIcon
@@ -375,7 +386,7 @@ const handleClose = () => {
                 :color="allowWithoutBarcode ? 'warning' : 'primary'"
                 size="18"
               />
-              <span class="text-super-xs font-weight-black uppercase">
+              <span class="text-super-xs font-weight-black uppercase" :class="allowWithoutBarcode ? 'text-warning' : 'text-primary'">
                 {{ allowWithoutBarcode ? "Ingreso Manual (Sin Código)" : "Modo Escaneo" }}
               </span>
             </div>
@@ -389,7 +400,7 @@ const handleClose = () => {
 
           <div
             v-else
-            class="pa-2 rounded-lg border shadow-xs d-flex align-center gap-2 bg-primary-lighten-5"
+            class="pa-2 rounded-lg border bg-white shadow-xs d-flex align-center gap-2"
           >
             <VIcon icon="tabler-scan" color="primary" size="18" />
             <span class="text-super-xs font-weight-black uppercase text-primary">

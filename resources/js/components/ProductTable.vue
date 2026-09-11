@@ -110,9 +110,8 @@ const headers = computed(() => [
     title: "ID",
     key: "id",
     sortable: true,
-    width: "75px",
     visible: true,
-    cellClass: "font-weight-black text-xs text-primary d-none d-sm-table-cell",
+    cellClass: "font-weight-black text-primary d-none d-sm-table-cell",
     headerClass: "d-none d-sm-table-cell",
   },
   {
@@ -348,7 +347,7 @@ const getProductLocations = (item) => {
           <a
             :href="'/inventory/traceability?q=' + item.id"
             target="_blank"
-            class="text-decoration-none font-weight-black text-xs text-primary bg-primary-lighten-5 px-2 py-1 rounded"
+            class="text-decoration-none font-weight-black text-primary"
           >
             {{ item.id }}
           </a>

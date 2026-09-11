@@ -58,9 +58,8 @@ const headers = computed(() => [
     key: "product_id",
     value: "product_id",
     sortable: true,
-    width: "75px",
     align: "start",
-    cellClass: "font-weight-black text-xs text-primary d-none d-sm-table-cell",
+    cellClass: "font-weight-black text-primary d-none d-sm-table-cell",
     headerClass: "d-none d-sm-table-cell",
   },
   { title: "Producto", key: "product.name", value: "product.name", sortable: true, width: "300px" },
@@ -443,7 +442,7 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
             <a
               :href="'/inventory/traceability?q=' + (item.product?.id || item.product_id)"
               target="_blank"
-              class="text-decoration-none font-weight-black text-xs text-primary bg-primary-lighten-5 px-2 py-1 rounded"
+              class="text-decoration-none font-weight-black text-primary"
             >
               {{ item.product?.id || item.product_id || "—" }}
             </a>
@@ -524,10 +523,14 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
           </template>
 
           <template #item.actions="{ item }">
-            <div class="d-flex align-center justify-center gap-1">
-              <IconBtn size="small" color="primary" variant="tonal" class="rounded" @click="openEditModal(item)">
+            <div class="d-flex justify-center gap-1">
+              <IconBtn
+                color="primary"
+                size="small"
+                @click.stop="openEditModal(item)"
+              >
                 <VIcon icon="tabler-edit" size="18" />
-                <VTooltip activator="parent">Editar Discrepancia</VTooltip>
+                <VTooltip activator="parent" location="top">Editar Discrepancia</VTooltip>
               </IconBtn>
             </div>
           </template>

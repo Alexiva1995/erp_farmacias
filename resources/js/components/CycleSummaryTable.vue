@@ -35,9 +35,8 @@ const headers = ref([
     key: "cycle_id", 
     sortable: true, 
     align: "start",
-    cellClass: "font-weight-black text-xs text-primary d-none d-sm-table-cell",
+    cellClass: "font-weight-black text-primary d-none d-sm-table-cell",
     headerClass: "d-none d-sm-table-cell",
-    width: "75px",
   },
   { title: "Fec. Inicio", key: "start_date", sortable: true, align: "center", width: "130px" },
   { title: "Fec. Fin", key: "end_date", sortable: true, align: "center", width: "130px" },
@@ -122,7 +121,7 @@ const viewCycleDetails = (item) => {
         density="compact"
       >
         <template #item.cycle_id="{ item: cycle }">
-          <span class="font-weight-black text-xs text-primary bg-primary-lighten-5 px-2 py-1 rounded">
+          <span class="font-weight-black text-primary">
             {{ cycle.cycle_id }}
           </span>
         </template>
@@ -199,20 +198,15 @@ const viewCycleDetails = (item) => {
         </template>
 
         <template #item.actions="{ item }">
-          <div class="d-flex align-center justify-center">
-            <VTooltip text="Ver detalles" location="top">
-              <template #activator="{ props: tooltipProps }">
-                <IconBtn
-                  v-bind="tooltipProps"
-                  size="small"
-                  color="info"
-                  variant="tonal"
-                  @click.stop="viewCycleDetails(item)"
-                >
-                  <VIcon icon="tabler-eye" size="18" />
-                </IconBtn>
-              </template>
-            </VTooltip>
+          <div class="d-flex justify-center gap-1">
+            <IconBtn
+              color="primary"
+              size="small"
+              @click.stop="viewCycleDetails(item)"
+            >
+              <VIcon icon="tabler-eye" size="18" />
+              <VTooltip activator="parent" location="top">Ver detalles</VTooltip>
+            </IconBtn>
           </div>
         </template>
 
