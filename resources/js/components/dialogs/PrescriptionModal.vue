@@ -194,7 +194,7 @@ watch(
               <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">Información de la Campaña</span>
             </div>
             <div class="d-flex align-center gap-2">
-              <span class="text-super-xs font-weight-bold text-disabled uppercase">Activa</span>
+              <span class="text-super-xs font-weight-bold text-high-emphasis uppercase">Activa</span>
               <VSwitch
                 v-model="formData.is_active"
                 color="primary"
@@ -208,10 +208,10 @@ watch(
           <div class="pa-3 rounded border bg-var-theme-background">
             <VRow dense>
               <VCol cols="12">
-                <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Nombre Descriptivo de la Oferta *</span>
+                <span class="text-super-xs font-weight-bold text-high-emphasis uppercase mb-1 d-block">Nombre Descriptivo de la Oferta *</span>
                 <VTextField
                   v-model="formData.name"
-                  placeholder="EJ: CAMPAÑA RECETAS ENERO..."
+                  placeholder="Ej. Campaña recetas enero..."
                   variant="outlined"
                   density="compact"
                   hide-details="auto"
@@ -236,7 +236,7 @@ watch(
             <VRow dense>
               <VCol cols="12" sm="4">
                 <div class="mb-2 mb-sm-0">
-                  <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">% Descuento Aplicable *</span>
+                  <span class="text-super-xs font-weight-bold text-high-emphasis uppercase mb-1 d-block">% Descuento Aplicable *</span>
                   <VTextField
                     v-model="formData.discount_percentage"
                     type="number"
@@ -258,10 +258,10 @@ watch(
 
               <VCol cols="12" sm="4">
                 <div class="mb-2 mb-sm-0">
-                  <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Fecha Inicio *</span>
+                  <span class="text-super-xs font-weight-bold text-high-emphasis uppercase mb-1 d-block">Fecha Inicio *</span>
                   <AppDateTimePicker
                     v-model="formData.start_date"
-                    placeholder="SELECCIONAR FECHA"
+                    placeholder="Seleccionar fecha"
                     prepend-inner-icon="tabler-calendar-event"
                     density="compact"
                     hide-details="auto"
@@ -276,10 +276,10 @@ watch(
 
               <VCol cols="12" sm="4">
                 <div>
-                  <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Fecha Final *</span>
+                  <span class="text-super-xs font-weight-bold text-high-emphasis uppercase mb-1 d-block">Fecha Final *</span>
                   <AppDateTimePicker
                     v-model="formData.end_date"
-                    placeholder="SELECCIONAR FECHA"
+                    placeholder="Seleccionar fecha"
                     prepend-inner-icon="tabler-calendar-off"
                     density="compact"
                     hide-details="auto"
@@ -300,29 +300,35 @@ watch(
 
       <!-- Acciones de Modal -->
       <VCardActions class="pa-3 pa-sm-4 bg-surface border-t">
-        <div class="d-flex gap-2 w-100 justify-end">
-          <VBtn
-            color="secondary"
-            variant="outlined"
-            height="44"
-            class="font-weight-bold rounded text-button uppercase flex-grow-1 flex-sm-grow-0 px-5"
-            @click="onCancel"
-            :disabled="isSaving"
-          >
-            Cancelar
-          </VBtn>
-          <VBtn
-            color="primary"
-            variant="flat"
-            height="44"
-            prepend-icon="tabler-device-floppy"
-            class="font-weight-black rounded shadow-primary text-button uppercase flex-grow-1 flex-sm-grow-0 px-6"
-            :loading="isSaving"
-            @click="onSave"
-          >
-            {{ isEditing ? "Guardar Cambios" : "Crear Oferta" }}
-          </VBtn>
-        </div>
+        <VRow dense class="w-100 ma-0">
+          <VCol cols="6" class="pa-1">
+            <VBtn
+              color="secondary"
+              variant="outlined"
+              height="44"
+              block
+              class="font-weight-bold rounded-lg text-button uppercase"
+              @click="onCancel"
+              :disabled="isSaving"
+            >
+              Cancelar
+            </VBtn>
+          </VCol>
+          <VCol cols="6" class="pa-1">
+            <VBtn
+              color="primary"
+              variant="flat"
+              height="44"
+              block
+              prepend-icon="tabler-device-floppy"
+              class="font-weight-black rounded-lg shadow-primary text-button uppercase"
+              :loading="isSaving"
+              @click="onSave"
+            >
+              {{ isEditing ? "Guardar Cambios" : "Crear Oferta" }}
+            </VBtn>
+          </VCol>
+        </VRow>
       </VCardActions>
     </VCard>
   </VDialog>

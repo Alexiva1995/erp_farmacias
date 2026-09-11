@@ -215,13 +215,13 @@ watch(
 
             <!-- Modo Creación: Autocomplete -->
             <div v-else>
-              <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Seleccionar Médico *</span>
+              <span class="text-super-xs font-weight-bold text-high-emphasis uppercase mb-1 d-block">Seleccionar Médico *</span>
               <VAutocomplete
                 v-model="doctorsOfferData.doctor_id"
                 :items="props.doctorsData"
                 :item-title="(item) => `${item.id} - ${item.name}`"
                 item-value="id"
-                placeholder="BUSCAR MÉDICO POR ID O NOMBRE..."
+                placeholder="Buscar médico por ID o nombre..."
                 variant="outlined"
                 density="compact"
                 hide-details="auto"
@@ -243,7 +243,7 @@ watch(
               <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">Parámetros del Beneficio</span>
             </div>
             <div class="d-flex align-center gap-2">
-              <span class="text-super-xs font-weight-bold text-disabled uppercase">Activa</span>
+              <span class="text-super-xs font-weight-bold text-high-emphasis uppercase">Activa</span>
               <VSwitch
                 v-model="doctorsOfferData.is_active"
                 color="primary"
@@ -258,7 +258,7 @@ watch(
             <VRow dense>
               <VCol cols="12" sm="4">
                 <div class="mb-2 mb-sm-0">
-                  <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">% Descuento *</span>
+                  <span class="text-super-xs font-weight-bold text-high-emphasis uppercase mb-1 d-block">% Descuento *</span>
                   <VTextField
                     v-model.number="doctorsOfferData.discount"
                     type="number"
@@ -280,10 +280,10 @@ watch(
 
               <VCol cols="12" sm="4">
                 <div class="mb-2 mb-sm-0">
-                  <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Vigencia Inicio</span>
+                  <span class="text-super-xs font-weight-bold text-high-emphasis uppercase mb-1 d-block">Vigencia Inicio</span>
                   <AppDateTimePicker
                     v-model="doctorsOfferData.start_date"
-                    placeholder="SELECCIONAR FECHA"
+                    placeholder="Seleccionar fecha"
                     prepend-inner-icon="tabler-calendar-event"
                     density="compact"
                     hide-details="auto"
@@ -298,10 +298,10 @@ watch(
 
               <VCol cols="12" sm="4">
                 <div>
-                  <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Vigencia Cierre</span>
+                  <span class="text-super-xs font-weight-bold text-high-emphasis uppercase mb-1 d-block">Vigencia Cierre</span>
                   <AppDateTimePicker
                     v-model="doctorsOfferData.end_date"
-                    placeholder="SELECCIONAR FECHA"
+                    placeholder="Seleccionar fecha"
                     prepend-inner-icon="tabler-calendar-off"
                     density="compact"
                     hide-details="auto"
@@ -322,29 +322,35 @@ watch(
 
       <!-- Acciones de Modal -->
       <VCardActions class="pa-3 pa-sm-4 bg-surface border-t">
-        <div class="d-flex gap-2 w-100 justify-end">
-          <VBtn
-            color="secondary"
-            variant="outlined"
-            height="44"
-            class="font-weight-bold rounded text-button uppercase flex-grow-1 flex-sm-grow-0 px-5"
-            @click="onCancel"
-            :disabled="isSaving"
-          >
-            Cancelar
-          </VBtn>
-          <VBtn
-            color="primary"
-            variant="flat"
-            height="44"
-            prepend-icon="tabler-device-floppy"
-            class="font-weight-black rounded shadow-primary text-button uppercase flex-grow-1 flex-sm-grow-0 px-6"
-            :loading="isSaving"
-            @click="onSave"
-          >
-            {{ props.isEditing ? "Guardar Cambios" : "Crear Oferta" }}
-          </VBtn>
-        </div>
+        <VRow dense class="w-100 ma-0">
+          <VCol cols="6" class="pa-1">
+            <VBtn
+              color="secondary"
+              variant="outlined"
+              height="44"
+              block
+              class="font-weight-bold rounded-lg text-button uppercase"
+              @click="onCancel"
+              :disabled="isSaving"
+            >
+              Cancelar
+            </VBtn>
+          </VCol>
+          <VCol cols="6" class="pa-1">
+            <VBtn
+              color="primary"
+              variant="flat"
+              height="44"
+              block
+              prepend-icon="tabler-device-floppy"
+              class="font-weight-black rounded-lg shadow-primary text-button uppercase"
+              :loading="isSaving"
+              @click="onSave"
+            >
+              {{ props.isEditing ? "Guardar Cambios" : "Crear Oferta" }}
+            </VBtn>
+          </VCol>
+        </VRow>
       </VCardActions>
     </VCard>
   </VDialog>

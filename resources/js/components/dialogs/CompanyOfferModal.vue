@@ -234,7 +234,7 @@ watch(
 
       <VCardText class="pa-4 pa-sm-5 bg-surface">
         <!-- Bloque 1: Datos Generales de la Oferta -->
-        <div class="mb-5">
+        <div class="mb-4">
           <div class="d-flex align-center justify-space-between mb-2">
             <div class="d-flex align-center gap-1-5">
               <div class="header-indicator primary" />
@@ -252,56 +252,58 @@ watch(
             </div>
           </div>
 
-          <VRow dense>
-            <VCol cols="12">
-              <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Empresa Beneficiaria *</span>
-              <VAutocomplete
-                v-model="companiesOfferData.company_id"
-                :items="props.companiesData"
-                :item-title="(item) => `${item.id} - ${item.name}`"
-                item-value="id"
-                placeholder="BUSCAR EMPRESA POR ID O NOMBRE..."
-                variant="outlined"
-                density="compact"
-                hide-details="auto"
-                clearable
-                :disabled="isSaving"
-                class="rounded font-weight-bold"
-                :error="!!formErrors.company_id"
-                :error-messages="formErrors.company_id"
-              />
-            </VCol>
+          <div class="pa-3 rounded border bg-var-theme-background">
+            <VRow dense>
+              <VCol cols="12">
+                <span class="text-super-xs font-weight-bold text-high-emphasis uppercase mb-1 d-block">Empresa Beneficiaria *</span>
+                <VAutocomplete
+                  v-model="companiesOfferData.company_id"
+                  :items="props.companiesData"
+                  :item-title="(item) => `${item.id} - ${item.name}`"
+                  item-value="id"
+                  placeholder="Buscar empresa por ID o nombre..."
+                  variant="outlined"
+                  density="compact"
+                  hide-details="auto"
+                  clearable
+                  :disabled="isSaving"
+                  class="rounded font-weight-bold"
+                  :error="!!formErrors.company_id"
+                  :error-messages="formErrors.company_id"
+                />
+              </VCol>
 
-            <VCol cols="12" sm="6" class="mt-2">
-              <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Fecha Inicio *</span>
-              <AppDateTimePicker
-                v-model="companiesOfferData.start_date"
-                placeholder="SELECCIONAR FECHA"
-                prepend-inner-icon="tabler-calendar-event"
-                density="compact"
-                hide-details="auto"
-                class="rounded"
-                :error="!!formErrors.start_date"
-                :error-messages="formErrors.start_date"
-                :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
-              />
-            </VCol>
+              <VCol cols="12" sm="6" class="mt-2">
+                <span class="text-super-xs font-weight-bold text-high-emphasis uppercase mb-1 d-block">Fecha Inicio *</span>
+                <AppDateTimePicker
+                  v-model="companiesOfferData.start_date"
+                  placeholder="Seleccionar fecha"
+                  prepend-inner-icon="tabler-calendar-event"
+                  density="compact"
+                  hide-details="auto"
+                  class="rounded font-weight-bold"
+                  :error="!!formErrors.start_date"
+                  :error-messages="formErrors.start_date"
+                  :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
+                />
+              </VCol>
 
-            <VCol cols="12" sm="6" class="mt-2">
-              <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Fecha Final *</span>
-              <AppDateTimePicker
-                v-model="companiesOfferData.end_date"
-                placeholder="SELECCIONAR FECHA"
-                prepend-inner-icon="tabler-calendar-off"
-                density="compact"
-                hide-details="auto"
-                class="rounded"
-                :error="!!formErrors.end_date"
-                :error-messages="formErrors.end_date"
-                :config="endDateConfig"
-              />
-            </VCol>
-          </VRow>
+              <VCol cols="12" sm="6" class="mt-2">
+                <span class="text-super-xs font-weight-bold text-high-emphasis uppercase mb-1 d-block">Fecha Final *</span>
+                <AppDateTimePicker
+                  v-model="companiesOfferData.end_date"
+                  placeholder="Seleccionar fecha"
+                  prepend-inner-icon="tabler-calendar-off"
+                  density="compact"
+                  hide-details="auto"
+                  class="rounded font-weight-bold"
+                  :error="!!formErrors.end_date"
+                  :error-messages="formErrors.end_date"
+                  :config="endDateConfig"
+                />
+              </VCol>
+            </VRow>
+          </div>
         </div>
 
         <!-- Bloque 2: Escalas de Descuento -->
@@ -310,7 +312,7 @@ watch(
             <div class="d-flex align-center gap-1-5">
               <div class="header-indicator primary" />
               <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">Escalas de Descuento</span>
-              <span class="text-super-xs font-weight-bold text-disabled">({{ scalesData.length }})</span>
+              <span class="text-super-xs font-weight-bold text-medium-emphasis">({{ scalesData.length }})</span>
             </div>
             <VBtn
               variant="outlined"
@@ -332,7 +334,7 @@ watch(
             >
               <VRow dense class="align-center">
                 <VCol cols="12" sm="3" md="4">
-                  <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Monto Mín. (USD)</span>
+                  <span class="text-super-xs font-weight-bold text-high-emphasis uppercase mb-1 d-block">Monto Mín. (USD)</span>
                   <VTextField
                     v-model.number="scale.min_amount"
                     type="number"
@@ -347,7 +349,7 @@ watch(
                 </VCol>
 
                 <VCol cols="12" sm="4" md="4">
-                  <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Monto Máx. (USD)</span>
+                  <span class="text-super-xs font-weight-bold text-high-emphasis uppercase mb-1 d-block">Monto Máx. (USD)</span>
                   <VTextField
                     v-model.number="scale.max_amount"
                     type="number"
@@ -362,7 +364,7 @@ watch(
                 </VCol>
 
                 <VCol cols="9" sm="3" md="3">
-                  <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">% Descuento</span>
+                  <span class="text-super-xs font-weight-bold text-high-emphasis uppercase mb-1 d-block">% Descuento</span>
                   <VTextField
                     v-model.number="scale.discount_percentage"
                     type="number"
@@ -398,31 +400,37 @@ watch(
 
       <VDivider />
 
-      <!-- Acciones Únicas -->
+      <!-- Acciones del Modal -->
       <VCardActions class="pa-3 pa-sm-4 bg-surface border-t">
-        <div class="d-flex gap-2 w-100 justify-end">
-          <VBtn
-            color="secondary"
-            variant="outlined"
-            height="44"
-            class="font-weight-bold rounded text-button uppercase flex-grow-1 flex-sm-grow-0 px-5"
-            @click="onCancel"
-            :disabled="isSaving"
-          >
-            Cancelar
-          </VBtn>
-          <VBtn
-            color="primary"
-            variant="flat"
-            height="44"
-            prepend-icon="tabler-device-floppy"
-            class="font-weight-black rounded shadow-primary text-button uppercase flex-grow-1 flex-sm-grow-0 px-6"
-            :loading="isSaving"
-            @click="onSave"
-          >
-            {{ props.isEditing ? 'Guardar Cambios' : 'Crear Oferta' }}
-          </VBtn>
-        </div>
+        <VRow dense class="w-100 ma-0">
+          <VCol cols="6" class="pa-1">
+            <VBtn
+              color="secondary"
+              variant="outlined"
+              height="44"
+              block
+              class="font-weight-bold rounded-lg text-button uppercase"
+              @click="onCancel"
+              :disabled="isSaving"
+            >
+              Cancelar
+            </VBtn>
+          </VCol>
+          <VCol cols="6" class="pa-1">
+            <VBtn
+              color="primary"
+              variant="flat"
+              height="44"
+              block
+              prepend-icon="tabler-device-floppy"
+              class="font-weight-black rounded-lg shadow-primary text-button uppercase"
+              :loading="isSaving"
+              @click="onSave"
+            >
+              {{ props.isEditing ? 'Guardar Cambios' : 'Crear Oferta' }}
+            </VBtn>
+          </VCol>
+        </VRow>
       </VCardActions>
     </VCard>
   </VDialog>
@@ -467,5 +475,11 @@ watch(
 .scale-row {
   border-color: rgba(var(--v-border-color), 0.12) !important;
   background-color: rgba(var(--v-theme-on-surface), 0.02) !important;
+}
+
+.bg-var-theme-background {
+  background-color: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-border-color), 0.12) !important;
+  border-radius: 5px !important;
 }
 </style>

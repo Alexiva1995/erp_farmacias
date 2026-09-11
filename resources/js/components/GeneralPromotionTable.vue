@@ -14,12 +14,20 @@ const emit = defineEmits(["update:options", "edit-offer", "delete-offer"]);
 const { mobile } = useDisplay();
 
 const headers = [
-  { title: "ID", key: "id", sortable: true, width: "80px" },
-  { title: "Tipo de Oferta", key: "type", sortable: true, width: "20%" },
-  { title: "Precio Fijo", key: "fixed_price", sortable: true, align: "end" },
-  { title: "Categorías", key: "categories", sortable: false },
-  { title: "Estado", key: "is_active", sortable: true, align: "center" },
-  { title: "Acciones", key: "actions", sortable: false, align: "center", width: "100px" },
+  {
+    title: "ID",
+    key: "id",
+    sortable: true,
+    align: "center",
+    width: "70px",
+    cellClass: "font-weight-black text-primary d-none d-sm-table-cell",
+    headerClass: "d-none d-sm-table-cell",
+  },
+  { title: "Tipo de Oferta", key: "type",        sortable: true, width: "30%" },
+  { title: "Beneficio",      key: "fixed_price", sortable: true, align: "center", width: "130px" },
+  { title: "Categorías",     key: "categories",  sortable: false, width: "40%" },
+  { title: "Estado",         key: "is_active",   sortable: true, align: "center", width: "100px" },
+  { title: "Acciones",       key: "actions",     sortable: false, align: "center", width: "110px" },
 ];
 
 const getPromoTypeName = (type) => {
@@ -47,7 +55,7 @@ const getCategoryNames = (categoryIds) => {
 <template>
   <div class="general-offers-container">
     <!-- Vista de Escritorio (Tabla Premium) -->
-    <VCard class="d-none d-md-block elevation-1 border-0 rounded-lg overflow-hidden">
+    <VCard class="d-none d-md-block rounded-lg border shadow-sm overflow-hidden">
       <VDataTableServer
         :items-per-page="props.itemsPerPage"
         :page="props.page"
@@ -59,7 +67,7 @@ const getCategoryNames = (categoryIds) => {
         page-text="{0}-{1} de {2}"
         loading-text="Cargando..."
         no-data-text="No hay datos disponibles"
-        class="text-no-wrap premium-table"
+        class="text-no-wrap"
         density="compact"
         fixed-header
         height="auto"
@@ -72,25 +80,32 @@ const getCategoryNames = (categoryIds) => {
 
         <!-- Type Column -->
         <template #item.type="{ item }">
-          <VChip size="small" color="primary" variant="flat" class="font-weight-black rounded">
-            {{ getPromoTypeName(item.type) }}
-          </VChip>
+          <div class="d-flex flex-column py-2">
+            <span class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate" style="max-inline-size: 380px;">
+              {{ getPromoTypeName(item.type) }}
+            </span>
+            <span class="text-super-xs text-medium-emphasis text-uppercase font-weight-bold mt-0-5">
+              Promoción General
+            </span>
+          </div>
         </template>
 
-        <!-- Fixed Price Column -->
+        <!-- Fixed Price / Beneficio Column -->
         <template #item.fixed_price="{ item }">
-          <span v-if="item.type === 'general'" class="text-sm font-weight-black text-primary">
-            {{ parseFloat(item.fixed_price).toFixed(1) }}% DESC
+          <span v-if="item.type === 'general'" class="font-weight-black text-success text-sm">
+            {{ parseFloat(item.fixed_price).toFixed(1) }}% OFF
           </span>
-          <span v-else-if="item.type === 'fixed_price'" class="text-sm font-weight-black text-success">
+          <span v-else-if="item.type === 'fixed_price'" class="font-weight-black text-success text-sm">
             ${{ parseFloat(item.fixed_price).toFixed(2) }}
           </span>
-          <span v-else class="text-disabled">—</span>
+          <span v-else class="text-super-xs font-weight-bold text-medium-emphasis uppercase">
+            {{ item.type === '2x1' ? 'Paga 1 Lleva 2' : item.type === '3x2' ? 'Paga 2 Lleva 3' : '50% en 2do' }}
+          </span>
         </template>
 
         <!-- Categories Column -->
         <template #item.categories="{ item }">
-          <div class="text-xs truncate uppercase font-weight-bold" style="max-inline-size: 350px">
+          <div class="text-xs truncate uppercase font-weight-bold text-high-emphasis" style="max-inline-size: 350px" :title="getCategoryNames(item.categories)">
             {{ getCategoryNames(item.categories) }}
           </div>
         </template>
@@ -98,12 +113,12 @@ const getCategoryNames = (categoryIds) => {
         <!-- State Column -->
         <template #item.is_active="{ item }">
           <VChip
-            size="small"
+            size="x-small"
             :color="item.is_active ? 'success' : 'secondary'"
             variant="tonal"
-            class="font-weight-black rounded"
+            class="font-weight-black px-2 rounded"
           >
-            {{ item.is_active ? 'Activa' : 'Inactiva' }}
+            {{ item.is_active ? 'ACTIVA' : 'INACTIVA' }}
           </VChip>
         </template>
 
@@ -116,7 +131,7 @@ const getCategoryNames = (categoryIds) => {
               size="small"
             >
               <VIcon icon="tabler-edit" size="18" />
-              <VTooltip activator="parent">Editar</VTooltip>
+              <VTooltip activator="parent">Editar Promoción</VTooltip>
             </IconBtn>
             <IconBtn
               @click="$emit('delete-offer', item.id)"
@@ -124,7 +139,7 @@ const getCategoryNames = (categoryIds) => {
               size="small"
             >
               <VIcon icon="tabler-trash" size="18" />
-              <VTooltip activator="parent">Eliminar</VTooltip>
+              <VTooltip activator="parent">Eliminar Promoción</VTooltip>
             </IconBtn>
           </div>
         </template>
@@ -204,39 +219,20 @@ const getCategoryNames = (categoryIds) => {
 </template>
 
 <style scoped>
-.premium-table :deep(thead th) {
-  background-color: white !important;
-  color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)) !important;
+:deep(.v-data-table th) {
+  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
   font-size: 0.75rem !important;
   font-weight: 700 !important;
-  letter-spacing: 0.05rem !important;
-  text-transform: uppercase !important;
-  border-bottom: 1px solid rgba(var(--v-border-color), 0.1) !important;
-}
-
-.premium-table :deep(td) {
-  padding-block: 8px !important;
-}
-
-.premium-card {
-  position: relative;
-  transition: transform 0.2s ease;
-}
-
-.status-strip {
-  position: absolute;
-  inline-size: 4px;
-  inset-block: 0;
-  inset-inline-start: 0;
-}
-
-.bg-light {
-  background-color: #f1f5f9 !important;
+  text-transform: uppercase;
 }
 
 .text-super-xs {
   font-size: 0.65rem !important;
   line-height: normal;
+}
+
+.mt-0-5 {
+  margin-top: 2px !important;
 }
 
 .truncate {
@@ -245,13 +241,10 @@ const getCategoryNames = (categoryIds) => {
   white-space: nowrap;
 }
 
-.shadow-sm {
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 5%) !important;
-}
-
 .gap-1 {
   gap: 4px !important;
 }
+
 .gap-2 {
   gap: 8px !important;
 }

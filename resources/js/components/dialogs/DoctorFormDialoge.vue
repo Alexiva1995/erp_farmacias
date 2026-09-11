@@ -165,27 +165,33 @@ function submitForm() {
 
       <!-- Footer Premium -->
       <VCardActions class="pa-3 pa-sm-4 bg-surface border-t">
-        <div class="d-flex gap-2 w-100 justify-end">
-          <VBtn
-            color="secondary"
-            variant="outlined"
-            height="44"
-            class="font-weight-bold rounded text-button uppercase flex-grow-1 flex-sm-grow-0 px-5"
-            @click="close"
-          >
-            Cancelar
-          </VBtn>
-          <VBtn
-            color="primary"
-            variant="flat"
-            height="44"
-            prepend-icon="tabler-device-floppy"
-            class="font-weight-black rounded shadow-primary text-button uppercase flex-grow-1 flex-sm-grow-0 px-6"
-            @click="submitForm"
-          >
-            {{ formData.id ? 'Guardar Cambios' : 'Registrar Médico' }}
-          </VBtn>
-        </div>
+        <VRow dense class="w-100 ma-0">
+          <VCol cols="6" class="pa-1">
+            <VBtn
+              color="secondary"
+              variant="outlined"
+              height="44"
+              block
+              class="font-weight-bold rounded-lg text-button uppercase"
+              @click="close"
+            >
+              Cancelar
+            </VBtn>
+          </VCol>
+          <VCol cols="6" class="pa-1">
+            <VBtn
+              color="primary"
+              variant="flat"
+              height="44"
+              block
+              prepend-icon="tabler-device-floppy"
+              class="font-weight-black rounded-lg shadow-primary text-button uppercase"
+              @click="submitForm"
+            >
+              {{ formData.id ? 'Guardar Cambios' : 'Registrar Médico' }}
+            </VBtn>
+          </VCol>
+        </VRow>
       </VCardActions>
     </VCard>
   </VDialog>

@@ -102,14 +102,14 @@ const onCancel = () => {
 
       <VCardText class="pa-4 pa-sm-5 bg-surface">
         <!-- Bloque 1: Configuración de la Regla -->
-        <div class="mb-5">
+        <div class="mb-4">
           <div class="d-flex align-center justify-space-between mb-2">
             <div class="d-flex align-center gap-1-5">
               <div class="header-indicator primary" />
               <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">Regla de Promoción</span>
             </div>
             <div class="d-flex align-center gap-2">
-              <span class="text-super-xs font-weight-bold text-disabled uppercase">Activa</span>
+              <span class="text-super-xs font-weight-bold text-high-emphasis uppercase">Activa</span>
               <VSwitch
                 v-model="localFormData.is_active"
                 color="primary"
@@ -120,29 +120,26 @@ const onCancel = () => {
             </div>
           </div>
 
-          <VRow dense>
-            <!-- Tipo de Promoción -->
-            <VCol cols="12" :sm="localFormData.type === 'general' || localFormData.type === 'fixed_price' ? 7 : 12">
-              <div class="mb-2 mb-sm-0">
-                <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Tipo de Oferta</span>
+          <div class="pa-3 rounded border bg-var-theme-background">
+            <VRow dense class="align-center">
+              <!-- Tipo de Promoción -->
+              <VCol cols="12" :sm="localFormData.type === 'general' || localFormData.type === 'fixed_price' ? 7 : 12">
                 <VSelect
                   v-model="localFormData.type"
                   :items="promoTypes"
                   item-title="title"
                   item-value="value"
+                  placeholder="Seleccionar tipo de oferta..."
                   variant="outlined"
                   density="compact"
                   hide-details="auto"
-                  class="rounded-lg font-weight-bold"
+                  class="rounded font-weight-bold"
                   :disabled="props.loading"
                 />
-              </div>
-            </VCol>
+              </VCol>
 
-            <!-- Porcentaje de Descuento (Si es Oferta General) -->
-            <VCol v-if="localFormData.type === 'general'" cols="12" sm="5">
-              <div class="mb-2 mb-sm-0">
-                <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">% Descuento</span>
+              <!-- Porcentaje de Descuento (Si es Oferta General) -->
+              <VCol v-if="localFormData.type === 'general'" cols="12" sm="5">
                 <VTextField
                   v-model.number="localFormData.fixed_price"
                   type="number"
@@ -150,41 +147,38 @@ const onCancel = () => {
                   max="100"
                   step="0.1"
                   suffix="%"
-                  placeholder="Ej: 10"
+                  placeholder="% Descuento (Ej. 10.00)"
                   variant="outlined"
                   density="compact"
                   hide-details="auto"
                   prepend-inner-icon="tabler-percentage"
-                  class="rounded-lg font-weight-black"
+                  class="rounded font-weight-black"
                   :disabled="props.loading"
                   :error="!!props.formErrors.fixed_price"
                   :error-messages="props.formErrors.fixed_price"
                 />
-              </div>
-            </VCol>
+              </VCol>
 
-            <!-- Precio Fijo (Solo si aplica) -->
-            <VCol v-if="localFormData.type === 'fixed_price'" cols="12" sm="5">
-              <div class="mb-2 mb-sm-0">
-                <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Precio Fijo</span>
+              <!-- Precio Fijo (Solo si aplica) -->
+              <VCol v-if="localFormData.type === 'fixed_price'" cols="12" sm="5">
                 <VTextField
                   v-model.number="localFormData.fixed_price"
                   type="number"
                   min="0"
                   step="0.01"
                   prefix="$"
-                  placeholder="0.00"
+                  placeholder="Precio fijo (Ej. 0.00)"
                   variant="outlined"
                   density="compact"
                   hide-details="auto"
-                  class="rounded-lg font-weight-black"
+                  class="rounded font-weight-black"
                   :disabled="props.loading"
                   :error="!!props.formErrors.fixed_price"
                   :error-messages="props.formErrors.fixed_price"
                 />
-              </div>
-            </VCol>
-          </VRow>
+              </VCol>
+            </VRow>
+          </div>
         </div>
 
         <!-- Bloque 2: Alcance y Categorías -->
@@ -194,8 +188,7 @@ const onCancel = () => {
             <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">Categorías Aplicables</span>
           </div>
 
-          <div>
-            <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Seleccionar Categorías (Opcional si aplica a todo)</span>
+          <div class="pa-3 rounded border bg-var-theme-background">
             <VAutocomplete
               v-model="localFormData.categories"
               :items="props.categories"
@@ -204,16 +197,16 @@ const onCancel = () => {
               multiple
               chips
               closable-chips
-              placeholder="SELECCIONA UNA O MÁS CATEGORÍAS..."
+              placeholder="Seleccionar una o más categorías (Opcional)..."
               variant="outlined"
               density="compact"
               hide-details="auto"
-              class="rounded-lg font-weight-medium"
+              class="rounded font-weight-medium"
               :disabled="props.loading"
               :error="!!props.formErrors.categories"
               :error-messages="props.formErrors.categories"
             />
-            <span v-if="localFormData.type === 'general' && (!localFormData.categories || localFormData.categories.length === 0)" class="text-super-xs text-primary font-weight-medium mt-1 d-block">
+            <span v-if="localFormData.type === 'general' && (!localFormData.categories || localFormData.categories.length === 0)" class="text-super-xs text-primary font-weight-medium mt-1-5 d-block">
               ℹ️ Si no seleccionas ninguna categoría, el descuento se aplicará de forma global a todos los productos.
             </span>
           </div>
@@ -303,5 +296,11 @@ const onCancel = () => {
 
 .border-t {
   border-block-start: 1px solid rgba(var(--v-border-color), 0.08) !important;
+}
+
+.bg-var-theme-background {
+  background-color: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-border-color), 0.12) !important;
+  border-radius: 5px !important;
 }
 </style>
