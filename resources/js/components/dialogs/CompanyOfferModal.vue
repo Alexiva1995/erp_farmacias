@@ -193,7 +193,7 @@ watch(
 <template>
   <VDialog
     :model-value="props.modelValue"
-    max-width="850px"
+    max-width="680px"
     persistent
     scrollable
     :retain-focus="false"
@@ -203,31 +203,31 @@ watch(
     @click:outside.prevent
     @keydown.esc.prevent="onCancel"
   >
-    <VCard v-if="props.modelValue" :class="mobile ? 'rounded-0' : 'rounded-xl overflow-hidden border-0 elevation-24'">
+    <VCard v-if="props.modelValue" :class="mobile ? 'rounded-0' : 'rounded overflow-hidden border-0 shadow-xl'">
       <!-- Header Premium -->
       <VCardTitle class="pa-0">
-        <div class="header-gradient pa-5 d-flex align-center shadow-sm">
-          <VAvatar color="white" variant="flat" size="44" class="me-4 elevation-2 text-primary font-weight-black">
-            <VIcon icon="tabler-building" size="26" />
+        <div class="header-gradient pa-4 d-flex align-center shadow-sm">
+          <VAvatar color="white" variant="flat" size="38" class="me-3 elevation-1 text-primary font-weight-black">
+            <VIcon icon="tabler-building" size="22" />
           </VAvatar>
-          <div>
+          <div class="d-flex flex-column leading-none">
             <h2 class="text-h6 font-weight-black text-white leading-tight mb-0">{{ dialogTitle }}</h2>
-            <span class="text-super-xs text-white opacity-75 uppercase font-weight-bold letter-spacing-1">
-              Configuración de Escalas de Descuento
-            </span>
+            <div class="d-flex align-center gap-2 mt-1">
+              <span class="text-white opacity-75 uppercase font-weight-bold" style="font-size: 0.65rem; letter-spacing: 0.05em;">
+                Configuración de Escalas de Descuento
+              </span>
+            </div>
           </div>
           <VSpacer />
           <VBtn
-            icon
-            variant="tonal"
+            icon="tabler-x"
+            variant="outlined"
             color="white"
             size="small"
-            class="rounded-lg"
+            class="rounded"
             @click="onCancel"
             :disabled="isSaving"
-          >
-            <VIcon>tabler-x</VIcon>
-          </VBtn>
+          />
         </div>
       </VCardTitle>
 
@@ -403,38 +403,30 @@ watch(
       <VDivider />
 
       <!-- Acciones Únicas -->
-      <VCardActions class="pa-6 bg-light">
-        <VRow dense class="w-100 ma-0">
-          <VCol cols="12" sm="6" class="pa-1">
-            <VBtn
-              color="secondary"
-              variant="outlined"
-              size="large"
-              block
-              height="48"
-              class="font-weight-black rounded-lg text-button uppercase shadow-sm"
-              @click="onCancel"
-              :disabled="isSaving"
-            >
-              Cancelar Operación
-            </VBtn>
-          </VCol>
-          <VCol cols="12" sm="6" class="pa-1">
-            <VBtn
-              color="primary"
-              variant="flat"
-              size="large"
-              block
-              height="48"
-              prepend-icon="tabler-device-floppy"
-              class="font-weight-black rounded-lg shadow-primary-lg text-button uppercase"
-              :loading="isSaving"
-              @click="onSave"
-            >
-              {{ props.isEditing ? 'Actualizar Oferta' : 'Guardar Nueva Oferta' }}
-            </VBtn>
-          </VCol>
-        </VRow>
+      <VCardActions class="pa-3 pa-sm-4 bg-surface border-t">
+        <div class="d-flex gap-2 w-100 justify-end">
+          <VBtn
+            color="secondary"
+            variant="outlined"
+            height="44"
+            class="font-weight-bold rounded text-button uppercase flex-grow-1 flex-sm-grow-0 px-5"
+            @click="onCancel"
+            :disabled="isSaving"
+          >
+            Cancelar
+          </VBtn>
+          <VBtn
+            color="primary"
+            variant="flat"
+            height="44"
+            prepend-icon="tabler-device-floppy"
+            class="font-weight-black rounded shadow-primary text-button uppercase flex-grow-1 flex-sm-grow-0 px-6"
+            :loading="isSaving"
+            @click="onSave"
+          >
+            {{ props.isEditing ? 'Guardar Cambios' : 'Crear Oferta' }}
+          </VBtn>
+        </div>
       </VCardActions>
     </VCard>
   </VDialog>
@@ -442,7 +434,15 @@ watch(
 
 <style scoped>
 .header-gradient {
-  background: var(--brand-gradient) !important;
+  background: linear-gradient(
+    135deg,
+    rgb(var(--v-theme-primary)) 0%,
+    rgb(var(--v-theme-gradient-end, var(--v-theme-primary))) 100%
+  );
+}
+
+.border-t {
+  border-block-start: 1px solid rgba(var(--v-border-color), 0.08) !important;
 }
 
 .premium-input-compact :deep(.v-field__outline) {

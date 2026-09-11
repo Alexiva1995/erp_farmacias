@@ -56,156 +56,159 @@ const isOfferActive = computed(() => {
 <template>
   <VDialog
     :model-value="props.modelValue"
-    :max-inline-size="mobile ? '100%' : '800px'"
+    :max-inline-size="mobile ? '100%' : '680px'"
     :fullscreen="mobile"
     persistent
     scrollable
     transition="dialog-bottom-transition"
+    class="premium-dialog"
     @keydown.esc.prevent="onCancel"
   >
-    <VCard v-if="props.offerData" class="detail-dialog-card overflow-hidden border-0 elevation-12">
+    <VCard v-if="props.offerData" :class="mobile ? 'rounded-0' : 'detail-dialog-card rounded border-0 shadow-xl overflow-hidden bg-surface'">
       <!-- Header Premium Standard -->
       <VCardTitle class="pa-0">
         <div class="header-gradient pa-4 d-flex align-center shadow-sm">
-          <VAvatar color="white" variant="flat" size="40" class="me-3 elevation-2">
-            <VIcon icon="tabler-building" color="primary" size="24" />
+          <VAvatar color="white" variant="flat" size="38" class="me-3 elevation-1">
+            <VIcon icon="tabler-building" color="primary" size="22" />
           </VAvatar>
-          <div>
+          <div class="d-flex flex-column leading-none">
             <h2 class="text-h6 font-weight-black text-white leading-tight mb-0 uppercase">
               {{ (props.offerData.company_name || 'Detalle de Oferta').toUpperCase() }}
             </h2>
-            <span class="text-super-xs text-white opacity-75 uppercase font-weight-bold letter-spacing-1">
-              Información de Oferta por Empresa (ID #{{ props.offerData.id }})
-            </span>
+            <div class="d-flex align-center gap-2 mt-1">
+              <span class="text-white opacity-75 uppercase font-weight-bold" style="font-size: 0.65rem; letter-spacing: 0.05em;">
+                Información de Oferta por Empresa (ID #{{ props.offerData.id }})
+              </span>
+            </div>
           </div>
 
           <VSpacer />
           <VBtn
-            icon
-            variant="tonal"
+            icon="tabler-x"
+            variant="outlined"
             color="white"
             size="small"
+            class="rounded"
             @click="onCancel"
-            class="rounded-lg"
-          >
-            <VIcon size="20">tabler-x</VIcon>
-          </VBtn>
+          />
         </div>
       </VCardTitle>
 
-      <VCardText class="pa-0 bg-light">
-        <div class="pa-6">
-          <!-- Tarjetas de Información Rápida -->
-          <VRow class="mb-6">
-            <VCol cols="12" sm="4">
-              <VCard variant="flat" class="pa-4 rounded-lg border bg-white elevation-1 relative overflow-hidden h-100">
-                <div class="d-flex align-center gap-2 mb-3">
-                  <div class="header-indicator primary"></div>
-                  <span class="text-super-xs font-weight-black text-primary uppercase letter-spacing-1">Empresa</span>
-                </div>
-                <div class="d-flex flex-column pt-1">
-                  <span class="text-subtitle-1 font-weight-black text-high-emphasis text-uppercase truncate leading-tight">
-                    {{ props.offerData.company_name }}
-                  </span>
-                  <span class="text-super-xs text-disabled font-weight-bold uppercase mt-1">ID Empresa: {{ props.offerData.company_id }}</span>
-                </div>
-              </VCard>
+      <VCardText class="pa-4 pa-sm-5 bg-surface">
+        <!-- Barra de Resumen Integrada centrada -->
+        <div class="pa-3 px-3 rounded border bg-var-theme-background mb-4">
+          <VRow dense class="align-center text-center">
+            <!-- Empresa -->
+            <VCol cols="6" sm="4" class="d-flex align-center justify-center gap-2 py-1">
+              <VAvatar size="32" color="primary" variant="tonal" class="rounded">
+                <VIcon icon="tabler-building" size="16" />
+              </VAvatar>
+              <div class="d-flex flex-column text-start">
+                <span class="text-super-xs font-weight-black text-disabled uppercase">Empresa</span>
+                <span class="text-sm font-weight-black text-high-emphasis leading-tight truncate" style="max-inline-size: 130px;" :title="props.offerData.company_name">
+                  {{ props.offerData.company_name }}
+                </span>
+                <span class="text-super-xs text-disabled font-weight-bold uppercase">ID: #{{ props.offerData.company_id }}</span>
+              </div>
             </VCol>
 
-            <VCol cols="12" sm="4">
-              <VCard variant="flat" class="pa-4 rounded-lg border bg-white elevation-1 relative overflow-hidden h-100">
-                <div class="d-flex align-center gap-2 mb-3">
-                  <div class="header-indicator secondary"></div>
-                  <span class="text-super-xs font-weight-black text-secondary uppercase letter-spacing-1">Vigencia</span>
-                </div>
-                <div class="d-flex flex-column pt-1">
-                  <span class="text-super-xs font-weight-black text-success uppercase">
-                    INI: {{ formatDate(props.offerData.start_date) }}
-                  </span>
-                  <span class="text-super-xs font-weight-black text-error uppercase mt-1">
-                    FIN: {{ formatDate(props.offerData.end_date) }}
-                  </span>
-                </div>
-              </VCard>
+            <!-- Vigencia -->
+            <VCol cols="6" sm="4" class="d-flex align-center justify-center gap-2 py-1">
+              <VAvatar size="32" color="secondary" variant="tonal" class="rounded">
+                <VIcon icon="tabler-calendar-event" size="16" />
+              </VAvatar>
+              <div class="d-flex flex-column text-start">
+                <span class="text-super-xs font-weight-black text-disabled uppercase">Vigencia</span>
+                <span class="text-super-xs font-weight-black text-success uppercase leading-tight">
+                  INI: {{ formatDate(props.offerData.start_date) }}
+                </span>
+                <span class="text-super-xs font-weight-black text-error uppercase leading-tight">
+                  FIN: {{ formatDate(props.offerData.end_date) }}
+                </span>
+              </div>
             </VCol>
 
-            <VCol cols="12" sm="4">
-              <VCard variant="flat" class="pa-4 rounded-lg border bg-white elevation-1 relative overflow-hidden h-100">
-                <div class="d-flex align-center gap-2 mb-3">
-                  <div class="header-indicator success"></div>
-                  <span class="text-super-xs font-weight-black text-success uppercase letter-spacing-1">Estado</span>
-                </div>
-                <div class="d-flex align-center gap-2 pt-1">
+            <!-- Estado -->
+            <VCol cols="12" sm="4" class="d-flex align-center justify-center py-1 mt-2 mt-sm-0">
+              <div class="d-flex flex-column align-center">
+                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">Disponibilidad</span>
+                <div class="d-flex align-center gap-1">
                   <VChip
                     :color="getStatusColor(props.offerData.is_active)"
-                    size="small"
-                    variant="flat"
+                    size="x-small"
+                    variant="tonal"
                     class="font-weight-black rounded"
                   >
                     {{ getStatusText(props.offerData.is_active) }}
                   </VChip>
                   <VChip
                     :color="isOfferActive ? 'success' : 'error'"
-                    size="small"
+                    size="x-small"
                     variant="tonal"
                     class="font-weight-black rounded"
                   >
                     {{ isOfferActive ? 'VIGENTE' : 'NO VIGENTE' }}
                   </VChip>
                 </div>
-              </VCard>
+              </div>
             </VCol>
           </VRow>
+        </div>
 
-          <VDivider class="border-dashed mb-6" />
-
-          <!-- Escalas de Descuento -->
-          <div class="mb-4">
-            <div class="d-flex align-center gap-2 mb-4">
-              <div class="header-indicator primary shadow-sm"></div>
-              <span class="text-subtitle-2 font-weight-black text-primary uppercase letter-spacing-1">Escalas de Descuento Configuradas</span>
-            </div>
-
-            <VTable v-if="props.offerData.scales && props.offerData.scales.length > 0" class="internal-table rounded-lg border shadow-sm bg-white">
-              <thead>
-                <tr>
-                  <th class="text-left">#</th>
-                  <th class="text-left">MONTO MÍNIMO</th>
-                  <th class="text-left">MONTO MÁXIMO</th>
-                  <th class="text-center">% DESCUENTO</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="(scale, index) in props.offerData.scales" :key="scale.id || index">
-                  <td class="font-weight-black text-primary">{{ index + 1 }}</td>
-                  <td class="font-weight-bold">{{ formatCurrency(scale.min_amount, 'USD') }}</td>
-                  <td class="font-weight-bold">{{ formatCurrency(scale.max_amount, 'USD') }}</td>
-                  <td class="text-center">
-                    <VChip size="small" color="success" variant="tonal" class="font-weight-black rounded">
-                      {{ scale.discount_percentage }}% OFF
-                    </VChip>
-                  </td>
-                </tr>
-              </tbody>
-            </VTable>
-
-            <VAlert
-              v-else
-              type="info"
-              variant="tonal"
-              class="mt-2 rounded-lg"
-            >
-              No hay escalas de descuento definidas para esta oferta.
-            </VAlert>
+        <!-- Escalas de Descuento -->
+        <div class="mb-4">
+          <div class="d-flex align-center gap-1-5 mb-3">
+            <div class="header-indicator primary" />
+            <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">Escalas de Descuento Configuradas</span>
           </div>
+
+          <VTable v-if="props.offerData.scales && props.offerData.scales.length > 0" density="compact" class="internal-table rounded border shadow-none bg-surface">
+            <thead>
+              <tr>
+                <th class="text-center" style="width: 50px;">#</th>
+                <th class="text-end">MONTO MÍNIMO</th>
+                <th class="text-end">MONTO MÁXIMO</th>
+                <th class="text-center">% DESCUENTO</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(scale, index) in props.offerData.scales" :key="scale.id || index">
+                <td class="text-center font-weight-black text-primary">{{ index + 1 }}</td>
+                <td class="text-end font-weight-bold text-high-emphasis">{{ formatCurrency(scale.min_amount, 'USD') }}</td>
+                <td class="text-end font-weight-bold text-high-emphasis">{{ formatCurrency(scale.max_amount, 'USD') }}</td>
+                <td class="text-center">
+                  <VChip size="x-small" color="success" variant="tonal" class="font-weight-black rounded">
+                    {{ scale.discount_percentage }}% OFF
+                  </VChip>
+                </td>
+              </tr>
+            </tbody>
+          </VTable>
+
+          <VAlert
+            v-else
+            type="info"
+            variant="tonal"
+            density="compact"
+            class="mt-2 rounded"
+          >
+            No hay escalas de descuento definidas para esta oferta.
+          </VAlert>
         </div>
       </VCardText>
 
       <VDivider />
-      <VCardActions class="pa-6 bg-white">
-        <VBtn color="primary" variant="flat" class="rounded-lg font-weight-black px-12 shadow-primary text-button uppercase" block size="large" @click="onCancel">
-          <VIcon start>tabler-check</VIcon>
-          ENTENDIDO
+      <VCardActions class="pa-3 pa-sm-4 bg-surface border-t">
+        <VBtn
+          color="primary"
+          variant="flat"
+          height="44"
+          block
+          class="font-weight-black rounded shadow-primary text-button uppercase"
+          @click="onCancel"
+        >
+          <VIcon start icon="tabler-check" size="18" />
+          Cerrar Detalle
         </VBtn>
       </VCardActions>
     </VCard>
@@ -214,17 +217,21 @@ const isOfferActive = computed(() => {
 
 <style scoped>
 .header-gradient {
-  background: var(--brand-gradient) !important;
+  background: linear-gradient(
+    135deg,
+    rgb(var(--v-theme-primary)) 0%,
+    rgb(var(--v-theme-gradient-end, var(--v-theme-primary))) 100%
+  );
 }
 
 .detail-dialog-card {
-  border-radius: 16px !important;
+  border-radius: 5px !important;
 }
 
 .header-indicator {
-  inline-size: 4px;
-  block-size: 16px;
-  border-radius: 10px;
+  inline-size: 3px;
+  block-size: 14px;
+  border-radius: 2px;
 }
 
 .header-indicator.primary { background-color: rgb(var(--v-theme-primary)); }
@@ -235,8 +242,14 @@ const isOfferActive = computed(() => {
   box-shadow: 0 4px 14px 0 rgba(var(--v-theme-primary), 0.39) !important;
 }
 
+.bg-var-theme-background {
+  background-color: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-border-color), 0.12) !important;
+  border-radius: 5px !important;
+}
+
 .internal-table :deep(thead th) {
-  background-color: #f8fafc !important;
+  background-color: rgba(var(--v-border-color), 0.04) !important;
   color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)) !important;
   font-size: 0.65rem !important;
   font-weight: 950 !important;
@@ -249,16 +262,18 @@ const isOfferActive = computed(() => {
   line-height: normal;
 }
 
+.gap-1-5 { gap: 6px !important; }
+
 .letter-spacing-1 {
-  letter-spacing: 1px !important;
+  letter-spacing: 0.5px !important;
 }
 
 .leading-tight { line-height: 1.25 !important; }
 .leading-none { line-height: 1 !important; }
 .font-weight-950 { font-weight: 950 !important; }
 
-.border-dashed {
-  border-block-end: 1px dashed rgba(var(--v-border-color), 0.3) !important;
+.border-t {
+  border-block-start: 1px solid rgba(var(--v-border-color), 0.08) !important;
 }
 
 .truncate {
