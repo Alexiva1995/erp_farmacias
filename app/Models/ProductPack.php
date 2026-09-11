@@ -207,6 +207,7 @@ class ProductPack extends Model
                         'quantity' => $quantity,
                         'discount_percentage' => $discountPercentage,
                         'sale_price' => $salePrice,
+                        'sale_price_original' => (float) $product->sale_price,
                         'subtotal' => $quantity * $salePrice,
                         'product_info' => [
                             'stock' => $product->stock,

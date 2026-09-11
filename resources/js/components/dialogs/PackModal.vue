@@ -361,43 +361,63 @@ const loadPackData = async (packId) => {
       pack_products: [],
     };
 
-    const productsList = pack.products || (pack.products_info ? pack.products_info.map(i => ({
-      id: i.product_id,
-      name: i.product_name,
-      sale_price: i.sale_price_original || i.sale_price,
-      stock: i.product_info?.stock || 0,
-      laboratory: i.product_info?.laboratory || 'S/L'
-    })) : []);
-
-    if (productsList && productsList.length > 0) {
-      formData.value.pack_products = productsList.map((product) => {
+    const rawProductsList = pack.products_info || pack.products || [];
+    
+    if (rawProductsList && rawProductsList.length > 0) {
+      formData.value.pack_products = rawProductsList.map((item) => {
+        let productId = item.product_id || item.id;
+        let productName = item.product_name || item.name;
         let discountPercentage = 0;
         let quantity = 1;
-        let calculatedPrice = product.sale_price;
+        let originalSalePrice = 0;
+        let stock = 0;
+        let laboratory = 'S/L';
 
-        if (pack.pack_config && typeof pack.pack_config === 'object') {
-          const configKey = String(product.id || product.product_id);
-          const config = pack.pack_config[configKey] || pack.pack_config[product.id] || pack.pack_config[product.product_id];
-          
-          if (config) {
-            discountPercentage = parseFloat(config.discount_percentage) || 0;
-            quantity = parseInt(config.quantity) || 1;
-            
-            if (config.sale_price !== undefined) {
-              calculatedPrice = parseFloat(config.sale_price) * quantity;
-            } else {
-              const unitPrice = product.sale_price * (1 - discountPercentage / 100);
-              calculatedPrice = unitPrice * quantity;
-            }
-          }
+        // Intentar leer desde pack_config
+        const configKey = String(productId);
+        const config = (pack.pack_config && typeof pack.pack_config === 'object')
+          ? (pack.pack_config[configKey] || pack.pack_config[productId])
+          : null;
+
+        if (config && typeof config === 'object') {
+          discountPercentage = parseFloat(config.discount_percentage) || 0;
+          quantity = parseInt(config.quantity) || 1;
+        } else if (item.discount_percentage !== undefined) {
+          discountPercentage = parseFloat(item.discount_percentage) || 0;
+          quantity = parseInt(item.quantity) || (item.pivot?.quantity ? parseInt(item.pivot.quantity) : 1);
+        } else if (item.pivot && item.pivot.discount_percentage !== undefined) {
+          discountPercentage = parseFloat(item.pivot.discount_percentage) || 0;
+          quantity = parseInt(item.pivot.quantity) || 1;
+        }
+
+        // Obtener precio base original y datos de producto
+        if (item.product_info) {
+          stock = item.product_info.stock || 0;
+          laboratory = item.product_info.laboratory || 'S/L';
+        } else {
+          stock = item.stock_calculado || item.stock || 0;
+          laboratory = item.laboratory?.name || item.laboratory || 'S/L';
+        }
+
+        originalSalePrice = item.sale_price_original || item.product?.sale_price || item.sale_price || 0;
+        
+        // Si sale_price viene con el descuento aplicado desde pack_config o products_info, pero discount_percentage > 0, restaurar precio base original si es posible
+        if (discountPercentage > 0 && originalSalePrice > 0 && item.sale_price && Math.abs(originalSalePrice - item.sale_price) < 0.001) {
+          // Si originalSalePrice era ya el precio con descuento
+          // originalPrice = salePrice / (1 - discount/100)
         }
 
         const formattedProduct = {
-          ...product,
-          id: product.id || product.product_id,
-          name: product.name || product.product_name,
-          stock: product.stock_calculado || product.stock || 0,
+          id: productId,
+          name: productName,
+          sale_price: parseFloat(originalSalePrice) || 0,
+          stock: stock,
+          laboratory: laboratory,
+          active_ingredient: item.product_info?.active_ingredient || item.active_ingredient || '',
         };
+
+        const unitPrice = formattedProduct.sale_price * (1 - discountPercentage / 100);
+        const calculatedPrice = unitPrice * quantity;
 
         return {
           product: formattedProduct,
