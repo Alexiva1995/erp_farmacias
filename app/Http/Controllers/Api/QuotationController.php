@@ -60,17 +60,17 @@ class QuotationController extends Controller
         try {
             $quotation = $this->quotationActionService->createQuotation($request->validated());
             return response()->json([
-                'message' => 'Cotización guardada exitosamente.',
-                'quotation' => $quotation
+                'message'   => 'Cotización guardada exitosamente.',
+                'quotation' => new \App\Http\Resources\QuotationResource($quotation),
             ], 201);
         } catch (\Exception $e) {
             Log::error('Error al procesar solicitud de creación de cotización en el controlador: ' . $e->getMessage(), [
                 'request_data' => $request->validated(),
-                'trace' => $e->getTraceAsString(),
+                'trace'        => $e->getTraceAsString(),
             ]);
             return response()->json([
                 'message' => 'Ocurrió un error al guardar la cotización. Por favor, inténtalo de nuevo.',
-                'error' => $e->getMessage()
+                'error'   => $e->getMessage(),
             ], 500);
         }
     }
@@ -82,11 +82,11 @@ class QuotationController extends Controller
     {
         try {
             $product = Product::find($productId);
-            
+
             if (!$product) {
                 return response()->json([
-                    'status' => 'error',
-                    'message' => "Producto no encontrado.",
+                    'status'  => 'error',
+                    'message' => 'Producto no encontrado.',
                 ], 404);
             }
 
@@ -94,15 +94,13 @@ class QuotationController extends Controller
 
             if (!$detailedProduct) {
                 return response()->json([
-                    'status' => 'error',
-                    'message' => "Error al cargar los detalles del producto.",
+                    'status'  => 'error',
+                    'message' => 'Error al cargar los detalles del producto.',
                 ], 500);
             }
 
-            // Convertir a array y asegurar que valid_stock_sum esté presente
             $productArray = $detailedProduct->toArray();
-            
-            // Asegurar que valid_stock_sum esté en el array si no está
+
             if (!isset($productArray['valid_stock_sum'])) {
                 $productArray['valid_stock_sum'] = $detailedProduct->getAttribute('valid_stock_sum') ?? 0;
             }
@@ -111,12 +109,12 @@ class QuotationController extends Controller
         } catch (\Exception $e) {
             Log::error('Error loading product details: ' . $e->getMessage(), [
                 'product_id' => $productId,
-                'trace' => $e->getTraceAsString(),
+                'trace'      => $e->getTraceAsString(),
             ]);
             return response()->json([
-                'status' => 'error',
-                'message' => "Error al cargar los detalles del producto: " . $e->getMessage(),
-                'error' => $e->getMessage()
+                'status'  => 'error',
+                'message' => 'Error al cargar los detalles del producto: ' . $e->getMessage(),
+                'error'   => $e->getMessage(),
             ], 500);
         }
     }
@@ -130,12 +128,12 @@ class QuotationController extends Controller
             return response()->json(['message' => 'Quotation not found'], 404);
         }
 
-        $quotation->load('client');
+        $quotation->load(['client', 'products.product', 'products.dish']);
 
         return response()->json([
             'quotation_id' => $quotation->id,
-            'products' => $quotation->products,
-            'client' => $quotation->client,
+            'products'     => \App\Http\Resources\QuotationProductResource::collection($quotation->products),
+            'client'       => $quotation->client,
         ]);
     }
 
@@ -222,9 +220,15 @@ class QuotationController extends Controller
 
         if ($perPage < 1) {
             $items = $query->get();
-            return response()->json(['data' => $items, 'total' => $items->count()]);
+            return response()->json([
+                'data'  => \App\Http\Resources\QuotationResource::collection($items),
+                'total' => $items->count(),
+            ]);
         }
         $paginated = $query->paginate($perPage, ['*'], 'page', $page);
-        return response()->json(['data' => $paginated->items(), 'total' => $paginated->total()]);
+        return response()->json([
+            'data'  => \App\Http\Resources\QuotationResource::collection($paginated->items()),
+            'total' => $paginated->total(),
+        ]);
     }
 }
