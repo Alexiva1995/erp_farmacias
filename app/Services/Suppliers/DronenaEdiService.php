@@ -37,28 +37,33 @@ class DronenaEdiService implements DronenaEdiServiceInterface
         foreach ($autoOrder->details as $detail) {
             // 1. Priorizar código interno asignado por Droguería Nena (cod_supplier)
             $code = $detail->productSupplier?->cod_supplier;
+            if ($code === '0' || $code === 0) {
+                $code = null;
+            }
 
             // 2. Si no está en la relación, buscar por product_suppliers_id directo
             if (empty($code) && !empty($detail->product_suppliers_id)) {
                 $psDirect = \App\Models\ProductSupplier::find($detail->product_suppliers_id);
                 $code = $psDirect?->cod_supplier;
+                if ($code === '0' || $code === 0) {
+                    $code = null;
+                }
             }
 
-            // 3. Buscar en el catálogo de Nena por barcode_match o por relación
+            // 3. Buscar en el catálogo de Nena por barcode_match o por relación ignorando '0'
             if (empty($code)) {
-                $barcode = $detail->product?->barcode;
+                $barcode = $detail->product?->barcode ?? $detail->productSupplier?->barcode_match;
                 $nenaPs = \App\Models\ProductSupplier::where('supplier_id', $autoOrder->supplier_id)
                     ->where(function ($q) use ($detail, $barcode) {
                         if (!empty($detail->product_id)) {
                             $q->where('product_id', $detail->product_id);
                         }
                         if (!empty($barcode)) {
-                            $q->orWhere('barcode_match', $barcode)
-                              ->orWhere('cod_supplier', $barcode);
+                            $q->orWhere('barcode_match', $barcode);
                         }
                     })
                     ->whereNotNull('cod_supplier')
-                    ->where('cod_supplier', '!=', '')
+                    ->whereNotIn('cod_supplier', ['0', '', 'NULL'])
                     ->orderByRaw('CASE WHEN product_id = ? THEN 0 ELSE 1 END', [$detail->product_id ?? 0])
                     ->first();
 
@@ -69,11 +74,9 @@ class DronenaEdiService implements DronenaEdiServiceInterface
                                 $sq->where('name', 'LIKE', '%NENA%');
                             });
                         })
-                        ->where(function ($q) use ($barcode) {
-                            $q->where('barcode_match', $barcode);
-                        })
+                        ->where('barcode_match', $barcode)
                         ->whereNotNull('cod_supplier')
-                        ->where('cod_supplier', '!=', '')
+                        ->whereNotIn('cod_supplier', ['0', '', 'NULL'])
                         ->first();
                 }
 
@@ -81,7 +84,7 @@ class DronenaEdiService implements DronenaEdiServiceInterface
             }
 
             // 4. Fallback si no hay cod_supplier
-            if (empty($code)) {
+            if (empty($code) || $code === '0' || $code === 0) {
                 $code = $detail->productSupplier?->barcode_match 
                     ?? $detail->product?->barcode 
                     ?? (string) $detail->product_id;
