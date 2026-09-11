@@ -1,76 +1,38 @@
 <script setup>
 import QuotationCard from "@/components/cards/QuotationCard.vue";
 import QuotationProducts from "@/components/cards/QuotationProducts.vue";
-import QuotationFilters from "@/components/QuotationFilters.vue";
-import QuotationTable from "@/components/QuotationTable.vue";
+import OrderFilters from "@/components/OrderFilters.vue";
+import OrderProductsTable from "@/components/OrderProductsTable.vue";
 import QuotationTicket from "@/components/QuotationTicket.vue";
 import RegisterClientModal from "@/components/dialogs/ClientFormDialoge.vue";
 import axios from "@/plugins/axios";
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { toast } from "@/plugins/sweetalert";
-import { useQuotationClient } from "@/composables/useQuotationClient";
 import { useBrandingStore } from "@/stores/useBrandingStore";
+import { useQuotationClient } from "@/composables/useQuotationClient";
+import { useTpvRates } from "@/composables/useTpvRates";
+import { useTpvPromotions } from "@/composables/useTpvPromotions";
+import { getItemPriceByCurrency } from "@/composables/useTpvItemFormatter";
+import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
 
+// ─── Configuración y Estado Base ─────────────────────────────────────────────
+const brandingStore = useBrandingStore();
+const isRestaurant = ref(false);
+const enableDishes = ref(false);
+
+// ─── Tasas de cambio ──────────────────────────────────────────────────────────
+const { exchangeRates, fetchExchangeRates } = useTpvRates(brandingStore, isRestaurant);
+
+// ─── Gestión de Cliente ───────────────────────────────────────────────────────
 const {
   selectedClient,
   clientSearchQuery,
   clientIdentification,
-  activeDoctorOffers,
-  activePrescriptionOffers,
-  activeCompanyOffers,
-  loadingDoctorOffers,
-  fetchDoctorOffers,
-  fetchPrescriptionOffers,
-  fetchCompanyOffers,
   verifyClient: verifyClientComposable,
-  fetchSearchedClient
+  fetchSearchedClient,
 } = useQuotationClient();
 
-const products = ref([]);
-const totalProduct = ref(0);
-const loading = ref(false);
-const isLoadingFilters = ref(false);
-const isSaving = ref(false);
-
-const selectedDiscountType = ref(null);
-const selectedDoctorOffer = ref(null);
-
-const prescriptionFile = ref(null);
-const selectedCompanyId = ref(null);
-const selectedCompany = ref(null);
-
-const newClientFormData = ref({
-  id: null,
-  identification_type: "",
-  identification: "",
-  name: "",
-  last_name: "",
-  email: "",
-  phone: "",
-  birthdate: "",
-  company_id: null,
-  address: "",
-  is_spe: false,
-});
-
-const currentPrescriptionDiscountPercentage = computed(() => {
-  if (
-    selectedDiscountType.value === "Recipe" &&
-    activePrescriptionOffers.value.length > 0
-  ) {
-    return parseFloat(activePrescriptionOffers.value[0].discount_percentage);
-  }
-  return 0;
-});
-
-const page = ref(1);
-const itemsPerPage = ref(10);
-const sortBy = ref();
-const orderBy = ref();
-
-const showRegisterClientModal = ref(false);
-
-// Persistencia de Cotización
+// ─── Persistencia del Carrito de Cotización ──────────────────────────────────
 const quotationItems = ref([]);
 
 const saveQuotationToLocalStorage = () => {
@@ -92,29 +54,100 @@ watch(quotationItems, () => {
   saveQuotationToLocalStorage();
 }, { deep: true });
 
-const barcodeSearchQuery = ref("");
+// ─── Promociones y Ofertas (Mismo comportamiento que /tpv/orderUser) ─────────
+const {
+  activeDoctorOffers,
+  loadingDoctorOffers,
+  activePrescriptionOffers,
+  loadingPrescriptionOffers,
+  activeCompanyOffers,
+  loadingCompanyOffers,
+  selectedDoctorOffer,
+  prescriptionFile,
+  selectedCompany,
+  selectedCompanyId,
+  selectedDiscountType,
+  currentPrescriptionDiscountPercentage,
+  currentGlobalDiscountDetails,
+  fetchDoctorOffers,
+  fetchPrescriptionOffers,
+  fetchCompanyOffers,
+  validateAndApplyDoctorDiscount,
+  validateAndApplyPrescriptionDiscount,
+  validateAndApplyCompanyDiscount,
+  handlePrescriptionFileSelected,
+  handleDoctorDiscountSelected,
+  handleCompanyDiscountSelected,
+  applyDiscount,
+  removeDiscount,
+} = useTpvPromotions({ orderItems: quotationItems, selectedClient });
+
+// Porcentaje de descuento global actualmente activo
+const globalDiscountPercentage = computed(() => {
+  if (selectedDiscountType.value === "Empresa" && selectedCompanyId.value) {
+    const offer = activeCompanyOffers.value.find((o) => o.value === selectedCompanyId.value);
+    return parseFloat(offer?.current_discount || 0);
+  } else if (selectedDiscountType.value === "Medico" && selectedDoctorOffer.value) {
+    return parseFloat(selectedDoctorOffer.value.percentage || 0);
+  } else if (selectedDiscountType.value === "Recipe") {
+    return parseFloat(currentPrescriptionDiscountPercentage.value || 0);
+  }
+  return 0;
+});
+
+// ─── Catálogo de Productos y Filtros ─────────────────────────────────────────
+const products = ref([]);
+const totalProduct = ref(0);
+const loading = ref(false);
+const isLoadingFilters = ref(false);
+const isSaving = ref(false);
+
+const page = ref(1);
+const itemsPerPage = ref(10);
+const sortBy = ref();
+const orderBy = ref();
+const isStrictSearch = ref(false);
+
 const filterSearchQuery = ref("");
 const selectedLaboratory = ref(null);
 const selectedOrigin = ref(null);
+const selectedCategory = ref(null);
 const stockStatusFilter = ref(null);
+const selectedGroupId = ref(null);
 
 const laboratories = ref([]);
 const origins = ref([]);
-const selectedGroupId = ref(null);
+const categories = ref([]);
 
-const brandingStore = useBrandingStore();
+const showRegisterClientModal = ref(false);
+const quotationDetails = ref(null);
+const isPrinting = ref(false);
+const barcodeSearchQuery = ref("");
+let barcodeInputTimer;
+const BARCODE_LENGTH_THRESHOLD = 10;
 
+// Platos / Restaurante
+const dishes = ref([]);
+const dishesLoading = ref(false);
+const dishFilterQuery = ref("");
+const selectedDishCategory = ref(null);
+const activeTab = ref("products");
+
+const tableOptions = computed(() => ({
+  page: page.value,
+  itemsPerPage: itemsPerPage.value,
+  sortBy: sortBy.value ? [{ key: sortBy.value, order: orderBy.value || "asc" }] : [],
+}));
+
+// ─── Monedas Disponibles ──────────────────────────────────────────────────────
 const availableCurrencies = computed(() => {
   const defaults = ["USD", "BS", "COP"];
   const configured = brandingStore.settings?.tpv_payment_methods;
   if (!configured) return defaults;
-  return defaults.filter(currency => configured[currency] && configured[currency].enabled !== false);
+  return defaults.filter((currency) => configured[currency] && configured[currency].enabled !== false);
 });
 
-const defaultCurrency = computed(() => {
-  return brandingStore.settings?.default_currency || "USD";
-});
-
+const defaultCurrency = computed(() => brandingStore.settings?.default_currency || "USD");
 const selectedDisplayCurrency = ref(defaultCurrency.value);
 
 watch(
@@ -124,110 +157,10 @@ watch(
       selectedDisplayCurrency.value = newVal;
     }
   },
-  { immediate: true }
+  { immediate: true },
 );
 
-const quotationDetails = ref(null);
-const isPrinting = ref(false);
-
-let barcodeInputTimer;
-const BARCODE_LENGTH_THRESHOLD = 10;
-
-const getItemPriceByCurrency = (item, currency) => {
-  let basePrice = 0;
-  if (currency === "BS" || currency === "Bs") {
-    basePrice = item.price_bs || 0;
-  } else if (currency === "COP") {
-    basePrice = item.price_cop || 0;
-  } else {
-    // Por defecto o si es 'USD'
-    basePrice = item.price || 0;
-  }
-  return calculateItemDiscountedPrice(item, basePrice);
-};
-
-// Computed: porcentaje de descuento global activo según tipo seleccionado
-const globalDiscountPercentage = computed(() => {
-  if (selectedDiscountType.value === "Empresa" && selectedCompanyId.value) {
-    const offer = activeCompanyOffers.value.find(
-      (o) => o.value === selectedCompanyId.value,
-    );
-    return parseFloat(offer?.current_discount || 0);
-  } else if (
-    selectedDiscountType.value === "Medico" &&
-    selectedDoctorOffer.value
-  ) {
-    return parseFloat(selectedDoctorOffer.value.percentage || 0);
-  } else if (selectedDiscountType.value === "Recipe") {
-    return parseFloat(currentPrescriptionDiscountPercentage.value || 0);
-  }
-  return 0;
-});
-
-// Compatibilidad con código que llama la función directamente
-const getGlobalDiscountPercentage = () => globalDiscountPercentage.value;
-
-const calculateItemDiscountedPrice = (item, basePrice) => {
-  const itemDiscount = parseFloat(item.discount_percentage || 0);
-  const globalDiscount = getGlobalDiscountPercentage();
-  const prescriptionDiscount = parseFloat(
-    currentPrescriptionDiscountPercentage.value || 0,
-  );
-
-  const bestDiscount = Math.max(
-    itemDiscount,
-    globalDiscount,
-    prescriptionDiscount,
-  );
-
-  if (bestDiscount > 0) {
-    return basePrice * (1 - bestDiscount / 100);
-  }
-  return basePrice;
-};
-
-const totalAmountBs = computed(() => {
-  let total = 0;
-  quotationItems.value.forEach((item) => {
-    const basePriceBs = item.price_bs || 0;
-    const quantity = item.selectedQuantity || 0;
-    const taxRate = item.taxRate || 0;
-
-    const discountedPrice = calculateItemDiscountedPrice(item, basePriceBs);
-    total += discountedPrice * quantity * (1 + taxRate);
-  });
-  return total;
-});
-
-const totalAmountUsd = computed(() => {
-  let total = 0;
-  quotationItems.value.forEach((item) => {
-    const basePriceUsd = item.price || 0;
-    const quantity = item.selectedQuantity || 0;
-    const taxRate = item.taxRate || 0;
-
-    const discountedPrice = calculateItemDiscountedPrice(item, basePriceUsd);
-    total += discountedPrice * quantity * (1 + taxRate);
-  });
-  return total;
-});
-
-const totalAmountCop = computed(() => {
-  let total = 0;
-  quotationItems.value.forEach((item) => {
-    const basePriceCop = item.price_cop || 0;
-    const quantity = item.selectedQuantity || 0;
-    const taxRate = item.taxRate || 0;
-
-    let discountedPrice = calculateItemDiscountedPrice(item, basePriceCop);
-    let priceWithIva = discountedPrice * (1 + taxRate);
-    priceWithIva = Math.ceil(priceWithIva / 100) * 100;
-
-    total += priceWithIva * quantity;
-  });
-  return total;
-});
-
+// ─── Cálculos de Totales ──────────────────────────────────────────────────────
 const totalProductsAmount = computed(() => {
   let total = 0;
   quotationItems.value.forEach((item) => {
@@ -236,83 +169,6 @@ const totalProductsAmount = computed(() => {
     total += price * quantity;
   });
   return total;
-});
-
-const totalEligibleAmount = computed(() => {
-  let total = 0;
-  quotationItems.value.forEach((item) => {
-    if (item.discount_type === "expiration") {
-      return;
-    }
-    const price = getItemPriceByCurrency(item, selectedDisplayCurrency.value);
-    const quantity = item.selectedQuantity || 0;
-    total += price * quantity;
-  });
-  return total;
-});
-
-const totalCompanyDiscountAmount = computed(() => {
-  if (selectedDiscountType.value === "Empresa" && selectedCompanyId.value) {
-    const offer = activeCompanyOffers.value.find(
-      (o) => o.value === selectedCompanyId.value,
-    );
-    const porcentaje = parseFloat(offer?.current_discount || 0);
-    if (porcentaje > 0) {
-      return totalEligibleAmount.value * (porcentaje / 100);
-    }
-  }
-  return 0;
-});
-
-const totalDoctorDiscountAmount = computed(() => {
-  if (selectedDiscountType.value === "Medico" && selectedDoctorOffer.value) {
-    const porcentaje = parseFloat(selectedDoctorOffer.value.percentage || 0);
-    if (porcentaje > 0) {
-      return totalEligibleAmount.value * (porcentaje / 100);
-    }
-  }
-  return 0;
-});
-
-const totalRecipeDiscountAmount = computed(() => {
-  if (selectedDiscountType.value === "Recipe") {
-    const porcentaje = parseFloat(
-      currentPrescriptionDiscountPercentage.value || 0,
-    );
-    if (porcentaje > 0) {
-      return totalEligibleAmount.value * (porcentaje / 100);
-    }
-  }
-  return 0;
-});
-
-// Computed: payload listo para enviar al backend (evita duplicación entre save/print)
-const buildPayload = computed(() => {
-  let productsUsd = 0;
-  let ivaUsd      = 0;
-
-  quotationItems.value.forEach((item) => {
-    const discountedPrice = calculateItemDiscountedPrice(item, item.price || 0);
-    const q = item.selectedQuantity || 0;
-    const t = item.taxRate || 0;
-    productsUsd += discountedPrice * q;
-    ivaUsd      += discountedPrice * q * t;
-  });
-
-  const grandTotal = productsUsd + ivaUsd;
-
-  return {
-    total_amount_usd: productsUsd,
-    total_iva_usd:    ivaUsd,
-    grand_total_usd:  grandTotal,
-    currency:         selectedDisplayCurrency.value,
-    client_id:        selectedClient.value?.id || null,
-    products:         quotationItems.value.map((item) => ({
-      id:       item.id      || null,
-      dish_id:  item.dish_id || null,
-      quantity: item.selectedQuantity,
-    })),
-  };
 });
 
 const totalIVAAmount = computed(() => {
@@ -330,15 +186,129 @@ const totalQuotationAmount = computed(() => {
   return totalProductsAmount.value + totalIVAAmount.value;
 });
 
+const totalAmountBs = computed(() => {
+  let total = 0;
+  quotationItems.value.forEach((item) => {
+    const priceBs = item.price_bs || 0;
+    const quantity = item.selectedQuantity || 0;
+    const taxRate = item.taxRate || 0;
+    total += priceBs * quantity * (1 + taxRate);
+  });
+  return total;
+});
+
+const totalAmountUsd = computed(() => {
+  let total = 0;
+  quotationItems.value.forEach((item) => {
+    const priceUsd = item.price || 0;
+    const quantity = item.selectedQuantity || 0;
+    const taxRate = item.taxRate || 0;
+    total += priceUsd * quantity * (1 + taxRate);
+  });
+  return total;
+});
+
+const totalAmountCop = computed(() => {
+  let total = 0;
+  quotationItems.value.forEach((item) => {
+    const priceCop = item.price_cop || 0;
+    const quantity = item.selectedQuantity || 0;
+    const taxRate = item.taxRate || 0;
+    let priceWithIva = priceCop * (1 + taxRate);
+    priceWithIva = roundUpToNearestHundred(priceWithIva);
+    total += priceWithIva * quantity;
+  });
+  return total;
+});
+
+const totalEligibleBaseAmount = computed(() => {
+  let total = 0;
+  quotationItems.value.forEach((item) => {
+    if (item.discount_type === "expiration") return;
+    const basePrice = getItemPriceByCurrency(item, selectedDisplayCurrency.value, true);
+    const quantity = item.selectedQuantity || 0;
+    total += basePrice * quantity;
+  });
+  return total;
+});
+
+const totalCompanyDiscountAmount = computed(() => {
+  if (selectedDiscountType.value === "Empresa" && selectedCompanyId.value) {
+    const offer = activeCompanyOffers.value.find((o) => o.value === selectedCompanyId.value);
+    const porcentaje = parseFloat(offer?.current_discount || 0);
+    if (porcentaje > 0) {
+      return totalEligibleBaseAmount.value * (porcentaje / 100);
+    }
+  }
+  return 0;
+});
+
+const totalDoctorDiscountAmount = computed(() => {
+  if (selectedDiscountType.value === "Medico" && selectedDoctorOffer.value) {
+    const porcentaje = parseFloat(selectedDoctorOffer.value.percentage || 0);
+    if (porcentaje > 0) {
+      return totalEligibleBaseAmount.value * (porcentaje / 100);
+    }
+  }
+  return 0;
+});
+
+const totalRecipeDiscountAmount = computed(() => {
+  if (selectedDiscountType.value === "Recipe") {
+    const porcentaje = parseFloat(currentPrescriptionDiscountPercentage.value || 0);
+    if (porcentaje > 0) {
+      return totalEligibleBaseAmount.value * (porcentaje / 100);
+    }
+  }
+  return 0;
+});
+
+// ─── Payload para Envío al Backend ────────────────────────────────────────────
+const buildPayload = computed(() => {
+  let productsUsd = 0;
+  let ivaUsd = 0;
+
+  quotationItems.value.forEach((item) => {
+    const priceUsd = item.price || 0;
+    const q = item.selectedQuantity || 0;
+    const t = item.taxRate || 0;
+    productsUsd += priceUsd * q;
+    ivaUsd += priceUsd * q * t;
+  });
+
+  const grandTotal = productsUsd + ivaUsd;
+
+  return {
+    total_amount_usd: productsUsd,
+    total_iva_usd: ivaUsd,
+    grand_total_usd: grandTotal,
+    currency: selectedDisplayCurrency.value,
+    client_id: selectedClient.value?.id || null,
+    discount_type: selectedDiscountType.value || null,
+    discount_percentage: globalDiscountPercentage.value || 0,
+    products: quotationItems.value.map((item) => ({
+      id: item.id || null,
+      dish_id: item.dish_id || null,
+      quantity: item.selectedQuantity,
+      price: item.price || 0,
+      base_price: item.base_price || 0,
+      discount_percentage: item.appliedDiscountPercentage || item.discount_percentage || 0,
+    })),
+  };
+});
+
+// ─── Carga de Datos desde Backend ─────────────────────────────────────────────
 const fetchSelectOptions = async () => {
   isLoadingFilters.value = true;
   try {
-    const [labResponse, originResponse] = await Promise.all([
+    const [labResponse, originResponse, categoryResponse] = await Promise.all([
       axios.get("/laboratories"),
       axios.get("/origins"),
+      axios.get("/categories"),
     ]);
-    laboratories.value = labResponse.data;
-    origins.value = originResponse.data;
+    laboratories.value = labResponse.data?.data || labResponse.data || [];
+    origins.value = originResponse.data?.data || originResponse.data || [];
+    categories.value = categoryResponse.data?.data || categoryResponse.data || [];
   } catch (error) {
     console.error("Error al cargar opciones de los selects:", error);
     toast.error("No se pudieron cargar los filtros.");
@@ -347,14 +317,15 @@ const fetchSelectOptions = async () => {
   }
 };
 
-
 const fetchProducts = async () => {
   loading.value = true;
   const params = {
     q: filterSearchQuery.value,
     laboratoryId: selectedLaboratory.value,
     originId: selectedOrigin.value,
+    categoryId: selectedCategory.value,
     groupId: selectedGroupId.value,
+    is_strict_search: isStrictSearch.value ? 1 : 0,
     ...(stockStatusFilter.value !== null && {
       hasStock: stockStatusFilter.value,
     }),
@@ -363,13 +334,15 @@ const fetchProducts = async () => {
     sortBy: sortBy.value,
     orderBy: orderBy.value,
   };
+
   Object.keys(params).forEach(
-    (key) => (params[key] === null || params[key] === "") && delete params[key],
+    (key) => (params[key] === null || params[key] === "" || params[key] === undefined) && delete params[key],
   );
+
   try {
     const response = await axios.get("/tpv/quotation", { params });
-    products.value = response.data.data;
-    totalProduct.value = response.data.total;
+    products.value = response.data.data || [];
+    totalProduct.value = response.data.total || 0;
   } catch (error) {
     console.error("Hubo un error al obtener los productos:", error);
     toast.error("Error al obtener los productos.");
@@ -388,7 +361,9 @@ watch(
     filterSearchQuery,
     selectedLaboratory,
     selectedOrigin,
+    selectedCategory,
     stockStatusFilter,
+    isStrictSearch,
     selectedGroupId,
   ],
   () => {
@@ -398,162 +373,12 @@ watch(
   { deep: true },
 );
 
-const handlePrescriptionFileSelected = (file) => {
-  prescriptionFile.value = file;
-  if (file && activePrescriptionOffers.value.length > 0) {
-    const offer = activePrescriptionOffers.value[0];
-    toast.success(
-      `Descuento de receta del ${offer.discount_percentage}% detectado.`,
-    );
-  }
-};
-
-const handleDoctorDiscountSelected = (offerId) => {
-  const offer = activeDoctorOffers.value.find((o) => o.value === offerId);
-  selectedDoctorOffer.value = offer;
-  if (offer) {
-    toast.success(`Descuento de médico ${offer.percentage}% seleccionado.`);
-  } else {
-    selectedDoctorOffer.value = null;
-    toast.info("Descuento de médico removido.");
-  }
-};
-
-const handleCompanyDiscountSelected = async (companyId) => {
-  selectedCompanyId.value = companyId;
-  if (companyId) {
-    await fetchCompanyOffers(companyId);
-  }
-  validateAndApplyCompanyDiscount();
-};
-
-const validateAndApplyCompanyDiscount = () => {
-  if (activeCompanyOffers.value.length === 0) {
-    return;
-  }
-
-  if (!selectedCompanyId.value) {
-    if (selectedDiscountType.value === "Empresa") {
-      selectedDiscountType.value = null;
-    }
-    return;
-  }
-
-  const offer = activeCompanyOffers.value.find(
-    (o) => o.value === selectedCompanyId.value,
-  );
-
-  if (!offer) {
-    selectedCompanyId.value = null;
-    return;
-  }
-
-  const porcentaje = parseFloat(offer.current_discount || 0);
-  if (porcentaje > 0) {
-    toast.success(
-      `Descuento de empresa ${porcentaje}% habilitado para esta cotización.`,
-    );
-  } else {
-    selectedCompanyId.value = null;
-    toast.info(
-      `Esta empresa no cuenta con un descuento activo para el periodo actual.`,
-    );
-  }
-};
-
 watch(
-  () => selectedClient.value,
-  async (newCliente, oldCliente) => {
-    if (!newCliente) {
-      selectedCompany.value = null;
-      await fetchCompanyOffers();
-      return;
-    }
-    if (newCliente?.id === oldCliente?.id) {
-      return;
-    }
-
-    try {
-      if (newCliente.company_id) {
-        await fetchCompanyOffers(newCliente.company_id);
-        selectedDiscountType.value = "Empresa";
-        selectedCompanyId.value = newCliente.company_id;
-        validateAndApplyCompanyDiscount();
-      } else {
-        selectedCompanyId.value = null;
-        await fetchCompanyOffers();
-      }
-    } catch (error) {
-      console.error("[QUOTATION] Error en watcher de selectedClient:", error);
-    }
-  },
-  { deep: true },
-);
-
-watch(selectedDiscountType, (newValue) => {
-  if (newValue !== "Medico") {
-    selectedDoctorOffer.value = null;
-  }
-  if (newValue !== "Recipe") {
-    prescriptionFile.value = null;
-  }
-  if (newValue !== "Empresa") {
-    selectedCompanyId.value = null;
-  }
-});
-
-watch(
-  [filterSearchQuery, selectedLaboratory, selectedOrigin, stockStatusFilter, selectedGroupId],
+  [filterSearchQuery, selectedLaboratory, selectedOrigin, selectedCategory, stockStatusFilter, isStrictSearch, selectedGroupId],
   () => {
     page.value = 1;
   },
 );
-
-watch(barcodeSearchQuery, (newValue) => {
-  clearTimeout(barcodeInputTimer);
-  if (!newValue) {
-    return;
-  }
-  if (newValue.length >= BARCODE_LENGTH_THRESHOLD) {
-    barcodeInputTimer = setTimeout(async () => {
-      await addProductToQuotationByBarcode(newValue);
-      barcodeSearchQuery.value = "";
-    }, 300);
-  }
-});
-
-// --- Estado para Restaurante / Menú de Platos ---
-const isRestaurant = ref(false);
-const dishes = ref([]);
-const dishesLoading = ref(false);
-const dishFilterQuery = ref("");
-const selectedDishCategory = ref(null);
-const activeTab = ref("products");
-
-const dishCategories = computed(() => {
-  const categories = new Set();
-  dishes.value.forEach((d) => {
-    if (d.category && d.category.name) {
-      categories.add(d.category.name);
-    }
-  });
-  return Array.from(categories);
-});
-
-// Computed: platos filtrados por búsqueda local y categoría
-const filteredDishes = computed(() => {
-  let list = dishes.value;
-  if (selectedDishCategory.value) {
-    list = list.filter((d) => d.category && d.category.name === selectedDishCategory.value);
-  }
-  if (dishFilterQuery.value) {
-    const q = dishFilterQuery.value.toLowerCase();
-    list = list.filter((d) => d.name.toLowerCase().includes(q));
-  }
-  return list;
-});
-
-const enableDishes = ref(false);
 
 const fetchGeneralSettings = async () => {
   try {
@@ -566,14 +391,11 @@ const fetchGeneralSettings = async () => {
     }
   } catch (error) {
     console.error("Error al cargar configuración", error);
-    toast.error("Error al cargar configuración");
   }
 };
 
 const fetchDishes = async () => {
-  // Solo cargar platos si el interruptor "Habilitar Platos" está activo en la configuración
   if (!enableDishes.value) return;
-
   dishesLoading.value = true;
   try {
     const { data } = await axios.get("/dishes", {
@@ -587,17 +409,177 @@ const fetchDishes = async () => {
   }
 };
 
-onMounted(async () => {
-  await fetchGeneralSettings();
-  fetchSelectOptions();
-  fetchProducts();
-  fetchDoctorOffers();
-  fetchPrescriptionOffers();
-  fetchCompanyOffers();
-  loadQuotationFromLocalStorage();
+// ─── Agregar Items al Carrito de Cotización ───────────────────────────────────
+const addProductToQuotation = async ({ productId, quantity, productData = null }) => {
+  if (quantity <= 0) {
+    toast.error("La cantidad a agregar debe ser mayor que cero.");
+    return;
+  }
+
+  try {
+    let productDetails = productData;
+    if (!productDetails) {
+      const response = await axios.get(`/tpv/quotation/${productId}`);
+      productDetails = response.data;
+    }
+
+    const availableQuantity = productDetails.valid_stock_sum ?? 0;
+    if (quantity > availableQuantity && availableQuantity > 0) {
+      toast.error(
+        `No hay suficiente stock para "${productDetails.name}". Disponible: ${availableQuantity}. Solicitado: ${quantity}.`,
+      );
+      return;
+    }
+
+    const existingItemIndex = quotationItems.value.findIndex((item) => item.id === productId || item.product_id === productId);
+    if (existingItemIndex !== -1) {
+      const currentSelectedQuantity = quotationItems.value[existingItemIndex].selectedQuantity;
+      const newTotalSelectedQuantity = currentSelectedQuantity + quantity;
+
+      if (newTotalSelectedQuantity > availableQuantity && availableQuantity > 0) {
+        toast.warning(`Ya se agregó la cantidad máxima disponible de "${productDetails.name}"`);
+        quotationItems.value[existingItemIndex].selectedQuantity = availableQuantity;
+      } else {
+        quotationItems.value[existingItemIndex].selectedQuantity = newTotalSelectedQuantity;
+        toast.success(`Cantidad de "${productDetails.name}" incrementada a ${newTotalSelectedQuantity}.`);
+      }
+    } else {
+      if (!productDetails.id || !productDetails.name) {
+        toast.error("El producto no tiene la información completa necesaria.");
+        return;
+      }
+
+      const rawUsd = parseFloat(productDetails.sale_price ?? productDetails.price ?? 0);
+      const rawBs = parseFloat(productDetails.price_bs ?? 0);
+      const rawCop = parseFloat(productDetails.price_cop ?? 0);
+      const prodPct = parseFloat(productDetails.discount_percentage || productDetails.discount_percentage_expiration || 0);
+
+      // Descuento global actualmente activo en la orden
+      const currentGlobalPct = globalDiscountPercentage.value || 0;
+      const isExpiration = productDetails.discount_type === "expiration" || productDetails.is_expiration_discount;
+      const effectiveDiscountPct = isExpiration ? prodPct : Math.max(prodPct, currentGlobalPct);
+      const discountFactor = effectiveDiscountPct > 0 ? 1 - effectiveDiscountPct / 100 : 1;
+
+      const itemToAdd = {
+        id: productDetails.id,
+        product_id: productDetails.id,
+        dish_id: null,
+        title: productDetails.name || "Producto sin nombre",
+        active_ingredient: productDetails.active_ingredient || null,
+        itemCode: productDetails.barcode || null,
+        price: rawUsd * discountFactor,
+        price_bs: rawBs * discountFactor,
+        price_cop: Math.round(rawCop * discountFactor),
+        base_price: rawUsd,
+        base_price_bs: rawBs,
+        base_price_cop: rawCop,
+        original_price_usd: rawUsd,
+        original_price_bs: rawBs,
+        original_price_cop: rawCop,
+        availableQuantity: availableQuantity,
+        selectedQuantity: quantity,
+        laboratory: productDetails.laboratory?.name || productDetails.laboratory_name || "Genérico",
+        laboratory_name: productDetails.laboratory?.name || productDetails.laboratory_name || "Genérico",
+        taxRate: productDetails.iva == 1 ? 0.16 : 0,
+        discount_percentage: prodPct,
+        discount_type: productDetails.discount_type || null,
+        discount_source_id: productDetails.discount_source_id || null,
+        discountApplied: effectiveDiscountPct > 0,
+        discountSource: effectiveDiscountPct === prodPct ? (productDetails.discount_type || "individual") : selectedDiscountType.value,
+        discountSourceId: effectiveDiscountPct === prodPct ? productDetails.discount_source_id : null,
+        appliedDiscountPercentage: effectiveDiscountPct,
+        is_dish: false,
+      };
+
+      quotationItems.value.push(itemToAdd);
+      toast.success(`"${itemToAdd.title}" agregado a la cotización.`);
+    }
+  } catch (error) {
+    console.error("Error al agregar producto a cotización:", error);
+    toast.error("Error al agregar el producto a la cotización.");
+  }
+};
+
+const handleAddDishToQuotation = async ({ dish, quantity }) => {
+  if (quantity <= 0) return;
+
+  const existingItemIndex = quotationItems.value.findIndex(
+    (item) => item.dish_id === dish.id && item.is_dish,
+  );
+
+  if (existingItemIndex !== -1) {
+    quotationItems.value[existingItemIndex].selectedQuantity += quantity;
+    toast.success(`Cantidad de "${dish.name}" incrementada a ${quotationItems.value[existingItemIndex].selectedQuantity}.`);
+  } else {
+    const unitPrice = parseFloat(dish.designated_price) || parseFloat(dish.sale_price) || 0;
+    const unitPriceBs = parseFloat(dish.price_bs) || unitPrice;
+    const unitPriceCop = parseFloat(dish.price_cop) || unitPrice;
+
+    const itemToAdd = {
+      id: null,
+      product_id: null,
+      dish_id: dish.id,
+      title: dish.name,
+      active_ingredient: dish.active_ingredient || (dish.category?.name || "Plato"),
+      itemCode: null,
+      price: unitPrice,
+      price_bs: unitPriceBs,
+      price_cop: unitPriceCop,
+      base_price: unitPrice,
+      base_price_bs: unitPriceBs,
+      base_price_cop: unitPriceCop,
+      original_price_usd: unitPrice,
+      original_price_bs: unitPriceBs,
+      original_price_cop: unitPriceCop,
+      availableQuantity: 9999,
+      selectedQuantity: quantity,
+      laboratory: dish.laboratory_name || (dish.category?.name || "Plato"),
+      taxRate: 0,
+      pack_id: null,
+      discount_percentage: 0,
+      discount_type: null,
+      discount_source_id: null,
+      discountApplied: false,
+      appliedDiscountPercentage: 0,
+      is_dish: true,
+    };
+    quotationItems.value.push(itemToAdd);
+    toast.success(`"${itemToAdd.title}" agregado a la cotización.`);
+  }
+};
+
+const addProductToQuotationByBarcode = async (barcode) => {
+  try {
+    const response = await axios.get(`/barcode/${barcode}`);
+    const productDetails = response.data;
+    if (productDetails && productDetails.id) {
+      await addProductToQuotation({ productId: productDetails.id, quantity: 1, productData: productDetails });
+    }
+  } catch (error) {
+    console.error("Error al agregar por código de barras:", error);
+    toast.error("Producto no encontrado o error al agregar por código de barras.");
+  }
+};
+
+watch(barcodeSearchQuery, (newValue) => {
+  clearTimeout(barcodeInputTimer);
+  if (!newValue) return;
+  if (newValue.length >= BARCODE_LENGTH_THRESHOLD) {
+    barcodeInputTimer = setTimeout(async () => {
+      await addProductToQuotationByBarcode(newValue);
+      barcodeSearchQuery.value = "";
+    }, 300);
+  }
 });
 
+const removeQuotationItem = (productId) => {
+  quotationItems.value = quotationItems.value.filter((item) => item.id !== productId && item.product_id !== productId);
+  toast.success("Producto eliminado exitosamente.");
+};
 
+const removeQuotation = () => {
+  quotationItems.value = [];
+};
 
 const updateTableOptions = (options) => {
   page.value = options.page;
@@ -606,178 +588,57 @@ const updateTableOptions = (options) => {
   orderBy.value = options.sortBy[0]?.order;
 };
 
-const addProductToQuotationByBarcode = async (barcode) => {
-  try {
-    const response = await axios.get(`/barcode/${barcode}`);
-    const productDetails = response.data;
-    await addProductToQuotation({ productId: productDetails.id, quantity: 1 });
-  } catch (error) {
-    console.error(
-      "Error al agregar producto por código de barras:",
-      error.response ? error.response.data : error.message,
-    );
-    toast.error(
-      "Producto no encontrado o error al agregar por código de barras.",
-    );
-  }
-};
-
-const handleAddDishToQuotation = async ({ dish, quantity }) => {
-  if (quantity <= 0) return;
-
-  const existingItemIndex = quotationItems.value.findIndex(
-    (item) => item.dish_id === dish.id && item.is_dish
-  );
-
-  if (existingItemIndex !== -1) {
-    quotationItems.value[existingItemIndex].selectedQuantity += quantity;
-    toast.success(
-      `Cantidad de "${dish.name}" incrementada a ${quotationItems.value[existingItemIndex].selectedQuantity}.`
-    );
-  } else {
-    const unitPrice = parseFloat(dish.designated_price) || parseFloat(dish.sale_price) || 0;
-    const itemToAdd = {
-      id: null,
-      dish_id: dish.id,
-      title: dish.name,
-      active_ingredient: dish.active_ingredient || (dish.category?.name || "Plato"),
-      itemCode: null,
-      price: unitPrice,
-      price_bs: parseFloat(dish.price_bs) || unitPrice,
-      price_cop: parseFloat(dish.price_cop) || unitPrice,
-      availableQuantity: 9999, // Los platos no tienen stock directo
-      selectedQuantity: quantity,
-      laboratory: dish.laboratory_name || (dish.category?.name || "Plato"),
-      taxRate: 0,
-      pack_id: null,
-      discount_percentage: 0,
-      discount_type: null,
-      discount_source_id: null,
-      is_dish: true,
-    };
-    quotationItems.value.push(itemToAdd);
-    toast.success(`"${itemToAdd.title}" agregado a la cotización.`);
-  }
-};
-
-const addProductToQuotation = async ({ productId, quantity }) => {
-  if (quantity <= 0) {
-    toast.error("La cantidad a agregar debe ser mayor que cero.");
-    return;
-  }
-
-  try {
-    const response = await axios.get(`/tpv/quotation/${productId}`);
-    const productDetails = response.data;
-    const availableQuantity = productDetails.valid_stock_sum;
-    if (quantity > availableQuantity) {
-      toast.error(
-        `No hay suficiente stock para "${productDetails.name}". Disponible: ${availableQuantity}. Solicitado: ${quantity}.`,
-      );
-      return;
-    }
-
-    const existingItemIndex = quotationItems.value.findIndex(
-      (item) => item.id === productId,
-    );
-    if (existingItemIndex !== -1) {
-      const currentSelectedQuantity =
-        quotationItems.value[existingItemIndex].selectedQuantity;
-      const newTotalSelectedQuantity = currentSelectedQuantity + quantity;
-
-      if (newTotalSelectedQuantity > availableQuantity) {
-        toast.warning(
-          `Ya se agrego la cantidad maxima disponible de "${productDetails.name}"`,
-        );
-        quotationItems.value[existingItemIndex].selectedQuantity =
-          availableQuantity;
-      } else {
-        quotationItems.value[existingItemIndex].selectedQuantity =
-          newTotalSelectedQuantity;
-        toast.success(
-          `Cantidad de "${productDetails.name}" incrementada a ${newTotalSelectedQuantity}.`,
-        );
-      }
-    } else {
-      // Validar que todos los campos necesarios estén presentes
-      if (!productDetails.id || !productDetails.name) {
-        toast.error("El producto no tiene la información completa necesaria.");
-        return;
-      }
-
-      const itemToAdd = {
-        id: productDetails.id,
-        title: productDetails.name || "Producto sin nombre",
-        active_ingredient: productDetails.active_ingredient || null,
-        itemCode: productDetails.barcode || null,
-        price: productDetails.sale_price || 0,
-        price_bs: productDetails.price_bs || 0,
-        price_cop: productDetails.price_cop || 0,
-        availableQuantity: availableQuantity || 0,
-        selectedQuantity: quantity,
-        laboratory: productDetails.laboratory
-          ? productDetails.laboratory.name
-          : "N/A",
-        taxRate: productDetails.iva == 1 ? 0.16 : 0,
-        discount_percentage: parseFloat(
-          productDetails.discount_percentage || 0,
-        ),
-        discount_type: productDetails.discount_type || null,
-        discount_source_id: productDetails.discount_source_id || null,
-      };
-      quotationItems.value.push(itemToAdd);
-      toast.success(`"${itemToAdd.title}" agregado a la cotización.`);
-    }
-  } catch (error) {
-    console.error(
-      "Error al obtener o agregar el producto a la cotización:",
-      error.response ? error.response.data : error.message,
-    );
-    
-    // Mostrar errores de validación si existen
-    if (error.response?.data?.errors) {
-      const errorMessages = Object.values(error.response.data.errors).flat();
-      toast.error(`Error: ${errorMessages.join(", ")}`);
-    } else if (error.response?.data?.message) {
-      toast.error(error.response.data.message);
-    } else {
-      toast.error(
-        "Error al agregar el producto a la cotización. Inténtalo de nuevo.",
-      );
-    }
-  }
-};
-
-const removeQuotationItem = (productId) => {
-  quotationItems.value = quotationItems.value.filter(
-    (item) => item.id !== productId,
-  );
-  toast.success("Producto eliminado exitosamente");
-};
-
-const removeQuotation = () => {
-  quotationItems.value = [];
+const handleSort = (sortOptions) => {
+  sortBy.value = sortOptions.key;
+  orderBy.value = sortOptions.order;
 };
 
 const handleClearFilters = () => {
   filterSearchQuery.value = "";
   selectedLaboratory.value = null;
   selectedOrigin.value = null;
+  selectedCategory.value = null;
   selectedGroupId.value = null;
   stockStatusFilter.value = null;
+  isStrictSearch.value = false;
   sortBy.value = undefined;
   orderBy.value = undefined;
 };
 
 const handleClearSortOrder = () => {
-  sortBy.value = undefined; // Reinicia el orden de la tabla
-  orderBy.value = undefined; // Reinicia el orden de la tabla
+  sortBy.value = undefined;
+  orderBy.value = undefined;
+};
+
+const fetchGroupProducts = async (groupId) => {
+  if (!groupId) {
+    toast.info("Este producto no pertenece a un grupo.");
+    return;
+  }
+  selectedGroupId.value = groupId;
+  page.value = 1;
+};
+
+const clearGroupFilter = () => {
+  selectedGroupId.value = null;
+  page.value = 1;
+};
+
+const fetchFailuresProducts = async (productId) => {
+  try {
+    await axios.post("/tpv/product-failure", { product_id: productId });
+    toast.success("Reporte de falla guardado correctamente.");
+  } catch (error) {
+    console.error("Error al reportar falla:", error);
+    toast.error("Hubo un problema al procesar su reporte de falla.");
+  }
 };
 
 const handleCurrencyChanged = (newCurrency) => {
   selectedDisplayCurrency.value = newCurrency;
 };
 
+// ─── Guardar e Imprimir ───────────────────────────────────────────────────────
 const saveQuotation = async () => {
   if (quotationItems.value.length === 0) {
     throw new Error("No hay productos en la cotización para guardar.");
@@ -812,65 +673,21 @@ const saveAndPrintQuotation = async () => {
     const printContents = document.getElementById("orderInvoicePrintArea");
     if (printContents) {
       const printWindow = window.open("", "", "height=600,width=800");
-
       printWindow.document.write(`
         <html>
           <head>
             <title>Farmacia Barrio Sucre - Cotización</title>
             <style>
               @media print {
-                @page {
-                  size: 54mm auto;
-                  margin: 0;
-                  padding: 0;
-                }
-                
-                body {
-                  width: 54mm !important;
-                  max-width: 54mm !important;
-                  margin: 0 !important;
-                  padding: 2mm !important;
-                  font-family: 'Courier New', monospace !important;
-                  font-size: 10px !important;
-                  line-height: 1.2 !important;
-                }
-                
-                * {
-                  max-width: 50mm !important;
-                  box-sizing: border-box !important;
-                  word-wrap: break-word !important;
-                }
-                
-                .no-print, button, .actions {
-                  display: none !important;
-                }
-                
-                table {
-                  width: 100% !important;
-                  border-collapse: collapse !important;
-                }
-                
-                td, th {
-                  padding: 1px 0 !important;
-                  font-size: 9px !important;
-                  }
-                
-                .break-word {
-                  word-break: break-word !important;
-                  overflow-wrap: break-word !important;
-                }
+                @page { size: 54mm auto; margin: 0; padding: 0; }
+                body { width: 54mm !important; max-width: 54mm !important; margin: 0 !important; padding: 2mm !important; font-family: 'Courier New', monospace !important; font-size: 10px !important; line-height: 1.2 !important; }
+                * { max-width: 50mm !important; box-sizing: border-box !important; word-wrap: break-word !important; }
+                .no-print, button, .actions { display: none !important; }
+                table { width: 100% !important; border-collapse: collapse !important; }
+                td, th { padding: 1px 0 !important; font-size: 9px !important; }
               }
-              
               @media screen {
-                body {
-                  width: 54mm;
-                  border: 1px dashed #ccc;
-                  margin: 0;
-                  padding: 2mm;
-                  font-family: 'Courier New', monospace;
-                  font-size: 10px;
-                  line-height: 1.2;
-                }
+                body { width: 54mm; border: 1px dashed #ccc; margin: 0; padding: 2mm; font-family: 'Courier New', monospace; font-size: 10px; line-height: 1.2; }
               }
             </style>
       `);
@@ -886,29 +703,16 @@ const saveAndPrintQuotation = async () => {
             }
             printWindow.document.write(`<style>${cssText}</style>`);
           } else if (sheet.href) {
-            printWindow.document.write(
-              `<link rel="stylesheet" href="${sheet.href}">`,
-            );
+            printWindow.document.write(`<link rel="stylesheet" href="${sheet.href}">`);
           }
         } catch (e) {
-          console.warn(
-            "No se pudo acceder a la hoja de estilo:",
-            sheet.href || sheet,
-            e,
-          );
+          console.warn("No se pudo acceder a la hoja de estilo:", sheet.href || sheet, e);
         }
       }
 
-      printWindow.document.write(`
-          </head>
-          <body>
-      `);
+      printWindow.document.write(`</head><body>`);
       printWindow.document.write(printContents.innerHTML);
-      printWindow.document.write(`
-          </body>
-        </html>
-      `);
-
+      printWindow.document.write(`</body></html>`);
       printWindow.document.close();
       printWindow.focus();
 
@@ -919,9 +723,6 @@ const saveAndPrintQuotation = async () => {
         }, 100);
       };
     } else {
-      console.warn(
-        "Elemento #orderInvoicePrintArea no encontrado para impresión tipo ticket. Imprimiendo toda la página.",
-      );
       window.print();
     }
 
@@ -931,76 +732,39 @@ const saveAndPrintQuotation = async () => {
       isPrinting.value = false;
     }, 500);
   } catch (error) {
-    console.error(
-      "Error al guardar o imprimir la cotización:",
-      error.response ? error.response.data : error.message,
-    );
-    toast.error(
-      "Error al guardar o imprimir la cotización. Inténtalo de nuevo.",
-    );
+    console.error("Error al guardar o imprimir la cotización:", error);
+    toast.error("Error al guardar o imprimir la cotización.");
     isPrinting.value = false;
   } finally {
     isSaving.value = false;
   }
 };
 
-const handleSort = (sortOptions) => {
-  sortBy.value = sortOptions.key;
-  orderBy.value = sortOptions.order;
-};
-
-const fetchGroupProducts = async (groupId) => {
-  if (!groupId) {
-    toast.info("Este producto no pertenece a un grupo.");
-    return;
-  }
-  selectedGroupId.value = groupId;
-  page.value = 1;
-  fetchProducts();
-};
-
-const clearGroupFilter = () => {
-  selectedGroupId.value = null;
-  page.value = 1;
-  fetchProducts();
-};
-
-const fetchFailuresProducts = async (productId) => {
-  try {
-    const response = await axios.post("/tpv/product-failure", {
-      product_id: productId,
-    });
-    toast.success("Reporte de falla guardado correctamente.");
-  } catch (error) {
-    if (error.response) {
-      console.error("Errores de validación:", error.response.data.errors);
-      toast.error("Hubo un problema al procesar su reporte de falla.");
-    } else {
-      console.error("Error de conexión:", error.message);
-    }
-  }
-};
-
-const verifyClient = async (identification) => {
-  await verifyClientComposable(identification, newClientFormData, selectedDiscountType, selectedCompanyId);
-};
-
 const handleCleanAfterSave = () => {
   handleClearFilters();
   handleClearSortOrder();
   removeQuotation();
-
   page.value = 1;
   selectedClient.value = null;
   clientIdentification.value = "";
 };
 
-// Handler extraído del template para evitar lógica inline
 const handleClientRegistered = (client) => {
   selectedClient.value = client;
   showRegisterClientModal.value = false;
   toast.success("Cliente registrado exitosamente.");
 };
+
+onMounted(async () => {
+  await fetchGeneralSettings();
+  fetchExchangeRates();
+  fetchSelectOptions();
+  fetchProducts();
+  fetchDoctorOffers();
+  fetchPrescriptionOffers();
+  fetchCompanyOffers();
+  loadQuotationFromLocalStorage();
+});
 
 onUnmounted(() => {
   clearTimeout(barcodeInputTimer);
@@ -1009,6 +773,7 @@ onUnmounted(() => {
 
 <template>
   <div>
+    <!-- Fila Superior: Resumen de Totales y Carrito de Cotización -->
     <VRow class="mb-4">
       <VCol cols="12" sm="12" md="6">
         <QuotationCard
@@ -1055,23 +820,34 @@ onUnmounted(() => {
       </VCol>
     </VRow>
 
-    <QuotationFilters
-      v-model:searchQuery="filterSearchQuery"
-      v-model:selectedLaboratory="selectedLaboratory"
-      v-model:selectedOrigin="selectedOrigin"
-      v-model:stockStatusFilter="stockStatusFilter"
-      :laboratories="laboratories"
-      :origins="origins"
+    <!-- Filtros de Búsqueda Homologados -->
+    <OrderFilters
+      :search-query="filterSearchQuery"
+      :selected-laboratory="selectedLaboratory"
+      :selected-origin="selectedOrigin"
+      :selected-category="selectedCategory"
+      :stock-status-filter="stockStatusFilter"
+      :is-strict-search="isStrictSearch"
+      :laboratories="laboratories || []"
+      :origins="origins || []"
+      :categories="categories || []"
       :is-restaurant="isRestaurant"
-      v-model:selectedCategory="selectedDishCategory"
-      :categories="dishCategories.map(cat => ({ id: cat, name: cat }))"
       :loading="isLoadingFilters"
+      :sort-by="sortBy"
+      :order-by="orderBy"
+      @update:search-query="filterSearchQuery = $event"
+      @update:selected-laboratory="selectedLaboratory = $event"
+      @update:selected-origin="selectedOrigin = $event"
+      @update:selected-category="selectedCategory = $event"
+      @update:stock-status-filter="stockStatusFilter = $event"
+      @update:is-strict-search="isStrictSearch = $event"
       @clear="handleClearFilters"
-      @sort="handleSort"
       @clear-sort="handleClearSortOrder"
-    >
-    </QuotationFilters>
+      @sort="handleSort($event)"
+      @back="clearGroupFilter"
+    />
 
+    <!-- Indicador de Grupo Seleccionado -->
     <div v-if="selectedGroupId" class="d-flex align-center gap-2 mb-4 animate__animated animate__fadeIn">
       <VBtn
         variant="tonal"
@@ -1088,20 +864,22 @@ onUnmounted(() => {
       </VChip>
     </div>
 
-    <QuotationTable
-      :products="products"
+    <!-- Tabla Homologada de Productos (Idéntica a /tpv/orderUser) -->
+    <OrderProductsTable
+      :products="products || []"
       :loading="loading"
-      :total-product="totalProduct"
+      :total-product="totalProduct || 0"
       :items-per-page="itemsPerPage"
       :page="page"
-      :is-restaurant="isRestaurant"
-      v-model:active-tab="activeTab"
-      :dishes="dishes"
-      :dishes-loading="dishesLoading"
-      v-model:dish-filter-query="dishFilterQuery"
-      v-model:selected-dish-category="selectedDishCategory"
-      :dish-categories="dishCategories"
-      :filtered-dishes="filteredDishes"
+      :discount-min-products="0"
+      :discount-max-products="0"
+      :current-discount="globalDiscountPercentage"
+      :order-items="quotationItems || []"
+      :options="tableOptions"
+      :exchange-rates="exchangeRates"
+      :currency="selectedDisplayCurrency"
+      @update:items-per-page="itemsPerPage = $event"
+      @update:page="page = $event"
       @update:options="updateTableOptions"
       @add-product="addProductToQuotation"
       @add-dish="handleAddDishToQuotation"
@@ -1109,6 +887,7 @@ onUnmounted(() => {
       @failures-products="fetchFailuresProducts"
     />
 
+    <!-- Área de Impresión Térmica de Cotización -->
     <div
       id="orderInvoicePrintArea"
       :class="{ 'd-none': !isPrinting, 'print-container': true }"
@@ -1123,6 +902,7 @@ onUnmounted(() => {
       />
     </div>
 
+    <!-- Modal de Registro Rápido de Cliente -->
     <RegisterClientModal
       v-model="showRegisterClientModal"
       @client-registered="handleClientRegistered"

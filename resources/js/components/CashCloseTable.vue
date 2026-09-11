@@ -26,12 +26,12 @@ const isRestaurant = computed(() => false);
 const headers = computed(() => {
   const list = [
     {
-      title: "#",
+      title: "ID",
       key: "product_id",
       sortable: true,
-      width: "80px",
+      width: "75px",
       align: "start",
-      cellClass: 'font-weight-black text-primary d-none d-sm-table-cell',
+      cellClass: 'font-weight-black text-xs text-primary d-none d-sm-table-cell',
       headerClass: 'd-none d-sm-table-cell',
     },
     { title: "Producto", key: "product.name", sortable: true, width: "320px" },
@@ -124,31 +124,36 @@ const handleDelete = (item) => {
         @update:options="(options) => emit('update:options', options)"
       >
         <template #item.product_id="{ item }">
-          <div class="d-flex align-center gap-2 py-2">
-            <div class="header-indicator success rounded-pill"></div>
-            <a
-              :href="'/inventory/traceability?q=' + (item.productId || item.product_id)"
-              target="_blank"
-              class="text-decoration-none font-weight-black text-primary"
-            >
-              #{{ item.productId || item.product_id || "—" }}
-            </a>
-          </div>
+          <a
+            :href="'/inventory/traceability?q=' + (item.productId || item.product_id)"
+            target="_blank"
+            class="text-decoration-none font-weight-black text-xs text-primary bg-primary-lighten-5 px-2 py-1 rounded"
+          >
+            {{ item.productId || item.product_id || "—" }}
+          </a>
         </template>
 
         <template #item.product.name="{ item }">
-          <div class="d-flex flex-column py-1" style="max-inline-size: 320px;">
-            <span class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate" :title="item.product.name">
-              {{ item.product.name }}
-            </span>
-            <div class="d-flex align-center gap-1 text-super-xs mt-1">
-              <span v-if="!isRestaurant && item.product.activeIngredient" class="text-medium-emphasis text-truncate" style="max-inline-size: 180px;">
-                {{ item.product.activeIngredient }}
+          <div class="d-flex align-center gap-x-2 py-2">
+            <div class="d-flex flex-column min-width-0 flex-grow-1">
+              <span
+                class="text-body-2 font-weight-black text-high-emphasis text-uppercase text-truncate"
+                style="max-inline-size: 420px;"
+                :title="item.product.name"
+              >
+                {{ item.product.name?.toUpperCase() }}
+                <span v-if="item.product.iva == 1 || item.product.iva === true" class="text-xs text-disabled"> (G)</span>
+                <span v-if="item.product.is_colombian_origin == 1 || item.product.is_colombian_origin === true" class="text-xs text-disabled"> (COL)</span>
               </span>
-              <span v-if="!isRestaurant && item.product.activeIngredient" class="text-disabled mx-1">|</span>
-              <VChip size="x-small" color="primary" variant="tonal" class="font-weight-bold uppercase" style="max-inline-size: 140px;">
-                {{ item.product.laboratory?.name || 'S/L' }}
-              </VChip>
+              <div class="d-flex align-center flex-wrap gap-1 text-super-xs mt-0-5">
+                <span v-if="!isRestaurant && item.product.activeIngredient" class="text-disabled truncate" style="max-inline-size: 240px;">
+                  {{ item.product.activeIngredient }}
+                </span>
+                <span v-if="!isRestaurant && item.product.activeIngredient" class="text-disabled mx-1">|</span>
+                <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 180px;">
+                  {{ item.product.laboratory?.name || 'S/L' }}
+                </span>
+              </div>
             </div>
           </div>
         </template>
@@ -290,9 +295,9 @@ const handleDelete = (item) => {
                 <a
                   :href="'/inventory/traceability?q=' + (item.productId || item.product_id)"
                   target="_blank"
-                  class="text-decoration-none text-xs font-weight-black text-primary"
+                  class="text-decoration-none text-super-xs font-weight-black text-primary bg-primary-lighten-5 px-1-5 py-0-5 rounded"
                 >
-                  #{{ item.productId || item.product_id }}
+                  ID: {{ item.productId || item.product_id }}
                 </a>
                 <VTooltip :text="item.hasTraceability ? 'Coincide con trazabilidad' : 'Sin movimiento en trazabilidad'" location="top">
                   <template #activator="{ props: tooltipProps }">
@@ -432,6 +437,24 @@ const handleDelete = (item) => {
 </template>
 
 <style scoped>
+.bg-primary-lighten-5 {
+  background-color: rgba(var(--v-theme-primary), 0.08) !important;
+}
+
+.px-1-5 {
+  padding-left: 6px !important;
+  padding-right: 6px !important;
+}
+
+.py-0-5 {
+  padding-top: 2px !important;
+  padding-bottom: 2px !important;
+}
+
+.mt-0-5 {
+  margin-top: 2px !important;
+}
+
 .bg-var-theme-background {
   background-color: rgba(var(--v-border-color), 0.05);
 }
@@ -443,15 +466,6 @@ const handleDelete = (item) => {
 
 .leading-tight {
   line-height: 1.25 !important;
-}
-
-.header-indicator {
-  block-size: 16px;
-  inline-size: 3px;
-}
-
-.header-indicator.success {
-  background: linear-gradient(to bottom, #10b981, #059669);
 }
 
 :deep(.v-data-table th) {

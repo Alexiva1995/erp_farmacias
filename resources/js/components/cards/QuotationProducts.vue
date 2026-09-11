@@ -4,6 +4,7 @@ import { toast } from "@/plugins/sweetalert";
 import { useBrandingStore } from "@/stores/useBrandingStore";
 import { formatCurrency } from "@/utils/currencyFormatter";
 import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
+import { getItemPriceByCurrency } from "@/composables/useTpvItemFormatter";
 import { computed, onMounted, ref, watch } from "vue";
 
 const brandingStore = useBrandingStore();
@@ -207,35 +208,10 @@ const remove = () => {
   emit("remove");
 };
 
-const getBestDiscountForProduct = (product) => {
-  const itemDiscount = parseFloat(product.discount_percentage || 0);
-  const globalDiscount = parseFloat(props.globalDiscountPercentage || 0);
-  const prescriptionDiscount = parseFloat(
-    props.prescriptionDiscountPercentage || 0,
-  );
-
-  return Math.max(itemDiscount, globalDiscount, prescriptionDiscount);
-};
-
-const getProductPrice = (product, currency) => {
+const getProductPrice = (product, currency, useBase = false) => {
   const taxRate = product.taxRate || 0;
-  let basePrice = 0;
-  if (currency === "BS") {
-    basePrice = product.price_bs || 0;
-  } else if (currency === "COP") {
-    basePrice = product.price_cop || 0;
-  } else {
-    // Default to USD price
-    basePrice = product.price || 0;
-  }
-
-  // Apply Discount
-  const discountPercentage = getBestDiscountForProduct(product);
-  if (discountPercentage > 0) {
-    basePrice = basePrice * (1 - discountPercentage / 100);
-  }
-
-  let priceWithIva = basePrice * (1 + taxRate);
+  const price = getItemPriceByCurrency(product, currency, useBase);
+  let priceWithIva = price * (1 + taxRate);
   if (currency === "COP") {
     priceWithIva = roundUpToNearestHundred(priceWithIva);
   }
@@ -614,16 +590,16 @@ onMounted(() => {
 
               <VListItemTitle class="mx-3">
                 <div class="d-flex align-center gap-1 mb-0 pb-0">
-                  <span class="text-primary font-weight-black text-xs">#{{ product.id }}</span>
+                  <span class="text-primary font-weight-black text-xs">#{{ product.id || product.dish_id }}</span>
                   <span class="text-subtitle-2 font-weight-950 text-high-emphasis text-uppercase leading-tight">{{ (product.title || '').toUpperCase() }}</span>
                   <VChip
-                    v-if="product.discount_percentage > 0"
-                    color="error"
+                    v-if="(product.appliedDiscountPercentage > 0 || product.discount_percentage > 0)"
+                    :color="product.discount_type === 'expiration' ? 'error' : 'success'"
                     size="x-small"
                     variant="flat"
                     class="ms-1 font-weight-black"
                   >
-                    {{ parseFloat(product.discount_percentage) }}%
+                    -{{ product.appliedDiscountPercentage || product.discount_percentage }}%
                   </VChip>
                 </div>
                 <div class="d-flex align-center gap-1 text-super-xs mt-0 pt-0">
@@ -639,11 +615,19 @@ onMounted(() => {
                 <div class="d-flex align-center">
                   <div class="d-flex flex-column align-end me-2">
                     <span class="text-subtitle-2 font-weight-black text-primary">
-                      {{ formatCurrency(getProductPrice(product, props.selectedDisplayCurrency) * product.selectedQuantity, props.selectedDisplayCurrency) }}
+                      {{ formatCurrency(getProductPrice(product, props.selectedDisplayCurrency, false) * product.selectedQuantity, props.selectedDisplayCurrency) }}
                     </span>
-                    <span class="text-super-xs text-medium-emphasis">
-                      {{ formatCurrency(getProductPrice(product, props.selectedDisplayCurrency), props.selectedDisplayCurrency) }} c/u
-                    </span>
+                    <div class="d-flex align-center gap-1">
+                      <del
+                        v-if="getProductPrice(product, props.selectedDisplayCurrency, true) > getProductPrice(product, props.selectedDisplayCurrency, false)"
+                        class="text-super-xs text-disabled text-decoration-line-through"
+                      >
+                        {{ formatCurrency(getProductPrice(product, props.selectedDisplayCurrency, true), props.selectedDisplayCurrency) }}
+                      </del>
+                      <span class="text-super-xs text-medium-emphasis">
+                        {{ formatCurrency(getProductPrice(product, props.selectedDisplayCurrency, false), props.selectedDisplayCurrency) }} c/u
+                      </span>
+                    </div>
                   </div>
                   <VBtn
                     icon="tabler-trash-x"

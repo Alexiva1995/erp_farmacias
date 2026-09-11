@@ -31,13 +31,13 @@ const emit = defineEmits(["update:options", "view-cycle-details"]);
 
 const headers = ref([
   { 
-    title: "#", 
+    title: "ID", 
     key: "cycle_id", 
     sortable: true, 
     align: "start",
-    cellClass: "font-weight-black text-primary d-none d-sm-table-cell",
+    cellClass: "font-weight-black text-xs text-primary d-none d-sm-table-cell",
     headerClass: "d-none d-sm-table-cell",
-    width: "70px",
+    width: "75px",
   },
   { title: "Fec. Inicio", key: "start_date", sortable: true, align: "center", width: "130px" },
   { title: "Fec. Fin", key: "end_date", sortable: true, align: "center", width: "130px" },
@@ -122,10 +122,9 @@ const viewCycleDetails = (item) => {
         density="compact"
       >
         <template #item.cycle_id="{ item: cycle }">
-          <div class="d-flex align-center gap-2 py-2">
-            <div class="header-indicator success rounded-pill"></div>
-            <span class="font-weight-black text-primary">#{{ cycle.cycle_id }}</span>
-          </div>
+          <span class="font-weight-black text-xs text-primary bg-primary-lighten-5 px-2 py-1 rounded">
+            {{ cycle.cycle_id }}
+          </span>
         </template>
 
         <template #item.start_date="{ item: cycle }">
@@ -245,7 +244,9 @@ const viewCycleDetails = (item) => {
           <div class="d-flex align-start justify-space-between mb-2">
             <div class="d-flex flex-column min-width-0">
               <div class="d-flex align-center gap-2 mb-1">
-                <span class="text-sm font-weight-black text-primary">#{{ cycle.cycle_id }}</span>
+                <span class="text-xs font-weight-black text-primary bg-primary-lighten-5 px-2 py-0-5 rounded">
+                  ID: {{ cycle.cycle_id }}
+                </span>
                 <VChip
                   :color="getCycleStatusColor(cycle.cycle_status)"
                   size="x-small"
@@ -328,6 +329,15 @@ const viewCycleDetails = (item) => {
 </template>
 
 <style scoped>
+.bg-primary-lighten-5 {
+  background-color: rgba(var(--v-theme-primary), 0.08) !important;
+}
+
+.py-0-5 {
+  padding-top: 2px !important;
+  padding-bottom: 2px !important;
+}
+
 .bg-var-theme-background {
   background-color: rgba(var(--v-border-color), 0.05);
 }
@@ -341,14 +351,5 @@ const viewCycleDetails = (item) => {
   font-size: 0.75rem !important;
   font-weight: 700 !important;
   text-transform: uppercase;
-}
-
-.header-indicator {
-  block-size: 16px;
-  inline-size: 3px;
-}
-
-.header-indicator.success {
-  background: linear-gradient(to bottom, #10b981, #059669);
 }
 </style>

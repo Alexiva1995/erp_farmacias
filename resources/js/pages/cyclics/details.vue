@@ -54,13 +54,13 @@ const isSaving = ref(false);
 
 const headers = computed(() => [
   {
-    title: "#",
+    title: "ID",
     key: "product_id",
     value: "product_id",
     sortable: true,
-    width: "70px",
+    width: "75px",
     align: "start",
-    cellClass: "font-weight-black text-primary d-none d-sm-table-cell",
+    cellClass: "font-weight-black text-xs text-primary d-none d-sm-table-cell",
     headerClass: "d-none d-sm-table-cell",
   },
   { title: "Producto", key: "product.name", value: "product.name", sortable: true, width: "300px" },
@@ -440,16 +440,13 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
           </template>
 
           <template #item.product_id="{ item }">
-            <div class="d-flex align-center gap-2 py-2">
-              <div class="header-indicator success rounded-pill"></div>
-              <a
-                :href="'/inventory/traceability?q=' + (item.product?.id || item.product_id)"
-                target="_blank"
-                class="text-decoration-none font-weight-black text-primary"
-              >
-                #{{ item.product?.id || item.product_id || "—" }}
-              </a>
-            </div>
+            <a
+              :href="'/inventory/traceability?q=' + (item.product?.id || item.product_id)"
+              target="_blank"
+              class="text-decoration-none font-weight-black text-xs text-primary bg-primary-lighten-5 px-2 py-1 rounded"
+            >
+              {{ item.product?.id || item.product_id || "—" }}
+            </a>
           </template>
 
           <template #item.product.name="{ item }">
@@ -542,9 +539,9 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
                     <a
                       :href="'/inventory/traceability?q=' + (item.product?.id || item.product_id)"
                       target="_blank"
-                      class="text-decoration-none text-xs font-weight-black text-primary"
+                      class="text-decoration-none text-super-xs font-weight-black text-primary bg-primary-lighten-5 px-1-5 py-0-5 rounded"
                     >
-                      #{{ item.product?.id || item.product_id }}
+                      ID: {{ item.product?.id || item.product_id }}
                     </a>
                   </div>
                   <span class="text-sm font-weight-black text-primary truncate-1-line text-uppercase">{{ item.product?.name }}</span>
@@ -788,6 +785,20 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
   text-align: center !important;
 }
 .ultra-huge-input-text :deep(.v-field__input) { padding: 0 !important; }
+
+.bg-primary-lighten-5 {
+  background-color: rgba(var(--v-theme-primary), 0.08) !important;
+}
+
+.px-1-5 {
+  padding-left: 6px !important;
+  padding-right: 6px !important;
+}
+
+.py-0-5 {
+  padding-top: 2px !important;
+  padding-bottom: 2px !important;
+}
 
 .text-super-xs { font-size: 0.65rem !important; line-height: 1.2; }
 .truncate-1-line { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 1; }

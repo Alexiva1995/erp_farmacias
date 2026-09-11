@@ -303,38 +303,39 @@ const handleDeleteItem = async (item) => {
             />
           </VCol>
 
-          <!-- Botones de Acción -->
-          <VCol cols="12" sm="5" md="3" class="d-flex align-center justify-end gap-2">
-            <VBtn
+          <!-- Botones de Acción Redondos sin texto -->
+          <VCol cols="12" sm="5" md="3" class="d-flex align-center justify-end gap-1">
+            <IconBtn
               variant="tonal"
               :color="isAdvancedFiltersVisible ? 'primary' : 'secondary'"
-              size="small"
-              class="font-weight-bold"
+              size="38"
+              class="rounded-circle"
               @click="toggleAdvancedFilters"
             >
-              <VIcon start :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" size="16" />
-              Filtros
+              <VIcon :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" />
+              <VTooltip activator="parent">Filtros Avanzados</VTooltip>
               <VBadge v-if="hasActiveAdvancedFilters && !isAdvancedFiltersVisible" color="error" dot offset-x="3" offset-y="-3" />
-            </VBtn>
+            </IconBtn>
 
-            <VBtn
-              variant="flat"
+            <IconBtn
+              variant="tonal"
               color="success"
-              size="small"
-              class="font-weight-bold"
+              size="38"
+              class="rounded-circle"
               :disabled="loading || isClosing"
               :loading="isClosing"
               @click="handleCashClose"
             >
-              <VIcon start icon="tabler-lock-check" size="16" />
-              Cerrar
+              <VIcon icon="tabler-lock-check" />
               <VTooltip activator="parent">Generar Cierre de Ciclo</VTooltip>
-            </VBtn>
+            </IconBtn>
+
+            <VDivider vertical class="mx-1 my-2" />
 
             <IconBtn
               variant="text"
               color="secondary"
-              size="34"
+              size="38"
               class="rounded-circle"
               @click="handleClearFilters"
             >
