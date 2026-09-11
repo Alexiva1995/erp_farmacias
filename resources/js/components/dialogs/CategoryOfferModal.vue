@@ -108,7 +108,7 @@ watch(
 <template>
   <VDialog
     :model-value="props.modelValue"
-    max-width="700px"
+    max-width="650px"
     persistent
     scrollable
     :retain-focus="false"
@@ -118,170 +118,190 @@ watch(
     @click:outside.prevent
     @keydown.esc.prevent="onCancel"
   >
-    <VCard v-if="props.modelValue" :class="mobile ? 'rounded-0' : 'rounded-xl overflow-hidden border-0 elevation-24'">
-      <!-- Header Premium con Gradiente -->
+    <VCard v-if="props.modelValue" :class="mobile ? 'rounded-0' : 'detail-dialog-card rounded-xl border-0 shadow-xl overflow-hidden bg-surface'">
+      <!-- Header Premium -->
       <VCardTitle class="pa-0">
-        <div class="header-gradient pa-5 d-flex align-center shadow-sm">
-          <VAvatar color="white" variant="flat" size="44" class="me-4 elevation-2">
-            <VIcon icon="tabler-folder" color="primary" size="26" />
+        <div class="header-gradient pa-4 d-flex align-center shadow-sm">
+          <VAvatar color="white" variant="flat" size="38" class="me-3 elevation-1">
+            <VIcon icon="tabler-folder" color="primary" size="22" />
           </VAvatar>
-          <div>
+          <div class="d-flex flex-column leading-none">
             <h2 class="text-h6 font-weight-black text-white leading-tight mb-0">{{ dialogTitle }}</h2>
-            <span class="text-super-xs text-white opacity-75 uppercase font-weight-bold">
-              Configuración de promociones por categoría
-            </span>
+            <div class="d-flex align-center gap-2 mt-1">
+              <span class="text-white opacity-75 uppercase font-weight-bold" style="font-size: 0.65rem; letter-spacing: 0.05em;">
+                Promoción por Categoría de Productos
+              </span>
+            </div>
           </div>
           <VSpacer />
           <VBtn
-            icon
+            icon="tabler-x"
             variant="tonal"
             color="white"
             size="small"
             class="rounded-lg"
             @click="onCancel"
             :disabled="props.loading"
-          >
-            <VIcon>tabler-x</VIcon>
-          </VBtn>
+          />
         </div>
       </VCardTitle>
 
-      <VCardText class="pa-6 bg-light">
-        <VRow dense>
-          <!-- Selector de Categoría -->
-          <VCol cols="12" md="8">
-            <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1 mb-2 d-block ms-1">Categoría</span>
-            <VAutocomplete
-              v-if="!props.isEditing"
-              v-model="localFormData.category_id"
-              :items="props.categoriesData"
-              :item-title="(item) => `${item.id} - ${item.name}`"
-              item-value="id"
-              placeholder="BUSCAR CATEGORÍA POR ID O NOMBRE..."
-              variant="outlined"
-              density="compact"
-              hide-details
-              clearable
-              :disabled="props.loading"
-              class="premium-input-compact mb-4"
-              :error="!!props.formErrors.category_id"
-              :error-messages="props.formErrors.category_id"
-            />
-            <VTextField
-              v-else
-              :model-value="selectedCategoryDisplay"
-              readonly
-              variant="outlined"
-              density="compact"
-              class="premium-input-compact mb-4"
-              bg-color="white"
-            />
-          </VCol>
+      <VCardText class="pa-4 pa-sm-5 bg-surface">
+        <!-- Sección Categoría -->
+        <div class="mb-4">
+          <div class="d-flex align-center gap-1-5 mb-2">
+            <div class="header-indicator primary" />
+            <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">Categoría en Oferta</span>
+          </div>
 
-          <VCol cols="12" md="4">
-            <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1 mb-2 d-block ms-1">Estado</span>
-            <VSelect
-              v-model="localFormData.is_active"
-              :items="[
-                { value: true, title: 'ACTIVA' },
-                { value: false, title: 'INACTIVA' },
-              ]"
-              item-title="title"
-              item-value="value"
-              variant="outlined"
-              density="compact"
-              hide-details
-              class="premium-input-compact mb-4"
-              :error="!!props.formErrors.is_active"
-              :error-messages="props.formErrors.is_active"
-              :disabled="props.loading"
-            />
-          </VCol>
+          <div v-if="props.isEditing" class="pa-3 rounded-lg border bg-var-theme-background">
+            <div class="d-flex align-center gap-2 mb-1">
+              <span class="text-xs font-weight-black text-primary bg-primary-lighten-5 px-1-5 py-0-5 rounded">
+                ID: {{ localFormData.category_id }}
+              </span>
+            </div>
+            <div class="text-sm font-weight-black text-high-emphasis text-uppercase">
+              {{ selectedCategoryDisplay }}
+            </div>
+          </div>
 
-          <VCol cols="12" md="4">
-            <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1 mb-2 d-block ms-1">% Descuento</span>
-            <AppTextField
-              v-model="localFormData.discount_percentage"
-              type="number"
-              min="0"
-              max="100"
-              step="0.01"
-              variant="outlined"
-              density="compact"
-              hide-details
-              prepend-inner-icon="tabler-percentage"
-              class="premium-input-compact"
-              :error="!!props.formErrors.discount_percentage"
-              :error-messages="props.formErrors.discount_percentage"
-              :disabled="props.loading"
-            />
-          </VCol>
+          <VAutocomplete
+            v-else
+            v-model="localFormData.category_id"
+            :items="props.categoriesData"
+            :item-title="(item) => `${item.id} - ${item.name}`"
+            item-value="id"
+            placeholder="BUSCAR CATEGORÍA POR ID O NOMBRE..."
+            variant="outlined"
+            density="compact"
+            hide-details
+            clearable
+            :disabled="props.loading"
+            class="rounded-lg font-weight-medium"
+            :error="!!props.formErrors.category_id"
+            :error-messages="props.formErrors.category_id"
+          />
+        </div>
 
-          <VCol cols="12" sm="6" md="4">
-            <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1 mb-2 d-block ms-1">Fecha Inicio</span>
-            <AppDateTimePicker
-              v-model="localFormData.start_date"
-              placeholder="SELECCIONAR FECHA"
-              prepend-inner-icon="tabler-calendar-event"
-              density="compact"
-              hide-details
-              class="premium-input-compact"
-              :error="!!props.formErrors.start_date"
-              :error-messages="props.formErrors.start_date"
-              :disabled="props.loading"
-              :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
-            />
-          </VCol>
+        <!-- Sección Parámetros -->
+        <div class="mb-4">
+          <div class="d-flex align-center gap-1-5 mb-2">
+            <div class="header-indicator primary" />
+            <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">Parámetros de la Oferta</span>
+          </div>
 
-          <VCol cols="12" sm="6" md="4">
-            <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1 mb-2 d-block ms-1">Fecha Final</span>
-            <AppDateTimePicker
-              v-model="localFormData.end_date"
-              placeholder="SELECCIONAR FECHA"
-              prepend-inner-icon="tabler-calendar-off"
-              density="compact"
-              hide-details
-              class="premium-input-compact"
-              :error="!!props.formErrors.end_date"
-              :error-messages="props.formErrors.end_date"
-              :disabled="props.loading"
-              :config="endDateConfig"
-            />
-          </VCol>
-        </VRow>
+          <VRow dense>
+            <VCol cols="12" sm="6">
+              <div class="mb-2 mb-sm-0">
+                <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">% Descuento</span>
+                <VTextField
+                  v-model="localFormData.discount_percentage"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  variant="outlined"
+                  density="compact"
+                  hide-details
+                  prepend-inner-icon="tabler-percentage"
+                  class="rounded-lg font-weight-black"
+                  :error="!!props.formErrors.discount_percentage"
+                  :error-messages="props.formErrors.discount_percentage"
+                  :disabled="props.loading"
+                />
+              </div>
+            </VCol>
+
+            <VCol cols="12" sm="6">
+              <div class="mb-2 mb-sm-0">
+                <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Estado</span>
+                <VSelect
+                  v-model="localFormData.is_active"
+                  :items="[
+                    { value: true, title: 'ACTIVA' },
+                    { value: false, title: 'INACTIVA' },
+                  ]"
+                  item-title="title"
+                  item-value="value"
+                  variant="outlined"
+                  density="compact"
+                  hide-details
+                  class="rounded-lg font-weight-bold"
+                  :error="!!props.formErrors.is_active"
+                  :error-messages="props.formErrors.is_active"
+                  :disabled="props.loading"
+                />
+              </div>
+            </VCol>
+
+            <VCol cols="12" sm="6" class="mt-2">
+              <div class="mb-2 mb-sm-0">
+                <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Fecha Inicio</span>
+                <AppDateTimePicker
+                  v-model="localFormData.start_date"
+                  placeholder="SELECCIONAR FECHA"
+                  prepend-inner-icon="tabler-calendar-event"
+                  density="compact"
+                  hide-details
+                  class="rounded-lg"
+                  :error="!!props.formErrors.start_date"
+                  :error-messages="props.formErrors.start_date"
+                  :disabled="props.loading"
+                  :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
+                />
+              </div>
+            </VCol>
+
+            <VCol cols="12" sm="6" class="mt-2">
+              <div>
+                <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Fecha Final</span>
+                <AppDateTimePicker
+                  v-model="localFormData.end_date"
+                  placeholder="SELECCIONAR FECHA"
+                  prepend-inner-icon="tabler-calendar-off"
+                  density="compact"
+                  hide-details
+                  class="rounded-lg"
+                  :error="!!props.formErrors.end_date"
+                  :error-messages="props.formErrors.end_date"
+                  :disabled="props.loading"
+                  :config="endDateConfig"
+                />
+              </div>
+            </VCol>
+          </VRow>
+        </div>
       </VCardText>
 
       <VDivider />
 
       <!-- Acciones de Modal -->
-      <VCardActions class="pa-6 bg-light border-t">
+      <VCardActions class="pa-3 pa-sm-4 bg-surface border-t">
         <VRow dense class="w-100 ma-0">
-          <VCol cols="12" sm="6" class="pa-1">
+          <VCol cols="6" class="pa-1">
             <VBtn
               color="secondary"
-              variant="tonal"
-              size="large"
+              variant="outlined"
               block
-              height="48"
-              class="font-weight-black rounded-lg text-button uppercase"
+              height="44"
+              class="font-weight-bold rounded-lg text-button uppercase"
               @click="onCancel"
               :disabled="props.loading"
             >
               Cancelar
             </VBtn>
           </VCol>
-          <VCol cols="12" sm="6" class="pa-1">
+          <VCol cols="6" class="pa-1">
             <VBtn
               color="primary"
               variant="flat"
-              size="large"
               block
-              height="48"
-              class="font-weight-black rounded-lg shadow-primary-lg text-button uppercase"
+              height="44"
+              class="font-weight-black rounded-lg shadow-primary text-button uppercase"
               :loading="props.loading"
               @click="onSave"
             >
-              <VIcon icon="tabler-device-floppy" class="me-2" />
+              <VIcon icon="tabler-device-floppy" class="me-1" size="18" />
               {{ props.isEditing ? "Guardar Cambios" : "Crear Oferta" }}
             </VBtn>
           </VCol>
@@ -293,32 +313,29 @@ watch(
 
 <style scoped>
 .header-gradient {
-  background: var(--brand-gradient) !important;
+  background: linear-gradient(
+    135deg,
+    rgb(var(--v-theme-primary)) 0%,
+    rgb(var(--v-theme-gradient-end, var(--v-theme-primary))) 100%
+  );
 }
 
-.premium-input-compact :deep(.v-field__outline) {
-  --v-field-border-opacity: 0.15 !important;
-  color: rgba(var(--v-border-color), 1) !important;
+.detail-dialog-card {
+  border-radius: 12px !important;
 }
 
-.premium-input-compact :deep(.v-field--focused .v-field__outline) {
-  --v-field-border-opacity: 1 !important;
-  color: rgb(var(--v-theme-primary)) !important;
+.header-indicator {
+  inline-size: 3px;
+  block-size: 14px;
+  border-radius: 4px;
 }
 
-.premium-input-compact :deep(.v-field) {
-  border-radius: 8px !important;
-  min-height: 38px !important;
-  background-color: white !important;
+.header-indicator.primary {
+  background-color: rgb(var(--v-theme-primary));
 }
 
-.premium-input-compact :deep(.v-field__input) {
-  padding-top: 0 !important;
-  padding-bottom: 0 !important;
-  font-size: 0.75rem !important;
-  font-weight: 700;
-  min-height: 38px !important;
-  text-transform: uppercase;
+.shadow-primary {
+  box-shadow: 0 4px 14px 0 rgba(var(--v-theme-primary), 0.39) !important;
 }
 
 .text-super-xs {
@@ -326,23 +343,27 @@ watch(
   line-height: normal;
 }
 
-.shadow-sm {
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
-}
-
-.shadow-primary-lg {
-  box-shadow: 0 8px 24px rgba(var(--v-theme-primary), 0.25) !important;
-}
-
 .letter-spacing-1 {
-  letter-spacing: 1px !important;
+  letter-spacing: 0.5px !important;
 }
 
 .leading-none {
   line-height: 1 !important;
 }
 
-.leading-tight {
-  line-height: 1.25 !important;
+.gap-1-5 {
+  gap: 6px !important;
+}
+
+.bg-primary-lighten-5 {
+  background-color: rgba(var(--v-theme-primary), 0.08) !important;
+}
+
+.bg-var-theme-background {
+  background-color: rgba(var(--v-border-color), 0.04);
+}
+
+.border-t {
+  border-block-start: 1px solid rgba(var(--v-border-color), 0.08) !important;
 }
 </style>

@@ -152,7 +152,12 @@ const handleDeleteDoctorOffer = async (offer) => {
     showCancelButton: true,
     confirmButtonText: 'Sí, eliminar',
     cancelButtonText: 'Cancelar',
-    confirmButtonColor: '#ff4d4f',
+    confirmButtonColor: 'rgb(var(--v-theme-primary))',
+    cancelButtonColor: 'rgb(var(--v-theme-error))',
+    customClass: {
+      confirmButton: 'rounded-lg',
+      cancelButton: 'rounded-lg'
+    }
   });
 
   if (result.isConfirmed) {

@@ -194,10 +194,14 @@ const handleDeleteOffer = async (offer) => {
     text: `Esta acción eliminará la oferta de ${offer.company_name}. Esta acción no se puede deshacer.`,
     icon: "warning",
     showCancelButton: true,
-    confirmButtonColor: "#3085d6",
-    cancelButtonColor: "#d33",
+    confirmButtonColor: "rgb(var(--v-theme-primary))",
+    cancelButtonColor: "rgb(var(--v-theme-error))",
     confirmButtonText: "Sí, eliminar",
     cancelButtonText: "Cancelar",
+    customClass: {
+      confirmButton: 'rounded-lg',
+      cancelButton: 'rounded-lg'
+    }
   });
 
   if (result.isConfirmed) {

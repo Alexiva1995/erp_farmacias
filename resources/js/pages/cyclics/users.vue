@@ -287,7 +287,7 @@ const handleLotsDistributed = async ({ updatedLots, newLots }) => {
         <div class="d-flex align-center justify-space-between flex-wrap gap-2 pr-3">
           <VTabs v-model="activeTab" color="primary" align-tabs="start">
 
-            <VTab value="products" class="text-none font-weight-medium">
+            <VTab value="products" class="text-none font-weight-bold">
               <VIcon start icon="mdi-package-variant-closed" />
               Productos por Contar
               <VChip size="x-small" class="ml-2" color="primary" variant="tonal">
@@ -295,7 +295,7 @@ const handleLotsDistributed = async ({ updatedLots, newLots }) => {
               </VChip>
             </VTab>
 
-            <VTab value="invoices" class="text-none font-weight-medium">
+            <VTab value="invoices" class="text-none font-weight-bold">
               <VIcon start icon="mdi-file-document-outline" />
               Por Factura
               <VChip size="x-small" class="ml-2" color="info" variant="tonal">
@@ -303,7 +303,7 @@ const handleLotsDistributed = async ({ updatedLots, newLots }) => {
               </VChip>
             </VTab>
 
-            <VTab value="sales" class="text-none font-weight-medium">
+            <VTab value="sales" class="text-none font-weight-bold">
               <VIcon start icon="mdi-cart-outline" />
               Por Punto de Venta
               <VChip size="x-small" class="ml-2" color="success" variant="tonal">

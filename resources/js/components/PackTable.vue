@@ -1,145 +1,78 @@
 <script setup>
-import { useDisplay } from "vuetify";
+import AppMobilePagination from "@/components/AppMobilePagination.vue";
+import AppEmptyState from "@/components/AppEmptyState.vue";
 
 const props = defineProps({
-  packs: { type: Array, required: true },
-  loading: { type: Boolean, default: false },
-  totalPacks: { type: Number, required: true },
+  packs:        { type: Array, required: true },
+  loading:      { type: Boolean, default: false },
+  totalPacks:   { type: Number, required: true },
   itemsPerPage: { type: Number, required: true },
-  page: { type: Number, required: true },
+  page:         { type: Number, required: true },
+  title:        { type: String, default: "" },
 });
 
 const emit = defineEmits(["update:options", "edit-pack", "delete-pack", "view-pack", "toggle-status"]);
 
-const { mobile } = useDisplay();
-
 const headers = [
-  { title: "ID", key: "id", sortable: true, width: "80px" },
-  { title: "NOMBRE DEL PACK", key: "name", sortable: true },
-  { title: "PRODUCTOS", key: "products_count", sortable: true, width: "120px" },
-  { title: "PRECIO TOTAL", key: "total_price", sortable: true, width: "140px" },
-  { title: "CANT. MÁX", key: "max_quantity", sortable: true, width: "120px" },
-  { title: "FECHA LÍMITE", key: "max_sale_date", sortable: true, width: "140px" },
-  { title: "VENTAS", key: "sales_count", sortable: true, width: "100px" },
-  { title: "ESTADO", key: "is_active", sortable: true, width: "100px" },
-  { title: "ACCIONES", key: "actions", sortable: false, align: "center", width: "160px" },
+  {
+    title: "ID",
+    key: "id",
+    sortable: true,
+    align: "center",
+    width: "70px",
+    cellClass: "font-weight-black text-primary d-none d-sm-table-cell",
+    headerClass: "d-none d-sm-table-cell",
+  },
+  { title: "Nombre del Pack",  key: "name",           sortable: true, width: "30%" },
+  { title: "Productos",        key: "products_count", sortable: true, align: "center", width: "110px" },
+  { title: "Precio Total",     key: "total_price",    sortable: true, align: "end",   width: "120px" },
+  { title: "Límite Ventas",    key: "max_quantity",   sortable: true, align: "center", width: "110px" },
+  { title: "Fecha Límite",     key: "max_sale_date",  sortable: true, align: "center", width: "130px" },
+  { title: "Ventas",           key: "sales_count",    sortable: true, align: "center", width: "90px" },
+  { title: "Estado",           key: "is_active",      sortable: true, align: "center", width: "90px" },
+  { title: "Acciones",         key: "actions",        sortable: false, align: "center", width: "120px" },
 ];
 
 const formatDate = (date) => {
-  if (!date) return '-';
-  return new Date(date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
+  if (!date) return "—";
+  return new Date(date).toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" });
 };
 
 const formatCurrency = (amount) => {
-  return new Intl.NumberFormat('es-ES', {
-    style: 'currency',
-    currency: 'USD'
+  return new Intl.NumberFormat("es-ES", {
+    style: "currency",
+    currency: "USD",
   }).format(amount || 0);
 };
 
 const handleEdit = (pack) => {
-  emit('edit-pack', pack);
+  emit("edit-pack", pack);
 };
 
 const handleDelete = (pack) => {
-  emit('delete-pack', pack);
+  emit("delete-pack", pack);
 };
 
 const handleView = (pack) => {
-  emit('view-pack', pack);
+  emit("view-pack", pack);
 };
 
 const handleToggleStatus = (pack) => {
-  emit('toggle-status', pack);
+  emit("toggle-status", pack);
 };
 </script>
 
 <template>
-  <div class="pack-table-container">
-    <template v-if="mobile">
-      <VDataIterator
-        :items="props.packs"
-        :items-per-page="props.itemsPerPage"
-        :loading="props.loading"
-      >
-        <template v-slot:default="{ items }">
-          <div class="pa-2 d-flex flex-column gap-3">
-            <VCard
-              v-for="item in items"
-              :key="item.raw.id"
-              variant="flat"
-              border
-              class="rounded-lg pa-3"
-            >
-              <div class="d-flex justify-space-between align-start mb-2">
-                <div class="d-flex align-center gap-1 mb-1">
-                  <span class="text-primary font-weight-black text-xs">{{ item.raw.id }}</span>
-                  <span class="text-disabled mx-1">|</span>
-                  <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight mb-0">
-                    {{ item.raw.name.toUpperCase() }}
-                  </h3>
-                </div>
-                <VSwitch
-                  :model-value="item.raw.is_active"
-                  density="compact"
-                  color="success"
-                  hide-details
-                  @update:model-value="handleToggleStatus(item.raw)"
-                />
-              </div>
+  <VCard class="rounded-lg border shadow-sm overflow-hidden">
+    <VCardTitle v-if="props.title" class="d-flex align-center pa-4">
+      <span class="text-h6 font-weight-bold">{{ props.title }}</span>
+      <VSpacer />
+    </VCardTitle>
 
-              <div class="d-flex flex-wrap gap-2 mb-3">
-                <VChip size="x-small" color="primary" variant="tonal" class="font-weight-bold">
-                  {{ Object.keys(item.raw.pack_config || {}).length }} Prods
-                </VChip>
-                <VChip size="x-small" color="success" variant="tonal" class="font-weight-bold">
-                  <VIcon start size="12">tabler-shopping-cart</VIcon>
-                  {{ item.raw.sales_count ?? 0 }} Ventas
-                </VChip>
-                <VChip v-if="item.raw.max_sale_date" size="x-small" color="info" variant="tonal" class="font-weight-bold">
-                  <VIcon start size="12">tabler-calendar-event</VIcon>
-                  {{ formatDate(item.raw.max_sale_date) }}
-                </VChip>
-              </div>
+    <VDivider />
 
-              <VDivider class="border-dashed mb-3" />
-
-              <div class="d-flex justify-space-between align-center">
-                <div class="d-flex flex-column">
-                  <span class="text-super-xs text-medium-emphasis uppercase font-weight-bold mb-n1">Precio del Pack</span>
-                  <span class="text-h6 font-weight-950 text-success">
-                    {{ formatCurrency(item.raw.total_price) }}
-                  </span>
-                </div>
-                <div class="d-flex gap-1">
-                  <VBtn icon="tabler-eye" variant="tonal" color="info" size="32" class="rounded-circle shadow-sm" @click="handleView(item.raw)" />
-                  <VBtn icon="tabler-edit" variant="tonal" color="warning" size="32" class="rounded-circle shadow-sm" @click="handleEdit(item.raw)" />
-                  <VBtn icon="tabler-trash" variant="tonal" color="error" size="32" class="rounded-circle shadow-sm" @click="handleDelete(item.raw)" />
-                </div>
-              </div>
-            </VCard>
-          </div>
-        </template>
-        <template v-slot:no-data>
-          <div class="pa-8 text-center text-medium-emphasis uppercase font-weight-bold text-xs">
-            No hay packs configurados
-          </div>
-        </template>
-      </VDataIterator>
-
-      <!-- Paginación Móvil -->
-      <div class="pa-4 border-t d-flex justify-center">
-        <VPagination
-          v-model="props.page"
-          :length="Math.ceil(props.totalPacks / props.itemsPerPage)"
-          size="small"
-          total-visible="5"
-          @update:model-value="(p) => emit('update:options', { ...props, page: p })"
-        />
-      </div>
-    </template>
-
-    <VCard class="d-none d-md-block rounded-lg border-0 shadow-sm overflow-hidden">
+    <!-- Vista de Escritorio (Tabla) -->
+    <div class="d-none d-md-block">
       <VDataTableServer
         :items-per-page="props.itemsPerPage"
         :page="props.page"
@@ -147,52 +80,75 @@ const handleToggleStatus = (pack) => {
         :items="props.packs"
         :items-length="props.totalPacks"
         :loading="props.loading"
-        class="text-no-wrap premium-table"
+        class="text-no-wrap"
         density="compact"
         @update:options="(options) => emit('update:options', options)"
       >
+        <template #no-data>
+          <AppEmptyState
+            title="No se encontraron packs"
+            message="No hay packs de promociones disponibles."
+            icon="tabler-package-off"
+          />
+        </template>
+
+        <!-- ID Column -->
         <template #item.id="{ item }">
           <span class="text-primary font-weight-black">{{ item.id }}</span>
         </template>
 
+        <!-- Name Column -->
         <template #item.name="{ item }">
-          <span class="text-subtitle-2 font-weight-black text-high-emphasis text-uppercase">{{ item.name }}</span>
+          <div class="d-flex flex-column py-2">
+            <span class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate" style="max-inline-size: 380px;">
+              {{ item.name?.toUpperCase() }}
+            </span>
+            <span class="text-super-xs text-medium-emphasis uppercase font-weight-bold mt-0-5">
+              Pack Promocional
+            </span>
+          </div>
         </template>
 
+        <!-- Products Count Column -->
         <template #item.products_count="{ item }">
-          <VChip variant="tonal" color="info" size="small" class="font-weight-bold">
+          <VChip variant="tonal" color="info" size="small" class="font-weight-bold rounded">
             <VIcon start size="14">tabler-package</VIcon>
-            {{ Object.keys(item.pack_config || {}).length }}
+            {{ Object.keys(item.pack_config || {}).length }} Prods
           </VChip>
         </template>
 
+        <!-- Total Price Column -->
         <template #item.total_price="{ item }">
-          <span class="font-weight-black text-primary text-subtitle-2">
+          <span class="font-weight-black text-success text-sm">
             {{ formatCurrency(item.total_price) }}
           </span>
         </template>
 
+        <!-- Max Quantity Column -->
         <template #item.max_quantity="{ item }">
-          <span v-if="item.max_quantity" class="font-weight-medium">
-            {{ item.max_quantity }}
+          <span v-if="item.max_quantity" class="text-xs font-weight-bold">
+            {{ item.max_quantity }} un.
           </span>
-          <span v-else class="text-disabled italic font-weight-medium">Ilimitado</span>
+          <span v-else class="text-super-xs text-disabled italic font-weight-bold">Ilimitado</span>
         </template>
 
+        <!-- Max Sale Date Column -->
         <template #item.max_sale_date="{ item }">
-          <div class="d-flex align-center gap-1 text-medium-emphasis">
-            <VIcon icon="tabler-calendar" size="16" />
-            <span class="font-weight-medium">{{ formatDate(item.max_sale_date) }}</span>
+          <div class="d-flex align-center justify-center gap-1 text-medium-emphasis text-super-xs font-weight-bold">
+            <VIcon icon="tabler-calendar" size="14" />
+            <span>{{ formatDate(item.max_sale_date) }}</span>
           </div>
         </template>
 
+        <!-- Sales Count Column -->
         <template #item.sales_count="{ item }">
-          <VChip variant="tonal" color="success" size="small" class="font-weight-black">
+          <VChip variant="tonal" color="success" size="small" class="font-weight-black rounded">
             <VIcon start size="14">tabler-shopping-cart</VIcon>
             {{ item.sales_count ?? 0 }}
           </VChip>
         </template>
 
+        <!-- Active Switch Column -->
         <template #item.is_active="{ item }">
           <VSwitch
             :model-value="item.is_active"
@@ -204,67 +160,207 @@ const handleToggleStatus = (pack) => {
           />
         </template>
 
+        <!-- Actions Column -->
         <template #item.actions="{ item }">
           <div class="d-flex justify-center gap-1">
-            <VBtn
-              icon="tabler-eye"
-              variant="tonal"
-              size="32"
-              color="info"
-              class="rounded-circle shadow-sm"
+            <IconBtn
               @click="handleView(item)"
-            />
-            <VBtn
-              icon="tabler-edit"
-              variant="tonal"
-              size="32"
-              color="warning"
-              class="rounded-circle shadow-sm"
+              color="info"
+              size="small"
+            >
+              <VIcon icon="tabler-eye" size="18" />
+              <VTooltip activator="parent">Ver Detalle</VTooltip>
+            </IconBtn>
+            <IconBtn
               @click="handleEdit(item)"
-            />
-            <VBtn
-              icon="tabler-trash"
-              variant="tonal"
-              size="32"
-              color="error"
-              class="rounded-circle shadow-sm"
+              color="warning"
+              size="small"
+            >
+              <VIcon icon="tabler-edit" size="18" />
+              <VTooltip activator="parent">Editar Pack</VTooltip>
+            </IconBtn>
+            <IconBtn
               @click="handleDelete(item)"
-            />
+              color="error"
+              size="small"
+            >
+              <VIcon icon="tabler-trash" size="18" />
+              <VTooltip activator="parent">Eliminar Pack</VTooltip>
+            </IconBtn>
           </div>
         </template>
       </VDataTableServer>
-    </VCard>
-  </div>
+    </div>
+
+    <!-- Vista de Móvil -->
+    <div class="d-block d-md-none pa-2">
+      <VProgressLinear v-if="props.loading" indeterminate color="primary" class="mb-2" />
+
+      <div v-if="props.packs.length === 0 && !props.loading" class="text-center py-8 text-disabled">
+        No hay packs configurados disponibles.
+      </div>
+
+      <div class="d-flex flex-column gap-2">
+        <VCard
+          v-for="item in props.packs"
+          :key="item.id"
+          variant="flat"
+          class="product-mobile-card border mb-1"
+        >
+          <div class="pa-2 pa-sm-3">
+            <div class="d-flex justify-space-between align-start mb-2">
+              <div class="d-flex align-center gap-1">
+                <span class="text-primary font-weight-black text-super-xs bg-primary-lighten-5 px-1-5 py-0-5 rounded flex-shrink-0">
+                  ID: {{ item.id }}
+                </span>
+                <VChip size="x-small" color="info" variant="tonal" class="font-weight-bold">
+                  {{ Object.keys(item.pack_config || {}).length }} Prods
+                </VChip>
+              </div>
+              <VSwitch
+                :model-value="item.is_active"
+                density="compact"
+                color="success"
+                hide-details
+                @update:model-value="handleToggleStatus(item)"
+              />
+            </div>
+
+            <h3 class="product-mobile-title font-weight-black text-high-emphasis text-uppercase truncate-2-lines mb-2 text-body-2">
+              {{ item.name?.toUpperCase() || "SIN NOMBRE" }}
+            </h3>
+
+            <!-- Caja compacta de Precio y Detalles -->
+            <div class="d-flex align-center justify-space-between bg-var-theme-background px-2 py-1.5 rounded border-dashed-thin">
+              <div class="d-flex flex-column">
+                <span class="text-super-xs text-disabled text-uppercase font-weight-bold letter-spacing-1">Precio Pack:</span>
+                <span class="text-sm font-weight-black text-success">
+                  {{ formatCurrency(item.total_price) }}
+                </span>
+              </div>
+
+              <div class="d-flex flex-column text-center">
+                <span class="text-super-xs text-disabled text-uppercase font-weight-bold letter-spacing-1">Límite:</span>
+                <span class="text-xs font-weight-bold text-medium-emphasis">
+                  {{ item.max_quantity ? `${item.max_quantity} un.` : 'Ilimitado' }}
+                </span>
+              </div>
+
+              <div class="d-flex flex-column text-end">
+                <span class="text-super-xs text-disabled text-uppercase font-weight-bold letter-spacing-1">Ventas:</span>
+                <span class="text-xs font-weight-bold text-info">
+                  {{ item.sales_count ?? 0 }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Vigencia / Fecha Límite Móvil -->
+            <div v-if="item.max_sale_date" class="d-flex justify-space-between align-center px-1 mt-1 text-super-xs font-weight-bold text-warning">
+              <span>LÍMITE VENTA:</span>
+              <span>{{ formatDate(item.max_sale_date) }}</span>
+            </div>
+          </div>
+
+          <!-- Acciones Rectangulares en Móvil -->
+          <div class="d-flex align-center border-t border-opacity-10 mobile-actions-bar">
+            <VBtn
+              color="info"
+              variant="text"
+              class="flex-grow-1 rounded-0 mobile-action-btn d-flex align-center justify-center"
+              height="38"
+              @click="handleView(item)"
+            >
+              <VIcon icon="tabler-eye" size="18" />
+            </VBtn>
+            <VDivider vertical class="border-opacity-10" />
+            <VBtn
+              color="warning"
+              variant="text"
+              class="flex-grow-1 rounded-0 mobile-action-btn d-flex align-center justify-center"
+              height="38"
+              @click="handleEdit(item)"
+            >
+              <VIcon icon="tabler-edit" size="18" />
+            </VBtn>
+            <VDivider vertical class="border-opacity-10" />
+            <VBtn
+              color="error"
+              variant="text"
+              class="flex-grow-1 rounded-0 mobile-action-btn d-flex align-center justify-center"
+              height="38"
+              @click="handleDelete(item)"
+            >
+              <VIcon icon="tabler-trash" size="18" />
+            </VBtn>
+          </div>
+        </VCard>
+      </div>
+
+      <div class="mt-4">
+        <AppMobilePagination
+          :page="props.page"
+          :items-per-page="props.itemsPerPage"
+          :total-items="props.totalPacks"
+          :loading="props.loading"
+          @change="(options) => emit('update:options', options)"
+        />
+      </div>
+    </div>
+  </VCard>
 </template>
 
 <style scoped>
-.premium-table :deep(thead th) {
-  background-color: white !important;
-  color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)) !important;
-  font-size: 0.75rem !important;
-  font-weight: 700 !important;
-  letter-spacing: 0.5px;
-  text-transform: uppercase !important;
-  border-bottom: 1px solid rgba(var(--v-border-color), 0.1) !important;
+.product-mobile-card {
+  overflow: hidden;
+  border-radius: 8px !important;
+  background: rgb(var(--v-theme-surface));
 }
 
-.premium-table :deep(td) {
-  padding-block: 16px !important;
+.border-dashed-thin {
+  border: 1px dashed rgba(var(--v-border-color), 0.3) !important;
+}
+
+.bg-var-theme-background {
+  background-color: rgba(var(--v-border-color), 0.05);
+}
+
+.bg-primary-lighten-5 {
+  background-color: rgba(var(--v-theme-primary), 0.08) !important;
+}
+
+.mt-0-5 {
+  margin-top: 2px !important;
 }
 
 .text-super-xs {
-  font-size: 0.68rem !important;
-  line-height: normal;
+  font-size: 0.65rem !important;
+  line-height: 1;
 }
 
-.font-weight-950 { font-weight: 950 !important; }
-.leading-tight { line-height: 1.25 !important; }
-
-.shadow-sm {
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 5%) !important;
+.text-xs {
+  font-size: 0.75rem !important;
 }
 
-.border-dashed {
-  border-block-end: 1px dashed rgba(var(--v-border-color), 0.3) !important;
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.truncate-2-lines {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.gap-1 { gap: 4px !important; }
+.gap-2 { gap: 8px !important; }
+
+:deep(.v-data-table th) {
+  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
 }
 </style>

@@ -1,44 +1,52 @@
 <script setup>
+import AppMobilePagination from "@/components/AppMobilePagination.vue";
+import AppEmptyState from "@/components/AppEmptyState.vue";
 import { formatCurrency } from "@/utils/currencyFormatter";
-import { useDisplay } from 'vuetify';
 
 const props = defineProps({
-  companies: { type: Array, required: true },
-  loading: { type: Boolean, default: false },
-  itemsPerPage: { type: Number, required: true },
-  page: { type: Number, required: true },
+  companies:      { type: Array, required: true },
+  loading:        { type: Boolean, default: false },
+  itemsPerPage:   { type: Number, required: true },
+  page:           { type: Number, required: true },
   totalCompanies: { type: Number, required: true },
+  title:          { type: String, default: "" },
 });
 
 const emit = defineEmits(["update:options", "edit-offer", "delete-offer", "view-offer", "recalculate-offer"]);
 
-const { mobile } = useDisplay();
-
 const headers = [
-  { title: "ID", key: "id", sortable: true, align: 'start' },
-  { title: "EMPRESA", key: "company_name", sortable: true, width: "30%" },
-  { title: "% DESC.", key: "discount_percentage", sortable: false, align: 'center' },
-  { title: "RANGO VOL.", key: "volume_range", sortable: false, align: 'center' },
-  { title: "VENTAS ACUM.", key: "sales_amount", sortable: false, align: 'center' },
-  { title: "VIGENCIA", key: "validity", sortable: false, width: "20%" },
-  { title: "ESTADO", key: "is_active", sortable: true, align: 'center' },
-  { title: "ACCIONES", key: "actions", sortable: false, align: "center" },
+  {
+    title: "ID",
+    key: "id",
+    sortable: true,
+    align: "center",
+    width: "70px",
+    cellClass: "font-weight-black text-primary d-none d-sm-table-cell",
+    headerClass: "d-none d-sm-table-cell",
+  },
+  { title: "Empresa",          key: "company_name",        sortable: true, width: "28%" },
+  { title: "% Desc.",          key: "discount_percentage", sortable: false, align: "center", width: "110px" },
+  { title: "Rango Vol.",       key: "volume_range",        sortable: false, align: "center", width: "130px" },
+  { title: "Ventas Acum.",     key: "sales_amount",        sortable: false, align: "center", width: "130px" },
+  { title: "Vigencia",         key: "validity",            sortable: false, align: "center", width: "140px" },
+  { title: "Estado",           key: "is_active",           sortable: true, align: "center", width: "90px" },
+  { title: "Acciones",         key: "actions",             sortable: false, align: "center", width: "140px" },
 ];
 
-const getStatusColor = (isActive) => isActive ? 'success' : 'error';
-const getStatusText = (isActive) => isActive ? 'ACTIVA' : 'INACTIVA';
+const getStatusColor = (isActive) => (isActive ? "success" : "error");
+const getStatusText = (isActive) => (isActive ? "ACTIVA" : "INACTIVA");
 
 const formatDate = (dateString) => {
-  if (!dateString) return 'S/F';
-  return new Date(dateString).toLocaleDateString('es-ES', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric'
+  if (!dateString) return "—";
+  return new Date(dateString).toLocaleDateString("es-ES", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
   });
 };
 
 const getDiscountPercentage = (scales) => {
-  if (!scales || scales.length === 0) return "N/A";
+  if (!scales || scales.length === 0) return "—";
   if (scales.length === 1) return `${scales[0].discount_percentage}%`;
   const min = Math.min(...scales.map((s) => s.discount_percentage));
   const max = Math.max(...scales.map((s) => s.discount_percentage));
@@ -54,275 +62,327 @@ const getVolumeRange = (scales) => {
 </script>
 
 <template>
-  <div class="company-offer-container">
+  <VCard class="rounded-lg border shadow-sm overflow-hidden">
+    <VCardTitle v-if="props.title" class="d-flex align-center pa-4">
+      <span class="text-h6 font-weight-bold">{{ props.title }}</span>
+      <VSpacer />
+    </VCardTitle>
+
+    <VDivider />
+
     <!-- Desktop View -->
-    <VCard class="d-none d-md-block rounded-lg border-0 shadow-sm overflow-hidden">
+    <div class="d-none d-md-block">
       <VDataTableServer
-        v-model:items-per-page="props.itemsPerPage"
-        v-model:page="props.page"
+        :items-per-page="props.itemsPerPage"
+        :page="props.page"
         :headers="headers"
         :items="props.companies"
         :items-length="props.totalCompanies"
         :loading="props.loading"
-        items-per-page-text="Filas por página:"
-        page-text="{0}-{1} de {2}"
-        loading-text="Cargando..."
-        no-data-text="No hay datos disponibles"
-        class="premium-table"
+        class="text-no-wrap"
         density="compact"
         @update:options="(options) => emit('update:options', options)"
       >
+        <template #no-data>
+          <AppEmptyState
+            title="No se encontraron ofertas"
+            message="No hay ofertas por empresa disponibles con los filtros actuales."
+            icon="tabler-building-off"
+          />
+        </template>
+
+        <!-- ID Column -->
         <template #item.id="{ item }">
           <span class="font-weight-black text-primary">{{ item.id }}</span>
         </template>
 
+        <!-- Company Name Column -->
         <template #item.company_name="{ item }">
           <div class="d-flex flex-column py-2">
-            <span class="text-sm font-weight-black text-high-emphasis uppercase">{{ item.company_name }}</span>
-            <span class="text-super-xs font-weight-bold text-disabled">ID EMPRESA: {{ item.company_id }}</span>
+            <span class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate" style="max-inline-size: 360px;">
+              {{ item.company_name }}
+            </span>
+            <span class="text-super-xs font-weight-bold text-primary text-uppercase mt-0-5">
+              ID EMPRESA: {{ item.company_id }}
+            </span>
           </div>
         </template>
 
+        <!-- Discount Percentage Column -->
         <template #item.discount_percentage="{ item }">
-          <VChip color="primary" size="small" variant="tonal" class="font-weight-black rounded">
+          <VChip color="success" size="small" variant="tonal" class="font-weight-black rounded">
             {{ getDiscountPercentage(item.scales) }}
           </VChip>
         </template>
 
+        <!-- Volume Range Column -->
         <template #item.volume_range="{ item }">
           <div class="d-flex flex-column align-center py-1">
-            <span class="text-xs font-weight-black text-high-emphasis">{{ formatCurrency(getVolumeRange(item.scales).min, 'USD') }}</span>
-            <span class="text-super-xs font-weight-bold text-disabled uppercase">A {{ formatCurrency(getVolumeRange(item.scales).max, 'USD') }}</span>
+            <span class="text-xs font-weight-black text-high-emphasis">
+              {{ formatCurrency(getVolumeRange(item.scales).min, 'USD') }}
+            </span>
+            <span class="text-super-xs font-weight-bold text-disabled uppercase">
+              A {{ formatCurrency(getVolumeRange(item.scales).max, 'USD') }}
+            </span>
           </div>
         </template>
 
+        <!-- Sales Amount Column -->
         <template #item.sales_amount="{ item }">
           <div class="d-flex flex-column align-center py-1">
-            <span class="text-xs font-weight-black text-info">{{ formatCurrency(item.sales_amount ?? 0, 'USD') }}</span>
-            <span class="text-super-xs font-weight-bold text-disabled uppercase">{{ item.sales_count ?? 0 }} ORDENES</span>
+            <span class="text-xs font-weight-black text-info">
+              {{ formatCurrency(item.sales_amount ?? 0, 'USD') }}
+            </span>
+            <span class="text-super-xs font-weight-bold text-disabled uppercase">
+              {{ item.sales_count ?? 0 }} ÓRDENES
+            </span>
           </div>
         </template>
 
+        <!-- Validity Column -->
         <template #item.validity="{ item }">
-          <div class="d-flex align-center gap-2 py-1">
-            <div class="d-flex flex-column">
-              <div class="d-flex align-center gap-1">
-                <VIcon icon="tabler-calendar-event" size="14" color="success" />
-                <span class="text-super-xs font-weight-black text-success">{{ formatDate(item.start_date) }}</span>
-              </div>
-              <div class="d-flex align-center gap-1">
-                <VIcon icon="tabler-calendar-off" size="14" color="error" />
-                <span class="text-super-xs font-weight-black text-error">{{ formatDate(item.end_date) }}</span>
-              </div>
-            </div>
+          <div class="d-flex flex-column align-center">
+            <span class="text-super-xs font-weight-bold text-primary uppercase">
+              INI: {{ formatDate(item.start_date) }}
+            </span>
+            <span class="text-super-xs font-weight-bold text-error uppercase">
+              FIN: {{ formatDate(item.end_date) }}
+            </span>
           </div>
         </template>
 
+        <!-- Active Status Column -->
         <template #item.is_active="{ item }">
           <VChip
             :color="getStatusColor(item.is_active)"
             size="x-small"
             variant="flat"
-            class="font-weight-black px-2"
+            class="font-weight-black px-2 rounded"
           >
             {{ getStatusText(item.is_active) }}
           </VChip>
         </template>
 
+        <!-- Actions Column -->
         <template #item.actions="{ item }">
-          <div class="d-flex justify-center gap-2">
-            <VTooltip text="Recalcular Estado" location="top">
-              <template #activator="{ props: tooltipProps }">
-                <VBtn
-                  v-bind="tooltipProps"
-                  icon="tabler-refresh"
-                  variant="tonal"
-                  color="warning"
-                  size="32"
-                  class="rounded-circle shadow-sm"
-                  :loading="props.loading"
-                  @click="emit('recalculate-offer', item)"
-                />
-              </template>
-            </VTooltip>
-            <VTooltip text="Ver Detalles" location="top">
-              <template #activator="{ props: tooltipProps }">
-                <VBtn
-                  v-bind="tooltipProps"
-                  icon="tabler-eye"
-                  variant="tonal"
-                  color="info"
-                  size="32"
-                  class="rounded-circle shadow-sm"
-                  @click="emit('view-offer', item)"
-                />
-              </template>
-            </VTooltip>
-            <VTooltip text="Editar Oferta" location="top">
-              <template #activator="{ props: tooltipProps }">
-                <VBtn
-                  v-bind="tooltipProps"
-                  icon="tabler-edit"
-                  variant="tonal"
-                  color="primary"
-                  size="32"
-                  class="rounded-circle shadow-sm"
-                  @click="emit('edit-offer', item)"
-                />
-              </template>
-            </VTooltip>
-            <VTooltip text="Eliminar Oferta" location="top">
-              <template #activator="{ props: tooltipProps }">
-                <VBtn
-                  v-bind="tooltipProps"
-                  icon="tabler-trash"
-                  variant="tonal"
-                  color="error"
-                  size="32"
-                  class="rounded-circle shadow-sm"
-                  @click="emit('delete-offer', item)"
-                />
-              </template>
-            </VTooltip>
+          <div class="d-flex justify-center gap-1">
+            <IconBtn
+              @click="emit('recalculate-offer', item)"
+              color="warning"
+              size="small"
+            >
+              <VIcon icon="tabler-refresh" size="18" />
+              <VTooltip activator="parent">Recalcular Estado</VTooltip>
+            </IconBtn>
+            <IconBtn
+              @click="emit('view-offer', item)"
+              color="info"
+              size="small"
+            >
+              <VIcon icon="tabler-eye" size="18" />
+              <VTooltip activator="parent">Ver Detalle</VTooltip>
+            </IconBtn>
+            <IconBtn
+              @click="emit('edit-offer', item)"
+              color="primary"
+              size="small"
+            >
+              <VIcon icon="tabler-edit" size="18" />
+              <VTooltip activator="parent">Editar Oferta</VTooltip>
+            </IconBtn>
+            <IconBtn
+              @click="emit('delete-offer', item)"
+              color="error"
+              size="small"
+            >
+              <VIcon icon="tabler-trash" size="18" />
+              <VTooltip activator="parent">Eliminar Oferta</VTooltip>
+            </IconBtn>
           </div>
         </template>
       </VDataTableServer>
-    </VCard>
+    </div>
 
     <!-- Mobile View -->
-    <div class="d-md-none">
-      <VDataIterator
-        :items="props.companies"
-        :items-length="props.totalCompanies"
-        :loading="props.loading"
-        @update:options="(options) => emit('update:options', options)"
-      >
-        <template #default="{ items }">
-          <VRow dense>
-            <VCol v-for="item in items" :key="item.id" cols="12" class="mb-4">
-              <VCard class="premium-card rounded-lg border-0 overflow-hidden shadow-sm flex-row d-flex h-100">
-                <div :class="`status-strip bg-${getStatusColor(item.raw.is_active)}`" />
-                <div class="pa-4 flex-grow-1">
-                  <div class="d-flex justify-space-between align-center mb-3">
-                    <div class="d-flex align-center gap-1">
-                      <span class="text-primary font-weight-black text-xs">{{ item.raw.id }}</span>
-                      <span class="text-disabled mx-1">|</span>
-                      <h3 class="text-sm font-weight-black text-high-emphasis uppercase mb-0">
-                        {{ item.raw.company_name }}
-                      </h3>
-                    </div>
-                    <VChip :color="getStatusColor(item.raw.is_active)" size="x-small" variant="tonal" class="font-weight-black rounded">
-                      {{ getDiscountPercentage(item.raw.scales) }} DESC.
-                    </VChip>
-                  </div>
+    <div class="d-block d-md-none pa-2">
+      <VProgressLinear v-if="props.loading" indeterminate color="primary" class="mb-2" />
 
-                  <div class="d-flex align-center gap-2 mb-3">
-                    <span class="text-super-xs font-weight-bold text-disabled uppercase">ID EMP: {{ item.raw.company_id }}</span>
-                    <VDivider vertical length="12" class="mx-1" />
-                    <span class="text-super-xs font-weight-black text-primary uppercase">{{ formatCurrency(getVolumeRange(item.raw.scales).min, 'USD') }}+</span>
-                    <VDivider vertical length="12" class="mx-1" />
-                    <span class="text-super-xs font-weight-black text-info uppercase">VENTAS: {{ formatCurrency(item.raw.sales_amount ?? 0, 'USD') }} ({{ item.raw.sales_count ?? 0 }})</span>
-                  </div>
+      <div v-if="props.companies.length === 0 && !props.loading" class="text-center py-8 text-disabled">
+        No hay ofertas de empresas disponibles.
+      </div>
 
-                  <VDivider class="border-dashed my-3" />
+      <div class="d-flex flex-column gap-2">
+        <VCard
+          v-for="item in props.companies"
+          :key="item.id"
+          variant="flat"
+          class="product-mobile-card border mb-1"
+        >
+          <div class="pa-2 pa-sm-3">
+            <div class="d-flex justify-space-between align-start mb-2">
+              <div class="d-flex align-center gap-1">
+                <span class="text-primary font-weight-black text-super-xs bg-primary-lighten-5 px-1-5 py-0-5 rounded flex-shrink-0">
+                  ID: {{ item.id }}
+                </span>
+                <span class="text-super-xs font-weight-bold text-disabled uppercase">
+                  ID EMP: {{ item.company_id }}
+                </span>
+              </div>
+              <VChip
+                :color="getStatusColor(item.is_active)"
+                size="x-small"
+                variant="flat"
+                class="font-weight-black px-2 rounded"
+              >
+                {{ getStatusText(item.is_active) }}
+              </VChip>
+            </div>
 
-                  <div class="d-flex justify-space-between align-center">
-                    <div class="d-flex flex-column gap-1">
-                      <span class="text-super-xs font-weight-black text-success d-flex align-center gap-1">
-                        <VIcon icon="tabler-calendar-event" size="12" /> {{ formatDate(item.raw.start_date) }}
-                      </span>
-                      <span class="text-super-xs font-weight-black text-error d-flex align-center gap-1">
-                        <VIcon icon="tabler-calendar-off" size="12" /> {{ formatDate(item.raw.end_date) }}
-                      </span>
-                    </div>
+            <h3 class="product-mobile-title font-weight-black text-high-emphasis text-uppercase truncate-2-lines mb-2 text-body-2">
+              {{ item.company_name }}
+            </h3>
 
-                       <VBtn
-                        icon="tabler-refresh"
-                        variant="tonal"
-                        color="warning"
-                        size="36"
-                        class="rounded-circle shadow-sm"
-                        :loading="props.loading"
-                        @click="emit('recalculate-offer', item.raw)"
-                      />
-                       <VBtn
-                        icon="tabler-eye"
-                        variant="tonal"
-                        color="info"
-                        size="36"
-                        class="rounded-circle shadow-sm"
-                        @click="emit('view-offer', item.raw)"
-                      />
-                      <VBtn
-                        icon="tabler-edit"
-                        variant="tonal"
-                        color="primary"
-                        size="36"
-                        class="rounded-circle shadow-sm"
-                        @click="emit('edit-offer', item.raw)"
-                      />
-                      <VBtn
-                        icon="tabler-trash"
-                        variant="tonal"
-                        color="error"
-                        size="36"
-                        class="rounded-circle shadow-sm"
-                        @click="emit('delete-offer', item.raw)"
-                    />
-                  </div>
-                </div>
-              </VCard>
-            </VCol>
-          </VRow>
-        </template>
-      </VDataIterator>
+            <!-- Caja compacta de Rango y Ventas -->
+            <div class="d-flex align-center justify-space-between bg-var-theme-background px-2 py-1.5 rounded border-dashed-thin">
+              <div class="d-flex flex-column">
+                <span class="text-super-xs text-disabled text-uppercase font-weight-bold letter-spacing-1">Descuento:</span>
+                <span class="text-xs font-weight-black text-success">
+                  {{ getDiscountPercentage(item.scales) }}
+                </span>
+              </div>
+
+              <div class="d-flex flex-column text-center">
+                <span class="text-super-xs text-disabled text-uppercase font-weight-bold letter-spacing-1">Rango Vol:</span>
+                <span class="text-xs font-weight-bold text-medium-emphasis">
+                  {{ formatCurrency(getVolumeRange(item.scales).min, 'USD') }}+
+                </span>
+              </div>
+
+              <div class="d-flex flex-column text-end">
+                <span class="text-super-xs text-disabled text-uppercase font-weight-bold letter-spacing-1">Ventas Acum:</span>
+                <span class="text-xs font-weight-bold text-info">
+                  {{ formatCurrency(item.sales_amount ?? 0, 'USD') }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Vigencia Móvil -->
+            <div class="d-flex justify-space-between align-center px-1 mt-1 text-super-xs font-weight-bold">
+              <span class="text-primary">INI: {{ formatDate(item.start_date) }}</span>
+              <span class="text-error">FIN: {{ formatDate(item.end_date) }}</span>
+            </div>
+          </div>
+
+          <!-- Acciones Rectangulares en Móvil -->
+          <div class="d-flex align-center border-t border-opacity-10 mobile-actions-bar">
+            <VBtn
+              color="warning"
+              variant="text"
+              class="flex-grow-1 rounded-0 mobile-action-btn d-flex align-center justify-center"
+              height="38"
+              @click="emit('recalculate-offer', item)"
+            >
+              <VIcon icon="tabler-refresh" size="18" />
+            </VBtn>
+            <VDivider vertical class="border-opacity-10" />
+            <VBtn
+              color="info"
+              variant="text"
+              class="flex-grow-1 rounded-0 mobile-action-btn d-flex align-center justify-center"
+              height="38"
+              @click="emit('view-offer', item)"
+            >
+              <VIcon icon="tabler-eye" size="18" />
+            </VBtn>
+            <VDivider vertical class="border-opacity-10" />
+            <VBtn
+              color="primary"
+              variant="text"
+              class="flex-grow-1 rounded-0 mobile-action-btn d-flex align-center justify-center"
+              height="38"
+              @click="emit('edit-offer', item)"
+            >
+              <VIcon icon="tabler-edit" size="18" />
+            </VBtn>
+            <VDivider vertical class="border-opacity-10" />
+            <VBtn
+              color="error"
+              variant="text"
+              class="flex-grow-1 rounded-0 mobile-action-btn d-flex align-center justify-center"
+              height="38"
+              @click="emit('delete-offer', item)"
+            >
+              <VIcon icon="tabler-trash" size="18" />
+            </VBtn>
+          </div>
+        </VCard>
+      </div>
+
+      <div class="mt-4">
+        <AppMobilePagination
+          :page="props.page"
+          :items-per-page="props.itemsPerPage"
+          :total-items="props.totalCompanies"
+          :loading="props.loading"
+          @change="(options) => emit('update:options', options)"
+        />
+      </div>
     </div>
-  </div>
+  </VCard>
 </template>
 
 <style scoped>
-.premium-table :deep(thead th) {
-  background-color: white !important;
-  color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)) !important;
-  font-size: 0.75rem !important;
-  font-weight: 700 !important;
-  letter-spacing: 0.05rem !important;
-  text-transform: uppercase !important;
-  border-bottom: 1px solid rgba(var(--v-border-color), 0.1) !important;
+.product-mobile-card {
+  overflow: hidden;
+  border-radius: 8px !important;
+  background: rgb(var(--v-theme-surface));
 }
 
-.premium-table :deep(td) {
-  padding-block: 12px !important;
+.border-dashed-thin {
+  border: 1px dashed rgba(var(--v-border-color), 0.3) !important;
 }
 
-.status-strip {
-  width: 6px;
-  height: 100%;
+.bg-var-theme-background {
+  background-color: rgba(var(--v-border-color), 0.05);
 }
 
-.premium-card {
-  transition: all 0.3s ease;
+.bg-primary-lighten-5 {
+  background-color: rgba(var(--v-theme-primary), 0.08) !important;
 }
 
-.premium-card:active {
-  transform: scale(0.98);
+.mt-0-5 {
+  margin-top: 2px !important;
 }
 
 .text-super-xs {
   font-size: 0.65rem !important;
-  line-height: normal;
+  line-height: 1;
 }
 
-.shadow-sm {
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+.text-xs {
+  font-size: 0.75rem !important;
 }
 
-.border-dashed {
-  border-style: dashed !important;
-  opacity: 0.4;
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.truncate-2-lines {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .gap-1 { gap: 4px !important; }
 .gap-2 { gap: 8px !important; }
-.gap-3 { gap: 12px !important; }
+
+:deep(.v-data-table th) {
+  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
+}
 </style>

@@ -101,13 +101,17 @@ const handleSaveOffer = async (offerData) => {
 const handleDeleteOffer = async (offerId) => {
   const result = await Swal.fire({
     title: "¿Estás seguro?",
-    text: "Esta acción no se puede deshacer",
+    text: "Esta acción eliminará la regla de descuento por vencimiento permanentemente.",
     icon: "warning",
     showCancelButton: true,
-    confirmButtonColor: "#3085d6",
-    cancelButtonColor: "#d33",
+    confirmButtonColor: "rgb(var(--v-theme-primary))",
+    cancelButtonColor: "rgb(var(--v-theme-error))",
     confirmButtonText: "Sí, eliminar",
     cancelButtonText: "Cancelar",
+    customClass: {
+      confirmButton: 'rounded-lg',
+      cancelButton: 'rounded-lg'
+    }
   });
 
   if (result.isConfirmed) {

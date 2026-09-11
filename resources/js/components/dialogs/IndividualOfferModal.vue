@@ -223,7 +223,7 @@ const endDateConfig = computed(() => ({
 <template>
   <VDialog
     :model-value="props.modelValue"
-    max-width="700px"
+    max-width="680px"
     persistent
     scrollable
     transition="dialog-bottom-transition"
@@ -233,18 +233,18 @@ const endDateConfig = computed(() => ({
     @keydown.esc.prevent="onCancel"
   >
     <VCard :class="mobile ? 'rounded-0' : 'detail-dialog-card rounded-xl border-0 shadow-xl overflow-hidden bg-surface'">
-      <!-- Header Premium con Gradiente -->
+      <!-- Header Premium -->
       <VCardTitle class="pa-0">
         <div class="header-gradient pa-4 d-flex align-center shadow-sm">
           <VAvatar
             color="white"
             variant="flat"
-            size="40"
+            size="38"
             class="me-3 elevation-1"
           >
             <VIcon
               icon="tabler-tags"
-              size="24"
+              size="22"
               color="primary"
             />
           </VAvatar>
@@ -255,9 +255,9 @@ const endDateConfig = computed(() => ({
             <div class="d-flex align-center gap-2 mt-1">
               <span
                 class="text-white opacity-75 uppercase font-weight-bold"
-                style="font-size: 0.6rem; letter-spacing: 0.05em;"
+                style="font-size: 0.65rem; letter-spacing: 0.05em;"
               >
-                Promociones Individuales de Productos • Barrio Sucre
+                Promoción Individual de Producto
               </span>
             </div>
           </div>
@@ -274,72 +274,76 @@ const endDateConfig = computed(() => ({
         </div>
       </VCardTitle>
 
-      <VCardText class="pa-4 pa-sm-6 bg-light">
-        <div class="d-flex align-center gap-2 mb-4">
-          <div class="header-indicator primary shadow-sm" />
-          <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Configuración de la Oferta</span>
+      <VCardText class="pa-4 pa-sm-5 bg-surface">
+        <!-- Sección Producto en Oferta -->
+        <div class="mb-4">
+          <div class="d-flex align-center gap-1-5 mb-2">
+            <div class="header-indicator primary" />
+            <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">Producto en Oferta</span>
+          </div>
+
+          <div v-if="props.isEditing" class="pa-3 rounded-lg border bg-var-theme-background">
+            <div class="d-flex align-center gap-2 mb-1">
+              <span class="text-xs font-weight-black text-primary bg-primary-lighten-5 px-1-5 py-0-5 rounded">
+                ID: {{ selectedProduct?.id || localFormData.product_id }}
+              </span>
+              <span v-if="selectedProduct?.laboratory?.name" class="text-xs font-weight-black text-primary text-uppercase">
+                {{ selectedProduct.laboratory.name }}
+              </span>
+            </div>
+            <div class="text-sm font-weight-black text-high-emphasis text-uppercase">
+              {{ selectedProduct?.name || selectedProductDisplay }}
+            </div>
+            <div v-if="selectedProduct?.active_ingredient" class="text-super-xs text-disabled mt-0-5">
+              {{ selectedProduct.active_ingredient }}
+            </div>
+          </div>
+
+          <VAutocomplete
+            v-else
+            v-model="localFormData.product_id"
+            placeholder="BUSCAR POR NOMBRE, ID O CÓDIGO..."
+            variant="outlined"
+            :items="availableProducts"
+            item-title="name"
+            item-value="id"
+            clearable
+            no-data-text="No se encontraron productos"
+            :loading="loadingProducts"
+            :disabled="props.loading"
+            :custom-filter="() => true"
+            density="compact"
+            hide-details
+            class="rounded-lg font-weight-medium"
+            :error="!!props.formErrors.product_id"
+            :error-messages="props.formErrors.product_id"
+            @update:search="handleProductSearch"
+          >
+            <template #item="{ props: itemProps, item: productItem }">
+              <VListItem v-bind="{ ...itemProps, title: '' }">
+                <VListItemTitle class="font-weight-black text-sm uppercase">
+                  {{ productItem.raw.name }}
+                </VListItemTitle>
+                <VListItemSubtitle class="text-super-xs font-weight-bold uppercase">
+                  ID: {{ productItem.raw.id }} | {{ productItem.raw.laboratory?.name || 'S/L' }} | <span class="text-success font-weight-black">${{ productItem.raw.sale_price }}</span>
+                </VListItemSubtitle>
+              </VListItem>
+            </template>
+          </VAutocomplete>
         </div>
 
-        <VCard
-          variant="flat"
-          class="pa-5 bg-white rounded-xl border shadow-sm mb-0"
-        >
-          <VRow dense>
-            <!-- Selector de Producto -->
-            <VCol cols="12">
-              <div class="mb-4">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Producto en Oferta</span>
-                <VAutocomplete
-                  v-if="!props.isEditing"
-                  v-model="localFormData.product_id"
-                  placeholder="BUSCAR POR NOMBRE, ID O CÓDIGO..."
-                  variant="outlined"
-                  :items="availableProducts"
-                  item-title="name"
-                  item-value="id"
-                  clearable
-                  no-data-text="No se encontraron productos"
-                  :loading="loadingProducts"
-                  :disabled="props.loading"
-                  :custom-filter="() => true"
-                  density="comfortable"
-                  hide-details
-                  class="rounded-lg"
-                  :error="!!props.formErrors.product_id"
-                  :error-messages="props.formErrors.product_id"
-                  @update:search="handleProductSearch"
-                >
-                  <template #item="{ props: itemProps, item: productItem }">
-                    <VListItem v-bind="{ ...itemProps, title: '' }">
-                      <VListItemTitle class="font-weight-black text-sm uppercase">
-                        {{ productItem.raw.name }}
-                      </VListItemTitle>
-                      <VListItemSubtitle class="text-super-xs font-weight-bold uppercase">
-                        ID: {{ productItem.raw.id }} | {{ productItem.raw.laboratory?.name || 'S/L' }} | <span class="text-success font-weight-black">${{ productItem.raw.sale_price }}</span>
-                      </VListItemSubtitle>
-                    </VListItem>
-                  </template>
-                </VAutocomplete>
-                <VTextField
-                  v-else
-                  :model-value="selectedProductDisplay"
-                  readonly
-                  variant="flat"
-                  density="comfortable"
-                  bg-color="grey-lighten-4"
-                  class="rounded-lg font-weight-bold"
-                  hide-details
-                />
-              </div>
-            </VCol>
+        <!-- Sección Parámetros de la Oferta -->
+        <div class="mb-4">
+          <div class="d-flex align-center gap-1-5 mb-2">
+            <div class="header-indicator primary" />
+            <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">Parámetros de la Oferta</span>
+          </div>
 
-            <!-- Descuento y Vigencia -->
-            <VCol
-              cols="12"
-              md="4"
-            >
-              <div class="mb-4 mb-md-0">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">% Descuento</span>
+          <VRow dense>
+            <!-- Descuento -->
+            <VCol cols="12" md="4">
+              <div class="mb-2 mb-md-0">
+                <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">% Descuento</span>
                 <VTextField
                   v-model="localFormData.discount_percent"
                   type="number"
@@ -347,7 +351,7 @@ const endDateConfig = computed(() => ({
                   max="100"
                   step="0.01"
                   variant="outlined"
-                  density="comfortable"
+                  density="compact"
                   hide-details
                   prepend-inner-icon="tabler-percentage"
                   class="rounded-lg font-weight-black"
@@ -358,18 +362,15 @@ const endDateConfig = computed(() => ({
               </div>
             </VCol>
 
-            <VCol
-              cols="12"
-              sm="6"
-              md="4"
-            >
-              <div class="mb-4 mb-md-0">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Fecha Inicio</span>
+            <!-- Fecha Inicio -->
+            <VCol cols="12" sm="6" md="4">
+              <div class="mb-2 mb-md-0">
+                <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Fecha Inicio</span>
                 <AppDateTimePicker
                   v-model="localFormData.start_date"
                   placeholder="SELECCIONAR FECHA"
                   prepend-inner-icon="tabler-calendar-event"
-                  density="comfortable"
+                  density="compact"
                   hide-details
                   class="rounded-lg"
                   :error="!!props.formErrors.start_date"
@@ -380,18 +381,15 @@ const endDateConfig = computed(() => ({
               </div>
             </VCol>
 
-            <VCol
-              cols="12"
-              sm="6"
-              md="4"
-            >
+            <!-- Fecha Final -->
+            <VCol cols="12" sm="6" md="4">
               <div>
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Fecha Final</span>
+                <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Fecha Final</span>
                 <AppDateTimePicker
                   v-model="localFormData.end_date"
                   placeholder="SELECCIONAR FECHA"
                   prepend-inner-icon="tabler-calendar-off"
-                  density="comfortable"
+                  density="compact"
                   hide-details
                   class="rounded-lg"
                   :error="!!props.formErrors.end_date"
@@ -402,28 +400,21 @@ const endDateConfig = computed(() => ({
               </div>
             </VCol>
           </VRow>
-        </VCard>
+        </div>
 
-        <!-- Resumen de precios Premium -->
+        <!-- Simulación de Oferta -->
         <VExpandTransition>
           <div
             v-if="priceInfo"
-            class="mt-6 pa-5 rounded-xl bg-var-theme-background border border-dashed rounded-lg animate__animated animate__fadeIn"
-            style="background-color: rgba(var(--v-theme-primary), 0.05);"
+            class="pa-4 rounded-lg border border-dashed bg-var-theme-background"
           >
-            <div class="d-flex align-center justify-space-between mb-4">
+            <div class="d-flex align-center justify-space-between mb-3">
               <div class="d-flex align-center gap-2">
-                <VAvatar
+                <VIcon
+                  icon="tabler-calculator"
+                  size="18"
                   color="primary"
-                  size="32"
-                  variant="tonal"
-                  class="rounded-lg"
-                >
-                  <VIcon
-                    icon="tabler-calculator"
-                    size="18"
-                  />
-                </VAvatar>
+                />
                 <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Simulación de la Oferta</span>
               </div>
               <VChip
@@ -431,28 +422,25 @@ const endDateConfig = computed(() => ({
                 color="success"
                 variant="flat"
                 size="small"
-                class="font-weight-black px-3 shadow-sm rounded-lg"
+                class="font-weight-black px-2 shadow-sm rounded"
               >
                 AHORRO: ${{ (priceInfo.salePrice - priceInfo.finalPrice).toFixed(2) }}
               </VChip>
             </div>
 
-            <VRow no-gutters>
+            <VRow dense align="center">
               <VCol cols="6">
-                <div class="d-flex flex-column leading-none">
-                  <span class="text-super-xs font-weight-black text-high-emphasis opacity-70 uppercase mb-1">Precio Actual (Lista)</span>
-                  <span class="text-h6 font-weight-bold text-high-emphasis text-decoration-line-through">
+                <div class="d-flex flex-column">
+                  <span class="text-super-xs font-weight-bold text-disabled uppercase mb-0-5">Precio Lista (Normal)</span>
+                  <span class="text-base font-weight-bold text-medium-emphasis text-decoration-line-through">
                     ${{ priceInfo.salePrice.toFixed(2) }}
                   </span>
                 </div>
               </VCol>
-              <VCol
-                cols="6"
-                class="text-end"
-              >
-                <div class="d-flex flex-column leading-none">
-                  <span class="text-super-xs font-weight-black text-success uppercase mb-1">Precio Final Oferta</span>
-                  <span class="text-h4 font-weight-black text-success leading-none">
+              <VCol cols="6" class="text-end">
+                <div class="d-flex flex-column">
+                  <span class="text-super-xs font-weight-black text-success uppercase mb-0-5">Precio Final con Oferta</span>
+                  <span class="text-h5 font-weight-black text-success leading-none">
                     ${{ priceInfo.finalPrice.toFixed(2) }}
                   </span>
                 </div>
@@ -464,38 +452,27 @@ const endDateConfig = computed(() => ({
 
       <VDivider />
 
-      <!-- Acciones de Modal -->
-      <VCardActions class="pa-4 bg-white border-t px-6">
-        <VRow
-          dense
-          class="w-100 ma-0"
-        >
-          <VCol
-            cols="12"
-            sm="6"
-            class="pa-1"
-          >
+      <!-- Acciones del Modal -->
+      <VCardActions class="pa-3 pa-sm-4 bg-surface border-t">
+        <VRow dense class="w-100 ma-0">
+          <VCol cols="6" class="pa-1">
             <VBtn
               color="secondary"
-              variant="tonal"
-              height="50"
+              variant="outlined"
+              height="44"
               block
-              class="font-weight-black rounded-lg text-button uppercase"
+              class="font-weight-bold rounded-lg text-button uppercase"
               @click="onCancel"
               :disabled="props.loading"
             >
               Cancelar
             </VBtn>
           </VCol>
-          <VCol
-            cols="12"
-            sm="6"
-            class="pa-1"
-          >
+          <VCol cols="6" class="pa-1">
             <VBtn
               color="primary"
               variant="flat"
-              height="50"
+              height="44"
               block
               class="font-weight-black rounded-lg shadow-primary text-button uppercase"
               :loading="props.loading"
@@ -520,7 +497,7 @@ const endDateConfig = computed(() => ({
   background: linear-gradient(
     135deg,
     rgb(var(--v-theme-primary)) 0%,
-    rgb(var(--v-theme-gradient-end)) 100%
+    rgb(var(--v-theme-gradient-end, var(--v-theme-primary))) 100%
   );
 }
 
@@ -529,9 +506,9 @@ const endDateConfig = computed(() => ({
 }
 
 .header-indicator {
-  inline-size: 4px;
-  block-size: 16px;
-  border-radius: 10px;
+  inline-size: 3px;
+  block-size: 14px;
+  border-radius: 4px;
 }
 
 .header-indicator.primary {
@@ -548,22 +525,30 @@ const endDateConfig = computed(() => ({
 }
 
 .letter-spacing-1 {
-  letter-spacing: 1px !important;
+  letter-spacing: 0.5px !important;
 }
 
 .leading-none {
   line-height: 1 !important;
 }
 
+.mt-0-5 {
+  margin-top: 2px !important;
+}
+
+.gap-1-5 {
+  gap: 6px !important;
+}
+
+.bg-primary-lighten-5 {
+  background-color: rgba(var(--v-theme-primary), 0.08) !important;
+}
+
+.bg-var-theme-background {
+  background-color: rgba(var(--v-border-color), 0.04);
+}
+
 .border-t {
   border-block-start: 1px solid rgba(var(--v-border-color), 0.08) !important;
-}
-
-.border-dashed-2 {
-  border: 1px dashed rgba(var(--v-border-color), 0.3) !important;
-}
-
-.italic {
-  font-style: italic;
 }
 </style>

@@ -153,10 +153,14 @@ const handleDeletePrescription = async (prescription) => {
     text: `Esta acción eliminará la oferta de receta con ${prescription.discount_percentage}% de descuento. Esta acción no se puede deshacer.`,
     icon: "warning",
     showCancelButton: true,
-    confirmButtonColor: "#3085d6",
-    cancelButtonColor: "#d33",
+    confirmButtonColor: "rgb(var(--v-theme-primary))",
+    cancelButtonColor: "rgb(var(--v-theme-error))",
     confirmButtonText: "Sí, eliminar",
     cancelButtonText: "Cancelar",
+    customClass: {
+      confirmButton: 'rounded-lg',
+      cancelButton: 'rounded-lg'
+    }
   });
 
   if (result.isConfirmed) {
