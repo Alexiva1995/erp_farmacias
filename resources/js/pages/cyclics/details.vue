@@ -454,14 +454,14 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
               <VAvatar v-if="item.product?.photo_url" size="34" variant="tonal" rounded :image="item.product.photo_url" class="flex-shrink-0" />
               <div class="d-flex flex-column min-width-0 flex-grow-1">
                 <span
-                  class="text-body-2 font-weight-black text-high-emphasis text-uppercase text-truncate"
+                  class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate"
                   :class="{ 'text-warning': item.product?.psychotropic == 1 || item.product?.psychotropic === true }"
                   style="max-inline-size: 420px;"
                   :title="item.product?.name"
                 >
                   {{ item.product?.name?.toUpperCase() || 'N/A' }}
-                  <span v-if="item.product?.iva == 1 || item.product?.iva === true" class="text-xs text-disabled"> (G)</span>
-                  <span v-if="item.product?.is_colombian_origin == 1 || item.product?.is_colombian_origin === true" class="text-xs text-disabled"> (COL)</span>
+                  <span v-if="item.product?.iva == 1 || item.product?.iva === true" class="text-xs text-disabled font-weight-regular"> (G)</span>
+                  <span v-if="item.product?.is_colombian_origin == 1 || item.product?.is_colombian_origin === true" class="text-xs text-disabled font-weight-regular"> (COL)</span>
                 </span>
                 <div class="d-flex align-center flex-wrap gap-1 text-super-xs mt-0-5">
                   <span v-if="!isRestaurant && item.product?.active_ingredient" class="text-disabled truncate" style="max-inline-size: 240px;">
