@@ -375,21 +375,21 @@ const getProductLocations = (item) => {
             
             <div class="d-flex flex-column min-width-0 flex-grow-1">
               <span
-                class="text-body-2 font-weight-black text-high-emphasis text-uppercase text-truncate"
+                class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate"
                 :class="{ 
                   'text-warning': item.psychotropic == 1 || item.psychotropic === true
                 }"
                 style="max-inline-size: 420px;"
                 :title="item.name"
               >
-                {{ item.name.toUpperCase() }}
-                <span v-if="item.iva == 1 || item.iva === true" class="text-xs text-disabled"> (G)</span>
-                <span v-if="item.is_colombian_origin == 1 || item.is_colombian_origin === true" class="text-xs text-disabled"> (COL)</span>
+                {{ item.name?.toUpperCase() || "—" }}
+                <span v-if="item.iva == 1 || item.iva === true" class="text-xs text-disabled font-weight-regular"> (G)</span>
+                <span v-if="item.is_colombian_origin == 1 || item.is_colombian_origin === true" class="text-xs text-disabled font-weight-regular"> (COL)</span>
               </span>
               <div class="d-flex align-center flex-wrap gap-1 text-super-xs mt-0-5">
-                <span v-if="!isRestaurant" class="text-disabled truncate" style="max-inline-size: 240px;">{{ item.active_ingredient }}</span>
+                <span v-if="!isRestaurant" class="text-disabled font-weight-normal truncate" style="max-inline-size: 240px;">{{ item.active_ingredient || '—' }}</span>
                 <span v-if="!isRestaurant" class="text-disabled mx-1">|</span>
-                <span v-if="isRestaurant && item.presentation && isFieldEnabled('presentation')" class="text-disabled truncate" style="max-inline-size: 240px;">
+                <span v-if="isRestaurant && item.presentation && isFieldEnabled('presentation')" class="text-disabled font-weight-normal truncate" style="max-inline-size: 240px;">
                   {{ item.presentation }} {{ (item.unit_of_measure && isFieldEnabled('unit_of_measure')) ? `(${item.unit_of_measure})` : '' }}
                 </span>
                 <span v-if="isRestaurant && item.presentation && isFieldEnabled('presentation')" class="text-disabled mx-1">|</span>
