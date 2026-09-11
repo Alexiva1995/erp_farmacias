@@ -68,6 +68,24 @@ const totalProductsCount = computed(() => {
   return packProducts.value.reduce((sum, p) => sum + p.quantity, 0);
 });
 
+// Calcular precio regular base (sin descuento de pack)
+const regularTotalPrice = computed(() => {
+  return packProducts.value.reduce((sum, item) => sum + (Number(item.unit_price) || 0) * (item.quantity || 1), 0);
+});
+
+// Total de ahorro
+const totalSavings = computed(() => {
+  const finalPrice = parseFloat(props.pack?.total_price || 0);
+  const base = regularTotalPrice.value;
+  return base > finalPrice ? base - finalPrice : 0;
+});
+
+// Porcentaje de ahorro
+const savingsPercentage = computed(() => {
+  if (regularTotalPrice.value <= 0 || totalSavings.value <= 0) return 0;
+  return Math.round((totalSavings.value / regularTotalPrice.value) * 100);
+});
+
 // Calcular precio con descuento
 const calculatePriceWithDiscount = (item) => {
   const basePrice = item.unit_price || 0;
@@ -89,7 +107,7 @@ const calculatePriceWithDiscount = (item) => {
     transition="dialog-bottom-transition"
     class="premium-dialog"
   >
-    <VCard v-if="props.pack" :class="mobile ? 'rounded-0' : 'detail-dialog-card rounded-xl border-0 shadow-xl overflow-hidden bg-surface'">
+    <VCard v-if="props.pack" :class="mobile ? 'rounded-0' : 'detail-dialog-card rounded border-0 shadow-xl overflow-hidden bg-surface'">
       <!-- Header Premium Standard -->
       <VCardTitle class="pa-0">
         <div class="header-gradient pa-4 d-flex align-center shadow-sm">
@@ -113,67 +131,78 @@ const calculatePriceWithDiscount = (item) => {
             variant="outlined"
             color="white"
             size="small"
-            class="rounded-lg"
+            class="rounded"
             @click="handleClose"
           />
         </div>
       </VCardTitle>
 
       <VCardText class="pa-4 pa-sm-5 bg-surface">
-        <!-- Métricas Principales del Pack -->
-        <VRow dense class="mb-4">
-          <VCol cols="12" sm="4">
-            <div class="pa-3 rounded-lg border bg-surface elevation-0 h-100 d-flex flex-column justify-space-between stat-box">
-              <div class="d-flex align-center gap-1-5 mb-2">
-                <div class="header-indicator primary" />
-                <span class="text-super-xs font-weight-black text-disabled uppercase letter-spacing-1">Inversión Final</span>
-              </div>
-              <div>
-                <span class="text-h6 font-weight-black text-primary leading-tight d-block">
-                  {{ formatCurrency(parseFloat(props.pack.total_price || 0), 'USD') }}
-                </span>
-                <span class="text-super-xs text-disabled font-weight-bold uppercase mt-0-5 d-block">Precio Promocional</span>
-              </div>
+        <!-- Opción A: Barra de Resumen Integrada (Kpi Strip) -->
+        <div class="pa-3 px-4 rounded border bg-var-theme-background mb-4 d-flex align-center justify-space-between flex-wrap gap-3">
+          <!-- Precio Pack / Inversión -->
+          <div class="d-flex align-center gap-2">
+            <VAvatar size="34" color="primary" variant="tonal" class="rounded">
+              <VIcon icon="tabler-currency-dollar" size="18" />
+            </VAvatar>
+            <div class="d-flex flex-column">
+              <span class="text-super-xs font-weight-black text-disabled uppercase">Precio Pack</span>
+              <span class="text-h6 font-weight-black text-primary leading-tight">
+                {{ formatCurrency(parseFloat(props.pack.total_price || 0), 'USD') }}
+              </span>
             </div>
-          </VCol>
+          </div>
 
-          <VCol cols="12" sm="4">
-            <div class="pa-3 rounded-lg border bg-surface elevation-0 h-100 d-flex flex-column justify-space-between stat-box">
-              <div class="d-flex align-center gap-1-5 mb-2">
-                <div class="header-indicator primary" />
-                <span class="text-super-xs font-weight-black text-disabled uppercase letter-spacing-1">Items Incluidos</span>
-              </div>
-              <div>
-                <span class="text-h6 font-weight-black text-high-emphasis leading-tight d-block">
-                  {{ totalProductsCount }} <span class="text-caption font-weight-bold text-disabled">UNDS</span>
-                </span>
-                <span class="text-super-xs text-disabled font-weight-bold uppercase mt-0-5 d-block">Total en Pack</span>
-              </div>
-            </div>
-          </VCol>
+          <VDivider vertical class="d-none d-sm-block" style="height: 32px;" />
 
-          <VCol cols="12" sm="4">
-            <div class="pa-3 rounded-lg border bg-surface elevation-0 h-100 d-flex flex-column justify-space-between stat-box">
-              <div class="d-flex align-center gap-1-5 mb-2">
-                <div class="header-indicator" :class="props.pack.is_active ? 'success' : 'error'" />
-                <span class="text-super-xs font-weight-black text-disabled uppercase letter-spacing-1">Estado</span>
-              </div>
-              <div class="d-flex align-center justify-space-between">
-                <div>
-                  <VChip
-                    :color="props.pack.is_active ? 'success' : 'secondary'"
-                    variant="tonal"
-                    size="small"
-                    class="font-weight-black rounded"
-                  >
-                    {{ props.pack.is_active ? 'HABILITADO' : 'DESACTIVADO' }}
-                  </VChip>
-                </div>
-                <span class="text-super-xs text-disabled font-weight-bold uppercase">Disponibilidad TPV</span>
-              </div>
+          <!-- Total Productos / Ítems -->
+          <div class="d-flex align-center gap-2">
+            <VAvatar size="34" color="secondary" variant="tonal" class="rounded">
+              <VIcon icon="tabler-packages" size="18" />
+            </VAvatar>
+            <div class="d-flex flex-column">
+              <span class="text-super-xs font-weight-black text-disabled uppercase">Total Ítems</span>
+              <span class="text-h6 font-weight-black text-high-emphasis leading-tight">
+                {{ totalProductsCount }} <span class="text-caption font-weight-bold text-disabled">UNDS</span>
+              </span>
             </div>
-          </VCol>
-        </VRow>
+          </div>
+
+          <VDivider vertical class="d-none d-sm-block" style="height: 32px;" />
+
+          <!-- Ahorro del Pack -->
+          <div class="d-flex align-center gap-2">
+            <VAvatar size="34" :color="totalSavings > 0 ? 'success' : 'secondary'" variant="tonal" class="rounded">
+              <VIcon :icon="totalSavings > 0 ? 'tabler-discount-check' : 'tabler-tag'" size="18" />
+            </VAvatar>
+            <div class="d-flex flex-column">
+              <span class="text-super-xs font-weight-black text-disabled uppercase">Ahorro Estimado</span>
+              <span v-if="totalSavings > 0" class="text-h6 font-weight-black text-success leading-tight">
+                {{ formatCurrency(totalSavings, 'USD') }} <span class="text-caption font-weight-black">({{ savingsPercentage }}% OFF)</span>
+              </span>
+              <span v-else class="text-body-2 font-weight-bold text-disabled leading-tight">
+                Sin Ahorro
+              </span>
+            </div>
+          </div>
+
+          <VDivider vertical class="d-none d-sm-block" style="height: 32px;" />
+
+          <!-- Estado directo -->
+          <div class="d-flex align-center gap-2">
+            <div class="d-flex flex-column">
+              <span class="text-super-xs font-weight-black text-disabled uppercase mb-0-5">Disponibilidad</span>
+              <VChip
+                :color="props.pack.is_active ? 'success' : 'secondary'"
+                variant="tonal"
+                size="small"
+                class="font-weight-black rounded"
+              >
+                {{ props.pack.is_active ? 'HABILITADO' : 'DESACTIVADO' }}
+              </VChip>
+            </div>
+          </div>
+        </div>
 
         <!-- Detalle de Productos -->
         <div class="mb-4">
@@ -292,7 +321,7 @@ const calculatePriceWithDiscount = (item) => {
           variant="flat"
           height="44"
           block
-          class="font-weight-black rounded-lg shadow-primary text-button uppercase"
+          class="font-weight-black rounded shadow-primary text-button uppercase"
           @click="handleClose"
         >
           <VIcon start icon="tabler-check" size="18" />
@@ -313,13 +342,13 @@ const calculatePriceWithDiscount = (item) => {
 }
 
 .detail-dialog-card {
-  border-radius: 12px !important;
+  border-radius: 5px !important;
 }
 
 .header-indicator {
   inline-size: 3px;
   block-size: 14px;
-  border-radius: 4px;
+  border-radius: 2px;
 }
 
 .header-indicator.primary { background-color: rgb(var(--v-theme-primary)); }
@@ -329,6 +358,12 @@ const calculatePriceWithDiscount = (item) => {
 
 .shadow-primary {
   box-shadow: 0 4px 14px 0 rgba(var(--v-theme-primary), 0.39) !important;
+}
+
+.bg-var-theme-background {
+  background-color: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-border-color), 0.12) !important;
+  border-radius: 5px !important;
 }
 
 .stat-box {
