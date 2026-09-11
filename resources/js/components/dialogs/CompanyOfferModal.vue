@@ -231,173 +231,168 @@ watch(
         </div>
       </VCardTitle>
 
-      <VCardText class="pa-6 bg-light">
-          <!-- Datos Generales -->
-          <div class="d-flex align-center gap-2 mb-4">
-            <div class="header-indicator primary shadow-sm"></div>
-            <span class="text-subtitle-2 font-weight-black text-primary uppercase letter-spacing-1">Información General</span>
+      <VCardText class="pa-4 pa-sm-5 bg-surface">
+        <!-- Bloque 1: Datos Generales de la Oferta -->
+        <div class="mb-5">
+          <div class="d-flex align-center justify-space-between mb-2">
+            <div class="d-flex align-center gap-1-5">
+              <div class="header-indicator primary" />
+              <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">Información de la Empresa</span>
+            </div>
+            <div class="d-flex align-center gap-2">
+              <span class="text-super-xs font-weight-bold text-disabled uppercase">Activa</span>
+              <VSwitch
+                v-model="companiesOfferData.is_active"
+                color="primary"
+                hide-details
+                density="compact"
+                inset
+              />
+            </div>
           </div>
 
-          <VCard variant="flat" class="pa-5 bg-white rounded-lg elevation-1 border mb-8">
-            <VRow dense>
-              <VCol cols="12" md="8">
-                <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1 mb-2 d-block ms-1">Empresa</span>
-                <VAutocomplete
-                  v-model="companiesOfferData.company_id"
-                  :items="props.companiesData"
-                  :item-title="(item) => `${item.id} - ${item.name}`"
-                  item-value="id"
-                  placeholder="BUSCAR EMPRESA..."
-                  variant="outlined"
-                  density="compact"
-                  hide-details="auto"
-                  clearable
-                  :disabled="isSaving"
-                  class="premium-input-compact mb-4"
-                  :error="!!formErrors.company_id"
-                  :error-messages="formErrors.company_id"
-                />
-              </VCol>
+          <VRow dense>
+            <VCol cols="12">
+              <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Empresa Beneficiaria *</span>
+              <VAutocomplete
+                v-model="companiesOfferData.company_id"
+                :items="props.companiesData"
+                :item-title="(item) => `${item.id} - ${item.name}`"
+                item-value="id"
+                placeholder="BUSCAR EMPRESA POR ID O NOMBRE..."
+                variant="outlined"
+                density="compact"
+                hide-details="auto"
+                clearable
+                :disabled="isSaving"
+                class="rounded font-weight-bold"
+                :error="!!formErrors.company_id"
+                :error-messages="formErrors.company_id"
+              />
+            </VCol>
 
-              <VCol cols="12" md="4">
-                <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1 mb-2 d-block ms-1">Estado</span>
-                <VSelect
-                  v-model="companiesOfferData.is_active"
-                  :items="[
-                    { value: true, title: 'ACTIVA' },
-                    { value: false, title: 'INACTIVA' },
-                  ]"
-                  item-title="title"
-                  item-value="value"
-                  variant="outlined"
-                  density="compact"
-                  hide-details="auto"
-                  class="premium-input-compact mb-4"
-                  :error="!!formErrors.is_active"
-                  :error-messages="formErrors.is_active"
-                />
-              </VCol>
+            <VCol cols="12" sm="6" class="mt-2">
+              <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Fecha Inicio *</span>
+              <AppDateTimePicker
+                v-model="companiesOfferData.start_date"
+                placeholder="SELECCIONAR FECHA"
+                prepend-inner-icon="tabler-calendar-event"
+                density="compact"
+                hide-details="auto"
+                class="rounded"
+                :error="!!formErrors.start_date"
+                :error-messages="formErrors.start_date"
+                :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
+              />
+            </VCol>
 
-              <VCol cols="12" sm="6">
-                <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1 mb-2 d-block ms-1">Fecha Inicio</span>
-                <AppDateTimePicker
-                  v-model="companiesOfferData.start_date"
-                  placeholder="YYYY-MM-DD"
-                  prepend-inner-icon="tabler-calendar-event"
-                  density="compact"
-                  hide-details="auto"
-                  class="premium-input-compact"
-                  :error="!!formErrors.start_date"
-                  :error-messages="formErrors.start_date"
-                  :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
-                />
-              </VCol>
+            <VCol cols="12" sm="6" class="mt-2">
+              <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Fecha Final *</span>
+              <AppDateTimePicker
+                v-model="companiesOfferData.end_date"
+                placeholder="SELECCIONAR FECHA"
+                prepend-inner-icon="tabler-calendar-off"
+                density="compact"
+                hide-details="auto"
+                class="rounded"
+                :error="!!formErrors.end_date"
+                :error-messages="formErrors.end_date"
+                :config="endDateConfig"
+              />
+            </VCol>
+          </VRow>
+        </div>
 
-              <VCol cols="12" sm="6">
-                <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1 mb-2 d-block ms-1">Fecha Final</span>
-                <AppDateTimePicker
-                  v-model="companiesOfferData.end_date"
-                  placeholder="YYYY-MM-DD"
-                  prepend-inner-icon="tabler-calendar-off"
-                  density="compact"
-                  hide-details="auto"
-                  class="premium-input-compact"
-                  :error="!!formErrors.end_date"
-                  :error-messages="formErrors.end_date"
-                  :config="endDateConfig"
-                />
-              </VCol>
-            </VRow>
-          </VCard>
-
-          <!-- Tablero de Escalas -->
-          <div class="d-flex align-center justify-space-between mb-4">
-            <div class="d-flex align-center gap-2">
-              <div class="header-indicator secondary shadow-sm"></div>
-              <span class="text-subtitle-2 font-weight-black text-secondary uppercase letter-spacing-1">Tabla de Escalas</span>
+        <!-- Bloque 2: Escalas de Descuento -->
+        <div class="mb-2">
+          <div class="d-flex align-center justify-space-between mb-3">
+            <div class="d-flex align-center gap-1-5">
+              <div class="header-indicator primary" />
+              <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">Escalas de Descuento</span>
+              <span class="text-super-xs font-weight-bold text-disabled">({{ scalesData.length }})</span>
             </div>
             <VBtn
-              prepend-icon="tabler-plus"
+              variant="outlined"
               color="primary"
-              variant="tonal"
               size="small"
-              class="rounded-lg font-weight-black shadow-sm"
+              class="rounded font-weight-black"
               @click="addScale"
             >
+              <VIcon start size="16">tabler-plus</VIcon>
               Añadir Escala
             </VBtn>
           </div>
 
-          <div v-for="(scale, index) in scalesData" :key="index" class="scale-premium-row pa-4 mb-4 rounded-xl bg-white elevation-1 border animate-in">
-            <div class="d-flex justify-space-between align-center mb-3">
-              <div class="d-flex align-center gap-2 font-weight-black text-primary uppercase">
-                <VAvatar size="24" color="primary" variant="flat" class="text-xs">
-                  {{ index + 1 }}
-                </VAvatar>
-                <span class="text-super-xs letter-spacing-1">Configuración de Escala</span>
-              </div>
-              <VBtn
-                v-if="scalesData.length > 1"
-                icon="tabler-trash"
-                variant="tonal"
-                color="error"
-                size="28"
-                class="rounded-lg shadow-sm"
-                @click="removeScale(index)"
-              />
+          <div class="d-flex flex-column gap-2">
+            <div
+              v-for="(scale, index) in scalesData"
+              :key="index"
+              class="scale-row pa-3 rounded border bg-var-theme-background"
+            >
+              <VRow dense class="align-center">
+                <VCol cols="12" sm="3" md="4">
+                  <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Monto Mín. (USD)</span>
+                  <VTextField
+                    v-model.number="scale.min_amount"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="0.00"
+                    variant="outlined"
+                    density="compact"
+                    hide-details="auto"
+                    class="rounded font-weight-bold"
+                  />
+                </VCol>
+
+                <VCol cols="12" sm="4" md="4">
+                  <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Monto Máx. (USD)</span>
+                  <VTextField
+                    v-model.number="scale.max_amount"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="0.00"
+                    variant="outlined"
+                    density="compact"
+                    hide-details="auto"
+                    class="rounded font-weight-bold"
+                  />
+                </VCol>
+
+                <VCol cols="9" sm="3" md="3">
+                  <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">% Descuento</span>
+                  <VTextField
+                    v-model.number="scale.discount_percentage"
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    placeholder="0"
+                    variant="outlined"
+                    density="compact"
+                    hide-details="auto"
+                    prepend-inner-icon="tabler-percentage"
+                    class="rounded font-weight-black"
+                  />
+                </VCol>
+
+                <VCol cols="3" sm="2" md="1" class="d-flex justify-end pt-5">
+                  <IconBtn
+                    v-if="scalesData.length > 1"
+                    color="error"
+                    size="small"
+                    @click="removeScale(index)"
+                    :disabled="isSaving"
+                  >
+                    <VIcon icon="tabler-trash" size="18" />
+                    <VTooltip activator="parent">Eliminar Escala</VTooltip>
+                  </IconBtn>
+                </VCol>
+              </VRow>
             </div>
-            
-            <VRow dense>
-              <VCol cols="12" sm="4">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block ms-1">Inversión Mín. (USD)</span>
-                <AppTextField
-                  v-model="scale.min_amount"
-                  type="number"
-                  placeholder="0.00"
-                  variant="outlined"
-                  density="compact"
-                  hide-details
-                  class="premium-input-compact"
-                />
-              </VCol>
-              <VCol cols="12" sm="4">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block ms-1">Inversión Máx. (USD)</span>
-                <AppTextField
-                  v-model="scale.max_amount"
-                  type="number"
-                  placeholder="0.00"
-                  variant="outlined"
-                  density="compact"
-                  hide-details
-                  class="premium-input-compact"
-                />
-              </VCol>
-              <VCol cols="12" sm="4">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block ms-1">% Descuento</span>
-                <AppTextField
-                  v-model="scale.discount_percentage"
-                  type="number"
-                  placeholder="0"
-                  suffix="%"
-                  variant="outlined"
-                  density="compact"
-                  hide-details
-                  class="premium-input-compact font-weight-black"
-                />
-              </VCol>
-            </VRow>
           </div>
-          
-          <VAlert
-            v-if="scalesData.length > 0"
-            variant="tonal"
-            color="info"
-            icon="tabler-info-circle"
-            class="rounded-lg mt-4 border-0"
-          >
-            <span class="text-super-xs uppercase font-weight-black opacity-75 d-block mb-1">Nota sobre escalas</span>
-            <span class="text-caption">Define el porcentaje de descuento que se aplicará según el monto total de la venta para esta empresa.</span>
-          </VAlert>
+        </div>
       </VCardText>
 
       <VDivider />
@@ -445,35 +440,6 @@ watch(
   border-block-start: 1px solid rgba(var(--v-border-color), 0.08) !important;
 }
 
-.premium-input-compact :deep(.v-field__outline) {
-  --v-field-border-opacity: 0.15 !important;
-  color: rgba(var(--v-border-color), 1) !important;
-}
-
-.premium-input-compact :deep(.v-field--focused .v-field__outline) {
-  --v-field-border-opacity: 1 !important;
-  color: rgb(var(--v-theme-primary)) !important;
-}
-
-.premium-input-compact :deep(.v-field) {
-  border-radius: 10px !important;
-  min-height: 42px !important;
-  background-color: white !important;
-  transition: all 0.2s ease;
-}
-
-.premium-input-compact :deep(.v-field:hover) {
-  background-color: #fcfcfc !important;
-}
-
-.premium-input-compact :deep(.v-field__input) {
-  padding-top: 0 !important;
-  padding-bottom: 0 !important;
-  font-size: 0.75rem !important;
-  font-weight: 700;
-  min-height: 42px !important;
-}
-
 .text-super-xs {
   font-size: 0.65rem !important;
   line-height: normal;
@@ -483,45 +449,22 @@ watch(
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
 }
 
-.shadow-primary-lg {
-  box-shadow: 0 8px 24px rgba(var(--v-theme-primary), 0.25) !important;
-}
-
 .letter-spacing-1 {
   letter-spacing: 1px !important;
 }
 
-.scale-premium-row {
-  border-color: rgba(var(--v-border-color), 0.1) !important;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.scale-premium-row:hover {
-  border-color: rgba(var(--v-theme-primary), 0.4) !important;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(0,0,0,0.06) !important;
-}
-
 .header-indicator {
-  inline-size: 4px;
-  block-size: 16px;
-  border-radius: 10px;
+  inline-size: 3px;
+  block-size: 14px;
+  border-radius: 2px;
 }
 
-.header-indicator.primary { background-color: rgb(var(--v-theme-primary)); }
-.header-indicator.secondary { background-color: rgb(var(--v-theme-secondary)); }
-
-.animate-in {
-  animation: slideBottom 0.3s ease-out backwards;
+.header-indicator.primary {
+  background-color: rgb(var(--v-theme-primary));
 }
 
-@keyframes slideBottom {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.border-dashed {
-  border-style: dashed !important;
-  opacity: 0.4;
+.scale-row {
+  border-color: rgba(var(--v-border-color), 0.12) !important;
+  background-color: rgba(var(--v-theme-on-surface), 0.02) !important;
 }
 </style>
