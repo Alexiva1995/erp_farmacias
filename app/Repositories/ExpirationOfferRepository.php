@@ -152,9 +152,21 @@ class ExpirationOfferRepository implements ExpirationOfferRepositoryInterface
             });
 
         if ($scope === 'qualifying') {
+            // Determinar el rango exclusivo de caducidad para esta regla:
+            // Obtener la regla activa anterior con menor periodo de meses para no duplicar lotes más cercanos
+            $prevOfferMonths = (int) (ExpirationOffer::where('is_active', true)
+                ->where('id', '!=', $expirationOffer->id)
+                ->where('months_to_expiration', '<', $months)
+                ->max('months_to_expiration') ?? 0);
+
             if (!$search) {
-                $query->where(function ($q) use ($months, $excludedProductIds) {
-                    $q->whereRaw('(TIMESTAMPDIFF(MONTH, CURDATE(), expiration_date) + 1) <= ?', [$months]);
+                $query->where(function ($q) use ($months, $prevOfferMonths, $excludedProductIds) {
+                    $q->where(function ($subQ) use ($months, $prevOfferMonths) {
+                        $subQ->whereRaw('(TIMESTAMPDIFF(MONTH, CURDATE(), expiration_date) + 1) <= ?', [$months]);
+                        if ($prevOfferMonths > 0) {
+                            $subQ->whereRaw('(TIMESTAMPDIFF(MONTH, CURDATE(), expiration_date) + 1) > ?', [$prevOfferMonths]);
+                        }
+                    });
                     if (!empty($excludedProductIds)) {
                         $q->orWhereIn('product_id', $excludedProductIds);
                     }
