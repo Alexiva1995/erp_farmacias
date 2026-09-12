@@ -688,7 +688,7 @@ watch(
                         <VListItem
                           v-bind="itemProps"
                           :title="productItem.raw.name"
-                          :subtitle="`ID: #${productItem.raw.id} • ${productItem.raw.laboratory?.name || productItem.raw.laboratory || 'S/L'} • Stock: ${Math.round(productItem.raw.stock || 0)} • $${(parseFloat(productItem.raw.sale_price) || 0).toFixed(2)}`"
+                          :subtitle="`ID: #${productItem.raw.id} • ${productItem.raw.laboratory?.name || productItem.raw.laboratory || 'S/L'} • Stock: ${Math.round(productItem.raw.stock || 0)} • ${(parseFloat(productItem.raw.sale_price) || 0).toFixed(2)} USD`"
                         />
                       </template>
                     </AppAutocomplete>
@@ -701,7 +701,7 @@ watch(
                         Stock: {{ Math.round(item.product.stock || 0) }}
                       </span>
                       <span>•</span>
-                      <span>Base: ${{ (parseFloat(item.product.sale_price) || 0).toFixed(2) }}</span>
+                      <span>Base: {{ (parseFloat(item.product.sale_price) || 0).toFixed(2) }} USD</span>
                     </div>
                   </VCol>
 
@@ -746,7 +746,7 @@ watch(
                   <VCol cols="3" sm="4" md="2" class="text-end">
                     <span class="text-super-xs text-medium-emphasis uppercase font-weight-bold mb-1 d-block">Subtotal</span>
                     <span class="text-sm font-weight-bold text-high-emphasis leading-tight d-block pt-1">
-                      ${{ calculateProductPrice(item).toFixed(2) }}
+                      {{ calculateProductPrice(item).toFixed(2) }} USD
                     </span>
                   </VCol>
 
@@ -781,7 +781,7 @@ watch(
             <div class="d-flex flex-column text-start">
               <span class="text-super-xs font-weight-black text-disabled uppercase">Precio Base</span>
               <span class="text-xs font-weight-bold text-medium-emphasis text-decoration-line-through leading-tight">
-                ${{ (parseFloat(regularTotalPrice) || 0).toFixed(2) }}
+                {{ (parseFloat(regularTotalPrice) || 0).toFixed(2) }} USD
               </span>
             </div>
 
@@ -790,7 +790,7 @@ watch(
             <div v-if="totalSavings > 0" class="d-flex flex-column text-start">
               <span class="text-super-xs font-weight-black text-success uppercase">Ahorro</span>
               <span class="text-xs font-weight-black text-success leading-tight">
-                -${{ (parseFloat(totalSavings) || 0).toFixed(2) }}
+                -{{ (parseFloat(totalSavings) || 0).toFixed(2) }} USD
               </span>
             </div>
 
@@ -799,7 +799,7 @@ watch(
             <div class="d-flex flex-column text-start">
               <span class="text-super-xs font-weight-black text-disabled uppercase">Total Pack</span>
               <span class="text-subtitle-1 font-weight-black text-primary leading-tight">
-                ${{ (parseFloat(formData.total_price) || 0).toFixed(2) }}
+                {{ (parseFloat(formData.total_price) || 0).toFixed(2) }} USD
               </span>
             </div>
           </div>

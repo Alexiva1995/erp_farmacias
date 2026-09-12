@@ -24,32 +24,44 @@ const headers = [
     cellClass: "font-weight-black text-primary d-none d-sm-table-cell",
     headerClass: "d-none d-sm-table-cell",
   },
-  { title: "Empresa",          key: "company_name",        sortable: true, width: "28%" },
-  { title: "% Desc.",          key: "discount_percentage", sortable: false, align: "center", width: "110px" },
+  { title: "Empresa",          key: "company_name",        sortable: true, width: "30%" },
+  { title: "% Desc.",          key: "discount_percentage", sortable: false, align: "end", width: "110px" },
   { title: "Rango Vol.",       key: "volume_range",        sortable: false, align: "center", width: "130px" },
-  { title: "Ventas Acum.",     key: "sales_amount",        sortable: false, align: "center", width: "130px" },
-  { title: "Vigencia",         key: "validity",            sortable: false, align: "center", width: "140px" },
-  { title: "Estado",           key: "is_active",           sortable: true, align: "center", width: "90px" },
+  { title: "Ventas Acum.",     key: "sales_amount",        sortable: false, align: "end", width: "120px" },
+  { title: "Vigencia",         key: "validity",            sortable: false, align: "center", width: "170px" },
+  { title: "Estado",           key: "is_active",           sortable: true, align: "center", width: "110px" },
   { title: "Acciones",         key: "actions",             sortable: false, align: "center", width: "140px" },
 ];
-
-const getStatusColor = (isActive) => (isActive ? "success" : "error");
-const getStatusText = (isActive) => (isActive ? "ACTIVA" : "INACTIVA");
 
 const formatDate = (dateString) => {
   if (!dateString) return "—";
   return new Date(dateString).toLocaleDateString("es-ES", {
     day: "2-digit",
-    month: "short",
+    month: "2-digit",
     year: "numeric",
   });
 };
 
+const isExpired = (endDateStr) => {
+  if (!endDateStr) return false;
+  const end = new Date(endDateStr);
+  const now = new Date();
+  return end < now;
+};
+
+const isExpiringSoon = (endDateStr) => {
+  if (!endDateStr) return false;
+  const end = new Date(endDateStr);
+  const now = new Date();
+  const diffHours = (end - now) / (1000 * 60 * 60);
+  return diffHours >= 0 && diffHours <= 24;
+};
+
 const getDiscountPercentage = (scales) => {
   if (!scales || scales.length === 0) return "—";
-  if (scales.length === 1) return `${scales[0].discount_percentage}%`;
-  const min = Math.min(...scales.map((s) => s.discount_percentage));
-  const max = Math.max(...scales.map((s) => s.discount_percentage));
+  if (scales.length === 1) return `${parseFloat(scales[0].discount_percentage || 0)}%`;
+  const min = Math.min(...scales.map((s) => parseFloat(s.discount_percentage || 0)));
+  const max = Math.max(...scales.map((s) => parseFloat(s.discount_percentage || 0)));
   return `${min}% - ${max}%`;
 };
 
@@ -79,6 +91,10 @@ const getVolumeRange = (scales) => {
         :items="props.companies"
         :items-length="props.totalCompanies"
         :loading="props.loading"
+        items-per-page-text="Filas por página:"
+        page-text="{0}-{1} de {2}"
+        loading-text="Cargando..."
+        no-data-text="No hay datos disponibles"
         class="text-no-wrap"
         density="compact"
         @update:options="(options) => emit('update:options', options)"
@@ -91,71 +107,66 @@ const getVolumeRange = (scales) => {
           />
         </template>
 
-        <!-- ID Column -->
+        <!-- ID Column (ID de la Empresa) -->
         <template #item.id="{ item }">
-          <span class="font-weight-black text-primary">{{ item.id }}</span>
+          <span class="font-weight-black text-primary" :title="'ID Empresa: #' + (item.company_id || item.id)">
+            {{ item.company_id || item.id }}
+          </span>
         </template>
 
         <!-- Company Name Column -->
         <template #item.company_name="{ item }">
-          <div class="d-flex flex-column py-2">
-            <span class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate" style="max-inline-size: 360px;">
-              {{ item.company_name }}
-            </span>
-            <span class="text-super-xs font-weight-bold text-primary text-uppercase mt-0-5">
-              ID EMPRESA: {{ item.company_id }}
-            </span>
-          </div>
+          <span class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate d-block py-2" style="max-inline-size: 380px;" :title="item.company_name">
+            {{ item.company_name }}
+          </span>
         </template>
 
         <!-- Discount Percentage Column -->
         <template #item.discount_percentage="{ item }">
-          <VChip color="success" size="small" variant="tonal" class="font-weight-black rounded">
+          <span class="text-sm font-weight-bold text-success pe-1">
             {{ getDiscountPercentage(item.scales) }}
-          </VChip>
+          </span>
         </template>
 
         <!-- Volume Range Column -->
         <template #item.volume_range="{ item }">
-          <div class="d-flex flex-column align-center py-1">
-            <span class="text-xs font-weight-black text-high-emphasis">
-              {{ formatCurrency(getVolumeRange(item.scales).min, 'USD') }}
-            </span>
-            <span class="text-super-xs font-weight-bold text-disabled uppercase">
-              A {{ formatCurrency(getVolumeRange(item.scales).max, 'USD') }}
-            </span>
-          </div>
+          <span class="text-xs font-weight-medium text-high-emphasis">
+            {{ (parseFloat(getVolumeRange(item.scales).min) || 0).toFixed(2) }} USD – {{ (parseFloat(getVolumeRange(item.scales).max) || 0).toFixed(2) }} USD
+          </span>
         </template>
 
         <!-- Sales Amount Column -->
         <template #item.sales_amount="{ item }">
-          <div class="d-flex flex-column align-center py-1">
-            <span class="text-xs font-weight-black text-info">
-              {{ formatCurrency(item.sales_amount ?? 0, 'USD') }}
-            </span>
-            <span class="text-super-xs font-weight-bold text-disabled uppercase">
-              {{ item.sales_count ?? 0 }} ÓRDENES
-            </span>
-          </div>
+          <span class="text-sm font-weight-medium text-high-emphasis pe-1">
+            {{ (parseFloat(item.sales_amount) || 0).toFixed(2) }} USD
+          </span>
         </template>
 
         <!-- Validity Column -->
         <template #item.validity="{ item }">
-          <div class="d-flex flex-column align-center text-super-xs font-weight-bold text-medium-emphasis">
-            <span>{{ formatDate(item.start_date) }}</span>
-            <span class="text-disabled">al {{ formatDate(item.end_date) }}</span>
+          <div class="d-flex flex-column align-center">
+            <span class="text-xs font-weight-medium text-medium-emphasis">
+              {{ formatDate(item.start_date) }} – {{ formatDate(item.end_date) }}
+            </span>
+            <span v-if="isExpired(item.end_date)" class="text-super-xs font-weight-bold text-error uppercase mt-0-5">
+              Vencida
+            </span>
+            <span v-else-if="isExpiringSoon(item.end_date)" class="text-super-xs font-weight-bold text-warning uppercase mt-0-5">
+              Vence pronto
+            </span>
           </div>
         </template>
 
         <!-- Active Status Column -->
         <template #item.is_active="{ item }">
           <VChip
-            :color="getStatusColor(item.is_active)"
-            size="x-small"
+            :color="item.is_active ? 'success' : 'secondary'"
+            size="small"
             variant="tonal"
-            class="font-weight-black px-2 rounded"
+            class="font-weight-bold px-2 rounded-pill"
           >
-            {{ getStatusText(item.is_active) }}
+            <span class="status-dot me-1" :class="item.is_active ? 'bg-success' : 'bg-secondary'"></span>
+            {{ item.is_active ? 'Activa' : 'Inactiva' }}
           </VChip>
         </template>
 
@@ -180,7 +191,7 @@ const getVolumeRange = (scales) => {
             </IconBtn>
             <IconBtn
               @click="emit('edit-offer', item)"
-              color="primary"
+              color="warning"
               size="small"
             >
               <VIcon icon="tabler-edit" size="18" />
@@ -218,20 +229,15 @@ const getVolumeRange = (scales) => {
             <div class="d-flex justify-space-between align-start mb-2">
               <div class="d-flex align-center gap-1">
                 <span class="text-primary font-weight-black text-super-xs bg-primary-lighten-5 px-1-5 py-0-5 rounded flex-shrink-0">
-                  ID: {{ item.id }}
-                </span>
-                <span class="text-super-xs font-weight-bold text-disabled uppercase">
-                  ID EMP: {{ item.company_id }}
+                  ID: {{ item.company_id || item.id }}
                 </span>
               </div>
-              <VChip
-                :color="getStatusColor(item.is_active)"
-                size="x-small"
-                variant="flat"
-                class="font-weight-black px-2 rounded"
-              >
-                {{ getStatusText(item.is_active) }}
-              </VChip>
+              <div class="d-flex align-center gap-1">
+                <span class="status-dot" :class="item.is_active ? 'bg-success' : 'bg-secondary'"></span>
+                <span :class="item.is_active ? 'text-success' : 'text-medium-emphasis'" class="text-xs font-weight-bold">
+                  {{ item.is_active ? 'Activa' : 'Inactiva' }}
+                </span>
+              </div>
             </div>
 
             <h3 class="product-mobile-title font-weight-black text-high-emphasis text-uppercase truncate-2-lines mb-2 text-body-2">
@@ -250,22 +256,23 @@ const getVolumeRange = (scales) => {
               <div class="d-flex flex-column text-center">
                 <span class="text-super-xs text-disabled text-uppercase font-weight-bold letter-spacing-1">Rango Vol:</span>
                 <span class="text-xs font-weight-bold text-medium-emphasis">
-                  {{ formatCurrency(getVolumeRange(item.scales).min, 'USD') }}+
+                  {{ (parseFloat(getVolumeRange(item.scales).min) || 0).toFixed(2) }} USD – {{ (parseFloat(getVolumeRange(item.scales).max) || 0).toFixed(2) }} USD
                 </span>
               </div>
 
               <div class="d-flex flex-column text-end">
                 <span class="text-super-xs text-disabled text-uppercase font-weight-bold letter-spacing-1">Ventas Acum:</span>
-                <span class="text-xs font-weight-bold text-info">
-                  {{ formatCurrency(item.sales_amount ?? 0, 'USD') }}
+                <span class="text-xs font-weight-medium text-high-emphasis">
+                  {{ (parseFloat(item.sales_amount) || 0).toFixed(2) }} USD
                 </span>
               </div>
             </div>
 
             <!-- Vigencia Móvil -->
-            <div class="d-flex justify-space-between align-center px-1 mt-1 text-super-xs font-weight-bold">
-              <span class="text-primary">INI: {{ formatDate(item.start_date) }}</span>
-              <span class="text-error">FIN: {{ formatDate(item.end_date) }}</span>
+            <div class="d-flex justify-space-between align-center px-1 mt-1 text-super-xs font-weight-medium text-medium-emphasis">
+              <span>{{ formatDate(item.start_date) }} – {{ formatDate(item.end_date) }}</span>
+              <span v-if="isExpired(item.end_date)" class="text-error font-weight-bold uppercase">Vencida</span>
+              <span v-else-if="isExpiringSoon(item.end_date)" class="text-warning font-weight-bold uppercase">Vence pronto</span>
             </div>
           </div>
 
@@ -328,6 +335,13 @@ const getVolumeRange = (scales) => {
 </template>
 
 <style scoped>
+.status-dot {
+  inline-size: 6px;
+  block-size: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
 .product-mobile-card {
   overflow: hidden;
   border-radius: 8px !important;
