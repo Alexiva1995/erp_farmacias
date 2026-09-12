@@ -9,8 +9,325 @@ import { toast } from '@/plugins/sweetalert'
 
 const { mobile: isMobile } = useDisplay()
 
+// Tab activo
 const activeTab = ref('patients')
+
+// Estado pestaña 1 — Pacientes
+const loading = ref(false)
+const statsLoading = ref(false)
+const chronicClients = ref([])
+const totalRecords = ref(0)
+const page = ref(1)
+const perPage = ref(15)
+const searchQuery = ref('')
+const statusFilter = ref('all')
 const consumptionTypeFilter = ref('all')
+const productFilter = ref(null)
+const productsList = ref([])
+
+// Estado pestaña 2 — Clasificación de productos
+const productsLoading = ref(false)
+const productsConfigList = ref([])
+const totalProducts = ref(0)
+const productPage = ref(1)
+const productPerPage = ref(15)
+const productSearchQuery = ref('')
+const productConsumptionFilter = ref('all')
+
+// Estado modal de edición
+const editDialog = ref(false)
+const savingProduct = ref(false)
+const selectedProduct = reactive({
+  id: null,
+  name: '',
+  consumption_type: 'chronic',
+  treatment_duration_days: 30,
+})
+
+// Estadísticas
+const stats = reactive({
+  total_patients: 0,
+  urgent_reminders: 0,
+  active_treatments: 0,
+  expired_treatments: 0,
+  total_treatments: 0,
+})
+
+// Opciones de filtros
+const consumptionTypeOptions = [
+  { title: 'Todos los Tipos', value: 'all' },
+  { title: 'Crónico (Uso Continuo)', value: 'chronic' },
+  { title: 'Tratamiento Único / Ciclo', value: 'single_treatment' },
+  { title: 'Esporádico / Ocasional', value: 'sporadic' },
+]
+
+const productConsumptionFilterOptions = [
+  { title: 'Todos los Tipos', value: 'all' },
+  { title: 'Sin Clasificar (Pendientes)', value: 'unclassified' },
+  { title: 'Crónico (Uso Continuo)', value: 'chronic' },
+  { title: 'Tratamiento Único / Ciclo', value: 'single_treatment' },
+  { title: 'Sin Alerta / Insumos', value: 'no_alert' },
+  { title: 'Esporádico / Ocasional', value: 'sporadic' },
+]
+
+const formConsumptionTypes = [
+  { title: 'Crónico (Uso Continuo - Recompra Recurrente)', value: 'chronic' },
+  { title: 'Tratamiento Único / Ciclo (Seguimiento al finalizar)', value: 'single_treatment' },
+  { title: 'Sin Alerta / Insumos (No alertar ni recordar)', value: 'no_alert' },
+  { title: 'Esporádico / Ocasional', value: 'sporadic' },
+]
+
+const productConfigHeaders = [
+  { title: 'ID', key: 'id', sortable: false, cellClass: 'font-weight-black text-primary' },
+  { title: 'Producto', key: 'name', sortable: false },
+  { title: 'Tipo de Consumo', key: 'consumption_type', sortable: false },
+  { title: 'Duración Estimada', key: 'treatment_duration_days', sortable: false },
+  { title: 'Automatización WhatsApp', key: 'automation', sortable: false },
+  { title: 'Acciones', key: 'actions', sortable: false, align: 'center' },
+]
+
+const statusOptions = [
+  { title: 'Todos los Estados', value: 'all' },
+  { title: 'Alerta Urgente (≤ 5 días)', value: 'urgent' },
+  { title: 'Tratamiento Activo (> 5 días)', value: 'active' },
+  { title: 'Tratamiento Vencido', value: 'expired' },
+]
+
+const headers = [
+  { title: 'Paciente / Cliente', key: 'client_name', sortable: false },
+  { title: 'Medicamento / Frecuencia', key: 'product_name', sortable: false },
+  { title: 'Tipo de Consumo', key: 'consumption_type', sortable: false },
+  { title: 'Última Compra', key: 'last_order_date_formatted', sortable: false },
+  { title: 'Duración / Fin', key: 'treatment_end_date_formatted', sortable: false },
+  { title: 'Precio Actual', key: 'pricing', sortable: false },
+  { title: 'Estado', key: 'status_label', sortable: false },
+  { title: 'Acción WhatsApp', key: 'actions', sortable: false, align: 'center' },
+]
+
+// Cargar estadísticas del panel superior
+const fetchStats = async () => {
+  statsLoading.value = true
+  try {
+    const res = await $api('/crm/chronic-clients/stats')
+    if (res?.data) Object.assign(stats, res.data)
+  } catch (error) {
+    console.error('Error fetchStats:', error)
+  } finally {
+    statsLoading.value = false
+  }
+}
+
+// Cargar listado de pacientes crónicos
+const fetchChronicClients = async () => {
+  loading.value = true
+  try {
+    const params = {
+      page: page.value,
+      itemsPerPage: perPage.value,
+      search: searchQuery.value || undefined,
+      status: statusFilter.value !== 'all' ? statusFilter.value : undefined,
+      consumption_type: consumptionTypeFilter.value !== 'all' ? consumptionTypeFilter.value : undefined,
+      product_id: productFilter.value || undefined,
+    }
+    const res = await $api('/crm/chronic-clients', { params })
+    if (res?.data) {
+      chronicClients.value = res.data.items || []
+      totalRecords.value = res.data.total || 0
+    }
+  } catch (error) {
+    console.error('Error fetchChronicClients:', error)
+  } finally {
+    loading.value = false
+  }
+}
+
+// Cargar catálogo de productos para clasificación
+const fetchProductsConfig = async () => {
+  productsLoading.value = true
+  try {
+    const params = {
+      page: productPage.value,
+      itemsPerPage: productPerPage.value,
+      search: productSearchQuery.value || undefined,
+      consumption_type: productConsumptionFilter.value !== 'all' ? productConsumptionFilter.value : undefined,
+    }
+    const res = await $api('/crm/chronic-clients/products-config', { params })
+    if (res?.data) {
+      productsConfigList.value = res.data.items || []
+      totalProducts.value = res.data.total || 0
+    }
+  } catch (e) {
+    console.error('Error fetchProductsConfig:', e)
+  } finally {
+    productsLoading.value = false
+  }
+}
+
+// Abrir modal de edición de producto
+const openEditProduct = (item) => {
+  selectedProduct.id = item.id
+  selectedProduct.name = item.name
+  selectedProduct.consumption_type = item.consumption_type || 'chronic'
+  selectedProduct.treatment_duration_days = item.treatment_duration_days
+    || (item.consumption_type === 'single_treatment' ? 7 : 30)
+  editDialog.value = true
+}
+
+// Guardar clasificación de consumo
+const saveProductConsumption = async () => {
+  savingProduct.value = true
+  try {
+    const duration = ['chronic', 'single_treatment', 'sporadic'].includes(selectedProduct.consumption_type)
+      ? (selectedProduct.treatment_duration_days
+          ? parseInt(selectedProduct.treatment_duration_days, 10)
+          : (selectedProduct.consumption_type === 'single_treatment' ? 7 : 30))
+      : null
+
+    const res = await $api(`/crm/chronic-clients/products-config/${selectedProduct.id}`, {
+      method: 'PUT',
+      data: {
+        consumption_type: selectedProduct.consumption_type,
+        treatment_duration_days: duration,
+      },
+    })
+
+    // Actualizar el item en la lista local con los datos confirmados por el servidor
+    if (res?.data) {
+      const targetIdx = productsConfigList.value.findIndex(p => p.id === selectedProduct.id)
+      if (targetIdx !== -1) {
+        productsConfigList.value[targetIdx] = {
+          ...productsConfigList.value[targetIdx],
+          ...res.data,
+        }
+      }
+    }
+
+    editDialog.value = false
+    toast.success('Clasificación de producto actualizada correctamente.')
+
+    // Recargar datos en background
+    await fetchProductsConfig()
+    fetchStats()
+    fetchChronicClients()
+    fetchChronicProductsList()
+  } catch (e) {
+    console.error('Error saveProductConsumption:', e)
+    const errorMsg = e?.response?._data?.message || e?.message || 'No se pudo actualizar la clasificación del producto.'
+    toast.error(errorMsg)
+  } finally {
+    savingProduct.value = false
+  }
+}
+
+// Obtener badge visual según tipo de consumo
+const getConsumptionBadge = (type) => {
+  switch (type) {
+    case 'chronic':          return { color: 'primary',   label: 'Crónico (Recurrente)', icon: 'tabler-repeat' }
+    case 'single_treatment': return { color: 'warning',   label: 'Tratamiento Único',    icon: 'tabler-calendar-event' }
+    case 'no_alert':         return { color: 'secondary', label: 'Sin Alerta / Insumos', icon: 'tabler-bell-off' }
+    case 'sporadic':         return { color: 'secondary', label: 'Esporádico',            icon: 'tabler-shopping-bag' }
+    default:                 return { color: 'error',     label: 'Sin Clasificar',       icon: 'tabler-help' }
+  }
+}
+
+// Resetear filtros de pestaña 1
+const resetFilters = () => {
+  searchQuery.value = ''
+  statusFilter.value = 'all'
+  consumptionTypeFilter.value = 'all'
+  productFilter.value = null
+  page.value = 1
+  fetchChronicClients()
+}
+
+// Resetear filtros de pestaña 2
+const resetProductFilters = () => {
+  productSearchQuery.value = ''
+  productConsumptionFilter.value = 'all'
+  productPage.value = 1
+  fetchProductsConfig()
+}
+
+// Cargar lista de productos crónicos para el autocomplete de filtro
+const fetchChronicProductsList = async () => {
+  try {
+    const res = await $api('/products/search', { params: { is_chronic: 1, per_page: 100 } })
+    if (res?.data?.data) {
+      productsList.value = res.data.data.map(p => ({
+        id: p.id,
+        name: `${p.name} (${p.treatment_duration_days || 30} días)`,
+      }))
+    }
+  } catch (e) {
+    // Fallback silencioso
+  }
+}
+
+// Helpers de estado para pestaña 1
+const getStatusColor = (item) => {
+  if (item.is_urgent) return 'warning'
+  if (item.is_active) return 'success'
+  return 'error'
+}
+
+const getStatusLabel = (item) => {
+  if (item.is_urgent) return 'Alerta (≤ 5 días)'
+  if (item.is_active) return 'Activo'
+  return 'Agotado'
+}
+
+const getStatusIcon = (item) => {
+  if (item.is_urgent) return 'tabler-alert-triangle'
+  if (item.is_active) return 'tabler-circle-check'
+  return 'tabler-clock-off'
+}
+
+// Watchers pestaña 1: búsqueda con debounce
+let searchTimeout = null
+watch(searchQuery, () => {
+  clearTimeout(searchTimeout)
+  searchTimeout = setTimeout(() => {
+    page.value = 1
+    fetchChronicClients()
+  }, 400)
+})
+
+// Watchers pestaña 1: filtros selectores
+watch([statusFilter, consumptionTypeFilter, productFilter], () => {
+  page.value = 1
+  fetchChronicClients()
+})
+
+// Watchers pestaña 1: paginación
+watch([page, perPage], fetchChronicClients)
+
+// Watchers pestaña 2: búsqueda con debounce
+let productSearchTimeout = null
+watch(productSearchQuery, () => {
+  clearTimeout(productSearchTimeout)
+  productSearchTimeout = setTimeout(() => {
+    productPage.value = 1
+    fetchProductsConfig()
+  }, 400)
+})
+
+// Watchers pestaña 2: filtro tipo de consumo
+watch(productConsumptionFilter, () => {
+  productPage.value = 1
+  fetchProductsConfig()
+})
+
+// Watchers pestaña 2: paginación
+watch([productPage, productPerPage], fetchProductsConfig)
+
+onMounted(() => {
+  fetchStats()
+  fetchChronicClients()
+  fetchProductsConfig()
+  fetchChronicProductsList()
+})
+</script>
+
 
 const productsLoading = ref(false)
 const productsConfigList = ref([])

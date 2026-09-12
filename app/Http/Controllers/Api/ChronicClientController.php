@@ -64,9 +64,12 @@ class ChronicClientController extends Controller
      */
     public function updateProductConfig(\App\Http\Requests\UpdateProductConsumptionRequest $request, int $id): JsonResponse
     {
-        $product = $this->chronicService->updateProductConsumption($id, $request->validated());
-
-        return ApiResponse::success($product, 'Configuración de producto actualizada exitosamente', 200);
+        try {
+            $product = $this->chronicService->updateProductConsumption($id, $request->validated());
+            return ApiResponse::success($product, 'Configuración de producto actualizada exitosamente', 200);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return ApiResponse::error('Producto no encontrado.', 404);
+        }
     }
 
     /**
