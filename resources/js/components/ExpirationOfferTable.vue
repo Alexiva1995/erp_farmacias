@@ -26,19 +26,9 @@ const headers = [
   { title: "Nombre de Oferta", key: "months_to_expiration", sortable: true, width: "35%" },
   { title: "% Desc.",          key: "discount_percentage",  sortable: true, align: "end", width: "110px" },
   { title: "Ventas",           key: "sales_count",          sortable: false, align: "end", width: "110px" },
-  { title: "Creado El",        key: "created_at",           sortable: true, align: "center", width: "140px" },
   { title: "Estado",           key: "is_active",            sortable: true, align: "center", width: "110px" },
   { title: "Acciones",         key: "actions",              sortable: false, align: "center", width: "130px" },
 ];
-
-const formatDate = (dateString) => {
-  if (!dateString) return "—";
-  return new Date(dateString).toLocaleDateString("es-ES", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-};
 
 const handleView = (offer) => emit("view-offer", offer);
 const handleEdit = (offer) => emit("edit-offer", offer);
@@ -101,14 +91,7 @@ const handleDelete = (id) => emit("delete-offer", id);
         <!-- Sales Count Column -->
         <template #item.sales_count="{ item }">
           <span class="text-sm font-weight-medium text-high-emphasis pe-1">
-            {{ item.sales_count ?? 0 }} uds.
-          </span>
-        </template>
-
-        <!-- Created At Column -->
-        <template #item.created_at="{ item }">
-          <span class="text-xs font-weight-medium text-medium-emphasis">
-            {{ formatDate(item.created_at) }}
+            {{ item.sales_count ?? 0 }}
           </span>
         </template>
 
@@ -203,15 +186,9 @@ const handleDelete = (id) => emit("delete-offer", id);
               <div class="d-flex flex-column text-end">
                 <span class="text-super-xs text-disabled text-uppercase font-weight-bold letter-spacing-1">Ventas:</span>
                 <span class="text-xs font-weight-bold text-medium-emphasis">
-                  {{ item.sales_count ?? 0 }} uds.
+                  {{ item.sales_count ?? 0 }}
                 </span>
               </div>
-            </div>
-
-            <!-- Creado El Móvil -->
-            <div class="d-flex justify-space-between align-center px-1 mt-1 text-super-xs font-weight-medium text-medium-emphasis">
-              <span>FECHA CREACIÓN:</span>
-              <span>{{ formatDate(item.created_at) }}</span>
             </div>
           </div>
 

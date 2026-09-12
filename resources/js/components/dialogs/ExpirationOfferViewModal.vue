@@ -236,7 +236,7 @@ watch(
         </VRow>
 
         <!-- Filtros y Barra de Búsqueda -->
-        <div class="d-flex flex-column flex-sm-row align-stretch align-sm-center gap-3 mb-4">
+        <div class="d-flex flex-column flex-md-row align-stretch align-md-center gap-3 mb-4">
           <VTextField
             v-model="searchQuery"
             placeholder="Buscar por producto, laboratorio, lote o código de barra..."
@@ -248,36 +248,39 @@ watch(
             class="rounded flex-grow-1 font-weight-bold"
           />
 
-          <VBtnToggle
-            v-model="activeScope"
-            mandatory
-            density="compact"
-            color="primary"
-            class="rounded border"
-          >
-            <VBtn value="qualifying" size="small" class="text-caption font-weight-bold">
-              Próximos a Vencer (≤ {{ props.offerData.months_to_expiration }}m)
-            </VBtn>
-            <VBtn value="all" size="small" class="text-caption font-weight-bold">
-              Todos los Lotes
-            </VBtn>
-            <VBtn value="excluded" size="small" class="text-caption font-weight-bold">
-              Excluidos
-            </VBtn>
-          </VBtnToggle>
+          <div class="d-flex align-center gap-2 flex-wrap">
+            <VBtnToggle
+              v-model="activeScope"
+              mandatory
+              density="compact"
+              color="primary"
+              variant="outlined"
+              class="rounded border overflow-hidden"
+            >
+              <VBtn value="qualifying" size="small" class="text-caption font-weight-bold px-3">
+                Por Vencer
+              </VBtn>
+              <VBtn value="all" size="small" class="text-caption font-weight-bold px-3">
+                Todos
+              </VBtn>
+              <VBtn value="excluded" size="small" class="text-caption font-weight-bold px-3">
+                Excluidos
+              </VBtn>
+            </VBtnToggle>
 
-          <VBtn
-            icon="tabler-refresh"
-            variant="outlined"
-            color="secondary"
-            size="small"
-            class="rounded align-self-sm-center"
-            :loading="loadingProducts"
-            @click="fetchOfferProducts"
-          >
-            <VIcon icon="tabler-refresh" size="18" />
-            <VTooltip activator="parent">Actualizar</VTooltip>
-          </VBtn>
+            <VBtn
+              icon="tabler-refresh"
+              variant="outlined"
+              color="secondary"
+              size="small"
+              class="rounded"
+              :loading="loadingProducts"
+              @click="fetchOfferProducts"
+            >
+              <VIcon icon="tabler-refresh" size="18" />
+              <VTooltip activator="parent">Actualizar</VTooltip>
+            </VBtn>
+          </div>
         </div>
 
         <!-- Indicador de Carga -->
@@ -321,11 +324,11 @@ watch(
             <thead>
               <tr class="bg-var-theme-background text-uppercase text-super-xs font-weight-bold">
                 <th class="ps-3 py-2 text-start">Producto</th>
-                <th class="py-2 text-start">Lote / Vencimiento</th>
+                <th class="py-2 text-start">Vencimiento</th>
                 <th class="py-2 text-end">Stock</th>
                 <th class="py-2 text-end">Precio Normal</th>
                 <th class="py-2 text-end">Precio Promo</th>
-                <th class="pe-3 py-2 text-center" style="width: 170px;">Aplicar en TPV</th>
+                <th class="pe-3 py-2 text-center" style="width: 100px;">Aplica TPV</th>
               </tr>
             </thead>
             <tbody>
@@ -334,44 +337,41 @@ watch(
                 :key="item.lot_id"
                 :class="item.is_excluded ? 'row-excluded' : ''"
               >
-                <!-- Producto -->
+                <!-- Producto (Estilo Tabla Inventario Productos) -->
                 <td class="ps-3 py-2">
-                  <div class="d-flex flex-column">
-                    <span class="text-sm font-weight-black text-high-emphasis leading-tight">
-                      {{ item.product_name }}
+                  <div class="d-flex flex-column min-width-0">
+                    <span
+                      class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate"
+                      style="max-inline-size: 360px;"
+                      :title="item.product_name"
+                    >
+                      {{ item.product_name?.toUpperCase() || "—" }}
                     </span>
-                    <div class="d-flex align-center gap-2 mt-0-5">
-                      <span class="text-super-xs text-disabled uppercase font-weight-bold">
-                        {{ item.laboratory_name }}
+                    <div class="d-flex align-center flex-wrap gap-1 text-super-xs mt-0-5">
+                      <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 180px;">
+                        {{ item.laboratory_name || 'S/L' }}
                       </span>
-                      <span v-if="item.barcode" class="text-super-xs text-primary font-weight-medium">
-                        • {{ item.barcode }}
-                      </span>
+                      <template v-if="item.barcode">
+                        <span class="text-disabled mx-1">|</span>
+                        <span class="text-disabled font-weight-medium">
+                          {{ item.barcode }}
+                        </span>
+                      </template>
                     </div>
                   </div>
                 </td>
 
-                <!-- Lote y Vencimiento -->
+                <!-- Vencimiento (Solo EXP y Fecha) -->
                 <td class="py-2">
-                  <div class="d-flex flex-column">
-                    <span class="text-xs font-weight-bold text-high-emphasis leading-tight">
-                      Lote: {{ item.lot_number || 'S/N' }}
-                    </span>
-                    <div class="d-flex align-center gap-1 mt-0-5">
-                      <span class="text-super-xs font-weight-bold text-warning">
-                        Exp: {{ item.expiration_date }}
-                      </span>
-                      <span class="text-super-xs text-disabled">
-                        ({{ item.days_remaining }} días)
-                      </span>
-                    </div>
-                  </div>
+                  <span class="text-xs font-weight-bold text-warning">
+                    EXP: {{ item.expiration_date }}
+                  </span>
                 </td>
 
-                <!-- Stock -->
+                <!-- Stock (Solo valor numérico) -->
                 <td class="py-2 text-end">
                   <span class="text-xs font-weight-bold text-high-emphasis">
-                    {{ item.quantity }} uds.
+                    {{ item.quantity ?? 0 }}
                   </span>
                 </td>
 
@@ -394,26 +394,22 @@ watch(
                   </div>
                 </td>
 
-                <!-- Acción Toggle Exclusión -->
+                <!-- Acción Toggle Exclusión (Solo Icono) -->
                 <td class="pe-3 py-2 text-center">
-                  <VBtn
-                    :color="item.is_excluded ? 'secondary' : 'success'"
-                    :variant="item.is_excluded ? 'tonal' : 'flat'"
+                  <IconBtn
+                    :color="item.is_excluded ? 'error' : 'success'"
                     size="small"
-                    class="font-weight-bold rounded text-caption px-3"
                     :loading="togglingProductIds.has(item.product_id)"
                     @click="handleToggleExclusion(item)"
                   >
                     <VIcon
-                      start
                       :icon="item.is_excluded ? 'tabler-eye-off' : 'tabler-check'"
-                      size="16"
+                      size="20"
                     />
-                    {{ item.is_excluded ? 'Excluido' : 'Aplica TPV' }}
                     <VTooltip activator="parent">
-                      {{ item.is_excluded ? 'Haz clic para incluir en la promo de TPV' : 'Haz clic para excluir de la promo de TPV' }}
+                      {{ item.is_excluded ? 'Excluido de TPV (Haz clic para habilitar)' : 'Aplica en TPV (Haz clic para excluir)' }}
                     </VTooltip>
-                  </VBtn>
+                  </IconBtn>
                 </td>
               </tr>
             </tbody>
@@ -431,27 +427,27 @@ watch(
           >
             <div class="d-flex justify-space-between align-start mb-2">
               <div class="d-flex flex-column text-start">
-                <span class="text-body-2 font-weight-black text-high-emphasis leading-tight">
+                <span class="text-body-2 font-weight-black text-high-emphasis text-uppercase leading-tight">
                   {{ item.product_name }}
                 </span>
-                <span class="text-super-xs text-disabled uppercase mt-0-5 font-weight-bold">
-                  {{ item.laboratory_name }} {{ item.barcode ? '• ' + item.barcode : '' }}
+                <span class="text-super-xs text-primary uppercase mt-0-5 font-weight-bold">
+                  {{ item.laboratory_name || 'S/L' }} {{ item.barcode ? '• ' + item.barcode : '' }}
                 </span>
               </div>
             </div>
 
-            <!-- Datos de Lote y Stock -->
+            <!-- Datos de Vencimiento y Stock -->
             <div class="pa-2 rounded bg-var-theme-background d-flex justify-space-between align-center mb-2">
               <div class="d-flex flex-column">
-                <span class="text-super-xs text-disabled uppercase font-weight-bold">Lote / Vence:</span>
+                <span class="text-super-xs text-disabled uppercase font-weight-bold">Vencimiento:</span>
                 <span class="text-xs font-weight-bold text-warning">
-                  {{ item.lot_number }} • {{ item.expiration_date }}
+                  EXP: {{ item.expiration_date }}
                 </span>
               </div>
               <div class="d-flex flex-column text-end">
                 <span class="text-super-xs text-disabled uppercase font-weight-bold">Stock:</span>
                 <span class="text-xs font-weight-black text-high-emphasis">
-                  {{ item.quantity }} uds.
+                  {{ item.quantity ?? 0 }}
                 </span>
               </div>
             </div>
@@ -463,25 +459,24 @@ watch(
                   Norm: ${{ parseFloat(item.sale_price || 0).toFixed(2) }}
                 </span>
                 <span class="text-sm font-weight-black text-success leading-tight">
-                  Promo: ${{ parseFloat(item.final_price || 0).toFixed(2) }}
+                  Promo: ${{ parseFloat(item.final_price || 0).toFixed(2) }} (-{{ item.discount_percentage }}%)
                 </span>
               </div>
 
-              <VBtn
-                :color="item.is_excluded ? 'secondary' : 'success'"
-                :variant="item.is_excluded ? 'tonal' : 'flat'"
+              <IconBtn
+                :color="item.is_excluded ? 'error' : 'success'"
                 size="small"
-                class="font-weight-bold rounded text-caption"
                 :loading="togglingProductIds.has(item.product_id)"
                 @click="handleToggleExclusion(item)"
               >
                 <VIcon
-                  start
                   :icon="item.is_excluded ? 'tabler-eye-off' : 'tabler-check'"
-                  size="16"
+                  size="20"
                 />
-                {{ item.is_excluded ? 'Excluido' : 'Aplica TPV' }}
-              </VBtn>
+                <VTooltip activator="parent">
+                  {{ item.is_excluded ? 'Excluido de TPV (Haz clic para habilitar)' : 'Aplica en TPV (Haz clic para excluir)' }}
+                </VTooltip>
+              </IconBtn>
             </div>
           </VCard>
         </div>
@@ -489,18 +484,22 @@ watch(
 
       <VDivider />
 
-      <!-- Footer de Modal -->
+      <!-- Footer de Modal de Ancho Completo -->
       <VCardActions class="pa-3 pa-sm-4 bg-surface border-t">
-        <VSpacer />
-        <VBtn
-          color="secondary"
-          variant="tonal"
-          height="40"
-          class="font-weight-black rounded px-5 text-button uppercase"
-          @click="onCancel"
-        >
-          Cerrar
-        </VBtn>
+        <VRow dense class="ma-0 w-100">
+          <VCol cols="12" class="pa-1">
+            <VBtn
+              color="secondary"
+              variant="outlined"
+              height="44"
+              block
+              class="font-weight-black rounded text-button uppercase"
+              @click="onCancel"
+            >
+              Cancelar
+            </VBtn>
+          </VCol>
+        </VRow>
       </VCardActions>
     </VCard>
   </VDialog>
