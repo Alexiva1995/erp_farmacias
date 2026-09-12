@@ -1,163 +1,179 @@
-<script setup>
-import AppEmptyState from "@/components/AppEmptyState.vue";
-import AppFilterBase from "@/components/AppFilterBase.vue";
-import AppMobilePagination from "@/components/AppMobilePagination.vue";
-import ChronicClientMobileCard from "@/components/cards/ChronicClientMobileCard.vue";
-import axios from "@/plugins/axios";
-import { toast } from "@/plugins/sweetalert";
-import { onMounted, reactive, ref, watch } from "vue";
+ï»¿<script setup>
+import { ref, reactive, computed, onMounted, watch } from 'vue'
+import AppFilterBase from '@/components/common/AppFilterBase.vue'
+import AppEmptyState from '@/components/common/AppEmptyState.vue'
+import AppMobilePagination from '@/components/common/AppMobilePagination.vue'
+import ChronicClientMobileCard from '@/components/cards/ChronicClientMobileCard.vue'
+import { useResponsive } from '@/composables/useResponsive'
+import { $api } from '@/utils/api'
 
-// Estados reactivos
-const loading = ref(false);
-const statsLoading = ref(false);
-const items = ref([]);
-const totalItems = ref(0);
+const { isMobile } = useResponsive()
 
-// PaginaciÃ³n y ordenamiento
-const page = ref(1);
-const itemsPerPage = ref(15);
-const sortBy = ref("id");
-const orderBy = ref("sort");
+// Estado de datos
+const loading = ref(false)
+const statsLoading = ref(false)
+const chronicClients = ref([])
+const totalRecords = ref(0)
+const page = ref(1)
+const perPage = ref(15)
 
 // Filtros
-const searchQuery = ref("");
-const statusFilter = ref("urgent"); // Por defecto mostrar urgentes (<= 5 dÃ­as)
-const phoneFilter = ref("");
+const searchQuery = ref('')
+const statusFilter = ref('all')
+const productFilter = ref(null)
+const productsList = ref([])
 
-// EstadÃ­sticas generales
+// EstadÃ­sticas
 const stats = reactive({
   total_patients: 0,
-  total_treatments: 0,
   urgent_reminders: 0,
-  expired_treatments: 0,
   active_treatments: 0,
-  patients_with_phone: 0,
-});
+  depleted_treatments: 0,
+  total_treatments: 0,
+})
 
+// Opciones de Estado para filtro
 const statusOptions = [
-  { title: "Todos los tratamientos", value: "all" },
-  { title: "âš ï¸ Por Vencer / Urgentes (â‰¥ 5 dÃeas)", value: "urgent" },
-  { title: "ğŸ“ª En Tratamiento Activo (> 5 dÃeas)", value: "active" },
-  { title: "ğŸŠ‘ agotados (> 30 dÃeas)", value: "expired" },
-];
+  { title: 'Todos los Estados', value: 'all' },
+  { title: 'Alerta Urgente (â‰¤ 5 dÃ­as)', value: 'urgent' },
+  { title: 'Tratamiento Activo (> 5 dÃ­as)', value: 'active' },
+  { title: 'Tratamiento Agotado', value: 'depleted' },
+]
 
-const phoneOptions = [
-  { title: "Todos los telÃ©fonos", value: "" },
-  { title: "Con TelÃ©fono", value: "yes" },
-  { title: "Sin TelÃ©fono", value: "no" },
-];
-
+// Headers para la tabla en escritorio
 const headers = [
-  { title: "ID", key: "client_id", sortable: false, width: "70px" },
-  { title: "CLIENTE / PACIENTE", key: "client_name", sortable: false },
-  { title: "TELÃ‰RONO", key: "phone", sortable: false },
-  { title: "MEDICAMENTO CRÃ“NICO", key: "product_name", sortable: false },
-  { title: "ÃšLTIMA COMPRA", key: "last_order_date_formatted", sortable: false },
-  { title: "DURACIÓÆN", key: "treatment_duration_days", sortable: false },
-  { title: "FIN ESTIMADO", key: "treatment_end_date_formatted", sortable: false },
-  { title: "ESTADO / ALERTA", key: "status_label", sortable: false },
-  { title: "PRECIO ACTUAL", key: "price_usd", sortable: false },
-  { title: "RECORDATORIO", key: "actions", sortable: false, align: "center" },
-];
+  { title: 'Paciente / Cliente', key: 'client_name', sortable: false },
+  { title: 'Medicamento CrÃ³nico', key: 'product_name', sortable: false },
+  { title: 'Ãšltima Compra', key: 'last_purchase_date', sortable: false },
+  { title: 'DuraciÃ³n / Fin', key: 'days_remaining', sortable: false },
+  { title: 'Precio Actual', key: 'pricing', sortable: false },
+  { title: 'Estado', key: 'status_label', sortable: false },
+  { title: 'AcciÃ³n WhatsApp', key: 'actions', sortable: false, align: 'center' },
+]
 
+// Contador de filtros activos
+const activeFiltersCount = computed(() => {
+  let count = 0
+  if (statusFilter.value !== 'all') count++
+  if (productFilter.value) count++
+  return count
+})
+
+// Cargar estadÃ­sticas
 const fetchStats = async () => {
-  statsLoading.value = true;
+  statsLoading.value = true
   try {
-    const response = await axios.get("/crm/chronic-clients/stats");
-    if (response.data?.data) {
-      Object.assign(stats, response.data.data);
+    const res = await $api('/crm/chronic-clients/stats')
+    if (res?.data) {
+      Object.assign(stats, res.data)
     }
   } catch (error) {
-    console.error("Error al cargar estadÃ­sticas:", error);
+    console.error('Error fetching chronic stats:', error)
   } finally {
-    statsLoading.value = false;
+    statsLoading.value = false
   }
-};
+}
 
+// Cargar listado de clientes crÃ³nicos
 const fetchChronicClients = async () => {
-  loading.value = true;
+  loading.value = true
   try {
     const params = {
-      search: searchQuery.value || undefined,
-      status: statusFilter.value || undefined,
-      has_phone: phoneFilter.value || undefined,
       page: page.value,
-      itemsPerPage: itemsPerPage.value,
-    };
+      per_page: perPage.value,
+      search: searchQuery.value || undefined,
+      status: statusFilter.value !== 'all' ? statusFilter.value : undefined,
+      product_id: productFilter.value || undefined,
+    }
 
-    const response = await axios.get("/crm/chronic-clients", { params });
-    const resData = response.data?.data;
-    if (resData) {
-      items.value = resData.items || [];
-      totalItems.value = resData.total || 0;
+    const res = await $api('/crm/chronic-clients', { params })
+    if (res?.data) {
+      chronicClients.value = res.data.data || []
+      totalRecords.value = res.data.total || 0
     }
   } catch (error) {
-    console.error("Error al cargar pacientes crÃ³nicos:", error);
-    toast.error("Error al cargar la lista de pacientes crÃ³nicos.");
+    console.error('Error fetching chronic clients:', error)
   } finally {
-    loading.value = false;
+    loading.value = false
   }
-};
+}
 
-const openWhatsApp = (item) => {
-  if (!item.whatsapp_url) {
-    toast.warning("El cliente no posee un nÃºmero de telÃ©fono vÃ¡lido registrado.");
-    return;
+// Cargar productos crÃ³nicos para el selector de filtro
+const fetchChronicProductsList = async () => {
+  try {
+    const res = await $api('/products/search', { params: { is_chronic: 1, per_page: 100 } })
+    if (res?.data?.data) {
+      productsList.value = res.data.data.map(p => ({
+        id: p.id,
+        name: `${p.name} (${p.treatment_duration_days || 30} dÃ­as)`,
+      }))
+    }
+  } catch (e) {
+    // Si la bÃºsqueda general de productos no soporta is_chronic, fallback silencioso
   }
-  window.open(item.whatsapp_url, "_blank");
-};
+}
 
-const copyMessage = (message) => {
-  if (!message) return;
-  navigator.clipboard.writeText(message);
-  toast.success("Mensaje de recordatorio copiado al portapapeles.");
-};
+// Helpers de estilo para estado
+const getStatusColor = (item) => {
+  if (item.status === 'urgent') return 'warning'
+  if (item.status === 'active') return 'success'
+  return 'error'
+}
 
-const clearFilters = () => {
-  searchQuery.value = "";
-  statusFilter.value = "urgent";
-  phoneFilter.value = "";
-  page.value = 1;
-};
+const getStatusLabel = (item) => {
+  if (item.status === 'urgent') return 'Alerta (â‰¤ 5 dÃ­as)'
+  if (item.status === 'active') return 'Activo'
+  return 'Agotado'
+}
 
-let debounceTimer;
-watch(
-  [searchQuery, statusFilter, phoneFilter, page, itemsPerPage],
-  () => {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => {
-      fetchChronicClients();
-    }, 300);
-  }
-);
+const getStatusIcon = (item) => {
+  if (item.status === 'urgent') return 'tabler-alert-triangle'
+  if (item.status === 'active') return 'tabler-circle-check'
+  return 'tabler-clock-off'
+}
 
-watch([searchQuery, statusFilter, phoneFilter], () => {
-  page.value = 1;
-});
+// Resetear filtros
+const resetFilters = () => {
+  searchQuery.value = ''
+  statusFilter.value = 'all'
+  productFilter.value = null
+  page.value = 1
+  fetchChronicClients()
+}
 
-const updateTableOptions = (options) => {
-  page.value = options.page;
-  itemsPerPage.value = options.itemsPerPage;
-};
+// Disparador debounce para bÃºsqueda
+let searchTimeout = null
+watch(searchQuery, () => {
+  clearTimeout(searchTimeout)
+  searchTimeout = setTimeout(() => {
+    page.value = 1
+    fetchChronicClients()
+  }, 400)
+})
+
+watch([statusFilter, productFilter], () => {
+  page.value = 1
+  fetchChronicClients()
+})
 
 onMounted(() => {
-  fetchStats();
-  fetchChronicClients();
-});
+  fetchStats()
+  fetchChronicClients()
+  fetchChronicProductsList()
+})
 </script>
 
 <template>
-  <div class="d-flex flex-column gap-6">
-    <!-- Encabezado Principal -->
-    <div class="d-flex flex-wrap align-center justify-space-between gap-4">
+  <div class="chronic-clients-page">
+    <!-- Encabezado de PÃ¡gina -->
+    <div class="d-flex flex-wrap align-center justify-space-between gap-4 mb-6">
       <div>
-        <h2 class="text-h4 font-weight-black d-flex align-center gap-2">
-          <VIcon icon="tabler-heart-rate-monitor" color="primary" size="32" />
-          Control de Pacientes y Medicamentos CrÃ³nicos
+        <h2 class="text-h4 font-weight-bold text-high-emphasis">
+          Seguimiento de Pacientes CrÃ³nicos
         </h2>
-        <p class="text-body-2 text-medium-emphasis mb-0">
-          SupervisiÃ³n de tratamientos recurrentes, cÃ¡lculo de dÃ­as de agotamiento y recordatorios por WhatsApp con precios actualizados.
-        </p>
+        <div class="text-subtitle-1 text-medium-emphasis mt-1">
+          DetecciÃ³n de recompra y recordatorios automatizados de tratamiento
+        </div>
       </div>
 
       <div class="d-flex align-center gap-2">
@@ -174,7 +190,7 @@ onMounted(() => {
     </div>
 
     <!-- KPI Cards Superiores -->
-    <VRow dense>
+    <VRow dense class="mb-4">
       <VCol cols="12" sm="6" md="3">
         <VCard variant="flat" border class="pa-4 rounded-xl stat-card">
           <div class="d-flex align-center justify-space-between">
@@ -205,9 +221,264 @@ onMounted(() => {
               <div class="text-caption text-medium-emphasis mt-1">Tratamientos a lÃ­mite (â‰¤ 5 dÃ­as)</div>
             </div>
             <VAvatar color="warning" variant="tonal" rounded="lg" size="48">
-              <VIcon icon="tabler-bell-ringing" size="28" />
+              <VIcon icon="tabler-alert-triangle" size="28" />
             </VAvatar>
           </div>
         </VCard>
-      </VCol>((€€€€€€ñY½°½±ÌôˆÄÈˆÍ´ôˆØˆµôˆÌˆø(€€€€€€€€ñY…É(€€€€€€€€€Ù…É¥…¹Ğô‰™±…Ğˆ(€€€€€€€€€‰½É‘•È(€€€€€€€€€±…ÍÌô‰Á„´ĞÉ½Õ¹‘•µá°ÍÑ…Ğµ…ÉÕÉÍ½ÈµÁ½¥¹Ñ•Èˆ(€€€€€€€€€€é±…ÍÌô‰ÍÑ…ÑÕÍ¥±Ñ•È€ôôô€…Ñ¥Ù”œ€ü€‰½É‘•Èµ¥¹™¼‰½É‘•Èµ½Á…¥Ñä´ÄÀÀœ€è€œœˆ(€€€€€€€€€±¥¬ô‰ÍÑ…ÑÕÍ¥±Ñ•È€ô€…Ñ¥Ù”œˆ(€€€€€€€€ø(€€€€€€€€€€ñ‘¥Ø±…ÍÌô‰µ™±•à…±¥¸µ•¹Ñ•È©ÕÍÑ¥™äµÍÁ…”µ‰•Ñİ••¸ˆø(€€€€€€€€€€€€ñ‘¥Øø(€€€€€€€€€€€€€€ñ‘¥Ø±…ÍÌô‰Ñ•áĞµ…ÁÑ¥½¸™½¹Ğµİ•¥¡Ğµ‰½±Ñ•áĞµ¥¹™¼Ñ•áĞµÕÁÁ•É…Í”ˆùQÉ…Ñ…µ¥•¹Ñ½ÌÑ¥Ù½Ìğ½‘¥Øø(€€€€€€€€€€€€€€ñ‘¥Ø±…ÍÌô‰Ñ•áĞµ Ğ™½¹Ğµİ•¥¡Ğµ‰±…¬µĞ´ÄÑ•áĞµ¥¹™¼ˆùíìÍÑ…ÑÌ¹…Ñ¥Ù•}ÑÉ•…Ñµ•¹ÑÌõôğ½‘¥Øø(€€€€€€€€€€€€€€ñ‘¥Ø±…ÍÌô‰Ñ•áĞµ…ÁÑ¥½¸Ñ•áĞµµ•‘¥Õ´µ•µÁ¡…Í¥ÌµĞ´Äˆù½¸‘½Í¥Ì‘¥ÍÁ½¹¥‰±”€ ø€Ô“µ…Ì¤ğ½‘¥Øø(€€€€€€€€€€€€ğ½‘¥Øø(€€€€€€€€€€€€ñYÙ…Ñ…È½±½Èô‰¥¹™¼ˆÙ…É¥…¹Ğô‰Ñ½¹…°ˆÉ½Õ¹‘•ô‰±œˆÍ¥é”ôˆĞàˆø(€€€€€€€€€€€€€€ñY%½¸¥½¸ô‰Ñ…‰±•ÈµÁ¥±°ˆÍ¥é”ôˆÈàˆ€¼ø(€€€€€€€€€€€€ğ½YÙ…Ñ…Èø(€€€€€€€€€€ğ½‘¥Øø(€€€€€€€€ğ½Y…Éø(€€€€€€ğ½Y½°ø((€€€€€€ñY½°½±ÌôˆÄÈˆÍ´ôˆØˆµôˆÌˆø(€€€€€€€€ñY…ÉÙ…É¥…¹Ğô‰™±…Ğˆ‰½É‘•È±…ÍÌô‰Á„´ĞÉ½Õ¹‘•µá°ÍÑ…Ğµ…Éˆø(€€€€€€€€€€ñ‘¥Ø±…ÍÌô‰µ™±•à…±¥¸µ•¹Ñ•È©ÕÍÑ¥™äµÍÁ…”µ‰•Ñİ••¸ˆø(€€€€€€€€€€€€ñ‘¥Øø(€€€€€€€€€€€€€€ñ‘¥Ø±…ÍÌô‰Ñ•áĞµ…ÁÑ¥½¸™½¹Ğµİ•¥¡Ğµ‰½±Ñ•áĞµÍÕ•ÍÌÑ•áĞµÕÁÁ•É…Í”ˆù1¥ÍÑ½Ì]¡…ÑÍÁÀğ½‘¥Øø(€€€€€€€€€€€€€€ñ‘¥Ø±…ÍÌô‰Ñ•áĞµ Ğ™½¹Ğµİ•¥¡Ğµ‰±…¬µĞ´ÄÑ•áĞµÍÕ•ÍÌˆùíìÍÑ…ÑÌ¹Á…Ñ¥•¹ÑÍ}İ¥Ñ¡}Á¡½¹”õôğ½‘¥Øø(€€€€€€€€€€€€€€ñ‘¥Ø±…ÍÌô‰Ñ•áĞµ…ÁÑ¥½¸Ñ•áĞµµ•‘¥Õ´µ•µÁ¡…Í¥ÌµĞ´ÄˆùA…¥•¹Ñ•Ì½¸Ñ•³¥™½¹¼Û…±¥‘¼ğ½‘¥Øø(€€€€€€€€€€€€ğ½‘¥Øø(€€€€€€€€€€€€ñYÙ…Ñ…È½±½Èô‰ÍÕ•ÍÌˆÙ…É¥…¹Ğô‰Ñ½¹…°ˆÉ½Õ¹‘•ô‰±œˆÍ¥é”ôˆĞàˆø(€€€€€€€€€€€€€€ñY%½¸¥½¸ô‰Ñ…‰±•Èµ‰É…¹µİ¡…ÑÍ…ÁÀˆÍ¥é”ôˆÈàˆ€¼ø(€€€€€€€€€€€€ğ½YÙ…Ñ…Èø(€€€€€€€€€€ğ½‘¥Øø(€€€€€€€€ğ½Y…Éø(€€€€€€ğ½Y½°ø(€€€€ğ½YI½Üø((€€€€ğ„´´½µÁ½¹•¹Ñ”‘”¥±ÑÉ¼	…Í”ÍÓ…¹‘…È€´´ø(€€€€ñÁÁ¥±Ñ•É	…Í”(€€€€€€éÍ•…É ô‰Í•…É¡EÕ•Éäˆ(€€€€€€é¡…Ìµ…‘Ù…¹•µ™¥±Ñ•ÉÌô‰	½½±•…¸¡ÍÑ…ÑÕÍ¥±Ñ•È€„ôô€…±°œñğÁ¡½¹•¥±Ñ•È¤ˆ(€€€€€€éÍ¡½Üµ…‘ô‰™…±Í”ˆ(€€€€€€éÍ¡½Üµ•áÁ½ÉĞô‰™…±Í”ˆ(€€€€€Í•…É µÁ±…•¡½±‘•Èô‰	ÕÍ…ÈÁ½ÈÁ…¥•¹Ñ”°¥‘Õ±„°Ñ•³¥™½¹¼¼µ•‘¥…µ•¹Ñ¼¸¸¸ˆ(€€€€€±…ÍÌô‰Áä´Äˆ(€€€€€ÕÁ‘…Ñ”éÍ•…É ô‰Í•…É¡EÕ•Éä€ô€‘•Ù•¹Ğˆ(€€€€€±•…Èô‰±•…É¥±Ñ•ÉÌˆ(€€€€ø(€€€€€€ñÑ•µÁ±…Ñ”€…‘Ù…¹•µ™¥±Ñ•ÉÌø(€€€€€€€€ñY½°½±ÌôˆÄÈˆÍ´ôˆØˆµôˆĞˆø(€€€€€€€€€€ñYM•±•Ğ(€€€€€€€€€€€Øµµ½‘•°ô‰ÍÑ…ÑÕÍ¥±Ñ•Èˆ(€€€€€€€€€€€€é¥Ñ•µÌô‰ÍÑ…ÑÕÍ=ÁÑ¥½¹Ìˆ(€€€€€€€€€€€¥Ñ•´µÑ¥Ñ±”ô‰Ñ¥Ñ±”ˆ(€€€€€€€€€€€¥Ñ•´µÙ…±Õ”ô‰Ù…±Õ”ˆ(€€€€€€€€€€€±…‰•°ô‰MQ<0I=IQ=I%<ˆ(€€€€€€€€€€€‘•¹Í¥Ñäô‰½µÁ…Ğˆ(€€€€€€€€€€€Ù…É¥…¹Ğô‰½ÕÑ±¥¹•ˆ(€€€€€€€€€€€ÁÉ•Á•¹µ¥¹¹•Èµ¥½¸ô‰Ñ…‰±•Èµ™¥±Ñ•Èˆ(€€€€€€€€€€€¡¥‘”µ‘•Ñ…¥±Ì(€€€€€€€€€€¼ø(€€€€€€€€ğ½Y½°ø((€€€€€€€€ñY½°½±ÌôˆÄÈˆÍ´ôˆØˆµôˆÌˆø(€€€€€€€€€€ñYM•±•Ğ(€€€€€€€€€€€Øµµ½‘•°ô‰Á¡½¹•¥±Ñ•Èˆ(€€€€€€€€€€€€é¥Ñ•µÌô‰Á¡½¹•=ÁÑ¥½¹Ìˆ(€€€€€€€€€€€¥Ñ•´µÑ¥Ñ±”ô‰Ñ¥Ñ±”ˆ(€€€€€€€€€€€¥Ñ•´µÙ…±Õ”ô‰Ù…±Õ”ˆ(€€€€€€€€€€€±…‰•°ô‰Q1=9<ˆ(€€€€€€€€€€€‘•¹Í¥Ñäô‰½µÁ…Ğˆ(€€€€€€€€€€€Ù…É¥…¹Ğô‰½ÕÑ±¥¹•ˆ(€€€€€€€€€€€ÁÉ•Á•¹µ¥¹¹•Èµ¥½¸ô‰Ñ…‰±•ÈµÁ¡½¹”ˆ(€€€€€€€€€€€¡¥‘”µ‘•Ñ…¥±Ì(€€€€€€€€€€¼ø(€€€€€€€€ğ½Y½°ø(€€€€€€ğ½Ñ•µÁ±…Ñ”ø(€€€€ğ½ÁÁ¥±Ñ•É	…Í”ø((€€€€ğ„´´Y¥ÍÑ„5==Y%0‘”A…¥•¹Ñ•ÌËÍ¹¥½Ì€´´ø(€€€€ñ‘¥Ø±…ÍÌô‰µ‰±½¬µµµ¹½¹”ˆø(€€€€€€ñÑ•µÁ±…Ñ”Øµ¥˜ô‰±½…‘¥¹œˆø(€€€€€€€€ñYM­•±•Ñ½¹1½…‘•ÈØµ™½Ét‰¤¥¸€Ğˆ€é­•äô‰¤ˆÑåÁ”ô‰…ÉÑ¥±”ˆ±…ÍÌô‰µˆ´ÌÉ½Õ¹‘•µµœˆ€¼ø(€€€€€€ğ½Ñ•µÁ±…Ñ”ø((€€€€€€ñÑ•µÁ±…Ñ”Øµ•±Í”µ¥˜ô‰¥Ñ•µÌ¹±•¹Ñ €ø€Àˆø(€€€€€€€€ñ¡É½¹¥±¥•¹Ñ5½‰¥±•…É(€€€€€€€€€Øµ™½Ét‰¥Ñ•´¥¸¥Ñ•µÌˆ(€€€€€€€€€€é­•äôˆµ½‰¥±”´œ€¬¥Ñ•´¹±¥•¹Ñ}¥€¬€œ´œ€¬¥Ñ•´¹ÁÉ½‘ÕÑ}¥ˆ(€€€€€€€€€€é¥Ñ•´ô‰¥Ñ•´ˆ(€€€€€€€€¼ø(€€€€€€€€ñÁÁ5½‰¥±•A…¥¹…Ñ¥½¸(€€€€€€€€€Øµµ½‘•°éÁ…”ô‰Á…”ˆ(€€€€€€€€€Øµµ½‘•°é¥Ñ•µÌµÁ•ÈµÁ…”ô‰¥Ñ•µÍA•ÉA…”ˆ(€€€€€€€€€€éÑ½Ñ…°µ¥Ñ•µÌô‰Ñ½Ñ…±%Ñ•µÌˆ(€€€€€€€€€€é±½…‘¥¹œô‰±½…‘¥¹œˆ(€€€€€€€€€¡…¹”ô‰ÕÁ‘…Ñ•Q…‰±•=ÁÑ¥½¹Ìˆ(€€€€€€€€¼ø(€€€€€€ğ½Ñ•µÁ±…Ñ”ø((€€€€€€ñÑ•µÁ±…Ñ”Øµ•±Í”ø(€€€€€€€€ñY…É±…ÍÌô‰É½Õ¹‘•µµœ‰½É‘•ÈÁ„´Ğˆø(€€€€€€€€€€ñÁÁµÁÑåMÑ…Ñ”(€€€€€€€€€€€Ñ¥Ñ±”ô‰9¼Í”•¹½¹ÑÉ…É½¸Á…¥•¹Ñ•ÌËÍ¹¥½Ìˆ(€€€€€€€€€€€µ•ÍÍ…”ô‰9¼¡…äÑÉ…Ñ…µ¥•¹Ñ½ÌËÍ¹¥½ÌÉ•¥ÍÑÉ…‘½ÌÅÕ”½¥¹¥‘…¸½¸±½Ì™¥±ÑÉ½Ì…ÑÕ…±•Ì¸ˆ(€€€€€€€€€€€¥½¸ô‰Ñ…‰±•Èµ¡•…ÉĞµÍ•…É ˆ(€€€€€€€€€€¼ø(€€€€€€€€ğ½Y…Éø(€€€€€€ğ½Ñ•µÁ±…Ñ”ø(€€€€ğ½‘¥Øø((€€€€ğ„´´Y¥ÍÑ„MI%Q=I%<€¡Q…‰±„ÍÑ¥±¼%¹Ù•¹Ñ…É¥¼¤€´´ø(€€€€ñ‘¥Ø±…ÍÌô‰µ¹½¹”µµµ‰±½¬ˆø(€€€€€€ñY…É±…ÍÌô‰É½Õ¹‘•µ±œ‰½É‘•ÈÍ¡…‘½ÜµÍ´½Ù•É™±½Üµ¡¥‘‘•¸ˆø(€€€€€€€€ñY…Ñ…Q…‰±•M•ÉÙ•È(€€€€€€€€€Øµµ½‘•°é¥Ñ•µÌµÁ•ÈµÁ…”ô‰¥Ñ•µÍA•ÉA…”ˆ(€€€€€€€€€Øµµ½‘•°éÁ…”ô‰Á…”ˆ(€€€€€€€€€€é¡•…‘•ÉÌô‰¡•…‘•ÉÌˆ(€€€€€€€€€€é¥Ñ•µÌô‰¥Ñ•µÌˆ(€€€€€€€€€€é¥Ñ•µÌµ±•¹Ñ ô‰Ñ½Ñ…±%Ñ•µÌˆ(€€€€€€€€€€é±½…‘¥¹œô‰±½…‘¥¹œˆ(€€€€€€€€€‘•¹Í¥Ñäô‰½µÁ…Ğˆ(€€€€€€€€€±…ÍÌô‰Ñ•áĞµ¹¼µİÉ…Àˆ(€€€€€€€€€¡½Ù•È(€€€€€€€€€ÕÁ‘…Ñ”é½ÁÑ¥½¹Ìô‰ÕÁ‘…Ñ•Q…‰±•=ÁÑ¥½¹Ìˆ(€€€€€€€€ø(€€€€€€€€€€ñÑ•µÁ±…Ñ”€¹¼µ‘…Ñ„ø(€€€€€€€€€€€€ñÁÁµÁÑåMÑ…Ñ”(€€€€€€€€€€€€€Ñ¥Ñ±”ô‰9¼Í”•¹½¹ÑÉ…É½¸Á…¥•¹Ñ•ÌËÍ¹¥½Ìˆ(€€€€€€€€€€€€€µ•ÍÍ…”ô‰9¼¡…äÑÉ…Ñ…µ¥•¹Ñ½ÌËÍ¹¥½ÌÉ•¥ÍÑÉ…‘½ÌÅÕ”½¥¹¥‘…¸½¸±½Ì™¥±ÑÉ½Ì…ÑÕ…±•Ì¸ˆ(€€€€€€€€€€€€€¥½¸ô‰Ñ…‰±•Èµ¡•…ÉĞµÍ•…É ˆ(€€€€€€€€€€€€¼ø(€€€€€€€€€€ğ½Ñ•µÁ±…Ñ”ø((€€€€€€€€€€ğ„´´%±¥•¹Ñ”€´´ø(€€€€€€€€€€ñÑ•µÁ±…Ñ”€¥Ñ•´¹±¥•¹Ñ}¥ô‰ì¥Ñ•´ôˆø(€€€€€€€€€€€€ñÍÁ…¸±…ÍÌô‰™½¹Ğµİ•¥¡Ğµ‰±…¬Ñ•áĞµÁÉ¥µ…Éäˆø(€€€€€€€€€€€€€€íì¥Ñ•´¹±¥•¹Ñ}¥õô(€€€€€€€€€€€€ğ½ÍÁ…¸ø(€€€€€€€€€€ğ½Ñ•µÁ±…Ñ”ø((€€€€€€€€€€ğ„´´±¥•¹Ñ”€¼A…¥•¹Ñ”€´´ø(€€€€€€€€€€ñÑ•µÁ±…Ñ”€¥Ñ•´¹±¥•¹Ñ}¹…µ”ô‰ì¥Ñ•´ôˆø(€€€€€€€€€€€€ñ‘¥Ø±…ÍÌô‰µ™±•à™±•àµ½±Õµ¸Áä´Èˆø(€€€€€€€€€€€€€€ñÍÁ…¸±…ÍÌô‰™½¹Ğµİ•¥¡Ğµ‰±…¬Ñ•áĞµÍÕ‰Ñ¥Ñ±”´ÈÑ•áĞµ¡¥ µ•µÁ¡…Í¥Ìˆø(€€€€€€€€€€€€€€€íì¥Ñ•´¹±¥•¹Ñ}¹…µ”õô(€€€€€€€€€€€€€€ğ½ÍÁ…¸ø(€€€€€€€€€€€€€€ñÍÁ…¸±…ÍÌô‰Ñ•áĞµ…ÁÑ¥½¸Ñ•áĞµ‘¥Í…‰±•™½¹Ğµİ•¥¡Ğµ‰½±ˆø(€€€€€€€€€€€€€€€%èíì¥Ñ•´¹¥‘•¹Ñ¥™¥…Ñ¥½¸ñğ€L½œõô(€€€€€€€€€€€€€€ğ½ÍÁ…¸ø(€€€€€€€€€€€€ğ½‘¥Øø(€€€€€€€€€€ğ½Ñ•µÁ±…Ñ”ø((€€€€€€€€€€ğ„´´Q•³¥™½¹¼€´´ø(€€€€€€€€€€ñÑ•µÁ±…Ñ”€¥Ñ•´¹Á¡½¹”ô‰íì¥Ñ•´õôˆø(€€€€€€€€€€€€ñ‘¥ØØµ¥˜ô‰¥Ñ•´¹Á¡½¹”ˆ±…ÍÌô‰µ™±•à…±¥¸µ•¹Ñ•È…À´Äˆø(€€€€€€€€€€€€€€ñY%½¸¥½¸ô‰Ñ…‰±•ÈµÁ¡½¹”ˆÍ¥é”ôˆÄĞˆ½±½Èô‰‘¥Í…‰±•ˆ€¼ø(€€€€€€€€€€€€€€ñÍÁ…¸±…ÍÌô‰™½¹Ğµİ•¥¡Ğµ‰½±Ñ•áĞµ‰½‘ä´Èˆùíì¥Ñ•´¹Á¡½¹”õôğ½ÍÁ…¸ø(€€€€€€€€€€€€ğ½‘¥Øø(€€€€€€€€€€€€ñY¡¥ÀØµ•±Í”Í¥é”ô‰àµÍµ…±°ˆ½±½Èô‰•ÉÉ½ÈˆÙ…É¥…¹Ğô‰Ñ½¹…°ˆ±…ÍÌô‰™½¹Ğµİ•¥¡Ğµ‰½±ˆø(€€€€€€€€€€€€€M¥¸Q•³¥™½¹¼(€€€€€€€€€€€€ğ½Y¡¥Àø(€€€€€€€€€€ğ½Ñ•µÁ±…Ñ”ø((€€€€€€€€€€ğ„´´5•‘¥…µ•¹Ñ¼ËÍ¹¥¼€´´ø(€€€€€€€€€€ñÑ•µÁ±…Ñ”€¥Ñ•´¹ÁÉ½‘ÕÑ}¹…µ”ô‰ì¥Ñ•´ôˆø(€€€€€€€€€€€€ñ‘¥Ø±…ÍÌô‰µ™±•à™±•àµ½±Õµ¸Áä´Èˆø(€€€€€€€€€€€€€€ñÍÁ…¸±…ÍÌô‰™½¹Ğµİ•¥¡Ğµ‰±…¬Ñ•áĞµ‰½‘ä´ÈÑ•áĞµ¡¥ µ•µÁ¡…Í¥Ìˆø(€€€€€€€€€€€€€€€íì¥Ñ•´¹ÁÉ½‘ÕÑ}¹…µ”õô(€€€€€€€€€€€€€€ğ½ÍÁ…¸ø(€€€€€€€€€€€€€€ñÍÁ…¸±…ÍÌô‰Ñ•áĞµ…ÁÑ¥½¸Ñ•áĞµ‘¥Í…‰±•ˆø(€€€€€€€€€€€€€€€1…ˆèíì¥Ñ•´¹±…‰½É…Ñ½Éå}¹…µ”õôƒ
-Ü	…ÉÉ…Ìèíì¥Ñ•´¹ÁÉ½‘ÕÑ}‰…É½‘”ñğ€L½œõô(€€€€€€€€€€€€€€ğ½ÍÁ…¸ø(€€€€€€€€€€€€ğ½‘¥Øø(€€€€€€€€€€ğ½Ñ•µÁ±…Ñ”ø((€€€€€€€€€€ğ„´´ƒii±Ñ¥µ„½µÁÉ„€´´ø(€€€€€€€€€€ñÑ•µÁ±…Ñ”€¥Ñ•´¹±…ÍÑ}½É‘•É}‘…Ñ•}™½Éµ…ÑÑ•ô‰ì¥Ñ•´ôˆø(€€€€€€€€€€€€ñ‘¥Ø±…ÍÌô‰µ™±•à™±•àµ½±Õµ¸ˆø(€€€€€€€€€€€€€€ñÍÁ…¸±…ÍÌô‰™½¹Ğµİ•¥¡Ğµ‰½±Ñ•áĞµ‰½‘ä´Èˆùíì¥Ñ•´¹±…ÍÑ}½É‘•É}‘…Ñ•}™½Éµ…ÑÑ•õğğ½ÍÁ…¸ø(€€€€€€€€€€€€€€ñÍÁ…¸±…ÍÌô‰Ñ•áĞµ…ÁÑ¥½¸Ñ•áĞµ‘¥Í…‰±•™½¹Ğµİ•¥¡Ğµ‰½±ˆù…¹Ğèíì¥Ñ•´¹ÁÕÉ¡…Í•‘}ÅÕ…¹Ñ¥ÑäõôÕ‘Ì¸ğ½ÍÁ…¸ø(€€€€€€€€€€€€ğ½‘¥Øø(€€€€€€€€€€ğ½Ñ•µÁ±…Ñ”ø((€€€€€€€€€€ğ„´´ÕÉ…§Í¸QÉ…Ñ…µ¥•¹Ñ¼€´´ø(€€€€€€€€€€ñÑ•µÁ±…Ñ”€¥Ñ•´¹ÑÉ•…Ñµ•¹Ñ}‘ÕÉ…Ñ¥½¹}‘…åÌô‰ì¥Ñ•´ôˆø(€€€€€€€€€€€€ñY¡¥ÀÍ¥é”ô‰Íµ…±°ˆÙ…É¥…¹Ğô‰Ñ½¹…°ˆ½±½Èô‰ÁÕÉÁ±”ˆ±…ÍÌô‰™½¹Ğµİ•¥¡Ğµ‰½±ˆø(€€€€€€€€€€€€€íì¥Ñ•´¹Ñ½Ñ…±}ÑÉ•…Ñµ•¹Ñ}‘…åÌõô“µ…Ì€¡íì¥Ñ•´¹ÑÉ•…Ñµ•¹Ñ}‘ÕÉ…Ñ¥½¹}‘…åÌõõ½Õ¤(€€€€€€€€€€€€ğ½Y¡¥Àø(€€€€€€€€€€ğ½Ñ•µÁ±…Ñ”ø((€€€€€€€€€€ğ„´´¥¸ÍÑ¥µ…‘¼€´´ø(€€€€€€€€€€ñÑ•µÁ±…Ñ”€¥Ñ•´¹ÑÉ•…Ñµ•¹Ñ}•¹‘}‘…Ñ•}™½Éµ…ÑÑ•ô‰íì¥Ñ•´õôˆø(€€€€€€€€€€€€ñ‘¥Ø±…ÍÌô‰µ™±•à™±•àµ½±Õµ¸ˆø(€€€€€€€€€€€€€€ñÍÁ…¸±…ÍÌô‰™½¹Ğµİ•¥¡Ğµ‰±…¬Ñ•áĞµ‰½‘ä´Èˆ€é±…ÍÌô‰¥Ñ•´¹¥Í}ÕÉ•¹Ğ€ü€Ñ•áĞµİ…É¹¥¹œœ€è€¡¥Ñ•´¹¥Í}•áÁ¥É•€ü€Ñ•áĞµ•ÉÉ½Èœ€è€Ñ•áĞµÍÕ•ÍÌœ¤ˆø(€€€€€€€€€€€€€€€íì¥Ñ•´¹ÑÉ•…Ñµ•¹Ñ}•¹‘}‘…Ñ•}™½Éµ…ÑÑ•õô(€€€€€€€€€€€€€€ğ½ÍÁ…¸ø(€€€€€€€€€€€€€€ñÍÁ…¸±…ÍÌô‰Ñ•áĞµÍÕÁ•ÈµáÌÑ•áĞµ‘¥Í…‰±•™½¹Ğµİ•¥¡Ğµ‰½±ˆø(€€€€€€€€€€€€€€€Ù¥Í¼èíì¥Ñ•´¹É•µ¥¹‘•É}‘…Ñ”õô(€€€€€€€€€€€€€€ğ½ÍÁ…¸ø(€€€€€€€€€€€€ğ½‘¥Øø(€€€€€€€€€€ğ½Ñ•µÁ±…Ñ”ø((€€€€€€€€€€ğ„´´ÍÑ…‘¼€¼±•ÉÑ„€´´ø(€€€€€€€€€€ñÑ•µÁ±…Ñ”€¥Ñ•´¹ÍÑ…ÑÕÍ}±…‰•°ô‰íì¥Ñ•´õôˆø(€€€€€€€€€€€€ñY¡¥À(€€€€€€€€€€€€€Í¥é”ô‰Íµ…±°ˆ(€€€€€€€€€€€€€€é½±½Èô‰¥Ñ•´¹ÍÑ…ÑÕÍ}½±½Èˆ(€€€€€€€€€€€€€Ù…É¥…¹Ğô‰•±•Ù…Ñ•ˆ(€€€€€€€€€€€€€±…ÍÌô‰™½¹Ğµİ•¥¡Ğµ‰½±Ñ•áĞµ…ÁÑ¥½¸ˆ(€€€€€€€€€€€€ø(€€€€€€€€€€€€€€ñY%½¸(€€€€€€€€€€€€€€€ÍÑ…ÉĞ(€€€€€€€€€€€€€€€Í¥é”ôˆÄĞˆ(€€€€€€€€€€€€€€€€é¥½¸ô‰¥Ñ•´¹¥Í}ÕÉ•¹Ğ€ü€Ñ…‰±•Èµ…±•ÉĞµÑÉ¥…¹±”œ€è€¡¥Ñ•´¹¥Í}•áÁ¥É•€ü€Ñ…‰±•Èµ±½¬µàœ€è€Ñ…‰±•Èµ¡•¬œ¤ˆ(€€€€€€€€€€€€€€¼ø(€€€€€€€€€€€€€íì¥Ñ•´¹ÍÑ…ÑÕÍ}±…‰•°õô(€€€€€€€€€€€€ğ½Y¡¥Àø(€€€€€€€€€€ğ½Ñ•µÁ±…Ñ”ø((€€€€€€€€€€ğ„´´AÉ•¥¼ÑÕ…°€´´ø(€€€€€€€€€€ñÑ•µÁ±…Ñ”€¥Ñ•´¹ÁÉ¥•}ÕÍô‰íì¥Ñ•´õôˆø(€€€€€€€€€€€€ñ‘¥Ø±…ÍÌô‰µ™±•à™±•àµ½±Õµ¸ˆø(€€€€€€€€€€€€€€ñÍÁ…¸±…ÍÌô‰™½¹Ğµİ•¥¡Ğµ‰±…¬Ñ•áĞµÍÕ‰Ñ¥Ñ±”´ÈÑ•áĞµÁÉ¥µ…Éäˆø(€€€€€€€€€€€€€€€€‘íì¥Ñ•´¹ÁÉ¥•}ÕÍü¹Ñ½¥á• È¤õô(€€€€€€€€€€€€€€ğ½ÍÁ…¸ø(€€€€€€€€€€€€€€ñÍÁ…¸Øµ¥˜ô‰¥Ñ•´¹ÁÉ¥•}‰Ì€ø€Àˆ±…ÍÌô‰Ñ•áĞµ…ÁÑ¥½¸Ñ•áĞµ‘¥Í…‰±•™½¹Ğµİ•¥¡Ğµ‰½±ˆø(€€€€€€€€€€€€€€€	Ì¸íì¥Ñ•´¹ÁÉ¥•}‰Ìü¹Ñ½1½…±•MÑÉ¥¹œ •ÌµYœ°ìµ¥¹¥µÕµÉ…Ñ¥½¹¥¥ÑÌè€È°µ…á¥µÕµÉ…Ñ¥½¹¥¥ÑÌè€Èô¤õô(€€€€€€€€€€€€€€ğ½ÍÁ…¸ø(€€€€€€€€€€€€€€ñÍÁ…¸Øµ¥˜ô‰¥Ñ•´¹ÁÉ¥•}½À€ø€Àˆ±…ÍÌô‰Ñ•áĞµ…ÁÑ¥½¸Ñ•áĞµ‘¥Í…‰±•™½¹Ğµİ•¥¡Ğµ‰½±ˆø(€€€€€€€€€€€€€€€=@íì¥Ñ•´¹ÁÉ¥•}½Àü¹Ñ½1½…±•MÑÉ¥¹œ •Ìµ<œ¤õô(€€€€€€€€€€€€€€ğ½ÍÁ…¸ø(€€€€€€€€€€€€ğ½‘¥Øø(€€€€€€€€€€ğ½Ñ•µÁ±…Ñ”ø((€€€€€€€€€€ğ„´´¥½¹•Ì]¡…ÑÍÁÀ€´´ø(€€€€€€€€€€ñÑ•µÁ±…Ñ”€¥Ñ•´¹…Ñ¥½¹Ìô‰ì¥Ñ•´ôˆø(€€€€€€€€€€€€ñ‘¥Ø±…ÍÌô‰µ™±•à…±¥¸µ•¹Ñ•È©ÕÍÑ¥™äµ•¹Ñ•È…À´Äˆø(€€€€€€€€€€€€€€ñY	Ñ¸(€€€€€€€€€€€€€€€½±½Èô‰ÍÕ•ÍÌˆ(€€€€€€€€€€€€€€€Ù…É¥…¹Ğô‰•±•Ù…Ñ•ˆ(€€€€€€€€€€€€€€€Í¥é”ô‰Íµ…±°ˆ(€€€€€€€€€€€€€€€±…ÍÌô‰™½¹Ğµİ•¥¡Ğµ‰½±É½Õ¹‘•µ±œÍ¡…‘½ÜµÍ´ˆ(€€€€€€€€€€€€€€€€é‘¥Í…‰±•ôˆ…¥Ñ•´¹Á¡½¹”ˆ(€€€€€€€€€€€€€€€±¥¬ô‰½Á•¹]¡…ÑÍÁÀ¡¥Ñ•´¤ˆ(€€€€€€€€€€€€€€ø(€€€€€€€€€€€€€€€€ñY%½¸ÍÑ…ÉĞ¥½¸ô‰Ñ…‰±•Èµ‰É…¹µİ¡…ÑÍ…ÁÀˆÍ¥é”ôˆÄàˆ€¼ø(€€€€€€€€€€€€€€€I•½É‘…È(€€€€€€€€€€€€€€€€ñYQ½½±Ñ¥À¹…Ù¥…Ñ½Èô‰Á…É•¹Ğˆ±½…Ñ¥½¸ô‰Ñ½Àˆø(€€€€€€€€€€€€€€€€€¹Ù¥…È]¡…ÑÍÁÀ½¸É•½É‘…Ñ½É¥¼äÁÉ•¥¼…ÑÕ…±¥é…‘¼(€€€€€€€€€€€€€€€€ğ½YQ½½±Ñ¥Àø(€€€€€€€€€€€€€€ğ½Y	Ñ¸ø((€€€€€€€€€€€€€€ñY	Ñ¸(€€€€€€€€€€€€€€€¥½¸ô‰Ñ…‰±•Èµ½Áäˆ(€€€€€€€€€€€€€€€Ù…É¥…¹Ğô‰Ñ½¹…°ˆ(€€€€€€€€€€€€€€€½±½Èô‰Í•½¹‘…Éäˆ(€€€€€€€€€€€€€€€Í¥é”ô‰Íµ…±°ˆ(€€€€€€€€€€€€€€€±…ÍÌô‰É½Õ¹‘•µ±œˆ(€€€€€€€€€€€€€€€±¥¬ô‰½Áå5•ÍÍ…”¡¥Ñ•´¹İ¡…ÑÍ…ÁÁ}µ•ÍÍ…”¤ˆ(€€€€€€€€€€€€€€ø(€€€€€€€€€€€€€€€€ñY%½¸Í¥é”ôˆÄØˆ€¼ø(€€€€€€€€€€€€€€€€ñYQ½½±Ñ¥À¹…Ù¥…Ñ½Èô‰Á…É•¹Ğˆ±½…Ñ¥½¸ô‰Ñ½Àˆù½Á¥…ÈÑ•áÑ¼‘•°µ•¹Í…©”ğ½YQ½½±Ñ¥Àø(€€€€€€€€€€€€€€ğ½Y	Ñ¸ø(€€€€€€€€€€€€ğ½‘¥Øø(€€€€€€€€€€ğ½Ñ•µÁ±…Ñ”ø(€€€€€€€€ğ½Y…Ñ…Q…‰±•M•ÉÙ•Èø(€€€€€€ğ½Y…Éø(€€€€ğ½‘¥Øø((€€ğ½‘¥Øø(ğ½Ñ•µÁ±…Ñ”ø((ÍÑå±”Í½Á•ø(¹ÍÑ…Ğµ…Éì(€ÑÉ…¹Í¥Ñ¥½¸èÑÉ…¹Í™½É´€À¸ÉÌ•…Í”°‰½àµÍ¡…‘½Ü€À¸ÉÌ•…Í”ì(€ÕÉÍ½ÈèÁ½¥¹Ñ•Èì)ô(¹ÍÑ…Ğµ…Éé¡½Ù•Èì(€ÑÉ…¹Í™½É´èÑÉ…¹Í±…Ñ•d ´ÉÁà¤ì(€‰½àµÍ¡…‘½Üè€À€ÑÁà€ÄÉÁàÉ‰„ À°€À°€À°€À¸ÀÔ¤ì)ô(¹Ñ•áĞµÍÕÁ•ÈµáÌì(€™½¹ĞµÍ¥é”è€À¸İÉ•´€…¥µÁ½ÉÑ…¹Ğì)ô(ğ½ÍÑå±”ø(
+      </VCol>
+
+      <VCol cols="12" sm="6" md="3">
+        <VCard
+          variant="flat"
+          border
+          class="pa-4 rounded-xl stat-card cursor-pointer"
+          :class="statusFilter === 'active' ? 'border-success border-opacity-100' : ''"
+          @click="statusFilter = 'active'"
+        >
+          <div class="d-flex align-center justify-space-between">
+            <div>
+              <div class="text-caption font-weight-bold text-success text-uppercase">Tratamientos Activos</div>
+              <div class="text-h4 font-weight-black mt-1 text-success">{{ stats.active_treatments }}</div>
+              <div class="text-caption text-medium-emphasis mt-1">Con cobertura de medicamento</div>
+            </div>
+            <VAvatar color="success" variant="tonal" rounded="lg" size="48">
+              <VIcon icon="tabler-pill" size="28" />
+            </VAvatar>
+          </div>
+        </VCard>
+      </VCol>
+
+      <VCol cols="12" sm="6" md="3">
+        <VCard
+          variant="flat"
+          border
+          class="pa-4 rounded-xl stat-card cursor-pointer"
+          :class="statusFilter === 'depleted' ? 'border-error border-opacity-100' : ''"
+          @click="statusFilter = 'depleted'"
+        >
+          <div class="d-flex align-center justify-space-between">
+            <div>
+              <div class="text-caption font-weight-bold text-error text-uppercase">Tratamientos Vencidos</div>
+              <div class="text-h4 font-weight-black mt-1 text-error">{{ stats.depleted_treatments }}</div>
+              <div class="text-caption text-medium-emphasis mt-1">DÃ­as de dosis agotados</div>
+            </div>
+            <VAvatar color="error" variant="tonal" rounded="lg" size="48">
+              <VIcon icon="tabler-clock-off" size="28" />
+            </VAvatar>
+          </div>
+        </VCard>
+      </VCol>
+    </VRow>
+
+    <!-- Barra de Filtros -->
+    <AppFilterBase
+      v-model:search="searchQuery"
+      search-placeholder="Buscar por paciente, cÃ©dula, telÃ©fono o medicamento..."
+      :active-filters-count="activeFiltersCount"
+      class="mb-4"
+      @clear="resetFilters"
+    >
+      <template #filters>
+        <VRow dense>
+          <VCol cols="12" sm="6">
+            <VSelect
+              v-model="statusFilter"
+              :items="statusOptions"
+              item-title="title"
+              item-value="value"
+              label="Estado de Tratamiento"
+              density="compact"
+              variant="outlined"
+              hide-details
+            />
+          </VCol>
+
+          <VCol cols="12" sm="6" v-if="productsList.length > 0">
+            <VAutocomplete
+              v-model="productFilter"
+              :items="productsList"
+              item-title="name"
+              item-value="id"
+              label="Filtrar por Medicamento"
+              density="compact"
+              variant="outlined"
+              clearable
+              hide-details
+            />
+          </VCol>
+        </VRow>
+      </template>
+    </AppFilterBase>
+
+    <!-- Vista MÃ³vil: Tarjetas -->
+    <div v-if="isMobile">
+      <div v-if="loading" class="d-flex flex-column gap-3">
+        <VSkeletonLoader
+          v-for="n in 4"
+          :key="n"
+          type="article"
+          class="rounded-xl border"
+        />
+      </div>
+
+      <div v-else-if="chronicClients.length > 0" class="d-flex flex-column gap-3">
+        <ChronicClientMobileCard
+          v-for="item in chronicClients"
+          :key="item.client_id + '_' + item.product_id"
+          :client="item"
+        />
+
+        <AppMobilePagination
+          v-model:page="page"
+          :total-records="totalRecords"
+          :per-page="perPage"
+          class="mt-4"
+          @update:page="fetchChronicClients"
+        />
+      </div>
+
+      <AppEmptyState
+        v-else
+        icon="tabler-user-search"
+        title="No se encontraron pacientes"
+        description="No hay pacientes crÃ³nicos que coincidan con los criterios de bÃºsqueda aplicados."
+        action-text="Limpiar Filtros"
+        @action="resetFilters"
+      />
+    </div>
+
+    <!-- Vista Escritorio: Tabla Servidor -->
+    <VCard v-else variant="flat" border class="rounded-xl">
+      <VDataTableServer
+        v-model:page="page"
+        v-model:items-per-page="perPage"
+        :headers="headers"
+        :items="chronicClients"
+        :items-length="totalRecords"
+        :loading="loading"
+        density="comfortable"
+        class="elevation-0"
+        @update:options="fetchChronicClients"
+      >
+        <!-- Columna Paciente -->
+        <template #item.client_name="{ item }">
+          <div class="py-2">
+            <div class="font-weight-bold text-high-emphasis">
+              {{ item.client_name }}
+            </div>
+            <div class="text-caption text-medium-emphasis d-flex align-center gap-1">
+              <VIcon icon="tabler-id" size="14" />
+              <span>{{ item.client_doc || 'S/N' }}</span>
+              <span v-if="item.client_phone" class="ms-2">
+                <VIcon icon="tabler-phone" size="14" />
+                {{ item.client_phone }}
+              </span>
+            </div>
+          </div>
+        </template>
+
+        <!-- Columna Medicamento -->
+        <template #item.product_name="{ item }">
+          <div class="py-2">
+            <div class="font-weight-semibold text-primary">
+              {{ item.product_name }}
+            </div>
+            <div class="text-caption text-medium-emphasis">
+              Dosis comprada: {{ item.purchased_units }} un. ({{ item.total_treatment_days }} dÃ­as de cobertura)
+            </div>
+          </div>
+        </template>
+
+        <!-- Columna Ãšltima Compra -->
+        <template #item.last_purchase_date="{ item }">
+          <div class="py-2">
+            <div class="font-weight-medium">{{ item.last_purchase_date }}</div>
+            <div class="text-caption text-disabled">Factura: #{{ item.invoice_number || item.last_order_id }}</div>
+          </div>
+        </template>
+
+        <!-- Columna DuraciÃ³n y DÃ­as Restantes -->
+        <template #item.days_remaining="{ item }">
+          <div class="py-2">
+            <div class="d-flex align-center gap-2">
+              <span class="font-weight-bold" :class="item.days_remaining <= 5 ? 'text-warning' : 'text-high-emphasis'">
+                {{ item.days_remaining }} dÃ­as restantes
+              </span>
+            </div>
+            <div class="text-caption text-medium-emphasis">
+              Fin: {{ item.estimated_depletion_date }}
+            </div>
+          </div>
+        </template>
+
+        <!-- Columna Precios Multimoneda -->
+        <template #item.pricing="{ item }">
+          <div class="py-2">
+            <div class="font-weight-bold text-success">
+              ${{ Number(item.price_usd || 0).toFixed(2) }}
+            </div>
+            <div class="text-caption text-medium-emphasis">
+              Bs. {{ Number(item.price_ves || 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
+            </div>
+            <div class="text-caption text-medium-emphasis">
+              COP {{ Number(item.price_cop || 0).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) }}
+            </div>
+          </div>
+        </template>
+
+        <!-- Columna Estado -->
+        <template #item.status_label="{ item }">
+          <VChip
+            size="small"
+            :color="getStatusColor(item)"
+            variant="tonal"
+            class="font-weight-medium"
+          >
+            <VIcon :icon="getStatusIcon(item)" start size="14" />
+            {{ getStatusLabel(item) }}
+          </VChip>
+        </template>
+
+        <!-- Columna Acciones WhatsApp -->
+        <template #item.actions="{ item }">
+          <VBtn
+            v-if="item.whatsapp_url"
+            color="success"
+            variant="flat"
+            size="small"
+            prepend-icon="tabler-brand-whatsapp"
+            :href="item.whatsapp_url"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="rounded-lg text-none"
+          >
+            WhatsApp
+          </VBtn>
+          <span v-else class="text-caption text-disabled">Sin telÃ©fono</span>
+        </template>
+
+        <!-- Estado VacÃ­o en Tabla -->
+        <template #no-data>
+          <div class="py-8">
+            <AppEmptyState
+              icon="tabler-user-search"
+              title="No se encontraron pacientes"
+              description="No hay pacientes crÃ³nicos para mostrar con los filtros seleccionados."
+              action-text="Limpiar Filtros"
+              @action="resetFilters"
+            />
+          </div>
+        </template>
+      </VDataTableServer>
+    </VCard>
+  </div>
+</template>
+
+<style scoped>
+.stat-card {
+  transition: all 0.2s ease-in-out;
+}
+.stat-card:hover {
+  transform: translateY(-2px);
+}
+</style>
