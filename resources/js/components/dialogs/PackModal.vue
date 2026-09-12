@@ -567,7 +567,7 @@ watch(
                 <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">Datos Generales del Pack</span>
               </div>
               <div class="d-flex align-center gap-2">
-                <span class="text-super-xs font-weight-bold text-disabled uppercase">Activo</span>
+                <span class="text-super-xs font-weight-bold text-high-emphasis uppercase">Activo</span>
                 <VSwitch
                   v-model="formData.is_active"
                   color="primary"
@@ -581,10 +581,10 @@ watch(
             <VRow dense>
               <VCol cols="12" md="6">
                 <div>
-                  <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Nombre del Pack *</span>
+                  <span class="text-super-xs font-weight-bold text-high-emphasis uppercase mb-1 d-block">Nombre del Pack *</span>
                   <VTextField
                     v-model="formData.name"
-                    placeholder="Ej: Trío de Vitaminas..."
+                    placeholder="Ej: Trío de vitaminas..."
                     variant="outlined"
                     density="compact"
                     hide-details="auto"
@@ -597,7 +597,7 @@ watch(
               </VCol>
               <VCol cols="12" sm="6" md="3">
                 <div>
-                  <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Límite de Ventas</span>
+                  <span class="text-super-xs font-weight-bold text-high-emphasis uppercase mb-1 d-block">Límite de Ventas</span>
                   <VTextField
                     v-model.number="formData.max_quantity"
                     type="number"
@@ -614,10 +614,10 @@ watch(
               </VCol>
               <VCol cols="12" sm="6" md="3">
                 <div>
-                  <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Fecha de Vencimiento</span>
+                  <span class="text-super-xs font-weight-bold text-high-emphasis uppercase mb-1 d-block">Fecha de Vencimiento</span>
                   <AppDateTimePicker
                     v-model="formData.max_sale_date"
-                    placeholder="SELECCIONAR FECHA"
+                    placeholder="Seleccionar fecha..."
                     prepend-inner-icon="tabler-calendar-event"
                     density="compact"
                     hide-details="auto"
@@ -636,13 +636,13 @@ watch(
               <div class="d-flex align-center gap-1-5">
                 <div class="header-indicator primary" />
                 <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">Productos Incluidos</span>
-                <span class="text-super-xs font-weight-bold text-disabled">({{ formData.pack_products.length }}/10)</span>
+                <span class="text-super-xs font-weight-bold text-medium-emphasis">({{ formData.pack_products.length }}/10)</span>
               </div>
               <VBtn
                 variant="outlined"
                 color="primary"
                 size="small"
-                class="rounded-lg font-weight-black"
+                class="rounded-lg font-weight-bold"
                 @click="addProductRow"
                 :disabled="formData.pack_products.length >= 10 || isSaving"
               >
@@ -655,27 +655,14 @@ watch(
               <div
                 v-for="(item, index) in formData.pack_products"
                 :key="index"
-                class="pack-item-row pa-3 rounded-lg border bg-var-theme-background"
+                class="pack-item-row pa-3 rounded-lg border bg-surface"
               >
                 <VRow dense class="align-center">
-                  <!-- Buscador de Producto -->
-                  <VCol cols="12" md="6">
-                    <div class="d-flex align-center justify-space-between flex-wrap gap-1 mb-1">
-                      <span class="text-super-xs font-weight-black text-high-emphasis uppercase">Producto #{{ index + 1 }}</span>
-                      
-                      <!-- Resumen de precio y stock al lado de la etiqueta del producto -->
-                      <div v-if="item.product" class="d-flex align-center flex-wrap gap-1">
-                        <span class="text-super-xs font-weight-black text-primary bg-primary-lighten-5 px-1-5 py-0-5 rounded">
-                          {{ formatCurrency(item.product.sale_price, 'USD') }}
-                        </span>
-                        <span class="text-super-xs font-weight-black text-success bg-success-lighten-5 px-1-5 py-0-5 rounded">
-                          Stock: {{ item.product.stock }}
-                        </span>
-                        <span class="text-super-xs font-weight-bold text-medium-emphasis uppercase">
-                          {{ item.product.laboratory?.name || item.product.laboratory || 'S/L' }}
-                        </span>
-                      </div>
-                    </div>
+                  <!-- Buscador de Producto y Metadatos -->
+                  <VCol cols="12" md="5">
+                    <span class="text-super-xs font-weight-bold text-high-emphasis uppercase mb-1 d-block">
+                      Producto #{{ index + 1 }}
+                    </span>
 
                     <AppAutocomplete
                       v-model="item.product"
@@ -692,7 +679,7 @@ watch(
                       clearable
                       @update:search="handleProductSearch"
                       @update:model-value="calculateTotalPrice()"
-                      class="rounded font-weight-bold"
+                      class="rounded font-weight-medium"
                       :error="!!formErrors[`product_${index}`]"
                       :error-messages="formErrors[`product_${index}`]"
                       :disabled="isSaving"
@@ -701,15 +688,26 @@ watch(
                         <VListItem
                           v-bind="itemProps"
                           :title="productItem.raw.name"
-                          :subtitle="`ID: #${productItem.raw.id} | Lab: ${productItem.raw.laboratory?.name || productItem.raw.laboratory || 'S/L'} | Stock: ${productItem.raw.stock} | Precio: ${formatCurrency(productItem.raw.sale_price, 'USD')}`"
+                          :subtitle="`ID: #${productItem.raw.id} • ${productItem.raw.laboratory?.name || productItem.raw.laboratory || 'S/L'} • Stock: ${productItem.raw.stock} • ${formatCurrency(productItem.raw.sale_price, 'USD')}`"
                         />
                       </template>
                     </AppAutocomplete>
+
+                    <!-- Metadatos neutrales con bullets -->
+                    <div v-if="item.product" class="d-flex align-center flex-wrap gap-1 text-super-xs text-medium-emphasis mt-1">
+                      <span>{{ item.product.laboratory?.name || item.product.laboratory || 'S/L' }}</span>
+                      <span>•</span>
+                      <span :class="item.product.stock <= 5 ? 'text-warning font-weight-bold' : ''">
+                        Stock: {{ item.product.stock }}
+                      </span>
+                      <span>•</span>
+                      <span>Base: {{ formatCurrency(item.product.sale_price, 'USD') }}</span>
+                    </div>
                   </VCol>
 
                   <!-- Cantidad -->
-                  <VCol cols="5" sm="3" md="2">
-                    <span class="text-super-xs font-weight-black text-high-emphasis uppercase mb-1 d-block">Cantidad</span>
+                  <VCol cols="4" sm="3" md="2">
+                    <span class="text-super-xs font-weight-bold text-high-emphasis uppercase mb-1 d-block text-center">Cantidad</span>
                     <VTextField
                       v-model.number="item.quantity"
                       type="number"
@@ -718,7 +716,7 @@ watch(
                       density="compact"
                       hide-details="auto"
                       @update:model-value="calculateTotalPrice()"
-                      class="rounded font-weight-black text-center"
+                      class="rounded font-weight-bold text-center"
                       :error="!!formErrors[`quantity_${index}`] || !!formErrors[`stock_${index}`]"
                       :error-messages="formErrors[`quantity_${index}`] || formErrors[`stock_${index}`]"
                       :disabled="isSaving"
@@ -726,8 +724,8 @@ watch(
                   </VCol>
 
                   <!-- Descuento % -->
-                  <VCol cols="5" sm="3" md="2">
-                    <span class="text-super-xs font-weight-black text-high-emphasis uppercase mb-1 d-block">% Desc.</span>
+                  <VCol cols="4" sm="3" md="2">
+                    <span class="text-super-xs font-weight-bold text-high-emphasis uppercase mb-1 d-block text-center">% Desc.</span>
                     <VTextField
                       v-model.number="item.discount_percentage"
                       type="number"
@@ -739,28 +737,30 @@ watch(
                       hide-details="auto"
                       prepend-inner-icon="tabler-percentage"
                       @update:model-value="calculateTotalPrice()"
-                      class="rounded font-weight-black"
+                      class="rounded font-weight-bold"
                       :disabled="isSaving"
                     />
                   </VCol>
 
-                  <!-- Subtotal y Acción Eliminar -->
-                  <VCol cols="2" sm="6" md="2" class="d-flex align-center justify-space-between ps-md-2">
-                    <div class="d-flex flex-column text-end flex-grow-1 me-2">
-                      <span class="text-super-xs text-disabled uppercase font-weight-bold">Subtotal</span>
-                      <span class="text-sm font-weight-black text-success leading-tight">
-                        {{ formatCurrency(calculateProductPrice(item), 'USD') }}
-                      </span>
-                    </div>
+                  <!-- Subtotal -->
+                  <VCol cols="3" sm="4" md="2" class="text-end">
+                    <span class="text-super-xs text-medium-emphasis uppercase font-weight-bold mb-1 d-block">Subtotal</span>
+                    <span class="text-sm font-weight-bold text-high-emphasis leading-tight d-block pt-1">
+                      {{ formatCurrency(calculateProductPrice(item), 'USD') }}
+                    </span>
+                  </VCol>
 
+                  <!-- Acción Eliminar -->
+                  <VCol cols="1" sm="2" md="1" class="text-center pt-5">
                     <IconBtn
                       v-if="formData.pack_products.length > 1"
-                      color="error"
+                      color="secondary"
+                      variant="text"
                       size="small"
                       @click="removeProductRow(index)"
                       :disabled="isSaving"
                     >
-                      <VIcon icon="tabler-trash" size="18" />
+                      <VIcon icon="tabler-trash" size="18" class="text-error" />
                       <VTooltip activator="parent">Eliminar Producto</VTooltip>
                     </IconBtn>
                   </VCol>

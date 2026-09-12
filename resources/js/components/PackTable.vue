@@ -23,19 +23,38 @@ const headers = [
     cellClass: "font-weight-black text-primary d-none d-sm-table-cell",
     headerClass: "d-none d-sm-table-cell",
   },
-  { title: "Nombre del Pack",  key: "name",           sortable: true, width: "30%" },
-  { title: "Productos",        key: "products_count", sortable: true, align: "center", width: "110px" },
-  { title: "Precio Total",     key: "total_price",    sortable: true, align: "end",   width: "120px" },
+  { title: "Nombre del Pack",  key: "name",           sortable: true, width: "32%" },
+  { title: "Productos",        key: "products_count", sortable: false, align: "center", width: "100px" },
+  { title: "Precio Total",     key: "total_price",    sortable: true, align: "end",   width: "115px" },
   { title: "Límite Ventas",    key: "max_quantity",   sortable: true, align: "center", width: "110px" },
-  { title: "Fecha Límite",     key: "max_sale_date",  sortable: true, align: "center", width: "130px" },
-  { title: "Ventas",           key: "sales_count",    sortable: true, align: "center", width: "90px" },
+  { title: "Fecha Límite",     key: "max_sale_date",  sortable: true, align: "center", width: "135px" },
+  { title: "Ventas",           key: "sales_count",    sortable: false, align: "end",   width: "85px" },
   { title: "Estado",           key: "is_active",      sortable: true, align: "center", width: "90px" },
   { title: "Acciones",         key: "actions",        sortable: false, align: "center", width: "120px" },
 ];
 
 const formatDate = (date) => {
   if (!date) return "—";
-  return new Date(date).toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" });
+  return new Date(date).toLocaleDateString("es-ES", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+};
+
+const isExpired = (endDateStr) => {
+  if (!endDateStr) return false;
+  const end = new Date(endDateStr);
+  const now = new Date();
+  return end < now;
+};
+
+const isExpiringSoon = (endDateStr) => {
+  if (!endDateStr) return false;
+  const end = new Date(endDateStr);
+  const now = new Date();
+  const diffHours = (end - now) / (1000 * 60 * 60);
+  return diffHours >= 0 && diffHours <= 24;
 };
 
 const formatCurrency = (amount) => {
@@ -80,6 +99,10 @@ const handleToggleStatus = (pack) => {
         :items="props.packs"
         :items-length="props.totalPacks"
         :loading="props.loading"
+        items-per-page-text="Filas por página:"
+        page-text="{0}-{1} de {2}"
+        loading-text="Cargando..."
+        no-data-text="No hay datos disponibles"
         class="text-no-wrap"
         density="compact"
         @update:options="(options) => emit('update:options', options)"
@@ -99,53 +122,54 @@ const handleToggleStatus = (pack) => {
 
         <!-- Name Column -->
         <template #item.name="{ item }">
-          <div class="d-flex flex-column py-2">
-            <span class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate" style="max-inline-size: 380px;">
-              {{ item.name?.toUpperCase() }}
-            </span>
-            <span class="text-super-xs text-medium-emphasis uppercase font-weight-bold mt-0-5">
-              Pack Promocional
-            </span>
-          </div>
+          <span class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate d-block py-2" style="max-inline-size: 380px;" :title="item.name">
+            {{ item.name }}
+          </span>
         </template>
 
         <!-- Products Count Column -->
         <template #item.products_count="{ item }">
-          <VChip variant="tonal" color="info" size="small" class="font-weight-bold rounded">
-            <VIcon start size="14">tabler-package</VIcon>
+          <VChip variant="tonal" color="info" size="small" class="font-weight-bold rounded px-2">
             {{ Object.keys(item.pack_config || {}).length }} Prods
           </VChip>
         </template>
 
         <!-- Total Price Column -->
         <template #item.total_price="{ item }">
-          <span class="font-weight-black text-success text-sm">
+          <span class="text-sm font-weight-black text-high-emphasis">
             {{ formatCurrency(item.total_price) }}
           </span>
         </template>
 
         <!-- Max Quantity Column -->
         <template #item.max_quantity="{ item }">
-          <span v-if="item.max_quantity" class="text-xs font-weight-bold">
+          <span v-if="item.max_quantity" class="text-sm font-weight-medium text-high-emphasis">
             {{ item.max_quantity }} un.
           </span>
-          <span v-else class="text-super-xs text-disabled italic font-weight-bold">Ilimitado</span>
+          <span v-else class="text-xs text-medium-emphasis font-weight-medium">Ilimitado</span>
         </template>
 
         <!-- Max Sale Date Column -->
         <template #item.max_sale_date="{ item }">
-          <div class="d-flex align-center justify-center gap-1 text-medium-emphasis text-super-xs font-weight-bold">
-            <VIcon icon="tabler-calendar" size="14" />
-            <span>{{ formatDate(item.max_sale_date) }}</span>
+          <div v-if="item.max_sale_date" class="d-flex flex-column align-center">
+            <span class="text-xs font-weight-medium text-medium-emphasis">
+              {{ formatDate(item.max_sale_date) }}
+            </span>
+            <span v-if="isExpired(item.max_sale_date)" class="text-super-xs font-weight-bold text-error uppercase mt-0-5">
+              Vencido
+            </span>
+            <span v-else-if="isExpiringSoon(item.max_sale_date)" class="text-super-xs font-weight-bold text-warning uppercase mt-0-5">
+              Vence pronto
+            </span>
           </div>
+          <span v-else class="text-xs text-medium-emphasis">—</span>
         </template>
 
         <!-- Sales Count Column -->
         <template #item.sales_count="{ item }">
-          <VChip variant="tonal" color="success" size="small" class="font-weight-black rounded">
-            <VIcon start size="14">tabler-shopping-cart</VIcon>
+          <span class="text-sm font-weight-medium text-high-emphasis pe-1">
             {{ item.sales_count ?? 0 }}
-          </VChip>
+          </span>
         </template>
 
         <!-- Active Switch Column -->
@@ -153,7 +177,7 @@ const handleToggleStatus = (pack) => {
           <VSwitch
             :model-value="item.is_active"
             density="compact"
-            color="success"
+            color="primary"
             hide-details
             class="d-inline-flex"
             @update:model-value="handleToggleStatus(item)"
@@ -234,7 +258,7 @@ const handleToggleStatus = (pack) => {
             <div class="d-flex align-center justify-space-between bg-var-theme-background px-2 py-1.5 rounded border-dashed-thin">
               <div class="d-flex flex-column">
                 <span class="text-super-xs text-disabled text-uppercase font-weight-bold letter-spacing-1">Precio Pack:</span>
-                <span class="text-sm font-weight-black text-success">
+                <span class="text-sm font-weight-black text-high-emphasis">
                   {{ formatCurrency(item.total_price) }}
                 </span>
               </div>
@@ -248,16 +272,17 @@ const handleToggleStatus = (pack) => {
 
               <div class="d-flex flex-column text-end">
                 <span class="text-super-xs text-disabled text-uppercase font-weight-bold letter-spacing-1">Ventas:</span>
-                <span class="text-xs font-weight-bold text-info">
+                <span class="text-xs font-weight-medium text-high-emphasis">
                   {{ item.sales_count ?? 0 }}
                 </span>
               </div>
             </div>
 
             <!-- Vigencia / Fecha Límite Móvil -->
-            <div v-if="item.max_sale_date" class="d-flex justify-space-between align-center px-1 mt-1 text-super-xs font-weight-bold text-warning">
-              <span>LÍMITE VENTA:</span>
-              <span>{{ formatDate(item.max_sale_date) }}</span>
+            <div v-if="item.max_sale_date" class="d-flex justify-space-between align-center px-1 mt-1 text-super-xs font-weight-medium text-medium-emphasis">
+              <span>Límite venta: {{ formatDate(item.max_sale_date) }}</span>
+              <span v-if="isExpired(item.max_sale_date)" class="text-error font-weight-bold uppercase">Vencido</span>
+              <span v-else-if="isExpiringSoon(item.max_sale_date)" class="text-warning font-weight-bold uppercase">Vence pronto</span>
             </div>
           </div>
 
