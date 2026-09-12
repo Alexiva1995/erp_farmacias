@@ -1,9 +1,7 @@
 ﻿<script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
-import AppFilterBase from '@/components/common/AppFilterBase.vue'
-import AppEmptyState from '@/components/common/AppEmptyState.vue'
-import AppMobilePagination from '@/components/common/AppMobilePagination.vue'
 import ChronicClientMobileCard from '@/components/cards/ChronicClientMobileCard.vue'
+import TablePagination from '@/@core/components/TablePagination.vue'
 import { useResponsive } from '@/composables/useResponsive'
 import { $api } from '@/utils/api'
 
@@ -50,14 +48,6 @@ const headers = [
   { title: 'Estado', key: 'status_label', sortable: false },
   { title: 'Acción WhatsApp', key: 'actions', sortable: false, align: 'center' },
 ]
-
-// Contador de filtros activos
-const activeFiltersCount = computed(() => {
-  let count = 0
-  if (statusFilter.value !== 'all') count++
-  if (productFilter.value) count++
-  return count
-})
 
 // Cargar estadísticas
 const fetchStats = async () => {
@@ -270,45 +260,59 @@ onMounted(() => {
       </VCol>
     </VRow>
 
-    <!-- Barra de Filtros -->
-    <AppFilterBase
-      v-model:search="searchQuery"
-      search-placeholder="Buscar por paciente, cédula, teléfono o medicamento..."
-      :active-filters-count="activeFiltersCount"
-      class="mb-4"
-      @clear="resetFilters"
-    >
-      <template #filters>
-        <VRow dense>
-          <VCol cols="12" sm="6">
-            <VSelect
-              v-model="statusFilter"
-              :items="statusOptions"
-              item-title="title"
-              item-value="value"
-              label="Estado de Tratamiento"
-              density="compact"
-              variant="outlined"
-              hide-details
-            />
-          </VCol>
+    <!-- Barra de Filtros Nativa -->
+    <VCard variant="flat" border class="pa-4 rounded-xl mb-4">
+      <VRow dense align="center">
+        <VCol cols="12" md="5">
+          <VTextField
+            v-model="searchQuery"
+            prepend-inner-icon="tabler-search"
+            placeholder="Buscar por paciente, cédula, teléfono o medicamento..."
+            density="compact"
+            variant="outlined"
+            clearable
+            hide-details
+          />
+        </VCol>
 
-          <VCol cols="12" sm="6" v-if="productsList.length > 0">
-            <VAutocomplete
-              v-model="productFilter"
-              :items="productsList"
-              item-title="name"
-              item-value="id"
-              label="Filtrar por Medicamento"
-              density="compact"
-              variant="outlined"
-              clearable
-              hide-details
-            />
-          </VCol>
-        </VRow>
-      </template>
-    </AppFilterBase>
+        <VCol cols="12" sm="6" md="3">
+          <VSelect
+            v-model="statusFilter"
+            :items="statusOptions"
+            item-title="title"
+            item-value="value"
+            label="Estado de Tratamiento"
+            density="compact"
+            variant="outlined"
+            hide-details
+          />
+        </VCol>
+
+        <VCol cols="12" sm="6" md="3" v-if="productsList.length > 0">
+          <VAutocomplete
+            v-model="productFilter"
+            :items="productsList"
+            item-title="name"
+            item-value="id"
+            label="Medicamento"
+            density="compact"
+            variant="outlined"
+            clearable
+            hide-details
+          />
+        </VCol>
+
+        <VCol cols="12" md="1" class="d-flex justify-end">
+          <VBtn
+            variant="text"
+            color="secondary"
+            icon="tabler-filter-off"
+            title="Limpiar filtros"
+            @click="resetFilters"
+          />
+        </VCol>
+      </VRow>
+    </VCard>
 
     <!-- Vista Móvil: Tarjetas -->
     <div v-if="isMobile">
@@ -328,23 +332,28 @@ onMounted(() => {
           :client="item"
         />
 
-        <AppMobilePagination
-          v-model:page="page"
-          :total-records="totalRecords"
-          :per-page="perPage"
-          class="mt-4"
-          @update:page="fetchChronicClients"
-        />
+        <div class="mt-4">
+          <TablePagination
+            v-model:page="page"
+            :items-per-page="perPage"
+            :total-items="totalRecords"
+            @update:page="fetchChronicClients"
+          />
+        </div>
       </div>
 
-      <AppEmptyState
-        v-else
-        icon="tabler-user-search"
-        title="No se encontraron pacientes"
-        description="No hay pacientes crónicos que coincidan con los criterios de búsqueda aplicados."
-        action-text="Limpiar Filtros"
-        @action="resetFilters"
-      />
+      <VCard v-else variant="flat" border class="pa-8 text-center rounded-xl">
+        <VAvatar color="primary" variant="tonal" size="56" class="mb-3">
+          <VIcon icon="tabler-user-search" size="32" />
+        </VAvatar>
+        <div class="text-h6 font-weight-bold">No se encontraron pacientes</div>
+        <div class="text-caption text-medium-emphasis mb-4">
+          No hay pacientes crónicos que coincidan con los criterios de búsqueda aplicados.
+        </div>
+        <VBtn variant="tonal" color="primary" @click="resetFilters">
+          Limpiar Filtros
+        </VBtn>
+      </VCard>
     </div>
 
     <!-- Vista Escritorio: Tabla Servidor -->
@@ -459,14 +468,17 @@ onMounted(() => {
 
         <!-- Estado Vacío en Tabla -->
         <template #no-data>
-          <div class="py-8">
-            <AppEmptyState
-              icon="tabler-user-search"
-              title="No se encontraron pacientes"
-              description="No hay pacientes crónicos para mostrar con los filtros seleccionados."
-              action-text="Limpiar Filtros"
-              @action="resetFilters"
-            />
+          <div class="py-8 text-center">
+            <VAvatar color="primary" variant="tonal" size="56" class="mb-3">
+              <VIcon icon="tabler-user-search" size="32" />
+            </VAvatar>
+            <div class="text-h6 font-weight-bold">No se encontraron pacientes</div>
+            <div class="text-caption text-medium-emphasis mb-4">
+              No hay pacientes crónicos para mostrar con los filtros seleccionados.
+            </div>
+            <VBtn variant="tonal" color="primary" @click="resetFilters">
+              Limpiar Filtros
+            </VBtn>
           </div>
         </template>
       </VDataTableServer>
