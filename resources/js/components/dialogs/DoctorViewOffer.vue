@@ -30,17 +30,9 @@ const formatDate = (dateString) => {
   if (!dateString) return "—";
   return new Date(dateString).toLocaleDateString("es-ES", {
     day: "2-digit",
-    month: "short",
+    month: "2-digit",
     year: "numeric",
   });
-};
-
-const getStatusText = (isActive) => {
-  return isActive ? "ACTIVA" : "INACTIVA";
-};
-
-const getStatusColor = (isActive) => {
-  return isActive ? "success" : "error";
 };
 
 const isOfferActive = computed(() => {
@@ -77,7 +69,7 @@ const isOfferActive = computed(() => {
             </h2>
             <div class="d-flex align-center gap-2 mt-1">
               <span class="text-white opacity-75 uppercase font-weight-bold" style="font-size: 0.65rem; letter-spacing: 0.05em;">
-                Beneficio para Médico Aliado (ID #{{ props.offerData.id }})
+                Beneficio para Médico Aliado (ID Médico #{{ props.offerData.doctor_id || props.offerData.id }})
               </span>
             </div>
           </div>
@@ -108,7 +100,7 @@ const isOfferActive = computed(() => {
                 <span class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight truncate" style="max-inline-size: 160px;" :title="props.offerData.doctor_name">
                   {{ props.offerData.doctor_name }}
                 </span>
-                <span class="text-super-xs text-disabled font-weight-bold uppercase">ID #{{ props.offerData.doctor_id }}</span>
+                <span class="text-super-xs text-disabled font-weight-bold uppercase">ID #{{ props.offerData.doctor_id || props.offerData.id }}</span>
               </div>
             </VCol>
 
@@ -135,13 +127,13 @@ const isOfferActive = computed(() => {
               <div class="d-flex flex-column align-start align-sm-end">
                 <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1">Estado</span>
                 <VChip
-                  :color="getStatusColor(props.offerData.is_active)"
+                  :color="props.offerData.is_active ? 'success' : 'secondary'"
                   size="small"
                   variant="tonal"
-                  class="font-weight-black rounded"
+                  class="font-weight-bold px-2 rounded-pill"
                 >
-                  <VIcon start size="14" :icon="props.offerData.is_active ? 'tabler-check' : 'tabler-x'" />
-                  {{ getStatusText(props.offerData.is_active) }}
+                  <span class="status-dot me-1" :class="props.offerData.is_active ? 'bg-success' : 'bg-secondary'"></span>
+                  {{ props.offerData.is_active ? 'Activa' : 'Inactiva' }}
                 </VChip>
               </div>
             </VCol>
@@ -235,5 +227,12 @@ const isOfferActive = computed(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.status-dot {
+  display: inline-block;
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: 50%;
 }
 </style>

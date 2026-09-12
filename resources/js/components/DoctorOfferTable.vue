@@ -24,22 +24,34 @@ const headers = [
     headerClass: "d-none d-sm-table-cell",
   },
   { title: "Médico",    key: "doctor_name", sortable: true, width: "35%" },
-  { title: "% Desc.",   key: "discount",    sortable: true, align: "center", width: "120px" },
-  { title: "Vigencia",  key: "validity",    sortable: false, align: "center", width: "180px" },
-  { title: "Estado",    key: "is_active",   sortable: true, align: "center", width: "100px" },
-  { title: "Acciones",  key: "actions",     sortable: false, align: "center", width: "110px" },
+  { title: "% Desc.",   key: "discount",    sortable: true, align: "end", width: "110px" },
+  { title: "Vigencia",  key: "validity",    sortable: false, align: "center", width: "170px" },
+  { title: "Estado",    key: "is_active",   sortable: true, align: "center", width: "110px" },
+  { title: "Acciones",  key: "actions",     sortable: false, align: "center", width: "120px" },
 ];
-
-const getStatusColor = (isActive) => (isActive ? "success" : "error");
-const getStatusText = (isActive) => (isActive ? "ACTIVA" : "INACTIVA");
 
 const formatDate = (dateString) => {
   if (!dateString) return "—";
   return new Date(dateString).toLocaleDateString("es-ES", {
     day: "2-digit",
-    month: "short",
+    month: "2-digit",
     year: "numeric",
   });
+};
+
+const isExpired = (endDateStr) => {
+  if (!endDateStr) return false;
+  const end = new Date(endDateStr);
+  const now = new Date();
+  return end < now;
+};
+
+const isExpiringSoon = (endDateStr) => {
+  if (!endDateStr) return false;
+  const end = new Date(endDateStr);
+  const now = new Date();
+  const diffHours = (end - now) / (1000 * 60 * 60);
+  return diffHours >= 0 && diffHours <= 24;
 };
 
 const handleView = (doctorOffer) => emit("view", doctorOffer);
@@ -65,6 +77,10 @@ const handleDelete = (doctorOffer) => emit("delete", doctorOffer);
         :items="props.doctorsOffer"
         :items-length="props.totaldoctors"
         :loading="props.loading"
+        items-per-page-text="Filas por página:"
+        page-text="{0}-{1} de {2}"
+        loading-text="Cargando..."
+        no-data-text="No hay datos disponibles"
         class="text-no-wrap"
         density="compact"
         @update:options="(options) => emit('update:options', options)"
@@ -77,47 +93,52 @@ const handleDelete = (doctorOffer) => emit("delete", doctorOffer);
           />
         </template>
 
-        <!-- ID Column -->
+        <!-- ID Column (ID del Médico / Oferta) -->
         <template #item.id="{ item }">
-          <span class="font-weight-black text-primary">{{ item.id }}</span>
+          <span class="font-weight-black text-primary" :title="'ID Médico: #' + (item.doctor_id || item.id)">
+            {{ item.doctor_id || item.id }}
+          </span>
         </template>
 
         <!-- Doctor Name Column -->
         <template #item.doctor_name="{ item }">
-          <div class="d-flex flex-column py-2">
-            <span class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate" style="max-inline-size: 380px;">
-              {{ item.doctor?.name || "N/A" }}
-            </span>
-            <span class="text-super-xs font-weight-bold text-medium-emphasis text-uppercase mt-0-5">
-              ID MÉDICO: {{ item.doctor_id }}
-            </span>
-          </div>
+          <span class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate d-block py-2" style="max-inline-size: 380px;" :title="item.doctor?.name || 'N/A'">
+            {{ item.doctor?.name || "N/A" }}
+          </span>
         </template>
 
         <!-- Discount Column -->
         <template #item.discount="{ item }">
-          <span class="font-weight-black text-success text-sm">
-            {{ item.discount }}%
+          <span class="text-sm font-weight-bold text-success pe-1">
+            {{ parseFloat(item.discount || 0) }}%
           </span>
         </template>
 
         <!-- Validity Column -->
         <template #item.validity="{ item }">
-          <div class="d-flex flex-column align-center text-super-xs font-weight-bold text-medium-emphasis">
-            <span>{{ formatDate(item.start_date) }}</span>
-            <span class="text-disabled">al {{ formatDate(item.end_date) }}</span>
+          <div class="d-flex flex-column align-center">
+            <span class="text-xs font-weight-medium text-medium-emphasis">
+              {{ formatDate(item.start_date) }} – {{ formatDate(item.end_date) }}
+            </span>
+            <span v-if="isExpired(item.end_date)" class="text-super-xs font-weight-bold text-error uppercase mt-0-5">
+              Vencida
+            </span>
+            <span v-else-if="isExpiringSoon(item.end_date)" class="text-super-xs font-weight-bold text-warning uppercase mt-0-5">
+              Vence pronto
+            </span>
           </div>
         </template>
 
         <!-- Active Status Column -->
         <template #item.is_active="{ item }">
           <VChip
-            :color="getStatusColor(item.is_active)"
-            size="x-small"
+            :color="item.is_active ? 'success' : 'secondary'"
+            size="small"
             variant="tonal"
-            class="font-weight-black px-2 rounded"
+            class="font-weight-bold px-2 rounded-pill"
           >
-            {{ getStatusText(item.is_active) }}
+            <span class="status-dot me-1" :class="item.is_active ? 'bg-success' : 'bg-secondary'"></span>
+            {{ item.is_active ? 'Activa' : 'Inactiva' }}
           </VChip>
         </template>
 
@@ -172,20 +193,15 @@ const handleDelete = (doctorOffer) => emit("delete", doctorOffer);
             <div class="d-flex justify-space-between align-start mb-2">
               <div class="d-flex align-center gap-1">
                 <span class="text-primary font-weight-black text-super-xs bg-primary-lighten-5 px-1-5 py-0-5 rounded flex-shrink-0">
-                  ID: {{ item.id }}
-                </span>
-                <span class="text-super-xs font-weight-bold text-disabled uppercase">
-                  ID DOC: {{ item.doctor_id }}
+                  ID: {{ item.doctor_id || item.id }}
                 </span>
               </div>
-              <VChip
-                :color="getStatusColor(item.is_active)"
-                size="x-small"
-                variant="flat"
-                class="font-weight-black px-2 rounded"
-              >
-                {{ getStatusText(item.is_active) }}
-              </VChip>
+              <div class="d-flex align-center gap-1">
+                <span class="status-dot" :class="item.is_active ? 'bg-success' : 'bg-secondary'"></span>
+                <span :class="item.is_active ? 'text-success' : 'text-medium-emphasis'" class="text-xs font-weight-bold">
+                  {{ item.is_active ? 'Activa' : 'Inactiva' }}
+                </span>
+              </div>
             </div>
 
             <h3 class="product-mobile-title font-weight-black text-high-emphasis text-uppercase truncate-2-lines mb-2 text-body-2">
@@ -197,16 +213,22 @@ const handleDelete = (doctorOffer) => emit("delete", doctorOffer);
               <div class="d-flex flex-column">
                 <span class="text-super-xs text-disabled text-uppercase font-weight-bold letter-spacing-1">Descuento:</span>
                 <span class="text-xs font-weight-black text-success">
-                  {{ item.discount }}% OFF
+                  {{ parseFloat(item.discount || 0) }}% OFF
                 </span>
               </div>
 
               <div class="d-flex flex-column text-end">
                 <span class="text-super-xs text-disabled text-uppercase font-weight-bold letter-spacing-1">Vigencia:</span>
                 <span class="text-super-xs font-weight-bold text-medium-emphasis">
-                  {{ formatDate(item.start_date) }} - {{ formatDate(item.end_date) }}
+                  {{ formatDate(item.start_date) }} – {{ formatDate(item.end_date) }}
                 </span>
               </div>
+            </div>
+
+            <!-- Vigencia Alerta Móvil -->
+            <div v-if="isExpired(item.end_date) || isExpiringSoon(item.end_date)" class="d-flex justify-end px-1 mt-1 text-super-xs font-weight-bold">
+              <span v-if="isExpired(item.end_date)" class="text-error uppercase">Vencida</span>
+              <span v-else-if="isExpiringSoon(item.end_date)" class="text-warning uppercase">Vence pronto</span>
             </div>
           </div>
 
@@ -311,5 +333,12 @@ const handleDelete = (doctorOffer) => emit("delete", doctorOffer);
   font-size: 0.75rem !important;
   font-weight: 700 !important;
   text-transform: uppercase;
+}
+
+.status-dot {
+  display: inline-block;
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: 50%;
 }
 </style>
