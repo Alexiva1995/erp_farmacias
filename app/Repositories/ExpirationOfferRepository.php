@@ -118,4 +118,109 @@ class ExpirationOfferRepository implements ExpirationOfferRepositoryInterface
                 ];
             });
     }
+
+    public function getQualifyingProducts(ExpirationOffer $expirationOffer, array $filters = []): Collection
+    {
+        $months = (int) $expirationOffer->months_to_expiration;
+        $discountPercentage = (float) $expirationOffer->discount_percentage;
+        $search = !empty($filters['q']) ? trim($filters['q']) : null;
+        $scope = $filters['scope'] ?? 'qualifying';
+
+        $excludedProductIds = DB::table('expiration_offer_excluded_products')
+            ->where('expiration_offer_id', $expirationOffer->id)
+            ->pluck('product_id')
+            ->toArray();
+
+        $query = ProductLot::with(['product.laboratory', 'product.category', 'supplier:id,name'])
+            ->where('quantity', '>', 0)
+            ->where('expiration_date', '>', now())
+            ->whereHas('product', function ($q) use ($search) {
+                $q->where(function ($sub) {
+                    $sub->whereNull('is_deleted')->orWhere('is_deleted', false);
+                });
+
+                if ($search) {
+                    $q->where(function ($sub) use ($search) {
+                        $sub->where('name', 'like', "%{$search}%")
+                            ->orWhere('barcode', 'like', "%{$search}%")
+                            ->orWhere('sku', 'like', "%{$search}%")
+                            ->orWhereHas('laboratory', function ($labQ) use ($search) {
+                                $labQ->where('name', 'like', "%{$search}%");
+                            });
+                    });
+                }
+            });
+
+        if ($scope === 'qualifying') {
+            if (!$search) {
+                $query->where(function ($q) use ($months, $excludedProductIds) {
+                    $q->whereRaw('(TIMESTAMPDIFF(MONTH, CURDATE(), expiration_date) + 1) <= ?', [$months]);
+                    if (!empty($excludedProductIds)) {
+                        $q->orWhereIn('product_id', $excludedProductIds);
+                    }
+                });
+            }
+        } elseif ($scope === 'excluded') {
+            $query->whereIn('product_id', $excludedProductIds ?: [0]);
+        }
+
+        $lots = $query->orderBy('expiration_date', 'asc')->get();
+
+        return $lots->map(function ($lot) use ($expirationOffer, $discountPercentage, $excludedProductIds) {
+            $product = $lot->product;
+            $salePrice = $product ? (float) $product->sale_price : 0;
+            $discountAmount = round($salePrice * ($discountPercentage / 100), 2);
+            $finalPrice = max(0, round($salePrice - $discountAmount, 2));
+            $isExcluded = in_array($product?->id, $excludedProductIds, true);
+
+            $now = now();
+            $expDate = $lot->expiration_date ? \Carbon\Carbon::parse($lot->expiration_date) : null;
+            $daysRemaining = $expDate ? (int) $now->diffInDays($expDate, false) : 0;
+            $monthsRemaining = $expDate ? max(0, ceil($daysRemaining / 30)) : 0;
+
+            return [
+                'lot_id' => $lot->id,
+                'lot_number' => $lot->lot_number,
+                'expiration_date' => $expDate ? $expDate->format('d/m/Y') : null,
+                'days_remaining' => $daysRemaining,
+                'months_remaining' => $monthsRemaining,
+                'quantity' => $lot->quantity,
+                'product_id' => $product?->id,
+                'product_name' => $product?->name ?? 'Sin nombre',
+                'barcode' => $product?->barcode ?? '',
+                'sku' => $product?->sku ?? '',
+                'laboratory_name' => $product?->laboratory?->name ?? '—',
+                'category_name' => $product?->category?->name ?? '—',
+                'sale_price' => $salePrice,
+                'discount_percentage' => $discountPercentage,
+                'discount_amount' => $discountAmount,
+                'final_price' => $finalPrice,
+                'is_excluded' => $isExcluded,
+                'is_active_in_offer' => !$isExcluded,
+            ];
+        });
+    }
+
+    public function toggleProductExclusion(ExpirationOffer $expirationOffer, int $productId): bool
+    {
+        $existing = DB::table('expiration_offer_excluded_products')
+            ->where('expiration_offer_id', $expirationOffer->id)
+            ->where('product_id', $productId)
+            ->first();
+
+        if ($existing) {
+            DB::table('expiration_offer_excluded_products')
+                ->where('id', $existing->id)
+                ->delete();
+            return false;
+        } else {
+            DB::table('expiration_offer_excluded_products')->insert([
+                'expiration_offer_id' => $expirationOffer->id,
+                'product_id' => $productId,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            return true;
+        }
+    }
 }

@@ -88,6 +88,11 @@ class QuotationQueryService
         $eoDiscount = "(SELECT eo.discount_percentage
                           FROM expiration_offers eo
                          WHERE eo.is_active = 1
+                           AND NOT EXISTS (
+                               SELECT 1 FROM expiration_offer_excluded_products eoep
+                                WHERE eoep.expiration_offer_id = eo.id
+                                  AND eoep.product_id = products.id
+                           )
                            AND EXISTS (
                                SELECT 1 FROM product_lots pl
                                 WHERE pl.product_id = products.id

@@ -375,6 +375,9 @@ class Product extends Model
             // Find active offers that cover this expiration time (Offer Months >= Lot Months)
             $expirationOffer = \App\Models\ExpirationOffer::where('is_active', true)
                 ->where('months_to_expiration', '>=', $monthsToExpiration)
+                ->whereDoesntHave('excludedProducts', function ($q) {
+                    $q->where('product_id', $this->id);
+                })
                 ->orderByDesc('discount_percentage')
                 ->first();
 

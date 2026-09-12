@@ -29,6 +29,19 @@ class ExpirationOffer extends Model
     }
 
     /**
+     * Relación con productos excluidos de esta oferta
+     */
+    public function excludedProducts(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            Product::class,
+            'expiration_offer_excluded_products',
+            'expiration_offer_id',
+            'product_id'
+        )->withTimestamps();
+    }
+
+    /**
      * Relación con expiraciones
      */
     public function expirations(): HasMany

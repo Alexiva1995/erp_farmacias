@@ -14,4 +14,6 @@ interface ExpirationOfferRepositoryInterface
     public function update(ExpirationOffer $expirationOffer, array $data): ExpirationOffer;
     public function delete(ExpirationOffer $expirationOffer): bool;
     public function getAvailableProductLots(int $months = 6): Collection;
+    public function getQualifyingProducts(ExpirationOffer $expirationOffer, array $filters = []): Collection;
+    public function toggleProductExclusion(ExpirationOffer $expirationOffer, int $productId): bool;
 }

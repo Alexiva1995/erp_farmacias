@@ -2,6 +2,7 @@
 import ExpirationOfferFilters from "@/components/ExpirationOfferFilters.vue";
 import ExpirationOfferTable from "@/components/ExpirationOfferTable.vue";
 import ExpirationCreateOffer from "@/components/dialogs/ExpirationOfferModal.vue";
+import ExpirationOfferViewModal from "@/components/dialogs/ExpirationOfferViewModal.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import Swal from "sweetalert2";
@@ -21,8 +22,10 @@ const filterMonthsExpirationsOffer = ref("");
 
 // Estados de Modales
 const isOfferDialogVisible = ref(false);
+const isViewDialogVisible = ref(false);
 const isLoadingDialogData = ref(false);
 const currentOfferToEdit = ref(null);
+const currentOfferToView = ref(null);
 const isEditingMode = ref(false);
 
 const openCreateOfferModal = () => {
@@ -154,6 +157,23 @@ const closeExpirationOfferModal = () => {
   isEditingMode.value = false;
 };
 
+// Ver productos de la oferta
+const handleViewOffer = (offer) => {
+  if (!offer.id) {
+    toast.error("Error: No se puede ver la oferta sin ID");
+    return;
+  }
+
+  currentOfferToView.value = { ...offer };
+  isViewDialogVisible.value = true;
+};
+
+// Cerrar modal de visualización
+const closeViewOfferModal = () => {
+  isViewDialogVisible.value = false;
+  currentOfferToView.value = null;
+};
+
 // Actualizar opciones de tabla
 const updateTableOptionsExpiration = (options) => {
   pageExpirations.value = options.page;
@@ -215,6 +235,7 @@ onMounted(() => {
       :page="pageExpirations"
       :total="totalExpirations"
       @update:options="updateTableOptionsExpiration"
+      @view-offer="handleViewOffer"
       @edit-offer="handleEditOffer"
       @delete-offer="handleDeleteOffer"
     />
@@ -226,6 +247,12 @@ onMounted(() => {
       :offer-to-edit="currentOfferToEdit"
       @save="handleSaveOffer"
       @modal-closed="closeExpirationOfferModal"
+    />
+
+    <ExpirationOfferViewModal
+      v-model="isViewDialogVisible"
+      :offer-data="currentOfferToView"
+      @modal-closed-view="closeViewOfferModal"
     />
   </div>
 </template>

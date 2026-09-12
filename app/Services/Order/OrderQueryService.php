@@ -191,14 +191,19 @@ class OrderQueryService
             ->where('end_date', '>=', DB::raw('CURDATE()'))
             ->groupBy('category_id');
 
-        // Subconsulta agregada para ofertas de caducidad activas por producto
+        // Subconsulta agregada para ofertas de caducidad activas por producto (excluyendo productos configurados)
         $expOffersAggregate = DB::table('expiration_offers as eo')
             ->join('product_lots as pl', function ($join) {
                 $join->on(DB::raw('(TIMESTAMPDIFF(MONTH, CURDATE(), pl.expiration_date) + 1)'), '<=', 'eo.months_to_expiration')
                      ->where('pl.quantity', '>', 0);
             })
+            ->leftJoin('expiration_offer_excluded_products as eoep', function ($join) {
+                $join->on('eo.id', '=', 'eoep.expiration_offer_id')
+                     ->on('pl.product_id', '=', 'eoep.product_id');
+            })
             ->select('pl.product_id', DB::raw('MAX(eo.discount_percentage) as max_discount'))
             ->where('eo.is_active', 1)
+            ->whereNull('eoep.id')
             ->groupBy('pl.product_id');
 
         // 1. Consulta de PRODUCTOS

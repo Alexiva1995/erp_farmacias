@@ -45,8 +45,9 @@ const allowWithoutBarcode = ref(false);
 const packagesCount = ref("");
 const openedQuantity = ref("");
 
-// Solo se permite bypass / ingreso manual si el producto NO tiene código de barras, si su código es igual a su ID, o si no tiene stock (stock <= 0)
+// Solo se permite bypass / ingreso manual si la configuración global lo permite (!barcodeRequiredGlobal), o si el producto NO tiene código de barras, si su código es igual a su ID, o si no tiene stock (stock <= 0)
 const canBypassBarcode = computed(() => {
+  if (!barcodeRequiredGlobal.value) return true;
   const bc = props.product?.barcode ? String(props.product.barcode).trim() : '';
   const id = props.product?.id ? String(props.product.id).trim() : '';
   const stock = Number(props.product?.stock ?? props.product?.system_quantity ?? props.product?.current_stock ?? 0);
@@ -54,7 +55,8 @@ const canBypassBarcode = computed(() => {
 });
 
 const isManualEntryAllowed = computed(() => {
-  return canBypassBarcode.value && (allowWithoutBarcode.value || !barcodeRequiredGlobal.value);
+  if (!barcodeRequiredGlobal.value) return true;
+  return canBypassBarcode.value && allowWithoutBarcode.value;
 });
 
 // Contenido por envase del producto (presentation) y unidad de medida
@@ -273,10 +275,12 @@ const handleSave = async () => {
 
   if (!result || !result.isConfirmed) return;
 
+  const isWithoutBarcode = !barcodeRequiredGlobal.value || allowWithoutBarcode.value;
+
   const countData = {
-    barcode: allowWithoutBarcode.value ? null : barcodeInput.value.trim(),
+    barcode: isWithoutBarcode ? null : barcodeInput.value.trim(),
     countedQuantity: quantity,
-    allowWithoutBarcode: allowWithoutBarcode.value,
+    allowWithoutBarcode: isWithoutBarcode,
   };
 
   emit("save", countData);

@@ -123,4 +123,52 @@ class ExpirationOfferController extends Controller
             ], 500);
         }
     }
+
+    public function getProducts(Request $request, ExpirationOffer $expirationOffer): JsonResponse
+    {
+        try {
+            $filters = $request->only(['q', 'scope']);
+            $products = $this->offerService->getQualifyingProducts($expirationOffer, $filters);
+
+            return response()->json([
+                'success' => true,
+                'data' => $products,
+                'total' => $products->count(),
+                'offer' => new ExpirationOfferResource($expirationOffer)
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener los productos de la oferta: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function toggleExclusion(Request $request, ExpirationOffer $expirationOffer): JsonResponse
+    {
+        try {
+            $productId = (int) $request->input('product_id');
+            if (!$productId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'El ID del producto es requerido'
+                ], 422);
+            }
+
+            $isExcluded = $this->offerService->toggleProductExclusion($expirationOffer, $productId);
+
+            return response()->json([
+                'success' => true,
+                'is_excluded' => $isExcluded,
+                'message' => $isExcluded
+                    ? 'Producto excluido de la oferta en el Punto de Venta exitosamente'
+                    : 'Producto reincorporado a la oferta en el Punto de Venta exitosamente'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al modificar exclusión: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }

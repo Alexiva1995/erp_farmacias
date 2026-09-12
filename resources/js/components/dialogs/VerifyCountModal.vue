@@ -1,9 +1,15 @@
 <script setup>
 import BarcodeScannerDialog from "@/components/dialogs/BarcodeScannerDialog.vue";
 import axios from "@/plugins/axios";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 import { formatDateSimple, formatNumber } from "@/utils/formatters";
 import Swal from "sweetalert2";
 import { computed, nextTick, ref, watch } from "vue";
+
+const brandingStore = useBrandingStore();
+const barcodeRequiredGlobal = computed(
+  () => brandingStore.settings?.cyclic_inventory_barcode_required ?? true
+);
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
@@ -34,8 +40,9 @@ const isScannerVisible = ref(false);
 const allowWithoutBarcode = ref(false);
 const lastScanTimestamp = ref(0);
 
-// Solo se permite bypass / ingreso manual si el producto no tiene código, su código es igual a su ID, o si no tiene stock (stock <= 0)
+// Solo se permite bypass / ingreso manual si la configuración global lo permite (!barcodeRequiredGlobal), o si el producto no tiene código, su código es igual a su ID, o si no tiene stock (stock <= 0)
 const canBypassBarcode = computed(() => {
+  if (!barcodeRequiredGlobal.value) return true;
   const p = props.countRecord?.product;
   const bc = p?.barcode ? String(p.barcode).trim() : "";
   const id = p?.id ? String(p.id).trim() : (props.countRecord?.product_id ? String(props.countRecord.product_id).trim() : "");
@@ -44,6 +51,7 @@ const canBypassBarcode = computed(() => {
 });
 
 const isManualEntryAllowed = computed(() => {
+  if (!barcodeRequiredGlobal.value) return true;
   return canBypassBarcode.value && allowWithoutBarcode.value;
 });
 
@@ -390,7 +398,7 @@ const handleClose = () => {
           <div class="d-flex flex-column gap-1">
             <!-- Si puede bypass/sin código, mostramos switch discreto -->
             <div
-              v-if="canBypassBarcode"
+              v-if="canBypassBarcode && barcodeRequiredGlobal"
               class="d-flex align-center justify-space-between px-1 mb-1"
             >
               <span class="text-super-xs font-weight-bold text-disabled text-uppercase">

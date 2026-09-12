@@ -11,7 +11,7 @@ const props = defineProps({
   title:        { type: String, default: "" },
 });
 
-const emit = defineEmits(["update:options", "edit-offer", "delete-offer"]);
+const emit = defineEmits(["update:options", "edit-offer", "delete-offer", "view-offer"]);
 
 const headers = [
   {
@@ -23,26 +23,24 @@ const headers = [
     cellClass: "font-weight-black text-primary d-none d-sm-table-cell",
     headerClass: "d-none d-sm-table-cell",
   },
-  { title: "Meses para Expirar", key: "months_to_expiration", sortable: true, width: "30%" },
-  { title: "% Desc.",            key: "discount_percentage",  sortable: true, align: "center", width: "120px" },
-  { title: "Estado",             key: "is_active",            sortable: true, align: "center", width: "100px" },
-  { title: "Ventas",             key: "sales_count",          sortable: false, align: "center", width: "110px" },
-  { title: "Creado El",          key: "created_at",           sortable: true, align: "center", width: "140px" },
-  { title: "Acciones",           key: "actions",              sortable: false, align: "center", width: "110px" },
+  { title: "Nombre de Oferta", key: "months_to_expiration", sortable: true, width: "35%" },
+  { title: "% Desc.",          key: "discount_percentage",  sortable: true, align: "end", width: "110px" },
+  { title: "Ventas",           key: "sales_count",          sortable: false, align: "end", width: "110px" },
+  { title: "Creado El",        key: "created_at",           sortable: true, align: "center", width: "140px" },
+  { title: "Estado",           key: "is_active",            sortable: true, align: "center", width: "110px" },
+  { title: "Acciones",         key: "actions",              sortable: false, align: "center", width: "130px" },
 ];
-
-const getStatusColor = (isActive) => (isActive ? "success" : "error");
-const getStatusText = (isActive) => (isActive ? "ACTIVA" : "INACTIVA");
 
 const formatDate = (dateString) => {
   if (!dateString) return "—";
   return new Date(dateString).toLocaleDateString("es-ES", {
     day: "2-digit",
-    month: "short",
+    month: "2-digit",
     year: "numeric",
   });
 };
 
+const handleView = (offer) => emit("view-offer", offer);
 const handleEdit = (offer) => emit("edit-offer", offer);
 const handleDelete = (id) => emit("delete-offer", id);
 </script>
@@ -65,6 +63,10 @@ const handleDelete = (id) => emit("delete-offer", id);
         :items="props.offers"
         :items-length="props.total"
         :loading="props.loading"
+        items-per-page-text="Filas por página:"
+        page-text="{0}-{1} de {2}"
+        loading-text="Cargando..."
+        no-data-text="No hay datos disponibles"
         class="text-no-wrap"
         density="compact"
         @update:options="(options) => emit('update:options', options)"
@@ -84,63 +86,56 @@ const handleDelete = (id) => emit("delete-offer", id);
 
         <!-- Months Column -->
         <template #item.months_to_expiration="{ item }">
-          <div class="d-flex align-center gap-2 py-2">
-            <VIcon icon="tabler-hourglass-high" size="18" class="text-warning" />
-            <div class="d-flex flex-column">
-              <span class="text-sm font-weight-black text-high-emphasis uppercase leading-tight">
-                {{ item.months_to_expiration }} {{ item.months_to_expiration == 1 ? 'MES' : 'MESES' }} O MENOS
-              </span>
-              <span class="text-super-xs font-weight-bold text-disabled uppercase mt-0-5">
-                Regla por Próximo a Vencer
-              </span>
-            </div>
-          </div>
+          <span class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate d-block py-2" style="max-inline-size: 380px;" :title="`${item.months_to_expiration} ${item.months_to_expiration == 1 ? 'MES' : 'MESES'} O MENOS`">
+            {{ item.months_to_expiration }} {{ item.months_to_expiration == 1 ? 'MES' : 'MESES' }} O MENOS
+          </span>
         </template>
 
         <!-- Discount Column -->
         <template #item.discount_percentage="{ item }">
-          <VChip color="success" size="small" variant="tonal" class="font-weight-black rounded">
-            {{ item.discount_percentage }}% OFF
-          </VChip>
+          <span class="text-sm font-weight-bold text-success pe-1">
+            {{ parseFloat(item.discount_percentage || 0) }}%
+          </span>
+        </template>
+
+        <!-- Sales Count Column -->
+        <template #item.sales_count="{ item }">
+          <span class="text-sm font-weight-medium text-high-emphasis pe-1">
+            {{ item.sales_count ?? 0 }} uds.
+          </span>
+        </template>
+
+        <!-- Created At Column -->
+        <template #item.created_at="{ item }">
+          <span class="text-xs font-weight-medium text-medium-emphasis">
+            {{ formatDate(item.created_at) }}
+          </span>
         </template>
 
         <!-- Active Status Column -->
         <template #item.is_active="{ item }">
           <VChip
-            :color="getStatusColor(item.is_active)"
-            size="x-small"
-            variant="flat"
-            class="font-weight-black px-2 rounded"
+            :color="item.is_active ? 'success' : 'secondary'"
+            size="small"
+            variant="tonal"
+            class="font-weight-bold px-2 rounded-pill"
           >
-            {{ getStatusText(item.is_active) }}
+            <span class="status-dot me-1" :class="item.is_active ? 'bg-success' : 'bg-secondary'"></span>
+            {{ item.is_active ? 'Activa' : 'Inactiva' }}
           </VChip>
-        </template>
-
-        <!-- Sales Count Column -->
-        <template #item.sales_count="{ item }">
-          <div class="d-flex justify-center">
-            <VChip
-              size="small"
-              color="info"
-              variant="tonal"
-              class="font-weight-black rounded"
-              prepend-icon="tabler-shopping-cart"
-            >
-              {{ item.sales_count ?? 0 }} uds.
-            </VChip>
-          </div>
-        </template>
-
-        <!-- Created At Column -->
-        <template #item.created_at="{ item }">
-          <span class="text-super-xs font-weight-bold text-medium-emphasis uppercase">
-            {{ formatDate(item.created_at) }}
-          </span>
         </template>
 
         <!-- Actions Column -->
         <template #item.actions="{ item }">
           <div class="d-flex justify-center gap-1">
+            <IconBtn
+              @click="handleView(item)"
+              color="info"
+              size="small"
+            >
+              <VIcon icon="tabler-eye" size="18" />
+              <VTooltip activator="parent">Ver Productos</VTooltip>
+            </IconBtn>
             <IconBtn
               @click="handleEdit(item)"
               color="warning"
@@ -183,22 +178,17 @@ const handleDelete = (id) => emit("delete-offer", id);
                 <span class="text-primary font-weight-black text-super-xs bg-primary-lighten-5 px-1-5 py-0-5 rounded flex-shrink-0">
                   ID: {{ item.id }}
                 </span>
-                <span class="text-super-xs font-weight-bold text-disabled uppercase">
-                  VENCE &le; {{ item.months_to_expiration }} MESES
+              </div>
+              <div class="d-flex align-center gap-1">
+                <span class="status-dot" :class="item.is_active ? 'bg-success' : 'bg-secondary'"></span>
+                <span :class="item.is_active ? 'text-success' : 'text-medium-emphasis'" class="text-xs font-weight-bold">
+                  {{ item.is_active ? 'Activa' : 'Inactiva' }}
                 </span>
               </div>
-              <VChip
-                :color="getStatusColor(item.is_active)"
-                size="x-small"
-                variant="flat"
-                class="font-weight-black px-2 rounded"
-              >
-                {{ getStatusText(item.is_active) }}
-              </VChip>
             </div>
 
             <h3 class="product-mobile-title font-weight-black text-high-emphasis text-uppercase truncate-2-lines mb-2 text-body-2">
-              PROXIMIDAD A {{ item.months_to_expiration }} {{ item.months_to_expiration == 1 ? 'MES' : 'MESES' }}
+              {{ item.months_to_expiration }} {{ item.months_to_expiration == 1 ? 'MES' : 'MESES' }} O MENOS
             </h3>
 
             <!-- Caja compacta de Descuento y Ventas -->
@@ -206,20 +196,20 @@ const handleDelete = (id) => emit("delete-offer", id);
               <div class="d-flex flex-column">
                 <span class="text-super-xs text-disabled text-uppercase font-weight-bold letter-spacing-1">Descuento:</span>
                 <span class="text-xs font-weight-black text-success">
-                  {{ item.discount_percentage }}% OFF
+                  {{ parseFloat(item.discount_percentage || 0) }}% OFF
                 </span>
               </div>
 
               <div class="d-flex flex-column text-end">
                 <span class="text-super-xs text-disabled text-uppercase font-weight-bold letter-spacing-1">Ventas:</span>
-                <span class="text-xs font-weight-bold text-info">
+                <span class="text-xs font-weight-bold text-medium-emphasis">
                   {{ item.sales_count ?? 0 }} uds.
                 </span>
               </div>
             </div>
 
             <!-- Creado El Móvil -->
-            <div class="d-flex justify-space-between align-center px-1 mt-1 text-super-xs font-weight-bold text-disabled">
+            <div class="d-flex justify-space-between align-center px-1 mt-1 text-super-xs font-weight-medium text-medium-emphasis">
               <span>FECHA CREACIÓN:</span>
               <span>{{ formatDate(item.created_at) }}</span>
             </div>
@@ -227,6 +217,16 @@ const handleDelete = (id) => emit("delete-offer", id);
 
           <!-- Acciones Rectangulares en Móvil -->
           <div class="d-flex align-center border-t border-opacity-10 mobile-actions-bar">
+            <VBtn
+              color="info"
+              variant="text"
+              class="flex-grow-1 rounded-0 mobile-action-btn d-flex align-center justify-center"
+              height="38"
+              @click="handleView(item)"
+            >
+              <VIcon icon="tabler-eye" size="18" />
+            </VBtn>
+            <VDivider vertical class="border-opacity-10" />
             <VBtn
               color="warning"
               variant="text"
@@ -316,5 +316,12 @@ const handleDelete = (id) => emit("delete-offer", id);
   font-size: 0.75rem !important;
   font-weight: 700 !important;
   text-transform: uppercase;
+}
+
+.status-dot {
+  display: inline-block;
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: 50%;
 }
 </style>

@@ -55,4 +55,14 @@ class ExpirationOfferService
     {
         return $this->repository->getAvailableProductLots($months);
     }
+
+    public function getQualifyingProducts(ExpirationOffer $offer, array $filters = []): Collection
+    {
+        return $this->repository->getQualifyingProducts($offer, $filters);
+    }
+
+    public function toggleProductExclusion(ExpirationOffer $offer, int $productId): bool
+    {
+        return $this->repository->toggleProductExclusion($offer, $productId);
+    }
 }

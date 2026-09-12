@@ -43,9 +43,12 @@ class InventoryCycleActionService
                 $hasRealBarcode = !empty($rawBarcode) && $rawBarcode !== $rawId;
                 $allowWithoutBarcode = (bool) ($data['allow_without_barcode'] ?? false);
 
-                // Si el producto tiene código de barras real Y tiene stock > 0, el escaneo es obligatorio
-                // Si el stock en sistema es 0 o menor, se permite el ingreso manual
-                $requiresStrictBarcode = $hasRealBarcode && $systemStock > 0;
+                // Verificar si la configuración global exige código de barras
+                $barcodeRequiredGlobal = \App\Models\GeneralSetting::first()?->cyclic_inventory_barcode_required ?? true;
+
+                // Si el producto tiene código de barras real, la configuración global lo exige Y tiene stock > 0, el escaneo es obligatorio
+                // Si la configuración global no lo exige, o si el stock en sistema es 0 o menor, se permite el ingreso manual
+                $requiresStrictBarcode = $barcodeRequiredGlobal && $hasRealBarcode && $systemStock > 0;
 
                 if ($requiresStrictBarcode) {
                     $scannedBarcode = isset($data['barcode']) ? trim((string) $data['barcode']) : '';
@@ -56,7 +59,7 @@ class InventoryCycleActionService
                             'data' => null
                         ];
                     }
-                } elseif (!$allowWithoutBarcode && !empty($rawBarcode)) {
+                } elseif (!$allowWithoutBarcode && $barcodeRequiredGlobal && !empty($rawBarcode)) {
                     $scannedBarcode = isset($data['barcode']) ? trim((string) $data['barcode']) : '';
                     if (!empty($scannedBarcode) && $scannedBarcode !== $rawBarcode) {
                         return [
@@ -505,8 +508,9 @@ class InventoryCycleActionService
                     return ['success' => false, 'message' => 'No existe un ciclo activo.', 'data' => null];
                 }
 
-                $allowWithoutBarcode = $data['allow_without_barcode'] ?? false;
-                if (!$allowWithoutBarcode) {
+                $barcodeRequiredGlobal = \App\Models\GeneralSetting::first()?->cyclic_inventory_barcode_required ?? true;
+                $allowWithoutBarcode = (bool) ($data['allow_without_barcode'] ?? false);
+                if ($barcodeRequiredGlobal && !$allowWithoutBarcode) {
                     if ($product->barcode && isset($data['barcode']) && $product->barcode !== $data['barcode']) {
                         return ['success' => false, 'message' => 'El código de barras no coincide.', 'data' => null];
                     }
@@ -842,10 +846,11 @@ class InventoryCycleActionService
                     return ['success' => false, 'message' => 'No existe un ciclo de inventario activo.', 'data' => null];
                 }
 
-                $allowWithoutBarcode = $data['allow_without_barcode'] ?? false;
+                $barcodeRequiredGlobal = \App\Models\GeneralSetting::first()?->cyclic_inventory_barcode_required ?? true;
+                $allowWithoutBarcode = (bool) ($data['allow_without_barcode'] ?? false);
 
-                // Solo validar código de barras si no se permite sin código de barras
-                if (!$allowWithoutBarcode) {
+                // Solo validar código de barras si la configuración global lo exige y no se permite sin código de barras
+                if ($barcodeRequiredGlobal && !$allowWithoutBarcode) {
                     if ($product->barcode && isset($data['barcode']) && $product->barcode !== $data['barcode']) {
                         return ['success' => false, 'message' => 'El código de barras no coincide con el producto.', 'data' => null];
                     }

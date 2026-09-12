@@ -20,8 +20,8 @@ class ExpirationOfferResource extends JsonResource
             'discount_percentage' => (float) $this->discount_percentage,
             'is_active' => (bool) $this->is_active,
             'sales_count' => (int) ($this->sales_count ?? 0),
-            'created_at' => $this->created_at,
-            'updated_at' => $this->updated_at,
+            'created_at' => $this->created_at ? $this->created_at->format('d/m/Y') : null,
+            'updated_at' => $this->updated_at ? $this->updated_at->format('d/m/Y') : null,
         ];
     }
 }
