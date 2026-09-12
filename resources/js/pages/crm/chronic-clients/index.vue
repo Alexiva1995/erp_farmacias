@@ -58,6 +58,7 @@ const consumptionTypeOptions = [
   { title: 'Todos los Tipos', value: 'all' },
   { title: 'Crónico (Uso Continuo)', value: 'chronic' },
   { title: 'Tratamiento Único / Ciclo', value: 'single_treatment' },
+  { title: 'Esporádico / Ocasional', value: 'sporadic' },
 ]
 
 const productConsumptionFilterOptions = [
@@ -720,8 +721,8 @@ onMounted(() => {
 
           <!-- Duración Estimada -->
           <template #item.treatment_duration_days="{ item }">
-            <span v-if="item.consumption_type === 'chronic' || item.consumption_type === 'single_treatment'" class="font-weight-medium">
-              {{ item.treatment_duration_days || (item.consumption_type === 'chronic' ? 30 : 7) }} días / caja
+            <span v-if="item.consumption_type === 'chronic' || item.consumption_type === 'single_treatment' || item.consumption_type === 'sporadic'" class="font-weight-medium">
+              {{ item.treatment_duration_days || (item.consumption_type === 'single_treatment' ? 7 : 30) }} días
             </span>
             <span v-else class="text-caption text-disabled">No aplica</span>
           </template>
@@ -743,6 +744,14 @@ onMounted(() => {
               variant="flat"
             >
               Seguimiento de Fin de Ciclo
+            </VChip>
+            <VChip
+              v-else-if="item.consumption_type === 'sporadic'"
+              color="info"
+              size="x-small"
+              variant="flat"
+            >
+              Recordatorio Cada 30 Días
             </VChip>
             <VChip
               v-else-if="item.consumption_type === 'no_alert'"
@@ -818,15 +827,15 @@ onMounted(() => {
               />
             </VCol>
 
-            <VCol cols="12" v-if="selectedProduct.consumption_type === 'chronic' || selectedProduct.consumption_type === 'single_treatment'">
+            <VCol cols="12" v-if="selectedProduct.consumption_type === 'chronic' || selectedProduct.consumption_type === 'single_treatment' || selectedProduct.consumption_type === 'sporadic'">
               <VTextField
                 v-model.number="selectedProduct.treatment_duration_days"
-                label="Duración del Tratamiento / Caja (Días) *"
+                label="Frecuencia / Duración de Alerta (Días) *"
                 type="number"
                 min="1"
                 max="365"
                 density="comfortable"
-                :hint="selectedProduct.consumption_type === 'chronic' ? 'Días de cobertura estimada por cada unidad comprada (ej: 30 días).' : 'Días que dura el ciclo completo antes de realizar seguimiento (ej: 7 o 14 días).'"
+                :hint="selectedProduct.consumption_type === 'chronic' ? 'Días de cobertura estimada por cada unidad comprada (ej: 30 días).' : (selectedProduct.consumption_type === 'single_treatment' ? 'Días que dura el ciclo completo antes de realizar seguimiento (ej: 7 o 14 días).' : 'Días tras la compra para consultar disponibilidad en botiquín (por defecto 30 días).')"
                 persistent-hint
               />
             </VCol>

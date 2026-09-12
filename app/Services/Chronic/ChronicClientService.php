@@ -40,7 +40,7 @@ class ChronicClientService
             ->where('orders.status', Order::COMPLETED)
             ->where('orders.order_date', '>=', $fromDate)
             ->whereNotNull('orders.client_id')
-            ->whereIn('products.consumption_type', ['chronic', 'single_treatment'])
+            ->whereIn('products.consumption_type', ['chronic', 'single_treatment', 'sporadic'])
             ->groupBy('orders.client_id', 'order_details.product_id');
 
         $query = DB::table(DB::raw("({$latestDetailsQuery->toSql()}) as latest_purchases"))
@@ -172,12 +172,18 @@ class ChronicClientService
             $priceFormattedCop = $currentPriceCop > 0 ? ' / COP ' . number_format($currentPriceCop, 0, ',', '.') : '';
             
             $isSingleTreatment = ($row->consumption_type === 'single_treatment');
+            $isSporadic = ($row->consumption_type === 'sporadic');
             
             if ($isSingleTreatment) {
                 $whatsappMessage = "¡Hola, {$fullName}! 👋 Te saludamos de Farmacia Barrio Sucre 💚\n\n" .
                     "Te contactamos para hacer seguimiento a tu tratamiento con *{$row->product_name}* (estimado hasta: {$treatmentDateFormatted}).\n\n" .
                     "¿Cómo te has sentido con el tratamiento? Si requieres renovar o necesitas algún medicamento complementario, cuentas con nosotros.\n\n" .
                     "📦 ¡Delivery sin costo hasta tu casa! 🚚💨";
+            } elseif ($isSporadic) {
+                $whatsappMessage = "¡Hola, {$fullName}! 👋 Te saludamos de Farmacia Barrio Sucre 💚\n\n" .
+                    "Esperamos te encuentres muy bien. Te escribimos para consultar si aún tienes disponibilidad de *{$row->product_name}* en tu botiquín.\n\n" .
+                    "💵 Precio actual: *{$priceFormattedUsd}*{$priceFormattedBs}{$priceFormattedCop}\n" .
+                    "📦 ¡Delivery sin costo hasta tu casa! Escríbenos y con gusto te lo llevamos. 🚚💨";
             } else {
                 $whatsappMessage = "¡Hola, {$fullName}! 👋 Te saludamos de Farmacia Barrio Sucre 💚\n\n" .
                     "Nos pasamos por aquí para recordarte que ya se acerca la fecha de renovar tu *{$row->product_name}* (estimado: {$treatmentDateFormatted}).\n\n" .
@@ -307,8 +313,8 @@ class ChronicClientService
 
         $product->consumption_type = $consumptionType;
         $product->is_chronic = ($consumptionType === 'chronic');
-        $product->treatment_duration_days = ($consumptionType === 'chronic' || $consumptionType === 'single_treatment') 
-            ? ($durationDays ?: ($consumptionType === 'chronic' ? 30 : 7)) 
+        $product->treatment_duration_days = in_array($consumptionType, ['chronic', 'single_treatment', 'sporadic'], true)
+            ? ($durationDays ?: ($consumptionType === 'single_treatment' ? 7 : 30)) 
             : null;
             
         $product->save();

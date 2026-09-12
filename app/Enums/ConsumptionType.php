@@ -33,6 +33,6 @@ enum ConsumptionType: string
 
     public function hasReminder(): bool
     {
-        return $this === self::CHRONIC || $this === self::SINGLE_TREATMENT;
+        return $this === self::CHRONIC || $this === self::SINGLE_TREATMENT || $this === self::SPORADIC;
     }
 }
