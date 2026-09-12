@@ -58,10 +58,7 @@ const isExpiringSoon = (endDateStr) => {
 };
 
 const formatCurrency = (amount) => {
-  return new Intl.NumberFormat("es-ES", {
-    style: "currency",
-    currency: "USD",
-  }).format(amount || 0);
+  return `$${(parseFloat(amount) || 0).toFixed(2)}`;
 };
 
 const handleEdit = (pack) => {
@@ -129,9 +126,9 @@ const handleToggleStatus = (pack) => {
 
         <!-- Products Count Column -->
         <template #item.products_count="{ item }">
-          <VChip variant="tonal" color="info" size="small" class="font-weight-bold rounded px-2">
-            {{ Object.keys(item.pack_config || {}).length }} Prods
-          </VChip>
+          <span class="text-sm font-weight-medium text-high-emphasis">
+            {{ Object.keys(item.pack_config || {}).length }}
+          </span>
         </template>
 
         <!-- Total Price Column -->
@@ -172,16 +169,17 @@ const handleToggleStatus = (pack) => {
           </span>
         </template>
 
-        <!-- Active Switch Column -->
+        <!-- Active Status Column -->
         <template #item.is_active="{ item }">
-          <VSwitch
-            :model-value="item.is_active"
-            density="compact"
-            color="primary"
-            hide-details
-            class="d-inline-flex"
-            @update:model-value="handleToggleStatus(item)"
-          />
+          <VChip
+            :color="item.is_active ? 'success' : 'secondary'"
+            size="small"
+            variant="tonal"
+            class="font-weight-bold px-2 rounded-pill"
+          >
+            <span class="status-dot me-1" :class="item.is_active ? 'bg-success' : 'bg-secondary'"></span>
+            {{ item.is_active ? 'Activa' : 'Inactiva' }}
+          </VChip>
         </template>
 
         <!-- Actions Column -->
@@ -335,6 +333,13 @@ const handleToggleStatus = (pack) => {
 </template>
 
 <style scoped>
+.status-dot {
+  inline-size: 6px;
+  block-size: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
 .product-mobile-card {
   overflow: hidden;
   border-radius: 8px !important;
