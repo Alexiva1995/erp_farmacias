@@ -5,21 +5,21 @@ const props = defineProps({
   client: { type: Object, required: true },
 })
 
-const getStatusColor = (status) => {
-  if (status === 'urgent') return 'warning'
-  if (status === 'active') return 'success'
+const getStatusColor = (client) => {
+  if (client.is_urgent) return 'warning'
+  if (client.is_active) return 'success'
   return 'error'
 }
 
-const getStatusLabel = (status) => {
-  if (status === 'urgent') return 'Alerta (≤ 5 días)'
-  if (status === 'active') return 'Activo'
+const getStatusLabel = (client) => {
+  if (client.is_urgent) return 'Alerta (≤ 5 días)'
+  if (client.is_active) return 'Activo'
   return 'Agotado'
 }
 
-const getStatusIcon = (status) => {
-  if (status === 'urgent') return 'tabler-alert-triangle'
-  if (status === 'active') return 'tabler-circle-check'
+const getStatusIcon = (client) => {
+  if (client.is_urgent) return 'tabler-alert-triangle'
+  if (client.is_active) return 'tabler-circle-check'
   return 'tabler-clock-off'
 }
 </script>
@@ -32,18 +32,18 @@ const getStatusIcon = (status) => {
       </div>
       <VChip
         size="x-small"
-        :color="getStatusColor(client.status)"
+        :color="getStatusColor(client)"
         variant="tonal"
         class="font-weight-medium"
       >
-        <VIcon :icon="getStatusIcon(client.status)" start size="12" />
-        {{ getStatusLabel(client.status) }}
+        <VIcon :icon="getStatusIcon(client)" start size="12" />
+        {{ getStatusLabel(client) }}
       </VChip>
     </div>
 
     <div class="text-caption text-medium-emphasis mb-3">
-      <span v-if="client.client_doc">C.I: {{ client.client_doc }}</span>
-      <span v-if="client.client_phone" class="ms-2">Tel: {{ client.client_phone }}</span>
+      <span v-if="client.identification">C.I: {{ client.identification }}</span>
+      <span v-if="client.phone" class="ms-2">Tel: {{ client.phone }}</span>
     </div>
 
     <VDivider class="mb-3" />
@@ -52,19 +52,19 @@ const getStatusIcon = (status) => {
       <div class="text-caption text-disabled">Medicamento</div>
       <div class="font-weight-semibold text-primary">{{ client.product_name }}</div>
       <div class="text-caption text-medium-emphasis">
-        {{ client.purchased_units }} un. ({{ client.total_treatment_days }} días de cobertura)
+        {{ client.purchased_quantity }} un. ({{ client.total_treatment_days }} días de cobertura)
       </div>
     </div>
 
     <div class="d-flex justify-space-between text-caption text-medium-emphasis mb-3">
       <div>
         <div class="text-disabled">Última compra</div>
-        <div>{{ client.last_purchase_date }}</div>
+        <div>{{ client.last_order_date_formatted }}</div>
       </div>
       <div class="text-end">
         <div class="text-disabled">Días restantes</div>
-        <div class="font-weight-bold" :class="client.days_remaining <= 5 ? 'text-warning' : 'text-high-emphasis'">
-          {{ client.days_remaining }} días (Fin: {{ client.estimated_depletion_date }})
+        <div class="font-weight-bold" :class="client.days_until_end <= 5 ? 'text-warning' : 'text-high-emphasis'">
+          {{ client.days_until_end }} días (Fin: {{ client.treatment_end_date_formatted }})
         </div>
       </div>
     </div>
@@ -75,7 +75,7 @@ const getStatusIcon = (status) => {
           ${{ Number(client.price_usd || 0).toFixed(2) }}
         </div>
         <div class="text-caption text-medium-emphasis">
-          Bs. {{ Number(client.price_ves || 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
+          Bs. {{ Number(client.price_bs || 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
           <span v-if="client.price_cop > 0"> | COP {{ Number(client.price_cop || 0).toLocaleString('es-CO') }}</span>
         </div>
       </div>

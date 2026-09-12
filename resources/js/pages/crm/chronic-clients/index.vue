@@ -26,7 +26,7 @@ const stats = reactive({
   total_patients: 0,
   urgent_reminders: 0,
   active_treatments: 0,
-  depleted_treatments: 0,
+  expired_treatments: 0,
   total_treatments: 0,
 })
 
@@ -35,15 +35,15 @@ const statusOptions = [
   { title: 'Todos los Estados', value: 'all' },
   { title: 'Alerta Urgente (≤ 5 días)', value: 'urgent' },
   { title: 'Tratamiento Activo (> 5 días)', value: 'active' },
-  { title: 'Tratamiento Agotado', value: 'depleted' },
+  { title: 'Tratamiento Vencido', value: 'expired' },
 ]
 
 // Headers para la tabla en escritorio
 const headers = [
   { title: 'Paciente / Cliente', key: 'client_name', sortable: false },
   { title: 'Medicamento Crónico', key: 'product_name', sortable: false },
-  { title: 'Última Compra', key: 'last_purchase_date', sortable: false },
-  { title: 'Duración / Fin', key: 'days_remaining', sortable: false },
+  { title: 'Última Compra', key: 'last_order_date_formatted', sortable: false },
+  { title: 'Duración / Fin', key: 'treatment_end_date_formatted', sortable: false },
   { title: 'Precio Actual', key: 'pricing', sortable: false },
   { title: 'Estado', key: 'status_label', sortable: false },
   { title: 'Acción WhatsApp', key: 'actions', sortable: false, align: 'center' },
@@ -70,7 +70,7 @@ const fetchChronicClients = async () => {
   try {
     const params = {
       page: page.value,
-      per_page: perPage.value,
+      itemsPerPage: perPage.value,
       search: searchQuery.value || undefined,
       status: statusFilter.value !== 'all' ? statusFilter.value : undefined,
       product_id: productFilter.value || undefined,
@@ -78,7 +78,7 @@ const fetchChronicClients = async () => {
 
     const res = await $api('/crm/chronic-clients', { params })
     if (res?.data) {
-      chronicClients.value = res.data.data || []
+      chronicClients.value = res.data.items || []
       totalRecords.value = res.data.total || 0
     }
   } catch (error) {
@@ -105,20 +105,20 @@ const fetchChronicProductsList = async () => {
 
 // Helpers de estilo para estado
 const getStatusColor = (item) => {
-  if (item.status === 'urgent') return 'warning'
-  if (item.status === 'active') return 'success'
+  if (item.is_urgent) return 'warning'
+  if (item.is_active) return 'success'
   return 'error'
 }
 
 const getStatusLabel = (item) => {
-  if (item.status === 'urgent') return 'Alerta (≤ 5 días)'
-  if (item.status === 'active') return 'Activo'
+  if (item.is_urgent) return 'Alerta (≤ 5 días)'
+  if (item.is_active) return 'Activo'
   return 'Agotado'
 }
 
 const getStatusIcon = (item) => {
-  if (item.status === 'urgent') return 'tabler-alert-triangle'
-  if (item.status === 'active') return 'tabler-circle-check'
+  if (item.is_urgent) return 'tabler-alert-triangle'
+  if (item.is_active) return 'tabler-circle-check'
   return 'tabler-clock-off'
 }
 
@@ -243,13 +243,13 @@ onMounted(() => {
           variant="flat"
           border
           class="pa-4 rounded-xl stat-card cursor-pointer"
-          :class="statusFilter === 'depleted' ? 'border-error border-opacity-100' : ''"
-          @click="statusFilter = 'depleted'"
+          :class="statusFilter === 'expired' ? 'border-error border-opacity-100' : ''"
+          @click="statusFilter = 'expired'"
         >
           <div class="d-flex align-center justify-space-between">
             <div>
               <div class="text-caption font-weight-bold text-error text-uppercase">Tratamientos Vencidos</div>
-              <div class="text-h4 font-weight-black mt-1 text-error">{{ stats.depleted_treatments }}</div>
+              <div class="text-h4 font-weight-black mt-1 text-error">{{ stats.expired_treatments }}</div>
               <div class="text-caption text-medium-emphasis mt-1">Días de dosis agotados</div>
             </div>
             <VAvatar color="error" variant="tonal" rounded="lg" size="48">
@@ -377,10 +377,10 @@ onMounted(() => {
             </div>
             <div class="text-caption text-medium-emphasis d-flex align-center gap-1">
               <VIcon icon="tabler-id" size="14" />
-              <span>{{ item.client_doc || 'S/N' }}</span>
-              <span v-if="item.client_phone" class="ms-2">
+              <span>{{ item.identification || 'S/N' }}</span>
+              <span v-if="item.phone" class="ms-2">
                 <VIcon icon="tabler-phone" size="14" />
-                {{ item.client_phone }}
+                {{ item.phone }}
               </span>
             </div>
           </div>
@@ -393,29 +393,29 @@ onMounted(() => {
               {{ item.product_name }}
             </div>
             <div class="text-caption text-medium-emphasis">
-              Dosis comprada: {{ item.purchased_units }} un. ({{ item.total_treatment_days }} días de cobertura)
+              Dosis comprada: {{ item.purchased_quantity }} un. ({{ item.total_treatment_days }} días de cobertura)
             </div>
           </div>
         </template>
 
         <!-- Columna Última Compra -->
-        <template #item.last_purchase_date="{ item }">
+        <template #item.last_order_date_formatted="{ item }">
           <div class="py-2">
-            <div class="font-weight-medium">{{ item.last_purchase_date }}</div>
-            <div class="text-caption text-disabled">Factura: #{{ item.invoice_number || item.last_order_id }}</div>
+            <div class="font-weight-medium">{{ item.last_order_date_formatted }}</div>
+            <div class="text-caption text-disabled">Lab: {{ item.laboratory_name }}</div>
           </div>
         </template>
 
         <!-- Columna Duración y Días Restantes -->
-        <template #item.days_remaining="{ item }">
+        <template #item.treatment_end_date_formatted="{ item }">
           <div class="py-2">
             <div class="d-flex align-center gap-2">
-              <span class="font-weight-bold" :class="item.days_remaining <= 5 ? 'text-warning' : 'text-high-emphasis'">
-                {{ item.days_remaining }} días restantes
+              <span class="font-weight-bold" :class="item.days_until_end <= 5 ? 'text-warning' : 'text-high-emphasis'">
+                {{ item.days_until_end }} días restantes
               </span>
             </div>
             <div class="text-caption text-medium-emphasis">
-              Fin: {{ item.estimated_depletion_date }}
+              Fin: {{ item.treatment_end_date_formatted }}
             </div>
           </div>
         </template>
@@ -427,7 +427,7 @@ onMounted(() => {
               ${{ Number(item.price_usd || 0).toFixed(2) }}
             </div>
             <div class="text-caption text-medium-emphasis">
-              Bs. {{ Number(item.price_ves || 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
+              Bs. {{ Number(item.price_bs || 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
             </div>
             <div class="text-caption text-medium-emphasis">
               COP {{ Number(item.price_cop || 0).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) }}

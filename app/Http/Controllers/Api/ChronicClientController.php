@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace AppHttpControllersApi;
+namespace App\Http\Controllers\Api;
 
-use AppHelpersApiResponse;
-use AppHttpControllersController;
-use AppServicesChronicChronicClientService;
-use IlluminateHttpJsonResponse;
-use IlluminateHttpRequest;
+use App\Helpers\ApiResponse;
+use App\Http\Controllers\Controller;
+use App\Services\Chronic\ChronicClientService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class ChronicClientController extends Controller
 {
