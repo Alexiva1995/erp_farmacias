@@ -40,7 +40,8 @@ class ChronicClientService
             ->whereNull('clients.deleted_at')
             ->where('products.is_deleted', false)
             ->whereNotNull('clients.phone')
-            ->where(DB::raw('LENGTH(TRIM(clients.phone))'), '>=', 10);
+            ->where('clients.phone', '!=', '')
+            ->where(DB::raw('LENGTH(REPLACE(REPLACE(REPLACE(TRIM(clients.phone), "-", ""), " ", ""), "+", ""))'), '>=', 7);
 
         if (!empty($search)) {
             $query->where(function ($q) use ($search) {
