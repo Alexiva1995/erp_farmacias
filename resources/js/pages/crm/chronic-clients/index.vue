@@ -121,7 +121,10 @@ const fetchStats = async () => {
 }
 
 // Cargar listado de clientes crónicos
-const fetchChronicClients = async () => {
+const fetchChronicClients = async (options = null) => {
+  if (options?.page) page.value = options.page
+  if (options?.itemsPerPage) perPage.value = options.itemsPerPage
+
   loading.value = true
   try {
     const params = {
@@ -146,7 +149,10 @@ const fetchChronicClients = async () => {
 }
 
 // Cargar productos crónicos para el selector de filtro
-const fetchProductsConfig = async () => {
+const fetchProductsConfig = async (options = null) => {
+  if (options?.page) productPage.value = options.page
+  if (options?.itemsPerPage) productPerPage.value = options.itemsPerPage
+
   productsLoading.value = true
   try {
     const params = {
@@ -179,13 +185,22 @@ const saveProductConsumption = async () => {
       ? (selectedProduct.treatment_duration_days ? parseInt(selectedProduct.treatment_duration_days, 10) : (selectedProduct.consumption_type === 'single_treatment' ? 7 : 30))
       : null
 
-    await $api(`/crm/chronic-clients/products-config/${selectedProduct.id}`, {
+    const res = await $api(`/crm/chronic-clients/products-config/${selectedProduct.id}`, {
       method: 'PUT',
       data: {
         consumption_type: selectedProduct.consumption_type,
         treatment_duration_days: duration,
       },
     })
+
+    // Actualización reactiva inmediata en la tabla local
+    const targetIdx = productsConfigList.value.findIndex(p => p.id === selectedProduct.id)
+    if (targetIdx !== -1) {
+      productsConfigList.value[targetIdx].consumption_type = selectedProduct.consumption_type
+      productsConfigList.value[targetIdx].treatment_duration_days = duration
+      productsConfigList.value[targetIdx].is_chronic = (selectedProduct.consumption_type === 'chronic')
+    }
+
     toast.success('Clasificación de producto actualizada correctamente.')
     editDialog.value = false
     await fetchProductsConfig()
