@@ -24,11 +24,13 @@ class ProductSupplier extends Model
         "unit_cost_with_discount",
         "unit_cost_usd_with_discount",
         "active_ingredient",
+        "discount_percentage",
         "is_ai_matched",
         "is_active",
     ];
 
     protected $casts = [
+        "discount_percentage" => "float",
         "is_ai_matched" => "boolean",
         "is_active" => "boolean",
     ];

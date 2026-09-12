@@ -317,6 +317,9 @@ class SupplierQueryService
                 'name' => null,
                 'laboratory' => null,
                 'active_ingredient' => null,
+                'discount_percentage' => 0,
+                'is_ai_matched' => false,
+                'is_active' => true,
                 'expiration' => null,
                 'quantity' => 1000,
                 'unit_cost' => 0,
@@ -331,7 +334,7 @@ class SupplierQueryService
             $batchRows = [];
             foreach ($uniqueProducts as $productData) {
                 $row = $templateRow;
-                foreach ($templateRow as $key => $defaultVal) {
+                foreach (array_keys($templateRow) as $key) {
                     if (array_key_exists($key, $productData) && $productData[$key] !== null) {
                         $row[$key] = $productData[$key];
                     }
@@ -340,6 +343,9 @@ class SupplierQueryService
                 $row['supplier_id'] = $supplier->id;
                 $row['unit_cost'] = is_numeric($row['unit_cost']) ? (float)$row['unit_cost'] : 0;
                 $row['unit_cost_usd'] = is_numeric($row['unit_cost_usd']) ? (float)$row['unit_cost_usd'] : 0;
+                $row['discount_percentage'] = is_numeric($row['discount_percentage']) ? (float)$row['discount_percentage'] : 0;
+                $row['is_ai_matched'] = (bool)($row['is_ai_matched'] ?? false);
+                $row['is_active'] = (bool)($row['is_active'] ?? true);
 
                 if (empty($row['unit_cost_with_discount']) || !is_numeric($row['unit_cost_with_discount'])) {
                     $row['unit_cost_with_discount'] = $row['unit_cost'];
