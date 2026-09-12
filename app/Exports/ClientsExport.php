@@ -23,7 +23,7 @@ class ClientsExport implements FromQuery, WithHeadings, WithMapping, ShouldAutoS
 
     public function query()
     {
-        return $this->query->with('company'); // Carga la relación company
+        return $this->query->with(['company', 'user']); // Carga las relaciones
     }
 
     public function headings(): array
@@ -37,7 +37,8 @@ class ClientsExport implements FromQuery, WithHeadings, WithMapping, ShouldAutoS
             'Email',
             'Empresa',
             'Dirección',
-            'Fecha Nacimiento'
+            'Fecha Nacimiento',
+            'Registrado Por',
         ];
     }
 
@@ -62,6 +63,7 @@ class ClientsExport implements FromQuery, WithHeadings, WithMapping, ShouldAutoS
             $client->company->name ?? 'N/A',
             $client->address ?? 'N/A',
             $formato,
+            $client->user?->username ?? $client->user?->name ?? 'Sistema / N/A',
         ];
     }
 
@@ -91,8 +93,8 @@ class ClientsExport implements FromQuery, WithHeadings, WithMapping, ShouldAutoS
                     'color' => ['rgb' => '2979FF'] // Azul corporativo
                 ]
             ],
-            // Ajustar texto en todas las columnas (A-I)
-            'A:I' => [
+            // Ajustar texto en todas las columnas (A-J)
+            'A:J' => [
                 'alignment' => [
                     'wrapText' => true,
                     'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_TOP

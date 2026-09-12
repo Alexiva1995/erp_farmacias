@@ -157,13 +157,19 @@ export function useTpvClientManager({
         return false
       } else {
         const clientData = responseData.client
-        const isInvalidPhone = !clientData.phone || clientData.phone.trim().length < 10 || /^0+$/.test(clientData.phone.trim())
+        const rawPhone = (clientData.phone || '').trim()
+        const cleanDigits = rawPhone.replace(/[^0-9]/g, '')
+        const isRepeated = /^(\d)\1+$/.test(cleanDigits)
+        const isValidVenezuelan = /^(0?)(412|414|424|416|426|2\d{2})\d{7}$/.test(cleanDigits)
+        const isDummy = ['1234567890', '12345678', '01234567890', '0000000000', '00000000000'].includes(cleanDigits)
+        const isInvalidPhone = !rawPhone || isRepeated || !isValidVenezuelan || isDummy
 
         if (isInvalidPhone) {
-          toast.warning('El cliente no tiene un teléfono válido. Por favor, complételo.')
+          toast.warning('El cliente no tiene un teléfono válido registrado. Por favor, ingréselo para continuar.')
           newClientFormData.value = {
             ...newClientFormData.value,
             ...clientData,
+            phone: '',
             identification: clientData.identification,
             identification_type: clientData.identification_type,
           }

@@ -214,8 +214,8 @@ function formatearFechaCompleta(fechaInput) {
                 <VCol cols="12" sm="6">
                   <VTextField
                     v-model="formData.phone"
-                    label="Teléfono"
-                    placeholder="Ej: 04121234567"
+                    label="Teléfono *"
+                    placeholder="Ej: 04141234567, 04121234567"
                     prepend-inner-icon="tabler-phone"
                     :error-messages="formError.phone"
                     variant="outlined"

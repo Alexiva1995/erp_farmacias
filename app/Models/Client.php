@@ -44,6 +44,8 @@ class Client extends Model
         'address',
         'birthdate', // De la rama 5.0-CRM
         'company_id', // De la rama 5.0-CRM
+        'user_id', // Usuario creador
+        'updated_by', // Usuario que actualizó
         'balance',
         'is_spe',
         'status',
@@ -57,6 +59,22 @@ class Client extends Model
         'updated_at' => 'datetime',
         'cne_verified_at' => 'datetime',
     ];
+
+    /**
+     * Relación con el usuario creador
+     */
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+    /**
+     * Relación con el usuario que actualizó
+     */
+    public function updater()
+    {
+        return $this->belongsTo(User::class, 'updated_by');
+    }
 
     /**
      * Relación con el modelo Company (de la rama 5.0-CRM)

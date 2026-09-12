@@ -44,13 +44,9 @@ const headers = [
   { title: 'Tipo', key: 'client_type', sortable: true },
   { title: 'Dirección', key: 'address', sortable: true },
   { 
-    title: 'Fecha', 
+    title: 'Registro', 
     key: 'created_at', 
     sortable: true, 
-    value: item => {
-      const fechaStr = item.created_at.replace('Z', '');
-      return day(fechaStr).format('DD/MM/YYYY');
-    }
   },
   { title: 'Acciones', key: 'acciones', sortable: false, align: 'center' },
 ];
@@ -116,6 +112,18 @@ const handleMobilePageChange = (newPage) => {
               </VChip>
             </div>
             <span v-else class="text-disabled text-xs uppercase font-weight-bold">Nunca</span>
+          </template>
+
+          <template #item.created_at="{ item }">
+            <div class="d-flex flex-column py-1">
+              <span class="text-xs font-weight-bold text-high-emphasis">
+                {{ day(item.created_at.replace('Z', '')).format('DD/MM/YYYY') }}
+              </span>
+              <span class="text-super-xs font-weight-medium text-disabled text-uppercase" :title="item.user?.username ? `Registrado por: ${item.user.username}` : 'Sin usuario asignado'">
+                <VIcon icon="tabler-user" size="11" class="me-0.5" />
+                {{ item.user?.username || 'Sistema' }}
+              </span>
+            </div>
           </template>
 
           <template #item.acciones="{ item }">
@@ -242,10 +250,16 @@ const handleMobilePageChange = (newPage) => {
                   {{ item.phone || 'SIN TELÉFONO' }}
                 </span>
               </div>
-              <div class="d-flex align-start gap-2">
+              <div class="d-flex align-start gap-2 mb-1">
                 <VIcon icon="tabler-map-pin" size="14" class="text-primary mt-1" />
                 <span class="text-super-xs text-medium-emphasis leading-tight truncate-2-lines uppercase font-weight-bold">
                   {{ item.address || 'SIN DIRECCIÓN REGISTRADA' }}
+                </span>
+              </div>
+              <div class="d-flex align-center gap-2 pt-1 border-t border-opacity-10">
+                <VIcon icon="tabler-user-check" size="14" class="text-secondary" />
+                <span class="text-super-xs text-disabled uppercase font-weight-bold">
+                  Reg: {{ item.user?.username || 'Sistema' }} • {{ item.created_at ? day(item.created_at.replace('Z', '')).format('DD/MM/YYYY') : '—' }}
                 </span>
               </div>
             </div>

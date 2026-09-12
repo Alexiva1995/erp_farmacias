@@ -33,6 +33,10 @@ class ClientResource extends JsonResource
             'client_type' => $this->client_type ?? 'Nuevo',
             'cne_verified_at' => $this->cne_verified_at?->format('Y-m-d H:i:s'),
             'created_at' => $this->created_at?->format('Y-m-d H:i:s'),
+            'user_id' => $this->user_id,
+            'user_name' => $this->user?->username ?? $this->user?->name,
+            'updated_by' => $this->updated_by,
+            'updated_by_name' => $this->updater?->username ?? $this->updater?->name,
         ];
     }
 }

@@ -49,7 +49,7 @@ class EditClientRequest extends FormRequest
 
             ],
             "identification" => "required|string|min:7|max:9",
-            "phone" => "required|string|max:50",
+            "phone" => "required|string",
             "address" => "required|string",
             "company_id" => "nullable|exists:companies,id",
             "birthdate" => "nullable|date",
@@ -60,6 +60,17 @@ class EditClientRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator) {
+            if ($this->phone) {
+                $cleanPhone = preg_replace('/[^0-9]/', '', (string) $this->phone);
+                $isRepeated = preg_match('/^(\d)\1+$/', $cleanPhone);
+                $isValidVenezuelan = preg_match('/^(0?)(412|414|424|416|426|2\d{2})\d{7}$/', $cleanPhone);
+                $isDummy = in_array($cleanPhone, ['1234567890', '12345678', '01234567890', '0000000000', '00000000000']);
+
+                if ($isRepeated || !$isValidVenezuelan || $isDummy) {
+                    $validator->errors()->add('phone', 'El número de teléfono debe ser un número venezolano válido (Ej: 04141234567, 04121234567, 04241234567).');
+                }
+            }
+
             if ($this->identification_type === Client::IDENTIFICATION_TYPE_JURIDICO) {
                 if (!empty($this->last_name)) {
                     $validator->errors()->add('last_name', 'Si el usuario es una entidad jurídica, el apellido no es necesario.');

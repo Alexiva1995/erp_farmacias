@@ -10,33 +10,42 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
 class ClientRepository implements \App\Contracts\Client
 {
     public function create(array $data): Model
     {
+        if (empty($data['user_id']) && Auth::check()) {
+            $data['user_id'] = Auth::id();
+        }
+
         $record = Client::create($data);
         return $record;
     }
 
     public function edit(array $data): Model
     {
-        if (($data['name'] || empty($data['name'])) && ($data['last_name'] || empty($data['last_name'])) && strlen($data['phone']) === 10) {
+        if (($data['name'] || empty($data['name'])) && ($data['last_name'] || empty($data['last_name'])) && strlen($data['phone'] ?? '') === 10) {
             $data['status'] = 2;
         }
 
-        if ($data['phone'] === '0') {
+        if (($data['phone'] ?? '') === '0') {
             $data['status'] = 1;
         }
 
+        if (Auth::check()) {
+            $data['updated_by'] = Auth::id();
+        }
+
         Client::where("id", "=", $data["id"])->update($data);
-        return Client::find($data["id"]);
+        return Client::with(['company', 'user:id,username', 'updater:id,username'])->find($data["id"]);
     }
 
     public function consultById(string|int $id): ?Model
     {
-        $client = Client::query()->with("company")->where("id", "=", $id)->first();
+        $client = Client::query()->with(["company", "user:id,username", "updater:id,username"])->where("id", "=", $id)->first();
         return $client;
     }
 
@@ -48,7 +57,7 @@ class ClientRepository implements \App\Contracts\Client
             return null;
         }
 
-        return Client::query()->with("company")
+        return Client::query()->with(["company", "user:id,username", "updater:id,username"])
             ->where("identification", "=", $identification)
             ->orWhere("identification", "=", $clean)
             ->orWhere("identification", "=", "V-{$clean}")
@@ -61,7 +70,7 @@ class ClientRepository implements \App\Contracts\Client
 
     public function consultAll(): Collection
     {
-        return Client::query()->with("company")->get();
+        return Client::query()->with(["company", "user:id,username", "updater:id,username"])->get();
     }
 
     public function builerPaginate($filtros): Builder
@@ -81,7 +90,9 @@ class ClientRepository implements \App\Contracts\Client
             ->with([
                 "company" => function ($query) {
                     $query->withTrashed();
-                }
+                },
+                "user:id,username",
+                "updater:id,username"
             ]);
 
         if (array_key_exists("buscardor_filtro", $filtros)) {
