@@ -210,8 +210,9 @@ class SupplierConnectionService
             });
 
             // Optimización: Cargar facturas y controles ya registrados en base de datos para no descargarlas repetidamente por FTP
-            // Si la factura está en estado pending y tiene detalles sin fecha de vencimiento, NO se omite para permitir su actualización
+            // Solo se omiten si tienen detalles guardados y todos sus detalles tienen fecha de vencimiento asignada
             $existingInvoicesData = \App\Models\Invoice::where('supplier_id', $connection->supplier_id)
+                ->whereHas('details')
                 ->whereDoesntHave('details', function ($q) {
                     $q->whereNull('expiration_date');
                 })

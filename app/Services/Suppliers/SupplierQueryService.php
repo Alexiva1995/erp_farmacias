@@ -219,10 +219,11 @@ class SupplierQueryService
 
 
             // Cargar facturas completas existentes globalmente y para este proveedor
-            // Aquellas facturas que ya tienen todos sus detalles con fecha de vencimiento o que ya están finalizadas se excluyen
-            $completeInvoicesQuery = Invoice::whereDoesntHave('details', function ($q) {
-                $q->whereNull('expiration_date');
-            })->where('status', '!=', 'pending');
+            // Aquellas facturas que ya tienen detalles con fecha de vencimiento y no están en borrador se excluyen
+            $completeInvoicesQuery = Invoice::whereHas('details')
+                ->whereDoesntHave('details', function ($q) {
+                    $q->whereNull('expiration_date');
+                })->where('status', '!=', 'pending');
 
             $allInvoiceNumbers = (clone $completeInvoicesQuery)->pluck('invoice_number')
                 ->filter()
