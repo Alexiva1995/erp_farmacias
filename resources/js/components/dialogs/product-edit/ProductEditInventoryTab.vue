@@ -154,6 +154,24 @@ const lotHeaders = [
               </VCard>
 
               <VCard
+                v-if="!isRestaurant && !isMiniMarket && !isSportsRental"
+                variant="flat"
+                class="pa-3 bg-light rounded-xl border-dashed-2 d-flex align-center flex-grow-1"
+                style="min-width: 140px; max-width: 220px;"
+              >
+                <VSwitch
+                  v-model="formData.is_chronic"
+                  label="Crónico"
+                  :true-value="1"
+                  :false-value="0"
+                  color="purple"
+                  density="compact"
+                  hide-details
+                  class="font-weight-black scale-90"
+                />
+              </VCard>
+
+              <VCard
                 v-if="isRestaurant"
                 variant="flat"
                 class="pa-3 bg-light rounded-xl border-dashed-2 d-flex align-center flex-grow-1"
@@ -171,6 +189,22 @@ const lotHeaders = [
                 />
               </VCard>
             </div>
+          </VCol>
+
+          <!-- Días de Duración del Tratamiento Crónico -->
+          <VCol v-if="formData.is_chronic" cols="12" md="6" class="mt-2 mb-2">
+            <AppTextField
+              v-model="formData.treatment_duration_days"
+              label="Días de tratamiento por unidad"
+              placeholder="Ej: 30"
+              type="number"
+              variant="outlined"
+              density="comfortable"
+              prepend-inner-icon="tabler-calendar-time"
+              :error-messages="formErrors.treatment_duration_days"
+              class="rounded-lg font-weight-black"
+              hide-details="auto"
+            />
           </VCol>
 
           <!-- Costo de Compra -->

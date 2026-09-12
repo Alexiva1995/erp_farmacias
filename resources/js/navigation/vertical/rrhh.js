@@ -43,6 +43,10 @@ export default [
             to: 'productivity-product',
           },
           {
+            title: 'Pacientes Crónicos',
+            to: 'crm-chronic-clients',
+          },
+          {
             title: 'Tareas Empleados',
             to: 'productivity-employee-task',
           },

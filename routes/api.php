@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\ResignationController;
 use App\Http\Controllers\Api\FurnitureController;
 use App\Http\Controllers\Api\GroupController;
 use App\Http\Controllers\Api\ClientController;
+use App\Http\Controllers\Api\ChronicClientController;
 use App\Http\Controllers\Api\CompanyController;
 use App\Http\Controllers\Api\DoctorController;
 use App\Http\Controllers\Api\ExchangeRateController;
@@ -554,6 +555,11 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
             Route::post("/bulk-cleanup", [ClientController::class, "bulkCleanup"]);
             Route::post("/cne-verify", [ClientController::class, "verifyCne"]);
             Route::post("/bulk-cne-verify", [ClientController::class, "bulkVerifyCne"]);
+        });
+
+        Route::prefix("chronic-clients")->group(function () {
+            Route::get("/", [ChronicClientController::class, "index"]);
+            Route::get("/stats", [ChronicClientController::class, "stats"]);
         });
 
         Route::prefix("lottery")->group(function () {

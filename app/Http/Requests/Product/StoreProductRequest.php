@@ -98,6 +98,8 @@ class StoreProductRequest extends FormRequest
             'group_id'         => 'nullable|integer|exists:groups_products,id',
             'is_scarce'        => ['sometimes', 'boolean'],
             'is_unified_group' => ['sometimes', 'boolean'],
+            'is_chronic'       => ['sometimes', 'boolean'],
+            'treatment_duration_days' => ['nullable', 'integer', 'min:1', 'max:365'],
             'presentation'     => ['nullable', 'numeric', 'min:0'],
             'unit_of_measure'  => ['nullable', 'string', 'in:g,ml,und'],
             'supplier_id'      => ['nullable', 'integer', 'exists:suppliers,id'],

@@ -32,6 +32,8 @@ class ProductResource extends JsonResource
             'is_novaventa' => (bool) $this->is_novaventa,
             'is_scarce' => (bool) $this->is_scarce,
             'is_favorite' => (bool) $this->is_favorite,
+            'is_chronic' => (bool) $this->is_chronic,
+            'treatment_duration_days' => (int) ($this->treatment_duration_days ?? 30),
             'is_active' => $this->is_active !== 0 && $this->is_active !== false,
             'no_pvp' => (bool) $this->no_pvp,
             'presentation' => $this->presentation,

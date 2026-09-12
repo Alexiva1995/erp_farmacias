@@ -73,6 +73,8 @@ class Product extends Model
         'presentation',
         'unit_of_measure',
         'is_favorite',
+        'is_chronic',
+        'treatment_duration_days',
         'price_lock_baseline',
         'sales_average_updated_at',
         'external_accumulated_sales',
@@ -86,6 +88,8 @@ class Product extends Model
      */
     protected $attributes = [
         'stock' => 0,
+        'is_chronic' => false,
+        'treatment_duration_days' => 30,
     ];
 
     protected $appends = ['formatted_details', 'price_bs', 'price_cop', 'sale_price_cop', 'unit_cost_cop', 'discount_percentage', 'discount_type', 'discount_source_id'];
@@ -108,6 +112,8 @@ class Product extends Model
         'no_pvp' => 'boolean',
         'stock' => 'float',
         'is_favorite' => 'boolean',
+        'is_chronic' => 'boolean',
+        'treatment_duration_days' => 'integer',
         'price_lock_baseline' => 'float',
         'external_accumulated_sales' => 'float',
         'sales_average' => 'float',

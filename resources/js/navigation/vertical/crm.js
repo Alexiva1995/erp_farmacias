@@ -16,6 +16,10 @@ export default [
         to: 'crm-clients',
       },
       {
+        title: 'Clientes Crónicos',
+        to: 'crm-chronic-clients',
+      },
+      {
         title: 'Convenios',
         to: 'crm-companies',
       },
