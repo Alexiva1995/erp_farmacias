@@ -221,7 +221,7 @@ class SupplierQueryService
             // Cargar facturas completas existentes globalmente y para este proveedor
             // Aquellas facturas que ya tienen todos sus detalles con fecha de vencimiento o que ya están finalizadas se excluyen
             $completeInvoicesQuery = Invoice::whereDoesntHave('details', function ($q) {
-                $q->whereNull('expiration_date')->orWhere('expiration_date', '');
+                $q->whereNull('expiration_date');
             })->where('status', '!=', 'pending');
 
             $allInvoiceNumbers = (clone $completeInvoicesQuery)->pluck('invoice_number')
@@ -287,7 +287,7 @@ class SupplierQueryService
 
                     if (isset($existingNormalizedNumbers[$number]) ||
                         isset($existingNormalizedNumbers[$stripped]) ||
-                        (!empty($cleanFilenameNoZeroes) && isset($existingNormalizedNumbers[$strippedNoZeroes]))) {
+                        (!empty($strippedNoZeroes) && isset($existingNormalizedNumbers[$strippedNoZeroes]))) {
                         Log::warning("Factura filtrada: Ya existe completa en el ERP bajo número normalizado", ['number' => $number]);
                         return false;
                     }
@@ -416,6 +416,8 @@ class SupplierQueryService
                                 ->first();
                         }
 
+                        $userId = auth()->id() ?? User::value('id');
+
                         if ($existingInvoice) {
                             $invoiceModel = $existingInvoice;
                             $invoiceModel->update([
@@ -427,8 +429,8 @@ class SupplierQueryService
                                 ...Arr::only($header, Invoice::FILLABLEHEADER),
                                 'total_amount' => $totalAmount,
                                 'status' => $invoice['status'] ?? 'pending',
-                                'uploaded_by' => auth()->id() ?? 1,
-                                'registered_by' => auth()->id() ?? 1,
+                                'uploaded_by' => $userId,
+                                'registered_by' => $userId,
                             ]);
                         }
 

@@ -213,7 +213,7 @@ class SupplierConnectionService
             // Si la factura está en estado pending y tiene detalles sin fecha de vencimiento, NO se omite para permitir su actualización
             $existingInvoicesData = \App\Models\Invoice::where('supplier_id', $connection->supplier_id)
                 ->whereDoesntHave('details', function ($q) {
-                    $q->whereNull('expiration_date')->orWhere('expiration_date', '');
+                    $q->whereNull('expiration_date');
                 })
                 ->get(['invoice_number', 'control_number']);
 
