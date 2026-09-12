@@ -7,6 +7,26 @@ import { $api } from '@/utils/api'
 
 const { mobile: isMobile } = useDisplay()
 
+const activeTab = ref('patients')
+const consumptionTypeFilter = ref('all')
+
+const productsLoading = ref(false)
+const productsConfigList = ref([])
+const totalProducts = ref(0)
+const productPage = ref(1)
+const productPerPage = ref(15)
+const productSearchQuery = ref('')
+const productConsumptionFilter = ref('all')
+
+const editDialog = ref(false)
+const savingProduct = ref(false)
+const selectedProduct = reactive({
+  id: null,
+  name: '',
+  consumption_type: 'sporadic',
+  treatment_duration_days: 30,
+})
+
 // Estado de datos
 const loading = ref(false)
 const statsLoading = ref(false)
@@ -40,6 +60,23 @@ const stats = reactive({
 })
 
 // Opciones de Estado para filtro
+const consumptionTypeOptions = [
+  { title: 'Todos los Tipos', value: 'all' },
+  { title: 'Crónico (Uso Continuo)', value: 'chronic' },
+  { title: 'Tratamiento Único / Ciclo', value: 'single_treatment' },
+  { title: 'Esporádico / Ocasional', value: 'sporadic' },
+]
+
+const productConfigHeaders = [
+  { title: 'ID / Código', key: 'barcode', sortable: false },
+  { title: 'Medicamento / Producto', key: 'name', sortable: false },
+  { title: 'Categoría', key: 'category', sortable: false },
+  { title: 'Tipo de Consumo', key: 'consumption_type', sortable: false },
+  { title: 'Duración Estimada', key: 'treatment_duration_days', sortable: false },
+  { title: 'Automatización WhatsApp', key: 'automation', sortable: false },
+  { title: 'Acciones', key: 'actions', sortable: false, align: 'center' },
+]
+
 const statusOptions = [
   { title: 'Todos los Estados', value: 'all' },
   { title: 'Alerta Urgente (≤ 5 días)', value: 'urgent' },
@@ -50,7 +87,8 @@ const statusOptions = [
 // Headers para la tabla en escritorio
 const headers = [
   { title: 'Paciente / Cliente', key: 'client_name', sortable: false },
-  { title: 'Medicamento Crónico', key: 'product_name', sortable: false },
+  { title: 'Medicamento / Frecuencia', key: 'product_name', sortable: false },
+  { title: 'Tipo de Consumo', key: 'consumption_type', sortable: false },
   { title: 'Última Compra', key: 'last_order_date_formatted', sortable: false },
   { title: 'Duración / Fin', key: 'treatment_end_date_formatted', sortable: false },
   { title: 'Precio Actual', key: 'pricing', sortable: false },
@@ -98,6 +136,70 @@ const fetchChronicClients = async () => {
 }
 
 // Cargar productos crónicos para el selector de filtro
+const fetchProductsConfig = async () => {
+  productsLoading.value = true
+  try {
+    const params = {
+      page: productPage.value,
+      itemsPerPage: productPerPage.value,
+      search: productSearchQuery.value || undefined,
+      consumption_type: productConsumptionFilter.value !== 'all' ? productConsumptionFilter.value : undefined,
+    }
+    const res = await $api('/crm/chronic-clients/products-config', { params })
+    if (res?.data) {
+      productsConfigList.value = res.data.items || []
+      totalProducts.value = res.data.total || 0
+    }
+  } catch (e) { console.error(e) }
+  finally { productsLoading.value = false }
+}
+
+const openEditProduct = (item) => {
+  selectedProduct.id = item.id
+  selectedProduct.name = item.name
+  selectedProduct.consumption_type = item.consumption_type || 'sporadic'
+  selectedProduct.treatment_duration_days = item.treatment_duration_days || 30
+  editDialog.value = true
+}
+
+const saveProductConsumption = async () => {
+  savingProduct.value = true
+  try {
+    await $api(`/crm/chronic-clients/products-config/${selectedProduct.id}`, {
+      method: 'PUT',
+      data: {
+        consumption_type: selectedProduct.consumption_type,
+        treatment_duration_days: selectedProduct.treatment_duration_days,
+      },
+    })
+    toast.success('Tipo de consumo actualizado correctamente.')
+    editDialog.value = false
+    await fetchProductsConfig()
+    await fetchStats()
+    await fetchChronicClients()
+  } catch (e) {
+    console.error(e)
+    toast.error('No se pudo actualizar el producto.')
+  } finally {
+    savingProduct.value = false
+  }
+}
+
+const getConsumptionBadge = (type) => {
+  switch (type) {
+    case 'chronic': return { color: 'primary', label: 'Crónico', icon: 'tabler-repeat' }
+    case 'single_treatment': return { color: 'warning', label: 'Tratamiento Único', icon: 'tabler-calendar-event' }
+    default: return { color: 'secondary', label: 'Esporádico', icon: 'tabler-shopping-bag' }
+  }
+}
+
+const resetProductFilters = () => {
+  productSearchQuery.value = ''
+  productConsumptionFilter.value = 'all'
+  productPage.value = 1
+  fetchProductsConfig()
+}
+
 const fetchChronicProductsList = async () => {
   try {
     const res = await $api('/products/search', { params: { is_chronic: 1, per_page: 100 } })
@@ -122,7 +224,8 @@ const runAiChronicSync = async () => {
       aiSyncSuccessDialog.value = true
       await fetchStats()
       await fetchChronicClients()
-      await fetchChronicProductsList()
+      await fetchProductsConfig()
+  fetchChronicProductsList()
     }
   } catch (error) {
     console.error('Error syncing chronic products with AI:', error)
@@ -169,7 +272,7 @@ watch(searchQuery, () => {
   }, 400)
 })
 
-watch([statusFilter, productFilter], () => {
+watch([statusFilter, consumptionTypeFilter, productFilter], () => {
   page.value = 1
   fetchChronicClients()
 })
@@ -177,6 +280,7 @@ watch([statusFilter, productFilter], () => {
 onMounted(() => {
   fetchStats()
   fetchChronicClients()
+  fetchProductsConfig()
   fetchChronicProductsList()
 })
 </script>
@@ -184,41 +288,37 @@ onMounted(() => {
 <template>
   <div class="chronic-clients-page">
     <!-- Encabezado de Página -->
-    <div class="d-flex flex-wrap align-center justify-space-between gap-4 mb-6">
-      <div>
-        <h2 class="text-h4 font-weight-bold text-high-emphasis">
-          Seguimiento de Pacientes Crónicos
-        </h2>
-        <div class="text-subtitle-1 text-medium-emphasis mt-1">
-          Detección de recompra y recordatorios automatizados de tratamiento
+    <VCard variant="flat" class="pa-4 border rounded-lg mb-4">
+      <div class="d-flex align-center justify-space-between flex-wrap gap-4">
+        <div class="d-flex align-center">
+          <VAvatar color="primary" variant="tonal" size="48" class="me-3">
+            <VIcon icon="tabler-heart-rate-monitor" size="28" />
+          </VAvatar>
+          <div>
+            <h1 class="text-h5 font-weight-black text-high-emphasis leading-tight mb-0">
+              Seguimiento de Pacientes y Frecuencia de Recompra
+            </h1>
+            <p class="text-caption text-medium-emphasis mb-0">
+              Gestión de consumos crónicos, ciclos de tratamiento único y recordatorios automatizados por WhatsApp.
+            </p>
+          </div>
         </div>
-      </div>
 
-      <div class="d-flex align-center flex-wrap gap-2">
-        <VBtn
-          color="secondary"
-          variant="tonal"
-          prepend-icon="tabler-refresh"
-          :loading="loading || statsLoading"
-          @click="fetchStats(); fetchChronicClients();"
-        >
-          Actualizar
-        </VBtn>
-
-        <VBtn
-          color="primary"
-          variant="flat"
-          prepend-icon="tabler-sparkles"
-          :loading="aiSyncing"
-          @click="runAiChronicSync"
-        >
-          Detectar con IA
-        </VBtn>
+        <VTabs v-model="activeTab" color="primary" density="compact">
+          <VTab value="patients">
+            <VIcon start icon="tabler-users" size="18" />
+            Pacientes y Recompras
+          </VTab>
+          <VTab value="products">
+            <VIcon start icon="tabler-pill" size="18" />
+            Clasificación de Productos
+          </VTab>
+        </VTabs>
       </div>
-    </div>
+    </VCard>
 
     <!-- KPI Cards Superiores -->
-    <VRow dense class="mb-4">
+    <VRow dense class="mb-4" v-if="activeTab === 'patients'">
       <VCol cols="12" sm="6" md="3">
         <VCard variant="flat" border class="pa-4 rounded-xl stat-card">
           <div class="d-flex align-center justify-space-between">
@@ -298,59 +398,83 @@ onMounted(() => {
       </VCol>
     </VRow>
 
-    <!-- Barra de Filtros Nativa -->
-    <VCard variant="flat" border class="pa-4 rounded-xl mb-4">
-      <VRow dense align="center">
-        <VCol cols="12" md="5">
-          <VTextField
-            v-model="searchQuery"
-            prepend-inner-icon="tabler-search"
-            placeholder="Buscar por paciente, cédula, teléfono o medicamento..."
-            density="compact"
-            variant="outlined"
-            clearable
-            hide-details
-          />
-        </VCol>
-
-        <VCol cols="12" sm="6" md="3">
-          <VSelect
-            v-model="statusFilter"
-            :items="statusOptions"
-            item-title="title"
-            item-value="value"
-            label="Estado de Tratamiento"
-            density="compact"
-            variant="outlined"
-            hide-details
-          />
-        </VCol>
-
-        <VCol cols="12" sm="6" md="3" v-if="productsList.length > 0">
-          <VAutocomplete
-            v-model="productFilter"
-            :items="productsList"
-            item-title="name"
-            item-value="id"
-            label="Medicamento"
-            density="compact"
-            variant="outlined"
-            clearable
-            hide-details
-          />
-        </VCol>
-
-        <VCol cols="12" md="1" class="d-flex justify-end">
+    <!-- PESTAÑA 1: PACIENTES Y RECOMPRAS -->
+    <div v-show="activeTab === 'patients'">
+      <AppFilterBase
+        :search="searchQuery"
+        :has-advanced-filters="statusFilter !== 'all' || consumptionTypeFilter !== 'all' || !!productFilter"
+        search-placeholder="Buscar por paciente, cédula, teléfono o medicamento..."
+        class="py-1"
+        @update:search="searchQuery = $event"
+        @clear="resetFilters"
+      >
+        <template #prepend-actions>
           <VBtn
-            variant="text"
+            color="primary"
+            variant="flat"
+            prepend-icon="tabler-sparkles"
+            :loading="aiSyncing"
+            class="me-1"
+            @click="runAiChronicSync"
+          >
+            Detectar con IA
+          </VBtn>
+
+          <VBtn
             color="secondary"
-            icon="tabler-filter-off"
-            title="Limpiar filtros"
-            @click="resetFilters"
+            variant="tonal"
+            icon="tabler-refresh"
+            size="38"
+            rounded="circle"
+            :loading="loading || statsLoading"
+            title="Actualizar datos"
+            class="me-1"
+            @click="fetchStats(); fetchChronicClients();"
           />
-        </VCol>
-      </VRow>
-    </VCard>
+        </template>
+
+        <template #advanced-filters>
+          <VCol cols="12" sm="6" md="4">
+            <VSelect
+              v-model="statusFilter"
+              :items="statusOptions"
+              item-title="title"
+              item-value="value"
+              label="Estado de Tratamiento"
+              density="compact"
+              hide-details
+              prepend-inner-icon="tabler-clock"
+            />
+          </VCol>
+
+          <VCol cols="12" sm="6" md="4">
+            <VSelect
+              v-model="consumptionTypeFilter"
+              :items="consumptionTypeOptions"
+              item-title="title"
+              item-value="value"
+              label="Tipo de Consumo"
+              density="compact"
+              hide-details
+              prepend-inner-icon="tabler-category"
+            />
+          </VCol>
+
+          <VCol cols="12" sm="6" md="4" v-if="productsList.length > 0">
+            <VAutocomplete
+              v-model="productFilter"
+              :items="productsList"
+              item-title="name"
+              item-value="id"
+              label="Medicamento Específico"
+              density="compact"
+              clearable
+              hide-details
+              prepend-inner-icon="tabler-pill"
+            />
+          </VCol>
+        </template>
+      </AppFilterBase>
 
     <!-- Vista Móvil: Tarjetas -->
     <div v-if="isMobile">
@@ -431,9 +555,22 @@ onMounted(() => {
               {{ item.product_name }}
             </div>
             <div class="text-caption text-medium-emphasis">
-              Dosis comprada: {{ item.purchased_quantity }} un. ({{ item.total_treatment_days }} días de cobertura)
+              Dosis: {{ item.purchased_quantity }} un. ({{ item.total_treatment_days }} días estimados)
             </div>
           </div>
+        </template>
+
+        <!-- Columna Tipo Consumo -->
+        <template #item.consumption_type="{ item }">
+          <VChip
+            size="small"
+            :color="getConsumptionBadge(item.consumption_type).color"
+            variant="tonal"
+            class="font-weight-medium"
+          >
+            <VIcon :icon="getConsumptionBadge(item.consumption_type).icon" start size="14" />
+            {{ getConsumptionBadge(item.consumption_type).label }}
+          </VChip>
         </template>
 
         <!-- Columna Última Compra -->

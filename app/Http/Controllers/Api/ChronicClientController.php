@@ -25,12 +25,12 @@ class ChronicClientController extends Controller
         $paginated = $this->chronicService->getChronicPatients($request);
 
         return ApiResponse::success([
-            "items" => $paginated->items(),
-            "total" => $paginated->total(),
-            "current_page" => $paginated->currentPage(),
-            "per_page" => $paginated->perPage(),
-            "last_page" => $paginated->lastPage(),
-        ], "Pacientes crónicos obtenidos exitosamente", 200);
+            'items' => $paginated->items(),
+            'total' => $paginated->total(),
+            'current_page' => $paginated->currentPage(),
+            'per_page' => $paginated->perPage(),
+            'last_page' => $paginated->lastPage(),
+        ], 'Pacientes crónicos obtenidos exitosamente', 200);
     }
 
     /**
@@ -40,7 +40,38 @@ class ChronicClientController extends Controller
     {
         $stats = $this->chronicService->getStats();
 
-        return ApiResponse::success($stats, "Estadísticas obtenidas exitosamente", 200);
+        return ApiResponse::success($stats, 'Estadísticas obtenidas exitosamente', 200);
+    }
+
+    /**
+     * Obtener catálogo de productos con configuración de consumo y frecuencia.
+     */
+    public function productsConfig(Request $request): JsonResponse
+    {
+        $paginated = $this->chronicService->getProductConsumptionConfig($request);
+
+        return ApiResponse::success([
+            'items' => $paginated->items(),
+            'total' => $paginated->total(),
+            'current_page' => $paginated->currentPage(),
+            'per_page' => $paginated->perPage(),
+            'last_page' => $paginated->lastPage(),
+        ], 'Configuración de consumo de productos obtenida exitosamente', 200);
+    }
+
+    /**
+     * Actualizar configuración de consumo y frecuencia de un producto.
+     */
+    public function updateProductConfig(Request $request, int $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'consumption_type' => 'required|string|in:chronic,single_treatment,sporadic',
+            'treatment_duration_days' => 'nullable|integer|min:1|max:365',
+        ]);
+
+        $product = $this->chronicService->updateProductConsumption($id, $validated);
+
+        return ApiResponse::success($product, 'Configuración de producto actualizada exitosamente', 200);
     }
 
     /**
@@ -50,6 +81,6 @@ class ChronicClientController extends Controller
     {
         $result = $this->chronicService->syncChronicProductsWithAi();
 
-        return ApiResponse::success($result, "Sincronización de productos crónicos con IA completada exitosamente", 200);
+        return ApiResponse::success($result, 'Sincronización de productos crónicos con IA completada exitosamente', 200);
     }
 }
