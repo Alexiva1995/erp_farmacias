@@ -276,6 +276,21 @@ watch([statusFilter, consumptionTypeFilter, productFilter], () => {
   fetchChronicClients()
 })
 
+// Disparador debounce para búsqueda de productos
+let productSearchTimeout = null
+watch(productSearchQuery, () => {
+  clearTimeout(productSearchTimeout)
+  productSearchTimeout = setTimeout(() => {
+    productPage.value = 1
+    fetchProductsConfig()
+  }, 400)
+})
+
+watch(productConsumptionFilter, () => {
+  productPage.value = 1
+  fetchProductsConfig()
+})
+
 onMounted(() => {
   fetchStats()
   fetchChronicClients()

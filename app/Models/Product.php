@@ -74,6 +74,7 @@ class Product extends Model
         'unit_of_measure',
         'is_favorite',
         'is_chronic',
+        'consumption_type',
         'treatment_duration_days',
         'price_lock_baseline',
         'sales_average_updated_at',
