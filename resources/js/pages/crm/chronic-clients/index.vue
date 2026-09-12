@@ -181,7 +181,7 @@ onMounted(() => {
             <div>
               <div class="text-caption font-weight-bold text-disabled text-uppercase">Total Pacientes</div>
               <div class="text-h4 font-weight-black mt-1 text-primary">{{ stats.total_patients }}</div>
-              <div class="text-caption text-medium-emphasis mt-1">{{ stats.total_treatments }{ tratamientos registrados</div>
+              <div class="text-caption text-medium-emphasis mt-1">{{ stats.total_treatments }} tratamientos registrados</div>
             </div>
             <VAvatar color="primary" variant="tonal" rounded="lg" size="48">
               <VIcon icon="tabler-users" size="28" />

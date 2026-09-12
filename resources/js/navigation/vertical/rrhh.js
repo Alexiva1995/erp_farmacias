@@ -1,4 +1,4 @@
-export default [
+﻿export default [
   {
     title: 'RRHH',
     icon: {
@@ -41,10 +41,6 @@ export default [
           {
             title: 'Productos Empleados',
             to: 'productivity-product',
-          },
-          {
-            title: 'Pacientes Crónicos',
-            to: 'crm-chronic-clients',
           },
           {
             title: 'Tareas Empleados',
