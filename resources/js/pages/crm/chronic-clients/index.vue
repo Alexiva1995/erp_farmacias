@@ -802,23 +802,50 @@ onMounted(() => {
     </div>
 
     <!-- Modal para Configurar Tipo de Consumo del Producto -->
-    <VDialog v-model="editDialog" max-width="550" persistent>
-      <VCard class="rounded-xl pa-2">
-        <VCardItem>
-          <template #prepend>
-            <VAvatar color="primary" variant="tonal" size="48">
-              <VIcon icon="tabler-adjustments-horizontal" size="26" />
+    <VDialog v-model="editDialog" max-width="580px" persistent>
+      <VCard class="detail-dialog-card rounded-xl border-0 shadow-xl overflow-hidden bg-surface">
+        <!-- Cabecera Premium Estándar -->
+        <VCardTitle class="pa-0">
+          <div class="pa-4 header-gradient d-flex align-center shadow-sm">
+            <VAvatar
+              color="white"
+              variant="flat"
+              size="40"
+              class="me-3 elevation-1 rounded-lg"
+            >
+              <VIcon
+                icon="tabler-adjustments-horizontal"
+                size="24"
+                class="modal-avatar-icon text-primary"
+              />
             </VAvatar>
-          </template>
-          <VCardTitle class="text-h6 font-weight-bold">
-            Configurar Consumo y Frecuencia
-          </VCardTitle>
-          <VCardSubtitle class="text-wrap">
-            {{ selectedProduct.name }}
-          </VCardSubtitle>
-        </VCardItem>
+            <div class="d-flex flex-column leading-none">
+              <h2 class="text-h6 font-weight-black text-white leading-tight mb-0 text-uppercase">
+                Configurar Consumo y Frecuencia
+              </h2>
+              <div class="d-flex align-center gap-2 mt-1">
+                <span
+                  class="text-white opacity-75 text-uppercase font-weight-bold text-caption"
+                  style="letter-spacing: 0.05em;"
+                >
+                  {{ selectedProduct.name }}
+                </span>
+              </div>
+            </div>
 
-        <VCardText class="pt-2">
+            <VSpacer />
+            <VBtn
+              icon="tabler-x"
+              variant="tonal"
+              color="white"
+              size="small"
+              class="rounded-lg"
+              @click="editDialog = false"
+            />
+          </div>
+        </VCardTitle>
+
+        <VCardText class="pa-6">
           <VRow dense>
             <VCol cols="12">
               <VSelect
@@ -827,8 +854,9 @@ onMounted(() => {
                 item-title="title"
                 item-value="value"
                 label="Tipo de Consumo *"
-                density="comfortable"
+                density="compact"
                 class="mb-3"
+                prepend-inner-icon="tabler-category"
               />
             </VCol>
 
@@ -839,7 +867,8 @@ onMounted(() => {
                 type="number"
                 min="1"
                 max="365"
-                density="comfortable"
+                density="compact"
+                prepend-inner-icon="tabler-clock-hour-4"
                 :hint="selectedProduct.consumption_type === 'chronic' ? 'Días de cobertura estimada por cada unidad comprada (ej: 30 días).' : (selectedProduct.consumption_type === 'single_treatment' ? 'Días que dura el ciclo completo antes de realizar seguimiento (ej: 7 o 14 días).' : 'Días tras la compra para consultar disponibilidad en botiquín (por defecto 30 días).')"
                 persistent-hint
               />
@@ -853,10 +882,11 @@ onMounted(() => {
           </VRow>
         </VCardText>
 
-        <VCardActions class="justify-end gap-2 pa-4">
+        <VCardActions class="pa-4 border-t d-flex justify-end gap-2 bg-surface">
           <VBtn
             variant="tonal"
             color="secondary"
+            class="px-5 font-weight-bold"
             :disabled="savingProduct"
             @click="editDialog = false"
           >
@@ -865,6 +895,7 @@ onMounted(() => {
           <VBtn
             variant="flat"
             color="primary"
+            class="px-5 font-weight-bold"
             :loading="savingProduct"
             @click="saveProductConsumption"
           >
@@ -877,10 +908,19 @@ onMounted(() => {
 </template>
 
 <style scoped>
+.header-gradient {
+  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, rgba(var(--v-theme-primary), 0.8) 100%);
+}
+.modal-avatar-icon {
+  color: rgb(var(--v-theme-primary)) !important;
+}
 .stat-card {
   transition: all 0.2s ease-in-out;
 }
 .stat-card:hover {
   transform: translateY(-2px);
+}
+.border-t {
+  border-block-start: 1px solid rgba(var(--v-border-color), 0.08) !important;
 }
 </style>
