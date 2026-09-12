@@ -129,6 +129,7 @@ const fetchChronicClients = async () => {
       itemsPerPage: perPage.value,
       search: searchQuery.value || undefined,
       status: statusFilter.value !== 'all' ? statusFilter.value : undefined,
+      consumption_type: consumptionTypeFilter.value !== 'all' ? consumptionTypeFilter.value : undefined,
       product_id: productFilter.value || undefined,
     }
 

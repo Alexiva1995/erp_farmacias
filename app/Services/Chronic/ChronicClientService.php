@@ -30,37 +30,19 @@ class ChronicClientService
         $page = (int) $request->input('page', 1);
 
         $fromDate = '2026-09-01 00:00:00';
-        $latestDetailsQuery = OrderDetail::select(
-                'orders.client_id',
-                'order_details.product_id',
-                DB::raw('MAX(orders.order_date) as last_order_date')
-            )
-            ->join('orders', 'orders.id', '=', 'order_details.order_id')
+        $query = DB::table('orders')
+            ->join('order_details', 'order_details.order_id', '=', 'orders.id')
             ->join('products', 'products.id', '=', 'order_details.product_id')
+            ->join('clients', 'clients.id', '=', 'orders.client_id')
+            ->leftJoin('laboratories', 'laboratories.id', '=', 'products.laboratory_id')
             ->where('orders.status', Order::COMPLETED)
             ->where('orders.order_date', '>=', $fromDate)
             ->whereNotNull('orders.client_id')
             ->whereIn('products.consumption_type', ['chronic', 'single_treatment', 'sporadic'])
-            ->groupBy('orders.client_id', 'order_details.product_id');
-
-        $query = DB::table(DB::raw("({$latestDetailsQuery->toSql()}) as latest_purchases"))
-            ->mergeBindings($latestDetailsQuery->getQuery())
-            ->join('clients', 'clients.id', '=', 'latest_purchases.client_id')
-            ->join('products', 'products.id', '=', 'latest_purchases.product_id')
-            ->leftJoin('laboratories', 'laboratories.id', '=', 'products.laboratory_id')
             ->whereNull('clients.deleted_at')
             ->where('products.is_deleted', false)
             ->whereNotNull('clients.phone')
             ->where(DB::raw('LENGTH(TRIM(clients.phone))'), '>=', 10);
-
-        $query->join('orders', function ($join) {
-            $join->on('orders.client_id', '=', 'latest_purchases.client_id')
-                ->on('orders.order_date', '=', 'latest_purchases.last_order_date')
-                ->where('orders.status', '=', Order::COMPLETED);
-        })->join('order_details', function ($join) {
-            $join->on('order_details.order_id', '=', 'orders.id')
-                ->on('order_details.product_id', '=', 'latest_purchases.product_id');
-        });
 
         if (!empty($search)) {
             $query->where(function ($q) use ($search) {
@@ -107,34 +89,12 @@ class ChronicClientService
             'products.consumption_type',
             'products.is_chronic',
             'laboratories.name as laboratory_name',
-            'latest_purchases.last_order_date',
+            'orders.order_date as last_order_date',
             'order_details.quantity as purchased_quantity',
             'order_details.unit_price_usd',
         ]);
 
-        $query->groupBy(
-            'clients.id',
-            'clients.identification_type',
-            'clients.identification',
-            'clients.name',
-            'clients.last_name',
-            'clients.phone',
-            'clients.email',
-            'products.id',
-            'products.name',
-            'products.barcode',
-            'products.active_ingredient',
-            'products.sale_price',
-            'products.treatment_duration_days',
-            'products.consumption_type',
-            'products.is_chronic',
-            'laboratories.name',
-            'latest_purchases.last_order_date',
-            'order_details.quantity',
-            'order_details.unit_price_usd'
-        );
-
-        $allRecords = $query->get();
+        $allRecords = $query->orderByDesc('orders.order_date')->get();
 
         $rateBs = ExchangeRate::whereIn('currency_code', ['VES', 'BS', 'BCV', 'EUR'])->orderByDesc('id')->value('rate') ?? 0;
         $rateCop = ExchangeRate::where('currency_code', 'COP')->orderByDesc('id')->value('rate') ?? 0;
