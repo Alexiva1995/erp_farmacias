@@ -65,7 +65,7 @@ class ChronicClientController extends Controller
     public function updateProductConfig(Request $request, int $id): JsonResponse
     {
         $validated = $request->validate([
-            'consumption_type' => 'required|string|in:chronic,single_treatment,sporadic',
+            'consumption_type' => 'required|string|in:chronic,single_treatment,no_alert,sporadic',
             'treatment_duration_days' => 'nullable|integer|min:1|max:365',
         ]);
 

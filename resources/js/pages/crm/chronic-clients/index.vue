@@ -62,6 +62,7 @@ const consumptionTypeOptions = [
 
 const productConsumptionFilterOptions = [
   { title: 'Todos los Tipos', value: 'all' },
+  { title: 'Sin Clasificar (Pendientes)', value: 'unclassified' },
   { title: 'Crónico (Uso Continuo)', value: 'chronic' },
   { title: 'Tratamiento Único / Ciclo', value: 'single_treatment' },
   { title: 'Sin Alerta / Insumos', value: 'no_alert' },
@@ -76,9 +77,8 @@ const formConsumptionTypes = [
 ]
 
 const productConfigHeaders = [
-  { title: 'ID / Código', key: 'barcode', sortable: false },
-  { title: 'Medicamento / Producto', key: 'name', sortable: false },
-  { title: 'Categoría', key: 'category', sortable: false },
+  { title: 'ID', key: 'id', sortable: false, cellClass: 'font-weight-black text-primary' },
+  { title: 'Producto', key: 'name', sortable: false },
   { title: 'Tipo de Consumo', key: 'consumption_type', sortable: false },
   { title: 'Duración Estimada', key: 'treatment_duration_days', sortable: false },
   { title: 'Automatización WhatsApp', key: 'automation', sortable: false },
@@ -200,7 +200,7 @@ const getConsumptionBadge = (type) => {
     case 'single_treatment': return { color: 'warning', label: 'Tratamiento Único', icon: 'tabler-calendar-event' }
     case 'no_alert': return { color: 'secondary', label: 'Sin Alerta / Insumos', icon: 'tabler-bell-off' }
     case 'sporadic': return { color: 'secondary', label: 'Esporádico', icon: 'tabler-shopping-bag' }
-    default: return { color: 'secondary', label: 'Sin Clasificar', icon: 'tabler-help' }
+    default: return { color: 'error', label: 'Sin Clasificar', icon: 'tabler-help' }
   }
 }
 
@@ -517,12 +517,17 @@ onMounted(() => {
 
         <!-- Columna Medicamento -->
         <template #item.product_name="{ item }">
-          <div class="py-2">
-            <div class="font-weight-semibold text-primary">
-              {{ item.product_name }}
+          <div class="py-2 min-width-0">
+            <span class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate d-block" style="max-inline-size: 320px;">
+              {{ item.product_name?.toUpperCase() || '—' }}
+            </span>
+            <div class="d-flex align-center flex-wrap gap-1 text-caption mt-0-5">
+              <span class="text-disabled">{{ item.active_ingredient || 'N/A' }}</span>
+              <span class="text-disabled mx-1">|</span>
+              <span class="text-primary font-weight-bold text-uppercase">{{ item.laboratory_name }}</span>
             </div>
-            <div class="text-caption text-medium-emphasis">
-              Dosis: {{ item.purchased_quantity }} un. ({{ item.total_treatment_days }} días estimados)
+            <div class="text-caption text-medium-emphasis mt-1">
+              Dosis: {{ item.purchased_quantity }} un. ({{ item.total_treatment_days }} días est.)
             </div>
           </div>
         </template>
@@ -665,28 +670,39 @@ onMounted(() => {
           class="elevation-0"
           @update:options="fetchProductsConfig"
         >
-          <!-- ID / Código -->
-          <template #item.barcode="{ item }">
-            <div class="font-weight-medium text-high-emphasis">
-              {{ item.barcode || 'S/C' }}
-            </div>
+          <!-- ID -->
+          <template #item.id="{ item }">
+            <a
+              :href="'/inventory/traceability?q=' + item.id"
+              target="_blank"
+              class="text-decoration-none font-weight-black text-primary"
+            >
+              {{ item.id }}
+            </a>
           </template>
 
-          <!-- Nombre -->
+          <!-- Producto -->
           <template #item.name="{ item }">
-            <div class="py-2">
-              <div class="font-weight-bold text-high-emphasis">{{ item.name }}</div>
-              <div v-if="item.active_ingredient" class="text-caption text-medium-emphasis">
-                {{ item.active_ingredient }}
+            <div class="d-flex flex-column min-width-0 py-2">
+              <span
+                class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate"
+                style="max-inline-size: 420px;"
+                :title="item.name"
+              >
+                {{ item.name?.toUpperCase() || "—" }}
+              </span>
+              <div class="d-flex align-center flex-wrap gap-1 text-caption mt-0-5">
+                <span class="text-disabled font-weight-normal">{{ item.active_ingredient || 'N/A' }}</span>
+                <span class="text-disabled mx-1">|</span>
+                <span class="text-primary font-weight-black text-uppercase">
+                  {{ item.laboratory?.name || item.category?.name || 'S/L' }}
+                </span>
+                <template v-if="item.barcode">
+                  <span class="text-disabled mx-1">|</span>
+                  <span class="text-disabled text-caption">Cód: {{ item.barcode }}</span>
+                </template>
               </div>
             </div>
-          </template>
-
-          <!-- Categoría -->
-          <template #item.category="{ item }">
-            <span class="text-caption text-medium-emphasis">
-              {{ item.category?.name || item.laboratory?.name || 'General' }}
-            </span>
           </template>
 
           <!-- Tipo de Consumo -->
@@ -741,14 +757,16 @@ onMounted(() => {
 
           <!-- Acciones -->
           <template #item.actions="{ item }">
-            <VBtn
-              icon="tabler-edit"
+            <IconBtn
               size="small"
               variant="tonal"
-              color="primary"
+              color="error"
               title="Configurar Consumo"
               @click="openEditProduct(item)"
-            />
+            >
+              <VIcon icon="tabler-edit" size="18" />
+              <VTooltip activator="parent">Configurar Consumo</VTooltip>
+            </IconBtn>
           </template>
 
           <template #no-data>

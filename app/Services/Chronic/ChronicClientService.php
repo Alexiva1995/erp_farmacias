@@ -101,6 +101,7 @@ class ChronicClientService
             'products.id as product_id',
             'products.name as product_name',
             'products.barcode as product_barcode',
+            'products.active_ingredient',
             'products.sale_price as current_sale_price',
             'products.treatment_duration_days',
             'products.consumption_type',
@@ -122,6 +123,7 @@ class ChronicClientService
             'products.id',
             'products.name',
             'products.barcode',
+            'products.active_ingredient',
             'products.sale_price',
             'products.treatment_duration_days',
             'products.consumption_type',
@@ -197,6 +199,7 @@ class ChronicClientService
                 'product_id' => $row->product_id,
                 'product_name' => $row->product_name,
                 'product_barcode' => $row->product_barcode,
+                'active_ingredient' => $row->active_ingredient,
                 'laboratory_name' => $row->laboratory_name ?: 'Sin Laboratorio',
                 'consumption_type' => $row->consumption_type ?: 'chronic',
                 'consumption_type_label' => match($row->consumption_type) {
@@ -246,7 +249,7 @@ class ChronicClientService
     }
 
     /**
-     * Obtener listado de configuración de productos para consumo y frecuencia.
+     * Obtener listado de configuración de productos para consumo y frecuencia (solo productos vendidos desde 2026-09-01).
      */
     public function getProductConsumptionConfig(Request $request): LengthAwarePaginator
     {
@@ -254,24 +257,34 @@ class ChronicClientService
         $consumptionType = $request->input('consumption_type');
         $perPage = (int) $request->input('itemsPerPage', 15);
         $page = (int) $request->input('page', 1);
+        $fromDate = '2026-09-01 00:00:00';
 
         $query = Product::withoutGlobalScope('not_deleted')
             ->where('is_deleted', false)
+            ->whereHas('orderDetails.order', function ($q) use ($fromDate) {
+                $q->where('status', Order::COMPLETED)
+                  ->where('order_date', '>=', $fromDate);
+            })
             ->with(['laboratory:id,name', 'category:id,name']);
 
         if (!empty($search)) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                     ->orWhere('barcode', 'like', "%{$search}%")
-                    ->orWhere('active_ingredient', 'like', "%{$search}%");
+                    ->orWhere('active_ingredient', 'like', "%{$search}%")
+                    ->orWhere('id', 'like', "%{$search}%");
             });
         }
 
         if (!empty($consumptionType) && $consumptionType !== 'all') {
-            $query->where('consumption_type', $consumptionType);
+            if ($consumptionType === 'unclassified') {
+                $query->whereNull('consumption_type');
+            } else {
+                $query->where('consumption_type', $consumptionType);
+            }
         }
 
-        $query->orderByRaw("CASE WHEN consumption_type = 'chronic' THEN 1 WHEN consumption_type = 'single_treatment' THEN 2 ELSE 3 END")
+        $query->orderByRaw("CASE WHEN consumption_type = 'chronic' THEN 1 WHEN consumption_type = 'single_treatment' THEN 2 WHEN consumption_type = 'no_alert' THEN 3 ELSE 4 END")
               ->orderBy('name');
 
         return $query->paginate($perPage, ['*'], 'page', $page);
