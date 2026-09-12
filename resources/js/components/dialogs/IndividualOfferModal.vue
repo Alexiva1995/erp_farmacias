@@ -317,7 +317,7 @@ const endDateConfig = computed(() => ({
           <VAutocomplete
             v-if="!props.isEditing"
             v-model="localFormData.product_id"
-            placeholder="BUSCAR POR NOMBRE, ID O CÓDIGO..."
+            placeholder="Buscar por nombre, ID o código..."
             variant="outlined"
             :items="availableProducts"
             item-title="name"
@@ -358,14 +358,14 @@ const endDateConfig = computed(() => ({
             <!-- Descuento -->
             <VCol cols="12" sm="4">
               <div class="mb-2 mb-sm-0">
-                <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">% Descuento</span>
+                <span class="text-super-xs font-weight-bold text-high-emphasis uppercase mb-1 d-block">% Descuento</span>
                 <VTextField
                   v-model="localFormData.discount_percent"
                   type="number"
                   min="0"
                   max="100"
                   step="0.01"
-                  placeholder="0.00"
+                  placeholder="Ej. 10.00"
                   variant="outlined"
                   density="compact"
                   hide-details
@@ -381,10 +381,10 @@ const endDateConfig = computed(() => ({
             <!-- Fecha Inicio -->
             <VCol cols="12" sm="4">
               <div class="mb-2 mb-sm-0">
-                <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Fecha Inicio</span>
+                <span class="text-super-xs font-weight-bold text-high-emphasis uppercase mb-1 d-block">Fecha Inicio</span>
                 <AppDateTimePicker
                   v-model="localFormData.start_date"
-                  placeholder="SELECCIONAR FECHA"
+                  placeholder="Seleccionar fecha..."
                   prepend-inner-icon="tabler-calendar-event"
                   density="compact"
                   hide-details
@@ -400,10 +400,10 @@ const endDateConfig = computed(() => ({
             <!-- Fecha Final -->
             <VCol cols="12" sm="4">
               <div>
-                <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Fecha Final</span>
+                <span class="text-super-xs font-weight-bold text-high-emphasis uppercase mb-1 d-block">Fecha Final</span>
                 <AppDateTimePicker
                   v-model="localFormData.end_date"
-                  placeholder="SELECCIONAR FECHA"
+                  placeholder="Seleccionar fecha..."
                   prepend-inner-icon="tabler-calendar-off"
                   density="compact"
                   hide-details

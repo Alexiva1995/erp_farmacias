@@ -25,22 +25,34 @@ const headers = [
     headerClass: "d-none d-sm-table-cell",
   },
   { title: "Categoría",   key: "category.name",       sortable: true, width: "35%" },
-  { title: "% DESC.",     key: "discount_percentage", sortable: true, align: "center", width: "100px" },
-  { title: "Vigencia",    key: "validity",            sortable: false, align: "center", width: "160px" },
-  { title: "Estado",      key: "is_active",           sortable: true, align: "center", width: "100px" },
-  { title: "Acciones",    key: "actions",             sortable: false, align: "center", width: "90px" },
+  { title: "% Desc.",     key: "discount_percentage", sortable: true, align: "end", width: "100px" },
+  { title: "Vigencia",    key: "validity",            sortable: false, align: "center", width: "180px" },
+  { title: "Estado",      key: "is_active",           sortable: true, align: "center", width: "110px" },
+  { title: "Acciones",    key: "actions",             sortable: false, align: "center", width: "110px" },
 ];
 
-const getStatusColor = (isActive) => isActive ? 'success' : 'error';
-const getStatusText = (isActive) => isActive ? 'ACTIVA' : 'INACTIVA';
-
 const formatDate = (dateString) => {
-  if (!dateString) return '—';
-  return new Date(dateString).toLocaleDateString('es-ES', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric'
+  if (!dateString) return "—";
+  return new Date(dateString).toLocaleDateString("es-ES", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric"
   });
+};
+
+const isExpired = (endDateStr) => {
+  if (!endDateStr) return false;
+  const end = new Date(endDateStr);
+  const now = new Date();
+  return end < now;
+};
+
+const isExpiringSoon = (endDateStr) => {
+  if (!endDateStr) return false;
+  const end = new Date(endDateStr);
+  const now = new Date();
+  const diffHours = (end - now) / (1000 * 60 * 60);
+  return diffHours >= 0 && diffHours <= 24;
 };
 </script>
 
@@ -62,6 +74,10 @@ const formatDate = (dateString) => {
         :items="props.categoriesOffer"
         :items-length="props.totalOffer"
         :loading="props.loading"
+        items-per-page-text="Filas por página:"
+        page-text="{0}-{1} de {2}"
+        loading-text="Cargando..."
+        no-data-text="No hay datos disponibles"
         class="text-no-wrap"
         density="compact"
         @update:options="(options) => emit('update:options', options)"
@@ -74,7 +90,7 @@ const formatDate = (dateString) => {
           />
         </template>
 
-        <!-- ID Column -->
+        <!-- ID Column (Centrado preciso) -->
         <template #item.id="{ item }">
           <span class="font-weight-black text-primary">{{ item.id }}</span>
         </template>
@@ -88,11 +104,11 @@ const formatDate = (dateString) => {
                 style="max-inline-size: 420px;"
                 :title="item.category?.name"
               >
-                {{ item.category?.name?.toUpperCase() || "SIN CATEGORÍA" }}
+                {{ item.category?.name || "Sin Categoría" }}
               </span>
               <div class="d-flex align-center flex-wrap gap-1 text-super-xs mt-0-5">
                 <span class="text-disabled font-weight-normal">
-                  ID CAT: {{ item.category?.id || '—' }}
+                  ID Categoría: {{ item.category?.id || '—' }}
                 </span>
               </div>
             </div>
@@ -101,57 +117,58 @@ const formatDate = (dateString) => {
 
         <!-- Discount Percentage -->
         <template #item.discount_percentage="{ item }">
-          <VChip
-            :color="getStatusColor(item.is_active)"
-            size="small"
-            variant="tonal"
-            class="font-weight-black rounded"
-          >
-            {{ item.discount_percentage }}%
-          </VChip>
+          <span class="text-sm font-weight-bold text-success pe-1">
+            {{ parseFloat(item.discount_percentage || 0) }}%
+          </span>
         </template>
 
-        <!-- Validity Column -->
+        <!-- Validity Column (Neutro en una línea con alerta semántica) -->
         <template #item.validity="{ item }">
           <div class="d-flex flex-column align-center">
-            <span class="text-super-xs font-weight-bold text-primary uppercase">
-              INICIO: {{ formatDate(item.start_date) }}
+            <span class="text-xs font-weight-medium text-medium-emphasis">
+              {{ formatDate(item.start_date) }} – {{ formatDate(item.end_date) }}
             </span>
-            <span class="text-super-xs font-weight-bold text-error uppercase">
-              FIN: {{ formatDate(item.end_date) }}
+            <span v-if="isExpired(item.end_date)" class="text-super-xs font-weight-bold text-error uppercase mt-0-5">
+              Vencida
+            </span>
+            <span v-else-if="isExpiringSoon(item.end_date)" class="text-super-xs font-weight-bold text-warning uppercase mt-0-5">
+              Vence pronto
             </span>
           </div>
         </template>
 
-        <!-- Status Column -->
+        <!-- Status Column (Soft Badge con Status Dot y WCAG AA) -->
         <template #item.is_active="{ item }">
           <VChip
-            :color="getStatusColor(item.is_active)"
-            size="x-small"
-            variant="flat"
-            class="font-weight-black px-2"
+            :color="item.is_active ? 'success' : 'secondary'"
+            size="small"
+            variant="tonal"
+            class="font-weight-bold px-2 rounded-pill"
           >
-            {{ getStatusText(item.is_active) }}
+            <span class="status-dot me-1" :class="item.is_active ? 'bg-success' : 'bg-secondary'"></span>
+            {{ item.is_active ? 'Activa' : 'Inactiva' }}
           </VChip>
         </template>
 
-        <!-- Actions Column -->
+        <!-- Actions Column (Touch targets amplios y espaciado seguro) -->
         <template #item.actions="{ item }">
-          <div class="d-flex justify-center gap-1">
+          <div class="d-flex justify-center gap-2">
             <IconBtn
               @click="emit('edit-offer', item)"
               color="warning"
               size="small"
+              class="action-btn"
             >
-              <VIcon icon="tabler-edit" size="18" />
+              <VIcon icon="tabler-edit" size="19" />
               <VTooltip activator="parent">Editar Oferta</VTooltip>
             </IconBtn>
             <IconBtn
               @click="emit('delete-offer', item.id)"
               color="error"
               size="small"
+              class="action-btn"
             >
-              <VIcon icon="tabler-trash" size="18" />
+              <VIcon icon="tabler-trash" size="19" />
               <VTooltip activator="parent">Eliminar Oferta</VTooltip>
             </IconBtn>
           </div>
@@ -182,23 +199,18 @@ const formatDate = (dateString) => {
                     ID: {{ item.id }}
                   </span>
                   <VSpacer />
-                  <VChip
-                    size="x-small"
-                    :color="getStatusColor(item.is_active)"
-                    variant="flat"
-                    class="font-weight-black text-super-xs flex-shrink-0"
-                  >
-                    {{ item.discount_percentage }}% OFF
-                  </VChip>
+                  <span class="text-xs font-weight-bold text-success flex-shrink-0">
+                    {{ parseFloat(item.discount_percentage || 0) }}% OFF
+                  </span>
                 </div>
 
-                <h3 class="product-mobile-title font-weight-black text-high-emphasis text-uppercase truncate-2-lines mb-1 text-body-2">
-                  {{ item.category?.name?.toUpperCase() || "SIN CATEGORÍA" }}
+                <h3 class="product-mobile-title font-weight-black text-high-emphasis truncate-2-lines mb-1 text-body-2">
+                  {{ item.category?.name || "Sin Categoría" }}
                 </h3>
 
                 <div class="d-flex align-center flex-wrap gap-x-1 text-super-xs">
                   <span class="text-medium-emphasis">
-                    ID CAT: {{ item.category?.id || '—' }}
+                    ID Categoría: {{ item.category?.id || '—' }}
                   </span>
                 </div>
               </div>
@@ -207,14 +219,15 @@ const formatDate = (dateString) => {
             <!-- Caja compacta de Estado y Fechas -->
             <div class="d-flex align-center justify-space-between bg-var-theme-background px-2 py-1 mt-2 rounded border-dashed-thin">
               <div class="d-flex align-center gap-1">
-                <span class="text-super-xs text-disabled text-uppercase font-weight-bold letter-spacing-1">Estado:</span>
-                <span :class="`text-${getStatusColor(item.is_active)}`" class="text-xs font-weight-bold">
-                  {{ getStatusText(item.is_active) }}
+                <span class="status-dot" :class="item.is_active ? 'bg-success' : 'bg-secondary'"></span>
+                <span :class="item.is_active ? 'text-success' : 'text-medium-emphasis'" class="text-xs font-weight-bold">
+                  {{ item.is_active ? 'Activa' : 'Inactiva' }}
                 </span>
               </div>
-              <div class="d-flex align-center gap-2 text-super-xs font-weight-bold">
-                <span class="text-primary">INI: {{ formatDate(item.start_date) }}</span>
-                <span class="text-error">FIN: {{ formatDate(item.end_date) }}</span>
+              <div class="d-flex align-center gap-1 text-super-xs font-weight-medium text-medium-emphasis">
+                <span>{{ formatDate(item.start_date) }} – {{ formatDate(item.end_date) }}</span>
+                <span v-if="isExpired(item.end_date)" class="text-error font-weight-bold uppercase ms-1">Vencida</span>
+                <span v-else-if="isExpiringSoon(item.end_date)" class="text-warning font-weight-bold uppercase ms-1">Vence pronto</span>
               </div>
             </div>
           </div>
@@ -258,6 +271,13 @@ const formatDate = (dateString) => {
 </template>
 
 <style scoped>
+.status-dot {
+  inline-size: 6px;
+  block-size: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
 .product-mobile-card {
   overflow: hidden;
   border-radius: 8px !important;

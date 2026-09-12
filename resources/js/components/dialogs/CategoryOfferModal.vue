@@ -169,13 +169,13 @@ watch(
 
           <!-- Modo Creación: Autocomplete Ancho Completo -->
           <div v-else>
-            <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Seleccionar Categoría</span>
+            <span class="text-super-xs font-weight-bold text-high-emphasis uppercase mb-1 d-block">Seleccionar Categoría</span>
             <VAutocomplete
               v-model="localFormData.category_id"
               :items="props.categoriesData"
               :item-title="(item) => `${item.id} - ${item.name}`"
               item-value="id"
-              placeholder="BUSCAR CATEGORÍA POR ID O NOMBRE..."
+              placeholder="Buscar categoría por ID o nombre..."
               variant="outlined"
               density="compact"
               hide-details="auto"
@@ -196,7 +196,7 @@ watch(
               <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">Parámetros de la Oferta</span>
             </div>
             <div class="d-flex align-center gap-2">
-              <span class="text-super-xs font-weight-bold text-disabled uppercase">Activa</span>
+              <span class="text-super-xs font-weight-bold text-high-emphasis uppercase">Activa</span>
               <VSwitch
                 v-model="localFormData.is_active"
                 color="primary"
@@ -210,13 +210,14 @@ watch(
           <VRow dense>
             <VCol cols="12" sm="4">
               <div class="mb-2 mb-sm-0">
-                <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">% Descuento</span>
+                <span class="text-super-xs font-weight-bold text-high-emphasis uppercase mb-1 d-block">% Descuento</span>
                 <VTextField
                   v-model="localFormData.discount_percentage"
                   type="number"
                   min="0"
                   max="100"
                   step="0.01"
+                  placeholder="Ej. 15.00"
                   variant="outlined"
                   density="compact"
                   hide-details="auto"
@@ -231,10 +232,10 @@ watch(
 
             <VCol cols="12" sm="4">
               <div class="mb-2 mb-sm-0">
-                <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Fecha Inicio</span>
+                <span class="text-super-xs font-weight-bold text-high-emphasis uppercase mb-1 d-block">Fecha Inicio</span>
                 <AppDateTimePicker
                   v-model="localFormData.start_date"
-                  placeholder="SELECCIONAR FECHA"
+                  placeholder="Seleccionar fecha..."
                   prepend-inner-icon="tabler-calendar-event"
                   density="compact"
                   hide-details="auto"
@@ -249,10 +250,10 @@ watch(
 
             <VCol cols="12" sm="4">
               <div>
-                <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Fecha Final</span>
+                <span class="text-super-xs font-weight-bold text-high-emphasis uppercase mb-1 d-block">Fecha Final</span>
                 <AppDateTimePicker
                   v-model="localFormData.end_date"
-                  placeholder="SELECCIONAR FECHA"
+                  placeholder="Seleccionar fecha..."
                   prepend-inner-icon="tabler-calendar-off"
                   density="compact"
                   hide-details="auto"
