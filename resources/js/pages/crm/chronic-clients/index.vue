@@ -773,8 +773,7 @@ onMounted(() => {
           <template #item.actions="{ item }">
             <IconBtn
               size="small"
-              variant="tonal"
-              color="error"
+              color="warning"
               title="Configurar Consumo"
               @click="openEditProduct(item)"
             >
@@ -882,25 +881,37 @@ onMounted(() => {
           </VRow>
         </VCardText>
 
-        <VCardActions class="pa-4 border-t d-flex justify-end gap-2 bg-surface">
-          <VBtn
-            variant="tonal"
-            color="secondary"
-            class="px-5 font-weight-bold"
-            :disabled="savingProduct"
-            @click="editDialog = false"
-          >
-            Cancelar
-          </VBtn>
-          <VBtn
-            variant="flat"
-            color="primary"
-            class="px-5 font-weight-bold"
-            :loading="savingProduct"
-            @click="saveProductConsumption"
-          >
-            Guardar Configuración
-          </VBtn>
+        <VCardActions class="pa-4 pa-sm-6 bg-surface border-t">
+          <VRow dense class="w-100 ma-0">
+            <VCol cols="6" class="pa-1">
+              <VBtn
+                color="secondary"
+                variant="outlined"
+                height="48"
+                block
+                class="font-weight-black rounded-lg text-button uppercase"
+                :disabled="savingProduct"
+                @click="editDialog = false"
+              >
+                Cancelar
+              </VBtn>
+            </VCol>
+            <VCol cols="6" class="pa-1">
+              <VBtn
+                color="primary"
+                variant="flat"
+                height="48"
+                block
+                class="font-weight-black rounded-lg shadow-primary text-button uppercase"
+                :loading="savingProduct"
+                :disabled="savingProduct"
+                @click="saveProductConsumption"
+              >
+                <VIcon icon="tabler-device-floppy" size="18" class="me-2" />
+                Guardar
+              </VBtn>
+            </VCol>
+          </VRow>
         </VCardActions>
       </VCard>
     </VDialog>
