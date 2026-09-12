@@ -174,11 +174,15 @@ const openEditProduct = (item) => {
 const saveProductConsumption = async () => {
   savingProduct.value = true
   try {
+    const duration = (selectedProduct.consumption_type === 'chronic' || selectedProduct.consumption_type === 'single_treatment' || selectedProduct.consumption_type === 'sporadic')
+      ? (selectedProduct.treatment_duration_days ? parseInt(selectedProduct.treatment_duration_days, 10) : (selectedProduct.consumption_type === 'single_treatment' ? 7 : 30))
+      : null
+
     await $api(`/crm/chronic-clients/products-config/${selectedProduct.id}`, {
       method: 'PUT',
       data: {
         consumption_type: selectedProduct.consumption_type,
-        treatment_duration_days: selectedProduct.treatment_duration_days,
+        treatment_duration_days: duration,
       },
     })
     toast.success('Clasificación de producto actualizada correctamente.')
@@ -188,8 +192,9 @@ const saveProductConsumption = async () => {
     await fetchChronicClients()
     fetchChronicProductsList()
   } catch (e) {
-    console.error(e)
-    toast.error('No se pudo actualizar la clasificación del producto.')
+    console.error('Error saving product consumption:', e)
+    const errorMsg = e?.response?._data?.message || e?.message || 'No se pudo actualizar la clasificación del producto.'
+    toast.error(errorMsg)
   } finally {
     savingProduct.value = false
   }

@@ -62,14 +62,9 @@ class ChronicClientController extends Controller
     /**
      * Actualizar configuración de consumo y frecuencia de un producto.
      */
-    public function updateProductConfig(Request $request, int $id): JsonResponse
+    public function updateProductConfig(\App\Http\Requests\UpdateProductConsumptionRequest $request, int $id): JsonResponse
     {
-        $validated = $request->validate([
-            'consumption_type' => 'required|string|in:chronic,single_treatment,no_alert,sporadic',
-            'treatment_duration_days' => 'nullable|integer|min:1|max:365',
-        ]);
-
-        $product = $this->chronicService->updateProductConsumption($id, $validated);
+        $product = $this->chronicService->updateProductConsumption($id, $request->validated());
 
         return ApiResponse::success($product, 'Configuración de producto actualizada exitosamente', 200);
     }
