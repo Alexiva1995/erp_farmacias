@@ -30,7 +30,7 @@ const hasAdvancedFilters = computed(() =>
     :has-advanced-filters="hasAdvancedFilters"
     :show-add="props.showAddButton"
     add-button-text="Nueva Oferta"
-    search-placeholder="Buscar récipe por descripción o estado..."
+    search-placeholder="Buscar oferta por nombre..."
     class="py-1"
     @update:search="emit('update:searchQuery', $event)"
     @clear="emit('clear')"
@@ -41,7 +41,7 @@ const hasAdvancedFilters = computed(() =>
       <VCol cols="12" sm="6" md="4">
         <AppTextField
           :model-value="props.idSearchQuery"
-          placeholder="ID EJ: 89"
+          placeholder="ID (ej: 89)"
           prepend-inner-icon="tabler-hash"
           clearable
           density="compact"
@@ -56,9 +56,9 @@ const hasAdvancedFilters = computed(() =>
         <VSelect
           :model-value="props.mode"
           :items="[
-            { title: 'TODAS LAS OFERTAS', value: 'all' },
-            { title: 'SOLO ACTIVAS', value: 'active' },
-            { title: 'SOLO INACTIVAS', value: 'inactive' },
+            { title: 'Todas las ofertas', value: 'all' },
+            { title: 'Solo activas', value: 'active' },
+            { title: 'Solo inactivas', value: 'inactive' },
           ]"
           item-title="title"
           item-value="value"

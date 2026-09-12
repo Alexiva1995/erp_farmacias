@@ -28,25 +28,36 @@ const headers = [
     cellClass: "font-weight-black text-primary d-none d-sm-table-cell",
     headerClass: "d-none d-sm-table-cell",
   },
-  { title: "Nombre de Oferta", key: "name",                 sortable: true, width: "30%" },
-  { title: "% Desc.",          key: "discount_percentage",  sortable: true, align: "center", width: "110px" },
-  { title: "Vigencia",         key: "validity",             sortable: false, align: "center", width: "160px" },
-  { title: "Ventas",           key: "sales_count",          sortable: false, align: "center", width: "110px" },
-  { title: "Estado",           key: "is_active",            sortable: true, align: "center", width: "90px" },
-  { title: "Vigente",          key: "is_currently_active",  sortable: true, align: "center", width: "90px" },
+  { title: "Nombre de Oferta", key: "name",                 sortable: true, width: "35%" },
+  { title: "% Desc.",          key: "discount_percentage",  sortable: true, align: "end", width: "110px" },
+  { title: "Ventas",           key: "sales_count",          sortable: false, align: "end", width: "100px" },
+  { title: "Vigencia",         key: "validity",             sortable: false, align: "center", width: "170px" },
+  { title: "Estado",           key: "is_active",            sortable: true, align: "center", width: "110px" },
   { title: "Acciones",         key: "actions",              sortable: false, align: "center", width: "120px" },
 ];
-
-const getStatusColor = (isActive) => (isActive ? "success" : "error");
-const getStatusText = (isActive) => (isActive ? "ACTIVA" : "INACTIVA");
 
 const formatDate = (dateString) => {
   if (!dateString) return "—";
   return new Date(dateString).toLocaleDateString("es-ES", {
     day: "2-digit",
-    month: "short",
+    month: "2-digit",
     year: "numeric",
   });
+};
+
+const isExpired = (endDateStr) => {
+  if (!endDateStr) return false;
+  const end = new Date(endDateStr);
+  const now = new Date();
+  return end < now;
+};
+
+const isExpiringSoon = (endDateStr) => {
+  if (!endDateStr) return false;
+  const end = new Date(endDateStr);
+  const now = new Date();
+  const diffHours = (end - now) / (1000 * 60 * 60);
+  return diffHours >= 0 && diffHours <= 24;
 };
 
 const handleEdit = (prescription) => emit("edit-prescription", prescription);
@@ -72,6 +83,10 @@ const handleView = (prescription) => emit("view-prescription", prescription);
         :items="props.prescriptions"
         :items-length="props.totalPrescriptions"
         :loading="props.loading"
+        items-per-page-text="Filas por página:"
+        page-text="{0}-{1} de {2}"
+        loading-text="Cargando..."
+        no-data-text="No hay datos disponibles"
         class="text-no-wrap"
         density="compact"
         @update:options="(options) => emit('update:options', options)"
@@ -91,59 +106,50 @@ const handleView = (prescription) => emit("view-prescription", prescription);
 
         <!-- Name Column -->
         <template #item.name="{ item }">
-          <div class="d-flex flex-column py-2">
-            <span class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate" style="max-inline-size: 380px;">
-              {{ item.name }}
-            </span>
-            <span class="text-super-xs text-medium-emphasis text-uppercase font-weight-bold mt-0-5">
-              Descuento por Récipe
-            </span>
-          </div>
+          <span class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate d-block py-2" style="max-inline-size: 380px;" :title="item.name">
+            {{ item.name }}
+          </span>
         </template>
 
         <!-- Discount Column -->
         <template #item.discount_percentage="{ item }">
-          <span class="font-weight-black text-success text-sm">
-            {{ item.discount_percentage }}%
+          <span class="text-sm font-weight-bold text-success pe-1">
+            {{ parseFloat(item.discount_percentage || 0) }}%
+          </span>
+        </template>
+
+        <!-- Sales Count Column -->
+        <template #item.sales_count="{ item }">
+          <span class="text-sm font-weight-medium text-high-emphasis pe-1">
+            {{ item.sales_count ?? 0 }}
           </span>
         </template>
 
         <!-- Validity Column -->
         <template #item.validity="{ item }">
-          <div class="d-flex flex-column align-center text-super-xs font-weight-bold text-medium-emphasis">
-            <span>{{ formatDate(item.start_date) }}</span>
-            <span class="text-disabled">al {{ formatDate(item.end_date) }}</span>
+          <div class="d-flex flex-column align-center">
+            <span class="text-xs font-weight-medium text-medium-emphasis">
+              {{ formatDate(item.start_date) }} – {{ formatDate(item.end_date) }}
+            </span>
+            <span v-if="isExpired(item.end_date)" class="text-super-xs font-weight-bold text-error uppercase mt-0-5">
+              Vencida
+            </span>
+            <span v-else-if="isExpiringSoon(item.end_date)" class="text-super-xs font-weight-bold text-warning uppercase mt-0-5">
+              Vence pronto
+            </span>
           </div>
-        </template>
-
-        <!-- Sales Count Column -->
-        <template #item.sales_count="{ item }">
-          <span class="text-xs font-weight-bold text-medium-emphasis">
-            {{ item.sales_count ?? 0 }}
-          </span>
         </template>
 
         <!-- Active Status Column -->
         <template #item.is_active="{ item }">
           <VChip
-            :color="getStatusColor(item.is_active)"
-            size="x-small"
+            :color="item.is_active ? 'success' : 'secondary'"
+            size="small"
             variant="tonal"
-            class="font-weight-black px-2 rounded"
+            class="font-weight-bold px-2 rounded-pill"
           >
-            {{ getStatusText(item.is_active) }}
-          </VChip>
-        </template>
-
-        <!-- Currently Active Column -->
-        <template #item.is_currently_active="{ item }">
-          <VChip
-            :color="item.is_currently_active ? 'success' : 'secondary'"
-            size="x-small"
-            variant="tonal"
-            class="font-weight-black rounded"
-          >
-            {{ item.is_currently_active ? 'VIGENTE' : 'FINALIZADA' }}
+            <span class="status-dot me-1" :class="item.is_active ? 'bg-success' : 'bg-secondary'"></span>
+            {{ item.is_active ? 'Activa' : 'Inactiva' }}
           </VChip>
         </template>
 
@@ -200,23 +206,13 @@ const handleView = (prescription) => emit("view-prescription", prescription);
                 <span class="text-primary font-weight-black text-super-xs bg-primary-lighten-5 px-1-5 py-0-5 rounded flex-shrink-0">
                   ID: {{ item.id }}
                 </span>
-                <VChip
-                  :color="item.is_currently_active ? 'success' : 'warning'"
-                  size="x-small"
-                  variant="tonal"
-                  class="font-weight-black rounded"
-                >
-                  {{ item.is_currently_active ? 'EN VIGENCIA' : 'VENCIDA' }}
-                </VChip>
               </div>
-              <VChip
-                :color="getStatusColor(item.is_active)"
-                size="x-small"
-                variant="flat"
-                class="font-weight-black px-2 rounded"
-              >
-                {{ getStatusText(item.is_active) }}
-              </VChip>
+              <div class="d-flex align-center gap-1">
+                <span class="status-dot" :class="item.is_active ? 'bg-success' : 'bg-secondary'"></span>
+                <span :class="item.is_active ? 'text-success' : 'text-medium-emphasis'" class="text-xs font-weight-bold">
+                  {{ item.is_active ? 'Activa' : 'Inactiva' }}
+                </span>
+              </div>
             </div>
 
             <h3 class="product-mobile-title font-weight-black text-high-emphasis text-uppercase truncate-2-lines mb-2 text-body-2">
@@ -228,7 +224,7 @@ const handleView = (prescription) => emit("view-prescription", prescription);
               <div class="d-flex flex-column">
                 <span class="text-super-xs text-disabled text-uppercase font-weight-bold letter-spacing-1">Descuento:</span>
                 <span class="text-xs font-weight-black text-success">
-                  {{ item.discount_percentage }}%
+                  {{ parseFloat(item.discount_percentage || 0) }}% OFF
                 </span>
               </div>
 
@@ -241,9 +237,10 @@ const handleView = (prescription) => emit("view-prescription", prescription);
             </div>
 
             <!-- Vigencia Móvil -->
-            <div class="d-flex justify-space-between align-center px-1 mt-1 text-super-xs font-weight-bold text-medium-emphasis">
-              <span>{{ formatDate(item.start_date) }}</span>
-              <span class="text-disabled">al {{ formatDate(item.end_date) }}</span>
+            <div class="d-flex justify-space-between align-center px-1 mt-1 text-super-xs font-weight-medium text-medium-emphasis">
+              <span>{{ formatDate(item.start_date) }} – {{ formatDate(item.end_date) }}</span>
+              <span v-if="isExpired(item.end_date)" class="text-error font-weight-bold uppercase">Vencida</span>
+              <span v-else-if="isExpiringSoon(item.end_date)" class="text-warning font-weight-bold uppercase">Vence pronto</span>
             </div>
           </div>
 
@@ -348,5 +345,12 @@ const handleView = (prescription) => emit("view-prescription", prescription);
   font-size: 0.75rem !important;
   font-weight: 700 !important;
   text-transform: uppercase;
+}
+
+.status-dot {
+  display: inline-block;
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: 50%;
 }
 </style>

@@ -26,17 +26,9 @@ const formatDate = (dateString) => {
   if (!dateString) return "—";
   return new Date(dateString).toLocaleDateString("es-ES", {
     day: "2-digit",
-    month: "short",
+    month: "2-digit",
     year: "numeric",
   });
-};
-
-const getStatusText = (isActive) => {
-  return isActive ? "ACTIVA" : "INACTIVA";
-};
-
-const getStatusColor = (isActive) => {
-  return isActive ? "success" : "error";
 };
 
 const isOfferCurrentlyActive = computed(() => {
@@ -78,7 +70,7 @@ const closeModal = () => {
             </h2>
             <div class="d-flex align-center gap-2 mt-1">
               <span class="text-white opacity-75 uppercase font-weight-bold" style="font-size: 0.65rem; letter-spacing: 0.05em;">
-                Oferta por Récipe Médico (ID #{{ props.prescriptionData.id }})
+                Oferta por Receta Médica (ID #{{ props.prescriptionData.id }})
               </span>
             </div>
           </div>
@@ -136,13 +128,13 @@ const closeModal = () => {
               <div class="d-flex flex-column align-start align-sm-end">
                 <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1">Estado</span>
                 <VChip
-                  :color="getStatusColor(props.prescriptionData.is_active)"
+                  :color="props.prescriptionData.is_active ? 'success' : 'secondary'"
                   size="small"
                   variant="tonal"
-                  class="font-weight-black rounded"
+                  class="font-weight-bold px-2 rounded-pill"
                 >
-                  <VIcon start size="14" :icon="props.prescriptionData.is_active ? 'tabler-check' : 'tabler-x'" />
-                  {{ getStatusText(props.prescriptionData.is_active) }}
+                  <span class="status-dot me-1" :class="props.prescriptionData.is_active ? 'bg-success' : 'bg-secondary'"></span>
+                  {{ props.prescriptionData.is_active ? 'Activa' : 'Inactiva' }}
                 </VChip>
               </div>
             </VCol>
@@ -153,7 +145,7 @@ const closeModal = () => {
         <div class="mb-2">
           <div class="d-flex align-center gap-1-5 mb-3">
             <div class="header-indicator primary" />
-            <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">Beneficio por Récipe</span>
+            <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">Beneficio de la Oferta</span>
           </div>
 
           <div class="pa-3 rounded border bg-var-theme-background d-flex align-center justify-space-between">
@@ -236,5 +228,12 @@ const closeModal = () => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.status-dot {
+  display: inline-block;
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: 50%;
 }
 </style>
