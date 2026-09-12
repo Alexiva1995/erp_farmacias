@@ -1,11 +1,11 @@
 ﻿<script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { useDisplay } from 'vuetify'
 import ChronicClientMobileCard from '@/components/cards/ChronicClientMobileCard.vue'
 import TablePagination from '@/@core/components/TablePagination.vue'
-import { useResponsive } from '@/composables/useResponsive'
 import { $api } from '@/utils/api'
 
-const { isMobile } = useResponsive()
+const { mobile: isMobile } = useDisplay()
 
 // Estado de datos
 const loading = ref(false)
