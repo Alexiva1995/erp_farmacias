@@ -210,7 +210,11 @@ class SupplierConnectionService
             });
 
             // Optimización: Cargar facturas y controles ya registrados en base de datos para no descargarlas repetidamente por FTP
+            // Si la factura está en estado pending y tiene detalles sin fecha de vencimiento, NO se omite para permitir su actualización
             $existingInvoicesData = \App\Models\Invoice::where('supplier_id', $connection->supplier_id)
+                ->whereDoesntHave('details', function ($q) {
+                    $q->whereNull('expiration_date')->orWhere('expiration_date', '');
+                })
                 ->get(['invoice_number', 'control_number']);
 
             $existingInvoicesMap = [];
@@ -247,7 +251,7 @@ class SupplierConnectionService
                 if (isset($existingInvoicesMap[$cleanFilename]) || 
                     isset($existingInvoicesMap[$cleanFilenameNoPrefix]) ||
                     (!empty($cleanFilenameNoZeroes) && isset($existingInvoicesMap[$cleanFilenameNoZeroes]))) {
-                    // Ya está en BD, saltar descarga FTP
+                    // Ya está en BD con todos sus datos completos, saltar descarga FTP
                     continue;
                 }
 
@@ -850,15 +854,9 @@ class SupplierConnectionService
                             break;
                         }
 
-                        $dt = \DateTime::createFromFormat("Y-m-d", $value);
-                        if ($dt && $dt->format("Y-m-d") === $value) {
-                            $entry[$meta["target"]] = $dt->format("Y-m-d");
-                            break;
-                        }
-
-                        $dt = \DateTime::createFromFormat("d/m/Y", $value);
-                        if ($dt && $dt->format("d/m/Y") === $value) {
-                            $entry[$meta["target"]] = $dt->format("Y-m-d");
+                        $parsedDate = $this->parseDate($value);
+                        if ($parsedDate) {
+                            $entry[$meta["target"]] = $parsedDate;
                             break;
                         }
 
@@ -1078,6 +1076,10 @@ class SupplierConnectionService
                 || str_contains(strtolower($connection->supplier?->name ?? ''), 'dromega')
                 || in_array($connection->supplier_id, [9, 15, 38, 1005]);
 
+            // Modo agrupado (por ejemplo, Dronena / Dromega)
+            $header = null;
+            $bufferLines = [];
+
             foreach ($lines as $line) {
                 $cols = explode($separator, $line);
                 if ($isDronena) {
@@ -1086,62 +1088,56 @@ class SupplierConnectionService
                 $tipo = trim($cols[0] ?? "");
 
                 if ($tipo === "E" || $tipo === '02') {
-                    $header = [];
+                    $currentHeader = [];
 
                     foreach ($structure["header"] as $index => $meta) {
                         $raw = $cols[$index] ?? "";
                         $value = $this->castValue($raw, $meta);
-                        $header[$meta["field"]] = $value;
+                        $currentHeader[$meta["field"]] = $value;
                     }
 
                     if ($isDronena) {
-                        $exchangeRate = floatval($header['exchange_rate'] ?? 0);
-                        $totalAmount = floatval($header['total_amount'] ?? 0);
+                        $exchangeRate = floatval($currentHeader['exchange_rate'] ?? 0);
+                        $totalAmount = floatval($currentHeader['total_amount'] ?? 0);
 
                         if ($exchangeRate > 0) {
-                            $header['total_usd'] = number_format($totalAmount / $exchangeRate, 2, '.', '');
+                            $currentHeader['total_usd'] = number_format($totalAmount / $exchangeRate, 2, '.', '');
                         }
                     }
-                    $invoiceNumber = $overrideInvoiceNumber ?? ($header['invoice_number'] ?? null);
-                    $header['invoice_number'] = $invoiceNumber;
+                    $invoiceNumber = $overrideInvoiceNumber ?? ($currentHeader['invoice_number'] ?? null);
+                    $currentHeader['invoice_number'] = $invoiceNumber;
 
                     if ($invoiceNumber && in_array($invoiceNumber, $seenInvoiceNumbers)) {
-                        $bufferLines = [];
                         continue;
                     }
 
                     if ($isDromega) {
-                        $totalUSD = floatval($header["total_usd"] ?? 0);
-                        $exchangeRate = floatval($header["exchange_rate"] ?? 0);
+                        $totalUSD = floatval($currentHeader["total_usd"] ?? 0);
+                        $exchangeRate = floatval($currentHeader["exchange_rate"] ?? 0);
                         $currentExchangeRate = $exchangeRate; // ✅ Guardar para las líneas
 
                         if ($connection->supplier_id !== 9 && $connection->supplier_id !== 1005) {
-                            $header["total_amount"] = $totalUSD * $exchangeRate;
+                            $currentHeader["total_amount"] = $totalUSD * $exchangeRate;
                         }
 
-                        if (isset($header["tax_amount"])) {
-                            $header["taxable_base"] = (floatval($header["tax_amount"]) * 100) / 16; // Suponiendo 16% de IVA
-                            $header["exempt_amount"] = floatval($header["total_amount"]) - floatval($header["tax_amount"]) - floatval($header["taxable_base"]);
+                        if (isset($currentHeader["tax_amount"])) {
+                            $currentHeader["taxable_base"] = (floatval($currentHeader["tax_amount"]) * 100) / 16; // Suponiendo 16% de IVA
+                            $currentHeader["exempt_amount"] = floatval($currentHeader["total_amount"]) - floatval($currentHeader["tax_amount"]) - floatval($currentHeader["taxable_base"]);
                         } else {
-                            $header["exempt_amount"] = $header["total_amount"];
+                            $currentHeader["exempt_amount"] = $currentHeader["total_amount"];
                         }
 
-                        $header["status_payment"] = 0;
+                        $currentHeader["status_payment"] = 0;
                     }
 
-                    $invoices = [
-                        "header" => $header,
-                        "lines" => $bufferLines,
-                    ];
-
-                    $seenInvoiceNumbers[] = $invoiceNumber;
-                    $bufferLines = [];
+                    $header = $currentHeader;
+                    if ($invoiceNumber) {
+                        $seenInvoiceNumbers[] = $invoiceNumber;
+                    }
                 }
 
                 if ($tipo === "R" || $tipo === '01') {
                     $lineData = [];
-                    $hasIvaTax = false;
-
                     $hasIvaTax = false;
 
                     foreach ($structure["lines"] as $index => $meta) {
@@ -1177,6 +1173,13 @@ class SupplierConnectionService
 
                     $bufferLines[] = $lineData;
                 }
+            }
+
+            if (!empty($header)) {
+                $invoices = [
+                    "header" => $header,
+                    "lines" => $bufferLines,
+                ];
             }
         }
 
@@ -1524,30 +1527,27 @@ class SupplierConnectionService
                     // Busca un código de barras: número de 12 o 13 dígitos rodeado por límites de palabra
                     preg_match('/\b(\d{12,13})\b/', $line, $b);
 
-                    // Busca una fecha en formato dd/mm/aaaa rodeada por límites de palabra
-                    preg_match('/\b(\d{2}\/\d{2}\/\d{4})\b/', $line, $e);
+                    // Busca una fecha en formato dd/mm/aaaa, dd-mm-aaaa, aaaa-mm-dd o mm/aaaa
+                    preg_match('/\b(\d{2}[\/\-]\d{2}[\/\-]\d{4}|\d{4}[\/\-]\d{2}[\/\-]\d{2}|\d{2}[\/\-]\d{4})\b/', $line, $e);
 
                     $barcode = $b[1] ?? '';
                     $expiration = $e[1] ?? '';
 
-                    // Si se encontraron código de barras, fecha de vencimiento
-                    if ($barcode && $expiration) {
-                        // Elimina cualquier punto y coma del nombre del producto para evitar romper el CSV
-                        $name = str_replace(';', '', $name);
+                    // Elimina cualquier punto y coma del nombre del producto para evitar romper el CSV
+                    $name = str_replace(';', '', $name);
 
-                        // Devuelve la línea formateada como CSV con punto y coma como delimitador
-                        return implode(';', [
-                            '01',
-                            $invoice,
-                            $cod_supplier,
-                            $name,
-                            $quantity,
-                            $unit_cost,
-                            $total_cost,
-                            $barcode,
-                            $expiration
-                        ]);
-                    }
+                    // Devuelve la línea formateada como CSV con punto y coma como delimitador
+                    return implode(';', [
+                        '01',
+                        $invoice,
+                        $cod_supplier,
+                        $name,
+                        $quantity,
+                        $unit_cost,
+                        $total_cost,
+                        $barcode,
+                        $expiration
+                    ]);
                 }
             }
         } elseif (preg_match('/^02\s/', $line)) {

@@ -218,14 +218,19 @@ class SupplierQueryService
             error_log($logMessage);
 
 
-            // Cargar facturas y números de control existentes globalmente y para este proveedor
-            $allInvoiceNumbers = Invoice::pluck('invoice_number')
+            // Cargar facturas completas existentes globalmente y para este proveedor
+            // Aquellas facturas que ya tienen todos sus detalles con fecha de vencimiento o que ya están finalizadas se excluyen
+            $completeInvoicesQuery = Invoice::whereDoesntHave('details', function ($q) {
+                $q->whereNull('expiration_date')->orWhere('expiration_date', '');
+            })->where('status', '!=', 'pending');
+
+            $allInvoiceNumbers = (clone $completeInvoicesQuery)->pluck('invoice_number')
                 ->filter()
                 ->map(fn($n) => strtoupper(trim((string)$n)))
                 ->flip()
                 ->toArray();
 
-            $existingSupplierInvoices = Invoice::where('supplier_id', $supplier->id)
+            $existingSupplierInvoices = (clone $completeInvoicesQuery)->where('supplier_id', $supplier->id)
                 ->get(['invoice_number', 'control_number']);
 
             $existingControls = $existingSupplierInvoices
@@ -264,26 +269,26 @@ class SupplierQueryService
                         return false;
                     }
 
-                    // 0. Validar por número de factura existente a nivel global (evitar violar unicidad en DB)
+                    // 0. Validar por número de factura existente a nivel global completo
                     if (isset($allInvoiceNumbers[$number])) {
-                        Log::warning("Factura filtrada: Ya existe en la base de datos", ['number' => $number]);
+                        Log::warning("Factura filtrada: Ya existe completa en la base de datos", ['number' => $number]);
                         return false;
                     }
 
-                    // 1. Validar por número de control fiscal idéntico
+                    // 1. Validar por número de control fiscal idéntico completo
                     if (!empty($control) && isset($existingControls[$control])) {
-                        Log::warning("Factura filtrada: Ya existe una factura con el número de control '{$control}' para este proveedor", ['number' => $number]);
+                        Log::warning("Factura filtrada: Ya existe una factura completa con el número de control '{$control}' para este proveedor", ['number' => $number]);
                         return false;
                     }
 
-                    // 2. Validar por número de factura normalizado
+                    // 2. Validar por número de factura normalizado completo
                     $stripped = ltrim($number, 'ABFCD');
                     $strippedNoZeroes = ltrim($stripped, '0');
 
                     if (isset($existingNormalizedNumbers[$number]) ||
                         isset($existingNormalizedNumbers[$stripped]) ||
-                        (!empty($strippedNoZeroes) && isset($existingNormalizedNumbers[$strippedNoZeroes]))) {
-                        Log::warning("Factura filtrada: Ya existe en el ERP bajo número normalizado", ['number' => $number]);
+                        (!empty($cleanFilenameNoZeroes) && isset($existingNormalizedNumbers[$strippedNoZeroes]))) {
+                        Log::warning("Factura filtrada: Ya existe completa en el ERP bajo número normalizado", ['number' => $number]);
                         return false;
                     }
 
@@ -402,13 +407,30 @@ class SupplierQueryService
                             $totalAmount = round($totalUsd * $rate, 2);
                         }
 
-                        $invoiceModel = $supplier->invoices()->create([
-                            ...Arr::only($header, Invoice::FILLABLEHEADER),
-                            'total_amount' => $totalAmount,
-                            'status' => $invoice['status'] ?? 'pending',
-                            'uploaded_by' => auth()->id() ?? 1,
-                            'registered_by' => auth()->id() ?? 1,
-                        ]);
+                        $invoiceNumber = $header['invoice_number'] ?? null;
+                        $existingInvoice = null;
+
+                        if ($invoiceNumber) {
+                            $existingInvoice = $supplier->invoices()
+                                ->where('invoice_number', $invoiceNumber)
+                                ->first();
+                        }
+
+                        if ($existingInvoice) {
+                            $invoiceModel = $existingInvoice;
+                            $invoiceModel->update([
+                                ...Arr::only($header, Invoice::FILLABLEHEADER),
+                                'total_amount' => $totalAmount,
+                            ]);
+                        } else {
+                            $invoiceModel = $supplier->invoices()->create([
+                                ...Arr::only($header, Invoice::FILLABLEHEADER),
+                                'total_amount' => $totalAmount,
+                                'status' => $invoice['status'] ?? 'pending',
+                                'uploaded_by' => auth()->id() ?? 1,
+                                'registered_by' => auth()->id() ?? 1,
+                            ]);
+                        }
 
                         // ✅ Obtener exchange_rate del header
                         $exchangeRate = floatval($header['exchange_rate'] ?? 1);
@@ -468,7 +490,26 @@ class SupplierQueryService
                             ];
                         }
 
-                        $invoiceModel->details()->createMany($details);
+                        if ($existingInvoice) {
+                            // Actualizar vencimientos en los detalles existentes o recrear si estaba en borrador
+                            $existingDetails = $invoiceModel->details()->get();
+                            if ($existingDetails->count() > 0 && $existingDetails->count() === count($details)) {
+                                foreach ($details as $idx => $det) {
+                                    $targetDetail = $existingDetails[$idx] ?? null;
+                                    if ($targetDetail) {
+                                        $targetDetail->update([
+                                            'expiration_date' => $det['expiration_date'] ?? $targetDetail->expiration_date,
+                                            'lot_number' => $det['lot_number'] ?? $targetDetail->lot_number,
+                                        ]);
+                                    }
+                                }
+                            } else {
+                                $invoiceModel->details()->delete();
+                                $invoiceModel->details()->createMany($details);
+                            }
+                        } else {
+                            $invoiceModel->details()->createMany($details);
+                        }
                     });
                 } catch (\Throwable $invError) {
                     Log::error("Error guardando factura individual", [

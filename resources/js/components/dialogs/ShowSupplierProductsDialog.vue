@@ -44,6 +44,7 @@ const productsHeaders = [
   { title: "ID", key: "id", sortable: false },
   { title: "Nombre", key: "name", sortable: false },
   { title: "Laboratorio", key: "laboratory", sortable: false },
+  { title: "Vencimiento", key: "expiration", sortable: false, align: "center" },
   { title: "Coste (BS)", key: "unit_cost", sortable: false },
   { title: "Coste (Usd)", key: "unit_cost_usd", sortable: false },
 ];
@@ -203,6 +204,12 @@ const updateTableOptions = (options) => {
             <template #item.laboratory="{ item }">
               <span class="text-xs text-medium-emphasis">{{ item.laboratory }}</span>
             </template>
+            <template #item.expiration="{ item }">
+              <span v-if="item.expiration" class="text-xs font-weight-medium">
+                {{ item.expiration }}
+              </span>
+              <span v-else class="text-disabled text-xs">—</span>
+            </template>
             <template #item.unit_cost="{ item }">
               <span class="text-sm font-weight-bold text-high-emphasis">{{ formatBs(item.unit_cost) }}</span>
             </template>
@@ -233,9 +240,14 @@ const updateTableOptions = (options) => {
                         {{ item.name }}
                       </span>
                     </div>
-                    <VChip size="x-small" color="secondary" variant="tonal" class="font-weight-black">
-                      {{ item.laboratory || 'S/L' }}
-                    </VChip>
+                    <div class="d-flex flex-column align-end gap-1">
+                      <VChip size="x-small" color="secondary" variant="tonal" class="font-weight-black">
+                        {{ item.laboratory || 'S/L' }}
+                      </VChip>
+                      <span v-if="item.expiration" class="text-super-xs font-weight-bold text-disabled">
+                        Vence: {{ item.expiration }}
+                      </span>
+                    </div>
                   </div>
                   
                   <VDivider class="my-2 border-dashed" />
