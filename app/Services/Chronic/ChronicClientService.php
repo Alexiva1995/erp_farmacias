@@ -29,6 +29,7 @@ class ChronicClientService
         $perPage = (int) $request->input('itemsPerPage', 15);
         $page = (int) $request->input('page', 1);
 
+        $fromDate = '2026-09-01 00:00:00';
         $latestDetailsQuery = OrderDetail::select(
                 'orders.client_id',
                 'order_details.product_id',
@@ -37,11 +38,9 @@ class ChronicClientService
             ->join('orders', 'orders.id', '=', 'order_details.order_id')
             ->join('products', 'products.id', '=', 'order_details.product_id')
             ->where('orders.status', Order::COMPLETED)
+            ->where('orders.order_date', '>=', $fromDate)
             ->whereNotNull('orders.client_id')
-            ->where(function ($q) {
-                $q->where('products.is_chronic', true)
-                  ->orWhereIn('products.consumption_type', ['chronic', 'single_treatment']);
-            })
+            ->whereIn('products.consumption_type', ['chronic', 'single_treatment'])
             ->groupBy('orders.client_id', 'order_details.product_id');
 
         $query = DB::table(DB::raw("({$latestDetailsQuery->toSql()}) as latest_purchases"))
@@ -50,7 +49,9 @@ class ChronicClientService
             ->join('products', 'products.id', '=', 'latest_purchases.product_id')
             ->leftJoin('laboratories', 'laboratories.id', '=', 'products.laboratory_id')
             ->whereNull('clients.deleted_at')
-            ->where('products.is_deleted', false);
+            ->where('products.is_deleted', false)
+            ->whereNotNull('clients.phone')
+            ->where(DB::raw('LENGTH(TRIM(clients.phone))'), '>=', 10);
 
         $query->join('orders', function ($join) {
             $join->on('orders.client_id', '=', 'latest_purchases.client_id')
@@ -283,12 +284,20 @@ class ChronicClientService
     {
         $product = Product::withoutGlobalScope('not_deleted')->findOrFail($productId);
 
-        $consumptionType = $data['consumption_type'] ?? 'sporadic';
-        $durationDays = isset($data['treatment_duration_days']) ? (int) $data['treatment_duration_days'] : 30;
+        $consumptionType = !empty($data['consumption_type']) && $data['consumption_type'] !== 'none' 
+            ? $data['consumption_type'] 
+            : null;
+            
+        $durationDays = isset($data['treatment_duration_days']) && $data['treatment_duration_days'] !== '' 
+            ? (int) $data['treatment_duration_days'] 
+            : null;
 
         $product->consumption_type = $consumptionType;
         $product->is_chronic = ($consumptionType === 'chronic');
-        $product->treatment_duration_days = $durationDays;
+        $product->treatment_duration_days = ($consumptionType === 'chronic' || $consumptionType === 'single_treatment') 
+            ? ($durationDays ?: ($consumptionType === 'chronic' ? 30 : 7)) 
+            : null;
+            
         $product->save();
 
         return $product;

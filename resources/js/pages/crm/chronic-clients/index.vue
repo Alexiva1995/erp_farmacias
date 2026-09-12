@@ -1,9 +1,11 @@
-﻿<script setup>
+<script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useDisplay } from 'vuetify'
 import ChronicClientMobileCard from '@/components/cards/ChronicClientMobileCard.vue'
+import AppFilterBase from '@/components/AppFilterBase.vue'
 import TablePagination from '@/@core/components/TablePagination.vue'
 import { $api } from '@/utils/api'
+import { toast } from '@/plugins/sweetalert'
 
 const { mobile: isMobile } = useDisplay()
 
@@ -23,21 +25,13 @@ const savingProduct = ref(false)
 const selectedProduct = reactive({
   id: null,
   name: '',
-  consumption_type: 'sporadic',
+  consumption_type: 'chronic',
   treatment_duration_days: 30,
 })
 
 // Estado de datos
 const loading = ref(false)
 const statsLoading = ref(false)
-const aiSyncing = ref(false)
-const aiSyncSuccessDialog = ref(false)
-const aiSyncResult = reactive({
-  total_analyzed: 0,
-  chronic_detected: 0,
-  updated_count: 0,
-  ai_assisted: false,
-})
 
 const chronicClients = ref([])
 const totalRecords = ref(0)
@@ -64,6 +58,20 @@ const consumptionTypeOptions = [
   { title: 'Todos los Tipos', value: 'all' },
   { title: 'Crónico (Uso Continuo)', value: 'chronic' },
   { title: 'Tratamiento Único / Ciclo', value: 'single_treatment' },
+]
+
+const productConsumptionFilterOptions = [
+  { title: 'Todos los Tipos', value: 'all' },
+  { title: 'Crónico (Uso Continuo)', value: 'chronic' },
+  { title: 'Tratamiento Único / Ciclo', value: 'single_treatment' },
+  { title: 'Sin Alerta / Insumos', value: 'no_alert' },
+  { title: 'Esporádico / Ocasional', value: 'sporadic' },
+]
+
+const formConsumptionTypes = [
+  { title: 'Crónico (Uso Continuo - Recompra Recurrente)', value: 'chronic' },
+  { title: 'Tratamiento Único / Ciclo (Seguimiento al finalizar)', value: 'single_treatment' },
+  { title: 'Sin Alerta / Insumos (No alertar ni recordar)', value: 'no_alert' },
   { title: 'Esporádico / Ocasional', value: 'sporadic' },
 ]
 
@@ -157,8 +165,8 @@ const fetchProductsConfig = async () => {
 const openEditProduct = (item) => {
   selectedProduct.id = item.id
   selectedProduct.name = item.name
-  selectedProduct.consumption_type = item.consumption_type || 'sporadic'
-  selectedProduct.treatment_duration_days = item.treatment_duration_days || 30
+  selectedProduct.consumption_type = item.consumption_type || 'chronic'
+  selectedProduct.treatment_duration_days = item.treatment_duration_days || (item.consumption_type === 'single_treatment' ? 7 : 30)
   editDialog.value = true
 }
 
@@ -172,14 +180,15 @@ const saveProductConsumption = async () => {
         treatment_duration_days: selectedProduct.treatment_duration_days,
       },
     })
-    toast.success('Tipo de consumo actualizado correctamente.')
+    toast.success('Clasificación de producto actualizada correctamente.')
     editDialog.value = false
     await fetchProductsConfig()
     await fetchStats()
     await fetchChronicClients()
+    fetchChronicProductsList()
   } catch (e) {
     console.error(e)
-    toast.error('No se pudo actualizar el producto.')
+    toast.error('No se pudo actualizar la clasificación del producto.')
   } finally {
     savingProduct.value = false
   }
@@ -187,9 +196,11 @@ const saveProductConsumption = async () => {
 
 const getConsumptionBadge = (type) => {
   switch (type) {
-    case 'chronic': return { color: 'primary', label: 'Crónico', icon: 'tabler-repeat' }
+    case 'chronic': return { color: 'primary', label: 'Crónico (Recurrente)', icon: 'tabler-repeat' }
     case 'single_treatment': return { color: 'warning', label: 'Tratamiento Único', icon: 'tabler-calendar-event' }
-    default: return { color: 'secondary', label: 'Esporádico', icon: 'tabler-shopping-bag' }
+    case 'no_alert': return { color: 'secondary', label: 'Sin Alerta / Insumos', icon: 'tabler-bell-off' }
+    case 'sporadic': return { color: 'secondary', label: 'Esporádico', icon: 'tabler-shopping-bag' }
+    default: return { color: 'secondary', label: 'Sin Clasificar', icon: 'tabler-help' }
   }
 }
 
@@ -211,26 +222,6 @@ const fetchChronicProductsList = async () => {
     }
   } catch (e) {
     // Fallback silencioso si no aplica
-  }
-}
-
-// Clasificar / Escanear catálogo con IA
-const runAiChronicSync = async () => {
-  aiSyncing.value = true
-  try {
-    const res = await $api('/crm/chronic-clients/sync-ai', { method: 'POST' })
-    if (res?.data) {
-      Object.assign(aiSyncResult, res.data)
-      aiSyncSuccessDialog.value = true
-      await fetchStats()
-      await fetchChronicClients()
-      await fetchProductsConfig()
-  fetchChronicProductsList()
-    }
-  } catch (error) {
-    console.error('Error syncing chronic products with AI:', error)
-  } finally {
-    aiSyncing.value = false
   }
 }
 
@@ -257,6 +248,7 @@ const getStatusIcon = (item) => {
 const resetFilters = () => {
   searchQuery.value = ''
   statusFilter.value = 'all'
+  consumptionTypeFilter.value = 'all'
   productFilter.value = null
   page.value = 1
   fetchChronicClients()
@@ -399,7 +391,7 @@ onMounted(() => {
     </VRow>
 
     <!-- PESTAÑA 1: PACIENTES Y RECOMPRAS -->
-    <div v-show="activeTab === 'patients'">
+    <div v-show="activeTab === 'patients'" class="d-flex flex-column gap-y-4">
       <AppFilterBase
         :search="searchQuery"
         :has-advanced-filters="statusFilter !== 'all' || consumptionTypeFilter !== 'all' || !!productFilter"
@@ -408,31 +400,6 @@ onMounted(() => {
         @update:search="searchQuery = $event"
         @clear="resetFilters"
       >
-        <template #prepend-actions>
-          <VBtn
-            color="primary"
-            variant="flat"
-            prepend-icon="tabler-sparkles"
-            :loading="aiSyncing"
-            class="me-1"
-            @click="runAiChronicSync"
-          >
-            Detectar con IA
-          </VBtn>
-
-          <VBtn
-            color="secondary"
-            variant="tonal"
-            icon="tabler-refresh"
-            size="38"
-            rounded="circle"
-            :loading="loading || statsLoading"
-            title="Actualizar datos"
-            class="me-1"
-            @click="fetchStats(); fetchChronicClients();"
-          />
-        </template>
-
         <template #advanced-filters>
           <VCol cols="12" sm="6" md="4">
             <VSelect
@@ -649,7 +616,7 @@ onMounted(() => {
             </VAvatar>
             <div class="text-h6 font-weight-bold">No se encontraron pacientes</div>
             <div class="text-caption text-medium-emphasis mb-4">
-              No hay pacientes crónicos para mostrar con los filtros seleccionados.
+              No hay pacientes con medicamentos de seguimiento para mostrar. Configura los productos en la pestaña "Clasificación de Productos".
             </div>
             <VBtn variant="tonal" color="primary" @click="resetFilters">
               Limpiar Filtros
@@ -658,44 +625,218 @@ onMounted(() => {
         </template>
       </VDataTableServer>
     </VCard>
+    </div>
 
-    <!-- Diálogo de Resultado de Sincronización con IA -->
-    <VDialog v-model="aiSyncSuccessDialog" max-width="500">
+    <!-- PESTAÑA 2: CLASIFICACIÓN DE PRODUCTOS -->
+    <div v-show="activeTab === 'products'" class="d-flex flex-column gap-y-4">
+      <AppFilterBase
+        :search="productSearchQuery"
+        :has-advanced-filters="productConsumptionFilter !== 'all'"
+        search-placeholder="Buscar medicamento por nombre, código o principio activo..."
+        class="py-1"
+        @update:search="productSearchQuery = $event"
+        @clear="resetProductFilters"
+      >
+        <template #advanced-filters>
+          <VCol cols="12" sm="6" md="4">
+            <VSelect
+              v-model="productConsumptionFilter"
+              :items="productConsumptionFilterOptions"
+              item-title="title"
+              item-value="value"
+              label="Filtrar por Tipo de Consumo"
+              density="compact"
+              hide-details
+              prepend-inner-icon="tabler-category"
+            />
+          </VCol>
+        </template>
+      </AppFilterBase>
+
+      <VCard variant="flat" border class="rounded-xl">
+        <VDataTableServer
+          v-model:page="productPage"
+          v-model:items-per-page="productPerPage"
+          :headers="productConfigHeaders"
+          :items="productsConfigList"
+          :items-length="totalProducts"
+          :loading="productsLoading"
+          density="comfortable"
+          class="elevation-0"
+          @update:options="fetchProductsConfig"
+        >
+          <!-- ID / Código -->
+          <template #item.barcode="{ item }">
+            <div class="font-weight-medium text-high-emphasis">
+              {{ item.barcode || 'S/C' }}
+            </div>
+          </template>
+
+          <!-- Nombre -->
+          <template #item.name="{ item }">
+            <div class="py-2">
+              <div class="font-weight-bold text-high-emphasis">{{ item.name }}</div>
+              <div v-if="item.active_ingredient" class="text-caption text-medium-emphasis">
+                {{ item.active_ingredient }}
+              </div>
+            </div>
+          </template>
+
+          <!-- Categoría -->
+          <template #item.category="{ item }">
+            <span class="text-caption text-medium-emphasis">
+              {{ item.category?.name || item.laboratory?.name || 'General' }}
+            </span>
+          </template>
+
+          <!-- Tipo de Consumo -->
+          <template #item.consumption_type="{ item }">
+            <VChip
+              size="small"
+              :color="getConsumptionBadge(item.consumption_type).color"
+              variant="tonal"
+              class="font-weight-medium"
+            >
+              <VIcon :icon="getConsumptionBadge(item.consumption_type).icon" start size="14" />
+              {{ getConsumptionBadge(item.consumption_type).label }}
+            </VChip>
+          </template>
+
+          <!-- Duración Estimada -->
+          <template #item.treatment_duration_days="{ item }">
+            <span v-if="item.consumption_type === 'chronic' || item.consumption_type === 'single_treatment'" class="font-weight-medium">
+              {{ item.treatment_duration_days || (item.consumption_type === 'chronic' ? 30 : 7) }} días / caja
+            </span>
+            <span v-else class="text-caption text-disabled">No aplica</span>
+          </template>
+
+          <!-- Automatización -->
+          <template #item.automation="{ item }">
+            <VChip
+              v-if="item.consumption_type === 'chronic'"
+              color="primary"
+              size="x-small"
+              variant="flat"
+            >
+              Recordatorio Recurrente
+            </VChip>
+            <VChip
+              v-else-if="item.consumption_type === 'single_treatment'"
+              color="warning"
+              size="x-small"
+              variant="flat"
+            >
+              Seguimiento de Fin de Ciclo
+            </VChip>
+            <VChip
+              v-else-if="item.consumption_type === 'no_alert'"
+              color="grey"
+              size="x-small"
+              variant="tonal"
+            >
+              Sin Alerta
+            </VChip>
+            <span v-else class="text-caption text-disabled">Sin alerta</span>
+          </template>
+
+          <!-- Acciones -->
+          <template #item.actions="{ item }">
+            <VBtn
+              icon="tabler-edit"
+              size="small"
+              variant="tonal"
+              color="primary"
+              title="Configurar Consumo"
+              @click="openEditProduct(item)"
+            />
+          </template>
+
+          <template #no-data>
+            <div class="py-8 text-center">
+              <VAvatar color="primary" variant="tonal" size="56" class="mb-3">
+                <VIcon icon="tabler-pill" size="32" />
+              </VAvatar>
+              <div class="text-h6 font-weight-bold">No hay productos encontrados</div>
+              <div class="text-caption text-medium-emphasis mb-4">
+                No se encontraron productos con los términos de búsqueda.
+              </div>
+              <VBtn variant="tonal" color="primary" @click="resetProductFilters">
+                Limpiar Filtros
+              </VBtn>
+            </div>
+          </template>
+        </VDataTableServer>
+      </VCard>
+    </div>
+
+    <!-- Modal para Configurar Tipo de Consumo del Producto -->
+    <VDialog v-model="editDialog" max-width="550" persistent>
       <VCard class="rounded-xl pa-2">
         <VCardItem>
           <template #prepend>
             <VAvatar color="primary" variant="tonal" size="48">
-              <VIcon icon="tabler-sparkles" size="26" />
+              <VIcon icon="tabler-adjustments-horizontal" size="26" />
             </VAvatar>
           </template>
           <VCardTitle class="text-h6 font-weight-bold">
-            Detección con IA Finalizada
+            Configurar Consumo y Frecuencia
           </VCardTitle>
-          <VCardSubtitle>
-            Análisis de catálogo farmacológico
+          <VCardSubtitle class="text-wrap">
+            {{ selectedProduct.name }}
           </VCardSubtitle>
         </VCardItem>
 
         <VCardText class="pt-2">
-          <div class="d-flex flex-column gap-2">
-            <div class="d-flex justify-space-between py-1 border-b">
-              <span class="text-medium-emphasis">Productos analizados:</span>
-              <span class="font-weight-bold">{{ aiSyncResult.total_analyzed }}</span>
-            </div>
-            <div class="d-flex justify-space-between py-1 border-b">
-              <span class="text-medium-emphasis">Medicamentos crónicos detectados:</span>
-              <span class="font-weight-bold text-primary">{{ aiSyncResult.chronic_detected }}</span>
-            </div>
-            <div class="d-flex justify-space-between py-1 border-b">
-              <span class="text-medium-emphasis">Nuevos productos actualizados:</span>
-              <span class="font-weight-bold text-success">{{ aiSyncResult.updated_count }}</span>
-            </div>
-          </div>
+          <VRow dense>
+            <VCol cols="12">
+              <VSelect
+                v-model="selectedProduct.consumption_type"
+                :items="formConsumptionTypes"
+                item-title="title"
+                item-value="value"
+                label="Tipo de Consumo *"
+                density="comfortable"
+                class="mb-3"
+              />
+            </VCol>
+
+            <VCol cols="12" v-if="selectedProduct.consumption_type === 'chronic' || selectedProduct.consumption_type === 'single_treatment'">
+              <VTextField
+                v-model.number="selectedProduct.treatment_duration_days"
+                label="Duración del Tratamiento / Caja (Días) *"
+                type="number"
+                min="1"
+                max="365"
+                density="comfortable"
+                :hint="selectedProduct.consumption_type === 'chronic' ? 'Días de cobertura estimada por cada unidad comprada (ej: 30 días).' : 'Días que dura el ciclo completo antes de realizar seguimiento (ej: 7 o 14 días).'"
+                persistent-hint
+              />
+            </VCol>
+
+            <VCol cols="12" v-if="selectedProduct.consumption_type === 'no_alert'">
+              <VAlert type="info" variant="tonal" density="compact" class="mt-2">
+                Este producto (insumo / descartable) quedará marcado sin alertas. Las futuras compras no generarán recordatorios ni aparecerán en la lista de pacientes crónicos.
+              </VAlert>
+            </VCol>
+          </VRow>
         </VCardText>
 
-        <VCardActions class="justify-end">
-          <VBtn color="primary" variant="flat" @click="aiSyncSuccessDialog = false">
-            Entendido
+        <VCardActions class="justify-end gap-2 pa-4">
+          <VBtn
+            variant="tonal"
+            color="secondary"
+            :disabled="savingProduct"
+            @click="editDialog = false"
+          >
+            Cancelar
+          </VBtn>
+          <VBtn
+            variant="flat"
+            color="primary"
+            :loading="savingProduct"
+            @click="saveProductConsumption"
+          >
+            Guardar Configuración
           </VBtn>
         </VCardActions>
       </VCard>
