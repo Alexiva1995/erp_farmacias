@@ -29,14 +29,12 @@ class ChronicClientService
         $perPage = (int) $request->input('itemsPerPage', 15);
         $page = (int) $request->input('page', 1);
 
-        $fromDate = '2026-09-01 00:00:00';
         $query = DB::table('orders')
             ->join('order_details', 'order_details.order_id', '=', 'orders.id')
             ->join('products', 'products.id', '=', 'order_details.product_id')
             ->join('clients', 'clients.id', '=', 'orders.client_id')
             ->leftJoin('laboratories', 'laboratories.id', '=', 'products.laboratory_id')
             ->where('orders.status', Order::COMPLETED)
-            ->where('orders.order_date', '>=', $fromDate)
             ->whereNotNull('orders.client_id')
             ->whereIn('products.consumption_type', ['chronic', 'single_treatment', 'sporadic'])
             ->whereNull('clients.deleted_at')
