@@ -13,24 +13,24 @@ use Illuminate\Http\Request;
 class ChronicClientController extends Controller
 {
     public function __construct(
-        protected ChronicClientService $chronicService
+        protected ChronicClientService \
     ) {
     }
 
     /**
      * Listar pacientes crónicos con filtros y paginación.
      */
-    public function index(Request $request): JsonResponse
+    public function index(Request \): JsonResponse
     {
-        $paginated = $this->chronicService->getChronicPatients($request);
+        \ = \->chronicService->getChronicPatients(\);
 
         return ApiResponse::success([
-            "items" => $paginated->items(),
-            "total" => $paginated->total(),
-            "current_page" => $paginated->currentPage(),
-            "per_page" => $paginated->perPage(),
-            "last_page" => $paginated->lastPage(),
-        ], "Pacientes crónicos obtenidos exitosamente", 200);
+            'items' => \->items(),
+            'total' => \->total(),
+            'current_page' => \->currentPage(),
+            'per_page' => \->perPage(),
+            'last_page' => \->lastPage(),
+        ], 'Pacientes crónicos obtenidos exitosamente', 200);
     }
 
     /**
@@ -38,8 +38,18 @@ class ChronicClientController extends Controller
      */
     public function stats(): JsonResponse
     {
-        $stats = $this->chronicService->getStats();
+        \ = \->chronicService->getStats();
 
-        return ApiResponse::success($stats, "Estadísticas obtenidas exitosamente", 200);
+        return ApiResponse::success(\, 'Estadísticas obtenidas exitosamente', 200);
+    }
+
+    /**
+     * Ejecutar sincronización y detección de medicamentos crónicos mediante IA.
+     */
+    public function syncAi(): JsonResponse
+    {
+        \ = \->chronicService->syncChronicProductsWithAi();
+
+        return ApiResponse::success(\, 'Sincronización de productos crónicos con IA completada exitosamente', 200);
     }
 }

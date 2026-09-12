@@ -449,6 +449,8 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
             Route::prefix("expiration-offer")->group(function () {
                 Route::get('/', [ExpirationOfferController::class, "index"]);
                 Route::post('/', [ExpirationOfferController::class, "store"]);
+                Route::get('/{expirationOffer}/products', [ExpirationOfferController::class, "getProducts"]);
+                Route::post('/{expirationOffer}/toggle-exclusion', [ExpirationOfferController::class, "toggleExclusion"]);
                 Route::put('/{expirationOffer}', [ExpirationOfferController::class, "update"]);
                 Route::delete('/{expirationOffer}', [ExpirationOfferController::class, 'destroy']);
                 Route::get('/available-product-lots', [ExpirationOfferController::class, 'getAvailableProductLots']);
@@ -560,6 +562,7 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
         Route::prefix("chronic-clients")->group(function () {
             Route::get("/", [ChronicClientController::class, "index"]);
             Route::get("/stats", [ChronicClientController::class, "stats"]);
+            Route::post("/sync-ai", [ChronicClientController::class, "syncAi"]);
         });
 
         Route::prefix("lottery")->group(function () {

@@ -308,5 +308,89 @@ class GeminiService
 
         return null;
     }
-}
 
+    /**
+     * Clasificar productos de farmacia para identificar si son para tratamientos crónicos.
+     */
+    public function classifyChronicProducts(array $products): array
+    {
+        $key = $this->getApiKey();
+        if (empty($key) || empty($products)) {
+            return [];
+        }
+
+        $itemsText = "";
+        foreach ($products as $p) {
+            $act = !empty($p["active_ingredient"]) ? " | Principio Activo: {$p["active_ingredient"]}" : "";
+            $itemsText .= "- ID: {$p["id"]} | Nombre: {$p["name"]}{$act}
+";
+        }
+
+        $prompt = "Eres un profesional farmacéutico de alto nivel. Analiza los siguientes productos y determina cuáles corresponden a medicamentos para tratamientos crónicos o de uso continuado/recurrente (ejemplos: hipertensión, diabetes, tiroides, cardiología, asma, epilepsia, dislipidemias, glaucoma, salud prostática, anticonceptivos continuos, etc.).
+
+"
+            . "PRODUCTOS:
+"
+            . $itemsText . "
+
+"
+            . "REGLAS:
+"
+            . "1. is_chronic = true para medicamentos de patologías crónicas o recurrentes de larga duración.
+"
+            . "2. is_chronic = false para cosméticos, productos de higiene personal, analgésicos agudos de venta libre ocasional, suplementos comunes no esenciales, golosinas, accesorios.
+"
+            . "3. treatment_duration_days: Estima la duración típica en días por 1 unidad/caja del medicamento (por ejemplo 30 días para caja de 30 tabletas de 1 diaria, 15 días si son 2 al día, etc. Por defecto 30).
+"
+            . "4. Devuelve estrictamente un objeto JSON con una propiedad results que es una lista de objetos: { id: int, is_chronic: bool, treatment_duration_days: int, reason: string }.";
+
+        try {
+            $response = Http::withHeaders([
+                "x-goog-api-key" => $key,
+            ])->timeout(60)->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={$key}", [
+                "contents" => [
+                    ["parts" => [["text" => $prompt]]]
+                ],
+                "generationConfig" => [
+                    "responseMimeType" => "application/json",
+                    "responseSchema"   => [
+                        "type"       => "object",
+                        "properties" => [
+                            "results" => [
+                                "type"  => "array",
+                                "items" => [
+                                    "type"       => "object",
+                                    "properties" => [
+                                        "id"                      => ["type" => "integer"],
+                                        "is_chronic"              => ["type" => "boolean"],
+                                        "treatment_duration_days" => ["type" => "integer"],
+                                        "reason"                  => ["type" => "string"],
+                                    ],
+                                    "required"   => ["id", "is_chronic", "treatment_duration_days"],
+                                ],
+                            ],
+                        ],
+                        "required"   => ["results"],
+                    ],
+                ],
+            ]);
+
+            if ($response->successful()) {
+                $result = $response->json();
+                $textResponse = $result["candidates"][0]["content"]["parts"][0]["text"] ?? "";
+                $data = json_decode($textResponse, true);
+
+                if (json_last_error() === JSON_ERROR_NONE && isset($data["results"])) {
+                    return $data["results"];
+                }
+            } else {
+                Log::error("[GeminiService::classifyChronicProducts] Error API: " . $response->body());
+            }
+        } catch (\Exception $e) {
+            Log::error("[GeminiService::classifyChronicProducts] Excepción: " . $e->getMessage());
+        }
+
+        return [];
+    }
+
+}

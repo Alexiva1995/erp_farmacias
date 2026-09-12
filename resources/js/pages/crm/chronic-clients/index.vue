@@ -10,6 +10,15 @@ const { mobile: isMobile } = useDisplay()
 // Estado de datos
 const loading = ref(false)
 const statsLoading = ref(false)
+const aiSyncing = ref(false)
+const aiSyncSuccessDialog = ref(false)
+const aiSyncResult = reactive({
+  total_analyzed: 0,
+  chronic_detected: 0,
+  updated_count: 0,
+  ai_assisted: false,
+})
+
 const chronicClients = ref([])
 const totalRecords = ref(0)
 const page = ref(1)
@@ -99,7 +108,26 @@ const fetchChronicProductsList = async () => {
       }))
     }
   } catch (e) {
-    // Si la búsqueda general de productos no soporta is_chronic, fallback silencioso
+    // Fallback silencioso si no aplica
+  }
+}
+
+// Clasificar / Escanear catálogo con IA
+const runAiChronicSync = async () => {
+  aiSyncing.value = true
+  try {
+    const res = await $api('/crm/chronic-clients/sync-ai', { method: 'POST' })
+    if (res?.data) {
+      Object.assign(aiSyncResult, res.data)
+      aiSyncSuccessDialog.value = true
+      await fetchStats()
+      await fetchChronicClients()
+      await fetchChronicProductsList()
+    }
+  } catch (error) {
+    console.error('Error syncing chronic products with AI:', error)
+  } finally {
+    aiSyncing.value = false
   }
 }
 
@@ -166,15 +194,25 @@ onMounted(() => {
         </div>
       </div>
 
-      <div class="d-flex align-center gap-2">
+      <div class="d-flex align-center flex-wrap gap-2">
         <VBtn
-          color="primary"
+          color="secondary"
           variant="tonal"
           prepend-icon="tabler-refresh"
           :loading="loading || statsLoading"
           @click="fetchStats(); fetchChronicClients();"
         >
-          Actualizar Datos
+          Actualizar
+        </VBtn>
+
+        <VBtn
+          color="primary"
+          variant="flat"
+          prepend-icon="tabler-sparkles"
+          :loading="aiSyncing"
+          @click="runAiChronicSync"
+        >
+          Detectar con IA
         </VBtn>
       </div>
     </div>
@@ -483,6 +521,48 @@ onMounted(() => {
         </template>
       </VDataTableServer>
     </VCard>
+
+    <!-- Diálogo de Resultado de Sincronización con IA -->
+    <VDialog v-model="aiSyncSuccessDialog" max-width="500">
+      <VCard class="rounded-xl pa-2">
+        <VCardItem>
+          <template #prepend>
+            <VAvatar color="primary" variant="tonal" size="48">
+              <VIcon icon="tabler-sparkles" size="26" />
+            </VAvatar>
+          </template>
+          <VCardTitle class="text-h6 font-weight-bold">
+            Detección con IA Finalizada
+          </VCardTitle>
+          <VCardSubtitle>
+            Análisis de catálogo farmacológico
+          </VCardSubtitle>
+        </VCardItem>
+
+        <VCardText class="pt-2">
+          <div class="d-flex flex-column gap-2">
+            <div class="d-flex justify-space-between py-1 border-b">
+              <span class="text-medium-emphasis">Productos analizados:</span>
+              <span class="font-weight-bold">{{ aiSyncResult.total_analyzed }}</span>
+            </div>
+            <div class="d-flex justify-space-between py-1 border-b">
+              <span class="text-medium-emphasis">Medicamentos crónicos detectados:</span>
+              <span class="font-weight-bold text-primary">{{ aiSyncResult.chronic_detected }}</span>
+            </div>
+            <div class="d-flex justify-space-between py-1 border-b">
+              <span class="text-medium-emphasis">Nuevos productos actualizados:</span>
+              <span class="font-weight-bold text-success">{{ aiSyncResult.updated_count }}</span>
+            </div>
+          </div>
+        </VCardText>
+
+        <VCardActions class="justify-end">
+          <VBtn color="primary" variant="flat" @click="aiSyncSuccessDialog = false">
+            Entendido
+          </VBtn>
+        </VCardActions>
+      </VCard>
+    </VDialog>
   </div>
 </template>
 
