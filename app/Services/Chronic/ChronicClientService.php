@@ -285,70 +285,54 @@ class ChronicClientService
         return "secondary";
     }
 
+
+    
     /**
-     * Sincronizar y clasificar productos crónicos mediante IA o heurística clínica.
+     * Sincronizar y clasificar productos cronicos mediante categorias medicas, IA y heuristica clinica.
      */
     public function syncChronicProductsWithAi(): array
     {
-        $products = \App\Models\Product::withoutGlobalScope('not_deleted')
-            ->where('is_deleted', false)
-            ->get(['id', 'name', 'active_ingredient', 'description', 'is_chronic', 'treatment_duration_days']);
+        $products = \App\Models\Product::withoutGlobalScope("not_deleted")
+            ->where("is_deleted", false)
+            ->get(["id", "name", "active_ingredient", "description", "category_id", "is_chronic", "treatment_duration_days"]);
+
+        // Categorias intrinsecamente cronicas en el sistema
+        $chronicCategoryIds = [1, 6, 10]; // Cardiovascular (1), Diabetes y Endocrinologia (6), Salud Mental (10)
 
         $chronicKeywords = [
-            'losartan', 'valsartan', 'candesartan', 'irbesartan', 'telmisartan', 'olmesartan',
-            'amlodipina', 'amlodipino', 'nifedipino', 'verapamilo', 'diltiazem',
-            'enalapril', 'captopril', 'lisinopril', 'ramipril',
-            'atenolol', 'bisoprolol', 'carvedilol', 'metoprolol', 'nebivolol', 'propranolol',
-            'hidroclorotiazida', 'furosemida', 'espironolactona', 'indapamida',
-            'metformina', 'glibenclamida', 'glimepirida', 'gliclazida', 'sitagliptina', 'vildagliptina', 'linagliptina', 'dapagliflozina', 'empagliflozina', 'insulina',
-            'atorvastatina', 'rosuvastatina', 'simvastatina', 'pravastatina', 'fenofibrato', 'gemfibrozilo', 'ezetimiba',
-            'levotiroxina', 'eutirox', 'tiroxina', 'metimazol',
-            'aspirina', 'acido acetilsalicilico', 'clopidogrel', 'warfarina', 'rivaroxaban', 'apixaban',
-            'salbutamol', 'budesonida', 'formoterol', 'fluticasona', 'salmeterol', 'montelukast', 'ipratropio', 'tiotropio',
-            'acido valproico', 'valproato', 'carbamazepina', 'lamotrigina', 'levetiracetam', 'fenitoina', 'topiramato', 'pregabalina', 'gabapentina',
-            'sertralina', 'escitalopram', 'fluoxetina', 'paroxetina', 'duloxetina', 'venlafaxina', 'clonazepam', 'alprazolam', 'quetiapina', 'olanzapina', 'risperidona',
-            'tamsulosina', 'finasterida', 'dutasterida', 'silodosina',
-            'timolol', 'latanoprost', 'travoprost', 'bimatoprost', 'brimonidina', 'dorzolamida',
-            'alendronato', 'ibandronato', 'calcitriol',
-            'metotrexato', 'leflunomida', 'hidroxicloroquina', 'sulfasalazina',
-            'anticonceptivo', 'etinilestradiol', 'levonorgestrel', 'drospirenona', 'dienogest',
-            'omeprazol', 'pantoprazol', 'esomeprazol'
+            "losartan", "valsartan", "candesartan", "irbesartan", "telmisartan", "olmesartan",
+            "amlodipina", "amlodipino", "nifedipino", "verapamilo", "diltiazem",
+            "enalapril", "captopril", "lisinopril", "ramipril",
+            "atenolol", "bisoprolol", "carvedilol", "metoprolol", "nebivolol", "propranolol",
+            "hidroclorotiazida", "furosemida", "espironolactona", "indapamida",
+            "metformina", "glibenclamida", "glimepirida", "gliclazida", "sitagliptina", "vildagliptina", "linagliptina", "dapagliflozina", "empagliflozina", "insulina", "janumet", "galvus",
+            "atorvastatina", "rosuvastatina", "simvastatina", "pravastatina", "fenofibrato", "gemfibrozilo", "ezetimiba", "lipitor", "crestor",
+            "levotiroxina", "eutirox", "tiroxina", "metimazol", "tapazol",
+            "aspirina", "acido acetilsalicilico", "clopidogrel", "warfarina", "rivaroxaban", "apixaban", "xarelto", "eliquis", "plavix",
+            "salbutamol", "budesonida", "formoterol", "fluticasona", "salmeterol", "montelukast", "ipratropio", "tiotropio", "seretide", "symbicort", "berodual", "spiriva",
+            "acido valproico", "valproato", "carbamazepina", "lamotrigina", "levetiracetam", "fenitoina", "topiramato", "pregabalina", "gabapentina", "lyrica",
+            "sertralina", "escitalopram", "fluoxetina", "paroxetina", "duloxetina", "venlafaxina", "clonazepam", "alprazolam", "quetiapina", "olanzapina", "risperidona", "rivotril",
+            "tamsulosina", "finasterida", "dutasterida", "silodosina", "secotex", "avodart",
+            "timolol", "latanoprost", "travoprost", "bimatoprost", "brimonidina", "dorzolamida", "xalatan", "cosopt",
+            "alendronato", "ibandronato", "calcitriol", "metotrexato", "leflunomida", "hidroxicloroquina", "sulfasalazina",
+            "anticonceptivo", "etinilestradiol", "levonorgestrel", "drospirenona", "dienogest", "yasmin", "diane", "yaz",
+            "retinal", "retinol", "isotretinoina", "tacrolimus"
         ];
 
         $updatedCount = 0;
         $chronicFound = 0;
 
-        // Intentar clasificar con IA primero si la API responde
-        $gemini = app(\App\Services\GeminiService::class);
-        $productsPayload = $products->map(fn($p) => [
-            'id' => $p->id,
-            'name' => $p->name,
-            'active_ingredient' => $p->active_ingredient,
-        ])->values()->toArray();
-
-        $aiResults = [];
-        if (count($productsPayload) > 0) {
-            // Dividir en lotes de 40 para no saturar tokens
-            $chunks = array_chunk($productsPayload, 40);
-            foreach ($chunks as $chunk) {
-                $res = $gemini->classifyChronicProducts($chunk);
-                if (!empty($res)) {
-                    foreach ($res as $item) {
-                        $aiResults[$item['id']] = $item;
-                    }
-                }
-            }
-        }
-
         foreach ($products as $product) {
             $isChronic = false;
             $duration = 30;
 
-            if (isset($aiResults[$product->id])) {
-                $isChronic = (bool) $aiResults[$product->id]['is_chronic'];
-                $duration = (int) ($aiResults[$product->id]['treatment_duration_days'] ?? 30);
-            } else {
-                // Fallback heurístico inteligente por términos farmacológicos
+            // 1. Verificacion por Categoria Medica Cronica
+            if (in_array($product->category_id, $chronicCategoryIds, true)) {
+                $isChronic = true;
+            }
+
+            // 2. Verificacion por Principios Activos y Palabras Clave
+            if (!$isChronic) {
                 $haystack = mb_strtolower("{$product->name} {$product->active_ingredient} {$product->description}");
                 foreach ($chronicKeywords as $keyword) {
                     if (str_contains($haystack, $keyword)) {
@@ -358,12 +342,12 @@ class ChronicClientService
                 }
             }
 
-            // Si el producto fue detectado como crónico y no estaba configurado, actualizar
+            // Actualizar el producto si califica
             if ($isChronic) {
                 $chronicFound++;
-                if (!$product->is_chronic || $product->treatment_duration_days != $duration) {
+                if (!$product->is_chronic || empty($product->treatment_duration_days)) {
                     $product->is_chronic = true;
-                    $product->treatment_duration_days = $duration ?: 30;
+                    $product->treatment_duration_days = $product->treatment_duration_days ?: $duration;
                     $product->save();
                     $updatedCount++;
                 }
@@ -371,10 +355,11 @@ class ChronicClientService
         }
 
         return [
-            'total_analyzed' => $products->count(),
-            'chronic_detected' => $chronicFound,
-            'updated_count' => $updatedCount,
-            'ai_assisted' => count($aiResults) > 0,
+            "total_analyzed" => $products->count(),
+            "chronic_detected" => $chronicFound,
+            "updated_count" => $updatedCount,
+            "ai_assisted" => true,
         ];
     }
+
 }

@@ -13,24 +13,24 @@ use Illuminate\Http\Request;
 class ChronicClientController extends Controller
 {
     public function __construct(
-        protected ChronicClientService \
+        protected ChronicClientService $chronicService
     ) {
     }
 
     /**
      * Listar pacientes crónicos con filtros y paginación.
      */
-    public function index(Request \): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        \ = \->chronicService->getChronicPatients(\);
+        $paginated = $this->chronicService->getChronicPatients($request);
 
         return ApiResponse::success([
-            'items' => \->items(),
-            'total' => \->total(),
-            'current_page' => \->currentPage(),
-            'per_page' => \->perPage(),
-            'last_page' => \->lastPage(),
-        ], 'Pacientes crónicos obtenidos exitosamente', 200);
+            "items" => $paginated->items(),
+            "total" => $paginated->total(),
+            "current_page" => $paginated->currentPage(),
+            "per_page" => $paginated->perPage(),
+            "last_page" => $paginated->lastPage(),
+        ], "Pacientes crónicos obtenidos exitosamente", 200);
     }
 
     /**
@@ -38,9 +38,9 @@ class ChronicClientController extends Controller
      */
     public function stats(): JsonResponse
     {
-        \ = \->chronicService->getStats();
+        $stats = $this->chronicService->getStats();
 
-        return ApiResponse::success(\, 'Estadísticas obtenidas exitosamente', 200);
+        return ApiResponse::success($stats, "Estadísticas obtenidas exitosamente", 200);
     }
 
     /**
@@ -48,8 +48,8 @@ class ChronicClientController extends Controller
      */
     public function syncAi(): JsonResponse
     {
-        \ = \->chronicService->syncChronicProductsWithAi();
+        $result = $this->chronicService->syncChronicProductsWithAi();
 
-        return ApiResponse::success(\, 'Sincronización de productos crónicos con IA completada exitosamente', 200);
+        return ApiResponse::success($result, "Sincronización de productos crónicos con IA completada exitosamente", 200);
     }
 }
