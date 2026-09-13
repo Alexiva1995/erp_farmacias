@@ -161,6 +161,13 @@ class DronenaScraperService implements DronenaScraperServiceInterface
                     'net_payable_amount' => $netPayable,
                 ];
 
+                // Normalizar número de factura con el prefijo oficial (A para facturas, ND- para notas de débito)
+                if ($isND && !str_starts_with($invoice->invoice_number, 'ND-')) {
+                    $updateData['invoice_number'] = $erpDocNumber;
+                } elseif (!$isND && !str_starts_with($invoice->invoice_number, 'A')) {
+                    $updateData['invoice_number'] = $erpDocNumber;
+                }
+
                 if ((int) ($invoice->status_payment ?? 0) !== 1) {
                     $updateData['payment_date'] = $expDate;
                 }
@@ -169,6 +176,9 @@ class DronenaScraperService implements DronenaScraperServiceInterface
                 if ((empty($invoice->invoice_photo) || empty($invoice->control_number) || $invoice->control_number === 'N/A' || floatval($invoice->total_amount) <= 0) && !empty($doc['pdf_url'])) {
                     $pdfData = $this->fetchAndParsePdf($doc['pdf_url'], $client);
                     if ($pdfData) {
+                        if (!empty($pdfData['invoice_number'])) {
+                            $updateData['invoice_number'] = $pdfData['invoice_number'];
+                        }
                         if (!empty($pdfData['control_number'])) {
                             $updateData['control_number'] = $pdfData['control_number'];
                         }
