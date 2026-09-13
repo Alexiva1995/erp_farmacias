@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useDisplay } from 'vuetify'
 import ChronicClientMobileCard from '@/components/cards/ChronicClientMobileCard.vue'
@@ -32,7 +32,7 @@ const totalProducts = ref(0)
 const productPage = ref(1)
 const productPerPage = ref(15)
 const productSearchQuery = ref('')
-const productConsumptionFilter = ref('all')
+const productConsumptionFilter = ref('unclassified')
 
 // Estado modal de edición
 const editDialog = ref(false)
@@ -81,8 +81,6 @@ const productConfigHeaders = [
   { title: 'ID', key: 'id', sortable: false, cellClass: 'font-weight-black text-primary' },
   { title: 'Producto', key: 'name', sortable: false },
   { title: 'Tipo de Consumo', key: 'consumption_type', sortable: false },
-  { title: 'Duración Estimada', key: 'treatment_duration_days', sortable: false },
-  { title: 'Automatización WhatsApp', key: 'automation', sortable: false },
   { title: 'Acciones', key: 'actions', sortable: false, align: 'center' },
 ]
 
@@ -766,51 +764,6 @@ onMounted(() => {
               <VIcon :icon="getConsumptionBadge(item.consumption_type).icon" start size="14" />
               {{ getConsumptionBadge(item.consumption_type).label }}
             </VChip>
-          </template>
-
-          <!-- Duración Estimada -->
-          <template #item.treatment_duration_days="{ item }">
-            <span v-if="item.consumption_type === 'chronic' || item.consumption_type === 'single_treatment' || item.consumption_type === 'sporadic'" class="font-weight-medium">
-              {{ item.treatment_duration_days || (item.consumption_type === 'single_treatment' ? 7 : 30) }} días
-            </span>
-            <span v-else class="text-caption text-disabled">No aplica</span>
-          </template>
-
-          <!-- Automatización -->
-          <template #item.automation="{ item }">
-            <VChip
-              v-if="item.consumption_type === 'chronic'"
-              color="primary"
-              size="x-small"
-              variant="flat"
-            >
-              Recordatorio Recurrente
-            </VChip>
-            <VChip
-              v-else-if="item.consumption_type === 'single_treatment'"
-              color="warning"
-              size="x-small"
-              variant="flat"
-            >
-              Seguimiento de Fin de Ciclo
-            </VChip>
-            <VChip
-              v-else-if="item.consumption_type === 'sporadic'"
-              color="info"
-              size="x-small"
-              variant="flat"
-            >
-              Recordatorio Cada 30 Días
-            </VChip>
-            <VChip
-              v-else-if="item.consumption_type === 'no_alert'"
-              color="grey"
-              size="x-small"
-              variant="tonal"
-            >
-              Sin Alerta
-            </VChip>
-            <span v-else class="text-caption text-disabled">Sin alerta</span>
           </template>
 
           <!-- Acciones -->
