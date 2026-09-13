@@ -181,12 +181,15 @@ const saveProductConsumption = async () => {
           : (selectedProduct.consumption_type === 'single_treatment' ? 7 : 30))
       : null
 
+    const payload = {
+      consumption_type: selectedProduct.consumption_type,
+      treatment_duration_days: duration,
+    }
+
     const res = await $api(`/crm/chronic-clients/products-config/${selectedProduct.id}`, {
       method: 'PUT',
-      data: {
-        consumption_type: selectedProduct.consumption_type,
-        treatment_duration_days: duration,
-      },
+      body: payload,
+      data: payload,
     })
 
     // Actualizar el item en la lista local con los datos confirmados por el servidor
