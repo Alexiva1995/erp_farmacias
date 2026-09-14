@@ -39,11 +39,11 @@ class ChronicClientService
             ->where('products.is_deleted', false)
             ->whereNotNull('clients.phone')
             ->where('clients.phone', '!=', '')
-            // Validar mínimo 7 dígitos limpios (sin guiones, espacios, +)
+            // Validar mínimo 10 dígitos limpios (sin guiones, espacios, +)
             ->where(
                 DB::raw('LENGTH(REPLACE(REPLACE(REPLACE(TRIM(clients.phone), "-", ""), " ", ""), "+", ""))'),
                 '>=',
-                7
+                10
             );
 
         if (!empty($search)) {
@@ -113,12 +113,28 @@ class ChronicClientService
             $currentPriceBs  = $rateBs  > 0 ? round($currentPriceUsd * (float) $rateBs, 2) : 0;
             $currentPriceCop = $rateCop > 0 ? ceil($currentPriceUsd * (float) $rateCop / 100) * 100 : 0;
 
-            // Normalizar número de teléfono a formato internacional Venezuela
-            $cleanPhone = preg_replace('/[^0-9]/', '', (string) $row->client_phone);
-            if (str_starts_with($cleanPhone, '0')) {
-                $cleanPhone = '58' . substr($cleanPhone, 1);
-            } elseif (strlen($cleanPhone) === 10 && !str_starts_with($cleanPhone, '58')) {
-                $cleanPhone = '58' . $cleanPhone;
+            // Normalizar número de teléfono a formato internacional Venezuela y validar que no sea repetido/falso
+            $cleanDigits = preg_replace('/[^0-9]/', '', (string) $row->client_phone);
+            
+            // Validar que no sea un solo dígito repetido (ej: 5555555555), prefijo inválido (ej: 40000000000) ni dummy secuencial
+            $isRepeated = preg_match('/^(\d)\1+$/', $cleanDigits);
+            $isValidVenezuelan = preg_match('/^(58)?(0?)(412|414|424|416|426|2\d{2})\d{7}$/', $cleanDigits);
+            $isDummy = in_array($cleanDigits, [
+                '1234567890', '12345678', '01234567890', '0000000000', '00000000000',
+                '123456789', '9876543210', '1111111111', '2222222222', '3333333333',
+                '4444444444', '5555555555', '6666666666', '7777777777', '8888888888', '9999999999',
+                '40000000000', '50000000000', '000000000000'
+            ], true);
+
+            $cleanPhone = null;
+            if (!$isRepeated && $isValidVenezuelan && !$isDummy) {
+                if (str_starts_with($cleanDigits, '58') && strlen($cleanDigits) === 12) {
+                    $cleanPhone = $cleanDigits;
+                } elseif (str_starts_with($cleanDigits, '0') && strlen($cleanDigits) === 11) {
+                    $cleanPhone = '58' . substr($cleanDigits, 1);
+                } elseif (strlen($cleanDigits) === 10) {
+                    $cleanPhone = '58' . $cleanDigits;
+                }
             }
 
             $fullName               = trim("{$row->client_name} {$row->client_last_name}");
@@ -191,7 +207,7 @@ class ChronicClientService
                 'whatsapp_url'               => $whatsappUrl,
                 'whatsapp_message'           => $whatsappMessage,
             ];
-        });
+        })->filter(fn($item) => !empty($item['whatsapp_url']));
 
         // Filtrar por estado de tratamiento en memoria
         if ($status === 'urgent') {
