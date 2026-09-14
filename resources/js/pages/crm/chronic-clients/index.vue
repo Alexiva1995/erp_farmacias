@@ -288,6 +288,16 @@ const markContacted = async (item) => {
   }
 }
 
+// Abrir WhatsApp codificando el mensaje en el cliente con encodeURIComponent
+const openWhatsApp = (item) => {
+  if (!item.phone && !item.whatsapp_url) return
+  const phone = item.clean_phone || item.phone?.replace(/[^0-9]/g, '')
+  const message = item.whatsapp_message || ''
+  const encoded = encodeURIComponent(message)
+  const url = `https://api.whatsapp.com/send?phone=${phone}&text=${encoded}`
+  window.open(url, '_blank', 'noopener,noreferrer')
+}
+
 // Obtener badge visual según tipo de consumo
 const getConsumptionBadge = (type) => {
   switch (type) {
@@ -751,16 +761,14 @@ onMounted(() => {
         <template #item.actions="{ item }">
           <div class="d-flex align-center justify-center gap-2">
             <VBtn
-              v-if="item.whatsapp_url"
+              v-if="item.whatsapp_url || item.phone"
               color="success"
               variant="flat"
               size="small"
               icon
-              :href="item.whatsapp_url"
-              target="_blank"
-              rel="noopener noreferrer"
               class="rounded-lg"
               title="Contactar por WhatsApp"
+              @click="openWhatsApp(item)"
             >
               <VIcon icon="tabler-brand-whatsapp" size="20" />
             </VBtn>

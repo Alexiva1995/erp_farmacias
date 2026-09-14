@@ -25,6 +25,14 @@ const getStatusIcon = (client) => {
   if (client.is_active) return 'tabler-circle-check'
   return 'tabler-clock-off'
 }
+const openWhatsApp = (item) => {
+  if (!item.phone && !item.whatsapp_url) return
+  const phone = item.clean_phone || item.phone?.replace(/[^0-9]/g, '')
+  const message = item.whatsapp_message || ''
+  const encoded = encodeURIComponent(message)
+  const url = `https://api.whatsapp.com/send?phone=${phone}&text=${encoded}`
+  window.open(url, '_blank', 'noopener,noreferrer')
+}
 </script>
 
 <template>
@@ -100,16 +108,14 @@ const getStatusIcon = (client) => {
 
       <div class="d-flex align-center gap-2">
         <VBtn
-          v-if="client.whatsapp_url"
+          v-if="client.whatsapp_url || client.phone"
           color="success"
           variant="flat"
           size="small"
           icon
-          :href="client.whatsapp_url"
-          target="_blank"
-          rel="noopener noreferrer"
           class="rounded-lg"
           title="WhatsApp"
+          @click="openWhatsApp(client)"
         >
           <VIcon icon="tabler-brand-whatsapp" size="20" />
         </VBtn>
