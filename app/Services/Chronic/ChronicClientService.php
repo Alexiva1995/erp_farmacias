@@ -120,6 +120,15 @@ class ChronicClientService
             ->get()
             ->keyBy(fn($c) => "{$c->client_id}_{$c->product_id}");
 
+        // Cargar modelos de productos con ofertas para calcular el precio exacto con descuento de TPV
+        $productIds = $allRecords->pluck('product_id')->unique()->toArray();
+        $productsMap = Product::with(['individualOffers', 'category.offers', 'lots' => function ($q) {
+                $q->where('quantity', '>', 0)->whereNotNull('expiration_date')->orderBy('expiration_date');
+            }])
+            ->whereIn('id', $productIds)
+            ->get()
+            ->keyBy('id');
+
         // Obtener tasas de cambio activas
         $rateBs  = ExchangeRate::whereIn('currency_code', ['VES', 'BS', 'BCV', 'EUR'])->orderByDesc('id')->value('rate') ?? 0;
         $rateCop = ExchangeRate::where('currency_code', 'COP')->orderByDesc('id')->value('rate') ?? 0;
@@ -187,7 +196,12 @@ class ChronicClientService
                 continue;
             }
 
-            $currentPriceUsd = (float) $row->current_sale_price;
+            $productModel = $productsMap[$row->product_id] ?? null;
+            $baseSalePrice = (float) $row->current_sale_price;
+            $discountPct = $productModel ? (float) $productModel->discount_percentage : 0;
+
+            // Calcular precio efectivo con descuento del TPV
+            $currentPriceUsd = $discountPct > 0 ? round($baseSalePrice * (1 - ($discountPct / 100)), 2) : $baseSalePrice;
             $currentPriceBs  = $rateBs  > 0 ? round($currentPriceUsd * (float) $rateBs, 2) : 0;
             $currentPriceCop = $rateCop > 0 ? ceil($currentPriceUsd * (float) $rateCop / 100) * 100 : 0;
 
@@ -208,6 +222,8 @@ class ChronicClientService
                 'product_name'               => $row->product_name,
                 'product_barcode'            => $row->product_barcode,
                 'active_ingredient'          => $row->active_ingredient,
+                'discount_percentage'        => $discountPct,
+                'base_price_usd'             => $baseSalePrice,
                 'stock'                      => (float) ($row->product_stock ?? 0),
                 'laboratory_name'            => $row->laboratory_name ?: 'Sin Laboratorio',
                 'consumption_type'           => $row->consumption_type ?: 'chronic',
