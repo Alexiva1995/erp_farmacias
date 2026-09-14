@@ -346,9 +346,10 @@ class ChronicClientService
     /**
      * Marcar seguimiento de paciente y sus productos como contactado.
      */
-    public function markAsContacted(int $clientId, array $productIds = []): array
+    public function markAsContacted(int $clientId, array $productIds = [], ?int $userId = null): array
     {
         $now = Carbon::now();
+        $userId = $userId ?? auth()->id();
 
         // Obtener los productos correspondientes a este cliente
         $query = DB::table('orders')
@@ -393,6 +394,7 @@ class ChronicClientService
                     'product_id' => $row->product_id,
                 ],
                 [
+                    'user_id'                => $userId,
                     'consumption_type'       => $row->consumption_type,
                     'last_contacted_at'      => $now,
                     'next_reminder_at'       => $nextReminderAt,
@@ -407,6 +409,78 @@ class ChronicClientService
             'client_id'           => $clientId,
             'processed_products'  => count($processedProductIds),
             'marked_at'           => $now->toDateTimeString(),
+        ];
+    }
+
+    /**
+     * Verificar si un paciente sigue disponible para contactar o si ya fue atendido.
+     */
+    public function checkAvailability(int $clientId): array
+    {
+        $now = Carbon::now();
+
+        // Obtener los productos del cliente clasificados
+        $orders = DB::table('orders')
+            ->join('order_details', 'order_details.order_id', '=', 'orders.id')
+            ->join('products', 'products.id', '=', 'order_details.product_id')
+            ->where('orders.status', Order::COMPLETED)
+            ->where('orders.client_id', $clientId)
+            ->whereIn('products.consumption_type', ['chronic', 'single_treatment', 'sporadic'])
+            ->select([
+                'products.id as product_id',
+                'products.consumption_type',
+                'orders.order_date',
+            ])
+            ->orderByDesc('orders.order_date')
+            ->get();
+
+        if ($orders->isEmpty()) {
+            return [
+                'available' => false,
+                'message'   => 'El paciente no posee tratamientos o medicamentos activos.',
+            ];
+        }
+
+        $contacts = DB::table('chronic_patient_contacts')
+            ->where('client_id', $clientId)
+            ->get()
+            ->keyBy('product_id');
+
+        $hasAvailableProduct = false;
+
+        foreach ($orders as $row) {
+            $lastDate = Carbon::parse($row->order_date);
+
+            if (isset($contacts[$row->product_id])) {
+                $contact = $contacts[$row->product_id];
+                $contactOrderDate = $contact->order_date_at_contact ? Carbon::parse($contact->order_date_at_contact) : null;
+
+                if ($contactOrderDate && $lastDate->lte($contactOrderDate)) {
+                    if ($row->consumption_type === 'single_treatment') {
+                        continue;
+                    }
+                    if (in_array($row->consumption_type, ['chronic', 'sporadic'], true)) {
+                        if ($contact->next_reminder_at && $now->lt(Carbon::parse($contact->next_reminder_at))) {
+                            continue;
+                        }
+                    }
+                }
+            }
+
+            $hasAvailableProduct = true;
+            break;
+        }
+
+        if (!$hasAvailableProduct) {
+            return [
+                'available' => false,
+                'message'   => 'Este paciente ya fue contactado y atendido por otro usuario.',
+            ];
+        }
+
+        return [
+            'available' => true,
+            'message'   => 'Paciente disponible para contactar.',
         ];
     }
 
@@ -584,22 +658,36 @@ class ChronicClientService
     }
 
     /**
-     * Obtener estadísticas y resumen de clientes crónicos.
+     * Obtener estadísticas y resumen de clientes crónicos, incluyendo cuota individual del usuario logueado.
      */
-    public function getStats(): array
-    {
-        $allPatients = $this->getChronicPatients(new \Illuminate\Http\Request(['itemsPerPage' => 99999, 'page' => 1]))->items();
-        $collection  = collect($allPatients);
+     public function getStats(?int $userId = null): array
+     {
+         $userId = $userId ?? auth()->id();
+         $allPatients = $this->getChronicPatients(new \Illuminate\Http\Request(['itemsPerPage' => 99999, 'page' => 1]))->items();
+         $collection  = collect($allPatients);
 
-        return [
-            'total_patients'      => $collection->pluck('client_id')->unique()->count(),
-            'total_treatments'    => $collection->count(),
-            'urgent_reminders'    => $collection->where('is_urgent', true)->count(),
-            'expired_treatments'  => $collection->where('is_expired', true)->count(),
-            'active_treatments'   => $collection->where('is_active', true)->count(),
-            'patients_with_phone' => $collection->filter(fn($p) => !empty($p['phone']))->count(),
-        ];
-    }
+         // Conteo de pacientes contactados hoy por el usuario logueado
+         $todayContacted = 0;
+         if ($userId) {
+             $todayContacted = DB::table('chronic_patient_contacts')
+                 ->where('user_id', $userId)
+                 ->whereDate('last_contacted_at', Carbon::today())
+                 ->distinct('client_id')
+                 ->count('client_id');
+         }
+
+         return [
+             'total_patients'      => $collection->pluck('client_id')->unique()->count(),
+             'total_treatments'    => $collection->count(),
+             'urgent_reminders'    => $collection->where('is_urgent', true)->count(),
+             'expired_treatments'  => $collection->where('is_expired', true)->count(),
+             'active_treatments'   => $collection->where('is_active', true)->count(),
+             'patients_with_phone' => $collection->filter(fn($p) => !empty($p['phone']))->count(),
+             'today_contacted'     => $todayContacted,
+             'daily_quota'         => 5,
+             'is_quota_completed'  => ($todayContacted >= 5),
+         ];
+     }
 
     /**
      * Sincronizar y clasificar productos crónicos mediante categorías médicas, IA y heurística clínica.
@@ -735,5 +823,127 @@ class ChronicClientService
             return 'error';
         }
         return 'secondary';
+    }
+
+    /**
+     * Obtener matriz mensual de cumplimiento de cuotas diarias de fidelización por usuario/operador.
+     */
+    public function getDailyFidelityQuotasMatrixData(int $month, int $year): array
+    {
+        $dailyQuota = 5;
+
+        // Obtener todos los empleados activos con usuario vinculado
+        $employees = \App\Models\Employee::where('is_active', true)
+            ->whereNotNull('user_id')
+            ->select(['id', 'name', 'last_name', 'user_id', 'photo'])
+            ->orderBy('name', 'asc')
+            ->get();
+
+        // Obtener contactos registrados en el mes/año agrupados por fecha y user_id
+        $contacts = DB::table('chronic_patient_contacts')
+            ->whereYear('last_contacted_at', $year)
+            ->whereMonth('last_contacted_at', $month)
+            ->whereNotNull('user_id')
+            ->selectRaw('DATE(last_contacted_at) as contact_date, user_id, COUNT(DISTINCT client_id) as total_clients')
+            ->groupBy('contact_date', 'user_id')
+            ->get();
+
+        $matrixMap = [];
+        foreach ($contacts as $item) {
+            $uid = (int) $item->user_id;
+            $matrixMap[$item->contact_date][$uid] = (int) $item->total_clients;
+        }
+
+        $startDate   = Carbon::create($year, $month, 1);
+        $daysInMonth = $startDate->daysInMonth;
+        $today       = now()->toDateString();
+
+        $rows = [];
+        for ($d = $daysInMonth; $d >= 1; $d--) {
+            $currentDate = Carbon::create($year, $month, $d)->toDateString();
+            if ($currentDate > $today) {
+                continue;
+            }
+
+            $userCells = [];
+            $dayTotal  = 0;
+
+            foreach ($employees as $emp) {
+                $uId      = (int) $emp->user_id;
+                $empId    = (int) $emp->id;
+                $countVal = $matrixMap[$currentDate][$uId] ?? $matrixMap[$currentDate][$empId] ?? 0;
+                $dayTotal += $countVal;
+
+                $cellData = [
+                    'count'     => $countVal,
+                    'quota'     => $dailyQuota,
+                    'fulfilled' => ($countVal >= $dailyQuota),
+                ];
+
+                $userCells[$uId] = $cellData;
+                $userCells[(string) $uId] = $cellData;
+                $userCells[$empId] = $cellData;
+                $userCells[(string) $empId] = $cellData;
+            }
+
+            if (!empty($matrixMap[$currentDate])) {
+                $dayTotal = array_sum($matrixMap[$currentDate]);
+            }
+
+            $rows[] = [
+                'date'           => $currentDate,
+                'formatted_date' => Carbon::parse($currentDate)->format('d/m/Y'),
+                'day_total'      => $dayTotal,
+                'users'          => (object) $userCells,
+            ];
+        }
+
+        // Calcular resumen mensual
+        $totalMonthCounts = 0;
+        $activeDaysCount  = 0;
+        $employeeTotals   = [];
+
+        foreach ($rows as $row) {
+            $totalMonthCounts += (int) $row['day_total'];
+            if ($row['day_total'] > 0) {
+                $activeDaysCount++;
+            }
+            $usersArr = (array) $row['users'];
+            foreach ($employees as $emp) {
+                $uId = (int) $emp->user_id;
+                $c = (int) ($usersArr[$uId]['count'] ?? 0);
+                $employeeTotals[$uId] = ($employeeTotals[$uId] ?? 0) + $c;
+            }
+        }
+
+        $dailyAverage = $activeDaysCount > 0 ? round($totalMonthCounts / $activeDaysCount, 1) : 0.0;
+        $topEmployee  = null;
+        if (!empty($employeeTotals)) {
+            arsort($employeeTotals);
+            $topUserId = array_key_first($employeeTotals);
+            $topEmpModel = $employees->firstWhere('user_id', $topUserId);
+            if ($topEmpModel && $employeeTotals[$topUserId] > 0) {
+                $topEmployee = [
+                    'id'           => $topEmpModel->id,
+                    'user_id'      => $topEmpModel->user_id,
+                    'name'         => trim("{$topEmpModel->name} {$topEmpModel->last_name}"),
+                    'total_counts' => $employeeTotals[$topUserId],
+                ];
+            }
+        }
+
+        return [
+            'month'       => $month,
+            'year'        => $year,
+            'daily_quota' => $dailyQuota,
+            'employees'   => $employees,
+            'data'        => $rows,
+            'summary'     => [
+                'total_month_counts' => $totalMonthCounts,
+                'active_days'        => $activeDaysCount,
+                'daily_average'      => $dailyAverage,
+                'top_employee'       => $topEmployee,
+            ],
+        ];
     }
 }

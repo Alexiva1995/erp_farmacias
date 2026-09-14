@@ -16,8 +16,12 @@ export default [
         to: 'crm-clients',
       },
       {
-        title: 'Clientes Crónicos',
+        title: 'Fidelización',
         to: 'crm-chronic-clients',
+      },
+      {
+        title: 'Cuota Fidelización',
+        to: 'crm-chronic-clients-quota',
       },
       {
         title: 'Convenios',

@@ -566,6 +566,8 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
             Route::put("/products-config/{id}", [ChronicClientController::class, "updateProductConfig"]);
             Route::post("/sync-ai", [ChronicClientController::class, "syncAi"]);
             Route::post("/mark-contacted", [ChronicClientController::class, "markContacted"]);
+            Route::get("/check-availability/{clientId}", [ChronicClientController::class, "checkAvailability"]);
+            Route::get("/daily-quotas-matrix", [ChronicClientController::class, "dailyQuotasMatrix"]);
         });
 
         Route::prefix("lottery")->group(function () {

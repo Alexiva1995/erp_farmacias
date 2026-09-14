@@ -36,9 +36,10 @@ class ChronicClientController extends Controller
     /**
      * Obtener estadísticas de pacientes y tratamientos crónicos.
      */
-    public function stats(): JsonResponse
+    public function stats(Request $request): JsonResponse
     {
-        $stats = $this->chronicService->getStats();
+        $userId = $request->user()?->id;
+        $stats = $this->chronicService->getStats($userId);
 
         return ApiResponse::success($stats, 'Estadísticas obtenidas exitosamente', 200);
     }
@@ -88,11 +89,36 @@ class ChronicClientController extends Controller
     public function markContacted(\App\Http\Requests\MarkChronicContactedRequest $request): JsonResponse
     {
         $validated = $request->validated();
+        $userId = $request->user()?->id;
         $result = $this->chronicService->markAsContacted(
             (int) $validated['client_id'],
-            $validated['product_ids'] ?? []
+            $validated['product_ids'] ?? [],
+            $userId
         );
 
         return ApiResponse::success($result, 'Seguimiento registrado exitosamente', 200);
+    }
+
+    /**
+     * Verificar disponibilidad de un paciente antes de contactar por WhatsApp.
+     */
+    public function checkAvailability(int $clientId): JsonResponse
+    {
+        $result = $this->chronicService->checkAvailability($clientId);
+
+        return ApiResponse::success($result, 'Disponibilidad verificada', 200);
+    }
+
+    /**
+     * Matriz mensual de cumplimiento de cuotas diarias de fidelización.
+     */
+    public function dailyQuotasMatrix(Request $request): JsonResponse
+    {
+        $month = (int) $request->input('month', now()->month);
+        $year  = (int) $request->input('year', now()->year);
+
+        $data = $this->chronicService->getDailyFidelityQuotasMatrixData($month, $year);
+
+        return ApiResponse::success($data, 'Matriz de cuotas de fidelización obtenida exitosamente', 200);
     }
 }

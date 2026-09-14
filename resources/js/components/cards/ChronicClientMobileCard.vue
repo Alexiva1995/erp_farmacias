@@ -6,7 +6,7 @@ const props = defineProps({
   loading: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['mark-contacted'])
+const emit = defineEmits(['mark-contacted', 'open-whatsapp'])
 
 const getStatusColor = (client) => {
   if (client.is_urgent) return 'warning'
@@ -24,25 +24,6 @@ const getStatusIcon = (client) => {
   if (client.is_urgent) return 'tabler-alert-triangle'
   if (client.is_active) return 'tabler-circle-check'
   return 'tabler-clock-off'
-}
-const openWhatsApp = (item) => {
-  if (!item.phone && !item.whatsapp_url) return
-  let phone = item.clean_phone || ''
-  if (!phone && item.phone) {
-    let raw = String(item.phone).replace(/[^0-9]/g, '')
-    if (raw.startsWith('0') && raw.length === 11) {
-      phone = '58' + raw.slice(1)
-    } else if (raw.length === 10) {
-      phone = '58' + raw
-    } else {
-      phone = raw
-    }
-  }
-
-  const message = item.whatsapp_message || ''
-  const encoded = encodeURIComponent(message)
-  const url = `https://api.whatsapp.com/send?phone=${phone}&text=${encoded}`
-  window.open(url, '_blank', 'noopener,noreferrer')
 }
 </script>
 
@@ -126,7 +107,7 @@ const openWhatsApp = (item) => {
           icon
           class="rounded-lg"
           title="WhatsApp"
-          @click="openWhatsApp(client)"
+          @click="emit('open-whatsapp', client)"
         >
           <VIcon icon="tabler-brand-whatsapp" size="20" />
         </VBtn>

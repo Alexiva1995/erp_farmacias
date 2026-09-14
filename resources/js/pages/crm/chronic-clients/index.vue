@@ -44,13 +44,16 @@ const selectedProduct = reactive({
   treatment_duration_days: 30,
 })
 
-// Estadísticas
+// Estadísticas y cuota diaria
 const stats = reactive({
   total_patients: 0,
   urgent_reminders: 0,
   active_treatments: 0,
   expired_treatments: 0,
   total_treatments: 0,
+  today_contacted: 0,
+  daily_quota: 5,
+  is_quota_completed: false,
 })
 
 // Opciones de filtros
@@ -288,9 +291,28 @@ const markContacted = async (item) => {
   }
 }
 
-// Abrir WhatsApp codificando el mensaje en el cliente con encodeURIComponent
-const openWhatsApp = (item) => {
+// Abrir WhatsApp codificando el mensaje en el cliente con encodeURIComponent tras validar disponibilidad
+const verifyingWhatsAppClientId = ref(null)
+
+const openWhatsApp = async (item) => {
   if (!item.phone && !item.whatsapp_url) return
+
+  // Verificar si otro usuario ya atendió al paciente
+  verifyingWhatsAppClientId.value = item.client_id
+  try {
+    const checkRes = await $api(`/crm/chronic-clients/check-availability/${item.client_id}`)
+    if (checkRes?.data && !checkRes.data.available) {
+      toast.warning(checkRes.data.message || 'Este paciente ya fue atendido por otro usuario.')
+      await fetchChronicClients()
+      fetchStats()
+      return
+    }
+  } catch (err) {
+    console.error('Error checkAvailability:', err)
+  } finally {
+    verifyingWhatsAppClientId.value = null
+  }
+
   let phone = item.clean_phone || ''
   if (!phone && item.phone) {
     let raw = String(item.phone).replace(/[^0-9]/g, '')
@@ -540,6 +562,26 @@ onMounted(() => {
         @update:search="searchQuery = $event"
         @clear="resetFilters"
       >
+        <template #actions-extra>
+          <!-- Contador Diario de Fidelización (Cuota de 5 pacientes) -->
+          <VChip
+            :color="stats.today_contacted >= stats.daily_quota ? 'success' : 'primary'"
+            variant="flat"
+            class="font-weight-black px-3"
+            size="default"
+          >
+            <VIcon
+              :icon="stats.today_contacted >= stats.daily_quota ? 'tabler-circle-check' : 'tabler-target'"
+              start
+              size="18"
+            />
+            Meta diaria: {{ stats.today_contacted }}/{{ stats.daily_quota }}
+            <VTooltip activator="parent" location="top">
+              {{ stats.today_contacted >= stats.daily_quota ? '¡Meta diaria completada exitosamente!' : `Has contactado ${stats.today_contacted} de ${stats.daily_quota} pacientes hoy` }}
+            </VTooltip>
+          </VChip>
+        </template>
+
         <template #advanced-filters>
           <VCol cols="12" sm="6" md="4">
             <VSelect
@@ -599,8 +641,9 @@ onMounted(() => {
           v-for="item in chronicClients"
           :key="item.client_id"
           :client="item"
-          :loading="contactingClientId === item.client_id"
+          :loading="contactingClientId === item.client_id || verifyingWhatsAppClientId === item.client_id"
           @mark-contacted="markContacted"
+          @open-whatsapp="openWhatsApp"
         />
 
         <div class="mt-4">
@@ -778,6 +821,7 @@ onMounted(() => {
               size="small"
               icon
               class="rounded-lg"
+              :loading="verifyingWhatsAppClientId === item.client_id"
               title="Contactar por WhatsApp"
               @click="openWhatsApp(item)"
             >
