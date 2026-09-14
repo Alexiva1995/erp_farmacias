@@ -12,6 +12,7 @@ class ChronicClientsAuditCommand extends Command
 {
     protected $signature = 'crm:chronic-audit
                             {--classify-ai : Ejecutar la sincronización y clasificación automática por IA / heurística}
+                            {--cleanup-phones : Depurar y limpiar números inválidos y duplicados en la base de datos}
                             {--set-product= : ID del producto a clasificar manualmente}
                             {--type=chronic : Tipo de consumo (chronic, single_treatment, no_alert, sporadic)}
                             {--days=30 : Días de duración estimada del tratamiento}';
@@ -23,6 +24,14 @@ class ChronicClientsAuditCommand extends Command
         $this->info("===============================================================");
         $this->info("          AUDITORÍA Y GESTIÓN DE PACIENTES CRÓNICOS (CRM)     ");
         $this->info("===============================================================" . PHP_EOL);
+
+        if ($this->option('cleanup-phones')) {
+            $this->info("🧹 Ejecutando depuración de teléfonos inválidos y duplicados...");
+            $clientService = app(\App\Services\ClientServices::class);
+            $cleaned = $clientService->bulkCleanupInvalid();
+            $this->info("✅ Se limpiaron exitosamente {$cleaned} registros de teléfonos.");
+            $this->newLine();
+        }
 
         $productId = $this->option('set-product');
         if ($productId) {

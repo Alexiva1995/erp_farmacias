@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 import axios from "@/plugins/axios";
 import { ref, watch, computed } from "vue";
 
@@ -216,7 +216,7 @@ const onClose = () => {
                     <VListItemSubtitle class="text-super-xs font-weight-bold text-disabled uppercase">
                       <span v-if="product.is_dish">Plato</span>
                       <span v-else>{{ product.laboratory_name || 'Sin lab.' }}</span>
-                      · {{ product.total_quantity }} Uds.
+                      · {{ Math.round(Number(product.total_quantity || 0)) }} Uds.
                     </VListItemSubtitle>
                   </VListItem>
                   <VDivider v-if="index < topProducts.length - 1" class="border-opacity-10" />
@@ -238,7 +238,7 @@ const onClose = () => {
                         <div class="min-width-0 me-2">
                           <div class="text-super-xs font-weight-black uppercase truncate">{{ product.product_name }}</div>
                           <div class="text-super-xs text-disabled font-weight-bold uppercase">
-                            {{ product.date }} · {{ product.quantity }} uds. <span v-if="product.is_dish">· Plato</span>
+                            {{ product.date }} · {{ Math.round(Number(product.quantity || 0)) }} uds. <span v-if="product.is_dish">· Plato</span>
                           </div>
                         </div>
                         <div class="text-right flex-shrink-0">

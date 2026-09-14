@@ -208,7 +208,8 @@ class ClientRepository implements \App\Contracts\Client
 
     public function bulkCleanupInvalid(): int
     {
-        return Client::where(function ($query) {
+        // 1. Limpiar teléfonos inválidos por formato/patrón basura
+        $invalidCount = Client::where(function ($query) {
                 $query->where('phone', 'REGEXP', '^[0]+$')
                     ->orWhere('phone', 'REGEXP', '^04[12][246]$')
                     ->orWhere('phone', 'REGEXP', '^4[12][246]$')
@@ -217,10 +218,37 @@ class ClientRepository implements \App\Contracts\Client
                     ->orWhere(function($q) {
                         $q->whereNotNull('phone')
                           ->where('phone', '!=', '')
-                          ->whereRaw('LENGTH(phone) < 10');
+                          ->whereRaw("LENGTH(REGEXP_REPLACE(phone, '[^0-9]', '')) < 10");
                     });
             })
             ->update(['phone' => null]);
+
+        // 2. Limpiar teléfonos duplicados dejando el cliente más reciente o con más actividad
+        $duplicatePhones = Client::select('phone')
+            ->whereNotNull('phone')
+            ->where('phone', '!=', '')
+            ->groupBy('phone')
+            ->havingRaw('COUNT(*) > 1')
+            ->pluck('phone');
+
+        $duplicateCleanedCount = 0;
+
+        foreach ($duplicatePhones as $phone) {
+            // Obtener el ID del cliente más reciente o con id más alto que conserve el número
+            $keepClientId = Client::where('phone', $phone)
+                ->orderByDesc('id')
+                ->value('id');
+
+            if ($keepClientId) {
+                $affected = Client::where('phone', $phone)
+                    ->where('id', '!=', $keepClientId)
+                    ->update(['phone' => null]);
+
+                $duplicateCleanedCount += $affected;
+            }
+        }
+
+        return $invalidCount + $duplicateCleanedCount;
     }
 
     public function pending(array $filters, int $perPage = 10): LengthAwarePaginator

@@ -314,20 +314,21 @@ async function eliminarCliente(id){
 
 async function handleBulkCleanup() {
   const result = await Swal.fire({
-    title: '¿Corregir teléfonos inválidos?',
+    title: '¿Limpiar teléfonos inválidos y repetidos?',
     html: `
       <div class="text-start">
-        <p>Esta acción buscará y <b>reseteará</b> los números de teléfono basura en toda la base de datos.</p>
+        <p>Esta acción ejecutará una depuración completa de números de teléfono en la base de datos:</p>
         <ul class="mt-2">
-          <li><b>Ejemplos:</b> "04", "0424", "00000000", "12345678".</li>
-          <li><b>Resultado:</b> Los clientes permanecerán en el sistema, pero su teléfono quedará como <i>"Sin Registrar"</i>.</li>
+          <li><b>Teléfonos inválidos/basura:</b> "04", "0424", "00000000", "12345678", etc.</li>
+          <li><b>Teléfonos duplicados/repetidos:</b> Si el mismo número está registrado en varios clientes, se conservará en el cliente más reciente y se limpiará en los anteriores para evitar envíos duplicados.</li>
+          <li><b>Resultado:</b> Los clientes permanecen intactos en el sistema; solo se limpia el campo teléfono donde aplique.</li>
         </ul>
         <p class="text-info mt-4 font-weight-bold">Nota: No se eliminará ningún cliente.</p>
       </div>
     `,
     icon: 'info',
     showCancelButton: true,
-    confirmButtonText: 'Sí, corregir base de datos',
+    confirmButtonText: 'Sí, limpiar base de datos',
     cancelButtonText: 'Cancelar',
     buttonsStyling: false,
     customClass: {

@@ -435,13 +435,13 @@ class ClientController extends Controller
             'top_products' => $topProducts->map(fn($item) => [
                 'product_name' => $item->product_name,
                 'laboratory_name' => $item->laboratory_name,
-                'total_quantity' => $item->total_quantity,
+                'total_quantity' => (int) round((float) ($item->total_quantity ?? 0)),
                 'is_dish' => isset($item->dish_id) && $item->dish_id !== null,
             ]),
             'last_products' => $lastProducts->map(fn($item) => [
                 'product_name' => $item->product_name,
                 'laboratory_name' => $item->laboratory_name,
-                'quantity' => $item->quantity,
+                'quantity' => (int) round((float) ($item->quantity ?? 0)),
                 'price_usd' => round($item->unit_price_usd_calc ?? 0, 2),
                 'total_usd' => round($item->total_usd ?? 0, 2),
                 'date' => Carbon::parse($item->order_date)->format('d/m/Y'),
