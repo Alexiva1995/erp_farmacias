@@ -369,15 +369,12 @@ class ChronicClientService
 
             if ($p['consumption_type'] === 'single_treatment') {
                 $message .= "{$prodName}{$labSuffix} (Tratamiento)\n" .
-                    "• Laboratorio: " . ($labName ?: 'Sin Laboratorio') . "\n" .
                     "• Precio actual: {$priceFormattedUsd}{$copFormatted}\n\n";
             } elseif ($p['consumption_type'] === 'sporadic') {
                 $message .= "{$prodName}{$labSuffix} (Botiquín)\n" .
-                    ($labName ? "• Laboratorio: {$labName}\n" : "") .
                     "• Precio actual: {$priceFormattedUsd}{$copFormatted}\n\n";
             } else {
                 $message .= "{$prodName}{$labSuffix} (Uso continuo)\n" .
-                    ($labName ? "• Laboratorio: {$labName}\n" : "") .
                     "• Estimado renovación: {$p['treatment_end_date_formatted']}\n" .
                     "• Precio actual: {$priceFormattedUsd}{$copFormatted}\n\n";
             }
