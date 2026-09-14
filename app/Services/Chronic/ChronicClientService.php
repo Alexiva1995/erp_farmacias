@@ -19,14 +19,35 @@ class ChronicClientService
      * Consolida múltiples productos por paciente en un solo registro y mensaje de WhatsApp.
      * Filtra según el historial de contacto en chronic_patient_contacts.
      */
+    /**
+     * Obtener listado de pacientes con compras de productos clasificados y número de teléfono válido.
+     * Consolida múltiples productos por paciente en un solo registro y mensaje de WhatsApp.
+     * Filtra según el historial de contacto en chronic_patient_contacts.
+     */
     public function getChronicPatients(Request $request): LengthAwarePaginator
+    {
+        $perPage = (int) $request->input('itemsPerPage', 15);
+        $page    = (int) $request->input('page', 1);
+
+        $sorted = $this->getProcessedChronicPatientsCollection($request);
+        $total  = $sorted->count();
+        $items  = $sorted->slice(($page - 1) * $perPage, $perPage)->values();
+
+        return new LengthAwarePaginator($items, $total, $perPage, $page, [
+            'path'  => $request->url(),
+            'query' => $request->query(),
+        ]);
+    }
+
+    /**
+     * Procesar y filtrar la colección consolidada de pacientes crónicos en memoria.
+     */
+    protected function getProcessedChronicPatientsCollection(Request $request): \Illuminate\Support\Collection
     {
         $search          = $request->input('search');
         $status          = $request->input('status', 'all');
         $consumptionType = $request->input('consumption_type', 'all');
         $productId       = $request->input('product_id');
-        $perPage         = (int) $request->input('itemsPerPage', 15);
-        $page            = (int) $request->input('page', 1);
 
         $query = DB::table('orders')
             ->join('order_details', 'order_details.order_id', '=', 'orders.id')
@@ -40,11 +61,7 @@ class ChronicClientService
             ->where('products.is_deleted', false)
             ->whereNotNull('clients.phone')
             ->where('clients.phone', '!=', '')
-            ->where(
-                DB::raw('LENGTH(REPLACE(REPLACE(REPLACE(TRIM(clients.phone), "-", ""), " ", ""), "+", ""))'),
-                '>=',
-                10
-            );
+            ->whereRaw('LENGTH(REGEXP_REPLACE(clients.phone, "[^0-9]", "")) >= 10');
 
         if (!empty($search)) {
             $query->where(function ($q) use ($search) {
@@ -91,6 +108,10 @@ class ChronicClientService
         ]);
 
         $allRecords = $query->orderByDesc('orders.order_date')->get();
+
+        if ($allRecords->isEmpty()) {
+            return collect();
+        }
 
         // Cargar registros de contacto para todos los clientes encontrados
         $clientIds = $allRecords->pluck('client_id')->unique()->toArray();
@@ -282,7 +303,7 @@ class ChronicClientService
         }
 
         // Ordenar: primero los más urgentes
-        $sorted = $groupedClients->sortBy(function ($item) {
+        return $groupedClients->sortBy(function ($item) {
             $days = $item['days_until_end'];
             if ($days >= 0 && $days <= 5) {
                 return [1, $days];
@@ -295,14 +316,6 @@ class ChronicClientService
             }
             return [4, abs($days)];
         })->values();
-
-        $total = $sorted->count();
-        $items = $sorted->slice(($page - 1) * $perPage, $perPage)->values();
-
-        return new LengthAwarePaginator($items, $total, $perPage, $page, [
-            'path'  => $request->url(),
-            'query' => $request->query(),
-        ]);
     }
 
     /**
@@ -663,8 +676,7 @@ class ChronicClientService
      public function getStats(?int $userId = null): array
      {
          $userId = $userId ?? auth()->id();
-         $allPatients = $this->getChronicPatients(new \Illuminate\Http\Request(['itemsPerPage' => 99999, 'page' => 1]))->items();
-         $collection  = collect($allPatients);
+         $collection = $this->getProcessedChronicPatientsCollection(new Request());
 
          // Conteo de pacientes contactados hoy por el usuario logueado
          $todayContacted = 0;
