@@ -310,65 +310,35 @@ class ChronicClientService
      */
     protected function buildWhatsAppMessage(string $fullName, array $products): string
     {
-        if (count($products) === 1) {
-            $p = $products[0];
-            $currentPriceUsd = (float) $p['price_usd'];
-            $currentPriceBs  = (float) $p['price_bs'];
-            $currentPriceCop = (float) $p['price_cop'];
-
-            $priceFormattedUsd = '$' . number_format($currentPriceUsd, 2);
-            $priceFormattedBs  = $currentPriceBs > 0 ? ' (Bs. ' . number_format($currentPriceBs, 2) . ')' : '';
-            $priceFormattedCop = $currentPriceCop > 0 ? ' / COP ' . number_format($currentPriceCop, 0, ',', '.') : '';
-            $copPriceFormatted = number_format($currentPriceCop, 0, ',', '.');
-            $labName           = $p['laboratory_name'] ?: 'Sin Laboratorio';
-
-            if ($p['consumption_type'] === 'single_treatment') {
-                return "¡Hola, {$fullName}! 🩺\n\n" .
-                    "Te saludamos de Farmacia Barrio Sucre — Tu salud y economía en un solo corazón ❤️\n\n" .
-                    "Te contactamos para hacerle seguimiento a tu tratamiento con {$p['product_name']} del laboratorio {$labName}\n\n" .
-                    "¿Cómo te has sentido? Te recordamos que el precio actualizado de este producto es de {$copPriceFormatted} COP. Si requieres renovar la dosis o necesitas algún medicamento complementario, cuentas con nosotros.\n\n" .
-                    "🛵 ¡Recuerda delivery totalmente gratis hasta tu casa! 📦";
-            }
-
-            if ($p['consumption_type'] === 'sporadic') {
-                return "¡Hola, {$fullName}! 👋 Te saludamos de Farmacia Barrio Sucre 💚\n\n" .
-                    "Esperamos te encuentres muy bien. Te escribimos para consultar si aún tienes disponibilidad de *{$p['product_name']}* en tu botiquín.\n\n" .
-                    "💵 Precio actual: *{$priceFormattedUsd}*{$priceFormattedBs}{$priceFormattedCop}\n" .
-                    "📦 ¡Delivery sin costo hasta tu casa! Escríbenos y con gusto te lo llevamos. 🚚💨";
-            }
-
-            return "¡Hola, {$fullName}! 👋 Te saludamos de Farmacia Barrio Sucre 💚\n\n" .
-                "Nos pasamos por aquí para recordarte que ya se acerca la fecha de renovar tu *{$p['product_name']}* (estimado: {$p['treatment_end_date_formatted']}).\n\n" .
-                "💵 Precio actual: *{$priceFormattedUsd}*{$priceFormattedBs}{$priceFormattedCop}\n" .
-                "📦 ¡Te lo enviamos HOY mismo con DELIVERY GRATIS hasta tu puerta!\n\n" .
-                "Cuidamos tu salud y economía en un solo corazón. ¿Te dejamos el pedido listo? Escríbenos y con gusto te lo llevamos. 🚚💨";
-        }
-
-        // Mensaje consolidado para múltiples productos
-        $message = "¡Hola, {$fullName}! 👋 Te saludamos de Farmacia Barrio Sucre 💚\n\n" .
+        $message = "¡Hola, {$fullName}! 🩺 Te saludamos de Farmacia Barrio Sucre ❤️\n\n" .
             "Nos comunicamos para hacerle seguimiento y recordarte la renovación de tus tratamientos y medicamentos:\n\n";
 
-        foreach ($products as $idx => $p) {
-            $num = $idx + 1;
-            $priceUsd = '$' . number_format((float) $p['price_usd'], 2);
-            $copFormatted = (float) $p['price_cop'] > 0 ? ' / COP ' . number_format((float) $p['price_cop'], 0, ',', '.') : '';
+        foreach ($products as $p) {
+            $currentPriceUsd = (float) $p['price_usd'];
+            $currentPriceCop = (float) $p['price_cop'];
+
+            $priceFormattedUsd = '$' . number_format($currentPriceUsd, 2, ',', '.');
+            $copFormatted      = $currentPriceCop > 0 ? ' / ' . number_format($currentPriceCop, 0, ',', '.') . ' COP' : '';
+            $labName           = $p['laboratory_name'] ?: 'Sin Laboratorio';
+            $prodName          = trim((string) $p['product_name']);
 
             if ($p['consumption_type'] === 'single_treatment') {
-                $message .= "{$num}. *{$p['product_name']}* (Tratamiento)\n" .
-                    "   • Laboratorio: {$p['laboratory_name']}\n" .
-                    "   • Precio actual: {$priceUsd}{$copFormatted}\n\n";
+                $message .= "{$prodName} (Tratamiento)\n" .
+                    "• Laboratorio: {$labName}\n" .
+                    "• Precio actual: {$priceFormattedUsd}{$copFormatted}\n\n";
             } elseif ($p['consumption_type'] === 'sporadic') {
-                $message .= "{$num}. *{$p['product_name']}* (Botiquín)\n" .
-                    "   • Precio actual: {$priceUsd}{$copFormatted}\n\n";
+                $message .= "{$prodName} (Botiquín)\n" .
+                    "• Precio actual: {$priceFormattedUsd}{$copFormatted}\n\n";
             } else {
-                $message .= "{$num}. *{$p['product_name']}* (Uso continuo)\n" .
-                    "   • Estimado renovación: {$p['treatment_end_date_formatted']}\n" .
-                    "   • Precio actual: {$priceUsd}{$copFormatted}\n\n";
+                $message .= "{$prodName} (Uso continuo)\n" .
+                    "• Estimado renovación: {$p['treatment_end_date_formatted']}\n" .
+                    "• Precio actual: {$priceFormattedUsd}{$copFormatted}\n\n";
             }
         }
 
-        $message .= "🛵 ¡Te lo enviamos con DELIVERY GRATIS hasta tu casa! 📦\n\n" .
-            "Cuidamos tu salud y economía en un solo corazón ❤️ ¿Deseas que te preparemos el pedido?";
+        $message .= "🛵 ¡Consulta las condiciones para que tu envío salga con DELIVERY GRATIS hasta tu casa! 📦\n\n" .
+            "Tu salud y economía en un solo corazón ❤️\n\n" .
+            "¿Deseas que te preparemos el pedido o te lo reservemos en caja?";
 
         return $message;
     }
