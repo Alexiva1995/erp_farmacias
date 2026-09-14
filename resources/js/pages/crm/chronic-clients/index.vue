@@ -4,17 +4,10 @@ import { useDisplay } from 'vuetify'
 import ChronicClientMobileCard from '@/components/cards/ChronicClientMobileCard.vue'
 import AppFilterBase from '@/components/AppFilterBase.vue'
 import TablePagination from '@/@core/components/TablePagination.vue'
-import ProductConsumptionConfigTab from './components/ProductConsumptionConfigTab.vue'
 import { $api } from '@/utils/api'
 import { toast } from '@/plugins/sweetalert'
 
 const { mobile: isMobile } = useDisplay()
-
-// Tab activo
-const activeTab = ref('patients')
-
-// Ref al componente de productos para invocar recargas si es necesario
-const productsConfigTabRef = ref(null)
 
 // Estado pestaña 1 — Pacientes
 const loading = ref(false)
@@ -281,22 +274,11 @@ onMounted(() => {
             </p>
           </div>
         </div>
-
-        <VTabs v-model="activeTab" color="primary" density="compact">
-          <VTab value="patients">
-            <VIcon start icon="tabler-users" size="18" />
-            Pacientes y Recompras
-          </VTab>
-          <VTab value="products">
-            <VIcon start icon="tabler-pill" size="18" />
-            Clasificación de Productos
-          </VTab>
-        </VTabs>
       </div>
     </VCard>
 
     <!-- KPI Cards Superiores -->
-    <VRow dense class="mb-4" v-if="activeTab === 'patients'">
+    <VRow dense class="mb-4">
       <VCol cols="12" sm="6" md="3">
         <VCard variant="flat" border class="pa-4 rounded-xl stat-card">
           <div class="d-flex align-center justify-space-between">
@@ -376,8 +358,8 @@ onMounted(() => {
       </VCol>
     </VRow>
 
-    <!-- PESTAÑA 1: PACIENTES Y RECOMPRAS -->
-    <div v-show="activeTab === 'patients'" class="d-flex flex-column gap-y-4">
+    <!-- PACIENTES Y RECOMPRAS -->
+    <div class="d-flex flex-column gap-y-4">
       <AppFilterBase
         :search="searchQuery"
         :has-advanced-filters="statusFilter !== 'all' || consumptionTypeFilter !== 'all' || !!productFilter"
@@ -676,7 +658,7 @@ onMounted(() => {
             </VAvatar>
             <div class="text-h6 font-weight-bold">No se encontraron pacientes</div>
             <div class="text-caption text-medium-emphasis mb-4">
-              No hay pacientes con medicamentos de seguimiento para mostrar. Configura los productos en la pestaña "Clasificación de Productos".
+              No hay pacientes con medicamentos de seguimiento para mostrar.
             </div>
             <VBtn variant="tonal" color="primary" @click="resetFilters">
               Limpiar Filtros
@@ -685,14 +667,6 @@ onMounted(() => {
         </template>
       </VDataTableServer>
     </VCard>
-    </div>
-
-    <!-- PESTAÑA 2: CLASIFICACIÓN DE PRODUCTOS -->
-    <div v-show="activeTab === 'products'">
-      <ProductConsumptionConfigTab
-        ref="productsConfigTabRef"
-        @updated="onProductConfigUpdated"
-      />
     </div>
   </div>
 </template>
