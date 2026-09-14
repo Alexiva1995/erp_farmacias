@@ -172,10 +172,6 @@ const handleMobilePageChange = (newPage) => {
                 <VIcon icon="tabler-eye" size="18" />
                 <VTooltip activator="parent">Ver Estadísticas</VTooltip>
               </IconBtn>
-              <IconBtn @click="emit('verify-cne', item)" color="info" size="small">
-                <VIcon icon="tabler-user-search" size="18" />
-                <VTooltip activator="parent">Verificar Identidad CNE</VTooltip>
-              </IconBtn>
               <IconBtn @click="emit('edit', item.id)" color="warning" size="small">
                 <VIcon icon="tabler-edit" size="18" />
                 <VTooltip activator="parent">Editar</VTooltip>
@@ -225,14 +221,6 @@ const handleMobilePageChange = (newPage) => {
                 >
                   <VIcon icon="tabler-eye" size="16" />
                   <VTooltip activator="parent">Ver Estadísticas</VTooltip>
-                </IconBtn>
-                <IconBtn
-                  color="info"
-                  size="x-small"
-                  @click="emit('verify-cne', item)"
-                >
-                  <VIcon icon="tabler-user-search" size="16" />
-                  <VTooltip activator="parent">Verificar Identidad CNE</VTooltip>
                 </IconBtn>
                 <IconBtn
                   color="warning"

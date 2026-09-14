@@ -70,10 +70,10 @@ const hasAdvancedFilters = computed(() =>
       <!-- Botón Limpieza Masiva -->
       <VBtn
         icon
-        color="info"
+        color="warning"
         variant="tonal"
         size="38"
-        class="rounded-circle shadow-sm"
+        rounded="circle"
         @click="emit('bulk-cleanup')"
       >
         <VIcon icon="tabler-brush" />
@@ -83,10 +83,10 @@ const hasAdvancedFilters = computed(() =>
       <!-- Botón Verificar CNE -->
       <VBtn
         icon
-        color="success"
+        color="info"
         variant="tonal"
         size="38"
-        class="rounded-circle shadow-sm ms-2"
+        rounded="circle"
         @click="emit('bulk-cne-verify')"
       >
         <VIcon icon="tabler-user-search" />
