@@ -146,12 +146,16 @@ class ChronicClientService
             $isSingleTreatment = ($row->consumption_type === 'single_treatment');
             $isSporadic        = ($row->consumption_type === 'sporadic');
 
+            $labName = $row->laboratory_name ?: 'Sin Laboratorio';
+            $copPriceFormatted = number_format($currentPriceCop, 0, ',', '.');
+
             // Construir mensaje de WhatsApp según tipo de consumo
             if ($isSingleTreatment) {
-                $whatsappMessage = "¡Hola, {$fullName}! 👋 Te saludamos de Farmacia Barrio Sucre 💚\n\n" .
-                    "Te contactamos para hacer seguimiento a tu tratamiento con *{$row->product_name}* (estimado hasta: {$treatmentDateFormatted}).\n\n" .
-                    "¿Cómo te has sentido con el tratamiento? Si requieres renovar o necesitas algún medicamento complementario, cuentas con nosotros.\n\n" .
-                    "📦 ¡Delivery sin costo hasta tu casa! 🚚💨";
+                $whatsappMessage = "¡Hola, {$fullName}! 🩺\n\n" .
+                    "Te saludamos de Farmacia Barrio Sucre — Tu salud y economía en un solo corazón ❤️\n\n" .
+                    "Te contactamos para hacerle seguimiento a tu tratamiento con {$row->product_name} del laboratorio {$labName}\n\n" .
+                    "¿Cómo te has sentido? Te recordamos que el precio actualizado de este producto es de {$copPriceFormatted} COP. Si requieres renovar la dosis o necesitas algún medicamento complementario, cuentas con nosotros.\n\n" .
+                    "🛵 ¡Recuerda delivery totalmente gratis hasta tu casa! 📦";
             } elseif ($isSporadic) {
                 $whatsappMessage = "¡Hola, {$fullName}! 👋 Te saludamos de Farmacia Barrio Sucre 💚\n\n" .
                     "Esperamos te encuentres muy bien. Te escribimos para consultar si aún tienes disponibilidad de *{$row->product_name}* en tu botiquín.\n\n" .
@@ -166,7 +170,7 @@ class ChronicClientService
             }
 
             $whatsappUrl = !empty($cleanPhone)
-                ? 'https://wa.me/' . $cleanPhone . '?text=' . urlencode($whatsappMessage)
+                ? 'https://wa.me/' . $cleanPhone . '?text=' . rawurlencode($whatsappMessage)
                 : null;
 
             return [
