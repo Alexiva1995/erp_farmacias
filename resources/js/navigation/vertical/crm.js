@@ -26,7 +26,7 @@ export default [
             title: 'Cuota Fidelización',
             to: 'crm-chronic-clients-quota',
             action: 'manage',
-            subject: 'supervisor-or-admin',
+            subject: 'admin',
           },
           {
             title: 'Clasificación',
