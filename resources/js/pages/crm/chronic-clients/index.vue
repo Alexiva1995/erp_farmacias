@@ -92,13 +92,13 @@ const statusOptions = [
 
 const headers = [
   { title: 'Paciente / Cliente', key: 'client_name', sortable: false },
-  { title: 'Medicamento / Frecuencia', key: 'product_name', sortable: false },
+  { title: 'Medicamentos / Frecuencia', key: 'product_name', sortable: false },
   { title: 'Tipo de Consumo', key: 'consumption_type', sortable: false },
   { title: 'Última Compra', key: 'last_order_date_formatted', sortable: false },
   { title: 'Duración', key: 'treatment_end_date_formatted', sortable: false },
   { title: 'Precio Actual', key: 'pricing', sortable: false },
   { title: 'Stock Actual', key: 'stock', sortable: false, align: 'center' },
-  { title: 'Acción WhatsApp', key: 'actions', sortable: false, align: 'center' },
+  { title: 'Acciones', key: 'actions', sortable: false, align: 'center' },
 ]
 
 // Cargar estadísticas del panel superior
@@ -253,6 +253,38 @@ const markAsNoAlert = async (item) => {
     console.error('Error markAsNoAlert:', e)
     const errorMsg = e?.response?._data?.message || e?.message || 'No se pudo marcar el producto.'
     toast.error(errorMsg)
+  }
+}
+
+// Estado de carga por cliente al marcar contacto
+const contactingClientId = ref(null)
+
+// Marcar paciente como contactado por WhatsApp
+const markContacted = async (item) => {
+  contactingClientId.value = item.client_id
+  try {
+    const payload = {
+      client_id: item.client_id,
+      product_ids: item.product_ids || (item.product_id ? [item.product_id] : []),
+    }
+
+    await $api('/crm/chronic-clients/mark-contacted', {
+      method: 'POST',
+      body: payload,
+      data: payload,
+    })
+
+    toast.success(`Seguimiento de "${item.client_name}" marcado como contactado exitosamente.`)
+
+    // Recargar lista y estadísticas
+    await fetchChronicClients()
+    fetchStats()
+  } catch (e) {
+    console.error('Error markContacted:', e)
+    const errorMsg = e?.response?._data?.message || e?.message || 'No se pudo registrar el seguimiento.'
+    toast.error(errorMsg)
+  } finally {
+    contactingClientId.value = null
   }
 }
 
@@ -544,8 +576,10 @@ onMounted(() => {
       <div v-else-if="chronicClients.length > 0" class="d-flex flex-column gap-3">
         <ChronicClientMobileCard
           v-for="item in chronicClients"
-          :key="item.client_id + '_' + item.product_id"
+          :key="item.client_id"
           :client="item"
+          :loading="contactingClientId === item.client_id"
+          @mark-contacted="markContacted"
         />
 
         <div class="mt-4">
@@ -597,20 +631,53 @@ onMounted(() => {
         <!-- Columna Medicamento -->
         <template #item.product_name="{ item }">
           <div class="py-2 min-width-0">
-            <span class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate d-block" style="max-inline-size: 320px;">
-              {{ item.product_name?.toUpperCase() || '—' }}
-            </span>
-            <div class="d-flex align-center flex-wrap gap-1 text-caption mt-0-5">
-              <span class="text-disabled">{{ item.active_ingredient || 'N/A' }}</span>
-              <span class="text-disabled mx-1">|</span>
-              <span class="text-primary font-weight-bold text-uppercase">{{ item.laboratory_name }}</span>
+            <div v-if="item.products && item.products.length > 1" class="d-flex flex-column gap-1">
+              <div
+                v-for="(prod, pIdx) in item.products"
+                :key="prod.product_id"
+                class="pb-1"
+                :class="{ 'border-b': pIdx < item.products.length - 1 }"
+              >
+                <span class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate d-block" style="max-inline-size: 320px;">
+                  {{ prod.product_name?.toUpperCase() || '—' }}
+                </span>
+                <div class="d-flex align-center flex-wrap gap-1 text-caption mt-0-5">
+                  <span class="text-disabled">{{ prod.active_ingredient || 'N/A' }}</span>
+                  <span class="text-disabled mx-1">|</span>
+                  <span class="text-primary font-weight-bold text-uppercase">{{ prod.laboratory_name }}</span>
+                </div>
+              </div>
+            </div>
+            <div v-else>
+              <span class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate d-block" style="max-inline-size: 320px;">
+                {{ item.product_name?.toUpperCase() || '—' }}
+              </span>
+              <div class="d-flex align-center flex-wrap gap-1 text-caption mt-0-5">
+                <span class="text-disabled">{{ item.active_ingredient || 'N/A' }}</span>
+                <span class="text-disabled mx-1">|</span>
+                <span class="text-primary font-weight-bold text-uppercase">{{ item.laboratory_name }}</span>
+              </div>
             </div>
           </div>
         </template>
 
         <!-- Columna Tipo Consumo -->
         <template #item.consumption_type="{ item }">
+          <div v-if="item.products && item.products.length > 1" class="d-flex flex-column gap-1 py-2">
+            <VChip
+              v-for="prod in item.products"
+              :key="prod.product_id"
+              size="x-small"
+              :color="getConsumptionBadge(prod.consumption_type).color"
+              variant="tonal"
+              class="font-weight-medium"
+            >
+              <VIcon :icon="getConsumptionBadge(prod.consumption_type).icon" start size="12" />
+              {{ getConsumptionBadge(prod.consumption_type).label }}
+            </VChip>
+          </div>
           <VChip
+            v-else
             size="small"
             :color="getConsumptionBadge(item.consumption_type).color"
             variant="tonal"
@@ -640,7 +707,12 @@ onMounted(() => {
         <!-- Columna Precios (Solo USD) -->
         <template #item.pricing="{ item }">
           <div class="py-2">
-            <div class="font-weight-bold text-success">
+            <div v-if="item.products && item.products.length > 1" class="d-flex flex-column gap-1">
+              <div v-for="prod in item.products" :key="prod.product_id" class="font-weight-bold text-success text-sm">
+                ${{ Number(prod.price_usd || 0).toFixed(2) }}
+              </div>
+            </div>
+            <div v-else class="font-weight-bold text-success">
               ${{ Number(item.price_usd || 0).toFixed(2) }}
             </div>
           </div>
@@ -649,7 +721,21 @@ onMounted(() => {
         <!-- Columna Stock Actual -->
         <template #item.stock="{ item }">
           <div class="py-2 text-center">
+            <div v-if="item.products && item.products.length > 1" class="d-flex flex-column gap-1 align-center">
+              <VChip
+                v-for="prod in item.products"
+                :key="prod.product_id"
+                size="x-small"
+                :color="Number(prod.stock || 0) > 0 ? 'success' : 'error'"
+                variant="tonal"
+                class="font-weight-black"
+              >
+                <VIcon :icon="Number(prod.stock || 0) > 0 ? 'tabler-box' : 'tabler-box-off'" start size="12" />
+                {{ Math.round(Number(prod.stock || 0)) }} un.
+              </VChip>
+            </div>
             <VChip
+              v-else
               size="small"
               :color="Number(item.stock || 0) > 0 ? 'success' : 'error'"
               variant="tonal"
@@ -661,22 +747,38 @@ onMounted(() => {
           </div>
         </template>
 
-        <!-- Columna Acciones WhatsApp -->
+        <!-- Columna Acciones -->
         <template #item.actions="{ item }">
-          <VBtn
-            v-if="item.whatsapp_url"
-            color="success"
-            variant="flat"
-            size="small"
-            prepend-icon="tabler-brand-whatsapp"
-            :href="item.whatsapp_url"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="rounded-lg text-none"
-          >
-            WhatsApp
-          </VBtn>
-          <span v-else class="text-caption text-disabled">Sin teléfono</span>
+          <div class="d-flex align-center justify-center gap-2">
+            <VBtn
+              v-if="item.whatsapp_url"
+              color="success"
+              variant="flat"
+              size="small"
+              icon
+              :href="item.whatsapp_url"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="rounded-lg"
+              title="Contactar por WhatsApp"
+            >
+              <VIcon icon="tabler-brand-whatsapp" size="20" />
+            </VBtn>
+            <span v-else class="text-caption text-disabled">Sin teléfono</span>
+
+            <VBtn
+              color="primary"
+              variant="tonal"
+              size="small"
+              icon
+              class="rounded-lg"
+              :loading="contactingClientId === item.client_id"
+              title="Marcar como Contactado / Enviado"
+              @click="markContacted(item)"
+            >
+              <VIcon icon="tabler-check" size="20" color="success" />
+            </VBtn>
+          </div>
         </template>
 
         <!-- Estado Vacío en Tabla -->

@@ -81,4 +81,18 @@ class ChronicClientController extends Controller
 
         return ApiResponse::success($result, 'Sincronización de productos crónicos con IA completada exitosamente', 200);
     }
+
+    /**
+     * Marcar seguimiento de paciente como contactado/enviado por WhatsApp.
+     */
+    public function markContacted(\App\Http\Requests\MarkChronicContactedRequest $request): JsonResponse
+    {
+        $validated = $request->validated();
+        $result = $this->chronicService->markAsContacted(
+            (int) $validated['client_id'],
+            $validated['product_ids'] ?? []
+        );
+
+        return ApiResponse::success($result, 'Seguimiento registrado exitosamente', 200);
+    }
 }

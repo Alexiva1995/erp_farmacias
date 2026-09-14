@@ -1,9 +1,12 @@
-﻿<script setup>
+<script setup>
 import { computed } from 'vue'
 
 const props = defineProps({
   client: { type: Object, required: true },
+  loading: { type: Boolean, default: false },
 })
+
+const emit = defineEmits(['mark-contacted'])
 
 const getStatusColor = (client) => {
   if (client.is_urgent) return 'warning'
@@ -48,7 +51,22 @@ const getStatusIcon = (client) => {
 
     <VDivider class="mb-3" />
 
-    <div class="mb-2">
+    <!-- Productos / Medicamentos -->
+    <div v-if="client.products && client.products.length > 1" class="mb-3 d-flex flex-column gap-2">
+      <div class="text-caption text-disabled font-weight-bold">Medicamentos ({{ client.products.length }})</div>
+      <div
+        v-for="(p, idx) in client.products"
+        :key="p.product_id"
+        class="pa-2 rounded-lg bg-light"
+      >
+        <div class="font-weight-semibold text-primary text-sm">{{ p.product_name }}</div>
+        <div class="d-flex justify-space-between text-caption text-medium-emphasis mt-1">
+          <span>{{ p.purchased_quantity }} un. ({{ p.total_treatment_days }} días)</span>
+          <span class="font-weight-bold text-success">${{ Number(p.price_usd || 0).toFixed(2) }}</span>
+        </div>
+      </div>
+    </div>
+    <div v-else class="mb-2">
       <div class="text-caption text-disabled">Medicamento</div>
       <div class="font-weight-semibold text-primary">{{ client.product_name }}</div>
       <div class="text-caption text-medium-emphasis">
@@ -80,20 +98,36 @@ const getStatusIcon = (client) => {
         </div>
       </div>
 
-      <VBtn
-        v-if="client.whatsapp_url"
-        color="success"
-        variant="flat"
-        size="small"
-        prepend-icon="tabler-brand-whatsapp"
-        :href="client.whatsapp_url"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="rounded-lg text-none"
-      >
-        WhatsApp
-      </VBtn>
-      <span v-else class="text-caption text-disabled">Sin teléfono</span>
+      <div class="d-flex align-center gap-2">
+        <VBtn
+          v-if="client.whatsapp_url"
+          color="success"
+          variant="flat"
+          size="small"
+          icon
+          :href="client.whatsapp_url"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="rounded-lg"
+          title="WhatsApp"
+        >
+          <VIcon icon="tabler-brand-whatsapp" size="20" />
+        </VBtn>
+        <span v-else class="text-caption text-disabled">Sin teléfono</span>
+
+        <VBtn
+          color="primary"
+          variant="tonal"
+          size="small"
+          icon
+          class="rounded-lg"
+          :loading="loading"
+          title="Marcar como Contactado"
+          @click="emit('mark-contacted', client)"
+        >
+          <VIcon icon="tabler-check" size="20" color="success" />
+        </VBtn>
+      </div>
     </div>
   </VCard>
 </template>

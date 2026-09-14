@@ -16,16 +16,17 @@ class ChronicClientService
 {
     /**
      * Obtener listado de pacientes con compras de productos clasificados y número de teléfono válido.
-     * Sin restricción de fecha — incluye todo el historial de compras.
+     * Consolida múltiples productos por paciente en un solo registro y mensaje de WhatsApp.
+     * Filtra según el historial de contacto en chronic_patient_contacts.
      */
     public function getChronicPatients(Request $request): LengthAwarePaginator
     {
-        $search        = $request->input('search');
-        $status        = $request->input('status', 'all');
+        $search          = $request->input('search');
+        $status          = $request->input('status', 'all');
         $consumptionType = $request->input('consumption_type', 'all');
-        $productId     = $request->input('product_id');
-        $perPage       = (int) $request->input('itemsPerPage', 15);
-        $page          = (int) $request->input('page', 1);
+        $productId       = $request->input('product_id');
+        $perPage         = (int) $request->input('itemsPerPage', 15);
+        $page            = (int) $request->input('page', 1);
 
         $query = DB::table('orders')
             ->join('order_details', 'order_details.order_id', '=', 'orders.id')
@@ -39,7 +40,6 @@ class ChronicClientService
             ->where('products.is_deleted', false)
             ->whereNotNull('clients.phone')
             ->where('clients.phone', '!=', '')
-            // Validar mínimo 10 dígitos limpios (sin guiones, espacios, +)
             ->where(
                 DB::raw('LENGTH(REPLACE(REPLACE(REPLACE(TRIM(clients.phone), "-", ""), " ", ""), "+", ""))'),
                 '>=',
@@ -67,6 +67,7 @@ class ChronicClientService
         }
 
         $query->select([
+            'orders.id as order_id',
             'clients.id as client_id',
             'clients.identification_type',
             'clients.identification',
@@ -91,35 +92,59 @@ class ChronicClientService
 
         $allRecords = $query->orderByDesc('orders.order_date')->get();
 
+        // Cargar registros de contacto para todos los clientes encontrados
+        $clientIds = $allRecords->pluck('client_id')->unique()->toArray();
+        $contacts = DB::table('chronic_patient_contacts')
+            ->whereIn('client_id', $clientIds)
+            ->get()
+            ->keyBy(fn($c) => "{$c->client_id}_{$c->product_id}");
+
         // Obtener tasas de cambio activas
         $rateBs  = ExchangeRate::whereIn('currency_code', ['VES', 'BS', 'BCV', 'EUR'])->orderByDesc('id')->value('rate') ?? 0;
         $rateCop = ExchangeRate::where('currency_code', 'COP')->orderByDesc('id')->value('rate') ?? 0;
+        $now     = Carbon::now();
 
-        $processed = $allRecords->map(function ($row) use ($rateBs, $rateCop) {
+        // Procesar productos individuales y filtrar según contacto previo
+        $validItems = [];
+
+        foreach ($allRecords as $row) {
             $lastDate            = Carbon::parse($row->last_order_date);
             $durationDaysPerUnit = (int) ($row->treatment_duration_days ?: 30);
             $totalTreatmentDays  = (int) round((float) $row->purchased_quantity * $durationDaysPerUnit);
 
             $treatmentEndDate = $lastDate->copy()->addDays($totalTreatmentDays);
             $reminderDate     = $treatmentEndDate->copy()->subDays(5);
-            $now              = Carbon::now();
             $daysUntilEnd     = (int) ceil($now->floatDiffInDays($treatmentEndDate, false));
 
             $isUrgent  = ($daysUntilEnd <= 5 && $daysUntilEnd >= -30);
             $isExpired = ($daysUntilEnd < -30);
             $isActive  = ($daysUntilEnd > 5);
 
-            $currentPriceUsd = (float) $row->current_sale_price;
-            $currentPriceBs  = $rateBs  > 0 ? round($currentPriceUsd * (float) $rateBs, 2) : 0;
-            $currentPriceCop = $rateCop > 0 ? ceil($currentPriceUsd * (float) $rateCop / 100) * 100 : 0;
+            $contactKey = "{$row->client_id}_{$row->product_id}";
+            if (isset($contacts[$contactKey])) {
+                $contact = $contacts[$contactKey];
+                $contactOrderDate = $contact->order_date_at_contact ? Carbon::parse($contact->order_date_at_contact) : null;
 
-            // Normalizar número de teléfono a formato internacional Venezuela y validar que no sea repetido/falso
+                // Si no hay orden más reciente que la fecha de contacto
+                if ($contactOrderDate && $lastDate->lte($contactOrderDate)) {
+                    if ($row->consumption_type === 'single_treatment') {
+                        // Tratamiento único: no se vuelve a mostrar hasta nueva compra
+                        continue;
+                    }
+                    if (in_array($row->consumption_type, ['chronic', 'sporadic'], true)) {
+                        // Crónico / Esporádico: solo mostrar si next_reminder_at ya pasó
+                        if ($contact->next_reminder_at && $now->lt(Carbon::parse($contact->next_reminder_at))) {
+                            continue;
+                        }
+                    }
+                }
+            }
+
+            // Normalizar número telefónico
             $cleanDigits = preg_replace('/[^0-9]/', '', (string) $row->client_phone);
-            
-            // Validar que no sea un solo dígito repetido (ej: 5555555555), prefijo inválido (ej: 40000000000) ni dummy secuencial
-            $isRepeated = preg_match('/^(\d)\1+$/', $cleanDigits);
-            $isValidVenezuelan = preg_match('/^(58)?(0?)(412|414|424|416|426|2\d{2})\d{7}$/', $cleanDigits);
-            $isDummy = in_array($cleanDigits, [
+            $isRepeated  = preg_match('/^(\d)\1+$/', $cleanDigits);
+            $isValidVen  = preg_match('/^(58)?(0?)(412|414|424|416|426|2\d{2})\d{7}$/', $cleanDigits);
+            $isDummy     = in_array($cleanDigits, [
                 '1234567890', '12345678', '01234567890', '0000000000', '00000000000',
                 '123456789', '9876543210', '1111111111', '2222222222', '3333333333',
                 '4444444444', '5555555555', '6666666666', '7777777777', '8888888888', '9999999999',
@@ -127,7 +152,7 @@ class ChronicClientService
             ], true);
 
             $cleanPhone = null;
-            if (!$isRepeated && $isValidVenezuelan && !$isDummy) {
+            if (!$isRepeated && $isValidVen && !$isDummy) {
                 if (str_starts_with($cleanDigits, '58') && strlen($cleanDigits) === 12) {
                     $cleanPhone = $cleanDigits;
                 } elseif (str_starts_with($cleanDigits, '0') && strlen($cleanDigits) === 11) {
@@ -137,47 +162,26 @@ class ChronicClientService
                 }
             }
 
+            if (empty($cleanPhone)) {
+                continue;
+            }
+
+            $currentPriceUsd = (float) $row->current_sale_price;
+            $currentPriceBs  = $rateBs  > 0 ? round($currentPriceUsd * (float) $rateBs, 2) : 0;
+            $currentPriceCop = $rateCop > 0 ? ceil($currentPriceUsd * (float) $rateCop / 100) * 100 : 0;
+
             $fullName               = trim("{$row->client_name} {$row->client_last_name}");
             $treatmentDateFormatted = $treatmentEndDate->format('d/m/Y');
             $priceFormattedUsd      = '$' . number_format($currentPriceUsd, 2);
             $priceFormattedBs       = $currentPriceBs  > 0 ? ' (Bs. ' . number_format($currentPriceBs, 2) . ')' : '';
             $priceFormattedCop      = $currentPriceCop > 0 ? ' / COP ' . number_format($currentPriceCop, 0, ',', '.') : '';
 
-            $isSingleTreatment = ($row->consumption_type === 'single_treatment');
-            $isSporadic        = ($row->consumption_type === 'sporadic');
-
-            $labName = $row->laboratory_name ?: 'Sin Laboratorio';
-            $copPriceFormatted = number_format($currentPriceCop, 0, ',', '.');
-
-            // Construir mensaje de WhatsApp según tipo de consumo
-            if ($isSingleTreatment) {
-                $whatsappMessage = "¡Hola, {$fullName}! 🩺\n\n" .
-                    "Te saludamos de Farmacia Barrio Sucre — Tu salud y economía en un solo corazón ❤️\n\n" .
-                    "Te contactamos para hacerle seguimiento a tu tratamiento con {$row->product_name} del laboratorio {$labName}\n\n" .
-                    "¿Cómo te has sentido? Te recordamos que el precio actualizado de este producto es de {$copPriceFormatted} COP. Si requieres renovar la dosis o necesitas algún medicamento complementario, cuentas con nosotros.\n\n" .
-                    "🛵 ¡Recuerda delivery totalmente gratis hasta tu casa! 📦";
-            } elseif ($isSporadic) {
-                $whatsappMessage = "¡Hola, {$fullName}! 👋 Te saludamos de Farmacia Barrio Sucre 💚\n\n" .
-                    "Esperamos te encuentres muy bien. Te escribimos para consultar si aún tienes disponibilidad de *{$row->product_name}* en tu botiquín.\n\n" .
-                    "💵 Precio actual: *{$priceFormattedUsd}*{$priceFormattedBs}{$priceFormattedCop}\n" .
-                    "📦 ¡Delivery sin costo hasta tu casa! Escríbenos y con gusto te lo llevamos. 🚚💨";
-            } else {
-                $whatsappMessage = "¡Hola, {$fullName}! 👋 Te saludamos de Farmacia Barrio Sucre 💚\n\n" .
-                    "Nos pasamos por aquí para recordarte que ya se acerca la fecha de renovar tu *{$row->product_name}* (estimado: {$treatmentDateFormatted}).\n\n" .
-                    "💵 Precio actual: *{$priceFormattedUsd}*{$priceFormattedBs}{$priceFormattedCop}\n" .
-                    "📦 ¡Te lo enviamos HOY mismo con DELIVERY GRATIS hasta tu puerta!\n\n" .
-                    "Cuidamos tu salud y economía en un solo corazón. ¿Te dejamos el pedido listo? Escríbenos y con gusto te lo llevamos. 🚚💨";
-            }
-
-            $whatsappUrl = !empty($cleanPhone)
-                ? 'https://wa.me/' . $cleanPhone . '?text=' . rawurlencode($whatsappMessage)
-                : null;
-
-            return [
+            $validItems[] = [
                 'client_id'                  => $row->client_id,
                 'client_name'                => $fullName,
                 'identification'             => "{$row->identification_type}{$row->identification}",
                 'phone'                      => $row->client_phone,
+                'clean_phone'                => $cleanPhone,
                 'email'                      => $row->client_email,
                 'product_id'                 => $row->product_id,
                 'product_name'               => $row->product_name,
@@ -208,28 +212,77 @@ class ChronicClientService
                 'price_usd'                  => $currentPriceUsd,
                 'price_bs'                   => $currentPriceBs,
                 'price_cop'                  => $currentPriceCop,
-                'whatsapp_url'               => $whatsappUrl,
-                'whatsapp_message'           => $whatsappMessage,
             ];
-        })->filter(fn($item) => !empty($item['whatsapp_url']));
-
-        // Filtrar por estado de tratamiento en memoria
-        if ($status === 'urgent') {
-            $processed = $processed->filter(fn($item) => $item['is_urgent']);
-        } elseif ($status === 'expired') {
-            $processed = $processed->filter(fn($item) => $item['is_expired']);
-        } elseif ($status === 'active') {
-            $processed = $processed->filter(fn($item) => $item['is_active']);
         }
 
-        // Ordenar: primero los más próximos a culminar / vencidos recientemente (ej. 0 días, -1 día, -5 días...), y al final los vencidos hace años
-        $sorted = $processed->sortBy(function ($item) {
+        // Agrupar por cliente para consolidar tratamientos y mensajes
+        $groupedClients = collect($validItems)->groupBy('client_id')->map(function ($clientProducts) {
+            $first = $clientProducts->first();
+            $products = $clientProducts->values()->all();
+
+            $isUrgent  = $clientProducts->contains('is_urgent', true);
+            $isExpired = !$isUrgent && $clientProducts->contains('is_expired', true);
+            $isActive  = !$isUrgent && !$isExpired && $clientProducts->contains('is_active', true);
+
+            // Determinar días más urgentes del conjunto
+            $minDaysUntilEnd = $clientProducts->min('days_until_end');
+            $primaryProduct  = $clientProducts->sortBy('days_until_end')->first();
+
+            // Construir mensaje consolidado
+            $whatsappMessage = $this->buildWhatsAppMessage($first['client_name'], $products);
+            $whatsappUrl = 'https://wa.me/' . $first['clean_phone'] . '?text=' . rawurlencode($whatsappMessage);
+
+            return [
+                'client_id'                    => $first['client_id'],
+                'client_name'                  => $first['client_name'],
+                'identification'               => $first['identification'],
+                'phone'                        => $first['phone'],
+                'email'                        => $first['email'],
+                'products'                     => $products,
+                'product_ids'                  => array_column($products, 'product_id'),
+                'total_products_count'         => count($products),
+                // Campos del producto primario/más urgente para retrocompatibilidad
+                'product_id'                   => $primaryProduct['product_id'],
+                'product_name'                 => $primaryProduct['product_name'],
+                'product_barcode'              => $primaryProduct['product_barcode'],
+                'active_ingredient'            => $primaryProduct['active_ingredient'],
+                'stock'                        => $primaryProduct['stock'],
+                'laboratory_name'              => $primaryProduct['laboratory_name'],
+                'consumption_type'             => $primaryProduct['consumption_type'],
+                'consumption_type_label'       => $primaryProduct['consumption_type_label'],
+                'last_order_date'              => $primaryProduct['last_order_date'],
+                'last_order_date_formatted'    => $primaryProduct['last_order_date_formatted'],
+                'purchased_quantity'           => $primaryProduct['purchased_quantity'],
+                'treatment_duration_days'      => $primaryProduct['treatment_duration_days'],
+                'total_treatment_days'         => $primaryProduct['total_treatment_days'],
+                'treatment_end_date'           => $primaryProduct['treatment_end_date'],
+                'treatment_end_date_formatted' => $primaryProduct['treatment_end_date_formatted'],
+                'days_until_end'               => $minDaysUntilEnd,
+                'is_urgent'                    => $isUrgent,
+                'is_expired'                   => $isExpired,
+                'is_active'                    => $isActive,
+                'status_label'                 => $this->getStatusLabel($minDaysUntilEnd),
+                'status_color'                 => $this->getStatusColor($minDaysUntilEnd),
+                'price_usd'                    => $primaryProduct['price_usd'],
+                'price_bs'                     => $primaryProduct['price_bs'],
+                'price_cop'                    => $primaryProduct['price_cop'],
+                'whatsapp_url'                 => $whatsappUrl,
+                'whatsapp_message'             => $whatsappMessage,
+            ];
+        });
+
+        // Filtrar por estado en memoria
+        if ($status === 'urgent') {
+            $groupedClients = $groupedClients->filter(fn($item) => $item['is_urgent']);
+        } elseif ($status === 'expired') {
+            $groupedClients = $groupedClients->filter(fn($item) => $item['is_expired']);
+        } elseif ($status === 'active') {
+            $groupedClients = $groupedClients->filter(fn($item) => $item['is_active']);
+        }
+
+        // Ordenar: primero los más urgentes
+        $sorted = $groupedClients->sortBy(function ($item) {
             $days = $item['days_until_end'];
-            // Asignar prioridad de urgencia / inmediatez:
-            // 0 a 5 días: prioridad 1 (urgentes próximos a vencer)
-            // -1 a -30 días: prioridad 2 (vencidos recientemente)
-            // > 5 días: prioridad 3 (activos a futuro)
-            // < -30 días: prioridad 4 (vencidos hace mucho tiempo)
             if ($days >= 0 && $days <= 5) {
                 return [1, $days];
             }
@@ -241,13 +294,149 @@ class ChronicClientService
             }
             return [4, abs($days)];
         })->values();
-        $total  = $sorted->count();
-        $items  = $sorted->slice(($page - 1) * $perPage, $perPage)->values();
+
+        $total = $sorted->count();
+        $items = $sorted->slice(($page - 1) * $perPage, $perPage)->values();
 
         return new LengthAwarePaginator($items, $total, $perPage, $page, [
             'path'  => $request->url(),
             'query' => $request->query(),
         ]);
+    }
+
+    /**
+     * Construir mensaje de WhatsApp consolidado para un paciente.
+     */
+    protected function buildWhatsAppMessage(string $fullName, array $products): string
+    {
+        if (count($products) === 1) {
+            $p = $products[0];
+            $currentPriceUsd = (float) $p['price_usd'];
+            $currentPriceBs  = (float) $p['price_bs'];
+            $currentPriceCop = (float) $p['price_cop'];
+
+            $priceFormattedUsd = '$' . number_format($currentPriceUsd, 2);
+            $priceFormattedBs  = $currentPriceBs > 0 ? ' (Bs. ' . number_format($currentPriceBs, 2) . ')' : '';
+            $priceFormattedCop = $currentPriceCop > 0 ? ' / COP ' . number_format($currentPriceCop, 0, ',', '.') : '';
+            $copPriceFormatted = number_format($currentPriceCop, 0, ',', '.');
+            $labName           = $p['laboratory_name'] ?: 'Sin Laboratorio';
+
+            if ($p['consumption_type'] === 'single_treatment') {
+                return "¡Hola, {$fullName}! 🩺\n\n" .
+                    "Te saludamos de Farmacia Barrio Sucre — Tu salud y economía en un solo corazón ❤️\n\n" .
+                    "Te contactamos para hacerle seguimiento a tu tratamiento con {$p['product_name']} del laboratorio {$labName}\n\n" .
+                    "¿Cómo te has sentido? Te recordamos que el precio actualizado de este producto es de {$copPriceFormatted} COP. Si requieres renovar la dosis o necesitas algún medicamento complementario, cuentas con nosotros.\n\n" .
+                    "🛵 ¡Recuerda delivery totalmente gratis hasta tu casa! 📦";
+            }
+
+            if ($p['consumption_type'] === 'sporadic') {
+                return "¡Hola, {$fullName}! 👋 Te saludamos de Farmacia Barrio Sucre 💚\n\n" .
+                    "Esperamos te encuentres muy bien. Te escribimos para consultar si aún tienes disponibilidad de *{$p['product_name']}* en tu botiquín.\n\n" .
+                    "💵 Precio actual: *{$priceFormattedUsd}*{$priceFormattedBs}{$priceFormattedCop}\n" .
+                    "📦 ¡Delivery sin costo hasta tu casa! Escríbenos y con gusto te lo llevamos. 🚚💨";
+            }
+
+            return "¡Hola, {$fullName}! 👋 Te saludamos de Farmacia Barrio Sucre 💚\n\n" .
+                "Nos pasamos por aquí para recordarte que ya se acerca la fecha de renovar tu *{$p['product_name']}* (estimado: {$p['treatment_end_date_formatted']}).\n\n" .
+                "💵 Precio actual: *{$priceFormattedUsd}*{$priceFormattedBs}{$priceFormattedCop}\n" .
+                "📦 ¡Te lo enviamos HOY mismo con DELIVERY GRATIS hasta tu puerta!\n\n" .
+                "Cuidamos tu salud y economía en un solo corazón. ¿Te dejamos el pedido listo? Escríbenos y con gusto te lo llevamos. 🚚💨";
+        }
+
+        // Mensaje consolidado para múltiples productos
+        $message = "¡Hola, {$fullName}! 👋 Te saludamos de Farmacia Barrio Sucre 💚\n\n" .
+            "Nos comunicamos para hacerle seguimiento y recordarte la renovación de tus tratamientos y medicamentos:\n\n";
+
+        foreach ($products as $idx => $p) {
+            $num = $idx + 1;
+            $priceUsd = '$' . number_format((float) $p['price_usd'], 2);
+            $copFormatted = (float) $p['price_cop'] > 0 ? ' / COP ' . number_format((float) $p['price_cop'], 0, ',', '.') : '';
+
+            if ($p['consumption_type'] === 'single_treatment') {
+                $message .= "{$num}. *{$p['product_name']}* (Tratamiento)\n" .
+                    "   • Laboratorio: {$p['laboratory_name']}\n" .
+                    "   • Precio actual: {$priceUsd}{$copFormatted}\n\n";
+            } elseif ($p['consumption_type'] === 'sporadic') {
+                $message .= "{$num}. *{$p['product_name']}* (Botiquín)\n" .
+                    "   • Precio actual: {$priceUsd}{$copFormatted}\n\n";
+            } else {
+                $message .= "{$num}. *{$p['product_name']}* (Uso continuo)\n" .
+                    "   • Estimado renovación: {$p['treatment_end_date_formatted']}\n" .
+                    "   • Precio actual: {$priceUsd}{$copFormatted}\n\n";
+            }
+        }
+
+        $message .= "🛵 ¡Te lo enviamos con DELIVERY GRATIS hasta tu casa! 📦\n\n" .
+            "Cuidamos tu salud y economía en un solo corazón ❤️ ¿Deseas que te preparemos el pedido?";
+
+        return $message;
+    }
+
+    /**
+     * Marcar seguimiento de paciente y sus productos como contactado.
+     */
+    public function markAsContacted(int $clientId, array $productIds = []): array
+    {
+        $now = Carbon::now();
+
+        // Obtener los productos correspondientes a este cliente
+        $query = DB::table('orders')
+            ->join('order_details', 'order_details.order_id', '=', 'orders.id')
+            ->join('products', 'products.id', '=', 'order_details.product_id')
+            ->where('orders.status', Order::COMPLETED)
+            ->where('orders.client_id', $clientId)
+            ->whereIn('products.consumption_type', ['chronic', 'single_treatment', 'sporadic']);
+
+        if (!empty($productIds)) {
+            $query->whereIn('products.id', $productIds);
+        }
+
+        $records = $query->select([
+            'products.id as product_id',
+            'products.consumption_type',
+            'products.treatment_duration_days',
+            'orders.order_date',
+        ])->orderByDesc('orders.order_date')->get();
+
+        $processedProductIds = [];
+
+        foreach ($records as $row) {
+            if (in_array($row->product_id, $processedProductIds, true)) {
+                continue;
+            }
+            $processedProductIds[] = $row->product_id;
+
+            $nextReminderAt = null;
+            if ($row->consumption_type === 'chronic') {
+                $days = (int) ($row->treatment_duration_days ?: 30);
+                $nextReminderAt = $now->copy()->addDays($days);
+            } elseif ($row->consumption_type === 'sporadic') {
+                $nextReminderAt = $now->copy()->addDays(60);
+            } elseif ($row->consumption_type === 'single_treatment') {
+                $nextReminderAt = null;
+            }
+
+            DB::table('chronic_patient_contacts')->updateOrInsert(
+                [
+                    'client_id'  => $clientId,
+                    'product_id' => $row->product_id,
+                ],
+                [
+                    'consumption_type'       => $row->consumption_type,
+                    'last_contacted_at'      => $now,
+                    'next_reminder_at'       => $nextReminderAt,
+                    'order_date_at_contact'  => $row->order_date,
+                    'updated_at'             => $now,
+                    'created_at'             => $now,
+                ]
+            );
+        }
+
+        return [
+            'client_id'           => $clientId,
+            'processed_products'  => count($processedProductIds),
+            'marked_at'           => $now->toDateTimeString(),
+        ];
     }
 
     /**
