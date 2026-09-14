@@ -80,7 +80,6 @@ const formConsumptionTypes = [
 const productConfigHeaders = [
   { title: 'ID', key: 'id', sortable: false, cellClass: 'font-weight-black text-primary' },
   { title: 'Producto', key: 'name', sortable: false },
-  { title: 'Tipo de Consumo', key: 'consumption_type', sortable: false },
   { title: 'Acciones', key: 'actions', sortable: false, align: 'center' },
 ]
 
@@ -96,9 +95,9 @@ const headers = [
   { title: 'Medicamento / Frecuencia', key: 'product_name', sortable: false },
   { title: 'Tipo de Consumo', key: 'consumption_type', sortable: false },
   { title: 'Última Compra', key: 'last_order_date_formatted', sortable: false },
-  { title: 'Duración / Fin', key: 'treatment_end_date_formatted', sortable: false },
+  { title: 'Duración', key: 'treatment_end_date_formatted', sortable: false },
   { title: 'Precio Actual', key: 'pricing', sortable: false },
-  { title: 'Estado', key: 'status_label', sortable: false },
+  { title: 'Stock Actual', key: 'stock', sortable: false, align: 'center' },
   { title: 'Acción WhatsApp', key: 'actions', sortable: false, align: 'center' },
 ]
 
@@ -217,6 +216,43 @@ const saveProductConsumption = async () => {
     toast.error(errorMsg)
   } finally {
     savingProduct.value = false
+  }
+}
+
+// Acción rápida: Marcar como "Sin Alerta / Insumos" (X)
+const markAsNoAlert = async (item) => {
+  try {
+    const payload = {
+      consumption_type: 'no_alert',
+      treatment_duration_days: null,
+    }
+
+    const res = await $api(`/crm/chronic-clients/products-config/${item.id}`, {
+      method: 'PUT',
+      body: payload,
+      data: payload,
+    })
+
+    if (res?.data) {
+      const targetIdx = productsConfigList.value.findIndex(p => p.id === item.id)
+      if (targetIdx !== -1) {
+        productsConfigList.value[targetIdx] = {
+          ...productsConfigList.value[targetIdx],
+          ...res.data,
+        }
+      }
+    }
+
+    toast.success(`"${item.name}" marcado como Sin Alerta / Insumos.`)
+
+    // Recargar listas
+    await fetchProductsConfig()
+    fetchStats()
+    fetchChronicClients()
+  } catch (e) {
+    console.error('Error markAsNoAlert:', e)
+    const errorMsg = e?.response?._data?.message || e?.message || 'No se pudo marcar el producto.'
+    toast.error(errorMsg)
   }
 }
 
@@ -555,14 +591,6 @@ onMounted(() => {
             <div class="font-weight-bold text-high-emphasis">
               {{ item.client_name }}
             </div>
-            <div class="text-caption text-medium-emphasis d-flex align-center gap-1">
-              <VIcon icon="tabler-id" size="14" />
-              <span>{{ item.identification || 'S/N' }}</span>
-              <span v-if="item.phone" class="ms-2">
-                <VIcon icon="tabler-phone" size="14" />
-                {{ item.phone }}
-              </span>
-            </div>
           </div>
         </template>
 
@@ -576,9 +604,6 @@ onMounted(() => {
               <span class="text-disabled">{{ item.active_ingredient || 'N/A' }}</span>
               <span class="text-disabled mx-1">|</span>
               <span class="text-primary font-weight-bold text-uppercase">{{ item.laboratory_name }}</span>
-            </div>
-            <div class="text-caption text-medium-emphasis mt-1">
-              Dosis: {{ item.purchased_quantity }} un. ({{ item.total_treatment_days }} días est.)
             </div>
           </div>
         </template>
@@ -600,50 +625,40 @@ onMounted(() => {
         <template #item.last_order_date_formatted="{ item }">
           <div class="py-2">
             <div class="font-weight-medium">{{ item.last_order_date_formatted }}</div>
-            <div class="text-caption text-disabled">Lab: {{ item.laboratory_name }}</div>
           </div>
         </template>
 
-        <!-- Columna Duración y Días Restantes -->
+        <!-- Columna Duración -->
         <template #item.treatment_end_date_formatted="{ item }">
           <div class="py-2">
-            <div class="d-flex align-center gap-2">
-              <span class="font-weight-bold" :class="item.days_until_end <= 5 ? 'text-warning' : 'text-high-emphasis'">
-                {{ item.days_until_end }} días restantes
-              </span>
-            </div>
-            <div class="text-caption text-medium-emphasis">
-              Fin: {{ item.treatment_end_date_formatted }}
-            </div>
+            <span class="font-weight-bold" :class="item.days_until_end <= 5 && item.days_until_end >= -30 ? 'text-warning' : (item.days_until_end < -30 ? 'text-error' : 'text-success')">
+              {{ item.days_until_end }} días
+            </span>
           </div>
         </template>
 
-        <!-- Columna Precios Multimoneda -->
+        <!-- Columna Precios (Solo USD) -->
         <template #item.pricing="{ item }">
           <div class="py-2">
             <div class="font-weight-bold text-success">
               ${{ Number(item.price_usd || 0).toFixed(2) }}
             </div>
-            <div class="text-caption text-medium-emphasis">
-              Bs. {{ Number(item.price_bs || 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
-            </div>
-            <div class="text-caption text-medium-emphasis">
-              COP {{ Number(item.price_cop || 0).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) }}
-            </div>
           </div>
         </template>
 
-        <!-- Columna Estado -->
-        <template #item.status_label="{ item }">
-          <VChip
-            size="small"
-            :color="getStatusColor(item)"
-            variant="tonal"
-            class="font-weight-medium"
-          >
-            <VIcon :icon="getStatusIcon(item)" start size="14" />
-            {{ getStatusLabel(item) }}
-          </VChip>
+        <!-- Columna Stock Actual -->
+        <template #item.stock="{ item }">
+          <div class="py-2 text-center">
+            <VChip
+              size="small"
+              :color="Number(item.stock || 0) > 0 ? 'success' : 'error'"
+              variant="tonal"
+              class="font-weight-black"
+            >
+              <VIcon :icon="Number(item.stock || 0) > 0 ? 'tabler-box' : 'tabler-box-off'" start size="14" />
+              {{ Math.round(Number(item.stock || 0)) }} un.
+            </VChip>
+          </div>
         </template>
 
         <!-- Columna Acciones WhatsApp -->
@@ -756,30 +771,33 @@ onMounted(() => {
             </div>
           </template>
 
-          <!-- Tipo de Consumo -->
-          <template #item.consumption_type="{ item }">
-            <VChip
-              size="small"
-              :color="getConsumptionBadge(item.consumption_type).color"
-              variant="tonal"
-              class="font-weight-medium"
-            >
-              <VIcon :icon="getConsumptionBadge(item.consumption_type).icon" start size="14" />
-              {{ getConsumptionBadge(item.consumption_type).label }}
-            </VChip>
-          </template>
-
           <!-- Acciones -->
           <template #item.actions="{ item }">
-            <IconBtn
-              size="small"
-              color="warning"
-              title="Configurar Consumo"
-              @click="openEditProduct(item)"
-            >
-              <VIcon icon="tabler-edit" size="18" />
-              <VTooltip activator="parent">Configurar Consumo</VTooltip>
-            </IconBtn>
+            <div class="d-flex align-center justify-center gap-1">
+              <IconBtn
+                size="small"
+                color="error"
+                variant="tonal"
+                title="Sin Alerta / Insumo (Descartar)"
+                class="rounded-lg"
+                @click="markAsNoAlert(item)"
+              >
+                <VIcon icon="tabler-x" size="18" />
+                <VTooltip activator="parent">Sin Alerta / Insumo</VTooltip>
+              </IconBtn>
+
+              <IconBtn
+                size="small"
+                color="warning"
+                variant="tonal"
+                title="Configurar Consumo"
+                class="rounded-lg"
+                @click="openEditProduct(item)"
+              >
+                <VIcon icon="tabler-edit" size="18" />
+                <VTooltip activator="parent">Configurar Consumo</VTooltip>
+              </IconBtn>
+            </div>
           </template>
 
           <template #no-data>

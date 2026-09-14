@@ -79,6 +79,7 @@ class ChronicClientService
             'products.barcode as product_barcode',
             'products.active_ingredient',
             'products.sale_price as current_sale_price',
+            'products.stock as product_stock',
             'products.treatment_duration_days',
             'products.consumption_type',
             'products.is_chronic',
@@ -162,6 +163,7 @@ class ChronicClientService
                 'product_name'               => $row->product_name,
                 'product_barcode'            => $row->product_barcode,
                 'active_ingredient'          => $row->active_ingredient,
+                'stock'                      => (float) ($row->product_stock ?? 0),
                 'laboratory_name'            => $row->laboratory_name ?: 'Sin Laboratorio',
                 'consumption_type'           => $row->consumption_type ?: 'chronic',
                 'consumption_type_label'     => match ($row->consumption_type) {
@@ -200,7 +202,25 @@ class ChronicClientService
             $processed = $processed->filter(fn($item) => $item['is_active']);
         }
 
-        $sorted = $processed->sortBy('days_until_end')->values();
+        // Ordenar: primero los más próximos a culminar / vencidos recientemente (ej. 0 días, -1 día, -5 días...), y al final los vencidos hace años
+        $sorted = $processed->sortBy(function ($item) {
+            $days = $item['days_until_end'];
+            // Asignar prioridad de urgencia / inmediatez:
+            // 0 a 5 días: prioridad 1 (urgentes próximos a vencer)
+            // -1 a -30 días: prioridad 2 (vencidos recientemente)
+            // > 5 días: prioridad 3 (activos a futuro)
+            // < -30 días: prioridad 4 (vencidos hace mucho tiempo)
+            if ($days >= 0 && $days <= 5) {
+                return [1, $days];
+            }
+            if ($days < 0 && $days >= -30) {
+                return [2, abs($days)];
+            }
+            if ($days > 5) {
+                return [3, $days];
+            }
+            return [4, abs($days)];
+        })->values();
         $total  = $sorted->count();
         $items  = $sorted->slice(($page - 1) * $perPage, $perPage)->values();
 
