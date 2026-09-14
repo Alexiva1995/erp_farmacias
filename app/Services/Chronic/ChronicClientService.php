@@ -237,6 +237,7 @@ class ChronicClientService
                 'client_name'                  => $first['client_name'],
                 'identification'               => $first['identification'],
                 'phone'                        => $first['phone'],
+                'clean_phone'                  => $first['clean_phone'],
                 'email'                        => $first['email'],
                 'products'                     => $products,
                 'product_ids'                  => array_column($products, 'product_id'),

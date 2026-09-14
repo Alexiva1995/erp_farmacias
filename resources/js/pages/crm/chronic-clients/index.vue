@@ -291,7 +291,18 @@ const markContacted = async (item) => {
 // Abrir WhatsApp codificando el mensaje en el cliente con encodeURIComponent
 const openWhatsApp = (item) => {
   if (!item.phone && !item.whatsapp_url) return
-  const phone = item.clean_phone || item.phone?.replace(/[^0-9]/g, '')
+  let phone = item.clean_phone || ''
+  if (!phone && item.phone) {
+    let raw = String(item.phone).replace(/[^0-9]/g, '')
+    if (raw.startsWith('0') && raw.length === 11) {
+      phone = '58' + raw.slice(1)
+    } else if (raw.length === 10) {
+      phone = '58' + raw
+    } else {
+      phone = raw
+    }
+  }
+
   const message = item.whatsapp_message || ''
   const encoded = encodeURIComponent(message)
   const url = `https://api.whatsapp.com/send?phone=${phone}&text=${encoded}`
