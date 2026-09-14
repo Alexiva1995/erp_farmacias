@@ -121,4 +121,18 @@ class ChronicClientController extends Controller
 
         return ApiResponse::success($data, 'Matriz de cuotas de fidelización obtenida exitosamente', 200);
     }
+
+    /**
+     * Remover/resetear teléfono de un cliente cuando no posee WhatsApp o es inválido.
+     */
+    public function removePhone(int $clientId): JsonResponse
+    {
+        try {
+            $result = $this->chronicService->removeInvalidPhone($clientId);
+
+            return ApiResponse::success($result, 'Teléfono removido exitosamente', 200);
+        } catch (\Throwable $e) {
+            return ApiResponse::error($e->getMessage(), 400);
+        }
+    }
 }

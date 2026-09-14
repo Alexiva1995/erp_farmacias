@@ -176,6 +176,31 @@ const openWhatsApp = async (item) => {
   window.open(url, '_blank', 'noopener,noreferrer')
 }
 
+// Estado de carga para remoción de teléfono sin WhatsApp
+const removingPhoneClientId = ref(null)
+
+// Remover teléfono si no tiene WhatsApp o es erróneo
+const markInvalidPhone = async (item) => {
+  removingPhoneClientId.value = item.client_id
+  try {
+    await $api(`/crm/chronic-clients/remove-phone/${item.client_id}`, {
+      method: 'DELETE',
+    })
+
+    toast.success(`Se removió el teléfono de "${item.client_name}".`)
+
+    // Recargar lista y estadísticas
+    await fetchChronicClients()
+    fetchStats()
+  } catch (e) {
+    console.error('Error markInvalidPhone:', e)
+    const errorMsg = e?.response?._data?.message || e?.message || 'No se pudo remover el teléfono.'
+    toast.error(errorMsg)
+  } finally {
+    removingPhoneClientId.value = null
+  }
+}
+
 // Obtener badge visual según tipo de consumo
 const getConsumptionBadge = (type) => {
   switch (type) {
@@ -258,25 +283,6 @@ onMounted(() => {
 </script>
 <template>
   <div class="chronic-clients-page">
-    <!-- Encabezado de Página -->
-    <VCard variant="flat" class="pa-4 border rounded-lg mb-4">
-      <div class="d-flex align-center justify-space-between flex-wrap gap-4">
-        <div class="d-flex align-center">
-          <VAvatar color="primary" variant="tonal" size="48" class="me-3">
-            <VIcon icon="tabler-heart-rate-monitor" size="28" />
-          </VAvatar>
-          <div>
-            <h1 class="text-h5 font-weight-black text-high-emphasis leading-tight mb-0">
-              Seguimiento de Pacientes y Frecuencia de Recompra
-            </h1>
-            <p class="text-caption text-medium-emphasis mb-0">
-              Gestión de consumos crónicos, ciclos de tratamiento único y recordatorios automatizados por WhatsApp.
-            </p>
-          </div>
-        </div>
-      </div>
-    </VCard>
-
     <!-- KPI Cards Superiores -->
     <VRow dense class="mb-4">
       <VCol cols="12" sm="6" md="3">
@@ -368,12 +374,12 @@ onMounted(() => {
         @update:search="searchQuery = $event"
         @clear="resetFilters"
       >
-        <template #actions-extra>
-          <!-- Contador Diario de Fidelización (Cuota de 5 pacientes) -->
+        <template #prepend-actions>
+          <!-- Contador Diario de Fidelización (Cuota de 5 pacientes) antes de los botones de filtros -->
           <VChip
             :color="stats.today_contacted >= stats.daily_quota ? 'success' : 'primary'"
             variant="flat"
-            class="font-weight-black px-3"
+            class="font-weight-black px-3 me-1"
             size="default"
           >
             <VIcon
@@ -447,9 +453,10 @@ onMounted(() => {
           v-for="item in chronicClients"
           :key="item.client_id"
           :client="item"
-          :loading="contactingClientId === item.client_id || verifyingWhatsAppClientId === item.client_id"
+          :loading="contactingClientId === item.client_id || verifyingWhatsAppClientId === item.client_id || removingPhoneClientId === item.client_id"
           @mark-contacted="markContacted"
           @open-whatsapp="openWhatsApp"
+          @remove-phone="markInvalidPhone"
         />
 
         <div class="mt-4">
@@ -646,6 +653,20 @@ onMounted(() => {
               @click="markContacted(item)"
             >
               <VIcon icon="tabler-check" size="20" color="success" />
+            </VBtn>
+
+            <VBtn
+              v-if="item.phone"
+              color="error"
+              variant="tonal"
+              size="small"
+              icon
+              class="rounded-lg"
+              :loading="removingPhoneClientId === item.client_id"
+              title="Número no posee WhatsApp (Remover de la lista)"
+              @click="markInvalidPhone(item)"
+            >
+              <VIcon icon="tabler-x" size="20" />
             </VBtn>
           </div>
         </template>

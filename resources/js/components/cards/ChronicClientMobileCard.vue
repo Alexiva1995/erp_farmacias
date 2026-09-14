@@ -6,7 +6,7 @@ const props = defineProps({
   loading: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['mark-contacted', 'open-whatsapp'])
+const emit = defineEmits(['mark-contacted', 'open-whatsapp', 'remove-phone'])
 
 const getStatusColor = (client) => {
   if (client.is_urgent) return 'warning'
@@ -124,6 +124,19 @@ const getStatusIcon = (client) => {
           @click="emit('mark-contacted', client)"
         >
           <VIcon icon="tabler-check" size="20" color="success" />
+        </VBtn>
+
+        <VBtn
+          v-if="client.phone"
+          color="error"
+          variant="tonal"
+          size="small"
+          icon
+          class="rounded-lg"
+          title="Remover teléfono sin WhatsApp"
+          @click="emit('remove-phone', client)"
+        >
+          <VIcon icon="tabler-x" size="20" />
         </VBtn>
       </div>
     </div>

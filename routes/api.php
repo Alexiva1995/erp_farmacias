@@ -568,6 +568,7 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
             Route::post("/mark-contacted", [ChronicClientController::class, "markContacted"]);
             Route::get("/check-availability/{clientId}", [ChronicClientController::class, "checkAvailability"]);
             Route::get("/daily-quotas-matrix", [ChronicClientController::class, "dailyQuotasMatrix"]);
+            Route::delete("/remove-phone/{clientId}", [ChronicClientController::class, "removePhone"]);
         });
 
         Route::prefix("lottery")->group(function () {

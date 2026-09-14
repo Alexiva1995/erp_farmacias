@@ -236,18 +236,21 @@ class ChronicClientService
             ];
         }
 
-        // Agrupar por cliente para consolidar tratamientos y mensajes
+        // Agrupar por cliente para consolidar tratamientos y mensajes (sin duplicar el mismo producto por cliente)
         $groupedClients = collect($validItems)->groupBy('client_id')->map(function ($clientProducts) {
-            $first = $clientProducts->first();
-            $products = $clientProducts->values()->all();
+            // Deduplicar productos para que el mismo producto solo aparezca una sola vez (la compra más reciente)
+            $uniqueProducts = $clientProducts->unique('product_id')->values();
 
-            $isUrgent  = $clientProducts->contains('is_urgent', true);
-            $isExpired = !$isUrgent && $clientProducts->contains('is_expired', true);
-            $isActive  = !$isUrgent && !$isExpired && $clientProducts->contains('is_active', true);
+            $first = $uniqueProducts->first();
+            $products = $uniqueProducts->all();
+
+            $isUrgent  = $uniqueProducts->contains('is_urgent', true);
+            $isExpired = !$isUrgent && $uniqueProducts->contains('is_expired', true);
+            $isActive  = !$isUrgent && !$isExpired && $uniqueProducts->contains('is_active', true);
 
             // Determinar días más urgentes del conjunto
-            $minDaysUntilEnd = $clientProducts->min('days_until_end');
-            $primaryProduct  = $clientProducts->sortBy('days_until_end')->first();
+            $minDaysUntilEnd = $uniqueProducts->min('days_until_end');
+            $primaryProduct  = $uniqueProducts->sortBy('days_until_end')->first();
 
             // Construir mensaje consolidado
             $whatsappMessage = $this->buildWhatsAppMessage($first['client_name'], $products);
@@ -323,8 +326,20 @@ class ChronicClientService
      */
     protected function buildWhatsAppMessage(string $fullName, array $products): string
     {
+        $hasChronic = collect($products)->contains('consumption_type', 'chronic');
+        $hasSingle  = collect($products)->contains('consumption_type', 'single_treatment');
+        $hasOnlySingle = $hasSingle && !$hasChronic;
+
+        $intro = $hasOnlySingle
+            ? "Nos comunicamos para hacerte seguimiento, saber cómo te fue con tu tratamiento y cómo te has sentido:"
+            : "Nos comunicamos para hacerle seguimiento y recordarte la renovación de tus tratamientos y medicamentos:";
+
+        $closingQuestion = $hasOnlySingle
+            ? "¿Cómo te has sentido con el tratamiento? Si necesitas reponer medicamentos o consultar a nuestro equipo, estamos atentos para ayudarte."
+            : "¿Deseas que te preparemos el pedido o te lo reservemos en caja?";
+
         $message = "¡Hola, {$fullName}! 🩺 Te saludamos de Farmacia Barrio Sucre ❤️\n\n" .
-            "Nos comunicamos para hacerle seguimiento y recordarte la renovación de tus tratamientos y medicamentos:\n\n";
+            "{$intro}\n\n";
 
         foreach ($products as $p) {
             $currentPriceUsd = (float) $p['price_usd'];
@@ -332,18 +347,21 @@ class ChronicClientService
 
             $priceFormattedUsd = '$' . number_format($currentPriceUsd, 2, ',', '.');
             $copFormatted      = $currentPriceCop > 0 ? ' / ' . number_format($currentPriceCop, 0, ',', '.') . ' COP' : '';
-            $labName           = $p['laboratory_name'] ?: 'Sin Laboratorio';
+            $labName           = !empty($p['laboratory_name']) && $p['laboratory_name'] !== 'Sin Laboratorio' ? $p['laboratory_name'] : '';
+            $labSuffix         = $labName !== '' ? " - {$labName}" : '';
             $prodName          = trim((string) $p['product_name']);
 
             if ($p['consumption_type'] === 'single_treatment') {
-                $message .= "{$prodName} (Tratamiento)\n" .
-                    "• Laboratorio: {$labName}\n" .
+                $message .= "{$prodName}{$labSuffix} (Tratamiento)\n" .
+                    "• Laboratorio: " . ($labName ?: 'Sin Laboratorio') . "\n" .
                     "• Precio actual: {$priceFormattedUsd}{$copFormatted}\n\n";
             } elseif ($p['consumption_type'] === 'sporadic') {
-                $message .= "{$prodName} (Botiquín)\n" .
+                $message .= "{$prodName}{$labSuffix} (Botiquín)\n" .
+                    ($labName ? "• Laboratorio: {$labName}\n" : "") .
                     "• Precio actual: {$priceFormattedUsd}{$copFormatted}\n\n";
             } else {
-                $message .= "{$prodName} (Uso continuo)\n" .
+                $message .= "{$prodName}{$labSuffix} (Uso continuo)\n" .
+                    ($labName ? "• Laboratorio: {$labName}\n" : "") .
                     "• Estimado renovación: {$p['treatment_end_date_formatted']}\n" .
                     "• Precio actual: {$priceFormattedUsd}{$copFormatted}\n\n";
             }
@@ -351,7 +369,7 @@ class ChronicClientService
 
         $message .= "🛵 ¡Consulta las condiciones para que tu envío salga con DELIVERY GRATIS hasta tu casa! 📦\n\n" .
             "Tu salud y economía en un solo corazón ❤️\n\n" .
-            "¿Deseas que te preparemos el pedido o te lo reservemos en caja?";
+            "{$closingQuestion}";
 
         return $message;
     }
@@ -956,6 +974,29 @@ class ChronicClientService
                 'daily_average'      => $dailyAverage,
                 'top_employee'       => $topEmployee,
             ],
+        ];
+    }
+
+    /**
+     * Limpiar el teléfono de un cliente cuando no posee cuenta en WhatsApp o es erróneo.
+     */
+    public function removeInvalidPhone(int $clientId): array
+    {
+        $client = \App\Models\Client::find($clientId);
+
+        if (!$client) {
+            throw new \Exception("Cliente no encontrado.");
+        }
+
+        $oldPhone = $client->phone;
+        $client->phone = null;
+        $client->save();
+
+        return [
+            'client_id'   => $clientId,
+            'client_name' => trim("{$client->name} {$client->last_name}"),
+            'old_phone'   => $oldPhone,
+            'cleaned_at'  => Carbon::now()->toDateTimeString(),
         ];
     }
 }
