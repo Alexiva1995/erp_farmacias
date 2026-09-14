@@ -8,6 +8,16 @@ const props = defineProps({
 
 const emit = defineEmits(['mark-contacted', 'open-whatsapp', 'remove-phone'])
 
+const toTitleCase = (str) => {
+  if (!str) return ''
+  return str
+    .toLowerCase()
+    .split(' ')
+    .filter(Boolean)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
+
 const getStatusColor = (client) => {
   if (client.is_urgent) return 'warning'
   if (client.is_active) return 'success'
@@ -15,7 +25,7 @@ const getStatusColor = (client) => {
 }
 
 const getStatusLabel = (client) => {
-  if (client.is_urgent) return 'Alerta (≤ 5 días)'
+  if (client.is_urgent) return 'Alerta (≤ 5 d)'
   if (client.is_active) return 'Activo'
   return 'Agotado'
 }
@@ -30,8 +40,8 @@ const getStatusIcon = (client) => {
 <template>
   <VCard variant="flat" border class="pa-4 rounded-xl chronic-mobile-card">
     <div class="d-flex align-center justify-space-between mb-2">
-      <div class="font-weight-bold text-high-emphasis">
-        {{ client.client_name }}
+      <div class="font-weight-semibold text-high-emphasis">
+        {{ toTitleCase(client.client_name) }}
       </div>
       <VChip
         size="x-small"
@@ -53,24 +63,24 @@ const getStatusIcon = (client) => {
 
     <!-- Productos / Medicamentos -->
     <div v-if="client.products && client.products.length > 1" class="mb-3 d-flex flex-column gap-2">
-      <div class="text-caption text-disabled font-weight-bold">Medicamentos ({{ client.products.length }})</div>
+      <div class="text-caption text-disabled font-weight-medium">Medicamentos ({{ client.products.length }})</div>
       <div
         v-for="(p, idx) in client.products"
         :key="p.product_id"
         class="pa-2 rounded-lg bg-light"
       >
-        <div class="font-weight-semibold text-primary text-sm">{{ p.product_name }}</div>
+        <div class="font-weight-semibold text-high-emphasis text-sm">{{ p.product_name }}</div>
         <div class="d-flex justify-space-between text-caption text-medium-emphasis mt-1">
-          <span>{{ p.purchased_quantity }} un. ({{ p.total_treatment_days }} días)</span>
-          <span class="font-weight-bold text-success">${{ Number(p.price_usd || 0).toFixed(2) }}</span>
+          <span>{{ p.purchased_quantity }} un. ({{ p.total_treatment_days }} d)</span>
+          <span class="font-weight-medium text-high-emphasis">${{ Number(p.price_usd || 0).toFixed(2) }}</span>
         </div>
       </div>
     </div>
     <div v-else class="mb-2">
       <div class="text-caption text-disabled">Medicamento</div>
-      <div class="font-weight-semibold text-primary">{{ client.product_name }}</div>
+      <div class="font-weight-semibold text-high-emphasis">{{ client.product_name }}</div>
       <div class="text-caption text-medium-emphasis">
-        {{ client.purchased_quantity }} un. ({{ client.total_treatment_days }} días de cobertura)
+        {{ client.purchased_quantity }} un. ({{ client.total_treatment_days }} d de cobertura)
       </div>
     </div>
 
@@ -81,15 +91,15 @@ const getStatusIcon = (client) => {
       </div>
       <div class="text-end">
         <div class="text-disabled">Días restantes</div>
-        <div class="font-weight-bold" :class="client.days_until_end <= 5 ? 'text-warning' : 'text-high-emphasis'">
-          {{ client.days_until_end }} días (Fin: {{ client.treatment_end_date_formatted }})
+        <div class="font-weight-semibold" :class="client.days_until_end <= 5 ? 'text-warning' : 'text-medium-emphasis'">
+          {{ client.days_until_end }} d (Fin: {{ client.treatment_end_date_formatted }})
         </div>
       </div>
     </div>
 
     <div class="d-flex align-center justify-space-between pt-2 border-t">
       <div>
-        <div class="font-weight-bold text-success">
+        <div class="font-weight-medium text-high-emphasis">
           ${{ Number(client.price_usd || 0).toFixed(2) }}
         </div>
         <div class="text-caption text-medium-emphasis">
@@ -98,46 +108,37 @@ const getStatusIcon = (client) => {
         </div>
       </div>
 
-      <div class="d-flex align-center gap-2">
-        <VBtn
+      <div class="d-flex align-center gap-1">
+        <IconBtn
           v-if="client.whatsapp_url || client.phone"
           color="success"
-          variant="flat"
           size="small"
-          icon
-          class="rounded-lg"
-          title="WhatsApp"
           @click="emit('open-whatsapp', client)"
         >
-          <VIcon icon="tabler-brand-whatsapp" size="20" />
-        </VBtn>
-        <span v-else class="text-caption text-disabled">Sin teléfono</span>
+          <VIcon icon="tabler-brand-whatsapp" size="18" />
+          <VTooltip activator="parent">Contactar por WhatsApp</VTooltip>
+        </IconBtn>
+        <span v-else class="text-caption text-disabled">—</span>
 
-        <VBtn
+        <IconBtn
           color="primary"
-          variant="tonal"
           size="small"
-          icon
-          class="rounded-lg"
           :loading="loading"
-          title="Marcar como Contactado"
           @click="emit('mark-contacted', client)"
         >
-          <VIcon icon="tabler-check" size="20" color="success" />
-        </VBtn>
+          <VIcon icon="tabler-check" size="18" />
+          <VTooltip activator="parent">Marcar como Contactado</VTooltip>
+        </IconBtn>
 
-        <VBtn
+        <IconBtn
           v-if="client.phone"
           color="error"
-          variant="tonal"
           size="small"
-          icon
-          class="rounded-lg"
-          title="Remover teléfono sin WhatsApp"
           @click="emit('remove-phone', client)"
         >
-          <VIcon icon="tabler-x" size="20" />
-        </VBtn>
+          <VIcon icon="tabler-x" size="18" />
+          <VTooltip activator="parent">Remover teléfono sin WhatsApp</VTooltip>
+        </IconBtn>
       </div>
     </div>
   </VCard>

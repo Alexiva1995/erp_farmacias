@@ -201,14 +201,25 @@ const markInvalidPhone = async (item) => {
   }
 }
 
+// Formatear texto a Title Case
+const toTitleCase = (str) => {
+  if (!str) return ''
+  return str
+    .toLowerCase()
+    .split(' ')
+    .filter(Boolean)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
+
 // Obtener badge visual según tipo de consumo
 const getConsumptionBadge = (type) => {
   switch (type) {
-    case 'chronic':          return { color: 'primary',   label: 'Crónico (Recurrente)', icon: 'tabler-repeat' }
-    case 'single_treatment': return { color: 'warning',   label: 'Tratamiento Único',    icon: 'tabler-calendar-event' }
-    case 'no_alert':         return { color: 'secondary', label: 'Sin Alerta / Insumos', icon: 'tabler-bell-off' }
-    case 'sporadic':         return { color: 'secondary', label: 'Esporádico',            icon: 'tabler-shopping-bag' }
-    default:                 return { color: 'error',     label: 'Sin Clasificar',       icon: 'tabler-help' }
+    case 'chronic':          return { color: 'primary',   label: 'Uso Continuo', icon: 'tabler-repeat' }
+    case 'single_treatment': return { color: 'info',      label: 'Tratamiento',  icon: 'tabler-calendar-event' }
+    case 'no_alert':         return { color: 'secondary', label: 'Sin Alerta',   icon: 'tabler-bell-off' }
+    case 'sporadic':         return { color: 'secondary', label: 'Botiquín',     icon: 'tabler-first-aid-kit' }
+    default:                 return { color: 'secondary', label: 'Sin Clasificar', icon: 'tabler-help' }
   }
 }
 
@@ -499,40 +510,40 @@ onMounted(() => {
         <!-- Columna Paciente -->
         <template #item.client_name="{ item }">
           <div class="py-2">
-            <div class="font-weight-bold text-high-emphasis">
-              {{ item.client_name }}
-            </div>
+            <span class="font-weight-semibold text-high-emphasis">
+              {{ toTitleCase(item.client_name) }}
+            </span>
           </div>
         </template>
 
         <!-- Columna Medicamento -->
         <template #item.product_name="{ item }">
           <div class="py-2 min-width-0">
-            <div v-if="item.products && item.products.length > 1" class="d-flex flex-column gap-1">
+            <div v-if="item.products && item.products.length > 1" class="d-flex flex-column gap-1.5">
               <div
                 v-for="(prod, pIdx) in item.products"
                 :key="prod.product_id"
                 class="pb-1"
                 :class="{ 'border-b': pIdx < item.products.length - 1 }"
               >
-                <span class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate d-block" style="max-inline-size: 320px;">
-                  {{ prod.product_name?.toUpperCase() || '—' }}
+                <span class="text-sm font-weight-semibold text-high-emphasis text-truncate d-block" style="max-inline-size: 320px;">
+                  {{ prod.product_name || '—' }}
                 </span>
-                <div class="d-flex align-center flex-wrap gap-1 text-caption mt-0-5">
-                  <span class="text-disabled">{{ prod.active_ingredient || 'N/A' }}</span>
-                  <span class="text-disabled mx-1">|</span>
-                  <span class="text-primary font-weight-bold text-uppercase">{{ prod.laboratory_name }}</span>
+                <div class="d-flex align-center flex-wrap gap-1 text-caption text-medium-emphasis mt-0.5">
+                  <span v-if="prod.active_ingredient">{{ prod.active_ingredient }}</span>
+                  <span v-if="prod.active_ingredient && prod.laboratory_name" class="text-disabled mx-0.5">•</span>
+                  <span class="text-secondary font-weight-medium">{{ prod.laboratory_name }}</span>
                 </div>
               </div>
             </div>
             <div v-else>
-              <span class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate d-block" style="max-inline-size: 320px;">
-                {{ item.product_name?.toUpperCase() || '—' }}
+              <span class="text-sm font-weight-semibold text-high-emphasis text-truncate d-block" style="max-inline-size: 320px;">
+                {{ item.product_name || '—' }}
               </span>
-              <div class="d-flex align-center flex-wrap gap-1 text-caption mt-0-5">
-                <span class="text-disabled">{{ item.active_ingredient || 'N/A' }}</span>
-                <span class="text-disabled mx-1">|</span>
-                <span class="text-primary font-weight-bold text-uppercase">{{ item.laboratory_name }}</span>
+              <div class="d-flex align-center flex-wrap gap-1 text-caption text-medium-emphasis mt-0.5">
+                <span v-if="item.active_ingredient">{{ item.active_ingredient }}</span>
+                <span v-if="item.active_ingredient && item.laboratory_name" class="text-disabled mx-0.5">•</span>
+                <span class="text-secondary font-weight-medium">{{ item.laboratory_name }}</span>
               </div>
             </div>
           </div>
@@ -555,28 +566,31 @@ onMounted(() => {
           </div>
           <VChip
             v-else
-            size="small"
+            size="x-small"
             :color="getConsumptionBadge(item.consumption_type).color"
             variant="tonal"
             class="font-weight-medium"
           >
-            <VIcon :icon="getConsumptionBadge(item.consumption_type).icon" start size="14" />
+            <VIcon :icon="getConsumptionBadge(item.consumption_type).icon" start size="12" />
             {{ getConsumptionBadge(item.consumption_type).label }}
           </VChip>
         </template>
 
         <!-- Columna Última Compra -->
         <template #item.last_order_date_formatted="{ item }">
-          <div class="py-2">
-            <div class="font-weight-medium">{{ item.last_order_date_formatted }}</div>
+          <div class="py-2 text-caption font-weight-medium text-medium-emphasis">
+            {{ item.last_order_date_formatted }}
           </div>
         </template>
 
         <!-- Columna Duración -->
         <template #item.treatment_end_date_formatted="{ item }">
           <div class="py-2">
-            <span class="font-weight-bold" :class="item.days_until_end <= 5 && item.days_until_end >= -30 ? 'text-warning' : (item.days_until_end < -30 ? 'text-error' : 'text-success')">
-              {{ item.days_until_end }} días
+            <span
+              class="text-sm font-weight-semibold"
+              :class="item.days_until_end <= 5 && item.days_until_end >= -30 ? 'text-warning' : (item.days_until_end < -30 ? 'text-error' : 'text-medium-emphasis')"
+            >
+              {{ item.days_until_end }} d
             </span>
           </div>
         </template>
@@ -585,11 +599,11 @@ onMounted(() => {
         <template #item.pricing="{ item }">
           <div class="py-2">
             <div v-if="item.products && item.products.length > 1" class="d-flex flex-column gap-1">
-              <div v-for="prod in item.products" :key="prod.product_id" class="font-weight-bold text-success text-sm">
+              <div v-for="prod in item.products" :key="prod.product_id" class="font-weight-medium text-high-emphasis text-sm">
                 ${{ Number(prod.price_usd || 0).toFixed(2) }}
               </div>
             </div>
-            <div v-else class="font-weight-bold text-success">
+            <div v-else class="font-weight-medium text-high-emphasis text-sm">
               ${{ Number(item.price_usd || 0).toFixed(2) }}
             </div>
           </div>
@@ -599,75 +613,60 @@ onMounted(() => {
         <template #item.stock="{ item }">
           <div class="py-2 text-center">
             <div v-if="item.products && item.products.length > 1" class="d-flex flex-column gap-1 align-center">
-              <VChip
+              <span
                 v-for="prod in item.products"
                 :key="prod.product_id"
-                size="x-small"
-                :color="Number(prod.stock || 0) > 0 ? 'success' : 'error'"
-                variant="tonal"
-                class="font-weight-black"
+                class="text-sm font-weight-medium"
+                :class="Number(prod.stock || 0) > 0 ? 'text-medium-emphasis' : 'text-error'"
               >
-                <VIcon :icon="Number(prod.stock || 0) > 0 ? 'tabler-box' : 'tabler-box-off'" start size="12" />
-                {{ Math.round(Number(prod.stock || 0)) }} un.
-              </VChip>
+                {{ Math.round(Number(prod.stock || 0)) }}
+              </span>
             </div>
-            <VChip
+            <span
               v-else
-              size="small"
-              :color="Number(item.stock || 0) > 0 ? 'success' : 'error'"
-              variant="tonal"
-              class="font-weight-black"
+              class="text-sm font-weight-medium"
+              :class="Number(item.stock || 0) > 0 ? 'text-medium-emphasis' : 'text-error'"
             >
-              <VIcon :icon="Number(item.stock || 0) > 0 ? 'tabler-box' : 'tabler-box-off'" start size="14" />
-              {{ Math.round(Number(item.stock || 0)) }} un.
-            </VChip>
+              {{ Math.round(Number(item.stock || 0)) }}
+            </span>
           </div>
         </template>
 
         <!-- Columna Acciones -->
         <template #item.actions="{ item }">
-          <div class="d-flex align-center justify-center gap-2">
-            <VBtn
+          <div class="d-flex align-center justify-center gap-1">
+            <IconBtn
               v-if="item.whatsapp_url || item.phone"
               color="success"
-              variant="flat"
               size="small"
-              icon
-              class="rounded-lg"
               :loading="verifyingWhatsAppClientId === item.client_id"
-              title="Contactar por WhatsApp"
               @click="openWhatsApp(item)"
             >
-              <VIcon icon="tabler-brand-whatsapp" size="20" />
-            </VBtn>
-            <span v-else class="text-caption text-disabled">Sin teléfono</span>
+              <VIcon icon="tabler-brand-whatsapp" size="18" />
+              <VTooltip activator="parent">Contactar por WhatsApp</VTooltip>
+            </IconBtn>
+            <span v-else class="text-caption text-disabled">—</span>
 
-            <VBtn
+            <IconBtn
               color="primary"
-              variant="tonal"
               size="small"
-              icon
-              class="rounded-lg"
               :loading="contactingClientId === item.client_id"
-              title="Marcar como Contactado / Enviado"
               @click="markContacted(item)"
             >
-              <VIcon icon="tabler-check" size="20" color="success" />
-            </VBtn>
+              <VIcon icon="tabler-check" size="18" />
+              <VTooltip activator="parent">Marcar como Contactado</VTooltip>
+            </IconBtn>
 
-            <VBtn
+            <IconBtn
               v-if="item.phone"
               color="error"
-              variant="tonal"
               size="small"
-              icon
-              class="rounded-lg"
               :loading="removingPhoneClientId === item.client_id"
-              title="Número no posee WhatsApp (Remover de la lista)"
               @click="markInvalidPhone(item)"
             >
-              <VIcon icon="tabler-x" size="20" />
-            </VBtn>
+              <VIcon icon="tabler-x" size="18" />
+              <VTooltip activator="parent">Número no posee WhatsApp (Remover)</VTooltip>
+            </IconBtn>
           </div>
         </template>
 

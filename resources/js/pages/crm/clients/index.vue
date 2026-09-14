@@ -610,23 +610,20 @@ onMounted(async () => {
       @clear-error-form="limpiarErroresFormulario"
       @save="enviar"
     />
-    <VCard title="Clientes">
-      <VDivider />
-      <ClientTable
-        :clients="statuModule.itemsClientes"
-        :total-clients="statuModule.totalClientes"
-        :loading="loading"
-        :items-per-page="itemsPerPage"
-        :page="page"
-        :sort-by="sortBy"
-        :order-by="orderBy"
-        @edit="mostarModoEdit"
-        @delete="confirmarEliminarCliente"
-        @view-stats="openStatsModal"
-        @update:options="updateTableOptions"
-        @verify-cne="handleIndividualCneVerification"
-      />
-    </VCard>
+
+    <ClientTable
+      :clients="statuModule.itemsClientes"
+      :total-clients="statuModule.totalClientes"
+      :loading="loading"
+      :items-per-page="itemsPerPage"
+      :page="page"
+      :sort-by="sortBy"
+      :order-by="orderBy"
+      @edit="mostarModoEdit"
+      @delete="confirmarEliminarCliente"
+      @view-stats="openStatsModal"
+      @update:options="updateTableOptions"
+    />
 
     <ClientStatsModal
       v-model="isStatsModalVisible"
