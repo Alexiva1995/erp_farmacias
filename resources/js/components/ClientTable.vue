@@ -23,6 +23,21 @@ const sortByModel = computed(() => {
 
 const emit = defineEmits(["edit", 'delete', 'update:options', 'view-stats', 'verify-cne'])
 
+const toTitleCase = (str) => {
+  if (!str) return '';
+  return str
+    .toLowerCase()
+    .split(' ')
+    .filter(Boolean)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
+const formatFullName = (name, lastName) => {
+  const full = `${name || ''} ${lastName || ''}`.trim();
+  return toTitleCase(full);
+};
+
 const clientTypeColor = (type) => {
   const map = {
     'VIP': 'warning',
@@ -36,17 +51,18 @@ const clientTypeColor = (type) => {
 }
 
 const headers = [
-  { title: 'ID', key: 'id', sortable: true },
-  { title: 'Nombre', key: 'name', value: item => `${item.name} ${(item.last_name == null) ? "" : item.last_name}`.toUpperCase(), sortable: true },
-  { title: 'Identidad', key: 'identification', value: item => `${item.identification_type}${item.identification}`, sortable: true },
-  { title: 'Teléfono', key: 'phone', sortable: true },
-  { title: 'Días', key: 'days_since_last_purchase', sortable: true },
-  { title: 'Tipo', key: 'client_type', sortable: true },
-  { title: 'Dirección', key: 'address', sortable: true },
+  { title: 'ID', key: 'id', sortable: true, align: 'center' },
+  { title: 'Nombre', key: 'name', value: item => formatFullName(item.name, item.last_name), sortable: true, align: 'start' },
+  { title: 'Identidad', key: 'identification', value: item => `${item.identification_type}${item.identification}`, sortable: true, align: 'start' },
+  { title: 'Teléfono', key: 'phone', sortable: true, align: 'start' },
+  { title: 'Días', key: 'days_since_last_purchase', sortable: true, align: 'center' },
+  { title: 'Tipo', key: 'client_type', sortable: true, align: 'center' },
+  { title: 'Dirección', key: 'address', sortable: true, align: 'start' },
   { 
     title: 'Registro', 
     key: 'created_at', 
-    sortable: true, 
+    sortable: true,
+    align: 'center',
   },
   { title: 'Acciones', key: 'acciones', sortable: false, align: 'center' },
 ];
@@ -83,7 +99,25 @@ const handleMobilePageChange = (newPage) => {
             />
           </template>
           <template #item.id="{ item }">
-            <span class="font-weight-black text-primary">{{ item.id }}</span>
+            <span class="font-weight-bold text-primary">{{ item.id }}</span>
+          </template>
+
+          <template #item.name="{ item }">
+            <span class="font-weight-medium text-high-emphasis">
+              {{ formatFullName(item.name, item.last_name) }}
+            </span>
+          </template>
+
+          <template #item.identification="{ item }">
+            <span class="font-weight-semibold text-high-emphasis">
+              {{ item.identification_type }}{{ item.identification }}
+            </span>
+          </template>
+
+          <template #item.phone="{ item }">
+            <span class="text-sm font-weight-medium text-medium-emphasis">
+              {{ item.phone || '—' }}
+            </span>
           </template>
 
           <template #item.client_type="{ item }">
@@ -91,8 +125,8 @@ const handleMobilePageChange = (newPage) => {
               v-if="item.client_type"
               :color="clientTypeColor(item.client_type)"
               size="x-small"
-              variant="flat"
-              class="font-weight-black"
+              variant="tonal"
+              class="font-weight-bold"
             >
               {{ item.client_type }}
             </VChip>
@@ -100,26 +134,32 @@ const handleMobilePageChange = (newPage) => {
           </template>
 
           <template #item.days_since_last_purchase="{ value }">
-            <div v-if="value !== null && value !== undefined" class="d-flex align-center">
+            <div v-if="value !== null && value !== undefined" class="d-flex align-center justify-center">
               <VChip
                 :color="value > 30 ? 'error' : (value > 15 ? 'warning' : 'success')"
                 size="x-small"
                 variant="tonal"
-                class="font-weight-black"
+                class="font-weight-bold"
                 style="min-width: 50px; justify-content: center;"
               >
                 {{ value }} d
               </VChip>
             </div>
-            <span v-else class="text-disabled text-xs uppercase font-weight-bold">Nunca</span>
+            <span v-else class="text-disabled text-xs font-weight-medium">Nunca</span>
+          </template>
+
+          <template #item.address="{ item }">
+            <span class="text-xs text-medium-emphasis">
+              {{ item.address || '—' }}
+            </span>
           </template>
 
           <template #item.created_at="{ item }">
-            <div class="d-flex flex-column py-1">
+            <div class="d-flex flex-column align-center py-1">
               <span class="text-xs font-weight-bold text-high-emphasis">
                 {{ day(item.created_at.replace('Z', '')).format('DD/MM/YYYY') }}
               </span>
-              <span class="text-super-xs font-weight-medium text-disabled text-uppercase" :title="item.user?.username ? `Registrado por: ${item.user.username}` : 'Sin usuario asignado'">
+              <span class="text-super-xs font-weight-medium text-disabled" :title="item.user?.username ? `Registrado por: ${item.user.username}` : 'Sin usuario asignado'">
                 <VIcon icon="tabler-user" size="11" class="me-0.5" />
                 {{ item.user?.username || 'Sistema' }}
               </span>
@@ -128,18 +168,21 @@ const handleMobilePageChange = (newPage) => {
 
           <template #item.acciones="{ item }">
             <div class="d-flex justify-center gap-1">
-              <IconBtn @click="emit('view-stats', item.id)" color="info" variant="tonal" size="small">
+              <IconBtn @click="emit('view-stats', item.id)" color="primary" size="small">
                 <VIcon icon="tabler-eye" size="18" />
+                <VTooltip activator="parent">Ver Estadísticas</VTooltip>
               </IconBtn>
-              <IconBtn @click="emit('verify-cne', item)" color="success" variant="tonal" size="small">
+              <IconBtn @click="emit('verify-cne', item)" color="info" size="small">
                 <VIcon icon="tabler-user-search" size="18" />
-                <VTooltip activator="parent" location="top">Verificar Identidad CNE</VTooltip>
+                <VTooltip activator="parent">Verificar Identidad CNE</VTooltip>
               </IconBtn>
-              <IconBtn @click="emit('edit', item.id)" color="warning" variant="tonal" size="small">
+              <IconBtn @click="emit('edit', item.id)" color="warning" size="small">
                 <VIcon icon="tabler-edit" size="18" />
+                <VTooltip activator="parent">Editar</VTooltip>
               </IconBtn>
-              <IconBtn @click="emit('delete', item.id)" color="error" variant="tonal" size="small">
+              <IconBtn @click="emit('delete', item.id)" color="error" size="small">
                 <VIcon icon="tabler-trash" size="18" />
+                <VTooltip activator="parent">Eliminar</VTooltip>
               </IconBtn>
             </div>
           </template>
@@ -169,47 +212,43 @@ const handleMobilePageChange = (newPage) => {
           <div class="pa-4">
             <div class="d-flex justify-space-between align-start mb-3">
               <div class="d-flex flex-column min-width-0">
-                <span class="text-primary font-weight-black text-xs uppercase mb-1">Cliente</span>
-                <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight truncate">
-                  {{ item.name }} {{ item.last_name || '' }}
+                <span class="text-primary font-weight-bold text-xs uppercase mb-1">Cliente</span>
+                <h3 class="text-sm font-weight-bold text-high-emphasis leading-tight truncate">
+                  {{ formatFullName(item.name, item.last_name) }}
                 </h3>
               </div>
               <div class="d-flex gap-1">
                 <IconBtn
-                  color="info"
-                  variant="tonal"
+                  color="primary"
                   size="x-small"
-                  class="rounded"
                   @click="emit('view-stats', item.id)"
                 >
                   <VIcon icon="tabler-eye" size="16" />
+                  <VTooltip activator="parent">Ver Estadísticas</VTooltip>
                 </IconBtn>
                 <IconBtn
-                  color="success"
-                  variant="tonal"
+                  color="info"
                   size="x-small"
-                  class="rounded"
                   @click="emit('verify-cne', item)"
                 >
                   <VIcon icon="tabler-user-search" size="16" />
+                  <VTooltip activator="parent">Verificar Identidad CNE</VTooltip>
                 </IconBtn>
                 <IconBtn
                   color="warning"
-                  variant="tonal"
                   size="x-small"
-                  class="rounded"
                   @click="emit('edit', item.id)"
                 >
                   <VIcon icon="tabler-edit" size="16" />
+                  <VTooltip activator="parent">Editar</VTooltip>
                 </IconBtn>
                 <IconBtn
                   color="error"
-                  variant="tonal"
                   size="x-small"
-                  class="rounded"
                   @click="emit('delete', item.id)"
                 >
                   <VIcon icon="tabler-trash" size="16" />
+                  <VTooltip activator="parent">Eliminar</VTooltip>
                 </IconBtn>
               </div>
             </div>
@@ -234,10 +273,10 @@ const handleMobilePageChange = (newPage) => {
                   v-if="item.client_type"
                   :color="clientTypeColor(item.client_type)"
                   size="x-small"
-                  variant="flat"
-                  class="font-weight-black shadow-sm"
+                  variant="tonal"
+                  class="font-weight-bold"
                 >
-                  {{ item.client_type.toUpperCase() }}
+                  {{ item.client_type }}
                 </VChip>
                 <span v-else class="text-disabled text-super-xs">—</span>
               </div>

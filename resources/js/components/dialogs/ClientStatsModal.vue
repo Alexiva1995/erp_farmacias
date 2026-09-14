@@ -33,11 +33,21 @@ const badgeConfig = computed(() => {
   return map[stats.value.badge] || map["Nuevo"];
 });
 
+const toTitleCase = (str) => {
+  if (!str) return '';
+  return str
+    .toLowerCase()
+    .split(' ')
+    .filter(Boolean)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
 const dialogTitle = computed(() => {
   if (!clientData.value) return "Estadísticas del Cliente";
   const name = clientData.value.name || "";
   const lastName = clientData.value.last_name || "";
-  return `${name} ${lastName}`.trim();
+  return toTitleCase(`${name} ${lastName}`.trim());
 });
 
 const fetchStats = async (id) => {
@@ -99,7 +109,7 @@ const onClose = () => {
               <VIcon icon="tabler-chart-bar" color="primary" size="18" />
             </VAvatar>
             <div>
-              <h2 class="text-subtitle-2 font-weight-black text-white leading-tight mb-0 uppercase">{{ dialogTitle }}</h2>
+              <h2 class="text-subtitle-2 font-weight-bold text-white leading-tight mb-0">{{ dialogTitle }}</h2>
               <div class="d-flex align-center gap-1 mt-0">
                 <span class="text-super-xs text-white opacity-75 uppercase font-weight-bold">
                   Indicadores de Comportamiento
