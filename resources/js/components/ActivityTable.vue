@@ -1,8 +1,7 @@
 <script setup>
-// Tabla de actividades de limpieza — homologada al estándar del módulo de empleados
+// Tabla de actividades de limpieza — patrón idéntico a SocialBenefitsTable
 import AppEmptyState from "@/components/AppEmptyState.vue";
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
-import { useDisplay } from "vuetify";
 
 const props = defineProps({
   activities:      { type: Array,   required: true },
@@ -44,100 +43,81 @@ const getFrequencyColor = (frequency) => {
 </script>
 
 <template>
-  <!-- Vista Escritorio -->
-  <VCard variant="flat" border class="overflow-hidden">
-    <VDataTableServer
-      v-if="!mobile"
-      :items-per-page="props.itemsPerPage"
-      :page="props.page"
-      :headers="headers"
-      :items="props.activities"
-      :items-length="props.totalActivities"
-      :loading="props.loading"
-      class="text-no-wrap"
-      density="comfortable"
-      @update:options="(options) => emit('update:options', options)"
-    >
-      <!-- ID -->
-      <template #item.id="{ item }">
-        <span class="font-weight-black text-primary tabular-nums text-xs">#{{ item.id }}</span>
-      </template>
-
-      <!-- Actividad con avatar -->
-      <template #item.activity="{ item }">
-        <div class="d-flex align-center gap-3 py-1">
-          <VAvatar color="primary" variant="tonal" size="32" class="rounded-lg flex-shrink-0">
-            <VIcon icon="tabler-sparkles" size="16" />
-          </VAvatar>
-          <span class="text-sm font-weight-bold text-high-emphasis">{{ item.activity }}</span>
-        </div>
-      </template>
-
-      <!-- Descripción truncada -->
-      <template #item.description="{ item }">
-        <span class="text-xs text-medium-emphasis text-truncate d-block" style="max-inline-size: 280px;">
-          {{ item.description || '—' }}
-        </span>
-      </template>
-
-      <!-- Frecuencia como chip tonal -->
-      <template #item.frequency="{ item }">
-        <VChip
-          :color="getFrequencyColor(item.frequency)"
-          size="x-small"
-          variant="tonal"
-          class="font-weight-bold px-2 rounded"
+  <div class="activity-table-container">
+    <!-- Vista Desktop -->
+    <div class="d-none d-md-block">
+      <VCard border variant="flat">
+        <VDataTableServer
+          :headers="headers"
+          :items-per-page="props.itemsPerPage"
+          :items="props.activities"
+          :items-length="props.totalActivities"
+          :loading="props.loading"
+          :page="props.page"
+          density="comfortable"
+          @update:options="(options) => emit('update:options', options)"
         >
-          {{ item.frequency }}
-        </VChip>
-      </template>
+          <!-- Estado vacío -->
+          <template #no-data>
+            <AppEmptyState
+              title="Sin actividades"
+              message="No se encontraron actividades de limpieza con los filtros actuales."
+              icon="tabler-sparkles"
+            />
+          </template>
 
-      <!-- Acciones con tooltips -->
-      <template #item.actions="{ item }">
-        <div class="d-flex justify-center gap-1">
-          <VTooltip text="Editar actividad" location="top">
-            <template #activator="{ props: tip }">
-              <IconBtn v-bind="tip" size="small" color="warning" variant="tonal" class="rounded"
-                @click="emit('edit-activity', item)">
+          <!-- ID -->
+          <template #item.id="{ item }">
+            <span class="font-weight-bold text-primary">{{ item.id }}</span>
+          </template>
+
+          <!-- Actividad con avatar -->
+          <template #item.activity="{ item }">
+            <div class="d-flex align-center gap-3 py-1">
+              <VAvatar color="primary" variant="tonal" size="34" class="rounded-lg flex-shrink-0">
+                <VIcon icon="tabler-sparkles" size="18" />
+              </VAvatar>
+              <span class="text-sm font-weight-medium text-high-emphasis">{{ item.activity }}</span>
+            </div>
+          </template>
+
+          <!-- Descripción -->
+          <template #item.description="{ item }">
+            <span class="text-sm text-medium-emphasis">{{ item.description || '—' }}</span>
+          </template>
+
+          <!-- Frecuencia -->
+          <template #item.frequency="{ item }">
+            <VChip
+              :color="getFrequencyColor(item.frequency)"
+              size="x-small"
+              variant="tonal"
+              class="font-weight-bold"
+            >
+              {{ item.frequency }}
+            </VChip>
+          </template>
+
+          <!-- Acciones -->
+          <template #item.actions="{ item }">
+            <div class="d-flex justify-end gap-1">
+              <IconBtn color="warning" size="small" @click="emit('edit-activity', item)">
                 <VIcon icon="tabler-edit" size="18" />
+                <VTooltip activator="parent">Editar actividad</VTooltip>
               </IconBtn>
-            </template>
-          </VTooltip>
-          <VTooltip text="Eliminar actividad" location="top">
-            <template #activator="{ props: tip }">
-              <IconBtn v-bind="tip" size="small" color="error" variant="tonal" class="rounded"
-                @click="emit('delete-activity', item.id)">
+              <IconBtn color="error" size="small" @click="emit('delete-activity', item.id)">
                 <VIcon icon="tabler-trash" size="18" />
+                <VTooltip activator="parent">Eliminar actividad</VTooltip>
               </IconBtn>
-            </template>
-          </VTooltip>
-        </div>
-      </template>
+            </div>
+          </template>
+        </VDataTableServer>
+      </VCard>
+    </div>
 
-      <!-- Footer paginación estándar -->
-      <template #bottom>
-        <VDivider />
-        <div class="d-flex align-center justify-space-between px-4 py-2">
-          <span class="text-xs text-disabled font-weight-bold">
-            Total: {{ props.totalActivities }} registros
-          </span>
-          <VPagination
-            :model-value="props.page"
-            :length="Math.ceil(props.totalActivities / props.itemsPerPage)"
-            :total-visible="5"
-            size="small"
-            density="compact"
-            active-color="primary"
-            variant="flat"
-            @update:model-value="(p) => emit('update:options', { page: p, itemsPerPage: props.itemsPerPage, sortBy: [] })"
-          />
-        </div>
-      </template>
-    </VDataTableServer>
-
-    <!-- Vista Móvil -->
-    <div v-else class="pa-3 bg-light">
-      <VProgressLinear v-if="props.loading" indeterminate color="primary" class="mb-3 rounded" />
+    <!-- Vista Móvil (Cards) -->
+    <div class="d-block d-md-none pa-2 bg-light">
+      <VProgressLinear v-if="props.loading" indeterminate color="primary" class="mb-2" />
 
       <AppEmptyState
         v-if="props.activities.length === 0 && !props.loading"
@@ -152,71 +132,84 @@ const getFrequencyColor = (frequency) => {
           :key="item.id"
           variant="flat"
           border
-          class="rounded-lg overflow-hidden"
+          class="mb-1 overflow-hidden premium-card bg-white"
         >
           <div class="pa-4">
             <div class="d-flex justify-space-between align-start mb-3">
               <div class="d-flex align-center gap-3 min-width-0">
-                <VAvatar color="primary" variant="tonal" size="40" class="rounded-lg flex-shrink-0">
+                <VAvatar color="primary" variant="tonal" size="42" class="rounded-lg flex-shrink-0">
                   <VIcon icon="tabler-sparkles" size="20" />
                 </VAvatar>
-                <div class="min-width-0">
-                  <p class="text-sm font-weight-bold text-high-emphasis mb-0 text-truncate">{{ item.activity }}</p>
-                  <span class="text-xs text-disabled font-weight-medium">#{{ item.id }}</span>
+                <div class="d-flex flex-column min-width-0">
+                  <span class="text-primary font-weight-black text-xs uppercase mb-0.5">ID #{{ item.id }}</span>
+                  <h3 class="text-sm font-weight-semibold text-high-emphasis leading-tight truncate">
+                    {{ item.activity }}
+                  </h3>
                 </div>
               </div>
               <div class="d-flex gap-1 ms-2 flex-shrink-0">
-                <IconBtn size="small" color="warning" variant="tonal" class="rounded" @click="emit('edit-activity', item)">
+                <IconBtn size="x-small" color="warning" @click="emit('edit-activity', item)">
                   <VIcon icon="tabler-edit" size="16" />
+                  <VTooltip activator="parent">Editar</VTooltip>
                 </IconBtn>
-                <IconBtn size="small" color="error" variant="tonal" class="rounded" @click="emit('delete-activity', item.id)">
+                <IconBtn size="x-small" color="error" @click="emit('delete-activity', item.id)">
                   <VIcon icon="tabler-trash" size="16" />
+                  <VTooltip activator="parent">Eliminar</VTooltip>
                 </IconBtn>
               </div>
             </div>
 
-            <VDivider class="mb-3 opacity-10" />
+            <VDivider class="my-3 border-opacity-10" />
 
-            <div class="d-flex justify-space-between align-center mb-2">
-              <span class="text-xs font-weight-bold text-medium-emphasis uppercase">Frecuencia</span>
-              <VChip :color="getFrequencyColor(item.frequency)" size="x-small" variant="tonal"
-                class="font-weight-bold px-2 rounded">
+            <div class="d-flex align-center justify-space-between">
+              <VChip
+                :color="getFrequencyColor(item.frequency)"
+                size="x-small"
+                variant="tonal"
+                class="font-weight-bold"
+              >
                 {{ item.frequency }}
               </VChip>
+              <span v-if="item.description" class="text-xs text-medium-emphasis text-truncate ms-3">
+                {{ item.description }}
+              </span>
+              <span v-else class="text-xs text-disabled italic ms-3">Sin descripción</span>
             </div>
-            <p v-if="item.description" class="text-xs text-medium-emphasis mb-0 leading-relaxed">{{ item.description }}</p>
-            <span v-else class="text-xs text-disabled italic">Sin descripción</span>
           </div>
         </VCard>
       </div>
 
-      <AppMobilePagination
-        v-if="props.totalActivities > 0"
-        :page="props.page"
-        :items-per-page="props.itemsPerPage"
-        :total-items="props.totalActivities"
-        class="mt-4"
-        @change="(opts) => emit('update:options', opts)"
-        @update:page="(p) => emit('update:options', { page: p, itemsPerPage: props.itemsPerPage, sortBy: [] })"
-        @update:items-per-page="(n) => emit('update:options', { page: 1, itemsPerPage: n, sortBy: [] })"
-      />
+      <!-- Mobile Pagination -->
+      <div class="d-flex justify-center mt-4 pb-2">
+        <AppMobilePagination
+          :page="props.page"
+          :items-per-page="props.itemsPerPage"
+          :total-items="props.totalActivities"
+          :loading="props.loading"
+          @change="(options) => emit('update:options', { ...options, sortBy: [], groupBy: [] })"
+        />
+      </div>
     </div>
-  </VCard>
+  </div>
 </template>
 
 <style scoped>
+.text-super-xs {
+  font-size: 0.65rem !important;
+  line-height: normal;
 }
 
 .bg-light {
-  background-color: rgba(var(--v-theme-on-surface), 0.015);
+  background-color: #f8fafc !important;
 }
 
-.leading-tight {
-  line-height: 1.2;
+.premium-card {
+  border-radius: 12px !important;
+  transition: transform 0.2s ease;
 }
 
-.leading-relaxed {
-  line-height: 1.5;
+.premium-card:active {
+  transform: scale(0.98);
 }
 
 .truncate {
@@ -225,15 +218,12 @@ const getFrequencyColor = (frequency) => {
   white-space: nowrap;
 }
 
-.truncate-2-lines {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+.leading-tight {
+  line-height: 1.25 !important;
 }
 
-:deep(.v-data-table-footer) {
-  display: none !important;
-}
+.gap-1 { gap: 4px !important; }
+.gap-2 { gap: 8px !important; }
+.gap-3 { gap: 12px !important; }
 </style>
 
