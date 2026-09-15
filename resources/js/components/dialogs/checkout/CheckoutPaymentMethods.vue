@@ -114,11 +114,11 @@ const getCleanCurrencyKey = (currencyObj) => {
       <!-- Encabezado con buen aire interno (padding 16px) -->
       <VCardTitle class="pa-3 border-b d-flex align-center justify-space-between bg-grey-lighten-4 flex-wrap gap-2">
         <div class="d-flex align-center gap-2 flex-wrap">
-          <span class="text-subtitle-2 font-weight-black me-1 text-high-emphasis">
+          <span class="currency-header-title me-1 text-high-emphasis">
             {{ getCleanCurrencyKey(currency) }}
           </span>
           
-          <!-- Métodos de Pago: Pestañas blancas con borde outline, activas resaltadas -->
+          <!-- Métodos de Pago: Pestañas blancas con borde outline, 13-14px Medium -->
           <div class="d-flex align-center gap-1.5 flex-wrap">
             <VBtn
               v-for="method in getAvailableMethodsForCurrency(getCleanCurrencyKey(currency))"
@@ -126,14 +126,14 @@ const getCleanCurrencyKey = (currencyObj) => {
               :data-shortcut="method.value"
               :variant="isPaymentMethodActive(method.value, getCleanCurrencyKey(currency)) ? 'flat' : 'outlined'"
               :color="isPaymentMethodActive(method.value, getCleanCurrencyKey(currency)) ? 'primary' : 'secondary'"
-              size="x-small"
-              class="rounded-lg font-weight-bold px-2.5 method-btn"
+              size="small"
+              class="rounded-lg method-btn"
               :class="{ 'bg-surface': !isPaymentMethodActive(method.value, getCleanCurrencyKey(currency)) }"
               height="28"
               @click="onSelectMethod(method.value, getCleanCurrencyKey(currency))"
             >
               <VIcon :icon="getPaymentMethodIcon(method.value)" class="me-1" size="14" />
-              {{ method.label }}
+              <span>{{ method.label }}</span>
             </VBtn>
           </div>
         </div>
@@ -171,23 +171,24 @@ const getCleanCurrencyKey = (currencyObj) => {
   gap: 8px;
 }
 
-.currency-card {
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.currency-card:hover {
-  border-color: rgba(var(--v-theme-primary), 0.25) !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+.currency-header-title {
+  font-size: 1.05rem !important; /* ~17px */
+  font-weight: 800 !important;
+  letter-spacing: 0.5px;
 }
 
 .method-btn {
+  font-size: 0.8125rem !important; /* 13px */
+  font-weight: 500 !important; /* Medium */
   letter-spacing: 0.2px;
   border-color: rgba(var(--v-theme-on-surface), 0.18) !important;
+  text-transform: none !important;
 }
 
 .currency-total-chip {
   background-color: #1e293b !important; /* Azul marino / slate oscuro elegante */
   color: #ffffff !important;
+  font-size: 0.75rem !important;
 }
 
 .quick-cash-grid {
@@ -200,9 +201,9 @@ const getCleanCurrencyKey = (currencyObj) => {
   color: #1e40af;
   border: 1px solid #bfdbfe;
   border-radius: 8px;
-  padding: 5px 10px;
-  font-size: 0.75rem;
-  font-weight: 800;
+  padding: 6px 12px;
+  font-size: 0.875rem; /* 14px */
+  font-weight: 700; /* Bold */
   line-height: 1.2;
   cursor: pointer;
   user-select: none;

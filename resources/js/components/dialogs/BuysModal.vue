@@ -269,8 +269,8 @@ const activeDiscountDisplay = computed(() => {
     <VCard class="rounded-xl glass-card elevation-4 max-h-90vh overflow-hidden d-flex flex-column">
       <VCardTitle class="d-flex align-center pa-4 border-b bg-surface">
         <div class="d-flex align-center">
-          <VIcon icon="tabler-shopping-cart-check" color="primary" class="me-3" size="28" />
-          <span class="text-h5 font-weight-black uppercase letter-spacing-1">Finalizar Compra</span>
+          <VIcon icon="tabler-shopping-cart-check" color="primary" class="me-2" size="24" />
+          <span class="text-h6 font-weight-bold letter-spacing-1 text-high-emphasis">Finalizar Compra</span>
         </div>
         <div class="ms-6 d-flex align-center">
           <span class="text-caption font-weight-bold me-2 uppercase">Factura</span>
@@ -318,34 +318,35 @@ const activeDiscountDisplay = computed(() => {
               <CheckoutSummary 
                 :selected-currency="selectedCurrency"
                 :selected-currency-tab="selectedCurrencyTab"
-              :active-discount-display="activeDiscountDisplay"
-              :expiration-discount-total="expirationDiscountTotal"
-              :applies-special-tax="appliesSpecialTax"
-              :special-tax-amount="specialTaxAmount"
-              :rounded-total-amount-to-pay="roundedTotalAmountToPay"
-              :payments="payments"
-              :remaining-amount="remainingAmount"
-              :show-change-amount="showChangeAmount"
-              :change-amount="changeAmount"
-              :change-amount-in-cop="changeAmountInCop"
-              :get-converted-remaining-amount="getConvertedRemainingAmount"
-              :get-payment-method-label="getPaymentMethodLabel"
-              :edit-payment-amount="editPaymentAmount"
-              :remove-payment-from-summary="removePaymentFromSummary"
-              :is-last-payment-added="isLastPaymentAdded"
-              :handle-payment-enter="handlePaymentEnter"
-              :confirm-payment-complete="confirmPaymentComplete"
-              :continue-button-text="continueButtonText"
-              :issubmitting="issubmitting"
-              :is-external-loading="isExternalLoading"
-              :has-missing-references="hasMissingReferences"
-              :order-data="orderData"
-              @complete-purchase="handleCompletePurchase"
-              @close-modal="closeModal"
-              @confirm-payment="confirmPaymentComplete"
-              @handle-payment-enter="handlePaymentEnter"
-              @remove-payment="removePaymentFromSummary"
-            />
+                :active-discount-display="activeDiscountDisplay"
+                :expiration-discount-total="expirationDiscountTotal"
+                :applies-special-tax="appliesSpecialTax"
+                :special-tax-amount="specialTaxAmount"
+                :rounded-total-amount-to-pay="roundedTotalAmountToPay"
+                :payments="payments"
+                :remaining-amount="remainingAmount"
+                :show-change-amount="showChangeAmount"
+                :change-amount="changeAmount"
+                :change-amount-in-cop="changeAmountInCop"
+                :get-converted-remaining-amount="getConvertedRemainingAmount"
+                :get-payment-method-label="getPaymentMethodLabel"
+                :edit-payment-amount="editPaymentAmount"
+                :remove-payment-from-summary="removePaymentFromSummary"
+                :is-last-payment-added="isLastPaymentAdded"
+                :handle-payment-enter="handlePaymentEnter"
+                :confirm-payment-complete="confirmPaymentComplete"
+                :continue-button-text="continueButtonText"
+                :issubmitting="issubmitting"
+                :is-external-loading="isExternalLoading"
+                :has-missing-references="hasMissingReferences"
+                :order-data="orderData"
+                @complete-purchase="handleCompletePurchase"
+                @close-modal="closeModal"
+                @confirm-payment="confirmPaymentComplete"
+                @handle-payment-enter="handlePaymentEnter"
+                @remove-payment="removePaymentFromSummary"
+              />
+            </div>
           </VCol>
         </VRow>
       </VCardText>
