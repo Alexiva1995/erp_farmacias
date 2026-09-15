@@ -314,7 +314,7 @@ const formatDate = (dateString) => {
           </VTabs>
         </div>
 
-        <VTabsWindow v-model="step" class="pa-3 pa-md-4">
+        <VTabsWindow v-model="step" class="pa-2 pa-md-3">
           <VTabsWindowItem value="employee">
             <VRow dense class="ma-0">
               <!-- Sección Izquierda: Parámetros y Tablas -->
@@ -356,6 +356,7 @@ const formatDate = (dateString) => {
                         label="Sueldo Base (USD)"
                         placeholder="0.00"
                         density="compact"
+                        variant="outlined"
                         hide-details="auto"
                         prefix="$"
                         @update:model-value="(val) => handleNumberInput('baseSalaryOverride', val)"
@@ -552,7 +553,7 @@ const formatDate = (dateString) => {
                   </div>
 
                   <!-- Bloque 3: Tarjeta TOTAL NETO A PAGAR (foco visual principal) -->
-                  <div class="total-neto-card rounded-lg pa-4 flex-grow-1 d-flex flex-column justify-center text-center shadow-xs">
+                  <div class="total-neto-card rounded-lg pa-3 flex-grow-1 d-flex flex-column justify-center text-center shadow-xs">
                     <!-- Título en mayúsculas pequeño gris corporativo -->
                     <div class="text-super-xs font-weight-bold text-medium-emphasis uppercase tracking-wider mb-3">
                       TOTAL NETO A PAGAR
@@ -692,35 +693,31 @@ const formatDate = (dateString) => {
         </VTabsWindow>
       </VCardText>
 
-      <!-- 5. Footer con padding simétrico 16px 24px -->
-      <VCardActions class="dialog-footer pa-4 px-6 bg-light border-t">
-        <VRow no-gutters class="w-100 gap-2 justify-end align-center">
-          <VCol cols="auto">
-            <VBtn
-              variant="outlined"
-              size="default"
-              height="38"
-              class="cancel-btn font-weight-bold rounded-lg px-4 text-none"
-              @click="closeDialog"
-            >
-              Cancelar
-            </VBtn>
-          </VCol>
-          <VCol cols="auto">
-            <VBtn
-              color="primary"
-              variant="flat"
-              size="default"
-              height="38"
-              class="font-weight-bold rounded-lg px-5 shadow-primary text-none"
-              :disabled="!settlement"
-              @click="submitForm"
-            >
-              {{ step === "employee" ? "Configurar Pago" : "Finalizar y Generar PDF" }}
-              <VIcon end icon="tabler-chevron-right" class="ms-1" />
-            </VBtn>
-          </VCol>
-        </VRow>
+      <!-- Footer con botones simétricos 50% / 50% -->
+      <VCardActions class="dialog-footer bg-light border-t">
+        <div class="footer-btn-group">
+          <VBtn
+            variant="outlined"
+            size="default"
+            height="38"
+            class="cancel-btn font-weight-bold rounded-lg text-none"
+            @click="closeDialog"
+          >
+            Cancelar
+          </VBtn>
+          <VBtn
+            color="primary"
+            variant="flat"
+            size="default"
+            height="38"
+            class="font-weight-bold rounded-lg shadow-primary text-none"
+            :disabled="!settlement"
+            @click="submitForm"
+          >
+            {{ step === "employee" ? "Configurar Pago" : "Finalizar y Generar PDF" }}
+            <VIcon end icon="tabler-chevron-right" class="ms-1" />
+          </VBtn>
+        </div>
       </VCardActions>
     </VCard>
   </VDialog>
@@ -826,12 +823,23 @@ const formatDate = (dateString) => {
 }
 
 .dialog-footer {
-  padding: 16px 24px !important;
+  padding: 12px 16px !important;
+}
+
+/* Contenedor de botones de footer: flex 100%, gap 12px, cada botón ocupa 50% */
+.footer-btn-group {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+
+.footer-btn-group :deep(.v-btn) {
+  flex: 1;
 }
 
 .cancel-btn {
   border-color: #d1d5db !important;
-  color: #4b5563 !important;
+  color: #374151 !important;
 }
 
 .cancel-btn:hover {
