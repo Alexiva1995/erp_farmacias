@@ -139,12 +139,13 @@ class EmployeeCleaningActivityQueryService
     private function formatEmployeeData(Employee $employee): array
     {
         // Rango del mes actual
-        $startOfMonth = now()->startOfMonth()->toDateString();
-        $endOfMonth = now()->endOfMonth()->toDateString();
+        $startOfMonth = now()->startOfMonth();
+        $endOfMonth = now()->endOfMonth();
+        $daysInMonth = $startOfMonth->daysInMonth;
 
         // Consultar ejecuciones de este empleado en el mes actual
         $executions = \App\Models\CleaningActivityExecution::where('employee_id', $employee->id)
-            ->whereBetween('scheduled_date', [$startOfMonth, $endOfMonth])
+            ->whereBetween('scheduled_date', [$startOfMonth->toDateString(), $endOfMonth->toDateString()])
             ->select(['cleaning_activity_id', 'status', 'scheduled_date', 'due_date'])
             ->get();
 
@@ -154,24 +155,64 @@ class EmployeeCleaningActivityQueryService
             'photo_url' => $employee->photo_url,
             'identification' => $employee->identification,
             'is_active' => $employee->is_active,
-            'cleaning_activities' => $employee->cleaningActivities->map(function ($activity) use ($executions) {
-                $actExecs = $executions->where('cleaning_activity_id', $activity->id);
-                $assignedCount = $actExecs->count();
-                $completedCount = $actExecs->where('status', 'Completada')->count();
-                $pendingCount = $actExecs->where('status', 'Pendiente')->count();
-                $failedCount = $actExecs->whereIn('status', ['Vencida', 'Cancelada'])->count();
+            'cleaning_activities' => $employee->cleaningActivities->map(function ($activity) use ($executions, $startOfMonth, $endOfMonth, $daysInMonth) {
+                $frequency = $activity->frequency ?? 'Diaria';
+                $assignedCount = 0;
 
-                // Si no hay ejecuciones generadas en el mes (actividad configurada fija), fallback inteligente
-                if ($assignedCount === 0) {
-                    $assignedCount = 1;
-                    if ($activity->pivot->status === 'Completada') {
-                        $completedCount = 1;
-                    } elseif ($activity->pivot->status === 'Cancelada') {
-                        $failedCount = 1;
-                    } else {
-                        $pendingCount = 1;
-                    }
+                // 1. Calcular ocurrencias teóricas esperadas en el mes actual según la frecuencia
+                switch ($frequency) {
+                    case 'Diaria':
+                        $assignedCount = $daysInMonth;
+                        break;
+                    case 'Semanal':
+                        // Si tiene día asignado (ej. Lunes), contar cuántas veces cae ese día en el mes
+                        $dayName = $activity->pivot->day_of_week;
+                        if ($dayName) {
+                            $mapDays = [
+                                'Lunes' => \Carbon\Carbon::MONDAY,
+                                'Martes' => \Carbon\Carbon::TUESDAY,
+                                'Miércoles' => \Carbon\Carbon::WEDNESDAY,
+                                'Miercoles' => \Carbon\Carbon::WEDNESDAY,
+                                'Jueves' => \Carbon\Carbon::THURSDAY,
+                                'Viernes' => \Carbon\Carbon::FRIDAY,
+                                'Sábado' => \Carbon\Carbon::SATURDAY,
+                                'Sabado' => \Carbon\Carbon::SATURDAY,
+                                'Domingo' => \Carbon\Carbon::SUNDAY,
+                            ];
+                            $targetDay = $mapDays[$dayName] ?? null;
+                            if ($targetDay !== null) {
+                                $curr = $startOfMonth->copy();
+                                while ($curr->lte($endOfMonth)) {
+                                    if ($curr->dayOfWeekIso === $targetDay) {
+                                        $assignedCount++;
+                                    }
+                                    $curr->addDay();
+                                }
+                            } else {
+                                $assignedCount = 4;
+                            }
+                        } else {
+                            $assignedCount = 4;
+                        }
+                        break;
+                    case 'Quincenal':
+                        $assignedCount = 2;
+                        break;
+                    case 'Mensual':
+                    case 'Bimestral':
+                    case 'Trimestral':
+                    case 'Semestral':
+                    case 'Anual':
+                    default:
+                        $assignedCount = 1;
+                        break;
                 }
+
+                // 2. Conteo real de ejecuciones completadas y fallidas en el mes
+                $actExecs = $executions->where('cleaning_activity_id', $activity->id);
+                $completedCount = $actExecs->where('status', 'Completada')->count();
+                $failedCount = $actExecs->whereIn('status', ['Vencida', 'Cancelada'])->count();
+                $pendingCount = max(0, $assignedCount - $completedCount - $failedCount);
 
                 return [
                     'id' => $activity->id,
