@@ -351,7 +351,7 @@ const formatDate = (dateString) => {
                       />
                     </VCol>
                     <VCol cols="12" md="4">
-                      <AppTextField
+                      <VTextField
                         :model-value="formatNumberWithSeparators(baseSalaryOverride)"
                         label="Sueldo Base (USD)"
                         placeholder="0.00"
@@ -428,7 +428,7 @@ const formatDate = (dateString) => {
                         </thead>
                         <tbody>
                           <tr>
-                            <td class="concept-cell text-left">Deducción Vacaciones</td>
+                            <td class="concept-cell text-left text-nowrap">Ded. Vacaciones</td>
                             <td class="text-right pa-1">
                               <input
                                 :value="formatNumberWithSeparators(vacationDeductionOverride)"
@@ -438,7 +438,7 @@ const formatDate = (dateString) => {
                             </td>
                           </tr>
                           <tr>
-                            <td class="concept-cell text-left">Ded. Bono Vacacional</td>
+                            <td class="concept-cell text-left text-nowrap">Ded. Bono Vac.</td>
                             <td class="text-right pa-1">
                               <input
                                 :value="formatNumberWithSeparators(vacationBonusDeductionOverride)"
@@ -448,7 +448,7 @@ const formatDate = (dateString) => {
                             </td>
                           </tr>
                           <tr>
-                            <td class="concept-cell text-left">Deducción Utilidades</td>
+                            <td class="concept-cell text-left text-nowrap">Ded. Utilidades</td>
                             <td class="text-right pa-1">
                               <input
                                 :value="formatNumberWithSeparators(earningsDeductionOverride)"
@@ -768,6 +768,7 @@ const formatDate = (dateString) => {
   color: #374151 !important;
   font-size: 0.75rem !important;
   font-weight: 500 !important;
+  white-space: nowrap;
 }
 
 .premium-micro-table :deep(th) {
