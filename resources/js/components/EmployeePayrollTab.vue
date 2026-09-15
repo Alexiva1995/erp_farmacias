@@ -18,6 +18,42 @@ const formatCurrency = (value) => {
   const n = Number(value);
   return Number.isFinite(n) ? n.toLocaleString("es-VE", { style: "currency", currency: "USD" }) : "—";
 };
+
+// Agrupar historial por mes (Mes/Año, 1ra quincena, 2da quincena y total USD)
+const monthlyPaymentHistory = computed(() => {
+  if (!props.paymentHistory || !props.paymentHistory.length) return [];
+
+  const groups = {};
+
+  props.paymentHistory.forEach((item) => {
+    const key = `${item.year}-${String(item.month).padStart(2, '0')}`;
+    if (!groups[key]) {
+      groups[key] = {
+        key,
+        year: item.year,
+        month: item.month,
+        fecha: item.fecha,
+        q1: 0,
+        q2: 0,
+        hasQ1: false,
+        hasQ2: false,
+        total: 0,
+      };
+    }
+
+    const amount = Number(item.total_pagado_usd) || 0;
+    if (item.fortnight === 1) {
+      groups[key].q1 += amount;
+      groups[key].hasQ1 = true;
+    } else {
+      groups[key].q2 += amount;
+      groups[key].hasQ2 = true;
+    }
+    groups[key].total += amount;
+  });
+
+  return Object.values(groups).sort((a, b) => b.key.localeCompare(a.key));
+});
 </script>
 
 <template>
@@ -134,11 +170,12 @@ const formatCurrency = (value) => {
         </span>
       </div>
       <VDataTable
-        :items="paymentHistory"
+        :items="monthlyPaymentHistory"
         :headers="[
-          { title: 'Periodo', key: 'fecha' },
-          { title: 'Neto (USD)', key: 'total_pagado_usd', align: 'end' },
-          { title: 'Equivalente (VES)', key: 'total_pagado_ves', align: 'end' }
+          { title: 'Mes', key: 'fecha' },
+          { title: '1ra Quincena', key: 'q1', align: 'end' },
+          { title: '2da Quincena', key: 'q2', align: 'end' },
+          { title: 'Total (USD)', key: 'total', align: 'end' }
         ]"
         class="premium-table"
         hide-default-footer
@@ -154,18 +191,30 @@ const formatCurrency = (value) => {
         <template #item.fecha="{ item }">
           <div class="d-flex align-center gap-3 py-2">
             <VAvatar color="primary" variant="tonal" size="32" class="rounded-lg font-weight-black text-super-xs">
-              {{ new Date(item.fecha).getMonth() + 1 }}
+              {{ item.month }}
             </VAvatar>
             <span class="text-xs font-weight-semibold text-high-emphasis text-capitalize">
-              {{ new Date(item.fecha).toLocaleString('es-VE', { month: 'long', year: 'numeric' }) }}
+              {{ new Date(item.year, item.month - 1, 1).toLocaleString('es-VE', { month: 'long', year: 'numeric' }) }}
             </span>
           </div>
         </template>
-        <template #item.total_pagado_usd="{ item }">
-          <span class="text-xs font-weight-black text-primary tabular-nums">{{ formatCurrency(item.total_pagado_usd) }}</span>
+
+        <template #item.q1="{ item }">
+          <span class="text-xs font-weight-bold tabular-nums" :class="item.hasQ1 ? 'text-high-emphasis' : 'text-disabled'">
+            {{ item.hasQ1 ? formatCurrency(item.q1) : '—' }}
+          </span>
         </template>
-        <template #item.total_pagado_ves="{ item }">
-          <span class="text-xs font-weight-bold text-medium-emphasis tabular-nums">{{ item.total_pagado_ves.toLocaleString('es-VE') }} Bs</span>
+
+        <template #item.q2="{ item }">
+          <span class="text-xs font-weight-bold tabular-nums" :class="item.hasQ2 ? 'text-high-emphasis' : 'text-disabled'">
+            {{ item.hasQ2 ? formatCurrency(item.q2) : '—' }}
+          </span>
+        </template>
+
+        <template #item.total="{ item }">
+          <span class="text-xs font-weight-black text-primary tabular-nums">
+            {{ formatCurrency(item.total) }}
+          </span>
         </template>
       </VDataTable>
     </VCard>
