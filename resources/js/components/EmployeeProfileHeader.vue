@@ -5,6 +5,7 @@ import defaultAvatarImg from "@images/avatars/avatar-1.png";
 const props = defineProps({
   employee: { type: Object, required: true },
   canEdit: { type: Boolean, default: false },
+  canChangePhoto: { type: Boolean, default: false },
   isAdmin: { type: Boolean, default: false },
   translatedRole: { type: String, default: 'Empleado' },
   avatarDisplaySrc: { type: String, default: '' },
@@ -55,7 +56,7 @@ const initials = computed(() => {
               <span v-else class="text-subtitle-1 font-weight-black text-primary">{{ initials }}</span>
             </VAvatar>
             <VBtn
-              v-if="canEdit"
+              v-if="canChangePhoto"
               icon="tabler-camera"
               size="20"
               color="primary"

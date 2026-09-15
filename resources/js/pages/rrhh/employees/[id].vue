@@ -18,7 +18,8 @@ const router = useRouter();
 const authStore = useAuthStore();
 const isAdmin = computed(() => authStore.isAdmin);
 const isOwnProfile = computed(() => authStore.user?.employee?.id === Number(route.params.id) || authStore.user?.employee_id === Number(route.params.id));
-const canEdit = computed(() => isAdmin.value || isOwnProfile.value);
+const canEdit = computed(() => isAdmin.value);
+const canChangePhoto = computed(() => isAdmin.value || isOwnProfile.value);
 const { mobile } = useDisplay();
 
 const loading = ref(false);
@@ -54,7 +55,7 @@ const documentLabels = {
 const docInputs = ref({});
 
 const triggerPhotoInput = () => {
-  if (canEdit.value) photoInput.value?.click();
+  if (canChangePhoto.value) photoInput.value?.click();
 };
 
 const onPhotoChange = async (event) => {
@@ -381,6 +382,7 @@ watch(activeView, (view) => {
     <EmployeeProfileHeader
       :employee="employee"
       :can-edit="canEdit"
+      :can-change-photo="canChangePhoto"
       :is-admin="isAdmin"
       :translated-role="translatedRole"
       :avatar-display-src="avatarDisplaySrc"
@@ -401,7 +403,7 @@ watch(activeView, (view) => {
       <VTab value="performance">
         <VIcon icon="tabler-chart-bar" class="me-2" /> Desempeño Operativo
       </VTab>
-      <VTab value="salary">
+      <VTab v-if="isAdmin" value="salary">
         <VIcon icon="tabler-wallet" class="me-2" /> Gestión Salarial y Nómina
       </VTab>
     </VTabs>
@@ -416,7 +418,7 @@ watch(activeView, (view) => {
         />
       </VTabsWindowItem>
 
-      <VTabsWindowItem value="salary">
+      <VTabsWindowItem v-if="isAdmin" value="salary">
         <EmployeePayrollTab
           :payment-history="paymentHistory"
           :payroll-employee="payrollEmployee"

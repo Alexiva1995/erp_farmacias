@@ -16,6 +16,8 @@ const goToProfile = () => {
   const employeeId = authStore.user?.employee?.id || authStore.user?.employee_id
   if (employeeId) {
     router.push(`/rrhh/employees/${employeeId}`)
+  } else if (authStore.isAdmin) {
+    router.push('/rrhh/employees')
   } else {
     console.warn('El usuario no tiene una ficha de empleado asociada.')
   }
