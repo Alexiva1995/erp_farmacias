@@ -17,7 +17,7 @@ const emit = defineEmits([
   "delete-activity",
 ]);
 
-const { mobile } = useDisplay();
+
 
 const headers = [
   { title: "ID",          key: "id",          sortable: true,  align: "start" },
