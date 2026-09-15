@@ -170,38 +170,32 @@ const submitForm = () => {
         </VForm>
       </VCardText>
 
-      <VCardActions class="pa-4 bg-light border-t">
-        <VRow no-gutters class="w-100">
-          <VCol cols="12" sm="6" class="pa-1">
-            <VBtn
-              color="secondary"
-              variant="outlined"
-              size="large"
-              block
-              height="50"
-              class="font-weight-black rounded-lg text-button uppercase"
-              @click="closeDialog"
-            >
-              Cancelar
-            </VBtn>
-          </VCol>
-          <VCol cols="12" sm="6" class="pa-1">
-            <VBtn
-              color="primary"
-              variant="flat"
-              size="large"
-              block
-              height="50"
-              :loading="props.saving"
-              :disabled="props.saving"
-              class="font-weight-black rounded-lg shadow-primary text-button uppercase"
-              @click="submitForm"
-            >
-              <VIcon start icon="tabler-device-floppy" size="18" class="me-2" />
-              Guardar Cambios
-            </VBtn>
-          </VCol>
-        </VRow>
+      <!-- Footer estándar: botones 50% / 50% -->
+      <VCardActions class="dialog-footer bg-light border-t">
+        <div class="footer-btn-group">
+          <VBtn
+            variant="outlined"
+            size="default"
+            height="38"
+            class="cancel-btn font-weight-bold rounded-lg text-none"
+            @click="closeDialog"
+          >
+            Cancelar
+          </VBtn>
+          <VBtn
+            color="primary"
+            variant="flat"
+            size="default"
+            height="38"
+            :loading="props.saving"
+            :disabled="props.saving"
+            class="font-weight-bold rounded-lg shadow-primary text-none"
+            @click="submitForm"
+          >
+            <VIcon start icon="tabler-device-floppy" size="16" class="me-1" />
+            {{ isNewActivity ? 'Crear Actividad' : 'Guardar Cambios' }}
+          </VBtn>
+        </div>
       </VCardActions>
     </VCard>
   </VDialog>
@@ -209,7 +203,11 @@ const submitForm = () => {
 
 <style scoped>
 .header-gradient {
-  background: var(--brand-gradient) !important;
+  background: linear-gradient(
+    135deg,
+    rgb(var(--v-theme-primary)) 0%,
+    rgb(var(--v-theme-gradient-end)) 100%
+  );
 }
 
 .detail-dialog-card {
@@ -224,6 +222,31 @@ const submitForm = () => {
 
 .header-indicator.primary {
   background-color: rgb(var(--v-theme-primary));
+}
+
+/* Footer botones 50/50 */
+.dialog-footer {
+  padding: 12px 16px !important;
+}
+
+.footer-btn-group {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+
+.footer-btn-group :deep(.v-btn) {
+  flex: 1;
+}
+
+.cancel-btn {
+  border-color: #d1d5db !important;
+  color: #374151 !important;
+}
+
+.cancel-btn:hover {
+  background-color: #f3f4f6 !important;
+  color: #1f2937 !important;
 }
 
 .shadow-primary {
