@@ -28,15 +28,6 @@ const historicalCrossSellingRate = computed(() => {
 
 <template>
   <div class="employee-performance-tab">
-    <div class="d-flex align-center gap-3 mb-6">
-      <h2 :class="mobile ? 'text-h6' : 'text-h5'" class="font-weight-black text-high-emphasis tracking-tight">
-        Dashboard Operativo
-      </h2>
-      <VChip color="primary" variant="tonal" size="x-small" class="font-weight-bold">
-        Mes en Curso vs. Acumulado Histórico
-      </VChip>
-    </div>
-
     <!-- KPIs Principales con comparación del histórico incorporada -->
     <VRow class="mb-6" :dense="mobile">
       <VCol
