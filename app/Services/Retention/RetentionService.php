@@ -86,6 +86,8 @@ class RetentionService implements RetentionContract
             ];
         });
 
+        $generalSetting = \App\Models\GeneralSetting::first();
+
         return [
             'date_now' => $dateNow,
             'comprobante' => [
@@ -93,9 +95,9 @@ class RetentionService implements RetentionContract
                 'period' => $period,
             ],
             'company' => [
-                'name' => 'FARMACIA BARRIO SUCRE 2024, C.A.',
-                'rif' => 'J505406957',
-                'address' => 'CALLE PRINCIPAL LOCAL 05 (L3) SECTOR BARRIO SUCRE LA FRIA TACHIRA',
+                'name' => $generalSetting?->app_name ?: 'FARMACIA BARRIO SUCRE 2024, C.A.',
+                'rif' => $generalSetting?->app_rif ?: '',
+                'address' => $generalSetting?->address ?: 'CALLE PRINCIPAL LOCAL 05 (L3) SECTOR BARRIO SUCRE LA FRIA TACHIRA',
             ],
             'supplier' => [
                 'name' => $supplier->social_reason ?? $supplier->name ?? 'Proveedor Desconocido',

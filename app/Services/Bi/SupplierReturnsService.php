@@ -90,13 +90,15 @@ class SupplierReturnsService
      */
     private function buildMetadata(int $days): array
     {
+        $setting = \App\Models\GeneralSetting::first();
+
         return [
-            'generated_at'  => Carbon::now()->format('d/m/Y'),
-            'horizon_days'  => $days,
-            'cutoff_date'   => Carbon::now()->addDays($days)->format('d/m/Y'),
-            'pharmacy_name' => 'FARMACIA BARRIO SUCRE 2024, C.A.',
-            'pharmacy_rif'  => 'J-50540695-7',
-            'pharmacy_address' => 'Calle Principal Local 05 (L3) Sector Barrio Sucre, La Fría, Táchira',
+            'generated_at'     => Carbon::now()->format('d/m/Y'),
+            'horizon_days'     => $days,
+            'cutoff_date'      => Carbon::now()->addDays($days)->format('d/m/Y'),
+            'pharmacy_name'    => $setting?->app_name ?: 'FARMACIA',
+            'pharmacy_rif'     => $setting?->app_rif ?: '',
+            'pharmacy_address' => $setting?->address ?: '',
             'pharmacy_phone'   => '',
             'buyer_name'       => 'Encargada de Compras',
         ];

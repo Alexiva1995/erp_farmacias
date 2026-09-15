@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { roundIaAnalysis } from './iaAnalysisRounding';
+import { useBrandingStore } from '@/stores/useBrandingStore';
 
 export default function pdfProductsAssistantReportGenerator(data) {
     const doc = new jsPDF({
@@ -8,6 +9,19 @@ export default function pdfProductsAssistantReportGenerator(data) {
         unit: 'mm',
         format: [350, 215.9] // Formato Oficio/Letter extendido landscape
     });
+
+    let storeSettings = {};
+    try {
+        const store = useBrandingStore();
+        storeSettings = store.settings || {};
+    } catch (e) {
+        // Contexto sin Pinia activo
+    }
+
+    const companyName = storeSettings.app_name || 'FARMACIA';
+    const companyRif = storeSettings.app_rif || '';
+    const companyLogo = storeSettings.app_logo || '/images/logoDonative.png';
+
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     const today = new Date();
@@ -22,27 +36,32 @@ export default function pdfProductsAssistantReportGenerator(data) {
 
     // --- 1. MEMBRETE OFICIAL ---
     try {
-        const logoSrc = '/images/logoDonative.png';
-        const logoWidth = 50;
-        const logoHeight = 20;
-        doc.addImage(logoSrc, 'PNG', (pageWidth - logoWidth) / 2, 8, logoWidth, logoHeight);
+        if (companyLogo) {
+            const logoWidth = 50;
+            const logoHeight = 20;
+            doc.addImage(companyLogo, 'PNG', (pageWidth - logoWidth) / 2, 8, logoWidth, logoHeight);
+        }
     } catch (error) {
         console.warn("No se pudo cargar el logo", error);
     }
     
     doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
-    doc.text('FARMACIA BARRIO SUCRE 2024, C.A.', pageWidth / 2, 34, { align: 'center' });
-    doc.setFontSize(9);
-    doc.text('R.I.F. Nº J-50540695-7', pageWidth / 2, 38, { align: 'center' });
+    doc.text(companyName, pageWidth / 2, 34, { align: 'center' });
+    let lineY = 38;
+    if (companyRif) {
+        doc.setFontSize(9);
+        doc.text(`R.I.F. Nº ${companyRif}`, pageWidth / 2, lineY, { align: 'center' });
+        lineY += 4;
+    }
     
     // --- 2. TÍTULO PRINCIPAL CON BORDES ---
     doc.setDrawColor(0);
     doc.setLineWidth(0.4);
-    doc.line(10, 42, pageWidth - 10, 42);
+    doc.line(10, lineY, pageWidth - 10, lineY);
     
     doc.setFontSize(11);
-    doc.text('REPORTE ASISTENTE DE PEDIDO IA', pageWidth / 2, 47, { align: 'center' });
+    doc.text('REPORTE ASISTENTE DE PEDIDO IA', pageWidth / 2, lineY + 5, { align: 'center' });
     
     doc.line(10, 50, pageWidth - 10, 50);
     

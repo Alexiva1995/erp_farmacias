@@ -118,10 +118,14 @@
     <table class="header-table">
         <tr>
             <td style="width: 35%;">
-                @if(!empty($logoBase64))
+                @if(!empty($global_logo_base64))
+                    <img src="{{ $global_logo_base64 }}" class="logo" alt="Logo" />
+                @elseif(!empty($logoBase64))
                     <img src="{{ $logoBase64 }}" class="logo" alt="Logo" />
+                @elseif(!empty($global_logo_path) && file_exists($global_logo_path))
+                    <img src="{{ $global_logo_path }}" class="logo" alt="Logo" />
                 @else
-                    <h3 style="margin: 0; color: #2b6cb0;">{{ $setting->app_name ?? 'FARMACIA' }}</h3>
+                    <h3 style="margin: 0; color: #2b6cb0;">{{ $global_company_name ?? ($setting->app_name ?? 'FARMACIA') }}</h3>
                 @endif
             </td>
             <td class="title-section" style="width: 65%;">

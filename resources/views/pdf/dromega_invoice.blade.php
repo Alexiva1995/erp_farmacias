@@ -203,9 +203,10 @@
     <table class="info-table">
         <tr>
             <td class="info-col-left">
-                <div><strong>Razón Social:</strong> {{ $detail['descCliente'] ?? 'FARMACIA BARRIO SUCRE 2024, C.A' }}</div>
-                <div><strong>Dir. Fiscal:</strong> {{ $detail['dirCliente'] ?? 'CALLE PRINCIPAL LOCAL 05 (L5) SECTOR BARRIO SUCRE LA FRIA EDO. TACHIRA' }}</div>
-                <div><strong>N° R.I.F:</strong> {{ $detail['rifCliente'] ?? 'J-50540695-7' }}</div>
+                <div><strong>Razón Social:</strong> {{ $detail['descCliente'] ?? ($global_company_name ?? 'FARMACIA') }}</div>
+                @if(!empty($global_company_rif) || !empty($detail['rifCliente']))
+                    <div><strong>N° R.I.F:</strong> {{ $detail['rifCliente'] ?? $global_company_rif }}</div>
+                @endif
             </td>
             <td class="info-col-right">
                 <table style="width:100%; border-collapse:collapse;">

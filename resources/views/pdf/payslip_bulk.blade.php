@@ -83,14 +83,17 @@
         <table class="header-table">
             <tr>
                 <td class="logo-cell">
-                    @if(file_exists(public_path('images/logoDonative.png')))
-                        <img src="{{ public_path('images/logoDonative.png') }}" class="logo-img">
+                    @if(!empty($global_logo_base64))
+                        <img src="{{ $global_logo_base64 }}" class="logo-img">
+                    @elseif(!empty($global_logo_path) && file_exists($global_logo_path))
+                        <img src="{{ $global_logo_path }}" class="logo-img">
                     @endif
                 </td>
                 <td class="company-cell">
-                    <span class="company-name">FARMACIA BARRIO SUCRE 2024, C.A.</span>
-                    <span class="company-sub">R.I.F. Nº J-50540695-7</span>
-                    <span class="company-extra">Calle Principal Local 05 (L3) Sector Barrio Sucre, La Fría, Táchira</span>
+                    <span class="company-name">{{ $global_company_name ?? 'FARMACIA' }}</span>
+                    @if(!empty($global_company_rif))
+                        <span class="company-sub">R.I.F. Nº {{ $global_company_rif }}</span>
+                    @endif
                     <span class="company-extra">Tipo de Nómina: Quincenal</span>
                 </td>
             </tr>
@@ -244,7 +247,9 @@
                     <td class="patron-box">
                         <div style="height:40px;"></div>
                         <div class="patron-line">Representante Legal / Patrono</div>
-                        <div style="font-size:6.5pt; text-align:center; margin-top:2px;">R.I.F. J-50540695-7 | FARMACIA BARRIO SUCRE 2024, C.A.</div>
+                        <div style="font-size:6.5pt; text-align:center; margin-top:2px;">
+                            @if(!empty($global_company_rif)) R.I.F. {{ $global_company_rif }} | @endif {{ $global_company_name ?? 'FARMACIA' }}
+                        </div>
                     </td>
                 </tr>
             </table>

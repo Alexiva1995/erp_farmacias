@@ -80,20 +80,23 @@
 <body>
     <!-- Header con Logo -->
     <div class="header">
-        @if(file_exists(public_path('images/logoDonative.png')))
-        <img src="{{ public_path('images/logoDonative.png') }}" alt="Farmacia Barrio Sucre" class="logo">
+        @if(!empty($global_logo_base64))
+            <img src="{{ $global_logo_base64 }}" alt="Logo" class="logo">
+        @elseif(!empty($global_logo_path) && file_exists($global_logo_path))
+            <img src="{{ $global_logo_path }}" alt="Logo" class="logo">
         @else
-        <div style="text-align: center; font-size: 24px; font-weight: bold; color: #333;">
-            FARMACIA BARRIO SUCRE 2024 C.A.
-        </div>
+            <div style="text-align: center; font-size: 24px; font-weight: bold; color: #333;">
+                {{ $global_company_name ?? 'FARMACIA' }}
+            </div>
         @endif
     </div>
 
     <!-- Información del Destinatario -->
     <div class="recipient-section">
-        <strong>DIRIGIDO A:</strong> FARMACIA BARRIO SUCRE 2024 C.A.<br>
-        <strong>R.I.F:</strong> J-505406957<br>
-        TÁCHIRA - LA FRÍA - BARRIO SUCRE - CALLE PRINCIPAL LOCAL 05<br>
+        <strong>DIRIGIDO A:</strong> {{ $global_company_name ?? 'FARMACIA' }}<br>
+        @if(!empty($global_company_rif))
+            <strong>R.I.F:</strong> {{ $global_company_rif }}<br>
+        @endif
         <div class="subject">ASUNTO: RENUNCIA</div>
     </div>
 

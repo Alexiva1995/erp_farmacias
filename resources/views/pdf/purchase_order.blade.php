@@ -96,6 +96,29 @@
 </head>
 <body>
 
+    <table class="header-table">
+        <tr>
+            <td style="width: 50%;">
+                @if(!empty($global_logo_base64))
+                    <img src="{{ $global_logo_base64 }}" style="max-height: 45px;" alt="Logo"><br>
+                @elseif(!empty($global_logo_path) && file_exists($global_logo_path))
+                    <img src="{{ $global_logo_path }}" style="max-height: 45px;" alt="Logo"><br>
+                @endif
+                <div class="company-name">{{ $global_company_name ?? 'FARMACIA' }}</div>
+                @if(!empty($global_company_rif))
+                    <div style="font-size: 11px; color: #666;">RIF: {{ $global_company_rif }}</div>
+                @endif
+            </td>
+            <td style="width: 50%;">
+                <div class="order-title">ORDEN DE COMPRA</div>
+                <div style="text-align: right; font-size: 11px; color: #666; margin-top: 4px;">
+                    <strong>Proveedor:</strong> {{ $supplierName ?? 'Proveedor' }}<br>
+                    <strong>Fecha:</strong> {{ now()->format('d/m/Y') }}
+                </div>
+            </td>
+        </tr>
+    </table>
+
     <table class="items-table">
         <thead>
             <tr>

@@ -1,11 +1,22 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { useBrandingStore } from '@/stores/useBrandingStore';
 
 export function generateDonationPDF(donationData) {
   const doc = new jsPDF();
   const { institution, products, exchangeRateBs } = donationData;
 
-  const logoSrc = '/images/logoDonative.png';
+  let storeSettings = {};
+  try {
+    const store = useBrandingStore();
+    storeSettings = store.settings || {};
+  } catch (e) {
+    // Contexto sin Pinia activo
+  }
+
+  const companyName = storeSettings.app_name || 'FARMACIA';
+  const companyRif = storeSettings.app_rif ? ` ${storeSettings.app_rif}` : '';
+  const companyLogo = storeSettings.app_logo || '/images/logoDonative.png';
   
   const pageWidth = doc.internal.pageSize.getWidth();
   const logoWidth = 90;
@@ -13,7 +24,9 @@ export function generateDonationPDF(donationData) {
   const xPosition = (pageWidth - logoWidth) / 2;
 
   try {
-    doc.addImage(logoSrc, 'PNG', xPosition, 15, logoWidth, logoHeight);
+    if (companyLogo) {
+      doc.addImage(companyLogo, 'PNG', xPosition, 15, logoWidth, logoHeight);
+    }
   } catch (error) {
     console.error("jsPDF no pudo añadir la imagen del logo.", error);
   }
@@ -35,7 +48,7 @@ export function generateDonationPDF(donationData) {
 
   const bodyYPosition = institutionYPosition + 10;
   doc.setFont('helvetica', 'normal');
-  const bodyText = `Reciba un saludo cordial de parte de la FARMACIA BARRIO SUCRE 2024 C.A J-505406957, por medio del presente expreso mi voluntad de donar a favor ${institution.toUpperCase()} siguientes medicamentos detallados en la lista adjunta, que beneficiaría a los pacientes o familiares de dicha institución.`;
+  const bodyText = `Reciba un saludo cordial de parte de ${companyName}${companyRif}, por medio del presente expreso mi voluntad de donar a favor ${institution.toUpperCase()} siguientes medicamentos detallados en la lista adjunta, que beneficiaría a los pacientes o familiares de dicha institución.`;
   const splitBody = doc.splitTextToSize(bodyText, pageWidth - 30);
   doc.text(splitBody, 15, bodyYPosition);
 

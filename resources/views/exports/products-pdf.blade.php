@@ -26,9 +26,19 @@
     </style>
 </head>
 <body>
-    <div style="margin-bottom: 20px;">
-        <h2 style="color: #2979FF; margin: 0;">Lista de Productos</h2>
-        <div style="font-size: 9px; color: #666;">Fecha: {{ now()->format('d/m/Y h:i A') }} | Registros: {{ count($products) }}</div>
+    <div style="margin-bottom: 20px; border-bottom: 2px solid #2979FF; padding-bottom: 10px;">
+        @if(!empty($global_logo_base64))
+            <img src="{{ $global_logo_base64 }}" style="max-height: 40px; float: right;" alt="Logo">
+        @elseif(!empty($global_logo_path) && file_exists($global_logo_path))
+            <img src="{{ $global_logo_path }}" style="max-height: 40px; float: right;" alt="Logo">
+        @endif
+        <div style="font-size: 13px; font-weight: bold; color: #333;">{{ $global_company_name ?? 'FARMACIA' }}</div>
+        @if(!empty($global_company_rif))
+            <div style="font-size: 9px; color: #666;">RIF: {{ $global_company_rif }}</div>
+        @endif
+        <h2 style="color: #2979FF; margin: 4px 0 0 0; font-size: 13px;">Lista de Productos</h2>
+        <div style="font-size: 9px; color: #666; margin-top: 2px;">Fecha: {{ now()->format('d/m/Y h:i A') }} | Registros: {{ count($products) }}</div>
+        <div style="clear: both;"></div>
     </div>
 
     <table>

@@ -109,14 +109,20 @@
     <table class="header-table">
         <tr>
             <td class="logo-cell">
-                @if(file_exists(public_path('images/logoDonative.png')))
-                    <img src="{{ public_path('images/logoDonative.png') }}" class="logo-img">
+                @if(!empty($global_logo_base64))
+                    <img src="{{ $global_logo_base64 }}" class="logo-img">
+                @elseif(!empty($global_logo_path) && file_exists($global_logo_path))
+                    <img src="{{ $global_logo_path }}" class="logo-img">
                 @endif
             </td>
             <td class="company-cell">
-                <span class="company-name">FARMACIA BARRIO SUCRE 2024, C.A.</span>
-                <span class="company-sub">R.I.F. Nº J-50540695-7</span>
-                <span class="company-extra">Calle Principal Local 05 (L3) Sector Barrio Sucre, La Fría, Táchira</span>
+                <span class="company-name">{{ $company['name'] ?? ($global_company_name ?? 'FARMACIA') }}</span>
+                @php
+                    $agentRif = !empty($company['rif']) ? $company['rif'] : ($global_company_rif ?? null);
+                @endphp
+                @if(!empty($agentRif))
+                    <span class="company-sub">R.I.F. Nº {{ $agentRif }}</span>
+                @endif
                 <span class="company-extra">Agente de Retención de I.V.A.</span>
             </td>
         </tr>
@@ -131,7 +137,6 @@
     <table class="meta-info-table">
         <tr>
             <td style="width: 50%; font-size: 8.5pt;">
-                <strong>Ciudad:</strong> LA FRIA<br>
                 <strong>Fecha de Emisión:</strong> {{ $date_now }}
             </td>
             <td style="width: 50%; text-align: right; font-size: 8.5pt;">
@@ -145,9 +150,13 @@
         <tr>
             <td style="width: 50%;">
                 <div class="label" style="margin-bottom: 4px; border-bottom: 0.5px solid #000; padding-bottom: 2px;">DATOS DEL AGENTE DE RETENCIÓN:</div>
-                <span class="label">Nombre o Razón Social:</span> FARMACIA BARRIO SUCRE 2024, C.A.<br>
-                <span class="label">Nº R.I.F.:</span> {{ $company['rif'] }} &nbsp;&nbsp; <span class="label">Nº N.I.T.:</span> <br>
-                <span class="label">Dirección:</span> CALLE PRINCIPAL LOCAL 05 (L3) SECTOR BARRIO SUCRE LA FRIA TACHIRA
+                <span class="label">Nombre o Razón Social:</span> {{ $company['name'] ?? ($global_company_name ?? 'FARMACIA') }}<br>
+                @if(!empty($agentRif))
+                    <span class="label">Nº R.I.F.:</span> {{ $agentRif }} &nbsp;&nbsp; <span class="label">Nº N.I.T.:</span> <br>
+                @endif
+                @if(!empty($company['address']))
+                    <span class="label">Dirección:</span> {{ $company['address'] }}
+                @endif
             </td>
             <td style="width: 50%;">
                 <div class="label" style="margin-bottom: 4px; border-bottom: 0.5px solid #000; padding-bottom: 2px;">DATOS DEL BENEFICIARIO:</div>
@@ -219,7 +228,9 @@
                 <td class="signature-box">
                     <div style="height: 50px;"></div>
                     <div class="signature-line">Firma Y Sello Agente De Retención</div>
-                    <div style="font-weight: bold; margin-top: 2px; font-size: 7.5pt;">RIF: J505406957</div>
+                    @if(!empty($agentRif))
+                        <div style="font-weight: bold; margin-top: 2px; font-size: 7.5pt;">RIF: {{ $agentRif }}</div>
+                    @endif
                 </td>
                 <td style="width: 10%;"></td>
                 <td class="signature-box">

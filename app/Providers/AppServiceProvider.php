@@ -409,5 +409,55 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('login', function (\Illuminate\Http\Request $request) {
             return Limit::perMinute(5)->by($request->ip());
         });
+
+        // Compartir información institucional de la farmacia con todas las vistas Blade (PDFs, reportes, emails)
+        \Illuminate\Support\Facades\View::composer('*', function ($view) {
+            try {
+                /** @var \App\Models\GeneralSetting|null $setting */
+                $setting = \App\Models\GeneralSetting::first();
+                $appName = $setting?->app_name ?: 'FARMACIA BARRIO SUCRE 2024, C.A.';
+                $appRif = $setting?->app_rif ?: null;
+
+                $logoPath = null;
+                $logoBase64 = null;
+
+                if (!empty($setting?->app_logo)) {
+                    $rawLogo = $setting->app_logo;
+                    $cleanPath = ltrim($rawLogo, '/');
+
+                    if (str_starts_with($cleanPath, 'storage/')) {
+                        $relativeStoragePath = substr($cleanPath, 8);
+                        $candidatePath = storage_path('app/public/' . $relativeStoragePath);
+                        if (file_exists($candidatePath)) {
+                            $logoPath = $candidatePath;
+                        }
+                    }
+
+                    if (!$logoPath && file_exists(public_path($cleanPath))) {
+                        $logoPath = public_path($cleanPath);
+                    }
+                }
+
+                if (!$logoPath && file_exists(public_path('images/logoDonative.png'))) {
+                    $logoPath = public_path('images/logoDonative.png');
+                }
+
+                if ($logoPath && file_exists($logoPath)) {
+                    $mime = mime_content_type($logoPath) ?: 'image/png';
+                    $data = base64_encode(file_get_contents($logoPath));
+                    $logoBase64 = 'data:' . $mime . ';base64,' . $data;
+                }
+
+                $view->with([
+                    'general_setting'     => $setting,
+                    'global_company_name' => $appName,
+                    'global_company_rif'  => $appRif,
+                    'global_logo_path'    => $logoPath,
+                    'global_logo_base64'  => $logoBase64,
+                ]);
+            } catch (\Throwable $e) {
+                // Silenciar en entornos de migración inicial o tests sin DB
+            }
+        });
     }
 }

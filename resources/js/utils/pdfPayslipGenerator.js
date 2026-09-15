@@ -1,20 +1,33 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-
-const LOGO = "/images/logoDonative.png";
-const LOGO_WIDTH = 90;
-const LOGO_HEIGHT = 35;
+import { useBrandingStore } from "@/stores/useBrandingStore";
 
 export default function pdfPayslipsGenerator(data, type) {
   const doc = new jsPDF({
     orientation: "l",
   });
 
+  let storeSettings = {};
+  try {
+    const store = useBrandingStore();
+    storeSettings = store.settings || {};
+  } catch (e) {
+    // Contexto sin Pinia activo
+  }
+
+  const companyName = storeSettings.app_name || "FARMACIA";
+  const companyRif = storeSettings.app_rif || "";
+  const companyLogo = storeSettings.app_logo || "/images/logoDonative.png";
+
+  const LOGO_WIDTH = 90;
+  const LOGO_HEIGHT = 35;
   const pageWidth = doc.internal.pageSize.getWidth();
   const xPosition = (pageWidth - LOGO_WIDTH) / 2;
 
   try {
-    doc.addImage(LOGO, "PNG", xPosition, 5, LOGO_WIDTH, LOGO_HEIGHT);
+    if (companyLogo) {
+      doc.addImage(companyLogo, "PNG", xPosition, 5, LOGO_WIDTH, LOGO_HEIGHT);
+    }
   } catch (error) {
     console.error("jsPDF no pudo añadir la imagen del logo.", error);
   }
@@ -22,10 +35,15 @@ export default function pdfPayslipsGenerator(data, type) {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
   doc.setTextColor(0, 0, 0);
-  doc.text("FARMACIA BARRIO SUCRE 2024 C.A", 15, 20);
-  doc.text("J505406957", 15, 25);
-  doc.text("Tipo de Nomina: Cada 15 dias", 15, 30);
-  doc.text(`Periodo: ${data.period}`, 15, 35);
+  doc.text(companyName, 15, 20);
+  let yText = 25;
+  if (companyRif) {
+    doc.text(companyRif, 15, yText);
+    yText += 5;
+  }
+  doc.text("Tipo de Nomina: Cada 15 dias", 15, yText);
+  yText += 5;
+  doc.text(`Periodo: ${data.period}`, 15, yText);
   doc.setFont("helvetica", "normal");
 
   const formatBs = (amount) => {

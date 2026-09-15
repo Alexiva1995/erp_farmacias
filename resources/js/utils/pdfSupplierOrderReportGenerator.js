@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { roundIaAnalysis } from './iaAnalysisRounding';
+import { useBrandingStore } from '@/stores/useBrandingStore';
 
 /**
  * Genera un PDF optimizado para órdenes de compra, agrupando productos por proveedor.
@@ -12,6 +13,17 @@ export default function pdfSupplierOrderReportGenerator(data) {
         format: 'a4'
     });
     
+    let storeSettings = {};
+    try {
+        const store = useBrandingStore();
+        storeSettings = store.settings || {};
+    } catch (e) {
+        // Contexto sin Pinia activo
+    }
+
+    const companyName = storeSettings.app_name || 'FARMACIA';
+    const companyLogo = storeSettings.app_logo || '/images/logoDonative.png';
+
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     const today = new Date();
@@ -19,17 +31,18 @@ export default function pdfSupplierOrderReportGenerator(data) {
 
     // --- 1. MEMBRETE ---
     try {
-        const logoSrc = '/images/logoDonative.png';
-        const logoWidth = 40;
-        const logoHeight = 15;
-        doc.addImage(logoSrc, 'PNG', 15, 10, logoWidth, logoHeight);
+        if (companyLogo) {
+            const logoWidth = 40;
+            const logoHeight = 15;
+            doc.addImage(companyLogo, 'PNG', 15, 10, logoWidth, logoHeight);
+        }
     } catch (error) {
         console.warn("Logo no disponible");
     }
 
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
-    doc.text('FARMACIA BARRIO SUCRE 2024, C.A.', pageWidth - 15, 15, { align: 'right' });
+    doc.text(companyName, pageWidth - 15, 15, { align: 'right' });
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     doc.text('ORDEN DE COMPRA SUGERIDA (IA)', pageWidth - 15, 20, { align: 'right' });

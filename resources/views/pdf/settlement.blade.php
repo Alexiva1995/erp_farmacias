@@ -123,11 +123,18 @@
 </head>
 <body>
     <div class="header">
-        @if(file_exists(public_path('images/' . ($company_logo ?? 'logoDonative.png'))))
-            <img src="{{ public_path('images/' . ($company_logo ?? 'logoDonative.png')) }}" alt="Logo" class="logo">
+        @if(!empty($global_logo_base64))
+            <img src="{{ $global_logo_base64 }}" alt="Logo" class="logo">
+        @elseif(!empty($global_logo_path) && file_exists($global_logo_path))
+            <img src="{{ $global_logo_path }}" alt="Logo" class="logo">
         @endif
-        <div class="company-name">{{ $company_name ?? 'FARMACIA BARRIO SUCRE 2024 C.A.' }}</div>
-        <div class="company-rif">R.I.F: {{ $company_rif ?? 'J-505406957' }}</div>
+        <div class="company-name">{{ $company_name ?? ($global_company_name ?? 'FARMACIA') }}</div>
+        @php
+            $rifToDisplay = $company_rif ?? $global_company_rif ?? null;
+        @endphp
+        @if(!empty($rifToDisplay))
+            <div class="company-rif">R.I.F: {{ $rifToDisplay }}</div>
+        @endif
         <div class="document-title">FINIQUITO DE PRESTACIONES SOCIALES Y BENEFICIOS LABORALES</div>
     </div>
 
@@ -234,7 +241,7 @@
     </div>
 
     <div class="legal-text">
-        Yo, <strong>{{ $name }} {{ $last_name }}</strong>, arriba identificado, por el presente instrumento declaro bajo fe de juramento que he recibido a mi entera satisfacción de la empresa <strong>{{ $company_name ?? 'FARMACIA BARRIO SUCRE 2024 C.A.' }}</strong>, la cantidad neta indicada en el presente balance. Dicho monto corresponde a la liquidación definitiva de mis prestaciones sociales, vacaciones, utilidades y demás conceptos derivados de la relación laboral que hoy culmina.
+        Yo, <strong>{{ $name }} {{ $last_name }}</strong>, arriba identificado, por el presente instrumento declaro bajo fe de juramento que he recibido a mi entera satisfacción de la empresa <strong>{{ $company_name ?? ($global_company_name ?? 'la Empresa') }}</strong>, la cantidad neta indicada en el presente balance. Dicho monto corresponde a la liquidación definitiva de mis prestaciones sociales, vacaciones, utilidades y demás conceptos derivados de la relación laboral que hoy culmina.
         <br><br>
         En virtud de lo anterior, manifiesto mi conformidad absoluta con los cálculos aquí presentados, reconociendo que los mismos cumplen con los extremos legales previstos en la Ley Orgánica del Trabajo, los Trabajadores y las Trabajadoras (LOTTT). Con la recepción de la referida suma, otorgo el más amplio y eficaz finiquito de carácter liberatorio, declarando que la empresa no me adeuda suma alguna por concepto de salarios, bonificaciones o beneficios contractuales, quedando las partes libres de toda obligación recíproca.
     </div>
@@ -244,7 +251,10 @@
             <tr>
                 <td class="signature-box">
                     <div class="signature-line">POR LA EMPRESA</div>
-                    <small>{{ $company_name ?? 'FARMACIA BARRIO SUCRE 2024 C.A.' }}<br>R.I.F: {{ $company_rif ?? 'J-505406957' }}</small>
+                    <small>
+                        {{ $company_name ?? ($global_company_name ?? 'FARMACIA') }}
+                        @if(!empty($rifToDisplay))<br>R.I.F: {{ $rifToDisplay }}@endif
+                    </small>
                 </td>
                 <td style="width: 10%;"></td>
                 <td class="signature-box">

@@ -1,21 +1,36 @@
 import jsPDF from "jspdf";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 
 /**
- * Aplica el encabezado premium estandarizado (estilo Nómina) a un documento jsPDF.
+ * Aplica el encabezado premium estandarizado a un documento jsPDF.
  * @param {jsPDF} doc - Instancia de jsPDF.
  * @param {string} title - Título principal del reporte.
  * @param {string} subtitle - Subtítulo opcional (ej. Periodo o Filtros).
+ * @param {Object} customOptions - Opciones adicionales personalizadas.
  */
-export const applyPremiumHeader = (doc, title, subtitle = "") => {
+export const applyPremiumHeader = (doc, title, subtitle = "", customOptions = {}) => {
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 15;
   
+  let storeSettings = {};
+  try {
+    const store = useBrandingStore();
+    storeSettings = store.settings || {};
+  } catch (e) {
+    // Contexto sin Pinia activo
+  }
+
+  const companyName = customOptions.companyName || storeSettings.app_name || "FARMACIA";
+  const companyRif = customOptions.companyRif !== undefined ? customOptions.companyRif : (storeSettings.app_rif || "");
+  const companyLogo = customOptions.logo || storeSettings.app_logo || "/images/logoDonative.png";
+
   // 1. Logo (Izquierda)
   try {
-    const LOGO = "/images/logoDonative.png";
-    const LOGO_WIDTH = 45;
-    const LOGO_HEIGHT = 18;
-    doc.addImage(LOGO, "PNG", margin, 10, LOGO_WIDTH, LOGO_HEIGHT);
+    if (companyLogo) {
+      const LOGO_WIDTH = 45;
+      const LOGO_HEIGHT = 18;
+      doc.addImage(companyLogo, "PNG", margin, 10, LOGO_WIDTH, LOGO_HEIGHT);
+    }
   } catch (error) {
     console.error("No se pudo añadir el logo al PDF", error);
   }
@@ -24,10 +39,14 @@ export const applyPremiumHeader = (doc, title, subtitle = "") => {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
   doc.setTextColor(0, 0, 0);
-  doc.text("FARMACIA BARRIO SUCRE 2024, C.A.", pageWidth - margin, 15, { align: "right" });
+  doc.text(companyName, pageWidth - margin, 15, { align: "right" });
   
-  doc.setFontSize(8);
-  doc.text("R.I.F. J-50540695-7", pageWidth - margin, 20, { align: "right" });
+  let currentY = 20;
+  if (companyRif) {
+    doc.setFontSize(8);
+    doc.text(`R.I.F. ${companyRif}`, pageWidth - margin, currentY, { align: "right" });
+    currentY += 4;
+  }
   
   doc.setFont("helvetica", "normal");
   doc.setTextColor(100, 100, 100);

@@ -12,6 +12,10 @@ export default [
     subject: 'admin',
     children: [
       {
+        title: 'Datos de Farmacia',
+        to: 'configuration-pharmacy',
+      },
+      {
         title: 'Generales',
         to: 'configuration-branding',
       },

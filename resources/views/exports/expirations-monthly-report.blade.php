@@ -39,12 +39,17 @@
 <body>
     <div class="header">
         <div class="logo-container">
-            <img src="{{ public_path('images/logoDonative.png') }}" class="logo" alt="Logo">
+            @if(!empty($global_logo_base64))
+                <img src="{{ $global_logo_base64 }}" class="logo" alt="Logo">
+            @elseif(!empty($global_logo_path) && file_exists($global_logo_path))
+                <img src="{{ $global_logo_path }}" class="logo" alt="Logo">
+            @endif
         </div>
         <div class="company-info">
-            <div class="company-name">FARMACIA BARRIO SUCRE 2024 C.A</div>
-            <div class="company-rif">RIF: J-505406957</div>
-            <div style="font-size: 9px; margin-top: 3px;">San Cristóbal - Edo. Táchira, Venezuela</div>
+            <div class="company-name">{{ $global_company_name ?? 'FARMACIA' }}</div>
+            @if(!empty($global_company_rif))
+                <div class="company-rif">RIF: {{ $global_company_rif }}</div>
+            @endif
         </div>
         <div class="clearfix"></div>
     </div>
