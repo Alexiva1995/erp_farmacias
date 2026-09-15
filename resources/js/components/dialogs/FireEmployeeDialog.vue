@@ -378,7 +378,7 @@ const formatDate = (dateString) => {
                           <tr>
                             <th class="text-left text-super-xs font-weight-bold text-medium-emphasis uppercase">Concepto</th>
                             <th class="text-right text-super-xs font-weight-bold text-medium-emphasis uppercase">Días</th>
-                            <th class="text-right text-super-xs font-weight-bold text-medium-emphasis uppercase">Monto (Bs)</th>
+                            <th class="text-right text-super-xs font-weight-bold text-medium-emphasis uppercase">Monto (Bs.)</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -422,7 +422,7 @@ const formatDate = (dateString) => {
                         <thead>
                           <tr>
                             <th class="text-left text-super-xs font-weight-bold text-medium-emphasis uppercase">Concepto</th>
-                            <th class="text-right text-super-xs font-weight-bold text-medium-emphasis uppercase">Monto (Bs)</th>
+                            <th class="text-right text-super-xs font-weight-bold text-medium-emphasis uppercase">Monto (Bs.)</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -488,8 +488,8 @@ const formatDate = (dateString) => {
               <!-- Sección Derecha: Resumen -->
               <VCol cols="12" lg="4" class="pa-1">
                 <div class="d-flex flex-column gap-3 h-100">
-                  <!-- Tarjeta Promedio de Sueldos en Blanco con borde fino -->
-                  <div class="bg-white rounded-lg border shadow-xs pa-3.5">
+                  <!-- Bloque 1: Promedio de Sueldos (blanco con borde fino) -->
+                  <div class="bg-white rounded-lg border shadow-xs pa-3">
                     <div class="d-flex justify-space-between align-center mb-1">
                       <span class="text-super-xs font-weight-bold text-medium-emphasis uppercase">Promedio Últimos Sueldos</span>
                       <VBtn icon size="x-small" variant="text" color="secondary" @click="showSalaryDetails = !showSalaryDetails">
@@ -497,16 +497,16 @@ const formatDate = (dateString) => {
                       </VBtn>
                     </div>
                     <div class="text-h5 font-weight-black text-high-emphasis leading-tight mb-2">
-                      {{ displayAmount(settlement?.average_salary ?? 0) }} <small class="text-caption text-medium-emphasis">Bs</small>
+                      {{ displayAmount(settlement?.average_salary ?? 0) }} <small class="text-caption text-medium-emphasis">Bs.</small>
                     </div>
                     <div class="d-flex gap-3 pt-2 border-t">
                        <div class="d-flex flex-column flex-grow-1 border-r pe-2">
                          <span class="text-super-xs font-weight-medium text-medium-emphasis uppercase">Día / Social</span>
-                         <span class="text-xs font-weight-bold text-high-emphasis">{{ displayAmount(settlement?.daily_wage ?? 0) }} Bs</span>
+                         <span class="text-xs font-weight-bold text-high-emphasis">{{ displayAmount(settlement?.daily_wage ?? 0) }} Bs.</span>
                        </div>
                        <div class="d-flex flex-column flex-grow-1">
                          <span class="text-super-xs font-weight-medium text-medium-emphasis uppercase">Día / Integral</span>
-                         <span class="text-xs font-weight-bold text-high-emphasis">{{ displayAmount(settlement?.integral_salary ?? 0) }} Bs</span>
+                         <span class="text-xs font-weight-bold text-high-emphasis">{{ displayAmount(settlement?.integral_salary ?? 0) }} Bs.</span>
                        </div>
                     </div>
                   </div>
@@ -518,7 +518,7 @@ const formatDate = (dateString) => {
                         <div v-if="settlement?.last_salaries?.length > 0" class="d-flex flex-column gap-1">
                           <div v-for="(salary, index) in settlement.last_salaries" :key="index" class="d-flex justify-space-between align-center text-super-xs pa-1 border-b last:border-0">
                             <span class="font-weight-medium text-medium-emphasis">{{ formatDate(salary.payslip_date) }}</span>
-                            <span class="font-weight-bold text-high-emphasis">{{ formatCurrency(salary.amount_bs) }} Bs</span>
+                            <span class="font-weight-bold text-high-emphasis">{{ formatCurrency(salary.amount_bs) }} Bs.</span>
                           </div>
                         </div>
                         <div v-else class="text-super-xs text-center text-disabled italic py-1">SIN HISTORIAL</div>
@@ -526,16 +526,16 @@ const formatDate = (dateString) => {
                     </div>
                   </VExpandTransition>
 
-                  <!-- 4. Tarjeta TOTAL NETO A PAGAR con Jerarquía Tipográfica Clara -->
-                  <div class="bg-white rounded-lg border pa-4 flex-grow-1 d-flex flex-column justify-center shadow-xs text-center">
-                    <div class="d-flex justify-space-between align-center mb-3 px-1">
-                      <span class="text-super-xs font-weight-bold text-medium-emphasis uppercase">Tasa BCV del Día</span>
-                      <span class="text-xs font-weight-bold text-high-emphasis">1 USD = {{ displayAmount(exchangeRate) }} Bs</span>
+                  <!-- Bloque 2: Tasa BCV + % A Liquidar (separado e independiente) -->
+                  <div class="bg-white rounded-lg border shadow-xs pa-3">
+                    <!-- Tasa BCV en una línea limpia -->
+                    <div class="d-flex justify-space-between align-center mb-2">
+                      <span class="text-super-xs font-weight-medium text-medium-emphasis">Tasa BCV</span>
+                      <span class="text-xs font-weight-bold text-high-emphasis">{{ displayAmount(exchangeRate) }} Bs./USD</span>
                     </div>
-
-                    <!-- 2. % A Liquidar con ancho y alineación limpia -->
-                    <div class="d-flex align-center justify-space-between my-2 px-1">
-                      <span class="text-xs font-weight-bold text-medium-emphasis uppercase">% A Liquidar</span>
+                    <!-- % A Liquidar con flex limpio etiqueta-izquierda / input-derecha -->
+                    <div class="d-flex align-center justify-space-between">
+                      <span class="text-super-xs font-weight-bold text-medium-emphasis uppercase">% A Liquidar</span>
                       <div style="inline-size: 85px;">
                         <AppTextField
                           v-model="percentage"
@@ -549,27 +549,28 @@ const formatDate = (dateString) => {
                         />
                       </div>
                     </div>
+                  </div>
 
-                    <VDivider class="border-dashed my-3" />
-
-                    <!-- Etiqueta: TOTAL NETO A PAGAR en mayúsculas, tamaño 11-12px, tono gris oscuro Bold -->
-                    <div class="text-xs font-weight-bold text-medium-emphasis uppercase tracking-wider mb-2">
+                  <!-- Bloque 3: Tarjeta TOTAL NETO A PAGAR (foco visual principal) -->
+                  <div class="total-neto-card rounded-lg pa-4 flex-grow-1 d-flex flex-column justify-center text-center shadow-xs">
+                    <!-- Título en mayúsculas pequeño gris corporativo -->
+                    <div class="text-super-xs font-weight-bold text-medium-emphasis uppercase tracking-wider mb-3">
                       TOTAL NETO A PAGAR
                     </div>
 
-                    <!-- Monto Principal: 28px-32px, Extra-Bold con USD al lado en la misma línea -->
-                    <div class="d-flex align-center justify-center gap-1.5 mb-2">
-                      <span class="text-h4 font-weight-black text-primary tabular-nums">
+                    <!-- Cifra principal USD: 27px Extra-Bold magenta, todo en una línea -->
+                    <div class="d-flex align-baseline justify-center gap-1.5 mb-2">
+                      <span class="total-amount-usd tabular-nums">
                         {{ displayAmount(amountToPay) }}
                       </span>
-                      <span class="text-subtitle-1 font-weight-bold text-primary">
+                      <span class="total-currency-usd font-weight-black text-primary">
                         USD
                       </span>
                     </div>
 
-                    <!-- Equivalencia: 14px, Medium en color de marca para destacar en moneda local -->
-                    <div class="text-body-2 font-weight-bold text-primary opacity-90">
-                      ≈ {{ displayAmount(amountToPay * exchangeRate) }} Bs.S
+                    <!-- Equivalencia Bs.: 15px Bold azul oscuro -->
+                    <div class="total-equiv-bs">
+                      ≈ {{ displayAmount(amountToPay * exchangeRate) }} Bs.
                     </div>
                   </div>
                 </div>
@@ -673,7 +674,7 @@ const formatDate = (dateString) => {
                     <div class="pa-3.5 rounded-lg bg-light border text-center mt-2">
                        <span class="text-super-xs font-weight-bold text-medium-emphasis uppercase d-block leading-none mb-1">Total en Bolívares</span>
                        <div class="text-h5 font-weight-black text-high-emphasis tabular-nums">
-                         {{ displayAmount(amountToPay * exchangeRate) }} <small class="text-xs text-medium-emphasis">Bs.S</small>
+                         {{ displayAmount(amountToPay * exchangeRate) }} <small class="text-xs text-medium-emphasis">Bs.</small>
                        </div>
                     </div>
                   </div>
@@ -859,4 +860,29 @@ const formatDate = (dateString) => {
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
 .tabular-nums { font-variant-numeric: tabular-nums; }
+
+/* Tarjeta TOTAL NETO A PAGAR — Bloque 3 de la columna derecha */
+.total-neto-card {
+  background-color: #fdf2f8 !important;
+  border: 1px solid #fbcfe8 !important;
+}
+
+.total-amount-usd {
+  font-size: 27px !important;
+  font-weight: 900 !important;
+  color: rgb(var(--v-theme-primary)) !important;
+  line-height: 1.1;
+}
+
+.total-currency-usd {
+  font-size: 15px !important;
+  line-height: 1;
+}
+
+.total-equiv-bs {
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  color: #1f2937 !important;
+  line-height: 1.4;
+}
 </style>
