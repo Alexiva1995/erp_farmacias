@@ -181,7 +181,11 @@ const onDownload = () => {
 
 <style scoped>
 .header-gradient {
-  background: var(--brand-gradient) !important;
+  background: linear-gradient(
+    135deg,
+    rgb(var(--v-theme-primary)) 0%,
+    rgb(var(--v-theme-gradient-end)) 100%
+  );
 }
 
 .detail-dialog-card {
