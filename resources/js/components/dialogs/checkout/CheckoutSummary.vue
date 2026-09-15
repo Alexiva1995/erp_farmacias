@@ -90,7 +90,7 @@ const emit = defineEmits(["complete-purchase", "close-modal", "confirm-payment",
                   </div>
                 </div>
 
-                <!-- Derecha: monto + editar (warning/amarillo) + borrar (error/rojo) -->
+                <!-- Derecha: monto + editar (warning/amarillo) + borrar (error/rojo) perfectamente alineados -->
                 <div v-if="!payment._isInputActive" class="d-flex align-center gap-1 shrink-0 ms-2">
                   <span
                     class="text-caption font-weight-bold text-error cursor-pointer px-1 rounded hover-editable-amount"
@@ -100,32 +100,26 @@ const emit = defineEmits(["complete-purchase", "close-modal", "confirm-payment",
                     -{{ formatCurrency(payment.amount || 0, payment.currency) }}
                   </span>
 
-                  <!-- Editar: amarillo/warning — mismo tamaño que ícono billetera (16px) -->
-                  <VBtn
-                    size="x-small"
-                    color="warning"
-                    variant="text"
-                    density="compact"
-                    class="rounded-circle"
+                  <!-- Editar: amarillo/warning -->
+                  <button
+                    type="button"
+                    class="action-icon-btn action-icon-btn--warning"
                     title="Editar monto"
                     @click="props.editPaymentAmount(payment)"
                   >
-                    <VIcon size="16">tabler-pencil</VIcon>
-                  </VBtn>
+                    <VIcon size="15">tabler-pencil</VIcon>
+                  </button>
 
-                  <!-- Borrar: rojo/error — mismo tamaño que ícono billetera (16px) -->
-                  <VBtn
-                    size="x-small"
-                    color="error"
-                    variant="text"
-                    density="compact"
-                    class="rounded-circle"
+                  <!-- Borrar: rojo/error -->
+                  <button
+                    type="button"
+                    class="action-icon-btn action-icon-btn--error"
                     title="Eliminar método"
                     :disabled="!props.isLastPaymentAdded(payment)"
                     @click="props.removePaymentFromSummary(payments.indexOf(payment))"
                   >
-                    <VIcon size="16">tabler-trash</VIcon>
-                  </VBtn>
+                    <VIcon size="15">tabler-trash</VIcon>
+                  </button>
                 </div>
               </div>
 
@@ -320,6 +314,43 @@ const emit = defineEmits(["complete-purchase", "close-modal", "confirm-payment",
 
 .hover-editable-amount:hover {
   background-color: rgba(var(--v-theme-error), 0.08);
+}
+
+/* Botones de acción alineados y centrados */
+.action-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+  line-height: 1;
+}
+
+.action-icon-btn--warning {
+  color: rgb(var(--v-theme-warning));
+}
+
+.action-icon-btn--warning:hover {
+  background-color: rgba(var(--v-theme-warning), 0.12);
+}
+
+.action-icon-btn--error {
+  color: rgb(var(--v-theme-error));
+}
+
+.action-icon-btn--error:hover:not(:disabled) {
+  background-color: rgba(var(--v-theme-error), 0.12);
+}
+
+.action-icon-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 .payment-input-box {

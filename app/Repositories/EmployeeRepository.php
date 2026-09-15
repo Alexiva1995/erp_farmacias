@@ -9,6 +9,8 @@ use App\Models\EmployeeHealthConsumption;
 use App\Models\EmployeePaymentCalculation;
 use App\Models\ExchangeRate;
 use App\Models\Order;
+use App\Models\Payslip;
+use App\Models\PayslipDetails;
 use App\Models\Client;
 use App\Models\Role;
 use App\Models\SalaryConcept;
@@ -293,29 +295,36 @@ class EmployeeRepository implements EmployeeContract
       ->limit(24)
       ->get();
 
+    // Si no hay cálculos individuales, consultar historial de nóminas procesadas (payslips / payslip_details)
+    $mappedHistory = $history->map(fn (EmployeePaymentCalculation $row) => [
+      'id' => $row->id,
+      'year' => $row->year,
+      'month' => $row->month,
+      'fortnight' => $row->fortnight,
+      'fecha' => sprintf('%04d-%02d-%02d', $row->year, $row->month, $row->fortnight == 1 ? 15 : 30),
+      'salario_base' => $row->salario_base,
+      'bono_alimentacion' => $row->bono_alimentacion,
+      'beneficio_salud' => $row->beneficio_salud ?? $row->consumo_total_a_descontar,
+      'consumo_farmacia_actual' => $row->consumo_farmacia_actual,
+      'saldo_deuda_anterior' => $row->saldo_deuda_anterior,
+      'incentivo_metas' => $row->incentivo_metas,
+      'total_pagado_usd' => $row->total_pagado_usd,
+      'total_pagado_ves' => $row->total_pagado_ves,
+      'exchange_rate_ves' => $row->exchange_rate_ves,
+      'created_at' => $row->created_at?->toIso8601String(),
+    ])->values()->all();
+
+    if (empty($mappedHistory) && $employee->user_id) {
+      $mappedHistory = $this->getPayslipHistoryForUser((int) $employee->user_id);
+    }
+
     $result = [
       'employee' => [
         'id' => $employee->id,
         'total_package_usd' => $employee->total_package_usd,
         'saldo_deuda' => $employee->saldo_deuda ?? 0,
       ],
-      'history' => $history->map(fn (EmployeePaymentCalculation $row) => [
-        'id' => $row->id,
-        'year' => $row->year,
-        'month' => $row->month,
-        'fortnight' => $row->fortnight,
-        'fecha' => sprintf('%04d-%02d-%02d', $row->year, $row->month, $row->fortnight == 1 ? 15 : 30),
-        'salario_base' => $row->salario_base,
-        'bono_alimentacion' => $row->bono_alimentacion,
-        'beneficio_salud' => $row->beneficio_salud ?? $row->consumo_total_a_descontar,
-        'consumo_farmacia_actual' => $row->consumo_farmacia_actual,
-        'saldo_deuda_anterior' => $row->saldo_deuda_anterior,
-        'incentivo_metas' => $row->incentivo_metas,
-        'total_pagado_usd' => $row->total_pagado_usd,
-        'total_pagado_ves' => $row->total_pagado_ves,
-        'exchange_rate_ves' => $row->exchange_rate_ves,
-        'created_at' => $row->created_at?->toIso8601String(),
-      ])->values()->all(),
+      'history' => $mappedHistory,
     ];
 
     $packageOverride = isset($data['total_package_usd']) ? (float) $data['total_package_usd'] : null;
@@ -619,5 +628,79 @@ class EmployeeRepository implements EmployeeContract
     // El método profile devuelve un modelo Employee
     return $this->profile($employee)?->toArray() ?? [];
   }
+
+  /**
+   * Obtiene el historial agregado desde payslips y payslip_details para un user_id.
+   */
+  private function getPayslipHistoryForUser(int $userId): array
+  {
+    $payslipDetails = PayslipDetails::whereHas('salary', function ($q) use ($userId) {
+      $q->where('user_id', $userId);
+    })
+      ->with(['payslip', 'salary.concept'])
+      ->get();
+
+    if ($payslipDetails->isEmpty()) {
+      return [];
+    }
+
+    $grouped = $payslipDetails->groupBy('payslip_id');
+
+    $history = [];
+    foreach ($grouped as $payslipId => $details) {
+      $payslip = $details->first()?->payslip;
+      if (!$payslip || !$payslip->payslip_date) {
+        continue;
+      }
+
+      $date = \Carbon\Carbon::parse($payslip->payslip_date);
+      $totalUsd = (float) $details->sum('amount');
+      $rate = (float) ($payslip->exchange_rate ?? 0);
+      $totalVes = $rate > 0 ? round($totalUsd * $rate, 2) : 0.00;
+
+      $salarioBase = 0.00;
+      $bonoAlim = 0.00;
+      $salud = 0.00;
+      $incentivos = 0.00;
+
+      foreach ($details as $d) {
+        $conceptName = strtolower($d->salary?->concept?->name ?? '');
+        $amt = (float) $d->amount;
+        if (str_contains($conceptName, 'básico') || str_contains($conceptName, 'base')) {
+          $salarioBase += $amt;
+        } elseif (str_contains($conceptName, 'alimentaci') || str_contains($conceptName, 'cesta')) {
+          $bonoAlim += $amt;
+        } elseif (str_contains($conceptName, 'salud') || str_contains($conceptName, 'médic')) {
+          $salud += $amt;
+        } else {
+          $incentivos += $amt;
+        }
+      }
+
+      $history[] = [
+        'id' => (int) $payslipId,
+        'year' => (int) $date->year,
+        'month' => (int) $date->month,
+        'fortnight' => $date->day <= 15 ? 1 : 2,
+        'fecha' => $date->format('Y-m-d'),
+        'salario_base' => $salarioBase,
+        'bono_alimentacion' => $bonoAlim,
+        'beneficio_salud' => $salud,
+        'consumo_farmacia_actual' => 0.00,
+        'saldo_deuda_anterior' => 0.00,
+        'incentivo_metas' => $incentivos,
+        'total_pagado_usd' => $totalUsd,
+        'total_pagado_ves' => $totalVes,
+        'exchange_rate_ves' => $rate,
+        'created_at' => $payslip->created_at?->toIso8601String(),
+      ];
+    }
+
+    // Ordenar descendente por fecha
+    usort($history, fn ($a, $b) => strcmp($b['fecha'], $a['fecha']));
+
+    return array_slice($history, 0, 24);
+  }
 }
+
 
