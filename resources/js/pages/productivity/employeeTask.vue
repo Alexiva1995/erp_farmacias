@@ -1,7 +1,6 @@
 <script setup>
 import EmployeeCleaningFilters from "@/components/EmployeeCleaningFilters.vue";
 import EmployeeCleaningTable from "@/components/EmployeeCleaningTable.vue";
-import EmployeeAssignmentsTable from "@/components/EmployeeAssignmentsTable.vue";
 import EmployeeCleaningDialog from "@/components/dialogs/EmployeeCleaningDialog.vue";
 import EmployeeCleaningViewDialog from "@/components/dialogs/EmployeeCleaningViewDialog.vue";
 import axios from "@/plugins/axios";
@@ -12,9 +11,6 @@ import { useDisplay } from "vuetify";
 
 const { mobile } = useDisplay();
 
-// Estado de navegación por pestañas
-const activeTab = ref('employees');
-
 // Datos para la tabla de empleados
 const employeeCleanings = ref([]);
 const totalRecords = ref(0);
@@ -23,14 +19,6 @@ const page = ref(1);
 const itemsPerPage = ref(10);
 const sortBy = ref();
 const orderBy = ref();
-
-// Datos para la tabla de asignaciones (lista plana)
-const assignments = ref([]);
-const totalAssignments = ref(0);
-const loadingAssignments = ref(false);
-const assignmentPage = ref(1);
-const assignmentItemsPerPage = ref(10);
-const hideDaily = ref(false);
 
 const searchQuery = ref("");
 const selectedStatus = ref(null);
@@ -69,27 +57,6 @@ const fetchEmployeeCleanings = async () => {
     toast.error("Error al obtener las asignaciones de actividades.");
   } finally {
     loading.value = false;
-  }
-};
-
-// Función para obtener la lista plana de asignaciones
-const fetchAssignments = async () => {
-  loadingAssignments.value = true;
-  const params = {
-    q: searchQuery.value,
-    hide_daily: hideDaily.value,
-    page: assignmentPage.value,
-    itemsPerPage: assignmentItemsPerPage.value,
-  };
-
-  try {
-    const response = await axios.get("/employee-cleaning-activities/assignments", { params });
-    assignments.value = response.data.data.data;
-    totalAssignments.value = response.data.data.total;
-  } catch (error) {
-    console.error("Error al obtener lista de asignaciones:", error);
-  } finally {
-    loadingAssignments.value = false;
   }
 };
 
@@ -133,28 +100,14 @@ watch(
   () => {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
-      if (activeTab.value === 'employees') {
-        fetchEmployeeCleanings();
-      } else {
-        fetchAssignments();
-      }
+      fetchEmployeeCleanings();
     }, 300);
   },
   { deep: true },
 );
 
-watch(
-  [assignmentPage, assignmentItemsPerPage, hideDaily],
-  () => {
-    if (activeTab.value === 'assignments') {
-      fetchAssignments();
-    }
-  }
-);
-
 watch([searchQuery, selectedStatus], () => {
   page.value = 1;
-  assignmentPage.value = 1;
 });
 
 onMounted(async () => {
@@ -163,7 +116,6 @@ onMounted(async () => {
     fetchCleaningActivities(),
     fetchEmployees(),
     fetchEmployeeCleanings(),
-    fetchAssignments()
   ]);
   loading.value = false;
 });
@@ -173,11 +125,6 @@ const updateTableOptions = (options) => {
   itemsPerPage.value = options.itemsPerPage;
   sortBy.value = options.sortBy[0]?.key;
   orderBy.value = options.sortBy[0]?.order;
-};
-
-const updateAssignmentOptions = (options) => {
-  assignmentPage.value = options.page;
-  assignmentItemsPerPage.value = options.itemsPerPage;
 };
 
 const handleDeleteAssignment = async (employeeId, activityId) => {
@@ -200,7 +147,6 @@ const handleDeleteAssignment = async (employeeId, activityId) => {
       await axios.delete(`/employee-cleaning-activities/${employeeId}/${activityId}`);
       toast.success("Asignación eliminada con éxito.");
       fetchEmployeeCleanings();
-      fetchAssignments();
     } catch (error) {
       console.error("Error al eliminar la asignación:", error);
       toast.error("No se pudo eliminar la asignación.");
@@ -211,7 +157,6 @@ const handleDeleteAssignment = async (employeeId, activityId) => {
 const handleClearFilters = () => {
   searchQuery.value = "";
   selectedStatus.value = null;
-  hideDaily.value = false;
 };
 
 const handleSort = (sortOptions) => {
@@ -253,7 +198,6 @@ const handleSaveAssignment = async (assignmentData) => {
     toast.success(`Actividades ${isEditMode ? "actualizadas" : "asignadas"} con éxito`);
     isDialogVisible.value = false;
     await fetchEmployeeCleanings();
-    await fetchAssignments();
   } catch (error) {
     if (error.response && error.response.status === 422) {
       dialogErrors.value = error.response.data.errors;
@@ -282,46 +226,17 @@ const clearDialogErrors = () => {
         @sort="handleSort"
       />
 
-      <!-- Pestañas de Navegación Estándar -->
-      <VTabs v-model="activeTab" class="mb-2" density="comfortable">
-        <VTab value="employees">
-          <VIcon start icon="tabler-users" />
-          Por Empleado
-        </VTab>
-        <VTab value="assignments">
-          <VIcon start icon="tabler-list-check" />
-          Resumen de Asignaciones
-        </VTab>
-      </VTabs>
-
-      <VWindow v-model="activeTab" class="disable-tab-transition">
-        <VWindowItem value="employees">
-          <EmployeeCleaningTable
-            :employee-cleanings="employeeCleanings"
-            :loading="loading"
-            :total-records="totalRecords"
-            :items-per-page="itemsPerPage"
-            :page="page"
-            @update:options="updateTableOptions"
-            @view-activities="handleViewActivities"
-            @edit-assignment="handleEditAssignment"
-            @delete-assignment="handleDeleteAssignment"
-          />
-        </VWindowItem>
-
-        <VWindowItem value="assignments">
-          <EmployeeAssignmentsTable
-            v-model:hideDaily="hideDaily"
-            :assignments="assignments"
-            :loading="loadingAssignments"
-            :total-records="totalAssignments"
-            :items-per-page="assignmentItemsPerPage"
-            :page="assignmentPage"
-            @update:options="updateAssignmentOptions"
-            @delete-assignment="handleDeleteAssignment"
-          />
-        </VWindowItem>
-      </VWindow>
+      <EmployeeCleaningTable
+        :employee-cleanings="employeeCleanings"
+        :loading="loading"
+        :total-records="totalRecords"
+        :items-per-page="itemsPerPage"
+        :page="page"
+        @update:options="updateTableOptions"
+        @view-activities="handleViewActivities"
+        @edit-assignment="handleEditAssignment"
+        @delete-assignment="handleDeleteAssignment"
+      />
 
       <EmployeeCleaningViewDialog
         v-model="isViewDialogVisible"

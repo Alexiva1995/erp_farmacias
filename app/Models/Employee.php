@@ -77,6 +77,7 @@ class Employee extends Model
     public function products(): BelongsToMany
     {
         return $this->belongsToMany(Product::class, 'employee_product')
+            ->withPivot(['created_at'])
             ->withTimestamps();
     }
 
@@ -87,6 +88,7 @@ class Employee extends Model
     public function dishes(): BelongsToMany
     {
         return $this->belongsToMany(Dish::class, 'employee_dish')
+            ->withPivot(['created_at'])
             ->withTimestamps();
     }
 

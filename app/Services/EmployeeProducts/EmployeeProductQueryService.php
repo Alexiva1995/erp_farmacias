@@ -73,22 +73,144 @@ class EmployeeProductQueryService
         $itemsPerPage = isset($data['itemsPerPage']) ? (int)$data['itemsPerPage'] : 10;
         $employees = $query->paginate($itemsPerPage);
 
-        // Transformar datos para el frontend
-        $employees->getCollection()->transform(function ($employee) {
-            $products = $employee->products->map(function ($prod) {
+        // Transformar datos para el frontend y calcular ventas desde la fecha de asignación
+        $employeesCollection = $employees->getCollection();
+
+        // 1. Recopilar IDs de usuarios y productos/platos a consultar
+        $employeeUserMap = [];
+        $productPairs = []; // [ ['seller_id' => x, 'product_id' => y, 'assigned_at' => z], ... ]
+        $dishPairs = [];
+
+        foreach ($employeesCollection as $employee) {
+            if (!$employee->user_id) {
+                continue;
+            }
+            $sellerId = $employee->user_id;
+
+            foreach ($employee->products as $prod) {
+                $assignedAt = $prod->pivot->created_at ?? null;
+                $productPairs[] = [
+                    'seller_id' => $sellerId,
+                    'product_id' => $prod->id,
+                    'assigned_at' => $assignedAt ? $assignedAt->toDateTimeString() : '2000-01-01 00:00:00',
+                ];
+            }
+
+            foreach ($employee->dishes as $dish) {
+                $assignedAt = $dish->pivot->created_at ?? null;
+                $dishPairs[] = [
+                    'seller_id' => $sellerId,
+                    'dish_id' => $dish->id,
+                    'assigned_at' => $assignedAt ? $assignedAt->toDateTimeString() : '2000-01-01 00:00:00',
+                ];
+            }
+        }
+
+        // 2. Consultar ventas agrupadas de productos en una sola consulta
+        $productSalesMap = [];
+        if (!empty($productPairs)) {
+            $sellerIds = array_unique(array_column($productPairs, 'seller_id'));
+            $productIds = array_unique(array_column($productPairs, 'product_id'));
+
+            $salesQuery = \Illuminate\Support\Facades\DB::table('order_details')
+                ->join('orders', 'order_details.order_id', '=', 'orders.id')
+                ->whereIn('orders.seller_id', $sellerIds)
+                ->whereIn('order_details.product_id', $productIds)
+                ->where('orders.status', 'Completed')
+                ->select([
+                    'orders.seller_id',
+                    'order_details.product_id',
+                    'orders.order_date',
+                    'orders.created_at',
+                    'order_details.quantity',
+                ])
+                ->get();
+
+            // Asignar ventas según fecha de asignación de cada par
+            foreach ($productPairs as $pair) {
+                $key = "{$pair['seller_id']}_{$pair['product_id']}";
+                $assignedAt = $pair['assigned_at'];
+
+                $qty = $salesQuery->filter(function ($row) use ($pair, $assignedAt) {
+                    $orderTime = $row->order_date ?? $row->created_at;
+                    return (int)$row->seller_id === (int)$pair['seller_id']
+                        && (int)$row->product_id === (int)$pair['product_id']
+                        && $orderTime >= $assignedAt;
+                })->sum('quantity');
+
+                $productSalesMap[$key] = (float)$qty;
+            }
+        }
+
+        // 3. Consultar ventas agrupadas de platos en una sola consulta
+        $dishSalesMap = [];
+        if (!empty($dishPairs)) {
+            $sellerIds = array_unique(array_column($dishPairs, 'seller_id'));
+            $dishIds = array_unique(array_column($dishPairs, 'dish_id'));
+
+            $dishSalesQuery = \Illuminate\Support\Facades\DB::table('order_details')
+                ->join('orders', 'order_details.order_id', '=', 'orders.id')
+                ->whereIn('orders.seller_id', $sellerIds)
+                ->whereIn('order_details.dish_id', $dishIds)
+                ->where('orders.status', 'Completed')
+                ->select([
+                    'orders.seller_id',
+                    'order_details.dish_id',
+                    'orders.order_date',
+                    'orders.created_at',
+                    'order_details.quantity',
+                ])
+                ->get();
+
+            foreach ($dishPairs as $pair) {
+                $key = "{$pair['seller_id']}_{$pair['dish_id']}";
+                $assignedAt = $pair['assigned_at'];
+
+                $qty = $dishSalesQuery->filter(function ($row) use ($pair, $assignedAt) {
+                    $orderTime = $row->order_date ?? $row->created_at;
+                    return (int)$row->seller_id === (int)$pair['seller_id']
+                        && (int)$row->dish_id === (int)$pair['dish_id']
+                        && $orderTime >= $assignedAt;
+                })->sum('quantity');
+
+                $dishSalesMap[$key] = (float)$qty;
+            }
+        }
+
+        // 4. Mapear datos con las unidades vendidas
+        $employees->getCollection()->transform(function ($employee) use ($productSalesMap, $dishSalesMap) {
+            $sellerId = $employee->user_id;
+
+            $products = $employee->products->map(function ($prod) use ($sellerId, $productSalesMap) {
+                $salesCount = 0;
+                if ($sellerId) {
+                    $key = "{$sellerId}_{$prod->id}";
+                    $salesCount = $productSalesMap[$key] ?? 0;
+                }
+
                 return [
                     'id' => $prod->id,
                     'name' => $prod->name,
                     'laboratory_name' => $prod->laboratory?->name ?? null,
+                    'sales_count' => $salesCount,
+                    'assigned_at' => $prod->pivot->created_at?->format('Y-m-d H:i') ?? null,
                     'type' => 'product',
                 ];
             });
 
-            $dishes = $employee->dishes->map(function ($dish) {
+            $dishes = $employee->dishes->map(function ($dish) use ($sellerId, $dishSalesMap) {
+                $salesCount = 0;
+                if ($sellerId) {
+                    $key = "{$sellerId}_{$dish->id}";
+                    $salesCount = $dishSalesMap[$key] ?? 0;
+                }
+
                 return [
                     'id' => $dish->id,
                     'name' => $dish->name,
                     'laboratory_name' => null,
+                    'sales_count' => $salesCount,
+                    'assigned_at' => $dish->pivot->created_at?->format('Y-m-d H:i') ?? null,
                     'type' => 'dish',
                 ];
             });

@@ -429,37 +429,32 @@ const getStatusIcon = (status) => {
         </VForm>
       </VCardText>
 
-      <VCardActions class="pa-4 bg-light border-t">
-        <VRow no-gutters class="w-100">
-          <VCol cols="12" sm="6" class="pa-1">
-            <VBtn
-              color="secondary"
-              variant="outlined"
-              size="large"
-              block
-              height="50"
-              class="font-weight-black rounded-lg text-button uppercase"
-              @click="closeDialog"
-            >
-              Cancelar
-            </VBtn>
-          </VCol>
-          <VCol cols="12" sm="6" class="pa-1">
-            <VBtn
-              color="primary"
-              variant="flat"
-              size="large"
-              block
-              height="50"
-              class="font-weight-black rounded-lg shadow-primary text-button uppercase"
-              :disabled="!formData.employee_id || formData.activities.length === 0"
-              @click="handleSubmit"
-            >
-              <VIcon start icon="tabler-device-floppy" size="18" class="me-2" />
-              Guardar Cambios
-            </VBtn>
-          </VCol>
-        </VRow>
+      <!-- Footer estándar: botones 50% / 50% -->
+      <VCardActions class="dialog-footer bg-light border-t">
+        <div class="footer-btn-group">
+          <VBtn
+            color="secondary"
+            variant="tonal"
+            size="default"
+            height="38"
+            class="font-weight-bold rounded-lg text-none"
+            @click="closeDialog"
+          >
+            Cancelar
+          </VBtn>
+          <VBtn
+            color="primary"
+            variant="flat"
+            size="default"
+            height="38"
+            class="font-weight-bold rounded-lg shadow-primary text-none"
+            :disabled="!formData.employee_id || formData.activities.length === 0"
+            @click="handleSubmit"
+          >
+            <VIcon start icon="tabler-device-floppy" size="16" class="me-1" />
+            Guardar Cambios
+          </VBtn>
+        </div>
       </VCardActions>
     </VCard>
   </VDialog>
@@ -482,6 +477,21 @@ const getStatusIcon = (status) => {
 
 .shadow-primary {
   box-shadow: 0 4px 14px 0 rgba(var(--v-theme-primary), 0.39) !important;
+}
+
+/* Footer botones 50/50 */
+.dialog-footer {
+  padding: 12px 16px !important;
+}
+
+.footer-btn-group {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+
+.footer-btn-group :deep(.v-btn) {
+  flex: 1;
 }
 
 .text-super-xs {

@@ -94,9 +94,10 @@ const hasProducts = computed(() => {
             <VTable density="comfortable">
               <thead>
                 <tr>
-                  <th class="text-left font-weight-bold" style="width: 100px;">Tipo / ID</th>
+                  <th class="text-left font-weight-bold" style="width: 80px;">ID</th>
                   <th class="text-left font-weight-bold">Producto</th>
                   <th class="text-left font-weight-bold">Laboratorio</th>
+                  <th class="text-center font-weight-bold" style="width: 100px;">Ventas</th>
                 </tr>
               </thead>
               <tbody>
@@ -124,6 +125,16 @@ const hasProducts = computed(() => {
                       {{ formatCapitalize(product.laboratory_name) }}
                     </span>
                     <span v-else class="text-xs text-disabled">—</span>
+                  </td>
+                  <td class="text-center">
+                    <VChip
+                      :color="(product.sales_count || 0) > 0 ? 'success' : 'default'"
+                      size="x-small"
+                      variant="tonal"
+                      class="font-weight-bold rounded tabular-nums"
+                    >
+                      {{ Number(product.sales_count || 0).toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) }}
+                    </VChip>
                   </td>
                 </tr>
               </tbody>

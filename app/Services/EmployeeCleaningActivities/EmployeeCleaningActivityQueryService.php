@@ -131,20 +131,48 @@ class EmployeeCleaningActivityQueryService
     }
 
     /**
-     * Formatea los datos del empleado para la respuesta
+     * Formatea los datos del empleado para la respuesta con estadísticas mensuales de cumplimiento
      * 
      * @param Employee $employee
      * @return array
      */
     private function formatEmployeeData(Employee $employee): array
     {
+        // Rango del mes actual
+        $startOfMonth = now()->startOfMonth()->toDateString();
+        $endOfMonth = now()->endOfMonth()->toDateString();
+
+        // Consultar ejecuciones de este empleado en el mes actual
+        $executions = \App\Models\CleaningActivityExecution::where('employee_id', $employee->id)
+            ->whereBetween('scheduled_date', [$startOfMonth, $endOfMonth])
+            ->select(['cleaning_activity_id', 'status', 'scheduled_date', 'due_date'])
+            ->get();
+
         return [
             'employee_id' => $employee->id,
             'employee_name' => trim($employee->name . ' ' . $employee->last_name),
             'photo_url' => $employee->photo_url,
             'identification' => $employee->identification,
             'is_active' => $employee->is_active,
-            'cleaning_activities' => $employee->cleaningActivities->map(function ($activity) {
+            'cleaning_activities' => $employee->cleaningActivities->map(function ($activity) use ($executions) {
+                $actExecs = $executions->where('cleaning_activity_id', $activity->id);
+                $assignedCount = $actExecs->count();
+                $completedCount = $actExecs->where('status', 'Completada')->count();
+                $pendingCount = $actExecs->where('status', 'Pendiente')->count();
+                $failedCount = $actExecs->whereIn('status', ['Vencida', 'Cancelada'])->count();
+
+                // Si no hay ejecuciones generadas en el mes (actividad configurada fija), fallback inteligente
+                if ($assignedCount === 0) {
+                    $assignedCount = 1;
+                    if ($activity->pivot->status === 'Completada') {
+                        $completedCount = 1;
+                    } elseif ($activity->pivot->status === 'Cancelada') {
+                        $failedCount = 1;
+                    } else {
+                        $pendingCount = 1;
+                    }
+                }
+
                 return [
                     'id' => $activity->id,
                     'name' => $activity->activity,
@@ -154,6 +182,10 @@ class EmployeeCleaningActivityQueryService
                     'notes' => $activity->pivot->notes,
                     'day_of_week' => $activity->pivot->day_of_week,
                     'frequency' => $activity->frequency,
+                    'month_assigned' => $assignedCount,
+                    'month_completed' => $completedCount,
+                    'month_pending' => $pendingCount,
+                    'month_failed' => $failedCount,
                 ];
             }),
             'activities_count' => $employee->cleaning_activities_count,
