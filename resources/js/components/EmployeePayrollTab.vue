@@ -133,7 +133,7 @@ const formatCurrency = (value) => {
           <VIcon icon="tabler-history" size="18" /> Historial de Pagos Procesados
         </span>
       </div>
-      <VDataTableServer
+      <VDataTable
         :items="paymentHistory"
         :headers="[
           { title: 'Periodo', key: 'fecha' },
@@ -167,7 +167,7 @@ const formatCurrency = (value) => {
         <template #item.total_pagado_ves="{ item }">
           <span class="text-xs font-weight-bold text-medium-emphasis tabular-nums">{{ item.total_pagado_ves.toLocaleString('es-VE') }} Bs</span>
         </template>
-      </VDataTableServer>
+      </VDataTable>
     </VCard>
   </div>
 </template>
