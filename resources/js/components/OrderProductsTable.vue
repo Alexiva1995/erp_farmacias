@@ -377,8 +377,8 @@ const getRowClass = (item) => {
             <template v-if="item.item_type !== 'pack'">
               <span v-if="!isSportsRental" class="text-disabled mx-1">|</span>
               <span 
-                class="font-weight-bold text-uppercase"
-                :class="internalAssignedLaboratoryIds.some(id => Number(id) === Number(item.laboratory_id)) ? 'bg-purple-lighten-4 px-1 rounded text-purple-darken-3' : 'text-medium-emphasis'"
+                class="font-weight-black text-uppercase text-primary"
+                :class="internalAssignedLaboratoryIds.some(id => Number(id) === Number(item.laboratory_id)) ? 'bg-purple-lighten-4 px-1 rounded text-purple-darken-3' : ''"
               >
                 {{ item.laboratory_name || 'Genérico' }}
               </span>
@@ -482,14 +482,14 @@ const getRowClass = (item) => {
           </VBtn>
           <VBtn
             icon
-            variant="text"
-            color="secondary"
+            variant="tonal"
+            color="error"
             size="28"
             class="rounded-lg"
             :disabled="item.item_type === 'pack' || item.item_type === 'dish'"
             @click="handleFailures(item)"
           >
-            <VIcon icon="tabler-flag" size="16" />
+            <VIcon icon="tabler-alert-triangle" size="16" />
             <VTooltip activator="parent" location="top">Reportar falla o faltante</VTooltip>
           </VBtn>
         </div>
@@ -573,7 +573,7 @@ const getRowClass = (item) => {
               <span v-if="!isSportsRental" class="text-disabled text-uppercase">{{ item.active_ingredient || '—' }}</span>
               <template v-if="item.item_type !== 'pack'">
                 <span v-if="!isSportsRental" class="text-disabled mx-1">|</span>
-                <span class="font-weight-bold text-uppercase truncate" style="max-inline-size: 120px;" :class="internalAssignedLaboratoryIds.includes(Number(item.laboratory_id)) ? 'text-purple-darken-3' : 'text-medium-emphasis'">
+                <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 120px;" :class="internalAssignedLaboratoryIds.includes(Number(item.laboratory_id)) ? 'text-purple-darken-3' : ''">
                   {{ item.laboratory_name || 'Genérico' }}
                 </span>
                 <template v-if="getProductLocations(item).length > 0">
@@ -627,8 +627,8 @@ const getRowClass = (item) => {
               <VBtn variant="tonal" color="primary" size="small" class="rounded-lg flex-grow-1 font-weight-bold text-none" :disabled="item.item_type === 'dish'" @click="handleViewGroupProducts(item)">
                 <VIcon start icon="tabler-eye" size="16" /> Alternativas
               </VBtn>
-              <VBtn variant="outlined" color="secondary" size="small" class="rounded-lg flex-grow-1 font-weight-bold text-none" :disabled="item.item_type === 'pack' || item.item_type === 'dish'" @click="handleFailures(item)">
-                <VIcon start icon="tabler-flag" size="16" /> Reportar Falla
+              <VBtn variant="tonal" color="error" size="small" class="rounded-lg flex-grow-1 font-weight-bold text-none" :disabled="item.item_type === 'pack' || item.item_type === 'dish'" @click="handleFailures(item)">
+                <VIcon start icon="tabler-alert-triangle" size="16" /> FALLA
               </VBtn>
             </div>
 
