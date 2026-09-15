@@ -320,8 +320,7 @@ const emit = defineEmits(["complete-purchase", "close-modal", "confirm-payment",
 }
 
 .added-payments-list {
-  max-block-size: 200px;
-  overflow-y: auto;
+  /* Sin scroll interno: la lista crece y empuja el contenido hacia abajo */
 }
 
 .cta-continue-btn {
