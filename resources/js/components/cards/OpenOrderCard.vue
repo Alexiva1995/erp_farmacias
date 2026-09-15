@@ -817,15 +817,16 @@ const getIva = (product, currency) => {
         </div>
 
         <div class="d-flex align-center gap-1 gap-sm-2 flex-shrink-0 ms-auto">
-          <VTooltip text="Cancelar Orden" location="bottom">
+          <VTooltip text="Cancelar orden actual" location="bottom">
             <template #activator="{ props: tooltipProps }">
               <VBtn
                 v-bind="tooltipProps"
                 icon="tabler-x"
-                variant="tonal"
-                color="error"
+                variant="text"
+                color="secondary"
                 size="small"
-                class="ms-1 font-weight-black"
+                density="comfortable"
+                class="rounded-circle"
                 @click="handleCancelarOrder"
               />
             </template>
@@ -889,15 +890,16 @@ const getIva = (product, currency) => {
 
     <VCardText class="pa-3">
       <!-- Barra de búsqueda compacta con Selectores a la derecha -->
-      <div class="d-flex align-center justify-space-between mb-4 flex-wrap gap-2 px-1">
-         <div class="d-flex align-center gap-2">
+      <div class="d-flex align-center justify-space-between mb-3 flex-wrap gap-2 px-1">
+         <!-- Contador de Ítems -->
+         <div class="d-flex align-center gap-1.5 shrink-0 py-1">
             <VIcon icon="tabler-list-details" color="primary" size="18" class="opacity-80" />
-            <span class="text-caption font-weight-950 text-primary uppercase letter-spacing-1">Ítems</span>
-            <VChip size="x-small" variant="tonal" color="primary" class="font-weight-black px-2 me-1">{{ totalSelectedQuantity }}</VChip>
+            <span class="text-caption font-weight-bold text-primary uppercase letter-spacing-1">Ítems</span>
+            <VChip size="x-small" variant="tonal" color="primary" class="font-weight-black px-2">{{ totalSelectedQuantity }}</VChip>
          </div>
 
-         <!-- Buscador Refinado y Compacto -->
-         <div class="d-flex align-center gap-2 flex-grow-1" style="min-inline-size: 240px;">
+         <!-- Buscador Refinado con Mejor Espaciado -->
+         <div class="d-flex align-center flex-grow-1 mx-sm-1" style="min-inline-size: 220px;">
             <AppTextField
               v-model="internalSearchQuery"
               placeholder="Escanear código o ingresar cotización..."
@@ -930,11 +932,11 @@ const getIva = (product, currency) => {
               <template #activator="{ props: menuProps }">
                 <VBtn
                   v-bind="menuProps"
-                  variant="tonal"
+                  variant="outlined"
                   color="primary"
                   size="small"
-                  class="rounded-lg font-weight-black text-uppercase"
-                  height="36"
+                  class="rounded-lg font-weight-bold text-uppercase"
+                  height="38"
                 >
                   <VIcon start icon="tabler-discount-2" size="16" />
                   <span>{{ props.selectedDiscountType || 'Ofertas' }}</span>
@@ -967,8 +969,8 @@ const getIva = (product, currency) => {
                   variant="flat"
                   color="primary"
                   size="small"
-                  class="rounded-lg font-weight-black px-3"
-                  height="36"
+                  class="rounded-lg font-weight-bold px-3"
+                  height="38"
                 >
                   <VIcon start icon="tabler-currency-dollar" size="16" />
                   <span>{{ props.selectedDisplayCurrency }}</span>
@@ -1129,143 +1131,157 @@ const getIva = (product, currency) => {
     </VCardText>
 
     <!-- Footer Unificado: Totales y Acciones -->
-    <VCardText class="pa-3 bg-grey-lighten-5 border-t mt-4">
-       <div class="d-flex align-center justify-space-between flex-wrap gap-2 px-2">
-          <!-- Desglose Horizontal de Totales -->
-          <div class="d-flex align-center gap-4 flex-grow-1 flex-wrap py-1">
-             <!-- Subtotal -->
-             <div class="d-flex flex-column">
-                <span class="text-super-xs font-weight-black text-disabled uppercase leading-none mb-1">Subtotal</span>
-                <span class="text-caption font-weight-black text-high-emphasis leading-none">
-                   {{ formatCurrency(props.totalProductsAmount, props.selectedDisplayCurrency) }}
-                </span>
+    <VCardText class="pa-3 bg-grey-lighten-5 border-t mt-3">
+       <div class="d-flex flex-column gap-3">
+          <!-- Fila de Totales: Subtotal/IVA y Total Final ultra destacado -->
+          <div class="d-flex align-center justify-space-between flex-wrap gap-2 px-1">
+             <!-- Subtotal, Descuentos e IVA agrupados -->
+             <div class="d-flex align-center gap-3 flex-wrap">
+                <!-- Subtotal -->
+                <div class="d-flex flex-column">
+                   <span class="text-super-xs font-weight-bold text-disabled uppercase leading-none mb-1">Subtotal</span>
+                   <span class="text-caption font-weight-bold text-high-emphasis leading-none">
+                      {{ formatCurrency(props.totalProductsAmount, props.selectedDisplayCurrency) }}
+                   </span>
+                </div>
+
+                <!-- Descuento Activo -->
+                <div v-if="activeDiscountDisplay" class="d-flex flex-column">
+                   <span class="text-super-xs font-weight-bold text-error uppercase leading-none mb-1">{{ activeDiscountDisplay.label }}</span>
+                   <span class="text-caption font-weight-bold text-error leading-none">
+                      - {{ activeDiscountDisplay.formatted }}
+                   </span>
+                </div>
+
+                <!-- IVA -->
+                <div class="d-flex flex-column">
+                   <span class="text-super-xs font-weight-bold text-disabled uppercase leading-none mb-1">IVA (16%)</span>
+                   <span class="text-caption font-weight-bold text-success leading-none">
+                      + {{ formatCurrency(props.totalIvaAmount, props.selectedDisplayCurrency) }}
+                   </span>
+                </div>
              </div>
 
-             <!-- Descuento Activo -->
-             <div v-if="activeDiscountDisplay" class="d-flex flex-column">
-                <span class="text-super-xs font-weight-black text-error uppercase leading-none mb-1">{{ activeDiscountDisplay.label }}</span>
-                <span class="text-caption font-weight-black text-error leading-none">
-                   - {{ activeDiscountDisplay.formatted }}
-                </span>
-             </div>
-
-             <!-- IVA -->
-             <div class="d-flex flex-column">
-                <span class="text-super-xs font-weight-black text-disabled uppercase leading-none mb-1">IVA (16%)</span>
-                <span class="text-caption font-weight-black text-success leading-none">
-                   + {{ formatCurrency(props.totalIvaAmount, props.selectedDisplayCurrency) }}
-                </span>
-             </div>
-
-             <VDivider vertical class="mx-2" style="block-size: 32px;" />
-
-             <!-- TOTAL -->
-             <div class="d-flex flex-column">
-                <span class="text-super-xs font-weight-black text-primary uppercase leading-none mb-1">Total Final</span>
-                <span class="text-h6 font-weight-950 text-primary leading-none">
+             <!-- Monto Total Grande y Visible -->
+             <div class="d-flex flex-column align-end">
+                <span class="text-caption font-weight-bold text-disabled uppercase leading-none mb-1">Total a Cobrar</span>
+                <div class="text-h5 font-weight-950 text-primary leading-none d-flex align-center gap-1">
                    {{ formattedTotalQuotation }}
-                </span>
+                </div>
              </div>
           </div>
-           
-           <VSpacer />
 
-           <!-- Acciones Rápidas (En la misma línea) -->
-           <div class="d-flex align-center gap-2 mt-1">
-              <template v-if="isRestaurant">
-                <VBtn
-                  color="primary"
-                  variant="flat"
-                  height="40"
-                  min-inline-size="0"
-                  class="rounded-lg font-weight-950 px-3 px-sm-6 elevation-2"
-                  @click="handleReserveOrder"
-                >
-                  <VIcon icon="tabler-device-floppy" size="20" class="me-0 me-sm-2" />
-                  <span class="d-none d-sm-inline">GUARDAR</span>
-                </VBtn>
-                <VBtn
-                  color="success"
-                  variant="tonal"
-                  height="40"
-                  min-inline-size="0"
-                  class="rounded-lg font-weight-950 px-3 px-sm-4"
-                  @click="handleCompleteOrder"
-                >
-                  <VIcon icon="tabler-circle-check" size="18" class="me-0 me-sm-2" />
-                  <span class="d-none d-sm-inline">COBRAR / CERRAR</span>
-                </VBtn>
-                <VTooltip v-if="enableFlashCheckout" text="Cobro Rápido Flash (Método seleccionado)" location="top">
-                  <template #activator="{ props: tooltipProps }">
-                    <VBtn
-                      v-bind="tooltipProps"
-                      color="warning"
-                      variant="flat"
-                      height="40"
-                      class="rounded-lg px-3 elevation-2 ms-2 font-weight-black"
-                      @click="handleFlashCheckout"
-                    >
-                      <VIcon icon="tabler-bolt" size="18" />
-                      <span class="d-none d-sm-inline ms-1">FLASH</span>
-                    </VBtn>
-                  </template>
-                </VTooltip>
-              </template>
-              <template v-else>
-                <VBtn
-                  color="error"
-                  variant="tonal"
-                  height="40"
-                  min-inline-size="0"
-                  class="rounded-lg font-weight-950 px-3 px-sm-4 me-1"
-                  @click="handleCancelarOrder"
-                >
-                  <VIcon icon="tabler-trash" size="18" class="me-0 me-sm-1" />
-                  <span class="d-none d-sm-inline">CANCELAR</span>
-                </VBtn>
+          <!-- Botones de Acción Inferiores: Cancelar + Reservar (50%) | Cobrar (50%) -->
+          <div>
+             <template v-if="isRestaurant">
+                <VRow dense class="align-center">
+                   <VCol cols="12" sm="6">
+                      <VBtn
+                        color="secondary"
+                        variant="outlined"
+                        height="44"
+                        block
+                        class="rounded-lg font-weight-bold text-none"
+                        @click="handleReserveOrder"
+                      >
+                        <VIcon icon="tabler-device-floppy" size="20" class="me-1" />
+                        <span>Guardar Pedido</span>
+                      </VBtn>
+                   </VCol>
+                   <VCol cols="12" sm="6">
+                      <div class="d-flex align-center gap-2">
+                         <VBtn
+                           color="success"
+                           variant="flat"
+                           height="44"
+                           class="flex-grow-1 rounded-lg font-weight-bold text-none elevation-2"
+                           @click="handleCompleteOrder"
+                         >
+                           <VIcon icon="tabler-circle-check" size="20" class="me-1" />
+                           <span>Cobrar / Cerrar</span>
+                         </VBtn>
+                         <VTooltip v-if="enableFlashCheckout" text="Cobro Rápido Flash" location="top">
+                           <template #activator="{ props: tooltipProps }">
+                             <VBtn
+                               v-bind="tooltipProps"
+                               color="warning"
+                               variant="flat"
+                               height="44"
+                               class="rounded-lg px-3 elevation-2 font-weight-black"
+                               @click="handleFlashCheckout"
+                             >
+                               <VIcon icon="tabler-bolt" size="20" />
+                             </VBtn>
+                           </template>
+                         </VTooltip>
+                      </div>
+                   </VCol>
+                </VRow>
+             </template>
+             <template v-else>
+                <VRow dense class="align-center">
+                   <!-- 50%: Cancelar y Reservar en variante Outlined con menor jerarquía -->
+                   <VCol cols="12" sm="6">
+                      <div class="d-flex align-center gap-2">
+                         <VBtn
+                           color="error"
+                           variant="outlined"
+                           height="44"
+                           class="flex-grow-1 rounded-lg font-weight-bold text-none"
+                           @click="handleCancelarOrder"
+                         >
+                           <VIcon icon="tabler-trash" size="18" class="me-1" />
+                           <span>Cancelar</span>
+                         </VBtn>
 
-                <VBtn
-                  color="warning"
-                  variant="tonal"
-                  height="40"
-                  min-inline-size="0"
-                  class="rounded-lg font-weight-950 px-3 px-sm-4"
-                  @click="handleReserveOrder"
-                >
-                  <VIcon icon="tabler-hourglass" size="18" class="me-0 me-sm-2" />
-                  <span class="d-none d-sm-inline">RESERVAR</span>
-                </VBtn>
-                
-                <VBtn
-                  color="primary"
-                  variant="flat"
-                  height="40"
-                  min-inline-size="0"
-                  class="rounded-lg font-weight-950 px-3 px-sm-6 elevation-2"
-                  @click="handleCompleteOrder"
-                >
-                  <VIcon icon="tabler-circle-check" size="20" class="me-0 me-sm-2" />
-                  <span class="d-none d-sm-inline">COBRAR AHORA</span>
-                </VBtn>
-                <VTooltip v-if="enableFlashCheckout" text="Cobro Rápido Flash (Método seleccionado)" location="top">
-                  <template #activator="{ props: tooltipProps }">
-                    <VBtn
-                      v-bind="tooltipProps"
-                      color="warning"
-                      variant="flat"
-                      height="40"
-                      class="rounded-lg px-3 elevation-2 ms-2 font-weight-black"
-                      @click="handleFlashCheckout"
-                    >
-                      <VIcon icon="tabler-bolt" size="18" />
-                      <span class="d-none d-sm-inline ms-1">FLASH</span>
-                    </VBtn>
-                  </template>
-                </VTooltip>
-              </template>
-           </div>
-        </div>
-     </VCardText>
+                         <VBtn
+                           color="warning"
+                           variant="outlined"
+                           height="44"
+                           class="flex-grow-1 rounded-lg font-weight-bold text-none"
+                           @click="handleReserveOrder"
+                         >
+                           <VIcon icon="tabler-hourglass" size="18" class="me-1" />
+                           <span>Reservar</span>
+                         </VBtn>
+                      </div>
+                   </VCol>
+
+                   <!-- 50%: Cobrar Ahora destacado con color primario -->
+                   <VCol cols="12" sm="6">
+                      <div class="d-flex align-center gap-2">
+                         <VBtn
+                           color="primary"
+                           variant="flat"
+                           height="44"
+                           class="flex-grow-1 rounded-lg font-weight-bold text-none elevation-2 text-subtitle-2"
+                           @click="handleCompleteOrder"
+                         >
+                           <VIcon icon="tabler-circle-check" size="20" class="me-1" />
+                           <span>COBRAR AHORA</span>
+                         </VBtn>
+                         
+                         <VTooltip v-if="enableFlashCheckout" text="Cobro Rápido Flash" location="top">
+                           <template #activator="{ props: tooltipProps }">
+                             <VBtn
+                               v-bind="tooltipProps"
+                               color="warning"
+                               variant="flat"
+                               height="44"
+                               class="rounded-lg px-3 elevation-2 font-weight-black"
+                               @click="handleFlashCheckout"
+                             >
+                               <VIcon icon="tabler-bolt" size="20" />
+                             </VBtn>
+                           </template>
+                         </VTooltip>
+                      </div>
+                   </VCol>
+                </VRow>
+             </template>
+          </div>
+       </div>
+    </VCardText>
   </VCard>
 </template>
 
