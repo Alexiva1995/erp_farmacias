@@ -338,17 +338,22 @@ const getRowClass = (item) => {
               {{ item.name }}
             </span>
 
-            <!-- Indicador IVA simplificado a 'G' (Gravado) -->
-            <VChip v-if="item.iva == 1" size="x-small" color="primary" variant="tonal" class="font-weight-black px-1">G</VChip>
-            <VChip v-if="item.is_colombian_origin == 1" size="x-small" color="info" variant="tonal" class="font-weight-black">COL</VChip>
+            <!-- Indicador de combo/pack cuando aplica -->
+            <VChip v-if="item.item_type === 'pack'" size="x-small" color="primary" variant="flat" class="font-weight-bold px-1.5">
+              <VIcon icon="tabler-packages" size="12" class="me-0.5" /> COMBO
+            </VChip>
+
+            <!-- Indicador IVA simplificado a 'G' con tono suave y neutro -->
+            <VChip v-if="item.iva == 1" size="x-small" color="secondary" variant="tonal" class="font-weight-bold px-1 text-caption">G</VChip>
+            <VChip v-if="item.is_colombian_origin == 1" size="x-small" color="info" variant="tonal" class="font-weight-bold">COL</VChip>
             
-            <!-- Badge de descuento sin la palabra expira ni paréntesis, solo -XX% -->
+            <!-- Badge de descuento con tono refinado -->
             <VChip
               v-if="(item.discount_type === 'expiration' || item.is_expiration_discount) && (item.discount_percentage > 0 || item.discount_percentage_expiration > 0)"
               color="error"
               size="x-small"
-              class="font-weight-black uppercase"
-              label
+              variant="tonal"
+              class="font-weight-bold"
             >
               -{{ item.discount_percentage || item.discount_percentage_expiration }}%
             </VChip>
@@ -356,8 +361,8 @@ const getRowClass = (item) => {
               v-else-if="item.discount_percentage > 0"
               color="success"
               size="x-small"
-              class="font-weight-black uppercase"
-              label
+              variant="tonal"
+              class="font-weight-bold"
             >
               -{{ item.discount_percentage }}%
             </VChip>
@@ -372,14 +377,14 @@ const getRowClass = (item) => {
             <template v-if="item.item_type !== 'pack'">
               <span v-if="!isSportsRental" class="text-disabled mx-1">|</span>
               <span 
-                class="text-primary font-weight-black text-uppercase"
-                :class="{ 'bg-purple-lighten-4 pa-1 rounded text-purple-darken-3': internalAssignedLaboratoryIds.some(id => Number(id) === Number(item.laboratory_id)) }"
+                class="font-weight-bold text-uppercase"
+                :class="internalAssignedLaboratoryIds.some(id => Number(id) === Number(item.laboratory_id)) ? 'bg-purple-lighten-4 px-1 rounded text-purple-darken-3' : 'text-medium-emphasis'"
               >
                 {{ item.laboratory_name || 'Genérico' }}
               </span>
               <template v-if="getProductLocations(item).length > 0">
                 <span class="text-disabled mx-1">|</span>
-                <span class="text-success font-weight-black text-uppercase">
+                <span class="text-success font-weight-medium text-uppercase">
                   📍 {{ getProductLocations(item).join(', ') }}
                 </span>
               </template>
@@ -391,13 +396,13 @@ const getRowClass = (item) => {
 
       <template #item.sale_price="{ item }">
         <div class="d-flex flex-column align-end">
-          <del v-if="item.original_price && Number(item.original_price) > Number(item.sale_price)" class="precio-tachado text-caption text-disabled text-decoration-line-through">
+          <del v-if="item.original_price && Number(item.original_price) > Number(item.sale_price)" class="precio-tachado font-weight-medium text-caption text-disabled text-decoration-line-through">
             {{ formatCurrency(calculatePriceWithIVA(getDynamicPrice(item, item.original_price, 'USD'), item)) }}
           </del>
-          <del v-else-if="calculatePriceWithIVA(getDynamicPrice(item, item.sale_price, 'USD'), item) > calculatePriceWithIVAAndDiscount(getDynamicPrice(item, item.sale_price, 'USD'), item)" class="precio-tachado text-caption text-disabled text-decoration-line-through">
+          <del v-else-if="calculatePriceWithIVA(getDynamicPrice(item, item.sale_price, 'USD'), item) > calculatePriceWithIVAAndDiscount(getDynamicPrice(item, item.sale_price, 'USD'), item)" class="precio-tachado font-weight-medium text-caption text-disabled text-decoration-line-through">
             {{ formatCurrency(calculatePriceWithIVA(getDynamicPrice(item, item.sale_price, 'USD'), item)) }}
           </del>
-          <span :class="getPriceClass(item)" class="font-weight-black text-primary">
+          <span :class="getPriceClass(item)" class="font-weight-bold text-high-emphasis text-body-2">
             {{ formatCurrency(calculatePriceWithIVAAndDiscount(getDynamicPrice(item, item.sale_price, 'USD'), item)) }}
           </span>
         </div>
@@ -405,13 +410,13 @@ const getRowClass = (item) => {
 
       <template #item.price_bs="{ item }">
         <div class="d-flex flex-column align-end">
-          <del v-if="item.original_price_bs && Number(item.original_price_bs) > Number(item.price_bs)" class="precio-tachado text-caption text-disabled text-decoration-line-through">
+          <del v-if="item.original_price_bs && Number(item.original_price_bs) > Number(item.price_bs)" class="precio-tachado font-weight-medium text-caption text-disabled text-decoration-line-through">
             {{ formatCurrency(calculatePriceWithIVA(item.original_price_bs, item), "BS") }}
           </del>
-          <del v-else-if="calculatePriceWithIVA(item.price_bs, item) > calculatePriceWithIVAAndDiscount(item.price_bs, item)" class="precio-tachado text-caption text-disabled text-decoration-line-through">
+          <del v-else-if="calculatePriceWithIVA(item.price_bs, item) > calculatePriceWithIVAAndDiscount(item.price_bs, item)" class="precio-tachado font-weight-medium text-caption text-disabled text-decoration-line-through">
             {{ formatCurrency(calculatePriceWithIVA(item.price_bs, item), "BS") }}
           </del>
-          <span :class="getPriceClass(item)" class="font-weight-bold text-medium-emphasis">
+          <span :class="getPriceClass(item)" class="font-weight-bold text-high-emphasis text-body-2">
             {{ formatCurrency(calculatePriceWithIVAAndDiscount(item.price_bs, item), "BS") }}
           </span>
         </div>
@@ -419,13 +424,13 @@ const getRowClass = (item) => {
 
       <template #item.price_cop="{ item }">
         <div class="d-flex flex-column align-end">
-          <del v-if="item.original_price_cop && Number(item.original_price_cop) > Number(item.price_cop)" class="precio-tachado text-caption text-disabled text-decoration-line-through">
+          <del v-if="item.original_price_cop && Number(item.original_price_cop) > Number(item.price_cop)" class="precio-tachado font-weight-medium text-caption text-disabled text-decoration-line-through">
             {{ calculateAndFormatCopPriceWithIVA(item.original_price_cop, item) }}
           </del>
-          <del v-else-if="calculatePriceWithIVA(item.price_cop, item) > calculatePriceWithIVAAndDiscount(item.price_cop, item)" class="precio-tachado text-caption text-disabled text-decoration-line-through">
+          <del v-else-if="calculatePriceWithIVA(item.price_cop, item) > calculatePriceWithIVAAndDiscount(item.price_cop, item)" class="precio-tachado font-weight-medium text-caption text-disabled text-decoration-line-through">
             {{ calculateAndFormatCopPriceWithIVA(item.price_cop, item) }}
           </del>
-          <span :class="getPriceClass(item)" class="font-weight-bold text-medium-emphasis">
+          <span :class="getPriceClass(item)" class="font-weight-black text-primary text-body-2">
             {{ calculateAndFormatCopPriceWithIVAAndDiscount(item.price_cop, item) }}
           </span>
         </div>
@@ -443,62 +448,50 @@ const getRowClass = (item) => {
             variant="outlined"
             hide-details
             class="rounded-lg font-weight-black quantity-input-field"
-            style="inline-size: 80px;"
+            style="inline-size: 76px;"
             :disabled="(item.valid_stock_sum ?? 0) <= 0"
           />
           <VBtn
-            v-if="item.item_type === 'product'"
             color="primary"
             variant="flat"
             icon="tabler-plus"
             size="32"
             class="rounded-lg shadow-sm"
-            :disabled="(inputQuantities.get(item.id) ?? 0) <= 0 || (item.valid_stock_sum ?? 0) <= 0"
-            @click="handleAddProduct(item.id)"
-          />
-          <VBtn
-            v-else-if="item.item_type === 'dish'"
-            color="primary"
-            variant="flat"
-            icon="tabler-plus"
-            size="32"
-            class="rounded-lg shadow-sm"
-            :disabled="(inputQuantities.get(item.id) ?? 0) <= 0"
-            @click="handleAddDish(item.id)"
-          />
-          <VBtn
-            v-else
-            color="primary"
-            variant="flat"
-            icon="tabler-package-import"
-            size="32"
-            class="rounded-lg shadow-sm"
-            :disabled="(inputQuantities.get(item.id) ?? 0) <= 0"
-            @click="handleAddPack(item.id)"
-          />
+            :disabled="(inputQuantities.get(item.id) ?? 0) <= 0 || (item.item_type === 'product' && (item.valid_stock_sum ?? 0) <= 0)"
+            @click="item.item_type === 'product' ? handleAddProduct(item.id) : (item.item_type === 'dish' ? handleAddDish(item.id) : handleAddPack(item.id))"
+          >
+            <VIcon icon="tabler-plus" size="18" />
+            <VTooltip activator="parent" location="top">Añadir al pedido</VTooltip>
+          </VBtn>
         </div>
       </template>
 
       <template #item.actions="{ item }">
-        <div class="d-flex gap-1 justify-center">
+        <div class="d-flex gap-1 justify-center align-center">
           <VBtn
-            icon="tabler-eye"
+            icon
             variant="tonal"
-            color="info"
-            size="30"
+            color="primary"
+            size="28"
             class="rounded-lg"
             :disabled="item.item_type === 'dish'"
             @click="item.item_type === 'product' ? handleViewGroupProducts(item) : handleViewPack(item)"
-          />
+          >
+            <VIcon icon="tabler-eye" size="16" />
+            <VTooltip activator="parent" location="top">Ver alternativas / grupo</VTooltip>
+          </VBtn>
           <VBtn
-            icon="tabler-alert-triangle"
-            variant="tonal"
-            color="error"
-            size="30"
+            icon
+            variant="text"
+            color="secondary"
+            size="28"
             class="rounded-lg"
             :disabled="item.item_type === 'pack' || item.item_type === 'dish'"
             @click="handleFailures(item)"
-          />
+          >
+            <VIcon icon="tabler-flag" size="16" />
+            <VTooltip activator="parent" location="top">Reportar falla o faltante</VTooltip>
+          </VBtn>
         </div>
       </template>
     </VDataTableServer>
@@ -544,17 +537,20 @@ const getRowClass = (item) => {
             </div>
 
             <div class="d-flex align-center flex-wrap gap-1 mb-1">
-              <h3 class="text-subtitle-2 font-weight-950 text-high-emphasis text-uppercase leading-tight">
+              <h3 class="text-subtitle-2 font-weight-black text-high-emphasis text-uppercase leading-tight">
                 {{ item.name }}
               </h3>
-              <VChip v-if="item.iva == 1" size="x-small" color="primary" variant="tonal" class="font-weight-black px-1">G</VChip>
-              <VChip v-if="item.is_colombian_origin == 1" size="x-small" color="info" variant="tonal" class="font-weight-black">COL</VChip>
+              <VChip v-if="item.item_type === 'pack'" size="x-small" color="primary" variant="flat" class="font-weight-bold px-1.5">
+                <VIcon icon="tabler-packages" size="12" class="me-0.5" /> COMBO
+              </VChip>
+              <VChip v-if="item.iva == 1" size="x-small" color="secondary" variant="tonal" class="font-weight-bold px-1">G</VChip>
+              <VChip v-if="item.is_colombian_origin == 1" size="x-small" color="info" variant="tonal" class="font-weight-bold">COL</VChip>
               <VChip
                 v-if="(item.discount_type === 'expiration' || item.is_expiration_discount) && (item.discount_percentage > 0 || item.discount_percentage_expiration > 0)"
                 color="error"
                 size="x-small"
-                variant="flat"
-                class="font-weight-black"
+                variant="tonal"
+                class="font-weight-bold"
               >
                 -{{ item.discount_percentage || item.discount_percentage_expiration }}%
               </VChip>
@@ -562,8 +558,8 @@ const getRowClass = (item) => {
                 v-else-if="item.discount_percentage > 0"
                 color="success"
                 size="x-small"
-                variant="flat"
-                class="font-weight-black"
+                variant="tonal"
+                class="font-weight-bold"
               >
                 -{{ item.discount_percentage }}%
               </VChip>
@@ -577,12 +573,12 @@ const getRowClass = (item) => {
               <span v-if="!isSportsRental" class="text-disabled text-uppercase">{{ item.active_ingredient || '—' }}</span>
               <template v-if="item.item_type !== 'pack'">
                 <span v-if="!isSportsRental" class="text-disabled mx-1">|</span>
-                <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 120px;">
+                <span class="font-weight-bold text-uppercase truncate" style="max-inline-size: 120px;" :class="internalAssignedLaboratoryIds.includes(Number(item.laboratory_id)) ? 'text-purple-darken-3' : 'text-medium-emphasis'">
                   {{ item.laboratory_name || 'Genérico' }}
                 </span>
                 <template v-if="getProductLocations(item).length > 0">
                   <span class="text-disabled mx-1">|</span>
-                  <span class="text-success font-weight-black text-uppercase">
+                  <span class="text-success font-weight-medium text-uppercase">
                     📍 {{ getProductLocations(item).join(', ') }}
                   </span>
                 </template>
@@ -595,10 +591,10 @@ const getRowClass = (item) => {
               <div class="price-box">
                 <span class="label">USD</span>
                 <div class="d-flex flex-column">
-                  <del v-if="calculatePriceWithIVA(getDynamicPrice(item, item.sale_price, 'USD'), item) > calculatePriceWithIVAAndDiscount(getDynamicPrice(item, item.sale_price, 'USD'), item)" class="text-super-xs text-disabled text-decoration-line-through">
+                  <del v-if="calculatePriceWithIVA(getDynamicPrice(item, item.sale_price, 'USD'), item) > calculatePriceWithIVAAndDiscount(getDynamicPrice(item, item.sale_price, 'USD'), item)" class="font-weight-medium text-caption text-disabled text-decoration-line-through">
                     {{ formatCurrency(calculatePriceWithIVA(getDynamicPrice(item, item.sale_price, 'USD'), item)) }}
                   </del>
-                  <span class="value font-weight-black text-primary" :class="getPriceClass(item)">
+                  <span class="value font-weight-bold text-high-emphasis text-body-2" :class="getPriceClass(item)">
                     {{ formatCurrency(calculatePriceWithIVAAndDiscount(getDynamicPrice(item, item.sale_price, 'USD'), item)) }}
                   </span>
                 </div>
@@ -606,10 +602,10 @@ const getRowClass = (item) => {
               <div class="price-box">
                 <span class="label">Bs</span>
                 <div class="d-flex flex-column">
-                  <del v-if="calculatePriceWithIVA(item.price_bs, item) > calculatePriceWithIVAAndDiscount(item.price_bs, item)" class="text-super-xs text-disabled text-decoration-line-through">
+                  <del v-if="calculatePriceWithIVA(item.price_bs, item) > calculatePriceWithIVAAndDiscount(item.price_bs, item)" class="font-weight-medium text-caption text-disabled text-decoration-line-through">
                     {{ formatCurrency(calculatePriceWithIVA(item.price_bs, item), "BS") }}
                   </del>
-                  <span class="value font-weight-bold text-medium-emphasis" :class="getPriceClass(item)">
+                  <span class="value font-weight-bold text-high-emphasis text-body-2" :class="getPriceClass(item)">
                     {{ formatCurrency(calculatePriceWithIVAAndDiscount(item.price_bs, item), "BS") }}
                   </span>
                 </div>
@@ -617,10 +613,10 @@ const getRowClass = (item) => {
               <div class="price-box">
                 <span class="label">COP</span>
                 <div class="d-flex flex-column">
-                  <del v-if="calculatePriceWithIVA(item.price_cop, item) > calculatePriceWithIVAAndDiscount(item.price_cop, item)" class="text-super-xs text-disabled text-decoration-line-through">
+                  <del v-if="calculatePriceWithIVA(item.price_cop, item) > calculatePriceWithIVAAndDiscount(item.price_cop, item)" class="font-weight-medium text-caption text-disabled text-decoration-line-through">
                     {{ calculateAndFormatCopPriceWithIVA(item.price_cop, item) }}
                   </del>
-                  <span class="value font-weight-bold text-medium-emphasis" :class="getPriceClass(item)">
+                  <span class="value font-weight-black text-primary text-body-2" :class="getPriceClass(item)">
                     {{ calculateAndFormatCopPriceWithIVAAndDiscount(item.price_cop, item) }}
                   </span>
                 </div>
@@ -628,11 +624,11 @@ const getRowClass = (item) => {
             </div>
 
             <div class="d-flex gap-2 mb-3">
-              <VBtn variant="tonal" color="info" size="small" class="rounded-lg flex-grow-1 font-weight-black" :disabled="item.item_type === 'dish'" @click="handleViewGroupProducts(item)">
-                <VIcon start icon="tabler-eye" size="16" /> GRUPO
+              <VBtn variant="tonal" color="primary" size="small" class="rounded-lg flex-grow-1 font-weight-bold text-none" :disabled="item.item_type === 'dish'" @click="handleViewGroupProducts(item)">
+                <VIcon start icon="tabler-eye" size="16" /> Alternativas
               </VBtn>
-              <VBtn variant="tonal" color="error" size="small" class="rounded-lg flex-grow-1 font-weight-black" :disabled="item.item_type === 'pack' || item.item_type === 'dish'" @click="handleFailures(item)">
-                <VIcon start icon="tabler-alert-triangle" size="16" /> FALLA
+              <VBtn variant="outlined" color="secondary" size="small" class="rounded-lg flex-grow-1 font-weight-bold text-none" :disabled="item.item_type === 'pack' || item.item_type === 'dish'" @click="handleFailures(item)">
+                <VIcon start icon="tabler-flag" size="16" /> Reportar Falla
               </VBtn>
             </div>
 
@@ -730,9 +726,9 @@ const getRowClass = (item) => {
 }
 
 .precio-tachado {
-  color: #a0a0a0;
-  font-size: 0.7rem;
-  line-height: 1;
+  color: rgba(var(--v-theme-on-surface), 0.45) !important;
+  font-size: 0.75rem !important;
+  line-height: 1.1;
   text-decoration: line-through;
 }
 
