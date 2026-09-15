@@ -213,21 +213,23 @@ const emit = defineEmits(["complete-purchase", "close-modal", "confirm-payment",
             </span>
           </div>
 
-          <!-- Destaque del CAMBIO / VUELTO (Nivel H1 de impacto: 24px Extra-Bold) -->
-          <template v-if="showChangeAmount">
-            <VDivider class="my-2" />
-
-            <div class="d-flex flex-column pa-3.5 rounded-lg bg-success-lighten-5 border border-success">
-              <div class="d-flex justify-space-between align-center">
-                <span class="change-title text-success-darken-2">CAMBIO / VUELTO:</span>
-                <span class="change-amount-highlight text-success-darken-3">{{ formatCurrency(changeAmountInCop, 'COP') }}</span>
-              </div>
-              <div v-if="selectedCurrency !== 'COP'" class="d-flex justify-space-between align-center mt-1.5 pt-1.5 border-t border-dashed">
-                <span class="text-caption text-medium-emphasis">Equivalente en {{ selectedCurrency }}:</span>
-                <span class="text-body-2 font-weight-bold text-success-darken-2">{{ formatCurrency(changeAmount, selectedCurrency) }}</span>
-              </div>
+          <!-- CAMBIO / VUELTO: tarjeta destacada verde pastel, cifra gigante, impacto máximo para el cajero -->
+          <div v-if="showChangeAmount" class="change-card">
+            <!-- Etiqueta pequeña arriba (12px Bold) -->
+            <div class="d-flex align-center gap-1 mb-2">
+              <VIcon icon="tabler-coins" size="14" class="change-card__icon" />
+              <span class="change-card__label">CAMBIO / VUELTO</span>
             </div>
-          </template>
+            <!-- Cifra principal centrada (22-24px Extra-Bold verde vibrante) -->
+            <div class="change-card__amount">
+              {{ formatCurrency(changeAmountInCop, 'COP') }}
+            </div>
+            <!-- Equivalente en otra moneda (solo si aplica) -->
+            <div v-if="selectedCurrency !== 'COP'" class="change-card__secondary">
+              <span>Equivalente en {{ selectedCurrency }}:</span>
+              <strong>{{ formatCurrency(changeAmount, selectedCurrency) }}</strong>
+            </div>
+          </div>
 
           <VCardActions class="pa-0 d-flex flex-column gap-2 mt-2">
             <!-- Continuar: 16px Bold, blanco sólido sobre el botón principal -->
@@ -321,18 +323,6 @@ const emit = defineEmits(["complete-purchase", "close-modal", "confirm-payment",
   font-size: 0.9375rem !important; /* 15px */
 }
 
-.change-title {
-  font-size: 0.875rem !important; /* 14px */
-  font-weight: 800 !important; /* Bold */
-  letter-spacing: 0.5px;
-}
-
-.change-amount-highlight {
-  font-size: 1.5rem !important; /* 24px */
-  font-weight: 900 !important; /* Extra-Bold */
-  line-height: 1 !important;
-}
-
 .cta-continue-btn {
   font-size: 1rem !important; /* 16px */
   font-weight: 700 !important; /* Bold */
@@ -353,5 +343,59 @@ const emit = defineEmits(["complete-purchase", "close-modal", "confirm-payment",
 .added-payments-list {
   max-block-size: 190px;
   overflow-y: auto;
+}
+
+/* ── Tarjeta CAMBIO / VUELTO ────────────────────────────────── */
+.change-card {
+  background-color: #f0fdf4; /* Verde pastel muy claro */
+  border: 1.5px solid #bbf7d0; /* Borde verde suave */
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 4px;
+}
+
+/* Etiqueta "CAMBIO / VUELTO" — 12px Bold, verde oscuro */
+.change-card__label {
+  font-size: 0.75rem !important;   /* 12px */
+  font-weight: 700 !important;
+  letter-spacing: 0.8px;
+  color: #15803d;                  /* Verde vibrante oscuro */
+  text-transform: uppercase;
+}
+
+.change-card__icon {
+  color: #15803d !important;
+}
+
+/* Cifra principal — 22-24px Extra-Bold, verde vibrante */
+.change-card__amount {
+  font-size: 1.5rem !important;    /* 24px */
+  font-weight: 900 !important;     /* Extra-Bold */
+  color: #15803d !important;
+  line-height: 1.1;
+  letter-spacing: -0.5px;
+}
+
+/* Sub-fila de equivalente en otra moneda */
+.change-card__secondary {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: #4b7a5c;
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px dashed #bbf7d0;
+  width: 100%;
+  justify-content: center;
+}
+
+.change-card__secondary strong {
+  font-weight: 700;
+  color: #15803d;
 }
 </style>
