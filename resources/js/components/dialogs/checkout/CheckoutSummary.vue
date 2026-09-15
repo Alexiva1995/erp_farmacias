@@ -198,6 +198,19 @@ const emit = defineEmits(["complete-purchase", "close-modal", "confirm-payment",
         <!-- BLOQUE 2: Tarjeta unificada de estado + Acciones -->
         <div class="d-flex flex-column gap-3">
 
+          <!-- Fila: Restante a Pagar -->
+          <div
+            class="d-flex justify-space-between align-center px-3 py-2 rounded-lg border"
+            :class="remainingAmount <= 0.01 ? 'bg-success-lighten-5 border-success' : 'bg-grey-lighten-4'"
+          >
+            <span class="text-caption font-weight-bold" :class="remainingAmount <= 0.01 ? 'text-success-darken-3' : 'text-high-emphasis'">
+              Restante a Pagar:
+            </span>
+            <span class="text-caption font-weight-bold" :class="remainingAmount <= 0.01 ? 'text-success-darken-3' : 'text-error'">
+              {{ formatCurrency(getConvertedRemainingAmount(selectedCurrencyTab), selectedCurrencyTab) }}
+            </span>
+          </div>
+
           <!-- Tarjeta VUELTO (verde) — cuando se pagó de más -->
           <div v-if="showChangeAmount" class="change-card change-card--success">
             <div class="d-flex align-center gap-1 mb-2">
