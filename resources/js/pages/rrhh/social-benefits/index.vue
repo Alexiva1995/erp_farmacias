@@ -4,9 +4,9 @@ import SocialBenefitsEmployeeFilter from "@/components/SocialBenefitsEmployeeFil
 import SocialBenefitsTable from "@/components/SocialBenefitsTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { onMounted, watch } from "vue";
+import { onMounted, onUnmounted, ref, watch } from "vue";
 
-const search = ref(null);
+const search = ref("");
 const loading = ref(false);
 const showFireEmployeeDialog = ref(false);
 const selectedEmployee = ref({});
@@ -23,7 +23,7 @@ const fetchCurrency = async () => {
     const { data } = await axios.get("finances/exchange-rates/consultOneBCV");
     currency.value = data.rate;
   } catch (error) {
-    toast.error("No se pudo obtener la tasa bcv del dia");
+    toast.error("No se pudo obtener la tasa BCV del día");
   }
 };
 
@@ -31,8 +31,9 @@ const fetchEmployees = async () => {
   loading.value = true;
   try {
     const params = {
+      page: page.value,
       perPage: itemsPerPage.value,
-      search: search.value,
+      search: search.value || undefined,
     };
     const { data } = await axios.get("/rrhh/social-benefits/employees", {
       params,
@@ -47,7 +48,7 @@ const fetchEmployees = async () => {
 };
 
 const handleRefreshTable = async () => {
-  fetchEmployees();
+  await fetchEmployees();
 };
 
 const handleShowFireEmployeeDialog = (employee) => {
@@ -56,7 +57,8 @@ const handleShowFireEmployeeDialog = (employee) => {
 };
 
 const handleClearFilters = () => {
-  search.value = null;
+  search.value = "";
+  page.value = 1;
 };
 
 const handleCloseFireDialog = () => {
@@ -99,21 +101,24 @@ const onFileSelected = async (event) => {
   if (!file || !selectedEmployeeForUpload.value) return;
 
   const formData = new FormData();
-  formData.append('file', file);
+  formData.append("file", file);
 
   try {
     loading.value = true;
-    await axios.post(`/rrhh/social-benefits/employees/${selectedEmployeeForUpload.value.id}/upload-signed-settlement`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    });
-    toast.success('Documento firmado subido con éxito');
-    fetchEmployees();
+    await axios.post(
+      `/rrhh/social-benefits/employees/${selectedEmployeeForUpload.value.id}/upload-signed-settlement`,
+      formData,
+      {
+        headers: { "Content-Type": "multipart/form-data" },
+      }
+    );
+    toast.success("Documento firmado subido con éxito");
+    await fetchEmployees();
   } catch (error) {
-    toast.error('Error al subir el documento firmado');
+    toast.error("Error al subir el documento firmado");
   } finally {
     loading.value = false;
-    // Limpiar input para permitir subir el mismo archivo si es necesario
-    if (fileInput.value) fileInput.value.value = '';
+    if (fileInput.value) fileInput.value.value = "";
     selectedEmployeeForUpload.value = null;
   }
 };
@@ -124,15 +129,21 @@ const handleDownloadSignedSettlement = async (employee) => {
       `/rrhh/social-benefits/employees/${employee.id}/download-signed-settlement`,
       { responseType: "blob" }
     );
-    
-    // Obtener extensión del Content-Type o del path si fuera posible, por defecto pdf
-    const contentType = response.headers['content-type'];
-    const extension = contentType?.includes('image') ? (contentType.includes('png') ? 'png' : 'jpg') : 'pdf';
+
+    const contentType = response.headers["content-type"];
+    const extension = contentType?.includes("image")
+      ? contentType.includes("png")
+        ? "png"
+        : "jpg"
+      : "pdf";
 
     const url = window.URL.createObjectURL(new Blob([response.data]));
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", `liquidacion-firmada-${employee.identification}.${extension}`);
+    link.setAttribute(
+      "download",
+      `liquidacion-firmada-${employee.identification}.${extension}`
+    );
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -143,7 +154,14 @@ const handleDownloadSignedSettlement = async (employee) => {
   }
 };
 
-onMounted(() => Promise.all([fetchCurrency(), fetchEmployees()]));
+const handleUpdateOptions = (options) => {
+  if (options.page) page.value = options.page;
+  if (options.itemsPerPage) itemsPerPage.value = options.itemsPerPage;
+};
+
+watch(search, () => {
+  page.value = 1;
+});
 
 let debounceTimer;
 watch(
@@ -154,9 +172,18 @@ watch(
   },
   { deep: true }
 );
+
+onMounted(() => Promise.all([fetchCurrency(), fetchEmployees()]));
+
+onUnmounted(() => {
+  if (debounceTimer) {
+    clearTimeout(debounceTimer);
+  }
+});
 </script>
+
 <template>
-  <div>
+  <div class="rrhh-social-benefits-page pb-12">
     <input
       type="file"
       ref="fileInput"
@@ -164,31 +191,33 @@ watch(
       accept="application/pdf,image/*"
       @change="onFileSelected"
     />
-    
-    <SocialBenefitsEmployeeFilter
-      v-model:search="search"
-      @clear="handleClearFilters"
-    />
 
-    <FireEmployeeDialog
-      v-model="showFireEmployeeDialog"
-      :selected-employee="selectedEmployee"
-      :currency="currency"
-      @refresh-table="handleRefreshTable"
-      @close="handleCloseFireDialog"
-    />
+    <div class="d-flex flex-column gap-1 mt-1">
+      <SocialBenefitsEmployeeFilter
+        v-model:search="search"
+        @clear="handleClearFilters"
+      />
 
-    <SocialBenefitsTable
-      :page="page"
-      :items-per-page="itemsPerPage"
-      :total="totalEmployees"
-      :employees="employees"
-      :loading="loading"
-      @update:options="(options) => { page = options.page; itemsPerPage = options.itemsPerPage; fetchEmployees(); }"
-      @fire-employee="handleShowFireEmployeeDialog"
-      @download-settlement="handleDownloadSettlement"
-      @upload-signed="handleUploadSignedSettlement"
-      @download-signed="handleDownloadSignedSettlement"
-    />
+      <FireEmployeeDialog
+        v-model="showFireEmployeeDialog"
+        :selected-employee="selectedEmployee"
+        :currency="currency"
+        @refresh-table="handleRefreshTable"
+        @close="handleCloseFireDialog"
+      />
+
+      <SocialBenefitsTable
+        :page="page"
+        :items-per-page="itemsPerPage"
+        :total="totalEmployees"
+        :employees="employees"
+        :loading="loading"
+        @update:options="handleUpdateOptions"
+        @fire-employee="handleShowFireEmployeeDialog"
+        @download-settlement="handleDownloadSettlement"
+        @upload-signed="handleUploadSignedSettlement"
+        @download-signed="handleDownloadSignedSettlement"
+      />
+    </div>
   </div>
 </template>
