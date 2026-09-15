@@ -219,9 +219,8 @@ const getLaboratoryColor = (index) => {
                     label="Empleado responsable"
                     placeholder="Seleccionar empleado..."
                     variant="outlined"
-                    density="comfortable"
+                    density="compact"
                     hide-details="auto"
-                    class="shadow-sm"
                     :error-messages="props.errors.employee_id"
                     prepend-inner-icon="tabler-user"
                   >
@@ -256,139 +255,136 @@ const getLaboratoryColor = (index) => {
             <VCard variant="flat" class="pa-5 bg-white rounded-lg elevation-1 border mb-4">
               <VRow dense>
                 <VCol cols="12">
-                  <div class="d-flex align-end gap-3">
-                    <AppSelect
-                      v-model="formData.new_laboratory_id"
-                      :items="availableLaboratories"
-                      label="Vincular nueva marca"
-                      placeholder="Seleccionar marca..."
-                      :disabled="!formData.employee_id"
-                      variant="outlined"
-                      density="comfortable"
-                      hide-details
-                      class="flex-grow-1 shadow-sm"
-                      prepend-inner-icon="tabler-flask"
-                    />
-                    <VBtn
-                      color="primary"
-                      variant="flat"
-                      class="rounded-lg shadow-primary"
-                      height="48"
-                      min-width="50"
-                      :disabled="!formData.new_laboratory_id || !formData.employee_id"
-                      @click="handleAddLaboratory"
-                    >
-                      <VIcon icon="tabler-plus" size="24" />
-                    </VBtn>
-                  </div>
-                </VCol>
-              </VRow>
-            </VCard>
-
-            <!-- Lista de Laboratorios -->
-            <VCard variant="flat" class="border rounded-lg bg-white elevation-1 overflow-hidden">
-              <div v-if="formData.laboratories.length === 0" class="pa-8 d-flex flex-column align-center justify-center text-center">
-                <VIcon icon="tabler-flask-off" size="40" class="text-disabled opacity-20 mb-3" />
-                <div class="text-xs font-weight-black text-disabled uppercase">No hay marcas asignadas aún</div>
-              </div>
-
-              <VList v-else class="pa-0">
-                <template v-for="(lab, index) in formData.laboratories" :key="lab.id">
-                  <VListItem class="px-4 py-3">
-                    <template #prepend>
-                      <VAvatar :color="getLaboratoryColor(index)" variant="tonal" size="36" class="rounded-lg">
-                        <VIcon icon="tabler-flask" size="20" />
-                      </VAvatar>
-                    </template>
-
-                    <VListItemTitle>
-                      <div v-if="editingLaboratory !== lab.id" class="text-sm font-weight-black uppercase text-high-emphasis">
-                        {{ lab.name }}
-                      </div>
+                    <div class="d-flex align-center gap-2">
                       <AppSelect
-                        v-else
-                        v-model="tempLaboratoryId"
-                        :items="props.laboratories"
-                        density="compact"
+                        v-model="formData.new_laboratory_id"
+                        :items="availableLaboratories"
+                        placeholder="Seleccionar marca..."
+                        :disabled="!formData.employee_id"
                         variant="outlined"
+                        density="compact"
                         hide-details
-                        class="shadow-sm"
+                        class="flex-grow-1"
+                        prepend-inner-icon="tabler-flask"
                       />
-                    </VListItemTitle>
+                      <VBtn
+                        color="primary"
+                        variant="flat"
+                        class="rounded-lg shadow-primary"
+                        height="40"
+                        min-width="40"
+                        :disabled="!formData.new_laboratory_id || !formData.employee_id"
+                        @click="handleAddLaboratory"
+                      >
+                        <VIcon icon="tabler-plus" size="20" />
+                      </VBtn>
+                    </div>
+                  </VCol>
+                </VRow>
+              </VCard>
 
-                    <template #append>
-                      <div class="d-flex gap-1">
-                        <template v-if="editingLaboratory !== lab.id">
-                          <VBtn icon variant="tonal" size="x-small" color="warning" class="rounded" @click="handleEditLaboratory(lab)">
-                            <VIcon icon="tabler-edit" size="18" />
-                          </VBtn>
-                          <VBtn icon variant="tonal" size="x-small" color="error" class="rounded" @click="handleRemoveLaboratory(lab.id)">
-                            <VIcon icon="tabler-trash" size="18" />
-                          </VBtn>
-                        </template>
-                        <template v-else>
-                          <VBtn icon variant="flat" size="x-small" color="success" class="rounded" @click="handleSaveEdit(lab.id)">
-                            <VIcon icon="tabler-check" size="18" />
-                          </VBtn>
-                          <VBtn icon variant="flat" size="x-small" color="error" class="rounded" @click="handleCancelEdit">
-                            <VIcon icon="tabler-x" size="18" />
-                          </VBtn>
-                        </template>
-                      </div>
-                    </template>
-                  </VListItem>
-                  <VDivider v-if="index < formData.laboratories.length - 1" class="border-opacity-10" />
-                </template>
-              </VList>
-              <div v-if="props.errors.laboratory_ids" class="pa-3 text-center">
-                <span class="text-xs text-error font-weight-black uppercase">{{ Array.isArray(props.errors.laboratory_ids) ? props.errors.laboratory_ids[0] : props.errors.laboratory_ids }}</span>
-              </div>
-            </VCard>
-          </section>
+              <!-- Lista de Laboratorios -->
+              <VCard variant="flat" class="border rounded-lg bg-white elevation-1 overflow-hidden">
+                <div v-if="formData.laboratories.length === 0" class="pa-8 d-flex flex-column align-center justify-center text-center">
+                  <VIcon icon="tabler-flask-off" size="40" class="text-disabled opacity-20 mb-3" />
+                  <div class="text-xs font-weight-black text-disabled uppercase">No hay marcas asignadas aún</div>
+                </div>
 
-        </VForm>
-      </VCardText>
+                <VList v-else class="pa-0">
+                  <template v-for="(lab, index) in formData.laboratories" :key="lab.id">
+                    <VListItem class="px-4 py-3">
+                      <template #prepend>
+                        <VAvatar :color="getLaboratoryColor(index)" variant="tonal" size="36" class="rounded-lg">
+                          <VIcon icon="tabler-flask" size="20" />
+                        </VAvatar>
+                      </template>
 
-      <VCardActions class="pa-4 bg-light border-t">
-        <VRow no-gutters class="w-100">
-          <VCol cols="12" sm="6" class="pa-1">
+                      <VListItemTitle>
+                        <div v-if="editingLaboratory !== lab.id" class="text-sm font-weight-black uppercase text-high-emphasis">
+                          {{ lab.name }}
+                        </div>
+                        <AppSelect
+                          v-else
+                          v-model="tempLaboratoryId"
+                          :items="props.laboratories"
+                          density="compact"
+                          variant="outlined"
+                          hide-details
+                          class="shadow-sm"
+                        />
+                      </VListItemTitle>
+
+                      <template #append>
+                        <div class="d-flex gap-1">
+                          <template v-if="editingLaboratory !== lab.id">
+                            <VBtn icon variant="tonal" size="x-small" color="warning" class="rounded" @click="handleEditLaboratory(lab)">
+                              <VIcon icon="tabler-edit" size="18" />
+                            </VBtn>
+                            <VBtn icon variant="tonal" size="x-small" color="error" class="rounded" @click="handleRemoveLaboratory(lab.id)">
+                              <VIcon icon="tabler-trash" size="18" />
+                            </VBtn>
+                          </template>
+                          <template v-else>
+                            <VBtn icon variant="flat" size="x-small" color="success" class="rounded" @click="handleSaveEdit(lab.id)">
+                              <VIcon icon="tabler-check" size="18" />
+                            </VBtn>
+                            <VBtn icon variant="flat" size="x-small" color="error" class="rounded" @click="handleCancelEdit">
+                              <VIcon icon="tabler-x" size="18" />
+                            </VBtn>
+                          </template>
+                        </div>
+                      </template>
+                    </VListItem>
+                    <VDivider v-if="index < formData.laboratories.length - 1" class="border-opacity-10" />
+                  </template>
+                </VList>
+                <div v-if="props.errors.laboratory_ids" class="pa-3 text-center">
+                  <span class="text-xs text-error font-weight-black uppercase">{{ Array.isArray(props.errors.laboratory_ids) ? props.errors.laboratory_ids[0] : props.errors.laboratory_ids }}</span>
+                </div>
+              </VCard>
+            </section>
+
+          </VForm>
+        </VCardText>
+
+        <!-- Footer estándar: botones 50% / 50% -->
+        <VCardActions class="dialog-footer bg-light border-t">
+          <div class="footer-btn-group">
             <VBtn
-              color="secondary"
               variant="outlined"
-              size="large"
-              block
-              height="50"
-              class="font-weight-black rounded-lg text-button uppercase"
+              size="default"
+              height="38"
+              class="cancel-btn font-weight-bold rounded-lg text-none"
               @click="closeDialog"
             >
               Cancelar
             </VBtn>
-          </VCol>
-          <VCol cols="12" sm="6" class="pa-1">
             <VBtn
               color="primary"
               variant="flat"
-              size="large"
-              block
-              height="50"
-              class="font-weight-black rounded-lg shadow-primary text-button uppercase"
+              size="default"
+              height="38"
+              class="font-weight-bold rounded-lg shadow-primary text-none"
               :loading="props.saving"
               :disabled="props.saving || !formData.employee_id || (formData.laboratories.length === 0 && !formData.new_laboratory_id)"
               @click="handleSubmit"
             >
-              <VIcon start icon="tabler-device-floppy" size="18" class="me-2" />
+              <VIcon start icon="tabler-device-floppy" size="16" class="me-1" />
               Guardar Cambios
             </VBtn>
-          </VCol>
-        </VRow>
-      </VCardActions>
-    </VCard>
-  </VDialog>
+          </div>
+        </VCardActions>
+      </VCard>
+    </VDialog>
 </template>
 
 <style scoped>
 .header-gradient {
-  background: var(--brand-gradient) !important;
+  background: linear-gradient(
+    135deg,
+    rgb(var(--v-theme-primary)) 0%,
+    rgb(var(--v-theme-gradient-end)) 100%
+  );
 }
 
 .header-indicator {
@@ -399,6 +395,31 @@ const getLaboratoryColor = (index) => {
 
 .header-indicator.primary {
   background-color: rgb(var(--v-theme-primary));
+}
+
+/* Footer botones 50/50 */
+.dialog-footer {
+  padding: 12px 16px !important;
+}
+
+.footer-btn-group {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+
+.footer-btn-group :deep(.v-btn) {
+  flex: 1;
+}
+
+.cancel-btn {
+  border-color: #d1d5db !important;
+  color: #374151 !important;
+}
+
+.cancel-btn:hover {
+  background-color: #f3f4f6 !important;
+  color: #1f2937 !important;
 }
 
 .shadow-primary {
