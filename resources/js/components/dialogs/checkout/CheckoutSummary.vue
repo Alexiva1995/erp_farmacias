@@ -71,7 +71,7 @@ const emit = defineEmits(["complete-purchase", "close-modal", "confirm-payment",
             <div
               v-for="(payment, idx) in payments.filter(p => p.method)"
               :key="idx"
-              class="pa-3 rounded-lg border bg-surface d-flex flex-column payment-card-item"
+              class="pa-1 rounded-lg border bg-surface d-flex flex-column payment-card-item"
             >
               <!-- Fila principal: ícono + nombre + referencia inline + monto + acciones -->
               <div class="d-flex justify-space-between align-center">
