@@ -230,7 +230,7 @@ const clearDialogErrors = () => {
 
 <template>
   <div class="productivity-supervisor-cleaning-page pb-12">
-    <div class="d-flex flex-column gap-1 mt-1">
+    <div class="d-flex flex-column gap-3">
       <!-- Filtros -->
       <SupervisorCleaningFilters
         v-model:searchQuery="searchQuery"
@@ -243,83 +243,83 @@ const clearDialogErrors = () => {
         @sort="handleSort"
       />
 
-      <!-- Tarjetas de Estadísticas -->
-      <VRow dense class="mb-0 flex-nowrap overflow-x-auto ga-2" align="stretch">
-        <VCol cols="12" sm="6" md="2" class="flex-grow-1 flex-shrink-0" style="min-width: 160px;">
-          <VCard class="border shadow-sm rounded-lg overflow-hidden h-100">
+      <!-- Tarjetas de Estadísticas KPI -->
+      <VRow dense class="mb-0">
+        <VCol cols="12" sm="6" md="2" lg="2">
+          <VCard border variant="flat" class="h-100 rounded-lg">
             <VCardText class="pa-4 d-flex align-center justify-space-between">
               <div>
-                <div class="text-super-xs font-weight-black text-disabled uppercase mb-1">Pendientes</div>
-                <div class="text-h5 font-weight-black">
+                <div class="text-super-xs font-weight-bold text-disabled uppercase mb-1">Pendientes</div>
+                <div class="text-h5 font-weight-bold">
                   {{ stats.pending_review }}
                 </div>
               </div>
-              <VAvatar color="warning" variant="tonal" size="40" rounded="lg">
-                <VIcon icon="tabler-clock" size="24" />
+              <VAvatar color="warning" variant="tonal" size="40" class="rounded-lg">
+                <VIcon icon="tabler-clock" size="22" />
               </VAvatar>
             </VCardText>
           </VCard>
         </VCol>
 
-        <VCol cols="12" sm="6" md="2" class="flex-grow-1 flex-shrink-0" style="min-width: 160px;">
-          <VCard class="border shadow-sm rounded-lg overflow-hidden h-100">
+        <VCol cols="12" sm="6" md="2" lg="2">
+          <VCard border variant="flat" class="h-100 rounded-lg">
             <VCardText class="pa-4 d-flex align-center justify-space-between">
               <div>
-                <div class="text-super-xs font-weight-black text-disabled uppercase mb-1">Aprobadas</div>
-                <div class="text-h5 font-weight-black">
+                <div class="text-super-xs font-weight-bold text-disabled uppercase mb-1">Aprobadas</div>
+                <div class="text-h5 font-weight-bold">
                   {{ stats.approved_total }}
                 </div>
               </div>
-              <VAvatar color="success" variant="tonal" size="40" rounded="lg">
-                <VIcon icon="tabler-check" size="24" />
+              <VAvatar color="success" variant="tonal" size="40" class="rounded-lg">
+                <VIcon icon="tabler-check" size="22" />
               </VAvatar>
             </VCardText>
           </VCard>
         </VCol>
 
-        <VCol cols="12" sm="6" md="2" class="flex-grow-1 flex-shrink-0" style="min-width: 160px;">
-          <VCard class="border shadow-sm rounded-lg overflow-hidden h-100">
+        <VCol cols="12" sm="6" md="2" lg="2">
+          <VCard border variant="flat" class="h-100 rounded-lg">
             <VCardText class="pa-4 d-flex align-center justify-space-between">
               <div>
-                <div class="text-super-xs font-weight-black text-disabled uppercase mb-1">Vencidas</div>
-                <div class="text-h5 font-weight-black text-error">
+                <div class="text-super-xs font-weight-bold text-disabled uppercase mb-1">Vencidas</div>
+                <div class="text-h5 font-weight-bold text-error">
                   {{ stats.overdue_total }}
                 </div>
               </div>
-              <VAvatar color="error" variant="tonal" size="40" rounded="lg">
-                <VIcon icon="tabler-alert-triangle" size="24" />
+              <VAvatar color="error" variant="tonal" size="40" class="rounded-lg">
+                <VIcon icon="tabler-alert-triangle" size="22" />
               </VAvatar>
             </VCardText>
           </VCard>
         </VCol>
 
-        <VCol cols="12" sm="6" md="2" class="flex-grow-1 flex-shrink-0" style="min-width: 160px;">
-          <VCard class="border shadow-sm rounded-lg overflow-hidden h-100">
+        <VCol cols="12" sm="6" md="2" lg="2">
+          <VCard border variant="flat" class="h-100 rounded-lg">
             <VCardText class="pa-4 d-flex align-center justify-space-between">
               <div>
-                <div class="text-super-xs font-weight-black text-disabled uppercase mb-1">Canceladas</div>
-                <div class="text-h5 font-weight-black text-secondary">
+                <div class="text-super-xs font-weight-bold text-disabled uppercase mb-1">Canceladas</div>
+                <div class="text-h5 font-weight-bold text-secondary">
                   {{ stats.cancelled_total }}
                 </div>
               </div>
-              <VAvatar color="secondary" variant="tonal" size="40" rounded="lg">
-                <VIcon icon="tabler-ban" size="24" />
+              <VAvatar color="secondary" variant="tonal" size="40" class="rounded-lg">
+                <VIcon icon="tabler-ban" size="22" />
               </VAvatar>
             </VCardText>
           </VCard>
         </VCol>
 
-        <VCol cols="12" sm="6" md="2" class="flex-grow-1 flex-shrink-0" style="min-width: 160px;">
-          <VCard class="border shadow-sm rounded-lg overflow-hidden h-100">
+        <VCol cols="12" sm="6" md="4" lg="4">
+          <VCard border variant="flat" class="h-100 rounded-lg">
             <VCardText class="pa-4 d-flex align-center justify-space-between">
               <div>
-                <div class="text-super-xs font-weight-black text-disabled uppercase mb-1">Hoy</div>
-                <div class="text-h5 font-weight-black text-info">
+                <div class="text-super-xs font-weight-bold text-disabled uppercase mb-1">Revisadas Hoy</div>
+                <div class="text-h5 font-weight-bold text-info">
                   {{ stats.processed_today }}
                 </div>
               </div>
-              <VAvatar color="info" variant="tonal" size="40" rounded="lg">
-                <VIcon icon="tabler-calendar-check" size="24" />
+              <VAvatar color="info" variant="tonal" size="40" class="rounded-lg">
+                <VIcon icon="tabler-calendar-check" size="22" />
               </VAvatar>
             </VCardText>
           </VCard>
@@ -351,3 +351,10 @@ const clearDialogErrors = () => {
     </div>
   </div>
 </template>
+
+<style scoped>
+.text-super-xs {
+  font-size: 0.65rem !important;
+  line-height: normal;
+}
+</style>

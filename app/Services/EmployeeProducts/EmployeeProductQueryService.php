@@ -18,7 +18,7 @@ class EmployeeProductQueryService
     public function getFilteredEmployeeProducts(array $data): LengthAwarePaginator
     {
         $query = Employee::query()
-            ->select(['id', 'name', 'last_name', 'photo', 'identification', 'is_active'])
+            ->select(['id', 'user_id', 'name', 'last_name', 'photo', 'identification', 'is_active'])
             ->where('is_active', true)
             ->with([
                 'products' => function ($q) {

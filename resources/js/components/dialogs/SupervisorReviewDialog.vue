@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref, watch } from "vue";
+import { useDisplay } from "vuetify";
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
@@ -15,6 +16,7 @@ const emit = defineEmits([
   "clear-errors",
 ]);
 
+const { mobile } = useDisplay();
 const activeTab = ref("review");
 const formData = ref({
   notes: "",
@@ -26,13 +28,11 @@ watch(
   () => props.modelValue,
   (newValue) => {
     if (newValue) {
-      // Resetear form
       formData.value = {
         notes: props.execution.notes || "",
         rejection_reason: "",
         cancellation_reason: "",
       };
-      // Volver a la pestaña de revisión
       activeTab.value = "review";
     }
   }
@@ -91,15 +91,16 @@ const getStatusIcon = (status) => {
 
 const getFrequencyColor = (frequency) => {
   const colors = {
-    Diaria: "error",
-    Semanal: "warning",
-    Bimestral: "info",
-    Mensual: "success",
+    Diaria: "success",
+    Semanal: "info",
+    Quincenal: "warning",
+    Bimestral: "warning",
+    Mensual: "purple",
     Trimestral: "primary",
     Semestral: "secondary",
     Anual: "default",
   };
-  return colors[frequency] || "default";
+  return colors[frequency] || "secondary";
 };
 
 const getPhotoUrl = (photoPath) => {
@@ -112,21 +113,18 @@ const getPhotoUrl = (photoPath) => {
 
 const formatDate = (date) => {
   if (!date) return "N/A";
-
   if (date.includes("T") || date.includes(" ")) {
     return new Date(date).toLocaleDateString("es-ES", {
       year: "numeric",
-      month: "long",
+      month: "short",
       day: "numeric",
     });
   }
-
   const [year, month, day] = date.split("-");
   const dateObj = new Date(year, month - 1, day);
-
   return dateObj.toLocaleDateString("es-ES", {
     year: "numeric",
-    month: "long",
+    month: "short",
     day: "numeric",
   });
 };
@@ -135,62 +133,67 @@ const formatDateTime = (datetime) => {
   if (!datetime) return "N/A";
   return new Date(datetime).toLocaleString("es-ES", {
     year: "numeric",
-    month: "long",
+    month: "short",
     day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
   });
 };
 
-const canApprove = computed(() => {
-  return props.execution.status === "Procesada";
-});
-
-const canReject = computed(() => {
-  return props.execution.status === "Procesada";
-});
-
-const canCancel = computed(() => {
-  return ["Pendiente", "Procesada"].includes(props.execution.status);
-});
+const canApprove = computed(() => props.execution.status === "Procesada");
+const canReject = computed(() => props.execution.status === "Procesada");
+const canCancel = computed(() => ["Pendiente", "Procesada"].includes(props.execution.status));
 </script>
 
 <template>
   <VDialog
     :model-value="props.modelValue"
-    max-width="900"
+    :max-width="mobile ? undefined : '800px'"
+    :fullscreen="mobile"
+    :transition="mobile ? 'dialog-bottom-transition' : 'scale-transition'"
     persistent
     scrollable
     @update:model-value="closeDialog"
   >
-    <VCard>
-      <VCardTitle class="d-flex align-center gap-2 pa-5">
-        <VIcon icon="tabler-eye-check" size="24" class="text-primary" />
-        <span class="text-h6">Revisión de Actividad</span>
+    <VCard class="rounded-xl border-0 shadow-xl overflow-hidden d-flex flex-column">
+      <!-- Header Premium Estándar -->
+      <div class="header-gradient pa-4 d-flex align-center shadow-sm">
+        <VAvatar color="white" variant="flat" size="40" class="me-3 elevation-1">
+          <VIcon icon="tabler-shield-check" size="24" color="primary" />
+        </VAvatar>
+        <div class="d-flex flex-column">
+          <h2 class="text-h6 font-weight-black text-white leading-tight mb-0">
+            Revisión de Actividad
+          </h2>
+          <div class="d-flex align-center gap-2 mt-1">
+            <span class="text-super-xs text-white opacity-75 uppercase font-weight-bold">
+              {{ props.execution.employee_name || 'Empleado' }}
+            </span>
+          </div>
+        </div>
         <VSpacer />
-        <VBtn icon variant="text" size="small" @click="closeDialog">
-          <VIcon icon="tabler-x" />
-        </VBtn>
-      </VCardTitle>
+        <VChip color="white" variant="tonal" size="small" class="font-weight-bold me-2 rounded text-white">
+          {{ props.execution.status || 'Estado' }}
+        </VChip>
+        <VBtn icon="tabler-x" variant="tonal" color="white" size="small" class="rounded-lg" @click="closeDialog" />
+      </div>
 
-      <VDivider />
-
-      <VCardText class="pa-5">
+      <VCardText class="pa-4 pa-sm-6 bg-light flex-grow-1 overflow-y-auto" style="max-height: 75vh;">
         <!-- Información de la Ejecución -->
-        <VCard variant="outlined" class="mb-5">
+        <VCard variant="flat" border class="mb-4 rounded-lg bg-white elevation-1">
           <VCardText class="pa-4">
             <VRow>
               <!-- Columna Izquierda: Info del Empleado y Actividad -->
               <VCol cols="12" md="6">
-                <div class="d-flex flex-column gap-4">
+                <div class="d-flex flex-column gap-3">
                   <!-- Empleado -->
                   <div class="d-flex align-center gap-3">
-                    <VAvatar color="primary" size="48" variant="tonal">
-                      <VIcon icon="tabler-user" size="24" />
+                    <VAvatar color="primary" size="40" variant="tonal" class="rounded-lg">
+                      <VIcon icon="tabler-user" size="20" />
                     </VAvatar>
                     <div>
-                      <div class="text-xs text-disabled">Empleado</div>
-                      <div class="text-body-1 font-weight-medium">
+                      <div class="text-super-xs text-disabled font-weight-bold uppercase">Empleado</div>
+                      <div class="text-sm font-weight-bold text-high-emphasis">
                         {{ props.execution.employee_name }}
                       </div>
                     </div>
@@ -198,16 +201,16 @@ const canCancel = computed(() => {
 
                   <!-- Actividad -->
                   <div class="d-flex align-center gap-3">
-                    <VAvatar color="success" size="48" variant="tonal">
-                      <VIcon icon="tabler-checkbox" size="24" />
+                    <VAvatar color="success" size="40" variant="tonal" class="rounded-lg">
+                      <VIcon icon="tabler-checklist" size="20" />
                     </VAvatar>
                     <div class="flex-grow-1">
-                      <div class="text-xs text-disabled">Actividad</div>
-                      <div class="text-body-1 font-weight-medium">
+                      <div class="text-super-xs text-disabled font-weight-bold uppercase">Actividad</div>
+                      <div class="text-sm font-weight-bold text-high-emphasis">
                         {{ props.execution.activity_name }}
                       </div>
-                      <div class="text-sm text-medium-emphasis">
-                        {{ props.execution.description || "Sin descripción" }}
+                      <div class="text-super-xs text-medium-emphasis">
+                        {{ props.execution.description || "Sin descripción adicional" }}
                       </div>
                     </div>
                   </div>
@@ -400,13 +403,18 @@ const canCancel = computed(() => {
                 <div class="d-flex justify-end gap-2 mt-4">
                   <VBtn
                     color="secondary"
-                    variant="outlined"
+                    variant="tonal"
+                    height="38"
+                    class="rounded-lg font-weight-bold text-none"
                     @click="closeDialog"
                   >
                     Cancelar
                   </VBtn>
                   <VBtn
                     color="success"
+                    variant="flat"
+                    height="38"
+                    class="rounded-lg font-weight-bold shadow-primary text-none"
                     prepend-icon="tabler-check"
                     :disabled="!canApprove"
                     @click="handleApprove"
@@ -420,7 +428,7 @@ const canCancel = computed(() => {
 
           <!-- Tab: Rechazar -->
           <VWindowItem value="reject">
-            <VCard variant="outlined">
+            <VCard variant="flat" border class="rounded-lg">
               <VCardText class="pa-4">
                 <VAlert type="error" variant="tonal" class="mb-4">
                   <template #prepend>
@@ -447,13 +455,18 @@ const canCancel = computed(() => {
                 <div class="d-flex justify-end gap-2 mt-4">
                   <VBtn
                     color="secondary"
-                    variant="outlined"
+                    variant="tonal"
+                    height="38"
+                    class="rounded-lg font-weight-bold text-none"
                     @click="closeDialog"
                   >
                     Cancelar
                   </VBtn>
                   <VBtn
                     color="error"
+                    variant="flat"
+                    height="38"
+                    class="rounded-lg font-weight-bold text-none"
                     prepend-icon="tabler-x"
                     :disabled="!canReject || !formData.rejection_reason.trim()"
                     @click="handleReject"
@@ -467,7 +480,7 @@ const canCancel = computed(() => {
 
           <!-- Tab: Cancelar -->
           <VWindowItem value="cancel">
-            <VCard variant="outlined">
+            <VCard variant="flat" border class="rounded-lg">
               <VCardText class="pa-4">
                 <VAlert type="warning" variant="tonal" class="mb-4">
                   <template #prepend>
@@ -494,13 +507,18 @@ const canCancel = computed(() => {
                 <div class="d-flex justify-end gap-2 mt-4">
                   <VBtn
                     color="secondary"
-                    variant="outlined"
+                    variant="tonal"
+                    height="38"
+                    class="rounded-lg font-weight-bold text-none"
                     @click="closeDialog"
                   >
                     Cancelar
                   </VBtn>
                   <VBtn
                     color="warning"
+                    variant="flat"
+                    height="38"
+                    class="rounded-lg font-weight-bold text-none"
                     prepend-icon="tabler-ban"
                     :disabled="
                       !canCancel || !formData.cancellation_reason.trim()
@@ -518,3 +536,26 @@ const canCancel = computed(() => {
     </VCard>
   </VDialog>
 </template>
+
+<style scoped>
+.header-gradient {
+  background: linear-gradient(
+    135deg,
+    rgb(var(--v-theme-primary)) 0%,
+    rgb(var(--v-theme-gradient-end)) 100%
+  );
+}
+
+.text-super-xs {
+  font-size: 0.65rem !important;
+  line-height: normal;
+}
+
+.leading-tight {
+  line-height: 1.25 !important;
+}
+
+.shadow-primary {
+  box-shadow: 0 4px 14px 0 rgba(var(--v-theme-primary), 0.39) !important;
+}
+</style>
