@@ -211,6 +211,11 @@ const formatCurrency = (amount) =>
     style: "currency",
     currency: "USD",
   }).format(amount);
+const averageGrowth = computed(() => {
+  if (!calculatedEmployees.value.length) return 0;
+  return calculatedEmployees.value.reduce((acc, e) => acc + (e.growth || 0), 0) / calculatedEmployees.value.length;
+});
+
 const statistics = computed(() => [
   {
     title: "Ventas",
@@ -223,9 +228,9 @@ const statistics = computed(() => [
   },
   {
     title: "Crecimiento",
-    value: `${formatNumber(calculatedEmployees.value.reduce((acc, e) => acc + (e.growth || 0), 0) / (calculatedEmployees.value.length || 1))}%`,
-    icon: "tabler-trending-up",
-    color: "success",
+    value: `${formatNumber(averageGrowth.value)}%`,
+    icon: averageGrowth.value >= 0 ? "tabler-trending-up" : "tabler-trending-down",
+    color: averageGrowth.value >= 0 ? "success" : "error",
     description: "Promedio mensual",
   },
   {
