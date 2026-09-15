@@ -319,15 +319,17 @@ const formatDate = (dateString) => {
             <VRow dense class="ma-0">
               <!-- Sección Izquierda: Parámetros y Tablas -->
               <VCol cols="12" lg="8" class="pa-1">
-                <div class="bg-white pa-3.5 rounded-lg border mb-3 shadow-xs">
-                  <div class="d-flex align-center justify-space-between mb-2.5">
+                <!-- 1. Parámetros de Cálculo con espacio adecuado -->
+                <div class="bg-white pa-4 rounded-lg border mb-3 shadow-xs">
+                  <div class="d-flex align-center justify-space-between mb-3">
                     <div class="d-flex align-center gap-2">
                       <div class="header-indicator primary shadow-sm"></div>
                       <span class="text-caption font-weight-bold text-high-emphasis">Parámetros de Cálculo</span>
                     </div>
                     <VChip size="x-small" color="primary" variant="tonal" class="rounded font-weight-bold">Configuración</VChip>
                   </div>
-                  <VRow dense>
+                  
+                  <VRow dense class="mt-2">
                     <VCol cols="12" md="4">
                       <AppDateTimePicker
                         v-model="hireDateOverride"
@@ -362,7 +364,7 @@ const formatDate = (dateString) => {
                   </VRow>
                 </div>
 
-                <!-- Tablas de Detalle -->
+                <!-- 3. Tablas de Detalle: Devengaciones y Deducciones con padding y alineación -->
                 <VRow dense>
                   <!-- Devengaciones -->
                   <VCol cols="12" md="6" class="pa-1">
@@ -375,33 +377,33 @@ const formatDate = (dateString) => {
                         <thead>
                           <tr>
                             <th class="text-left text-super-xs font-weight-bold text-medium-emphasis uppercase">Concepto</th>
-                            <th class="text-center text-super-xs font-weight-bold text-medium-emphasis uppercase">Días</th>
+                            <th class="text-right text-super-xs font-weight-bold text-medium-emphasis uppercase">Días</th>
                             <th class="text-right text-super-xs font-weight-bold text-medium-emphasis uppercase">Monto (Bs)</th>
                           </tr>
                         </thead>
                         <tbody>
                           <tr>
-                            <td class="concept-cell">Antigüedad / Prestaciones</td>
-                            <td class="text-center font-weight-bold text-medium-emphasis">{{ displayedSettlement?.social_benefits_days ?? 0 }}</td>
+                            <td class="concept-cell text-left">Antigüedad / Prestaciones</td>
+                            <td class="text-right font-weight-bold text-medium-emphasis">{{ displayedSettlement?.social_benefits_days ?? 0 }}</td>
                             <td class="text-right font-weight-bold text-high-emphasis">{{ displayAmount(displayedSettlement?.social_benefits_amount ?? 0) }}</td>
                           </tr>
                           <tr>
-                            <td class="concept-cell">Vacaciones Fracc.</td>
-                            <td class="text-center font-weight-bold text-medium-emphasis">{{ displayedSettlement?.vacation_voucher_days ?? 0 }}</td>
+                            <td class="concept-cell text-left">Vacaciones Fracc.</td>
+                            <td class="text-right font-weight-bold text-medium-emphasis">{{ displayedSettlement?.vacation_voucher_days ?? 0 }}</td>
                             <td class="text-right font-weight-bold text-high-emphasis">{{ displayAmount(displayedSettlement?.vacation_voucher_amount ?? 0) }}</td>
                           </tr>
                           <tr>
-                            <td class="concept-cell">Bono Vacacional</td>
-                            <td class="text-center font-weight-bold text-medium-emphasis">{{ displayedSettlement?.vacation_bonus_voucher_days ?? 0 }}</td>
+                            <td class="concept-cell text-left">Bono Vacacional</td>
+                            <td class="text-right font-weight-bold text-medium-emphasis">{{ displayedSettlement?.vacation_bonus_voucher_days ?? 0 }}</td>
                             <td class="text-right font-weight-bold text-high-emphasis">{{ displayAmount(displayedSettlement?.vacation_bonus_voucher_amount ?? 0) }}</td>
                           </tr>
                           <tr>
-                            <td class="concept-cell">Utilidades</td>
-                            <td class="text-center font-weight-bold text-medium-emphasis">{{ displayedSettlement?.earnings_voucher_days ?? 0 }}</td>
+                            <td class="concept-cell text-left">Utilidades</td>
+                            <td class="text-right font-weight-bold text-medium-emphasis">{{ displayedSettlement?.earnings_voucher_days ?? 0 }}</td>
                             <td class="text-right font-weight-bold text-high-emphasis">{{ displayAmount(displayedSettlement?.earnings_voucher_amount ?? 0) }}</td>
                           </tr>
                           <tr class="bg-success-subtle">
-                            <td colspan="2" class="text-xs font-weight-bold text-success">Subtotal Devengado</td>
+                            <td colspan="2" class="text-xs font-weight-bold text-success text-left">Subtotal Devengado</td>
                             <td class="text-right text-success font-weight-black">{{ displayAmount(displayedSettlement?.total_settlement_amount ?? 0) }}</td>
                           </tr>
                         </tbody>
@@ -425,7 +427,7 @@ const formatDate = (dateString) => {
                         </thead>
                         <tbody>
                           <tr>
-                            <td class="concept-cell">Deducción Vacaciones</td>
+                            <td class="concept-cell text-left">Deducción Vacaciones</td>
                             <td class="text-right pa-1">
                               <input
                                 :value="formatNumberWithSeparators(vacationDeductionOverride)"
@@ -435,7 +437,7 @@ const formatDate = (dateString) => {
                             </td>
                           </tr>
                           <tr>
-                            <td class="concept-cell">Ded. Bono Vacacional</td>
+                            <td class="concept-cell text-left">Ded. Bono Vacacional</td>
                             <td class="text-right pa-1">
                               <input
                                 :value="formatNumberWithSeparators(vacationBonusDeductionOverride)"
@@ -445,7 +447,7 @@ const formatDate = (dateString) => {
                             </td>
                           </tr>
                           <tr>
-                            <td class="concept-cell">Deducción Utilidades</td>
+                            <td class="concept-cell text-left">Deducción Utilidades</td>
                             <td class="text-right pa-1">
                               <input
                                 :value="formatNumberWithSeparators(earningsDeductionOverride)"
@@ -456,7 +458,7 @@ const formatDate = (dateString) => {
                           </tr>
                           <!-- Deducciones Adicionales -->
                           <tr v-for="(ded, idx) in additionalDeductions" :key="idx" class="bg-error-subtle border-dashed-t">
-                            <td class="text-super-xs font-weight-bold d-flex align-center py-2">
+                            <td class="text-super-xs font-weight-bold d-flex align-center py-2 text-left">
                               <VBtn icon="tabler-trash-x" size="18" variant="text" color="error" class="me-1" @click="removeDeduction(idx)" />
                               {{ ded.description.toUpperCase() }}
                             </td>
@@ -465,15 +467,15 @@ const formatDate = (dateString) => {
                           <tr class="bg-light">
                             <td colspan="2" class="pa-2">
                               <div class="d-flex align-center gap-1 bg-white rounded border pa-1">
-                                <input v-model="newDeduction.description" placeholder="+ OTRA DEDUCCIÓN" class="micro-input grow flex-grow-1" />
+                                <input v-model="newDeduction.description" placeholder="+ OTRA DEDUCCIÓN" class="micro-input grow flex-grow-1 text-left" />
                                 <VDivider vertical class="mx-1" />
-                                <input v-model="newDeduction.amount" type="number" placeholder="0.00" class="micro-input w-50 font-weight-bold" style="max-inline-size: 70px" @keyup.enter="addDeduction" />
+                                <input v-model="newDeduction.amount" type="number" placeholder="0.00" class="micro-input font-weight-bold text-end" style="inline-size: 80px;" @keyup.enter="addDeduction" />
                                 <VBtn icon="tabler-plus" size="22" color="primary" variant="tonal" class="rounded" @click="addDeduction" />
                               </div>
                             </td>
                           </tr>
                           <tr class="bg-error-subtle">
-                            <td class="text-xs font-weight-bold text-error">Subtotal Deducido</td>
+                            <td class="text-xs font-weight-bold text-error text-left">Subtotal Deducido</td>
                             <td class="text-right text-error font-weight-black">{{ displayAmount((displayedSettlement?.total_deductions ?? 0) + (totalAdditionalDeductions * exchangeRate)) }}</td>
                           </tr>
                         </tbody>
@@ -486,7 +488,7 @@ const formatDate = (dateString) => {
               <!-- Sección Derecha: Resumen -->
               <VCol cols="12" lg="4" class="pa-1">
                 <div class="d-flex flex-column gap-3 h-100">
-                  <!-- Tarjeta Promedio en Blanco / Gris Tenue -->
+                  <!-- Tarjeta Promedio de Sueldos en Blanco con borde fino -->
                   <div class="bg-white rounded-lg border shadow-xs pa-3.5">
                     <div class="d-flex justify-space-between align-center mb-1">
                       <span class="text-super-xs font-weight-bold text-medium-emphasis uppercase">Promedio Últimos Sueldos</span>
@@ -524,45 +526,49 @@ const formatDate = (dateString) => {
                     </div>
                   </VExpandTransition>
 
-                  <!-- Tarjeta Total Neto a Pagar (Foco Visual Principal) -->
+                  <!-- 4. Tarjeta TOTAL NETO A PAGAR con Jerarquía Tipográfica Clara -->
                   <div class="bg-white rounded-lg border pa-4 flex-grow-1 d-flex flex-column justify-center shadow-xs text-center">
-                    <div class="d-flex justify-space-between align-center mb-2 px-1">
+                    <div class="d-flex justify-space-between align-center mb-3 px-1">
                       <span class="text-super-xs font-weight-bold text-medium-emphasis uppercase">Tasa BCV del Día</span>
                       <span class="text-xs font-weight-bold text-high-emphasis">1 USD = {{ displayAmount(exchangeRate) }} Bs</span>
                     </div>
 
-                    <!-- Ajuste discreto de % A Liquidar -->
-                    <div class="d-flex align-center justify-space-between bg-light rounded-lg px-2.5 py-1.5 mb-3 border">
-                      <span class="text-super-xs font-weight-bold text-medium-emphasis uppercase">% A Liquidar:</span>
-                      <div class="d-flex align-center gap-2">
-                        <div style="inline-size: 70px;">
-                          <AppTextField
-                            v-model="percentage"
-                            type="number"
-                            min="1"
-                            max="100"
-                            density="compact"
-                            suffix="%"
-                            hide-details
-                            class="micro-percentage-input font-weight-bold text-end"
-                          />
-                        </div>
+                    <!-- 2. % A Liquidar con ancho y alineación limpia -->
+                    <div class="d-flex align-center justify-space-between my-2 px-1">
+                      <span class="text-xs font-weight-bold text-medium-emphasis uppercase">% A Liquidar</span>
+                      <div style="inline-size: 85px;">
+                        <AppTextField
+                          v-model="percentage"
+                          type="number"
+                          min="1"
+                          max="100"
+                          density="compact"
+                          suffix="%"
+                          hide-details
+                          class="percentage-input font-weight-bold text-end"
+                        />
                       </div>
                     </div>
 
-                    <VDivider class="border-dashed mb-3" />
+                    <VDivider class="border-dashed my-3" />
 
-                    <!-- Punto focal exclusivo: Magenta para Total Neto a Pagar -->
-                    <div class="text-overline font-weight-bold text-medium-emphasis leading-none mb-1">
+                    <!-- Etiqueta: TOTAL NETO A PAGAR en mayúsculas, tamaño 11-12px, tono gris oscuro Bold -->
+                    <div class="text-xs font-weight-bold text-medium-emphasis uppercase tracking-wider mb-2">
                       TOTAL NETO A PAGAR
                     </div>
-                    <div class="text-h3 font-weight-black text-primary leading-none mb-1 tabular-nums">
-                      {{ displayAmount(amountToPay) }}
+
+                    <!-- Monto Principal: 28px-32px, Extra-Bold con USD al lado en la misma línea -->
+                    <div class="d-flex align-center justify-center gap-1.5 mb-2">
+                      <span class="text-h4 font-weight-black text-primary tabular-nums">
+                        {{ displayAmount(amountToPay) }}
+                      </span>
+                      <span class="text-subtitle-1 font-weight-bold text-primary">
+                        USD
+                      </span>
                     </div>
-                    <div class="text-caption font-weight-bold text-primary mb-1">
-                      USD
-                    </div>
-                    <div class="text-xs font-weight-bold text-medium-emphasis mt-1">
+
+                    <!-- Equivalencia: 14px, Medium en color de marca para destacar en moneda local -->
+                    <div class="text-body-2 font-weight-bold text-primary opacity-90">
                       ≈ {{ displayAmount(amountToPay * exchangeRate) }} Bs.S
                     </div>
                   </div>
@@ -664,7 +670,6 @@ const formatDate = (dateString) => {
                       <span class="text-xs font-weight-bold text-medium-emphasis">{{ displayAmount(exchangeRate) }} Bs</span>
                     </div>
 
-                    <!-- Contenedor neutro / sutil para Total en Bolívares -->
                     <div class="pa-3.5 rounded-lg bg-light border text-center mt-2">
                        <span class="text-super-xs font-weight-bold text-medium-emphasis uppercase d-block leading-none mb-1">Total en Bolívares</span>
                        <div class="text-h5 font-weight-black text-high-emphasis tabular-nums">
@@ -673,7 +678,6 @@ const formatDate = (dateString) => {
                     </div>
                   </div>
                   
-                  <!-- Alerta con semántica de advertencia estándar (Ámbar / Naranja) -->
                   <div class="warning-alert-banner pa-2.5 border-t text-center">
                     <div class="text-super-xs font-weight-bold uppercase d-flex align-center justify-center gap-1">
                       <VIcon icon="tabler-alert-triangle" size="14" />
@@ -687,8 +691,9 @@ const formatDate = (dateString) => {
         </VTabsWindow>
       </VCardText>
 
-      <VCardActions class="pa-3 bg-light border-t">
-        <VRow no-gutters class="w-100 gap-2 justify-end">
+      <!-- 5. Footer con padding simétrico 16px 24px -->
+      <VCardActions class="dialog-footer pa-4 px-6 bg-light border-t">
+        <VRow no-gutters class="w-100 gap-2 justify-end align-center">
           <VCol cols="auto">
             <VBtn
               variant="outlined"
@@ -769,12 +774,12 @@ const formatDate = (dateString) => {
 
 .premium-micro-table :deep(th) {
   background-color: #f8fafc !important;
-  padding-inline: 10px !important;
+  padding-inline: 12px !important;
   padding-block: 8px !important;
 }
 
 .premium-micro-table :deep(td) {
-  padding-inline: 10px !important;
+  padding-inline: 12px !important;
   padding-block: 10px !important;
 }
 
@@ -800,10 +805,10 @@ const formatDate = (dateString) => {
   background-color: #f1f5f9;
 }
 
-.micro-percentage-input :deep(.v-field__input) {
-  font-size: 0.8rem !important;
-  padding: 2px 4px !important;
-  min-block-size: 28px !important;
+.percentage-input :deep(.v-field__input) {
+  font-size: 0.85rem !important;
+  padding: 2px 6px !important;
+  min-block-size: 32px !important;
   text-align: end;
 }
 
@@ -817,6 +822,10 @@ const formatDate = (dateString) => {
 .warning-alert-banner {
   background-color: #fef3c7 !important;
   color: #b45309 !important;
+}
+
+.dialog-footer {
+  padding: 16px 24px !important;
 }
 
 .cancel-btn {
@@ -842,6 +851,7 @@ const formatDate = (dateString) => {
 .leading-tight { line-height: 1.25 !important; }
 
 .gap-1 { gap: 4px !important; }
+.gap-1\.5 { gap: 6px !important; }
 .gap-2 { gap: 8px !important; }
 .gap-3 { gap: 12px !important; }
 
