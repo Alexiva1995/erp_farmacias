@@ -12,6 +12,11 @@ const formatCurrency = (value) => {
   return Number.isFinite(n) ? n.toLocaleString("es-VE", { style: "currency", currency: "USD" }) : "—";
 };
 
+const toTitleCase = (str) => {
+  if (!str) return '—';
+  return str.toLowerCase().replace(/(?:^|\s|-)\S/g, (char) => char.toUpperCase());
+};
+
 const historicalCrossSellingRate = computed(() => {
   const historical = props.performanceData.salesMetrics.historical;
   if (!historical.totalOrders || historical.totalOrders === 0) return 0;
@@ -24,10 +29,12 @@ const historicalCrossSellingRate = computed(() => {
 <template>
   <div class="employee-performance-tab">
     <div class="d-flex align-center gap-3 mb-6">
-      <h2 :class="mobile ? 'text-h6' : 'text-h5'" class="font-weight-black text-high-emphasis tracking-tight uppercase">
+      <h2 :class="mobile ? 'text-h6' : 'text-h5'" class="font-weight-black text-high-emphasis tracking-tight">
         Dashboard Operativo
       </h2>
-      <VChip color="primary" variant="tonal" size="x-small" class="font-weight-black">MÉTRICAS MES VS HISTÓRICO</VChip>
+      <VChip color="primary" variant="tonal" size="x-small" class="font-weight-bold">
+        Mes en Curso vs. Acumulado Histórico
+      </VChip>
     </div>
 
     <!-- KPIs Principales con comparación del histórico incorporada -->
@@ -35,40 +42,40 @@ const historicalCrossSellingRate = computed(() => {
       <VCol
         v-for="kpi in [
           { 
-            label: 'VENTAS USD', 
+            label: 'Ventas USD (Mes)', 
             current: performanceData.salesMetrics.currentMonth.totalAmount, 
             historical: performanceData.salesMetrics.historical.totalAmount,
             icon: 'tabler-cash', 
             color: 'primary', 
             format: 'currency',
-            histLabel: 'Total Hist.'
+            histLabel: 'Acumulado Histórico'
           },
           { 
-            label: 'UNIDADES', 
+            label: 'Unidades Vendidas', 
             current: performanceData.salesMetrics.currentMonth.totalUnits, 
             historical: performanceData.salesMetrics.historical.totalUnits,
             icon: 'tabler-package', 
             color: 'success', 
             format: 'number',
-            histLabel: 'Total Hist.'
+            histLabel: 'Acumulado Histórico'
           },
           { 
-            label: 'TICKET PROM', 
+            label: 'Ticket Promedio', 
             current: performanceData.salesMetrics.currentMonth.ticketAverage, 
             historical: performanceData.salesMetrics.historical.ticketAverage,
             icon: 'tabler-receipt', 
             color: 'warning', 
             format: 'currency',
-            histLabel: 'Prom. Hist.'
+            histLabel: 'Promedio Histórico'
           },
           { 
-            label: 'CROSS-SELLING', 
+            label: 'Cross-Selling', 
             current: crossSellingRate, 
             historical: historicalCrossSellingRate,
             icon: 'tabler-trending-up', 
             color: 'info', 
             format: 'percent',
-            histLabel: 'Prom. Hist.'
+            histLabel: 'Promedio Histórico'
           }
         ]"
         :key="kpi.label"
@@ -76,12 +83,12 @@ const historicalCrossSellingRate = computed(() => {
         sm="6"
         lg="3"
       >
-        <VCard class="rounded-lg border shadow-sm kpi-card overflow-hidden h-100">
+        <VCard class="rounded-lg border shadow-sm kpi-card overflow-hidden h-100" variant="flat">
           <div :class="`kpi-glow bg-${kpi.color}`" />
           <VCardText :class="mobile ? 'pa-3' : 'pa-4'">
             <div class="d-flex justify-space-between align-start mb-3">
               <div>
-                <span class="text-super-xs font-weight-black text-disabled uppercase d-block mb-1">
+                <span class="text-caption font-weight-bold text-medium-emphasis d-block mb-1">
                   {{ kpi.label }}
                 </span>
                 <div :class="mobile ? 'text-h6' : 'text-h5'" class="font-weight-black text-high-emphasis tabular-nums leading-none">
@@ -96,7 +103,7 @@ const historicalCrossSellingRate = computed(() => {
             <!-- Fila del Histórico dentro de la Card -->
             <VDivider class="my-2 border-dashed" />
             <div class="d-flex align-center justify-space-between text-caption pt-1">
-              <span class="text-super-xs text-medium-emphasis font-weight-bold uppercase">
+              <span class="text-super-xs text-medium-emphasis font-weight-bold">
                 {{ kpi.histLabel }}:
               </span>
               <span class="text-super-xs font-weight-black text-high-emphasis tabular-nums">
@@ -111,7 +118,7 @@ const historicalCrossSellingRate = computed(() => {
     <!-- Top Productos y Laboratorios -->
     <VRow>
       <VCol cols="12" md="6">
-        <VCard class="rounded-lg border shadow-sm h-100">
+        <VCard class="rounded-lg border shadow-sm h-100" variant="flat">
           <VCardItem title="Top 10 Productos Vendidos">
             <template #append>
               <VIcon icon="tabler-pill" class="text-primary" />
@@ -131,7 +138,7 @@ const historicalCrossSellingRate = computed(() => {
                   </VChip>
                 </template>
                 <VListItemTitle class="font-weight-bold text-sm">
-                  {{ prod.name || prod.product_name }}
+                  {{ toTitleCase(prod.name || prod.product_name) }}
                 </VListItemTitle>
                 <template #append>
                   <span class="text-caption font-weight-black text-high-emphasis">
@@ -148,7 +155,7 @@ const historicalCrossSellingRate = computed(() => {
       </VCol>
 
       <VCol cols="12" md="6">
-        <VCard class="rounded-lg border shadow-sm h-100">
+        <VCard class="rounded-lg border shadow-sm h-100" variant="flat">
           <VCardItem title="Top 10 Laboratorios">
             <template #append>
               <VIcon icon="tabler-building-factory-2" class="text-success" />
@@ -168,7 +175,7 @@ const historicalCrossSellingRate = computed(() => {
                   </VChip>
                 </template>
                 <VListItemTitle class="font-weight-bold text-sm">
-                  {{ lab.name || lab.laboratory }}
+                  {{ toTitleCase(lab.name || lab.laboratory) }}
                 </VListItemTitle>
                 <template #append>
                   <span class="text-caption font-weight-black text-high-emphasis">

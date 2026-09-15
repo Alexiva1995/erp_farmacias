@@ -22,13 +22,13 @@ const formatCurrency = (value) => {
 <template>
   <div class="employee-payroll-tab">
     <div class="d-flex align-center justify-space-between mb-6">
-      <h2 :class="mobile ? 'text-h6' : 'text-h5'" class="font-weight-black text-high-emphasis tracking-tight uppercase">
+      <h2 :class="mobile ? 'text-h6' : 'text-h5'" class="font-weight-black text-high-emphasis tracking-tight">
         Nómina e Incentivos
       </h2>
-      <VChip color="success" variant="flat" class="font-weight-black px-4">ACTIVO</VChip>
+      <VChip color="success" variant="tonal" size="x-small" class="font-weight-bold px-3">Activo</VChip>
     </div>
 
-    <VCard class="rounded-lg border shadow-sm mb-6">
+    <VCard class="rounded-lg border shadow-sm mb-6" variant="flat">
       <VCardText class="pa-6">
         <VRow align="center">
           <VCol cols="12" md="6">
@@ -37,7 +37,7 @@ const formatCurrency = (value) => {
                 <VIcon icon="tabler-wallet" size="28" color="primary" />
               </VAvatar>
               <div>
-                <span class="text-caption font-weight-bold text-medium-emphasis uppercase d-block">
+                <span class="text-caption font-weight-bold text-medium-emphasis d-block">
                   Paquete Mensual Acordado
                 </span>
                 <div class="d-flex align-center gap-2 mt-1">
@@ -75,7 +75,7 @@ const formatCurrency = (value) => {
                 <VIcon icon="tabler-currency-dollar" size="24" />
               </VAvatar>
               <div>
-                <span class="text-caption font-weight-bold text-medium-emphasis uppercase d-block">Neto Estimado</span>
+                <span class="text-caption font-weight-bold text-medium-emphasis d-block">Neto Estimado</span>
                 <span class="text-h5 font-weight-black text-success tabular-nums">
                   {{ distribution ? formatCurrency(distribution.total_a_cobrar) : formatCurrency(paymentForm.total_package_usd) }}
                 </span>
@@ -88,7 +88,7 @@ const formatCurrency = (value) => {
         <VDivider class="my-6" />
 
         <div v-if="distribution">
-          <h3 class="text-subtitle-2 font-weight-black text-uppercase text-medium-emphasis mb-4">
+          <h3 class="text-subtitle-2 font-weight-bold text-high-emphasis mb-4">
             <VIcon icon="tabler-file-invoice" size="18" class="me-1 text-primary" /> Detalle de Conceptos de Cobro
           </h3>
 
@@ -101,7 +101,7 @@ const formatCurrency = (value) => {
               md="3"
             >
               <div class="pa-3 rounded-lg border bg-surface d-flex flex-column gap-1">
-                <span class="text-super-xs font-weight-bold text-disabled uppercase">{{ c.name }}</span>
+                <span class="text-super-xs font-weight-bold text-medium-emphasis">{{ c.name }}</span>
                 <span class="text-subtitle-2 font-weight-black text-high-emphasis tabular-nums">{{ formatCurrency(c.amount) }}</span>
               </div>
             </VCol>
@@ -111,16 +111,16 @@ const formatCurrency = (value) => {
     </VCard>
 
     <!-- Historial -->
-    <VCard class="rounded-lg border-0 shadow-sm overflow-hidden mt-6">
-      <div class="pa-4 bg-light border-b font-weight-black text-super-xs text-primary uppercase letter-spacing-1">
+    <VCard class="rounded-lg border shadow-sm overflow-hidden mt-6" variant="flat">
+      <div class="pa-4 bg-light border-b font-weight-bold text-caption text-primary">
         Historial de Pagos Procesados
       </div>
       <VDataTableServer
         :items="paymentHistory"
         :headers="[
-          { title: 'PERIODO', key: 'fecha' },
-          { title: 'NETO (USD)', key: 'total_pagado_usd', align: 'end' },
-          { title: 'EQUIVALENTE (VES)', key: 'total_pagado_ves', align: 'end' }
+          { title: 'Periodo', key: 'fecha' },
+          { title: 'Neto (USD)', key: 'total_pagado_usd', align: 'end' },
+          { title: 'Equivalente (VES)', key: 'total_pagado_ves', align: 'end' }
         ]"
         class="premium-table"
         hide-default-footer
@@ -130,7 +130,7 @@ const formatCurrency = (value) => {
             <VAvatar color="primary" variant="tonal" size="32" class="rounded-lg font-weight-black text-super-xs">
               {{ new Date(item.fecha).getMonth() + 1 }}
             </VAvatar>
-            <span class="text-xs font-weight-black uppercase">{{ new Date(item.fecha).toLocaleString('es-VE', { month: 'long', year: 'numeric' }) }}</span>
+            <span class="text-xs font-weight-semibold text-high-emphasis text-capitalize">{{ new Date(item.fecha).toLocaleString('es-VE', { month: 'long', year: 'numeric' }) }}</span>
           </div>
         </template>
         <template #item.total_pagado_usd="{ item }">

@@ -23,6 +23,19 @@ const emit = defineEmits([
   "toggle-collapse",
 ]);
 
+const toTitleCase = (str) => {
+  if (!str) return '—';
+  return str.toLowerCase().replace(/(?:^|\s|-)\S/g, (char) => char.toUpperCase());
+};
+
+const formatIdentification = (val) => {
+  if (!val) return '—';
+  const cleaned = String(val).replace(/\D/g, '');
+  if (!cleaned) return String(val);
+  const withDots = cleaned.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return `V-${withDots}`;
+};
+
 const initials = computed(() => {
   const name = props.employee.name || "";
   const lastName = props.employee.last_name || "";
@@ -31,47 +44,47 @@ const initials = computed(() => {
 </script>
 
 <template>
-  <VCard class="mb-6 border rounded-lg shadow-sm">
-    <VCardText class="pa-6">
-      <div class="d-flex flex-column flex-md-row align-start align-md-center justify-space-between gap-4">
+  <VCard class="mb-4 border rounded-lg shadow-sm" variant="flat">
+    <VCardText class="pa-4">
+      <div class="d-flex flex-column flex-md-row align-start align-md-center justify-space-between gap-3">
         <!-- Avatar y Datos Principales -->
-        <div class="d-flex align-center gap-4">
-          <div class="position-relative me-2">
-            <VAvatar size="72" color="primary" variant="tonal" class="rounded-circle border">
+        <div class="d-flex align-center gap-3">
+          <div class="position-relative me-1">
+            <VAvatar size="54" color="primary" variant="tonal" class="rounded-circle border">
               <VImg v-if="avatarDisplaySrc && avatarDisplaySrc !== defaultAvatarImg" :src="avatarDisplaySrc" cover />
-              <span v-else class="text-h5 font-weight-black text-primary">{{ initials }}</span>
+              <span v-else class="text-subtitle-1 font-weight-black text-primary">{{ initials }}</span>
             </VAvatar>
             <VBtn
               v-if="canEdit"
               icon="tabler-camera"
-              size="24"
+              size="20"
               color="primary"
               class="position-absolute rounded-circle"
-              style="bottom: -2px; right: -4px; min-width: 26px; min-height: 26px; padding: 0;"
+              style="bottom: -2px; right: -2px; min-width: 22px; min-height: 22px; padding: 0;"
               :loading="photoUploading"
               @click="emit('trigger-photo-input')"
             />
           </div>
 
-          <div class="ps-2">
-            <div class="d-flex align-center gap-2">
-              <h2 class="text-h6 font-weight-black text-high-emphasis me-2">
-                {{ employee.name }} {{ employee.last_name }}
+          <div class="ps-1">
+            <div class="d-flex flex-wrap align-center gap-2">
+              <h2 class="text-subtitle-1 font-weight-black text-high-emphasis me-1 mb-0 leading-tight">
+                {{ toTitleCase(employee.name + ' ' + (employee.last_name || '')) }}
               </h2>
-              <VChip size="x-small" color="primary" variant="tonal" class="font-weight-black">
+              <VChip size="x-small" color="primary" variant="tonal" class="font-weight-bold">
                 {{ translatedRole }}
               </VChip>
               <VChip
                 size="x-small"
                 :color="employee.is_active ? 'success' : 'error'"
                 variant="tonal"
-                class="font-weight-black"
+                class="font-weight-bold"
               >
                 {{ employee.is_active ? 'Activo' : 'Inactivo' }}
               </VChip>
             </div>
-            <p class="text-caption text-medium-emphasis mt-1 mb-0 d-flex align-center gap-1">
-              <span v-if="employee.identification" class="font-weight-bold text-high-emphasis">V-{{ employee.identification }}</span>
+            <p class="text-caption text-medium-emphasis mt-0.5 mb-0 d-flex flex-wrap align-center gap-1">
+              <span v-if="employee.identification" class="font-weight-bold text-high-emphasis">{{ formatIdentification(employee.identification) }}</span>
               <span v-if="employee.identification && (employee.email || employee.user?.email)">•</span>
               <span>{{ employee.email || employee.user?.email || 'Sin correo' }}</span>
             </p>
@@ -91,26 +104,28 @@ const initials = computed(() => {
           >
             Editar Perfil
           </VBtn>
+
           <VBtn
             v-if="isAdmin"
-            variant="tonal"
+            variant="outlined"
             color="warning"
             size="small"
-            prepend-icon="tabler-key"
+            prepend-icon="tabler-shield-lock"
             class="font-weight-bold"
             @click="emit('reset-2fa')"
           >
             Reset 2FA
+            <VTooltip activator="parent" location="bottom">Reiniciar autenticación en dos pasos</VTooltip>
           </VBtn>
         </div>
       </div>
 
       <!-- Sección de Documentos Expediente Directos -->
-      <VDivider class="my-4" />
+      <VDivider class="my-3" />
 
-      <div class="d-flex align-center justify-space-between mb-3 cursor-pointer" @click="emit('toggle-collapse')">
-        <span class="text-caption font-weight-black text-uppercase text-medium-emphasis letter-spacing-1">
-          <VIcon icon="tabler-file-text" size="18" class="me-1 text-primary" /> Documentos Expediente
+      <div class="d-flex align-center justify-space-between cursor-pointer py-1" @click="emit('toggle-collapse')">
+        <span class="text-caption font-weight-bold text-high-emphasis d-flex align-center gap-1">
+          <VIcon icon="tabler-file-text" size="18" class="text-primary" /> Documentos del Expediente
         </span>
         <VIcon :icon="isProfileCollapsed ? 'tabler-chevron-down' : 'tabler-chevron-up'" size="18" />
       </div>
