@@ -3,6 +3,7 @@ import { toast } from "@/plugins/sweetalert";
 import axios from "@/plugins/axios";
 import { ref, watch, computed } from "vue";
 import { useAuthStore } from "@/stores/auth.js";
+import { useDisplay } from "vuetify";
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -17,6 +18,7 @@ const emit = defineEmits([
   "edit-confirmed",
 ]);
 
+const { mobile } = useDisplay();
 const authStore = useAuthStore();
 const errors = ref({});
 const loading = ref(false);
@@ -30,6 +32,14 @@ const duplicateResignationData = ref(null);
 
 const employees = ref([]);
 const selectedEmployeeId = ref(null);
+
+const formatIdentification = (val) => {
+  if (!val) return "—";
+  const cleaned = String(val).replace(/\D/g, "");
+  if (!cleaned) return String(val);
+  const withDots = cleaned.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return `V-${withDots}`;
+};
 
 watch(
   () => props.modelValue,
@@ -48,7 +58,14 @@ watch(
           employees.value = data.data || [];
 
           if (!authStore.isAdmin && authStore.user && employees.value.length > 0) {
-            const userEmp = employees.value.find(e => Number(e.user_id) === Number(authStore.user.id) || e.email === authStore.user.email || (e.name && authStore.user.name && e.name.toLowerCase().includes(authStore.user.name.toLowerCase())));
+            const userEmp = employees.value.find(
+              (e) =>
+                Number(e.user_id) === Number(authStore.user.id) ||
+                e.email === authStore.user.email ||
+                (e.name &&
+                  authStore.user.name &&
+                  e.name.toLowerCase().includes(authStore.user.name.toLowerCase()))
+            );
             if (userEmp) {
               selectedEmployeeId.value = userEmp.id;
             } else {
@@ -60,7 +77,14 @@ watch(
         }
       } else if (!props.selectedEmployee && employees.value.length > 0) {
         if (!authStore.isAdmin && authStore.user) {
-          const userEmp = employees.value.find(e => Number(e.user_id) === Number(authStore.user.id) || e.email === authStore.user.email || (e.name && authStore.user.name && e.name.toLowerCase().includes(authStore.user.name.toLowerCase())));
+          const userEmp = employees.value.find(
+            (e) =>
+              Number(e.user_id) === Number(authStore.user.id) ||
+              e.email === authStore.user.email ||
+              (e.name &&
+                authStore.user.name &&
+                e.name.toLowerCase().includes(authStore.user.name.toLowerCase()))
+          );
           if (userEmp) {
             selectedEmployeeId.value = userEmp.id;
           } else {
@@ -81,7 +105,14 @@ const currentEmployee = computed(() => {
   }
   if (!authStore.isAdmin && employees.value.length > 0) {
     if (authStore.user) {
-      const match = employees.value.find(e => Number(e.user_id) === Number(authStore.user.id) || e.email === authStore.user.email || (e.name && authStore.user.name && e.name.toLowerCase().includes(authStore.user.name.toLowerCase())));
+      const match = employees.value.find(
+        (e) =>
+          Number(e.user_id) === Number(authStore.user.id) ||
+          e.email === authStore.user.email ||
+          (e.name &&
+            authStore.user.name &&
+            e.name.toLowerCase().includes(authStore.user.name.toLowerCase()))
+      );
       if (match) return match;
     }
     return employees.value[0];
@@ -94,12 +125,11 @@ const resignationTypes = [
   { title: "Renuncia Injustificada", value: "unjustified_dismissal" },
 ];
 
-// Watcher para pre-llenar campos cuando se está editando
 watch(
   [() => props.isEdit, () => props.existingResignation, currentEmployee],
   ([isEdit, existingResignation, emp]) => {
     if (emp) {
-      hireDate.value = emp.created_at?.split("T")[0] || ""; // Fallback si no hay hire_date explícito
+      hireDate.value = emp.created_at?.split("T")[0] || "";
     }
     if (isEdit && existingResignation) {
       resignationType.value = existingResignation.resignation_type || "";
@@ -126,7 +156,7 @@ const resetForm = () => {
   resignationType.value = "";
   effectiveDate.value = "";
   requestDate.value = new Date().toISOString().split("T")[0];
-  employeePosition.value = ""; 
+  employeePosition.value = "";
   selectedEmployeeId.value = null;
   loading.value = false;
 };
@@ -144,8 +174,7 @@ const validateForm = () => {
   }
 
   if (!effectiveDate.value) {
-    errors.value.effectiveDate =
-      "Debe seleccionar la fecha efectiva de renuncia";
+    errors.value.effectiveDate = "Debe seleccionar la fecha efectiva de renuncia";
   }
 
   return Object.keys(errors.value).length === 0;
@@ -165,22 +194,17 @@ const generateResignation = async () => {
       employee_identification: currentEmployee.value.identification,
       employee_email: currentEmployee.value.email,
       employee_status: currentEmployee.value.is_active ? "Activo" : "Inactivo",
-      employee_position: employeePosition.value || "empleado", 
-      start_date: hireDate.value, 
+      employee_position: employeePosition.value || "empleado",
+      start_date: hireDate.value,
       resignation_type: resignationType.value,
       effective_date: effectiveDate.value,
     };
 
-    // Solo agregar request_date si no es edición
     if (!props.isEdit) {
       resignationData.request_date = requestDate.value;
-    } else {
     }
 
-    // Agregar flag de edición
     resignationData.is_edit = props.isEdit;
-
-    // Llamada a la API para generar PDF
 
     const response = await axios.post(
       "/rrhh/resignations/generate",
@@ -193,7 +217,6 @@ const generateResignation = async () => {
       }
     );
 
-    // Crear y descargar archivo PDF
     const url = window.URL.createObjectURL(new Blob([response.data]));
     const link = document.createElement("a");
     link.href = url;
@@ -249,7 +272,6 @@ const generateResignation = async () => {
 
 const confirmEditResignation = () => {
   showDuplicateConfirm.value = false;
-  // Cargar datos existentes en el formulario
   if (duplicateResignationData.value) {
     resignationType.value = duplicateResignationData.value.resignation_type;
     effectiveDate.value = duplicateResignationData.value.effective_date;
@@ -264,7 +286,6 @@ const cancelEditResignation = () => {
   closeDialog();
 };
 
-// Función para formatear fechas
 const formatDate = (dateString) => {
   if (!dateString) return "";
   const date = new Date(dateString);
@@ -274,11 +295,6 @@ const formatDate = (dateString) => {
   return `${day}/${month}/${year}`;
 };
 
-// Calcular fecha mínima (hoy)
-// Se elimina minDate para permitir fechas efectivas pasadas
-const minDate = null;
-
-// Calcular fecha máxima (1 año desde hoy)
 const maxDate = computed(() => {
   const max = new Date();
   max.setFullYear(max.getFullYear() + 1);
@@ -289,7 +305,7 @@ const maxDate = computed(() => {
 <template>
   <VDialog
     :model-value="props.modelValue"
-    max-width="600px"
+    max-width="650px"
     persistent
     scrollable
     :fullscreen="mobile"
@@ -300,15 +316,15 @@ const maxDate = computed(() => {
       <!-- Header Premium -->
       <VCardTitle class="pa-0">
         <div class="header-gradient pa-4 d-flex align-center shadow-sm">
-          <VAvatar color="white" variant="flat" size="44" class="me-4 elevation-2">
-            <VIcon icon="tabler-file-text" color="primary" size="26" />
+          <VAvatar color="white" variant="flat" size="44" class="me-3 elevation-2">
+            <VIcon icon="tabler-file-text" color="primary" size="24" />
           </VAvatar>
           <div class="flex-grow-1">
             <h2 class="text-h6 font-weight-black text-white leading-tight mb-0">
-              Generar Carta de Renuncia
+              {{ props.isEdit ? 'Editar Carta de Renuncia' : 'Generar Carta de Renuncia' }}
             </h2>
-            <div class="d-flex align-center gap-2 mt-1">
-              <span class="text-super-xs text-white opacity-75 uppercase font-weight-bold" style="font-size: 0.65rem;">
+            <div class="d-flex align-center gap-2 mt-0.5">
+              <span class="text-super-xs text-white opacity-75 font-weight-bold">
                 Administración de Personal y Egresos
               </span>
             </div>
@@ -323,220 +339,180 @@ const maxDate = computed(() => {
             @click="closeDialog"
             :disabled="loading"
           >
-            <VIcon>tabler-x</VIcon>
+            <VIcon size="18">tabler-x</VIcon>
           </VBtn>
         </div>
       </VCardTitle>
 
-      <VCardText class="pa-4 pa-sm-6 bg-light d-flex flex-column gap-6">
-        <div class="d-flex flex-column gap-6">
-          
-          <!-- Seccion: Información del Empleado -->
-          <section>
-            <div class="d-flex align-center gap-2 mb-4">
-              <div class="header-indicator primary shadow-sm"></div>
-              <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Datos del Empleado</span>
-            </div>
+      <VCardText class="pa-4 bg-light d-flex flex-column gap-3">
+        <!-- Seccion: Información del Empleado -->
+        <div class="bg-white pa-3.5 rounded-lg border">
+          <div class="d-flex align-center gap-2 mb-2.5">
+            <div class="header-indicator primary shadow-sm"></div>
+            <span class="text-caption font-weight-bold text-high-emphasis">Datos del Empleado</span>
+          </div>
 
-            <VCard variant="flat" class="pa-5 bg-white rounded-lg elevation-1 border">
-              <VRow>
-                <VCol v-if="props.selectedEmployee || (!authStore.isAdmin && currentEmployee)" cols="12" sm="6" class="py-1">
-                  <div class="text-super-xs font-weight-black text-disabled uppercase mb-1">Nombre Completo</div>
-                  <div class="text-xs font-weight-black text-high-emphasis tracking-tight">
-                    {{ currentEmployee?.name }} {{ currentEmployee?.last_name }}
-                  </div>
-                </VCol>
-                <VCol v-if="props.selectedEmployee || (!authStore.isAdmin && currentEmployee)" cols="12" sm="6" class="py-1">
-                  <div class="text-super-xs font-weight-black text-disabled uppercase mb-1">Identificación</div>
-                  <div class="text-xs font-weight-black text-high-emphasis tabular-nums">
-                    {{ currentEmployee?.identification }}
-                  </div>
-                </VCol>
-                <VCol v-if="!props.selectedEmployee && authStore.isAdmin" cols="12" class="py-1">
-                  <div class="text-super-xs font-weight-black text-disabled uppercase mb-1">Seleccionar Empleado *</div>
-                  <VAutocomplete
-                    v-model="selectedEmployeeId"
-                    :items="employees"
-                    item-title="name"
-                    item-value="id"
-                    :readonly="!authStore.isAdmin"
-                    :custom-filter="(item, queryText, itemText) => (item.raw.name + ' ' + item.raw.last_name + ' ' + item.raw.identification).toLowerCase().includes(queryText.toLowerCase())"
-                    :item-props="item => ({ title: `${item.name} ${item.last_name}`, subtitle: item.identification })"
-                    placeholder="Buscar y seleccionar empleado..."
-                    variant="outlined"
-                    density="compact"
-                    hide-details="auto"
-                    prepend-inner-icon="tabler-user-search"
-                    class="premium-input-compact"
-                  />
-                </VCol>
-                <VCol cols="12" class="py-1 mt-2">
-                  <div class="text-super-xs font-weight-black text-disabled uppercase mb-1">Fecha de Ingreso</div>
-                  <VTextField
-                    v-model="hireDate"
-                    type="date"
-                    variant="outlined"
-                    density="compact"
-                    hide-details
-                    class="premium-input-compact"
-                    :readonly="false"
-                    prepend-inner-icon="tabler-calendar"
-                  />
-                </VCol>
-              </VRow>
-            </VCard>
-          </section>
-
-          <!-- Seccion: Detalles de la Renuncia -->
-          <section>
-            <div class="d-flex align-center gap-2 mb-4">
-              <div class="header-indicator warning shadow-sm"></div>
-              <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Detalles de la Renuncia</span>
-            </div>
-
-            <VCard variant="flat" class="pa-5 bg-white rounded-lg elevation-1 border">
-              <VForm @submit.prevent="generateResignation">
-                <VRow>
-                  <VCol cols="12">
-                    <VSelect
-                      v-model="resignationType"
-                      label="Tipo de Renuncia *"
-                      variant="outlined"
-                      density="comfortable"
-                      :items="resignationTypes"
-                      :error-messages="errors.resignationType"
-                      :disabled="loading"
-                      :readonly="!authStore.isAdmin"
-                      required
-                      prepend-inner-icon="tabler-category"
-                      class="shadow-sm"
-                      hide-details="auto"
-                    />
-                  </VCol>
-
-                  <VCol cols="12">
-                    <VTextField
-                      v-model="employeePosition"
-                      label="Cargo del Empleado"
-                      variant="outlined"
-                      density="comfortable"
-                      :error-messages="errors.employeePosition"
-                      :disabled="loading"
-                      :readonly="!authStore.isAdmin"
-                      placeholder="Ejemplo: vendedora"
-                      prepend-inner-icon="tabler-briefcase"
-                      class="shadow-sm"
-                      hide-details="auto"
-                    >
-                      <template #append-inner>
-                        <VTooltip location="top">
-                          <template #activator="{ props }">
-                            <VIcon
-                              icon="tabler-help-circle"
-                              size="18"
-                              color="grey"
-                              v-bind="props"
-                              class="opacity-60"
-                            />
-                          </template>
-                          <span>Ejemplo: vendedora, cajero, farmacéutico, etc. Si no se especifica, se usará 'empleado'</span>
-                        </VTooltip>
-                      </template>
-                    </VTextField>
-                  </VCol>
-
-                  <VCol cols="12" sm="6">
-                    <VTextField
-                      v-model="requestDate"
-                      label="Fecha de Solicitud *"
-                      type="date"
-                      variant="outlined"
-                      density="comfortable"
-                      :disabled="loading"
-                      :readonly="false"
-                      class="shadow-sm opacity-80"
-                      hide-details="auto"
-                      prepend-inner-icon="tabler-calendar-check"
-                    />
-                  </VCol>
-
-                  <VCol cols="12" sm="6">
-                    <VTextField
-                      v-model="effectiveDate"
-                      label="Fecha Efectiva *"
-                      type="date"
-                      variant="outlined"
-                      density="comfortable"
-                      :max="maxDate"
-                      :error-messages="errors.effectiveDate"
-                      :disabled="loading"
-                      required
-                      class="shadow-sm"
-                      hide-details="auto"
-                      prepend-inner-icon="tabler-calendar-event"
-                    />
-                  </VCol>
-                </VRow>
-              </VForm>
-            </VCard>
-          </section>
-
-          <!-- Resumen con Estilo Premium -->
-          <VExpandTransition>
-            <div v-if="currentEmployee && resignationType && effectiveDate">
-              <VCard variant="flat" border class="resignation-summary rounded-lg overflow-hidden">
-                <div class="pa-4 bg-light d-flex align-center border-b">
-                  <VIcon icon="tabler-info-circle" class="me-2" color="warning" />
-                  <span class="text-super-xs font-weight-black text-warning uppercase letter-spacing-1">Resumen del Documento</span>
-                </div>
-                <VCardText class="pa-4 bg-white">
-                  <p class="text-xs text-high-emphasis leading-relaxed mb-0">
-                    <span class="font-weight-black text-primary">{{ currentEmployee.name }} {{ currentEmployee.last_name }}</span>
-                    solicita
-                    <span class="font-weight-black text-warning">{{ resignationTypes.find((t) => t.value === resignationType)?.title.toLowerCase() }}</span>
-                    como
-                    <span class="font-weight-black">{{ employeePosition || "empleado" }}</span>
-                    con fecha efectiva el
-                    <span class="font-weight-black text-error">{{ formatDate(effectiveDate) }}</span>.
-                  </p>
-                </VCardText>
-              </VCard>
-            </div>
-          </VExpandTransition>
+          <VRow dense>
+            <VCol v-if="props.selectedEmployee || (!authStore.isAdmin && currentEmployee)" cols="12" sm="6">
+              <div class="text-super-xs font-weight-bold text-disabled uppercase mb-0.5">Nombre Completo</div>
+              <div class="text-xs font-weight-bold text-high-emphasis">
+                {{ currentEmployee?.name }} {{ currentEmployee?.last_name }}
+              </div>
+            </VCol>
+            <VCol v-if="props.selectedEmployee || (!authStore.isAdmin && currentEmployee)" cols="12" sm="6">
+              <div class="text-super-xs font-weight-bold text-disabled uppercase mb-0.5">Identificación</div>
+              <div class="text-xs font-weight-bold text-high-emphasis tabular-nums">
+                {{ formatIdentification(currentEmployee?.identification) }}
+              </div>
+            </VCol>
+            <VCol v-if="!props.selectedEmployee && authStore.isAdmin" cols="12">
+              <VAutocomplete
+                v-model="selectedEmployeeId"
+                :items="employees"
+                item-title="name"
+                item-value="id"
+                :readonly="!authStore.isAdmin"
+                :custom-filter="(item, queryText) => (item.raw.name + ' ' + item.raw.last_name + ' ' + item.raw.identification).toLowerCase().includes(queryText.toLowerCase())"
+                :item-props="item => ({ title: `${item.name} ${item.last_name}`, subtitle: formatIdentification(item.identification) })"
+                label="Seleccionar Empleado *"
+                placeholder="Buscar por nombre o cédula..."
+                variant="outlined"
+                density="compact"
+                hide-details="auto"
+                prepend-inner-icon="tabler-user-search"
+              />
+            </VCol>
+            <VCol cols="12" :class="!props.selectedEmployee && authStore.isAdmin ? 'mt-2' : ''">
+              <AppTextField
+                v-model="hireDate"
+                label="Fecha de Ingreso"
+                type="date"
+                variant="outlined"
+                density="compact"
+                hide-details="auto"
+              />
+            </VCol>
+          </VRow>
         </div>
+
+        <!-- Seccion: Detalles de la Renuncia -->
+        <div class="bg-white pa-3.5 rounded-lg border">
+          <div class="d-flex align-center gap-2 mb-2.5">
+            <div class="header-indicator warning shadow-sm"></div>
+            <span class="text-caption font-weight-bold text-high-emphasis">Detalles de la Renuncia</span>
+          </div>
+
+          <VForm @submit.prevent="generateResignation">
+            <VRow dense>
+              <VCol cols="12" sm="6">
+                <VSelect
+                  v-model="resignationType"
+                  label="Tipo de Renuncia *"
+                  variant="outlined"
+                  density="compact"
+                  :items="resignationTypes"
+                  :error-messages="errors.resignationType"
+                  :disabled="loading"
+                  :readonly="!authStore.isAdmin"
+                  required
+                  hide-details="auto"
+                />
+              </VCol>
+
+              <VCol cols="12" sm="6">
+                <AppTextField
+                  v-model="employeePosition"
+                  label="Cargo del Empleado"
+                  variant="outlined"
+                  density="compact"
+                  :error-messages="errors.employeePosition"
+                  :disabled="loading"
+                  :readonly="!authStore.isAdmin"
+                  placeholder="Ej: Vendedora, Cajero..."
+                  hide-details="auto"
+                />
+              </VCol>
+
+              <VCol cols="12" sm="6">
+                <AppTextField
+                  v-model="requestDate"
+                  label="Fecha de Solicitud *"
+                  type="date"
+                  variant="outlined"
+                  density="compact"
+                  :disabled="loading"
+                  hide-details="auto"
+                />
+              </VCol>
+
+              <VCol cols="12" sm="6">
+                <AppTextField
+                  v-model="effectiveDate"
+                  label="Fecha Efectiva *"
+                  type="date"
+                  variant="outlined"
+                  density="compact"
+                  :max="maxDate"
+                  :error-messages="errors.effectiveDate"
+                  :disabled="loading"
+                  required
+                  hide-details="auto"
+                />
+              </VCol>
+            </VRow>
+          </VForm>
+        </div>
+
+        <!-- Resumen -->
+        <VExpandTransition>
+          <div v-if="currentEmployee && resignationType && effectiveDate">
+            <VCard variant="flat" class="bg-primary-lighten-5 rounded-lg border border-dashed pa-3">
+              <div class="d-flex align-center gap-2 mb-1">
+                <VIcon icon="tabler-info-circle" size="16" color="primary" />
+                <span class="text-super-xs font-weight-bold text-primary uppercase letter-spacing-1">Resumen del Documento</span>
+              </div>
+              <p class="text-xs text-high-emphasis leading-tight mb-0">
+                <strong class="text-primary">{{ currentEmployee.name }} {{ currentEmployee.last_name }}</strong>
+                solicita
+                <strong class="text-warning">{{ resignationTypes.find((t) => t.value === resignationType)?.title.toLowerCase() }}</strong>
+                como
+                <strong class="text-high-emphasis">{{ employeePosition || "empleado" }}</strong>
+                con fecha efectiva el
+                <strong class="text-error">{{ formatDate(effectiveDate) }}</strong>.
+              </p>
+            </VCard>
+          </div>
+        </VExpandTransition>
       </VCardText>
 
-      <VCardActions class="pa-4 bg-light border-t">
-        <VRow no-gutters class="w-100">
-          <VCol cols="12" sm="6" class="pa-1">
+      <VCardActions class="pa-3 bg-light border-t">
+        <VRow no-gutters class="w-100 gap-2 justify-end">
+          <VCol cols="auto">
             <VBtn
               color="secondary"
-              variant="tonal"
-              size="large"
-              block
-              height="50"
-              class="font-weight-black rounded-lg text-button uppercase"
+              variant="outlined"
+              size="default"
+              height="38"
+              class="font-weight-bold rounded-lg px-4 text-none"
               @click="closeDialog"
               :disabled="loading"
             >
-              <VIcon :icon="mobile ? 'tabler-x' : ''" :start="!mobile" :class="mobile ? '' : 'me-2'" />
-              <span v-if="!mobile">Cancelar</span>
+              Cancelar
             </VBtn>
           </VCol>
-          <VCol cols="12" sm="6" class="pa-1">
+          <VCol cols="auto">
             <VBtn
               color="primary"
               variant="flat"
-              size="large"
-              block
-              height="50"
-              class="font-weight-black rounded-lg shadow-primary text-button uppercase"
+              size="default"
+              height="38"
+              class="font-weight-bold rounded-lg px-5 shadow-primary text-none"
               @click="generateResignation"
               :loading="loading"
               :disabled="!currentEmployee || !resignationType || !effectiveDate"
             >
-              <VIcon icon="tabler-file-download" :class="mobile ? '' : 'me-2'" />
-              <span v-if="!mobile">Generar Carta</span>
+              <VIcon start icon="tabler-file-download" class="me-1" />
+              {{ props.isEdit ? 'Actualizar Carta' : 'Generar Carta' }}
             </VBtn>
           </VCol>
         </VRow>
@@ -546,57 +522,68 @@ const maxDate = computed(() => {
 
   <!-- Modal de confirmación para editar renuncia existente -->
   <VDialog v-model="showDuplicateConfirm" max-width="500">
-    <VCard>
-      <VCardTitle class="text-h6 pa-4 pb-2">
-        <VIcon icon="tabler-alert-triangle" class="me-2" color="warning" />
-        Renuncia Existente
-      </VCardTitle>
-      <VCardText class="pa-4 pt-0">
-        <div class="text-body-1 mb-3">
-          Este empleado ya tiene una carta de renuncia generada:
+    <VCard class="detail-dialog-card rounded-lg overflow-hidden border-0 elevation-12">
+      <VCardTitle class="pa-0">
+        <div class="header-gradient pa-4 d-flex align-center shadow-sm">
+          <VAvatar color="white" variant="flat" size="40" class="me-3 elevation-2">
+            <VIcon icon="tabler-alert-triangle" color="warning" size="22" />
+          </VAvatar>
+          <div class="flex-grow-1">
+            <h2 class="text-h6 font-weight-black text-white leading-tight mb-0">
+              Renuncia Existente
+            </h2>
+          </div>
         </div>
-        <VCard variant="outlined" class="pa-3 mb-3">
-          <div class="text-body-2 text-medium-emphasis">Empleado:</div>
-          <div class="text-body-1 font-weight-medium">
-            {{ duplicateResignationData?.employee_name }}
+      </VCardTitle>
+
+      <VCardText class="pa-4 bg-light">
+        <div class="bg-white pa-3.5 rounded-lg border">
+          <p class="text-xs text-medium-emphasis mb-2">
+            Este empleado ya cuenta con una carta de renuncia previa:
+          </p>
+          <div class="text-xs font-weight-bold mb-1">
+            Empleado: <span class="text-primary">{{ duplicateResignationData?.employee_name }}</span>
           </div>
-          <div class="text-body-2 text-medium-emphasis mt-2">Tipo:</div>
-          <div class="text-body-1 font-weight-medium">
-            {{
-              duplicateResignationData?.resignation_type === "voluntary"
-                ? "Renuncia Voluntaria"
-                : "Despido Injustificado"
-            }}
+          <div class="text-xs font-weight-bold mb-1">
+            Tipo: <span>{{ duplicateResignationData?.resignation_type === "voluntary" ? "Renuncia Justificada" : "Renuncia Injustificada" }}</span>
           </div>
-          <div class="text-body-2 text-medium-emphasis mt-2">
-            Fecha Efectiva:
+          <div class="text-xs font-weight-bold mb-3">
+            Fecha Efectiva: <span>{{ formatDate(duplicateResignationData?.effective_date) }}</span>
           </div>
-          <div class="text-body-1 font-weight-medium">
-            {{ formatDate(duplicateResignationData?.effective_date) }}
-          </div>
-        </VCard>
-        <div class="text-body-1">
-          ¿Desea editar la carta de renuncia existente?
+          <p class="text-xs font-weight-bold text-high-emphasis mb-0">
+            ¿Desea editar la carta de renuncia existente?
+          </p>
         </div>
       </VCardText>
-      <VCardActions class="pa-4 pt-0">
-        <VBtn
-          color="grey"
-          variant="outlined"
-          @click="cancelEditResignation"
-          class="flex-grow-1 w-0 mr-4"
-        >
-          Cancelar
-        </VBtn>
-        <VBtn
-          color="primary"
-          variant="flat"
-          @click="confirmEditResignation"
-          class="flex-grow-1 w-0"
-        >
-          <VIcon icon="tabler-edit" class="me-2" />
-          Editar Renuncia!
-        </VBtn>
+
+      <VCardActions class="pa-3 bg-light border-t">
+        <VRow no-gutters class="w-100 gap-2 justify-end">
+          <VCol cols="auto">
+            <VBtn
+              color="secondary"
+              variant="outlined"
+              size="default"
+              height="38"
+              class="font-weight-bold rounded-lg px-4 text-none"
+              @click="cancelEditResignation"
+            >
+              Cancelar
+            </VBtn>
+          </VCol>
+          <VCol cols="auto">
+            <VBtn
+              color="primary"
+              variant="flat"
+              size="default"
+              height="38"
+              class="font-weight-bold rounded-lg px-5 text-none"
+              @click="confirmEditResignation"
+            >
+              <VIcon start icon="tabler-edit" class="me-1" />
+              Editar Renuncia
+            </VBtn>
+          </VCol>
+        </VRow>
       </VCardActions>
     </VCard>
   </VDialog>
@@ -612,7 +599,7 @@ const maxDate = computed(() => {
 }
 
 .detail-dialog-card {
-  border-radius: 8px !important;
+  border-radius: 12px !important;
 }
 
 .header-indicator {
@@ -633,10 +620,6 @@ const maxDate = computed(() => {
   box-shadow: 0 4px 14px 0 rgba(var(--v-theme-primary), 0.39) !important;
 }
 
-.shadow-sm {
-  box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.05) !important;
-}
-
 .bg-light {
   background-color: #f8fafc !important;
 }
@@ -652,18 +635,5 @@ const maxDate = computed(() => {
 
 .border-t {
   border-block-start: 1px solid rgba(var(--v-border-color), 0.08) !important;
-}
-
-.premium-input-compact :deep(.v-field) {
-  background-color: white !important;
-  border-radius: 8px !important;
-}
-
-.resignation-summary {
-  border: 1px solid rgba(var(--v-theme-warning), 20%) !important;
-}
-
-.last\:border-0:last-child {
-  border-bottom: 0 !important;
 }
 </style>
