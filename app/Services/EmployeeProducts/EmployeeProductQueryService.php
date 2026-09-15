@@ -22,7 +22,8 @@ class EmployeeProductQueryService
             ->where('is_active', true)
             ->with([
                 'products' => function ($q) {
-                    $q->select(['products.id', 'products.name']);
+                    $q->select(['products.id', 'products.name', 'products.laboratory_id'])
+                        ->with(['laboratory:id,name']);
                 },
                 'dishes' => function ($q) {
                     $q->select(['dishes.id', 'dishes.name']);
@@ -78,6 +79,7 @@ class EmployeeProductQueryService
                 return [
                     'id' => $prod->id,
                     'name' => $prod->name,
+                    'laboratory_name' => $prod->laboratory?->name ?? null,
                     'type' => 'product',
                 ];
             });
@@ -86,6 +88,7 @@ class EmployeeProductQueryService
                 return [
                     'id' => $dish->id,
                     'name' => $dish->name,
+                    'laboratory_name' => null,
                     'type' => 'dish',
                 ];
             });

@@ -88,44 +88,46 @@ const hasProducts = computed(() => {
           </VChip>
         </div>
 
-        <!-- Lista de Productos -->
+        <!-- Tabla de Productos -->
         <div v-if="hasProducts">
-          <VCard variant="flat" class="rounded-lg overflow-hidden border elevation-1 bg-white">
-            <VList class="pa-0">
-              <template
-                v-for="(product, index) in props.employee.products"
-                :key="product.id"
-              >
-                <VListItem class="px-4 py-3">
-                  <template #prepend>
-                    <VAvatar
-                      :color="getProductColor(index)"
-                      variant="tonal"
-                      size="34"
-                      class="rounded-lg"
-                    >
-                      <VIcon :icon="product.type === 'dish' ? 'tabler-tools-kitchen-2' : 'tabler-pill'" size="18" />
-                    </VAvatar>
-                  </template>
-
-                  <VListItemTitle class="text-sm font-weight-bold text-capitalize text-high-emphasis">
-                    {{ formatCapitalize(product.name) }}
-                  </VListItemTitle>
-
-                  <template #append>
+          <VCard variant="flat" border class="rounded-lg overflow-hidden bg-white">
+            <VTable density="comfortable">
+              <thead>
+                <tr>
+                  <th class="text-left font-weight-bold" style="width: 100px;">Tipo / ID</th>
+                  <th class="text-left font-weight-bold">Producto</th>
+                  <th class="text-left font-weight-bold">Laboratorio</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="(product, index) in props.employee.products"
+                  :key="`${product.type || 'product'}-${product.id}`"
+                >
+                  <td>
                     <VChip
                       :color="product.type === 'dish' ? 'success' : 'primary'"
                       size="x-small"
                       variant="tonal"
                       class="font-weight-bold rounded tabular-nums"
                     >
-                      {{ product.type === 'dish' ? 'PLATO' : 'PROD' }} #{{ product.id }}
+                      {{ product.id }}
                     </VChip>
-                  </template>
-                </VListItem>
-                <VDivider v-if="index < props.employee.products.length - 1" class="border-opacity-10" />
-              </template>
-            </VList>
+                  </td>
+                  <td>
+                    <span class="text-sm font-weight-medium text-capitalize text-high-emphasis">
+                      {{ formatCapitalize(product.name) }}
+                    </span>
+                  </td>
+                  <td>
+                    <span v-if="product.laboratory_name" class="text-xs text-medium-emphasis">
+                      {{ formatCapitalize(product.laboratory_name) }}
+                    </span>
+                    <span v-else class="text-xs text-disabled">—</span>
+                  </td>
+                </tr>
+              </tbody>
+            </VTable>
           </VCard>
         </div>
 

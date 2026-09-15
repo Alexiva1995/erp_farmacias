@@ -16,17 +16,17 @@ const props = defineProps({
 
 const emit = defineEmits([
   "update:options",
+  "view-products",
   "edit-assignment",
   "delete-assignment",
   "delete-all-assignments",
 ]);
 
 const headers = [
-  { title: "ID",                  key: "employee_id",    sortable: true,  width: "70px" },
-  { title: "Empleado",            key: "employee_name",  sortable: true },
-  { title: "Productos Asignados", key: "products",       sortable: false, width: "45%", align: "center" },
-  { title: "Total",               key: "products_count", sortable: true,  align: "center" },
-  { title: "Acciones",            key: "actions",        sortable: false, align: "end" },
+  { title: "ID",       key: "employee_id",    sortable: true,  width: "70px" },
+  { title: "Empleado", key: "employee_name",  sortable: true },
+  { title: "Total",    key: "products_count", sortable: true,  align: "center", width: "120px" },
+  { title: "Acciones", key: "actions",        sortable: false, align: "end" },
 ];
 
 const getInitials = (name) => {
@@ -103,23 +103,6 @@ const formatCapitalize = (str) => {
             </div>
           </template>
 
-          <!-- Chips de productos -->
-          <template #item.products="{ item }">
-            <div class="d-flex flex-wrap justify-center gap-1 py-1">
-              <VChip
-                v-for="prod in item.products"
-                :key="prod.id"
-                size="x-small"
-                color="primary"
-                variant="tonal"
-                class="rounded font-weight-bold text-capitalize"
-              >
-                {{ formatCapitalize(prod.name) }}
-              </VChip>
-              <span v-if="item.products.length === 0" class="text-xs text-disabled italic">Sin productos</span>
-            </div>
-          </template>
-
           <!-- Total -->
           <template #item.products_count="{ item }">
             <VChip
@@ -134,41 +117,48 @@ const formatCapitalize = (str) => {
 
           <!-- Acciones -->
           <template #item.actions="{ item }">
-            <div v-if="can('manage', 'admin')" class="d-flex justify-end gap-1">
-              <IconBtn color="primary" size="small" @click="emit('edit-assignment', item)">
-                <VIcon icon="tabler-edit" size="18" />
-                <VTooltip activator="parent">Editar asignación</VTooltip>
+            <div class="d-flex justify-end gap-1">
+              <IconBtn color="info" size="small" @click="emit('view-products', item)">
+                <VIcon icon="tabler-eye" size="18" />
+                <VTooltip activator="parent">Ver productos asignados</VTooltip>
               </IconBtn>
 
-              <VMenu v-if="item.products.length > 0" location="bottom end">
-                <template #activator="{ props: menuProps }">
-                  <IconBtn v-bind="menuProps" color="error" size="small">
-                    <VIcon icon="tabler-trash" size="18" />
-                    <VTooltip activator="parent">Eliminar productos</VTooltip>
-                  </IconBtn>
-                </template>
-                <VList density="compact" class="rounded-lg py-1 border shadow-lg">
-                  <VListItem
-                    class="border-b"
-                    @click="emit('delete-all-assignments', item.employee_id, item.employee_name)"
-                  >
-                    <template #prepend>
-                      <VIcon icon="tabler-trash-filled" size="16" color="error" class="me-2" />
-                    </template>
-                    <VListItemTitle class="text-xs font-weight-bold text-error">Borrar todos</VListItemTitle>
-                  </VListItem>
-                  <VListItem
-                    v-for="prod in item.products"
-                    :key="prod.id"
-                    @click="emit('delete-assignment', item.employee_id, prod.id)"
-                  >
-                    <template #prepend>
-                      <VIcon icon="tabler-circle-x" size="16" color="error" class="me-2" />
-                    </template>
-                    <VListItemTitle class="text-xs font-weight-bold text-error">{{ formatCapitalize(prod.name) }}</VListItemTitle>
-                  </VListItem>
-                </VList>
-              </VMenu>
+              <template v-if="can('manage', 'admin')">
+                <IconBtn color="primary" size="small" @click="emit('edit-assignment', item)">
+                  <VIcon icon="tabler-edit" size="18" />
+                  <VTooltip activator="parent">Editar asignación</VTooltip>
+                </IconBtn>
+
+                <VMenu v-if="item.products.length > 0" location="bottom end">
+                  <template #activator="{ props: menuProps }">
+                    <IconBtn v-bind="menuProps" color="error" size="small">
+                      <VIcon icon="tabler-trash" size="18" />
+                      <VTooltip activator="parent">Eliminar productos</VTooltip>
+                    </IconBtn>
+                  </template>
+                  <VList density="compact" class="rounded-lg py-1 border shadow-lg">
+                    <VListItem
+                      class="border-b"
+                      @click="emit('delete-all-assignments', item.employee_id, item.employee_name)"
+                    >
+                      <template #prepend>
+                        <VIcon icon="tabler-trash-filled" size="16" color="error" class="me-2" />
+                      </template>
+                      <VListItemTitle class="text-xs font-weight-bold text-error">Borrar todos</VListItemTitle>
+                    </VListItem>
+                    <VListItem
+                      v-for="prod in item.products"
+                      :key="prod.id"
+                      @click="emit('delete-assignment', item.employee_id, prod.id)"
+                    >
+                      <template #prepend>
+                        <VIcon icon="tabler-circle-x" size="16" color="error" class="me-2" />
+                      </template>
+                      <VListItemTitle class="text-xs font-weight-bold text-error">{{ formatCapitalize(prod.name) }}</VListItemTitle>
+                    </VListItem>
+                  </VList>
+                </VMenu>
+              </template>
             </div>
           </template>
         </VDataTableServer>
@@ -221,65 +211,57 @@ const formatCapitalize = (str) => {
               </div>
 
               <!-- Acciones móvil -->
-              <div v-if="can('manage', 'admin')" class="d-flex gap-1 ms-2 flex-shrink-0">
-                <IconBtn size="x-small" color="primary" @click="emit('edit-assignment', item)">
-                  <VIcon icon="tabler-edit" size="16" />
-                  <VTooltip activator="parent">Editar</VTooltip>
+              <div class="d-flex gap-1 ms-2 flex-shrink-0">
+                <IconBtn size="x-small" color="info" @click="emit('view-products', item)">
+                  <VIcon icon="tabler-eye" size="16" />
+                  <VTooltip activator="parent">Ver</VTooltip>
                 </IconBtn>
-                <VMenu v-if="item.products.length > 0" location="bottom end">
-                  <template #activator="{ props: menuProps }">
-                    <IconBtn v-bind="menuProps" size="x-small" color="error">
-                      <VIcon icon="tabler-trash" size="16" />
-                    </IconBtn>
-                  </template>
-                  <VList density="compact" class="rounded-lg py-1 border shadow-lg">
-                    <VListItem
-                      class="border-b"
-                      @click="emit('delete-all-assignments', item.employee_id, item.employee_name)"
-                    >
-                      <template #prepend>
-                        <VIcon icon="tabler-trash-filled" size="16" color="error" class="me-2" />
-                      </template>
-                      <VListItemTitle class="text-xs font-weight-bold text-error">Borrar todos</VListItemTitle>
-                    </VListItem>
-                    <VListItem
-                      v-for="prod in item.products"
-                      :key="prod.id"
-                      @click="emit('delete-assignment', item.employee_id, prod.id)"
-                    >
-                      <template #prepend>
-                        <VIcon icon="tabler-circle-x" size="16" color="error" class="me-2" />
-                      </template>
-                      <VListItemTitle class="text-xs font-weight-bold text-error">{{ formatCapitalize(prod.name) }}</VListItemTitle>
-                    </VListItem>
-                  </VList>
-                </VMenu>
+
+                <template v-if="can('manage', 'admin')">
+                  <IconBtn size="x-small" color="primary" @click="emit('edit-assignment', item)">
+                    <VIcon icon="tabler-edit" size="16" />
+                    <VTooltip activator="parent">Editar</VTooltip>
+                  </IconBtn>
+                  <VMenu v-if="item.products.length > 0" location="bottom end">
+                    <template #activator="{ props: menuProps }">
+                      <IconBtn v-bind="menuProps" size="x-small" color="error">
+                        <VIcon icon="tabler-trash" size="16" />
+                      </IconBtn>
+                    </template>
+                    <VList density="compact" class="rounded-lg py-1 border shadow-lg">
+                      <VListItem
+                        class="border-b"
+                        @click="emit('delete-all-assignments', item.employee_id, item.employee_name)"
+                      >
+                        <template #prepend>
+                          <VIcon icon="tabler-trash-filled" size="16" color="error" class="me-2" />
+                        </template>
+                        <VListItemTitle class="text-xs font-weight-bold text-error">Borrar todos</VListItemTitle>
+                      </VListItem>
+                      <VListItem
+                        v-for="prod in item.products"
+                        :key="prod.id"
+                        @click="emit('delete-assignment', item.employee_id, prod.id)"
+                      >
+                        <template #prepend>
+                          <VIcon icon="tabler-circle-x" size="16" color="error" class="me-2" />
+                        </template>
+                        <VListItemTitle class="text-xs font-weight-bold text-error">{{ formatCapitalize(prod.name) }}</VListItemTitle>
+                      </VListItem>
+                    </VList>
+                  </VMenu>
+                </template>
               </div>
             </div>
 
             <VDivider class="my-3 border-opacity-10" />
 
-            <!-- Productos -->
-            <div class="d-flex align-center justify-space-between mb-2">
-              <span class="text-xs font-weight-bold text-medium-emphasis uppercase">Productos Asignados</span>
+            <!-- Resumen Total -->
+            <div class="d-flex align-center justify-space-between">
+              <span class="text-xs font-weight-bold text-medium-emphasis uppercase">Total Productos Asignados</span>
               <VChip size="x-small" color="success" variant="tonal" class="font-weight-bold rounded px-2">
                 {{ item.products_count }}
               </VChip>
-            </div>
-            <div class="d-flex flex-wrap gap-1">
-              <VChip
-                v-for="prod in item.products"
-                :key="prod.id"
-                size="x-small"
-                color="primary"
-                variant="tonal"
-                class="rounded font-weight-bold text-capitalize"
-              >
-                {{ formatCapitalize(prod.name) }}
-              </VChip>
-              <span v-if="item.products.length === 0" class="text-xs text-disabled italic">
-                Sin productos asignados
-              </span>
             </div>
           </div>
         </VCard>

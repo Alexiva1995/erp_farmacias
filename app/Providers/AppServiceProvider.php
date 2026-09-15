@@ -370,6 +370,11 @@ class AppServiceProvider extends ServiceProvider
         );
 
         $this->app->bind(
+            \App\Contracts\Suppliers\CristmedicalsApiServiceInterface::class,
+            \App\Services\Suppliers\CristmedicalsApiService::class
+        );
+
+        $this->app->bind(
             \App\Contracts\Suppliers\DromegaScraperServiceInterface::class,
             \App\Services\Suppliers\DromegaScraperService::class
         );

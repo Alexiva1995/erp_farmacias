@@ -63,12 +63,14 @@ const loadRemoteProducts = async (query = "") => {
     const uniqueMap = new Map();
     products.forEach(p => {
       const key = `product-${p.id}`;
+      const labName = p.laboratory?.name || p.laboratory_name || '';
       uniqueMap.set(key, {
         valueKey: key,
         id: p.id,
         name: p.name,
+        laboratory_name: labName,
         type: 'product',
-        displayLabel: `[P] ${p.id} - ${p.name}`
+        displayLabel: labName ? `[P] ${p.id} - ${p.name} (${labName})` : `[P] ${p.id} - ${p.name}`
       });
     });
 
@@ -78,6 +80,7 @@ const loadRemoteProducts = async (query = "") => {
         valueKey: key,
         id: d.id,
         name: d.name,
+        laboratory_name: null,
         type: 'dish',
         displayLabel: `[Plato] ${d.id} - ${d.name}`
       });
@@ -174,6 +177,7 @@ const handleAddProduct = () => {
       formData.value.products.push({
         id: item.id,
         name: item.name,
+        laboratory_name: item.laboratory_name || null,
         type: item.type,
       });
     }
@@ -197,8 +201,9 @@ const handleEditProduct = (product) => {
     valueKey: `${product.type || 'product'}-${product.id}`,
     id: product.id, 
     name: product.name, 
+    laboratory_name: product.laboratory_name || null,
     type: product.type || 'product',
-    displayLabel: `${product.type === 'dish' ? '[Plato]' : '[P]'} ${product.id} - ${product.name}` 
+    displayLabel: `${product.type === 'dish' ? '[Plato]' : '[P]'} ${product.id} - ${product.name}${product.laboratory_name ? ` (${product.laboratory_name})` : ''}` 
   });
 };
 
@@ -219,6 +224,7 @@ const handleSaveEdit = (oldProduct) => {
       updatedProds[index] = {
         id: newProd.id,
         name: newProd.name,
+        laboratory_name: newProd.laboratory_name || null,
         type: newProd.type,
       };
       formData.value.products = updatedProds;
@@ -391,19 +397,22 @@ const formatCapitalize = (str) => {
               <VList v-else class="pa-0">
                 <template v-for="(product, index) in formData.products" :key="`${product.type || 'product'}-${product.id}`">
                   <VListItem class="px-4 py-3">
-                    <template #prepend>
-                      <VAvatar :color="getProductColor(index)" variant="tonal" size="36" class="rounded-lg">
-                        <VIcon :icon="product.type === 'dish' ? 'tabler-tools-kitchen-2' : 'tabler-pill'" size="20" />
-                      </VAvatar>
-                    </template>
-
                     <VListItemTitle>
-                      <div v-if="editingProduct !== `${product.type || 'product'}-${product.id}`" class="d-flex align-center gap-2">
-                        <VChip size="x-small" :color="product.type === 'dish' ? 'success' : 'primary'" variant="flat" label class="rounded font-weight-bold">
-                          {{ product.type === 'dish' ? 'PLATO' : 'PROD' }} #{{ product.id }}
+                      <div v-if="editingProduct !== `${product.type || 'product'}-${product.id}`" class="d-flex align-center gap-2 flex-wrap">
+                        <VChip
+                          size="x-small"
+                          :color="product.type === 'dish' ? 'success' : 'primary'"
+                          variant="tonal"
+                          label
+                          class="font-weight-bold rounded tabular-nums"
+                        >
+                          {{ product.id }}
                         </VChip>
-                        <span class="text-sm font-weight-bold text-capitalize text-high-emphasis">
+                        <span class="text-sm font-weight-medium text-capitalize text-high-emphasis">
                           {{ formatCapitalize(product.name) }}
+                        </span>
+                        <span v-if="product.laboratory_name" class="text-xs text-medium-emphasis font-weight-regular">
+                          ({{ formatCapitalize(product.laboratory_name) }})
                         </span>
                       </div>
                       <AppAutocomplete
@@ -456,10 +465,11 @@ const formatCapitalize = (str) => {
       <VCardActions class="dialog-footer bg-light border-t">
         <div class="footer-btn-group">
           <VBtn
-            variant="outlined"
+            color="secondary"
+            variant="tonal"
             size="default"
             height="38"
-            class="cancel-btn font-weight-bold rounded-lg text-none"
+            class="font-weight-bold rounded-lg text-none"
             @click="closeDialog"
           >
             Cancelar
@@ -515,16 +525,6 @@ const formatCapitalize = (str) => {
 
 .footer-btn-group :deep(.v-btn) {
   flex: 1;
-}
-
-.cancel-btn {
-  border-color: #d1d5db !important;
-  color: #374151 !important;
-}
-
-.cancel-btn:hover {
-  background-color: #f3f4f6 !important;
-  color: #1f2937 !important;
 }
 
 .shadow-primary {

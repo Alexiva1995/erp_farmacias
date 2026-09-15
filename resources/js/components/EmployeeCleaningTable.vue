@@ -25,7 +25,6 @@ const { mobile } = useDisplay();
 const headers = [
   { title: "ID", key: "employee_id", sortable: true, width: "80px" },
   { title: "Empleado", key: "employee_name", sortable: true },
-  { title: "Identificación", key: "identification", sortable: false, width: "200px" },
   { title: "Actividades", key: "activities_count", sortable: true, align: "center", width: "150px" },
   { title: "Acciones", key: "actions", sortable: false, align: "center", width: "150px" },
 ];
@@ -74,18 +73,8 @@ const getAvatarColor = (id) => {
               <span class="text-sm font-weight-black text-high-emphasis leading-tight text-uppercase">
                 {{ item.employee_name }}
               </span>
-              <span class="text-super-xs font-weight-black uppercase mt-1" :class="item.is_active ? 'text-success' : 'text-error'">
-                {{ item.is_active ? 'ESTADO: ACTIVO' : 'ESTADO: INACTIVO' }}
-              </span>
             </div>
           </div>
-        </template>
-
-        <!-- Identificación -->
-        <template #item.identification="{ item }">
-          <span class="text-xs font-weight-black text-medium-emphasis tabular-nums uppercase">
-            {{ item.identification || 'N/A' }}
-          </span>
         </template>
 
         <!-- Actividades -->
@@ -167,7 +156,7 @@ const getAvatarColor = (id) => {
                       {{ item.employee_name }}
                     </h3>
                     <span class="text-super-xs text-primary mt-1 font-weight-black uppercase">
-                      ID: #{{ item.employee_id }} • {{ item.identification || 'SIN DNI' }}
+                      ID: #{{ item.employee_id }}
                     </span>
                   </div>
                 </div>

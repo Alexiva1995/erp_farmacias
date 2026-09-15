@@ -21,6 +21,7 @@ class PurchaseOrderServices implements PurchaseOrder
     protected \App\Contracts\Suppliers\VitalclinicFtpServiceInterface $vitalclinicFtpService,
     protected \App\Contracts\Suppliers\DrocercaFtpServiceInterface $drocercaFtpService,
     protected \App\Contracts\Suppliers\MarfartaPcCorreoServiceInterface $marfartaPcCorreoService,
+    protected \App\Contracts\Suppliers\CristmedicalsApiServiceInterface $cristmedicalsApiService,
   ) {
   }
 
@@ -70,11 +71,12 @@ class PurchaseOrderServices implements PurchaseOrder
   {
     $supplier = $autoOrder->supplier ?: \App\Models\Supplier::find($autoOrder->supplier_id);
     
-    // Identificar proveedor automatizado (Dronena, Vitalclinic, Drocerca, Mafarta)
+    // Identificar proveedor automatizado (Dronena, Vitalclinic, Drocerca, Mafarta, Cristmedicals)
     $isDronena = false;
     $isVitalclinic = false;
     $isDrocerca = false;
     $isMafarta = false;
+    $isCristmedicals = false;
 
     if ($supplier) {
       $supplierName = strtoupper($supplier->name);
@@ -115,6 +117,15 @@ class PurchaseOrderServices implements PurchaseOrder
       if (str_contains($supplierName, 'MAFARTA') || str_contains($supplierName, 'COBECA') || (int)$supplier->id === 23 || (int)$supplier->id === 1011) {
         $isMafarta = true;
       }
+
+      if (str_contains($supplierName, 'CRIST') || str_contains($supplierName, 'CRISTALMEDICALS') || (int)$supplier->id === 1002) {
+        $isCristmedicals = true;
+      } else {
+        $hasCristmedicalsApi = $supplier->connections()->where('host', 'LIKE', '%cristmedicals%')->exists();
+        if ($hasCristmedicalsApi) {
+          $isCristmedicals = true;
+        }
+      }
     }
 
     if ($isDronena) {
@@ -150,6 +161,15 @@ class PurchaseOrderServices implements PurchaseOrder
       } catch (\Throwable $e) {
         \Illuminate\Support\Facades\Log::error("[MAFARTA API] Error transmitiendo pedido automático #{$autoOrder->id}: " . $e->getMessage());
         throw new \Exception("Error al transmitir el pedido a Droguerías Cobeca / Mafarta por API: " . $e->getMessage());
+      }
+    }
+
+    if ($isCristmedicals) {
+      try {
+        $this->cristmedicalsApiService->sendOrderApi($autoOrder);
+      } catch (\Throwable $e) {
+        \Illuminate\Support\Facades\Log::error("[CRISTMEDICALS API] Error transmitiendo pedido automático #{$autoOrder->id}: " . $e->getMessage());
+        throw new \Exception("Error al transmitir el pedido a Cristmedicals por API: " . $e->getMessage());
       }
     }
 

@@ -356,10 +356,11 @@ const formatCapitalize = (str) => {
         <VCardActions class="dialog-footer bg-light border-t">
           <div class="footer-btn-group">
             <VBtn
-              variant="outlined"
+              color="secondary"
+              variant="tonal"
               size="default"
               height="38"
-              class="cancel-btn font-weight-bold rounded-lg text-none"
+              class="font-weight-bold rounded-lg text-none"
               @click="closeDialog"
             >
               Cancelar
@@ -415,16 +416,6 @@ const formatCapitalize = (str) => {
 
 .footer-btn-group :deep(.v-btn) {
   flex: 1;
-}
-
-.cancel-btn {
-  border-color: #d1d5db !important;
-  color: #374151 !important;
-}
-
-.cancel-btn:hover {
-  background-color: #f3f4f6 !important;
-  color: #1f2937 !important;
 }
 
 .shadow-primary {
