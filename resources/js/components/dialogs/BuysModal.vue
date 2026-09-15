@@ -293,9 +293,9 @@ const activeDiscountDisplay = computed(() => {
         </div>
         
         <VRow v-else no-gutters class="modal-content-row">
-          <!-- Columna Izquierda: Métodos de Pago -->
-          <VCol cols="12" md="7" lg="7" class="pa-3 border-e overflow-y-auto modal-scroll-col">
-            <div class="d-flex flex-column gap-3">
+          <!-- Columna Izquierda: Métodos de Pago (60%) -->
+          <VCol cols="12" md="7" lg="7" class="pa-4 border-e overflow-y-auto modal-scroll-col">
+            <div class="pe-md-2">
               <CheckoutPaymentMethods 
                 v-model:selectedCurrencyTab="selectedCurrencyTab"
                 :currencies="['USD', 'COP', 'BS']"
@@ -312,11 +312,12 @@ const activeDiscountDisplay = computed(() => {
             </div>
           </VCol>
 
-          <!-- Columna Derecha: Resumen de Cobro y Devolución -->
-          <VCol cols="12" md="5" lg="5" class="pa-3 bg-surface overflow-y-auto modal-scroll-col">
-            <CheckoutSummary 
-              :selected-currency="selectedCurrency"
-              :selected-currency-tab="selectedCurrencyTab"
+          <!-- Columna Derecha: Resumen de Cobro y Devolución (40%) -->
+          <VCol cols="12" md="5" lg="5" class="pa-4 bg-surface overflow-y-auto modal-scroll-col">
+            <div class="ps-md-2">
+              <CheckoutSummary 
+                :selected-currency="selectedCurrency"
+                :selected-currency-tab="selectedCurrencyTab"
               :active-discount-display="activeDiscountDisplay"
               :expiration-discount-total="expirationDiscountTotal"
               :applies-special-tax="appliesSpecialTax"

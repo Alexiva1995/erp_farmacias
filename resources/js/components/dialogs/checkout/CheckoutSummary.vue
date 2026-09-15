@@ -188,36 +188,52 @@ const emit = defineEmits(["complete-purchase", "close-modal", "confirm-payment",
         <VDivider class="my-1" />
 
         <!-- BLOQUE 2: Estado Final (Restante / Vuelto + Acciones) -->
-        <div class="summary-section d-flex flex-column gap-2">
+        <div class="summary-section d-flex flex-column gap-3 pt-1">
           <div class="text-caption font-weight-bold uppercase letter-spacing-1 text-primary mb-1 d-flex align-center gap-1">
             <VIcon icon="tabler-calculator" size="16" />
             <span>Estado Final</span>
           </div>
 
-          <div class="d-flex justify-space-between align-center pa-2.5 rounded-lg bg-grey-lighten-4 border">
-            <span class="text-subtitle-2 font-weight-bold text-high-emphasis">Restante a Pagar:</span>
-            <span class="text-subtitle-1 font-weight-black" :class="remainingAmount <= 0.01 ? 'text-success' : 'text-error'">
+          <!-- Indicador de Restante con feedback dinámico (Rojo/Naranja si falta, Verde suave al saldar) -->
+          <div 
+            class="d-flex justify-space-between align-center pa-3 rounded-lg border"
+            :class="remainingAmount <= 0.01 ? 'bg-success-lighten-5 border-success text-success-darken-3' : 'bg-grey-lighten-4'"
+          >
+            <span class="text-subtitle-2 font-weight-bold" :class="remainingAmount <= 0.01 ? 'text-success-darken-3' : 'text-high-emphasis'">
+              {{ remainingAmount <= 0.01 ? '¡Cuenta Saldada!' : 'Restante a Pagar:' }}
+            </span>
+            <span 
+              class="text-subtitle-1 font-weight-black" 
+              :class="remainingAmount <= 0.01 ? 'text-success-darken-3' : 'text-error'"
+            >
               {{ formatCurrency(getConvertedRemainingAmount(selectedCurrencyTab), selectedCurrencyTab) }}
             </span>
           </div>
 
-          <div v-if="showChangeAmount" class="d-flex flex-column pa-3 rounded-lg bg-success-lighten-5 border border-success">
-            <div class="d-flex justify-space-between align-center">
-              <span class="text-caption font-weight-bold text-uppercase text-success-darken-2">CAMBIO / VUELTO:</span>
-              <span class="text-h6 font-weight-950 text-success-darken-3">{{ formatCurrency(changeAmountInCop, 'COP') }}</span>
+          <!-- Separador amplio antes de Vuelto/Cambio si aplica -->
+          <template v-if="showChangeAmount">
+            <VDivider class="my-1" />
+
+            <div class="d-flex flex-column pa-3 rounded-lg bg-success-lighten-5 border border-success">
+              <div class="d-flex justify-space-between align-center">
+                <span class="text-caption font-weight-bold text-uppercase text-success-darken-2">CAMBIO / VUELTO:</span>
+                <span class="text-h6 font-weight-950 text-success-darken-3">{{ formatCurrency(changeAmountInCop, 'COP') }}</span>
+              </div>
+              <div v-if="selectedCurrency !== 'COP'" class="d-flex justify-space-between align-center mt-1 pt-1 border-t border-dashed">
+                <span class="text-super-xs font-weight-bold text-medium-emphasis">Equivalente en {{ selectedCurrency }}:</span>
+                <span class="text-caption font-weight-black text-success-darken-2">{{ formatCurrency(changeAmount, selectedCurrency) }}</span>
+              </div>
             </div>
-            <div v-if="selectedCurrency !== 'COP'" class="d-flex justify-space-between align-center mt-1 pt-1 border-t border-dashed">
-              <span class="text-super-xs font-weight-bold text-medium-emphasis">Equivalente en {{ selectedCurrency }}:</span>
-              <span class="text-caption font-weight-black text-success-darken-2">{{ formatCurrency(changeAmount, selectedCurrency) }}</span>
-            </div>
-          </div>
+          </template>
 
           <VCardActions class="pa-0 d-flex flex-column gap-2 mt-2">
+            <!-- Continuar: Verde al saldar saldo, Primario/Magenta si falta procesar -->
             <VBtn 
               variant="flat" 
               block 
               size="large" 
               class="rounded-lg font-weight-bold uppercase py-3 checkout-btn text-none elevation-2"
+              :color="remainingAmount <= 0.01 && !hasMissingReferences() ? 'success' : 'primary'"
               :style="remainingAmount <= 0.01 && !hasMissingReferences() ? 'background: linear-gradient(135deg, #28C76F, #129e51); color: white;' : ''"
               :disabled="issubmitting || isExternalLoading || (remainingAmount > 0.01 || hasMissingReferences())"
               @click="emit('complete-purchase')"
@@ -226,15 +242,17 @@ const emit = defineEmits(["complete-purchase", "close-modal", "confirm-payment",
               {{ continueButtonText }}
             </VBtn>
 
+            <!-- Regresar al pedido: Botón secundario tipo outline limpio sin relleno -->
             <VBtn 
               color="secondary" 
               variant="outlined" 
               block 
               size="small" 
-              height="36"
-              class="rounded-lg font-weight-semibold text-none" 
+              height="38"
+              class="rounded-lg font-weight-semibold text-none btn-outline-back" 
               @click="emit('close-modal')"
             >
+              <VIcon icon="tabler-arrow-left" class="me-1" size="16" />
               Regresar al Pedido
             </VBtn>
           </VCardActions>

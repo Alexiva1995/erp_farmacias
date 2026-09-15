@@ -103,32 +103,33 @@ const getCleanCurrencyKey = (currencyObj) => {
 </script>
 
 <template>
-  <div class="d-flex flex-column gap-3">
+  <div class="d-flex flex-column currency-cards-container">
     <VCard
       v-for="currency in currencies"
       :key="getCleanCurrencyKey(currency)"
       variant="flat"
       border
-      class="rounded-xl overflow-hidden glass-card"
+      class="rounded-xl overflow-hidden glass-card currency-card mb-4"
     >
-      <!-- Encabezado Compacto: Moneda (Limpia) + Métodos Abreviados al Lado + Monto Equivalente -->
-      <VCardTitle class="pa-2 border-b d-flex align-center justify-space-between bg-grey-lighten-4 flex-wrap gap-2">
+      <!-- Encabezado con buen aire interno (padding 16px) -->
+      <VCardTitle class="pa-3 border-b d-flex align-center justify-space-between bg-grey-lighten-4 flex-wrap gap-2">
         <div class="d-flex align-center gap-2 flex-wrap">
-          <span class="text-subtitle-2 font-weight-black me-1">
+          <span class="text-subtitle-2 font-weight-black me-1 text-high-emphasis">
             {{ getCleanCurrencyKey(currency) }}
           </span>
           
-          <!-- Métodos Abreviados en la misma línea -->
-          <div class="d-flex align-center gap-1 flex-wrap">
+          <!-- Métodos de Pago: Pestañas blancas con borde outline, activas resaltadas -->
+          <div class="d-flex align-center gap-1.5 flex-wrap">
             <VBtn
               v-for="method in getAvailableMethodsForCurrency(getCleanCurrencyKey(currency))"
               :key="method.value"
               :data-shortcut="method.value"
-              :variant="isPaymentMethodActive(method.value, getCleanCurrencyKey(currency)) ? 'flat' : 'tonal'"
+              :variant="isPaymentMethodActive(method.value, getCleanCurrencyKey(currency)) ? 'flat' : 'outlined'"
               :color="isPaymentMethodActive(method.value, getCleanCurrencyKey(currency)) ? 'primary' : 'secondary'"
               size="x-small"
-              class="rounded-md font-weight-black px-2"
-              height="26"
+              class="rounded-lg font-weight-bold px-2.5 method-btn"
+              :class="{ 'bg-surface': !isPaymentMethodActive(method.value, getCleanCurrencyKey(currency)) }"
+              height="28"
               @click="onSelectMethod(method.value, getCleanCurrencyKey(currency))"
             >
               <VIcon :icon="getPaymentMethodIcon(method.value)" class="me-1" size="14" />
@@ -137,26 +138,28 @@ const getCleanCurrencyKey = (currencyObj) => {
           </div>
         </div>
 
-        <VChip size="x-small" color="primary" variant="flat" class="font-weight-black ms-auto">
+        <!-- Badges de totales por moneda en azul marino / gris azulado elegante -->
+        <VChip 
+          size="x-small" 
+          variant="flat" 
+          class="font-weight-bold ms-auto currency-total-chip"
+        >
           {{ formatCurrency(getConvertedRemainingAmount(getCleanCurrencyKey(currency)), getCleanCurrencyKey(currency)) }}
         </VChip>
       </VCardTitle>
 
-      <!-- Botones de Billetes Rápidos directos (sin etiqueta de texto redundante) -->
-      <VCardText v-if="getQuickCashForCurrency(getCleanCurrencyKey(currency)).length > 0" class="pa-2 bg-surface">
-        <div class="d-flex flex-wrap gap-1">
-          <VBtn
+      <!-- Botones de Billetes Rápidos en Grilla con Gap uniforme (10-12px) y Paleta Azul Acero -->
+      <VCardText v-if="getQuickCashForCurrency(getCleanCurrencyKey(currency)).length > 0" class="pa-3 bg-surface">
+        <div class="d-flex flex-wrap quick-cash-grid">
+          <button
             v-for="cash in getQuickCashForCurrency(getCleanCurrencyKey(currency))"
             :key="cash.value"
-            variant="flat"
-            color="success"
-            size="x-small"
-            class="rounded-md font-weight-black text-white px-2"
-            height="24"
+            type="button"
+            class="cash-bill-btn"
             @click="onQuickCash(cash.value, getCleanCurrencyKey(currency))"
           >
             {{ cash.label }}
-          </VBtn>
+          </button>
         </div>
       </VCardText>
     </VCard>
@@ -164,10 +167,60 @@ const getCleanCurrencyKey = (currencyObj) => {
 </template>
 
 <style scoped>
-.gap-2 {
-  gap: 8px !important;
+.currency-cards-container {
+  gap: 8px;
 }
-.gap-3 {
-  gap: 12px !important;
+
+.currency-card {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.currency-card:hover {
+  border-color: rgba(var(--v-theme-primary), 0.25) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+
+.method-btn {
+  letter-spacing: 0.2px;
+  border-color: rgba(var(--v-theme-on-surface), 0.18) !important;
+}
+
+.currency-total-chip {
+  background-color: #1e293b !important; /* Azul marino / slate oscuro elegante */
+  color: #ffffff !important;
+}
+
+.quick-cash-grid {
+  gap: 10px;
+}
+
+/* Billetes con Paleta Azul Acero Suave (#EBF3FE / #1E40AF) y Microinteracción Activa */
+.cash-bill-btn {
+  background-color: #ebf3fe;
+  color: #1e40af;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  line-height: 1.2;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 2px rgba(30, 64, 175, 0.05);
+}
+
+.cash-bill-btn:hover {
+  background-color: #dbeafe;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+.cash-bill-btn:active {
+  background-color: #1e40af;
+  border-color: #1e40af;
+  color: #ffffff;
+  transform: translateY(1px);
 }
 </style>
