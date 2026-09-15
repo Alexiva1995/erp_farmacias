@@ -32,12 +32,20 @@ const toTitleCase = (str) => {
   return str.toLowerCase().replace(/(?:^|\s|-)\S/g, (char) => char.toUpperCase());
 };
 
+const formatIdentification = (val) => {
+  if (!val) return '—';
+  const cleaned = String(val).replace(/\D/g, '');
+  if (!cleaned) return String(val);
+  const withDots = cleaned.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return `V-${withDots}`;
+};
+
 const { mobile } = useDisplay();
 
 const headers = [
   { title: "ID", key: "id", sortable: true },
   { title: "Empleado", key: "name", sortable: false },
-  { title: "Identificación", key: "identification", sortable: false },
+  { title: "Identificación", key: "identification", sortable: false, align: 'center' },
   { title: "Estado", key: "is_active", sortable: false, align: 'center' },
   { title: "Acciones", key: "actions", sortable: false, align: 'end' },
 ];
@@ -117,7 +125,7 @@ const handleIntroDownload = (employee) => {
           </template>
 
           <template #item.identification="{ item }">
-            <span class="font-weight-semibold text-high-emphasis">{{ item.identification }}</span>
+            <span class="font-weight-semibold text-high-emphasis">{{ formatIdentification(item.identification) }}</span>
           </template>
 
           <template #item.is_active="{ item }">
@@ -223,7 +231,7 @@ const handleIntroDownload = (employee) => {
                     {{ toTitleCase(item.name + ' ' + item.last_name) }}
                   </h3>
                   <div class="d-flex align-center gap-1 mt-0.5">
-                    <span class="text-super-xs text-medium-emphasis font-weight-bold">{{ item.identification }}</span>
+                    <span class="text-super-xs text-medium-emphasis font-weight-bold">{{ formatIdentification(item.identification) }}</span>
                     <span class="text-xs text-disabled">•</span>
                     <span class="text-super-xs text-primary font-weight-bold">{{ resolveRoleName(item.role) }}</span>
                   </div>
