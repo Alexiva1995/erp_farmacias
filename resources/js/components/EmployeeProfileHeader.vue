@@ -131,7 +131,7 @@ const initials = computed(() => {
       </div>
 
       <VExpandTransition>
-        <div v-show="!isProfileCollapsed">
+        <div v-show="!isProfileCollapsed" class="pt-2">
           <VRow dense>
             <VCol
               v-for="(label, key) in documentLabels"
@@ -140,25 +140,36 @@ const initials = computed(() => {
               sm="6"
               md="3"
             >
-              <div class="pa-3 rounded-lg border bg-surface d-flex flex-column gap-2">
-                <div class="d-flex align-center justify-space-between">
-                  <span class="text-caption font-weight-bold text-high-emphasis">{{ label }}</span>
-                  <VIcon
-                    :icon="employee[key] ? 'tabler-circle-check-filled' : 'tabler-alert-circle'"
+              <div class="px-3 py-2.5 rounded-lg border bg-surface d-flex flex-column justify-space-between h-100 gap-2">
+                <!-- Título y Estado explícito -->
+                <div class="d-flex align-center justify-space-between gap-1">
+                  <span class="text-caption font-weight-bold text-high-emphasis text-truncate" :title="label">
+                    {{ label }}
+                  </span>
+                  <VChip
                     :color="employee[key] ? 'success' : 'warning'"
-                    size="16"
-                  />
+                    size="x-small"
+                    variant="tonal"
+                    class="font-weight-bold shrink-0"
+                  >
+                    <VIcon
+                      :icon="employee[key] ? 'tabler-circle-check-filled' : 'tabler-alert-circle'"
+                      size="12"
+                      class="me-1"
+                    />
+                    {{ employee[key] ? 'Cargado' : 'Falta adjuntar' }}
+                  </VChip>
                 </div>
                 
-                <div class="d-flex gap-2 mt-1">
-                  <!-- Botón único o doble directo de Ver/Descargar y Subir -->
+                <!-- Acciones secundarias y sutiles -->
+                <div class="d-flex align-center gap-1.5 pt-0.5">
                   <VBtn
                     v-if="employee[key]"
                     size="x-small"
                     color="info"
                     variant="tonal"
                     prepend-icon="tabler-download"
-                    class="flex-grow-1 font-weight-bold"
+                    class="flex-grow-1 font-weight-semibold text-none"
                     @click="emit('download-doc', key)"
                   >
                     Ver / Descargar
@@ -167,14 +178,14 @@ const initials = computed(() => {
                   <VBtn
                     v-if="canEdit"
                     size="x-small"
-                    :color="employee[key] ? 'secondary' : 'primary'"
-                    :variant="employee[key] ? 'tonal' : 'flat'"
+                    :color="employee[key] ? 'secondary' : 'secondary'"
+                    variant="outlined"
                     :prepend-icon="employee[key] ? 'tabler-refresh' : 'tabler-upload'"
                     :class="employee[key] ? '' : 'flex-grow-1'"
-                    class="font-weight-bold"
+                    class="font-weight-semibold text-none"
                     @click="emit('trigger-doc-input', key)"
                   >
-                    {{ employee[key] ? '' : 'Subir' }}
+                    {{ employee[key] ? 'Reemplazar' : 'Subir archivo' }}
                   </VBtn>
                 </div>
               </div>
