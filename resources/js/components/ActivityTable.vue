@@ -71,14 +71,9 @@ const getFrequencyColor = (frequency) => {
             <span class="font-weight-bold text-primary">{{ item.id }}</span>
           </template>
 
-          <!-- Actividad con avatar -->
+          <!-- Actividad -->
           <template #item.activity="{ item }">
-            <div class="d-flex align-center gap-3 py-1">
-              <VAvatar color="primary" variant="tonal" size="34" class="rounded-lg flex-shrink-0">
-                <VIcon icon="tabler-sparkles" size="18" />
-              </VAvatar>
-              <span class="text-sm font-weight-medium text-high-emphasis">{{ item.activity }}</span>
-            </div>
+            <span class="text-sm font-weight-medium text-high-emphasis">{{ item.activity }}</span>
           </template>
 
           <!-- Descripción -->
@@ -136,16 +131,11 @@ const getFrequencyColor = (frequency) => {
         >
           <div class="pa-4">
             <div class="d-flex justify-space-between align-start mb-3">
-              <div class="d-flex align-center gap-3 min-width-0">
-                <VAvatar color="primary" variant="tonal" size="42" class="rounded-lg flex-shrink-0">
-                  <VIcon icon="tabler-sparkles" size="20" />
-                </VAvatar>
-                <div class="d-flex flex-column min-width-0">
-                  <span class="text-primary font-weight-black text-xs uppercase mb-0.5">ID #{{ item.id }}</span>
-                  <h3 class="text-sm font-weight-semibold text-high-emphasis leading-tight truncate">
-                    {{ item.activity }}
-                  </h3>
-                </div>
+              <div class="d-flex flex-column min-width-0">
+                <span class="text-primary font-weight-black text-xs uppercase mb-0.5">ID #{{ item.id }}</span>
+                <h3 class="text-sm font-weight-semibold text-high-emphasis leading-tight truncate">
+                  {{ item.activity }}
+                </h3>
               </div>
               <div class="d-flex gap-1 ms-2 flex-shrink-0">
                 <IconBtn size="x-small" color="warning" @click="emit('edit-activity', item)">
