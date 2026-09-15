@@ -36,6 +36,7 @@ const emit = defineEmits(["complete-purchase", "close-modal", "confirm-payment",
   <div class="sticky-summary">
     <VCard variant="flat" border class="rounded-xl glass-card highlight-border mb-3">
       <VCardText class="pa-4 d-flex flex-column gap-3">
+
         <!-- BLOQUE 1: Detalle del Cobro -->
         <div class="summary-section">
           <div class="text-caption font-weight-bold uppercase letter-spacing-1 text-primary mb-3 d-flex align-center gap-1">
@@ -43,23 +44,23 @@ const emit = defineEmits(["complete-purchase", "close-modal", "confirm-payment",
             <span>Detalle del Cobro</span>
           </div>
 
-          <!-- Descuentos y metadatos secundarios (12px - 13px, tono neutro, regular) -->
-          <div v-if="activeDiscountDisplay" class="d-flex justify-space-between align-center mb-1.5 metadata-row">
+          <!-- Descuentos y metadatos secundarios -->
+          <div v-if="activeDiscountDisplay" class="d-flex justify-space-between align-center mb-1.5">
             <span class="text-caption text-medium-emphasis">{{ activeDiscountDisplay.label }}:</span>
             <span class="text-caption font-weight-bold text-error">- {{ activeDiscountDisplay.formatted }}</span>
           </div>
 
-          <div v-if="expirationDiscountTotal > 0" class="d-flex justify-space-between align-center mb-1.5 metadata-row">
+          <div v-if="expirationDiscountTotal > 0" class="d-flex justify-space-between align-center mb-1.5">
             <span class="text-caption text-medium-emphasis">Desc. Vencimiento (Incluido):</span>
             <span class="text-caption font-weight-bold text-error">- {{ formatCurrency(expirationDiscountTotal, selectedCurrency) }}</span>
           </div>
 
-          <div v-if="appliesSpecialTax" class="d-flex justify-space-between align-center mb-1.5 metadata-row">
+          <div v-if="appliesSpecialTax" class="d-flex justify-space-between align-center mb-1.5">
             <span class="text-caption text-medium-emphasis">Recargo SPE (3%):</span>
             <span class="text-caption font-weight-bold">{{ formatCurrency(specialTaxAmount, selectedCurrency) }}</span>
           </div>
 
-          <!-- Total Compra: 16px - 18px Bold -->
+          <!-- Total Compra -->
           <div class="d-flex justify-space-between align-center py-2 px-3 rounded-lg bg-grey-lighten-4 mb-3 border">
             <span class="text-body-1 font-weight-bold text-high-emphasis">Total Compra:</span>
             <span class="text-h6 font-weight-bold text-primary">{{ formatCurrency(roundedTotalAmountToPay, selectedCurrency) }}</span>
@@ -67,56 +68,66 @@ const emit = defineEmits(["complete-purchase", "close-modal", "confirm-payment",
 
           <!-- Lista de Pagos Agregados -->
           <div v-if="payments.filter(p => p.method).length > 0" class="added-payments-list d-flex flex-column gap-2 mb-2">
-            <div 
-              v-for="(payment, idx) in payments.filter(p => p.method)" 
-              :key="idx" 
+            <div
+              v-for="(payment, idx) in payments.filter(p => p.method)"
+              :key="idx"
               class="pa-3 rounded-lg border bg-surface d-flex flex-column payment-card-item"
             >
-              <!-- Fila del método + monto confirmado -->
+              <!-- Fila principal: ícono + nombre + referencia inline + monto + acciones -->
               <div class="d-flex justify-space-between align-center">
-                <div class="d-flex align-center gap-1.5 overflow-hidden">
-                  <VIcon icon="tabler-wallet" size="16" class="text-primary shrink-0" />
-                  <span class="text-caption font-weight-bold text-high-emphasis uppercase text-truncate">
-                    {{ getPaymentMethodLabel(payment.method, payment.currency) }}
-                  </span>
+
+                <!-- Izquierda: ícono billetera (me-2) + nombre + ref inline debajo -->
+                <div class="d-flex align-center overflow-hidden">
+                  <VIcon icon="tabler-wallet" size="16" class="text-primary shrink-0 me-2" />
+                  <div class="d-flex flex-column overflow-hidden">
+                    <span class="text-caption font-weight-bold text-high-emphasis uppercase text-truncate">
+                      {{ getPaymentMethodLabel(payment.method, payment.currency) }}
+                    </span>
+                    <!-- Referencia inline (solo número, sin fila extra) -->
+                    <span v-if="!payment._isInputActive && payment.reference" class="payment-ref-inline">
+                      # {{ payment.reference }}
+                    </span>
+                  </div>
                 </div>
 
-                <!-- Monto confirmado con botones de acción -->
-                <div v-if="!payment._isInputActive" class="d-flex align-center gap-1.5">
-                  <span 
-                    class="text-caption font-weight-bold text-error cursor-pointer px-1.5 py-0.5 rounded hover-editable-amount"
+                <!-- Derecha: monto + editar (warning/amarillo) + borrar (error/rojo) -->
+                <div v-if="!payment._isInputActive" class="d-flex align-center gap-1 shrink-0 ms-2">
+                  <span
+                    class="text-caption font-weight-bold text-error cursor-pointer px-1 rounded hover-editable-amount"
                     title="Clic para editar monto"
                     @click="props.editPaymentAmount(payment)"
                   >
                     -{{ formatCurrency(payment.amount || 0, payment.currency) }}
                   </span>
 
-                  <VBtn 
-                    icon="tabler-pencil" 
-                    size="26" 
-                    color="primary" 
-                    variant="text" 
-                    density="comfortable" 
+                  <!-- Editar: amarillo/warning — mismo size que billetera -->
+                  <VBtn
+                    icon="tabler-pencil"
+                    size="26"
+                    color="warning"
+                    variant="text"
+                    density="comfortable"
                     class="rounded-circle"
                     title="Editar monto"
-                    @click="props.editPaymentAmount(payment)" 
+                    @click="props.editPaymentAmount(payment)"
                   />
 
-                  <VBtn 
-                    icon="tabler-trash" 
-                    size="26" 
-                    color="error" 
-                    variant="text" 
-                    density="comfortable" 
+                  <!-- Borrar: rojo/error — mismo size que billetera -->
+                  <VBtn
+                    icon="tabler-trash"
+                    size="26"
+                    color="error"
+                    variant="text"
+                    density="comfortable"
                     class="rounded-circle"
                     title="Eliminar método"
-                    :disabled="!props.isLastPaymentAdded(payment)" 
-                    @click="props.removePaymentFromSummary(payments.indexOf(payment))" 
+                    :disabled="!props.isLastPaymentAdded(payment)"
+                    @click="props.removePaymentFromSummary(payments.indexOf(payment))"
                   />
                 </div>
               </div>
 
-              <!-- Formulario de edición: monto + referencia con padding y gap estándar -->
+              <!-- Formulario de edición: monto + referencia -->
               <div v-if="payment._isInputActive" class="d-flex flex-column gap-2.5 pt-2 mt-1 border-t">
                 <!-- Campo de monto -->
                 <div class="d-flex align-center gap-2">
@@ -127,27 +138,27 @@ const emit = defineEmits(["complete-purchase", "close-modal", "confirm-payment",
                     placeholder="0.00"
                     @keydown.enter="emit('handle-payment-enter', $event, payment)"
                   />
-                  <VBtn 
-                    v-if="!payment._isReferenceActive" 
-                    icon="tabler-check" 
-                    size="26" 
-                    :color="(parseFloat(payment.inputAmount) > 0) ? 'success' : 'secondary'" 
-                    variant="tonal" 
+                  <VBtn
+                    v-if="!payment._isReferenceActive"
+                    icon="tabler-check"
+                    size="26"
+                    :color="(parseFloat(payment.inputAmount) > 0) ? 'success' : 'secondary'"
+                    variant="tonal"
                     class="rounded-lg shrink-0"
                     :disabled="!(parseFloat(payment.inputAmount) > 0)"
-                    @click="emit('confirm-payment', payment)" 
+                    @click="emit('confirm-payment', payment)"
                   />
-                  <VBtn 
-                    icon="tabler-trash" 
-                    size="26" 
-                    color="error" 
-                    variant="tonal" 
+                  <VBtn
+                    icon="tabler-trash"
+                    size="26"
+                    color="error"
+                    variant="tonal"
                     class="rounded-lg shrink-0"
-                    @click="emit('remove-payment', payments.indexOf(payment))" 
+                    @click="emit('remove-payment', payments.indexOf(payment))"
                   />
                 </div>
-                
-                <!-- Campo de referencia (cuando aplica) -->
+
+                <!-- Campo de referencia -->
                 <div v-if="payment._isReferenceActive" class="d-flex align-center gap-2">
                   <span class="text-caption font-weight-bold text-medium-emphasis shrink-0" style="min-inline-size: 36px;">Ref:</span>
                   <div class="position-relative flex-grow-1 d-flex align-center">
@@ -158,31 +169,25 @@ const emit = defineEmits(["complete-purchase", "close-modal", "confirm-payment",
                       placeholder="N° referencia (mín. 4 dígitos)"
                       @keydown.enter="emit('confirm-payment', payment)"
                     />
-                    <VIcon 
-                      v-if="payment.reference" 
-                      icon="tabler-x" 
-                      size="14" 
-                      class="cursor-pointer text-disabled position-absolute" 
+                    <VIcon
+                      v-if="payment.reference"
+                      icon="tabler-x"
+                      size="14"
+                      class="cursor-pointer text-disabled position-absolute"
                       style="right: 8px;"
                       @click="payment.reference = ''"
                     />
                   </div>
-                  <VBtn 
-                    icon="tabler-check" 
-                    size="26" 
-                    :color="(payment.reference && payment.reference.trim().length >= 4) ? 'success' : 'secondary'" 
-                    variant="tonal" 
+                  <VBtn
+                    icon="tabler-check"
+                    size="26"
+                    :color="(payment.reference && payment.reference.trim().length >= 4) ? 'success' : 'secondary'"
+                    variant="tonal"
                     class="rounded-lg shrink-0"
                     :disabled="!payment.reference || payment.reference.trim().length < 4"
-                    @click="emit('confirm-payment', payment)" 
+                    @click="emit('confirm-payment', payment)"
                   />
                 </div>
-              </div>
-
-              <!-- Referencia ya ingresada (modo solo lectura) -->
-              <div v-else-if="payment.reference" class="text-super-xs text-medium-emphasis d-flex align-center gap-1 mt-1">
-                <VIcon icon="tabler-hash" size="12" />
-                <span>Ref: <strong class="text-high-emphasis">{{ payment.reference }}</strong></span>
               </div>
             </div>
           </div>
@@ -190,53 +195,42 @@ const emit = defineEmits(["complete-purchase", "close-modal", "confirm-payment",
 
         <VDivider class="my-1" />
 
-        <!-- BLOQUE 2: Estado Final (Restante / Vuelto + Acciones) -->
-        <div class="summary-section d-flex flex-column gap-3 pt-1">
-          <div class="text-caption font-weight-bold uppercase letter-spacing-1 text-primary mb-1 d-flex align-center gap-1">
-            <VIcon icon="tabler-calculator" size="16" />
-            <span>Estado Final</span>
-          </div>
+        <!-- BLOQUE 2: Tarjeta unificada de estado + Acciones -->
+        <div class="d-flex flex-column gap-3">
 
-          <!-- Indicador de Restante con feedback dinámico (Etiqueta 13px, Monto 14-15px) -->
-          <div 
-            class="d-flex justify-space-between align-center pa-3 rounded-lg border"
-            :class="remainingAmount <= 0.01 ? 'bg-success-lighten-5 border-success text-success-darken-3' : 'bg-grey-lighten-4'"
-          >
-            <span class="remaining-label font-weight-medium" :class="remainingAmount <= 0.01 ? 'text-success-darken-3' : 'text-high-emphasis'">
-              {{ remainingAmount <= 0.01 ? '¡Cuenta Saldada!' : 'Restante a Pagar:' }}
-            </span>
-            <span 
-              class="remaining-value font-weight-bold" 
-              :class="remainingAmount <= 0.01 ? 'text-success-darken-3' : 'text-error'"
-            >
-              {{ formatCurrency(getConvertedRemainingAmount(selectedCurrencyTab), selectedCurrencyTab) }}
-            </span>
-          </div>
-
-          <!-- CAMBIO / VUELTO: tarjeta destacada verde pastel, cifra gigante, impacto máximo para el cajero -->
-          <div v-if="showChangeAmount" class="change-card">
-            <!-- Etiqueta pequeña arriba (12px Bold) -->
+          <!-- Tarjeta VUELTO (verde) — cuando se pagó de más -->
+          <div v-if="showChangeAmount" class="change-card change-card--success">
             <div class="d-flex align-center gap-1 mb-2">
               <VIcon icon="tabler-coins" size="14" class="change-card__icon" />
               <span class="change-card__label">CAMBIO / VUELTO</span>
             </div>
-            <!-- Cifra principal centrada (22-24px Extra-Bold verde vibrante) -->
             <div class="change-card__amount">
               {{ formatCurrency(changeAmountInCop, 'COP') }}
             </div>
-            <!-- Equivalente en otra moneda (solo si aplica) -->
             <div v-if="selectedCurrency !== 'COP'" class="change-card__secondary">
               <span>Equivalente en {{ selectedCurrency }}:</span>
               <strong>{{ formatCurrency(changeAmount, selectedCurrency) }}</strong>
             </div>
           </div>
 
-          <VCardActions class="pa-0 d-flex flex-column gap-2 mt-2">
-            <!-- Continuar: 16px Bold, blanco sólido sobre el botón principal -->
-            <VBtn 
-              variant="flat" 
-              block 
-              size="large" 
+          <!-- Tarjeta PENDIENTE (rojo) — cuando aún falta cobrar -->
+          <div v-else-if="remainingAmount > 0.01" class="change-card change-card--pending">
+            <div class="d-flex align-center gap-1 mb-2">
+              <VIcon icon="tabler-clock-exclamation" size="14" class="change-card__icon--pending" />
+              <span class="change-card__label--pending">PENDIENTE</span>
+            </div>
+            <div class="change-card__amount--pending">
+              {{ formatCurrency(getConvertedRemainingAmount(selectedCurrencyTab), selectedCurrencyTab) }}
+            </div>
+          </div>
+
+          <!-- Botones de acción -->
+          <VCardActions class="pa-0 d-flex flex-column gap-2">
+            <!-- Cobrar: verde sólido cuando saldado, magenta primario mientras falta -->
+            <VBtn
+              variant="flat"
+              block
+              size="large"
               class="rounded-lg font-weight-bold py-3 checkout-btn text-none elevation-2 cta-continue-btn"
               :color="remainingAmount <= 0.01 && !hasMissingReferences() ? 'success' : 'primary'"
               :style="remainingAmount <= 0.01 && !hasMissingReferences() ? 'background: linear-gradient(135deg, #28C76F, #129e51); color: white;' : ''"
@@ -247,14 +241,14 @@ const emit = defineEmits(["complete-purchase", "close-modal", "confirm-payment",
               <span>{{ continueButtonText }}</span>
             </VBtn>
 
-            <!-- Regresar al pedido: 14px Medium, estilo Sentence case sin relleno -->
-            <VBtn 
-              color="secondary" 
-              variant="outlined" 
-              block 
-              size="small" 
+            <!-- Regresar al pedido -->
+            <VBtn
+              color="secondary"
+              variant="outlined"
+              block
+              size="small"
               height="38"
-              class="rounded-lg font-weight-medium text-none btn-outline-back" 
+              class="rounded-lg font-weight-medium text-none btn-outline-back"
               @click="emit('close-modal')"
             >
               <VIcon icon="tabler-arrow-left" class="me-1.5" size="16" />
@@ -262,6 +256,7 @@ const emit = defineEmits(["complete-purchase", "close-modal", "confirm-payment",
             </VBtn>
           </VCardActions>
         </div>
+
       </VCardText>
     </VCard>
 
@@ -287,6 +282,15 @@ const emit = defineEmits(["complete-purchase", "close-modal", "confirm-payment",
   font-size: 0.7rem;
 }
 
+/* Referencia inline debajo del nombre del método */
+.payment-ref-inline {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #6b7280;
+  line-height: 1.2;
+  margin-top: 1px;
+}
+
 .payment-card-item {
   transition: all 0.15s ease;
 }
@@ -307,7 +311,7 @@ const emit = defineEmits(["complete-purchase", "close-modal", "confirm-payment",
   font-size: 0.85rem;
   outline: none;
   background-color: #fafafa;
-  padding: 6px 10px; /* Padding uniforme 6px vertical, 10px horizontal */
+  padding: 6px 10px;
 }
 
 .payment-input-box:focus {
@@ -315,17 +319,14 @@ const emit = defineEmits(["complete-purchase", "close-modal", "confirm-payment",
   background-color: #ffffff;
 }
 
-.remaining-label {
-  font-size: 0.8125rem !important; /* 13px */
-}
-
-.remaining-value {
-  font-size: 0.9375rem !important; /* 15px */
+.added-payments-list {
+  max-block-size: 200px;
+  overflow-y: auto;
 }
 
 .cta-continue-btn {
   font-size: 1rem !important; /* 16px */
-  font-weight: 700 !important; /* Bold */
+  font-weight: 700 !important;
 }
 
 .btn-outline-back {
@@ -340,15 +341,8 @@ const emit = defineEmits(["complete-purchase", "close-modal", "confirm-payment",
   color: #1f2937 !important;
 }
 
-.added-payments-list {
-  max-block-size: 190px;
-  overflow-y: auto;
-}
-
-/* ── Tarjeta CAMBIO / VUELTO ────────────────────────────────── */
+/* ── Tarjeta de estado unificada (Verde = Vuelto / Rojo = Pendiente) ── */
 .change-card {
-  background-color: #f0fdf4; /* Verde pastel muy claro */
-  border: 1.5px solid #bbf7d0; /* Borde verde suave */
   border-radius: 12px;
   padding: 14px 16px;
   display: flex;
@@ -358,12 +352,17 @@ const emit = defineEmits(["complete-purchase", "close-modal", "confirm-payment",
   gap: 4px;
 }
 
-/* Etiqueta "CAMBIO / VUELTO" — 12px Bold, verde oscuro */
+/* Variante: VUELTO (verde pastel) */
+.change-card--success {
+  background-color: #f0fdf4;
+  border: 1.5px solid #bbf7d0;
+}
+
 .change-card__label {
   font-size: 0.75rem !important;   /* 12px */
   font-weight: 700 !important;
   letter-spacing: 0.8px;
-  color: #15803d;                  /* Verde vibrante oscuro */
+  color: #15803d;
   text-transform: uppercase;
 }
 
@@ -371,16 +370,14 @@ const emit = defineEmits(["complete-purchase", "close-modal", "confirm-payment",
   color: #15803d !important;
 }
 
-/* Cifra principal — 22-24px Extra-Bold, verde vibrante */
 .change-card__amount {
   font-size: 1.5rem !important;    /* 24px */
-  font-weight: 900 !important;     /* Extra-Bold */
+  font-weight: 900 !important;
   color: #15803d !important;
   line-height: 1.1;
   letter-spacing: -0.5px;
 }
 
-/* Sub-fila de equivalente en otra moneda */
 .change-card__secondary {
   display: flex;
   align-items: center;
@@ -397,5 +394,31 @@ const emit = defineEmits(["complete-purchase", "close-modal", "confirm-payment",
 .change-card__secondary strong {
   font-weight: 700;
   color: #15803d;
+}
+
+/* Variante: PENDIENTE (rojo pastel) */
+.change-card--pending {
+  background-color: #fff1f2;
+  border: 1.5px solid #fecdd3;
+}
+
+.change-card__label--pending {
+  font-size: 0.75rem !important;   /* 12px */
+  font-weight: 700 !important;
+  letter-spacing: 0.8px;
+  color: #b91c1c;
+  text-transform: uppercase;
+}
+
+.change-card__icon--pending {
+  color: #b91c1c !important;
+}
+
+.change-card__amount--pending {
+  font-size: 1.5rem !important;    /* 24px */
+  font-weight: 900 !important;
+  color: #dc2626 !important;
+  line-height: 1.1;
+  letter-spacing: -0.5px;
 }
 </style>
