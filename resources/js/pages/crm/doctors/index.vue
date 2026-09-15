@@ -377,18 +377,15 @@ onMounted(async () => {
       @clear-error-form="limpiarErroresFormulario"
       @save="enviar"
     />
-    <VCard title="Doctores">
-      <VDivider />
-      <DoctorTable
-        :items="statuModule.items"
-        :total="statuModule.total"
-        :loading="loading"
-        :items-per-page="itemsPerPage"
-        :page="page"
-        @edit="mostarModoEdit"
-        @delete="confirmarEliminar"
-        @update:options="updateTableOptionsTable"
-      />
-    </VCard>
+    <DoctorTable
+      :items="statuModule.items"
+      :total="statuModule.total"
+      :loading="loading"
+      :items-per-page="itemsPerPage"
+      :page="page"
+      @edit="mostarModoEdit"
+      @delete="confirmarEliminar"
+      @update:options="updateTableOptionsTable"
+    />
   </div>
 </template>

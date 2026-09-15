@@ -370,19 +370,16 @@ onMounted(async () => {
       @clear-error-form="limpiarErroresFormulario"
       @save="enviar"
     />
-    <VCard title="Empresas">
-      <VDivider />
-      <CompanyTable
-        :items="statuModule.items"
-        :total="statuModule.total"
-        :loading="loading"
-        :items-per-page="itemsPerPage"
-        :page="page"
-        @edit="mostarModoEdit"
-        @delete="confirmarEliminar"
-        @ver-clientes="irHaVerClientesEmpresa"
-        @update:options="updateTableOptionsTableCompany"
-      />
-    </VCard>
+    <CompanyTable
+      :items="statuModule.items"
+      :total="statuModule.total"
+      :loading="loading"
+      :items-per-page="itemsPerPage"
+      :page="page"
+      @edit="mostarModoEdit"
+      @delete="confirmarEliminar"
+      @ver-clientes="irHaVerClientesEmpresa"
+      @update:options="updateTableOptionsTableCompany"
+    />
   </div>
 </template>

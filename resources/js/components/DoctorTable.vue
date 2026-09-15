@@ -31,6 +31,11 @@ const headers = [
   { title: 'Acciones', key: 'acciones', sortable: false, align: 'center' },
 ];
 
+const toTitleCase = (str) => {
+  if (!str) return '—';
+  return str.toLowerCase().replace(/(?:^|\s|-)\S/g, (char) => char.toUpperCase());
+};
+
 const handleMobilePageChange = (newPage) => {
   emit('update:options', {
     page: newPage,
@@ -44,54 +49,72 @@ const handleMobilePageChange = (newPage) => {
   <div class="doctor-table-container">
     <!-- Desktop View -->
     <div class="d-none d-md-block">
-      <VDataTableServer
-        :headers="headers"
-        :items-per-page="props.itemsPerPage"
-        :items="props.items"
-        :items-length="props.total"
-        :loading="loading"
-        :page="props.page"
-        @update:options="(options) => emit('update:options', options)"
-      >
-        <template #no-data>
-          <AppEmptyState
-            title="No hay doctores"
-            message="No se encontraron especialistas registrados en el sistema."
-            icon="tabler-stethoscope-off"
-          />
-        </template>
-        <template #item.id="{ item }">
-          <span class="font-weight-black text-primary">{{ item.id }}</span>
-        </template>
+      <VCard border variant="flat">
+        <VDataTableServer
+          :headers="headers"
+          :items-per-page="props.itemsPerPage"
+          :items="props.items"
+          :items-length="props.total"
+          :loading="loading"
+          :page="props.page"
+          @update:options="(options) => emit('update:options', options)"
+        >
+          <template #no-data>
+            <AppEmptyState
+              title="No hay doctores"
+              message="No se encontraron especialistas registrados en el sistema."
+              icon="tabler-stethoscope-off"
+            />
+          </template>
+          <template #item.id="{ item }">
+            <span class="font-weight-bold text-primary">{{ item.id }}</span>
+          </template>
 
-        <template #item.name="{ item }">
-          <span class="font-weight-bold uppercase text-high-emphasis">{{ item.name }}</span>
-        </template>
+          <template #item.name="{ item }">
+            <span class="font-weight-medium text-high-emphasis">
+              {{ toTitleCase(item.name) }}
+            </span>
+          </template>
 
-        <template #item.specialty.name="{ item }">
-          <VChip
-            v-if="item.specialty"
-            color="primary"
-            size="small"
-            variant="tonal"
-            class="font-weight-bold uppercase"
-          >
-            {{ item.specialty.name }}
-          </VChip>
-          <span v-else class="text-disabled text-xs font-italic uppercase">Sin especialidad</span>
-        </template>
+          <template #item.identification="{ item }">
+            <span class="font-weight-semibold text-high-emphasis">
+              {{ item.identification }}
+            </span>
+          </template>
 
-        <template #item.acciones="{ item }">
-          <div class="d-flex justify-center gap-1">
-            <IconBtn @click="emit('edit', item.id)" color="warning" variant="tonal" size="small">
-              <VIcon icon="tabler-edit" size="18" />
-            </IconBtn>
-            <IconBtn @click="emit('delete', item.id)" color="error" variant="tonal" size="small">
-              <VIcon icon="tabler-trash" size="18" />
-            </IconBtn>
-          </div>
-        </template>
-      </VDataTableServer>
+          <template #item.specialty.name="{ item }">
+            <VChip
+              v-if="item.specialty"
+              color="primary"
+              size="small"
+              variant="tonal"
+              class="font-weight-bold"
+            >
+              {{ item.specialty.name }}
+            </VChip>
+            <span v-else class="text-disabled text-xs font-italic">Sin especialidad</span>
+          </template>
+
+          <template #item.address="{ item }">
+            <span class="text-xs text-medium-emphasis">
+              {{ item.address || '—' }}
+            </span>
+          </template>
+
+          <template #item.acciones="{ item }">
+            <div class="d-flex justify-center gap-1">
+              <IconBtn @click="emit('edit', item.id)" color="warning" size="small">
+                <VIcon icon="tabler-edit" size="18" />
+                <VTooltip activator="parent">Editar</VTooltip>
+              </IconBtn>
+              <IconBtn @click="emit('delete', item.id)" color="error" size="small">
+                <VIcon icon="tabler-trash" size="18" />
+                <VTooltip activator="parent">Eliminar</VTooltip>
+              </IconBtn>
+            </div>
+          </template>
+        </VDataTableServer>
+      </VCard>
     </div>
 
     <!-- Mobile View (Premium Cards) -->
@@ -117,32 +140,30 @@ const handleMobilePageChange = (newPage) => {
             <div class="d-flex justify-space-between align-start mb-3">
               <div class="d-flex flex-column min-width-0">
                 <span class="text-primary font-weight-black text-xs uppercase mb-1">Especialista</span>
-                <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight truncate">
-                  {{ item.name }}
+                <h3 class="text-sm font-weight-semibold text-high-emphasis leading-tight truncate">
+                  {{ toTitleCase(item.name) }}
                 </h3>
                 <div v-if="item.specialty" class="d-flex align-center mt-1">
                   <VIcon icon="tabler-award" size="14" class="text-primary me-1" />
-                  <span class="text-xs font-weight-bold text-primary uppercase">{{ item.specialty.name }}</span>
+                  <span class="text-xs font-weight-bold text-primary">{{ item.specialty.name }}</span>
                 </div>
               </div>
               <div class="d-flex gap-1">
                 <IconBtn
                   color="warning"
-                  variant="tonal"
                   size="x-small"
-                  class="rounded"
                   @click="emit('edit', item.id)"
                 >
                   <VIcon icon="tabler-edit" size="16" />
+                  <VTooltip activator="parent">Editar</VTooltip>
                 </IconBtn>
                 <IconBtn
                   color="error"
-                  variant="tonal"
                   size="x-small"
-                  class="rounded"
                   @click="emit('delete', item.id)"
                 >
                   <VIcon icon="tabler-trash" size="16" />
+                  <VTooltip activator="parent">Eliminar</VTooltip>
                 </IconBtn>
               </div>
             </div>
@@ -160,14 +181,14 @@ const handleMobilePageChange = (newPage) => {
               </div>
               <div class="stat-box text-right">
                 <span class="label">Fecha Reg.</span>
-                <span class="value text-disabled">{{ day(item.created_at).format('DD/MM/YYYY') }}</span>
+                <span class="value text-disabled">{{ item.created_at ? day(item.created_at.replace('Z', '')).format('DD/MM/YYYY') : '—' }}</span>
               </div>
             </div>
 
             <div class="mt-3 pa-2 bg-light rounded-lg border-dashed">
               <div class="d-flex align-start gap-2">
                 <VIcon icon="tabler-map-pin" size="14" class="text-primary mt-1" />
-                <span class="text-super-xs text-medium-emphasis leading-tight truncate-2-lines uppercase font-weight-bold">
+                <span class="text-super-xs text-medium-emphasis leading-tight truncate-2-lines font-weight-medium">
                   {{ item.address || 'SIN DIRECCIÓN REGISTRADA' }}
                 </span>
               </div>

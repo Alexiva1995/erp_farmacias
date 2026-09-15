@@ -1,4 +1,4 @@
-﻿<script setup lang="js">
+<script setup lang="js">
 const props= defineProps({
   modalFormulario: {type: Boolean, required: true},
   titulo: {type: String, required: true},
@@ -175,27 +175,6 @@ function submitForm(){
             </VCol>
           </VRow>
         </VCard>
-
-        <!-- Mensaje de Soporte -->
-        <div class="mt-4 pa-4 rounded-xl bg-primary bg-opacity-10 border-dashed-2 d-flex align-center gap-4">
-          <VAvatar
-            color="primary"
-            variant="tonal"
-            size="40"
-            class="rounded-lg"
-          >
-            <VIcon
-              icon="tabler-shield-check"
-              size="24"
-            />
-          </VAvatar>
-          <div class="d-flex flex-column leading-none">
-            <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1 mb-1">Verificación de Datos</span>
-            <p class="text-super-xs text-medium-emphasis mb-0 leading-tight">
-              Asegúrese de que el RIF coincida con los documentos legales para evitar discrepancias en la facturación fiscal.
-            </p>
-          </div>
-        </div>
       </VCardText>
 
       <VDivider />

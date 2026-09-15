@@ -22,16 +22,37 @@ const sortByModel = computed(() => {
   return []
 })
 
+const toTitleCase = (str) => {
+  if (!str) return '';
+  return str
+    .toLowerCase()
+    .split(' ')
+    .filter(Boolean)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
+const formatFullName = (name, lastName) => {
+  const full = `${name || ''} ${lastName || ''}`.trim();
+  return toTitleCase(full);
+};
+
 const headers = [
-  { title: 'ID', key: 'id', sortable: true },
-  { title: 'Nombre', key: 'name', value: item => `${item.name} ${(item.last_name==null)?"":item.last_name}`, sortable: true },
-  { title: 'Identidad', key: 'identification', value: item => `${item.identification_type}${item.identification}`, sortable: true },
-  { title: 'Dirección', key: 'address', sortable: true },
-  { title: 'Fecha', key: 'created_at', sortable: true, value: item => {
-    const fechaStr = item.created_at.replace('Z', '');
-    return day(fechaStr).format('DD/MM/YYYY');
-  }},
-  { title: 'Acciones', key: 'acciones', sortable: false },
+  { title: 'ID', key: 'id', sortable: true, align: 'center' },
+  { title: 'Nombre', key: 'name', value: item => formatFullName(item.name, item.last_name), sortable: true, align: 'start' },
+  { title: 'Identidad', key: 'identification', value: item => `${item.identification_type}${item.identification}`, sortable: true, align: 'start' },
+  { title: 'Dirección', key: 'address', sortable: true, align: 'start' },
+  { 
+    title: 'Fecha', 
+    key: 'created_at', 
+    sortable: true,
+    align: 'center',
+    value: item => {
+      const fechaStr = item.created_at.replace('Z', '');
+      return day(fechaStr).format('DD/MM/YYYY');
+    }
+  },
+  { title: 'Acciones', key: 'acciones', sortable: false, align: 'center' },
 ];
 </script>
 
@@ -51,30 +72,51 @@ const headers = [
           @update:options="(options) => emit('update:options', options)"
         >
           <template #item.id="{ item }">
-            <span class="font-weight-black text-primary">{{ item.id }}</span>
+            <span class="font-weight-bold text-primary">{{ item.id }}</span>
+          </template>
+
+          <template #item.name="{ item }">
+            <span class="font-weight-medium text-high-emphasis">
+              {{ formatFullName(item.name, item.last_name) }}
+            </span>
+          </template>
+
+          <template #item.identification="{ item }">
+            <span class="font-weight-semibold text-high-emphasis">
+              {{ item.identification_type }}{{ item.identification }}
+            </span>
+          </template>
+
+          <template #item.address="{ item }">
+            <span class="text-xs text-medium-emphasis">
+              {{ item.address || '—' }}
+            </span>
+          </template>
+
+          <template #item.created_at="{ item }">
+            <span class="text-xs font-weight-medium text-medium-emphasis">
+              {{ item.created_at ? day(item.created_at.replace('Z', '')).format('DD/MM/YYYY') : '—' }}
+            </span>
           </template>
 
           <template #item.acciones="{ item }">
-            <div class="d-flex justify-start gap-1">
-              <IconBtn @click="emit('edit', item.id)" color="warning" variant="tonal" size="small">
+            <div class="d-flex justify-center gap-1">
+              <IconBtn @click="emit('edit', item.id)" color="warning" size="small">
                 <VIcon icon="tabler-edit" size="18" />
+                <VTooltip activator="parent">Editar</VTooltip>
               </IconBtn>
-              <IconBtn @click="emit('delete', item.id)" color="error" variant="tonal" size="small">
+              <IconBtn @click="emit('delete', item.id)" color="error" size="small">
                 <VIcon icon="tabler-trash" size="18" />
+                <VTooltip activator="parent">Eliminar</VTooltip>
               </IconBtn>
-              <VTooltip text="Quitar de la empresa" location="top">
-                <template #activator="{ props: tooltipProps }">
-                  <IconBtn
-                    v-bind="tooltipProps"
-                    @click="emit('remove-from-company', item.id)"
-                    color="secondary"
-                    variant="tonal"
-                    size="small"
-                  >
-                    <VIcon icon="tabler-unlink" size="18" />
-                  </IconBtn>
-                </template>
-              </VTooltip>
+              <IconBtn
+                @click="emit('remove-from-company', item.id)"
+                color="secondary"
+                size="small"
+              >
+                <VIcon icon="tabler-unlink" size="18" />
+                <VTooltip activator="parent">Quitar de la Empresa</VTooltip>
+              </IconBtn>
             </div>
           </template>
         </VDataTableServer>
@@ -100,35 +142,35 @@ const headers = [
           <div class="pa-4">
             <div class="d-flex justify-space-between align-start mb-3">
               <div class="d-flex flex-column min-width-0">
-                <span class="text-primary font-weight-black text-xs uppercase mb-1">CLIENTE ASOCIADO</span>
-                <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight truncate">
-                  {{ item.name }} {{ item.last_name || '' }}
+                <span class="text-primary font-weight-bold text-xs uppercase mb-1">Cliente Asociado</span>
+                <h3 class="text-sm font-weight-bold text-high-emphasis leading-tight truncate">
+                  {{ formatFullName(item.name, item.last_name) }}
                 </h3>
               </div>
               <div class="d-flex gap-1">
                 <IconBtn
                   color="warning"
-                  variant="tonal"
                   size="x-small"
                   @click="emit('edit', item.id)"
                 >
                   <VIcon icon="tabler-edit" size="16" />
+                  <VTooltip activator="parent">Editar</VTooltip>
                 </IconBtn>
                 <IconBtn
                   color="error"
-                  variant="tonal"
                   size="x-small"
                   @click="emit('delete', item.id)"
                 >
                   <VIcon icon="tabler-trash" size="16" />
+                  <VTooltip activator="parent">Eliminar</VTooltip>
                 </IconBtn>
                 <IconBtn
                   color="secondary"
-                  variant="tonal"
                   size="x-small"
                   @click="emit('remove-from-company', item.id)"
                 >
                   <VIcon icon="tabler-unlink" size="16" />
+                  <VTooltip activator="parent">Quitar de la Empresa</VTooltip>
                 </IconBtn>
               </div>
             </div>

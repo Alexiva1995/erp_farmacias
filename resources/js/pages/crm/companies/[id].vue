@@ -385,21 +385,19 @@ onMounted(async () => {
       @client-assigned="onClientAssigned"
     />
 
-    <VCard border class="mt-4">
-      <ClientOfCompanyTable
-        :companyId="companyId"
-        :clients="stateModule.itemsClientes"
-        :total-clients="stateModule.totalClientes"
-        :loading="loading"
-        :items-per-page="itemsPerPage"
-        :page="page"
-        :sort-by="sortBy"
-        :order-by="orderBy"
-        @edit="mostarModoEdit"
-        @delete="confirmarEliminarCliente"
-        @remove-from-company="confirmarQuitarDeEmpresa"
-        @update:options="updateTableOptions"
-      />
-    </VCard>
+    <ClientOfCompanyTable
+      :companyId="companyId"
+      :clients="stateModule.itemsClientes"
+      :total-clients="stateModule.totalClientes"
+      :loading="loading"
+      :items-per-page="itemsPerPage"
+      :page="page"
+      :sort-by="sortBy"
+      :order-by="orderBy"
+      @edit="mostarModoEdit"
+      @delete="confirmarEliminarCliente"
+      @remove-from-company="confirmarQuitarDeEmpresa"
+      @update:options="updateTableOptions"
+    />
   </div>
 </template>

@@ -11,17 +11,28 @@ const props = defineProps({
 
 const emit = defineEmits(["edit", 'delete', 'verClientes', "update:options"])
 
+const toTitleCase = (str) => {
+  if (!str) return '';
+  return str
+    .toLowerCase()
+    .split(' ')
+    .filter(Boolean)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
 const headers = [
-  { title: 'ID', key: 'id', sortable: true },
-  { title: 'Nombre', key: 'name', sortable: true },
-  { title: 'Tipo', key: 'type_company', sortable: true },
-  { title: 'Identificación', key: 'identification', sortable: true },
-  { title: 'Dirección', key: 'address', sortable: false },
-  { title: 'Total Clientes', key: 'clients_count', sortable: false, value: item => item.clients_count ?? item.clients?.length ?? 0 },
+  { title: 'ID', key: 'id', sortable: true, align: 'center' },
+  { title: 'Nombre', key: 'name', value: item => toTitleCase(item.name), sortable: true, align: 'start' },
+  { title: 'Tipo', key: 'type_company', sortable: true, align: 'center' },
+  { title: 'Identificación', key: 'identification', sortable: true, align: 'start' },
+  { title: 'Dirección', key: 'address', sortable: false, align: 'start' },
+  { title: 'Total Clientes', key: 'clients_count', sortable: false, align: 'center', value: item => item.clients_count ?? item.clients?.length ?? 0 },
   { 
     title: 'Fecha', 
     key: 'created_at', 
-    sortable: true, 
+    sortable: true,
+    align: 'center',
     value: item => {
       if (!item.created_at) return 'S/F';
       const fechaStr = item.created_at.replace('Z', '');
@@ -62,25 +73,58 @@ const handleMobilePageChange = (newPage) => {
             />
           </template>
           <template #item.id="{ item }">
-            <span class="font-weight-black text-primary">{{ item.id }}</span>
+            <span class="font-weight-bold text-primary">{{ item.id }}</span>
+          </template>
+
+          <template #item.name="{ item }">
+            <span class="font-weight-medium text-high-emphasis">
+              {{ toTitleCase(item.name) }}
+            </span>
+          </template>
+
+          <template #item.identification="{ item }">
+            <span class="font-weight-semibold text-high-emphasis">
+              {{ item.identification }}
+            </span>
+          </template>
+
+          <template #item.address="{ item }">
+            <span class="text-xs text-medium-emphasis">
+              {{ item.address || '—' }}
+            </span>
           </template>
 
           <template #item.type_company="{ item }">
-            <VChip size="x-small" :color="item.type_company === 'Clinica' ? 'info' : 'success'" variant="flat" class="font-weight-black">
+            <VChip size="x-small" :color="item.type_company === 'Clinica' ? 'info' : 'primary'" variant="tonal" class="font-weight-bold">
               {{ item.type_company }}
             </VChip>
           </template>
 
+          <template #item.clients_count="{ item }">
+            <span class="text-sm font-weight-medium text-medium-emphasis">
+              {{ item.clients_count ?? item.clients?.length ?? 0 }}
+            </span>
+          </template>
+
+          <template #item.created_at="{ item }">
+            <span class="text-xs font-weight-medium text-medium-emphasis">
+              {{ item.created_at ? day(item.created_at.replace('Z', '')).format('DD/MM/YYYY') : '—' }}
+            </span>
+          </template>
+
           <template #item.acciones="{ item }">
             <div class="d-flex justify-center gap-1">
-              <IconBtn @click="emit('verClientes', item.id)" color="secondary" variant="tonal" size="small">
+              <IconBtn @click="emit('verClientes', item.id)" color="primary" size="small">
                 <VIcon icon="tabler-users" size="18" />
+                <VTooltip activator="parent">Ver Clientes Asociados</VTooltip>
               </IconBtn>
-              <IconBtn @click="emit('edit', item.id)" color="warning" variant="tonal" size="small">
+              <IconBtn @click="emit('edit', item.id)" color="warning" size="small">
                 <VIcon icon="tabler-edit" size="18" />
+                <VTooltip activator="parent">Editar</VTooltip>
               </IconBtn>
-              <IconBtn @click="emit('delete', item.id)" color="error" variant="tonal" size="small">
+              <IconBtn @click="emit('delete', item.id)" color="error" size="small">
                 <VIcon icon="tabler-trash" size="18" />
+                <VTooltip activator="parent">Eliminar</VTooltip>
               </IconBtn>
             </div>
           </template>
@@ -109,38 +153,35 @@ const handleMobilePageChange = (newPage) => {
           <div class="pa-4">
             <div class="d-flex justify-space-between align-start mb-3">
               <div class="d-flex flex-column min-width-0">
-                <span class="text-primary font-weight-black text-xs uppercase mb-1">Empresa</span>
-                <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight truncate">
-                  {{ item.name }}
+                <span class="text-primary font-weight-bold text-xs uppercase mb-1">Empresa</span>
+                <h3 class="text-sm font-weight-bold text-high-emphasis leading-tight truncate">
+                  {{ toTitleCase(item.name) }}
                 </h3>
               </div>
               <div class="d-flex gap-1">
                 <IconBtn
-                  color="secondary"
-                  variant="tonal"
+                  color="primary"
                   size="x-small"
-                  class="rounded"
                   @click="emit('verClientes', item.id)"
                 >
                   <VIcon icon="tabler-users" size="16" />
+                  <VTooltip activator="parent">Ver Clientes</VTooltip>
                 </IconBtn>
                 <IconBtn
                   color="warning"
-                  variant="tonal"
                   size="x-small"
-                  class="rounded"
                   @click="emit('edit', item.id)"
                 >
                   <VIcon icon="tabler-edit" size="16" />
+                  <VTooltip activator="parent">Editar</VTooltip>
                 </IconBtn>
                 <IconBtn
                   color="error"
-                  variant="tonal"
                   size="x-small"
-                  class="rounded"
                   @click="emit('delete', item.id)"
                 >
                   <VIcon icon="tabler-trash" size="16" />
+                  <VTooltip activator="parent">Eliminar</VTooltip>
                 </IconBtn>
               </div>
             </div>
@@ -150,17 +191,17 @@ const handleMobilePageChange = (newPage) => {
             <div class="d-grid mobile-grid gap-3">
               <div class="stat-box">
                 <span class="label">RIF / ID</span>
-                <span class="value font-weight-black uppercase text-xs">{{ item.identification }}</span>
+                <span class="value font-weight-bold uppercase text-xs">{{ item.identification }}</span>
               </div>
               <div class="stat-box text-center">
                 <span class="label">Tipo</span>
-                <VChip size="x-small" :color="item.type_company === 'Clinica' ? 'info' : 'success'" variant="flat" class="font-weight-black shadow-sm">
-                  {{ (item.type_company || 'N/A').toUpperCase() }}
+                <VChip size="x-small" :color="item.type_company === 'Clinica' ? 'info' : 'primary'" variant="tonal" class="font-weight-bold">
+                  {{ item.type_company || 'N/A' }}
                 </VChip>
               </div>
               <div class="stat-box text-right">
                 <span class="label">Clientes</span>
-                <span class="value text-primary font-weight-black text-xs">{{ item.clients_count ?? item.clients?.length ?? 0 }}</span>
+                <span class="value text-primary font-weight-bold text-xs">{{ item.clients_count ?? item.clients?.length ?? 0 }}</span>
               </div>
             </div>
 

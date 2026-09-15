@@ -23,6 +23,11 @@ const sortByModel = computed(() => {
   return []
 })
 
+const toTitleCase = (str) => {
+  if (!str) return '—';
+  return str.toLowerCase().replace(/(?:^|\s|-)\S/g, (char) => char.toUpperCase());
+};
+
 const headers = [
   { title: 'ID',                        key: 'id', sortable: true},
   { title: 'IDENTIFICACIÓN',           key: 'identification', sortable: false },
@@ -39,7 +44,7 @@ const emit= defineEmits(["update:options"])
 <template>
   <div class="lottery-table-container">
     <!-- Desktop View -->
-    <VCard class="d-none d-md-block rounded-lg border-0 shadow-sm overflow-hidden">
+    <VCard class="d-none d-md-block" border variant="flat">
       <VDataTableServer
         :headers="headers"
         :items-per-page="props.itemsPerPage"
@@ -60,42 +65,42 @@ const emit= defineEmits(["update:options"])
           />
         </template>
         <template #item.id="{ item }">
-          <span class="font-weight-black text-primary">{{ item.id }}</span>
+          <span class="font-weight-bold text-primary">{{ item.id }}</span>
         </template>
 
         <template #item.identification="{ item }">
-          <span class="text-sm font-weight-black text-high-emphasis">
+          <span class="font-weight-semibold text-high-emphasis">
             {{ item.client?.identification_type || '' }}{{ item.client?.identification || 'N/A' }}
           </span>
         </template>
 
         <template #item.client_name="{ item }">
-          <span class="text-sm font-weight-black text-high-emphasis uppercase">
-            {{ (item.client?.name || '') }} {{ (item.client?.last_name || '') }}
+          <span class="font-weight-medium text-high-emphasis">
+            {{ toTitleCase((item.client?.name || '') + ' ' + (item.client?.last_name || '')) }}
           </span>
         </template>
 
         <template #item.seller_username="{ item }">
-          <span class="text-sm font-weight-black text-disabled uppercase">
+          <span class="text-xs text-medium-emphasis">
             {{ item.seller?.username || 'S/V' }}
           </span>
         </template>
 
         <template #item.total_amount_usd="{ item }">
-          <span class="text-sm font-weight-black text-success">
+          <span class="font-weight-semibold text-success">
             ${{ item.total_amount_usd ? Number(item.total_amount_usd).toFixed(2) : '0.00' }}
           </span>
         </template>
 
         <template #item.currency="{ item }">
-          <VChip size="x-small" variant="tonal" :color="item.currency === 'USD' ? 'success' : item.currency === 'BS' ? 'info' : 'warning'" class="font-weight-black rounded">
+          <VChip size="x-small" variant="tonal" :color="item.currency === 'USD' ? 'success' : item.currency === 'BS' ? 'info' : 'warning'" class="font-weight-bold rounded">
             {{ item.currency }}
           </VChip>
         </template>
 
         <template #item.created_at="{ item }">
-          <span class="text-sm font-weight-black text-disabled uppercase">
-            {{ day(item.created_at.replace('Z', '')).format('DD/MM/YYYY') }}
+          <span class="text-xs text-medium-emphasis">
+            {{ item.created_at ? day(item.created_at.replace('Z', '')).format('DD/MM/YYYY') : '—' }}
           </span>
         </template>
       </VDataTableServer>
@@ -123,13 +128,13 @@ const emit= defineEmits(["update:options"])
                 <div class="pa-4">
                   <div class="d-flex justify-space-between align-center mb-3">
                     <div class="d-flex align-center gap-1">
-                      <span class="text-primary font-weight-black text-xs">{{ item.raw.id }}</span>
+                      <span class="text-primary font-weight-bold text-xs">{{ item.raw.id }}</span>
                       <span class="text-disabled mx-1">|</span>
-                      <h3 class="text-sm font-weight-black text-high-emphasis uppercase mb-0">
-                        {{ (item.raw.client?.name || '') + " " + (item.raw.client?.last_name || '') }}
+                      <h3 class="text-sm font-weight-medium text-high-emphasis mb-0">
+                        {{ toTitleCase((item.raw.client?.name || '') + " " + (item.raw.client?.last_name || '')) }}
                       </h3>
                     </div>
-                    <VChip size="x-small" variant="tonal" :color="item.raw.currency === 'USD' ? 'success' : 'info'" class="font-weight-black rounded">
+                    <VChip size="x-small" variant="tonal" :color="item.raw.currency === 'USD' ? 'success' : 'info'" class="font-weight-bold rounded">
                       {{ item.raw.currency }}
                     </VChip>
                   </div>
@@ -137,11 +142,11 @@ const emit= defineEmits(["update:options"])
                   <div class="d-flex flex-column gap-2 mb-3">
                     <div class="d-flex justify-space-between align-center">
                       <span class="text-super-xs font-weight-bold text-disabled uppercase">IDENTIFICACIÓN:</span>
-                      <span class="text-xs font-weight-black text-high-emphasis">{{ item.raw.client?.identification_type }}{{ item.raw.client?.identification }}</span>
+                      <span class="text-xs font-weight-semibold text-high-emphasis">{{ item.raw.client?.identification_type }}{{ item.raw.client?.identification }}</span>
                     </div>
                     <div class="d-flex justify-space-between align-center">
                       <span class="text-super-xs font-weight-bold text-disabled uppercase">MONTO:</span>
-                      <span class="text-xs font-weight-black text-success">${{ Number(item.raw.total_amount_usd).toFixed(2) }}</span>
+                      <span class="text-xs font-weight-semibold text-success">${{ Number(item.raw.total_amount_usd).toFixed(2) }}</span>
                     </div>
                   </div>
 
@@ -149,10 +154,10 @@ const emit= defineEmits(["update:options"])
 
                   <div class="d-flex justify-space-between align-center">
                     <div class="d-flex flex-column gap-1">
-                      <span class="text-super-xs font-weight-black text-disabled d-flex align-center gap-1">
+                      <span class="text-super-xs font-weight-medium text-disabled d-flex align-center gap-1">
                         <VIcon icon="tabler-calendar" size="12" /> {{ day(item.raw.created_at.replace('Z', '')).format('DD/MM/YYYY') }}
                       </span>
-                      <span class="text-super-xs font-weight-black text-disabled d-flex align-center gap-1">
+                      <span class="text-super-xs font-weight-medium text-disabled d-flex align-center gap-1">
                         <VIcon icon="tabler-user" size="12" /> {{ item.raw.seller?.username || 'N/A' }}
                       </span>
                     </div>
