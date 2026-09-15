@@ -27,6 +27,11 @@ const getProductColor = (index) => {
   return colors[index % colors.length];
 };
 
+const formatCapitalize = (str) => {
+  if (!str) return "";
+  return str.toLowerCase().replace(/(?:^|\s|-)\S/g, (char) => char.toUpperCase());
+};
+
 const hasProducts = computed(() => {
   return props.employee.products && props.employee.products.length > 0;
 });
@@ -42,42 +47,42 @@ const hasProducts = computed(() => {
   >
     <VCard class="rounded-xl border-0 shadow-xl overflow-hidden d-flex flex-column">
       <!-- Header Premium -->
-      <div class="premium-header pa-5 d-flex align-center">
-        <div class="d-flex align-center gap-3">
-          <VAvatar color="white" variant="tonal" size="40" class="rounded-lg">
-            <VIcon icon="tabler-package" size="22" color="white" />
-          </VAvatar>
-          <div class="d-flex flex-column">
-            <span class="text-h6 font-weight-black text-white leading-none mb-1">Productos Asignados</span>
-            <span class="text-xs text-white opacity-70 font-weight-medium">
+      <div class="header-gradient pa-4 d-flex align-center shadow-sm">
+        <VAvatar color="white" variant="flat" size="40" class="me-3 elevation-1">
+          <VIcon icon="tabler-package" size="24" color="primary" />
+        </VAvatar>
+        <div class="d-flex flex-column">
+          <h2 class="text-h6 font-weight-black text-white leading-tight mb-0">
+            Productos Asignados
+          </h2>
+          <div class="d-flex align-center gap-2 mt-1">
+            <span class="text-super-xs text-white opacity-75 uppercase font-weight-bold">
               {{ props.employee.employee_name || 'Empleado' }}
             </span>
           </div>
         </div>
         <VSpacer />
-        <VChip color="white" variant="tonal" size="small" class="font-weight-black me-3 rounded">
+        <VChip color="white" variant="tonal" size="small" class="font-weight-bold me-2 rounded text-white">
           {{ props.employee.products_count || 0 }} {{ (props.employee.products_count || 0) === 1 ? 'producto' : 'productos' }}
         </VChip>
-        <VBtn icon="tabler-x" variant="text" color="white" size="small" class="rounded-lg bg-white-opacity-10" @click="closeDialog" />
+        <VBtn icon="tabler-x" variant="tonal" color="white" size="small" class="rounded-lg" @click="closeDialog" />
       </div>
 
-      <VDivider class="opacity-10" />
-
-      <VCardText class="pa-6 flex-grow-1" style="max-block-size: 70vh; overflow-y: auto;">
+      <VCardText class="pa-4 pa-sm-6 bg-light flex-grow-1 overflow-y-auto" style="max-height: 70vh;">
         <!-- Info del Empleado -->
-        <div class="d-flex align-center gap-3 mb-6 pa-4 rounded-xl bg-surface border shadow-sm">
-          <VAvatar color="primary" variant="tonal" size="44" class="rounded font-weight-black">
+        <div class="d-flex align-center gap-3 mb-4 pa-4 rounded-lg bg-white border elevation-1">
+          <VAvatar color="primary" variant="tonal" size="40" class="rounded-lg font-weight-bold">
             {{ props.employee.employee_name?.split(" ").map((n) => n[0]).join("").substring(0, 2) || "N/A" }}
           </VAvatar>
           <div class="flex-grow-1">
-            <span class="text-sm font-weight-black text-high-emphasis d-block">{{ props.employee.employee_name }}</span>
-            <span class="text-super-xs text-disabled uppercase font-weight-bold">{{ props.employee.identification }}</span>
+            <span class="text-sm font-weight-bold text-high-emphasis d-block">{{ props.employee.employee_name }}</span>
+            <span class="text-super-xs text-medium-emphasis font-weight-medium">ID #{{ props.employee.employee_id }}</span>
           </div>
           <VChip
-            :color="(props.employee.products_count || 0) > 0 ? 'success' : 'default'"
+            :color="props.employee.is_active ? 'success' : 'default'"
             size="x-small"
-            variant="flat"
-            class="font-weight-black rounded"
+            variant="tonal"
+            class="font-weight-bold rounded"
           >
             {{ props.employee.is_active ? 'ACTIVO' : 'INACTIVO' }}
           </VChip>
@@ -85,8 +90,7 @@ const hasProducts = computed(() => {
 
         <!-- Lista de Productos -->
         <div v-if="hasProducts">
-          <span class="text-super-xs font-weight-black text-disabled uppercase mb-3 d-block">Lista de Productos</span>
-          <VCard variant="outlined" class="rounded-xl overflow-hidden border shadow-sm">
+          <VCard variant="flat" class="rounded-lg overflow-hidden border elevation-1 bg-white">
             <VList class="pa-0">
               <template
                 v-for="(product, index) in props.employee.products"
@@ -98,28 +102,28 @@ const hasProducts = computed(() => {
                       :color="getProductColor(index)"
                       variant="tonal"
                       size="34"
-                      class="rounded"
+                      class="rounded-lg"
                     >
                       <VIcon :icon="product.type === 'dish' ? 'tabler-tools-kitchen-2' : 'tabler-pill'" size="18" />
                     </VAvatar>
                   </template>
 
-                  <VListItemTitle class="text-xs font-weight-black text-high-emphasis">
-                    {{ product.name }}
+                  <VListItemTitle class="text-sm font-weight-bold text-capitalize text-high-emphasis">
+                    {{ formatCapitalize(product.name) }}
                   </VListItemTitle>
 
                   <template #append>
                     <VChip
-                      :color="product.type === 'dish' ? 'success' : getProductColor(index)"
+                      :color="product.type === 'dish' ? 'success' : 'primary'"
                       size="x-small"
-                      variant="flat"
-                      class="font-weight-black rounded tabular-nums"
+                      variant="tonal"
+                      class="font-weight-bold rounded tabular-nums"
                     >
                       {{ product.type === 'dish' ? 'PLATO' : 'PROD' }} #{{ product.id }}
                     </VChip>
                   </template>
                 </VListItem>
-                <VDivider v-if="index < props.employee.products.length - 1" class="opacity-10" />
+                <VDivider v-if="index < props.employee.products.length - 1" class="border-opacity-10" />
               </template>
             </VList>
           </VCard>
@@ -128,21 +132,20 @@ const hasProducts = computed(() => {
         <!-- Estado vacío -->
         <div v-else class="text-center py-8">
           <VIcon icon="tabler-package-off" size="56" color="disabled" class="mb-3 opacity-20" />
-          <div class="text-sm font-weight-black text-disabled uppercase">Sin productos asignados</div>
+          <div class="text-xs font-weight-black text-disabled uppercase">Sin productos asignados</div>
         </div>
       </VCardText>
 
-      <VDivider class="opacity-10" />
-
-      <VCardActions class="pa-6">
+      <VCardActions class="pa-4 bg-light border-t">
         <VBtn
           color="primary"
           variant="flat"
           block
-          class="rounded-lg font-weight-black h-44"
+          height="38"
+          class="rounded-lg font-weight-bold shadow-primary text-none"
           @click="closeDialog"
         >
-          CERRAR
+          Cerrar
         </VBtn>
       </VCardActions>
     </VCard>
@@ -150,25 +153,28 @@ const hasProducts = computed(() => {
 </template>
 
 <style scoped>
-.premium-header {
-  background: linear-gradient(135deg, rgb(var(--v-theme-success)) 0%, #1a3a2a 100%) !important;
-}
-
-.bg-white-opacity-10 {
-  background-color: rgba(255, 255, 255, 10%) !important;
+.header-gradient {
+  background: linear-gradient(
+    135deg,
+    rgb(var(--v-theme-primary)) 0%,
+    rgb(var(--v-theme-gradient-end)) 100%
+  );
 }
 
 .text-super-xs {
   font-size: 0.65rem !important;
-  letter-spacing: 0.05em !important;
-  line-height: 1;
+  line-height: normal;
 }
 
-.leading-none {
-  line-height: 1;
+.leading-tight {
+  line-height: 1.25 !important;
 }
 
-.h-44 {
-  block-size: 44px !important;
+.shadow-primary {
+  box-shadow: 0 4px 14px 0 rgba(var(--v-theme-primary), 0.39) !important;
+}
+
+.border-t {
+  border-block-start: 1px solid rgba(var(--v-border-color), 0.08) !important;
 }
 </style>

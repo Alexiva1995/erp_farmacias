@@ -254,6 +254,11 @@ const getProductColor = (index) => {
   const colors = ["success", "info", "warning", "secondary", "primary", "error"];
   return colors[index % colors.length];
 };
+
+const formatCapitalize = (str) => {
+  if (!str) return "";
+  return str.toLowerCase().replace(/(?:^|\s|-)\S/g, (char) => char.toUpperCase());
+};
 </script>
 
 <template>
@@ -307,9 +312,8 @@ const getProductColor = (index) => {
                     label="Empleado responsable"
                     placeholder="Seleccionar empleado..."
                     variant="outlined"
-                    density="comfortable"
+                    density="compact"
                     hide-details="auto"
-                    class="shadow-sm"
                     :error-messages="props.errors.employee_id"
                     prepend-inner-icon="tabler-user"
                   >
@@ -344,7 +348,7 @@ const getProductColor = (index) => {
             <VCard variant="flat" class="pa-5 bg-white rounded-lg elevation-1 border mb-4">
               <VRow dense>
                 <VCol cols="12">
-                  <div class="d-flex align-end gap-3">
+                  <div class="d-flex align-center gap-2">
                     <AppAutocomplete
                       v-model="formData.new_product_id"
                       v-model:search="searchProduct"
@@ -352,26 +356,25 @@ const getProductColor = (index) => {
                       :loading="isSearching"
                       item-title="displayLabel"
                       item-value="valueKey"
-                      :label="isRestaurant ? 'Añadir producto o plato' : 'Añadir producto'"
                       placeholder="Escribir ID o nombre..."
                       :disabled="!formData.employee_id"
                       variant="outlined"
-                      density="comfortable"
+                      density="compact"
                       hide-details
                       :no-filter="true"
-                      class="flex-grow-1 shadow-sm"
+                      class="flex-grow-1"
                       :prepend-inner-icon="isRestaurant ? 'tabler-tools-kitchen-2' : 'tabler-pill'"
                     />
                     <VBtn
                       color="primary"
                       variant="flat"
                       class="rounded-lg shadow-primary"
-                      height="48"
-                      min-width="50"
+                      height="40"
+                      min-width="40"
                       :disabled="!formData.new_product_id || !formData.employee_id"
                       @click="handleAddProduct"
                     >
-                      <VIcon icon="tabler-plus" size="24" />
+                      <VIcon icon="tabler-plus" size="20" />
                     </VBtn>
                   </div>
                 </VCol>
@@ -396,11 +399,11 @@ const getProductColor = (index) => {
 
                     <VListItemTitle>
                       <div v-if="editingProduct !== `${product.type || 'product'}-${product.id}`" class="d-flex align-center gap-2">
-                        <VChip size="x-small" :color="product.type === 'dish' ? 'success' : 'primary'" variant="flat" label class="rounded font-weight-black">
+                        <VChip size="x-small" :color="product.type === 'dish' ? 'success' : 'primary'" variant="flat" label class="rounded font-weight-bold">
                           {{ product.type === 'dish' ? 'PLATO' : 'PROD' }} #{{ product.id }}
                         </VChip>
-                        <span class="text-sm font-weight-black uppercase text-high-emphasis">
-                          {{ product.name }}
+                        <span class="text-sm font-weight-bold text-capitalize text-high-emphasis">
+                          {{ formatCapitalize(product.name) }}
                         </span>
                       </div>
                       <AppAutocomplete
@@ -449,38 +452,32 @@ const getProductColor = (index) => {
         </VForm>
       </VCardText>
 
-      <VCardActions class="pa-4 bg-light border-t">
-        <VRow no-gutters class="w-100">
-          <VCol cols="12" sm="6" class="pa-1">
-            <VBtn
-              color="secondary"
-              variant="outlined"
-              size="large"
-              block
-              height="50"
-              class="font-weight-black rounded-lg text-button uppercase"
-              @click="closeDialog"
-            >
-              Cancelar
-            </VBtn>
-          </VCol>
-          <VCol cols="12" sm="6" class="pa-1">
-            <VBtn
-              color="primary"
-              variant="flat"
-              size="large"
-              block
-              height="50"
-              class="font-weight-black rounded-lg shadow-primary text-button uppercase"
-              :disabled="!formData.employee_id || formData.products.length === 0 || props.saving"
-              :loading="props.saving"
-              @click="handleSubmit"
-            >
-              <VIcon start icon="tabler-device-floppy" size="18" class="me-2" />
-              Guardar Cambios
-            </VBtn>
-          </VCol>
-        </VRow>
+      <!-- Footer estándar: botones 50% / 50% -->
+      <VCardActions class="dialog-footer bg-light border-t">
+        <div class="footer-btn-group">
+          <VBtn
+            variant="outlined"
+            size="default"
+            height="38"
+            class="cancel-btn font-weight-bold rounded-lg text-none"
+            @click="closeDialog"
+          >
+            Cancelar
+          </VBtn>
+          <VBtn
+            color="primary"
+            variant="flat"
+            size="default"
+            height="38"
+            class="font-weight-bold rounded-lg shadow-primary text-none"
+            :disabled="!formData.employee_id || formData.products.length === 0 || props.saving"
+            :loading="props.saving"
+            @click="handleSubmit"
+          >
+            <VIcon start icon="tabler-device-floppy" size="16" class="me-1" />
+            Guardar Cambios
+          </VBtn>
+        </div>
       </VCardActions>
     </VCard>
   </VDialog>
@@ -488,7 +485,11 @@ const getProductColor = (index) => {
 
 <style scoped>
 .header-gradient {
-  background: var(--brand-gradient) !important;
+  background: linear-gradient(
+    135deg,
+    rgb(var(--v-theme-primary)) 0%,
+    rgb(var(--v-theme-gradient-end)) 100%
+  );
 }
 
 .header-indicator {
@@ -499,6 +500,31 @@ const getProductColor = (index) => {
 
 .header-indicator.primary {
   background-color: rgb(var(--v-theme-primary));
+}
+
+/* Footer botones 50/50 */
+.dialog-footer {
+  padding: 12px 16px !important;
+}
+
+.footer-btn-group {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+
+.footer-btn-group :deep(.v-btn) {
+  flex: 1;
+}
+
+.cancel-btn {
+  border-color: #d1d5db !important;
+  color: #374151 !important;
+}
+
+.cancel-btn:hover {
+  background-color: #f3f4f6 !important;
+  color: #1f2937 !important;
 }
 
 .shadow-primary {

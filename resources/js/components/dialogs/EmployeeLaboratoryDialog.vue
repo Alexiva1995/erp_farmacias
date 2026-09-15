@@ -166,6 +166,11 @@ const getLaboratoryColor = (index) => {
   const colors = ["primary", "secondary", "success", "info", "warning", "error"];
   return colors[index % colors.length];
 };
+
+const formatCapitalize = (str) => {
+  if (!str) return "";
+  return str.toLowerCase().replace(/(?:^|\s|-)\S/g, (char) => char.toUpperCase());
+};
 </script>
 
 <template>
@@ -300,8 +305,8 @@ const getLaboratoryColor = (index) => {
                       </template>
 
                       <VListItemTitle>
-                        <div v-if="editingLaboratory !== lab.id" class="text-sm font-weight-black uppercase text-high-emphasis">
-                          {{ lab.name }}
+                        <div v-if="editingLaboratory !== lab.id" class="text-sm font-weight-black text-capitalize text-high-emphasis">
+                          {{ formatCapitalize(lab.name) }}
                         </div>
                         <AppSelect
                           v-else

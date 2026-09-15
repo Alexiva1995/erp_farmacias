@@ -38,6 +38,11 @@ const getAvatarColor = (index) => {
   const colors = ["primary", "secondary", "success", "info", "warning", "error"];
   return colors[index % colors.length];
 };
+
+const formatCapitalize = (str) => {
+  if (!str) return "";
+  return str.toLowerCase().replace(/(?:^|\s|-)\S/g, (char) => char.toUpperCase());
+};
 </script>
 
 <template>
@@ -101,9 +106,9 @@ const getAvatarColor = (index) => {
                 size="x-small"
                 color="primary"
                 variant="tonal"
-                class="rounded font-weight-bold"
+                class="rounded font-weight-bold text-capitalize"
               >
-                {{ lab.name }}
+                {{ formatCapitalize(lab.name) }}
               </VChip>
               <span v-if="item.laboratories.length === 0" class="text-xs text-disabled italic">Sin marcas</span>
             </div>
@@ -154,7 +159,7 @@ const getAvatarColor = (index) => {
                     <template #prepend>
                       <VIcon icon="tabler-circle-x" size="16" color="error" class="me-2" />
                     </template>
-                    <VListItemTitle class="text-xs font-weight-bold text-error">{{ lab.name }}</VListItemTitle>
+                    <VListItemTitle class="text-xs font-weight-bold text-error">{{ formatCapitalize(lab.name) }}</VListItemTitle>
                   </VListItem>
                 </VList>
               </VMenu>
@@ -239,7 +244,7 @@ const getAvatarColor = (index) => {
                       <template #prepend>
                         <VIcon icon="tabler-circle-x" size="16" color="error" class="me-2" />
                       </template>
-                      <VListItemTitle class="text-xs font-weight-bold text-error">{{ lab.name }}</VListItemTitle>
+                      <VListItemTitle class="text-xs font-weight-bold text-error">{{ formatCapitalize(lab.name) }}</VListItemTitle>
                     </VListItem>
                   </VList>
                 </VMenu>
@@ -262,9 +267,9 @@ const getAvatarColor = (index) => {
                 size="x-small"
                 color="primary"
                 variant="tonal"
-                class="rounded font-weight-bold"
+                class="rounded font-weight-bold text-capitalize"
               >
-                {{ lab.name }}
+                {{ formatCapitalize(lab.name) }}
               </VChip>
               <span v-if="item.laboratories.length === 0" class="text-xs text-disabled italic">
                 Sin marcas asignadas
