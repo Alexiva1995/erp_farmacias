@@ -1131,32 +1131,32 @@ const getIva = (product, currency) => {
     </VCardText>
 
     <!-- Footer Unificado: Totales y Acciones -->
-    <VCardText class="pa-3 bg-grey-lighten-5 border-t mt-3">
+    <VCardText class="pa-4 bg-grey-lighten-5 border-t mt-3">
        <div class="d-flex flex-column gap-3">
-          <!-- Fila de Totales: Subtotal/IVA y Total Final ultra destacado -->
-          <div class="d-flex align-center justify-space-between flex-wrap gap-2 px-1">
-             <!-- Subtotal, Descuentos e IVA agrupados -->
-             <div class="d-flex align-center gap-3 flex-wrap">
+          <!-- Fila de Totales: Subtotal/IVA y Total Final ultra destacado con espaciado amplio -->
+          <div class="d-flex align-center justify-space-between flex-wrap gap-3 px-1 pt-1">
+             <!-- Subtotal, Descuentos e IVA agrupados con alto contraste -->
+             <div class="d-flex align-center gap-4 flex-wrap">
                 <!-- Subtotal -->
                 <div class="d-flex flex-column">
-                   <span class="text-super-xs font-weight-bold text-disabled uppercase leading-none mb-1">Subtotal</span>
-                   <span class="text-caption font-weight-bold text-high-emphasis leading-none">
+                   <span class="total-label mb-1">Subtotal</span>
+                   <span class="total-value">
                       {{ formatCurrency(props.totalProductsAmount, props.selectedDisplayCurrency) }}
                    </span>
                 </div>
 
                 <!-- Descuento Activo -->
                 <div v-if="activeDiscountDisplay" class="d-flex flex-column">
-                   <span class="text-super-xs font-weight-bold text-error uppercase leading-none mb-1">{{ activeDiscountDisplay.label }}</span>
-                   <span class="text-caption font-weight-bold text-error leading-none">
+                   <span class="total-label text-error mb-1">{{ activeDiscountDisplay.label }}</span>
+                   <span class="total-value text-error">
                       - {{ activeDiscountDisplay.formatted }}
                    </span>
                 </div>
 
                 <!-- IVA -->
                 <div class="d-flex flex-column">
-                   <span class="text-super-xs font-weight-bold text-disabled uppercase leading-none mb-1">IVA (16%)</span>
-                   <span class="text-caption font-weight-bold text-success leading-none">
+                   <span class="total-label mb-1">IVA (16%)</span>
+                   <span class="total-value text-success font-weight-bold">
                       + {{ formatCurrency(props.totalIvaAmount, props.selectedDisplayCurrency) }}
                    </span>
                 </div>
@@ -1164,8 +1164,8 @@ const getIva = (product, currency) => {
 
              <!-- Monto Total Grande y Visible -->
              <div class="d-flex flex-column align-end">
-                <span class="text-caption font-weight-bold text-disabled uppercase leading-none mb-1">Total a Cobrar</span>
-                <div class="text-h5 font-weight-950 text-primary leading-none d-flex align-center gap-1">
+                <span class="total-label mb-1">Total a Cobrar</span>
+                <div class="text-h5 font-weight-950 text-primary leading-none d-flex align-center gap-1" style="font-size: 1.25rem !important;">
                    {{ formattedTotalQuotation }}
                 </div>
              </div>
@@ -1220,14 +1220,14 @@ const getIva = (product, currency) => {
              </template>
              <template v-else>
                 <VRow dense class="align-center">
-                   <!-- 50%: Cancelar y Reservar en variante Outlined con menor jerarquía -->
+                   <!-- 50%: Cancelar (Gris neutro) y Reservar (Naranja outlined) -->
                    <VCol cols="12" sm="6">
                       <div class="d-flex align-center gap-2">
                          <VBtn
-                           color="error"
+                           color="secondary"
                            variant="outlined"
                            height="44"
-                           class="flex-grow-1 rounded-lg font-weight-bold text-none"
+                           class="flex-grow-1 rounded-lg font-weight-bold text-none btn-neutral-cancel"
                            @click="handleCancelarOrder"
                          >
                            <VIcon icon="tabler-trash" size="18" class="me-1" />
@@ -1354,9 +1354,31 @@ const getIva = (product, currency) => {
   background: #f5f5f5 !important;
 }
 
-.custom-search-slim :deep(.v-field__input) {
-  font-size: 0.9rem !important;
+.total-label {
+  color: #4b5563 !important;
+  font-size: 0.8125rem !important; /* 13px */
+  font-weight: 600 !important;
+  line-height: 1 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.total-value {
+  color: #111827 !important;
+  font-size: 0.9375rem !important; /* 15px */
   font-weight: 700 !important;
+  line-height: 1 !important;
+}
+
+.btn-neutral-cancel {
+  border-color: rgba(var(--v-theme-on-surface), 0.22) !important;
+  color: rgba(var(--v-theme-on-surface), 0.7) !important;
+}
+
+.btn-neutral-cancel:hover {
+  background-color: rgba(var(--v-theme-on-surface), 0.04) !important;
+  border-color: rgba(var(--v-theme-on-surface), 0.38) !important;
+  color: rgba(var(--v-theme-on-surface), 0.9) !important;
 }
 
 .gap-3 { gap: 12px !important; }
