@@ -141,6 +141,10 @@ const amountToPay = computed(() =>
   settlement.value ? settlement.value.final_usd * (percentage.value / 100) : 0
 );
 
+const setFullAmount = () => {
+  payed.value = Number(Number(amountToPay.value || 0).toFixed(2));
+};
+
 const displayedSettlement = computed(() => {
   if (!settlement.value) return null;
   const factor = percentage.value / 100;
@@ -313,7 +317,7 @@ const formatDate = (dateString) => {
         <VTabsWindow v-model="step" class="pa-3 pa-md-4">
           <VTabsWindowItem value="employee">
             <VRow dense class="ma-0">
-              <!-- Sección: Parámetros -->
+              <!-- Sección Izquierda: Parámetros y Tablas -->
               <VCol cols="12" lg="8" class="pa-1">
                 <div class="bg-white pa-3.5 rounded-lg border mb-3 shadow-xs">
                   <div class="d-flex align-center justify-space-between mb-2.5">
@@ -363,42 +367,42 @@ const formatDate = (dateString) => {
                   <!-- Devengaciones -->
                   <VCol cols="12" md="6" class="pa-1">
                     <div class="bg-white rounded-lg border overflow-hidden shadow-xs h-100 d-flex flex-column">
-                      <div class="pa-2.5 bg-light border-b d-flex align-center gap-2">
+                      <div class="pa-3 bg-light border-b d-flex align-center gap-2">
                         <div class="header-indicator primary shadow-sm"></div>
                         <span class="text-caption font-weight-bold text-high-emphasis">Devengaciones</span>
                       </div>
-                      <VTable density="compact" class="premium-micro-table flex-grow-1">
+                      <VTable density="comfortable" class="premium-micro-table flex-grow-1">
                         <thead>
                           <tr>
-                            <th class="text-left text-super-xs font-weight-bold text-medium-emphasis uppercase py-2">Concepto</th>
-                            <th class="text-center text-super-xs font-weight-bold text-medium-emphasis uppercase py-2">Días</th>
-                            <th class="text-right text-super-xs font-weight-bold text-medium-emphasis uppercase py-2">Monto (Bs)</th>
+                            <th class="text-left text-super-xs font-weight-bold text-medium-emphasis uppercase">Concepto</th>
+                            <th class="text-center text-super-xs font-weight-bold text-medium-emphasis uppercase">Días</th>
+                            <th class="text-right text-super-xs font-weight-bold text-medium-emphasis uppercase">Monto (Bs)</th>
                           </tr>
                         </thead>
                         <tbody>
                           <tr>
-                            <td class="text-xs font-weight-medium">Antigüedad / Prestaciones</td>
-                            <td class="text-center font-weight-bold">{{ displayedSettlement?.social_benefits_days ?? 0 }}</td>
-                            <td class="text-right font-weight-bold">{{ displayAmount(displayedSettlement?.social_benefits_amount ?? 0) }}</td>
+                            <td class="concept-cell">Antigüedad / Prestaciones</td>
+                            <td class="text-center font-weight-bold text-medium-emphasis">{{ displayedSettlement?.social_benefits_days ?? 0 }}</td>
+                            <td class="text-right font-weight-bold text-high-emphasis">{{ displayAmount(displayedSettlement?.social_benefits_amount ?? 0) }}</td>
                           </tr>
                           <tr>
-                            <td class="text-xs font-weight-medium">Vacaciones Fracc.</td>
-                            <td class="text-center font-weight-bold">{{ displayedSettlement?.vacation_voucher_days ?? 0 }}</td>
-                            <td class="text-right font-weight-bold">{{ displayAmount(displayedSettlement?.vacation_voucher_amount ?? 0) }}</td>
+                            <td class="concept-cell">Vacaciones Fracc.</td>
+                            <td class="text-center font-weight-bold text-medium-emphasis">{{ displayedSettlement?.vacation_voucher_days ?? 0 }}</td>
+                            <td class="text-right font-weight-bold text-high-emphasis">{{ displayAmount(displayedSettlement?.vacation_voucher_amount ?? 0) }}</td>
                           </tr>
                           <tr>
-                            <td class="text-xs font-weight-medium">Bono Vacacional</td>
-                            <td class="text-center font-weight-bold">{{ displayedSettlement?.vacation_bonus_voucher_days ?? 0 }}</td>
-                            <td class="text-right font-weight-bold">{{ displayAmount(displayedSettlement?.vacation_bonus_voucher_amount ?? 0) }}</td>
+                            <td class="concept-cell">Bono Vacacional</td>
+                            <td class="text-center font-weight-bold text-medium-emphasis">{{ displayedSettlement?.vacation_bonus_voucher_days ?? 0 }}</td>
+                            <td class="text-right font-weight-bold text-high-emphasis">{{ displayAmount(displayedSettlement?.vacation_bonus_voucher_amount ?? 0) }}</td>
                           </tr>
                           <tr>
-                            <td class="text-xs font-weight-medium">Utilidades</td>
-                            <td class="text-center font-weight-bold">{{ displayedSettlement?.earnings_voucher_days ?? 0 }}</td>
-                            <td class="text-right font-weight-bold">{{ displayAmount(displayedSettlement?.earnings_voucher_amount ?? 0) }}</td>
+                            <td class="concept-cell">Utilidades</td>
+                            <td class="text-center font-weight-bold text-medium-emphasis">{{ displayedSettlement?.earnings_voucher_days ?? 0 }}</td>
+                            <td class="text-right font-weight-bold text-high-emphasis">{{ displayAmount(displayedSettlement?.earnings_voucher_amount ?? 0) }}</td>
                           </tr>
-                          <tr class="bg-success-lighten-5">
+                          <tr class="bg-success-subtle">
                             <td colspan="2" class="text-xs font-weight-bold text-success">Subtotal Devengado</td>
-                            <td class="text-right text-success font-weight-bold">{{ displayAmount(displayedSettlement?.total_settlement_amount ?? 0) }}</td>
+                            <td class="text-right text-success font-weight-black">{{ displayAmount(displayedSettlement?.total_settlement_amount ?? 0) }}</td>
                           </tr>
                         </tbody>
                       </VTable>
@@ -408,20 +412,20 @@ const formatDate = (dateString) => {
                   <!-- Deducciones -->
                   <VCol cols="12" md="6" class="pa-1">
                     <div class="bg-white rounded-lg border overflow-hidden shadow-xs h-100 d-flex flex-column">
-                      <div class="pa-2.5 bg-light border-b d-flex align-center gap-2">
+                      <div class="pa-3 bg-light border-b d-flex align-center gap-2">
                         <div class="header-indicator secondary shadow-sm"></div>
                         <span class="text-caption font-weight-bold text-high-emphasis">Deducciones</span>
                       </div>
-                      <VTable density="compact" class="premium-micro-table flex-grow-1">
+                      <VTable density="comfortable" class="premium-micro-table flex-grow-1">
                         <thead>
                           <tr>
-                            <th class="text-left text-super-xs font-weight-bold text-medium-emphasis uppercase py-2">Concepto</th>
-                            <th class="text-right text-super-xs font-weight-bold text-medium-emphasis uppercase py-2">Monto (Bs)</th>
+                            <th class="text-left text-super-xs font-weight-bold text-medium-emphasis uppercase">Concepto</th>
+                            <th class="text-right text-super-xs font-weight-bold text-medium-emphasis uppercase">Monto (Bs)</th>
                           </tr>
                         </thead>
                         <tbody>
                           <tr>
-                            <td class="text-xs font-weight-medium">Deducción Vacaciones</td>
+                            <td class="concept-cell">Deducción Vacaciones</td>
                             <td class="text-right pa-1">
                               <input
                                 :value="formatNumberWithSeparators(vacationDeductionOverride)"
@@ -431,7 +435,7 @@ const formatDate = (dateString) => {
                             </td>
                           </tr>
                           <tr>
-                            <td class="text-xs font-weight-medium">Ded. Bono Vacacional</td>
+                            <td class="concept-cell">Ded. Bono Vacacional</td>
                             <td class="text-right pa-1">
                               <input
                                 :value="formatNumberWithSeparators(vacationBonusDeductionOverride)"
@@ -441,7 +445,7 @@ const formatDate = (dateString) => {
                             </td>
                           </tr>
                           <tr>
-                            <td class="text-xs font-weight-medium">Deducción Utilidades</td>
+                            <td class="concept-cell">Deducción Utilidades</td>
                             <td class="text-right pa-1">
                               <input
                                 :value="formatNumberWithSeparators(earningsDeductionOverride)"
@@ -451,26 +455,26 @@ const formatDate = (dateString) => {
                             </td>
                           </tr>
                           <!-- Deducciones Adicionales -->
-                          <tr v-for="(ded, idx) in additionalDeductions" :key="idx" class="bg-error-lighten-5 border-dashed-t">
-                            <td class="text-super-xs font-weight-bold d-flex align-center py-1">
-                              <VBtn icon="tabler-trash-x" size="16" variant="text" color="error" class="me-1" @click="removeDeduction(idx)" />
+                          <tr v-for="(ded, idx) in additionalDeductions" :key="idx" class="bg-error-subtle border-dashed-t">
+                            <td class="text-super-xs font-weight-bold d-flex align-center py-2">
+                              <VBtn icon="tabler-trash-x" size="18" variant="text" color="error" class="me-1" @click="removeDeduction(idx)" />
                               {{ ded.description.toUpperCase() }}
                             </td>
-                            <td class="text-right text-super-xs font-weight-bold text-error py-1">- {{ displayAmount(ded.amount * exchangeRate) }}</td>
+                            <td class="text-right text-super-xs font-weight-bold text-error py-2">- {{ displayAmount(ded.amount * exchangeRate) }}</td>
                           </tr>
                           <tr class="bg-light">
-                            <td colspan="2" class="pa-1">
+                            <td colspan="2" class="pa-2">
                               <div class="d-flex align-center gap-1 bg-white rounded border pa-1">
                                 <input v-model="newDeduction.description" placeholder="+ OTRA DEDUCCIÓN" class="micro-input grow flex-grow-1" />
                                 <VDivider vertical class="mx-1" />
-                                <input v-model="newDeduction.amount" type="number" placeholder="0.00" class="micro-input w-50 font-weight-bold" style="max-inline-size: 60px" @keyup.enter="addDeduction" />
-                                <VBtn icon="tabler-plus" size="18" color="primary" variant="tonal" class="rounded" @click="addDeduction" />
+                                <input v-model="newDeduction.amount" type="number" placeholder="0.00" class="micro-input w-50 font-weight-bold" style="max-inline-size: 70px" @keyup.enter="addDeduction" />
+                                <VBtn icon="tabler-plus" size="22" color="primary" variant="tonal" class="rounded" @click="addDeduction" />
                               </div>
                             </td>
                           </tr>
-                          <tr class="bg-error-lighten-5">
+                          <tr class="bg-error-subtle">
                             <td class="text-xs font-weight-bold text-error">Subtotal Deducido</td>
-                            <td class="text-right text-error font-weight-bold">{{ displayAmount((displayedSettlement?.total_deductions ?? 0) + (totalAdditionalDeductions * exchangeRate)) }}</td>
+                            <td class="text-right text-error font-weight-black">{{ displayAmount((displayedSettlement?.total_deductions ?? 0) + (totalAdditionalDeductions * exchangeRate)) }}</td>
                           </tr>
                         </tbody>
                       </VTable>
@@ -482,77 +486,86 @@ const formatDate = (dateString) => {
               <!-- Sección Derecha: Resumen -->
               <VCol cols="12" lg="4" class="pa-1">
                 <div class="d-flex flex-column gap-3 h-100">
-                  <VCard variant="flat" class="rounded-lg border bg-primary text-white shadow-sm pa-3">
-                    <div class="d-flex justify-space-between align-center mb-0">
-                      <span class="text-super-xs font-weight-bold opacity-75 uppercase">Promedio Últimos Sueldos</span>
-                      <VBtn icon size="x-small" variant="tonal" color="white" @click="showSalaryDetails = !showSalaryDetails">
-                        <VIcon size="14">{{ showSalaryDetails ? 'tabler-eye-off' : 'tabler-eye' }}</VIcon>
+                  <!-- Tarjeta Promedio en Blanco / Gris Tenue -->
+                  <div class="bg-white rounded-lg border shadow-xs pa-3.5">
+                    <div class="d-flex justify-space-between align-center mb-1">
+                      <span class="text-super-xs font-weight-bold text-medium-emphasis uppercase">Promedio Últimos Sueldos</span>
+                      <VBtn icon size="x-small" variant="text" color="secondary" @click="showSalaryDetails = !showSalaryDetails">
+                        <VIcon size="15">{{ showSalaryDetails ? 'tabler-eye-off' : 'tabler-eye' }}</VIcon>
                       </VBtn>
                     </div>
-                    <div class="text-h4 font-weight-black shadow-text leading-none mb-1">
-                      {{ displayAmount(settlement?.average_salary ?? 0) }} <small class="text-xs opacity-75">Bs</small>
+                    <div class="text-h5 font-weight-black text-high-emphasis leading-tight mb-2">
+                      {{ displayAmount(settlement?.average_salary ?? 0) }} <small class="text-caption text-medium-emphasis">Bs</small>
                     </div>
-                    <div class="d-flex gap-4 mt-3">
-                       <div class="d-flex flex-column flex-grow-1 border-r border-white border-opacity-20 pe-2">
-                         <span class="text-super-xs font-weight-bold opacity-60 uppercase">Día / Social</span>
-                         <span class="text-xs font-weight-bold">{{ displayAmount(settlement?.daily_wage ?? 0) }} Bs</span>
+                    <div class="d-flex gap-3 pt-2 border-t">
+                       <div class="d-flex flex-column flex-grow-1 border-r pe-2">
+                         <span class="text-super-xs font-weight-medium text-medium-emphasis uppercase">Día / Social</span>
+                         <span class="text-xs font-weight-bold text-high-emphasis">{{ displayAmount(settlement?.daily_wage ?? 0) }} Bs</span>
                        </div>
                        <div class="d-flex flex-column flex-grow-1">
-                         <span class="text-super-xs font-weight-bold opacity-60 uppercase">Día / Integral</span>
-                         <span class="text-xs font-weight-bold">{{ displayAmount(settlement?.integral_salary ?? 0) }} Bs</span>
+                         <span class="text-super-xs font-weight-medium text-medium-emphasis uppercase">Día / Integral</span>
+                         <span class="text-xs font-weight-bold text-high-emphasis">{{ displayAmount(settlement?.integral_salary ?? 0) }} Bs</span>
                        </div>
                     </div>
-                  </VCard>
+                  </div>
 
                   <VExpandTransition>
                     <div v-show="showSalaryDetails">
-                      <VCard variant="flat" class="rounded-lg border border-dashed pa-3 bg-white">
+                      <div class="rounded-lg border border-dashed pa-3 bg-white shadow-xs">
                         <span class="text-super-xs font-weight-bold text-primary uppercase d-block mb-2">Historial Reciente</span>
                         <div v-if="settlement?.last_salaries?.length > 0" class="d-flex flex-column gap-1">
                           <div v-for="(salary, index) in settlement.last_salaries" :key="index" class="d-flex justify-space-between align-center text-super-xs pa-1 border-b last:border-0">
-                            <span class="font-weight-medium opacity-60">{{ formatDate(salary.payslip_date) }}</span>
+                            <span class="font-weight-medium text-medium-emphasis">{{ formatDate(salary.payslip_date) }}</span>
                             <span class="font-weight-bold text-high-emphasis">{{ formatCurrency(salary.amount_bs) }} Bs</span>
                           </div>
                         </div>
-                        <div v-else class="text-super-xs text-center text-disabled italic">SIN HISTORIAL</div>
-                      </VCard>
+                        <div v-else class="text-super-xs text-center text-disabled italic py-1">SIN HISTORIAL</div>
+                      </div>
                     </div>
                   </VExpandTransition>
 
-                  <VCard variant="flat" class="rounded-lg border bg-primary-lighten-5 pa-3 flex-grow-1 d-flex flex-column justify-center shadow-xs">
-                    <div class="text-center">
-                       <span class="text-super-xs font-weight-bold text-primary uppercase letter-spacing-1 d-block mb-1">Tasa BCV del Día</span>
-                       <div class="text-subtitle-2 font-weight-black text-primary mb-1">1 USD = {{ displayAmount(exchangeRate) }} Bs</div>
-                       
-                       <VDivider class="border-dashed my-2" />
-
-                       <VSlider
-                         v-model="percentage"
-                         :min="1"
-                         :max="100"
-                         :step="1"
-                         color="primary"
-                         density="compact"
-                         hide-details
-                         class="mb-1"
-                       />
-                       <div class="d-flex justify-space-between align-center mb-3">
-                         <span class="text-super-xs font-weight-bold text-primary uppercase">% A Liquidar</span>
-                         <span class="text-subtitle-1 font-weight-black text-primary">{{ percentage }}%</span>
-                       </div>
-
-                       <div class="text-overline font-weight-bold text-primary leading-none mb-1 opacity-70">Total Neto a Pagar</div>
-                       <div class="text-h4 font-weight-black text-primary leading-none mb-1 tabular-nums">
-                         {{ displayAmount(amountToPay) }}
-                       </div>
-                       <div class="text-caption font-weight-bold text-medium-emphasis mb-0 mt-n1">
-                         USD <VIcon icon="tabler-currency-dollar" size="16" />
-                       </div>
-                       <div class="text-super-xs font-weight-bold text-disabled uppercase mt-1">
-                         ≈ {{ displayAmount(amountToPay * exchangeRate) }} Bs.S
-                       </div>
+                  <!-- Tarjeta Total Neto a Pagar (Foco Visual Principal) -->
+                  <div class="bg-white rounded-lg border pa-4 flex-grow-1 d-flex flex-column justify-center shadow-xs text-center">
+                    <div class="d-flex justify-space-between align-center mb-2 px-1">
+                      <span class="text-super-xs font-weight-bold text-medium-emphasis uppercase">Tasa BCV del Día</span>
+                      <span class="text-xs font-weight-bold text-high-emphasis">1 USD = {{ displayAmount(exchangeRate) }} Bs</span>
                     </div>
-                  </VCard>
+
+                    <!-- Ajuste discreto de % A Liquidar -->
+                    <div class="d-flex align-center justify-space-between bg-light rounded-lg px-2.5 py-1.5 mb-3 border">
+                      <span class="text-super-xs font-weight-bold text-medium-emphasis uppercase">% A Liquidar:</span>
+                      <div class="d-flex align-center gap-2">
+                        <div style="inline-size: 70px;">
+                          <AppTextField
+                            v-model="percentage"
+                            type="number"
+                            min="1"
+                            max="100"
+                            density="compact"
+                            suffix="%"
+                            hide-details
+                            class="micro-percentage-input font-weight-bold text-end"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <VDivider class="border-dashed mb-3" />
+
+                    <!-- Punto focal exclusivo: Magenta para Total Neto a Pagar -->
+                    <div class="text-overline font-weight-bold text-medium-emphasis leading-none mb-1">
+                      TOTAL NETO A PAGAR
+                    </div>
+                    <div class="text-h3 font-weight-black text-primary leading-none mb-1 tabular-nums">
+                      {{ displayAmount(amountToPay) }}
+                    </div>
+                    <div class="text-caption font-weight-bold text-primary mb-1">
+                      USD
+                    </div>
+                    <div class="text-xs font-weight-bold text-medium-emphasis mt-1">
+                      ≈ {{ displayAmount(amountToPay * exchangeRate) }} Bs.S
+                    </div>
+                  </div>
                 </div>
               </VCol>
             </VRow>
@@ -598,20 +611,32 @@ const formatDate = (dateString) => {
                     </VCol>
                     <VCol cols="12">
                       <div class="pa-4 rounded-lg bg-light border border-dashed text-center">
-                        <span class="text-super-xs font-weight-bold text-primary uppercase d-block mb-2">Monto Confirmado para Entrega</span>
+                        <div class="d-flex justify-space-between align-center mb-2">
+                          <span class="text-super-xs font-weight-bold text-medium-emphasis uppercase">Monto Confirmado para Entrega</span>
+                          <VBtn
+                            size="x-small"
+                            variant="tonal"
+                            color="primary"
+                            class="font-weight-bold text-none rounded px-2"
+                            @click="setFullAmount"
+                          >
+                            Copiar Monto Total
+                          </VBtn>
+                        </div>
                         <AppTextField
                           v-model="payed"
                           type="number"
                           step="0.01"
                           prefix="$"
                           variant="outlined"
-                          density="compact"
+                          density="default"
+                          placeholder="0.00"
                           hide-details="auto"
-                          class="mb-1 font-weight-bold"
+                          class="prominent-amount-input mb-1 font-weight-black"
                           :error="!!errors.payed"
                         />
                         <div class="text-super-xs font-weight-medium text-disabled uppercase mt-1">
-                          Ingrese la cantidad exacta en USD
+                          Ingrese la cantidad exacta en USD o use el botón de autocompletado
                         </div>
                       </div>
                     </VCol>
@@ -621,42 +646,41 @@ const formatDate = (dateString) => {
 
               <!-- Resumen "Ticket" (Derecha) -->
               <VCol cols="12" md="5" class="pa-1">
-                <VCard variant="flat" class="rounded-lg border-primary border-t-4 h-100 bg-white shadow-sm overflow-hidden d-flex flex-column">
-                  <div class="pa-4 text-center border-b bg-light">
-                    <VAvatar color="primary" variant="tonal" size="44" class="mb-2">
-                       <VIcon icon="tabler-receipt-tax" size="22" />
-                    </VAvatar>
-                    <div class="text-super-xs font-weight-bold text-primary uppercase letter-spacing-1">Resumen de Liquidación</div>
+                <div class="rounded-lg border bg-white shadow-xs overflow-hidden d-flex flex-column h-100">
+                  <div class="pa-3.5 text-center border-b bg-light">
+                    <div class="text-caption font-weight-bold text-high-emphasis uppercase letter-spacing-1">Resumen de Liquidación</div>
                   </div>
                   
                   <div class="pa-4 flex-grow-1 d-flex flex-column gap-3 justify-center">
                     <div class="d-flex justify-space-between align-center">
-                      <span class="text-super-xs font-weight-bold text-medium-emphasis uppercase">Total Neto (USD)</span>
+                      <span class="text-xs font-weight-medium text-medium-emphasis uppercase">Total Neto (USD)</span>
                       <span class="text-subtitle-1 font-weight-black text-high-emphasis tabular-nums">${{ displayAmount(amountToPay) }}</span>
                     </div>
                     
                     <VDivider class="border-dashed-t" />
                     
-                    <div class="d-flex justify-space-between align-center opacity-70">
-                      <span class="text-super-xs font-weight-bold text-medium-emphasis uppercase">Tasa de Cambio</span>
-                      <span class="text-super-xs font-weight-bold text-medium-emphasis">{{ displayAmount(exchangeRate) }} Bs</span>
+                    <div class="d-flex justify-space-between align-center">
+                      <span class="text-xs font-weight-medium text-medium-emphasis uppercase">Tasa de Cambio</span>
+                      <span class="text-xs font-weight-bold text-medium-emphasis">{{ displayAmount(exchangeRate) }} Bs</span>
                     </div>
 
-                    <div class="pa-3 rounded-lg bg-primary mt-2 text-center elevation-2">
-                       <span class="text-super-xs font-weight-bold text-white opacity-75 uppercase d-block leading-none mb-1">Total en Bolívares</span>
-                       <div class="text-h5 font-weight-black text-white tabular-nums">
-                         {{ displayAmount(amountToPay * exchangeRate) }} <small class="text-xs">Bs.S</small>
+                    <!-- Contenedor neutro / sutil para Total en Bolívares -->
+                    <div class="pa-3.5 rounded-lg bg-light border text-center mt-2">
+                       <span class="text-super-xs font-weight-bold text-medium-emphasis uppercase d-block leading-none mb-1">Total en Bolívares</span>
+                       <div class="text-h5 font-weight-black text-high-emphasis tabular-nums">
+                         {{ displayAmount(amountToPay * exchangeRate) }} <small class="text-xs text-medium-emphasis">Bs.S</small>
                        </div>
                     </div>
                   </div>
                   
-                  <div class="pa-3 bg-warning-light border-t mt-auto text-center">
-                    <div class="text-super-xs font-weight-bold text-warning uppercase d-flex align-center justify-center gap-1">
-                      <VIcon icon="tabler-alert-circle" size="14" />
+                  <!-- Alerta con semántica de advertencia estándar (Ámbar / Naranja) -->
+                  <div class="warning-alert-banner pa-2.5 border-t text-center">
+                    <div class="text-super-xs font-weight-bold uppercase d-flex align-center justify-center gap-1">
+                      <VIcon icon="tabler-alert-triangle" size="14" />
                       Documento PDF Requerido
                     </div>
                   </div>
-                </VCard>
+                </div>
               </VCol>
             </VRow>
           </VTabsWindowItem>
@@ -667,11 +691,10 @@ const formatDate = (dateString) => {
         <VRow no-gutters class="w-100 gap-2 justify-end">
           <VCol cols="auto">
             <VBtn
-              color="secondary"
               variant="outlined"
               size="default"
               height="38"
-              class="font-weight-bold rounded-lg px-4 text-none"
+              class="cancel-btn font-weight-bold rounded-lg px-4 text-none"
               @click="closeDialog"
             >
               Cancelar
@@ -738,16 +761,29 @@ const formatDate = (dateString) => {
   color: white !important;
 }
 
+.concept-cell {
+  color: #374151 !important;
+  font-size: 0.75rem !important;
+  font-weight: 500 !important;
+}
+
 .premium-micro-table :deep(th) {
   background-color: #f8fafc !important;
-  height: 28px !important;
-  padding-inline: 8px !important;
+  padding-inline: 10px !important;
+  padding-block: 8px !important;
 }
 
 .premium-micro-table :deep(td) {
-  height: 30px !important;
-  color: #334155 !important;
-  padding-inline: 8px !important;
+  padding-inline: 10px !important;
+  padding-block: 10px !important;
+}
+
+.bg-success-subtle {
+  background-color: #f0fdf4 !important;
+}
+
+.bg-error-subtle {
+  background-color: #fef2f2 !important;
 }
 
 .micro-input {
@@ -764,11 +800,38 @@ const formatDate = (dateString) => {
   background-color: #f1f5f9;
 }
 
+.micro-percentage-input :deep(.v-field__input) {
+  font-size: 0.8rem !important;
+  padding: 2px 4px !important;
+  min-block-size: 28px !important;
+  text-align: end;
+}
+
+.prominent-amount-input :deep(.v-field__input) {
+  font-size: 1.25rem !important;
+  text-align: center !important;
+  font-weight: 800 !important;
+  min-block-size: 44px !important;
+}
+
+.warning-alert-banner {
+  background-color: #fef3c7 !important;
+  color: #b45309 !important;
+}
+
+.cancel-btn {
+  border-color: #d1d5db !important;
+  color: #4b5563 !important;
+}
+
+.cancel-btn:hover {
+  background-color: #f3f4f6 !important;
+  color: #1f2937 !important;
+}
+
 .shadow-xs { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important; }
 .shadow-sm { box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important; }
 .shadow-primary { box-shadow: 0 4px 14px 0 rgba(var(--v-theme-primary), 0.39) !important; }
-
-.shadow-text { text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); }
 
 .border-dashed { border-style: dashed !important; border-width: 1px !important; }
 .border-dashed-t { border-block-start: 1px dashed rgba(0,0,0,0.1) !important; }
@@ -781,7 +844,6 @@ const formatDate = (dateString) => {
 .gap-1 { gap: 4px !important; }
 .gap-2 { gap: 8px !important; }
 .gap-3 { gap: 12px !important; }
-.gap-4 { gap: 16px !important; }
 
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
