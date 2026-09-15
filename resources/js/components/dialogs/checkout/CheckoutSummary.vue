@@ -100,30 +100,32 @@ const emit = defineEmits(["complete-purchase", "close-modal", "confirm-payment",
                     -{{ formatCurrency(payment.amount || 0, payment.currency) }}
                   </span>
 
-                  <!-- Editar: amarillo/warning — mismo size que billetera -->
+                  <!-- Editar: amarillo/warning — mismo tamaño que ícono billetera (16px) -->
                   <VBtn
-                    icon="tabler-pencil"
-                    size="26"
+                    size="x-small"
                     color="warning"
                     variant="text"
-                    density="comfortable"
+                    density="compact"
                     class="rounded-circle"
                     title="Editar monto"
                     @click="props.editPaymentAmount(payment)"
-                  />
+                  >
+                    <VIcon size="16">tabler-pencil</VIcon>
+                  </VBtn>
 
-                  <!-- Borrar: rojo/error — mismo size que billetera -->
+                  <!-- Borrar: rojo/error — mismo tamaño que ícono billetera (16px) -->
                   <VBtn
-                    icon="tabler-trash"
-                    size="26"
+                    size="x-small"
                     color="error"
                     variant="text"
-                    density="comfortable"
+                    density="compact"
                     class="rounded-circle"
                     title="Eliminar método"
                     :disabled="!props.isLastPaymentAdded(payment)"
                     @click="props.removePaymentFromSummary(payments.indexOf(payment))"
-                  />
+                  >
+                    <VIcon size="16">tabler-trash</VIcon>
+                  </VBtn>
                 </div>
               </div>
 
