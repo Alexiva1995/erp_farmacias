@@ -182,9 +182,9 @@ class DronenaEdiService implements DronenaEdiServiceInterface
 
         ftp_pasv($ftp, (bool) ($connection->pasv ?? true));
 
-        // En Droguería Nena el archivo se nombra como {order_number}.txt (ej. 318856.txt)
+        // En Droguería Nena el archivo se nombra con el prefijo Factu seguido del ID del pedido (ej. Factu85.txt)
         $orderNumber = (string) $autoOrder->id;
-        $fileName = "{$orderNumber}.txt";
+        $fileName = "Factu{$orderNumber}.txt";
         $remoteFilePath = rtrim($remoteDir, '/') . '/' . $fileName;
 
         // Generar contenido plano
