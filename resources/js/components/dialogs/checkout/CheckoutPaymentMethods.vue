@@ -118,8 +118,8 @@ const getCleanCurrencyKey = (currencyObj) => {
             {{ getCleanCurrencyKey(currency) }}
           </span>
           
-          <!-- Métodos de Pago: Pestañas blancas con borde outline, 13-14px Medium -->
-          <div class="d-flex align-center gap-1.5 flex-wrap">
+          <!-- Métodos de Pago: Pestañas blancas con borde outline, 13-14px Medium, gap 8px entre ellas -->
+          <div class="d-flex align-center methods-btn-group flex-wrap">
             <VBtn
               v-for="method in getAvailableMethodsForCurrency(getCleanCurrencyKey(currency))"
               :key="method.value"
@@ -138,7 +138,7 @@ const getCleanCurrencyKey = (currencyObj) => {
           </div>
         </div>
 
-        <!-- Badges de totales por moneda en azul marino / gris azulado elegante -->
+        <!-- Badge de total por moneda: magenta primario translúcido, nunca negro puro -->
         <VChip 
           size="x-small" 
           variant="flat" 
@@ -177,6 +177,13 @@ const getCleanCurrencyKey = (currencyObj) => {
   letter-spacing: 0.5px;
 }
 
+/* Grupo de botones de método: gap real de 8px entre cada pestaña */
+.methods-btn-group {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .method-btn {
   font-size: 0.8125rem !important; /* 13px */
   font-weight: 500 !important; /* Medium */
@@ -185,10 +192,12 @@ const getCleanCurrencyKey = (currencyObj) => {
   text-transform: none !important;
 }
 
+/* Badge de total: magenta primario translúcido, nunca negro puro */
 .currency-total-chip {
-  background-color: #1e293b !important; /* Azul marino / slate oscuro elegante */
-  color: #ffffff !important;
+  background-color: rgba(var(--v-theme-primary), 0.12) !important;
+  color: rgb(var(--v-theme-primary)) !important;
   font-size: 0.75rem !important;
+  border: 1px solid rgba(var(--v-theme-primary), 0.25) !important;
 }
 
 .quick-cash-grid {

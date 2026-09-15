@@ -313,7 +313,7 @@ const activeDiscountDisplay = computed(() => {
           </VCol>
 
           <!-- Columna Derecha: Resumen de Cobro y Devolución (40%) -->
-          <VCol cols="12" md="5" lg="5" class="pa-4 bg-surface overflow-y-auto modal-scroll-col">
+          <VCol cols="12" md="5" lg="5" class="pa-4 bg-surface d-flex flex-column">
             <div class="ps-md-2">
               <CheckoutSummary 
                 :selected-currency="selectedCurrency"

@@ -70,8 +70,9 @@ const emit = defineEmits(["complete-purchase", "close-modal", "confirm-payment",
             <div 
               v-for="(payment, idx) in payments.filter(p => p.method)" 
               :key="idx" 
-              class="pa-2.5 rounded-lg border bg-surface d-flex flex-column gap-2 payment-card-item"
+              class="pa-3 rounded-lg border bg-surface d-flex flex-column payment-card-item"
             >
+              <!-- Fila del método + monto confirmado -->
               <div class="d-flex justify-space-between align-center">
                 <div class="d-flex align-center gap-1.5 overflow-hidden">
                   <VIcon icon="tabler-wallet" size="16" class="text-primary shrink-0" />
@@ -80,7 +81,7 @@ const emit = defineEmits(["complete-purchase", "close-modal", "confirm-payment",
                   </span>
                 </div>
 
-                <!-- Monto agregado / editable con icono de papelera con touch target adecuado -->
+                <!-- Monto confirmado con botones de acción -->
                 <div v-if="!payment._isInputActive" class="d-flex align-center gap-1.5">
                   <span 
                     class="text-caption font-weight-bold text-error cursor-pointer px-1.5 py-0.5 rounded hover-editable-amount"
@@ -92,7 +93,7 @@ const emit = defineEmits(["complete-purchase", "close-modal", "confirm-payment",
 
                   <VBtn 
                     icon="tabler-pencil" 
-                    size="28" 
+                    size="26" 
                     color="primary" 
                     variant="text" 
                     density="comfortable" 
@@ -103,7 +104,7 @@ const emit = defineEmits(["complete-purchase", "close-modal", "confirm-payment",
 
                   <VBtn 
                     icon="tabler-trash" 
-                    size="28" 
+                    size="26" 
                     color="error" 
                     variant="text" 
                     density="comfortable" 
@@ -115,45 +116,46 @@ const emit = defineEmits(["complete-purchase", "close-modal", "confirm-payment",
                 </div>
               </div>
 
-              <!-- Edición de Monto activa -->
-              <div v-if="payment._isInputActive" class="d-flex flex-column gap-2 pt-1 border-t">
-                <div class="d-flex align-center gap-1.5 justify-end">
-                  <span class="text-caption font-weight-bold text-primary uppercase">{{ payment.currency }}</span>
+              <!-- Formulario de edición: monto + referencia con padding y gap estándar -->
+              <div v-if="payment._isInputActive" class="d-flex flex-column gap-2.5 pt-2 mt-1 border-t">
+                <!-- Campo de monto -->
+                <div class="d-flex align-center gap-2">
+                  <span class="text-caption font-weight-bold text-primary uppercase shrink-0" style="min-inline-size: 36px;">{{ payment.currency }}</span>
                   <input
                     v-model="payment.inputAmount"
-                    class="payment-input-box text-right pa-1.5 border rounded-lg font-weight-bold"
-                    style="inline-size: 110px;"
+                    class="payment-input-box text-right border rounded-lg font-weight-bold flex-grow-1"
                     placeholder="0.00"
                     @keydown.enter="emit('handle-payment-enter', $event, payment)"
                   />
                   <VBtn 
                     v-if="!payment._isReferenceActive" 
                     icon="tabler-check" 
-                    size="28" 
+                    size="26" 
                     :color="(parseFloat(payment.inputAmount) > 0) ? 'success' : 'secondary'" 
                     variant="tonal" 
-                    class="rounded-lg"
+                    class="rounded-lg shrink-0"
                     :disabled="!(parseFloat(payment.inputAmount) > 0)"
                     @click="emit('confirm-payment', payment)" 
                   />
                   <VBtn 
                     icon="tabler-trash" 
-                    size="28" 
+                    size="26" 
                     color="error" 
                     variant="tonal" 
-                    class="rounded-lg"
+                    class="rounded-lg shrink-0"
                     @click="emit('remove-payment', payments.indexOf(payment))" 
                   />
                 </div>
                 
-                <!-- Edición de Referencia activa -->
-                <div v-if="payment._isReferenceActive" class="d-flex align-center gap-1.5 justify-end">
-                  <span class="text-caption font-weight-bold text-medium-emphasis">Ref:</span>
+                <!-- Campo de referencia (cuando aplica) -->
+                <div v-if="payment._isReferenceActive" class="d-flex align-center gap-2">
+                  <span class="text-caption font-weight-bold text-medium-emphasis shrink-0" style="min-inline-size: 36px;">Ref:</span>
                   <div class="position-relative flex-grow-1 d-flex align-center">
                     <input
                       v-model="payment.reference"
-                      class="payment-input-box pa-1.5 border rounded-lg flex-grow-1 pe-6 font-weight-medium"
-                      placeholder="N° de referencia (mín. 4 dígitos)"
+                      class="payment-input-box border rounded-lg flex-grow-1 font-weight-medium"
+                      style="padding: 6px 28px 6px 10px;"
+                      placeholder="N° referencia (mín. 4 dígitos)"
                       @keydown.enter="emit('confirm-payment', payment)"
                     />
                     <VIcon 
@@ -167,18 +169,18 @@ const emit = defineEmits(["complete-purchase", "close-modal", "confirm-payment",
                   </div>
                   <VBtn 
                     icon="tabler-check" 
-                    size="28" 
+                    size="26" 
                     :color="(payment.reference && payment.reference.trim().length >= 4) ? 'success' : 'secondary'" 
                     variant="tonal" 
-                    class="rounded-lg"
+                    class="rounded-lg shrink-0"
                     :disabled="!payment.reference || payment.reference.trim().length < 4"
                     @click="emit('confirm-payment', payment)" 
                   />
                 </div>
               </div>
 
-              <!-- Referencia ya ingresada -->
-              <div v-else-if="payment.reference" class="text-super-xs text-medium-emphasis d-flex align-center gap-1">
+              <!-- Referencia ya ingresada (modo solo lectura) -->
+              <div v-else-if="payment.reference" class="text-super-xs text-medium-emphasis d-flex align-center gap-1 mt-1">
                 <VIcon icon="tabler-hash" size="12" />
                 <span>Ref: <strong class="text-high-emphasis">{{ payment.reference }}</strong></span>
               </div>
@@ -303,6 +305,7 @@ const emit = defineEmits(["complete-purchase", "close-modal", "confirm-payment",
   font-size: 0.85rem;
   outline: none;
   background-color: #fafafa;
+  padding: 6px 10px; /* Padding uniforme 6px vertical, 10px horizontal */
 }
 
 .payment-input-box:focus {
