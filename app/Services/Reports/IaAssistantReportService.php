@@ -180,6 +180,96 @@ class IaAssistantReportService
         ]);
     }
 
+    /**
+     * Orquesta el reporte grupal con paginación de grupos
+     */
+    public function getGroupedReportWithPaginate(array $filtros): array
+    {
+        $filtros = $this->prepareDateFilters($filtros);
+        $tipo = $filtros['tipo_filtracion'] ?? 'stockout_adjusted_rop';
+        $page = (int) ($filtros['page'] ?? 1);
+        $perPage = (int) ($filtros['itemsPerPage'] ?? 25);
+        if ($perPage <= 0) $perPage = 25;
+
+        // 1. Obtener todos los group_ids ordenados alfabéticamente
+        $allGroupIds = $this->getFilteredIds($filtros, true);
+        $totalGroups = count($allGroupIds);
+
+        // 2. Paginar los group_ids en memoria
+        $offset = ($page - 1) * $perPage;
+        $currentGroupIds = array_slice($allGroupIds, $offset, $perPage);
+
+        if (empty($currentGroupIds)) {
+            return [
+                'grupos' => [],
+                'total_grupos' => $totalGroups,
+                'per_page' => $perPage,
+                'current_page' => $page,
+                'last_page' => (int) ceil($totalGroups / $perPage),
+            ];
+        }
+
+        // 3. Para cada grupo de esta página, traer sus productos
+        $filtrosBase = $filtros;
+        unset($filtrosBase['page'], $filtrosBase['itemsPerPage']);
+
+        $grupos = [];
+        foreach ($currentGroupIds as $groupId) {
+            $filtrosGrupo = $filtrosBase;
+            $filtrosGrupo['groups'] = [$groupId];
+            unset($filtrosGrupo['tipo_vista']);
+
+            if ($tipo === 'sales') {
+                $resultado = $this->productRepository->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtrosGrupo);
+                $procesado = $this->processRegularReport($resultado, $tipo, $filtrosGrupo);
+            } else {
+                $resultado = $this->productRepository->filtrarIndividualProductForAssistantReportTypeAveragesWithoutPaginate($filtrosGrupo);
+                if ($tipo === 'stockout_adjusted_rop_plus') {
+                    $procesado = $this->processStockoutAdjustedRopPlusReport($resultado, $filtrosGrupo);
+                } elseif ($tipo === 'stockout_adjusted_rop') {
+                    $procesado = $this->processStockoutAdjustedRopReport($resultado, $filtrosGrupo);
+                } elseif ($tipo === 'combinado') {
+                    $procesado = $this->processCombinedReport($resultado, $filtrosGrupo);
+                } elseif ($tipo === 'weighted') {
+                    $procesado = $this->processWeightedReport($resultado, $filtrosGrupo);
+                } else {
+                    $procesado = $this->processRegularReport($resultado, $tipo, $filtrosGrupo);
+                }
+            }
+
+            if (filter_var($filtros['with_trend'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
+                $this->hydrateSalesTrend($procesado);
+            }
+
+            if (filter_var($filtros['with_suppliers'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
+                $this->hydrateSuppliers($procesado, $filtrosGrupo);
+            }
+
+            $itemsProcesados = ($procesado instanceof LengthAwarePaginator) ? $procesado->getCollection() : collect($procesado);
+
+            // Obtener nombre del grupo del primer producto
+            $nombreGrupo = '';
+            $primerProd = $itemsProcesados->first();
+            if ($primerProd && isset($primerProd->group)) {
+                $nombreGrupo = $primerProd->group->name ?? '';
+            }
+
+            $grupos[] = [
+                'group_id' => $groupId,
+                'group_name' => $nombreGrupo,
+                'productos' => $itemsProcesados->values()->all(),
+            ];
+        }
+
+        return [
+            'grupos' => $grupos,
+            'total_grupos' => $totalGroups,
+            'per_page' => $perPage,
+            'current_page' => $page,
+            'last_page' => (int) ceil($totalGroups / $perPage),
+        ];
+    }
+
     public function getFilteredIds(array $filtros, bool $porGrupo = false): array
     {
         $filtrosLigero = $filtros;
