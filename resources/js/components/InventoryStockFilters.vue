@@ -64,11 +64,12 @@ const diasVencimientos = [
 ];
 
 const tipoFiltracionOpcion = computed(() => [
-  { title: "Stockout-Adjusted ROP (Predeterminado)", value: "stockout_adjusted_rop" },
-  { title: "Ponderado (Óptimo ROP)",                 value: "weighted"              },
-  { title: "Promedio",                              value: "average"               },
-  { title: isRestaurant.value ? "Consumido" : "Ventas", value: "sales"             },
-  { title: "Combinado",                             value: "combinado"             },
+  { title: "Stockout-Adjusted ROP PLUS (Inteligencia de Demanda)", value: "stockout_adjusted_rop_plus" },
+  { title: "Stockout-Adjusted ROP (Predeterminado)",               value: "stockout_adjusted_rop"      },
+  { title: "Ponderado (Óptimo ROP)",                              value: "weighted"                   },
+  { title: "Promedio",                                           value: "average"                    },
+  { title: isRestaurant.value ? "Consumido" : "Ventas",          value: "sales"                      },
+  { title: "Combinado",                                          value: "combinado"                  },
 ]);
 
 const viewTypeOptions = [

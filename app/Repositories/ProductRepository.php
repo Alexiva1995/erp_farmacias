@@ -122,7 +122,7 @@ class ProductRepository
                             AND im_avg.quantity < 0 
                             AND im_avg.created_at >= DATE_SUB(NOW(), INTERVAL 12 MONTH))';
         } else {
-            if ($tipoFiltracion === "weighted" || $tipoFiltracion === "stockout_adjusted_rop") {
+            if ($tipoFiltracion === "weighted" || $tipoFiltracion === "stockout_adjusted_rop" || $tipoFiltracion === "stockout_adjusted_rop_plus") {
                 $baseAverage = 'COALESCE(products.sales_average_weighted, products.sales_average)';
             } else {
                 $baseAverage = 'products.sales_average';
@@ -1596,7 +1596,7 @@ class ProductRepository
             $solicitarRaw = '(' . $demanda . ' - ' . $subqueryStock . ' - ' . $subqueryAO . ')';
         } elseif ($tipo === "sales") {
             $solicitarRaw = '(' . $subqueryTotalSold . ' - ' . $subqueryStock . ' - ' . $subqueryAO . ')';
-        } elseif ($tipo === "weighted" || $tipo === "stockout_adjusted_rop") {
+        } elseif ($tipo === "weighted" || $tipo === "stockout_adjusted_rop" || $tipo === "stockout_adjusted_rop_plus") {
             $sumSalesWeighted = 'CASE 
                 WHEN products.is_unified_group = 1 AND products.group_id IS NOT NULL THEN (
                     SELECT COALESCE(SUM(COALESCE(NULLIF(sales_average_weighted, 0), sales_average, 0)), 0)

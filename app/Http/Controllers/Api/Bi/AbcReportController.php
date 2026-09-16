@@ -123,7 +123,7 @@ class AbcReportController extends Controller
             'count_a' => $reportData->filter(fn($i) => $i->class_sales === 'A')->count(),
             'count_b' => $reportData->filter(fn($i) => $i->class_sales === 'B')->count(),
             'count_c' => $reportData->filter(fn($i) => $i->class_sales === 'C')->count(),
-            'critical_stockouts' => $reportData->filter(fn($i) => ($i->class_sales === 'A' || $i->class_sales === 'B') && $i->current_stock <= 0)->count(),
+            'critical_stockouts' => $reportData->filter(fn($i) => ($i->class_sales === 'A' || $i->class_sales === 'B' || (bool)($i->is_favorite ?? false)) && $i->current_stock <= 0)->count(),
             'negative_margin_count' => $reportData->filter(fn($i) => ((float)($i->margin_percentage ?? 0) < 0 || (float)($i->margin_amount ?? 0) < 0) && (float)($i->current_stock ?? 0) > 0)->count(),
             'total_products' => $reportData->count(),
         ];

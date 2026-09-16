@@ -105,6 +105,7 @@ class AbcReportRepository implements AbcReportRepositoryInterface
                 'sales.last_sale_date as last_sale_date',
                 'next_exp.next_expiration_date as next_expiration_date',
                 'ind_offer.individual_offer_discount as individual_offer_discount',
+                'products.is_favorite',
                 DB::raw("'product' as item_type")
             )
             ->leftJoin('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
@@ -173,6 +174,7 @@ class AbcReportRepository implements AbcReportRepositoryInterface
                 'sales.last_sale_date as last_sale_date',
                 DB::raw('NULL as next_expiration_date'),
                 DB::raw('NULL as individual_offer_discount'),
+                DB::raw('0 as is_favorite'),
                 DB::raw("'dish' as item_type")
             )
             ->leftJoin('categories', 'dishes.category_id', '=', 'categories.id')

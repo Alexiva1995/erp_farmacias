@@ -44,7 +44,9 @@ class IaAssistantReportService
                 $resultado = $this->productRepository->filtrarIndividualProductForAssistantReportTypeAveragesWithoutPaginate($filtros);
             }
 
-            if ($tipo === 'stockout_adjusted_rop') {
+            if ($tipo === 'stockout_adjusted_rop_plus') {
+                $procesado = $this->processStockoutAdjustedRopPlusReport($resultado, $filtros);
+            } elseif ($tipo === 'stockout_adjusted_rop') {
                 $procesado = $this->processStockoutAdjustedRopReport($resultado, $filtros);
             } elseif ($tipo === 'combinado') {
                 $procesado = $this->processCombinedReport($resultado, $filtros);
@@ -242,7 +244,9 @@ class IaAssistantReportService
             $procesado = $this->processRegularReport($resultado, $tipo, $filtros);
         } else {
             $resultado = $this->productRepository->filtrarIndividualProductForAssistantReportTypeAveragesWithoutPaginate($filtrosHidratacion);
-            if ($tipo === 'stockout_adjusted_rop') {
+            if ($tipo === 'stockout_adjusted_rop_plus') {
+                $procesado = $this->processStockoutAdjustedRopPlusReport($resultado, $filtros);
+            } elseif ($tipo === 'stockout_adjusted_rop') {
                 $procesado = $this->processStockoutAdjustedRopReport($resultado, $filtros);
             } elseif ($tipo === 'combinado') {
                 $procesado = $this->processCombinedReport($resultado, $filtros);
@@ -514,6 +518,149 @@ class IaAssistantReportService
 
             return $item;
         });
+
+        return $items;
+    }
+
+    /**
+     * Procesa el reporte con el método STOCKOUT-ADJUSTED ROP PLUS (Inteligencia de Demanda y Preferencia Orgánica).
+     * Incluye 3 Capas Analíticas:
+     * 1. Filtro de Disponibilidad Simultánea (Índice de Preferencia Orgánica - IPO).
+     * 2. Ajuste de Elasticidad Precio-Demanda por variación de costo de proveedor.
+     * 3. Proyección de Demanda Verdadera (True Intent) y Distribución Óptima de Presupuesto Grupal.
+     */
+    private function processStockoutAdjustedRopPlusReport($resultados, array $filtros)
+    {
+        $isPaginator = $resultados instanceof LengthAwarePaginator;
+        $items = $isPaginator ? $resultados->getCollection() : collect($resultados);
+
+        if ($items->isEmpty()) {
+            return $resultados;
+        }
+
+        // 1. Primero ejecutamos el cálculo base de Stockout-Adjusted ROP
+        $items = $this->processStockoutAdjustedRopReport($items, $filtros);
+
+        // 2. Extraer group_ids para analizar la preferencia simultánea de los grupos genéricos
+        $groupIds = $items->pluck('group_id')->filter()->unique()->toArray();
+
+        if (empty($groupIds)) {
+            return $isPaginator ? $resultados->setCollection($items) : $items;
+        }
+
+        // 3. Consultar todos los productos pertenecientes a estos grupos
+        $allGroupProducts = \App\Models\Product::whereIn('group_id', $groupIds)
+            ->where('is_deleted', false)
+            ->where('is_scarce', false)
+            ->get(['id', 'group_id', 'sales_average', 'sales_average_weighted', 'unit_cost', 'sale_price'])
+            ->groupBy('group_id');
+
+        $now = now();
+        $date90Days = $now->copy()->subDays(90)->format('Y-m-d H:i:s');
+
+        // 4. Calcular el Índice de Preferencia Orgánica (IPO) por producto en cada grupo
+        $preferenceShareByProduct = [];
+        $groupDemandSum = [];
+
+        foreach ($groupIds as $gId) {
+            $groupProds = $allGroupProducts->get($gId);
+            if (!$groupProds || $groupProds->count() <= 1) {
+                // Producto único en el grupo: 100% de preferencia
+                if ($groupProds) {
+                    foreach ($groupProds as $gp) {
+                        $preferenceShareByProduct[$gp->id] = 1.0;
+                    }
+                }
+                continue;
+            }
+
+            // Suma ponderada total del grupo
+            $totalGroupWeighted = $groupProds->sum(function($gp) {
+                return (float)(($gp->sales_average_weighted ?? 0) > 0 ? $gp->sales_average_weighted : ($gp->sales_average ?? 0));
+            });
+            $groupDemandSum[$gId] = $totalGroupWeighted;
+
+            // Ventas históricas en días de concurrencia de stock
+            $pIds = $groupProds->pluck('id')->toArray();
+            $recentSales = \Illuminate\Support\Facades\DB::table('order_details')
+                ->join('orders', 'order_details.order_id', '=', 'orders.id')
+                ->whereIn('order_details.product_id', $pIds)
+                ->where('orders.status', 'Completed')
+                ->where('orders.created_at', '>=', $date90Days)
+                ->select('order_details.product_id', \Illuminate\Support\Facades\DB::raw('SUM(order_details.quantity) as total_sold'))
+                ->groupBy('order_details.product_id')
+                ->pluck('total_sold', 'product_id');
+
+            $totalSoldInGroup = $recentSales->sum();
+
+            foreach ($groupProds as $gp) {
+                if ($totalSoldInGroup > 0) {
+                    $sold = (float)($recentSales->get($gp->id) ?? 0);
+                    $preferenceShareByProduct[$gp->id] = max(0.05, $sold / $totalSoldInGroup);
+                } elseif ($totalGroupWeighted > 0) {
+                    $itemWeight = (float)(($gp->sales_average_weighted ?? 0) > 0 ? $gp->sales_average_weighted : ($gp->sales_average ?? 0));
+                    $preferenceShareByProduct[$gp->id] = max(0.05, $itemWeight / $totalGroupWeighted);
+                } else {
+                    $preferenceShareByProduct[$gp->id] = 1.0 / $groupProds->count();
+                }
+            }
+        }
+
+        // 5. Aplicar la Capa 2 (Elasticidad) y Capa 3 (True Intent Share) a cada ítem
+        $coverageDays = $this->extractCoverageDays($filtros['lapso_de_tiempo'] ?? '1 month');
+        $leadTimeDays = 7;
+        $bufferDays = 7;
+
+        $items->transform(function ($item) use ($preferenceShareByProduct, $groupDemandSum, $coverageDays, $leadTimeDays, $bufferDays) {
+            if (!$item->group_id || !isset($preferenceShareByProduct[$item->id])) {
+                return $item;
+            }
+
+            $ipo = $preferenceShareByProduct[$item->id] ?? 1.0;
+            $gId = $item->group_id;
+            $groupTotalDemand = $groupDemandSum[$gId] ?? ($item->promedio_calculado ?? 0);
+
+            // True Intent Demand: La demanda mensual real que le corresponde según su IPO
+            $demandaTrueIntent = $groupTotalDemand * $ipo;
+
+            // Elasticidad por variación de precio frente al proveedor
+            $currentCost = (float)($item->unit_cost ?? 0);
+            $bestCost = (float)($item->best_supplier_price ?? $currentCost);
+            if ($currentCost > 0 && $bestCost > $currentCost) {
+                $pctIncrease = ($bestCost - $currentCost) / $currentCost;
+                // Elasticidad moderada e = 0.5 (si sube 20%, reduce demanda estimada en 10%)
+                $demandaTrueIntent = $demandaTrueIntent * max(0.5, (1.0 - (0.5 * $pctIncrease)));
+            }
+
+            $isColombian = (bool)((int)($item->is_colombian_origin ?? 0) === 1);
+            $effectiveLeadTime = $isColombian ? 14 : $leadTimeDays;
+
+            $vpd = $demandaTrueIntent / 30;
+            $rop = $vpd * ($effectiveLeadTime + $bufferDays);
+            $stockObjetivo = $vpd * $coverageDays;
+
+            $stockActual = (float)($item->lote_quantity ?? $item->stock ?? 0);
+            $autoOrder = (float)($item->totalQuantityInAutoOrder ?? 0);
+            $stockEfectivo = $stockActual + $autoOrder;
+
+            $item->promedio_calculado = round($demandaTrueIntent, 2);
+            $item->demanda_ponderada = round($stockObjetivo, 2);
+
+            if ($stockEfectivo <= $rop) {
+                $sugerido = $stockObjetivo - $stockEfectivo;
+                $item->solicitar = $sugerido > 0 ? ceil($sugerido) : 0;
+            } else {
+                $exceso = $stockObjetivo - $stockEfectivo;
+                $item->solicitar = $exceso < 0 ? floor($exceso) : 0;
+            }
+
+            return $item;
+        });
+
+        if ($isPaginator) {
+            $resultados->setCollection($items);
+            return $resultados;
+        }
 
         return $items;
     }

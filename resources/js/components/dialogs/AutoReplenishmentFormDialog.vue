@@ -36,6 +36,7 @@ const visible = computed({
 });
 
 const tipoFiltracionOpciones = [
+  { title: "Stockout-Adjusted ROP PLUS (Inteligencia de Demanda)", value: "stockout_adjusted_rop_plus" },
   { title: "Stockout-Adjusted ROP (Predeterminado)", value: "stockout_adjusted_rop" },
   { title: "Ponderado (Óptimo ROP)",                 value: "weighted"              },
   { title: "Promedio",                              value: "average"               },

@@ -74,7 +74,7 @@ class InventorySnapshotService
 
         // Obtener datos actuales de los productos en vivo
         $currentProducts = DB::table('products')
-            ->select('id', 'name', 'stock', 'unit_cost', 'sale_price')
+            ->select('id', 'name', 'stock', 'unit_cost', 'sale_price', 'is_favorite')
             ->get()
             ->keyBy('id');
 
@@ -195,11 +195,12 @@ class InventorySnapshotService
         ];
 
         // =========================================================================
-        // MÓDULO 3: CONTROL DE COMPRAS PRIORITARIAS (REABASTECIMIENTO A/B)
+        // MÓDULO 3: CONTROL DE COMPRAS PRIORITARIAS (REABASTECIMIENTO A/B Y FAVORITOS)
         // =========================================================================
         $thresholdDays = max(30, (int) ($snapshot->period_days ?? 30));
-        $criticalAbItems = $snapshotItems->filter(function ($i) use ($thresholdDays) {
-            $isAb = in_array($i->sales_class, ['A', 'B']);
+        $criticalAbItems = $snapshotItems->filter(function ($i) use ($thresholdDays, $currentProducts) {
+            $isFavorite = (bool) ($currentProducts->get($i->product_id)?->is_favorite ?? false);
+            $isAb = in_array($i->sales_class, ['A', 'B']) || $isFavorite;
             $isStockout = (float) $i->current_stock_units <= 0;
             $isCriticalCoverage = (float) $i->coverage_days < $thresholdDays;
             return $isAb && ($isStockout || $isCriticalCoverage);
