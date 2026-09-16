@@ -163,13 +163,31 @@ class EmployeePerformanceQueryService
 
         // Penalizaciones registradas (-5 por falsa discrepancia, -3 por discrepancia errónea)
         $productPenaltyMap = ProductCount::whereMonth('created_at', $month)->whereYear('created_at', $year)
-            ->groupBy('user_id')->selectRaw('user_id, SUM(COALESCE(penalty_points, 0)) as total')->pluck('total', 'user_id');
+            ->groupBy('user_id')
+            ->selectRaw("user_id, SUM(CASE 
+                WHEN error_penalty_type = 'false_discrepancy' THEN 5
+                WHEN error_penalty_type = 'wrong_discrepancy' THEN 3
+                ELSE COALESCE(penalty_points, 0)
+            END) as total")
+            ->pluck('total', 'user_id');
 
         $salePenaltyMap = SaleCount::whereMonth('created_at', $month)->whereYear('created_at', $year)
-            ->groupBy('user_id')->selectRaw('user_id, SUM(COALESCE(penalty_points, 0)) as total')->pluck('total', 'user_id');
+            ->groupBy('user_id')
+            ->selectRaw("user_id, SUM(CASE 
+                WHEN error_penalty_type = 'false_discrepancy' THEN 5
+                WHEN error_penalty_type = 'wrong_discrepancy' THEN 3
+                ELSE COALESCE(penalty_points, 0)
+            END) as total")
+            ->pluck('total', 'user_id');
 
         $invoicePenaltyMap = InvoiceCount::whereMonth('created_at', $month)->whereYear('created_at', $year)
-            ->groupBy('user_id')->selectRaw('user_id, SUM(COALESCE(penalty_points, 0)) as total')->pluck('total', 'user_id');
+            ->groupBy('user_id')
+            ->selectRaw("user_id, SUM(CASE 
+                WHEN error_penalty_type = 'false_discrepancy' THEN 5
+                WHEN error_penalty_type = 'wrong_discrepancy' THEN 3
+                ELSE COALESCE(penalty_points, 0)
+            END) as total")
+            ->pluck('total', 'user_id');
 
         // 1d. Bulk Invoice Metrics
         // Reglas de facturación:
