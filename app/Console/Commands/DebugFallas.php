@@ -12,21 +12,42 @@ class DebugFallas extends Command
 
     public function handle(IaAssistantReportService $service)
     {
-        $filtros = [
-            "tipo_de_filtracion" => "combinado",
-            "tipo_vista"         => true,
-            "lapso_de_tiempo" => "1 month",
-            "groups"          => [2], // The filter by group that user mentioned
-            "page"            => 1,
-            "itemsPerPage"    => 25
-        ];
-
         try {
-            $report = $service->getGroupedReportWithPaginate($filtros);
-            $this->info("Groups populated: " . count($report['grupos']));
-        } catch (\Exception $e) {
-            $this->error("ERROR CAUGHT: " . $e->getMessage());
-            $this->line($e->getFile() . ':' . $e->getLine());
+            $this->info("1. Probando vista individual con stock=all y stockout_adjusted_rop_plus...");
+            $res1 = $service->getFilteredReportWithPaginate([
+                'stock' => 'all',
+                'tipo_filtracion' => 'stockout_adjusted_rop_plus',
+                'lapso_de_tiempo' => '1 month',
+                'page' => 1,
+                'itemsPerPage' => 5
+            ]);
+            $this->info("   -> Éxito Individual! Items devueltos: " . $res1->count() . " / Total: " . $res1->total());
+
+            $this->info("2. Probando vista individual con stock=fallas...");
+            $res2 = $service->getFilteredReportWithPaginate([
+                'stock' => 'fallas',
+                'tipo_filtracion' => 'stockout_adjusted_rop_plus',
+                'lapso_de_tiempo' => '1 month',
+                'page' => 1,
+                'itemsPerPage' => 5
+            ]);
+            $this->info("   -> Éxito Fallas! Items devueltos: " . $res2->count() . " / Total: " . $res2->total());
+
+            $this->info("3. Probando vista grupal con stock=all...");
+            $res3 = $service->getGroupedReportWithPaginate([
+                'stock' => 'all',
+                'tipo_filtracion' => 'stockout_adjusted_rop_plus',
+                'tipo_vista' => true,
+                'lapso_de_tiempo' => '1 month',
+                'page' => 1,
+                'itemsPerPage' => 5
+            ]);
+            $this->info("   -> Éxito Grupos! Grupos devueltos: " . count($res3['grupos']) . " / Total grupos: " . $res3['total_grupos']);
+
+            $this->info("TODAS LAS PRUEBAS PASARON CORRECTAMENTE.");
+        } catch (\Throwable $e) {
+            $this->error("ERROR: " . $e->getMessage());
+            $this->line("File: " . $e->getFile() . ':' . $e->getLine());
         }
     }
 }

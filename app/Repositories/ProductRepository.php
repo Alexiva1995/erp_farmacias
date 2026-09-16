@@ -223,9 +223,10 @@ class ProductRepository
                 $q->whereNull('is_deleted')->orWhere('is_deleted', 0);
             })
             ->when(!($filtros['show_ignored'] ?? false), function ($q) {
-                $q->where(function ($sq) {
+                $nowStr = now()->format('Y-m-d H:i:s');
+                $q->where(function ($sq) use ($nowStr) {
                     $sq->whereNull('products.ignore_until')
-                       ->orWhere('products.ignore_until', '<=', now());
+                       ->orWhere('products.ignore_until', '<=', $nowStr);
                 });
             })
             ->with(["laboratory"]);
@@ -291,7 +292,7 @@ class ProductRepository
             }
         }
 
-        if (array_key_exists("stock", $filtros)) {
+        if (array_key_exists("stock", $filtros) && $filtros["stock"] !== 'all') {
             if ($filtros["stock"] == "exceso") {
                 $consulta->having("diferencia_product", ">", 0);
             } elseif ($filtros["stock"] == "fallas") {
@@ -569,9 +570,10 @@ class ProductRepository
             ->where('is_deleted', false)
             ->where('is_scarce', false)
             ->when(!($filtros['show_ignored'] ?? false), function ($q) {
-                $q->where(function ($sq) {
+                $nowStr = now()->format('Y-m-d H:i:s');
+                $q->where(function ($sq) use ($nowStr) {
                     $sq->whereNull('products.ignore_until')
-                       ->orWhere('products.ignore_until', '<=', now());
+                       ->orWhere('products.ignore_until', '<=', $nowStr);
                 });
             });
 
@@ -1247,9 +1249,10 @@ class ProductRepository
                   });
             })
             ->when(!($filtros['show_ignored'] ?? false), function ($q) {
-                $q->where(function ($sq) {
+                $nowStr = now()->format('Y-m-d H:i:s');
+                $q->where(function ($sq) use ($nowStr) {
                     $sq->whereNull('products.ignore_until')
-                       ->orWhere('products.ignore_until', '<=', now());
+                       ->orWhere('products.ignore_until', '<=', $nowStr);
                 });
             })
             // Excluir productos bloqueados por tener lotes con vencimiento <= 120 días
@@ -1672,9 +1675,10 @@ class ProductRepository
                   });
             })
             ->when(!($filtros['show_ignored'] ?? false), function ($q) {
-                $q->where(function ($sq) {
+                $nowStr = now()->format('Y-m-d H:i:s');
+                $q->where(function ($sq) use ($nowStr) {
                     $sq->whereNull('ignore_until')
-                       ->orWhere('ignore_until', '<=', now());
+                       ->orWhere('ignore_until', '<=', $nowStr);
                 });
             })
             // Excluir productos bloqueados por tener lotes con vencimiento <= 120 días
