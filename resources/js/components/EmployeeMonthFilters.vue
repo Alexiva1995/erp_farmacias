@@ -18,7 +18,6 @@ const emit = defineEmits([
   "update:selectedMonth",
   "update:selectedYear",
   "clear",
-  "lock-month",
   "sort",
 ]);
 
@@ -135,22 +134,8 @@ const hasActiveAdvancedFilters = computed(() => {
             </VList>
           </VMenu>
 
-          <!-- Cerrar Mes / Recalcular -->
-          <template v-if="!props.isLocked">
-            <VBtn
-              icon
-              color="error"
-              variant="flat"
-              size="38"
-              :disabled="props.loading"
-              :loading="props.loading"
-              @click="emit('lock-month')"
-            >
-              <VIcon icon="tabler-lock" />
-              <VTooltip activator="parent" location="top">Cerrar Mes</VTooltip>
-            </VBtn>
-          </template>
-          <div v-else class="d-flex align-center gap-1">
+          <!-- Indicador si es Mes Histórico Cerrado -->
+          <div v-if="props.isLocked" class="d-flex align-center">
             <VChip 
               color="success" 
               variant="tonal" 
@@ -160,18 +145,6 @@ const hasActiveAdvancedFilters = computed(() => {
               <VIcon start icon="tabler-lock-check" size="18" />
               HISTÓRICO
             </VChip>
-            <VBtn
-              icon
-              color="warning"
-              variant="tonal"
-              size="30"
-              :disabled="props.loading"
-              :loading="props.loading"
-              @click="emit('lock-month')"
-            >
-              <VIcon icon="tabler-refresh" size="18" />
-              <VTooltip activator="parent" location="top">Recalcular y Volver a Cerrar</VTooltip>
-            </VBtn>
           </div>
 
           <VDivider vertical class="mx-1 my-2" />

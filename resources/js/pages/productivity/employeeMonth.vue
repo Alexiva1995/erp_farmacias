@@ -113,55 +113,6 @@ const fetchEmployees = async () => {
   }
 };
 
-const handleLockMonth = async () => {
-  const monthTitle = availableMonths.value.find(
-    (m) => m.value === selectedMonth.value,
-  )?.title;
-
-  const { isConfirmed } = await Swal.fire({
-    title: "¿Cerrar este mes?",
-    text: `Se bloquearán los puntajes de ${monthTitle} ${selectedYear.value}. Esta acción no se puede deshacer.`,
-    icon: "warning",
-    showCancelButton: true,
-    confirmButtonColor: "#3085d6",
-    cancelButtonColor: "#d33",
-    confirmButtonText: "Sí, cerrar mes",
-    cancelButtonText: "Cancelar",
-    background: "#fff",
-    showLoaderOnConfirm: true,
-    preConfirm: async () => {
-      try {
-        const response = await axios.post(
-          "/api/rrhh/employee-performance/lock",
-          {
-            month: selectedMonth.value,
-            year: selectedYear.value,
-          },
-        );
-        if (!response.data.status) {
-          throw new Error(response.data.message || "Error al procesar");
-        }
-        return response.data;
-      } catch (error) {
-        Swal.showValidationMessage(
-          `Error: ${error.response?.data?.message || error.message}`,
-        );
-      }
-    },
-    allowOutsideClick: () => !Swal.isLoading(),
-  });
-
-  if (isConfirmed) {
-    await Swal.fire({
-      title: "¡Mes Cerrado!",
-      text: "Los datos han sido persistidos correctamente.",
-      icon: "success",
-      confirmButtonColor: "rgb(var(--v-theme-gradient-end))",
-    });
-    await fetchEmployees();
-  }
-};
-
 watch([selectedMonth, selectedYear], () => {
   fetchEmployees();
 });
@@ -270,7 +221,6 @@ const statistics = computed(() => [
         :is-locked="isLocked"
         :loading="loading"
         @clear="handleClear"
-        @lock-month="handleLockMonth"
         @sort="handleSortClick"
         class="ma-0 mb-0"
       />

@@ -216,7 +216,9 @@ class EmployeePerformanceQueryService
 
             $sales = $userId ? (float) ($salesMap[$userId] ?? 0.0) : 0.0;
             $prevSales = $userId ? (float) ($prevSalesMap[$userId] ?? 0.0) : 0.0;
-            $growth = $prevSales > 0 ? round((($sales - $prevSales) / $prevSales) * 100, 2) : 0.0;
+            $growth = $prevSales > 0 
+                ? round((($sales - $prevSales) / $prevSales) * 100, 2) 
+                : ($sales > 0 ? 100.0 : 0.0);
 
             $expirations = 0;
             $premiumProducts = 0;
