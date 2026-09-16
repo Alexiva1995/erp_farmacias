@@ -280,17 +280,19 @@ class EmployeePerformanceQueryService
             $employee = $data['employee'];
             $metrics = $data['metrics'];
 
-            if ($maxGrowth == 0) {
-                $growthScore = ($metrics['growth'] == 0) ? 15 : 0;
-            } elseif ($maxGrowth > 0) {
-                $growthScore = ($metrics['growth'] / $maxGrowth) * 15;
+            $growthVal = (float) ($metrics['growth'] ?? 0);
+            if ($growthVal > 0) {
+                $growthScore = $maxGrowth > 0 ? min(15, ($growthVal / $maxGrowth) * 15) : 15;
+            } elseif ($growthVal < 0) {
+                // Penalización proporcional al porcentaje negativo (ej. -50% = -7.5 pts, -100% = -15 pts)
+                $growthScore = max(-15, ($growthVal / 100) * 15);
             } else {
-                $growthScore = ($metrics['growth'] != 0) ? ($maxGrowth / $metrics['growth']) * 15 : 0;
+                $growthScore = 0;
             }
 
             $scores = [
                 'sales' => ($metrics['sales'] / $maxSales) * 25,
-                'growth' => max(-15, min(15, $growthScore)),
+                'growth' => round($growthScore, 2),
                 'expiration' => ($metrics['expirations'] / $maxExpirations) * 15,
                 'inventory' => ($metrics['inventory_counted'] / $maxInventoryCount) * 10,
                 'premium' => ($metrics['premium_products'] / $maxPremium) * 10,

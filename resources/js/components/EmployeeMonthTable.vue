@@ -47,11 +47,19 @@ const getScoreInfo = (key) => {
 };
 
 const getPointsTextColor = (points, max) => {
+  if (points < 0) return "text-error";
   const ratio = (points || 0) / (max || 1);
   if (ratio >= 0.8) return "text-success";
   if (ratio >= 0.4) return "text-primary";
   if (ratio > 0) return "text-warning";
   return "text-disabled";
+};
+
+const formatPointsText = (points) => {
+  const num = Number(points) || 0;
+  if (num > 0) return `+${formatNumber(num)} pts`;
+  if (num < 0) return `${formatNumber(num)} pts`;
+  return `0 pts`;
 };
 
 const formatNumber = (num) =>
@@ -171,7 +179,7 @@ const formatCurrency = (amount) =>
                 class="points-subtext tabular-nums font-weight-medium"
                 :class="getPointsTextColor(item.scores[key], getScoreInfo(`scores.${key}`).max)"
               >
-                +{{ formatNumber(item.scores[key]) }} pts
+                {{ formatPointsText(item.scores[key]) }}
               </span>
             </div>
           </template>
@@ -261,7 +269,7 @@ const formatCurrency = (amount) =>
                       class="points-subtext tabular-nums font-weight-medium mt-0-5"
                       :class="getPointsTextColor(item.scores[key], getScoreInfo(`scores.${key}`).max)"
                     >
-                      +{{ formatNumber(item.scores[key]) }} pts
+                      {{ formatPointsText(item.scores[key]) }}
                     </span>
                   </div>
                 </div>

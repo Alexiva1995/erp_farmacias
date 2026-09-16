@@ -147,21 +147,34 @@ class InventoryCycleController extends Controller
             $userId = Auth::id() ?? $request->user()?->id;
             $today = now()->toDateString();
 
-            // Total de conteos realizados por el usuario hoy en el ciclo activo
-            $todayCountsCount = ProductCount::where('user_id', $userId)
+            // Total de conteos realizados por el usuario hoy en el ciclo activo (todas las secciones)
+            $todayProductCounts = ProductCount::where('user_id', $userId)
                 ->where('cycle_id', $activeCycleId)
                 ->whereDate('created_at', $today)
                 ->count();
 
-            // Nivel según los conteos reales completados hoy
+            $todaySaleCounts = SaleCount::where('user_id', $userId)
+                ->where('cycle_id', $activeCycleId)
+                ->whereDate('created_at', $today)
+                ->count();
+
+            $todayInvoiceCounts = InvoiceCount::where('user_id', $userId)
+                ->where('cycle_id', $activeCycleId)
+                ->whereDate('created_at', $today)
+                ->count();
+
+            $todayCountsCount = $todayProductCounts + $todaySaleCounts + $todayInvoiceCounts;
+
+            // Nivel según los conteos reales completados hoy (Escala 60 / 120 / 180)
             $currentTier = match (true) {
-                $todayCountsCount >= 2 * $dailyQuota => 3,
-                $todayCountsCount >= $dailyQuota     => 2,
-                default                              => 1,
+                $todayCountsCount >= 180 => 4,
+                $todayCountsCount >= 120 => 3,
+                $todayCountsCount >= 60  => 2,
+                default                  => 1,
             };
 
-            // Meta visual dinámica (60, 120, 180...)
-            $currentGoal = max($dailyQuota, ((int) floor($todayCountsCount / $dailyQuota) + 1) * $dailyQuota);
+            // Meta visual dinámica (60, 120, 180, 240...)
+            $currentGoal = max(60, ((int) floor($todayCountsCount / 60) + 1) * 60);
 
             return response()->json([
                 'is_active'        => true,

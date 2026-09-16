@@ -89,30 +89,39 @@ class InventoryCycleActionService
                 $status = ($finalDiscrepancy == 0 && !$isSimple) ? 'approved' : 'pending';
                 $userId = Auth::id();
                 $today = now()->toDateString();
-                // Calcular nivel y puntos basados en los conteos reales completados por el usuario hoy en el ciclo
-                $settings = \App\Models\GeneralSetting::first();
-                $dailyQuota = (int) ($settings?->cyclic_inventory_daily_quota ?? 50);
-                if ($dailyQuota <= 0) {
-                    $dailyQuota = 50;
-                }
-
-                $todayCountsCount = ProductCount::where('user_id', $userId)
+                
+                // Calcular total de productos contados hoy por el usuario en el ciclo activo (todas las secciones)
+                $todayProductCounts = ProductCount::where('user_id', $userId)
                     ->where('cycle_id', $activeCycle->id)
                     ->whereDate('created_at', $today)
                     ->count();
 
-                $currentCountIndex = $todayCountsCount + 1;
+                $todaySaleCounts = SaleCount::where('user_id', $userId)
+                    ->where('cycle_id', $activeCycle->id)
+                    ->whereDate('created_at', $today)
+                    ->count();
 
+                $todayInvoiceCounts = InvoiceCount::where('user_id', $userId)
+                    ->where('cycle_id', $activeCycle->id)
+                    ->whereDate('created_at', $today)
+                    ->count();
+
+                $todayTotalCounted = $todayProductCounts + $todaySaleCounts + $todayInvoiceCounts;
+                $currentCountIndex = $todayTotalCounted + 1;
+
+                // Escala de puntos progresivos: 1-60 (1 pt), 61-120 (2 pts), 121-180 (3 pts), 181+ (4 pts)
                 $quotaTier = match (true) {
-                    $currentCountIndex > 2 * $dailyQuota => 3,
-                    $currentCountIndex > $dailyQuota     => 2,
-                    default                              => 1,
+                    $currentCountIndex > 180 => 4,
+                    $currentCountIndex > 120 => 3,
+                    $currentCountIndex > 60  => 2,
+                    default                  => 1,
                 };
 
                 $pointsEarned = match (true) {
-                    $quotaTier >= 3 => 4,
-                    $quotaTier === 2 => 2,
-                    default          => 1,
+                    $currentCountIndex > 180 => 4,
+                    $currentCountIndex > 120 => 3,
+                    $currentCountIndex > 60  => 2,
+                    default                  => 1,
                 };
                 $supervisorId = null;
 
@@ -524,10 +533,39 @@ class InventoryCycleActionService
                 $finalDiscrepancy = $data['discrepancy'];
                 $status = ($finalDiscrepancy == 0) ? 'approved' : 'pending';
                 $supervisorId = null;
+                $userId = Auth::id();
+                $today = now()->toDateString();
+
+                // Calcular total de productos contados hoy por el usuario en el ciclo activo (todas las secciones)
+                $todayProductCounts = ProductCount::where('user_id', $userId)
+                    ->where('cycle_id', $activeCycle->id)
+                    ->whereDate('created_at', $today)
+                    ->count();
+
+                $todaySaleCounts = SaleCount::where('user_id', $userId)
+                    ->where('cycle_id', $activeCycle->id)
+                    ->whereDate('created_at', $today)
+                    ->count();
+
+                $todayInvoiceCounts = InvoiceCount::where('user_id', $userId)
+                    ->where('cycle_id', $activeCycle->id)
+                    ->whereDate('created_at', $today)
+                    ->count();
+
+                $todayTotalCounted = $todayProductCounts + $todaySaleCounts + $todayInvoiceCounts;
+                $currentCountIndex = $todayTotalCounted + 1;
+
+                // Escala de puntos progresivos: 1-60 (1 pt), 61-120 (2 pts), 121-180 (3 pts), 181+ (4 pts)
+                $pointsEarned = match (true) {
+                    $currentCountIndex > 180 => 4,
+                    $currentCountIndex > 120 => 3,
+                    $currentCountIndex > 60  => 2,
+                    default                  => 1,
+                };
 
                 $invoiceCount = InvoiceCount::create([
                     'product_id'       => $product->id,
-                    'user_id'          => Auth::id(),
+                    'user_id'          => $userId,
                     'cycle_id'         => $activeCycle->id,
                     'system_quantity'  => $data['system_quantity'],
                     'counted_quantity' => $data['counted_quantity'],
@@ -535,7 +573,7 @@ class InventoryCycleActionService
                     'status'           => $status,
                     'supervisor_id'    => $supervisorId,
                     'invoice_id'       => $data['invoice_id'] ?? null,
-                    'points_earned'    => 2,
+                    'points_earned'    => $pointsEarned,
                 ]);
 
                 $invoiceCount->load(['product', 'user', 'cycle']);
@@ -865,10 +903,39 @@ class InventoryCycleActionService
                 $finalDiscrepancy = $data['discrepancy'];
                 $status = ($finalDiscrepancy == 0) ? 'approved' : 'pending';
                 $supervisorId = null; // No hay supervisor cuando se aprueba automáticamente
+                $userId = Auth::id();
+                $today = now()->toDateString();
+
+                // Calcular total de productos contados hoy por el usuario en el ciclo activo (todas las secciones)
+                $todayProductCounts = ProductCount::where('user_id', $userId)
+                    ->where('cycle_id', $activeCycle->id)
+                    ->whereDate('created_at', $today)
+                    ->count();
+
+                $todaySaleCounts = SaleCount::where('user_id', $userId)
+                    ->where('cycle_id', $activeCycle->id)
+                    ->whereDate('created_at', $today)
+                    ->count();
+
+                $todayInvoiceCounts = InvoiceCount::where('user_id', $userId)
+                    ->where('cycle_id', $activeCycle->id)
+                    ->whereDate('created_at', $today)
+                    ->count();
+
+                $todayTotalCounted = $todayProductCounts + $todaySaleCounts + $todayInvoiceCounts;
+                $currentCountIndex = $todayTotalCounted + 1;
+
+                // Escala de puntos progresivos: 1-60 (1 pt), 61-120 (2 pts), 121-180 (3 pts), 181+ (4 pts)
+                $pointsEarned = match (true) {
+                    $currentCountIndex > 180 => 4,
+                    $currentCountIndex > 120 => 3,
+                    $currentCountIndex > 60  => 2,
+                    default                  => 1,
+                };
 
                 $saleCount = SaleCount::create([
                     'product_id'       => $product->id,
-                    'user_id'          => Auth::id(),
+                    'user_id'          => $userId,
                     'cycle_id'         => $activeCycle->id,
                     'system_quantity'  => $data['system_quantity'],
                     'counted_quantity' => $data['counted_quantity'],
@@ -876,7 +943,7 @@ class InventoryCycleActionService
                     'status'           => $status,
                     'supervisor_id'    => $supervisorId,
                     'type'             => 'sale',
-                    'points_earned'    => 2,
+                    'points_earned'    => $pointsEarned,
                 ]);
 
                 $saleCount->load(['product', 'user', 'cycle']);
