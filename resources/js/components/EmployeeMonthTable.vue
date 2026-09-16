@@ -169,7 +169,7 @@ const formatCurrency = (amount) =>
                      key === 'expiration' ? `${item.expirations} U.` :
                      key === 'inventory' ? `${item.inventory_counted} C.` :
                      key === 'premium' ? `${item.premium_products} U.` :
-                     key === 'invoice' ? `${item.invoice_items} I.` :
+                     key === 'invoice' ? `${formatNumber(item.invoice_points ?? item.invoice_breakdown?.total_points ?? 0)} P.` :
                      key === 'cleaning' ? `${Math.round((item.cleaning_completed / (item.cleaning_assigned || 1)) * 100)}%` :
                      `${item.strategy_sales} U.`
                   }}
@@ -323,7 +323,7 @@ const formatCurrency = (amount) =>
                            key === 'expiration' ? `${item.expirations} U.` :
                            key === 'inventory' ? `${item.inventory_counted} C.` :
                            key === 'premium' ? `${item.premium_products} U.` :
-                           key === 'invoice' ? `${item.invoice_items} I.` :
+                           key === 'invoice' ? `${formatNumber(item.invoice_points ?? item.invoice_breakdown?.total_points ?? 0)} P.` :
                            key === 'cleaning' ? `${Math.round((item.cleaning_completed / (item.cleaning_assigned || 1)) * 100)}%` :
                            `${item.strategy_sales} U.`
                         }}

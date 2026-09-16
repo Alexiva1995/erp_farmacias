@@ -117,36 +117,36 @@ class EmployeePerformanceQueryService
             ->groupBy('seller_id');
 
         // 1c. Bulk Inventory Counts y Puntuación Gamificada
-        // Puntos ganados por operador (ProductCount: según tier, SaleCount: 2 pts, InvoiceCount: 2 pts, Supervisor verificador: 3 pts)
+        // Puntos ganados por operador (ProductCount: según tier, SaleCount: 1 pt, InvoiceCount: 1 pt, Supervisor verificador: 1 pt)
         $productPointsMap = ProductCount::whereMonth('created_at', $month)->whereYear('created_at', $year)
             ->groupBy('user_id')->selectRaw('user_id, SUM(COALESCE(points_earned, 1)) as total')->pluck('total', 'user_id');
 
         $salePointsMap = SaleCount::whereMonth('created_at', $month)->whereYear('created_at', $year)
-            ->groupBy('user_id')->selectRaw('user_id, SUM(COALESCE(points_earned, 2)) as total')->pluck('total', 'user_id');
+            ->groupBy('user_id')->selectRaw('user_id, SUM(COALESCE(points_earned, 1)) as total')->pluck('total', 'user_id');
 
         $invoicePointsMap = InvoiceCount::whereMonth('created_at', $month)->whereYear('created_at', $year)
-            ->groupBy('user_id')->selectRaw('user_id, SUM(COALESCE(points_earned, 2)) as total')->pluck('total', 'user_id');
+            ->groupBy('user_id')->selectRaw('user_id, SUM(COALESCE(points_earned, 1)) as total')->pluck('total', 'user_id');
 
-        // Puntos como supervisor verificador en revisión de pendientes (+3 pts por conteo aprobado/corregido)
+        // Puntos como supervisor verificador en revisión de pendientes (+1 pt por conteo aprobado/corregido)
         $supervisorProductPointsMap = ProductCount::whereMonth('updated_at', $month)->whereYear('updated_at', $year)
             ->whereNotNull('supervisor_id')
             ->where('status', 'approved')
             ->groupBy('supervisor_id')
-            ->selectRaw('supervisor_id, COUNT(*) * 3 as total')
+            ->selectRaw('supervisor_id, COUNT(*) as total')
             ->pluck('total', 'supervisor_id');
 
         $supervisorSalePointsMap = SaleCount::whereMonth('updated_at', $month)->whereYear('updated_at', $year)
             ->whereNotNull('supervisor_id')
             ->where('status', 'approved')
             ->groupBy('supervisor_id')
-            ->selectRaw('supervisor_id, COUNT(*) * 3 as total')
+            ->selectRaw('supervisor_id, COUNT(*) as total')
             ->pluck('total', 'supervisor_id');
 
         $supervisorInvoicePointsMap = InvoiceCount::whereMonth('updated_at', $month)->whereYear('updated_at', $year)
             ->whereNotNull('supervisor_id')
             ->where('status', 'approved')
             ->groupBy('supervisor_id')
-            ->selectRaw('supervisor_id, COUNT(*) * 3 as total')
+            ->selectRaw('supervisor_id, COUNT(*) as total')
             ->pluck('total', 'supervisor_id');
 
         // Penalizaciones registradas (-20 por falsa discrepancia, -10 por discrepancia errónea)
