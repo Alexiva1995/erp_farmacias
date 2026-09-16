@@ -152,12 +152,17 @@ const handleConfirmSent = async () => {
       ? `/suppliers/purchase-orders/${props.purchaseOrder.id}/finish` 
       : `/suppliers/purchase-orders/${props.purchaseOrder.id}/confirm-sent`;
       
-    await axios.post(url);
-    toast.success(isFinishing ? "Orden finalizada correctamente." : "Orden marcada como enviada.");
-    emit("refresh");
-    closeDialog(false);
+    const { data } = await axios.post(url);
+    if (data.success !== false) {
+      toast.success(data.message || (isFinishing ? "Orden finalizada correctamente." : "Orden marcada como enviada."));
+      emit("refresh");
+      closeDialog(false);
+    } else {
+      toast.error(data.message || "Error al procesar la solicitud.");
+    }
   } catch (error) {
-    toast.error("Error al procesar la solicitud.");
+    const errorMsg = error.response?.data?.message || "Error al procesar la solicitud.";
+    toast.error(errorMsg);
   } finally {
     sending.value = false;
   }

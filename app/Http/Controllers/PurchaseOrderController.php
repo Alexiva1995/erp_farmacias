@@ -76,12 +76,36 @@ class PurchaseOrderController extends Controller
 
     public function confirmSent(AutoOrder $autoOrder)
     {
-        return response()->json($this->purchaseOrder->confirmSent($autoOrder));
+        try {
+            $result = $this->purchaseOrder->confirmSent($autoOrder);
+            return response()->json([
+                'success' => true,
+                'data' => $result,
+                'message' => 'Orden transmitida y marcada como enviada exitosamente.'
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("[PURCHASE ORDER] Error en confirmSent #{$autoOrder->id}: " . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 400);
+        }
     }
 
     public function finish(AutoOrder $autoOrder)
     {
-        return response()->json($this->purchaseOrder->finish($autoOrder));
+        try {
+            return response()->json([
+                'success' => true,
+                'data' => $this->purchaseOrder->finish($autoOrder),
+                'message' => 'Orden finalizada correctamente.'
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 400);
+        }
     }
 
     public function rejectPendingDetails(AutoOrder $autoOrder)

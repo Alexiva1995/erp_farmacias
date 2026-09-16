@@ -131,7 +131,19 @@ class DronenaEdiService implements DronenaEdiServiceInterface
         if (!$connection) {
             // Intentar por host si el tipo fue registrado genérico
             $connection = SupplierConnection::where('supplier_id', $supplier->id)
-                ->where('host', 'LIKE', '%dronena%')
+                ->where(function ($q) {
+                    $q->where('host', 'LIKE', '%dronena%')
+                      ->orWhere('host', 'LIKE', '%nena%')
+                      ->orWhere('username', 'LIKE', '%D719%');
+                })
+                ->first();
+        }
+
+        if (!$connection) {
+            // Fallback global a la conexión configurada para Droguería Nena en el sistema
+            $connection = SupplierConnection::where('host', 'LIKE', '%dronena%')
+                ->orWhere('host', 'LIKE', '%nena%')
+                ->orWhere('username', 'LIKE', '%D719%')
                 ->first();
         }
 

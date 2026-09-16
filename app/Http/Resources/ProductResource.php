@@ -31,6 +31,7 @@ class ProductResource extends JsonResource
             'psychotropic' => (bool) $this->psychotropic,
             'is_novaventa' => (bool) $this->is_novaventa,
             'is_scarce' => (bool) $this->is_scarce,
+            'is_unified_group' => (bool) $this->is_unified_group,
             'is_favorite' => (bool) $this->is_favorite,
             'is_chronic' => (bool) $this->is_chronic,
             'treatment_duration_days' => (int) ($this->treatment_duration_days ?? 30),

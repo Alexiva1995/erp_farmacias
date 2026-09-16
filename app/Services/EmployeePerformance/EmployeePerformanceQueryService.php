@@ -293,6 +293,24 @@ class EmployeePerformanceQueryService
                 'invoice_headers' => $headerData ? (int) $headerData->total_count : 0,
                 'invoice_archived' => $userId ? (int) ($invoiceArchivedCountMap[$userId] ?? 0) : 0,
                 'invoice_points' => round($invoicePointsEarned, 3),
+                'inventory_breakdown' => [
+                    'product_points' => $userId ? (int) ($productPointsMap[$userId] ?? 0) : 0,
+                    'sale_points' => $userId ? (int) ($salePointsMap[$userId] ?? 0) : 0,
+                    'invoice_count_points' => $userId ? (int) ($invoicePointsMap[$userId] ?? 0) : 0,
+                    'supervisor_points' => $userId ? (
+                        (int) ($supervisorProductPointsMap[$userId] ?? 0) +
+                        (int) ($supervisorSalePointsMap[$userId] ?? 0) +
+                        (int) ($supervisorInvoicePointsMap[$userId] ?? 0)
+                    ) : 0,
+                    'penalties' => (int) $totalPenalties,
+                    'net_points' => (int) $inventoryPointsNet,
+                ],
+                'invoice_breakdown' => [
+                    'header_points' => $headerData ? round((float) $headerData->total_points, 2) : 0,
+                    'loaded_items_points' => $loadedItemData ? round((float) $loadedItemData->total_points, 2) : 0,
+                    'organized_items_points' => $organizedItemData ? round((float) $organizedItemData->total_points, 2) : 0,
+                    'total_points' => round($invoicePointsEarned, 2),
+                ],
             ];
 
             return [

@@ -158,21 +158,83 @@ const formatCurrency = (amount) =>
           <!-- Métricas Numéricas Limpias Apiladas Verticalmente (Alineadas a la Derecha) -->
           <template v-for="key in ['sales', 'growth', 'expiration', 'inventory', 'premium', 'invoice', 'cleaning', 'strategy']" :key="key" #[`item.scores.${key}`]="{ item }">
             <div class="metric-cell-vertical py-1">
-              <!-- Línea 1: Métrica Real (Negrita, texto principal) -->
-              <span 
-                class="text-xs font-weight-bold tabular-nums leading-tight"
-                :class="key === 'growth' ? (item.growth > 0 ? 'text-success' : (item.growth < 0 ? 'text-error' : 'text-high-emphasis')) : 'text-high-emphasis'"
-              >
-                {{ key === 'sales' ? formatCurrency(item.sales) : 
-                   key === 'growth' ? `${item.growth}%` :
-                   key === 'expiration' ? `${item.expirations} U.` :
-                   key === 'inventory' ? `${item.inventory_counted} C.` :
-                   key === 'premium' ? `${item.premium_products} U.` :
-                   key === 'invoice' ? `${item.invoice_items} I.` :
-                   key === 'cleaning' ? `${Math.round((item.cleaning_completed / (item.cleaning_assigned || 1)) * 100)}%` :
-                   `${item.strategy_sales} U.`
-                }}
-              </span>
+              <!-- Línea 1: Métrica Real (Negrita, texto principal) con Tooltip de desglose si aplica -->
+              <div class="d-flex align-center justify-end gap-1">
+                <span 
+                  class="text-xs font-weight-bold tabular-nums leading-tight"
+                  :class="key === 'growth' ? (item.growth > 0 ? 'text-success' : (item.growth < 0 ? 'text-error' : 'text-high-emphasis')) : 'text-high-emphasis'"
+                >
+                  {{ key === 'sales' ? formatCurrency(item.sales) : 
+                     key === 'growth' ? `${item.growth}%` :
+                     key === 'expiration' ? `${item.expirations} U.` :
+                     key === 'inventory' ? `${item.inventory_counted} C.` :
+                     key === 'premium' ? `${item.premium_products} U.` :
+                     key === 'invoice' ? `${item.invoice_items} I.` :
+                     key === 'cleaning' ? `${Math.round((item.cleaning_completed / (item.cleaning_assigned || 1)) * 100)}%` :
+                     `${item.strategy_sales} U.`
+                  }}
+                </span>
+
+                <!-- Tooltip de Desglose para Inventario -->
+                <VTooltip v-if="key === 'inventory' && item.inventory_breakdown" location="top" max-width="260">
+                  <template #activator="{ props: tooltipProps }">
+                    <VIcon v-bind="tooltipProps" icon="tabler-help-circle" size="12" class="text-medium-emphasis cursor-pointer" />
+                  </template>
+                  <div class="pa-1 text-xs">
+                    <div class="font-weight-bold mb-1 border-b pb-1">Desglose de Inventario:</div>
+                    <div class="d-flex justify-space-between py-0.5">
+                      <span>• Conteos Productos:</span>
+                      <strong class="text-success ms-2">+{{ item.inventory_breakdown.product_points }} pts</strong>
+                    </div>
+                    <div class="d-flex justify-space-between py-0.5">
+                      <span>• Conteos Ventas:</span>
+                      <strong class="text-success ms-2">+{{ item.inventory_breakdown.sale_points }} pts</strong>
+                    </div>
+                    <div class="d-flex justify-space-between py-0.5">
+                      <span>• Conteos Facturas:</span>
+                      <strong class="text-success ms-2">+{{ item.inventory_breakdown.invoice_count_points }} pts</strong>
+                    </div>
+                    <div class="d-flex justify-space-between py-0.5">
+                      <span>• Como Supervisor:</span>
+                      <strong class="text-success ms-2">+{{ item.inventory_breakdown.supervisor_points }} pts</strong>
+                    </div>
+                    <div v-if="item.inventory_breakdown.penalties > 0" class="d-flex justify-space-between py-0.5 text-error">
+                      <span>• Penalizaciones:</span>
+                      <strong class="ms-2">-{{ item.inventory_breakdown.penalties }} pts</strong>
+                    </div>
+                    <div class="d-flex justify-space-between pt-1 mt-1 border-t font-weight-bold">
+                      <span>Total Neto:</span>
+                      <span>{{ item.inventory_breakdown.net_points }} pts</span>
+                    </div>
+                  </div>
+                </VTooltip>
+
+                <!-- Tooltip de Desglose para Facturación -->
+                <VTooltip v-if="key === 'invoice' && item.invoice_breakdown" location="top" max-width="260">
+                  <template #activator="{ props: tooltipProps }">
+                    <VIcon v-bind="tooltipProps" icon="tabler-help-circle" size="12" class="text-medium-emphasis cursor-pointer" />
+                  </template>
+                  <div class="pa-1 text-xs">
+                    <div class="font-weight-bold mb-1 border-b pb-1">Desglose de Facturación:</div>
+                    <div class="d-flex justify-space-between py-0.5">
+                      <span>• Registro Facturas:</span>
+                      <strong class="text-success ms-2">+{{ item.invoice_breakdown.header_points }} pts</strong>
+                    </div>
+                    <div class="d-flex justify-space-between py-0.5">
+                      <span>• Ítems Cargados:</span>
+                      <strong class="text-success ms-2">+{{ item.invoice_breakdown.loaded_items_points }} pts</strong>
+                    </div>
+                    <div class="d-flex justify-space-between py-0.5">
+                      <span>• Ítems Ubicados:</span>
+                      <strong class="text-success ms-2">+{{ item.invoice_breakdown.organized_items_points }} pts</strong>
+                    </div>
+                    <div class="d-flex justify-space-between pt-1 mt-1 border-t font-weight-bold">
+                      <span>Total Ganado:</span>
+                      <span>{{ item.invoice_breakdown.total_points }} pts</span>
+                    </div>
+                  </div>
+                </VTooltip>
+              </div>
 
               <!-- Línea 2: Puntos Ganados como Subtexto Limpio (Sin cajitas de color) -->
               <span 
@@ -251,20 +313,83 @@ const formatCurrency = (amount) =>
                     <span class="text-super-xs font-weight-bold text-disabled uppercase truncate">{{ getScoreInfo(`scores.${key}`).title }}</span>
                   </div>
                   <div class="d-flex flex-column align-end">
-                    <span 
-                      class="text-xs font-weight-bold tabular-nums truncate leading-tight"
-                      :class="key === 'growth' ? (item.growth > 0 ? 'text-success' : (item.growth < 0 ? 'text-error' : 'text-high-emphasis')) : 'text-high-emphasis'"
-                    >
-                      {{ key === 'sales' ? formatCurrency(item.sales) : 
-                         key === 'growth' ? `${item.growth}%` :
-                         key === 'expiration' ? `${item.expirations} U.` :
-                         key === 'inventory' ? `${item.inventory_counted} C.` :
-                         key === 'premium' ? `${item.premium_products} U.` :
-                         key === 'invoice' ? `${item.invoice_items} I.` :
-                         key === 'cleaning' ? `${Math.round((item.cleaning_completed / (item.cleaning_assigned || 1)) * 100)}%` :
-                         `${item.strategy_sales} U.`
-                      }}
-                    </span>
+                    <div class="d-flex align-center gap-1">
+                      <span 
+                        class="text-xs font-weight-bold tabular-nums truncate leading-tight"
+                        :class="key === 'growth' ? (item.growth > 0 ? 'text-success' : (item.growth < 0 ? 'text-error' : 'text-high-emphasis')) : 'text-high-emphasis'"
+                      >
+                        {{ key === 'sales' ? formatCurrency(item.sales) : 
+                           key === 'growth' ? `${item.growth}%` :
+                           key === 'expiration' ? `${item.expirations} U.` :
+                           key === 'inventory' ? `${item.inventory_counted} C.` :
+                           key === 'premium' ? `${item.premium_products} U.` :
+                           key === 'invoice' ? `${item.invoice_items} I.` :
+                           key === 'cleaning' ? `${Math.round((item.cleaning_completed / (item.cleaning_assigned || 1)) * 100)}%` :
+                           `${item.strategy_sales} U.`
+                        }}
+                      </span>
+
+                      <!-- Tooltip de Desglose para Inventario (Móvil) -->
+                      <VTooltip v-if="key === 'inventory' && item.inventory_breakdown" location="top" max-width="260">
+                        <template #activator="{ props: tooltipProps }">
+                          <VIcon v-bind="tooltipProps" icon="tabler-help-circle" size="12" class="text-medium-emphasis cursor-pointer" />
+                        </template>
+                        <div class="pa-1 text-xs">
+                          <div class="font-weight-bold mb-1 border-b pb-1">Desglose de Inventario:</div>
+                          <div class="d-flex justify-space-between py-0.5">
+                            <span>• Conteos Productos:</span>
+                            <strong class="text-success ms-2">+{{ item.inventory_breakdown.product_points }} pts</strong>
+                          </div>
+                          <div class="d-flex justify-space-between py-0.5">
+                            <span>• Conteos Ventas:</span>
+                            <strong class="text-success ms-2">+{{ item.inventory_breakdown.sale_points }} pts</strong>
+                          </div>
+                          <div class="d-flex justify-space-between py-0.5">
+                            <span>• Conteos Facturas:</span>
+                            <strong class="text-success ms-2">+{{ item.inventory_breakdown.invoice_count_points }} pts</strong>
+                          </div>
+                          <div class="d-flex justify-space-between py-0.5">
+                            <span>• Como Supervisor:</span>
+                            <strong class="text-success ms-2">+{{ item.inventory_breakdown.supervisor_points }} pts</strong>
+                          </div>
+                          <div v-if="item.inventory_breakdown.penalties > 0" class="d-flex justify-space-between py-0.5 text-error">
+                            <span>• Penalizaciones:</span>
+                            <strong class="ms-2">-{{ item.inventory_breakdown.penalties }} pts</strong>
+                          </div>
+                          <div class="d-flex justify-space-between pt-1 mt-1 border-t font-weight-bold">
+                            <span>Total Neto:</span>
+                            <span>{{ item.inventory_breakdown.net_points }} pts</span>
+                          </div>
+                        </div>
+                      </VTooltip>
+
+                      <!-- Tooltip de Desglose para Facturación (Móvil) -->
+                      <VTooltip v-if="key === 'invoice' && item.invoice_breakdown" location="top" max-width="260">
+                        <template #activator="{ props: tooltipProps }">
+                          <VIcon v-bind="tooltipProps" icon="tabler-help-circle" size="12" class="text-medium-emphasis cursor-pointer" />
+                        </template>
+                        <div class="pa-1 text-xs">
+                          <div class="font-weight-bold mb-1 border-b pb-1">Desglose de Facturación:</div>
+                          <div class="d-flex justify-space-between py-0.5">
+                            <span>• Registro Facturas:</span>
+                            <strong class="text-success ms-2">+{{ item.invoice_breakdown.header_points }} pts</strong>
+                          </div>
+                          <div class="d-flex justify-space-between py-0.5">
+                            <span>• Ítems Cargados:</span>
+                            <strong class="text-success ms-2">+{{ item.invoice_breakdown.loaded_items_points }} pts</strong>
+                          </div>
+                          <div class="d-flex justify-space-between py-0.5">
+                            <span>• Ítems Ubicados:</span>
+                            <strong class="text-success ms-2">+{{ item.invoice_breakdown.organized_items_points }} pts</strong>
+                          </div>
+                          <div class="d-flex justify-space-between pt-1 mt-1 border-t font-weight-bold">
+                            <span>Total Ganado:</span>
+                            <span>{{ item.invoice_breakdown.total_points }} pts</span>
+                          </div>
+                        </div>
+                      </VTooltip>
+                    </div>
+
                     <span 
                       class="points-subtext tabular-nums font-weight-medium mt-0-5"
                       :class="getPointsTextColor(item.scores[key], getScoreInfo(`scores.${key}`).max)"

@@ -384,6 +384,7 @@ const getProductLocations = (item) => {
                 {{ item.name?.toUpperCase() || "—" }}
                 <span v-if="item.iva == 1 || item.iva === true" class="text-xs text-disabled font-weight-regular"> (G)</span>
                 <span v-if="item.is_colombian_origin == 1 || item.is_colombian_origin === true" class="text-xs text-disabled font-weight-regular"> (COL)</span>
+                <span v-if="item.is_unified_group == 1 || item.is_unified_group === true" class="text-xs text-info font-weight-bold"> (UNIF)</span>
               </span>
               <div class="d-flex align-center flex-wrap gap-1 text-super-xs mt-0-5">
                 <span v-if="!isRestaurant" class="text-disabled font-weight-normal truncate" style="max-inline-size: 240px;">{{ item.active_ingredient || '—' }}</span>
