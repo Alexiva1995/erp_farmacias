@@ -36,7 +36,7 @@ const selectedLaboratory = ref([]);
 const selectedGroup = ref([]);
 
 const tipo_de_vista = ref(false);
-const tipo_de_filtracion = ref("weighted");
+const tipo_de_filtracion = ref("stockout_adjusted_rop");
 const lapso_de_tiempo = ref("1 month");
 const stock = ref("fallas");
 const hasStock = ref("all");
@@ -76,7 +76,7 @@ const handleClearFilters = () => {
   soloConCoincidencias.value = false;
   con_descuento.value = false;
   tipo_de_vista.value = false;
-  tipo_de_filtracion.value = "weighted";
+  tipo_de_filtracion.value = "stockout_adjusted_rop";
   lapso_de_tiempo.value = "1 month";
   stock.value = "fallas";
   hasStock.value = "all";

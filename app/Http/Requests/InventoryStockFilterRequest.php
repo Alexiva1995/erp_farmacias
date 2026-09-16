@@ -35,7 +35,7 @@ class InventoryStockFilterRequest extends FormRequest
             'sortBy' => ['nullable', 'string'],
             'days' => ['nullable', 'integer', 'min:1'],
             'isStrictSearch' => ['nullable', 'boolean'],
-            'tipo_filtracion' => ['nullable', 'string', 'in:average,sales,combinado,weighted'],
+            'tipo_filtracion' => ['nullable', 'string', 'in:average,sales,combinado,weighted,stockout_adjusted_rop'],
             'isColombian' => ['nullable', 'boolean'],
             'page' => ['nullable', 'integer', 'min:1'],
             'itemsPerPage' => ['nullable', 'integer', 'min:1'],

@@ -50,10 +50,11 @@ const hasActiveAdvancedFilters = computed(() => {
 });
 
 const tipoFiltracionOpcion = [
-  { title: "Ponderado (Óptimo ROP)", value: "weighted" },
-  { title: "Promedio", value: "average" },
-  { title: "Ventas", value: "sales" },
-  { title: "Combinado", value: "combinado" },
+  { title: "Stockout-Adjusted ROP (Predeterminado)", value: "stockout_adjusted_rop" },
+  { title: "Ponderado (Óptimo ROP)",                 value: "weighted"              },
+  { title: "Promedio",                              value: "average"               },
+  { title: "Ventas",                                value: "sales"                 },
+  { title: "Combinado",                             value: "combinado"             },
 ];
 
 const lapsoDeTiempoOpciones = [

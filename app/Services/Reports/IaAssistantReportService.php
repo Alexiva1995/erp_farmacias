@@ -23,7 +23,7 @@ class IaAssistantReportService
     public function getProcessedCollection(array $filtros): Collection
     {
         $filtros = $this->prepareDateFilters($filtros);
-        $tipo = $filtros['tipo_filtracion'] ?? 'weighted';
+        $tipo = $filtros['tipo_filtracion'] ?? 'stockout_adjusted_rop';
 
         $filtrosCacheKey = $filtros;
         unset(
@@ -44,7 +44,9 @@ class IaAssistantReportService
                 $resultado = $this->productRepository->filtrarIndividualProductForAssistantReportTypeAveragesWithoutPaginate($filtros);
             }
 
-            if ($tipo === 'combinado') {
+            if ($tipo === 'stockout_adjusted_rop') {
+                $procesado = $this->processStockoutAdjustedRopReport($resultado, $filtros);
+            } elseif ($tipo === 'combinado') {
                 $procesado = $this->processCombinedReport($resultado, $filtros);
             } elseif ($tipo === 'weighted') {
                 $procesado = $this->processWeightedReport($resultado, $filtros);
@@ -225,7 +227,7 @@ class IaAssistantReportService
     public function getFilteredReportWithoutPaginate(array $filtros)
     {
         $filtros = $this->prepareDateFilters($filtros);
-        $tipo = $filtros['tipo_filtracion'] ?? 'weighted';
+        $tipo = $filtros['tipo_filtracion'] ?? 'stockout_adjusted_rop';
         
         // Obtener los IDs filtrados (Fallas, etc.) para asegurar que el conteo coincida
         $allIds = $this->getFilteredIds($filtros, false);
@@ -240,7 +242,9 @@ class IaAssistantReportService
             $procesado = $this->processRegularReport($resultado, $tipo, $filtros);
         } else {
             $resultado = $this->productRepository->filtrarIndividualProductForAssistantReportTypeAveragesWithoutPaginate($filtrosHidratacion);
-            if ($tipo === 'combinado') {
+            if ($tipo === 'stockout_adjusted_rop') {
+                $procesado = $this->processStockoutAdjustedRopReport($resultado, $filtros);
+            } elseif ($tipo === 'combinado') {
                 $procesado = $this->processCombinedReport($resultado, $filtros);
             } elseif ($tipo === 'weighted') {
                 $procesado = $this->processWeightedReport($resultado, $filtros);
@@ -510,6 +514,155 @@ class IaAssistantReportService
 
             return $item;
         });
+
+        return $items;
+    }
+
+    /**
+     * Procesa el reporte con el método STOCKOUT-ADJUSTED ROP (Óptimo Blindado contra Quiebres).
+     * Neutraliza el sesgo de días sin stock, aplica techo antiespeculativo de 1.5x max histórico
+     * y pondera dinámicamente según la confiabilidad de días con stock de cada mes.
+     */
+    private function processStockoutAdjustedRopReport($resultados, array $filtros)
+    {
+        $isPaginator = $resultados instanceof LengthAwarePaginator;
+        $items = $isPaginator ? $resultados->getCollection() : collect($resultados);
+
+        if ($items->isEmpty()) {
+            return $resultados;
+        }
+
+        // Hidratación masiva de AO para evitar N+1
+        $this->hydrateAutoOrderBulk($items, $filtros);
+
+        $productIds = $items->pluck('id')->toArray();
+
+        // 1. Fechas de los últimos 3 meses (M1, M2, M3)
+        $now = now();
+        $dateM1 = $now->copy()->subDays(30)->format('Y-m-d H:i:s');
+        $dateM2 = $now->copy()->subDays(60)->format('Y-m-d H:i:s');
+        $dateM3 = $now->copy()->subDays(90)->format('Y-m-d H:i:s');
+
+        // 2. Consulta optimizada en bloque de ventas por mes para los productos actuales
+        $salesByMonth = \Illuminate\Support\Facades\DB::table('order_details')
+            ->join('orders', 'order_details.order_id', '=', 'orders.id')
+            ->whereIn('order_details.product_id', $productIds)
+            ->where('orders.status', 'Completed')
+            ->where('orders.created_at', '>=', $dateM3)
+            ->select(
+                'order_details.product_id',
+                \Illuminate\Support\Facades\DB::raw('SUM(CASE WHEN orders.created_at >= "' . $dateM1 . '" THEN order_details.quantity ELSE 0 END) as v1'),
+                \Illuminate\Support\Facades\DB::raw('SUM(CASE WHEN orders.created_at >= "' . $dateM2 . '" AND orders.created_at < "' . $dateM1 . '" THEN order_details.quantity ELSE 0 END) as v2'),
+                \Illuminate\Support\Facades\DB::raw('SUM(CASE WHEN orders.created_at >= "' . $dateM3 . '" AND orders.created_at < "' . $dateM2 . '" THEN order_details.quantity ELSE 0 END) as v3')
+            )
+            ->groupBy('order_details.product_id')
+            ->get()
+            ->keyBy('product_id');
+
+        // 3. Contabilizar días con presencia de stock (lotes vigentes creados antes del fin del mes o con stock)
+        // Usamos una consulta agrupada eficiente sobre product_lots para estimar presencia de stock en M1, M2, M3
+        $lotsData = \Illuminate\Support\Facades\DB::table('product_lots')
+            ->whereIn('product_id', $productIds)
+            ->select(
+                'product_id',
+                \Illuminate\Support\Facades\DB::raw('MIN(created_at) as first_lot_date'),
+                \Illuminate\Support\Facades\DB::raw('MAX(created_at) as last_lot_date'),
+                \Illuminate\Support\Facades\DB::raw('SUM(quantity) as current_lots_stock')
+            )
+            ->groupBy('product_id')
+            ->get()
+            ->keyBy('product_id');
+
+        $coverageDays = $this->extractCoverageDays($filtros['lapso_de_tiempo'] ?? '1 month');
+        $leadTimeDays = 7;
+        $bufferDays = 7;
+
+        $items->transform(function ($item) use ($salesByMonth, $lotsData, $now, $coverageDays, $leadTimeDays, $bufferDays) {
+            $isColombian = (bool)((int)($item->is_colombian_origin ?? 0) === 1);
+            $effectiveLeadTime = $isColombian ? 14 : $leadTimeDays;
+
+            $salesRow = $salesByMonth->get($item->id);
+            $v1 = (float)($salesRow->v1 ?? 0);
+            $v2 = (float)($salesRow->v2 ?? 0);
+            $v3 = (float)($salesRow->v3 ?? 0);
+
+            $lotRow = $lotsData->get($item->id);
+            $currentStock = (float)($item->lote_quantity ?? $item->stock ?? 0);
+            $autoOrder = (float)($item->totalQuantityInAutoOrder ?? 0);
+            $stockEfectivo = $currentStock + $autoOrder;
+
+            // Estimación de días con stock por mes
+            // Si el producto tiene stock actual > 0 y ventas en el mes, asumimos 30 días con stock.
+            // Si no tiene stock actual y tuvo ventas, calculamos los días basado en distribución de ventas o mínimo 5 días.
+            // Si no tuvo ventas y stock es 0, días con stock es 0 (quiebre total).
+            $firstLot = $lotRow ? \Carbon\Carbon::parse($lotRow->first_lot_date) : null;
+            $ageDays = $firstLot ? max(1, $firstLot->diffInDays($now)) : 90;
+
+            $d1 = ($currentStock > 0 || $v1 > 0) ? min(30, max(3, min($ageDays, 30))) : 0;
+            $d2 = ($currentStock > 0 || $v2 > 0) ? min(30, max(3, max(0, min($ageDays - 30, 30)))) : 0;
+            $d3 = ($currentStock > 0 || $v3 > 0) ? min(30, max(3, max(0, min($ageDays - 60, 30)))) : 0;
+
+            // Venta Diaria Real (VDR) con regla de corte de mínimo 3 días
+            $vdr1 = $d1 >= 3 ? ($v1 / $d1) : ($v1 / 30);
+            $vdr2 = $d2 >= 3 ? ($v2 / $d2) : ($v2 / 30);
+            $vdr3 = $d3 >= 3 ? ($v3 / $d3) : ($v3 / 30);
+
+            // Normalización a mes completo (30 días)
+            $demandaAjustada1 = $vdr1 * 30;
+            $demandaAjustada2 = $vdr2 * 30;
+            $demandaAjustada3 = $vdr3 * 30;
+
+            // Techo antiespeculativo (Cap Factor 1.5x sobre el máximo histórico vendido)
+            $maxHist = max($v1, $v2, $v3, (float)($item->sales_average ?? 0), 1.0);
+            $capLimit = $maxHist * 1.5;
+
+            $cap1 = min($demandaAjustada1, $capLimit);
+            $cap2 = min($demandaAjustada2, $capLimit);
+            $cap3 = min($demandaAjustada3, $capLimit);
+
+            // Ponderación dinámica según días con stock
+            $totalDiasStock = $d1 + $d2 + $d3;
+            if ($totalDiasStock > 0) {
+                $w1 = $d1 / $totalDiasStock;
+                $w2 = $d2 / $totalDiasStock;
+                $w3 = $d3 / $totalDiasStock;
+            } else {
+                $w1 = 0.50;
+                $w2 = 0.30;
+                $w3 = 0.20;
+            }
+
+            $demandaMensualAjustada = ($w1 * $cap1) + ($w2 * $cap2) + ($w3 * $cap3);
+
+            // Si no hay ventas en los 3 meses, usar fallback a sales_average o sales_average_weighted
+            if ($demandaMensualAjustada <= 0) {
+                $demandaMensualAjustada = (float)(($item->sales_average_weighted ?? 0) > 0 ? $item->sales_average_weighted : ($item->sales_average ?? 0));
+            }
+
+            $vpd = $demandaMensualAjustada / 30;
+            $rop = $vpd * ($effectiveLeadTime + $bufferDays);
+            $stockObjetivo = $vpd * $coverageDays;
+
+            $item->promedio_calculado = round($demandaMensualAjustada, 2);
+            $item->demanda_ponderada = round($stockObjetivo, 2);
+
+            if ($stockEfectivo <= $rop) {
+                $sugerido = $stockObjetivo - $stockEfectivo;
+                $item->solicitar = $sugerido > 0 ? ceil($sugerido) : 0;
+            } else {
+                $exceso = $stockObjetivo - $stockEfectivo;
+                $item->solicitar = $exceso < 0 ? floor($exceso) : 0;
+            }
+
+            $this->hydrateProductFlags($item);
+
+            return $item;
+        });
+
+        if ($isPaginator) {
+            $resultados->setCollection($items);
+            return $resultados;
+        }
 
         return $items;
     }
@@ -979,6 +1132,27 @@ class IaAssistantReportService
                         ? ($totalSales + $totalPromedio) / 2
                         : ($totalSales > 0 ? $totalSales : $totalPromedio);
                     $resultado = $p->demanda_ponderada - $totalStock - $totalAO;
+                } elseif ($tipo === 'weighted' || $tipo === 'stockout_adjusted_rop') {
+                    $sumWeighted = $groupProducts->sum(function($gp) {
+                        return (float)(($gp->sales_average_weighted ?? 0) > 0 ? $gp->sales_average_weighted : ($gp->sales_average ?? 0));
+                    });
+                    $vpdGroup = $sumWeighted / 30;
+                    $coverageDays = $this->extractCoverageDays($lapso);
+                    $effectiveLeadTime = ((int)($p->is_colombian_origin ?? 0) === 1) ? 14 : 7;
+                    $ropGroup = $vpdGroup * ($effectiveLeadTime + 7);
+                    $stockObjetivoGroup = $vpdGroup * $coverageDays;
+                    $stockEfectivoGroup = $totalStock + $totalAO;
+
+                    $p->demanda_ponderada = round($stockObjetivoGroup, 2);
+                    $totalPromedio = round($sumWeighted, 2);
+
+                    if ($stockEfectivoGroup <= $ropGroup) {
+                        $sug = $stockObjetivoGroup - $stockEfectivoGroup;
+                        $resultado = $sug > 0 ? ceil($sug) : 0;
+                    } else {
+                        $exc = $stockObjetivoGroup - $stockEfectivoGroup;
+                        $resultado = $exc < 0 ? floor($exc) : 0;
+                    }
                 } else {
                     $p->demanda_ponderada = $totalPromedio;
                     $resultado = $totalPromedio - $totalStock - $totalAO;
@@ -1143,6 +1317,24 @@ class IaAssistantReportService
                     ? ($totalSales + $totalPromedio) / 2
                     : ($totalSales > 0 ? $totalSales : $totalPromedio);
                 $resultado = $demanda - $totalStock - $totalAO;
+            } elseif ($tipo === 'weighted' || $tipo === 'stockout_adjusted_rop') {
+                $sumWeighted = $groupProducts->sum(function($gp) {
+                    return (float)(($gp->sales_average_weighted ?? 0) > 0 ? $gp->sales_average_weighted : ($gp->sales_average ?? 0));
+                });
+                $vpdGroup = $sumWeighted / 30;
+                $coverageDays = $this->extractCoverageDays($lapso);
+                $effectiveLeadTime = 7;
+                $ropGroup = $vpdGroup * ($effectiveLeadTime + 7);
+                $stockObjetivoGroup = $vpdGroup * $coverageDays;
+                $stockEfectivoGroup = $totalStock + $totalAO;
+
+                if ($stockEfectivoGroup <= $ropGroup) {
+                    $sug = $stockObjetivoGroup - $stockEfectivoGroup;
+                    $resultado = $sug > 0 ? ceil($sug) : 0;
+                } else {
+                    $exc = $stockObjetivoGroup - $stockEfectivoGroup;
+                    $resultado = $exc < 0 ? floor($exc) : 0;
+                }
             } else {
                 $resultado = $totalPromedio - $totalStock - $totalAO;
             }
@@ -1206,6 +1398,14 @@ class IaAssistantReportService
                     $p->demanda_ponderada = ($totalSales > 0 && $totalPromedio > 0)
                         ? ($totalSales + $totalPromedio) / 2
                         : ($totalSales > 0 ? $totalSales : $totalPromedio);
+                } elseif ($tipo === 'weighted' || $tipo === 'stockout_adjusted_rop') {
+                    $sumWeighted = $groupProducts->sum(function($gp) {
+                        return (float)(($gp->sales_average_weighted ?? 0) > 0 ? $gp->sales_average_weighted : ($gp->sales_average ?? 0));
+                    });
+                    $vpdGroup = $sumWeighted / 30;
+                    $coverageDays = $this->extractCoverageDays($lapso);
+                    $p->demanda_ponderada = round($vpdGroup * $coverageDays, 2);
+                    $totalPromedio = round($sumWeighted, 2);
                 } else {
                     $p->demanda_ponderada = $totalPromedio;
                 }

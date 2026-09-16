@@ -85,7 +85,7 @@ export function useProductComparator() {
   const needsLaboratory = ref([]);
   const needsGroup = ref([]);
   const tipo_de_vista = ref(false);
-  const tipo_de_filtracion = ref("weighted");
+  const tipo_de_filtracion = ref("stockout_adjusted_rop");
   const lapso_de_tiempo = ref("1 month");
   const stock = ref("fallas");
   const needsHasStock = ref("all");
@@ -96,7 +96,7 @@ export function useProductComparator() {
   const handleClearFilters = () => {
     con_descuento.value = true;
     tipo_de_vista.value = false;
-    tipo_de_filtracion.value = "weighted";
+    tipo_de_filtracion.value = "stockout_adjusted_rop";
     lapso_de_tiempo.value = "1 month";
     stock.value = "fallas";
     needsHasStock.value = "all";
