@@ -37,7 +37,7 @@ const getScoreInfo = (key) => {
     "scores.sales": { title: "Ventas", icon: "tabler-currency-dollar", max: 25, desc: "Basado en el volumen total de ventas." },
     "scores.growth": { title: "Crecimiento", icon: "tabler-trending-up", max: 15, desc: "Crecimiento porcentual respecto al mes anterior." },
     "scores.expiration": { title: "Vencimientos", icon: "tabler-calendar-off", max: 15, desc: "Premia el bajo índice de productos vencidos." },
-    "scores.inventory": { title: "Inventario", icon: "tabler-package", max: 10, desc: "Calidad y cantidad de conteos cíclicos." },
+    "scores.inventory": { title: "Inventario", icon: "tabler-package", max: 10, desc: "1 pt/prod (1-60), 2 pts/prod (>60 diarios), -10 pts discrepancia errónea." },
     "scores.premium": { title: "Premium", icon: "tabler-pills", max: 10, desc: "Ventas de productos de alto valor (>$15)." },
     "scores.invoice": { title: "Facturación", icon: "tabler-file-invoice", max: 10, desc: "1 pt reg. auto, 2 pts reg. manual, +0.05 pts/ítem auto, +0.25 pts/ítem manual, +0.125 pts/ítem ubicado." },
     "scores.cleaning": { title: "Limpieza", icon: "tabler-brush", max: 5, desc: "Cumplimiento de cronograma de limpieza." },
