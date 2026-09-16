@@ -253,14 +253,15 @@ class EmployeePerformanceQueryService
                 }
             }
 
-            $productPoints = $userId ? (int) ($productCountsData[$userId]->total_points ?? 0) : 0;
-            $salePoints = $userId ? (int) ($saleCountsData[$userId]->total_points ?? 0) : 0;
-            $invoiceCountPoints = $userId ? (int) ($invoiceCountsData[$userId]->total_points ?? 0) : 0;
-            $supervisorPoints = $userId ? (
-                (int) ($supervisorProductData[$userId]->total_points ?? 0) +
-                (int) ($supervisorSaleData[$userId]->total_points ?? 0) +
-                (int) ($supervisorInvoiceData[$userId]->total_points ?? 0)
-            ) : 0;
+            $productPoints = $userId ? round((float) ($productCountsData[$userId]->total_points ?? 0), 2) : 0.0;
+            $salePoints = $userId ? round((float) ($saleCountsData[$userId]->total_points ?? 0), 2) : 0.0;
+            $invoiceCountPoints = $userId ? round((float) ($invoiceCountsData[$userId]->total_points ?? 0), 2) : 0.0;
+            $supervisorPoints = $userId ? round(
+                (float) ($supervisorProductData[$userId]->total_points ?? 0) +
+                (float) ($supervisorSaleData[$userId]->total_points ?? 0) +
+                (float) ($supervisorInvoiceData[$userId]->total_points ?? 0),
+                2
+            ) : 0.0;
 
             // Puntos ganados en conteos regulares + facturas + ventas + rol de supervisor
             $totalPointsEarned = $productPoints + $salePoints + $invoiceCountPoints + $supervisorPoints;
@@ -273,7 +274,7 @@ class EmployeePerformanceQueryService
             ) : 0;
 
             // Puntuación neta de inventario (métrica C.)
-            $inventoryPointsNet = max(0, $totalPointsEarned - $totalPenalties);
+            $inventoryPointsNet = max(0.0, round($totalPointsEarned - $totalPenalties, 2));
 
             $cleaning = $cleaningMap[$employee->id] ?? null;
 
@@ -297,7 +298,7 @@ class EmployeePerformanceQueryService
                 'sales' => $sales,
                 'growth' => $growth,
                 'expirations' => (int) $expirations,
-                'inventory_counted' => (int) $inventoryPointsNet,
+                'inventory_counted' => round($inventoryPointsNet, 2),
                 'inventory_errors' => (int) $totalPenalties,
                 'premium_products' => (int) $premiumProducts,
                 'cleaning_assigned' => $cleaning ? (int) $cleaning->total_assigned : 0,
@@ -321,7 +322,7 @@ class EmployeePerformanceQueryService
                     ) : 0,
                     'supervisor_points' => $supervisorPoints,
                     'penalties' => (int) $totalPenalties,
-                    'net_points' => (int) $inventoryPointsNet,
+                    'net_points' => $inventoryPointsNet,
                 ],
                 'invoice_breakdown' => [
                     'header_points' => $headerData ? round((float) $headerData->total_points, 2) : 0,

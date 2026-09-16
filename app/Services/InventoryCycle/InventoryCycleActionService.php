@@ -109,8 +109,9 @@ class InventoryCycleActionService
                 $todayTotalCounted = $todayProductCounts + $todaySaleCounts + $todayInvoiceCounts;
                 $currentCountIndex = $todayTotalCounted + 1;
 
-                // Escala de puntos progresivos: 1-60 (1 pt), 61-120 (2 pts), 121-180 (3 pts), 181+ (4 pts)
+                // Escala de puntos progresivos: 1-60 (1 pt), 61-120 (1.5 pts), 121-180 (2 pts), 181-240 (2.5 pts), 241+ (3 pts)
                 $quotaTier = match (true) {
+                    $currentCountIndex > 240 => 5,
                     $currentCountIndex > 180 => 4,
                     $currentCountIndex > 120 => 3,
                     $currentCountIndex > 60  => 2,
@@ -118,10 +119,11 @@ class InventoryCycleActionService
                 };
 
                 $pointsEarned = match (true) {
-                    $currentCountIndex > 180 => 4,
-                    $currentCountIndex > 120 => 3,
-                    $currentCountIndex > 60  => 2,
-                    default                  => 1,
+                    $currentCountIndex > 240 => 3.0,
+                    $currentCountIndex > 180 => 2.5,
+                    $currentCountIndex > 120 => 2.0,
+                    $currentCountIndex > 60  => 1.5,
+                    default                  => 1.0,
                 };
                 $supervisorId = null;
 
@@ -555,12 +557,13 @@ class InventoryCycleActionService
                 $todayTotalCounted = $todayProductCounts + $todaySaleCounts + $todayInvoiceCounts;
                 $currentCountIndex = $todayTotalCounted + 1;
 
-                // Escala de puntos progresivos: 1-60 (1 pt), 61-120 (2 pts), 121-180 (3 pts), 181+ (4 pts)
+                // Escala de puntos progresivos: 1-60 (1 pt), 61-120 (1.5 pts), 121-180 (2 pts), 181-240 (2.5 pts), 241+ (3 pts)
                 $pointsEarned = match (true) {
-                    $currentCountIndex > 180 => 4,
-                    $currentCountIndex > 120 => 3,
-                    $currentCountIndex > 60  => 2,
-                    default                  => 1,
+                    $currentCountIndex > 240 => 3.0,
+                    $currentCountIndex > 180 => 2.5,
+                    $currentCountIndex > 120 => 2.0,
+                    $currentCountIndex > 60  => 1.5,
+                    default                  => 1.0,
                 };
 
                 $invoiceCount = InvoiceCount::create([
@@ -925,12 +928,13 @@ class InventoryCycleActionService
                 $todayTotalCounted = $todayProductCounts + $todaySaleCounts + $todayInvoiceCounts;
                 $currentCountIndex = $todayTotalCounted + 1;
 
-                // Escala de puntos progresivos: 1-60 (1 pt), 61-120 (2 pts), 121-180 (3 pts), 181+ (4 pts)
+                // Escala de puntos progresivos: 1-60 (1 pt), 61-120 (1.5 pts), 121-180 (2 pts), 181-240 (2.5 pts), 241+ (3 pts)
                 $pointsEarned = match (true) {
-                    $currentCountIndex > 180 => 4,
-                    $currentCountIndex > 120 => 3,
-                    $currentCountIndex > 60  => 2,
-                    default                  => 1,
+                    $currentCountIndex > 240 => 3.0,
+                    $currentCountIndex > 180 => 2.5,
+                    $currentCountIndex > 120 => 2.0,
+                    $currentCountIndex > 60  => 1.5,
+                    default                  => 1.0,
                 };
 
                 $saleCount = SaleCount::create([

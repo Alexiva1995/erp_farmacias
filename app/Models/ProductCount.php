@@ -28,7 +28,7 @@ class ProductCount extends Model
         'system_quantity' => 'float',
         'discrepancy' => 'float',
         'quota_tier' => 'integer',
-        'points_earned' => 'integer',
+        'points_earned' => 'float',
         'penalty_points' => 'integer',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
