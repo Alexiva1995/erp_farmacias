@@ -161,7 +161,7 @@ class EmployeePerformanceQueryService
             ->get()
             ->keyBy('supervisor_id');
 
-        // Penalizaciones registradas (-20 por falsa discrepancia, -10 por discrepancia errónea)
+        // Penalizaciones registradas (-5 por falsa discrepancia, -3 por discrepancia errónea)
         $productPenaltyMap = ProductCount::whereMonth('created_at', $month)->whereYear('created_at', $year)
             ->groupBy('user_id')->selectRaw('user_id, SUM(COALESCE(penalty_points, 0)) as total')->pluck('total', 'user_id');
 

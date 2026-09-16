@@ -460,14 +460,14 @@ class InventoryCycleActionService
         $errorPenaltyType = null;
         $penaltyPoints = 0;
 
-        // Si el operador original reportó discrepancia pero en la verificación física el stock del sistema estaba exacto: Falsa Discrepancia (-20 pts)
+        // Si el operador original reportó discrepancia pero en la verificación física el stock del sistema estaba exacto: Falsa Discrepancia (-5 pts)
         if ($finalDiscrepancy == 0 && abs($originalCounted - $stockBefore) > 0.0001) {
             $errorPenaltyType = 'false_discrepancy';
-            $penaltyPoints = 20;
+            $penaltyPoints = 5;
         } elseif ($isCorrection && $correctionDiff > 0.0001) {
-            // Si la discrepancia reportada por el operador fue incorrecta/variable a la real: Discrepancia Errónea (-10 pts)
+            // Si la discrepancia reportada por el operador fue incorrecta/variable a la real: Discrepancia Errónea (-3 pts)
             $errorPenaltyType = 'wrong_discrepancy';
-            $penaltyPoints = 10;
+            $penaltyPoints = 3;
         }
 
         $productCount->counted_quantity      = $finalQuantity;
@@ -776,10 +776,10 @@ class InventoryCycleActionService
 
         if ($finalDiscrepancy == 0 && abs($originalCounted - $stockBefore) > 0.0001) {
             $errorPenaltyType = 'false_discrepancy';
-            $penaltyPoints = 20;
+            $penaltyPoints = 5;
         } elseif ($isCorrection && $correctionDiff > 0.0001) {
             $errorPenaltyType = 'wrong_discrepancy';
-            $penaltyPoints = 10;
+            $penaltyPoints = 3;
         }
 
         $invoiceCount->counted_quantity      = $finalQuantity;
@@ -1126,10 +1126,10 @@ class InventoryCycleActionService
 
         if ($finalDiscrepancy == 0 && abs($originalCounted - $stockBefore) > 0.0001) {
             $errorPenaltyType = 'false_discrepancy';
-            $penaltyPoints = 20;
+            $penaltyPoints = 5;
         } elseif ($isCorrection && $correctionDiff > 0.0001) {
             $errorPenaltyType = 'wrong_discrepancy';
-            $penaltyPoints = 10;
+            $penaltyPoints = 3;
         }
 
         $saleCount->counted_quantity      = $finalQuantity;
