@@ -160,17 +160,39 @@ class EmployeePerformanceQueryService
             ->groupBy('user_id')->selectRaw('user_id, SUM(COALESCE(penalty_points, 0)) as total')->pluck('total', 'user_id');
 
         // 1d. Bulk Invoice Metrics
-        $invoiceHeadersMap = Invoice::whereNotNull('registered_by')
-            ->whereMonth('created_at', $month)->whereYear('created_at', $year)
-            ->groupBy('registered_by')->selectRaw('registered_by, COUNT(*) as total')->pluck('total', 'registered_by');
+        // Reglas de facturación:
+        // - Cabeceras registradas automáticas/FTP/API (con auto_order_id): 1 punto por factura
+        // - Cabeceras registradas manuales (auto_order_id IS NULL): 2 puntos por factura
+        // - Ítems en facturas automáticas/FTP/API (con auto_order_id): 0.05 puntos por ítem
+        // - Ítems agregados/cargados en facturas manuales (auto_order_id IS NULL): 0.25 puntos por ítem
+        // - Ítems organizados/ubicados físicamente (ordered_by): 0.125 puntos por ítem
 
-        $invoiceItemsMap = DB::table('invoices')
+        $invoiceHeaderPointsMap = Invoice::whereNotNull('registered_by')
+            ->whereMonth('created_at', $month)->whereYear('created_at', $year)
+            ->groupBy('registered_by')
+            ->selectRaw('registered_by, SUM(CASE WHEN auto_order_id IS NOT NULL THEN 1.0 ELSE 2.0 END) as total_points, COUNT(*) as total_count')
+            ->get()
+            ->keyBy('registered_by');
+
+        $invoiceLoadedItemsMap = DB::table('invoices')
             ->join('invoice_details', 'invoices.id', '=', 'invoice_details.invoice_id')
             ->whereNotNull('invoices.loaded_by')
             ->whereMonth('invoices.created_at', $month)->whereYear('invoices.created_at', $year)
-            ->groupBy('invoices.loaded_by')->selectRaw('invoices.loaded_by, COUNT(invoice_details.id) as total')->pluck('total', 'invoices.loaded_by');
+            ->groupBy('invoices.loaded_by')
+            ->selectRaw('invoices.loaded_by, COUNT(invoice_details.id) as total_items, SUM(CASE WHEN invoices.auto_order_id IS NOT NULL THEN 0.05 ELSE 0.25 END) as total_points')
+            ->get()
+            ->keyBy('loaded_by');
 
-        $invoiceArchivedMap = Invoice::whereNotNull('ordered_by')
+        $invoiceOrganizedItemsMap = DB::table('invoices')
+            ->join('invoice_details', 'invoices.id', '=', 'invoice_details.invoice_id')
+            ->whereNotNull('invoices.ordered_by')
+            ->whereMonth('invoices.created_at', $month)->whereYear('invoices.created_at', $year)
+            ->groupBy('invoices.ordered_by')
+            ->selectRaw('invoices.ordered_by, COUNT(invoice_details.id) as total_items, (COUNT(invoice_details.id) * 0.125) as total_points')
+            ->get()
+            ->keyBy('ordered_by');
+
+        $invoiceArchivedCountMap = Invoice::whereNotNull('ordered_by')
             ->whereMonth('created_at', $month)->whereYear('created_at', $year)
             ->groupBy('ordered_by')->selectRaw('ordered_by, COUNT(*) as total')->pluck('total', 'ordered_by');
 
@@ -187,7 +209,8 @@ class EmployeePerformanceQueryService
             $productPointsMap, $salePointsMap, $invoicePointsMap,
             $supervisorProductPointsMap, $supervisorSalePointsMap, $supervisorInvoicePointsMap,
             $productPenaltyMap, $salePenaltyMap, $invoicePenaltyMap,
-            $invoiceHeadersMap, $invoiceItemsMap, $invoiceArchivedMap, $cleaningMap
+            $invoiceHeaderPointsMap, $invoiceLoadedItemsMap,
+            $invoiceOrganizedItemsMap, $invoiceArchivedCountMap, $cleaningMap
         ) {
             $userId = $employee->user_id;
 
@@ -238,6 +261,22 @@ class EmployeePerformanceQueryService
 
             $cleaning = $cleaningMap[$employee->id] ?? null;
 
+            // Puntos acumulados de facturación según nuevas reglas
+            $headerData = $userId ? ($invoiceHeaderPointsMap[$userId] ?? null) : null;
+            $loadedItemData = $userId ? ($invoiceLoadedItemsMap[$userId] ?? null) : null;
+            $organizedItemData = $userId ? ($invoiceOrganizedItemsMap[$userId] ?? null) : null;
+
+            $invoicePointsEarned = 0.0;
+            if ($headerData) {
+                $invoicePointsEarned += (float) $headerData->total_points;
+            }
+            if ($loadedItemData) {
+                $invoicePointsEarned += (float) $loadedItemData->total_points;
+            }
+            if ($organizedItemData) {
+                $invoicePointsEarned += (float) $organizedItemData->total_points;
+            }
+
             $metrics = [
                 'sales' => $sales,
                 'growth' => $growth,
@@ -248,9 +287,10 @@ class EmployeePerformanceQueryService
                 'cleaning_assigned' => $cleaning ? (int) $cleaning->total_assigned : 0,
                 'cleaning_completed' => $cleaning ? (int) $cleaning->total_completed : 0,
                 'strategy_sales' => (int) $strategySales,
-                'invoice_items' => $userId ? (int) ($invoiceItemsMap[$userId] ?? 0) : 0,
-                'invoice_headers' => $userId ? (int) ($invoiceHeadersMap[$userId] ?? 0) : 0,
-                'invoice_archived' => $userId ? (int) ($invoiceArchivedMap[$userId] ?? 0) : 0,
+                'invoice_items' => $loadedItemData ? (int) $loadedItemData->total_items : 0,
+                'invoice_headers' => $headerData ? (int) $headerData->total_count : 0,
+                'invoice_archived' => $userId ? (int) ($invoiceArchivedCountMap[$userId] ?? 0) : 0,
+                'invoice_points' => round($invoicePointsEarned, 3),
             ];
 
             return [
@@ -267,15 +307,12 @@ class EmployeePerformanceQueryService
         $maxPremium = $employeesData->max('metrics.premium_products') ?: 1;
         $maxCleaningCompleted = $employeesData->max('metrics.cleaning_completed') ?: 1;
         $maxStrategy = $employeesData->max('metrics.strategy_sales') ?: 1;
-        $maxInvoiceItems = $employeesData->max('metrics.invoice_items') ?: 1;
-        $maxInvoiceHeaders = $employeesData->max('metrics.invoice_headers') ?: 1;
-        $maxInvoiceArchived = $employeesData->max('metrics.invoice_archived') ?: 1;
+        $maxInvoicePoints = $employeesData->max('metrics.invoice_points') ?: 1;
 
         // 3. Normalize Scores and build Final Collection
         return $employeesData->map(function ($data) use (
             $maxSales, $maxGrowth, $maxExpirations, $maxInventoryCount, 
-            $maxPremium, $maxCleaningCompleted, $maxStrategy,
-            $maxInvoiceItems, $maxInvoiceHeaders, $maxInvoiceArchived
+            $maxPremium, $maxCleaningCompleted, $maxStrategy, $maxInvoicePoints
         ) {
             $employee = $data['employee'];
             $metrics = $data['metrics'];
@@ -296,9 +333,7 @@ class EmployeePerformanceQueryService
                 'expiration' => ($metrics['expirations'] / $maxExpirations) * 15,
                 'inventory' => ($metrics['inventory_counted'] / $maxInventoryCount) * 10,
                 'premium' => ($metrics['premium_products'] / $maxPremium) * 10,
-                'invoice' => (($metrics['invoice_items'] / $maxInvoiceItems) * 5) + 
-                             (($metrics['invoice_headers'] / $maxInvoiceHeaders) * 2.5) + 
-                             (($metrics['invoice_archived'] / $maxInvoiceArchived) * 2.5),
+                'invoice' => $maxInvoicePoints > 0 ? (($metrics['invoice_points'] / $maxInvoicePoints) * 10) : 0,
                 'cleaning' => ($metrics['cleaning_completed'] / $maxCleaningCompleted) * 5,
                 'strategy' => ($metrics['strategy_sales'] / $maxStrategy) * 5,
             ];
