@@ -183,19 +183,19 @@ const formatCurrency = (amount) =>
                   <div class="pa-1 text-xs">
                     <div class="font-weight-bold mb-1 border-b pb-1">Desglose de Inventario:</div>
                     <div class="d-flex justify-space-between py-0.5">
-                      <span>• Conteos Productos:</span>
+                      <span>• Conteos Productos ({{ formatNumber(item.inventory_breakdown.product_count ?? 0) }}):</span>
                       <strong class="text-success ms-2">+{{ item.inventory_breakdown.product_points }} pts</strong>
                     </div>
                     <div class="d-flex justify-space-between py-0.5">
-                      <span>• Conteos Ventas:</span>
+                      <span>• Conteos Ventas ({{ formatNumber(item.inventory_breakdown.sale_count ?? 0) }}):</span>
                       <strong class="text-success ms-2">+{{ item.inventory_breakdown.sale_points }} pts</strong>
                     </div>
                     <div class="d-flex justify-space-between py-0.5">
-                      <span>• Conteos Facturas:</span>
+                      <span>• Conteos Facturas ({{ formatNumber(item.inventory_breakdown.invoice_count ?? 0) }}):</span>
                       <strong class="text-success ms-2">+{{ item.inventory_breakdown.invoice_count_points }} pts</strong>
                     </div>
                     <div class="d-flex justify-space-between py-0.5">
-                      <span>• Como Supervisor:</span>
+                      <span>• Como Supervisor ({{ formatNumber(item.inventory_breakdown.supervisor_count ?? 0) }}):</span>
                       <strong class="text-success ms-2">+{{ item.inventory_breakdown.supervisor_points }} pts</strong>
                     </div>
                     <div v-if="item.inventory_breakdown.penalties > 0" class="d-flex justify-space-between py-0.5 text-error">
@@ -337,19 +337,19 @@ const formatCurrency = (amount) =>
                         <div class="pa-1 text-xs">
                           <div class="font-weight-bold mb-1 border-b pb-1">Desglose de Inventario:</div>
                           <div class="d-flex justify-space-between py-0.5">
-                            <span>• Conteos Productos:</span>
+                            <span>• Conteos Productos ({{ formatNumber(item.inventory_breakdown.product_count ?? 0) }}):</span>
                             <strong class="text-success ms-2">+{{ item.inventory_breakdown.product_points }} pts</strong>
                           </div>
                           <div class="d-flex justify-space-between py-0.5">
-                            <span>• Conteos Ventas:</span>
+                            <span>• Conteos Ventas ({{ formatNumber(item.inventory_breakdown.sale_count ?? 0) }}):</span>
                             <strong class="text-success ms-2">+{{ item.inventory_breakdown.sale_points }} pts</strong>
                           </div>
                           <div class="d-flex justify-space-between py-0.5">
-                            <span>• Conteos Facturas:</span>
+                            <span>• Conteos Facturas ({{ formatNumber(item.inventory_breakdown.invoice_count ?? 0) }}):</span>
                             <strong class="text-success ms-2">+{{ item.inventory_breakdown.invoice_count_points }} pts</strong>
                           </div>
                           <div class="d-flex justify-space-between py-0.5">
-                            <span>• Como Supervisor:</span>
+                            <span>• Como Supervisor ({{ formatNumber(item.inventory_breakdown.supervisor_count ?? 0) }}):</span>
                             <strong class="text-success ms-2">+{{ item.inventory_breakdown.supervisor_points }} pts</strong>
                           </div>
                           <div v-if="item.inventory_breakdown.penalties > 0" class="d-flex justify-space-between py-0.5 text-error">
