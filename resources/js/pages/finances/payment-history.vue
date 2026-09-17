@@ -109,9 +109,9 @@
                 </span>
                 <span
                   v-if="item.invoice_total_usd"
-                  class="text-super-xs text-medium-emphasis font-weight-medium"
+                  class="text-super-xs text-success font-weight-bold"
                 >
-                  Factura: USD {{ formatNumber(item.invoice_total_usd) }}
+                  {{ formatNumber(item.invoice_total_usd) }} USD
                 </span>
               </div>
             </template>
@@ -214,7 +214,7 @@
                 </div>
                 <div class="text-right d-flex flex-column">
                   <span class="text-super-xs text-disabled font-weight-black uppercase">Fac. USD</span>
-                  <span class="text-base font-weight-bold text-success">USD {{ formatNumber(item.invoice_total_usd) }}</span>
+                  <span class="text-base font-weight-bold text-success">{{ formatNumber(item.invoice_total_usd) }} USD</span>
                 </div>
               </div>
 

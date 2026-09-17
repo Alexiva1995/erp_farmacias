@@ -332,7 +332,7 @@ const savingsPercentage = computed(() => {
                       {{ formatNumber(invoice.total_amount, normalizeCurrencyCode(invoice.currency) === "COP" ? 0 : 2) }} {{ normalizeCurrencyCode(invoice.currency) }}
                     </span>
                     <span class="text-caption text-medium-emphasis">
-                      USD {{ formatNumber(invoice.total_usd) }}
+                      {{ formatNumber(invoice.total_usd) }} USD
                     </span>
                   </div>
                 </div>
@@ -340,7 +340,7 @@ const savingsPercentage = computed(() => {
 
               <div class="total-billed-row pa-4 d-flex justify-space-between align-center">
                 <span class="text-body-2 font-weight-medium text-medium-emphasis">Total Facturado</span>
-                <span class="text-subtitle-1 font-weight-bold text-high-emphasis">USD {{ formatNumber(props.payment.invoice_total_usd) }}</span>
+                <span class="text-subtitle-1 font-weight-bold text-high-emphasis">{{ formatNumber(props.payment.invoice_total_usd) }} USD</span>
               </div>
             </VCard>
 
