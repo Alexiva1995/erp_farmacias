@@ -334,3 +334,125 @@ small.text-disabled {
 .bg-primary-gradient * {
   color: #ffffff !important;
 }
+
+/* ==========================================================================
+   ESTÁNDAR GLOBAL DE TABLAS (VDataTable / VDataTableServer)
+   Excepto Punto de Venta y Cotizaciones
+   ========================================================================== */
+.v-data-table:not(.pos-table):not(.quote-table) {
+  // Encabezados de tabla estandarizados
+  th,
+  .v-data-table__th,
+  .v-data-table-header th {
+    font-size: 0.75rem !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05rem !important;
+    color: rgba(var(--v-theme-on-surface), 0.88) !important;
+    white-space: nowrap !important;
+    height: 42px !important;
+    padding-inline: 12px !important;
+    background-color: rgb(var(--v-theme-surface)) !important;
+    border-bottom: 1px solid rgba(var(--v-border-color), 0.08) !important;
+  }
+
+  // Celdas de tabla estandarizadas con densidad óptima
+  td,
+  .v-data-table__td {
+    font-size: 0.8125rem !important;
+    padding-block: 8px !important;
+    padding-inline: 12px !important;
+    border-bottom: 1px solid rgba(var(--v-border-color), 0.05) !important;
+  }
+
+  // Montos numéricos y precios en celdas
+  .text-end,
+  td[align="end"],
+  td.text-end {
+    font-variant-numeric: tabular-nums;
+  }
+
+  // Columna de acciones: contenedor centrado y espaciado consistente
+  td:last-child:has(.v-btn--icon),
+  td.text-center:has(.v-btn--icon) {
+    white-space: nowrap !important;
+    
+    .v-btn--icon,
+    .v-btn.v-btn--density-comfortable,
+    .v-btn.v-btn--density-compact {
+      width: 32px !important;
+      height: 32px !important;
+      min-width: 32px !important;
+      min-height: 32px !important;
+      
+      .v-icon {
+        font-size: 18px !important;
+      }
+    }
+  }
+}
+
+/* ==========================================================================
+   ESTÁNDAR GLOBAL DE MODALES Y DIÁLOGOS (VDialog / VCard)
+   ========================================================================== */
+.v-dialog {
+  .v-card {
+    background-color: rgb(var(--v-theme-surface)) !important;
+    border-radius: 12px !important;
+    overflow: hidden;
+  }
+
+  // Encabezados con degradado corporativo
+  .header-gradient {
+    background: var(--brand-gradient) !important;
+    padding: 16px !important;
+
+    h1, h2, h3, h4, h5, h6, .text-h6 {
+      color: #ffffff !important;
+      font-weight: 900 !important;
+      font-size: 1.15rem !important;
+      line-height: 1.25 !important;
+      margin-bottom: 0 !important;
+    }
+
+    span, p, .text-caption {
+      color: rgba(255, 255, 255, 0.8) !important;
+      font-weight: 700 !important;
+      font-size: 0.65rem !important;
+      letter-spacing: 0.05em !important;
+      text-transform: uppercase !important;
+    }
+
+    .v-avatar {
+      background-color: #ffffff !important;
+      color: rgb(var(--v-theme-primary)) !important;
+
+      .v-icon {
+        color: rgb(var(--v-theme-primary)) !important;
+        font-size: 22px !important;
+      }
+    }
+  }
+
+  // Cuerpo de modales
+  .v-card-text {
+    background-color: rgba(var(--v-theme-background), 0.6) !important;
+  }
+
+  // Acciones de pie de modal: botones proporcionales
+  .v-card-actions {
+    background-color: rgb(var(--v-theme-surface)) !important;
+    padding: 16px 24px !important;
+    border-top: 1px solid rgba(var(--v-border-color), 0.08) !important;
+
+    .v-btn {
+      height: 44px !important;
+      font-weight: 900 !important;
+      letter-spacing: 0.05em !important;
+      text-transform: uppercase !important;
+      font-size: 0.8125rem !important;
+    }
+  }
+}
+
+
