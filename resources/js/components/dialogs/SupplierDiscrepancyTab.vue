@@ -52,6 +52,23 @@ const totalDiscrepancies = computed(
 
 const hasDiscrepancies = computed(() => totalDiscrepancies.value > 0);
 
+// Detectar si el bot de la droguería tuvo conexión exitosa (extrajo facturas, actualizó o reportó 0)
+const isConnectedOrProcessed = computed(() => {
+  if (hasDiscrepancies.value) return true;
+  if (props.processedDetails && props.processedDetails.length > 0) return true;
+  const summary = props.summaryData || {};
+  if (summary.success === true) return true;
+  if (Number(summary.total_extracted || 0) > 0 || Number(summary.updated || 0) > 0 || Number(summary.created || 0) > 0) return true;
+  if (summary.message && (summary.message.toLowerCase().includes('0 factura') || summary.message.toLowerCase().includes('sin factura') || summary.message.toLowerCase().includes('correct'))) return true;
+  return false;
+});
+
+const isConnectionFailed = computed(() => {
+  const summary = props.summaryData || {};
+  if (summary.success === false || summary.error) return true;
+  return !isConnectedOrProcessed.value;
+});
+
 const formatNumber = (value) => {
   return Number(value || 0).toLocaleString("es-VE", {
     minimumFractionDigits: 2,
@@ -122,24 +139,30 @@ const formatNumber = (value) => {
         <VCard
           variant="flat"
           border
-          :class="['pa-3 rounded-lg h-100 shadow-xs', hasDiscrepancies ? 'bg-warning-lighten-5 border-warning' : 'bg-surface']"
+          :class="[
+            'pa-3 rounded-lg h-100 shadow-xs',
+            hasDiscrepancies ? 'bg-warning-lighten-5 border-warning' : (isConnectionFailed ? 'bg-surface' : 'bg-surface')
+          ]"
         >
           <div class="d-flex align-center gap-3">
             <VAvatar
-              :color="hasDiscrepancies ? 'warning' : 'success'"
+              :color="hasDiscrepancies ? 'warning' : (isConnectionFailed ? 'secondary' : 'success')"
               variant="tonal"
               size="40"
               rounded="lg"
               class="flex-shrink-0"
             >
-              <VIcon :icon="hasDiscrepancies ? 'tabler-alert-triangle' : 'tabler-circle-check'" size="22" />
+              <VIcon
+                :icon="hasDiscrepancies ? 'tabler-alert-triangle' : (isConnectionFailed ? 'tabler-cloud-off' : 'tabler-circle-check')"
+                size="22"
+              />
             </VAvatar>
             <div class="overflow-hidden">
               <span :class="['text-caption font-weight-medium d-block leading-tight text-truncate', hasDiscrepancies ? 'text-warning' : 'text-medium-emphasis']">
-                Diferencias
+                {{ isConnectionFailed ? 'Conexión' : 'Diferencias' }}
               </span>
-              <div :class="['text-h6 font-weight-black leading-tight mt-1', hasDiscrepancies ? 'text-warning' : 'text-high-emphasis']">
-                {{ totalDiscrepancies }}
+              <div :class="['text-h6 font-weight-black leading-tight mt-1', hasDiscrepancies ? 'text-warning' : (isConnectionFailed ? 'text-medium-emphasis text-body-2' : 'text-high-emphasis')]">
+                {{ isConnectionFailed ? 'Sin Conectar' : totalDiscrepancies }}
               </div>
             </div>
           </div>
@@ -247,14 +270,25 @@ const formatNumber = (value) => {
       </VTable>
     </VCard>
 
-    <!-- ── 4. Estado Sin Discrepancias (Cuentas Cuadradas) ─────────────── -->
-    <div v-if="!hasDiscrepancies" class="text-center py-4 mb-3 border rounded-lg bg-surface">
+    <!-- ── 4. Estado Sin Discrepancias / Sin Conexión ─────────────── -->
+    <div v-if="!hasDiscrepancies && isConnectedOrProcessed" class="text-center py-4 mb-3 border rounded-lg bg-surface">
       <VAvatar color="success" variant="tonal" size="36" class="mb-2">
         <VIcon icon="tabler-check" size="20" color="success" />
       </VAvatar>
       <h3 class="text-subtitle-2 font-weight-bold mb-1">¡Cuentas {{ props.supplierTitle }} Cuadradas!</h3>
       <p class="text-caption text-medium-emphasis mb-0">
         No se encontraron discrepancias. Todas las facturas coinciden entre el portal y tu ERP.
+      </p>
+    </div>
+
+    <!-- Si no hubo conexión o falló el scraper de este proveedor -->
+    <div v-else-if="!hasDiscrepancies && isConnectionFailed" class="text-center py-4 mb-3 border rounded-lg bg-surface">
+      <VAvatar color="secondary" variant="tonal" size="36" class="mb-2">
+        <VIcon icon="tabler-cloud-off" size="20" color="secondary" />
+      </VAvatar>
+      <h3 class="text-subtitle-2 font-weight-bold mb-1">Sin Conexión con {{ props.supplierTitle }}</h3>
+      <p class="text-caption text-medium-emphasis mb-0">
+        No se pudo establecer comunicación con el portal o no se obtuvieron registros en esta sincronización.
       </p>
     </div>
 
@@ -282,9 +316,14 @@ const formatNumber = (value) => {
             <td class="text-medium-emphasis">{{ item.control_number || 'N/A' }}</td>
             <td class="text-center text-medium-emphasis">{{ item.exp_date || 'N/A' }}</td>
             <td class="text-center">
-              <span class="text-caption font-weight-bold" :class="item.is_indexed ? 'text-error' : 'text-success'">
+              <VChip
+                :color="item.is_indexed ? 'error' : 'success'"
+                variant="tonal"
+                size="small"
+                class="font-weight-black px-2"
+              >
                 {{ item.is_indexed ? 'Sí' : 'No' }}
-              </span>
+              </VChip>
             </td>
             <td class="text-right font-weight-bold text-error">{{ formatNumber(item.total_usd) }} USD</td>
           </tr>
@@ -292,9 +331,9 @@ const formatNumber = (value) => {
       </VTable>
     </div>
 
-    <!-- Si no hay facturas procesadas ni discrepancias en droguería sin portal de estado de cuenta -->
+    <!-- Si no hay facturas procesadas ni discrepancias en droguería conectada con 0 facturas -->
     <div
-      v-if="!hasDiscrepancies && (!props.processedDetails || props.processedDetails.length === 0)"
+      v-if="!hasDiscrepancies && isConnectedOrProcessed && (!props.processedDetails || props.processedDetails.length === 0)"
       class="text-center py-4"
     >
       <p class="text-caption text-medium-emphasis mb-0">
