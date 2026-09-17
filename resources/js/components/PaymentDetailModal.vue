@@ -221,6 +221,39 @@ const savingsPercentage = computed(() => {
   const percentage = (savingsUSD / invoiceTotalUSD) * 100;
   return Math.max(0, Math.round(percentage * 100) / 100);
 });
+
+// Monto pagado en Bolívares (si la moneda es Bs/VES o estimado según facturas/tasa)
+const paymentInBs = computed(() => {
+  if (!props.payment) return 0;
+  const curr = normalizeCurrencyCode(props.payment.currency);
+  if (curr === "Bs.") {
+    return parseFloat(props.payment.amount) || 0;
+  }
+  // Si se pagó en USD u otra moneda, calculamos el total de facturas en Bs asociadas si existen
+  const bsInvoicesTotal = props.payment.invoices?.reduce((acc, inv) => {
+    if (normalizeCurrencyCode(inv.currency) === "Bs.") {
+      return acc + (parseFloat(inv.total_amount) || 0);
+    }
+    return acc;
+  }, 0);
+
+  if (bsInvoicesTotal > 0) return bsInvoicesTotal;
+
+  // Si no hay facturas en Bs, calcular por tasa implícita si existe
+  const paidUSD = parseFloat(props.payment.amount_usd) || 0;
+  return 0;
+});
+
+// Total facturado en Bolívares de las facturas asociadas
+const invoiceBilledBs = computed(() => {
+  if (!props.payment?.invoices?.length) return 0;
+  return props.payment.invoices.reduce((acc, inv) => {
+    if (normalizeCurrencyCode(inv.currency) === "Bs.") {
+      return acc + (parseFloat(inv.total_amount) || 0);
+    }
+    return acc;
+  }, 0);
+});
 </script>
 
 <template>
@@ -280,23 +313,30 @@ const savingsPercentage = computed(() => {
             </div>
 
             <VCard class="rounded-xl border shadow-sm bg-white overflow-hidden mb-5">
-              <div class="pa-6 d-flex flex-column align-center text-center">
-                <span class="text-caption text-medium-emphasis mb-1">Total Pagado</span>
-                <span class="hero-amount font-weight-bold text-high-emphasis mb-1">
-                  {{ formatCurrency(props.payment.amount, props.payment.currency) }}
-                </span>
-                <span
-                  v-if="normalizeCurrencyCode(props.payment.currency) !== 'USD' && props.payment.amount_usd"
-                  class="text-sm font-weight-bold text-success"
-                >
-                  ({{ formatNumber(props.payment.amount_usd) }} USD)
-                </span>
-                <span
-                  v-else-if="props.payment.amount_usd && normalizeCurrencyCode(props.payment.currency) === 'USD'"
-                  class="text-sm font-weight-medium text-medium-emphasis"
-                >
-                  USD
-                </span>
+              <div class="pa-5">
+                <VRow no-gutters class="align-stretch">
+                  <!-- Izquierda: Monto Real Pagado -->
+                  <VCol cols="6" class="pe-3 border-e d-flex flex-column justify-center align-center text-center">
+                    <span class="text-caption text-medium-emphasis mb-1 font-weight-medium">Monto Pagado</span>
+                    <span class="summary-amount font-weight-black text-high-emphasis mb-1">
+                      {{ formatCurrency(props.payment.amount, props.payment.currency) }}
+                    </span>
+                    <span class="text-xs font-weight-bold text-success">
+                      ({{ formatNumber(props.payment.amount_usd) }} USD)
+                    </span>
+                  </VCol>
+
+                  <!-- Derecha: Monto en Bs / Facturado -->
+                  <VCol cols="6" class="ps-3 d-flex flex-column justify-center align-center text-center">
+                    <span class="text-caption text-medium-emphasis mb-1 font-weight-medium">Monto en Bs.</span>
+                    <span class="summary-amount font-weight-black text-high-emphasis mb-1">
+                      {{ formatCurrency(paymentInBs || invoiceBilledBs, 'Bs.') }}
+                    </span>
+                    <span class="text-xs font-weight-bold text-medium-emphasis">
+                      ({{ formatNumber(props.payment.invoice_total_usd) }} USD)
+                    </span>
+                  </VCol>
+                </VRow>
               </div>
 
               <div class="pa-5 pt-0">
@@ -587,6 +627,12 @@ const savingsPercentage = computed(() => {
   line-height: 1.2 !important;
 }
 
+.summary-amount {
+  font-size: 1.15rem !important;
+  line-height: 1.2 !important;
+  letter-spacing: -0.01em;
+}
+
 .savings-card-soft {
   background-color: #f0fdf4 !important;
   border: 1px solid #dcfce7 !important;
@@ -603,6 +649,10 @@ const savingsPercentage = computed(() => {
 
 .border-t {
   border-block-start: 1px solid rgba(var(--v-border-color), 0.08) !important;
+}
+
+.border-e {
+  border-inline-end: 1px solid rgba(var(--v-border-color), 0.08) !important;
 }
 </style>
 
