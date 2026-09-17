@@ -343,19 +343,18 @@ const handleSyncBots = async () => {
         class="mb-0"
       >
         <template #selection-actions>
-          <div v-if="!mobile && selectedTableInvoices.length > 0" class="d-flex align-center gap-1 me-1">
-            <VBtn
-              icon
-              color="success"
-              variant="flat"
-              size="38"
-              class="rounded-circle shadow-sm"
-              @click="processMultiplePayments"
-            >
-              <VIcon icon="tabler-credit-card" size="20" />
-              <VTooltip activator="parent" location="top">Pagar Seleccionados ({{ selectedTableInvoices.length }})</VTooltip>
-            </VBtn>
-          </div>
+          <VBtn
+            v-if="!mobile && selectedTableInvoices.length > 0"
+            icon
+            color="success"
+            variant="flat"
+            size="38"
+            class="rounded-circle shadow-sm"
+            @click="processMultiplePayments"
+          >
+            <VIcon icon="tabler-credit-card" size="20" />
+            <VTooltip activator="parent" location="top">Pagar Seleccionados ({{ selectedTableInvoices.length }})</VTooltip>
+          </VBtn>
         </template>
       </PendingPaymentFilters>
 
