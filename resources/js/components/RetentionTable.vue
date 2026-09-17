@@ -75,6 +75,21 @@ const getInitials = (name) => {
 
 const isItemSelected = (id) => props.selected.includes(id);
 
+const isSupplierFiscalValid = (supplier) => {
+  if (!supplier) return false;
+  const hasRif = Boolean(supplier.rif && String(supplier.rif).trim() !== "");
+  const hasAddress = Boolean(supplier.address && String(supplier.address).trim() !== "");
+  return hasRif && hasAddress;
+};
+
+const getSupplierMissingFiscalData = (supplier) => {
+  if (!supplier) return "Sin datos fiscales";
+  const missing = [];
+  if (!supplier.rif || String(supplier.rif).trim() === "") missing.push("RIF");
+  if (!supplier.address || String(supplier.address).trim() === "") missing.push("Dirección Fiscal");
+  return `Falta ${missing.join(" y ")}`;
+};
+
 const toggleSelection = (id) => {
   const index = props.selected.indexOf(id);
   const newSelected = [...props.selected];
@@ -138,7 +153,18 @@ const toggleSelection = (id) => {
             </VAvatar>
             <div class="d-flex flex-column truncate" style="max-width: 250px;">
               <span class="text-xs font-weight-bold text-high-emphasis text-capitalize truncate">{{ item.supplier?.name || item.supplier?.social_reason || 'N/A' }}</span>
-              <span class="text-super-xs text-disabled truncate">{{ item.supplier?.rif || item.identification || 'Sin RIF' }}</span>
+              <div class="d-flex align-center gap-1">
+                <span class="text-super-xs text-disabled truncate">{{ item.supplier?.rif || item.identification || 'Sin RIF' }}</span>
+                <VChip
+                  v-if="props.currentTab === 'pending' && !isSupplierFiscalValid(item.supplier)"
+                  size="x-small"
+                  color="warning"
+                  variant="tonal"
+                  class="font-weight-bold text-super-xs px-1"
+                >
+                  {{ getSupplierMissingFiscalData(item.supplier) }}
+                </VChip>
+              </div>
             </div>
           </div>
         </template>
@@ -305,7 +331,18 @@ const toggleSelection = (id) => {
               <span class="text-sm font-weight-bold text-high-emphasis d-block leading-tight text-capitalize mb-1">
                 {{ item.supplier?.name || item.supplier?.social_reason || 'N/A' }}
               </span>
-              <span class="text-xs text-disabled leading-tight">{{ item.supplier?.rif || item.identification || 'Sin RIF' }}</span>
+              <div class="d-flex align-center gap-1 flex-wrap">
+                <span class="text-xs text-disabled leading-tight">{{ item.supplier?.rif || item.identification || 'Sin RIF' }}</span>
+                <VChip
+                  v-if="props.currentTab === 'pending' && !isSupplierFiscalValid(item.supplier)"
+                  size="x-small"
+                  color="warning"
+                  variant="tonal"
+                  class="font-weight-bold text-super-xs px-1"
+                >
+                  {{ getSupplierMissingFiscalData(item.supplier) }}
+                </VChip>
+              </div>
             </div>
 
             <!-- Dashboard de Montos Móvil -->

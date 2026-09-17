@@ -103,7 +103,11 @@ const handleBulkGenerate = async () => {
 
     toast.success(response.data?.message || "Retención generada exitosamente.");
 
-    if (response.data?.retention_id) {
+    if (Array.isArray(response.data?.retention_ids) && response.data.retention_ids.length > 0) {
+      for (const retId of response.data.retention_ids) {
+        await downloadPdf(retId, true);
+      }
+    } else if (response.data?.retention_id) {
       await downloadPdf(response.data.retention_id, true);
     }
 

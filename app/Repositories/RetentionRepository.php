@@ -71,9 +71,17 @@ class RetentionRepository implements \App\Contracts\Retention
         return $query->paginate($perPage);
     }
 
-    public function generateRetentions(array $invoiceIds, ?string $retentionDate = null): Retention
+    /**
+     * Genera comprobantes de retención para las facturas dadas (máximo 8 facturas por comprobante).
+     *
+     * @param array $invoiceIds
+     * @param string|null $retentionDate
+     * @return \Illuminate\Support\Collection<int, Retention>
+     */
+    public function generateRetentions(array $invoiceIds, ?string $retentionDate = null): \Illuminate\Support\Collection
     {
-        $invoices = Invoice::whereIn('id', $invoiceIds)
+        $invoices = Invoice::with('supplier')
+            ->whereIn('id', $invoiceIds)
             ->where('retention_generated', false)
             ->get();
 
@@ -81,16 +89,28 @@ class RetentionRepository implements \App\Contracts\Retention
             throw new \Exception("No hay facturas válidas para generar retención.");
         }
 
-        $supplierId = $invoices->first()->supplier_id;
+        $supplier = $invoices->first()->supplier;
+        $supplierId = $supplier?->id ?? $invoices->first()->supplier_id;
 
         if ($invoices->pluck('supplier_id')->unique()->count() > 1) {
             throw new \Exception("Todas las facturas deben ser del mismo proveedor.");
         }
 
+        // Validación fiscal: el proveedor debe tener RIF y Dirección Fiscal registrados
+        $hasRif = $supplier && !empty(trim((string) $supplier->rif));
+        $hasAddress = $supplier && !empty(trim((string) $supplier->address));
+
+        if (!$hasRif || !$hasAddress) {
+            $supplierName = $supplier->name ?? $supplier->social_reason ?? "ID: {$supplierId}";
+            $missing = [];
+            if (!$hasRif) $missing[] = 'RIF';
+            if (!$hasAddress) $missing[] = 'Dirección Fiscal';
+            $missingStr = implode(' y ', $missing);
+
+            throw new \Exception("No se puede generar retención para '{$supplierName}' porque no tiene {$missingStr} registrado.");
+        }
+
         $retentionPercentage = 0.75;
-        $totalTaxable = $invoices->sum('taxable_base');
-        $totalTax = $invoices->sum('tax_amount');
-        $totalWithheld = round($totalTax * $retentionPercentage, 2);
 
         // --- Fecha Fiscal de Emisión (Personalizada o Calculada) ---
         $fiscalDate = $retentionDate ? \Carbon\Carbon::parse($retentionDate) : $this->calculateFiscalDate();
@@ -105,28 +125,40 @@ class RetentionRepository implements \App\Contracts\Retention
             $nextCorrelative = (int)$lastCorrelative + 1;
         }
 
-        do {
-            $number = $prefix . str_pad((string)$nextCorrelative, 8, '0', STR_PAD_LEFT);
-            $nextCorrelative++;
-        } while (Retention::where('number', $number)->exists());
+        // Límite legal / fiscal: máximo 8 facturas por comprobante de retención
+        $chunks = $invoices->chunk(8);
+        $createdRetentions = collect();
 
-        $retention = Retention::create([
-            'supplier_id' => $supplierId,
-            'number' => $number,
-            'date' => $fiscalDate,
-            'total_taxable_base' => $totalTaxable,
-            'total_tax_amount' => $totalTax,
-            'total_withheld_amount' => $totalWithheld,
-            'retention_percentage' => $retentionPercentage * 100,
-        ]);
+        foreach ($chunks as $chunk) {
+            $totalTaxable = $chunk->sum('taxable_base');
+            $totalTax = $chunk->sum('tax_amount');
+            $totalWithheld = round($totalTax * $retentionPercentage, 2);
 
-        Invoice::whereIn('id', $invoices->pluck('id'))
-            ->update([
-                'retention_generated' => true,
-                'retention_id' => $retention->id
+            do {
+                $number = $prefix . str_pad((string)$nextCorrelative, 8, '0', STR_PAD_LEFT);
+                $nextCorrelative++;
+            } while (Retention::where('number', $number)->exists());
+
+            $retention = Retention::create([
+                'supplier_id' => $supplierId,
+                'number' => $number,
+                'date' => $fiscalDate,
+                'total_taxable_base' => $totalTaxable,
+                'total_tax_amount' => $totalTax,
+                'total_withheld_amount' => $totalWithheld,
+                'retention_percentage' => $retentionPercentage * 100,
             ]);
 
-        return $retention;
+            Invoice::whereIn('id', $chunk->pluck('id'))
+                ->update([
+                    'retention_generated' => true,
+                    'retention_id' => $retention->id
+                ]);
+
+            $createdRetentions->push($retention);
+        }
+
+        return $createdRetentions;
     }
 
     /**
@@ -156,7 +188,8 @@ class RetentionRepository implements \App\Contracts\Retention
      */
     public function generateAllPendingInRange(string $startDate, string $endDate, ?string $retentionDate = null): int
     {
-        $pendingInvoices = Invoice::where('tax_amount', '>', 0)
+        $pendingInvoices = Invoice::with('supplier')
+            ->where('tax_amount', '>', 0)
             ->where('retention_generated', false)
             ->whereDate('created_invoice_date', '>=', $startDate)
             ->whereDate('created_invoice_date', '<=', $endDate)
@@ -170,8 +203,17 @@ class RetentionRepository implements \App\Contracts\Retention
         $generatedCount = 0;
 
         foreach ($groupedBySupplier as $supplierId => $invoices) {
-            $this->generateRetentions($invoices->pluck('id')->toArray(), $retentionDate);
-            $generatedCount++;
+            $supplier = $invoices->first()->supplier;
+            $hasRif = $supplier && !empty(trim((string) $supplier->rif));
+            $hasAddress = $supplier && !empty(trim((string) $supplier->address));
+
+            // Si el proveedor no tiene RIF o dirección fiscal, no se le genera retención
+            if (!$hasRif || !$hasAddress) {
+                continue;
+            }
+
+            $created = $this->generateRetentions($invoices->pluck('id')->toArray(), $retentionDate);
+            $generatedCount += count($created);
         }
 
         return $generatedCount;

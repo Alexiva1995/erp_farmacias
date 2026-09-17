@@ -21,7 +21,7 @@ class RetentionService implements RetentionContract
         return $this->retentionRepository->getInvoicesWithTax($filters, (int) $perPage);
     }
 
-    public function generateRetentions(array $invoiceIds, ?string $retentionDate = null): Retention
+    public function generateRetentions(array $invoiceIds, ?string $retentionDate = null): \Illuminate\Support\Collection
     {
         return $this->retentionRepository->generateRetentions($invoiceIds, $retentionDate);
     }

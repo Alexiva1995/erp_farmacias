@@ -69,12 +69,20 @@ class RetentionController extends Controller
     public function bulkGenerate(BulkGenerateRequest $request)
     {
         try {
-            $retention = $this->retentionService->generateRetentions($request->ids);
+            $retentions = $this->retentionService->generateRetentions($request->ids);
+            $count = count($retentions);
+            $numbers = $retentions->pluck('number')->implode(', ');
+            $firstRetention = $retentions->first();
+
+            $message = $count === 1
+                ? "Se generó el comprobante {$firstRetention->number} correctamente."
+                : "Se generaron {$count} comprobantes de retención ({$numbers}) correctamente.";
 
             return response()->json([
                 'status' => 'success',
-                'message' => "Se generó el comprobante {$retention->number} correctamente.",
-                'retention_id' => $retention->id
+                'message' => $message,
+                'retention_id' => $firstRetention?->id,
+                'retention_ids' => $retentions->pluck('id')->toArray(),
             ]);
         } catch (\Exception $e) {
             return response()->json(['status' => 'error', 'message' => $e->getMessage()], 400);

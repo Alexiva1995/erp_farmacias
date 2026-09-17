@@ -8,7 +8,7 @@ use Illuminate\Pagination\LengthAwarePaginator;
 interface Retention
 {
     public function getInvoicesWithTax(array $filters, int $perPage): LengthAwarePaginator;
-    public function generateRetentions(array $invoiceIds, ?string $retentionDate = null): MRetention;
+    public function generateRetentions(array $invoiceIds, ?string $retentionDate = null): \Illuminate\Support\Collection;
     public function getGeneratedRetentions(array $filters, int $perPage): LengthAwarePaginator;
     public function prepareRetentionData($source): array;
     public function generateAllPendingInRange(string $startDate, string $endDate, ?string $retentionDate = null): int;

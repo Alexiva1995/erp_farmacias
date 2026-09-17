@@ -39,6 +39,7 @@ class InvoiceResource extends JsonResource
                 'name' => $this->supplier?->name,
                 'social_reason' => $this->supplier?->social_reason,
                 'rif' => $this->supplier?->rif,
+                'address' => $this->supplier?->address,
             ],
             'uploaded_by_user' => $this->relationLoaded('uploadedBy') && $this->uploadedBy ? [
                 'id' => $this->uploadedBy->id,
