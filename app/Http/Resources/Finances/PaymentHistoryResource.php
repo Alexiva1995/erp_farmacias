@@ -45,6 +45,7 @@ class PaymentHistoryResource extends JsonResource
                     'id' => $invoice->id,
                     'invoice_number' => $invoice->invoice_number,
                     'total_amount' => (float)$invoice->total_amount,
+                    'calculated_amount_bs' => isset($invoice->calculated_amount_bs) ? (float)$invoice->calculated_amount_bs : null,
                     'total_usd' => (float)$invoice->total_usd,
                     'currency' => $invoice->currency,
                     'supplier' => $invoice->supplier ? [

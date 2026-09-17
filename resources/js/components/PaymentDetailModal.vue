@@ -240,15 +240,24 @@ const supplierName = computed(() => {
 
 const paymentMethodDetails = computed(() => {
   if (!props.payment) return "N/A";
-  const currency = normalizeCurrencyCode(props.payment.source_currency || props.payment.currency);
-  const method = props.payment.method || props.payment.payment_method;
+  const rawMethod = props.payment.method || props.payment.payment_method || "";
+  const lowerMethod = String(rawMethod).toLowerCase();
   
-  // Si tiene método explícito (ej: Transferencia, Cambista, Efectivo)
-  if (method && method !== currency) {
-    return `${currency} · ${method.charAt(0).toUpperCase() + method.slice(1)}`;
+  let methodName = "Transferencia";
+  let defaultCurrency = normalizeCurrencyCode(props.payment.source_currency || props.payment.currency);
+
+  if (lowerMethod.includes("cambista")) {
+    methodName = "Cambista";
+    defaultCurrency = props.payment.source_currency ? normalizeCurrencyCode(props.payment.source_currency) : "COP";
+  } else if (lowerMethod.includes("cash") || lowerMethod.includes("efectivo")) {
+    methodName = "Efectivo";
+  } else if (lowerMethod.includes("transfer") || lowerMethod.includes("bank")) {
+    methodName = "Transferencia";
+  } else if (rawMethod && rawMethod !== defaultCurrency) {
+    methodName = rawMethod.charAt(0).toUpperCase() + rawMethod.slice(1);
   }
-  
-  return currency || "Transferencia";
+
+  return `${defaultCurrency} · ${methodName}`;
 });
 </script>
 
@@ -402,12 +411,12 @@ const paymentMethodDetails = computed(() => {
                 >
                   <div class="d-flex align-center gap-3">
                     <span class="text-sm font-weight-black text-high-emphasis">
-                      Factura {{ invoice.invoice_number }}
+                      {{ invoice.invoice_number }}
                     </span>
                   </div>
                   <div class="text-end d-flex flex-column">
                     <span class="text-sm font-weight-bold text-high-emphasis">
-                      {{ formatNumber(invoice.total_amount, normalizeCurrencyCode(invoice.currency) === "COP" ? 0 : 2) }} {{ normalizeCurrencyCode(invoice.currency) }}
+                      {{ formatNumber(invoice.calculated_amount_bs || invoice.total_amount, normalizeCurrencyCode(invoice.currency) === "COP" ? 0 : 2) }} {{ (invoice.calculated_amount_bs && normalizeCurrencyCode(invoice.currency) === 'USD') ? 'Bs.' : normalizeCurrencyCode(invoice.currency) }}
                     </span>
                     <span class="text-caption text-money-green font-weight-bold">
                       {{ formatNumber(invoice.total_usd) }} USD
