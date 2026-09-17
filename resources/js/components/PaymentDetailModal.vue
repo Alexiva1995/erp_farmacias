@@ -439,7 +439,14 @@ const paymentMethodDetails = computed(() => {
 
               <div class="total-billed-row pa-4 d-flex justify-space-between align-center">
                 <span class="text-body-2 font-weight-medium text-medium-emphasis">Total Facturado</span>
-                <span class="text-subtitle-1 font-weight-bold text-money-green">{{ formatNumber(props.payment.invoice_total_usd) }} USD</span>
+                <div class="d-flex flex-column text-end">
+                  <span class="text-subtitle-1 font-weight-black text-high-emphasis">
+                    {{ formatCurrency(invoiceBilledAmount, invoiceBilledCurrency) }}
+                  </span>
+                  <span class="text-xs font-weight-bold text-money-green">
+                    {{ formatNumber(props.payment.invoice_total_usd) }} USD
+                  </span>
+                </div>
               </div>
             </VCard>
 
