@@ -181,21 +181,15 @@ const formatNumber = (value) => {
             <th class="text-left font-weight-bold">N° Control</th>
             <th class="text-right font-weight-bold">Monto ERP</th>
             <th class="text-right font-weight-bold">Saldo Portal</th>
-            <th class="text-center font-weight-bold">Estado Portal</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="item in props.paidInErpPending" :key="item.id">
-            <td class="font-weight-medium">#{{ item.invoice_number }}</td>
+            <td class="font-weight-bold text-primary">{{ item.invoice_number }}</td>
             <td class="text-medium-emphasis">{{ item.control_number || 'N/A' }}</td>
             <td class="text-right text-medium-emphasis">{{ formatNumber(item.amount) }} {{ item.currency }}</td>
             <td class="text-right font-weight-bold text-error">
               {{ formatNumber(item.portal_amount) }} {{ item.currency || 'Bs' }}
-            </td>
-            <td class="text-center">
-              <span class="text-caption font-weight-medium text-warning">
-                Por Cobrar ({{ item.portal_type || 'FA' }})
-              </span>
             </td>
           </tr>
         </tbody>
@@ -236,21 +230,17 @@ const formatNumber = (value) => {
             <th class="text-left font-weight-bold">N° Control</th>
             <th class="text-right font-weight-bold">Monto ERP</th>
             <th class="text-center font-weight-bold">Estado ERP</th>
-            <th class="text-center font-weight-bold">Estado Portal</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="item in props.pendingInErpPaid" :key="item.id">
-            <td class="font-weight-medium">#{{ item.invoice_number }}</td>
+            <td class="font-weight-bold text-primary">{{ item.invoice_number }}</td>
             <td class="text-medium-emphasis">{{ item.control_number || 'N/A' }}</td>
             <td class="text-right font-weight-bold">
               {{ formatNumber(item.amount) }} {{ item.currency }}
             </td>
             <td class="text-center">
               <span class="text-caption text-error font-weight-medium">Por Pagar</span>
-            </td>
-            <td class="text-center">
-              <span class="text-caption text-success font-weight-medium">Liquidada en Portal</span>
             </td>
           </tr>
         </tbody>
@@ -288,15 +278,15 @@ const formatNumber = (value) => {
         </thead>
         <tbody>
           <tr v-for="(item, idx) in props.processedDetails" :key="idx">
-            <td class="font-weight-medium">#{{ item.invoice_number }}</td>
+            <td class="font-weight-bold text-primary">{{ item.invoice_number }}</td>
             <td class="text-medium-emphasis">{{ item.control_number || 'N/A' }}</td>
             <td class="text-center text-medium-emphasis">{{ item.exp_date || 'N/A' }}</td>
             <td class="text-center">
-              <span class="text-caption font-weight-bold" :class="item.is_indexed ? 'text-primary' : 'text-disabled'">
+              <span class="text-caption font-weight-bold" :class="item.is_indexed ? 'text-error' : 'text-success'">
                 {{ item.is_indexed ? 'Sí' : 'No' }}
               </span>
             </td>
-            <td class="text-right font-weight-bold">{{ formatNumber(item.total_usd) }} USD</td>
+            <td class="text-right font-weight-bold text-error">{{ formatNumber(item.total_usd) }} USD</td>
           </tr>
         </tbody>
       </VTable>
