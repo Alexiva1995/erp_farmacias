@@ -101,7 +101,7 @@
               </span>
             </template>
 
-            <!-- Monto Pago -->
+            <!-- Egreso de Caja (Monto Pagado Real) -->
             <template #item.amount="{ item }">
               <div class="d-flex flex-column text-end align-end py-1">
                 <span class="text-sm font-weight-black text-high-emphasis">
@@ -112,6 +112,21 @@
                   class="text-xs text-success font-weight-bold"
                 >
                   {{ formatNumber(item.amount_usd) }} USD
+                </span>
+              </div>
+            </template>
+
+            <!-- Liquidado al Proveedor (Monto de Facturas) -->
+            <template #item.billed_amount="{ item }">
+              <div class="d-flex flex-column text-end align-end py-1">
+                <span class="text-sm font-weight-black text-high-emphasis">
+                  {{ formatCurrency(getInvoicesBilledTotal(item), getInvoicesBilledCurrency(item)) }}
+                </span>
+                <span
+                  v-if="item.invoice_total_usd"
+                  class="text-xs text-medium-emphasis font-weight-medium"
+                >
+                  {{ formatNumber(item.invoice_total_usd) }} USD
                 </span>
               </div>
             </template>
@@ -208,14 +223,22 @@
             <div class="pa-4 pt-4">
               <div class="d-flex justify-space-between align-center mb-4">
                 <div class="d-flex flex-column">
-                  <span class="text-super-xs text-disabled font-weight-black uppercase">Monto Pagado</span>
-                  <span class="text-xl font-weight-black text-primary">
+                  <span class="text-super-xs text-disabled font-weight-black uppercase">Egreso de Caja</span>
+                  <span class="text-lg font-weight-black text-primary">
                     {{ formatCurrency(item.amount, item.currency) }}
+                  </span>
+                  <span v-if="normalizeCurrencyCode(item.currency) !== 'USD' && item.amount_usd" class="text-xs font-weight-bold text-success">
+                    {{ formatNumber(item.amount_usd) }} USD
                   </span>
                 </div>
                 <div class="text-right d-flex flex-column">
-                  <span class="text-super-xs text-disabled font-weight-black uppercase">Pagado USD</span>
-                  <span class="text-base font-weight-bold text-success">{{ formatNumber(item.amount_usd) }} USD</span>
+                  <span class="text-super-xs text-disabled font-weight-black uppercase">Liquidado</span>
+                  <span class="text-lg font-weight-black text-high-emphasis">
+                    {{ formatCurrency(getInvoicesBilledTotal(item), getInvoicesBilledCurrency(item)) }}
+                  </span>
+                  <span v-if="item.invoice_total_usd" class="text-xs font-weight-medium text-medium-emphasis">
+                    {{ formatNumber(item.invoice_total_usd) }} USD
+                  </span>
                 </div>
               </div>
 
@@ -324,7 +347,8 @@ const receiptUrl = ref("");
 const headers = [
   { title: "Fecha", key: "payment_date", sortable: true, align: "start" },
   { title: "Proveedor", key: "supplier", sortable: false, align: "start" },
-  { title: "Pagado", key: "amount", sortable: true, align: "end" },
+  { title: "Egreso de Caja", key: "amount", sortable: true, align: "end" },
+  { title: "Liquidado al Proveedor", key: "billed_amount", sortable: false, align: "end" },
   { title: "Referencia", key: "reference", sortable: true, align: "start" },
   { title: "Registrado por", key: "user", sortable: false, align: "start" },
   { title: "Acciones", key: "actions", sortable: false, align: "center" },
@@ -490,6 +514,16 @@ const formatCurrency = (amount, currency) => {
   const decimals = normalized === "COP" ? 0 : 2;
   const formatted = formatNumber(amount, decimals);
   return `${formatted} ${normalized}`;
+};
+
+const getInvoicesBilledTotal = (item) => {
+  if (!item?.invoices?.length) return 0;
+  return item.invoices.reduce((acc, inv) => acc + (parseFloat(inv.total_amount) || 0), 0);
+};
+
+const getInvoicesBilledCurrency = (item) => {
+  if (!item?.invoices?.length) return "Bs.";
+  return item.invoices[0]?.currency || "Bs.";
 };
 
 const getUserInitials = (name) => {
