@@ -18,16 +18,16 @@ const emit = defineEmits(["update:options", "update:selectedTab", "clear"]);
 // Hay una caja/moneda seleccionada → el balance corrido tiene sentido
 const isFiltered = computed(() => !!props.selectedCurrency);
 
-// Cabeceras activas: ocultar BALANCE CAJA cuando no hay filtro de moneda
+// Cabeceras activas: ocultar Balance Caja cuando no hay filtro de moneda
 const allHeaders = [
-  { title: "Día / Mov.", key: "direction",     sortable: false, align: "center" },
-  { title: "ID",         key: "id",             sortable: false, align: "start"  },
-  { title: "USUARIO",    key: "user_name",      sortable: false                  },
-  { title: "DESCRIPCIÓN",key: "description",   sortable: false                  },
-  { title: "TIPO",       key: "type",           sortable: false, align: "center" },
-  { title: "MONTO",      key: "amount",         sortable: false, align: "end"    },
-  { title: "BALANCE CAJA",key: "balance",       sortable: false, align: "end", filteredOnly: true },
-  { title: "CATEGORÍA",  key: "category_name", sortable: false                  },
+  { title: "Día / Mov.", key: "direction",     sortable: false, align: "center", width: "90px" },
+  { title: "ID",         key: "id",             sortable: false, align: "start",  width: "80px" },
+  { title: "Usuario",    key: "user_name",      sortable: false,                  width: "140px" },
+  { title: "Descripción",key: "description",   sortable: false                                  },
+  { title: "Tipo",       key: "type",           sortable: false, align: "center", width: "110px" },
+  { title: "Monto",      key: "amount",         sortable: false, align: "end",    width: "160px" },
+  { title: "Balance Caja",key: "balance",       sortable: false, align: "end",    width: "150px", filteredOnly: true },
+  { title: "Categoría",  key: "category_name", sortable: false,                  width: "130px" },
 ];
 const headers = computed(() =>
   allHeaders.filter((h) => !h.filteredOnly || isFiltered.value)
@@ -117,58 +117,40 @@ const groupedByDay = computed(() => {
     </div>
 
     <div v-else-if="groupedByDay.length > 0">
-      <div v-for="group in groupedByDay" :key="group.date" class="mb-7">
-        <!-- Encabezado del día Premium -->
-        <VCard class="rounded-lg border shadow-sm mb-4 overflow-hidden">
+      <div v-for="group in groupedByDay" :key="group.date" class="mb-6">
+        <!-- Separador de Fecha Sutil -->
+        <VCard class="rounded-lg border mb-3 overflow-hidden bg-surface">
           <div
-            class="d-flex flex-wrap align-center justify-space-between px-5 py-4 bg-white gap-4"
+            class="d-flex flex-wrap align-center justify-space-between px-4 py-3 bg-surface-variant-subtle gap-3 border-b"
           >
             <div class="d-flex align-center gap-3">
-              <VAvatar
-                color="primary"
-                variant="elevated"
-                size="40"
-                class="rounded-lg shadow-sm"
-              >
-                <VIcon icon="tabler-calendar-event" color="white" size="22" />
-              </VAvatar>
-              <div class="d-flex flex-column">
-                <span class="text-h6 font-weight-black leading-none">{{
+              <VIcon icon="tabler-calendar" color="medium-emphasis" size="20" />
+              <div class="d-flex align-baseline gap-2">
+                <span class="text-subtitle-1 font-weight-bold text-high-emphasis leading-none">{{
                   group.date
                 }}</span>
-                <span class="text-super-xs text-disabled font-weight-bold uppercase mt-1"
-                  >{{ group.items.length }} Movimiento{{ group.items.length !== 1 ? 's' : '' }} registrado{{ group.items.length !== 1 ? 's' : '' }}</span
+                <span class="text-caption text-medium-emphasis"
+                  >({{ group.items.length }} mov.)</span
                 >
               </div>
             </div>
 
-            <div class="d-flex flex-wrap gap-x-8 gap-y-2">
-              <div class="d-flex flex-column align-end">
-                <span
-                  class="text-super-xs font-weight-black text-disabled uppercase"
-                  >Entradas (+)</span
-                >
-                <span class="text-base font-weight-black text-success"
-                  >↑ {{ formatCurrency(group.totalInUsd, "USD") }}</span
+            <div class="d-flex flex-wrap align-center gap-x-6 gap-y-1 text-caption">
+              <div class="d-flex align-center gap-1">
+                <span class="text-medium-emphasis">Entradas:</span>
+                <span class="font-weight-bold text-success"
+                  >+ {{ formatCurrency(group.totalInUsd, "USD") }}</span
                 >
               </div>
-              <div class="d-flex flex-column align-end">
-                <span
-                  class="text-super-xs font-weight-black text-disabled uppercase"
-                  >Salidas (-)</span
-                >
-                <span class="text-base font-weight-black text-error"
-                  >↓ {{ formatCurrency(group.totalOutUsd, "USD") }}</span
+              <div class="d-flex align-center gap-1">
+                <span class="text-medium-emphasis">Salidas:</span>
+                <span class="font-weight-bold text-error"
+                  >- {{ formatCurrency(group.totalOutUsd, "USD") }}</span
                 >
               </div>
-              <div
-                class="d-flex flex-column align-end bg-white px-5 py-2 rounded-lg shadow-inner border border-dashed border-primary"
-              >
-                <span
-                  class="text-super-xs font-weight-black text-primary uppercase"
-                  >Neto del Día</span
-                >
-                <span class="text-h6 font-weight-black text-primary">
+              <div class="d-flex align-center gap-1 px-2 py-1 rounded bg-surface border">
+                <span class="text-medium-emphasis font-weight-medium">Neto:</span>
+                <span class="font-weight-bold text-high-emphasis">
                   {{
                     formatCurrency(group.totalInUsd - group.totalOutUsd, "USD")
                   }}
@@ -181,23 +163,24 @@ const groupedByDay = computed(() => {
           <VTable
             v-if="!$vuetify.display.smAndDown"
             density="comfortable"
-            class="premium-table text-no-wrap"
+            class="financial-table text-no-wrap"
           >
             <thead>
-              <tr class="bg-surface">
+              <tr class="table-header-row">
                 <th
                   v-for="h in headers"
                   :key="h.key"
                   :class="`text-${h.align || 'start'}`"
-                  class="text-uppercase text-super-xs font-weight-black text-disabled border-b px-4 py-3"
+                  :style="h.width ? { width: h.width, maxWidth: h.width } : {}"
+                  class="table-header-cell px-4 py-3"
                 >
                   {{ h.title }}
-                  <!-- Ícono candado en BALANCE CAJA para dejar claro que requiere filtro -->
+                  <!-- Ícono candado en Balance Caja para indicar contexto de moneda -->
                   <VIcon 
                     v-if="h.key === 'balance' && !isFiltered" 
                     icon="tabler-lock" 
-                    size="10" 
-                    class="ms-1" 
+                    size="12" 
+                    class="ms-1 text-disabled" 
                   />
                 </th>
               </tr>
@@ -206,28 +189,27 @@ const groupedByDay = computed(() => {
               <tr
                 v-for="item in group.items"
                 :key="item.id"
-                :class="item.isEntry ? 'row-in' : 'row-out'"
+                class="financial-row"
               >
-                <td class="text-center">
+                <td class="text-center" style="width: 90px;">
                   <VIcon
                     :icon="
                       item.isEntry
-                        ? 'tabler-circle-arrow-up'
-                        : 'tabler-circle-arrow-down'
+                        ? 'tabler-arrow-up'
+                        : 'tabler-arrow-down'
                     "
                     :color="item.isEntry ? 'success' : 'error'"
-                    size="20"
-                    class="opacity-80"
+                    size="18"
                   />
                 </td>
-                <td class="text-caption font-weight-black text-primary px-4">
+                <td class="text-caption font-weight-bold text-medium-emphasis px-4" style="width: 80px;">
                   <!-- Mostrar todos los IDs si la fila agrupa varias transacciones -->
                   <span v-if="item._count === 1">#{{ item.id }}</span>
                   <VTooltip v-else location="bottom">
                     <template #activator="{ props: tp }">
-                      <span v-bind="tp" class="cursor-help">
+                      <span v-bind="tp" class="cursor-help font-weight-bold text-high-emphasis">
                         #{{ item._ids[0] }}
-                        <VChip size="x-small" color="primary" variant="tonal" class="ms-1 font-weight-black">
+                        <VChip size="x-small" color="primary" variant="tonal" class="ms-1 font-weight-bold">
                           +{{ item._count - 1 }}
                         </VChip>
                       </span>
@@ -235,69 +217,62 @@ const groupedByDay = computed(() => {
                     <span>IDs agrupados: {{ item._ids.join(', ') }}</span>
                   </VTooltip>
                 </td>
-                <td>
-                   <span class="text-xs font-weight-bold">{{
+                <td class="px-4 text-truncate" style="width: 140px; max-width: 140px;">
+                   <span class="text-body-2 text-high-emphasis">{{
                       item.user_name
                     }}</span>
                 </td>
                 <td
-                  class="text-truncate text-xs px-4"
-                  style="max-inline-size: 250px"
+                  class="text-body-2 text-high-emphasis px-4 text-wrap"
                 >
                   {{ item.description }}
                 </td>
-                <td class="text-center">
+                <td class="text-center px-2" style="width: 110px;">
                   <VChip
-                    size="x-small"
+                    size="small"
                     variant="tonal"
-                    :color="item.isEntry ? 'success' : 'error'"
-                    class="font-weight-black rounded-lg"
+                    color="secondary"
+                    class="font-weight-medium text-caption"
                   >
                     {{ item.type }}
                   </VChip>
                 </td>
-                <td class="text-right px-4">
+                <td class="text-right px-4" style="width: 160px;">
                   <div class="d-flex align-center justify-end gap-2">
                     <!-- Badge cuando agrupa varias transacciones -->
                     <VTooltip v-if="item._count > 1" location="top">
                       <template #activator="{ props: tp }">
-                        <VChip v-bind="tp" size="x-small" color="warning" variant="tonal"
-                          class="font-weight-black cursor-help">
+                        <VChip v-bind="tp" size="x-small" color="secondary" variant="tonal"
+                          class="font-weight-medium cursor-help">
                           <VIcon icon="tabler-stack" size="11" class="me-1" />
-                          {{ item._count }} agrupados
+                          {{ item._count }}
                         </VChip>
                       </template>
-                      <span>Total de {{ item._count }} transacciones con la misma descripción, tipo y moneda</span>
+                      <span>Total de {{ item._count }} transacciones agrupadas</span>
                     </VTooltip>
-                    <!-- Badge de moneda: solo visible cuando la tabla muestra todas las monedas -->
-                    <VChip v-if="!isFiltered" size="x-small"
-                      :color="CURRENCY_COLOR[item.currency] ?? 'secondary'"
-                      variant="tonal" class="font-weight-black">
-                      {{ item.currency }}
-                    </VChip>
+                    <!-- Monto formateado limpio -->
                     <div
                       :class="[
-                        'text-base font-weight-black',
+                        'text-body-2 font-weight-bold',
                         item.isEntry ? 'text-success' : 'text-error',
                       ]"
                     >
-                      {{ item.isEntry ? "+" : "-" }}
-                      {{ formatCurrency(item.amount, item.currency) }}
+                      {{ item.isEntry ? "+ " : "- " }}{{ formatCurrency(item.amount, item.currency) }}
                     </div>
                   </div>
                 </td>
                 <!-- Columna BALANCE CAJA: solo cuando hay filtro activo (moneda seleccionada) -->
-                <td v-if="isFiltered" class="text-right px-4 bg-surface-variant-light">
-                  <div class="d-flex flex-column align-end">
-                    <span class="text-base font-weight-black text-high-emphasis">
-                      {{ formatCurrency(item.balance, item.currency) }}
-                    </span>
-                    <span class="text-super-xs text-disabled font-weight-bold uppercase">Balance Final</span>
-                  </div>
+                <td v-if="isFiltered" class="text-right px-4" style="width: 150px;">
+                  <span class="text-body-2 font-weight-bold text-high-emphasis">
+                    {{ formatCurrency(item.balance, item.currency) }}
+                  </span>
                 </td>
-                <td class="text-caption font-weight-bold text-disabled px-4">
+                <td class="text-caption text-medium-emphasis px-4 text-truncate" style="width: 130px; max-width: 130px;">
                   {{ item.category_name }}
                 </td>
+              </tr>
+            </tbody>
+          </VTable>
               </tr>
             </tbody>
           </VTable>
@@ -434,53 +409,32 @@ const groupedByDay = computed(() => {
 </template>
 
 <style scoped>
-.text-super-xs {
-  font-size: 0.65rem !important;
-  letter-spacing: 0.05em !important;
-  line-height: 1;
+.bg-surface-variant-subtle {
+  background-color: rgba(var(--v-theme-on-surface), 0.02);
 }
 
-.bg-surface-variant-light {
-  background-color: rgba(var(--v-theme-surface-variant), 4%);
+.financial-table {
+  background: rgb(var(--v-theme-surface)) !important;
 }
 
-.premium-table {
-  background: white !important;
-}
-
-.premium-table :deep(th) {
-  background: white !important;
-  color: rgba(
-    var(--v-theme-on-surface),
-    var(--v-high-emphasis-opacity)
-  ) !important;
-  block-size: 48px !important;
+.financial-table :deep(th) {
+  background: rgb(var(--v-theme-surface)) !important;
+  color: #6B7280 !important;
+  block-size: 44px !important;
   font-size: 0.75rem !important;
-  font-weight: 700 !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.05rem !important;
-  border-block-end: 2px solid rgba(var(--v-theme-on-surface), 0.05) !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.02rem !important;
+  border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.08) !important;
 }
 
-.premium-table :deep(td) {
-  padding-block: 12px !important;
-  border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.03) !important;
+.financial-table :deep(td) {
+  padding-block: 14px !important;
+  padding-inline: 12px !important;
+  border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.05) !important;
 }
 
-.row-in:hover {
-  background-color: rgba(var(--v-theme-success), 0.02);
-}
-
-.row-out:hover {
-  background-color: rgba(var(--v-theme-error), 0.02);
-}
-
-.border-dashed {
-  border-style: dashed !important;
-}
-
-.shadow-inner {
-  box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.04) !important;
+.financial-row:hover {
+  background-color: rgba(var(--v-theme-on-surface), 0.02);
 }
 
 .border-success-subtle {
@@ -489,29 +443,5 @@ const groupedByDay = computed(() => {
 
 .border-error-subtle {
   border-inline-start: 4px solid rgb(var(--v-theme-error)) !important;
-}
-
-.line-clamp-2 {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-/* ── Banner guía ────────────────────────────────────── */
-.guide-banner {
-  border: 1px dashed rgba(var(--v-theme-primary), 0.3);
-  background: rgba(var(--v-theme-primary), 0.04);
-  border-radius: 8px;
-}
-
-/* Animación de entrada/salida del banner */
-.fade-guide-enter-active,
-.fade-guide-leave-active {
-  transition: opacity 0.3s ease, transform 0.3s ease;
-}
-.fade-guide-enter-from,
-.fade-guide-leave-to {
-  opacity: 0;
-  transform: translateY(-6px);
 }
 </style>

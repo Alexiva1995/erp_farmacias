@@ -183,20 +183,17 @@ const rateTypeLabel = computed(() => {
         <div v-else-if="!isCompact" class="d-flex flex-column gap-5">
           <div v-for="section in sections" :key="section.currency">
 
-            <!-- Cabecera de moneda -->
-            <div
-              class="cur-header d-flex align-center gap-2 mb-3"
-              :style="{ background: `linear-gradient(90deg, rgba(${hexToRgb(C[section.currency]?.hex)},0.12) 0%, transparent 100%)`, borderLeft: `3px solid ${C[section.currency]?.hex}` }"
-            >
-              <VAvatar :color="C[section.currency]?.color" variant="flat" size="26" class="rounded flex-shrink-0">
-                <VIcon :icon="C[section.currency]?.icon" size="14" />
+            <!-- Cabecera de moneda (Neutro) -->
+            <div class="cur-header d-flex align-center gap-2 mb-3">
+              <VAvatar color="surface-variant" variant="flat" size="26" class="rounded flex-shrink-0">
+                <VIcon :icon="C[section.currency]?.icon" size="14" class="text-medium-emphasis" />
               </VAvatar>
               <div class="d-flex align-baseline gap-2">
                 <span class="cur-header__name">{{ C[section.currency]?.label }}</span>
                 <span class="cur-header__ticker">{{ C[section.currency]?.ticker }}</span>
               </div>
               <VSpacer />
-              <div class="cur-header__total" :style="{ color: C[section.currency]?.hex }">
+              <div class="cur-header__total">
                 {{ C[section.currency]?.prefix }} {{ fmt(section.section_total, section.currency) }}
               </div>
             </div>
@@ -206,7 +203,6 @@ const rateTypeLabel = computed(() => {
               <VCol v-for="wallet in section.wallets" :key="wallet.key" cols="6" sm="4" md="3" lg="2">
                 <div
                   :class="['mcard', isSelected(wallet) ? 'mcard--sel' : '', wallet.balance < 0 ? 'mcard--neg' : '']"
-                  :style="{ '--mc': C[section.currency]?.hex }"
                   @click="handleSelect(wallet)"
                 >
                   <!-- Botón ajuste -->
@@ -220,7 +216,7 @@ const rateTypeLabel = computed(() => {
                   </VTooltip>
 
                   <!-- Ícono método -->
-                  <div class="mcard__icon" :style="{ background: `rgba(${hexToRgb(C[section.currency]?.hex)}, 0.15)`, color: C[section.currency]?.hex }">
+                  <div class="mcard__icon">
                     <VIcon :icon="M[wallet.method]?.icon || 'tabler-cash'" size="16" />
                   </div>
 
@@ -234,11 +230,9 @@ const rateTypeLabel = computed(() => {
                   </div>
 
                   <div class="mcard__footer">
-                    <span class="mcard__in"><VIcon icon="tabler-arrow-up" size="9" />{{ fmt(wallet.total_in, wallet.currency) }}</span>
-                    <span class="mcard__out"><VIcon icon="tabler-arrow-down" size="9" />{{ fmt(wallet.total_out, wallet.currency) }}</span>
+                    <span class="mcard__in"><VIcon icon="tabler-arrow-up" size="11" />{{ fmt(wallet.total_in, wallet.currency) }}</span>
+                    <span class="mcard__out"><VIcon icon="tabler-arrow-down" size="11" />{{ fmt(wallet.total_out, wallet.currency) }}</span>
                   </div>
-
-                  <div class="mcard__bar" :style="{ background: C[section.currency]?.hex }" />
                 </div>
               </VCol>
             </VRow>
@@ -247,17 +241,16 @@ const rateTypeLabel = computed(() => {
         </div>
 
         <!-- ══ VISTA COMPACTA ══ -->
-        <div v-else class="d-flex flex-column gap-2">
+        <div v-else class="d-flex flex-column gap-3">
           <div
             v-for="section in sections"
             :key="section.currency"
             class="cblock"
-            :style="{ '--cb': C[section.currency]?.hex, '--cbalpha': `rgba(${hexToRgb(C[section.currency]?.hex)},0.1)` }"
           >
             <!-- Cabecera compacta -->
             <div class="cblock__head">
               <div class="cblock__icon">
-                <VIcon :icon="C[section.currency]?.icon" size="14" class="text-white" />
+                <VIcon :icon="C[section.currency]?.icon" size="14" />
               </div>
               <span class="cblock__name">{{ C[section.currency]?.label }}</span>
               <span class="cblock__ticker">{{ C[section.currency]?.ticker }}</span>
@@ -279,8 +272,8 @@ const rateTypeLabel = computed(() => {
                 @click="handleSelect(wallet)"
               >
                 <!-- Ícono -->
-                <div class="cwallet__icon" :style="{ background: `rgba(${hexToRgb(C[section.currency]?.hex)}, 0.14)`, color: C[section.currency]?.hex }">
-                  <VIcon :icon="M[wallet.method]?.icon || 'tabler-cash'" size="14" />
+                <div class="cwallet__icon">
+                  <VIcon :icon="M[wallet.method]?.icon || 'tabler-cash'" size="16" />
                 </div>
 
                 <!-- Textos -->
@@ -292,7 +285,7 @@ const rateTypeLabel = computed(() => {
                 </div>
 
                 <!-- Punto selección activa -->
-                <div v-if="isSelected(wallet)" class="cwallet__dot" :style="{ background: C[section.currency]?.hex }" />
+                <div v-if="isSelected(wallet)" class="cwallet__dot" />
 
                 <!-- Ajuste contable -->
                 <VTooltip v-if="canAdjust" location="top">
@@ -320,166 +313,171 @@ const rateTypeLabel = computed(() => {
 ══════════════════════════════════════════════════ */
 .topbar-icon {
   display: flex; align-items: center; justify-content: center;
-  width: 28px; height: 28px;
-  border-radius: 5px;
+  width: 32px; height: 32px;
+  border-radius: 8px;
   background: rgb(var(--v-theme-primary));
   flex-shrink: 0;
 }
 .topbar-title {
-  font-size: 0.8rem;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: 1.5px;
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity));
 }
 
 /* Rate pills */
 .rate-pill {
-  display: inline-flex; align-items: center; gap: 4px;
-  padding: 3px 10px;
-  border-radius: 5px;
-  border: 1px solid;
-  font-weight: 800;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  font-weight: 600;
   cursor: default;
   user-select: none;
-  transition: opacity 0.15s;
-  background: rgba(var(--v-theme-surface), 0.9);
+  background: rgb(var(--v-theme-surface));
 }
-.rate-pill:hover { opacity: 0.8; }
-.rate-pill--bs  { border-color: rgba(var(--v-theme-error),   0.3); color: rgb(var(--v-theme-error)); }
-.rate-pill--cop { border-color: rgba(var(--v-theme-primary), 0.3); color: rgb(var(--v-theme-primary)); }
+.rate-pill:hover { border-color: rgba(var(--v-theme-on-surface), 0.16); }
+.rate-pill--bs, .rate-pill--cop { color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)); }
 
-.rate-pill__label { font-size: 0.6rem; letter-spacing: 0.07em; text-transform: uppercase; opacity: 0.7; }
-.rate-pill__sep   { font-size: 0.65rem; opacity: 0.35; }
-.rate-pill__value { font-size: 0.75rem; font-weight: 900; color: rgb(var(--v-theme-on-surface)); }
+.rate-pill__label { font-size: 0.6875rem; letter-spacing: 0.05em; text-transform: uppercase; color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)); font-weight: 600; }
+.rate-pill__sep   { font-size: 0.6875rem; opacity: 0.3; }
+.rate-pill__value { font-size: 0.8125rem; font-weight: 700; color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)); }
 
 /* Total pill */
-.total-pill { display: flex; flex-direction: column; align-items: flex-end; line-height: 1; }
-.total-pill__label { font-size: 0.55rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.4; margin-bottom: 1px; }
-.total-pill__value { font-size: 0.95rem; font-weight: 900; color: rgb(var(--v-theme-success)); letter-spacing: -0.3px; }
+.total-pill { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.2; }
+.total-pill__label { font-size: 0.6875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)); margin-bottom: 2px; }
+.total-pill__value { font-size: 1.25rem; font-weight: 700; color: rgb(var(--v-theme-primary)); letter-spacing: -0.3px; }
 
 /* ══════════════════════════════════════════════════
    VISTA EXPANDIDA — cabecera de moneda
 ══════════════════════════════════════════════════ */
 .cur-header {
-  padding: 6px 12px;
-  border-radius: 5px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: rgba(var(--v-theme-on-surface), 0.03);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.06);
 }
-.cur-header__name   { font-size: 0.72rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.8px; }
-.cur-header__ticker { font-size: 0.58rem; font-weight: 700; opacity: 0.4; text-transform: uppercase; }
-.cur-header__total  { font-size: 0.88rem; font-weight: 900; letter-spacing: -0.2px; }
+.cur-header__name   { font-size: 0.875rem; font-weight: 700; color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)); }
+.cur-header__ticker { font-size: 0.6875rem; font-weight: 600; color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)); text-transform: uppercase; }
+.cur-header__total  { font-size: 1.125rem; font-weight: 700; letter-spacing: -0.2px; color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)); }
 
 /* ── Method Card (expanded) ── */
 .mcard {
   position: relative;
-  display: flex; flex-direction: column; gap: 3px;
-  padding: 10px 10px 8px;
-  border-radius: 5px;
-  background: rgba(var(--v-theme-surface), 0.95);
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.07);
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 16px;
+  border-radius: 8px;
+  background: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
   cursor: pointer;
   overflow: hidden;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  min-height: 108px;
+  transition: all 0.2s ease;
+  min-height: 116px;
 }
 .mcard:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px -6px rgba(0,0,0,0.14);
+  border-color: rgba(var(--v-theme-primary), 0.4);
+  box-shadow: 0 4px 16px -2px rgba(0,0,0,0.08);
 }
-.mcard--sel { border-color: var(--mc); box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--mc) 25%, transparent); }
-.mcard--neg { border-color: rgba(var(--v-theme-error), 0.35); }
+.mcard:hover .mcard__footer {
+  opacity: 1;
+  max-height: 30px;
+}
+.mcard--sel { border-color: rgb(var(--v-theme-primary)) !important; box-shadow: 0 0 0 2px rgba(var(--v-theme-primary), 0.15) !important; }
+.mcard--neg { border-left: 3px solid rgb(var(--v-theme-error)); }
 
 .mcard__adj {
-  position: absolute; inset-block-start: 4px; inset-inline-end: 4px;
+  position: absolute; inset-block-start: 6px; inset-inline-end: 6px;
   z-index: 5; opacity: 0; transition: opacity 0.2s;
 }
-.mcard:hover .mcard__adj { opacity: 1; }
+.mcard:hover .mcard__adj { opacity: 0.7; }
+.mcard__adj:hover { opacity: 1 !important; }
 
 .mcard__icon {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 28px; height: 28px;
-  border-radius: 5px;
-  margin-bottom: 3px;
+  width: 32px; height: 32px;
+  border-radius: 6px;
+  background: rgba(var(--v-theme-on-surface), 0.04) !important;
+  color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)) !important;
   flex-shrink: 0;
 }
 
 .mcard__label {
-  font-size: 0.58rem; font-weight: 800;
-  text-transform: uppercase; letter-spacing: 0.07em;
-  opacity: 0.45;
-  line-height: 1;
+  font-size: 0.6875rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.5px;
+  color: #6B7280;
+  line-height: 1.2;
 }
 
-.mcard__amount-row { display: flex; align-items: baseline; gap: 2px; margin-top: 1px; }
-.mcard__prefix { font-size: 0.55rem; font-weight: 800; opacity: 0.4; line-height: 1; }
-.mcard__amount { font-size: 0.95rem; font-weight: 900; letter-spacing: -0.3px; }
+.mcard__amount-row { display: flex; align-items: baseline; gap: 4px; }
+.mcard__prefix { font-size: 0.75rem; font-weight: 600; color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)); line-height: 1; }
+.mcard__amount { font-size: 1.125rem; font-weight: 700; letter-spacing: -0.3px; color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)); }
 .mcard__amount--neg { color: rgb(var(--v-theme-error)); }
 
 .mcard__footer {
   display: flex; justify-content: space-between; align-items: center;
-  margin-top: auto; padding-top: 5px;
+  margin-top: auto; padding-top: 8px;
   border-top: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+  opacity: 0.75;
+  transition: opacity 0.2s ease;
 }
 .mcard__in, .mcard__out {
   display: flex; align-items: center; gap: 2px;
-  font-size: 0.58rem; font-weight: 800;
+  font-size: 0.6875rem; font-weight: 600;
 }
 .mcard__in  { color: rgb(var(--v-theme-success)); }
 .mcard__out { color: rgb(var(--v-theme-error));   }
 
 .mcard__bar {
-  position: absolute; inset-block-start: 0; inset-inline-start: 0;
-  width: 3px; height: 100%;
-  border-radius: 5px 0 0 5px;
-  opacity: 0.5;
+  display: none;
 }
 
 /* ══════════════════════════════════════════════════
    VISTA COMPACTA — cblock
 ══════════════════════════════════════════════════ */
 .cblock {
-  border-radius: 5px;
+  border-radius: 8px;
   border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
   overflow: hidden;
+  background: rgb(var(--v-theme-surface));
 }
 
 /* Cabecera */
 .cblock__head {
-  display: flex; align-items: center; gap: 8px;
-  padding: 7px 14px;
-  background: var(--cbalpha);
-  border-left: 3px solid var(--cb);
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px;
+  background: rgba(var(--v-theme-on-surface), 0.02);
   border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
 }
 .cblock__icon {
   display: flex; align-items: center; justify-content: center;
-  width: 24px; height: 24px; border-radius: 4px;
-  background: var(--cb);
+  width: 28px; height: 28px; border-radius: 6px;
+  background: rgba(var(--v-theme-on-surface), 0.06);
+  color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity));
   flex-shrink: 0;
 }
-.cblock__name   { font-size: 0.7rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.8px; white-space: nowrap; }
-.cblock__ticker { font-size: 0.57rem; font-weight: 700; opacity: 0.38; text-transform: uppercase; }
+.cblock__name   { font-size: 0.875rem; font-weight: 700; color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)); white-space: nowrap; }
+.cblock__ticker { font-size: 0.6875rem; font-weight: 600; color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)); text-transform: uppercase; }
 
-/* Total siempre en una línea, a la derecha con el label encima */
 .cblock__total-wrap {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   flex-shrink: 0;
   margin-left: auto;
-  line-height: 1;
-  gap: 2px;
+  line-height: 1.2;
 }
 .cblock__total-label {
-  font-size: 0.52rem;
-  font-weight: 800;
+  font-size: 0.625rem;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
-  opacity: 0.38;
+  letter-spacing: 0.05em;
+  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity));
 }
 .cblock__total {
-  font-size: 1rem;
-  font-weight: 900;
-  color: var(--cb);
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity));
   letter-spacing: -0.3px;
   white-space: nowrap;
 }
@@ -487,53 +485,56 @@ const rateTypeLabel = computed(() => {
 /* Row de wallets */
 .cblock__row {
   display: flex; flex-wrap: wrap;
-  background: rgba(var(--v-theme-surface), 0.97);
+  background: rgb(var(--v-theme-surface));
 }
 
 /* Wallet item */
 .cwallet {
-  display: flex; align-items: center; gap: 10px;
-  padding: 10px 16px;
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px;
   border-right: 1px solid rgba(var(--v-theme-on-surface), 0.05);
-  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.04);
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.05);
   cursor: pointer;
-  flex: 1 1 180px;        /* más ancho base para que el monto no corte */
-  min-width: 165px;
+  flex: 1 1 180px;
+  min-width: 170px;
   position: relative;
-  transition: background 0.18s ease;
+  transition: all 0.18s ease;
 }
 .cwallet:last-child { border-right: none; }
-.cwallet:hover { background: rgba(var(--v-theme-primary), 0.03); }
-.cwallet:hover .cwallet__adj { opacity: 0.65 !important; }
+.cwallet:hover { background: rgba(var(--v-theme-on-surface), 0.02); }
+.cwallet:hover .cwallet__adj { opacity: 0.7 !important; }
 
-.cwallet--active { background: rgba(var(--v-theme-primary), 0.05) !important; }
+.cwallet--active { background: rgba(var(--v-theme-primary), 0.04) !important; }
 .cwallet--active::after {
   content: '';
   position: absolute; inset-block-start: 0; inset-inline-start: 0;
   width: 100%; height: 2px;
-  background: var(--cb, rgb(var(--v-theme-primary)));
+  background: rgb(var(--v-theme-primary));
 }
-.cwallet--neg { background: rgba(var(--v-theme-error), 0.03); }
+.cwallet--neg { border-left: 3px solid rgb(var(--v-theme-error)); }
 
 .cwallet__icon {
   display: flex; align-items: center; justify-content: center;
-  width: 32px; height: 32px; border-radius: 5px;
+  width: 32px; height: 32px; border-radius: 6px;
+  background: rgba(var(--v-theme-on-surface), 0.04) !important;
+  color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)) !important;
   flex-shrink: 0;
 }
 .cwallet__body {
   display: flex; flex-direction: column; gap: 2px;
-  line-height: 1; min-width: 0; flex: 1;
+  line-height: 1.2; min-width: 0; flex: 1;
 }
 .cwallet__method  {
-  font-size: 0.58rem; font-weight: 800;
-  text-transform: uppercase; letter-spacing: 0.07em;
-  opacity: 0.4; white-space: nowrap;
+  font-size: 0.6875rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.5px;
+  color: #6B7280; white-space: nowrap;
 }
 .cwallet__balance {
-  font-size: 0.92rem;        /* más grande para legibilidad */
-  font-weight: 900;
-  letter-spacing: -0.3px;
-  white-space: nowrap;       /* nunca cortar el monto a 2 líneas */
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity));
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -542,8 +543,8 @@ const rateTypeLabel = computed(() => {
 .cwallet__dot {
   position: absolute; inset-block-start: 50%; inset-inline-end: 8px;
   transform: translateY(-50%);
-  width: 5px; height: 5px; border-radius: 50%;
-  opacity: 0.75;
+  width: 6px; height: 6px; border-radius: 50%;
+  background: rgb(var(--v-theme-primary)) !important;
 }
 .cwallet__adj { opacity: 0; transition: opacity 0.18s; flex-shrink: 0; }
 </style>

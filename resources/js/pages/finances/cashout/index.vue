@@ -284,7 +284,7 @@ onUnmounted(() => {
 
 <template>
   <div class="cashout-page pb-12">
-    <div class="d-flex flex-column gap-1 mt-1">
+    <div class="d-flex flex-column gap-6 mt-2">
       <!-- Filtros y Wallets -->
       <CashoutFilters
         v-model:dateRange="dateRange"
@@ -300,7 +300,6 @@ onUnmounted(() => {
         @clear="handleClearFilters"
         @adjust="handleAdjustRequest"
         @export="exportExcel"
-        class="mb-0"
       />
 
       <!-- Tabla de Movimientos -->
@@ -314,7 +313,6 @@ onUnmounted(() => {
         :totalTransactions="transactionsTotal"
         @update:options="updateTableOptions"
         @clear="handleClearFilters"
-        class="ma-0"
       />
     </div>
 
