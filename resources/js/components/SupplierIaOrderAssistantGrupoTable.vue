@@ -9,6 +9,7 @@ import Swal from 'sweetalert2';
 import { toast } from "@/plugins/sweetalert";
 
 const brandingStore = useBrandingStore();
+const { mdAndUp } = useDisplay();
 const isRestaurant = computed(() => false);
 
 const props = defineProps({
@@ -451,6 +452,7 @@ function rowClass(item) {
                 />
               </template>
 
+              <template #item.actions="{ item }">
                 <div class="d-flex justify-end ga-1">
                   <!-- Indicador de Matching en Progreso -->
                   <div v-if="item.ia_matching_in_progress" class="d-flex align-center ga-1 pr-2">
@@ -497,6 +499,7 @@ function rowClass(item) {
                     </VBtn>
                   </template>
                 </div>
+              </template>
             </VDataTable>
           </div>
 
