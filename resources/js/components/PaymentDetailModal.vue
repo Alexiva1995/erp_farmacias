@@ -231,6 +231,14 @@ const invoiceBilledAmount = computed(() => {
   return props.payment.invoices.reduce((acc, inv) => acc + (parseFloat(inv.total_amount) || 0), 0);
 });
 
+const invoiceBilledCurrency = computed(() => {
+  if (props.payment?.invoice_total_bs && props.payment.invoice_total_bs > 0) {
+    return "Bs.";
+  }
+  if (!props.payment?.invoices?.length) return "Bs.";
+  return props.payment.invoices[0]?.currency || "Bs.";
+});
+
 const supplierName = computed(() => {
   if (props.payment?.invoices?.[0]?.supplier?.name) {
     return props.payment.invoices[0].supplier.name;

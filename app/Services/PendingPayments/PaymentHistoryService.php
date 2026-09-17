@@ -168,9 +168,9 @@ class PaymentHistoryService
                 $invUsd = (float) $invoice->total_usd;
                 $totalInvoiceAmount += $invUsd;
 
-                // Si la factura es indexada o su moneda es USD, calcular su deuda real indexada
+                // Si la factura es indexada o su moneda es USD, calcular su deuda real indexada al BCV
                 if ($invoice->is_indexed || $invoice->currency === 'USD') {
-                    $rateToUse = ((float)$payment->exchange_rate_applied > 0) ? (float)$payment->exchange_rate_applied : (((float)$invoice->exchange_rate > 0) ? (float)$invoice->exchange_rate : $currentBcvRate);
+                    $rateToUse = ((float)$invoice->exchange_rate > 0) ? (float)$invoice->exchange_rate : $currentBcvRate;
                     $invBs = round($invUsd * $rateToUse, 2);
                     $totalInvoiceBs += $invBs;
                     $invoice->calculated_amount_bs = $invBs;
