@@ -106,9 +106,9 @@ const headers = [
   { title: "FAC", key: "invoice_number", sortable: false },
   { title: "Proveedor", key: "supplier_name", sortable: false, width: "25%" },
   { title: "Vencimiento", key: "payment_date", sortable: false },
-  { title: "Monto USD", key: "original_amount", sortable: false, align: "end" },
-  { title: "Monto BS", key: "remaining_amount", sortable: false, align: "end" },
-  { title: "Indexada", key: "is_indexed", sortable: false, width: "80px", align: "center" },
+  { title: "USD", key: "original_amount", sortable: false, align: "end" },
+  { title: "Monto Fact", key: "remaining_amount", sortable: false, align: "end" },
+  { title: "Index", key: "is_indexed", sortable: false, width: "80px", align: "center" },
   { title: "Acciones", key: "actions", sortable: false, align: "center" },
 ];
 
@@ -295,13 +295,13 @@ const openInvoiceTab = (item) => {
         </template>
 
         <template #item.original_amount="{ item }">
-          <span class="text-sm font-weight-bold text-high-emphasis">${{ formatCurrency(getEffectiveUSD(item), "USD", true) }}</span>
+          <span class="text-sm font-weight-bold text-high-emphasis">{{ formatCurrency(getEffectiveUSD(item), "USD", true) }} USD</span>
         </template>
 
         <template #item.remaining_amount="{ item }">
           <div class="d-flex flex-column align-end">
             <span class="text-sm font-weight-black" :class="getRemainingAmountClass(item)">
-              {{ formatCurrency(getDisplayAmount(item), item.currency, true) }} Bs.
+              {{ formatCurrency(getDisplayAmount(item), item.currency, true) }} {{ (item.currency === 'COP') ? 'COP' : (item.currency === 'USD' ? 'USD' : 'Bs.') }}
             </span>
             <div v-if="item.nd_referential_amount > 0 || item.claim_amount > 0" class="d-flex align-center gap-1 mt-1">
               <VChip
