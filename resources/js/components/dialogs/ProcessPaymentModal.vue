@@ -224,7 +224,7 @@ watch(() => form.value.payment_currency, (newCurrency) => {
 });
 
 const availablePaymentMethods = computed(() => {
-  const currency = form.value.payment_currency;
+  const currency = sourceCurrency.value;
   const methodMap = {
     BANK: { value: "transfer", label: "Transferencia / Banco", icon: "tabler-building-bank" },
     MOBILE: { value: "mobile", label: "Pago móvil", icon: "tabler-device-mobile" },
@@ -237,10 +237,18 @@ const availablePaymentMethods = computed(() => {
   const allowed = currency === "VES" || currency === "BS" 
     ? ["BANK", "MOBILE", "CASH"]
     : currency === "COP" 
-    ? ["BANK", "CASH"]
+    ? ["CASH", "BANK"]
     : ["BANK", "CASH", "BINANCE", "PAYPAL", "CREDIT"];
 
   return allowed.map((key) => methodMap[key]);
+});
+
+watch(sourceCurrency, (newSource) => {
+  if (newSource === 'COP') {
+    form.value.payment_method = 'cash';
+  } else if (newSource === 'VES' && form.value.payment_method !== 'cash' && form.value.payment_method !== 'mobile') {
+    form.value.payment_method = 'transfer';
+  }
 });
 
 const validatePaymentAmount = (value) => {
@@ -367,12 +375,14 @@ const updateSourceCalculations = () => {
   if (destCurrency === 'VES' && srcCurr === 'COP') {
     const copRate = exchangeRates.value["COP"] || 4000;
     const bcvRate = exchangeRates.value["BS"] || props.exchangeRate || 1;
-    // Tasa COP por Bolívar (ej: COP/USD dividido entre VES/USD)
+    // Tasa COP por 1 Bolívar
     const copPerBs = (copRate / bcvRate);
     if (!customConversionMode.value) {
       exchangeRateApplied.value = Number(copPerBs.toFixed(4));
     }
-    sourceAmountCalculated.value = Number((payAmount * exchangeRateApplied.value).toFixed(2));
+    const rawCop = payAmount * exchangeRateApplied.value;
+    // Redondear siempre a múltiplos de 100 COP para transacciones de efectivo reales (ej: 236.800 COP)
+    sourceAmountCalculated.value = Math.round(rawCop / 100) * 100;
   } 
   // Si el destino es VES y origen es USD
   else if (destCurrency === 'VES' && srcCurr === 'USD') {
@@ -388,7 +398,8 @@ const updateSourceCalculations = () => {
     if (!customConversionMode.value) {
       exchangeRateApplied.value = Number(copRate.toFixed(2));
     }
-    sourceAmountCalculated.value = Number((payAmount * exchangeRateApplied.value).toFixed(2));
+    const rawCop = payAmount * exchangeRateApplied.value;
+    sourceAmountCalculated.value = Math.round(rawCop / 100) * 100;
   }
   // Si el destino es USD y origen es VES
   else if (destCurrency === 'USD' && srcCurr === 'VES') {
@@ -415,11 +426,13 @@ watch(exchangeRateApplied, (newRate) => {
   if (srcCurr === 'VES' && destCurrency === 'VES') return;
 
   if (destCurrency === 'VES' && srcCurr === 'COP') {
-    sourceAmountCalculated.value = Number((payAmount * Number(newRate || 0)).toFixed(2));
+    const rawCop = payAmount * Number(newRate || 0);
+    sourceAmountCalculated.value = Math.round(rawCop / 100) * 100;
   } else if (destCurrency === 'VES' && srcCurr === 'USD') {
     sourceAmountCalculated.value = Number(newRate) > 0 ? Number((payAmount / Number(newRate)).toFixed(2)) : 0;
   } else if (destCurrency === 'USD' && srcCurr === 'COP') {
-    sourceAmountCalculated.value = Number((payAmount * Number(newRate || 0)).toFixed(2));
+    const rawCop = payAmount * Number(newRate || 0);
+    sourceAmountCalculated.value = Math.round(rawCop / 100) * 100;
   }
 });
 
@@ -567,11 +580,12 @@ const formatCurrency = (amount, currencyCode = null, omitCurrency = false) => {
   }).format(num);
 };
 
-const formatNumber = (value) => {
+const formatNumber = (value, currency = null) => {
   const num = Number(value) || 0;
+  const isCop = currency === 'COP' || (!currency && sourceCurrency.value === 'COP');
   return new Intl.NumberFormat("es-VE", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: isCop ? 0 : 2,
+    maximumFractionDigits: isCop ? 0 : 2,
   }).format(num);
 };
 
@@ -760,13 +774,13 @@ watch(() => props.modelValue, (val) => {
             <VCard variant="flat" class="pa-3 bg-white rounded-lg elevation-1 border h-100">
               <VRow dense>
                 <VCol cols="12">
-                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Caja / Moneda de Origen</span>
+                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Caja / Moneda de Salida</span>
                   <VSelect
                     v-model="sourceCurrency"
                     :items="[
-                      { title: 'COP - Pesos (Efectivo / Caja)', value: 'COP' },
-                      { title: 'USD - Dólares (Efectivo / Custodia)', value: 'USD' },
-                      { title: 'VES - Bolívares (Cuenta Bancaria)', value: 'VES' },
+                      { title: 'COP', value: 'COP' },
+                      { title: 'USD', value: 'USD' },
+                      { title: 'VES', value: 'VES' },
                     ]"
                     variant="outlined"
                     density="compact"
@@ -782,8 +796,8 @@ watch(() => props.modelValue, (val) => {
                       <span class="text-super-xs font-weight-bold text-primary uppercase">
                         Tasa de Cambio de Conversión
                       </span>
-                      <span class="text-super-xs text-medium-emphasis">
-                        {{ sourceCurrency === 'COP' ? 'COP por 1 ' + form.payment_currency : (sourceCurrency === 'USD' ? 'Bs por 1 USD' : 'Tasa pactada') }}
+                      <span class="text-super-xs text-medium-emphasis font-weight-bold">
+                        {{ (sourceCurrency === 'COP' && form.payment_currency === 'VES') ? 'COP X 1Bs' : (sourceCurrency === 'USD' && form.payment_currency === 'VES' ? 'Bs X 1 USD' : (sourceCurrency === 'COP' && form.payment_currency === 'USD' ? 'COP X 1 USD' : sourceCurrency + ' X 1 ' + form.payment_currency)) }}
                       </span>
                     </div>
                     <VTextField

@@ -126,8 +126,9 @@ class ReceiptOcrService implements ReceiptOcrServiceInterface
     public function findReferenceInText(string $text): ?string
     {
         $patterns = [
-            '/(?:referencia|ref|operacion|operación|aprobacion|aprobación|secuencia|transaccion|transacción|comprobante|clave\s*de\s*pago{codigo\s*de\s*pago|código\s*de\s*referencia)[^0-9\n\{ }]*(?:nro|número|numero|no|n‮|#)?[^0-9\n\{}]*([0-9]{4,16})/iu',
-            '/(?:n[uú]mero\s*de|nro\.?\s*de)\s*(?:referencia|operaci[oó]n|aprobaci[oó]n|secuencia|transacci[oó]n|comprobante)[^0-9\n\{ }]*([0-9]{4,16})/iu',
+            '/(?:referencia|ref|operacion|operación|aprobacion|aprobación|secuencia|transaccion|transacción|comprobante|clave\s*de\s*pago|codigo\s*de\s*pago|código\s*de\s*referencia)[^0-9\n\r:]{0,20}[:\s#]*([0-9]{4,18})/iu',
+            '/(?:n[uú]mero\s*de|nro\.?\s*de)\s*(?:referencia|operaci[oó]n|aprobaci[oó]n|secuencia|transacci[oó]n|comprobante)[^0-9\n\r:]{0,20}[:\s#]*([0-9]{4,18})/iu',
+            '/(?:operaci[oó]n|referencia|ref)[\s:]+([0-9]{4,18})/iu',
         ];
 
         foreach ($patterns as $pattern) {
@@ -143,9 +144,12 @@ class ReceiptOcrService implements ReceiptOcrServiceInterface
         for ($i = 0; $i < count($lines); $i++) {
             $line = trim($lines[$i]);
             if (preg_match('/^(?:referencia|ref|operaci[oó]n|aprobaci[oó]n|secuencia|transacci[oó]n)[^0-9]*[:\s]*/iu', $line)) {
+                if (preg_match('/([0-9]{4,18})/', $line, $inlineMatch)) {
+                    return $inlineMatch[1];
+                }
                 if (isset($lines[$i + 1])) {
                     $nextLine = trim($lines[$i + 1]);
-                    if (preg_match('/([0-9]{4,16})/', $nextLine, $m)) {
+                    if (preg_match('/([0-9]{4,18})/', $nextLine, $m)) {
                         return $m[1];
                     }
                 }
