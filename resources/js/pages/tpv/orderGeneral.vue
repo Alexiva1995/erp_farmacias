@@ -1156,7 +1156,7 @@ const sellerDisplayName = (item) => (item?.username ? capitalizeFirstAndLastName
             @update:options="updateTableOptionsQuotations"
           >
             <template #item.id="{ item }">
-              <span class="text-primary font-weight-black">#{{ item.id }}</span>
+              <span class="text-primary font-weight-black">{{ item.id }}</span>
             </template>
             <template #item.client_display="{ item }">
               {{ item.client ? `${item.client.name || ''} ${item.client.last_name || ''}`.trim() || item.client.identification : '—' }}
@@ -1165,7 +1165,7 @@ const sellerDisplayName = (item) => (item?.username ? capitalizeFirstAndLastName
               {{ item.creator?.username ? capitalizeFirstAndLastName(item.creator.username) : '—' }}
             </template>
             <template #item.total="{ item }">
-              <span class="font-weight-bold">
+              <span class="font-weight-bold text-success">
                 {{ Number(item.total ?? 0).toLocaleString('es', { minimumFractionDigits: 2 }) }}
               </span>
             </template>

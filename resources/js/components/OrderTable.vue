@@ -125,7 +125,7 @@ const renderSellerName = (item) => {
               class="rounded-lg pa-4"
             >
               <div class="d-flex justify-space-between align-center mb-2">
-                <span class="text-caption font-weight-bold text-primary">ID: #{{ item.raw.id }}</span>
+                <span class="text-caption font-weight-bold text-primary">ID: {{ item.raw.id }}</span>
                 <VChip
                   size="x-small"
                   :color="
@@ -161,7 +161,7 @@ const renderSellerName = (item) => {
               <div class="d-flex justify-space-between align-center">
                 <div>
                   <div class="text-caption text-medium-emphasis mb-n1">Total</div>
-                  <div class="text-h6 font-weight-black">
+                  <div class="text-h6 font-weight-black text-success">
                     {{ formatAmountOnly(Number(item.raw.total_amount) || 0, item.raw.currency || 'COP') }}
                   </div>
                 </div>
@@ -237,7 +237,7 @@ const renderSellerName = (item) => {
       </template>
 
       <template v-slot:item.id="{ item }">
-        <span class="text-primary font-weight-black">#{{ item.id }}</span>
+        <span class="text-primary font-weight-black">{{ item.id }}</span>
       </template>
 
       <template v-slot:item.identification="{ item }">
@@ -253,7 +253,7 @@ const renderSellerName = (item) => {
 
       <template v-slot:item.total_amount="{ item }">
         <div class="d-flex align-center justify-end gap-1">
-          <span class="text-end">
+          <span class="text-end font-weight-bold text-success">
             {{ formatAmountOnly(Number(item.total_amount) || 0, item.currency || 'COP') }}
           </span>
           <IconBtn

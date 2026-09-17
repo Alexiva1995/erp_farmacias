@@ -1,18 +1,22 @@
 import { formatCurrency } from './currencyFormatter';
 
 /**
- * Formatea una fecha a YYYY-MM-DD (UTC).
+ * Formatea una fecha a YYYY-MM-DD (Hora Local).
  * @param {string|Date} dateString 
  * @returns {string}
  */
 export const formatDateSimple = (dateString) => {
   if (!dateString) return "N/A";
   try {
+    // Si viene solo fecha YYYY-MM-DD sin hora, evitar conversiones de zona horaria
+    if (typeof dateString === "string" && /^\d{4}-\d{2}-\d{2}$/.test(dateString.trim())) {
+      return dateString.trim();
+    }
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return "Fecha inválida";
-    const year = date.getUTCFullYear();
-    const month = (date.getUTCMonth() + 1).toString().padStart(2, "0");
-    const day = date.getUTCDate().toString().padStart(2, "0");
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
+    const day = date.getDate().toString().padStart(2, "0");
     return `${year}-${month}-${day}`;
   } catch (error) {
     return "Fecha inválida";
