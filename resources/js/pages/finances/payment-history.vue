@@ -24,8 +24,8 @@
                 <VIcon icon="tabler-coin" size="24" />
               </VAvatar>
               <div class="d-flex flex-column">
-                <span class="text-super-xs font-weight-black text-disabled uppercase">Total Pagado (VES)</span>
-                <span class="text-h6 font-weight-black text-warning">VES {{ formatNumber(summaryStats.total_ves) }}</span>
+                <span class="text-super-xs font-weight-black text-disabled uppercase">Total Pagado (Bs.)</span>
+                <span class="text-h6 font-weight-black text-warning">{{ formatNumber(summaryStats.total_ves) }} Bs.</span>
               </div>
             </div>
           </VCard>
@@ -91,89 +91,46 @@
           >
             <!-- Fecha -->
             <template #item.payment_date="{ item }">
-              <div class="d-flex align-center gap-2">
-                <VAvatar size="30" color="primary" variant="tonal" class="rounded-lg">
-                  <VIcon icon="tabler-calendar" size="16" />
-                </VAvatar>
-                <span class="text-xs font-weight-bold text-high-emphasis">{{ formatDate(item.payment_date) }}</span>
-              </div>
+              <span class="text-xs text-medium-emphasis">{{ formatDate(item.payment_date) }}</span>
             </template>
 
             <!-- Proveedor -->
             <template #item.supplier="{ item }">
-              <span class="text-xs font-weight-black text-high-emphasis uppercase">
+              <span class="text-xs font-weight-medium text-high-emphasis">
                 {{ item.invoices?.[0]?.supplier?.name || "N/A" }}
               </span>
             </template>
 
-            <!-- Estado de Pago -->
-            <template #item.payment_type="{ item }">
-              <VChip
-                size="x-small"
-                :color="item.payment_type === 'full' ? 'success' : 'warning'"
-                variant="tonal"
-                class="font-weight-black px-2 rounded"
-              >
-                {{ item.payment_type === 'full' ? 'Pago Completo' : 'Abono Parcial' }}
-              </VChip>
-            </template>
-
-            <!-- Factura USD -->
-            <template #item.invoice_total_usd="{ item }">
-              <span class="text-xs font-weight-bold text-medium-emphasis">
-                USD {{ formatNumber(item.invoice_total_usd) }}
-              </span>
-            </template>
-
-            <!-- Monto Pagado -->
+            <!-- Monto Pago -->
             <template #item.amount="{ item }">
-              <div class="d-flex flex-column">
-                <span class="text-xs font-weight-black text-high-emphasis">
+              <div class="d-flex flex-column text-end align-end">
+                <span class="text-xs font-weight-bold text-high-emphasis">
                   {{ formatCurrency(item.amount, item.currency) }}
                 </span>
                 <span
-                  v-if="normalizeCurrencyCode(item.currency) !== 'USD'"
-                  class="text-super-xs text-success font-weight-bold"
+                  v-if="item.invoice_total_usd"
+                  class="text-super-xs text-medium-emphasis font-weight-medium"
                 >
-                  REF: USD {{ formatNumber(item.amount_usd) }}
+                  Factura: USD {{ formatNumber(item.invoice_total_usd) }}
                 </span>
               </div>
             </template>
 
-            <!-- Moneda -->
-            <template #item.currency="{ item }">
-              <VChip
-                size="x-small"
-                :color="getCurrencyColor(item.currency)"
-                variant="flat"
-                class="font-weight-black px-2 rounded text-white shadow-sm"
-              >
-                {{ normalizeCurrencyCode(item.currency) }}
-              </VChip>
-            </template>
-
             <!-- Referencia -->
             <template #item.reference="{ item }">
-              <VChip
-                v-if="item.reference"
-                size="x-small"
-                variant="tonal"
-                color="primary"
-                class="font-weight-bold rounded px-2"
-                prepend-icon="tabler-hash"
-              >
-                {{ item.reference }}
-              </VChip>
-              <span v-else class="text-disabled text-super-xs font-italic">Sin referencia</span>
+              <span v-if="item.reference" class="text-xs font-mono text-medium-emphasis">
+                #{{ item.reference }}
+              </span>
+              <span v-else class="text-disabled text-xs font-italic">Sin ref.</span>
             </template>
 
             <!-- Usuario Registro -->
             <template #item.user="{ item }">
               <div class="d-flex align-center gap-2">
-                <VAvatar size="26" color="secondary" variant="tonal" class="rounded">
-                  <span class="text-super-xs font-weight-black">{{ getUserInitials(item.user?.name) }}</span>
+                <VAvatar size="22" color="secondary" variant="tonal" class="rounded-circle">
+                  <span class="text-super-xs font-weight-bold">{{ getUserInitials(item.user?.name) }}</span>
                 </VAvatar>
-                <span class="text-xs font-weight-medium text-medium-emphasis">{{ item.user?.name || "Sistema" }}</span>
+                <span class="text-xs text-medium-emphasis">{{ item.user?.name || "Sistema" }}</span>
               </div>
             </template>
 
@@ -183,23 +140,19 @@
                 <IconBtn
                   size="small"
                   color="primary"
-                  variant="tonal"
-                  class="rounded-lg"
                   @click="viewPaymentDetails(item)"
                 >
                   <VIcon icon="tabler-eye" size="18" />
-                  <VTooltip activator="parent" location="top">Ver Detalles</VTooltip>
+                  <VTooltip activator="parent">Ver Detalles</VTooltip>
                 </IconBtn>
                 <IconBtn
                   v-if="item.photo_url"
                   size="small"
                   color="success"
-                  variant="tonal"
-                  class="rounded-lg"
                   @click="viewReceipt(item.photo_url)"
                 >
                   <VIcon icon="tabler-file-dollar" size="18" />
-                  <VTooltip activator="parent" location="top">Ver Comprobante</VTooltip>
+                  <VTooltip activator="parent">Ver Comprobante</VTooltip>
                 </IconBtn>
               </div>
             </template>
@@ -260,8 +213,8 @@
                   </span>
                 </div>
                 <div class="text-right d-flex flex-column">
-                  <span class="text-super-xs text-disabled font-weight-black uppercase">Ref. USD</span>
-                  <span class="text-base font-weight-bold text-success">USD {{ formatNumber(item.amount_usd) }}</span>
+                  <span class="text-super-xs text-disabled font-weight-black uppercase">Fac. USD</span>
+                  <span class="text-base font-weight-bold text-success">USD {{ formatNumber(item.invoice_total_usd) }}</span>
                 </div>
               </div>
 
@@ -368,15 +321,12 @@ const receiptUrl = ref("");
 
 // Headers
 const headers = [
-  { title: "FECHA", key: "payment_date", sortable: true },
-  { title: "PROVEEDOR", key: "supplier", sortable: false },
-  { title: "ESTADO PAGO", key: "payment_type", sortable: false, align: "center" },
-  { title: "FAC. USD", key: "invoice_total_usd", sortable: true, align: "center" },
-  { title: "MONTO PAGADO", key: "amount", sortable: true },
-  { title: "MONEDA", key: "currency", sortable: true, align: "center" },
-  { title: "REFERENCIA", key: "reference", sortable: true },
-  { title: "REGISTRO", key: "user", sortable: false },
-  { title: "ACCIONES", key: "actions", sortable: false, align: "center" },
+  { title: "Fecha", key: "payment_date", sortable: true, align: "start" },
+  { title: "Proveedor", key: "supplier", sortable: false, align: "start" },
+  { title: "Monto de pago", key: "amount", sortable: true, align: "end" },
+  { title: "Referencia", key: "reference", sortable: true, align: "start" },
+  { title: "Registrado por", key: "user", sortable: false, align: "start" },
+  { title: "Acciones", key: "actions", sortable: false, align: "center" },
 ];
 
 // Fetching
@@ -528,16 +478,17 @@ const formatNumber = (num, decimals = 2) => {
 
 const normalizeCurrencyCode = (currency) => {
   if (!currency) return "";
-  const map = { BS: "VES", USS: "USD" };
+  const map = { BS: "Bs.", VES: "Bs.", USS: "USD" };
   const normalized = currency.toUpperCase().trim();
   return map[normalized] || normalized;
 };
 
 const formatCurrency = (amount, currency) => {
-  if (!amount) return "N/A";
+  if (amount === null || amount === undefined || amount === "") return "N/A";
   const normalized = normalizeCurrencyCode(currency);
   const decimals = normalized === "COP" ? 0 : 2;
-  return `${normalized} ${formatNumber(amount, decimals)}`;
+  const formatted = formatNumber(amount, decimals);
+  return `${formatted} ${normalized}`;
 };
 
 const getUserInitials = (name) => {
@@ -552,7 +503,7 @@ const getUserInitials = (name) => {
 
 const getCurrencyColor = (currency) => {
   const norm = normalizeCurrencyCode(currency);
-  if (norm === "VES") return "warning";
+  if (norm === "Bs." || norm === "VES" || norm === "BS") return "warning";
   if (norm === "USD") return "success";
   if (norm === "COP") return "info";
   return "secondary";
@@ -582,11 +533,11 @@ onMounted(() => {
 :deep(.premium-table) {
   .v-data-table-header th {
     background: rgb(var(--v-theme-surface)) !important;
-    color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)) !important;
-    font-size: 0.72rem !important;
-    font-weight: 800 !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.05rem !important;
+    color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
+    font-size: 0.75rem !important;
+    font-weight: 700 !important;
+    text-transform: none !important;
+    letter-spacing: 0.02rem !important;
     border-block-end: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)) !important;
     padding-inline: 12px !important;
   }
