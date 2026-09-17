@@ -109,7 +109,6 @@ const headers = [
   { title: "Monto USD", key: "original_amount", sortable: false, align: "end" },
   { title: "Monto BS", key: "remaining_amount", sortable: false, align: "end" },
   { title: "Indexada", key: "is_indexed", sortable: false, width: "80px", align: "center" },
-  { title: "Estado", key: "status", sortable: false, align: "center" },
   { title: "Acciones", key: "actions", sortable: false, align: "center" },
 ];
 
@@ -262,16 +261,11 @@ const openInvoiceTab = (item) => {
         </template>
 
         <template #item.supplier_name="{ item }">
-          <div class="d-flex align-center gap-3 py-2">
-            <VAvatar :color="getAvatarColor(item.supplier_name)" variant="tonal" size="32" class="rounded-lg">
-              <span class="text-super-xs font-weight-black">{{ getInitials(item.supplier_name) }}</span>
-            </VAvatar>
-            <div class="d-flex flex-column min-width-0">
-              <span class="text-sm font-weight-bold text-high-emphasis text-truncate text-capitalize max-w-180">
-                {{ item.supplier_name }}
-              </span>
-              <span class="text-super-xs text-medium-emphasis">RIF: {{ (item.supplier_rif && item.supplier_rif !== 'N/A') ? item.supplier_rif : 'N/A' }}</span>
-            </div>
+          <div class="d-flex flex-column min-width-0 py-2">
+            <span class="text-sm font-weight-bold text-high-emphasis text-truncate text-capitalize max-w-180">
+              {{ item.supplier_name }}
+            </span>
+            <span class="text-super-xs text-medium-emphasis">RIF: {{ (item.supplier_rif && item.supplier_rif !== 'N/A') ? item.supplier_rif : 'N/A' }}</span>
           </div>
         </template>
 
@@ -328,12 +322,6 @@ const openInvoiceTab = (item) => {
             :disabled="!!props.updatingIndexed[item.id]"
             @change="emit('toggle-indexed', item)"
           />
-        </template>
-
-        <template #item.status="{ item }">
-          <VChip :color="getStatusColor(item.status)" variant="tonal" size="x-small" class="font-weight-black rounded">
-            {{ getStatusText(item.status) }}
-          </VChip>
         </template>
 
         <template #item.actions="{ item }">
@@ -456,9 +444,6 @@ const openInvoiceTab = (item) => {
                   color="primary"
                   class="ms-n2"
                 />
-                <VAvatar :color="getAvatarColor(item.supplier_name)" variant="tonal" size="38" class="rounded-lg">
-                  <VIcon icon="tabler-receipt" size="18" />
-                </VAvatar>
                 <div class="d-flex flex-column">
                   <span class="text-xs font-weight-black text-disabled uppercase leading-tight">Factura #</span>
                   <a
