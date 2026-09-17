@@ -10,6 +10,9 @@ class InvoicePayment extends Model
     protected $fillable = [
         'payment_date',
         'amount',
+        'source_amount',
+        'source_currency',
+        'exchange_rate_applied',
         'payment_method',
         'reference',
         'status',

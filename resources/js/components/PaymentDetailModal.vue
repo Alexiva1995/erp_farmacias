@@ -293,25 +293,25 @@ const invoiceBilledCurrency = computed(() => {
             <VCard class="rounded-xl border shadow-sm bg-white overflow-hidden mb-5">
               <div class="pa-5">
                 <VRow no-gutters class="align-stretch">
-                  <!-- Izquierda: Monto Real Pagado -->
+                  <!-- Izquierda: Monto Real Pagado / Egreso de Caja -->
                   <VCol cols="6" class="pe-3 border-e d-flex flex-column justify-center align-center text-center">
-                    <span class="text-caption text-medium-emphasis mb-1 font-weight-medium">Monto Pagado</span>
+                    <span class="text-caption text-medium-emphasis mb-1 font-weight-medium">Egreso de Caja</span>
                     <span class="summary-amount font-weight-black text-high-emphasis mb-1">
-                      {{ formatCurrency(props.payment.amount, props.payment.currency) }}
+                      {{ formatCurrency(props.payment.source_amount || props.payment.amount, props.payment.source_currency || props.payment.currency) }}
                     </span>
                     <span class="text-xs font-weight-bold text-success">
-                      ({{ formatNumber(props.payment.amount_usd) }} USD)
+                      ({{ formatNumber(props.payment.source_amount_usd || props.payment.amount_usd) }} USD)
                     </span>
                   </VCol>
 
                   <!-- Derecha: Total Facturado Original -->
                   <VCol cols="6" class="ps-3 d-flex flex-column justify-center align-center text-center">
-                    <span class="text-caption text-medium-emphasis mb-1 font-weight-medium">Total Facturado</span>
+                    <span class="text-caption text-medium-emphasis mb-1 font-weight-medium">Liquidado Proveedor</span>
                     <span class="summary-amount font-weight-black text-high-emphasis mb-1">
-                      {{ formatCurrency(invoiceBilledAmount, invoiceBilledCurrency) }}
+                      {{ formatCurrency(props.payment.amount || invoiceBilledAmount, props.payment.currency || invoiceBilledCurrency) }}
                     </span>
-                    <span class="text-xs font-weight-bold text-medium-emphasis">
-                      ({{ formatNumber(props.payment.invoice_total_usd) }} USD)
+                    <span class="text-xs font-weight-bold text-success">
+                      ({{ formatNumber(props.payment.invoice_total_usd || props.payment.amount_usd) }} USD)
                     </span>
                   </VCol>
                 </VRow>

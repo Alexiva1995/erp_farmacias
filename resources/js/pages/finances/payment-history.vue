@@ -101,17 +101,17 @@
               </span>
             </template>
 
-            <!-- Egreso de Caja (Monto Pagado Real) -->
+            <!-- Egreso de Caja (Monto Pagado Real / Origen) -->
             <template #item.amount="{ item }">
               <div class="d-flex flex-column text-end align-end py-1">
                 <span class="text-sm font-weight-black text-high-emphasis">
-                  {{ formatCurrency(item.amount, item.currency) }}
+                  {{ formatCurrency(item.source_amount || item.amount, item.source_currency || item.currency) }}
                 </span>
                 <span
-                  v-if="normalizeCurrencyCode(item.currency) !== 'USD' && item.amount_usd"
+                  v-if="normalizeCurrencyCode(item.source_currency || item.currency) !== 'USD' && (item.source_amount_usd || item.amount_usd)"
                   class="text-xs text-success font-weight-bold"
                 >
-                  {{ formatNumber(item.amount_usd) }} USD
+                  {{ formatNumber(item.source_amount_usd || item.amount_usd) }} USD
                 </span>
               </div>
             </template>
@@ -222,10 +222,10 @@
                 <div class="d-flex flex-column">
                   <span class="text-super-xs text-disabled font-weight-black uppercase">Egreso de Caja</span>
                   <span class="text-lg font-weight-black text-primary">
-                    {{ formatCurrency(item.amount, item.currency) }}
+                    {{ formatCurrency(item.source_amount || item.amount, item.source_currency || item.currency) }}
                   </span>
-                  <span v-if="normalizeCurrencyCode(item.currency) !== 'USD' && item.amount_usd" class="text-xs font-weight-bold text-success">
-                    {{ formatNumber(item.amount_usd) }} USD
+                  <span v-if="normalizeCurrencyCode(item.source_currency || item.currency) !== 'USD' && (item.source_amount_usd || item.amount_usd)" class="text-xs font-weight-bold text-success">
+                    {{ formatNumber(item.source_amount_usd || item.amount_usd) }} USD
                   </span>
                 </div>
                 <div class="text-right d-flex flex-column">

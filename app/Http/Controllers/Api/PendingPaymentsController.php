@@ -310,15 +310,20 @@ class PendingPaymentsController extends Controller
                 );
             }
 
-            // 4. Crear registro en invoice_payments usando campos existentes
-            // El campo reference debe usarse solo para referencias bancarias/transferencias
+            // 4. Crear registro en invoice_payments usando campos existentes y de origen
             $reference = $request->reference ?? null;
+            $sourceCurrency = $request->filled('source_currency') ? $this->normalizeCurrencyCode($request->source_currency) : $normalizedCurrency;
+            $sourceAmount = $request->filled('source_amount') ? (float) $request->source_amount : (float) $request->payment_amount;
+            $exchangeRateApplied = $request->filled('exchange_rate_applied') ? (float) $request->exchange_rate_applied : ($exchangeRate->rate ?? 1);
 
             $payment = InvoicePayment::create([
                 'payment_date' => $request->payment_date,
                 'amount' => $request->payment_amount,
-                'payment_method' => $normalizedCurrency, // Usar moneda normalizada
-                'reference' => $reference, // Referencia bancaria/transferencia
+                'source_amount' => $sourceAmount,
+                'source_currency' => $sourceCurrency,
+                'exchange_rate_applied' => $exchangeRateApplied,
+                'payment_method' => $normalizedCurrency, // Moneda de liquidación al proveedor
+                'reference' => $reference,
                 'status' => 'paid',
                 'payment_by' => auth()->id(),
                 'photo_url' => $request->photo_url,

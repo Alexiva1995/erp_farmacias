@@ -124,15 +124,36 @@ class PaymentHistoryService
         $payments->getCollection()->transform(function ($payment) use ($exchangeRates) {
             $payment->currency = $payment->payment_method;
 
+            // Monto de liquidación al proveedor convertido a USD
             if ($payment->payment_method === 'USD') {
                 $payment->amount_usd = (float) $payment->amount;
             } else {
-                $rateObj = $exchangeRates->get($payment->payment_method);
+                $rateKey = ($payment->payment_method === 'COP') ? 'COPC' : $payment->payment_method;
+                $rateObj = $exchangeRates->get($rateKey) ?? $exchangeRates->get($payment->payment_method);
                 if ($rateObj && $rateObj->rate > 0) {
                     $payment->amount_usd = round($payment->amount / $rateObj->rate, 2);
                 } else {
                     $payment->amount_usd = 0;
                 }
+            }
+
+            // Si hay un monto de egreso origen (ej. cambista COP)
+            if (!empty($payment->source_amount) && !empty($payment->source_currency)) {
+                if ($payment->source_currency === 'USD') {
+                    $payment->source_amount_usd = (float) $payment->source_amount;
+                } else {
+                    $srcRateKey = ($payment->source_currency === 'COP') ? 'COPC' : $payment->source_currency;
+                    $srcRateObj = $exchangeRates->get($srcRateKey) ?? $exchangeRates->get($payment->source_currency);
+                    if ($srcRateObj && $srcRateObj->rate > 0) {
+                        $payment->source_amount_usd = round($payment->source_amount / $srcRateObj->rate, 2);
+                    } else {
+                        $payment->source_amount_usd = $payment->amount_usd;
+                    }
+                }
+            } else {
+                $payment->source_amount = (float) $payment->amount;
+                $payment->source_currency = $payment->currency;
+                $payment->source_amount_usd = $payment->amount_usd;
             }
 
             $totalInvoiceAmount = 0;
