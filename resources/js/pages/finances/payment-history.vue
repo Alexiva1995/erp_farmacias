@@ -91,12 +91,12 @@
           >
             <!-- Fecha -->
             <template #item.payment_date="{ item }">
-              <span class="text-xs font-weight-medium text-high-emphasis">{{ formatDate(item.payment_date) }}</span>
+              <span class="text-xs text-medium-emphasis">{{ formatDate(item.payment_date) }}</span>
             </template>
 
             <!-- Proveedor -->
             <template #item.supplier="{ item }">
-              <span class="text-xs font-weight-bold supplier-title">
+              <span class="text-sm font-weight-black supplier-title">
                 {{ item.invoices?.[0]?.supplier?.name || "N/A" }}
               </span>
             </template>
@@ -133,21 +133,18 @@
 
             <!-- Referencia -->
             <template #item.reference="{ item }">
-              <VChip
+              <span
                 v-if="item.reference"
-                size="x-small"
-                variant="tonal"
-                color="primary"
-                class="font-weight-bold rounded px-2"
+                class="text-sm font-weight-bold text-primary"
               >
                 {{ item.reference }}
-              </VChip>
-              <span v-else class="text-disabled text-super-xs font-italic">Sin referencia</span>
+              </span>
+              <span v-else class="text-disabled text-xs font-italic">Sin referencia</span>
             </template>
 
             <!-- Usuario Registro -->
             <template #item.user="{ item }">
-              <span class="text-xs font-weight-medium text-high-emphasis">{{ item.user?.name || "Sistema" }}</span>
+              <span class="text-sm font-weight-medium text-high-emphasis">{{ item.user?.name || "Sistema" }}</span>
             </template>
 
             <!-- Acciones -->
