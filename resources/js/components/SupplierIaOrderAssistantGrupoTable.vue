@@ -221,8 +221,6 @@ const grupoKpi = (productos) => {
   return { falta, exceso, ok };
 };
 
-const { mdAndUp } = useDisplay();
-
 // Headers para la tabla interna en desktop
 const innerHeaders = computed(() => {
   const base = [
