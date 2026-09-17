@@ -124,7 +124,7 @@
                 </span>
                 <span
                   v-if="item.invoice_total_usd"
-                  class="text-xs text-medium-emphasis font-weight-medium"
+                  class="text-xs text-success font-weight-bold"
                 >
                   {{ formatNumber(item.invoice_total_usd) }} USD
                 </span>
@@ -233,7 +233,7 @@
                   <span class="text-lg font-weight-black text-high-emphasis">
                     {{ formatCurrency(getInvoicesBilledTotal(item), getInvoicesBilledCurrency(item)) }}
                   </span>
-                  <span v-if="item.invoice_total_usd" class="text-xs font-weight-medium text-medium-emphasis">
+                  <span v-if="item.invoice_total_usd" class="text-xs text-success font-weight-bold">
                     {{ formatNumber(item.invoice_total_usd) }} USD
                   </span>
                 </div>
