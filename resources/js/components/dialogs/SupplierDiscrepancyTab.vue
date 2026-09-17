@@ -46,23 +46,11 @@ const emit = defineEmits([
   "mark-paid-as-pending",
 ]);
 
-const searchFilter = ref("");
-
 const totalDiscrepancies = computed(
   () => (props.paidInErpPending?.length || 0) + (props.pendingInErpPaid?.length || 0)
 );
 
 const hasDiscrepancies = computed(() => totalDiscrepancies.value > 0);
-
-const filteredDetails = computed(() => {
-  const query = searchFilter.value.trim().toLowerCase();
-  if (!query) return props.processedDetails;
-  return props.processedDetails.filter(
-    (item) =>
-      String(item.invoice_number || "").toLowerCase().includes(query) ||
-      String(item.control_number || "").toLowerCase().includes(query)
-  );
-});
 
 const formatNumber = (value) => {
   return Number(value || 0).toLocaleString("es-VE", {
@@ -74,34 +62,35 @@ const formatNumber = (value) => {
 
 <template>
   <div class="supplier-discrepancy-tab">
-    <!-- ── 1. Tarjetas de Resumen Rápido (12 cols responsive) ─────────── -->
-    <VRow class="mb-4">
-      <VCol cols="12" sm="6" md="3">
-        <VCard variant="tonal" color="info" class="pa-3 rounded-lg text-center h-100">
+    <!-- ── 1. Tarjetas de Resumen Rápido (Diseño Limpio y Neutro) ─────────── -->
+    <VRow class="mb-4" dense>
+      <VCol cols="6" sm="3">
+        <VCard variant="outlined" class="pa-3 rounded-lg text-center h-100 bg-surface border">
           <div class="text-caption text-medium-emphasis">Documentos en Portal</div>
-          <div class="text-h5 font-weight-bold">{{ props.summaryData.total_extracted || 0 }}</div>
+          <div class="text-h6 font-weight-bold text-high-emphasis mt-1">{{ props.summaryData.total_extracted || 0 }}</div>
         </VCard>
       </VCol>
-      <VCol cols="12" sm="6" md="3">
-        <VCard variant="tonal" color="success" class="pa-3 rounded-lg text-center h-100">
+      <VCol cols="6" sm="3">
+        <VCard variant="outlined" class="pa-3 rounded-lg text-center h-100 bg-surface border">
           <div class="text-caption text-medium-emphasis">Actualizadas en ERP</div>
-          <div class="text-h5 font-weight-bold">{{ props.summaryData.updated || 0 }}</div>
+          <div class="text-h6 font-weight-bold text-high-emphasis mt-1">{{ props.summaryData.updated || 0 }}</div>
         </VCard>
       </VCol>
-      <VCol cols="12" sm="6" md="3">
-        <VCard variant="tonal" color="primary" class="pa-3 rounded-lg text-center h-100">
+      <VCol cols="6" sm="3">
+        <VCard variant="outlined" class="pa-3 rounded-lg text-center h-100 bg-surface border">
           <div class="text-caption text-medium-emphasis">Nuevas Creadas</div>
-          <div class="text-h5 font-weight-bold">{{ props.summaryData.created || 0 }}</div>
+          <div class="text-h6 font-weight-bold text-high-emphasis mt-1">{{ props.summaryData.created || 0 }}</div>
         </VCard>
       </VCol>
-      <VCol cols="12" sm="6" md="3">
+      <VCol cols="6" sm="3">
         <VCard
-          variant="tonal"
-          :color="hasDiscrepancies ? 'warning' : 'success'"
-          class="pa-3 rounded-lg text-center h-100"
+          variant="outlined"
+          :class="['pa-3 rounded-lg text-center h-100 border', hasDiscrepancies ? 'bg-warning-lighten-5 border-warning' : 'bg-surface']"
         >
-          <div class="text-caption text-medium-emphasis">Diferencias Detectadas</div>
-          <div class="text-h5 font-weight-bold">
+          <div :class="['text-caption', hasDiscrepancies ? 'text-warning font-weight-medium' : 'text-medium-emphasis']">
+            Diferencias Detectadas
+          </div>
+          <div :class="['text-h6 font-weight-bold mt-1', hasDiscrepancies ? 'text-warning' : 'text-high-emphasis']">
             {{ totalDiscrepancies }}
           </div>
         </VCard>
@@ -109,19 +98,23 @@ const formatNumber = (value) => {
     </VRow>
 
     <!-- ── 2. Discrepancia Caso 1: Pagadas en ERP pero aún PENDIENTES en Portal ── -->
-    <div v-if="props.paidInErpPending.length > 0" class="mb-6">
-      <div class="d-flex align-center justify-space-between flex-wrap gap-2 mb-2">
+    <VCard
+      v-if="props.paidInErpPending.length > 0"
+      variant="outlined"
+      class="mb-4 rounded-lg border-warning bg-surface overflow-hidden shadow-xs"
+    >
+      <div class="d-flex align-center justify-space-between flex-wrap gap-2 px-4 py-2 bg-warning-lighten-5 border-b border-warning">
         <div class="d-flex align-center gap-2">
-          <VIcon icon="tabler-alert-circle" color="warning" size="22" />
-          <h4 class="text-subtitle-1 font-weight-bold text-warning mb-0">
-            Pagadas en el ERP pero aún PENDIENTES en {{ props.supplierTitle }} ({{ props.paidInErpPending.length }})
-          </h4>
+          <VIcon icon="tabler-alert-triangle" color="warning" size="18" />
+          <span class="text-subtitle-2 font-weight-bold text-warning">
+            Pagadas en ERP pero PENDIENTES en {{ props.supplierTitle }} ({{ props.paidInErpPending.length }})
+          </span>
         </div>
 
         <VBtn
           color="warning"
-          variant="elevated"
-          size="small"
+          variant="flat"
+          size="x-small"
           prepend-icon="tabler-arrow-back-up"
           class="rounded-lg shadow-sm font-weight-bold"
           :loading="props.isMarkingPending"
@@ -131,11 +124,7 @@ const formatNumber = (value) => {
         </VBtn>
       </div>
 
-      <p class="text-caption text-medium-emphasis mb-3">
-        Estas facturas ya las registraste como pagadas en el ERP, pero en el portal de {{ props.supplierTitle }} todavía aparecen con saldo pendiente por cobrar:
-      </p>
-
-      <VTable density="compact" class="border rounded-lg mb-2 max-h-300 overflow-y-auto">
+      <VTable density="compact" class="bg-surface">
         <thead>
           <tr class="table-header-row">
             <th class="text-left font-weight-bold">N° Factura</th>
@@ -147,36 +136,40 @@ const formatNumber = (value) => {
         </thead>
         <tbody>
           <tr v-for="item in props.paidInErpPending" :key="item.id">
-            <td class="font-weight-medium text-primary">#{{ item.invoice_number }}</td>
-            <td>{{ item.control_number || 'N/A' }}</td>
-            <td class="text-right">{{ formatNumber(item.amount) }} {{ item.currency }}</td>
+            <td class="font-weight-medium">#{{ item.invoice_number }}</td>
+            <td class="text-medium-emphasis">{{ item.control_number || 'N/A' }}</td>
+            <td class="text-right text-medium-emphasis">{{ formatNumber(item.amount) }} {{ item.currency }}</td>
             <td class="text-right font-weight-bold text-error">
               {{ formatNumber(item.portal_amount) }} {{ item.currency || 'Bs' }}
             </td>
             <td class="text-center">
-              <VChip size="x-small" color="warning" variant="tonal" class="font-weight-medium">
+              <span class="text-caption font-weight-medium text-warning">
                 Por Cobrar ({{ item.portal_type || 'FA' }})
-              </VChip>
+              </span>
             </td>
           </tr>
         </tbody>
       </VTable>
-    </div>
+    </VCard>
 
     <!-- ── 3. Discrepancia Caso 2: Pendientes en ERP pero ya LIQUIDADAS en Portal ── -->
-    <div v-if="props.pendingInErpPaid.length > 0" class="mb-6">
-      <div class="d-flex align-center justify-space-between flex-wrap gap-2 mb-2">
+    <VCard
+      v-if="props.pendingInErpPaid.length > 0"
+      variant="outlined"
+      class="mb-4 rounded-lg border-success bg-surface overflow-hidden shadow-xs"
+    >
+      <div class="d-flex align-center justify-space-between flex-wrap gap-2 px-4 py-2 bg-success-lighten-5 border-b border-success">
         <div class="d-flex align-center gap-2">
-          <VIcon icon="tabler-circle-check" color="info" size="22" />
-          <h4 class="text-subtitle-1 font-weight-bold text-info mb-0">
+          <VIcon icon="tabler-circle-check" color="success" size="18" />
+          <span class="text-subtitle-2 font-weight-bold text-success">
             Pendientes en ERP pero LIQUIDADAS en {{ props.supplierTitle }} ({{ props.pendingInErpPaid.length }})
-          </h4>
+          </span>
         </div>
 
         <VBtn
           color="success"
-          variant="elevated"
-          size="small"
+          variant="flat"
+          size="x-small"
           prepend-icon="tabler-check-all"
           class="rounded-lg shadow-sm font-weight-bold"
           :loading="props.isMarkingPaid"
@@ -186,94 +179,74 @@ const formatNumber = (value) => {
         </VBtn>
       </div>
 
-      <p class="text-caption text-medium-emphasis mb-3">
-        Estas facturas están pendientes en tu ERP pero en {{ props.supplierTitle }} ya fueron cobradas/liquidadas. Puedes pasarlas a estado Pagadas directamente:
-      </p>
-
-      <VTable density="compact" class="border rounded-lg mb-2 max-h-300 overflow-y-auto">
+      <VTable density="compact" class="bg-surface">
         <thead>
           <tr class="table-header-row">
             <th class="text-left font-weight-bold">N° Factura</th>
             <th class="text-left font-weight-bold">N° Control</th>
-            <th class="text-right font-weight-bold">Monto en ERP</th>
-            <th class="text-center font-weight-bold">Estado en ERP</th>
+            <th class="text-right font-weight-bold">Monto ERP</th>
+            <th class="text-center font-weight-bold">Estado ERP</th>
             <th class="text-center font-weight-bold">Estado Portal</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="item in props.pendingInErpPaid" :key="item.id">
-            <td class="font-weight-medium text-primary">#{{ item.invoice_number }}</td>
-            <td>{{ item.control_number || 'N/A' }}</td>
+            <td class="font-weight-medium">#{{ item.invoice_number }}</td>
+            <td class="text-medium-emphasis">{{ item.control_number || 'N/A' }}</td>
             <td class="text-right font-weight-bold">
               {{ formatNumber(item.amount) }} {{ item.currency }}
             </td>
             <td class="text-center">
-              <VChip size="x-small" color="error" variant="tonal">Por Pagar</VChip>
+              <span class="text-caption text-error font-weight-medium">Por Pagar</span>
             </td>
             <td class="text-center">
-              <VChip size="x-small" color="success" variant="tonal">Liquidada en Portal</VChip>
+              <span class="text-caption text-success font-weight-medium">Liquidada en Portal</span>
             </td>
           </tr>
         </tbody>
       </VTable>
-    </div>
+    </VCard>
 
     <!-- ── 4. Estado Sin Discrepancias (Cuentas Cuadradas) ─────────────── -->
-    <div v-if="!hasDiscrepancies" class="text-center py-4 mb-4">
-      <VAvatar color="success" variant="tonal" size="48" class="mb-2">
-        <VIcon icon="tabler-check" size="28" color="success" />
+    <div v-if="!hasDiscrepancies" class="text-center py-4 mb-3 border rounded-lg bg-surface">
+      <VAvatar color="success" variant="tonal" size="36" class="mb-2">
+        <VIcon icon="tabler-check" size="20" color="success" />
       </VAvatar>
-      <h3 class="text-subtitle-1 font-weight-bold mb-1">¡Cuentas {{ props.supplierTitle }} Cuadradas!</h3>
+      <h3 class="text-subtitle-2 font-weight-bold mb-1">¡Cuentas {{ props.supplierTitle }} Cuadradas!</h3>
       <p class="text-caption text-medium-emphasis mb-0">
-        No se encontraron discrepancias en {{ props.supplierTitle }}. Todas las facturas coinciden entre el portal y tu ERP.
+        No se encontraron discrepancias. Todas las facturas coinciden entre el portal y tu ERP.
       </p>
     </div>
 
     <!-- ── 5. Tabla de Facturas Procesadas / Actualizadas ───────────────── -->
-    <div v-if="props.processedDetails && props.processedDetails.length > 0" class="mt-2 mb-6">
+    <div v-if="props.processedDetails && props.processedDetails.length > 0" class="mt-4 mb-2">
       <div class="d-flex align-center justify-space-between flex-wrap gap-2 mb-2">
-        <h4 class="text-subtitle-1 font-weight-bold mb-0">
+        <h4 class="text-subtitle-2 font-weight-bold text-high-emphasis mb-0">
           Facturas Procesadas desde {{ props.supplierTitle }} ({{ props.processedDetails.length }})
         </h4>
-        <div v-if="props.processedDetails.length > 10" style="max-width: 250px;">
-          <VTextField
-            v-model="searchFilter"
-            density="compact"
-            placeholder="Buscar factura o control..."
-            prepend-inner-icon="tabler-search"
-            hide-details
-            clearable
-          />
-        </div>
       </div>
 
-      <VTable density="compact" class="border rounded-lg mb-2 max-h-350 overflow-y-auto">
+      <VTable density="compact" class="border rounded-lg bg-surface">
         <thead>
           <tr class="table-header-row">
             <th class="text-left font-weight-bold">N° Factura</th>
             <th class="text-left font-weight-bold">N° Control</th>
-            <th class="text-center font-weight-bold">Acción</th>
             <th class="text-center font-weight-bold">Vencimiento</th>
-            <th class="text-center font-weight-bold">Indexada</th>
+            <th class="text-center font-weight-bold">Index</th>
             <th class="text-right font-weight-bold">Total USD</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(item, idx) in filteredDetails" :key="idx">
-            <td class="font-weight-medium text-primary">#{{ item.invoice_number }}</td>
-            <td>{{ item.control_number || 'N/A' }}</td>
+          <tr v-for="(item, idx) in props.processedDetails" :key="idx">
+            <td class="font-weight-medium">#{{ item.invoice_number }}</td>
+            <td class="text-medium-emphasis">{{ item.control_number || 'N/A' }}</td>
+            <td class="text-center text-medium-emphasis">{{ item.exp_date || 'N/A' }}</td>
             <td class="text-center">
-              <VChip size="x-small" :color="item.action === 'created' ? 'success' : 'info'" variant="tonal">
-                {{ item.action === 'created' ? 'Nueva Creada' : 'Actualizada' }}
-              </VChip>
-            </td>
-            <td class="text-center">{{ item.exp_date || 'N/A' }}</td>
-            <td class="text-center">
-              <VChip size="x-small" :color="item.is_indexed ? 'error' : 'secondary'" variant="tonal">
+              <span class="text-caption font-weight-bold" :class="item.is_indexed ? 'text-primary' : 'text-disabled'">
                 {{ item.is_indexed ? 'Sí' : 'No' }}
-              </VChip>
+              </span>
             </td>
-            <td class="text-right font-weight-bold">${{ formatNumber(item.total_usd) }}</td>
+            <td class="text-right font-weight-bold">{{ formatNumber(item.total_usd) }} USD</td>
           </tr>
         </tbody>
       </VTable>
@@ -290,12 +263,3 @@ const formatNumber = (value) => {
     </div>
   </div>
 </template>
-
-<style scoped>
-.max-h-300 {
-  max-height: 300px;
-}
-.max-h-350 {
-  max-height: 350px;
-}
-</style>

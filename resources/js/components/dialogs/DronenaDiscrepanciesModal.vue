@@ -309,7 +309,7 @@ const handleMarkPaidAsPending = async ({ supplierTitle, items }) => {
 
 <style scoped>
 .modal-scroll-content {
-  max-height: 75vh;
+  max-height: calc(85vh - 140px);
   overflow-y: auto;
 }
 </style>
