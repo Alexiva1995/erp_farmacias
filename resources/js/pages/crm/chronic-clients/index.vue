@@ -519,31 +519,35 @@ onMounted(() => {
         <!-- Columna Medicamento -->
         <template #item.product_name="{ item }">
           <div class="py-2 min-width-0">
-            <div v-if="item.products && item.products.length > 1" class="d-flex flex-column gap-1.5">
+            <div v-if="item.products && item.products.length > 1" class="d-flex flex-column gap-2">
               <div
                 v-for="(prod, pIdx) in item.products"
                 :key="prod.product_id"
                 class="pb-1"
                 :class="{ 'border-b': pIdx < item.products.length - 1 }"
               >
-                <span class="text-sm font-weight-semibold text-high-emphasis text-truncate d-block" style="max-inline-size: 320px;">
-                  {{ prod.product_name || '—' }}
+                <span class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate d-block" style="max-inline-size: 320px;" :title="prod.product_name">
+                  {{ (prod.product_name || '—')?.toUpperCase() }}
                 </span>
-                <div class="d-flex align-center flex-wrap gap-1 text-caption text-medium-emphasis mt-0.5">
-                  <span v-if="prod.active_ingredient">{{ prod.active_ingredient }}</span>
-                  <span v-if="prod.active_ingredient && prod.laboratory_name" class="text-disabled mx-0.5">•</span>
-                  <span class="text-secondary font-weight-medium">{{ prod.laboratory_name }}</span>
+                <div class="d-flex align-center flex-wrap gap-1 text-super-xs mt-0-5">
+                  <span class="text-disabled font-weight-normal truncate" style="max-inline-size: 160px;">{{ prod.active_ingredient || '—' }}</span>
+                  <span class="text-disabled mx-1">|</span>
+                  <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 140px;">
+                    {{ prod.laboratory_name || 'S/L' }}
+                  </span>
                 </div>
               </div>
             </div>
             <div v-else>
-              <span class="text-sm font-weight-semibold text-high-emphasis text-truncate d-block" style="max-inline-size: 320px;">
-                {{ item.product_name || '—' }}
+              <span class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate d-block" style="max-inline-size: 320px;" :title="item.product_name">
+                {{ (item.product_name || '—')?.toUpperCase() }}
               </span>
-              <div class="d-flex align-center flex-wrap gap-1 text-caption text-medium-emphasis mt-0.5">
-                <span v-if="item.active_ingredient">{{ item.active_ingredient }}</span>
-                <span v-if="item.active_ingredient && item.laboratory_name" class="text-disabled mx-0.5">•</span>
-                <span class="text-secondary font-weight-medium">{{ item.laboratory_name }}</span>
+              <div class="d-flex align-center flex-wrap gap-1 text-super-xs mt-0-5">
+                <span class="text-disabled font-weight-normal truncate" style="max-inline-size: 160px;">{{ item.active_ingredient || '—' }}</span>
+                <span class="text-disabled mx-1">|</span>
+                <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 140px;">
+                  {{ item.laboratory_name || 'S/L' }}
+                </span>
               </div>
             </div>
           </div>
@@ -706,5 +710,12 @@ onMounted(() => {
 }
 .border-t {
   border-block-start: 1px solid rgba(var(--v-border-color), 0.08) !important;
+}
+.text-super-xs {
+  font-size: 0.65rem !important;
+  line-height: normal;
+}
+.mt-0-5 {
+  margin-top: 2px !important;
 }
 </style>

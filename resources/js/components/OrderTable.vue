@@ -161,7 +161,7 @@ const renderSellerName = (item) => {
               <div class="d-flex justify-space-between align-center">
                 <div>
                   <div class="text-caption text-medium-emphasis mb-n1">Total</div>
-                  <div class="text-h6 font-weight-black text-success">
+                  <div class="text-h6 font-weight-black text-primary">
                     {{ formatAmountOnly(Number(item.raw.total_amount) || 0, item.raw.currency || 'COP') }}
                   </div>
                 </div>
@@ -253,7 +253,7 @@ const renderSellerName = (item) => {
 
       <template v-slot:item.total_amount="{ item }">
         <div class="d-flex align-center justify-end gap-1">
-          <span class="text-end font-weight-bold text-success">
+          <span class="text-sm font-weight-black text-primary text-end">
             {{ formatAmountOnly(Number(item.total_amount) || 0, item.currency || 'COP') }}
           </span>
           <IconBtn

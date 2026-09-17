@@ -189,21 +189,23 @@ defineExpose({
         <template #item.name="{ item }">
           <div class="d-flex flex-column min-width-0 py-2">
             <span
-              class="text-sm font-weight-semibold text-high-emphasis text-truncate"
+              class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate"
               style="max-inline-size: 420px;"
               :title="item.name"
             >
-              {{ item.name || "—" }}
+              {{ item.name?.toUpperCase() || "—" }}
             </span>
-            <div class="d-flex align-center flex-wrap gap-1 text-caption text-medium-emphasis mt-0.5">
-              <span v-if="item.active_ingredient">{{ item.active_ingredient }}</span>
-              <span v-if="item.active_ingredient && (item.laboratory?.name || item.category?.name)" class="text-disabled mx-0.5">•</span>
-              <span class="text-secondary font-weight-medium">
+            <div class="d-flex align-center flex-wrap gap-1 text-super-xs mt-0-5">
+              <span class="text-disabled font-weight-normal truncate" style="max-inline-size: 240px;">
+                {{ item.active_ingredient || '—' }}
+              </span>
+              <span class="text-disabled mx-1">|</span>
+              <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 180px;">
                 {{ item.laboratory?.name || item.category?.name || 'S/L' }}
               </span>
               <template v-if="item.barcode">
-                <span class="text-disabled mx-0.5">•</span>
-                <span class="text-disabled text-caption">Cód: {{ item.barcode }}</span>
+                <span class="text-disabled mx-1">|</span>
+                <span class="text-disabled font-weight-normal">Cód: {{ item.barcode }}</span>
               </template>
             </div>
           </div>
@@ -256,3 +258,13 @@ defineExpose({
     />
   </div>
 </template>
+
+<style scoped>
+.text-super-xs {
+  font-size: 0.65rem !important;
+  line-height: normal;
+}
+.mt-0-5 {
+  margin-top: 2px !important;
+}
+</style>

@@ -1165,7 +1165,7 @@ const sellerDisplayName = (item) => (item?.username ? capitalizeFirstAndLastName
               {{ item.creator?.username ? capitalizeFirstAndLastName(item.creator.username) : '—' }}
             </template>
             <template #item.total="{ item }">
-              <span class="font-weight-bold text-success">
+              <span class="text-sm font-weight-black text-primary">
                 {{ Number(item.total ?? 0).toLocaleString('es', { minimumFractionDigits: 2 }) }}
               </span>
             </template>
