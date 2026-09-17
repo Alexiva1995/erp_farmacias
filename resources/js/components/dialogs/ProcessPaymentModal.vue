@@ -780,7 +780,7 @@ watch(() => props.modelValue, (val) => {
                     :items="[
                       { title: 'COP', value: 'COP' },
                       { title: 'USD', value: 'USD' },
-                      { title: 'VES', value: 'VES' },
+                      { title: 'Bs', value: 'VES' },
                     ]"
                     variant="outlined"
                     density="compact"
@@ -797,7 +797,7 @@ watch(() => props.modelValue, (val) => {
                         Tasa de Cambio de Conversión
                       </span>
                       <span class="text-super-xs text-medium-emphasis font-weight-bold">
-                        {{ (sourceCurrency === 'COP' && form.payment_currency === 'VES') ? 'COP X 1Bs' : (sourceCurrency === 'USD' && form.payment_currency === 'VES' ? 'Bs X 1 USD' : (sourceCurrency === 'COP' && form.payment_currency === 'USD' ? 'COP X 1 USD' : sourceCurrency + ' X 1 ' + form.payment_currency)) }}
+                        {{ (sourceCurrency === 'COP' && form.payment_currency === 'VES') ? 'COP X 1Bs' : (sourceCurrency === 'USD' && form.payment_currency === 'VES' ? 'Bs X 1 USD' : (sourceCurrency === 'COP' && form.payment_currency === 'USD' ? 'COP X 1 USD' : (sourceCurrency === 'VES' ? 'Bs' : sourceCurrency) + ' X 1 ' + (form.payment_currency === 'VES' ? 'Bs' : form.payment_currency))) }}
                       </span>
                     </div>
                     <VTextField
@@ -813,7 +813,7 @@ watch(() => props.modelValue, (val) => {
                     <div class="d-flex align-center justify-space-between text-caption text-medium-emphasis mt-1">
                       <span>Descuento Real en Caja:</span>
                       <span class="font-weight-black text-high-emphasis">
-                        {{ formatNumber(sourceAmountCalculated) }} {{ sourceCurrency }}
+                        {{ formatNumber(sourceAmountCalculated) }} {{ sourceCurrency === 'VES' ? 'Bs' : sourceCurrency }}
                       </span>
                     </div>
                   </div>
@@ -879,7 +879,7 @@ watch(() => props.modelValue, (val) => {
                   <div class="d-flex gap-2 mb-2">
                     <VSelect
                       v-model="form.payment_currency"
-                      :items="[ {title: 'VES', value: 'VES'}, {title: 'USD', value: 'USD'}, {title: 'COP', value: 'COP'} ]"
+                      :items="[ {title: 'Bs', value: 'VES'}, {title: 'USD', value: 'USD'}, {title: 'COP', value: 'COP'} ]"
                       variant="outlined"
                       density="compact"
                       style="max-width: 95px;"
