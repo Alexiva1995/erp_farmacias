@@ -324,7 +324,7 @@ const receiptUrl = ref("");
 const headers = [
   { title: "Fecha", key: "payment_date", sortable: true, align: "start" },
   { title: "Proveedor", key: "supplier", sortable: false, align: "start" },
-  { title: "Monto de pago", key: "amount", sortable: true, align: "end" },
+  { title: "Pagado", key: "amount", sortable: true, align: "end" },
   { title: "Referencia", key: "reference", sortable: true, align: "start" },
   { title: "Registrado por", key: "user", sortable: false, align: "start" },
   { title: "Acciones", key: "actions", sortable: false, align: "center" },
