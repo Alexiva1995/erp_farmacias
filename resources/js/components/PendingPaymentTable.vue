@@ -584,40 +584,40 @@ const openInvoiceTab = (item) => {
 
     <!-- Barra de Selección Flotante (Desktop y Móvil) -->
     <VSlideYReverseTransition>
-      <div v-if="props.selectedTableInvoices.length > 0" class="floating-selection-bar pa-4">
-        <VCard color="primary" class="rounded-xl shadow-lg pa-3 d-flex align-center justify-space-between border-0">
-          <div class="d-flex align-center gap-4 ms-2">
-            <VAvatar color="white" variant="tonal" size="36" class="rounded-lg">
-              <span class="text-xs font-weight-black text-white">{{ selectedTotals.count }}</span>
+      <div v-if="props.selectedTableInvoices.length > 0" class="floating-selection-bar pa-2">
+        <VCard class="rounded-xl shadow-xl pa-3 d-flex align-center justify-space-between border bg-surface">
+          <div class="d-flex align-center gap-3 ms-2">
+            <VAvatar color="primary" variant="tonal" size="36" class="rounded-lg">
+              <span class="text-sm font-weight-black text-primary">{{ selectedTotals.count }}</span>
             </VAvatar>
             <div class="d-flex flex-column">
-              <span class="text-super-xs font-weight-black text-white-50 uppercase letter-spacing-1">Resumen Lote Seleccionado</span>
-              <div class="d-flex align-center gap-3">
-                <span class="text-sm font-weight-black text-white">${{ selectedTotals.usd }} USD</span>
-                <span class="text-xs font-weight-bold text-white-50">({{ selectedTotals.bs }} Bs)</span>
+              <span class="text-super-xs font-weight-bold text-medium-emphasis uppercase">Lote Seleccionado</span>
+              <div class="d-flex align-center gap-2">
+                <span class="text-base font-weight-black text-high-emphasis">{{ selectedTotals.usd }} USD</span>
+                <span class="text-xs text-medium-emphasis font-weight-medium">({{ selectedTotals.bs }} Bs.)</span>
               </div>
             </div>
           </div>
           <div class="d-flex align-center gap-2">
             <VBtn
-              variant="tonal"
-              color="white"
+              variant="text"
+              color="secondary"
               size="small"
-              class="rounded-lg font-weight-black"
+              class="rounded-lg font-weight-bold"
               @click="emit('deselect-all')"
             >
-              <VIcon icon="tabler-x" size="18" class="me-1" />
+              <VIcon icon="tabler-x" size="16" class="me-1" />
               Limpiar
             </VBtn>
             <VBtn
               variant="flat"
-              color="success"
+              color="primary"
               size="small"
-              class="rounded-lg font-weight-black shadow-sm px-4"
+              class="rounded-lg font-weight-bold shadow-sm px-4"
               @click="emit('process-multiple')"
             >
-              <VIcon icon="tabler-credit-card" size="18" class="me-1" />
-              PROCESAR PAGO ({{ selectedTotals.count }})
+              <VIcon icon="tabler-credit-card" size="16" class="me-1" />
+              Procesar Pago ({{ selectedTotals.count }})
             </VBtn>
           </div>
         </VCard>
@@ -697,11 +697,11 @@ const openInvoiceTab = (item) => {
 
 .floating-selection-bar {
   position: fixed;
-  bottom: 10px;
+  bottom: 16px;
   left: 50%;
   transform: translateX(-50%);
-  width: 90%;
-  max-width: 800px;
+  width: calc(100% - 32px);
+  max-width: 680px;
   z-index: 100;
 }
 </style>
