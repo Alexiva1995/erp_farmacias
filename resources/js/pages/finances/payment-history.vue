@@ -91,7 +91,9 @@
           >
             <!-- Fecha -->
             <template #item.payment_date="{ item }">
-              <span class="text-xs text-medium-emphasis">{{ formatDate(item.payment_date) }}</span>
+              <span class="text-sm font-weight-bold text-primary">
+                {{ formatDate(item.payment_date) }}
+              </span>
             </template>
 
             <!-- Proveedor -->
@@ -133,12 +135,15 @@
 
             <!-- Referencia -->
             <template #item.reference="{ item }">
-              <span
+              <VChip
                 v-if="item.reference"
-                class="text-sm font-weight-bold text-primary"
+                size="small"
+                color="secondary"
+                variant="tonal"
+                class="font-weight-bold rounded-lg"
               >
                 {{ item.reference }}
-              </span>
+              </VChip>
               <span v-else class="text-disabled text-xs font-italic">Sin referencia</span>
             </template>
 
