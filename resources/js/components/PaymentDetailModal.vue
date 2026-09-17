@@ -231,12 +231,24 @@ const invoiceBilledAmount = computed(() => {
   return props.payment.invoices.reduce((acc, inv) => acc + (parseFloat(inv.total_amount) || 0), 0);
 });
 
-const invoiceBilledCurrency = computed(() => {
-  if (props.payment?.invoice_total_bs && props.payment.invoice_total_bs > 0) {
-    return "Bs.";
+const supplierName = computed(() => {
+  if (props.payment?.invoices?.[0]?.supplier?.name) {
+    return props.payment.invoices[0].supplier.name;
   }
-  if (!props.payment?.invoices?.length) return "Bs.";
-  return props.payment.invoices[0]?.currency || "Bs.";
+  return "N/A";
+});
+
+const paymentMethodDetails = computed(() => {
+  if (!props.payment) return "N/A";
+  const currency = normalizeCurrencyCode(props.payment.source_currency || props.payment.currency);
+  const method = props.payment.method || props.payment.payment_method;
+  
+  // Si tiene método explícito (ej: Transferencia, Cambista, Efectivo)
+  if (method && method !== currency) {
+    return `${currency} · ${method.charAt(0).toUpperCase() + method.slice(1)}`;
+  }
+  
+  return currency || "Transferencia";
 });
 </script>
 
@@ -344,6 +356,15 @@ const invoiceBilledCurrency = computed(() => {
             <!-- Detalles de Registro -->
             <VCard class="rounded-xl border shadow-sm bg-white pa-5">
               <div class="d-flex align-center mb-4">
+                <VAvatar size="36" color="primary" variant="tonal" class="me-3 rounded-lg">
+                  <VIcon icon="tabler-building-store" size="20" color="primary" />
+                </VAvatar>
+                <div class="d-flex flex-column">
+                  <span class="text-caption text-medium-emphasis leading-tight mb-1">Proveedor</span>
+                  <span class="text-sm font-weight-bold text-high-emphasis">{{ supplierName }}</span>
+                </div>
+              </div>
+              <div class="d-flex align-center mb-4">
                 <VAvatar size="36" color="secondary" variant="tonal" class="me-3 rounded-lg">
                   <VIcon icon="tabler-user-check" size="20" class="text-medium-emphasis" />
                 </VAvatar>
@@ -357,8 +378,8 @@ const invoiceBilledCurrency = computed(() => {
                   <VIcon icon="tabler-wallet" size="20" class="text-medium-emphasis" />
                 </VAvatar>
                 <div class="d-flex flex-column">
-                  <span class="text-caption text-medium-emphasis leading-tight mb-1">Método de Pago</span>
-                  <span class="text-sm font-weight-bold text-high-emphasis text-capitalize">{{ props.payment.payment_method || "Transferencia" }}</span>
+                  <span class="text-caption text-medium-emphasis leading-tight mb-1">Método / Moneda</span>
+                  <span class="text-sm font-weight-bold text-high-emphasis">{{ paymentMethodDetails }}</span>
                 </div>
               </div>
             </VCard>
@@ -380,23 +401,15 @@ const invoiceBilledCurrency = computed(() => {
                   :class="{ 'border-b': idx < props.payment.invoices.length - 1 }"
                 >
                   <div class="d-flex align-center gap-3">
-                    <VAvatar color="secondary" variant="tonal" size="32" class="rounded-lg">
-                      <VIcon icon="tabler-hash" size="16" class="text-medium-emphasis" />
-                    </VAvatar>
-                    <div class="d-flex flex-column">
-                      <span class="text-sm font-weight-bold text-high-emphasis">
-                        #{{ invoice.invoice_number }}
-                      </span>
-                      <span class="text-caption text-medium-emphasis">
-                        {{ invoice.supplier?.name }}
-                      </span>
-                    </div>
+                    <span class="text-sm font-weight-black text-high-emphasis">
+                      Factura {{ invoice.invoice_number }}
+                    </span>
                   </div>
                   <div class="text-end d-flex flex-column">
                     <span class="text-sm font-weight-bold text-high-emphasis">
                       {{ formatNumber(invoice.total_amount, normalizeCurrencyCode(invoice.currency) === "COP" ? 0 : 2) }} {{ normalizeCurrencyCode(invoice.currency) }}
                     </span>
-                    <span class="text-caption text-medium-emphasis">
+                    <span class="text-caption text-money-green font-weight-bold">
                       {{ formatNumber(invoice.total_usd) }} USD
                     </span>
                   </div>
@@ -405,7 +418,7 @@ const invoiceBilledCurrency = computed(() => {
 
               <div class="total-billed-row pa-4 d-flex justify-space-between align-center">
                 <span class="text-body-2 font-weight-medium text-medium-emphasis">Total Facturado</span>
-                <span class="text-subtitle-1 font-weight-bold text-high-emphasis">{{ formatNumber(props.payment.invoice_total_usd) }} USD</span>
+                <span class="text-subtitle-1 font-weight-bold text-money-green">{{ formatNumber(props.payment.invoice_total_usd) }} USD</span>
               </div>
             </VCard>
 

@@ -26,6 +26,8 @@ class PaymentHistoryResource extends JsonResource
             'source_amount_usd' => (float)($this->source_amount_usd ?? ($this->amount_usd ?? 0)),
             'exchange_rate_applied' => $this->exchange_rate_applied ? (float)$this->exchange_rate_applied : null,
             'reference' => $this->reference,
+            'payment_method' => $this->method,
+            'method' => $this->method,
             'photo_url' => $this->photo_url,
             'notes' => $this->notes,
             'payment_type' => $this->payment_type,
