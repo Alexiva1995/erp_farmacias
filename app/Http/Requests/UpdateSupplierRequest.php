@@ -53,6 +53,7 @@ class UpdateSupplierRequest extends FormRequest
             'address' => [Rule::requiredIf(fn() => $this->type === SupplierType::EXTERNO->value), 'sometimes', 'nullable', 'string'],
             'sales_phone' => 'sometimes|nullable|string|max:50',
             'collections_phone' => 'sometimes|nullable|string|max:50',
+            'payment_email' => 'sometimes|nullable|email|max:255',
             'credit_days' => 'sometimes|nullable|numeric',
             'is_indexed' => 'sometimes|boolean',
             'dispatch_days' => 'sometimes|nullable|array',

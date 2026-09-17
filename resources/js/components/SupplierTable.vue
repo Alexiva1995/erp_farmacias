@@ -126,6 +126,18 @@ const headers = [
                 />
               </template>
             </VTooltip>
+            <VTooltip v-if="item.payment_email" :text="`Correo de Pagos: ${item.payment_email}`">
+              <template #activator="{ props }">
+                <VBtn
+                  icon="tabler-mail-dollar"
+                  size="small"
+                  :href="`mailto:${item.payment_email}`"
+                  variant="text"
+                  color="primary"
+                  v-bind="props"
+                />
+              </template>
+            </VTooltip>
           </div>
         </template>
 

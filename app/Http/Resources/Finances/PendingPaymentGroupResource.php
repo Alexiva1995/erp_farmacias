@@ -19,6 +19,7 @@ class PendingPaymentGroupResource extends JsonResource
         return [
             'supplier_id' => $this['supplier_id'],
             'supplier_name' => $this['supplier_name'],
+            'payment_email' => $this['payment_email'] ?? null,
             'payment_date' => $this['payment_date'] instanceof \Carbon\Carbon 
                 ? $this['payment_date']->toDateString() 
                 : $this['payment_date'],

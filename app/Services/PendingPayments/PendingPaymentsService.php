@@ -134,6 +134,7 @@ class PendingPaymentsService
             return [
                 'supplier_id' => $firstInvoice->supplier_id,
                 'supplier_name' => $firstInvoice->supplier?->name ?? 'N/A',
+                'payment_email' => $firstInvoice->supplier?->payment_email ?? $firstInvoice->supplier?->email ?? null,
                 'payment_date' => $firstInvoice->payment_date,
                 'currency' => $firstInvoice->currency,
                 'total_amount' => $remainingAmountOriginal,

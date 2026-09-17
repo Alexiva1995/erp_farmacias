@@ -29,6 +29,8 @@ use App\Http\Requests\PendingPayments\ResendPaymentToPortalRequest;
 use App\Http\Requests\PendingPayments\BulkUpdateInvoiceStatusRequest;
 use Carbon\Carbon;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\SupplierPaymentReceiptMail;
 
 use App\Services\PendingPayments\PaymentHistoryService;
 
@@ -452,37 +454,48 @@ class PendingPaymentsController extends Controller
                 }
             }
 
-            $submissionMessage = '';
-            $portalWarning = '';
+            // 13. Envío de correo de soporte de pago al proveedor si tiene correo configurado
+            $emailSent = false;
+            $supplier = $invoices->first()?->supplier;
+            $paymentEmail = $supplier?->payment_email ?? $supplier?->email;
 
-            if ($dronenaResult) {
-                if (!empty($dronenaResult['success'])) {
-                    $submissionMessage = ' y transmitido exitosamente a Dronena';
-                } else {
-                    $portalWarning = ' (Aviso Dronena: ' . ($dronenaResult['message'] ?? 'Fallo al procesar') . ')';
+            if (!empty($paymentEmail)) {
+                try {
+                    $paymentPayload = [
+                        'payment_date'          => $request->payment_date,
+                        'payment_method'        => $request->payment_method,
+                        'payment_amount'        => (float) $request->payment_amount,
+                        'payment_currency'      => $request->payment_currency,
+                        'reference'             => $request->reference,
+                        'destination_bank'      => $request->destination_bank,
+                        'source_amount'         => $request->source_amount,
+                        'source_currency'       => $request->source_currency,
+                        'exchange_rate_applied' => $request->exchange_rate_applied,
+                    ];
+
+                    Mail::to($paymentEmail)->send(
+                        new SupplierPaymentReceiptMail(
+                            $supplier,
+                            $invoices,
+                            $paymentPayload,
+                            $request->photo_url
+                        )
+                    );
+                    $emailSent = true;
+                    Log::info("[PendingPayments] Comprobante de pago enviado a {$paymentEmail} (Proveedor: {$supplier->name})");
+                } catch (\Throwable $mailEx) {
+                    Log::error("[PendingPayments] Error enviando correo de pago a {$paymentEmail}: " . $mailEx->getMessage());
                 }
-            } elseif ($mafartaResult) {
-                if (!empty($mafartaResult['success'])) {
-                    $submissionMessage = ' y transmitido exitosamente a Cobeca / Mafarta';
-                } else {
-                    $portalWarning = ' (Aviso Mafarta: ' . ($mafartaResult['message'] ?? 'Fallo al procesar') . ')';
-                }
-            } elseif ($cristmedicalsResult) {
-                if (!empty($cristmedicalsResult['success'])) {
-                    $submissionMessage = ' y transmitido exitosamente a Cristmedicals';
-                } else {
-                    $portalWarning = ' (Aviso Cristmedicals: ' . ($cristmedicalsResult['message'] ?? 'Fallo al procesar') . ')';
-                }
-            } elseif ($dromegaResult) {
-                if (!empty($dromegaResult['success'])) {
-                    $submissionMessage = ' y transmitido exitosamente a Droguería Mega';
-                } else {
-                    $portalWarning = ' (Aviso Dromega: ' . ($dromegaResult['message'] ?? 'Fallo al procesar') . ')';
-                }
+            }
+
+            if ($emailSent) {
+                $submissionMessage .= " y notificado por correo a {$paymentEmail}";
             }
 
             return ApiResponse::success([
                 'payment_id' => $payment->id,
+                'email_sent' => $emailSent,
+                'payment_email' => $paymentEmail,
                 'processed_invoices' => $request->invoice_ids,
                 'payment_type' => $request->payment_type,
                 'amount_paid' => $request->payment_amount,

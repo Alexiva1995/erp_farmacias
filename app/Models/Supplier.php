@@ -33,6 +33,7 @@ class Supplier extends Model
         'rif',
         'sales_phone',
         'collections_phone',
+        'payment_email',
         'credit_days',
         'dispatch_days',
         'order_days',

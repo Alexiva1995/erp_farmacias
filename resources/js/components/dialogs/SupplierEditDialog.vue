@@ -40,6 +40,7 @@ const baseForm = {
   address: "",
   sales_phone: "",
   collections_phone: "",
+  payment_email: "",
   payment_due_type: "invoice_date",
   invoice_date_reference: "issue_date",
   custom_due_days: null,
@@ -373,6 +374,20 @@ watch(
                           placeholder="4147654321"
                           prepend-inner-icon="tabler-phone-incoming"
                           :error-messages="formErrors.collections_phone"
+                          class="shadow-sm"
+                          :readonly="!authStore.isAdmin"
+                        />
+                      </VCol>
+                      <VCol cols="12" v-if="!isRestaurant && formData.type !== 'externo'">
+                        <AppTextField
+                          v-model="formData.payment_email"
+                          label="Correo para Notificación de Pagos"
+                          type="email"
+                          placeholder="pagos@drogueria.com"
+                          prepend-inner-icon="tabler-mail-dollar"
+                          :error-messages="formErrors.payment_email"
+                          hint="Se enviará automáticamente el soporte de pago y detalle de facturas a este correo"
+                          persistent-hint
                           class="shadow-sm"
                           :readonly="!authStore.isAdmin"
                         />

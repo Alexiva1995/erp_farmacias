@@ -170,6 +170,12 @@ const isJohanPayment = computed(() => {
   });
 });
 
+const supplierPaymentEmail = computed(() => {
+  if (props.paymentGroup?.payment_email) return props.paymentGroup.payment_email;
+  const firstWithEmail = props.invoices.find((inv) => inv.supplier?.payment_email || inv.supplier?.email);
+  return firstWithEmail?.supplier?.payment_email || firstWithEmail?.supplier?.email || null;
+});
+
 const shouldShowDestinationBank = computed(() => {
   // Para Mafarta / Cobeca, SIEMPRE mostrar banco destino sin importar el método de pago
   if (isMafartaPayment.value) return true;
@@ -717,14 +723,26 @@ watch(() => props.modelValue, (val) => {
               </div>
             </div>
             <div class="d-flex flex-column align-end">
-              <VChip
-                size="small"
-                variant="flat"
-                color="primary"
-                class="font-weight-black rounded mb-1"
-              >
-                {{ props.invoices.length }} {{ props.invoices.length === 1 ? 'FACTURA' : 'FACTURAS' }}
-              </VChip>
+              <div class="d-flex align-center gap-1 mb-1">
+                <VChip
+                  v-if="supplierPaymentEmail"
+                  size="small"
+                  variant="tonal"
+                  color="info"
+                  class="font-weight-bold rounded"
+                >
+                  <VIcon start size="14">tabler-mail-fast</VIcon>
+                  Envío automático a {{ supplierPaymentEmail }}
+                </VChip>
+                <VChip
+                  size="small"
+                  variant="flat"
+                  color="primary"
+                  class="font-weight-black rounded"
+                >
+                  {{ props.invoices.length }} {{ props.invoices.length === 1 ? 'FACTURA' : 'FACTURAS' }}
+                </VChip>
+              </div>
               <span class="text-super-xs text-disabled uppercase font-weight-bold">Tasa BCV Referencial: {{ formatNumber(exchangeRate) }} Bs/USD</span>
             </div>
           </div>
