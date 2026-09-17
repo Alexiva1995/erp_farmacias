@@ -343,24 +343,8 @@ const handleSyncBots = async () => {
         class="mb-0"
       >
         <template #selection-actions>
-          <div v-if="!mobile" class="d-flex align-center gap-1 me-1">
+          <div v-if="!mobile && selectedTableInvoices.length > 0" class="d-flex align-center gap-1 me-1">
             <VBtn
-              v-if="selectedTableInvoices.length > 0"
-              icon
-              variant="tonal"
-              color="secondary"
-              size="38"
-              class="rounded-circle shadow-sm"
-              @click="selectedTableInvoices = []"
-            >
-              <VBadge color="error" :content="selectedTableInvoices.length" offset-x="-2" offset-y="-2">
-                <VIcon icon="tabler-deselect" size="20" />
-              </VBadge>
-              <VTooltip activator="parent" location="top">Deseleccionar Todo</VTooltip>
-            </VBtn>
-
-            <VBtn
-              :disabled="selectedTableInvoices.length === 0"
               icon
               color="success"
               variant="flat"

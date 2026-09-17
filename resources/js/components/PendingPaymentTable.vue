@@ -155,7 +155,7 @@ const isOverdue = (paymentDate) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   dueDate.setHours(0, 0, 0, 0);
-  return dueDate < today;
+  return dueDate <= today;
 };
 
 const getStatusColor = (status) => {
@@ -276,21 +276,9 @@ const openInvoiceTab = (item) => {
               size="18" 
               :color="isOverdue(item.payment_date) ? 'error' : 'secondary'" 
             />
-            <div class="d-flex align-center gap-1">
-              <span class="text-sm font-weight-black" :class="isOverdue(item.payment_date) ? 'text-error' : 'text-high-emphasis'">
-                {{ formatDueDate(item.payment_date) }}
-              </span>
-              <VChip
-                v-if="isOverdue(item.payment_date)"
-                size="x-small"
-                variant="tonal"
-                color="error"
-                class="font-weight-black"
-                style="font-size: 0.6rem; height: 18px;"
-              >
-                Vencida
-              </VChip>
-            </div>
+            <span class="text-sm font-weight-black" :class="isOverdue(item.payment_date) ? 'text-error' : 'text-high-emphasis'">
+              {{ formatDueDate(item.payment_date) }}
+            </span>
           </div>
         </template>
 
@@ -585,7 +573,7 @@ const openInvoiceTab = (item) => {
     <!-- Barra de Selección Flotante (Desktop y Móvil) -->
     <VSlideYReverseTransition>
       <div v-if="props.selectedTableInvoices.length > 0" class="floating-selection-bar pa-2">
-        <VCard class="rounded-xl shadow-xl pa-3 d-flex align-center justify-space-between border bg-surface">
+        <VCard class="floating-selection-card rounded-xl shadow-xl pa-3 d-flex align-center justify-space-between bg-surface">
           <div class="d-flex align-center gap-3 ms-2">
             <VAvatar color="primary" variant="tonal" size="36" class="rounded-lg">
               <span class="text-sm font-weight-black text-primary">{{ selectedTotals.count }}</span>
@@ -703,5 +691,10 @@ const openInvoiceTab = (item) => {
   width: calc(100% - 32px);
   max-width: 680px;
   z-index: 100;
+}
+
+.floating-selection-card {
+  border: 2px solid rgb(var(--v-theme-primary)) !important;
+  box-shadow: 0 8px 24px -4px rgba(var(--v-theme-primary), 0.25), 0 4px 12px rgba(0, 0, 0, 0.08) !important;
 }
 </style>
