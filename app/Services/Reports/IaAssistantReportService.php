@@ -37,7 +37,7 @@ class IaAssistantReportService
         }
         $cacheKey = 'ia_assistant_report_' . md5(json_encode($filtrosCacheKey));
 
-        return Cache::remember($cacheKey, 120, function () use ($filtros, $tipo) {
+        $cachedData = Cache::remember($cacheKey, 120, function () use ($filtros, $tipo) {
             if ($tipo === 'sales') {
                 $resultado = $this->productRepository->filtrarIndividualProductForAssistantReportTypeSalesWithoutPaginate($filtros);
             } else {

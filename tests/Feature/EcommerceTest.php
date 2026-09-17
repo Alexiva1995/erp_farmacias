@@ -12,8 +12,7 @@ class EcommerceTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** @test */
-    public function can_get_public_products_and_categories()
+    public function test_can_get_public_products_and_categories()
     {
         $category = Category::factory()->create([
             'name' => 'Anillos',
@@ -33,8 +32,7 @@ class EcommerceTest extends TestCase
                  ->assertJsonFragment(['name' => $product->name]);
     }
  
-    /** @test */
-    public function can_checkout_ecommerce_order_with_variant_and_deducts_stock()
+    public function test_can_checkout_ecommerce_order_with_variant_and_deducts_stock()
     {
         $category = Category::factory()->create();
         $product = Product::factory()->create([
