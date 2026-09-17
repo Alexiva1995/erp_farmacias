@@ -16,7 +16,6 @@ const brandingStore = useBrandingStore();
 const isMinimarket = computed(() => {
   return brandingStore.settings?.business_type === 'minimarket' || props.settings?.profitability_calculation_type === 'compound';
 });
-const isMiniMarket = isMinimarket;
 
 const localPercentage = ref(0);
 const shippingCost = ref(0);
@@ -25,6 +24,17 @@ const expenseMargin = ref(0);
 const profitMargin = ref(0);
 const taxUsa = ref(0);
 const loading = ref(false);
+
+const quickPercentages = [15, 20, 25, 30, 35];
+
+const adjustPercentage = (delta) => {
+  const current = Number(localPercentage.value) || 0;
+  localPercentage.value = Math.max(0, current + delta);
+};
+
+const setQuickPercentage = (val) => {
+  localPercentage.value = val;
+};
 
 watch(
   () => props.percentage,
@@ -86,14 +96,14 @@ async function storeProfitability() {
 <template>
   <VDialog
     :model-value="props.dialog"
-    max-width="460px"
+    max-width="480px"
     persistent
     :fullscreen="$vuetify.display.smAndDown"
     :transition="$vuetify.display.smAndDown ? 'dialog-bottom-transition' : 'scale-transition'"
     @update:model-value="emit('close-modal')"
   >
     <VCard class="detail-dialog-card rounded-xl border-0 shadow-xl overflow-hidden bg-surface">
-      <!-- Header Premium -->
+      <!-- Header Corporativo -->
       <VCardTitle class="pa-0">
         <div class="header-gradient pa-4 d-flex align-center shadow-sm">
           <VAvatar
@@ -122,55 +132,49 @@ async function storeProfitability() {
             </div>
           </div>
           <VSpacer />
-          <VBtn
-            icon="tabler-x"
-            variant="tonal"
+          <IconBtn
             color="white"
+            variant="tonal"
             size="small"
             class="rounded-lg"
             @click="emit('close-modal')"
-          />
+            :disabled="loading"
+          >
+            <VIcon icon="tabler-x" size="20" />
+            <VTooltip activator="parent" location="top">Cerrar</VTooltip>
+          </IconBtn>
         </div>
       </VCardTitle>
 
-      <!-- Contenido Premium -->
-      <VCardText class="pa-4 pa-sm-6 bg-light">
-        <!-- Bloque Informativo -->
+      <!-- Contenido -->
+      <VCardText class="pa-4 pa-sm-6 bg-background d-flex flex-column gap-4">
+        <!-- Bloque Informativo de Alta Legibilidad -->
         <VAlert
           variant="tonal"
-          color="warning"
+          type="warning"
           rounded="lg"
-          class="mb-6"
-          border="start"
+          density="comfortable"
+          class="border-0"
+          icon="tabler-alert-triangle"
         >
-          <template #prepend>
-            <VIcon
-              icon="tabler-alert-triangle"
-              size="22"
-              class="me-1"
-            />
-          </template>
           <div class="text-xs font-weight-black uppercase mb-1">
             Información Importante
           </div>
-          <div class="text-sm opacity-90 leading-tight">
-            Se actualizará el margen de utilidad de <strong>todos los productos</strong> no bloqueados.
+          <div class="text-sm leading-tight text-high-emphasis">
+            Se actualizará el margen de utilidad de <strong>todos los productos</strong> que no se encuentren bloqueados.
           </div>
         </VAlert>
 
-        <div class="d-flex align-center gap-2 mb-4">
-          <div class="header-indicator primary shadow-sm" />
-          <span
-            class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1"
-            >Configuración de Margen</span
-          >
-        </div>
-
+        <!-- Minimarket (Campos Compuestos) -->
         <VCard
+          v-if="isMinimarket"
           variant="flat"
-          class="pa-5 bg-white rounded-lg elevation-1 border"
+          class="pa-4 bg-surface rounded-lg border"
         >
-          <VRow v-if="isMinimarket">
+          <div class="text-xs font-weight-bold text-disabled uppercase mb-3 letter-spacing-1">
+            Parámetros de Costo y Margen Global
+          </div>
+          <VRow dense>
             <VCol cols="12">
               <AppTextField
                 v-model="taxUsa"
@@ -179,7 +183,7 @@ async function storeProfitability() {
                 type="number"
                 suffix="%"
                 prepend-inner-icon="tabler-receipt-tax"
-                density="comfortable"
+                density="compact"
                 hide-details="auto"
               />
             </VCol>
@@ -190,7 +194,7 @@ async function storeProfitability() {
                 placeholder="Ej: 0.90"
                 type="number"
                 prepend-inner-icon="tabler-truck-delivery"
-                density="comfortable"
+                density="compact"
                 hide-details="auto"
               />
             </VCol>
@@ -201,7 +205,7 @@ async function storeProfitability() {
                 placeholder="Ej: 1.20"
                 type="number"
                 prepend-inner-icon="tabler-box"
-                density="comfortable"
+                density="compact"
                 hide-details="auto"
               />
             </VCol>
@@ -213,92 +217,127 @@ async function storeProfitability() {
                 type="number"
                 suffix="%"
                 prepend-inner-icon="tabler-percentage"
-                density="comfortable"
+                density="compact"
                 hide-details="auto"
               />
             </VCol>
             <VCol cols="12" sm="6">
               <AppTextField
                 v-model="profitMargin"
-                label="Margen Ganancia Deseada (%)"
+                label="Margen Ganancia (%)"
                 placeholder="Ej: 30"
                 type="number"
                 suffix="%"
                 prepend-inner-icon="tabler-trending-up"
-                density="comfortable"
+                density="compact"
                 hide-details="auto"
               />
-            </VCol>
-          </VRow>
-          <VRow v-else>
-            <VCol cols="12">
-              <AppTextField
-                v-model="localPercentage"
-                label="Nuevo Porcentaje de Rentabilidad"
-                placeholder="Ej: 25"
-                type="number"
-                suffix="%"
-                autofocus
-                prepend-inner-icon="tabler-chart-arrows-vertical"
-                density="comfortable"
-                hide-details="auto"
-                :rules="[(v) => v >= 0 || 'El porcentaje no puede ser negativo']"
-              />
-              <div class="mt-2 text-super-xs text-disabled">
-                * El precio de venta se recalculará automáticamente basado en el costo.
-              </div>
             </VCol>
           </VRow>
         </VCard>
+
+        <!-- Modo Estándar / Farmacia (Selector Robusto con Botones y Presets) -->
+        <VCard
+          v-else
+          variant="flat"
+          class="pa-4 bg-surface rounded-lg border"
+        >
+          <div class="text-xs font-weight-bold text-disabled uppercase mb-2 letter-spacing-1">
+            Nuevo Porcentaje de Rentabilidad
+          </div>
+
+          <div class="d-flex align-center gap-2 mb-3">
+            <VBtn
+              icon
+              variant="tonal"
+              color="secondary"
+              size="40"
+              class="rounded-lg"
+              @click="adjustPercentage(-5)"
+              :disabled="Number(localPercentage) <= 0"
+            >
+              <VIcon icon="tabler-minus" size="20" />
+              <VTooltip activator="parent" location="top">-5%</VTooltip>
+            </VBtn>
+
+            <VTextField
+              v-model="localPercentage"
+              type="number"
+              suffix="%"
+              placeholder="0"
+              variant="outlined"
+              density="comfortable"
+              class="text-center font-weight-bold"
+              hide-details
+              autofocus
+              @keyup.enter="storeProfitability"
+            />
+
+            <VBtn
+              icon
+              variant="tonal"
+              color="primary"
+              size="40"
+              class="rounded-lg"
+              @click="adjustPercentage(5)"
+            >
+              <VIcon icon="tabler-plus" size="20" />
+              <VTooltip activator="parent" location="top">+5%</VTooltip>
+            </VBtn>
+          </div>
+
+          <!-- Sugerencias Rápidas -->
+          <div class="d-flex align-center justify-space-between flex-wrap gap-1">
+            <span class="text-super-xs font-weight-bold text-medium-emphasis">Sugeridos:</span>
+            <div class="d-flex align-center gap-1">
+              <VChip
+                v-for="p in quickPercentages"
+                :key="p"
+                size="small"
+                variant="tonal"
+                :color="Number(localPercentage) === p ? 'primary' : 'secondary'"
+                class="font-weight-black cursor-pointer"
+                @click="setQuickPercentage(p)"
+              >
+                {{ p }}%
+              </VChip>
+            </div>
+          </div>
+
+          <div class="mt-3 text-super-xs text-medium-emphasis">
+            ℹ️ El precio de venta de los productos se recalculará automáticamente según su costo base.
+          </div>
+        </VCard>
       </VCardText>
 
+      <VDivider />
+
       <!-- Botones de Acción -->
-      <VCardActions class="pa-4 bg-light border-t">
-        <VRow
-          no-gutters
-          class="w-100"
+      <VCardActions class="pa-4 bg-surface d-flex justify-end gap-2">
+        <VBtn
+          color="secondary"
+          variant="outlined"
+          class="font-weight-bold rounded-lg px-4"
+          @click="emit('close-modal')"
+          :disabled="loading"
         >
-          <VCol
-            cols="12"
-            sm="6"
-            class="pa-1"
-          >
-            <VBtn
-              color="secondary"
-              variant="outlined"
-              height="50"
-              block
-              class="font-weight-black rounded-lg text-button uppercase"
-              @click="emit('close-modal')"
-            >
-              Cancelar
-            </VBtn>
-          </VCol>
-          <VCol
-            cols="12"
-            sm="6"
-            class="pa-1"
-          >
-            <VBtn
-              color="primary"
-              variant="flat"
-              height="50"
-              block
-              class="font-weight-black rounded-lg shadow-primary text-button uppercase"
-              @click="storeProfitability"
-              :loading="loading"
-              :disabled="loading || (isMinimarket ? false : !localPercentage)"
-            >
-              <VIcon
-                start
-                icon="tabler-device-floppy"
-                size="18"
-                class="me-2"
-              />
-              Guardar Ajuste
-            </VBtn>
-          </VCol>
-        </VRow>
+          Cancelar
+        </VBtn>
+        <VBtn
+          color="primary"
+          variant="flat"
+          class="font-weight-bold rounded-lg px-5"
+          @click="storeProfitability"
+          :loading="loading"
+          :disabled="loading || (!isMinimarket && (localPercentage === null || localPercentage === ''))"
+        >
+          <VIcon
+            start
+            icon="tabler-device-floppy"
+            size="18"
+          />
+          Guardar Ajuste
+        </VBtn>
       </VCardActions>
     </VCard>
   </VDialog>
@@ -317,34 +356,17 @@ async function storeProfitability() {
   border-radius: 12px !important;
 }
 
-.header-indicator {
-  inline-size: 4px;
-  block-size: 16px;
-  border-radius: 10px;
-}
-
-.header-indicator.primary {
-  background-color: rgb(var(--v-theme-primary));
-}
-
-.shadow-primary {
-  box-shadow: 0 4px 14px 0 rgba(var(--v-theme-primary), 0.39) !important;
-}
-
 .text-super-xs {
   font-size: 0.65rem !important;
   line-height: normal;
 }
 
 .letter-spacing-1 {
-  letter-spacing: 1px !important;
+  letter-spacing: 0.05rem !important;
 }
 
 .leading-none {
   line-height: 1 !important;
 }
-
-.border-t {
-  border-block-start: 1px solid rgba(var(--v-border-color), 0.08) !important;
-}
 </style>
+
