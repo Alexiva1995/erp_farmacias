@@ -222,37 +222,15 @@ const savingsPercentage = computed(() => {
   return Math.max(0, Math.round(percentage * 100) / 100);
 });
 
-// Monto pagado en Bolívares (si la moneda es Bs/VES o estimado según facturas/tasa)
-const paymentInBs = computed(() => {
-  if (!props.payment) return 0;
-  const curr = normalizeCurrencyCode(props.payment.currency);
-  if (curr === "Bs.") {
-    return parseFloat(props.payment.amount) || 0;
-  }
-  // Si se pagó en USD u otra moneda, calculamos el total de facturas en Bs asociadas si existen
-  const bsInvoicesTotal = props.payment.invoices?.reduce((acc, inv) => {
-    if (normalizeCurrencyCode(inv.currency) === "Bs.") {
-      return acc + (parseFloat(inv.total_amount) || 0);
-    }
-    return acc;
-  }, 0);
-
-  if (bsInvoicesTotal > 0) return bsInvoicesTotal;
-
-  // Si no hay facturas en Bs, calcular por tasa implícita si existe
-  const paidUSD = parseFloat(props.payment.amount_usd) || 0;
-  return 0;
+// Total facturado en la moneda original de las facturas o en Bs.
+const invoiceBilledAmount = computed(() => {
+  if (!props.payment?.invoices?.length) return 0;
+  return props.payment.invoices.reduce((acc, inv) => acc + (parseFloat(inv.total_amount) || 0), 0);
 });
 
-// Total facturado en Bolívares de las facturas asociadas
-const invoiceBilledBs = computed(() => {
-  if (!props.payment?.invoices?.length) return 0;
-  return props.payment.invoices.reduce((acc, inv) => {
-    if (normalizeCurrencyCode(inv.currency) === "Bs.") {
-      return acc + (parseFloat(inv.total_amount) || 0);
-    }
-    return acc;
-  }, 0);
+const invoiceBilledCurrency = computed(() => {
+  if (!props.payment?.invoices?.length) return "Bs.";
+  return props.payment.invoices[0]?.currency || "Bs.";
 });
 </script>
 
@@ -326,11 +304,11 @@ const invoiceBilledBs = computed(() => {
                     </span>
                   </VCol>
 
-                  <!-- Derecha: Monto en Bs / Facturado -->
+                  <!-- Derecha: Total Facturado Original -->
                   <VCol cols="6" class="ps-3 d-flex flex-column justify-center align-center text-center">
-                    <span class="text-caption text-medium-emphasis mb-1 font-weight-medium">Monto en Bs.</span>
+                    <span class="text-caption text-medium-emphasis mb-1 font-weight-medium">Total Facturado</span>
                     <span class="summary-amount font-weight-black text-high-emphasis mb-1">
-                      {{ formatCurrency(paymentInBs || invoiceBilledBs, 'Bs.') }}
+                      {{ formatCurrency(invoiceBilledAmount, invoiceBilledCurrency) }}
                     </span>
                     <span class="text-xs font-weight-bold text-medium-emphasis">
                       ({{ formatNumber(props.payment.invoice_total_usd) }} USD)
