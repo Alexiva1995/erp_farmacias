@@ -30,12 +30,12 @@ const { mobile } = useDisplay();
 const form = ref({
   payment_type: "full",
   is_partial: false,
-  payment_currency: "USD",
+  payment_currency: "VES",
   payment_amount: 0,
   payment_date: new Date().toISOString().split("T")[0],
   photo_url: null,
   reference: "",
-  payment_method: "transfer",
+  payment_method: "cash",
   destination_bank: null,
 });
 
@@ -342,20 +342,22 @@ const closeModal = () => {
 const resetForm = () => {
   form.value = {
     payment_type: "full",
-    payment_currency: "USD",
+    payment_currency: "VES",
     payment_amount: 0,
     payment_date: new Date().toISOString().split("T")[0],
     photo_url: null,
     reference: "",
-    payment_method: null,
+    payment_method: "cash",
     destination_bank: null,
   };
+  sourceCurrency.value = "COP";
+  customConversionMode.value = false;
   errors.value = {};
 };
 
 
 // Multi-moneda y conversión de origen
-const sourceCurrency = ref("VES");
+const sourceCurrency = ref("COP");
 const exchangeRateApplied = ref(1);
 const sourceAmountCalculated = ref(0);
 const customConversionMode = ref(false);
@@ -606,8 +608,10 @@ watch(() => props.modelValue, (val) => {
   if (val) {
     fetchExchangeRates();
     form.value.payment_currency = 'VES';
-    form.value.payment_method = 'transfer';
+    sourceCurrency.value = 'COP';
+    form.value.payment_method = 'cash';
     form.value.payment_amount = Number(totalInBS.value.toFixed(2));
+    customConversionMode.value = false;
 
     if (isDromegaPayment.value) {
       form.value.destination_bank = dromegaBanks[12].value;
@@ -622,6 +626,8 @@ watch(() => props.modelValue, (val) => {
     } else {
       form.value.destination_bank = null;
     }
+
+    updateSourceCalculations();
   }
 });
 </script>
