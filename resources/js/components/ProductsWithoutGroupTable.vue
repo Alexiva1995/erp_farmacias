@@ -166,7 +166,8 @@ const getMergedLots = (lots) => {
     if (!lot) continue;
     const lotNum = String(lot.lot_number || '').trim();
     const expDate = String(lot.expiration_date || '').split('T')[0].trim();
-    const key = `${lotNum}|${expDate}`;
+    const loc = String(lot.location || '').trim();
+    const key = `${lotNum}|${expDate}|${loc}`;
 
     if (map.has(key)) {
       const existing = map.get(key);
@@ -176,12 +177,15 @@ const getMergedLots = (lots) => {
         id: lot.id,
         lot_number: lot.lot_number,
         expiration_date: lot.expiration_date,
+        location: lot.location,
         quantity: Number(lot.quantity) || 0,
       });
     }
   }
 
-  return Array.from(map.values());
+  const result = Array.from(map.values());
+  const positiveLots = result.filter((l) => l.quantity > 0);
+  return positiveLots.length > 0 ? positiveLots : result;
 };
 </script>
 

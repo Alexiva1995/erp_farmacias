@@ -127,38 +127,51 @@ class GeminiService
                 . "Extrae exclusivamente el número de referencia, número de operación, número de transacción, número de aprobación o identificador numérico único de la transacción. "
                 . "Si encuentras 'Operación: XXXXXXXXXX' o 'Referencia: XXXXXXXXXX', extrae exactamente esa secuencia de dígitos numéricos.";
 
-            $response = Http::withHeaders([
-                'x-goog-api-key' => $key,
-            ])->timeout(25)->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={$key}", [
-                'contents' => [
-                    [
-                        'parts' => [
-                            ['text' => $prompt],
+            $models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+            $response = null;
+
+            foreach ($models as $model) {
+                try {
+                    $response = Http::withHeaders([
+                        'x-goog-api-key' => $key,
+                    ])->timeout(20)->post("https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$key}", [
+                        'contents' => [
                             [
-                                'inlineData' => [
-                                    'mimeType' => $mimeType,
-                                    'data' => $imageData
+                                'parts' => [
+                                    ['text' => $prompt],
+                                    [
+                                        'inlineData' => [
+                                            'mimeType' => $mimeType,
+                                            'data' => $imageData
+                                        ]
+                                    ]
                                 ]
                             ]
-                        ]
-                    ]
-                ],
-                'generationConfig' => [
-                    'responseMimeType' => 'application/json',
-                    'responseSchema' => [
-                        'type' => 'object',
-                        'properties' => [
-                            'reference' => [
-                                'type' => 'string',
-                                'description' => 'Número de referencia o número de operación extraído del comprobante bancario'
-                            ]
                         ],
-                        'required' => ['reference']
-                    ]
-                ]
-            ]);
+                        'generationConfig' => [
+                            'responseMimeType' => 'application/json',
+                            'responseSchema' => [
+                                'type' => 'object',
+                                'properties' => [
+                                    'reference' => [
+                                        'type' => 'string',
+                                        'description' => 'Número de referencia o número de operación extraído del comprobante bancario'
+                                    ]
+                                ],
+                                'required' => ['reference']
+                            ]
+                        ]
+                    ]);
 
-            if ($response->successful()) {
+                    if ($response->successful()) {
+                        break;
+                    }
+                } catch (\Throwable $netEx) {
+                    Log::warning("[GeminiService] Falló solicitud con modelo {$model}: " . $netEx->getMessage());
+                }
+            }
+
+            if ($response && $response->successful()) {
                 $result = $response->json();
                 $textResponse = $result['candidates'][0]['content']['parts'][0]['text'] ?? '';
                 
@@ -170,7 +183,9 @@ class GeminiService
                     return ltrim(trim((string)$data['reference']), '# ');
                 }
             } else {
-                Log::error('[GeminiService] Error API Gemini en extractPaymentReference (' . $response->status() . '): ' . $response->body());
+                $status = $response ? $response->status() : 'Error';
+                $body = $response ? $response->body() : 'No response';
+                Log::error("[GeminiService] Error API Gemini en extractPaymentReference ({$status}): {$body}");
             }
 
             return null;
