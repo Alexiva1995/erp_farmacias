@@ -208,6 +208,12 @@ const uploading = ref(false);
 const exchangeRates = ref({});
 const errors = ref({});
 
+// Multi-moneda y conversión de origen
+const sourceCurrency = ref("COP");
+const exchangeRateApplied = ref(1);
+const sourceAmountCalculated = ref(0);
+const customConversionMode = ref(false);
+
 watch(() => form.value.payment_method, (newMethod) => {
   if (newMethod === 'cash') {
     const dateStr = form.value.payment_date || new Date().toISOString().split("T")[0];
@@ -360,13 +366,6 @@ const resetForm = () => {
   customConversionMode.value = false;
   errors.value = {};
 };
-
-
-// Multi-moneda y conversión de origen
-const sourceCurrency = ref("COP");
-const exchangeRateApplied = ref(1);
-const sourceAmountCalculated = ref(0);
-const customConversionMode = ref(false);
 
 const updateSourceCalculations = () => {
   const destCurrency = form.value.payment_currency;

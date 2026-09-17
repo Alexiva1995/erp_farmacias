@@ -391,6 +391,7 @@ const handleSyncBots = async () => {
 
       <ProcessPaymentModal
         v-model="showProcessModal"
+        :payment-group="selectedPaymentGroup"
         :invoices="selectedInvoices"
         :exchange-rate="exchangeRate"
         @payment-processed="handlePaymentProcessed"
