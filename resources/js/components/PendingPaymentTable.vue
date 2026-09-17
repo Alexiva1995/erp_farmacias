@@ -383,17 +383,6 @@ const openInvoiceTab = (item) => {
               <VTooltip activator="parent" location="top">Ver / Descargar PDF Digital</VTooltip>
             </IconBtn>
 
-            <!-- Procesar Pago (Modal Financiero) -->
-            <IconBtn
-              v-if="authStore.isAdmin"
-              color="success"
-              size="small"
-              @click="emit('process-payment', item)"
-            >
-              <VIcon icon="tabler-cash-register" size="18" />
-              <VTooltip activator="parent" location="top">Procesar Pago Financiero</VTooltip>
-            </IconBtn>
-
             <!-- Marcar como Pagado Directamente -->
             <IconBtn
               v-if="authStore.isAdmin"
@@ -559,17 +548,6 @@ const openInvoiceTab = (item) => {
                     </div>
                   </VCard>
                 </VMenu>
-
-                <!-- Procesar Pago (Móvil) -->
-                <IconBtn
-                  v-if="authStore.isAdmin"
-                  color="success"
-                  size="small"
-                  @click.stop="emit('process-payment', item)"
-                >
-                  <VIcon icon="tabler-cash-register" size="18" />
-                  <VTooltip activator="parent" location="top">Procesar Pago</VTooltip>
-                </IconBtn>
 
                 <!-- Marcar Pagada (Móvil) -->
                 <IconBtn
