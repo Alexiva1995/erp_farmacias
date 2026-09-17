@@ -18,6 +18,22 @@ class PendingPaymentsService
      */
     public function getPendingInvoices(array $filters = []): Collection
     {
+        // Auto-marcar como indexadas aquellas facturas pendientes que hayan alcanzado o pasado su fecha de vencimiento
+        $today = Carbon::today();
+        Invoice::where(function ($q) {
+            $q->whereNull('status_payment')
+                ->orWhere('status_payment', '!=', 1);
+        })
+        ->where('is_indexed', false)
+        ->where(function ($q) use ($today) {
+            $q->whereDate('payment_date', '<=', $today)
+              ->orWhere(function ($sq) use ($today) {
+                  $sq->whereNull('payment_date')
+                     ->whereDate('exp_date', '<=', $today);
+              });
+        })
+        ->update(['is_indexed' => true]);
+
         $query = Invoice::with(['supplier', 'payments'])
             ->where(function ($q) {
                 $q->whereNull('status_payment')
@@ -131,9 +147,14 @@ class PendingPaymentsService
                         ? (float) $invoice->total_amount_discount
                         : (float) $invoice->total_usd;
 
+                    $paymentDate = $invoice->payment_date ?: $invoice->exp_date;
+                    $isOverdue = $paymentDate ? Carbon::parse($paymentDate)->startOfDay()->lte(Carbon::today()) : false;
+                    $isIndexed = (bool) ($invoice->is_indexed || $isOverdue);
+                    $invoice->is_indexed = $isIndexed;
+
                     $indexedData = $this->calculateIndexedAmountData($invoice, $exchangeRates);
 
-                    if ($invoice->is_indexed && $invoice->currency === 'Bs') {
+                    if ($isIndexed && $invoice->currency === 'Bs') {
                         $invoiceRemainingUSD = $effectiveUsd;
                         $invoiceRemainingOriginal = round($effectiveUsd * $bcvRateVal, 2);
                     } else {
@@ -254,7 +275,11 @@ class PendingPaymentsService
             ? (float) $invoice->total_amount_discount
             : (float) $invoice->total_usd;
 
-        if (!$invoice->is_indexed || $invoice->currency !== 'Bs') {
+        $paymentDate = $invoice->payment_date ?: $invoice->exp_date;
+        $isOverdue = $paymentDate ? Carbon::parse($paymentDate)->startOfDay()->lte(Carbon::today()) : false;
+        $isIndexed = (bool) ($invoice->is_indexed || $isOverdue);
+
+        if (!$isIndexed || $invoice->currency !== 'Bs') {
             return [
                 'original_amount' => $invoice->total_amount,
                 'original_amount_usd' => $usdAmount,

@@ -1357,9 +1357,18 @@ class PendingPaymentsController extends Controller
                 return ApiResponse::error("No se encontró la factura #{$invoiceId} en el sistema.", 404);
             }
 
-            $invoice->update([
-                'payment_date' => $request->payment_date
-            ]);
+            $newPaymentDate = $request->payment_date;
+            $isOverdue = $newPaymentDate ? Carbon::parse($newPaymentDate)->startOfDay()->lte(Carbon::today()) : false;
+
+            $updateData = [
+                'payment_date' => $newPaymentDate,
+            ];
+
+            if ($isOverdue) {
+                $updateData['is_indexed'] = true;
+            }
+
+            $invoice->update($updateData);
 
             return ApiResponse::success($invoice, 'Fecha de pago actualizada exitosamente');
         } catch (\Exception $e) {
