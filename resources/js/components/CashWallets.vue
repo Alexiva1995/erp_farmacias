@@ -57,6 +57,7 @@ const M = {
   BINANCE:  { icon: 'tabler-currency-bitcoin', label: 'Binance'       },
   PAYPAL:   { icon: 'tabler-brand-paypal',     label: 'PayPal'        },
   CREDIT:   { icon: 'tabler-receipt-2',        label: 'Crédito'       },
+  CAMBISTA: { icon: 'tabler-arrows-exchange',  label: 'Cambista'      },
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────

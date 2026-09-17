@@ -24,7 +24,7 @@ class ProcessPaymentRequest extends FormRequest
             'exchange_rate_applied' => 'nullable|numeric|min:0.000001',
             'source_amount' => 'nullable|numeric|min:0.01',
             'payment_date' => 'required|date',
-            'payment_method' => 'required|string|in:CASH,TRANSFER,CARD,MOBILE,BINANCE,PAYPAL,CREDIT',
+            'payment_method' => 'required|string|in:CASH,TRANSFER,CARD,MOBILE,BINANCE,PAYPAL,CREDIT,CAMBISTA',
             'reference' => 'nullable|string|max:100',
             'destination_bank' => 'nullable|string|max:150',
             'photo_url' => 'nullable|string',

@@ -36,8 +36,8 @@ const form = ref({
   payment_amount: 0,
   payment_date: todayDateStr,
   photo_url: null,
-  reference: `EFECTIVO-${todayDateStr}`,
-  payment_method: "cash",
+  reference: `CAMBISTA-${todayDateStr}`,
+  payment_method: "cambista",
   destination_bank: null,
 });
 
@@ -241,31 +241,39 @@ const saveLastUsedRate = (src, dest, rate) => {
 };
 
 watch(() => form.value.payment_method, (newMethod) => {
-  if (newMethod === 'cash') {
-    if (!form.value.reference || form.value.reference.startsWith('EFECTIVO-')) {
+  if (newMethod === 'cambista') {
+    if (!form.value.reference || form.value.reference.startsWith('CAMBISTA-') || form.value.reference.startsWith('EFECTIVO-')) {
+      const dateStr = form.value.payment_date || new Date().toISOString().split("T")[0];
+      form.value.reference = `CAMBISTA-${dateStr}`;
+    }
+  } else if (newMethod === 'cash') {
+    if (!form.value.reference || form.value.reference.startsWith('EFECTIVO-') || form.value.reference.startsWith('CAMBISTA-')) {
       const dateStr = form.value.payment_date || new Date().toISOString().split("T")[0];
       form.value.reference = `EFECTIVO-${dateStr}`;
     }
-  } else if (form.value.reference && form.value.reference.startsWith('EFECTIVO-')) {
+  } else if (form.value.reference && (form.value.reference.startsWith('EFECTIVO-') || form.value.reference.startsWith('CAMBISTA-'))) {
     form.value.reference = '';
   }
 });
 
 watch(() => form.value.payment_date, (newDate) => {
-  if (form.value.payment_method === 'cash' && (!form.value.reference || form.value.reference.startsWith('EFECTIVO-'))) {
+  if (form.value.payment_method === 'cambista' && (!form.value.reference || form.value.reference.startsWith('CAMBISTA-') || form.value.reference.startsWith('EFECTIVO-'))) {
+    form.value.reference = `CAMBISTA-${newDate}`;
+  } else if (form.value.payment_method === 'cash' && (!form.value.reference || form.value.reference.startsWith('EFECTIVO-') || form.value.reference.startsWith('CAMBISTA-'))) {
     form.value.reference = `EFECTIVO-${newDate}`;
   }
 });
 
 watch(() => form.value.payment_currency, (newCurrency) => {
   if (newCurrency === 'COP') {
-    form.value.payment_method = 'cash';
+    form.value.payment_method = 'cambista';
   }
 });
 
 const availablePaymentMethods = computed(() => {
   const currency = sourceCurrency.value;
   const methodMap = {
+    CAMBISTA: { value: "cambista", label: "Cambista", icon: "tabler-arrows-exchange" },
     BANK: { value: "transfer", label: "Transferencia / Banco", icon: "tabler-building-bank" },
     MOBILE: { value: "mobile", label: "Pago móvil", icon: "tabler-device-mobile" },
     CASH: { value: "cash", label: "Efectivo", icon: "tabler-cash" },
@@ -277,15 +285,19 @@ const availablePaymentMethods = computed(() => {
   const allowed = currency === "VES" || currency === "BS" 
     ? ["BANK", "MOBILE", "CASH"]
     : currency === "COP" 
-    ? ["CASH", "BANK"]
+    ? ["CAMBISTA", "CASH", "BANK"]
     : ["BANK", "CASH", "BINANCE", "PAYPAL", "CREDIT"];
 
   return allowed.map((key) => methodMap[key]);
 });
 
 watch(sourceCurrency, (newSource) => {
-  // El método de salida por defecto debe ser siempre efectivo
-  form.value.payment_method = 'cash';
+  // El método de salida por defecto en COP es Cambista, en otras monedas es Efectivo
+  if (newSource === 'COP') {
+    form.value.payment_method = 'cambista';
+  } else {
+    form.value.payment_method = 'cash';
+  }
 });
 
 const validatePaymentAmount = (value) => {
@@ -299,8 +311,8 @@ const isFormValid = computed(() => {
          form.value.payment_date && 
          form.value.payment_method;
 
-  // Si el método es efectivo (cash), no es obligatoria la referencia con comprobante
-  if (form.value.payment_method === 'cash') {
+  // Si el método es efectivo (cash) o cambista, no es obligatoria la referencia con comprobante
+  if (form.value.payment_method === 'cash' || form.value.payment_method === 'cambista') {
     return basicValidation && !uploading.value;
   }
 
@@ -494,7 +506,7 @@ const processPayment = async () => {
   loading.value = true;
   try {
     const frontendToEnumMap = {
-      cash: "CASH", card: "CARD", mobile: "MOBILE", transfer: "TRANSFER",
+      cambista: "CAMBISTA", cash: "CASH", card: "CARD", mobile: "MOBILE", transfer: "TRANSFER",
       binance: "BINANCE", paypal: "PAYPAL", credit: "CREDIT"
     };
 
@@ -643,11 +655,11 @@ watch(() => props.modelValue, (val) => {
     fetchExchangeRates();
     const today = new Date().toISOString().split("T")[0];
     form.value.payment_date = today;
-    form.value.reference = `EFECTIVO-${today}`;
+    form.value.reference = `CAMBISTA-${today}`;
     form.value.photo_url = null;
     form.value.payment_currency = 'VES';
     sourceCurrency.value = 'COP';
-    form.value.payment_method = 'cash';
+    form.value.payment_method = 'cambista';
     form.value.payment_amount = Number(totalInBS.value.toFixed(2));
     customConversionMode.value = false;
 

@@ -18,6 +18,7 @@ enum TransactionType: string
     case BINANCE = 'BINANCE';
     case PAYPAL = 'PAYPAL';
     case CREDIT = 'CREDIT';
+    case CAMBISTA = 'CAMBISTA';
 
     public function label(): string
     {
@@ -29,6 +30,7 @@ enum TransactionType: string
             self::BINANCE => 'Binance',
             self::PAYPAL => 'PayPal',
             self::CREDIT => 'Crédito',
+            self::CAMBISTA => 'Cambista',
         };
     }
 }

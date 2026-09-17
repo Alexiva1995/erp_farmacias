@@ -512,7 +512,10 @@ class PendingPaymentsController extends Controller
                     Log::info("[PendingPayments] Comprobante de pago enviado a {$paymentEmail} (Proveedor: {$supplier->name})");
                 } catch (\Throwable $mailEx) {
                     Log::error("[PendingPayments] Error enviando correo de pago a {$paymentEmail}: " . $mailEx->getMessage());
+                    $portalWarning .= " (No se pudo enviar correo a {$paymentEmail}: " . $mailEx->getMessage() . ")";
                 }
+            } else {
+                $portalWarning .= " (Proveedor sin correo configurado)";
             }
 
             if ($emailSent) {
