@@ -273,9 +273,6 @@ const groupedByDay = computed(() => {
               </tr>
             </tbody>
           </VTable>
-              </tr>
-            </tbody>
-          </VTable>
 
           <!-- Vista Móvil: Cards dentro del grupo -->
           <div v-else class="pa-3 d-flex flex-column gap-3">
