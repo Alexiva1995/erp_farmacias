@@ -312,32 +312,42 @@ async function storeProfitability() {
 
       <VDivider />
 
-      <!-- Botones de Acción -->
-      <VCardActions class="pa-4 bg-surface d-flex justify-end gap-2">
-        <VBtn
-          color="secondary"
-          variant="outlined"
-          class="font-weight-bold rounded-lg px-4"
-          @click="emit('close-modal')"
-          :disabled="loading"
-        >
-          Cancelar
-        </VBtn>
-        <VBtn
-          color="primary"
-          variant="flat"
-          class="font-weight-bold rounded-lg px-5"
-          @click="storeProfitability"
-          :loading="loading"
-          :disabled="loading || (!isMinimarket && (localPercentage === null || localPercentage === ''))"
-        >
-          <VIcon
-            start
-            icon="tabler-device-floppy"
-            size="18"
-          />
-          Guardar Ajuste
-        </VBtn>
+      <!-- Botones de Acción (50% de ancho cada uno) -->
+      <VCardActions class="pa-4 bg-surface px-6">
+        <VRow dense class="w-100 ma-0">
+          <VCol cols="6" class="pa-1">
+            <VBtn
+              color="secondary"
+              variant="outlined"
+              height="44"
+              block
+              class="font-weight-black rounded-lg text-button uppercase"
+              @click="emit('close-modal')"
+              :disabled="loading"
+            >
+              Cancelar
+            </VBtn>
+          </VCol>
+          <VCol cols="6" class="pa-1">
+            <VBtn
+              color="primary"
+              variant="flat"
+              height="44"
+              block
+              class="font-weight-black rounded-lg shadow-primary text-button uppercase"
+              @click="storeProfitability"
+              :loading="loading"
+              :disabled="loading || (!isMinimarket && (localPercentage === null || localPercentage === ''))"
+            >
+              <VIcon
+                start
+                icon="tabler-device-floppy"
+                size="18"
+              />
+              Guardar Ajuste
+            </VBtn>
+          </VCol>
+        </VRow>
       </VCardActions>
     </VCard>
   </VDialog>

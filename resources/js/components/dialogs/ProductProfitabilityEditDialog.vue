@@ -132,39 +132,48 @@ const checkExistenceAndSave = async () => {
     :fullscreen="$vuetify.display.smAndDown"
     @update:model-value="emit('close-modal')"
   >
-    <VCard class="rounded-xl border shadow-xl overflow-hidden bg-surface">
-      <!-- Encabezado Estandarizado -->
-      <VCardTitle class="pa-4 pa-sm-5 d-flex align-center justify-space-between border-b">
-        <div class="d-flex align-center gap-3">
+    <VCard class="detail-dialog-card rounded-xl border-0 shadow-xl overflow-hidden bg-surface">
+      <!-- Encabezado Corporativo Estándar -->
+      <VCardTitle class="pa-0">
+        <div class="header-gradient pa-4 d-flex align-center shadow-sm">
           <VAvatar
-            color="primary"
-            variant="tonal"
+            color="white"
+            variant="flat"
             size="40"
-            class="rounded-lg"
+            class="me-3 elevation-1"
           >
             <VIcon
               icon="tabler-trending-up"
-              size="22"
+              size="24"
+              color="primary"
             />
           </VAvatar>
-          <div class="d-flex flex-column">
-            <span class="text-h6 font-weight-bold text-high-emphasis leading-tight">
+          <div class="d-flex flex-column leading-none">
+            <h2 class="text-h6 font-weight-black text-white leading-tight mb-0">
               Ajuste de Rentabilidad
-            </span>
-            <span class="text-caption text-medium-emphasis">
-              Configuración de Margen Individual • {{ brandingStore.settings?.branch_name || 'Sucursal Principal' }}
-            </span>
+            </h2>
+            <div class="d-flex align-center gap-2 mt-1">
+              <span
+                class="text-white opacity-75 uppercase font-weight-bold"
+                style="font-size: 0.6rem; letter-spacing: 0.05em;"
+              >
+                Configuración de Margen Individual • {{ brandingStore.settings?.branch_name || 'Sucursal Principal' }}
+              </span>
+            </div>
           </div>
+          <VSpacer />
+          <IconBtn
+            color="white"
+            variant="tonal"
+            size="small"
+            class="rounded-lg"
+            @click="emit('close-modal')"
+            :disabled="loading"
+          >
+            <VIcon icon="tabler-x" size="20" />
+            <VTooltip activator="parent" location="top">Cerrar</VTooltip>
+          </IconBtn>
         </div>
-        <IconBtn
-          color="secondary"
-          size="small"
-          @click="emit('close-modal')"
-          :disabled="loading"
-        >
-          <VIcon icon="tabler-x" size="20" />
-          <VTooltip activator="parent" location="top">Cerrar</VTooltip>
-        </IconBtn>
       </VCardTitle>
 
       <VCardText class="pa-4 pa-sm-6 d-flex flex-column gap-4 bg-background">
@@ -371,7 +380,7 @@ const checkExistenceAndSave = async () => {
           class="rounded-lg border-0"
           icon="tabler-shield-lock"
         >
-          <span class="text-caption font-weight-medium">
+          <span class="text-caption font-weight-medium text-high-emphasis">
             Al guardar, el producto quedará <strong>bloqueado</strong> y excluido de ajustes masivos de rentabilidad global.
           </span>
         </VAlert>
@@ -379,32 +388,42 @@ const checkExistenceAndSave = async () => {
 
       <VDivider />
 
-      <!-- Acciones del Modal -->
-      <VCardActions class="pa-4 bg-surface d-flex justify-end gap-2">
-        <VBtn
-          color="secondary"
-          variant="outlined"
-          class="font-weight-bold rounded-lg px-4"
-          @click="emit('close-modal')"
-          :disabled="loading"
-        >
-          Cancelar
-        </VBtn>
-        <VBtn
-          color="primary"
-          variant="flat"
-          class="font-weight-bold rounded-lg px-5"
-          :loading="loading"
-          :disabled="loading || (!isMinimarket && (percentage === null || percentage === ''))"
-          @click="checkExistenceAndSave"
-        >
-          <VIcon
-            start
-            icon="tabler-device-floppy"
-            size="18"
-          />
-          {{ props.product.id ? 'Actualizar Margen' : 'Guardar Margen' }}
-        </VBtn>
+      <!-- Acciones del Modal (Botones al 50% de ancho) -->
+      <VCardActions class="pa-4 bg-surface px-6">
+        <VRow dense class="w-100 ma-0">
+          <VCol cols="6" class="pa-1">
+            <VBtn
+              color="secondary"
+              variant="outlined"
+              height="44"
+              block
+              class="font-weight-black rounded-lg text-button uppercase"
+              @click="emit('close-modal')"
+              :disabled="loading"
+            >
+              Cancelar
+            </VBtn>
+          </VCol>
+          <VCol cols="6" class="pa-1">
+            <VBtn
+              color="primary"
+              variant="flat"
+              height="44"
+              block
+              class="font-weight-black rounded-lg shadow-primary text-button uppercase"
+              :loading="loading"
+              :disabled="loading || (!isMinimarket && (percentage === null || percentage === ''))"
+              @click="checkExistenceAndSave"
+            >
+              <VIcon
+                start
+                icon="tabler-device-floppy"
+                size="18"
+              />
+              {{ props.product.id ? 'Actualizar' : 'Guardar' }}
+            </VBtn>
+          </VCol>
+        </VRow>
       </VCardActions>
     </VCard>
   </VDialog>

@@ -246,7 +246,7 @@ h6, .text-h6,
   color: rgb(var(--v-theme-primary)) !important;
 }
 
-// Párrafos, textos descriptivos y de énfasis medio (marino profundo de alta legibilidad)
+// Párrafos, textos descriptivos y de énfasis medio (marino profundo / negro de alta legibilidad)
 p, 
 span.text-medium-emphasis,
 .text-body-1, 
@@ -254,9 +254,19 @@ span.text-medium-emphasis,
 .v-list-item-title,
 .text-medium-emphasis {
   font-size: 13px !important;
-  color: #2b2e4a !important; // Marino intermedio con excelente contraste sobre fondos claros
+  color: #121426 !important; // Oscuro profundo con contraste total
   opacity: 0.95 !important;
   font-weight: 400 !important;
+}
+
+// Textos secundarios y atenuados: elevar contraste para evitar textos ilegibles
+.text-disabled,
+.v-theme--light .text-disabled,
+span.text-disabled,
+div.text-disabled,
+small.text-disabled {
+  color: #424665 !important; // Gris oscuro / marino con alto contraste visible
+  opacity: 0.9 !important;
 }
 
 .text-caption,
@@ -264,6 +274,7 @@ span.text-medium-emphasis,
 .v-list-item-subtitle * {
   font-size: 11px !important;
   font-weight: 400 !important;
+  color: #2b2e4a !important;
 }
 
 // Elementos de formulario
@@ -271,7 +282,7 @@ span.text-medium-emphasis,
 .v-field-label {
   color: var(--color-dark) !important;
   font-weight: 500;
-  opacity: 0.9 !important;
+  opacity: 0.95 !important;
 }
 
 .v-field__input {
@@ -280,8 +291,9 @@ span.text-medium-emphasis,
 }
 
 .v-field__placeholder {
-  opacity: 0.6 !important;
+  opacity: 0.75 !important;
 }
+
 
 /* Forzar botones redondos para todos los filtros del sistema */
 .app-filter-base .v-btn,
