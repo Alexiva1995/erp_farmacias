@@ -301,23 +301,23 @@ const invoiceBilledCurrency = computed(() => {
                 <VRow no-gutters class="align-stretch">
                   <!-- Izquierda: Monto Real Pagado / Egreso de Caja -->
                   <VCol cols="6" class="pe-3 border-e d-flex flex-column justify-center align-center text-center">
-                    <span class="text-caption text-medium-emphasis mb-1 font-weight-medium">Egreso de Caja</span>
+                    <span class="text-caption text-medium-emphasis mb-1 font-weight-medium">Monto Pagado</span>
                     <span class="summary-amount font-weight-black text-high-emphasis mb-1">
                       {{ formatCurrency(props.payment.source_amount || props.payment.amount, props.payment.source_currency || props.payment.currency) }}
                     </span>
-                    <span class="text-xs font-weight-bold text-success">
-                      ({{ formatNumber(props.payment.source_amount_usd || props.payment.amount_usd) }} USD)
+                    <span class="text-xs font-weight-bold text-money-green">
+                      {{ formatNumber(props.payment.source_amount_usd || props.payment.amount_usd) }} USD
                     </span>
                   </VCol>
 
-                  <!-- Derecha: Total Facturado Original -->
+                  <!-- Derecha: Total Facturado / Liquidado Indexado -->
                   <VCol cols="6" class="ps-3 d-flex flex-column justify-center align-center text-center">
-                    <span class="text-caption text-medium-emphasis mb-1 font-weight-medium">Liquidado Proveedor</span>
+                    <span class="text-caption text-medium-emphasis mb-1 font-weight-medium">Total Facturado</span>
                     <span class="summary-amount font-weight-black text-high-emphasis mb-1">
-                      {{ formatCurrency(props.payment.amount || invoiceBilledAmount, props.payment.currency || invoiceBilledCurrency) }}
+                      {{ formatCurrency(invoiceBilledAmount, invoiceBilledCurrency) }}
                     </span>
-                    <span class="text-xs font-weight-bold text-success">
-                      ({{ formatNumber(props.payment.invoice_total_usd || props.payment.amount_usd) }} USD)
+                    <span class="text-xs font-weight-bold text-money-green">
+                      {{ formatNumber(props.payment.invoice_total_usd || props.payment.amount_usd) }} USD
                     </span>
                   </VCol>
                 </VRow>
@@ -637,6 +637,10 @@ const invoiceBilledCurrency = computed(() => {
 
 .border-e {
   border-inline-end: 1px solid rgba(var(--v-border-color), 0.08) !important;
+}
+
+.text-money-green {
+  color: #16a34a !important; /* Verde dinero sólido y profesional */
 }
 </style>
 

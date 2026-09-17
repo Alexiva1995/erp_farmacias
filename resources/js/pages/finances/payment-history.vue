@@ -109,7 +109,7 @@
                 </span>
                 <span
                   v-if="normalizeCurrencyCode(item.source_currency || item.currency) !== 'USD' && (item.source_amount_usd || item.amount_usd)"
-                  class="text-xs text-success font-weight-bold"
+                  class="text-xs text-money-green font-weight-bold"
                 >
                   {{ formatNumber(item.source_amount_usd || item.amount_usd) }} USD
                 </span>
@@ -124,7 +124,7 @@
                 </span>
                 <span
                   v-if="item.invoice_total_usd"
-                  class="text-xs text-success font-weight-bold"
+                  class="text-xs text-money-green font-weight-bold"
                 >
                   {{ formatNumber(item.invoice_total_usd) }} USD
                 </span>
@@ -224,7 +224,7 @@
                   <span class="text-lg font-weight-black text-primary">
                     {{ formatCurrency(item.source_amount || item.amount, item.source_currency || item.currency) }}
                   </span>
-                  <span v-if="normalizeCurrencyCode(item.source_currency || item.currency) !== 'USD' && (item.source_amount_usd || item.amount_usd)" class="text-xs font-weight-bold text-success">
+                  <span v-if="normalizeCurrencyCode(item.source_currency || item.currency) !== 'USD' && (item.source_amount_usd || item.amount_usd)" class="text-xs font-weight-bold text-money-green">
                     {{ formatNumber(item.source_amount_usd || item.amount_usd) }} USD
                   </span>
                 </div>
@@ -233,7 +233,7 @@
                   <span class="text-lg font-weight-black text-high-emphasis">
                     {{ formatCurrency(getInvoicesBilledTotal(item), getInvoicesBilledCurrency(item)) }}
                   </span>
-                  <span v-if="item.invoice_total_usd" class="text-xs text-success font-weight-bold">
+                  <span v-if="item.invoice_total_usd" class="text-xs text-money-green font-weight-bold">
                     {{ formatNumber(item.invoice_total_usd) }} USD
                   </span>
                 </div>
@@ -601,5 +601,9 @@ onMounted(() => {
 .supplier-title {
   color: #111827 !important;
   font-weight: 600 !important;
+}
+
+.text-money-green {
+  color: #16a34a !important;
 }
 </style>
