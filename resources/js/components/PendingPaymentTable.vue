@@ -276,23 +276,20 @@ const openInvoiceTab = (item) => {
               size="18" 
               :color="isOverdue(item.payment_date) ? 'error' : 'secondary'" 
             />
-            <div class="d-flex flex-column">
-              <div class="d-flex align-center gap-1">
-                <span class="text-sm font-weight-black" :class="isOverdue(item.payment_date) ? 'text-error' : 'text-high-emphasis'">
-                  {{ formatDueDate(item.payment_date) }}
-                </span>
-                <VChip
-                  v-if="isOverdue(item.payment_date)"
-                  size="x-small"
-                  variant="tonal"
-                  color="error"
-                  class="font-weight-black"
-                  style="font-size: 0.6rem; height: 18px;"
-                >
-                  Vencida
-                </VChip>
-              </div>
-              <span class="text-super-xs text-disabled">Pago: {{ formatDate(item.payment_date) }}</span>
+            <div class="d-flex align-center gap-1">
+              <span class="text-sm font-weight-black" :class="isOverdue(item.payment_date) ? 'text-error' : 'text-high-emphasis'">
+                {{ formatDueDate(item.payment_date) }}
+              </span>
+              <VChip
+                v-if="isOverdue(item.payment_date)"
+                size="x-small"
+                variant="tonal"
+                color="error"
+                class="font-weight-black"
+                style="font-size: 0.6rem; height: 18px;"
+              >
+                Vencida
+              </VChip>
             </div>
           </div>
         </template>
@@ -407,16 +404,6 @@ const openInvoiceTab = (item) => {
             >
               <VIcon icon="tabler-square-check" size="18" />
               <VTooltip activator="parent" location="top">Marcar Pagada (Sin Gasto)</VTooltip>
-            </IconBtn>
-
-            <!-- Procesar Pago (Original) -->
-            <IconBtn
-              color="success"
-              size="small"
-              @click="emit('process-payment', item)"
-            >
-              <VIcon icon="tabler-credit-card" size="18" />
-              <VTooltip activator="parent" location="top">Procesar Pago</VTooltip>
             </IconBtn>
           </div>
         </template>
@@ -584,18 +571,6 @@ const openInvoiceTab = (item) => {
                   <VIcon icon="tabler-square-check" size="18" />
                   <VTooltip activator="parent" location="top">Marcar Pagada</VTooltip>
                 </IconBtn>
-
-                <!-- Pagar (Original) -->
-                <VBtn
-                  color="success"
-                  variant="flat"
-                  size="small"
-                  class="rounded-lg text-super-xs font-weight-black shadow-sm px-4 d-inline-flex align-center gap-1"
-                  @click.stop="emit('process-payment', item)"
-                >
-                  <VIcon icon="tabler-credit-card" size="16" />
-                  PAGAR
-                </VBtn>
               </div>
             </div>
           </VCardText>

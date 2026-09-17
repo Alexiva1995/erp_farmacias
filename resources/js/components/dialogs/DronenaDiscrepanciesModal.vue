@@ -1,4 +1,4 @@
-﻿<script setup lang="js">
+<script setup lang="js">
 // Modal unificado de discrepancias y resultados de sincronización con droguerías
 import SupplierDiscrepancyTab from "@/components/dialogs/SupplierDiscrepancyTab.vue";
 import axios from "@/plugins/axios";
@@ -41,6 +41,7 @@ const emit = defineEmits(["update:modelValue", "close", "invoices-marked-as-paid
 const activeTab = ref("dronena");
 const isMarkingPaid = ref(false);
 const isMarkingPending = ref(false);
+const hasMadeChanges = ref(false);
 
 // Configuración declarativa de todas las droguerías sincronizables
 const suppliersConfig = [
@@ -97,23 +98,16 @@ const getBadgeInfo = (key) => {
     return { count: totalDiscrepancies, color: "warning" };
   }
 
-  const summary = getSupplierSummary(key);
-  if ((summary.created || 0) > 0) {
-    return { count: `+${summary.created}`, color: "success" };
-  }
-  if ((summary.updated || 0) > 0) {
-    return { count: summary.updated, color: "info" };
-  }
-  if ((summary.total_extracted || 0) > 0) {
-    return { count: summary.total_extracted, color: "secondary" };
-  }
-
   return null;
 };
 
 const closeDialog = () => {
   emit("update:modelValue", false);
   emit("close");
+  if (hasMadeChanges.value) {
+    emit("invoices-marked-as-paid");
+    hasMadeChanges.value = false;
+  }
 };
 
 // ── Handlers universales de resolución de discrepancias ────────────────────
@@ -123,7 +117,7 @@ const handleMarkPendingAsPaid = async ({ supplierTitle, items }) => {
 
   const result = await Swal.fire({
     title: `¿Marcar las ${count} facturas de ${supplierTitle} como Pagadas?`,
-    text: `Estas facturas ya figuran liquidadas en ${supplierTitle} y pasarán automáticamente a estado Pagada (status_payment = 1) en tu ERP.`,
+    text: `Estas facturas ya figuran liquidadas en ${supplierTitle} y pasarán automáticamente a estado Pagada en tu ERP.`,
     icon: "question",
     showCancelButton: true,
     confirmButtonText: "Sí, marcar como pagadas",
@@ -144,8 +138,10 @@ const handleMarkPendingAsPaid = async ({ supplierTitle, items }) => {
     });
 
     toast.success(data.message || `${count} facturas de ${supplierTitle} marcadas como pagadas`);
-    emit("invoices-marked-as-paid");
-    closeDialog();
+    hasMadeChanges.value = true;
+
+    // Remover visualmente de la lista local de discrepancias
+    items.length = 0;
   } catch (error) {
     console.error(`Error marcando facturas de ${supplierTitle}:`, error);
     toast.error(error.response?.data?.message || `Error al marcar las facturas de ${supplierTitle} como pagadas.`);
@@ -160,7 +156,7 @@ const handleMarkPaidAsPending = async ({ supplierTitle, items }) => {
 
   const result = await Swal.fire({
     title: `¿Pasar las ${count} facturas de ${supplierTitle} a Por Pagar?`,
-    text: `Estas facturas aún registran saldo pendiente en ${supplierTitle} y volverán a estado Pendiente (status_payment = 0) en tu ERP.`,
+    text: `Estas facturas aún registran saldo pendiente en ${supplierTitle} y volverán a estado Pendiente en tu ERP.`,
     icon: "warning",
     showCancelButton: true,
     confirmButtonText: "Sí, cambiar a Por Pagar",
@@ -181,8 +177,10 @@ const handleMarkPaidAsPending = async ({ supplierTitle, items }) => {
     });
 
     toast.success(data.message || `${count} facturas de ${supplierTitle} pasadas a Por Pagar`);
-    emit("invoices-marked-as-paid");
-    closeDialog();
+    hasMadeChanges.value = true;
+
+    // Remover visualmente de la lista local de discrepancias
+    items.length = 0;
   } catch (error) {
     console.error(`Error revirtiendo facturas de ${supplierTitle}:`, error);
     toast.error(error.response?.data?.message || `Error al actualizar las facturas de ${supplierTitle}.`);
@@ -200,28 +198,49 @@ const handleMarkPaidAsPending = async ({ supplierTitle, items }) => {
     persistent
     @update:model-value="emit('update:modelValue', $event)"
   >
-    <VCard class="rounded-xl overflow-hidden shadow-2xl modal-card">
-      <!-- ── Encabezado Principal Vuetify 3 ────────────────────────────── -->
-      <VCardItem class="bg-primary py-4 px-6">
-        <div class="d-flex align-center justify-space-between w-100">
-          <div class="d-flex align-center gap-3">
-            <VAvatar color="surface" variant="tonal" size="42" class="rounded-lg">
-              <VIcon icon="tabler-robot" size="24" color="white" />
-            </VAvatar>
-            <div>
-              <VCardTitle class="text-white text-h6 font-weight-bold mb-0">
-                Resultado de Sincronización con Droguerías
-              </VCardTitle>
-              <VCardSubtitle class="text-white text-caption opacity-90">
-                Resumen de Dronena, Drocerca, Cobeca / Mafarta, Cristmedicals, Droguería Mega y Drosymca
-              </VCardSubtitle>
+    <VCard class="detail-dialog-card rounded-xl border-0 shadow-xl overflow-hidden bg-surface">
+      <!-- ── Encabezado Principal Corporativo ────────────────────────────── -->
+      <VCardTitle class="pa-0">
+        <div class="header-gradient pa-4 d-flex align-center shadow-sm">
+          <VAvatar
+            color="white"
+            variant="flat"
+            size="40"
+            class="me-3 elevation-1"
+          >
+            <VIcon
+              icon="tabler-robot"
+              size="24"
+              color="primary"
+            />
+          </VAvatar>
+          <div class="d-flex flex-column leading-none">
+            <h2 class="text-h6 font-weight-black text-white leading-tight mb-0">
+              Resultado de Sincronización con Droguerías
+            </h2>
+            <div class="d-flex align-center gap-2 mt-1">
+              <span
+                class="text-white opacity-75 uppercase font-weight-bold"
+                style="font-size: 0.6rem; letter-spacing: 0.05em;"
+              >
+                Consolidado de Estados, Vencimientos y Saldos
+              </span>
             </div>
           </div>
-          <VBtn icon variant="text" color="white" size="small" @click="closeDialog">
+          <VSpacer />
+          <IconBtn
+            color="white"
+            variant="tonal"
+            size="small"
+            class="rounded-lg"
+            @click="closeDialog"
+            :disabled="isMarkingPaid || isMarkingPending"
+          >
             <VIcon icon="tabler-x" size="20" />
-          </VBtn>
+            <VTooltip activator="parent" location="top">Cerrar</VTooltip>
+          </IconBtn>
         </div>
-      </VCardItem>
+      </VCardTitle>
 
       <!-- ── Pestañas Dinámicas por Droguería ──────────────────────────── -->
       <div class="bg-surface border-b px-2">
@@ -238,7 +257,7 @@ const handleMarkPaidAsPending = async ({ supplierTitle, items }) => {
               size="x-small"
               :color="getBadgeInfo(sup.key).color"
               variant="flat"
-              class="ml-1"
+              class="ml-1 font-weight-bold"
             >
               {{ getBadgeInfo(sup.key).count }}
             </VChip>
@@ -247,7 +266,7 @@ const handleMarkPaidAsPending = async ({ supplierTitle, items }) => {
       </div>
 
       <!-- ── Contenedor de Pestañas Desacoplado ────────────────────────── -->
-      <VCardText class="pa-6 modal-scroll-content">
+      <VCardText class="pa-4 pa-sm-5 modal-scroll-content bg-background">
         <VWindow v-model="activeTab">
           <VWindowItem
             v-for="sup in suppliersConfig"
@@ -274,7 +293,13 @@ const handleMarkPaidAsPending = async ({ supplierTitle, items }) => {
       <!-- ── Pie de Modal ──────────────────────────────────────────────── -->
       <VDivider />
       <VCardActions class="px-6 py-3 bg-surface justify-end">
-        <VBtn variant="flat" color="primary" @click="closeDialog">
+        <VBtn
+          variant="outlined"
+          color="secondary"
+          class="font-weight-black rounded-lg px-6"
+          height="40"
+          @click="closeDialog"
+        >
           Cerrar
         </VBtn>
       </VCardActions>
