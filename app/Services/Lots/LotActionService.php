@@ -432,4 +432,100 @@ class LotActionService
             throw $e;
         }
     }
+
+    /**
+     * Consolida lotes duplicados que pertenezcan al mismo producto, tengan el mismo número de lote,
+     * la misma fecha de expiración y la misma ubicación, concentrando la existencia en el último
+     * lote creado y marcando los anteriores con cantidad 0 (sin existencia).
+     *
+     * @param int|null $productId Si se especifica, solo procesa ese producto
+     * @return array Resumen de la consolidación
+     */
+    public function consolidateDuplicateLots(?int $productId = null): array
+    {
+        $query = DB::table('product_lots')
+            ->select(
+                'product_id',
+                'lot_number',
+                DB::raw('DATE(expiration_date) as exp_date'),
+                DB::raw("COALESCE(location, '') as loc"),
+                DB::raw('COUNT(*) as total_count')
+            )
+            ->whereNotNull('lot_number')
+            ->where('lot_number', '!=', '');
+
+        if ($productId) {
+            $query->where('product_id', $productId);
+        }
+
+        $duplicates = $query->groupBy('product_id', 'lot_number', DB::raw('DATE(expiration_date)'), DB::raw("COALESCE(location, '')"))
+            ->having('total_count', '>', 1)
+            ->get();
+
+        $consolidatedGroups = 0;
+        $duplicatesZeroed = 0;
+        $productsAffected = [];
+
+        foreach ($duplicates as $dup) {
+            try {
+                DB::beginTransaction();
+
+                $lotQuery = ProductLot::where('product_id', $dup->product_id)
+                    ->where('lot_number', $dup->lot_number)
+                    ->whereRaw('DATE(expiration_date) = ?', [$dup->exp_date]);
+
+                if ($dup->loc === '') {
+                    $lotQuery->where(function ($q) {
+                        $q->whereNull('location')->orWhere('location', '');
+                    });
+                } else {
+                    $lotQuery->where('location', $dup->loc);
+                }
+
+                // Ordenar por más reciente primero (último lote creado)
+                $lots = $lotQuery->orderBy('created_at', 'desc')
+                    ->orderBy('id', 'desc')
+                    ->get();
+
+                if ($lots->count() <= 1) {
+                    DB::commit();
+                    continue;
+                }
+
+                // El último lote creado es el que mantiene la existencia total
+                $latestLot = $lots->first();
+                $totalQuantity = $lots->sum('quantity');
+
+                // Actualizar cantidad acumulada en el último lote creado
+                ProductLot::withoutEvents(function () use ($latestLot, $totalQuantity) {
+                    $latestLot->update(['quantity' => $totalQuantity]);
+                });
+
+                // Marcar los lotes anteriores con cantidad 0 y transferir sus referencias
+                foreach ($lots->slice(1) as $olderLot) {
+                    $this->transferLotReferences($olderLot->id, $latestLot->id);
+
+                    ProductLot::withoutEvents(function () use ($olderLot) {
+                        $olderLot->update(['quantity' => 0]);
+                    });
+
+                    $duplicatesZeroed++;
+                }
+
+                $productsAffected[$dup->product_id] = true;
+                $consolidatedGroups++;
+
+                DB::commit();
+            } catch (\Exception $e) {
+                DB::rollBack();
+                \Log::warning("[LotActionService] Error consolidando lote {$dup->lot_number} del producto {$dup->product_id}: " . $e->getMessage());
+            }
+        }
+
+        return [
+            'products_affected_count' => count($productsAffected),
+            'groups_consolidated' => $consolidatedGroups,
+            'duplicates_zeroed' => $duplicatesZeroed,
+        ];
+    }
 }

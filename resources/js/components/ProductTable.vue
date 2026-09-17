@@ -307,6 +307,32 @@ const getProductLocations = (item) => {
   }
   return [];
 };
+
+const getMergedLots = (lots) => {
+  if (!Array.isArray(lots) || lots.length === 0) return [];
+
+  const map = new Map();
+  for (const lot of lots) {
+    if (!lot) continue;
+    const lotNum = String(lot.lot_number || '').trim();
+    const expDate = String(lot.expiration_date || '').split('T')[0].trim();
+    const key = `${lotNum}|${expDate}`;
+
+    if (map.has(key)) {
+      const existing = map.get(key);
+      existing.quantity = (Number(existing.quantity) || 0) + (Number(lot.quantity) || 0);
+    } else {
+      map.set(key, {
+        id: lot.id,
+        lot_number: lot.lot_number,
+        expiration_date: lot.expiration_date,
+        quantity: Number(lot.quantity) || 0,
+      });
+    }
+  }
+
+  return Array.from(map.values());
+};
 </script>
 
 <template>
@@ -437,8 +463,8 @@ const getProductLocations = (item) => {
                 <VDivider class="mb-2" />
                 <div style="max-height: 180px; overflow-y: auto;">
                   <div 
-                    v-for="lot in item.lots" 
-                    :key="lot.id"
+                    v-for="lot in getMergedLots(item.lots)" 
+                    :key="`${lot.lot_number}_${lot.expiration_date}`"
                     class="d-flex align-center justify-space-between py-1 border-bottom-light"
                   >
                     <div class="d-flex flex-column text-left">

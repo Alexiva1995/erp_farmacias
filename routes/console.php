@@ -82,6 +82,14 @@ Schedule::command('app:apply-global-profitability')
     ->dailyAt('02:00')
     ->onOneServer()
     ->withoutOverlapping();
+Schedule::command('lots:consolidate-duplicates')
+    ->dailyAt('04:00')
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->onFailure(function () {
+        \Log::error('[ConsolidateLots] Falló la consolidación automática de lotes duplicados a las 04:00 AM');
+    });
+
 Schedule::command('dronena:sync-invoices')
     ->dailyAt('04:00')
     ->withoutOverlapping()
