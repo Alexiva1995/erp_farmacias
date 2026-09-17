@@ -354,15 +354,24 @@ class PendingPaymentsController extends Controller
             // 7. Crear expense
             $this->createExpense($invoices, $payment, false);
 
-            // 8. Guardar pago para mostrar en cierre de caja (truncando descripción para evitar error de longitud en la BD)
+            // 8. Guardar pago para mostrar en cierre de caja (con detalle multimoneda si hubo conversión)
+            $sourceCurrency = $request->filled('source_currency') ? $this->normalizeCurrencyCode($request->source_currency) : $normalizedCurrency;
+            $sourceAmount = $request->filled('source_amount') ? (float) $request->source_amount : (float) $request->payment_amount;
+            $exchangeRateApplied = $request->filled('exchange_rate_applied') ? (float) $request->exchange_rate_applied : ($exchangeRate->rate ?? 1);
+
+            $txDescription = "Pago factura(s) # {$invoices->pluck('invoice_number')->join(', ')} {$invoices->first()->supplier->name}";
+            if ($sourceCurrency !== $normalizedCurrency) {
+                $txDescription .= " (Origen: {$sourceAmount} {$sourceCurrency} @ Tasa {$exchangeRateApplied})";
+            }
+
             Transaction::create([
                 'user_id' => auth()->id(),
                 'category_id' => ExpenseCategory::firstOrCreate(['name' => 'Pagos de Facturas'])->id,
-                'exchange_rate' => $exchangeRate->rate ?? 1,
-                'description' => substr("Pago factura(s) # {$invoices->pluck('invoice_number')->join(', ')} {$invoices->first()->supplier->name}", 0, 1000),
-                'currency' => $normalizedCurrency,
+                'exchange_rate' => $exchangeRateApplied,
+                'description' => substr($txDescription, 0, 1000),
+                'currency' => $sourceCurrency,
                 'type' => $payment->method,
-                'amount' => $request->payment_amount,
+                'amount' => $sourceAmount,
                 'movement_type' => 'OUT',
                 'transaction_date' => $request->payment_date,
             ]);

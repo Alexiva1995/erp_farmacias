@@ -346,6 +346,95 @@ const resetForm = () => {
 };
 
 
+// Multi-moneda y conversión de origen
+const sourceCurrency = ref("VES");
+const exchangeRateApplied = ref(1);
+const sourceAmountCalculated = ref(0);
+const customConversionMode = ref(false);
+
+const updateSourceCalculations = () => {
+  const destCurrency = form.value.payment_currency;
+  const payAmount = Number(form.value.payment_amount) || 0;
+  const srcCurr = sourceCurrency.value;
+
+  if (srcCurr === destCurrency) {
+    sourceAmountCalculated.value = payAmount;
+    exchangeRateApplied.value = 1;
+    return;
+  }
+
+  // Si el destino es VES y origen es COP
+  if (destCurrency === 'VES' && srcCurr === 'COP') {
+    const copRate = exchangeRates.value["COP"] || 4000;
+    const bcvRate = exchangeRates.value["BS"] || props.exchangeRate || 1;
+    // Tasa COP por Bolívar (ej: COP/USD dividido entre VES/USD)
+    const copPerBs = (copRate / bcvRate);
+    if (!customConversionMode.value) {
+      exchangeRateApplied.value = Number(copPerBs.toFixed(4));
+    }
+    sourceAmountCalculated.value = Number((payAmount * exchangeRateApplied.value).toFixed(2));
+  } 
+  // Si el destino es VES y origen es USD
+  else if (destCurrency === 'VES' && srcCurr === 'USD') {
+    const bcvRate = exchangeRates.value["BS"] || props.exchangeRate || 1;
+    if (!customConversionMode.value) {
+      exchangeRateApplied.value = Number(bcvRate.toFixed(4));
+    }
+    sourceAmountCalculated.value = exchangeRateApplied.value > 0 ? Number((payAmount / exchangeRateApplied.value).toFixed(2)) : 0;
+  }
+  // Si el destino es USD y origen es COP
+  else if (destCurrency === 'USD' && srcCurr === 'COP') {
+    const copRate = exchangeRates.value["COP"] || 4000;
+    if (!customConversionMode.value) {
+      exchangeRateApplied.value = Number(copRate.toFixed(2));
+    }
+    sourceAmountCalculated.value = Number((payAmount * exchangeRateApplied.value).toFixed(2));
+  }
+  // Si el destino es USD y origen es VES
+  else if (destCurrency === 'USD' && srcCurr === 'VES') {
+    const bcvRate = exchangeRates.value["BS"] || props.exchangeRate || 1;
+    if (!customConversionMode.value) {
+      exchangeRateApplied.value = Number(bcvRate.toFixed(4));
+    }
+    sourceAmountCalculated.value = Number((payAmount * exchangeRateApplied.value).toFixed(2));
+  }
+  else {
+    sourceAmountCalculated.value = payAmount;
+  }
+};
+
+watch([sourceCurrency, () => form.value.payment_amount, () => form.value.payment_currency], () => {
+  updateSourceCalculations();
+});
+
+watch(exchangeRateApplied, (newRate) => {
+  const destCurrency = form.value.payment_currency;
+  const payAmount = Number(form.value.payment_amount) || 0;
+  const srcCurr = sourceCurrency.value;
+
+  if (srcCurr === 'VES' && destCurrency === 'VES') return;
+
+  if (destCurrency === 'VES' && srcCurr === 'COP') {
+    sourceAmountCalculated.value = Number((payAmount * Number(newRate || 0)).toFixed(2));
+  } else if (destCurrency === 'VES' && srcCurr === 'USD') {
+    sourceAmountCalculated.value = Number(newRate) > 0 ? Number((payAmount / Number(newRate)).toFixed(2)) : 0;
+  } else if (destCurrency === 'USD' && srcCurr === 'COP') {
+    sourceAmountCalculated.value = Number((payAmount * Number(newRate || 0)).toFixed(2));
+  }
+});
+
+const onPasteReceipt = (e) => {
+  const items = e.clipboardData?.items;
+  if (!items) return;
+  for (const item of items) {
+    if (item.type.indexOf('image') !== -1) {
+      const blob = item.getAsFile();
+      handleFileUpload(blob);
+      break;
+    }
+  }
+};
+
 const processPayment = async () => {
   loading.value = true;
   try {
@@ -356,6 +445,9 @@ const processPayment = async () => {
 
     const response = await axios.post("/finances/pending-payments/process-payment", {
       ...form.value,
+      source_currency: sourceCurrency.value,
+      exchange_rate_applied: exchangeRateApplied.value,
+      source_amount: sourceAmountCalculated.value,
       payment_type: form.value.is_partial ? "partial" : "full",
       payment_method: frontendToEnumMap[form.value.payment_method],
       invoice_ids: props.invoices.map(i => i.id).filter(Boolean),
@@ -657,58 +749,79 @@ watch(() => props.modelValue, (val) => {
           </div>
         </VCard>
 
-        <VRow>
-          <!-- Datos del Pago -->
-          <VCol
-            cols="12"
-            md="6"
-          >
+        <VRow @paste="onPasteReceipt">
+          <!-- ── BLOQUE 1: Egreso de Caja Real ──────────────────────────────── -->
+          <VCol cols="12" md="6">
             <div class="d-flex align-center gap-2 mb-2">
               <div class="header-indicator primary shadow-sm" />
-              <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">Origen del Pago</span>
+              <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">1. Egreso de Caja Real</span>
             </div>
 
-            <VCard
-              variant="flat"
-              class="pa-3 bg-white rounded-lg elevation-1 border"
-            >
+            <VCard variant="flat" class="pa-3 bg-white rounded-lg elevation-1 border h-100">
               <VRow dense>
                 <VCol cols="12">
-                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Moneda de Pago</span>
+                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Caja / Moneda de Origen</span>
                   <VSelect
-                    v-model="form.payment_currency"
-                    :items="[ {title: 'VES - Bolívar', value: 'VES'}, {title: 'USD - Dólar', value: 'USD'}, {title: 'COP - Peso', value: 'COP'} ]"
+                    v-model="sourceCurrency"
+                    :items="[
+                      { title: 'COP - Pesos (Efectivo / Caja)', value: 'COP' },
+                      { title: 'USD - Dólares (Efectivo / Custodia)', value: 'USD' },
+                      { title: 'VES - Bolívares (Cuenta Bancaria)', value: 'VES' },
+                    ]"
                     variant="outlined"
                     density="compact"
-                    class="premium-input mb-3"
+                    class="premium-input mb-2"
                     hide-details
                   />
                 </VCol>
 
-                <VCol cols="12">
-                  <div class="d-flex align-center justify-space-between mb-1">
-                    <span class="text-super-xs font-weight-black text-disabled uppercase">Monto</span>
-                    <VCheckbox
-                      v-model="form.is_partial"
+                <!-- Tasa de Conversión si Moneda Origen !== Moneda Destino -->
+                <VCol v-if="sourceCurrency !== form.payment_currency" cols="12">
+                  <div class="pa-2 rounded-lg bg-light-hint border mb-2">
+                    <div class="d-flex align-center justify-space-between mb-1">
+                      <span class="text-super-xs font-weight-bold text-primary uppercase">
+                        Tasa de Cambio de Conversión
+                      </span>
+                      <span class="text-super-xs text-medium-emphasis">
+                        {{ sourceCurrency === 'COP' ? 'COP por 1 ' + form.payment_currency : (sourceCurrency === 'USD' ? 'Bs por 1 USD' : 'Tasa pactada') }}
+                      </span>
+                    </div>
+                    <VTextField
+                      v-model="exchangeRateApplied"
+                      type="number"
+                      step="0.0001"
+                      variant="outlined"
                       density="compact"
+                      class="premium-input mb-1"
                       hide-details
-                      color="warning"
-                    >
-                      <template #label>
-                        <span class="text-super-xs font-weight-bold text-warning uppercase">¿Es abono?</span>
-                      </template>
-                    </VCheckbox>
+                      @input="customConversionMode = true"
+                    />
+                    <div class="d-flex align-center justify-space-between text-caption text-medium-emphasis mt-1">
+                      <span>Descuento Real en Caja:</span>
+                      <span class="font-weight-black text-high-emphasis">
+                        {{ formatNumber(sourceAmountCalculated) }} {{ sourceCurrency }}
+                      </span>
+                    </div>
                   </div>
-                  <VTextField
-                    v-model="form.payment_amount"
-                    type="number"
-                    step="0.01"
+                </VCol>
+
+                <VCol cols="12">
+                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Método de Salida</span>
+                  <VSelect
+                    v-model="form.payment_method"
+                    :items="availablePaymentMethods"
+                    item-title="label"
+                    item-value="value"
+                    :prepend-inner-icon="selectedPaymentMethodIcon"
                     variant="outlined"
                     density="compact"
-                    class="premium-input mb-3"
+                    class="premium-input mb-2"
                     hide-details
-                    :prefix="form.payment_currency === 'USD' ? '$' : (form.payment_currency === 'VES' ? 'Bs' : '$')"
-                  />
+                  >
+                    <template #item="{ props, item }">
+                      <VListItem v-bind="props" :prepend-icon="item.raw.icon" />
+                    </template>
+                  </VSelect>
                 </VCol>
 
                 <VCol cols="12">
@@ -725,66 +838,65 @@ watch(() => props.modelValue, (val) => {
             </VCard>
           </VCol>
 
-          <!-- Detalles y Comprobante -->
-          <VCol
-            cols="12"
-            md="6"
-          >
+          <!-- ── BLOQUE 2: Liquidación al Proveedor ────────────────────────── -->
+          <VCol cols="12" md="6">
             <div class="d-flex align-center gap-2 mb-2">
               <div class="header-indicator primary shadow-sm" />
-              <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">Verificación</span>
+              <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">2. Liquidación al Proveedor</span>
             </div>
 
-            <VCard
-              variant="flat"
-              class="pa-3 bg-white rounded-lg elevation-1 border"
-            >
+            <VCard variant="flat" class="pa-3 bg-white rounded-lg elevation-1 border h-100">
               <VRow dense>
                 <VCol cols="12">
-                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Método de Pago</span>
-                  <VSelect
-                    v-model="form.payment_method"
-                    :items="availablePaymentMethods"
-                    item-title="label"
-                    item-value="value"
-                    :prepend-inner-icon="selectedPaymentMethodIcon"
-                    variant="outlined"
-                    density="compact"
-                    class="premium-input mb-3"
-                    hide-details
-                  >
-                    <template #item="{ props, item }">
-                      <VListItem
-                        v-bind="props"
-                        :prepend-icon="item.raw.icon"
-                      />
-                    </template>
-                  </VSelect>
+                  <div class="d-flex align-center justify-space-between mb-1">
+                    <span class="text-super-xs font-weight-black text-disabled uppercase">Moneda & Monto Recibido</span>
+                    <VCheckbox
+                      v-model="form.is_partial"
+                      density="compact"
+                      hide-details
+                      color="warning"
+                    >
+                      <template #label>
+                        <span class="text-super-xs font-weight-bold text-warning uppercase">¿Es abono?</span>
+                      </template>
+                    </VCheckbox>
+                  </div>
+
+                  <div class="d-flex gap-2 mb-2">
+                    <VSelect
+                      v-model="form.payment_currency"
+                      :items="[ {title: 'VES', value: 'VES'}, {title: 'USD', value: 'USD'}, {title: 'COP', value: 'COP'} ]"
+                      variant="outlined"
+                      density="compact"
+                      style="max-width: 95px;"
+                      hide-details
+                    />
+                    <VTextField
+                      v-model="form.payment_amount"
+                      type="number"
+                      step="0.01"
+                      variant="outlined"
+                      density="compact"
+                      class="premium-input flex-grow-1"
+                      hide-details
+                      :prefix="form.payment_currency === 'USD' ? '$' : (form.payment_currency === 'VES' ? 'Bs' : '$')"
+                    />
+                  </div>
                 </VCol>
 
                 <VCol v-if="shouldShowDestinationBank" cols="12">
-                  <div class="d-flex align-center justify-space-between mb-1">
-                    <span class="text-super-xs font-weight-black text-primary uppercase">
-                      {{ isCristmedicalsPayment ? 'Banco Destino Cristmedicals' : (isMafartaPayment ? 'Banco Destino Cobeca / Mafarta' : (isDronenaPayment ? 'Banco Destino Dronena' : (isDromegaPayment ? 'Banco Destino Droguería Mega' : 'Banco Destino'))) }}
-                    </span>
-                    <VChip
-                      v-if="isCristmedicalsPayment || isMafartaPayment || isDronenaPayment || isDromegaPayment"
-                      size="x-small"
-                      color="primary"
-                      variant="tonal"
-                    >
-                      {{ isCristmedicalsPayment ? 'Portal Cristmedicals' : (isMafartaPayment ? 'Portal Cobeca (SIC)' : (isDronenaPayment ? 'Portal Dronena' : 'Portal Droguería Mega')) }}
-                    </VChip>
-                  </div>
+                  <span class="text-super-xs font-weight-black text-primary uppercase mb-1 d-block">
+                    {{ isCristmedicalsPayment ? 'Banco Destino Cristmedicals' : (isMafartaPayment ? 'Banco Destino Cobeca / Mafarta' : (isDronenaPayment ? 'Banco Destino Dronena' : (isDromegaPayment ? 'Banco Destino Droguería Mega' : 'Banco Destino'))) }}
+                  </span>
                   <VSelect
                     v-model="form.destination_bank"
                     :items="destinationBankOptions"
                     item-title="title"
                     item-value="value"
-                    :placeholder="isCristmedicalsPayment ? 'SELECCIONE BANCO CRISTMEDICALS' : (isMafartaPayment ? 'SELECCIONE BANCO COBECA' : (isDronenaPayment ? 'SELECCIONE BANCO DRONENA' : (isDromegaPayment ? 'SELECCIONE BANCO DROGUERÍA MEGA' : 'SELECCIONE BANCO DESTINO')))"
+                    placeholder="SELECCIONE BANCO DESTINO"
                     variant="outlined"
                     density="compact"
-                    class="premium-input mb-3"
+                    class="premium-input mb-2"
                     clearable
                     prepend-inner-icon="tabler-building-bank"
                     hide-details
@@ -805,25 +917,25 @@ watch(() => props.modelValue, (val) => {
                     variant="outlined"
                     density="compact"
                     prepend-inner-icon="tabler-hash"
-                    class="premium-input mb-3"
-                    :hint="isCristmedicalsPayment ? 'Para Cristmedicals se validará automáticamente la referencia en el banco vía MovilPay' : (isDronenaPayment ? 'Para Dronena se tomarán automáticamente los últimos 10 dígitos' : (isMafartaPayment ? 'Para Cobeca/Mafarta se tomarán automáticamente los últimos 9 dígitos' : undefined))"
-                    :persistent-hint="isCristmedicalsPayment || isDronenaPayment || isMafartaPayment"
+                    class="premium-input mb-2"
                     hide-details="auto"
                   />
                 </VCol>
 
                 <VCol cols="12">
-                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Comprobante (Imagen o PDF)</span>
+                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">
+                    Comprobante (Pegar con Ctrl+V o Subir)
+                  </span>
                   <VFileInput
                     variant="outlined"
                     density="compact"
                     class="premium-input"
                     prepend-icon=""
                     prepend-inner-icon="tabler-camera"
-                    placeholder="Adjuntar recibo (extrae referencia auto)..."
+                    placeholder="Adjuntar o pegar recibo..."
                     accept="image/*,application/pdf"
                     :error="form.payment_method !== 'cash' && form.reference && !form.photo_url"
-                    :error-messages="form.payment_method !== 'cash' && form.reference && !form.photo_url ? ['Si hay referencia, el comprobante es obligatorio'] : []"
+                    :error-messages="form.payment_method !== 'cash' && form.reference && !form.photo_url ? ['El comprobante es requerido si hay referencia'] : []"
                     hide-details="auto"
                     :loading="uploading"
                     @update:model-value="handleFileUpload"
@@ -876,7 +988,7 @@ watch(() => props.modelValue, (val) => {
                 size="18"
                 class="me-2"
               />
-              {{ uploading ? 'Subiendo Imagen...' : 'Confirmar Pago' }}
+              {{ uploading ? 'Subiendo...' : 'Confirmar Pago' }}
             </VBtn>
           </VCol>
         </VRow>
