@@ -62,36 +62,86 @@ const formatNumber = (value) => {
 
 <template>
   <div class="supplier-discrepancy-tab">
-    <!-- ── 1. Tarjetas de Resumen Rápido (Diseño Limpio y Neutro) ─────────── -->
+    <!-- ── 1. Tarjetas de Resumen Rápido (Estilo Estándar del ERP con Avatar Tonal e Ícono) ── -->
     <VRow class="mb-4" dense>
-      <VCol cols="6" sm="3">
-        <VCard variant="outlined" class="pa-3 rounded-lg text-center h-100 bg-surface border">
-          <div class="text-caption text-medium-emphasis">Documentos en Portal</div>
-          <div class="text-h6 font-weight-bold text-high-emphasis mt-1">{{ props.summaryData.total_extracted || 0 }}</div>
-        </VCard>
-      </VCol>
-      <VCol cols="6" sm="3">
-        <VCard variant="outlined" class="pa-3 rounded-lg text-center h-100 bg-surface border">
-          <div class="text-caption text-medium-emphasis">Actualizadas en ERP</div>
-          <div class="text-h6 font-weight-bold text-high-emphasis mt-1">{{ props.summaryData.updated || 0 }}</div>
-        </VCard>
-      </VCol>
-      <VCol cols="6" sm="3">
-        <VCard variant="outlined" class="pa-3 rounded-lg text-center h-100 bg-surface border">
-          <div class="text-caption text-medium-emphasis">Nuevas Creadas</div>
-          <div class="text-h6 font-weight-bold text-high-emphasis mt-1">{{ props.summaryData.created || 0 }}</div>
-        </VCard>
-      </VCol>
-      <VCol cols="6" sm="3">
-        <VCard
-          variant="outlined"
-          :class="['pa-3 rounded-lg text-center h-100 border', hasDiscrepancies ? 'bg-warning-lighten-5 border-warning' : 'bg-surface']"
-        >
-          <div :class="['text-caption', hasDiscrepancies ? 'text-warning font-weight-medium' : 'text-medium-emphasis']">
-            Diferencias Detectadas
+      <VCol cols="12" sm="6" md="3">
+        <VCard variant="flat" border class="pa-3 rounded-lg bg-surface h-100 shadow-xs">
+          <div class="d-flex align-center gap-3">
+            <VAvatar color="primary" variant="tonal" size="40" rounded="lg" class="flex-shrink-0">
+              <VIcon icon="tabler-files" size="22" />
+            </VAvatar>
+            <div class="overflow-hidden">
+              <span class="text-caption text-medium-emphasis font-weight-medium d-block leading-tight text-truncate">
+                En Portal
+              </span>
+              <div class="text-h6 font-weight-black text-high-emphasis leading-tight mt-1">
+                {{ props.summaryData.total_extracted || 0 }}
+              </div>
+            </div>
           </div>
-          <div :class="['text-h6 font-weight-bold mt-1', hasDiscrepancies ? 'text-warning' : 'text-high-emphasis']">
-            {{ totalDiscrepancies }}
+        </VCard>
+      </VCol>
+
+      <VCol cols="12" sm="6" md="3">
+        <VCard variant="flat" border class="pa-3 rounded-lg bg-surface h-100 shadow-xs">
+          <div class="d-flex align-center gap-3">
+            <VAvatar color="success" variant="tonal" size="40" rounded="lg" class="flex-shrink-0">
+              <VIcon icon="tabler-refresh" size="22" />
+            </VAvatar>
+            <div class="overflow-hidden">
+              <span class="text-caption text-medium-emphasis font-weight-medium d-block leading-tight text-truncate">
+                Actualizadas
+              </span>
+              <div class="text-h6 font-weight-black text-high-emphasis leading-tight mt-1">
+                {{ props.summaryData.updated || 0 }}
+              </div>
+            </div>
+          </div>
+        </VCard>
+      </VCol>
+
+      <VCol cols="12" sm="6" md="3">
+        <VCard variant="flat" border class="pa-3 rounded-lg bg-surface h-100 shadow-xs">
+          <div class="d-flex align-center gap-3">
+            <VAvatar color="info" variant="tonal" size="40" rounded="lg" class="flex-shrink-0">
+              <VIcon icon="tabler-file-plus" size="22" />
+            </VAvatar>
+            <div class="overflow-hidden">
+              <span class="text-caption text-medium-emphasis font-weight-medium d-block leading-tight text-truncate">
+                Nuevas Creadas
+              </span>
+              <div class="text-h6 font-weight-black text-high-emphasis leading-tight mt-1">
+                {{ props.summaryData.created || 0 }}
+              </div>
+            </div>
+          </div>
+        </VCard>
+      </VCol>
+
+      <VCol cols="12" sm="6" md="3">
+        <VCard
+          variant="flat"
+          border
+          :class="['pa-3 rounded-lg h-100 shadow-xs', hasDiscrepancies ? 'bg-warning-lighten-5 border-warning' : 'bg-surface']"
+        >
+          <div class="d-flex align-center gap-3">
+            <VAvatar
+              :color="hasDiscrepancies ? 'warning' : 'success'"
+              variant="tonal"
+              size="40"
+              rounded="lg"
+              class="flex-shrink-0"
+            >
+              <VIcon :icon="hasDiscrepancies ? 'tabler-alert-triangle' : 'tabler-circle-check'" size="22" />
+            </VAvatar>
+            <div class="overflow-hidden">
+              <span :class="['text-caption font-weight-medium d-block leading-tight text-truncate', hasDiscrepancies ? 'text-warning' : 'text-medium-emphasis']">
+                Diferencias
+              </span>
+              <div :class="['text-h6 font-weight-black leading-tight mt-1', hasDiscrepancies ? 'text-warning' : 'text-high-emphasis']">
+                {{ totalDiscrepancies }}
+              </div>
+            </div>
           </div>
         </VCard>
       </VCol>

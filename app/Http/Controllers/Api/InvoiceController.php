@@ -340,6 +340,8 @@ class InvoiceController extends Controller
                 'mafarta' => null,
                 'cristmedicals' => null,
                 'dromega' => null,
+                'drosymca' => null,
+                'statuses' => [],
                 'total_updated' => 0,
                 'total_created' => 0,
                 'total_skipped' => 0,
@@ -426,15 +428,29 @@ class InvoiceController extends Controller
                 $results['total_created'] += ($drosymca['created'] ?? 0);
                 $results['total_skipped'] += ($drosymca['skipped'] ?? 0);
                 $results['messages'][] = "Drosymca: {$drosymca['created']} creadas, {$drosymca['updated']} actualizadas";
+                $results['statuses']['Drosymca'] = true;
             } catch (\Throwable $e) {
                 Log::error('Error syncAll Drosymca: ' . $e->getMessage());
                 $results['errors'][] = 'Drosymca: ' . $e->getMessage();
+                $results['statuses']['Drosymca'] = false;
             }
 
-            $message = "Sincronización completada (" . implode(' | ', $results['messages']) . ")";
-            if (!empty($results['errors'])) {
-                $message .= " con advertencias en: " . implode(', ', $results['errors']);
+            // Construir resumen conciso tipo: Dronena ✓ | Drocerca ✓ | Mafarta ✓ | Cristmedicals ✗ | Mega ✗ | Drosymca ✓
+            $statusSummary = [];
+            $suppliersMap = [
+                'Dronena' => isset($results['dronena']),
+                'Drocerca' => isset($results['drocerca']),
+                'Mafarta' => isset($results['mafarta']),
+                'Cristmedicals' => isset($results['cristmedicals']),
+                'Mega' => isset($results['dromega']),
+                'Drosymca' => isset($results['drosymca']),
+            ];
+
+            foreach ($suppliersMap as $name => $connected) {
+                $statusSummary[] = $name . ' ' . ($connected ? '✓' : '✗');
             }
+
+            $message = implode(' | ', $statusSummary);
 
             return response()->json([
                 'success' => true,
