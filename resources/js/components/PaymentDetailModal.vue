@@ -224,6 +224,10 @@ const savingsPercentage = computed(() => {
 
 // Total facturado indexado en Bolívares o en la moneda original de las facturas
 const invoiceBilledAmount = computed(() => {
+  const normCur = normalizeCurrencyCode(props.payment?.currency || props.payment?.payment_method);
+  if ((normCur === "Bs." || normCur === "VES") && props.payment?.amount > 0) {
+    return props.payment.amount;
+  }
   if (props.payment?.invoice_total_bs && props.payment.invoice_total_bs > 0) {
     return props.payment.invoice_total_bs;
   }

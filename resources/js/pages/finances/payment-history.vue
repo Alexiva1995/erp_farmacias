@@ -118,17 +118,17 @@
               </div>
             </template>
 
-            <!-- Liquidado al Proveedor (Monto de Facturas) -->
+            <!-- Liquidado al Proveedor (Monto de Liquidación) -->
             <template #item.billed_amount="{ item }">
               <div class="d-flex flex-column text-end align-end py-1">
                 <span class="text-sm font-weight-black text-high-emphasis">
-                  {{ formatCurrency(getInvoicesBilledTotal(item), getInvoicesBilledCurrency(item)) }}
+                  {{ formatCurrency((normalizeCurrencyCode(item.currency) === 'Bs.' || normalizeCurrencyCode(item.currency) === 'VES') ? item.amount : getInvoicesBilledTotal(item), getInvoicesBilledCurrency(item)) }}
                 </span>
                 <span
-                  v-if="item.invoice_total_usd"
+                  v-if="item.invoice_total_usd || item.amount_usd"
                   class="text-xs text-money-green font-weight-bold"
                 >
-                  {{ formatNumber(item.invoice_total_usd) }} USD
+                  {{ formatNumber(item.invoice_total_usd || item.amount_usd) }} USD
                 </span>
               </div>
             </template>
@@ -236,10 +236,10 @@
                 <div class="text-right d-flex flex-column">
                   <span class="text-super-xs text-disabled font-weight-black uppercase">Liquidado</span>
                   <span class="text-lg font-weight-black text-high-emphasis">
-                    {{ formatCurrency(getInvoicesBilledTotal(item), getInvoicesBilledCurrency(item)) }}
+                    {{ formatCurrency((normalizeCurrencyCode(item.currency) === 'Bs.' || normalizeCurrencyCode(item.currency) === 'VES') ? item.amount : getInvoicesBilledTotal(item), getInvoicesBilledCurrency(item)) }}
                   </span>
-                  <span v-if="item.invoice_total_usd" class="text-xs text-money-green font-weight-bold">
-                    {{ formatNumber(item.invoice_total_usd) }} USD
+                  <span v-if="item.invoice_total_usd || item.amount_usd" class="text-xs text-money-green font-weight-bold">
+                    {{ formatNumber(item.invoice_total_usd || item.amount_usd) }} USD
                   </span>
                 </div>
               </div>
