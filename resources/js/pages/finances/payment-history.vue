@@ -78,7 +78,7 @@
 
       <!-- Tabla Desktop -->
       <div v-if="!$vuetify.display.smAndDown">
-        <VCard class="ma-0 rounded-lg border-0 shadow-sm overflow-hidden">
+        <VCard class="ma-0 rounded-lg border shadow-sm overflow-hidden bg-surface">
           <VDataTableServer
             v-model:items-per-page="itemsPerPage"
             :headers="headers"
@@ -89,35 +89,46 @@
             class="premium-table text-no-wrap"
             @update:options="updateOptions"
           >
+            <!-- Fecha -->
             <template #item.payment_date="{ item }">
               <div class="d-flex align-center gap-2">
-                <VAvatar size="32" color="primary" variant="tonal" class="rounded-lg">
-                  <VIcon icon="tabler-calendar-event" size="16" />
+                <VAvatar size="30" color="primary" variant="tonal" class="rounded-lg">
+                  <VIcon icon="tabler-calendar" size="16" />
                 </VAvatar>
-                <span class="font-weight-bold">{{ formatDate(item.payment_date) }}</span>
+                <span class="text-xs font-weight-bold text-high-emphasis">{{ formatDate(item.payment_date) }}</span>
               </div>
             </template>
 
+            <!-- Proveedor -->
             <template #item.supplier="{ item }">
-              <span class="font-weight-black text-high-emphasis">
+              <span class="text-xs font-weight-black text-high-emphasis uppercase">
                 {{ item.invoices?.[0]?.supplier?.name || "N/A" }}
               </span>
             </template>
 
+            <!-- Estado de Pago -->
             <template #item.payment_type="{ item }">
               <VChip
-                size="small"
+                size="x-small"
                 :color="item.payment_type === 'full' ? 'success' : 'warning'"
                 variant="tonal"
-                class="font-weight-black rounded-lg"
+                class="font-weight-black px-2 rounded"
               >
                 {{ item.payment_type === 'full' ? 'Pago Completo' : 'Abono Parcial' }}
               </VChip>
             </template>
 
+            <!-- Factura USD -->
+            <template #item.invoice_total_usd="{ item }">
+              <span class="text-xs font-weight-bold text-medium-emphasis">
+                USD {{ formatNumber(item.invoice_total_usd) }}
+              </span>
+            </template>
+
+            <!-- Monto Pagado -->
             <template #item.amount="{ item }">
               <div class="d-flex flex-column">
-                <span class="font-weight-black text-base">
+                <span class="text-xs font-weight-black text-high-emphasis">
                   {{ formatCurrency(item.amount, item.currency) }}
                 </span>
                 <span
@@ -129,48 +140,46 @@
               </div>
             </template>
 
-            <template #item.invoice_total_usd="{ item }">
-              <span class="font-weight-bold text-disabled">
-                USD {{ formatNumber(item.invoice_total_usd) }}
-              </span>
-            </template>
-
+            <!-- Moneda -->
             <template #item.currency="{ item }">
               <VChip
-                size="small"
+                size="x-small"
                 :color="getCurrencyColor(item.currency)"
-                variant="elevated"
-                class="font-weight-black px-3 rounded-lg shadow-sm"
+                variant="flat"
+                class="font-weight-black px-2 rounded text-white shadow-sm"
               >
                 {{ normalizeCurrencyCode(item.currency) }}
               </VChip>
             </template>
 
+            <!-- Referencia -->
             <template #item.reference="{ item }">
               <VChip
                 v-if="item.reference"
-                size="small"
+                size="x-small"
                 variant="tonal"
                 color="primary"
-                class="font-weight-bold rounded-lg"
+                class="font-weight-bold rounded px-2"
                 prepend-icon="tabler-hash"
               >
                 {{ item.reference }}
               </VChip>
-              <span v-else class="text-disabled italic text-xs">Sin referencia</span>
+              <span v-else class="text-disabled text-super-xs font-italic">Sin referencia</span>
             </template>
 
+            <!-- Usuario Registro -->
             <template #item.user="{ item }">
               <div class="d-flex align-center gap-2">
-                <VAvatar size="28" color="secondary" variant="tonal" class="rounded-lg">
-                  <span class="text-xs font-weight-black">{{ getUserInitials(item.user?.name) }}</span>
+                <VAvatar size="26" color="secondary" variant="tonal" class="rounded">
+                  <span class="text-super-xs font-weight-black">{{ getUserInitials(item.user?.name) }}</span>
                 </VAvatar>
-                <span class="text-xs font-weight-medium">{{ item.user?.name || "Sistema" }}</span>
+                <span class="text-xs font-weight-medium text-medium-emphasis">{{ item.user?.name || "Sistema" }}</span>
               </div>
             </template>
 
+            <!-- Acciones -->
             <template #item.actions="{ item }">
-              <div class="d-flex gap-1 justify-center">
+              <div class="d-flex gap-1 justify-center align-center">
                 <IconBtn
                   size="small"
                   color="primary"
@@ -179,6 +188,7 @@
                   @click="viewPaymentDetails(item)"
                 >
                   <VIcon icon="tabler-eye" size="18" />
+                  <VTooltip activator="parent" location="top">Ver Detalles</VTooltip>
                 </IconBtn>
                 <IconBtn
                   v-if="item.photo_url"
@@ -189,6 +199,7 @@
                   @click="viewReceipt(item.photo_url)"
                 >
                   <VIcon icon="tabler-file-dollar" size="18" />
+                  <VTooltip activator="parent" location="top">Ver Comprobante</VTooltip>
                 </IconBtn>
               </div>
             </template>
@@ -570,18 +581,25 @@ onMounted(() => {
 
 :deep(.premium-table) {
   .v-data-table-header th {
-    background: white !important;
+    background: rgb(var(--v-theme-surface)) !important;
     color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)) !important;
-    font-size: 0.75rem !important;
-    font-weight: 700 !important;
+    font-size: 0.72rem !important;
+    font-weight: 800 !important;
     text-transform: uppercase !important;
     letter-spacing: 0.05rem !important;
-    border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.05) !important;
+    border-block-end: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)) !important;
+    padding-inline: 12px !important;
   }
 
   .v-data-table__td {
-    padding-block: 12px !important;
-    border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.03) !important;
+    padding-block: 8px !important;
+    padding-inline: 12px !important;
+    font-size: 0.8125rem !important;
+    border-block-end: 1px solid rgba(var(--v-border-color), 0.05) !important;
+  }
+
+  tbody tr:hover {
+    background-color: rgba(var(--v-theme-primary), 0.02) !important;
   }
 }
 

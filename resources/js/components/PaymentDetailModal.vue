@@ -201,7 +201,7 @@ const savingsPercentage = computed(() => {
   >
     <VCard class="detail-dialog-card rounded-xl border-0 shadow-xl overflow-hidden bg-surface">
       <VCardTitle class="pa-0">
-        <div class="premium-dialog-header pa-4 d-flex align-center shadow-sm">
+        <div class="header-gradient pa-4 d-flex align-center shadow-sm">
           <VAvatar
             size="40"
             color="white"
@@ -224,14 +224,16 @@ const savingsPercentage = computed(() => {
             </div>
           </div>
           <VSpacer />
-          <VBtn
-            icon="tabler-x"
+          <IconBtn
             variant="tonal"
             color="white"
             size="small"
             class="rounded-lg"
             @click="isVisible = false"
-          />
+          >
+            <VIcon icon="tabler-x" size="20" />
+            <VTooltip activator="parent" location="top">Cerrar</VTooltip>
+          </IconBtn>
         </div>
       </VCardTitle>
 
@@ -487,8 +489,16 @@ const savingsPercentage = computed(() => {
   background-color: #f8faff !important;
 }
 
+.header-gradient {
+  background: var(--brand-gradient) !important;
+}
+
 .detail-dialog-card {
   border-radius: 12px !important;
+}
+
+.leading-none {
+  line-height: 1 !important;
 }
 
 .header-indicator {
