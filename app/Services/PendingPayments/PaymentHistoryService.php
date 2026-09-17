@@ -157,11 +157,27 @@ class PaymentHistoryService
             }
 
             $totalInvoiceAmount = 0;
+            $totalInvoiceBs = 0;
             $allInvoicesPaid = true;
             $hasInvoices = $payment->invoices->isNotEmpty();
 
+            $bcvRateObj = $exchangeRates->get('VES') ?? $exchangeRates->get('BS');
+            $currentBcvRate = ($bcvRateObj && $bcvRateObj->rate > 0) ? (float)$bcvRateObj->rate : 1.0;
+
             foreach ($payment->invoices as $invoice) {
-                $totalInvoiceAmount += (float) $invoice->total_usd;
+                $invUsd = (float) $invoice->total_usd;
+                $totalInvoiceAmount += $invUsd;
+
+                // Si la factura es indexada o su moneda es USD, calcular su deuda real indexada
+                if ($invoice->is_indexed || $invoice->currency === 'USD') {
+                    $rateToUse = ((float)$invoice->exchange_rate > 0) ? (float)$invoice->exchange_rate : $currentBcvRate;
+                    $totalInvoiceBs += round($invUsd * $rateToUse, 2);
+                } elseif ($invoice->currency === 'Bs' || $invoice->currency === 'VES') {
+                    $totalInvoiceBs += (float)$invoice->total_amount;
+                } else {
+                    $totalInvoiceBs += (float)($invoice->total_amount_bs ?? ($invUsd * $currentBcvRate));
+                }
+
                 if ((int) $invoice->status_payment !== 1) {
                     $allInvoicesPaid = false;
                 }
@@ -195,6 +211,7 @@ class PaymentHistoryService
             }
 
             $payment->invoice_total_usd = $totalInvoiceAmount;
+            $payment->invoice_total_bs = $totalInvoiceBs > 0 ? $totalInvoiceBs : round($totalInvoiceAmount * $currentBcvRate, 2);
 
             return $payment;
         });

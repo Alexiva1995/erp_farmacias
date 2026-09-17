@@ -30,6 +30,7 @@ class PaymentHistoryResource extends JsonResource
             'notes' => $this->notes,
             'payment_type' => $this->payment_type,
             'invoice_total_usd' => (float)($this->invoice_total_usd ?? 0),
+            'invoice_total_bs' => (float)($this->invoice_total_bs ?? 0),
             'total_paid_usd' => isset($this->total_paid_usd) ? (float)$this->total_paid_usd : null,
             'remaining_amount_usd' => isset($this->remaining_amount_usd) ? (float)$this->remaining_amount_usd : null,
             'payment_percentage' => isset($this->payment_percentage) ? (float)$this->payment_percentage : null,

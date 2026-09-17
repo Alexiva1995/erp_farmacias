@@ -222,13 +222,19 @@ const savingsPercentage = computed(() => {
   return Math.max(0, Math.round(percentage * 100) / 100);
 });
 
-// Total facturado en la moneda original de las facturas o en Bs.
+// Total facturado indexado en Bolívares o en la moneda original de las facturas
 const invoiceBilledAmount = computed(() => {
+  if (props.payment?.invoice_total_bs && props.payment.invoice_total_bs > 0) {
+    return props.payment.invoice_total_bs;
+  }
   if (!props.payment?.invoices?.length) return 0;
   return props.payment.invoices.reduce((acc, inv) => acc + (parseFloat(inv.total_amount) || 0), 0);
 });
 
 const invoiceBilledCurrency = computed(() => {
+  if (props.payment?.invoice_total_bs && props.payment.invoice_total_bs > 0) {
+    return "Bs.";
+  }
   if (!props.payment?.invoices?.length) return "Bs.";
   return props.payment.invoices[0]?.currency || "Bs.";
 });

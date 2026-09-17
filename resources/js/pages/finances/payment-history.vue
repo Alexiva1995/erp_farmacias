@@ -514,11 +514,17 @@ const formatCurrency = (amount, currency) => {
 };
 
 const getInvoicesBilledTotal = (item) => {
+  if (item?.invoice_total_bs && item.invoice_total_bs > 0) {
+    return item.invoice_total_bs;
+  }
   if (!item?.invoices?.length) return 0;
   return item.invoices.reduce((acc, inv) => acc + (parseFloat(inv.total_amount) || 0), 0);
 };
 
 const getInvoicesBilledCurrency = (item) => {
+  if (item?.invoice_total_bs && item.invoice_total_bs > 0) {
+    return "Bs.";
+  }
   if (!item?.invoices?.length) return "Bs.";
   return item.invoices[0]?.currency || "Bs.";
 };
