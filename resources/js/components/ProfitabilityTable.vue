@@ -36,25 +36,25 @@ const emit = defineEmits(["refresh", "update:options", "editProduct", "updatePro
 const headers = computed(() => {
   if (isMinimarket.value) {
     return [
-      { title: "id", key: "id", sortable: true },
+      { title: "ID", key: "id", sortable: true, cellClass: "font-weight-black text-primary d-none d-sm-table-cell", headerClass: "d-none d-sm-table-cell" },
       { title: "Producto", key: "name", sortable: true },
-      { title: "Costo Base", key: "unit_cost", sortable: true },
-      { title: "TAX (USA)", key: "tax_usa", sortable: false },
-      { title: "Envío", key: "shipping_cost", sortable: false },
-      { title: "Embalaje", key: "packaging_cost", sortable: false },
-      { title: "Margen Gastos", key: "expense_margin", sortable: false },
-      { title: "Margen Utilidad", key: "profit_margin", sortable: false },
-      { title: "Precio Venta", key: "sale_price", sortable: true },
-      { title: "Acciones", key: "actions", sortable: false },
+      { title: "Costo Base", key: "unit_cost", sortable: true, align: "end" },
+      { title: "TAX (USA)", key: "tax_usa", sortable: false, align: "end" },
+      { title: "Envío", key: "shipping_cost", sortable: false, align: "end" },
+      { title: "Embalaje", key: "packaging_cost", sortable: false, align: "end" },
+      { title: "Margen Gastos", key: "expense_margin", sortable: false, align: "end" },
+      { title: "Margen Utilidad", key: "profit_margin", sortable: false, align: "end" },
+      { title: "Precio Venta", key: "sale_price", sortable: true, align: "end" },
+      { title: "Acciones", key: "actions", sortable: false, align: "center" },
     ];
   }
   return [
-    { title: "id", key: "id", sortable: true },
+    { title: "ID", key: "id", sortable: true, cellClass: "font-weight-black text-primary d-none d-sm-table-cell", headerClass: "d-none d-sm-table-cell" },
     { title: "Producto", key: "name", sortable: true },
-    { title: "Costo", key: "unit_cost", sortable: true },
-    { title: "Precio Venta", key: "sale_price", sortable: true },
-    { title: "% Utilidad", key: "profitability", sortable: true },
-    { title: "Acciones", key: "actions", sortable: false },
+    { title: "Costo", key: "unit_cost", sortable: true, align: "end" },
+    { title: "Precio Venta", key: "sale_price", sortable: true, align: "end" },
+    { title: "% Utilidad", key: "profitability", sortable: true, align: "center" },
+    { title: "Acciones", key: "actions", sortable: false, align: "center" },
   ];
 });
 
@@ -92,35 +92,6 @@ const formatPrice = (price) => {
   }).format(price);
 };
 
-const getCalculatedSalePrice = (item) => {
-  const cost = parseFloat(item.unit_cost || 0);
-  const useCompound = props.settings?.profitability_calculation_type === 'compound';
-
-  if (isMinimarket.value || useCompound) {
-    const isLocked = item.profitability?.is_locked == "1";
-    const shipping = isLocked && item.profitability?.shipping_cost !== null ? parseFloat(item.profitability.shipping_cost) : parseFloat(props.settings?.shipping_cost || 0);
-    const packaging = isLocked && item.profitability?.packaging_cost !== null ? parseFloat(item.profitability.packaging_cost) : parseFloat(props.settings?.packaging_cost || 0);
-    const expense = isLocked && item.profitability?.expense_margin !== null ? parseFloat(item.profitability.expense_margin) : parseFloat(props.settings?.expense_margin || 0);
-    const profit = isLocked && item.profitability?.profit_margin !== null ? parseFloat(item.profitability.profit_margin) : parseFloat(props.settings?.profit_margin || 0);
-    const tax = isLocked && item.profitability?.tax_usa !== null ? parseFloat(item.profitability.tax_usa) : parseFloat(props.settings?.tax_usa || 0);
-
-    const costWithTax = cost * (1 + tax / 100);
-    const fixedExpenseAmount = costWithTax * (expense / 100);
-    const profitDenominator = 1 - (profit / 100);
-    if (profitDenominator <= 0) return 9999.99;
-    const salePrice = (costWithTax + shipping + packaging + fixedExpenseAmount) / profitDenominator;
-    return item.iva == 1 ? salePrice * 1.16 : salePrice;
-  } else {
-    const perc =
-      item.profitability?.is_locked == "1"
-        ? parseFloat(item.profitability.profitability_percentage || 0)
-        : parseFloat(props.profitability || 0);
-
-    const salePrice = cost * (1 + perc / 100);
-    return item.iva == 1 ? salePrice * 1.16 : salePrice;
-  }
-};
-
 const getProfitabilityPercentage = (item) => {
   return item.profitability?.is_locked == "1"
     ? parseInt(item.profitability.profitability_percentage)
@@ -143,7 +114,8 @@ const getProfitabilityPercentage = (item) => {
         :items-length="props.totalProduct"
         :loading="props.loading"
         :sort-by="sortByModel"
-        class="premium-table text-no-wrap"
+        class="text-no-wrap"
+        density="comfortable"
         @update:options="(options) => emit('update:options', options)"
       >
         <template #item.id="{ item }">
@@ -170,13 +142,13 @@ const getProfitabilityPercentage = (item) => {
                   'text-warning':
                     item.psychotropic == 1 || item.psychotropic === true,
                 }"
-                style="max-inline-size: 320px"
+                style="max-inline-size: 380px"
                 :title="item.name"
               >
-                {{ item.name.toUpperCase() }}
+                {{ item.name?.toUpperCase() }}
                 <span
                   v-if="item.iva == 1 || item.iva === true"
-                  class="text-xs text-disabled"
+                  class="text-xs text-disabled font-weight-regular"
                 >
                   (G)</span
                 >
@@ -185,110 +157,96 @@ const getProfitabilityPercentage = (item) => {
                     item.is_colombian_origin == 1 ||
                     item.is_colombian_origin === true
                   "
-                  class="text-xs text-disabled"
+                  class="text-xs text-disabled font-weight-regular"
                 >
                   (COL)</span
                 >
               </span>
-              <div class="d-flex align-center gap-1 text-super-xs">
+              <div class="d-flex align-center gap-1 text-super-xs mt-0-5">
                 <span
                   class="text-disabled truncate"
                   style="max-inline-size: 200px"
-                  >{{ item.active_ingredient }}</span
+                  >{{ item.active_ingredient || "—" }}</span
                 >
                 <span class="text-disabled mx-1">|</span>
                 <span
                   class="text-primary font-weight-black text-uppercase truncate"
                   style="max-inline-size: 150px"
                 >
-                  {{ item.laboratory?.name || "S/L" }}
+                  {{ isMiniMarket ? (item.category?.name || 'SIN CATEGORÍA') : (item.laboratory?.name || "S/L") }}
                 </span>
               </div>
             </div>
           </div>
         </template>
 
-        <!-- Eliminado Laboratory.name ya que está integrado en Name -->
-
         <template #item.unit_cost="{ item }">
-          <span class="font-weight-black text-high-emphasis">
+          <span class="text-sm font-weight-medium text-high-emphasis">
             {{ formatPrice(item.unit_cost) }}
           </span>
         </template>
 
         <template #item.sale_price="{ item }">
-          <div class="d-flex flex-column">
+          <div class="d-flex flex-column text-end">
             <span
               :class="[
-                'font-weight-black text-lg',
+                'text-sm font-weight-black',
                 item.profitability?.is_locked == '1'
                   ? 'text-error'
-                  : 'text-success',
+                  : 'text-primary',
               ]"
             >
               {{ formatPrice(item.sale_price) }}
             </span>
             <span
               v-if="item.iva == 1"
-              class="text-super-xs text-success font-weight-bold uppercase"
-              >IVA INCLUIDO</span
+              class="text-super-xs text-success"
+              >IVA INC.</span
             >
           </div>
         </template>
 
         <template #item.tax_usa="{ item }">
-          <span>
+          <span class="text-sm font-weight-medium">
             {{ item.profitability?.is_locked == '1' && item.profitability?.tax_usa !== null ? item.profitability.tax_usa : props.settings?.tax_usa || 0 }}%
           </span>
         </template>
 
         <template #item.shipping_cost="{ item }">
-          <span>
+          <span class="text-sm font-weight-medium">
             {{ formatPrice(item.profitability?.is_locked == '1' && item.profitability?.shipping_cost !== null ? item.profitability.shipping_cost : props.settings?.shipping_cost || 0) }}
           </span>
         </template>
 
         <template #item.packaging_cost="{ item }">
-          <span>
+          <span class="text-sm font-weight-medium">
             {{ formatPrice(item.profitability?.is_locked == '1' && item.profitability?.packaging_cost !== null ? item.profitability.packaging_cost : props.settings?.packaging_cost || 0) }}
           </span>
         </template>
 
         <template #item.expense_margin="{ item }">
-          <span class="font-weight-bold">
+          <span class="text-sm font-weight-bold">
             {{ item.profitability?.is_locked == '1' && item.profitability?.expense_margin !== null ? item.profitability.expense_margin : props.settings?.expense_margin || 0 }}%
           </span>
         </template>
 
         <template #item.profit_margin="{ item }">
-          <span class="font-weight-bold text-primary">
+          <span class="text-sm font-weight-bold text-primary">
             {{ item.profitability?.is_locked == '1' && item.profitability?.profit_margin !== null ? item.profitability.profit_margin : props.settings?.profit_margin || 0 }}%
           </span>
         </template>
 
         <template #item.profitability="{ item }">
-          <div class="d-flex align-center gap-2">
-            <VProgressCircular
-              :model-value="getProfitabilityPercentage(item)"
-              size="32"
-              width="3"
-              :color="
-                item.profitability?.is_locked == '1' ? 'error' : 'primary'
-              "
-              class="font-weight-black text-xs"
-            >
-              {{ getProfitabilityPercentage(item) }}
-            </VProgressCircular>
-            <span
-              :class="[
-                'font-weight-black',
-                item.profitability?.is_locked == '1'
-                  ? 'text-error'
-                  : 'text-primary',
-              ]"
+          <div class="d-flex align-center justify-center gap-2">
+            <VChip
+              :color="item.profitability?.is_locked == '1' ? 'error' : 'primary'"
+              label
+              size="small"
+              variant="tonal"
+              class="font-weight-black px-2"
             >
               {{ getProfitabilityPercentage(item) }}%
-            </span>
+            </VChip>
           </div>
         </template>
 
@@ -296,181 +254,136 @@ const getProfitabilityPercentage = (item) => {
           <div class="d-flex gap-1 justify-center">
             <IconBtn
               size="small"
-              color="primary"
-              variant="tonal"
-              class="rounded-lg"
-              @click="
-                emit(
-                  'editProduct',
-                  item,
-                )
-              "
+              color="warning"
+              @click="emit('editProduct', item)"
             >
               <VIcon icon="tabler-edit" size="18" />
+              <VTooltip activator="parent" location="top">Editar Rentabilidad</VTooltip>
             </IconBtn>
 
             <IconBtn
               size="small"
-              :color="
-                item.profitability?.is_locked == '1' ? 'error' : 'secondary'
-              "
-              variant="tonal"
-              class="rounded-lg"
+              :color="item.profitability?.is_locked == '1' ? 'error' : 'secondary'"
               :loading="!!loadingLocks[item.id]"
               :disabled="!!loadingLocks[item.id]"
-              @click="
-                toggleLock(
-                  item.id,
-                  props.profitability,
-                )
-              "
+              @click="toggleLock(item.id, props.profitability)"
             >
               <VIcon
-                :icon="
-                  item.profitability?.is_locked == '1'
-                    ? 'tabler-lock'
-                    : 'tabler-lock-open'
-                "
+                :icon="item.profitability?.is_locked == '1' ? 'tabler-lock' : 'tabler-lock-open'"
                 size="18"
               />
+              <VTooltip activator="parent" location="top">
+                {{ item.profitability?.is_locked == '1' ? 'Desbloquear Margen' : 'Bloquear Margen Personalizado' }}
+              </VTooltip>
             </IconBtn>
           </div>
         </template>
       </VDataTableServer>
     </VCard>
 
-    <!-- Vista Móvil: Cards Premium -->
-    <div v-else class="d-flex flex-column gap-4">
+    <!-- Vista Móvil: Cards Homologadas con ProductMobileCard -->
+    <div v-else class="d-flex flex-column gap-2">
       <VCard
         v-for="item in props.products"
         :key="item.id"
-        class="rounded-lg border shadow-sm overflow-hidden"
+        variant="flat"
+        class="border mb-1 rounded-lg overflow-hidden bg-white"
         :class="{
-          'border-error border-primary-opacity-30':
-            item.profitability?.is_locked == '1',
+          'border-error': item.profitability?.is_locked == '1',
         }"
       >
-        <div class="pa-4 bg-surface-variant-light d-flex align-center gap-3">
-          <VAvatar
-            size="48"
-            variant="tonal"
-            :color="item.profitability?.is_locked == '1' ? 'error' : 'primary'"
-            class="rounded-lg shadow-sm font-weight-black"
-            :image="item.photo_url"
-          >
-            <span v-if="!item.photo_url">{{ item.name.charAt(0) }}</span>
-          </VAvatar>
+        <div class="pa-3">
+          <div class="d-flex justify-space-between align-start mb-2">
+            <div class="d-flex align-center gap-2 min-width-0">
+              <VAvatar
+                size="40"
+                variant="tonal"
+                :color="item.profitability?.is_locked == '1' ? 'error' : 'primary'"
+                class="rounded-lg font-weight-bold"
+                :image="item.photo_url"
+              >
+                <span v-if="!item.photo_url">{{ item.name.charAt(0) }}</span>
+              </VAvatar>
 
-          <div class="d-flex flex-column flex-grow-1 min-width-0">
-            <span
-              class="text-base font-weight-black text-high-emphasis text-uppercase text-truncate"
-            >
-              <a
-                :href="'/inventory/traceability?q=' + item.id"
-                target="_blank"
-                class="text-decoration-none font-weight-black"
-                :class="[
-                  item.profitability?.is_locked == '1'
-                    ? 'text-error'
-                    : 'text-primary',
-                ]"
-              >
-                {{ item.id }}
-              </a>
-              <span class="mx-1 text-disabled">|</span>
-              {{ item.name }}
-            </span>
-            <div class="d-flex align-center gap-1 text-super-xs mt-1">
-              <span class="text-disabled truncate">{{
-                item.active_ingredient
-              }}</span>
-              <span class="text-disabled mx-1">|</span>
-              <span
-                class="text-primary font-weight-black text-uppercase truncate"
-              >
-                {{ item.laboratory?.name || "S/L" }}
-              </span>
+              <div class="d-flex flex-column min-width-0">
+                <span class="text-xs font-weight-black text-primary uppercase">
+                  <a
+                    :href="'/inventory/traceability?q=' + item.id"
+                    target="_blank"
+                    class="text-decoration-none"
+                    :class="[item.profitability?.is_locked == '1' ? 'text-error' : 'text-primary']"
+                  >
+                    #{{ item.id }}
+                  </a>
+                </span>
+                <h3 class="text-sm font-weight-semibold text-high-emphasis leading-tight truncate">
+                  {{ item.name }}
+                </h3>
+                <div class="d-flex align-center gap-1 text-super-xs text-medium-emphasis">
+                  <span class="truncate">{{ item.active_ingredient || "—" }}</span>
+                  <span>|</span>
+                  <span class="text-primary font-weight-medium truncate">
+                    {{ isMiniMarket ? (item.category?.name || 'SIN CATEGORÍA') : (item.laboratory?.name || "S/L") }}
+                  </span>
+                </div>
+              </div>
             </div>
+
+            <VChip
+              :color="item.profitability?.is_locked == '1' ? 'error' : 'primary'"
+              variant="tonal"
+              size="small"
+              class="font-weight-black px-2 rounded"
+            >
+              {{ getProfitabilityPercentage(item) }}%
+            </VChip>
           </div>
 
-          <VChip
-            :color="item.profitability?.is_locked == '1' ? 'error' : 'primary'"
-            variant="elevated"
-            class="font-weight-black px-2 rounded-lg shadow-sm text-xs"
-            style="min-width: 42px; justify-content: center;"
-          >
-            {{ getProfitabilityPercentage(item) }}%
-          </VChip>
-        </div>
+          <VDivider class="my-2 border-opacity-10" />
 
-        <VDivider class="opacity-10" />
-
-        <div class="pa-4 pt-4">
-          <div class="d-flex justify-space-between align-center mb-4">
+          <div class="d-flex justify-space-between align-center mb-3">
             <div class="d-flex flex-column">
-              <span
-                class="text-super-xs text-disabled font-weight-black uppercase"
-                >Precio de Venta</span
-              >
+              <span class="text-super-xs text-disabled font-weight-medium uppercase">Costo Base</span>
+              <span class="text-sm font-weight-medium text-high-emphasis">
+                {{ formatPrice(item.unit_cost) }}
+              </span>
+            </div>
+            <div class="d-flex flex-column align-end">
+              <span class="text-super-xs text-disabled font-weight-medium uppercase">Precio Venta</span>
               <span
                 :class="[
-                  'text-xl font-weight-black',
-                  item.profitability?.is_locked == '1'
-                    ? 'text-error'
-                    : 'text-success',
+                  'text-base font-weight-black',
+                  item.profitability?.is_locked == '1' ? 'text-error' : 'text-primary',
                 ]"
               >
                 {{ formatPrice(item.sale_price) }}
               </span>
             </div>
-            <div class="text-right d-flex flex-column">
-              <span
-                class="text-super-xs text-disabled font-weight-black uppercase"
-                >Costo Base</span
-              >
-              <span class="text-base font-weight-bold text-high-emphasis">{{
-                formatPrice(item.unit_cost)
-              }}</span>
-            </div>
           </div>
 
           <div class="d-flex gap-2">
             <VBtn
-              block
               variant="tonal"
-              color="primary"
-              class="rounded-lg font-weight-black flex-grow-1"
+              color="warning"
+              size="small"
+              class="rounded-lg flex-grow-1 font-weight-bold"
               prepend-icon="tabler-edit"
-              @click="
-                emit(
-                  'editProduct',
-                  item,
-                )
-              "
+              @click="emit('editProduct', item)"
             >
               Editar
             </VBtn>
             <VBtn
               variant="tonal"
-              :color="
-                item.profitability?.is_locked == '1' ? 'error' : 'secondary'
-              "
-              class="rounded-lg px-4"
+              :color="item.profitability?.is_locked == '1' ? 'error' : 'secondary'"
+              size="small"
+              class="rounded-lg px-3"
               :loading="!!loadingLocks[item.id]"
               :disabled="!!loadingLocks[item.id]"
-              @click="
-                toggleLock(
-                  item.id,
-                  props.profitability,
-                )
-              "
+              @click="toggleLock(item.id, props.profitability)"
             >
               <VIcon
-                :icon="
-                  item.profitability?.is_locked == '1'
-                    ? 'tabler-lock'
-                    : 'tabler-lock-open'
-                "
+                :icon="item.profitability?.is_locked == '1' ? 'tabler-lock' : 'tabler-lock-open'"
+                size="18"
               />
             </VBtn>
           </div>
@@ -478,9 +391,7 @@ const getProfitabilityPercentage = (item) => {
       </VCard>
 
       <!-- Paginación Móvil Simplificada -->
-      <VCard
-        class="rounded-lg border shadow-sm pa-3 d-flex justify-center align-center bg-surface"
-      >
+      <VCard class="rounded-lg border shadow-sm pa-3 d-flex justify-center align-center bg-surface">
         <AppMobilePagination
           :page="props.page"
           :items-per-page="props.itemsPerPage"
@@ -497,41 +408,44 @@ const getProfitabilityPercentage = (item) => {
 
 <style scoped>
 .profitability-table-wrapper {
-  margin-top: 1.5rem;
+  margin-top: 0.5rem;
 }
 
 .text-super-xs {
-  font-size: 0.625rem !important;
-  letter-spacing: 0.05em !important;
-  line-height: normal;
+  font-size: 0.65rem !important;
+  line-height: 1;
 }
 
-:deep(.premium-table) {
-  .v-data-table-header th {
-    border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.05) !important;
-    background: white !important;
-    color: rgba(
-      var(--v-theme-on-surface),
-      var(--v-high-emphasis-opacity)
-    ) !important;
-    font-size: 0.75rem !important;
-    font-weight: 700 !important;
-    letter-spacing: 0.05rem !important;
-    text-transform: uppercase !important;
-  }
-
-  .v-data-table__td {
-    padding-block: 12px !important;
-    border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.03) !important;
-  }
-
-  .v-data-table__tr:hover {
-    background-color: rgba(var(--v-theme-primary), 0.02) !important;
-  }
+.mt-0-5 {
+  margin-top: 2px !important;
 }
 
-.bg-surface-variant-light {
-  background-color: rgba(var(--v-theme-surface-variant), 0.04);
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.min-width-0 {
+  min-width: 0;
+}
+
+.leading-tight {
+  line-height: 1.25 !important;
+}
+
+.gap-1 { gap: 4px !important; }
+.gap-2 { gap: 8px !important; }
+
+:deep(.v-data-table th) {
+  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
+}
+
+:deep(.v-data-table td) {
+  padding-block: 8px !important;
 }
 
 .border-error {
