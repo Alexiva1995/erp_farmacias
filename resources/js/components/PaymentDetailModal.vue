@@ -214,8 +214,8 @@ const formatCurrency = (amount, currency) => {
 
 const savingsPercentage = computed(() => {
   if (!props.payment) return 0;
-  const paidUSD = parseFloat(props.payment.amount_usd) || 0;
-  const invoiceTotalUSD = parseFloat(props.payment.invoice_total_usd) || 0;
+  const paidUSD = parseFloat(props.payment.source_amount_usd || props.payment.amount_usd) || 0;
+  const invoiceTotalUSD = parseFloat(props.payment.invoice_total_usd || props.payment.amount_usd) || 0;
   if (invoiceTotalUSD <= 0) return 0;
   const savingsUSD = invoiceTotalUSD - paidUSD;
   const percentage = (savingsUSD / invoiceTotalUSD) * 100;
