@@ -1,5 +1,6 @@
 <script setup>
 import axios from "@/plugins/axios";
+import { toast } from "@/plugins/sweetalert";
 import { computed, ref, watch } from "vue";
 
 const props = defineProps({
@@ -82,6 +83,14 @@ const isDromega = computed(() => supplierNameUpper.value.includes("DROMEGA") || 
 
 const hasPortalIntegration = computed(() => isDronena.value || isMafarta.value || isCristmedicals.value || isDromega.value);
 
+const supplierEmail = computed(() => {
+  if (!props.payment?.invoices?.length) return "";
+  const inv = props.payment.invoices[0];
+  return inv?.supplier?.payment_email || inv?.supplier?.email || "";
+});
+
+const hasEmailIntegration = computed(() => Boolean(supplierEmail.value));
+
 const portalBankOptions = computed(() => {
   if (isMafarta.value) return mafartaBanks;
   if (isDronena.value) return dronenaBanks;
@@ -93,6 +102,7 @@ const portalBankOptions = computed(() => {
 // Estado de reenvío
 const showResendDialog = ref(false);
 const resending = ref(false);
+const sendingEmail = ref(false);
 const resendForm = ref({
   destination_bank: null,
   reference: "",
@@ -111,6 +121,28 @@ const openResendDialog = () => {
   resendForm.value.id_number = "24150980";
   showAlert.value = false;
   showResendDialog.value = true;
+};
+
+const executeResendEmail = async () => {
+  if (!props.payment?.id || !supplierEmail.value) return;
+  sendingEmail.value = true;
+  try {
+    const res = await axios.post("/finances/pending-payments/resend-email", {
+      payment_id: props.payment.id,
+      email: supplierEmail.value,
+    });
+    if (res.data?.status === "success" || res.data?.success) {
+      toast.success(res.data.message || `Comprobante reenviado exitosamente a ${supplierEmail.value}`);
+      emit("payment-resent");
+    } else {
+      toast.error(res.data?.message || "No se pudo reenviar el correo.");
+    }
+  } catch (err) {
+    console.error("Error reenviando correo de pago:", err);
+    toast.error(err.response?.data?.message || "Error al conectar con el servidor.");
+  } finally {
+    sendingEmail.value = false;
+  }
 };
 
 const executeResend = async () => {
@@ -253,8 +285,17 @@ const savingsPercentage = computed(() => {
                 <span class="hero-amount font-weight-bold text-high-emphasis mb-1">
                   {{ formatCurrency(props.payment.amount, props.payment.currency) }}
                 </span>
-                <span class="text-sm font-weight-medium text-medium-emphasis">
-                  (${{ formatNumber(props.payment.amount_usd) }} USD)
+                <span
+                  v-if="normalizeCurrencyCode(props.payment.currency) !== 'USD' && props.payment.amount_usd"
+                  class="text-sm font-weight-bold text-success"
+                >
+                  ({{ formatNumber(props.payment.amount_usd) }} USD)
+                </span>
+                <span
+                  v-else-if="props.payment.amount_usd && normalizeCurrencyCode(props.payment.currency) === 'USD'"
+                  class="text-sm font-weight-medium text-medium-emphasis"
+                >
+                  USD
                 </span>
               </div>
 
@@ -358,7 +399,7 @@ const savingsPercentage = computed(() => {
         </VRow>
       </VCardText>
 
-      <VCardActions class="pa-6 bg-light border-t d-flex gap-4">
+      <VCardActions class="pa-6 bg-light border-t d-flex flex-wrap gap-3">
         <VBtn
           v-if="hasPortalIntegration"
           variant="flat"
@@ -370,8 +411,23 @@ const savingsPercentage = computed(() => {
         >
           Reenviar Pago al Portal
         </VBtn>
+
         <VBtn
-          :class="hasPortalIntegration ? 'flex-grow-1' : 'w-100'"
+          v-if="hasEmailIntegration"
+          variant="flat"
+          color="info"
+          height="44"
+          class="rounded-lg font-weight-bold shadow-sm flex-grow-1"
+          prepend-icon="tabler-mail-forward"
+          :loading="sendingEmail"
+          @click="executeResendEmail"
+        >
+          Reenviar al Correo
+          <VTooltip activator="parent" location="top">Enviar comprobante a {{ supplierEmail }}</VTooltip>
+        </VBtn>
+
+        <VBtn
+          :class="(hasPortalIntegration || hasEmailIntegration) ? 'flex-grow-1' : 'w-100'"
           variant="outlined"
           color="secondary"
           height="44"

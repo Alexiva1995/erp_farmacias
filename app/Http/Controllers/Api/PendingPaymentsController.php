@@ -26,6 +26,7 @@ use App\Http\Requests\PendingPayments\GetCreditoFiscalRequest;
 use App\Http\Requests\PendingPayments\GetExpensesHistoryRequest;
 use App\Http\Requests\PendingPayments\UpdatePaymentDateRequest;
 use App\Http\Requests\PendingPayments\ResendPaymentToPortalRequest;
+use App\Http\Requests\PendingPayments\ResendPaymentEmailRequest;
 use App\Http\Requests\PendingPayments\BulkUpdateInvoiceStatusRequest;
 use Carbon\Carbon;
 use Illuminate\Validation\Rule;
@@ -639,6 +640,58 @@ class PendingPaymentsController extends Controller
         } catch (\Throwable $e) {
             Log::error('Error reenviando pago a portal: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             return ApiResponse::error('Error interno al reenviar pago: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Reenviar notificación de pago y comprobante por correo electrónico al proveedor
+     */
+    public function resendPaymentEmail(ResendPaymentEmailRequest $request): JsonResponse
+    {
+        try {
+            $payment = InvoicePayment::with(['invoices.supplier'])->find($request->payment_id);
+            if (!$payment) {
+                return ApiResponse::error('El pago no fue encontrado en el sistema.', 404);
+            }
+
+            $invoices = $payment->invoices;
+            $supplier = $invoices->first()?->supplier;
+            if (!$supplier) {
+                return ApiResponse::error('No se encontró el proveedor asociado al pago.', 422);
+            }
+
+            $targetEmail = $request->input('email') ?: ($supplier->payment_email ?: $supplier->email);
+            if (empty($targetEmail) || !filter_var($targetEmail, FILTER_VALIDATE_EMAIL)) {
+                return ApiResponse::error('El proveedor no tiene un correo electrónico válido configurado.', 422);
+            }
+
+            $paymentPayload = [
+                'payment_date'          => $payment->payment_date ? ($payment->payment_date instanceof \DateTimeInterface ? $payment->payment_date->toDateString() : substr((string)$payment->payment_date, 0, 10)) : now()->toDateString(),
+                'payment_method'        => $payment->payment_method,
+                'payment_amount'        => (float) $payment->amount,
+                'payment_currency'      => $payment->currency ?? $payment->payment_method,
+                'reference'             => $payment->reference,
+                'destination_bank'      => $payment->method,
+                'source_amount'         => (float) $payment->amount,
+                'source_currency'       => $payment->currency ?? $payment->payment_method,
+                'exchange_rate_applied' => 1,
+            ];
+
+            Mail::to($targetEmail)->send(
+                new SupplierPaymentReceiptMail(
+                    $supplier,
+                    $invoices,
+                    $paymentPayload,
+                    $payment->photo_url
+                )
+            );
+
+            return ApiResponse::success([
+                'sent_to' => $targetEmail,
+            ], "Comprobante de pago reenviado exitosamente a {$targetEmail}");
+        } catch (\Throwable $e) {
+            Log::error('[PendingPayments] Error reenviando correo de pago: ' . $e->getMessage());
+            return ApiResponse::error('Error al reenviar correo: ' . $e->getMessage(), 500);
         }
     }
 

@@ -91,47 +91,48 @@
           >
             <!-- Fecha -->
             <template #item.payment_date="{ item }">
-              <span class="text-xs text-medium-emphasis">{{ formatDate(item.payment_date) }}</span>
+              <span class="text-xs font-weight-medium text-high-emphasis">{{ formatDate(item.payment_date) }}</span>
             </template>
 
             <!-- Proveedor -->
             <template #item.supplier="{ item }">
-              <span class="text-xs font-weight-medium text-high-emphasis">
+              <span class="text-xs font-weight-bold supplier-title">
                 {{ item.invoices?.[0]?.supplier?.name || "N/A" }}
               </span>
             </template>
 
             <!-- Monto Pago -->
             <template #item.amount="{ item }">
-              <div class="d-flex flex-column text-end align-end">
-                <span class="text-xs font-weight-bold text-high-emphasis">
+              <div class="d-flex flex-column text-end align-end py-1">
+                <span class="text-sm font-weight-black text-high-emphasis">
                   {{ formatCurrency(item.amount, item.currency) }}
                 </span>
                 <span
-                  v-if="item.invoice_total_usd"
-                  class="text-super-xs text-success font-weight-bold"
+                  v-if="normalizeCurrencyCode(item.currency) !== 'USD' && item.amount_usd"
+                  class="text-xs text-success font-weight-bold"
                 >
-                  {{ formatNumber(item.invoice_total_usd) }} USD
+                  {{ formatNumber(item.amount_usd) }} USD
                 </span>
               </div>
             </template>
 
             <!-- Referencia -->
             <template #item.reference="{ item }">
-              <span v-if="item.reference" class="text-xs font-mono text-medium-emphasis">
-                #{{ item.reference }}
-              </span>
-              <span v-else class="text-disabled text-xs font-italic">Sin ref.</span>
+              <VChip
+                v-if="item.reference"
+                size="x-small"
+                variant="tonal"
+                color="primary"
+                class="font-weight-bold rounded px-2"
+              >
+                {{ item.reference }}
+              </VChip>
+              <span v-else class="text-disabled text-super-xs font-italic">Sin referencia</span>
             </template>
 
             <!-- Usuario Registro -->
             <template #item.user="{ item }">
-              <div class="d-flex align-center gap-2">
-                <VAvatar size="22" color="secondary" variant="tonal" class="rounded-circle">
-                  <span class="text-super-xs font-weight-bold">{{ getUserInitials(item.user?.name) }}</span>
-                </VAvatar>
-                <span class="text-xs text-medium-emphasis">{{ item.user?.name || "Sistema" }}</span>
-              </div>
+              <span class="text-xs font-weight-medium text-high-emphasis">{{ item.user?.name || "Sistema" }}</span>
             </template>
 
             <!-- Acciones -->
@@ -188,10 +189,10 @@
                 <VIcon icon="tabler-receipt" size="24" />
               </VAvatar>
               <div class="d-flex flex-column flex-grow-1">
-                <span class="text-base font-weight-black leading-tight truncate" style="max-inline-size: 180px">
+                <span class="text-base font-weight-bold leading-tight truncate supplier-title" style="max-inline-size: 180px">
                   {{ item.invoices?.[0]?.supplier?.name || "Proveedor N/A" }}
                 </span>
-                <span class="text-xs text-disabled">{{ formatDate(item.payment_date) }}</span>
+                <span class="text-xs text-medium-emphasis font-weight-medium">{{ formatDate(item.payment_date) }}</span>
               </div>
               <VChip
                 :color="getCurrencyColor(item.currency)"
@@ -213,8 +214,8 @@
                   </span>
                 </div>
                 <div class="text-right d-flex flex-column">
-                  <span class="text-super-xs text-disabled font-weight-black uppercase">Fac. USD</span>
-                  <span class="text-base font-weight-bold text-success">{{ formatNumber(item.invoice_total_usd) }} USD</span>
+                  <span class="text-super-xs text-disabled font-weight-black uppercase">Pagado USD</span>
+                  <span class="text-base font-weight-bold text-success">{{ formatNumber(item.amount_usd) }} USD</span>
                 </div>
               </div>
 
@@ -558,5 +559,10 @@ onMounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.supplier-title {
+  color: #111827 !important;
+  font-weight: 600 !important;
 }
 </style>

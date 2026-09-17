@@ -43,6 +43,8 @@ class PaymentHistoryResource extends JsonResource
                     'supplier' => $invoice->supplier ? [
                         'id' => $invoice->supplier->id,
                         'name' => $invoice->supplier->name,
+                        'email' => $invoice->supplier->email,
+                        'payment_email' => $invoice->supplier->payment_email,
                     ] : null,
                 ];
             })->all(),
