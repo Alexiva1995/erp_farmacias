@@ -143,8 +143,23 @@ class IaAssistantReportService
                 ? $procesado->sortByDesc($shortBy) 
                 : $procesado->sortBy($shortBy);
 
-            return $procesado->values();
+            // Convertir modelos de Eloquent a objetos stdClass ligeros para reducir el peso en caché en >90%
+            return $procesado->map(function ($item) {
+                if ($item instanceof \Illuminate\Database\Eloquent\Model) {
+                    $raw = $item->attributesToArray();
+                    if ($item->relationLoaded('laboratory') && $item->laboratory) {
+                        $raw['laboratory'] = $item->laboratory->attributesToArray();
+                    }
+                    if ($item->relationLoaded('group') && $item->group) {
+                        $raw['group'] = $item->group->attributesToArray();
+                    }
+                    return (object) $raw;
+                }
+                return is_array($item) ? (object) $item : $item;
+            })->values()->all();
         });
+
+        return collect($cachedData);
     }
 
     /**
@@ -453,10 +468,9 @@ class IaAssistantReportService
         if ($items->isEmpty()) return;
 
         $items = $items->values();
-        $eloquentCollection = new \Illuminate\Database\Eloquent\Collection($items);
         
         $skipAiMatch = filter_var($filtros['skip_ai_match'] ?? false, FILTER_VALIDATE_BOOLEAN);
-        $itemsWithSuppliers = $this->productSupplierRepository->getSupplierToReplenishTheProducts($eloquentCollection, $conDescuento, $skipAiMatch);
+        $itemsWithSuppliers = $this->productSupplierRepository->getSupplierToReplenishTheProducts($items, $conDescuento, $skipAiMatch);
         $itemsWithSuppliers = $this->productSupplierRepository->checkTolerance($itemsWithSuppliers, $conDescuento);
         
         foreach ($items as $index => $producto) {
@@ -473,9 +487,16 @@ class IaAssistantReportService
                     // Pasar también el nombre de la oferta sugerida para el modal
                     $bestSupplier->setAttribute('matched_name', $supplierData['productSupplier']->name ?? '');
                 }
-                $producto->setAttribute('best_supplier', $bestSupplier);
-                $producto->setAttribute('best_supplier_price', $supplierData['precio_final_supplier'] ?? 0);
-                $producto->setAttribute('best_supplier_percentage', $supplierData['percentageIncrease'] ?? 0);
+
+                if ($producto instanceof \Illuminate\Database\Eloquent\Model) {
+                    $producto->setAttribute('best_supplier', $bestSupplier);
+                    $producto->setAttribute('best_supplier_price', $supplierData['precio_final_supplier'] ?? 0);
+                    $producto->setAttribute('best_supplier_percentage', $supplierData['percentageIncrease'] ?? 0);
+                } else {
+                    $producto->best_supplier = $bestSupplier;
+                    $producto->best_supplier_price = $supplierData['precio_final_supplier'] ?? 0;
+                    $producto->best_supplier_percentage = $supplierData['percentageIncrease'] ?? 0;
+                }
             }
         }
     }

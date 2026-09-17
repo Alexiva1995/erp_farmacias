@@ -1358,7 +1358,7 @@ class PendingPaymentsController extends Controller
             }
 
             $newPaymentDate = $request->payment_date;
-            $isOverdue = $newPaymentDate ? Carbon::parse($newPaymentDate)->startOfDay()->lte(Carbon::today()) : false;
+            $isOverdue = $newPaymentDate ? Carbon::parse($newPaymentDate)->startOfDay()->lt(Carbon::today()) : false;
 
             $updateData = [
                 'payment_date' => $newPaymentDate,
