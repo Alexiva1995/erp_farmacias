@@ -12,16 +12,24 @@ const isVisible = computed({
   get: () => props.modelValue,
   set: (val) => emit("update:modelValue", val),
 });
+
+const openOriginal = () => {
+  if (props.receiptUrl) {
+    window.open(props.receiptUrl, "_blank");
+  }
+};
 </script>
 
 <template>
   <VDialog
     v-model="isVisible"
-    max-width="700"
+    max-width="850"
+    scrollable
     :fullscreen="$vuetify.display.smAndDown"
+    :transition="$vuetify.display.smAndDown ? 'dialog-bottom-transition' : 'scale-transition'"
   >
-    <VCard class="detail-dialog-card rounded-xl border-0 shadow-xl overflow-hidden bg-surface">
-      <VCardTitle class="pa-0">
+    <VCard class="detail-dialog-card rounded-xl border-0 shadow-xl overflow-hidden bg-surface d-flex flex-column">
+      <VCardTitle class="pa-0 flex-shrink-0">
         <div class="header-gradient pa-4 d-flex align-center shadow-sm">
           <VAvatar
             size="40"
@@ -49,6 +57,16 @@ const isVisible = computed({
             variant="tonal"
             color="white"
             size="small"
+            class="rounded-lg me-1"
+            @click="openOriginal"
+          >
+            <VIcon icon="tabler-external-link" size="18" />
+            <VTooltip activator="parent" location="top">Abrir en pestaña nueva</VTooltip>
+          </IconBtn>
+          <IconBtn
+            variant="tonal"
+            color="white"
+            size="small"
             class="rounded-lg"
             @click="isVisible = false"
           >
@@ -57,27 +75,35 @@ const isVisible = computed({
           </IconBtn>
         </div>
       </VCardTitle>
-      <VCardText class="pa-4 pa-sm-6 text-center bg-light">
-        <VImg
-          :src="props.receiptUrl"
-          alt="Comprobante de Pago"
-          class="rounded-xl border shadow-md mx-auto"
-          contain
-          max-height="600"
-        >
-          <template #placeholder>
-            <div class="d-flex align-center justify-center h-100 pa-10 bg-surface-variant-light">
-              <VProgressCircular indeterminate color="primary" size="40" />
-            </div>
-          </template>
-        </VImg>
+
+      <VCardText class="pa-4 pa-sm-6 text-center bg-light receipt-container">
+        <div class="d-flex justify-center align-center w-100">
+          <img
+            v-if="props.receiptUrl"
+            :src="props.receiptUrl"
+            alt="Comprobante de Pago"
+            class="receipt-image rounded-xl border shadow-md"
+          />
+          <div v-else class="pa-10 text-medium-emphasis">
+            No se ha encontrado el archivo del comprobante.
+          </div>
+        </div>
       </VCardText>
-      <VCardActions class="pa-4 bg-white border-t d-flex justify-end">
+
+      <VCardActions class="pa-4 px-6 bg-white border-t d-flex justify-space-between align-center flex-shrink-0">
+        <VBtn
+          variant="outlined"
+          color="secondary"
+          class="rounded-lg font-weight-bold"
+          prepend-icon="tabler-external-link"
+          @click="openOriginal"
+        >
+          Ver Original
+        </VBtn>
         <VBtn
           color="primary"
           variant="flat"
-          height="42"
-          class="rounded-lg font-weight-black px-6"
+          class="rounded-lg font-weight-bold px-6"
           @click="isVisible = false"
         >
           Cerrar
@@ -94,14 +120,23 @@ const isVisible = computed({
 
 .detail-dialog-card {
   border-radius: 12px !important;
+  max-block-size: 90vh;
 }
 
 .bg-light {
   background-color: #f8faff !important;
 }
 
-.bg-surface-variant-light {
-  background-color: rgba(var(--v-theme-surface-variant), 0.04);
+.receipt-container {
+  overflow-y: auto !important;
+  max-block-size: calc(90vh - 140px);
+}
+
+.receipt-image {
+  max-inline-size: 100%;
+  block-size: auto;
+  object-fit: contain;
+  background-color: #ffffff;
 }
 
 .leading-none {
