@@ -123,17 +123,13 @@ class GeminiService
             $imageData = base64_encode(file_get_contents($imagePath));
             $mimeType = mime_content_type($imagePath) ?: 'image/jpeg';
 
-            $prompt = "Analiza esta imagen que corresponde a un comprobante de pago o capture de transferencia bancaria / móvil. "
-                . "Busca y extrae el número de referencia, número de transacción, número de operación, número de aprobación, o cualquier identificador único de la transacción. "
-                . "Devuelve estrictamente un objeto JSON con el siguiente formato:\n"
-                . "{\n"
-                . "  \"reference\": \"NÚMERO_DE_REFERENCIA_DETECTADO\" o null si no se detecta ninguno claro\n"
-                . "}\n"
-                . "Devuelve exclusivamente el JSON estructurado, sin rodeos, sin bloques de código, solo el objeto plano.";
+            $prompt = "Analiza esta imagen que corresponde a un comprobante de pago, transferencia bancaria o pago móvil (ejemplos comunes en Venezuela: Banco de Venezuela 'Operación: XXXXXXXXXX', Banesco, Mercantil, Provincial, Pago Móvil, etc.). "
+                . "Extrae exclusivamente el número de referencia, número de operación, número de transacción, número de aprobación o identificador numérico único de la transacción. "
+                . "Si encuentras 'Operación: XXXXXXXXXX' o 'Referencia: XXXXXXXXXX', extrae exactamente esa secuencia de dígitos numéricos.";
 
             $response = Http::withHeaders([
                 'x-goog-api-key' => $key,
-            ])->timeout(20)->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={$key}", [
+            ])->timeout(25)->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={$key}", [
                 'contents' => [
                     [
                         'parts' => [
@@ -148,7 +144,17 @@ class GeminiService
                     ]
                 ],
                 'generationConfig' => [
-                    'responseMimeType' => 'application/json'
+                    'responseMimeType' => 'application/json',
+                    'responseSchema' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'reference' => [
+                                'type' => 'string',
+                                'description' => 'Número de referencia o número de operación extraído del comprobante bancario'
+                            ]
+                        ],
+                        'required' => ['reference']
+                    ]
                 ]
             ]);
 
@@ -161,8 +167,10 @@ class GeminiService
 
                 $data = json_decode($textResponse, true);
                 if (json_last_error() === JSON_ERROR_NONE && !empty($data['reference'])) {
-                    return trim($data['reference']);
+                    return ltrim(trim((string)$data['reference']), '# ');
                 }
+            } else {
+                Log::error('[GeminiService] Error API Gemini en extractPaymentReference (' . $response->status() . '): ' . $response->body());
             }
 
             return null;

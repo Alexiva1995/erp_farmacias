@@ -27,14 +27,16 @@ const emit = defineEmits(["update:modelValue", "close", "payment-processed"]);
 
 const { mobile } = useDisplay();
 
+const todayDateStr = new Date().toISOString().split("T")[0];
+
 const form = ref({
   payment_type: "full",
   is_partial: false,
   payment_currency: "VES",
   payment_amount: 0,
-  payment_date: new Date().toISOString().split("T")[0],
+  payment_date: todayDateStr,
   photo_url: null,
-  reference: "",
+  reference: `EFECTIVO-${todayDateStr}`,
   payment_method: "cash",
   destination_bank: null,
 });
@@ -214,17 +216,43 @@ const exchangeRateApplied = ref(1);
 const sourceAmountCalculated = ref(0);
 const customConversionMode = ref(false);
 
+const getRateStorageKey = (src, dest) => `last_exchange_rate_${src}_${dest}`;
+
+const getLastUsedRate = (src, dest) => {
+  try {
+    const saved = localStorage.getItem(getRateStorageKey(src, dest));
+    if (saved && !isNaN(parseFloat(saved)) && parseFloat(saved) > 0) {
+      return parseFloat(saved);
+    }
+  } catch (e) {
+    // Ignorar errores de acceso a localStorage
+  }
+  return null;
+};
+
+const saveLastUsedRate = (src, dest, rate) => {
+  try {
+    if (rate && !isNaN(parseFloat(rate)) && parseFloat(rate) > 0) {
+      localStorage.setItem(getRateStorageKey(src, dest), String(rate));
+    }
+  } catch (e) {
+    // Ignorar errores de acceso a localStorage
+  }
+};
+
 watch(() => form.value.payment_method, (newMethod) => {
   if (newMethod === 'cash') {
-    const dateStr = form.value.payment_date || new Date().toISOString().split("T")[0];
-    form.value.reference = `EFECTIVO-${dateStr}`;
-  } else if (form.value.reference.startsWith('EFECTIVO-')) {
+    if (!form.value.reference || form.value.reference.startsWith('EFECTIVO-')) {
+      const dateStr = form.value.payment_date || new Date().toISOString().split("T")[0];
+      form.value.reference = `EFECTIVO-${dateStr}`;
+    }
+  } else if (form.value.reference && form.value.reference.startsWith('EFECTIVO-')) {
     form.value.reference = '';
   }
 });
 
 watch(() => form.value.payment_date, (newDate) => {
-  if (form.value.payment_method === 'cash') {
+  if (form.value.payment_method === 'cash' && (!form.value.reference || form.value.reference.startsWith('EFECTIVO-'))) {
     form.value.reference = `EFECTIVO-${newDate}`;
   }
 });
@@ -256,11 +284,8 @@ const availablePaymentMethods = computed(() => {
 });
 
 watch(sourceCurrency, (newSource) => {
-  if (newSource === 'COP') {
-    form.value.payment_method = 'cash';
-  } else if (newSource === 'VES' && form.value.payment_method !== 'cash' && form.value.payment_method !== 'mobile') {
-    form.value.payment_method = 'transfer';
-  }
+  // El método de salida por defecto debe ser siempre efectivo
+  form.value.payment_method = 'cash';
 });
 
 const validatePaymentAmount = (value) => {
@@ -340,6 +365,7 @@ const fetchExchangeRates = async () => {
     const rates = {};
     data.forEach(r => rates[r.currency_code] = parseFloat(r.rate));
     exchangeRates.value = rates;
+    updateSourceCalculations();
   } catch (error) {
     console.error("Error al cargar tasas:", error);
   }
@@ -352,13 +378,15 @@ const closeModal = () => {
 };
 
 const resetForm = () => {
+  const today = new Date().toISOString().split("T")[0];
   form.value = {
     payment_type: "full",
+    is_partial: false,
     payment_currency: "VES",
     payment_amount: 0,
-    payment_date: new Date().toISOString().split("T")[0],
+    payment_date: today,
     photo_url: null,
-    reference: "",
+    reference: `EFECTIVO-${today}`,
     payment_method: "cash",
     destination_bank: null,
   };
@@ -378,6 +406,9 @@ const updateSourceCalculations = () => {
     return;
   }
 
+  // Verificar si hay una última tasa de cambio guardada por el usuario para este par de monedas
+  const lastUsedRate = getLastUsedRate(srcCurr, destCurrency);
+
   // Si el destino es VES y origen es COP
   if (destCurrency === 'VES' && srcCurr === 'COP') {
     const copRate = exchangeRates.value["COP"] || 4000;
@@ -385,7 +416,7 @@ const updateSourceCalculations = () => {
     // Tasa COP por 1 Bolívar
     const copPerBs = (copRate / bcvRate);
     if (!customConversionMode.value) {
-      exchangeRateApplied.value = Number(copPerBs.toFixed(4));
+      exchangeRateApplied.value = lastUsedRate || Number(copPerBs.toFixed(4));
     }
     const rawCop = payAmount * exchangeRateApplied.value;
     // Redondear siempre a múltiplos de 100 COP para transacciones de efectivo reales (ej: 236.800 COP)
@@ -395,7 +426,7 @@ const updateSourceCalculations = () => {
   else if (destCurrency === 'VES' && srcCurr === 'USD') {
     const bcvRate = exchangeRates.value["BS"] || props.exchangeRate || 1;
     if (!customConversionMode.value) {
-      exchangeRateApplied.value = Number(bcvRate.toFixed(4));
+      exchangeRateApplied.value = lastUsedRate || Number(bcvRate.toFixed(4));
     }
     sourceAmountCalculated.value = exchangeRateApplied.value > 0 ? Number((payAmount / exchangeRateApplied.value).toFixed(2)) : 0;
   }
@@ -403,7 +434,7 @@ const updateSourceCalculations = () => {
   else if (destCurrency === 'USD' && srcCurr === 'COP') {
     const copRate = exchangeRates.value["COP"] || 4000;
     if (!customConversionMode.value) {
-      exchangeRateApplied.value = Number(copRate.toFixed(2));
+      exchangeRateApplied.value = lastUsedRate || Number(copRate.toFixed(2));
     }
     const rawCop = payAmount * exchangeRateApplied.value;
     sourceAmountCalculated.value = Math.round(rawCop / 100) * 100;
@@ -412,7 +443,7 @@ const updateSourceCalculations = () => {
   else if (destCurrency === 'USD' && srcCurr === 'VES') {
     const bcvRate = exchangeRates.value["BS"] || props.exchangeRate || 1;
     if (!customConversionMode.value) {
-      exchangeRateApplied.value = Number(bcvRate.toFixed(4));
+      exchangeRateApplied.value = lastUsedRate || Number(bcvRate.toFixed(4));
     }
     sourceAmountCalculated.value = Number((payAmount * exchangeRateApplied.value).toFixed(2));
   }
@@ -430,7 +461,11 @@ watch(exchangeRateApplied, (newRate) => {
   const payAmount = Number(form.value.payment_amount) || 0;
   const srcCurr = sourceCurrency.value;
 
-  if (srcCurr === 'VES' && destCurrency === 'VES') return;
+  if (srcCurr === destCurrency) return;
+
+  if (newRate && !isNaN(parseFloat(newRate)) && parseFloat(newRate) > 0) {
+    saveLastUsedRate(srcCurr, destCurrency, parseFloat(newRate));
+  }
 
   if (destCurrency === 'VES' && srcCurr === 'COP') {
     const rawCop = payAmount * Number(newRate || 0);
@@ -475,6 +510,7 @@ const processPayment = async () => {
     });
 
     if (response.data.status === "success") {
+      saveLastUsedRate(sourceCurrency.value, form.value.payment_currency, exchangeRateApplied.value);
       const msg = response.data.message || "Pago procesado";
       toast.success(msg);
       emit("payment-processed");
@@ -513,19 +549,12 @@ const handleFileUpload = async (file) => {
     });
     form.value.photo_url = data.data.url;
 
-    // Si estaba en efectivo, cambiar a transferencia al subir un comprobante bancario
-    if (form.value.payment_method === "cash") {
-      form.value.payment_method = "transfer";
-    }
-
     // Si se detectó automáticamente el número de referencia
     if (data.data.extracted_reference) {
-      form.value.reference = data.data.extracted_reference;
-      toast.success(`Comprobante subido. Referencia detectada: #${data.data.extracted_reference}`);
+      const cleanRef = String(data.data.extracted_reference).replace(/^#+/, '').trim();
+      form.value.reference = cleanRef;
+      toast.success(`Comprobante subido. Referencia detectada: ${cleanRef}`);
     } else {
-      if (form.value.reference && form.value.reference.startsWith("EFECTIVO-")) {
-        form.value.reference = "";
-      }
       toast.success("Comprobante subido correctamente");
     }
   } catch (error) {
@@ -612,6 +641,10 @@ watch(() => form.value.payment_currency, (newCurrency) => {
 watch(() => props.modelValue, (val) => {
   if (val) {
     fetchExchangeRates();
+    const today = new Date().toISOString().split("T")[0];
+    form.value.payment_date = today;
+    form.value.reference = `EFECTIVO-${today}`;
+    form.value.photo_url = null;
     form.value.payment_currency = 'VES';
     sourceCurrency.value = 'COP';
     form.value.payment_method = 'cash';
@@ -711,13 +744,13 @@ watch(() => props.modelValue, (val) => {
               <div class="d-flex flex-column">
                 <span class="text-super-xs font-weight-black text-disabled uppercase">Monto Total a Liquidar</span>
                 <div class="d-flex align-center gap-2 flex-wrap">
-                  <span class="text-h5 font-weight-black text-primary leading-none">${{ formatNumber(totalInUSD) }} USD</span>
+                  <span class="text-h5 font-weight-black text-primary leading-none">{{ formatNumber(totalInUSD, 'USD') }} USD</span>
                   <VDivider
                     vertical
                     class="opacity-10"
                     style="block-size: 16px;"
                   />
-                  <span class="text-h6 font-weight-black text-success leading-none">{{ formatNumber(totalInBS) }} Bs</span>
+                  <span class="text-h6 font-weight-black text-success leading-none">{{ formatNumber(totalInBS, 'VES') }} Bs</span>
                 </div>
               </div>
             </div>
@@ -742,7 +775,7 @@ watch(() => props.modelValue, (val) => {
                   {{ props.invoices.length }} {{ props.invoices.length === 1 ? 'FACTURA' : 'FACTURAS' }}
                 </VChip>
               </div>
-              <span class="text-super-xs text-disabled uppercase font-weight-bold">Tasa BCV Referencial: {{ formatNumber(exchangeRate) }} Bs/USD</span>
+              <span class="text-super-xs text-disabled uppercase font-weight-bold">Tasa BCV Referencial: {{ formatNumber(exchangeRate, 'VES') }} Bs/USD</span>
             </div>
           </div>
 
@@ -768,8 +801,8 @@ watch(() => props.modelValue, (val) => {
                 <tr v-for="inv in props.invoices" :key="inv.id">
                   <td class="text-xs font-weight-bold text-primary">#{{ inv.invoice_number }}</td>
                   <td class="text-xs text-medium-emphasis">{{ inv.control_number && inv.control_number !== 'N/A' ? inv.control_number : 'S/N' }}</td>
-                  <td class="text-xs font-weight-bold text-end">${{ formatNumber(getInvoiceUsdAmount(inv)) }}</td>
-                  <td class="text-xs font-weight-bold text-success text-end">{{ formatNumber(getInvoiceBsAmount(inv)) }} Bs</td>
+                  <td class="text-xs font-weight-bold text-end">{{ formatNumber(getInvoiceUsdAmount(inv), 'USD') }} USD</td>
+                  <td class="text-xs font-weight-bold text-success text-end">{{ formatNumber(getInvoiceBsAmount(inv), 'VES') }} Bs</td>
                   <td class="text-center">
                     <VChip
                       size="x-small"
@@ -794,10 +827,10 @@ watch(() => props.modelValue, (val) => {
               <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">1. Egreso de Caja Real</span>
             </div>
 
-            <VCard variant="flat" class="pa-3 bg-white rounded-lg elevation-1 border h-100">
+            <VCard variant="flat" class="pa-3 bg-white rounded-lg elevation-1 border h-100 d-flex flex-column justify-space-between">
               <VRow dense>
-                <VCol cols="12">
-                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Caja / Moneda de Salida</span>
+                <VCol cols="12" sm="6">
+                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Caja / Moneda Salida</span>
                   <VSelect
                     v-model="sourceCurrency"
                     :items="[
@@ -807,17 +840,36 @@ watch(() => props.modelValue, (val) => {
                     ]"
                     variant="outlined"
                     density="compact"
-                    class="premium-input mb-2"
+                    class="premium-input mb-1"
                     hide-details
                   />
                 </VCol>
 
+                <VCol cols="12" sm="6">
+                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Método de Salida</span>
+                  <VSelect
+                    v-model="form.payment_method"
+                    :items="availablePaymentMethods"
+                    item-title="label"
+                    item-value="value"
+                    :prepend-inner-icon="selectedPaymentMethodIcon"
+                    variant="outlined"
+                    density="compact"
+                    class="premium-input mb-1"
+                    hide-details
+                  >
+                    <template #item="{ props, item }">
+                      <VListItem v-bind="props" :prepend-icon="item.raw.icon" />
+                    </template>
+                  </VSelect>
+                </VCol>
+
                 <!-- Tasa de Conversión si Moneda Origen !== Moneda Destino -->
                 <VCol v-if="sourceCurrency !== form.payment_currency" cols="12">
-                  <div class="pa-2 rounded-lg bg-light-hint border mb-2">
+                  <div class="pa-2 rounded-lg bg-light-hint border mb-1">
                     <div class="d-flex align-center justify-space-between mb-1">
                       <span class="text-super-xs font-weight-bold text-primary uppercase">
-                        Tasa de Cambio de Conversión
+                        Tasa Conversión
                       </span>
                       <span class="text-super-xs text-medium-emphasis font-weight-bold">
                         {{ (sourceCurrency === 'COP' && form.payment_currency === 'VES') ? 'COP X 1Bs' : (sourceCurrency === 'USD' && form.payment_currency === 'VES' ? 'Bs X 1 USD' : (sourceCurrency === 'COP' && form.payment_currency === 'USD' ? 'COP X 1 USD' : (sourceCurrency === 'VES' ? 'Bs' : sourceCurrency) + ' X 1 ' + (form.payment_currency === 'VES' ? 'Bs' : form.payment_currency))) }}
@@ -833,32 +885,13 @@ watch(() => props.modelValue, (val) => {
                       hide-details
                       @input="customConversionMode = true"
                     />
-                    <div class="d-flex align-center justify-space-between text-caption text-medium-emphasis mt-1">
-                      <span>Descuento Real en Caja:</span>
+                    <div class="d-flex align-center justify-space-between text-caption text-medium-emphasis">
+                      <span>Descuento Real:</span>
                       <span class="font-weight-black text-high-emphasis">
                         {{ formatNumber(sourceAmountCalculated) }} {{ sourceCurrency === 'VES' ? 'Bs' : sourceCurrency }}
                       </span>
                     </div>
                   </div>
-                </VCol>
-
-                <VCol cols="12">
-                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Método de Salida</span>
-                  <VSelect
-                    v-model="form.payment_method"
-                    :items="availablePaymentMethods"
-                    item-title="label"
-                    item-value="value"
-                    :prepend-inner-icon="selectedPaymentMethodIcon"
-                    variant="outlined"
-                    density="compact"
-                    class="premium-input mb-2"
-                    hide-details
-                  >
-                    <template #item="{ props, item }">
-                      <VListItem v-bind="props" :prepend-icon="item.raw.icon" />
-                    </template>
-                  </VSelect>
                 </VCol>
 
                 <VCol cols="12">
@@ -882,7 +915,7 @@ watch(() => props.modelValue, (val) => {
               <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">2. Liquidación al Proveedor</span>
             </div>
 
-            <VCard variant="flat" class="pa-3 bg-white rounded-lg elevation-1 border h-100">
+            <VCard variant="flat" class="pa-3 bg-white rounded-lg elevation-1 border h-100 d-flex flex-column justify-space-between">
               <VRow dense>
                 <VCol cols="12">
                   <div class="d-flex align-center justify-space-between mb-1">
@@ -899,13 +932,13 @@ watch(() => props.modelValue, (val) => {
                     </VCheckbox>
                   </div>
 
-                  <div class="d-flex gap-2 mb-2">
+                  <div class="d-flex gap-2 mb-1">
                     <VSelect
                       v-model="form.payment_currency"
                       :items="[ {title: 'Bs', value: 'VES'}, {title: 'USD', value: 'USD'}, {title: 'COP', value: 'COP'} ]"
                       variant="outlined"
                       density="compact"
-                      style="max-width: 95px;"
+                      style="max-width: 90px;"
                       hide-details
                     />
                     <VTextField
@@ -933,7 +966,7 @@ watch(() => props.modelValue, (val) => {
                     placeholder="SELECCIONE BANCO DESTINO"
                     variant="outlined"
                     density="compact"
-                    class="premium-input mb-2"
+                    class="premium-input mb-1"
                     clearable
                     prepend-inner-icon="tabler-building-bank"
                     hide-details
@@ -954,14 +987,14 @@ watch(() => props.modelValue, (val) => {
                     variant="outlined"
                     density="compact"
                     prepend-inner-icon="tabler-hash"
-                    class="premium-input mb-2"
+                    class="premium-input mb-1"
                     hide-details="auto"
                   />
                 </VCol>
 
                 <VCol cols="12">
                   <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">
-                    Comprobante (Pegar con Ctrl+V o Subir)
+                    Comprobante (Pegar o Subir)
                   </span>
                   <VFileInput
                     variant="outlined"
@@ -972,7 +1005,7 @@ watch(() => props.modelValue, (val) => {
                     placeholder="Adjuntar o pegar recibo..."
                     accept="image/*,application/pdf"
                     :error="form.payment_method !== 'cash' && form.reference && !form.photo_url"
-                    :error-messages="form.payment_method !== 'cash' && form.reference && !form.photo_url ? ['El comprobante es requerido si hay referencia'] : []"
+                    :error-messages="form.payment_method !== 'cash' && form.reference && !form.photo_url ? ['Requerido'] : []"
                     hide-details="auto"
                     :loading="uploading"
                     @update:model-value="handleFileUpload"

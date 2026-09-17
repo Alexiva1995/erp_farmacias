@@ -125,32 +125,41 @@ class ReceiptOcrService implements ReceiptOcrServiceInterface
      */
     public function findReferenceInText(string $text): ?string
     {
+        // 1. Patrones directos en la misma línea
         $patterns = [
-            '/(?:referencia|ref|operacion|operación|aprobacion|aprobación|secuencia|transaccion|transacción|comprobante|clave\s*de\s*pago|codigo\s*de\s*pago|código\s*de\s*referencia)[^0-9\n\r:]{0,20}[:\s#]*([0-9]{4,18})/iu',
-            '/(?:n[uú]mero\s*de|nro\.?\s*de)\s*(?:referencia|operaci[oó]n|aprobaci[oó]n|secuencia|transacci[oó]n|comprobante)[^0-9\n\r:]{0,20}[:\s#]*([0-9]{4,18})/iu',
+            '/(?:n[uú]mero\s*(?:de)?\s*operaci[oó]n|nro\.?\s*(?:de)?\s*operaci[oó]n|operaci[oó]n|n[uú]mero\s*(?:de)?\s*referencia|nro\.?\s*(?:de)?\s*referencia|referencia|ref\.?|aprobaci[oó]n|secuencia|transacci[oó]n|clave\s*de\s*pago|c[oó]digo\s*de\s*pago|c[oó]digo\s*de\s*referencia)[^0-9\n\r:]{0,25}[:\s#]*([0-9]{4,18})/iu',
             '/(?:operaci[oó]n|referencia|ref)[\s:]+([0-9]{4,18})/iu',
         ];
 
         foreach ($patterns as $pattern) {
-            if (preg_match($pattern, $text, $matches)) {
-                $ref = trim($matches[1]);
-                if (strlen($ref) >= 4) {
-                    return $ref;
+            if (preg_match_all($pattern, $text, $matches)) {
+                foreach ($matches[1] as $match) {
+                    $ref = ltrim(trim($match), '# ');
+                    if (strlen($ref) >= 4 && strlen($ref) <= 18) {
+                        return $ref;
+                    }
                 }
             }
         }
 
-        $lines = explode("\n", $text);
+        // 2. Patrones de dos líneas (ej. Banco de Venezuela donde 'Operación' está en una línea y el número en la siguiente)
+        $lines = array_values(array_filter(array_map('trim', explode("\n", $text)), fn($l) => $l !== ''));
         for ($i = 0; $i < count($lines); $i++) {
-            $line = trim($lines[$i]);
-            if (preg_match('/^(?:referencia|ref|operaci[oó]n|aprobaci[oó]n|secuencia|transacci[oó]n)[^0-9]*[:\s]*/iu', $line)) {
+            $line = $lines[$i];
+            if (preg_match('/(?:operaci[oó]n|referencia|ref|secuencia|transacci[oó]n|aprobaci[oó]n)/iu', $line)) {
                 if (preg_match('/([0-9]{4,18})/', $line, $inlineMatch)) {
-                    return $inlineMatch[1];
+                    $cleanInline = ltrim(trim($inlineMatch[1]), '# ');
+                    if (strlen($cleanInline) >= 4 && strlen($cleanInline) <= 18) {
+                        return $cleanInline;
+                    }
                 }
                 if (isset($lines[$i + 1])) {
-                    $nextLine = trim($lines[$i + 1]);
+                    $nextLine = $lines[$i + 1];
                     if (preg_match('/([0-9]{4,18})/', $nextLine, $m)) {
-                        return $m[1];
+                        $cleanNext = ltrim(trim($m[1]), '# ');
+                        if (strlen($cleanNext) >= 4 && strlen($cleanNext) <= 18) {
+                            return $cleanNext;
+                        }
                     }
                 }
             }

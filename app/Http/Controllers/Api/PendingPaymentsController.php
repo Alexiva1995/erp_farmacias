@@ -380,6 +380,9 @@ class PendingPaymentsController extends Controller
 
             DB::commit();
 
+            $submissionMessage = '';
+            $portalWarning = '';
+
             // 9. Si el proveedor es Dronena y se indicó banco/referencia, reportar el pago automáticamente en el portal
             $dronenaResult = null;
             $supplierName = strtoupper($invoices->first()?->supplier?->name ?? '');
@@ -394,8 +397,14 @@ class PendingPaymentsController extends Controller
                         $request->payment_date,
                         $request->photo_url
                     );
+                    if (!empty($dronenaResult['success'])) {
+                        $submissionMessage .= ' y reportado en Dronena';
+                    } elseif (!empty($dronenaResult['message'])) {
+                        $portalWarning .= ' (Advertencia Dronena: ' . $dronenaResult['message'] . ')';
+                    }
                 } catch (\Throwable $dEx) {
                     Log::warning('[PendingPayments] Error reportando pago en Dronena: ' . $dEx->getMessage());
+                    $portalWarning .= ' (Error conexión Dronena)';
                 }
             }
 
@@ -414,8 +423,14 @@ class PendingPaymentsController extends Controller
                         (string) ($request->id_type ?? 'V'),
                         (string) ($request->id_number ?? '24150980')
                     );
+                    if (!empty($mafartaResult['success'])) {
+                        $submissionMessage .= ' y reportado en Cobeca/Mafarta';
+                    } elseif (!empty($mafartaResult['message'])) {
+                        $portalWarning .= ' (Advertencia Cobeca/Mafarta: ' . $mafartaResult['message'] . ')';
+                    }
                 } catch (\Throwable $mEx) {
                     Log::warning('[PendingPayments] Error reportando pago en Cobeca/Mafarta: ' . $mEx->getMessage());
+                    $portalWarning .= ' (Error conexión Cobeca/Mafarta)';
                 }
             }
 
@@ -431,8 +446,14 @@ class PendingPaymentsController extends Controller
                         (string) ($request->destination_bank ?? '30'),
                         $request->payment_date
                     );
+                    if (!empty($cristmedicalsResult['success'])) {
+                        $submissionMessage .= ' y reportado en Cristmedicals';
+                    } elseif (!empty($cristmedicalsResult['message'])) {
+                        $portalWarning .= ' (Advertencia Cristmedicals: ' . $cristmedicalsResult['message'] . ')';
+                    }
                 } catch (\Throwable $cEx) {
                     Log::warning('[PendingPayments] Error reportando pago en Cristmedicals: ' . $cEx->getMessage());
+                    $portalWarning .= ' (Error conexión Cristmedicals)';
                 }
             }
 
@@ -449,8 +470,14 @@ class PendingPaymentsController extends Controller
                         $request->payment_date,
                         $request->photo_url
                     );
+                    if (!empty($dromegaResult['success'])) {
+                        $submissionMessage .= ' y reportado en Droguería Mega';
+                    } elseif (!empty($dromegaResult['message'])) {
+                        $portalWarning .= ' (Advertencia Droguería Mega: ' . $dromegaResult['message'] . ')';
+                    }
                 } catch (\Throwable $dmEx) {
                     Log::warning('[PendingPayments] Error reportando pago en Droguería Mega: ' . $dmEx->getMessage());
+                    $portalWarning .= ' (Error conexión Droguería Mega)';
                 }
             }
 
