@@ -24,7 +24,6 @@ const brandingStore = useBrandingStore();
 const isMinimarket = computed(() => {
   return brandingStore.settings?.business_type === 'minimarket' || props.settings?.profitability_calculation_type === 'compound';
 });
-const isMiniMarket = isMinimarket;
 
 const previewSalePrice = computed(() => {
   const cost = Number(props.product.unit_cost || 0);
@@ -41,6 +40,17 @@ const previewSalePrice = computed(() => {
   }
   return roundUp ? Math.ceil(price).toFixed(2) : price.toFixed(2);
 });
+
+const quickPercentages = [15, 20, 25, 30, 35];
+
+const adjustPercentage = (delta) => {
+  const current = Number(percentage.value) || 0;
+  percentage.value = Math.max(0, current + delta);
+};
+
+const setQuickPercentage = (val) => {
+  percentage.value = val;
+};
 
 watch(
   () => props.product,
@@ -103,16 +113,12 @@ const checkExistenceAndSave = async () => {
     return;
   }
 
-  // Si no tiene ID de rentabilidad, verificamos en el backend por si acaso
   try {
     const response = await axios.get(`/finances/profitability/product/${props.product.product_id}`);
     if (response.status === 200) {
-      // Ya existe en BD, usamos el ID que venga si es posible o simplemente enviamos a update
-      // Para simplificar según la lógica original:
       await saveProfitability();
     }
   } catch (error) {
-    // No existe, crear nuevo
     await saveProfitability();
   }
 };
@@ -121,325 +127,309 @@ const checkExistenceAndSave = async () => {
 <template>
   <VDialog 
     :model-value="props.dialog" 
-    max-width="500px"
+    max-width="520px"
     persistent
     :fullscreen="$vuetify.display.smAndDown"
     @update:model-value="emit('close-modal')"
   >
-    <VCard :class="mobile ? 'rounded-0' : 'detail-dialog-card rounded-xl border-0 shadow-xl overflow-hidden bg-surface'">
-      <!-- Header Premium -->
-      <VCardTitle class="pa-0">
-        <div class="header-gradient pa-4 d-flex align-center shadow-sm">
+    <VCard class="rounded-xl border shadow-xl overflow-hidden bg-surface">
+      <!-- Encabezado Estandarizado -->
+      <VCardTitle class="pa-4 pa-sm-5 d-flex align-center justify-space-between border-b">
+        <div class="d-flex align-center gap-3">
           <VAvatar
-            color="white"
-            variant="flat"
+            color="primary"
+            variant="tonal"
             size="40"
-            class="me-3 elevation-1"
+            class="rounded-lg"
           >
             <VIcon
-              icon="tabler-coin-bitcoin"
-              size="24"
-              color="primary"
+              icon="tabler-trending-up"
+              size="22"
             />
           </VAvatar>
-          <div class="d-flex flex-column leading-none">
-            <h2 class="text-h6 font-weight-black text-white leading-tight mb-0">
+          <div class="d-flex flex-column">
+            <span class="text-h6 font-weight-bold text-high-emphasis leading-tight">
               Ajuste de Rentabilidad
-            </h2>
-            <div class="d-flex align-center gap-2 mt-1">
-              <span
-                class="text-white opacity-75 uppercase font-weight-bold"
-                style="font-size: 0.6rem; letter-spacing: 0.05em;"
-              >
-                Configuración de Margen Individual • Barrio Sucre
-              </span>
-            </div>
+            </span>
+            <span class="text-caption text-medium-emphasis">
+              Configuración de Margen Individual • {{ brandingStore.settings?.branch_name || 'Sucursal Principal' }}
+            </span>
           </div>
-          <VSpacer />
-          <VBtn
-            icon="tabler-x"
-            variant="tonal"
-            color="white"
-            size="small"
-            class="rounded-lg"
-            @click="emit('close-modal')"
-            :disabled="loading"
-          />
         </div>
+        <IconBtn
+          color="secondary"
+          size="small"
+          @click="emit('close-modal')"
+          :disabled="loading"
+        >
+          <VIcon icon="tabler-x" size="20" />
+          <VTooltip activator="parent" location="top">Cerrar</VTooltip>
+        </IconBtn>
       </VCardTitle>
 
-      <VCardText class="pa-4 pa-sm-6 bg-light d-flex flex-column gap-4" style="max-height: 65vh; overflow-y: auto;">
+      <VCardText class="pa-4 pa-sm-6 d-flex flex-column gap-4 bg-background">
         <!-- Perfil del Producto -->
         <VCard
           variant="flat"
-          class="pa-4 bg-white rounded-xl border shadow-sm"
+          class="pa-4 bg-surface rounded-lg border"
         >
-          <div class="d-flex align-center justify-space-between mb-3">
+          <div class="d-flex align-center justify-space-between mb-2">
             <VChip
               size="small"
               color="primary"
-              variant="flat"
-              class="font-weight-black px-3 rounded-lg"
+              variant="tonal"
+              class="font-weight-black rounded"
             >
               ID: {{ props.product.product_id }}
             </VChip>
-            <div class="d-flex align-center gap-2 text-disabled leading-none">
+            <div class="d-flex align-center gap-1 text-disabled">
               <VIcon
                 icon="tabler-barcode"
-                size="16"
+                size="15"
               />
-              <span class="text-super-xs font-weight-black uppercase letter-spacing-1">Producto TPV</span>
+              <span class="text-super-xs font-weight-bold uppercase">Producto TPV</span>
             </div>
           </div>
-          <h3 class="text-subtitle-1 font-weight-black text-high-emphasis leading-tight uppercase mb-0">
+          <h3 class="text-subtitle-1 font-weight-black text-high-emphasis leading-snug uppercase mb-0">
             {{ props.product.name || "Ajuste Directo de Margen" }}
           </h3>
         </VCard>
 
-        <!-- Configuración de Margen -->
-        <div class="d-flex align-center gap-2 mb-0 mt-2">
-          <div class="header-indicator primary shadow-sm" />
-          <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Parámetros Financieros</span>
-        </div>
+        <!-- Resumen Financiero en Vivo -->
+        <VCard variant="flat" class="pa-3 bg-surface rounded-lg border">
+          <div class="d-flex align-center justify-space-between">
+            <div class="d-flex flex-column">
+              <span class="text-super-xs font-weight-bold text-medium-emphasis uppercase">Costo Base</span>
+              <span class="text-sm font-weight-bold text-high-emphasis">
+                ${{ Number(props.product.unit_cost || 0).toFixed(2) }} USD
+              </span>
+            </div>
+            <VDivider vertical class="mx-2" style="height: 32px;" />
+            <div class="d-flex flex-column">
+              <span class="text-super-xs font-weight-bold text-medium-emphasis uppercase">PVP Actual</span>
+              <span class="text-sm font-weight-bold text-medium-emphasis">
+                ${{ Number(props.product.sale_price || 0).toFixed(2) }} USD
+              </span>
+            </div>
+            <VDivider vertical class="mx-2" style="height: 32px;" />
+            <div class="d-flex flex-column align-end">
+              <span class="text-super-xs font-weight-bold text-primary uppercase">PVP Proyectado</span>
+              <span class="text-base font-weight-black text-success">
+                ${{ previewSalePrice }} USD
+              </span>
+            </div>
+          </div>
+        </VCard>
 
+        <!-- Sección Minimarket (Campos Compuestos) -->
         <VCard
+          v-if="isMinimarket"
           variant="flat"
-          class="pa-5 bg-white rounded-xl border shadow-sm"
+          class="pa-4 bg-surface rounded-lg border"
         >
-          <VRow dense v-if="isMinimarket">
+          <div class="text-xs font-weight-bold text-disabled uppercase mb-3 letter-spacing-1">
+            Parámetros de Costo y Margen
+          </div>
+          <VRow dense>
             <VCol cols="12">
               <AppTextField
-                v-slot:default
                 v-model="taxUsa"
                 label="TAX (USA) (%)"
                 placeholder="Ej: 7"
                 type="number"
                 suffix="%"
                 prepend-inner-icon="tabler-receipt-tax"
-                density="comfortable"
+                density="compact"
                 hide-details="auto"
               />
             </VCol>
             <VCol cols="12" sm="6">
               <AppTextField
-                v-slot:default
                 v-model="shippingCost"
                 label="Envío por Unidad (USD)"
                 placeholder="Ej: 0.90"
                 type="number"
                 prepend-inner-icon="tabler-truck-delivery"
-                density="comfortable"
+                density="compact"
                 hide-details="auto"
               />
             </VCol>
             <VCol cols="12" sm="6">
               <AppTextField
-                v-slot:default
                 v-model="packagingCost"
                 label="Embalaje por Unidad (USD)"
                 placeholder="Ej: 1.20"
                 type="number"
                 prepend-inner-icon="tabler-box"
-                density="comfortable"
+                density="compact"
                 hide-details="auto"
               />
             </VCol>
             <VCol cols="12" sm="6">
               <AppTextField
-                v-slot:default
                 v-model="expenseMargin"
                 label="Margen Gasto Fijo (%)"
                 placeholder="Ej: 26"
                 type="number"
                 suffix="%"
                 prepend-inner-icon="tabler-percentage"
-                density="comfortable"
+                density="compact"
                 hide-details="auto"
               />
             </VCol>
             <VCol cols="12" sm="6">
               <AppTextField
-                v-slot:default
                 v-model="profitMargin"
-                label="Margen Ganancia Deseada (%)"
+                label="Margen Ganancia (%)"
                 placeholder="Ej: 30"
                 type="number"
                 suffix="%"
                 prepend-inner-icon="tabler-trending-up"
-                density="comfortable"
+                density="compact"
                 hide-details="auto"
               />
-            </VCol>
-            <VCol cols="12" class="mt-4">
-              <div class="pa-4 rounded-lg text-center" style="background-color: var(--v-theme-background); border: 1px solid rgba(var(--v-border-color), 0.12);">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Precio de Venta Sugerido</span>
-                <span class="text-h4 font-weight-950 text-success">${{ previewSalePrice }} USD</span>
-              </div>
-            </VCol>
-          </VRow>
-          <VRow dense v-else>
-            <VCol cols="12">
-              <div class="text-center py-4">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block letter-spacing-1">Porcentaje de Rentabilidad Objetivo</span>
-                <VTextField
-                  v-model="percentage"
-                  placeholder="0"
-                  type="number"
-                  suffix="%"
-                  variant="plain"
-                  class="ultra-huge-input-text h-auto font-weight-950"
-                  density="compact"
-                  hide-details
-                  autofocus
-                  @keyup.enter="checkExistenceAndSave"
-                />
-              </div>
             </VCol>
           </VRow>
         </VCard>
 
-        <!-- Nota de Seguridad -->
-        <div class="mt-2 pa-4 rounded-xl bg-error bg-opacity-10 border-dashed-2 d-flex align-center gap-4">
-          <VAvatar
-            color="error"
-            variant="tonal"
-            size="40"
-            class="rounded-lg"
-          >
-            <VIcon
-              icon="tabler-shield-lock"
-              size="24"
-            />
-          </VAvatar>
-          <div class="d-flex flex-column leading-none">
-            <span class="text-xs font-weight-black text-black uppercase letter-spacing-1 mb-1">Restricción de Bloqueo</span>
-            <p class="text-super-xs text-medium-emphasis mb-0 leading-tight">
-              Al guardar este porcentaje, el producto quedará **excluido** automáticamente de cualquier ajuste de rentabilidad global masivo.
-            </p>
+        <!-- Sección Farmacia/Estándar (Input Numérico Robusto con Sugerencias) -->
+        <VCard
+          v-else
+          variant="flat"
+          class="pa-4 bg-surface rounded-lg border"
+        >
+          <div class="d-flex align-center justify-space-between mb-2">
+            <span class="text-xs font-weight-bold text-disabled uppercase letter-spacing-1">
+              Margen de Utilidad Objetivo
+            </span>
           </div>
-        </div>
+
+          <div class="d-flex align-center gap-2 mb-3">
+            <VBtn
+              icon
+              variant="tonal"
+              color="secondary"
+              size="40"
+              class="rounded-lg"
+              @click="adjustPercentage(-5)"
+              :disabled="Number(percentage) <= 0"
+            >
+              <VIcon icon="tabler-minus" size="20" />
+              <VTooltip activator="parent" location="top">-5%</VTooltip>
+            </VBtn>
+
+            <VTextField
+              v-model="percentage"
+              type="number"
+              suffix="%"
+              placeholder="0"
+              variant="outlined"
+              density="comfortable"
+              class="text-center font-weight-bold"
+              hide-details
+              autofocus
+              @keyup.enter="checkExistenceAndSave"
+            />
+
+            <VBtn
+              icon
+              variant="tonal"
+              color="primary"
+              size="40"
+              class="rounded-lg"
+              @click="adjustPercentage(5)"
+            >
+              <VIcon icon="tabler-plus" size="20" />
+              <VTooltip activator="parent" location="top">+5%</VTooltip>
+            </VBtn>
+          </div>
+
+          <!-- Botones de Sugerencia Rápida -->
+          <div class="d-flex align-center justify-space-between flex-wrap gap-1">
+            <span class="text-super-xs font-weight-bold text-medium-emphasis">Sugeridos:</span>
+            <div class="d-flex align-center gap-1">
+              <VChip
+                v-for="p in quickPercentages"
+                :key="p"
+                size="small"
+                variant="tonal"
+                :color="Number(percentage) === p ? 'primary' : 'secondary'"
+                class="font-weight-black cursor-pointer"
+                @click="setQuickPercentage(p)"
+              >
+                {{ p }}%
+              </VChip>
+            </div>
+          </div>
+        </VCard>
+
+        <!-- Alerta Semántica Tonal -->
+        <VAlert
+          type="warning"
+          variant="tonal"
+          density="compact"
+          class="rounded-lg border-0"
+          icon="tabler-shield-lock"
+        >
+          <span class="text-caption font-weight-medium">
+            Al guardar, el producto quedará <strong>bloqueado</strong> y excluido de ajustes masivos de rentabilidad global.
+          </span>
+        </VAlert>
       </VCardText>
 
       <VDivider />
 
-      <!-- Acciones de Modal -->
-      <VCardActions class="pa-4 bg-white border-t px-6">
-        <VRow
-          dense
-          class="w-100 ma-0"
+      <!-- Acciones del Modal -->
+      <VCardActions class="pa-4 bg-surface d-flex justify-end gap-2">
+        <VBtn
+          color="secondary"
+          variant="outlined"
+          class="font-weight-bold rounded-lg px-4"
+          @click="emit('close-modal')"
+          :disabled="loading"
         >
-          <VCol
-            cols="12"
-            sm="6"
-            class="pa-1"
-          >
-            <VBtn
-              color="secondary"
-              variant="outlined"
-              height="50"
-              block
-              class="font-weight-black rounded-lg text-button uppercase"
-              @click="emit('close-modal')"
-              :disabled="loading"
-            >
-              Cancelar
-            </VBtn>
-          </VCol>
-          <VCol
-            cols="12"
-            sm="6"
-            class="pa-1"
-          >
-            <VBtn
-              color="primary"
-              variant="flat"
-              height="50"
-              block
-              class="font-weight-black rounded-lg shadow-primary text-button uppercase"
-              :loading="loading"
-              :disabled="loading || (!isMinimarket && !percentage)"
-              @click="checkExistenceAndSave"
-            >
-              <VIcon
-                start
-                icon="tabler-device-floppy"
-                size="18"
-              />
-              {{ props.product.id ? 'Actualizar' : 'Registrar' }}
-            </VBtn>
-          </VCol>
-        </VRow>
+          Cancelar
+        </VBtn>
+        <VBtn
+          color="primary"
+          variant="flat"
+          class="font-weight-bold rounded-lg px-5"
+          :loading="loading"
+          :disabled="loading || (!isMinimarket && (percentage === null || percentage === ''))"
+          @click="checkExistenceAndSave"
+        >
+          <VIcon
+            start
+            icon="tabler-device-floppy"
+            size="18"
+          />
+          {{ props.product.id ? 'Actualizar Margen' : 'Guardar Margen' }}
+        </VBtn>
       </VCardActions>
     </VCard>
   </VDialog>
 </template>
 
 <style scoped>
-.header-gradient {
-  background: linear-gradient(
-    135deg,
-    rgb(var(--v-theme-primary)) 0%,
-    rgb(var(--v-theme-gradient-end)) 100%
-  );
-}
-
-.detail-dialog-card {
-  border-radius: 12px !important;
-}
-
-.header-indicator {
-  inline-size: 4px;
-  block-size: 16px;
-  border-radius: 10px;
-}
-
-.header-indicator.primary {
-  background-color: rgb(var(--v-theme-primary));
-}
-
-.shadow-primary {
-  box-shadow: 0 4px 14px 0 rgba(var(--v-theme-primary), 0.39) !important;
-}
-
 .text-super-xs {
   font-size: 0.65rem !important;
   line-height: normal;
 }
 
 .letter-spacing-1 {
-  letter-spacing: 1px !important;
+  letter-spacing: 0.05rem !important;
 }
 
-.leading-none {
-  line-height: 1 !important;
+.leading-tight {
+  line-height: 1.25 !important;
 }
 
-.border-t {
-  border-block-start: 1px solid rgba(var(--v-border-color), 0.08) !important;
+.leading-snug {
+  line-height: 1.35 !important;
 }
 
-.border-dashed-2 {
-  border: 1px dashed rgba(var(--v-border-color), 0.3) !important;
-}
-
-.ultra-huge-input-text :deep(input) {
-  border: none;
-  background: transparent;
-  block-size: auto;
-  color: rgb(var(--v-theme-primary)) !important;
-  font-size: 3rem !important;
-  font-weight: 950 !important;
-  inline-size: 100%;
-  line-height: 1;
-  outline: none;
-  text-align: center !important;
-}
-
-.ultra-huge-input-text :deep(.v-field__input) {
-  padding: 0 !important;
-}
-
-.italic {
-  font-style: italic;
+.border-b {
+  border-block-end: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)) !important;
 }
 </style>
+

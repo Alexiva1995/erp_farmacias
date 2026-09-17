@@ -110,7 +110,7 @@ const headers = [
   { title: "Monto BS", key: "remaining_amount", sortable: false, align: "end" },
   { title: "Indexada", key: "is_indexed", sortable: false, width: "80px", align: "center" },
   { title: "Estado", key: "status", sortable: false, align: "center" },
-  { title: "", key: "actions", sortable: false, align: "center" },
+  { title: "Acciones", key: "actions", sortable: false, align: "center" },
 ];
 
 const selectedAll = computed(() => {
@@ -212,7 +212,7 @@ const openInvoiceTab = (item) => {
 </script>
 
 <template>
-  <div class="mt-4">
+  <div class="pending-payment-table-wrapper">
     <!-- Vista Escritorio -->
     <VCard v-if="!mobile" class="rounded-lg border shadow-sm overflow-hidden bg-surface">
       <VDataTable
@@ -221,7 +221,8 @@ const openInvoiceTab = (item) => {
         :loading="props.loading"
         :items-per-page="props.itemsPerPage"
         :page="props.page"
-        class="text-no-wrap premium-table"
+        density="comfortable"
+        class="text-no-wrap"
         @update:options="(options) => emit('update:options', options)"
       >
         <template #header.select>
@@ -249,11 +250,11 @@ const openInvoiceTab = (item) => {
           <div class="d-flex flex-column">
             <a
               href="javascript:void(0)"
-              class="text-xs font-weight-black text-primary text-decoration-none d-inline-flex align-center gap-1 cursor-pointer"
+              class="text-sm font-weight-black text-primary text-decoration-none d-inline-flex align-center gap-1 cursor-pointer"
               @click.stop="openInvoiceTab(item)"
             >
               <span>{{ item.invoice_number }}</span>
-              <VIcon icon="tabler-external-link" size="13" class="opacity-75" />
+              <VIcon icon="tabler-external-link" size="14" class="opacity-75" />
               <VTooltip activator="parent" location="top">Abrir factura en nueva pestaña</VTooltip>
             </a>
             <span class="text-super-xs text-medium-emphasis">Ctrl: {{ (item.control_number && item.control_number !== 'N/A') ? item.control_number : 'N/A' }}</span>
@@ -262,11 +263,11 @@ const openInvoiceTab = (item) => {
 
         <template #item.supplier_name="{ item }">
           <div class="d-flex align-center gap-3 py-2">
-            <VAvatar :color="getAvatarColor(item.supplier_name)" variant="tonal" size="30" class="rounded-lg">
+            <VAvatar :color="getAvatarColor(item.supplier_name)" variant="tonal" size="32" class="rounded-lg">
               <span class="text-super-xs font-weight-black">{{ getInitials(item.supplier_name) }}</span>
             </VAvatar>
-            <div class="d-flex flex-column">
-              <span class="text-xs font-weight-bold text-high-emphasis truncate text-capitalize max-w-180">
+            <div class="d-flex flex-column min-width-0">
+              <span class="text-sm font-weight-bold text-high-emphasis text-truncate text-capitalize max-w-180">
                 {{ item.supplier_name }}
               </span>
               <span class="text-super-xs text-medium-emphasis">RIF: {{ (item.supplier_rif && item.supplier_rif !== 'N/A') ? item.supplier_rif : 'N/A' }}</span>
@@ -282,7 +283,7 @@ const openInvoiceTab = (item) => {
               :color="isOverdue(item.payment_date) ? 'error' : 'disabled'" 
             />
             <div class="d-flex flex-column">
-              <span class="text-xs font-weight-black" :class="isOverdue(item.payment_date) ? 'text-error' : 'text-high-emphasis'">
+              <span class="text-sm font-weight-black" :class="isOverdue(item.payment_date) ? 'text-error' : 'text-high-emphasis'">
                 {{ formatDueDate(item.payment_date) }}
               </span>
               <span class="text-super-xs text-disabled">Pago: {{ formatDate(item.payment_date) }}</span>
@@ -291,12 +292,12 @@ const openInvoiceTab = (item) => {
         </template>
 
         <template #item.original_amount="{ item }">
-          <span class="text-xs font-weight-bold">{{ formatCurrency(getEffectiveUSD(item), "USD", true) }}</span>
+          <span class="text-sm font-weight-bold text-high-emphasis">{{ formatCurrency(getEffectiveUSD(item), "USD", true) }}</span>
         </template>
 
         <template #item.remaining_amount="{ item }">
           <div class="d-flex flex-column align-end">
-            <span class="text-xs font-weight-black" :class="getRemainingAmountClass(item)">
+            <span class="text-sm font-weight-black" :class="getRemainingAmountClass(item)">
               {{ formatCurrency(getDisplayAmount(item), item.currency, true) }}
             </span>
             <div v-if="item.nd_referential_amount > 0 || item.claim_amount > 0" class="d-flex align-center gap-1 mt-0">
@@ -329,8 +330,6 @@ const openInvoiceTab = (item) => {
           />
         </template>
 
-        <!-- Columna Total Prov Eliminada por solicitud de usuario -->
-
         <template #item.status="{ item }">
           <VChip :color="getStatusColor(item.status)" variant="tonal" size="x-small" class="font-weight-black rounded">
             {{ getStatusText(item.status) }}
@@ -338,24 +337,21 @@ const openInvoiceTab = (item) => {
         </template>
 
         <template #item.actions="{ item }">
-          <div class="d-flex align-center gap-1">
+          <div class="d-flex justify-center align-center gap-1">
             <!-- Editar Fecha -->
             <VMenu v-if="authStore.isAdmin" v-model="menuStates[item.id]" :close-on-content-click="false" location="start">
               <template #activator="{ props: menuProps }">
-                <VBtn
+                <IconBtn
                   v-bind="menuProps"
-                  icon
-                  variant="tonal"
-                  size="32"
                   color="info"
-                  class="rounded-circle shadow-sm"
+                  size="small"
                   :loading="!!props.updatingDates[item.id]"
                   :disabled="!!props.updatingDates[item.id]"
                   @click="openMenu(item)"
                 >
                   <VIcon icon="tabler-calendar" size="18" />
                   <VTooltip activator="parent" location="top">Cambiar Fecha Vencimiento</VTooltip>
-                </VBtn>
+                </IconBtn>
               </template>
               <VCard min-width="280" class="pa-4 rounded-lg shadow-lg">
                 <div class="text-xs font-weight-black uppercase mb-2 text-disabled">Nueva Fecha Pago</div>
@@ -383,51 +379,42 @@ const openInvoiceTab = (item) => {
             </VMenu>
 
             <!-- Ver / Descargar PDF de la Factura -->
-            <VBtn
+            <IconBtn
               v-if="item.pdf_url || item.invoice_photo"
-              icon
-              variant="tonal"
-              size="32"
               color="error"
-              class="rounded-circle shadow-sm"
+              size="small"
               :href="item.pdf_url || `/storage/${item.invoice_photo}`"
               target="_blank"
             >
               <VIcon icon="tabler-file-type-pdf" size="18" />
               <VTooltip activator="parent" location="top">Ver / Descargar PDF Digital</VTooltip>
-            </VBtn>
+            </IconBtn>
 
             <!-- Marcar como Pagado Directamente -->
-            <VBtn
+            <IconBtn
               v-if="authStore.isAdmin"
-              icon
-              variant="tonal"
-              size="32"
               color="primary"
-              class="rounded-circle shadow-sm"
+              size="small"
               @click="emit('mark-as-paid', item)"
             >
               <VIcon icon="tabler-square-check" size="18" />
               <VTooltip activator="parent" location="top">Marcar Pagada (Sin Gasto)</VTooltip>
-            </VBtn>
+            </IconBtn>
 
             <!-- Procesar Pago (Original) -->
-            <VBtn
-              icon
-              variant="tonal"
-              size="32"
+            <IconBtn
               color="success"
-              class="rounded-circle shadow-sm"
+              size="small"
               @click="emit('process-payment', item)"
             >
               <VIcon icon="tabler-credit-card" size="18" />
               <VTooltip activator="parent" location="top">Procesar Pago</VTooltip>
-            </VBtn>
+            </IconBtn>
           </div>
         </template>
 
         <template #loading>
-          <div class="pa-8 text-center bg-white">
+          <div class="pa-8 text-center bg-surface">
             <VProgressCircular indeterminate color="primary" size="36" class="mb-2" />
             <div class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Cargando cuentas por pagar...</div>
           </div>
@@ -445,7 +432,7 @@ const openInvoiceTab = (item) => {
     <!-- Vista Móvil Cards -->
     <div v-else class="d-flex flex-column gap-4 pb-16">
       <template v-if="props.loading">
-        <VCard class="rounded-lg border shadow-sm pa-8 text-center bg-white">
+        <VCard class="rounded-lg border shadow-sm pa-8 text-center bg-surface">
           <VProgressCircular indeterminate color="primary" size="36" class="mb-2" />
           <div class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Cargando cuentas por pagar...</div>
         </VCard>
@@ -547,17 +534,15 @@ const openInvoiceTab = (item) => {
                 <!-- Editar Fecha (Móvil) -->
                 <VMenu v-if="authStore.isAdmin" v-model="menuStates[item.id]" :close-on-content-click="false" location="top">
                   <template #activator="{ props: menuProps }">
-                    <VBtn
+                    <IconBtn
                       v-bind="menuProps"
-                      icon
-                      variant="tonal"
-                      size="32"
                       color="info"
-                      class="rounded-lg shadow-sm"
+                      size="small"
                       @click.stop="openMenu(item)"
                     >
                       <VIcon icon="tabler-calendar-edit" size="18" />
-                    </VBtn>
+                      <VTooltip activator="parent" location="top">Cambiar Fecha</VTooltip>
+                    </IconBtn>
                   </template>
                   <VCard min-width="280" class="pa-4 rounded-lg shadow-lg" @click.stop>
                     <div class="text-xs font-weight-black uppercase mb-2 text-disabled">Nueva Fecha Pago</div>
@@ -585,17 +570,15 @@ const openInvoiceTab = (item) => {
                 </VMenu>
 
                 <!-- Marcar Pagada (Móvil) -->
-                <VBtn
+                <IconBtn
                   v-if="authStore.isAdmin"
-                  icon
-                  variant="tonal"
-                  size="32"
                   color="primary"
-                  class="rounded-lg shadow-sm"
+                  size="small"
                   @click.stop="emit('mark-as-paid', item)"
                 >
                   <VIcon icon="tabler-square-check" size="18" />
-                </VBtn>
+                  <VTooltip activator="parent" location="top">Marcar Pagada</VTooltip>
+                </IconBtn>
 
                 <!-- Pagar (Original) -->
                 <VBtn
@@ -664,20 +647,17 @@ const openInvoiceTab = (item) => {
 </template>
 
 <style scoped>
-.premium-table :deep(.v-data-table-header th) {
-  background: white !important;
-  color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)) !important;
-  height: 44px !important;
-  font-size: 0.75rem !important;
-  font-weight: 700 !important;
+:deep(.v-data-table th) {
   text-transform: uppercase !important;
+  font-size: 0.75rem !important;
   letter-spacing: 0.05rem !important;
-  border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.05) !important;
+  font-weight: 700 !important;
+  white-space: nowrap;
+  color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)) !important;
 }
 
-.premium-table :deep(.v-data-table__td) {
-  padding-block: 12px !important;
-  border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.03) !important;
+:deep(.v-data-table td) {
+  padding-block: 8px !important;
 }
 
 .text-super-xs {
@@ -691,12 +671,6 @@ const openInvoiceTab = (item) => {
 
 .max-w-180 {
   max-width: 180px;
-}
-
-.truncate {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .premium-card {
