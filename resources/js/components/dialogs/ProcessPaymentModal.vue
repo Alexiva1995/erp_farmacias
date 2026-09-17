@@ -530,19 +530,19 @@ watch(() => props.modelValue, (val) => {
     @update:model-value="closeModal"
   >
     <VCard class="detail-dialog-card rounded-xl border-0 shadow-xl overflow-hidden bg-surface">
-      <!-- Header Premium -->
+      <!-- Header Corporativo -->
       <VCardTitle class="pa-0">
-        <div class="header-gradient pa-3 d-flex align-center shadow-sm">
+        <div class="header-gradient pa-4 d-flex align-center shadow-sm">
           <VAvatar
             color="white"
             variant="flat"
-            size="32"
+            size="40"
             class="me-3 elevation-1"
           >
             <VIcon
               icon="tabler-currency-dollar"
               size="24"
-              class="text-primary"
+              color="primary"
             />
           </VAvatar>
           <div class="d-flex flex-column leading-none">
@@ -559,14 +559,17 @@ watch(() => props.modelValue, (val) => {
             </div>
           </div>
           <VSpacer />
-          <VBtn
-            icon="tabler-x"
-            variant="tonal"
+          <IconBtn
             color="white"
+            variant="tonal"
             size="small"
             class="rounded-lg"
             @click="closeModal"
-          />
+            :disabled="loading || uploading"
+          >
+            <VIcon icon="tabler-x" size="20" />
+            <VTooltip activator="parent" location="top">Cerrar</VTooltip>
+          </IconBtn>
         </div>
       </VCardTitle>
       <VCardText class="pa-3 pa-sm-4 bg-light overflow-y-auto" style="max-block-size: 75vh;">
@@ -835,12 +838,11 @@ watch(() => props.modelValue, (val) => {
       <!-- Botones de Acción -->
       <VCardActions class="pa-3 bg-light border-t">
         <VRow
-          no-gutters
-          class="w-100"
+          dense
+          class="w-100 ma-0"
         >
           <VCol
-            cols="12"
-            sm="6"
+            cols="6"
             class="pa-1"
           >
             <VBtn
@@ -855,8 +857,7 @@ watch(() => props.modelValue, (val) => {
             </VBtn>
           </VCol>
           <VCol
-            cols="12"
-            sm="6"
+            cols="6"
             class="pa-1"
           >
             <VBtn

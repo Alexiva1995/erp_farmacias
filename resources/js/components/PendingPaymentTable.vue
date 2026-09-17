@@ -274,41 +274,61 @@ const openInvoiceTab = (item) => {
             <VIcon 
               :icon="isOverdue(item.payment_date) ? 'tabler-calendar-cancel' : 'tabler-calendar-time'" 
               size="18" 
-              :color="isOverdue(item.payment_date) ? 'error' : 'disabled'" 
+              :color="isOverdue(item.payment_date) ? 'error' : 'secondary'" 
             />
             <div class="d-flex flex-column">
-              <span class="text-sm font-weight-black" :class="isOverdue(item.payment_date) ? 'text-error' : 'text-high-emphasis'">
-                {{ formatDueDate(item.payment_date) }}
-              </span>
+              <div class="d-flex align-center gap-1">
+                <span class="text-sm font-weight-black" :class="isOverdue(item.payment_date) ? 'text-error' : 'text-high-emphasis'">
+                  {{ formatDueDate(item.payment_date) }}
+                </span>
+                <VChip
+                  v-if="isOverdue(item.payment_date)"
+                  size="x-small"
+                  variant="tonal"
+                  color="error"
+                  class="font-weight-black"
+                  style="font-size: 0.6rem; height: 18px;"
+                >
+                  Vencida
+                </VChip>
+              </div>
               <span class="text-super-xs text-disabled">Pago: {{ formatDate(item.payment_date) }}</span>
             </div>
           </div>
         </template>
 
         <template #item.original_amount="{ item }">
-          <span class="text-sm font-weight-bold text-high-emphasis">{{ formatCurrency(getEffectiveUSD(item), "USD", true) }}</span>
+          <span class="text-sm font-weight-bold text-high-emphasis">${{ formatCurrency(getEffectiveUSD(item), "USD", true) }}</span>
         </template>
 
         <template #item.remaining_amount="{ item }">
           <div class="d-flex flex-column align-end">
             <span class="text-sm font-weight-black" :class="getRemainingAmountClass(item)">
-              {{ formatCurrency(getDisplayAmount(item), item.currency, true) }}
+              {{ formatCurrency(getDisplayAmount(item), item.currency, true) }} Bs.
             </span>
-            <div v-if="item.nd_referential_amount > 0 || item.claim_amount > 0" class="d-flex align-center gap-1 mt-0">
-              <span
+            <div v-if="item.nd_referential_amount > 0 || item.claim_amount > 0" class="d-flex align-center gap-1 mt-1">
+              <VChip
                 v-if="item.nd_referential_amount > 0"
-                class="text-super-xs font-weight-bold text-error d-inline-flex align-center cursor-pointer"
+                size="x-small"
+                variant="tonal"
+                color="error"
+                class="font-weight-black cursor-pointer"
+                style="font-size: 0.62rem; height: 18px;"
               >
-                ND Ref: -{{ formatCurrency(item.nd_referential_amount, item.currency, true) }}
+                ND: -{{ formatCurrency(item.nd_referential_amount, item.currency, true) }}
                 <VTooltip activator="parent" location="top">Nota de Débito Referencial Aprobada (-{{ formatCurrency(item.nd_referential_amount, item.currency) }})</VTooltip>
-              </span>
-              <span
+              </VChip>
+              <VChip
                 v-if="item.claim_amount > 0"
-                class="text-super-xs font-weight-bold text-warning d-inline-flex align-center cursor-pointer"
+                size="x-small"
+                variant="tonal"
+                color="warning"
+                class="font-weight-black cursor-pointer"
+                style="font-size: 0.62rem; height: 18px;"
               >
                 Reclamo: {{ formatCurrency(item.claim_amount, item.currency, true) }}
                 <VTooltip activator="parent" location="top">Reclamo en Proceso ({{ formatCurrency(item.claim_amount, item.currency) }})</VTooltip>
-              </span>
+              </VChip>
             </div>
           </div>
         </template>
