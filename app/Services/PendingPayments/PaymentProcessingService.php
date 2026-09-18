@@ -221,9 +221,10 @@ class PaymentProcessingService
             'name' => 'Pagos de Facturas'
         ]);
 
-        $approverId = $payment->payment_by ?? auth()->id() ?? 1;
+        $user = auth()->user() ?? \App\Models\User::find($payment->payment_by);
+        $isAdmin = $user && ($user->role_id === 1 || in_array(strtolower((string) $user->role?->name), ['admin', 'administrador']));
 
-        // Crear expense con estado Aprobado automáticamente
+        // Crear expense: solo se aprueba si lo hace un administrador
         Expense::create([
             'name' => "Pago Factura # {$invoices[0]->invoice_number} Proveedor {$invoices[0]->supplier->name}",
             'category_id' => $category->id,
@@ -232,13 +233,13 @@ class PaymentProcessingService
             'total_usd' => $amountUSD,
             'currency' => $payment->payment_method,
             'expense_date' => $payment->payment_date,
-            'user_id' => $approverId,
+            'user_id' => $user?->id ?? $payment->payment_by ?? 1,
             'has_invoice' => true,
             'is_deductible' => true,
             'iva' => $iva,
-            'status' => Expense::STATUS_APPROVED,
-            'approved_by_id' => $approverId,
-            'approved_at' => now(),
+            'status' => $isAdmin ? Expense::STATUS_APPROVED : Expense::STATUS_PENDING,
+            'approved_by_id' => $isAdmin ? ($user?->id ?? 1) : null,
+            'approved_at' => $isAdmin ? now() : null,
         ]);
     }
 
