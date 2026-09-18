@@ -195,16 +195,22 @@ class TransactionRepository implements TransactionContract
         $startDate = $data['start_date'] ?? null;
         $endDate   = $data['end_date']   ?? null;
 
+        // Si no se pasa rango de fechas, las entradas y salidas se calculan para el mes en curso
+        $monthStart = now()->startOfMonth()->format('Y-m-d');
+        $monthEnd   = now()->endOfMonth()->format('Y-m-d');
+        $flowStart  = $startDate ?: $monthStart;
+        $flowEnd    = $endDate   ?: $monthEnd;
+
         $rows = Transaction::query()
             ->selectRaw("
                 currency,
                 CASE WHEN currency = 'BS' AND type IN ('CARD', 'TRANSFER') THEN 'TRANSFER' ELSE type END as type,
-                SUM(CASE WHEN movement_type = 'IN'  THEN amount ELSE 0 END) as total_in,
-                SUM(CASE WHEN movement_type = 'OUT' THEN amount ELSE 0 END) as total_out,
+                SUM(CASE WHEN transaction_date BETWEEN ? AND ? AND movement_type = 'IN'  THEN amount ELSE 0 END) as total_in,
+                SUM(CASE WHEN transaction_date BETWEEN ? AND ? AND movement_type = 'OUT' THEN amount ELSE 0 END) as total_out,
                 SUM(CASE WHEN movement_type = 'IN'  THEN amount ELSE -amount END) as balance,
                 COUNT(*) as transactions_count,
                 AVG(COALESCE(exchange_rate,1)) as avg_rate
-            ")
+            ", [$flowStart, $flowEnd, $flowStart, $flowEnd])
             ->when($startDate && $endDate, fn($q) => $q->whereBetween('transaction_date', [$startDate, $endDate]))
             ->groupBy('currency', DB::raw("CASE WHEN currency = 'BS' AND type IN ('CARD', 'TRANSFER') THEN 'TRANSFER' ELSE type END"))
             ->orderBy('currency')

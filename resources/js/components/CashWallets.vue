@@ -24,7 +24,7 @@ const isCollapsed = ref(false);
 const C = {
   USD: { color: 'warning',  vuetify: 'var(--v-theme-warning)',  hex: '#F9A825', icon: 'tabler-currency-dollar',  label: 'Dólar',   ticker: 'USD', decimals: 2, prefix: 'USD' },
   BS:  { color: 'error',    vuetify: 'var(--v-theme-error)',    hex: '#E53935', icon: 'tabler-currency-real',    label: 'Bolívar', ticker: 'Bs.', decimals: 2, prefix: 'Bs.' },
-  COP: { color: 'primary',  vuetify: 'var(--v-theme-primary)',  hex: '#1565C0', icon: 'tabler-currency-peso',    label: 'Peso',    ticker: 'COP', decimals: 0, prefix: 'COP' },
+  COP: { color: 'primary',  vuetify: 'var(--v-theme-primary)',  hex: '#1565C0', icon: 'tabler-currency-peso',    label: 'Pesos',   ticker: 'COP', decimals: 0, prefix: 'COP' },
 };
 
 const M = {
@@ -180,10 +180,7 @@ const walletIconColor = (method) => {
                   <VAvatar :color="C[section.currency]?.color || 'primary'" variant="tonal" size="30" class="rounded flex-shrink-0">
                     <VIcon :icon="C[section.currency]?.icon" size="16" />
                   </VAvatar>
-                  <div class="d-flex flex-column">
-                    <span class="cur-header__name">{{ C[section.currency]?.label }}</span>
-                    <span class="cur-header__ticker">{{ C[section.currency]?.ticker }}</span>
-                  </div>
+                  <span class="cur-header__name">{{ C[section.currency]?.label }}</span>
                   <VSpacer />
                   <div class="cur-header__total" :class="section.section_total < 0 ? 'text-error' : (section.section_total > 0 ? 'text-high-emphasis' : 'text-medium-emphasis')">
                     {{ C[section.currency]?.prefix }} {{ fmt(section.section_total, section.currency) }}
@@ -195,7 +192,11 @@ const walletIconColor = (method) => {
                   <div
                     v-for="wallet in section.wallets"
                     :key="wallet.key"
-                    :class="['mcard', isSelected(wallet) ? 'mcard--sel' : '', wallet.balance < 0 ? 'mcard--neg' : '']"
+                    :class="[
+                      'mcard',
+                      isSelected(wallet) ? 'mcard--sel' : '',
+                      wallet.balance < 0 ? 'mcard--neg' : (wallet.balance > 0 ? 'mcard--pos' : '')
+                    ]"
                     @click="handleSelect(wallet)"
                   >
                     <div class="d-flex align-center justify-space-between w-100">
@@ -212,7 +213,7 @@ const walletIconColor = (method) => {
                         <div class="d-flex flex-column">
                           <span class="mcard__label">{{ methodLabel(wallet) }}</span>
                           <div class="mcard__amount-row">
-                            <span :class="['mcard__amount', wallet.balance < 0 ? 'text-error' : (wallet.balance > 0 ? 'text-high-emphasis' : 'text-medium-emphasis')]">
+                            <span :class="['mcard__amount', wallet.balance < 0 ? 'text-error' : (wallet.balance > 0 ? 'text-success' : 'text-medium-emphasis')]">
                               {{ fmt(wallet.balance, wallet.currency) }} <span class="mcard__prefix">{{ C[section.currency]?.prefix }}</span>
                             </span>
                           </div>
@@ -331,6 +332,7 @@ const walletIconColor = (method) => {
   max-height: 30px;
 }
 .mcard--sel { border-color: rgb(var(--v-theme-primary)) !important; box-shadow: 0 0 0 2px rgba(var(--v-theme-primary), 0.15) !important; }
+.mcard--pos { border-left: 3px solid rgb(var(--v-theme-success)); }
 .mcard--neg { border-left: 3px solid rgb(var(--v-theme-error)); }
 
 .mcard__adj {
