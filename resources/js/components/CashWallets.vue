@@ -145,10 +145,13 @@ const walletIconColor = (method) => {
           <span>Tasa COP/USD · Act: {{ rates.cop?.updated_at ?? 'N/A' }}</span>
         </VTooltip>
 
-        <!-- Total USD -->
+        <!-- Total USD (en una sola línea) -->
         <div class="total-pill">
           <span class="total-pill__label">Total USD</span>
-          <span class="total-pill__value">{{ fmtUsd(totalUsd) }} USD</span>
+          <span class="total-pill__sep">·</span>
+          <span class="total-pill__value" :class="totalUsd < 0 ? 'text-error' : (totalUsd > 0 ? 'text-success' : 'text-high-emphasis')">
+            {{ fmtUsd(totalUsd) }} USD
+          </span>
         </div>
       </div>
     </div>
@@ -287,14 +290,34 @@ const walletIconColor = (method) => {
 .rate-pill:hover { border-color: rgba(var(--v-theme-on-surface), 0.16); }
 .rate-pill--bs, .rate-pill--cop { color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)); }
 
-.rate-pill__label { font-size: 0.6875rem; letter-spacing: 0.05em; text-transform: uppercase; color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)); font-weight: 600; }
-.rate-pill__sep   { font-size: 0.6875rem; opacity: 0.3; }
-.rate-pill__value { font-size: 0.8125rem; font-weight: 700; color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)); }
-
-/* Total pill */
-.total-pill { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.2; }
-.total-pill__label { font-size: 0.6875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)); margin-bottom: 2px; }
-.total-pill__value { font-size: 1.25rem; font-weight: 700; color: rgb(var(--v-theme-primary)); letter-spacing: -0.3px; }
+/* Total pill (misma línea horizontal) */
+.total-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  font-weight: 600;
+  background: rgb(var(--v-theme-surface));
+  line-height: 1;
+}
+.total-pill__label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity));
+}
+.total-pill__sep {
+  font-size: 0.6875rem;
+  opacity: 0.3;
+}
+.total-pill__value {
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+}
 
 /* ══════════════════════════════════════════════════
    VISTA EXPANDIDA — cabecera de moneda
