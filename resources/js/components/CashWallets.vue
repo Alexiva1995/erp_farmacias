@@ -89,15 +89,30 @@ const displayTotalUsd = computed(() => {
   let sum = 0;
   for (const section of props.sections) {
     const cur = section.currency;
-    const total = parseFloat(section.section_total) || 0;
-    if (cur === 'USD') {
-      sum += total;
-    } else if (cur === 'BS') {
-      const r = parseFloat(props.rates?.bcv?.rate) || 1;
-      sum += total / (r > 0 ? r : 1);
-    } else if (cur === 'COP') {
-      const r = parseFloat(props.rates?.cop?.rate) || 1;
-      sum += total / (r > 0 ? r : 1);
+    const rBcv = parseFloat(props.rates?.bcv?.rate) || 1;
+    const rCop = parseFloat(props.rates?.cop?.rate) || 1;
+
+    if (Array.isArray(section.wallets) && section.wallets.length > 0) {
+      for (const w of section.wallets) {
+        if (w.method === 'CREDIT') continue; // Excluir crédito del total disponible
+        const bal = parseFloat(w.balance) || 0;
+        if (cur === 'USD') {
+          sum += bal;
+        } else if (cur === 'BS') {
+          sum += bal / (rBcv > 0 ? rBcv : 1);
+        } else if (cur === 'COP') {
+          sum += bal / (rCop > 0 ? rCop : 1);
+        }
+      }
+    } else {
+      const total = parseFloat(section.section_total) || 0;
+      if (cur === 'USD') {
+        sum += total;
+      } else if (cur === 'BS') {
+        sum += total / (rBcv > 0 ? rBcv : 1);
+      } else if (cur === 'COP') {
+        sum += total / (rCop > 0 ? rCop : 1);
+      }
     }
   }
   return sum;

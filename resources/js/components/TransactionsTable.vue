@@ -212,20 +212,39 @@ const groupedByDay = computed(() => {
     }
 
     // ─── Conversión precisa a USD para los totales del encabezado diario
-    let rate = parseFloat(t.exchange_rate) || 0;
-    if (rate <= 1 && t.currency !== "USD") {
-      if (t.currency === "COP") {
-        rate = parseFloat(props.rates?.cop?.rate) || 3500;
-      } else if (t.currency === "BS") {
-        rate = parseFloat(props.rates?.bcv?.rate) || 36;
+    let rate = 1.0;
+    if (t.currency === "USD") {
+      rate = 1.0;
+    } else if (t.currency === "COP") {
+      // Priorizar tasa guardada en la transacción si es razonable para COP (> 500)
+      const tRate = parseFloat(t.exchange_rate) || 0;
+      if (tRate > 500) {
+        rate = tRate;
+      } else {
+        const propRate = parseFloat(props.rates?.cop?.rate) || 0;
+        rate = propRate > 0 ? propRate : 3170;
+      }
+    } else if (t.currency === "BS") {
+      // Priorizar tasa guardada en la transacción si es razonable para BS (> 5)
+      const tRate = parseFloat(t.exchange_rate) || 0;
+      if (tRate > 5) {
+        rate = tRate;
+      } else {
+        const propRate = parseFloat(props.rates?.bcv?.rate) || 0;
+        rate = propRate > 0 ? propRate : 60;
       }
     }
-    if (rate <= 0) rate = 1;
+
+    if (rate <= 0) rate = 1.0;
 
     const amountUsd = t.currency === "USD" ? t.amount : t.amount / rate;
 
-    // Las transferencias entre cajas y compras/ventas cambista son movimientos internos y NO se suman a las entradas/salidas netas del día
-    if (!isTransferTransaction(t.description) && t.type !== "CAMBISTA") {
+    // Las transferencias entre cajas, cambistas y créditos no suman a las entradas/salidas netas directas de flujo en USD
+    const isTransfer = isTransferTransaction(t.description);
+    const isCambista = String(t.type || "").toUpperCase() === "CAMBISTA";
+    const isCredit   = String(t.type || "").toUpperCase() === "CREDIT";
+
+    if (!isTransfer && !isCambista && !isCredit) {
       if (t.isEntry) {
         map[day].totalInUsd += amountUsd;
       } else {

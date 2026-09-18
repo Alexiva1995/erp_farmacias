@@ -271,7 +271,9 @@ class TransactionRepository implements TransactionContract
             ];
 
             $sections[$currency]['section_total'] += $balance;
-            $totalUsd += $balanceUsd;
+            if ($method !== 'CREDIT') {
+                $totalUsd += $balanceUsd;
+            }
         }
 
         // Garantizar que la caja de Crédito en USD refleje el saldo pendiente real de la tabla credits
@@ -288,7 +290,7 @@ class TransactionRepository implements TransactionContract
             $sections['USD']['wallets'][$creditWalletIndex]['balance'] = round($pendingCredit, 2);
             $sections['USD']['wallets'][$creditWalletIndex]['balance_usd'] = round($pendingCredit, 2);
             $sections['USD']['section_total'] += ($pendingCredit - $oldBal);
-            $totalUsd += ($pendingCredit - $oldBal);
+            // El crédito no suma al total USD de cajas disponibles
         } elseif ($pendingCredit > 0) {
             $sections['USD']['wallets'][] = [
                 'key'                => 'CREDIT_USD',
@@ -301,7 +303,7 @@ class TransactionRepository implements TransactionContract
                 'balance_usd'        => round($pendingCredit, 2),
             ];
             $sections['USD']['section_total'] += $pendingCredit;
-            $totalUsd += $pendingCredit;
+            // El crédito no suma al total USD de cajas disponibles
         }
 
         $orderedSections = [];
