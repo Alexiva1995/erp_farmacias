@@ -276,9 +276,12 @@ const walletIconColor = (method) => {
   color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity));
 }
 
-/* Rate pills */
-.rate-pill {
-  display: inline-flex; align-items: center; gap: 6px;
+/* Rate & Total pills (estilo unificado) */
+.rate-pill,
+.total-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 4px 10px;
   border-radius: 6px;
   border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
@@ -286,37 +289,33 @@ const walletIconColor = (method) => {
   cursor: default;
   user-select: none;
   background: rgb(var(--v-theme-surface));
-}
-.rate-pill:hover { border-color: rgba(var(--v-theme-on-surface), 0.16); }
-.rate-pill--bs, .rate-pill--cop { color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)); }
-
-/* Total pill (misma línea horizontal) */
-.total-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 12px;
-  border-radius: 6px;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  font-weight: 600;
-  background: rgb(var(--v-theme-surface));
   line-height: 1;
 }
+.rate-pill:hover,
+.total-pill:hover { border-color: rgba(var(--v-theme-on-surface), 0.16); }
+
+.rate-pill__label,
 .total-pill__label {
-  font-size: 0.6875rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity));
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity));
 }
+.total-pill__label {
+  text-transform: uppercase;
+}
+
+.rate-pill__sep,
 .total-pill__sep {
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   opacity: 0.3;
 }
+
+.rate-pill__value,
 .total-pill__value {
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   font-weight: 700;
-  letter-spacing: -0.2px;
+  letter-spacing: 0.01em;
 }
 
 /* ══════════════════════════════════════════════════
