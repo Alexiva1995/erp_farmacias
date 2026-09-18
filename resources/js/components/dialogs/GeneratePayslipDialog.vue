@@ -1,5 +1,8 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
+import { useDisplay } from 'vuetify';
+
+const { mobile } = useDisplay();
 
 const props = defineProps({
   modelValue: Boolean,
@@ -55,30 +58,59 @@ const periodInfo = computed(() => {
 <template>
   <VDialog
     :model-value="props.modelValue"
-    max-width="500"
+    max-width="520"
     persistent
+    :fullscreen="mobile"
+    :transition="mobile ? 'dialog-bottom-transition' : 'scale-transition'"
     @update:model-value="close"
   >
-    <VCard class="rounded-xl overflow-hidden shadow-xl">
-      <VCardItem class="bg-primary text-white py-4">
-        <div class="d-flex align-center gap-3">
-          <VAvatar color="white" variant="tonal" size="44" rounded="lg">
-            <VIcon icon="tabler-player-play-filled" color="white" />
+    <VCard class="rounded-xl border-0 shadow-xl overflow-hidden bg-surface">
+      <!-- Header Premium con Degradado -->
+      <VCardTitle class="pa-0">
+        <div class="header-gradient pa-4 d-flex align-center shadow-sm">
+          <VAvatar
+            size="40"
+            color="white"
+            variant="flat"
+            class="me-3 shadow-sm rounded-lg elevation-1"
+          >
+            <VIcon icon="tabler-player-play-filled" color="primary" size="22" />
           </VAvatar>
-          <VCardTitle class="text-h6 font-weight-black">Generar Nueva Nómina</VCardTitle>
+          <div class="d-flex flex-column leading-none">
+            <h3 class="text-h6 font-weight-black text-white leading-tight mb-0">
+              Generar Nueva Nómina
+            </h3>
+            <div class="d-flex align-center gap-2 mt-1">
+              <span
+                class="text-white opacity-75 uppercase font-weight-bold"
+                style="font-size: 0.65rem; letter-spacing: 0.05em;"
+              >
+                Cálculo y apertura de período salarial
+              </span>
+            </div>
+          </div>
+          <VSpacer />
+          <IconBtn
+            variant="tonal"
+            color="white"
+            size="small"
+            class="rounded-lg"
+            @click="close"
+            :disabled="props.loading"
+          >
+            <VIcon icon="tabler-x" size="20" />
+            <VTooltip activator="parent" location="top">Cerrar</VTooltip>
+          </IconBtn>
         </div>
-        <template #append>
-          <VBtn icon="tabler-x" variant="text" color="white" @click="close" />
-        </template>
-      </VCardItem>
+      </VCardTitle>
 
-      <VCardText class="pa-6">
-        <p class="text-body-2 text-medium-emphasis mb-4">
-          Seleccione la fecha correspondiente al corte de nómina que desea procesar.
+      <VCardText class="pa-6 bg-light">
+        <p class="text-caption text-medium-emphasis mb-4">
+          Seleccione la fecha correspondiente al corte de nómina que desea procesar para los trabajadores.
         </p>
 
         <VRow dense>
-          <VCol cols="12" class="mb-4">
+          <VCol cols="12" class="mb-3">
             <AppDateTimePicker
               v-model="selectedDate"
               label="Fecha de Corte"
@@ -95,7 +127,7 @@ const periodInfo = computed(() => {
               <div class="d-flex align-center gap-3">
                 <VIcon :icon="periodInfo.icon" size="28" />
                 <div>
-                  <span class="text-xs font-weight-black uppercase d-block opacity-75">Período Detectado</span>
+                  <span class="text-super-xs font-weight-black uppercase d-block opacity-75">Período Detectado</span>
                   <span class="text-subtitle-2 font-weight-black d-block">{{ periodInfo.type }}</span>
                   <span class="text-caption font-weight-bold opacity-90">{{ periodInfo.range }}</span>
                 </div>
@@ -107,12 +139,14 @@ const periodInfo = computed(() => {
 
       <VDivider />
 
+      <!-- Botones de Acción -->
       <VCardActions class="pa-4 bg-light">
         <VSpacer />
         <VBtn
           variant="outlined"
           color="secondary"
-          class="rounded-lg px-6"
+          class="rounded-lg px-6 font-weight-bold"
+          :disabled="props.loading"
           @click="close"
         >
           Cancelar
@@ -120,10 +154,12 @@ const periodInfo = computed(() => {
         <VBtn
           color="primary"
           variant="elevated"
-          class="rounded-lg px-8 shadow-primary"
+          class="rounded-lg px-8 shadow-primary font-weight-black"
           :loading="props.loading"
+          :disabled="props.loading"
           @click="submit"
         >
+          <VIcon start icon="tabler-check" size="18" class="me-1" />
           Generar Ahora
         </VBtn>
       </VCardActions>
@@ -132,6 +168,14 @@ const periodInfo = computed(() => {
 </template>
 
 <style scoped>
+.header-gradient {
+  background: linear-gradient(
+    135deg,
+    rgb(var(--v-theme-primary)) 0%,
+    rgb(var(--v-theme-gradient-end, var(--v-theme-primary))) 100%
+  );
+}
+
 .shadow-xl {
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1) !important;
 }
@@ -140,5 +184,12 @@ const periodInfo = computed(() => {
 }
 .bg-light {
   background-color: rgba(var(--v-theme-on-surface), 0.02);
+}
+.leading-none {
+  line-height: 1 !important;
+}
+.text-super-xs {
+  font-size: 0.65rem !important;
+  line-height: normal;
 }
 </style>

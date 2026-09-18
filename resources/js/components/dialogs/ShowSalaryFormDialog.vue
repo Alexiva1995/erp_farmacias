@@ -121,106 +121,166 @@ watch(
 <template>
   <VDialog
     :model-value="props.modelValue"
-    max-width="800px"
+    max-width="850px"
     persistent
     :fullscreen="mobile"
-    transition="dialog-bottom-transition"
+    :transition="mobile ? 'dialog-bottom-transition' : 'scale-transition'"
     @update:model-value="closeDialog"
     :scrollable="true"
-    content-class="d-flex"
   >
-    <VCard :class="['rounded-lg border-0 shadow-lg bg-surface overflow-hidden', mobile ? 'rounded-0' : '']">
-      <VCardTitle class="d-flex align-center pa-6">
-        <div class="d-flex align-center">
-           <VAvatar color="primary" variant="tonal" rounded size="48" class="me-4 shadow-sm">
-            <VIcon icon="tabler-file-dollar" size="28" />
+    <VCard class="rounded-xl border-0 shadow-xl bg-surface overflow-hidden d-flex flex-column">
+      <!-- Header Premium con Degradado -->
+      <VCardTitle class="pa-0">
+        <div class="header-gradient pa-4 d-flex align-center shadow-sm">
+          <VAvatar
+            color="white"
+            variant="flat"
+            size="40"
+            class="me-3 shadow-sm rounded-lg elevation-1"
+          >
+            <VIcon icon="tabler-file-dollar" size="22" color="primary" />
           </VAvatar>
-          <div>
-            <div class="text-h5 font-weight-black text-high-emphasis">Editar Salario</div>
-            <div class="text-caption text-medium-emphasis">
-              Trabajador: <span class="font-weight-bold text-primary">{{ props.selectedEmployee.name }} {{ props.selectedEmployee.last_name }}</span>
+          <div class="d-flex flex-column leading-none">
+            <h3 class="text-h6 font-weight-black text-white leading-tight mb-0">
+              Editar Salario y Asignaciones
+            </h3>
+            <div class="d-flex align-center gap-2 mt-1">
+              <span
+                class="text-white opacity-90 uppercase font-weight-bold"
+                style="font-size: 0.65rem; letter-spacing: 0.05em;"
+              >
+                Trabajador: {{ props.selectedEmployee.name }} {{ props.selectedEmployee.last_name }}
+              </span>
             </div>
           </div>
+          <VSpacer />
+          <IconBtn
+            variant="tonal"
+            color="white"
+            size="small"
+            class="rounded-lg"
+            @click="closeDialog"
+          >
+            <VIcon icon="tabler-x" size="20" />
+            <VTooltip activator="parent" location="top">Cerrar</VTooltip>
+          </IconBtn>
         </div>
-        <VSpacer />
-        <VBtn icon="tabler-x" variant="tonal" color="secondary" size="small" @click="closeDialog" />
       </VCardTitle>
-      <VDivider />
-      <VContainer>
-        <VDataTable
-          :headers="headers"
-          :items="vouchers"
-          :hide-default-footer="true"
-        >
-          <template #item.amount_usd="{ item }">
-            <VNumberInput
-              v-model.number="rows[item.id]"
-              label="Monto"
-              :min="1"
-              :step="0.01"
-              variant="outlined"
-              control-variant="hidden"
-              density="comfortable"
-              hide-details="auto"
-              style="inline-size: 200px;"
-              :error="!!rowsErrors[item.id]"
-              :error-messages="rowsErrors[item.id]"
-            />
-          </template>
 
-          <template #item.amount_bs="{ item }">
-            <span>
-              {{ format(rows[item.id] * currency, "Bs") }}
-            </span>
-          </template>
+      <VCardText class="pa-4 pa-sm-6 bg-light">
+        <VCard variant="flat" class="rounded-lg border bg-surface overflow-hidden">
+          <VDataTable
+            :headers="headers"
+            :items="vouchers"
+            :hide-default-footer="true"
+            class="text-no-wrap"
+          >
+            <template #item.name="{ item }">
+              <span class="font-weight-bold text-high-emphasis">{{ item.name }}</span>
+            </template>
 
-          <template #body.append>
-            <tr class="font-weight-bold">
-              <td :colspan="headers.length - 1" class="text-right">Total</td>
-              <td class="text-right">
-                {{
-                  format(
-                    Object.values(rows).reduce(
-                      (total, acc) => total + acc * currency,
-                      0
-                    ),
-                    "Bs"
-                  )
-                }}
-              </td>
-            </tr>
-          </template>
-        </VDataTable>
-      </VContainer>
+            <template #item.type="{ item }">
+              <VChip
+                :color="item.type === 'salary' ? 'success' : 'error'"
+                size="x-small"
+                variant="tonal"
+                class="font-weight-black"
+              >
+                {{ item.type === "salary" ? "Asignación / Bono" : "Deducción" }}
+              </VChip>
+            </template>
+
+            <template #item.amount_usd="{ item }">
+              <VNumberInput
+                v-model.number="rows[item.id]"
+                placeholder="0.00"
+                :min="0"
+                :step="0.01"
+                variant="outlined"
+                control-variant="hidden"
+                density="comfortable"
+                hide-details="auto"
+                style="inline-size: 160px;"
+                :error="!!rowsErrors[item.id]"
+                :error-messages="rowsErrors[item.id]"
+                class="premium-input"
+              />
+            </template>
+
+            <template #item.amount_bs="{ item }">
+              <span class="font-weight-bold text-high-emphasis">
+                {{ format(rows[item.id] * currency, "Bs") }}
+              </span>
+            </template>
+
+            <template #body.append>
+              <tr class="font-weight-black bg-surface-variant-subtle">
+                <td :colspan="headers.length - 1" class="text-end text-uppercase text-caption font-weight-black">Total en Bolívares:</td>
+                <td class="text-end font-weight-black text-primary text-subtitle-2">
+                  {{
+                    format(
+                      Object.values(rows).reduce(
+                        (total, acc) => total + acc * currency,
+                        0
+                      ),
+                      "Bs"
+                    )
+                  }}
+                </td>
+              </tr>
+            </template>
+          </VDataTable>
+        </VCard>
+      </VCardText>
+
       <VDivider />
-      <VCardActions class="pa-4">
+
+      <VCardActions class="pa-4 bg-light">
+        <VSpacer />
         <VBtn
           color="secondary"
           variant="outlined"
+          class="rounded-lg px-6 font-weight-bold"
           @click="closeDialog"
-          width="100%"
-          class="flex-grow-1 w-0 mr-4"
         >
           Cancelar
         </VBtn>
         <VBtn
           color="primary"
-          variant="flat"
+          variant="elevated"
+          class="rounded-lg px-8 shadow-primary font-weight-black"
           @click="handleSubmitForm"
-          width="100%"
-          class="flex-grow-1 w-0 mr-4"
         >
-          Guardar
+          <VIcon start icon="tabler-check" size="18" class="me-1" />
+          Guardar Cambios
         </VBtn>
       </VCardActions>
     </VCard>
   </VDialog>
 </template>
+
 <style scoped>
-.headline {
-  background: linear-gradient(135deg, #7A0099 0%, #E20074 100%);
-  background-clip: text;
-  font-size: 1.25rem;
-  -webkit-text-fill-color: transparent;
+.header-gradient {
+  background: linear-gradient(
+    135deg,
+    rgb(var(--v-theme-primary)) 0%,
+    rgb(var(--v-theme-gradient-end, var(--v-theme-primary))) 100%
+  );
+}
+
+.shadow-xl {
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1) !important;
+}
+
+.shadow-primary {
+  box-shadow: 0 4px 14px 0 rgba(var(--v-theme-primary), 0.39) !important;
+}
+
+.bg-light {
+  background-color: rgba(var(--v-theme-on-surface), 0.02);
+}
+
+.leading-none {
+  line-height: 1 !important;
 }
 </style>

@@ -7,7 +7,7 @@ import { useDisplay } from "vuetify";
 const { mobile } = useDisplay();
 
 const props = defineProps({
-  modalValue: { type: Boolean, default: false },
+  modelValue: { type: Boolean, default: false },
   selectedPayslip: { type: Object, default: null },
 });
 
@@ -110,7 +110,7 @@ const submit = async () => {
 };
 
 watch(
-  () => props.modalValue,
+  () => props.modelValue,
   (val) => {
     if (val && props.selectedPayslip && Object.keys(props.selectedPayslip).length > 0) {
       fetchExchangeRate();
@@ -130,8 +130,8 @@ watch(
 </script>
 <template>
   <VDialog
-    :model-value="props.modalValue"
-    max-width="500"
+    :model-value="props.modelValue"
+    max-width="520"
     persistent
     :fullscreen="mobile"
     :transition="mobile ? 'dialog-bottom-transition' : 'scale-transition'"

@@ -4,7 +4,7 @@ import GeneratePayslipDialog from "@/components/dialogs/GeneratePayslipDialog.vu
 import PayslipTable from "@/components/PayslipTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { onMounted, ref, watch } from "vue";
+import { onMounted, onUnmounted, ref, watch } from "vue";
 
 const loading = ref(false);
 const page = ref(1);
@@ -46,13 +46,26 @@ const fetchPayslips = async () => {
   }
 };
 
+let debounceTimer;
 watch(
   [page, itemsPerPage, searchQuery, startDate, endDate, selectedStatus],
-  () => {
+  ([pg, items, search, start, end, status], [oldPg, oldItems, oldSearch, oldStart, oldEnd, oldStatus]) => {
     if (!isInitialized.value) return;
-    fetchPayslips();
+    const isInstant = pg !== oldPg || items !== oldItems;
+    const delay = isInstant ? 0 : 350;
+
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      fetchPayslips();
+    }, delay);
   },
 );
+
+onUnmounted(() => {
+  if (debounceTimer) {
+    clearTimeout(debounceTimer);
+  }
+});
 
 const handleClearFilters = () => {
   searchQuery.value = "";
