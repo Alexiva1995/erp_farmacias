@@ -394,14 +394,14 @@ watch(searchQuery, () => debouncedLoadData());
 
               <!-- MONTO VENTA -->
               <template #item.amount="{ item }">
-                <span class="text-body-2 font-weight-black font-mono text-high-emphasis">
+                <span class="text-body-2 font-weight-bold font-mono text-high-emphasis font-bold-force">
                   {{ formatNumber(item.amount) }}
                 </span>
               </template>
 
               <!-- COSTOS -->
               <template #item.costs="{ item }">
-                <span class="text-body-2 font-weight-black font-mono text-high-emphasis">
+                <span class="text-body-2 font-weight-bold font-mono text-high-emphasis font-bold-force">
                   {{ item.costs > 0 ? formatNumber(item.costs) : "0,00" }}
                 </span>
               </template>
@@ -409,7 +409,7 @@ watch(searchQuery, () => debouncedLoadData());
               <!-- MARGEN ($) -->
               <template #item.profit="{ item }">
                 <span
-                  class="text-body-2 font-weight-black font-mono"
+                  class="text-body-2 font-weight-bold font-mono font-bold-force"
                   :class="Number(item.profit) >= 0 ? 'text-profit-positive' : 'text-profit-negative'"
                 >
                   {{ formatNumber(item.profit) }}
@@ -442,14 +442,14 @@ watch(searchQuery, () => debouncedLoadData());
                       <span>TOTALES DE LA PÁGINA ({{ transactions.length }} REGISTROS)</span>
                     </div>
                   </td>
-                  <td class="text-end font-mono text-body-2 font-weight-black text-high-emphasis pe-4 py-3">
+                  <td class="text-end font-mono text-body-2 font-weight-bold text-high-emphasis pe-4 py-3 font-bold-force">
                     {{ formatNumber(pageTotals.amount) }}
                   </td>
-                  <td class="text-end font-mono text-body-2 font-weight-black text-high-emphasis pe-4 py-3">
+                  <td class="text-end font-mono text-body-2 font-weight-bold text-high-emphasis pe-4 py-3 font-bold-force">
                     {{ pageTotals.costs > 0 ? formatNumber(pageTotals.costs) : '0,00' }}
                   </td>
                   <td
-                    class="text-end font-mono text-body-2 font-weight-black pe-4 py-3"
+                    class="text-end font-mono text-body-2 font-weight-bold pe-4 py-3 font-bold-force"
                     :class="Number(pageTotals.profit) >= 0 ? 'text-profit-positive' : 'text-profit-negative'"
                   >
                     {{ formatNumber(pageTotals.profit) }}
@@ -530,12 +530,18 @@ watch(searchQuery, () => debouncedLoadData());
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
+.font-bold-force {
+  font-weight: 700 !important;
+}
+
 .text-profit-positive {
   color: #16a34a !important;
+  font-weight: 700 !important;
 }
 
 .text-profit-negative {
   color: #dc2626 !important;
+  font-weight: 700 !important;
 }
 
 .text-money-green {

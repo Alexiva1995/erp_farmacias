@@ -107,13 +107,13 @@ const getMarginChipClass = (pct) => {
             <div class="d-flex flex-column gap-1">
               <div class="d-flex justify-space-between align-center text-super-xs">
                 <span class="text-disabled font-weight-bold">VENTA:</span>
-                <span class="font-weight-black font-mono text-body-2 text-high-emphasis">
+                <span class="font-weight-bold font-mono text-body-2 text-high-emphasis font-bold-force">
                   {{ formatNumber(item.amount) }}
                 </span>
               </div>
               <div class="d-flex justify-space-between align-center text-super-xs">
                 <span class="text-disabled font-weight-bold">COSTO:</span>
-                <span class="font-weight-black font-mono text-body-2 text-high-emphasis">
+                <span class="font-weight-bold font-mono text-body-2 text-high-emphasis font-bold-force">
                   {{ item.costs > 0 ? formatNumber(item.costs) : "0,00" }}
                 </span>
               </div>
@@ -131,7 +131,7 @@ const getMarginChipClass = (pct) => {
                     {{ Number(item.margin_percentage || 0).toFixed(2) }}%
                   </VChip>
                 </div>
-                <span :class="['font-weight-black font-mono text-body-2', item.profit >= 0 ? 'text-money-green' : 'text-error']">
+                <span :class="['font-weight-bold font-mono text-body-2 font-bold-force', item.profit >= 0 ? 'text-money-green' : 'text-error']">
                   {{ formatNumber(item.profit) }}
                 </span>
               </div>
@@ -164,6 +164,10 @@ const getMarginChipClass = (pct) => {
 </template>
 
 <style scoped>
+.font-bold-force {
+  font-weight: 700 !important;
+}
+
 .chip-mobile-badge {
   block-size: 18px;
   font-size: 9px;
@@ -194,14 +198,17 @@ const getMarginChipClass = (pct) => {
 
 .text-profit-positive {
   color: #16a34a !important;
+  font-weight: 700 !important;
 }
 
 .text-profit-negative {
   color: #dc2626 !important;
+  font-weight: 700 !important;
 }
 
 .text-money-green {
   color: #16a34a !important;
+  font-weight: 700 !important;
 }
 
 .margin-chip-success {
