@@ -35,7 +35,9 @@ class DronenaScraperService implements DronenaScraperServiceInterface
         }
 
         // Obtener conexión configurada en la BD para el bot de Dronena
-        $conn = $supplier?->connections?->where('type', 'dronena_bot')->first() 
+        $conn = $supplier?->connections?->where('type', 'dronena_bot')->first()
+            ?? $supplier?->connections?->first(fn($c) => str_contains(strtolower($c->host ?? ''), 'http') || str_contains(strtolower($c->host ?? ''), 'dronena.com/nuevaexperiencia'))
+            ?? $supplier?->connections?->where('type', '!=', 'ftp')->first()
             ?? $supplier?->connections?->first();
 
         $user = $username;

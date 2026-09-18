@@ -485,17 +485,27 @@ class SupplierController extends Controller
      */
     public function getConnectionConfig(Supplier $supplier)
     {
-        $connection = $supplier->connections()->first();
+        $connections = $supplier->connections()->get();
 
-        if (!$connection) {
+        if ($connections->isEmpty()) {
             return response()->json(null);
         }
 
-        // Buscar si existe una conexión FTP secundaria para pedidos (ej. Mafarta API + FTP)
-        $ftpOrdersConn = $supplier->connections()
+        // Si existe una conexión de tipo Bot o API, priorizarla como principal para la vista
+        $connection = $connections->firstWhere('type', 'dronena_bot') 
+            ?? $connections->firstWhere('type', 'api')
+            ?? $connections->firstWhere('type', 'http')
+            ?? $connections->firstWhere('type', 'file')
+            ?? $connections->first();
+
+        // Buscar si existe una conexión FTP secundaria para pedidos (ej. Mafarta API + FTP o Dronena Bot + FTP)
+        $ftpOrdersConn = $connections
             ->whereIn('type', ['ftp', 'sftp'])
             ->where('id', '!=', $connection->id)
             ->first();
+
+        // Si la principal es FTP y no hay secundaria, pero no hay otra conexión, $ftpOrdersConn es null
+        // Si hay una conexión tipo bot y otra tipo ftp, la principal es bot y la secundaria es ftp
 
         return response()->json([
             'id'                  => $connection->id,
@@ -674,12 +684,20 @@ class SupplierController extends Controller
                 $data['structure'] = [];
             }
 
-            $connection = $supplier->connections()->updateOrCreate(
-                ['supplier_id' => $supplier->id],
-                $data
-            );
+            // Para tipos que conviven con FTP (como dronena_bot o api con ftp_orders), buscar por supplier_id y type
+            if ($validated['type'] === 'dronena_bot') {
+                $connection = $supplier->connections()->updateOrCreate(
+                    ['supplier_id' => $supplier->id, 'type' => 'dronena_bot'],
+                    $data
+                );
+            } else {
+                $connection = $supplier->connections()->updateOrCreate(
+                    ['supplier_id' => $supplier->id, 'type' => $validated['type']],
+                    $data
+                );
+            }
 
-            // Gestionar conexión FTP secundaria para órdenes si fue enviada (ej. Mafarta API + Pedidos FTP)
+            // Gestionar conexión FTP secundaria para órdenes si fue enviada (ej. Mafarta API + Pedidos FTP o Dronena Bot + Pedidos FTP)
             if ($request->has('ftp_orders_enabled')) {
                 if ($request->boolean('ftp_orders_enabled') && !empty($validated['ftp_orders_host'])) {
                     $ftpData = [
@@ -700,7 +718,7 @@ class SupplierController extends Controller
                         $ftpData
                     );
                 } elseif (!$request->boolean('ftp_orders_enabled') && $validated['type'] !== 'ftp' && $validated['type'] !== 'sftp') {
-                    // Si se desmarca y la principal no es FTP, eliminar la conexión FTP secundaria
+                    // Si se desmarca explícitamente y la principal no es FTP, eliminar la conexión FTP secundaria
                     $supplier->connections()->where('type', 'ftp')->delete();
                 }
             }

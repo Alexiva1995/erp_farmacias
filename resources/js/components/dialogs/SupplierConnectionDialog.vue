@@ -457,13 +457,13 @@ watch(() => props.modelValue, (isOpen) => {
             </VCard>
           </template>
 
-          <!-- Sección 6: Transmisión de Pedidos FTP / SFTP (PC-CORREO) para API / Mafarta -->
-          <template v-if="isHttp || isMafarta">
+          <!-- Sección 6: Transmisión de Pedidos FTP / SFTP (PC-CORREO / EDI) para API, Mafarta y Bot Dronena -->
+          <template v-if="isHttp || isMafarta || form.type === 'dronena_bot'">
             <div class="d-flex align-center justify-space-between mb-3 mt-4">
               <div class="d-flex align-center gap-2">
                 <div class="header-indicator primary shadow-sm" />
                 <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">
-                  Transmisión de Pedidos FTP / SFTP (PC-CORREO)
+                  Transmisión de Pedidos FTP / EDI
                 </span>
               </div>
               <VSwitch
@@ -483,7 +483,7 @@ watch(() => props.modelValue, (isOpen) => {
                 icon="tabler-info-circle"
                 class="mb-3 rounded-lg"
               >
-                Permite enviar pedidos automáticamente en formato de texto plano <strong>PC-CORREO</strong> vía FTP/SFTP mientras mantienes la sincronización de catálogo y facturas por la <strong>API REST</strong>.
+                Permite enviar pedidos automáticamente por <strong>FTP / EDI</strong> mientras mantienes activa la sincronización del portal web o bot.
               </VAlert>
 
               <VRow>

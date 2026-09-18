@@ -123,27 +123,35 @@ class DronenaEdiService implements DronenaEdiServiceInterface
             throw new Exception("No se encontró el proveedor asociado a la orden #{$autoOrder->id}");
         }
 
-        // Buscar conexión FTP de Dronena
+        // Buscar conexión FTP específica de Dronena
         $connection = $supplier->connections()
             ->where('type', 'ftp')
             ->first();
 
         if (!$connection) {
-            // Intentar por host si el tipo fue registrado genérico
+            // Buscar si hay una conexión FTP con host ftp.dronena.com o username D719
             $connection = SupplierConnection::where('supplier_id', $supplier->id)
                 ->where(function ($q) {
-                    $q->where('host', 'LIKE', '%dronena%')
-                      ->orWhere('host', 'LIKE', '%nena%')
-                      ->orWhere('username', 'LIKE', '%D719%');
+                    $q->where('host', 'LIKE', '%ftp.dronena%')
+                      ->orWhere(function ($sub) {
+                          $sub->where('type', 'ftp')
+                              ->where(function ($s) {
+                                  $s->where('host', 'LIKE', '%nena%')
+                                    ->orWhere('username', 'LIKE', '%D719%');
+                              });
+                      });
                 })
                 ->first();
         }
 
         if (!$connection) {
-            // Fallback global a la conexión configurada para Droguería Nena en el sistema
-            $connection = SupplierConnection::where('host', 'LIKE', '%dronena%')
-                ->orWhere('host', 'LIKE', '%nena%')
-                ->orWhere('username', 'LIKE', '%D719%')
+            // Fallback global a la conexión FTP configurada para Droguería Nena en el sistema
+            $connection = SupplierConnection::where('type', 'ftp')
+                ->where(function ($q) {
+                    $q->where('host', 'LIKE', '%dronena%')
+                      ->orWhere('host', 'LIKE', '%nena%')
+                      ->orWhere('username', 'LIKE', '%D719%');
+                })
                 ->first();
         }
 
