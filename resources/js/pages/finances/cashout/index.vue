@@ -282,6 +282,7 @@ const walletOptionsMap = {
     { title: "Binance (USD)", value: "BINANCE" },
     { title: "PayPal (USD)", value: "PAYPAL" },
     { title: "Crédito (USD)", value: "CREDIT" },
+    { title: "Cambista (USD)", value: "CAMBISTA" },
   ],
   BS: [
     { title: "Banco / Transferencia (Bs.)", value: "TRANSFER" },
@@ -292,6 +293,7 @@ const walletOptionsMap = {
   COP: [
     { title: "Efectivo (COP)", value: "CASH" },
     { title: "Transferencia (COP)", value: "TRANSFER" },
+    { title: "Cambista (COP)", value: "CAMBISTA" },
   ],
 };
 
@@ -526,21 +528,47 @@ onUnmounted(() => {
     </div>
 
     <!-- Modal de Transferencia entre Cajas -->
-    <VDialog v-model="isTransferModalOpen" max-width="540" persistent>
-      <VCard class="pa-5 rounded-xl shadow-xl border-0 bg-surface">
-        <VCardTitle class="px-0 pt-0 d-flex align-center gap-3 mb-4">
-          <VAvatar size="40" color="primary" variant="tonal" class="rounded-lg">
-            <VIcon icon="tabler-arrows-left-right" size="22" />
-          </VAvatar>
-          <div class="d-flex flex-column">
-            <span class="text-h6 font-weight-black leading-tight">Transferir entre Cajas</span>
-            <span class="text-xs text-medium-emphasis">Mover fondos entre cuentas o realizar conversión de divisas</span>
+    <VDialog v-model="isTransferModalOpen" max-width="580" persistent>
+      <VCard class="rounded-xl border-0 shadow-xl overflow-hidden bg-surface">
+        <VCardTitle class="pa-0">
+          <div class="header-gradient pa-4 d-flex align-center shadow-sm">
+            <VAvatar
+              size="40"
+              color="white"
+              variant="flat"
+              class="me-3 shadow-sm rounded-lg elevation-1"
+            >
+              <VIcon icon="tabler-arrows-left-right" color="primary" size="22" />
+            </VAvatar>
+            <div class="d-flex flex-column leading-none">
+              <h3 class="text-h6 font-weight-black text-white leading-tight mb-0">
+                Transferir entre Cajas
+              </h3>
+              <div class="d-flex align-center gap-2 mt-1">
+                <span
+                  class="text-white opacity-75 uppercase font-weight-bold"
+                  style="font-size: 0.65rem; letter-spacing: 0.05em;"
+                >
+                  Movimiento interno y conversión de divisas
+                </span>
+              </div>
+            </div>
+            <VSpacer />
+            <IconBtn
+              variant="tonal"
+              color="white"
+              size="small"
+              class="rounded-lg"
+              @click="isTransferModalOpen = false"
+              :disabled="isTransferring"
+            >
+              <VIcon icon="tabler-x" size="20" />
+              <VTooltip activator="parent" location="top">Cerrar</VTooltip>
+            </IconBtn>
           </div>
-          <VSpacer />
-          <VBtn icon="tabler-x" variant="text" size="small" color="medium-emphasis" @click="isTransferModalOpen = false" :disabled="isTransferring" />
         </VCardTitle>
 
-        <VCardText class="px-0 py-2">
+        <VCardText class="pa-6 bg-light">
           <!-- Caja de Origen (Egreso) -->
           <VCard variant="flat" class="pa-4 rounded-xl border bg-surface-variant-light mb-4">
             <div class="d-flex align-center gap-2 mb-3">
@@ -751,6 +779,18 @@ onUnmounted(() => {
 .cashout-page {
   background-color: rgb(var(--v-theme-background));
   min-block-size: 100vh;
+}
+
+.header-gradient {
+  background: var(--brand-gradient) !important;
+}
+
+.bg-light {
+  background-color: #f8faff !important;
+}
+
+.leading-none {
+  line-height: 1 !important;
 }
 
 .premium-header {
