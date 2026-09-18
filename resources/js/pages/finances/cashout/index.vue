@@ -519,6 +519,7 @@ onUnmounted(() => {
         :itemsPerPage="itemsPerPage"
         :page="page"
         :totalTransactions="transactionsTotal"
+        :rates="rates"
         @update:options="updateTableOptions"
         @clear="handleClearFilters"
       />

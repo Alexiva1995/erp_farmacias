@@ -13,9 +13,16 @@ const props = defineProps({
   totalTransactions: { type: Number, required: true },
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
+  rates: { type: Object, default: () => ({ bcv: { rate: 0 }, cop: { rate: 0 } }) },
 });
 
 const emit = defineEmits(["update:options", "update:selectedTab", "clear"]);
+
+// Detección de transferencia entre cuentas
+const isTransferTransaction = (desc) => {
+  if (!desc) return false;
+  return /transferencia\s+(enviada|recibida)/i.test(desc);
+};
 
 // Modal de Detalle de Pago
 const showPaymentModal = ref(false);
@@ -204,13 +211,26 @@ const groupedByDay = computed(() => {
       });
     }
 
-    const rate      = parseFloat(t.exchange_rate) || 1;
+    // ─── Conversión precisa a USD para los totales del encabezado diario
+    let rate = parseFloat(t.exchange_rate) || 0;
+    if (rate <= 1 && t.currency !== "USD") {
+      if (t.currency === "COP") {
+        rate = parseFloat(props.rates?.cop?.rate) || 1;
+      } else if (t.currency === "BS") {
+        rate = parseFloat(props.rates?.bcv?.rate) || 1;
+      }
+    }
+    if (rate <= 0) rate = 1;
+
     const amountUsd = t.currency === "USD" ? t.amount : t.amount / rate;
 
-    if (t.isEntry) {
-      map[day].totalInUsd += amountUsd;
-    } else {
-      map[day].totalOutUsd += amountUsd;
+    // Las transferencias entre cajas son movimientos internos y NO se suman a las entradas/salidas netas del día
+    if (!isTransferTransaction(t.description)) {
+      if (t.isEntry) {
+        map[day].totalInUsd += amountUsd;
+      } else {
+        map[day].totalOutUsd += amountUsd;
+      }
     }
   }
 
