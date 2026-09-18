@@ -230,6 +230,12 @@ class TransactionRepository implements TransactionContract
             ->orderBy('type')
             ->get();
 
+        $rates = $this->getCurrentRates();
+        $bsRate = (float) ($rates['bcv']['rate'] ?? 1);
+        if ($bsRate <= 0) $bsRate = 1.0;
+        $copRate = (float) ($rates['cop']['rate'] ?? 1);
+        if ($copRate <= 0) $copRate = 1.0;
+
         $currencyOrder = ['USD', 'BS', 'COP'];
         $sections = [];
         $totalUsd = 0.0;
@@ -239,8 +245,15 @@ class TransactionRepository implements TransactionContract
             $method     = strtoupper($row->type);
             $balance    = (float) $row->balance;
 
-            $avgRate    = (float) ($row->avg_rate ?: 1);
-            $balanceUsd = $currency === 'USD' ? $balance : round($balance / $avgRate, 2);
+            if ($currency === 'USD') {
+                $balanceUsd = round($balance, 2);
+            } elseif ($currency === 'BS') {
+                $balanceUsd = round($balance / $bsRate, 2);
+            } elseif ($currency === 'COP') {
+                $balanceUsd = round($balance / $copRate, 2);
+            } else {
+                $balanceUsd = round($balance, 2);
+            }
 
             if (!isset($sections[$currency])) {
                 $sections[$currency] = ['currency' => $currency, 'section_total' => 0.0, 'wallets' => []];

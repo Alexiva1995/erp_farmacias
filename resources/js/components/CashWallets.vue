@@ -83,6 +83,26 @@ const rateTypeLabel = computed(() => {
   return 'BCV';
 });
 
+// ─── Total USD Computado Reactivo ──────────────────────────────────────────
+const displayTotalUsd = computed(() => {
+  if (!props.sections || props.sections.length === 0) return props.totalUsd;
+  let sum = 0;
+  for (const section of props.sections) {
+    const cur = section.currency;
+    const total = parseFloat(section.section_total) || 0;
+    if (cur === 'USD') {
+      sum += total;
+    } else if (cur === 'BS') {
+      const r = parseFloat(props.rates?.bcv?.rate) || 1;
+      sum += total / (r > 0 ? r : 1);
+    } else if (cur === 'COP') {
+      const r = parseFloat(props.rates?.cop?.rate) || 1;
+      sum += total / (r > 0 ? r : 1);
+    }
+  }
+  return sum;
+});
+
 const walletIconColor = (method) => {
   switch (method) {
     case 'CASH':
@@ -149,8 +169,8 @@ const walletIconColor = (method) => {
         <div class="total-pill">
           <span class="total-pill__label">Total USD</span>
           <span class="total-pill__sep">·</span>
-          <span class="total-pill__value" :class="totalUsd < 0 ? 'text-error' : (totalUsd > 0 ? 'text-success' : 'text-high-emphasis')">
-            {{ fmtUsd(totalUsd) }} USD
+          <span class="total-pill__value" :class="displayTotalUsd < 0 ? 'text-error' : (displayTotalUsd > 0 ? 'text-success' : 'text-high-emphasis')">
+            {{ fmtUsd(displayTotalUsd) }} USD
           </span>
         </div>
 
