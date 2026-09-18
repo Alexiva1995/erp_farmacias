@@ -249,6 +249,18 @@ class ExpensesRepository implements Expenses
                 $filtros["fechaDesde_filtro"] . " 00:00:00",
                 $filtros["fechaHasta_filtro"] . " 23:59:59"
             ]);
+        } else {
+            // Si el usuario no ha filtrado explícitamente por fechas:
+            // - Para 'Pending' exclusivamente, mostrar histórico (sin filtro de fecha).
+            // - Para 'Approved', 'Cancelled' o vista general, aplicar mes en curso por defecto.
+            $statusList = isset($filtros["status"]) ? (is_array($filtros["status"]) ? $filtros["status"] : [$filtros["status"]]) : [];
+            $isOnlyPending = count($statusList) === 1 && in_array(Expense::STATUS_PENDING, $statusList, true);
+
+            if (!$isOnlyPending && empty($filtros["ignore_default_dates"])) {
+                $startOfMonth = now()->startOfMonth()->format('Y-m-d 00:00:00');
+                $endOfMonth = now()->endOfMonth()->format('Y-m-d 23:59:59');
+                $consulta->whereBetween("expense_date", [$startOfMonth, $endOfMonth]);
+            }
         }
 
         if (array_key_exists("sortBy", $filtros) && array_key_exists("orderBy", $filtros)) {
@@ -343,21 +355,53 @@ class ExpensesRepository implements Expenses
 
     public function getGlobalStats(array $filters): array
     {
-        $baseQuery = $this->buildFilter($filters);
-        
-        $stats = $baseQuery->selectRaw('status, COUNT(*) as total, SUM(total_usd) as amount')
+        $hasCustomDate = !empty($filters["fechaDesde_filtro"]) && !empty($filters["fechaHasta_filtro"]);
+
+        if ($hasCustomDate) {
+            $baseQuery = $this->buildFilter($filters);
+            
+            $stats = $baseQuery->selectRaw('status, COUNT(*) as total, SUM(total_usd) as amount')
+                ->setEagerLoads([])
+                ->reorder()
+                ->groupBy('status')
+                ->get();
+
+            return [
+                'totalApproved' => (int) ($stats->where('status', Expense::STATUS_APPROVED)->first()?->total ?? 0),
+                'amountApproved' => (float) ($stats->where('status', Expense::STATUS_APPROVED)->first()?->amount ?? 0),
+                'totalPending' => (int) ($stats->where('status', Expense::STATUS_PENDING)->first()?->total ?? 0),
+                'amountPending' => (float) ($stats->where('status', Expense::STATUS_PENDING)->first()?->amount ?? 0),
+                'totalCancelled' => (int) ($stats->where('status', Expense::STATUS_CANCELLED)->first()?->total ?? 0),
+                'amountCancelled' => (float) ($stats->where('status', Expense::STATUS_CANCELLED)->first()?->amount ?? 0),
+            ];
+        }
+
+        // 1. Estadísticas de Pendientes (todo lo pendiente históricamente)
+        $pendingFilters = $filters;
+        $pendingFilters['status'] = [Expense::STATUS_PENDING];
+        $pendingQuery = $this->buildFilter($pendingFilters);
+        $pendingStat = $pendingQuery->selectRaw('COUNT(*) as total, SUM(total_usd) as amount')
+            ->setEagerLoads([])
+            ->reorder()
+            ->first();
+
+        // 2. Estadísticas de Aprobados y Cancelados (mes en curso por defecto)
+        $monthFilters = $filters;
+        $monthFilters['status'] = [Expense::STATUS_APPROVED, Expense::STATUS_CANCELLED];
+        $monthQuery = $this->buildFilter($monthFilters);
+        $monthStats = $monthQuery->selectRaw('status, COUNT(*) as total, SUM(total_usd) as amount')
             ->setEagerLoads([])
             ->reorder()
             ->groupBy('status')
             ->get();
 
         return [
-            'totalApproved' => (int) ($stats->where('status', 'Approved')->first()?->total ?? 0),
-            'amountApproved' => (float) ($stats->where('status', 'Approved')->first()?->amount ?? 0),
-            'totalPending' => (int) ($stats->where('status', 'Pending')->first()?->total ?? 0),
-            'amountPending' => (float) ($stats->where('status', 'Pending')->first()?->amount ?? 0),
-            'totalCancelled' => (int) ($stats->where('status', 'Cancelled')->first()?->total ?? 0),
-            'amountCancelled' => (float) ($stats->where('status', 'Cancelled')->first()?->amount ?? 0),
+            'totalApproved' => (int) ($monthStats->where('status', Expense::STATUS_APPROVED)->first()?->total ?? 0),
+            'amountApproved' => (float) ($monthStats->where('status', Expense::STATUS_APPROVED)->first()?->amount ?? 0),
+            'totalPending' => (int) ($pendingStat?->total ?? 0),
+            'amountPending' => (float) ($pendingStat?->amount ?? 0),
+            'totalCancelled' => (int) ($monthStats->where('status', Expense::STATUS_CANCELLED)->first()?->total ?? 0),
+            'amountCancelled' => (float) ($monthStats->where('status', Expense::STATUS_CANCELLED)->first()?->amount ?? 0),
         ];
     }
 

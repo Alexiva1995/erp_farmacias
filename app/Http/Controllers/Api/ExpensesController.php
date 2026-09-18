@@ -141,9 +141,9 @@ class ExpensesController extends Controller
             $filtros["type_of_expense"] = $request->type_of_expense;
         }
 
-        $excel = $this->expenses->exportExcel($filtros);
+        $excel = $this->expenses->exportToExcel($filtros);
 
-        $fileName = 'gastos-pendientes-' . now()->format('Y-m-d') . '.' . $request->formato;
+        $fileName = 'gastos-' . now()->format('Y-m-d') . '.' . $request->formato;
 
         return Excel::download($excel, $fileName);
     }

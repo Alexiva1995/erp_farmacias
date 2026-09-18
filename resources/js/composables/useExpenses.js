@@ -205,6 +205,7 @@ export function useExpenses() {
       clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => {
         actualizarTabla();
+        consultarStats();
       }, 300);
     },
     { deep: true }
