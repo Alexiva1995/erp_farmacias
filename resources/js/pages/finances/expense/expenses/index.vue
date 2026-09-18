@@ -153,10 +153,8 @@ const kpis = [
               </div>
               <div class="mt-auto">
                 <div
-                  :class="[
-                    'text-h5 font-weight-black leading-none mb-1',
-                    `text-${kpi.color}`,
-                  ]"
+                  class="text-h5 font-weight-black leading-none mb-1"
+                  :class="kpi.color === 'warning' ? 'kpi-text-warning' : `text-${kpi.color}`"
                 >
                   ${{ (stats[kpi.amountKey] || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
                 </div>
@@ -295,6 +293,9 @@ const kpis = [
 }
 .bg-warning-opacity-1 {
   background: rgba(var(--v-theme-warning), 0.1);
+}
+.kpi-text-warning {
+  color: #92400e !important;
 }
 .bg-error-opacity-1 {
   background: rgba(var(--v-theme-error), 0.1);

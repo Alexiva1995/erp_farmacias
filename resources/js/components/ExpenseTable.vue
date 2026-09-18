@@ -27,19 +27,44 @@ function openAuditModal(item) {
 
 const headers = computed(() => {
   const h = [
-    { title: 'ID',             key: 'id',            sortable: true,  width: '70px' },
-    { title: 'Descripción',     key: 'name',          sortable: true,  width: '250px' },
-    { title: 'Categoría',       key: 'category.name', sortable: false, width: '150px' },
-    { title: 'Moneda',          key: 'currency',      sortable: false, width: '100px' },
-    { title: 'Monto Total',     key: 'total_usd',     sortable: true,  align: 'end', width: '150px' },
-    { title: 'Estado / Auditoría', key: 'status',      sortable: false, align: 'center', width: '180px' },
-    { title: 'Fecha',           key: 'created_at',    sortable: true,  width: '100px' },
+    { title: '#ID',               key: 'id',             sortable: true,  width: '70px' },
+    { title: 'CONCEPTO / PROVEEDOR', key: 'name',           sortable: true,  width: '260px' },
+    { title: 'N° FACTURA / REF',  key: 'invoice_number', sortable: false, width: '150px' },
+    { title: 'CATEGORÍA',         key: 'category.name',  sortable: false, width: '140px' },
+    { title: 'FORMA DE PAGO / CUENTA', key: 'count',     sortable: false, width: '150px' },
+    { title: 'MONTO TOTAL',       key: 'total_usd',      sortable: true,  align: 'end', width: '150px' },
+    { title: 'SOPORTE',           key: 'url_file',       sortable: false, align: 'center', width: '85px' },
+    { title: 'ESTADO',            key: 'status',         sortable: false, align: 'center', width: '160px' },
+    { title: 'FECHA',             key: 'created_at',     sortable: true,  width: '105px' },
   ];
   if (authStore.isAdmin) {
-    h.push({ title: 'Acciones',        key: 'acciones',      sortable: false, align: 'center', width: '120px' });
+    h.push({ title: 'ACCIONES',   key: 'acciones',       sortable: false, align: 'center', width: '110px' });
   }
   return h;
 });
+
+const totalPageUsd = computed(() => {
+  return props.items.reduce((acc, curr) => acc + Number(curr.total_usd || 0), 0);
+});
+
+// Helper para extraer proveedor o concepto limpio
+function parseConcept(item) {
+  if (!item?.name) return '—';
+  if (item.name.includes('- Proveedor:')) {
+    const parts = item.name.split('- Proveedor:');
+    return parts[1]?.trim() || item.name;
+  }
+  return item.name;
+}
+
+function parseInvoiceNumber(item) {
+  if (item.invoice_number) return item.invoice_number;
+  if (item.name && item.name.includes('Pago Factura #')) {
+    const match = item.name.match(/Pago Factura #\s*([^\s-]+)/i);
+    if (match && match[1]) return match[1];
+  }
+  return null;
+}
 
 const actionLabels = {
   created: 'Creado',
@@ -88,12 +113,6 @@ function getStatusLabel(status) {
   return 'Pendiente';
 }
 
-function getStatusChipColor(status) {
-  if (status === 'Approved' || status === 'Aprobado') return 'success';
-  if (status === 'Cancelled' || status === 'Cancelado') return 'error';
-  return 'warning';
-}
-
 function isImageFile(url) {
   if (!url || typeof url !== 'string') return false;
   return !url.toLowerCase().endsWith('.pdf');
@@ -131,76 +150,138 @@ function openImage(url) {
 
       <!-- ID -->
       <template #[`item.id`]="{ item }">
-        <span class="font-weight-black text-primary text-sm">#{{ item.id }}</span>
+        <span class="font-weight-black text-primary font-mono text-sm">#{{ item.id }}</span>
       </template>
 
-      <!-- Nombre / Descripción -->
+      <!-- Concepto / Proveedor -->
       <template #[`item.name`]="{ item }">
         <div class="d-flex flex-column py-2">
-          <span class="text-sm font-weight-black text-high-emphasis leading-tight mb-1">
-            {{ item.name }}
+          <span class="text-body-2 font-weight-bold text-high-emphasis leading-snug mb-1">
+            {{ parseConcept(item) }}
           </span>
-          <div class="d-flex align-center gap-1 mt-1">
-            <VIcon icon="tabler-user-check" size="12" class="text-disabled" />
-            <span class="text-super-xs font-weight-black text-disabled uppercase">
-              Creado por: {{ item.user?.username || 'Sistema' }}
+          <div class="d-flex align-center gap-1">
+            <VIcon icon="tabler-user-check" size="13" class="text-medium-emphasis" />
+            <span class="text-caption text-medium-emphasis font-weight-medium">
+              Creado por: <strong class="text-high-emphasis">{{ item.user?.username || 'Sistema' }}</strong>
             </span>
+          </div>
+        </div>
+      </template>
+
+      <!-- N° Factura / Control -->
+      <template #[`item.invoice_number`]="{ item }">
+        <div class="d-flex flex-column gap-1">
+          <span v-if="parseInvoiceNumber(item)" class="font-mono text-xs font-weight-bold text-primary bg-primary-subtle px-2 py-1 rounded d-inline-block text-center">
+            FAC-{{ parseInvoiceNumber(item) }}
+          </span>
+          <span v-else class="text-disabled font-weight-medium text-caption">—</span>
+          
+          <!-- Badges de retenciones/IVA/Deducible -->
+          <div class="d-flex gap-1 flex-wrap" v-if="item.is_deductible || item.iva || item.tax_amount > 0">
+            <VChip v-if="item.is_deductible" size="x-small" color="info" variant="tonal" class="font-weight-bold px-1" style="height: 16px; font-size: 0.65rem;">
+              Deducible
+            </VChip>
+            <VChip v-if="item.iva || item.tax_amount > 0" size="x-small" color="secondary" variant="tonal" class="font-weight-bold px-1" style="height: 16px; font-size: 0.65rem;">
+              IVA
+            </VChip>
           </div>
         </div>
       </template>
 
       <!-- Categoría -->
       <template #[`item.category.name`]="{ item }">
-        <VChip size="x-small" color="primary" variant="tonal" class="rounded-lg font-weight-black px-2">
-          <VIcon icon="tabler-tag" size="12" start />
+        <VChip size="small" color="secondary" variant="tonal" class="rounded-lg font-weight-medium px-2 text-caption">
+          <VIcon icon="tabler-tag" size="13" start />
           {{ item.category?.name || 'S/C' }}
         </VChip>
       </template>
 
-      <!-- Moneda -->
-      <template #[`item.currency`]="{ item }">
-        <VChip size="x-small" variant="tonal" class="font-weight-black">
-          {{ item.currency }}
-        </VChip>
+      <!-- Forma de Pago / Cuenta -->
+      <template #[`item.count`]="{ item }">
+        <div class="d-flex align-center gap-1">
+          <VChip size="small" variant="tonal" color="primary" class="font-weight-bold text-caption">
+            <VIcon icon="tabler-wallet" size="13" start />
+            {{ item.count || item.payment_method || 'Efectivo' }}
+          </VChip>
+        </div>
       </template>
 
-      <!-- Monto -->
+      <!-- Monto Total -->
       <template #[`item.total_usd`]="{ item }">
         <div class="d-flex flex-column align-end py-2">
-          <span class="text-sm font-weight-black text-error">
-            ${{ Number(item.total_usd || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) }}
+          <span class="text-body-2 font-weight-black font-mono text-high-emphasis">
+            ${{ Number(item.total_usd || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
           </span>
-          <span v-if="item.currency !== 'USD'" class="text-super-xs font-weight-black text-disabled mt-1">
+          <span v-if="item.currency !== 'USD'" class="text-caption font-weight-medium text-medium-emphasis mt-0 font-mono">
             Orig: {{ Number(item.amount).toLocaleString('es-VE', { minimumFractionDigits: 2 }) }} {{ item.currency }}
           </span>
         </div>
       </template>
 
-      <!-- Estado & Metadatos de Auditoría -->
+      <!-- Soporte / Adjunto -->
+      <template #[`item.url_file`]="{ item }">
+        <div class="d-flex justify-center">
+          <VBtn
+            v-if="item.url_file"
+            icon
+            size="x-small"
+            variant="tonal"
+            color="primary"
+            :href="item.url_file"
+            target="_blank"
+            class="rounded-lg"
+          >
+            <VIcon icon="tabler-paperclip" size="18" />
+            <VTooltip activator="parent" location="top">Ver Documento Adjunto</VTooltip>
+          </VBtn>
+          <span v-else class="text-disabled font-weight-bold">—</span>
+        </div>
+      </template>
+
+      <!-- Estado & Auditoría -->
       <template #[`item.status`]="{ item }">
         <div class="d-flex flex-column align-center gap-1">
+          <!-- Badge Accesible WCAG para Pendiente y demás -->
+          <span
+            v-if="item.status === 'Pending' || item.status === 'Pendiente'"
+            class="badge-pending"
+          >
+            Pendiente
+          </span>
           <VChip
+            v-else-if="item.status === 'Approved' || item.status === 'Aprobado'"
             size="small"
-            :color="item.status === 'Approved' ? 'success' : item.status === 'Cancelled' ? 'error' : 'warning'"
+            color="success"
             variant="tonal"
             class="font-weight-black uppercase px-2"
           >
-            {{ item.status === 'Pending' ? 'Pendiente' : item.status === 'Approved' ? 'Aprobado' : 'Cancelado' }}
+            Aprobado
+          </VChip>
+          <VChip
+            v-else
+            size="small"
+            color="error"
+            variant="tonal"
+            class="font-weight-black uppercase px-2"
+          >
+            Cancelado
           </VChip>
           
           <!-- Traza rápida aprobador/cancelador -->
           <span v-if="item.status === 'Approved' && item.approved_by" class="text-super-xs font-weight-bold text-success">
-            Aprobado por {{ item.approved_by.username }}
+            Por {{ item.approved_by.username }}
           </span>
           <span v-else-if="item.status === 'Cancelled' && item.cancelled_by" class="text-super-xs font-weight-bold text-error">
-            Cancelado por {{ item.cancelled_by.username }}
+            Por {{ item.cancelled_by.username }}
           </span>
         </div>
       </template>
 
       <!-- Fecha -->
       <template #[`item.created_at`]="{ item }">
-        <span class="text-xs font-weight-bold text-disabled">{{ dayjs(item.created_at.replace('Z', '')).format('DD/MM/YYYY') }}</span>
+        <span class="text-caption font-weight-bold text-medium-emphasis">
+          {{ dayjs(item.created_at?.replace('Z', '') || item.expense_date).format('DD/MM/YYYY') }}
+        </span>
       </template>
 
       <!-- Acciones & Botón Historial de Auditoría -->
@@ -208,29 +289,45 @@ function openImage(url) {
         <div class="d-flex justify-center align-center gap-1">
           <VBtn
             v-if="item.status === 'Pending' || item.status === 'Pendiente'"
-            variant="text"
+            variant="tonal"
             color="success"
             size="small"
             class="rounded-lg"
             :loading="statuModule.loadingItems.has(item.id)"
             @click="() => emit('approve', item.id)"
           >
-            <VIcon icon="tabler-circle-check" size="20" />
+            <VIcon icon="tabler-circle-check" size="18" />
             <VTooltip activator="parent" location="top">Aprobar Gasto</VTooltip>
           </VBtn>
 
           <!-- Ver Auditoría Histórica -->
           <VBtn
             variant="text"
-            color="info"
+            color="secondary"
             size="small"
             class="rounded-lg"
             @click="openAuditModal(item)"
           >
-            <VIcon icon="tabler-history" size="20" />
-            <VTooltip activator="parent" location="top">Ver Historial de Auditoría</VTooltip>
+            <VIcon icon="tabler-history" size="18" />
+            <VTooltip activator="parent" location="top">Historial de Auditoría</VTooltip>
           </VBtn>
         </div>
+      </template>
+
+      <!-- Fila de Totales en el Pie de Tabla -->
+      <template #body.append>
+        <tr v-if="props.items.length > 0" class="summary-footer-row bg-light font-weight-black">
+          <td colspan="5" class="text-subtitle-2 font-weight-black text-uppercase text-medium-emphasis ps-4 py-3">
+            <div class="d-flex align-center gap-2">
+              <VIcon icon="tabler-calculator" size="18" class="text-primary" />
+              <span>TOTALES DE LA PÁGINA ({{ props.items.length }} GASTOS)</span>
+            </div>
+          </td>
+          <td class="text-end font-mono text-body-2 font-weight-black text-high-emphasis pe-4 py-3">
+            ${{ totalPageUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
+          </td>
+          <td colspan="4" class="py-3"></td>
+        </tr>
       </template>
     </VDataTableServer>
 
@@ -259,45 +356,65 @@ function openImage(url) {
                 <VChip
                   size="x-small"
                   variant="flat"
-                  class="rounded-lg font-weight-black bg-primary-opacity-1 text-primary"
+                  class="rounded-lg font-weight-black bg-primary-opacity-1 text-primary font-mono"
                 >
                   #{{ item.id }}
                 </VChip>
+                <span
+                  v-if="item.status === 'Pending' || item.status === 'Pendiente'"
+                  class="badge-pending"
+                >
+                  Pendiente
+                </span>
                 <VChip
+                  v-else
                   size="x-small"
-                  :color="item.status === 'Approved' ? 'success' : item.status === 'Cancelled' ? 'error' : 'warning'"
+                  :color="item.status === 'Approved' ? 'success' : 'error'"
                   variant="tonal"
                   class="font-weight-black uppercase px-2"
                 >
-                  {{ item.status === 'Pending' ? 'Pendiente' : item.status === 'Approved' ? 'Aprobado' : 'Cancelado' }}
+                  {{ item.status === 'Approved' ? 'Aprobado' : 'Cancelado' }}
                 </VChip>
               </div>
               <div class="text-right">
                 <span class="text-super-xs font-weight-black text-disabled uppercase d-block">Monto en USD</span>
-                <span class="text-sm font-weight-black text-error">
+                <span class="text-body-2 font-weight-black text-high-emphasis font-mono">
                   ${{ Number(item.total_usd || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) }}
                 </span>
               </div>
             </div>
 
             <div class="ml-2 mb-1">
-              <div class="text-sm font-weight-black text-high-emphasis">{{ item.name }}</div>
+              <div class="text-body-2 font-weight-bold text-high-emphasis">{{ parseConcept(item) }}</div>
             </div>
 
-            <div class="ml-2 mb-3 mt-1 d-flex flex-wrap gap-2">
-               <span class="text-super-xs font-weight-black text-disabled uppercase">
-                 {{ item.count }}
-               </span>
-               <span class="text-disabled text-super-xs">•</span>
-               <span class="text-super-xs font-weight-black text-disabled uppercase">
-                 {{ item.currency }}
-               </span>
+            <div class="ml-2 mb-2 d-flex flex-wrap gap-2 align-center">
+              <span v-if="parseInvoiceNumber(item)" class="font-mono text-super-xs font-weight-bold text-primary bg-primary-subtle px-2 py-0.5 rounded">
+                FAC-{{ parseInvoiceNumber(item) }}
+              </span>
+              <span class="text-super-xs font-weight-black text-medium-emphasis uppercase">
+                {{ item.count || item.payment_method }}
+              </span>
+              <span class="text-disabled text-super-xs">•</span>
+              <span class="text-super-xs font-weight-black text-medium-emphasis uppercase font-mono">
+                Orig: {{ Number(item.amount).toLocaleString('es-VE') }} {{ item.currency }}
+              </span>
             </div>
 
             <div class="d-flex justify-space-between align-center mt-3 pt-3 border-t ml-2">
-              <div class="d-flex align-center gap-1">
-                <VIcon icon="tabler-tag" size="14" class="text-disabled" />
-                <span class="text-super-xs font-weight-black uppercase text-disabled">{{ item.category?.name || 'S/C' }}</span>
+              <div class="d-flex align-center gap-2">
+                <VChip size="x-small" color="secondary" variant="tonal">
+                  {{ item.category?.name || 'S/C' }}
+                </VChip>
+                <VBtn
+                  v-if="item.url_file"
+                  size="x-small"
+                  variant="tonal"
+                  color="primary"
+                  icon="tabler-paperclip"
+                  :href="item.url_file"
+                  target="_blank"
+                />
               </div>
               <VBtn
                 variant="tonal"
@@ -306,7 +423,7 @@ function openImage(url) {
                 class="rounded-lg font-weight-black"
                 @click="openAuditModal(item)"
               >
-                Historial Auditable
+                Auditoría
               </VBtn>
             </div>
           </VCard>
@@ -345,7 +462,7 @@ function openImage(url) {
           <div v-if="selectedAuditExpense" class="mb-4">
             <div class="d-flex align-center justify-space-between mb-2">
               <span class="font-weight-black text-h6 text-high-emphasis">Gasto #{{ selectedAuditExpense.id }}: {{ selectedAuditExpense.name }}</span>
-              <VChip size="small" color="primary" variant="flat" class="font-weight-black">
+              <VChip size="small" color="primary" variant="flat" class="font-weight-black font-mono">
                 ${{ Number(selectedAuditExpense.total_usd || 0).toFixed(2) }} USD
               </VChip>
             </div>
@@ -427,11 +544,11 @@ function openImage(url) {
 
                 <!-- Caso: Cambio de Estado -->
                 <div v-else-if="audit.action === 'status_changed'" class="bg-light pa-3 rounded-lg border d-flex align-center gap-2">
-                  <VChip v-if="audit.old_values?.status" size="x-small" :color="getStatusChipColor(audit.old_values.status)" variant="tonal" class="font-weight-bold uppercase">
+                  <VChip v-if="audit.old_values?.status" size="x-small" :color="audit.old_values.status === 'Approved' ? 'success' : audit.old_values.status === 'Cancelled' ? 'error' : 'warning'" variant="tonal" class="font-weight-bold uppercase">
                     {{ getStatusLabel(audit.old_values.status) }}
                   </VChip>
                   <VIcon icon="tabler-arrow-right" size="14" class="text-disabled" />
-                  <VChip size="x-small" :color="getStatusChipColor(audit.new_values?.status)" variant="flat" class="font-weight-bold uppercase">
+                  <VChip size="x-small" :color="audit.new_values?.status === 'Approved' ? 'success' : audit.new_values?.status === 'Cancelled' ? 'error' : 'warning'" variant="flat" class="font-weight-bold uppercase">
                     {{ getStatusLabel(audit.new_values?.status) }}
                   </VChip>
                 </div>
@@ -445,11 +562,11 @@ function openImage(url) {
                     </div>
                     <div v-if="audit.new_values.amount" class="text-super-xs">
                       <span class="text-disabled uppercase font-weight-bold">Monto:</span>
-                      <span class="font-weight-bold text-high-emphasis ml-1">{{ Number(audit.new_values.amount).toLocaleString('es-VE') }} {{ audit.new_values.currency || '' }}</span>
+                      <span class="font-weight-bold text-high-emphasis ml-1 font-mono">{{ Number(audit.new_values.amount).toLocaleString('es-VE') }} {{ audit.new_values.currency || '' }}</span>
                     </div>
                     <div v-if="audit.new_values.total_usd" class="text-super-xs">
                       <span class="text-disabled uppercase font-weight-bold">Total USD:</span>
-                      <span class="font-weight-bold text-error ml-1">${{ Number(audit.new_values.total_usd).toFixed(2) }}</span>
+                      <span class="font-weight-bold text-high-emphasis ml-1 font-mono">${{ Number(audit.new_values.total_usd).toFixed(2) }}</span>
                     </div>
                     <div v-if="audit.new_values.expense_date" class="text-super-xs">
                       <span class="text-disabled uppercase font-weight-bold">Fecha:</span>
@@ -472,19 +589,24 @@ function openImage(url) {
 
 <style scoped>
 .premium-table :deep(th) {
-  background-color: white !important;
-  block-size: 52px !important;
-  border-block-end: 1px solid rgba(var(--v-border-color), 0.05) !important;
-  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
+  background-color: #f8fafc !important;
+  block-size: 48px !important;
+  border-block-end: 2px solid rgba(var(--v-border-color), 0.12) !important;
+  color: rgba(var(--v-theme-on-surface), 0.85) !important;
   font-size: 0.75rem !important;
-  font-weight: 700 !important;
+  font-weight: 800 !important;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
 .premium-table :deep(td) {
-  padding-block: 12px !important;
-  border-block-end: 1px solid rgba(var(--v-border-color), 0.05) !important;
+  padding-block: 10px !important;
+  border-block-end: 1px solid rgba(var(--v-border-color), 0.06) !important;
+}
+
+.summary-footer-row {
+  border-top: 2px solid rgba(var(--v-border-color), 0.18) !important;
+  background-color: #f1f5f9 !important;
 }
 
 .bg-surface-variant-light {
@@ -493,6 +615,27 @@ function openImage(url) {
 
 .bg-primary-opacity-1 {
   background: rgba(var(--v-theme-primary), 0.08);
+}
+
+.bg-primary-subtle {
+  background-color: rgba(var(--v-theme-primary), 0.08);
+}
+
+.font-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.badge-pending {
+  background-color: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fcd34d;
+  font-weight: 800;
+  font-size: 0.72rem;
+  padding: 3px 8px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  display: inline-block;
 }
 
 .text-super-xs { font-size: 0.65rem !important; }

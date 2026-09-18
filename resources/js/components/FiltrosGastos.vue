@@ -39,6 +39,33 @@ const hasAdvancedFilters = computed(() => {
     props.isDeductible
   );
 });
+
+const formatDateString = (d) => {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+function setQuickFilter(days) {
+  const today = new Date();
+
+  if (days === 'all') {
+    emit('update:fechaDesde_filtro', '');
+    emit('update:fechaHasta_filtro', '');
+  } else if (days === 'current_month') {
+    const start = new Date(today.getFullYear(), today.getMonth(), 1);
+    emit('update:fechaDesde_filtro', formatDateString(start));
+    emit('update:fechaHasta_filtro', formatDateString(today));
+  } else if (days === 'last_month') {
+    const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    const lastDay = new Date(today.getFullYear(), today.getMonth(), 0);
+    emit('update:fechaDesde_filtro', formatDateString(lastMonth));
+    emit('update:fechaHasta_filtro', formatDateString(lastDay));
+  } else {
+    const start = new Date();
+    start.setDate(today.getDate() - days);
+    emit('update:fechaDesde_filtro', formatDateString(start));
+    emit('update:fechaHasta_filtro', formatDateString(today));
+  }
+}
 </script>
 
 <template>
@@ -131,6 +158,32 @@ const hasAdvancedFilters = computed(() => {
           @update:model-value="emit('update:isDeductible', $event)"
         />
       </VCol>
+    </template>
+
+    <template #actions-extra>
+      <!-- Menú de Accesos Rápidos de Fecha -->
+      <VMenu location="bottom end">
+        <template #activator="{ props: menuProps }">
+          <VBtn
+            v-bind="menuProps"
+            variant="tonal"
+            color="info"
+            size="38"
+            icon
+            class="rounded-circle shadow-sm ms-1"
+          >
+            <VIcon icon="tabler-calendar-time" size="20" />
+            <VTooltip activator="parent" location="top">Períodos Rápidos</VTooltip>
+          </VBtn>
+        </template>
+        <VList density="compact" class="rounded-lg shadow-lg border-0 pa-2">
+          <VListItem @click="setQuickFilter('all')"><VListItemTitle class="text-xs font-weight-bold">Todo</VListItemTitle></VListItem>
+          <VListItem @click="setQuickFilter(15)"><VListItemTitle class="text-xs font-weight-bold">Últimos 15 días</VListItemTitle></VListItem>
+          <VListItem @click="setQuickFilter(30)"><VListItemTitle class="text-xs font-weight-bold">Últimos 30 días</VListItemTitle></VListItem>
+          <VListItem @click="setQuickFilter('current_month')"><VListItemTitle class="text-xs font-weight-bold">Mes Actual</VListItemTitle></VListItem>
+          <VListItem @click="setQuickFilter('last_month')"><VListItemTitle class="text-xs font-weight-bold">Mes Pasado</VListItemTitle></VListItem>
+        </VList>
+      </VMenu>
     </template>
   </AppFilterBase>
 </template>

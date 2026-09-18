@@ -17,15 +17,23 @@ class ExpenseResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
+            'invoice_number' => $this->invoice_number,
+            'control_number' => $this->control_number,
             'amount' => $this->amount,
             'currency' => $this->currency,
             'status' => $this->status,
-            'payment_method' => $this->count, // Mantenemos el nombre de la columna DB pero representamos el concepto
-            'expense_date' => $this->expense_date->format('Y-m-d'),
+            'count' => $this->count,
+            'payment_method' => $this->count,
+            'expense_date' => $this->expense_date ? (is_string($this->expense_date) ? substr($this->expense_date, 0, 10) : $this->expense_date->format('Y-m-d')) : null,
             'has_invoice' => $this->has_invoice,
             'is_deductible' => $this->is_deductible,
+            'iva' => $this->iva,
+            'tax_amount' => $this->tax_amount,
+            'taxable_base' => $this->taxable_base,
+            'exempt_amount' => $this->exempt_amount,
             'total_usd' => $this->total_usd,
             'url_file' => $this->url_file,
+            'file_name' => $this->file_name,
             'category' => $this->whenLoaded('category', function () {
                 return [
                     'id' => $this->category->id,
