@@ -927,6 +927,7 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
             Route::get('/export/excel', [TransactionController::class, 'exportExcel']);
             Route::get('/cash-status', [TransactionController::class, 'getCashStatus']);
             Route::post('/adjustment', [TransactionController::class, 'adjustBalance']);
+            Route::post('/transfer', [TransactionController::class, 'transferBetweenWallets']);
         });
 
         Route::prefix('payslips')->group(function () {

@@ -10,6 +10,7 @@ use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Finances\AjusteBalanceRequest;
 use App\Http\Requests\Finances\GetTransactionsRequest;
+use App\Http\Requests\Finances\TransferBetweenWalletsRequest;
 use App\Http\Resources\Finances\TransactionResource;
 use App\Repositories\TransactionRepository;
 use Illuminate\Http\JsonResponse;
@@ -78,6 +79,13 @@ class TransactionController extends Controller
         $this->transaction->adjustBalance($request->validated());
 
         return ApiResponse::success(null, 'Saldo ajustado correctamente');
+    }
+
+    public function transferBetweenWallets(TransferBetweenWalletsRequest $request): JsonResponse
+    {
+        $this->transaction->transferBetweenWallets($request->validated());
+
+        return ApiResponse::success(null, 'Transferencia entre cajas realizada correctamente');
     }
 
     /**

@@ -12,6 +12,7 @@ interface Transaction
   public function getWallets(array $data): array;
   public function getIncomeSummary(array $data): array;
   public function adjustBalance(array $data): void;
+  public function transferBetweenWallets(array $data): void;
   public function exportExcel(array $data);
   public function createTransactionSalida(Expense $expense): ?ModelsTransaction;
 }

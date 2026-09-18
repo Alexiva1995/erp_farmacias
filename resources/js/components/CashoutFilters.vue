@@ -24,6 +24,7 @@ const emit = defineEmits([
   "update:selectedTab",
   "update:selectedOption",
   "adjust",
+  "transfer",
   "clear",
   "export",
 ]);
@@ -66,6 +67,7 @@ function handleWalletSelect({ currency, option }) {
       :cash-status="cashStatus"
       @select="handleWalletSelect"
       @adjust="emit('adjust', $event)"
+      @transfer="emit('transfer')"
       class="mb-7"
     />
 

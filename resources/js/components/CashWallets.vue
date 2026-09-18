@@ -14,7 +14,7 @@ const props = defineProps({
   cashStatus:       { type: Object,  default: () => null },
 });
 
-const emit = defineEmits(['select', 'adjust']);
+const emit = defineEmits(['select', 'adjust', 'transfer']);
 const authStore = useAuthStore();
 
 // ─── Estado colapsable ───────────────────────────────────────────────────────
@@ -153,6 +153,18 @@ const walletIconColor = (method) => {
             {{ fmtUsd(totalUsd) }} USD
           </span>
         </div>
+
+        <!-- Botón Transferir entre Cajas -->
+        <VBtn
+          color="primary"
+          variant="elevated"
+          size="small"
+          class="font-weight-black rounded-lg shadow-sm"
+          prepend-icon="tabler-arrows-left-right"
+          @click.stop="emit('transfer')"
+        >
+          TRANSFERIR
+        </VBtn>
       </div>
     </div>
     <!-- ╚════════════════════════════════════════════╝ -->

@@ -433,6 +433,96 @@ class TransactionRepository implements TransactionContract
         });
     }
 
+    public function transferBetweenWallets(array $data): void
+    {
+        $sourceCurrency = $data['source_currency'];
+        $sourceType = $data['source_type'];
+        $sourceAmount = (float) $data['source_amount'];
+
+        $destCurrency = $data['destination_currency'];
+        $destType = $data['destination_type'];
+        $destAmount = (float) $data['destination_amount'];
+
+        $exchangeRate = !empty($data['exchange_rate']) ? (float) $data['exchange_rate'] : 1.0;
+        $notes = !empty($data['notes']) ? ' - ' . trim($data['notes']) : '';
+
+        $sourceLabel = TransactionType::tryFrom($sourceType)?->label() ?? $sourceType;
+        $destLabel = TransactionType::tryFrom($destType)?->label() ?? $destType;
+
+        $isSameCurrency = ($sourceCurrency === $destCurrency);
+
+        DB::transaction(function () use (
+            $sourceCurrency,
+            $sourceType,
+            $sourceAmount,
+            $destCurrency,
+            $destType,
+            $destAmount,
+            $exchangeRate,
+            $notes,
+            $sourceLabel,
+            $destLabel,
+            $isSameCurrency
+        ) {
+            $now = Carbon::now();
+            $category = \App\Models\ExpenseCategory::firstOrCreate(['name' => 'Transferencias entre Cajas']);
+
+            // 1. Transacción de SALIDA (Caja Origen)
+            $outDesc = $isSameCurrency
+                ? "Transferencia enviada a {$destLabel} ({$destCurrency}){$notes}"
+                : "Transferencia enviada a {$destLabel} ({$destCurrency}) @ Tasa {$exchangeRate} (Monto dest: {$destAmount} {$destCurrency}){$notes}";
+
+            $outTransaction = new Transaction();
+            $outTransaction->user_id = Auth::id() ?? 1;
+            $outTransaction->category_id = $category->id;
+            $outTransaction->description = $outDesc;
+            $outTransaction->currency = $sourceCurrency;
+            $outTransaction->type = $sourceType;
+            $outTransaction->amount = $sourceAmount;
+            $outTransaction->movement_type = 'OUT';
+            $outTransaction->transaction_date = $now->toDateString();
+            $outTransaction->exchange_rate = $exchangeRate;
+            $outTransaction->save();
+
+            // 2. Transacción de ENTRADA (Caja Destino)
+            $inDesc = $isSameCurrency
+                ? "Transferencia recibida de {$sourceLabel} ({$sourceCurrency}){$notes}"
+                : "Transferencia recibida de {$sourceLabel} ({$sourceCurrency}) @ Tasa {$exchangeRate} (Monto origen: {$sourceAmount} {$sourceCurrency}){$notes}";
+
+            $inTransaction = new Transaction();
+            $inTransaction->user_id = Auth::id() ?? 1;
+            $inTransaction->category_id = $category->id;
+            $inTransaction->description = $inDesc;
+            $inTransaction->currency = $destCurrency;
+            $inTransaction->type = $destType;
+            $inTransaction->amount = $destAmount;
+            $inTransaction->movement_type = 'IN';
+            $inTransaction->transaction_date = $now->toDateString();
+            $inTransaction->exchange_rate = $exchangeRate;
+            $inTransaction->save();
+
+            // 3. Ajustar turnos de caja abiertos si corresponde
+            $cashClosing = CashClosing::where('seller_id', Auth::id())
+                ->where('status', CashClosing::OPEN)
+                ->first();
+
+            if ($cashClosing) {
+                $sourceField = $this->mapMethodToField($sourceCurrency, $sourceType);
+                if ($sourceField) {
+                    $cashClosing->$sourceField -= $sourceAmount;
+                }
+
+                $destField = $this->mapMethodToField($destCurrency, $destType);
+                if ($destField) {
+                    $cashClosing->$destField += $destAmount;
+                }
+
+                $cashClosing->recalculateTotals();
+                $cashClosing->save();
+            }
+        });
+    }
+
     private function mapMethodToField(string $currency, string $method): ?string
     {
         $map = [
