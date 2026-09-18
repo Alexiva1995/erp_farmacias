@@ -143,18 +143,31 @@ class TransactionRepository implements TransactionContract
             ->orderBy('transaction_date')
             ->get();
 
-        $days = range(1, (int) substr($endDate, 8, 2));
+        $startCarbon = Carbon::parse($startDate);
+        $endCarbon = Carbon::parse($endDate);
+        if ($endCarbon->lt($startCarbon)) {
+            $endCarbon = $startCarbon->copy();
+        }
+
+        $dateList = [];
+        $cursor = $startCarbon->copy();
+        while ($cursor->lte($endCarbon)) {
+            $dateList[] = $cursor->format('Y-m-d');
+            $cursor->addDay();
+        }
+
+        $totalDays = count($dateList);
         $skeleton = collect(['COP', 'BS', 'USD'])
             ->mapWithKeys(
-                fn($c) => [$c => array_fill(0, count($days), 0)]
+                fn($c) => [$c => array_fill(0, max(1, $totalDays), 0)]
             )
             ->toArray();
 
         $query->groupBy('currency')->each(
-            function ($group, $curr) use (&$skeleton, $days) {
+            function ($group, $curr) use (&$skeleton, $dateList) {
                 foreach ($group as $row) {
-                    $day = (int) substr($row->transaction_date, 8, 2);
-                    $index = array_search($day, $days, true);
+                    $dateStr = substr((string)$row->transaction_date, 0, 10);
+                    $index = array_search($dateStr, $dateList, true);
                     if ($index !== false) {
                         $skeleton[$curr][$index] = (float) $row->total_amount;
                     }

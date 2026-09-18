@@ -93,6 +93,9 @@ const fetchTransactionsGroupped = async ({ date, currency, detailed } = {}) => {
       if (parts.length === 2) {
         params.start_date = parts[0];
         params.end_date = parts[1];
+      } else {
+        params.start_date = date;
+        params.end_date = date;
       }
     }
     if (currency) params.currency = currency;
@@ -101,10 +104,9 @@ const fetchTransactionsGroupped = async ({ date, currency, detailed } = {}) => {
     const { data } = await axios.get("/finances/transactions/stats", {
       params,
     });
-    groupedTransactions.value = data.data;
+    groupedTransactions.value = data.data || {};
   } catch (error) {
     console.error("Error al obtener stats:", error);
-    toast.error("Error al cargar las estadísticas de transacciones.");
   }
 };
 
