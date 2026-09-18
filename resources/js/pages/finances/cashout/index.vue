@@ -32,13 +32,13 @@ const isExporting = ref(false);
 const isTransferModalOpen = ref(false);
 const isTransferring = ref(false);
 const transferForm = reactive({
-  source_currency: "USD",
+  source_currency: "COP",
   source_type: "CASH",
   source_amount: null,
-  destination_currency: "BS",
-  destination_type: "TRANSFER",
+  destination_currency: "COP",
+  destination_type: "CAMBISTA",
   destination_amount: null,
-  exchange_rate: null,
+  exchange_rate: 1.0,
   notes: "",
 });
 
@@ -302,17 +302,14 @@ const isSameCurrencyTransfer = computed(
 );
 
 const openTransferModal = () => {
-  transferForm.source_currency = "USD";
+  transferForm.source_currency = "COP";
   transferForm.source_type = "CASH";
   transferForm.source_amount = null;
-  transferForm.destination_currency = "BS";
-  transferForm.destination_type = "TRANSFER";
+  transferForm.destination_currency = "COP";
+  transferForm.destination_type = "CAMBISTA";
   transferForm.destination_amount = null;
   transferForm.notes = "";
-
-  // Tasa sugerida inicial
-  const bcvRate = parseFloat(rates.value?.bcv?.rate) || 0;
-  transferForm.exchange_rate = bcvRate > 0 ? bcvRate : null;
+  transferForm.exchange_rate = 1.0;
   isTransferModalOpen.value = true;
 };
 
