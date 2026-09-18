@@ -977,7 +977,8 @@ class PendingPaymentsController extends Controller
         $taxableBase = $invoice->is_indexed ? ($invoice->taxable_base / $invoice->exchange_rate) * $exchangeRate ?? 0 : ($invoice->taxable_base ?? 0);
         $taxAmount = $invoice->is_indexed ? ($invoice->tax_amount / $invoice->exchange_rate) * $exchangeRate ?? 0 : ($invoice->tax_amount ?? 0);
 
-        // Crear expense con la estructura correcta
+        // Crear expense con la estructura correcta y estado Aprobado automáticamente
+        $approverId = $payment->payment_by ?? auth()->id() ?? 1;
         Expense::create([
             'name' => "Pago Factura # {$invoice->invoice_number} - Proveedor: {$invoice->supplier->name}",
             'category_id' => $category->id,
@@ -985,7 +986,7 @@ class PendingPaymentsController extends Controller
             'conversion_rate' => $conversionRate, // <-- ESTE ES EL CAMPO IMPORTANTE
             'currency' => $payment->payment_method,
             'expense_date' => $payment->payment_date,
-            'user_id' => $payment->payment_by,
+            'user_id' => $approverId,
             'has_invoice' => true,
             'is_deductible' => true,
             'tax_amount' => $taxAmount,
@@ -995,6 +996,9 @@ class PendingPaymentsController extends Controller
             'control_number' => $invoice->control_number,
             'type_of_expense' => 'Normal',
             'count' => $countValue,
+            'status' => Expense::STATUS_APPROVED,
+            'approved_by_id' => $approverId,
+            'approved_at' => now(),
         ]);
     }
     /**

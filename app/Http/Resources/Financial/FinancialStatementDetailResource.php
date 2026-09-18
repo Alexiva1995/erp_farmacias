@@ -12,6 +12,7 @@ class FinancialStatementDetailResource extends JsonResource
         return [
             'transactions' => $this->resource['transactions'],
             'pagination'   => $this->resource['pagination'],
+            'page_totals'  => $this->resource['page_totals'] ?? null,
         ];
     }
 }

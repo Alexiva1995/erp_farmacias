@@ -49,8 +49,7 @@ class FinancialStatementService
 
     public function getDefaultStartDate(): string
     {
-        $config = GeneralSetting::first();
-        return $config->income_statement_reset_date ?? '2020-01-01';
+        return now()->startOfMonth()->format('Y-m-d');
     }
 
     public function calculateSummary(?string $startDate, ?string $endDate, ?string $search = null): array
@@ -80,12 +79,14 @@ class FinancialStatementService
         }
 
         $netProfit = $totalIncome - $totalCosts - $totalExpenses;
+        $marginPercentage = $totalIncome > 0 ? round((($totalIncome - $totalCosts) / $totalIncome) * 100, 2) : 0.00;
 
         return [
-            'income' => $totalIncome,
-            'costs' => $totalCosts,
-            'expenses' => $totalExpenses,
-            'net_profit' => $netProfit,
+            'income' => round($totalIncome, 2),
+            'costs' => round($totalCosts, 2),
+            'expenses' => round($totalExpenses, 2),
+            'net_profit' => round($netProfit, 2),
+            'margin_percentage' => $marginPercentage,
             'date_range' => [
                 'start' => $startDate,
                 'end' => $endDate,
@@ -108,17 +109,37 @@ class FinancialStatementService
 
                 $amountUsd = $item->amount_usd ?: $this->convertToUsd($item->amount, $item->currency, $exchangeRates);
                 $costUsd = round((float) ($item->costs ?? 0), 2);
-                $profitUsd = $amountUsd - $costUsd;
+                $profitUsd = round($amountUsd - $costUsd, 2);
+                $marginPercentage = $amountUsd > 0 ? round(($profitUsd / $amountUsd) * 100, 2) : 0.00;
+
+                $voucherNumber = !empty($order->fiscalHistory?->invoice_number)
+                    ? "FAC-{$order->fiscalHistory->invoice_number}"
+                    : "TKT-" . str_pad((string) $order->id, 6, '0', STR_PAD_LEFT);
+
+                // Obtener métodos de pago / canal
+                $pmList = $order->payment_methods ?? [];
+                $channels = [];
+                if (is_array($pmList)) {
+                    foreach ($pmList as $pm) {
+                        if (isset($pm['method']) && !empty($pm['method'])) {
+                            $channels[] = $pm['method'];
+                        }
+                    }
+                }
+                $channel = !empty($channels) ? implode(', ', array_unique($channels)) : ($order->currency ?? 'USD');
 
                 return [
                     'id' => $item->id,
                     'type' => 'sale',
+                    'voucher_number' => $voucherNumber,
                     'date' => $item->date,
                     'description' => $item->description,
-                    'client' => $order->client?->name ?? 'N/A',
+                    'client' => $order->client?->name ?? 'Consumidor Final',
+                    'channel' => $channel,
                     'amount' => $amountUsd,
                     'costs' => $costUsd,
                     'profit' => $profitUsd,
+                    'margin_percentage' => $marginPercentage,
                     'original_amount' => $item->amount,
                     'original_currency' => $item->currency,
                 ];
@@ -127,24 +148,44 @@ class FinancialStatementService
                 if (!$expense) return null;
 
                 $amountUsd = $item->amount_usd ?: $this->convertToUsd($item->amount, $item->currency, $exchangeRates);
+                $voucherNumber = "EGR-" . str_pad((string) $expense->id, 6, '0', STR_PAD_LEFT);
 
                 return [
                     'id' => $item->id,
                     'type' => 'expense',
+                    'voucher_number' => $voucherNumber,
                     'date' => $item->date,
                     'description' => $item->description,
-                    'category' => $expense->category?->name ?? 'Sin categoría',
+                    'client' => $expense->category?->name ?? 'Gasto General',
+                    'channel' => $expense->count ?? 'Efectivo',
                     'amount' => $amountUsd,
-                    'costs' => 0,
+                    'costs' => 0.00,
                     'profit' => -$amountUsd,
+                    'margin_percentage' => -100.00,
                     'original_amount' => $item->amount,
                     'original_currency' => $item->currency ?? 'Bs',
                 ];
             }
         })->filter()->values();
 
+        // Totales de la página actual
+        $pageTotalSales = $processedItems->where('type', 'sale')->sum('amount');
+        $pageTotalCosts = $processedItems->where('type', 'sale')->sum('costs');
+        $pageTotalExpenses = $processedItems->where('type', 'expense')->sum('amount');
+        $pageTotalProfit = $pageTotalSales - $pageTotalCosts - $pageTotalExpenses;
+        $pageMarginPercent = $pageTotalSales > 0 ? round((($pageTotalSales - $pageTotalCosts) / $pageTotalSales) * 100, 2) : 0.00;
+
+        $pageTotals = [
+            'amount' => round($pageTotalSales, 2),
+            'costs' => round($pageTotalCosts, 2),
+            'expenses' => round($pageTotalExpenses, 2),
+            'profit' => round($pageTotalProfit, 2),
+            'margin_percentage' => $pageMarginPercent,
+        ];
+
         return [
             'transactions' => $processedItems,
+            'page_totals' => $pageTotals,
             'pagination' => [
                 'current_page' => $paginated->currentPage(),
                 'last_page' => $paginated->lastPage(),

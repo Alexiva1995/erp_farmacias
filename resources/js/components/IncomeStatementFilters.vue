@@ -26,26 +26,30 @@ const typeOptions = [
   { title: "Egresos",  value: "expense" },
 ];
 
+const formatDateString = (d) => {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
 function setQuickFilter(days) {
   const today = new Date();
-  const start = new Date(today);
 
   if (days === 'all') {
     emit('update:startDate', null);
     emit('update:endDate', null);
   } else if (days === 'current_month') {
-    start.setDate(1);
-    emit('update:startDate', start.toISOString().split('T')[0]);
-    emit('update:endDate', today.toISOString().split('T')[0]);
+    const start = new Date(today.getFullYear(), today.getMonth(), 1);
+    emit('update:startDate', formatDateString(start));
+    emit('update:endDate', formatDateString(today));
   } else if (days === 'last_month') {
     const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
     const lastDay = new Date(today.getFullYear(), today.getMonth(), 0);
-    emit('update:startDate', lastMonth.toISOString().split('T')[0]);
-    emit('update:endDate', lastDay.toISOString().split('T')[0]);
+    emit('update:startDate', formatDateString(lastMonth));
+    emit('update:endDate', formatDateString(lastDay));
   } else {
+    const start = new Date();
     start.setDate(today.getDate() - days);
-    emit('update:startDate', start.toISOString().split('T')[0]);
-    emit('update:endDate', today.toISOString().split('T')[0]);
+    emit('update:startDate', formatDateString(start));
+    emit('update:endDate', formatDateString(today));
   }
 }
 </script>

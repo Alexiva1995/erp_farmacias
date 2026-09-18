@@ -114,7 +114,7 @@ class FinancialStatementRepository implements FinancialStatementRepositoryInterf
         $saleIds = $items->where('type', 'sale')->pluck('id');
         $expenseIds = $items->where('type', 'expense')->pluck('id');
 
-        $orderModels = Order::with(['client:id,name'])->whereIn('id', $saleIds)->get()->keyBy('id');
+        $orderModels = Order::with(['client:id,name', 'fiscalHistory:id,order_id,invoice_number'])->whereIn('id', $saleIds)->get()->keyBy('id');
         $expenseModels = Expense::with(['category:id,name'])->whereIn('id', $expenseIds)->get()->keyBy('id');
 
         $items->transform(function ($item) use ($orderModels, $expenseModels) {

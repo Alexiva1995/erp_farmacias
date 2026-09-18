@@ -221,18 +221,24 @@ class PaymentProcessingService
             'name' => 'Pagos de Facturas'
         ]);
 
-        // Crear expense
+        $approverId = $payment->payment_by ?? auth()->id() ?? 1;
+
+        // Crear expense con estado Aprobado automáticamente
         Expense::create([
             'name' => "Pago Factura # {$invoices[0]->invoice_number} Proveedor {$invoices[0]->supplier->name}",
             'category_id' => $category->id,
             'amount' => $payment->amount,
             'amount_usd' => $amountUSD,
+            'total_usd' => $amountUSD,
             'currency' => $payment->payment_method,
             'expense_date' => $payment->payment_date,
-            'user_id' => $payment->payment_by,
+            'user_id' => $approverId,
             'has_invoice' => true,
             'is_deductible' => true,
-            'iva' => $iva
+            'iva' => $iva,
+            'status' => Expense::STATUS_APPROVED,
+            'approved_by_id' => $approverId,
+            'approved_at' => now(),
         ]);
     }
 

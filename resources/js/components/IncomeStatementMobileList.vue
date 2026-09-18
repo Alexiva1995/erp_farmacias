@@ -63,40 +63,60 @@ const formatDate = (date) => {
             ></div>
             
             <div class="d-flex justify-space-between align-start mb-2 mt-1">
-              <span class="text-super-xs font-weight-black text-disabled uppercase">
-                {{ formatDate(item.date) }}
-              </span>
+              <div class="d-flex flex-column">
+                <span class="text-xs font-weight-black text-primary font-mono">
+                  {{ item.voucher_number || `REF #${item.id}` }}
+                </span>
+                <span class="text-super-xs font-weight-bold text-disabled uppercase">
+                  {{ formatDate(item.date) }}
+                </span>
+              </div>
               <VChip
                 :color="item.type === 'sale' ? 'success' : 'error'"
                 size="x-small"
                 variant="tonal"
                 class="font-weight-bold chip-mobile-badge"
               >
-                {{ item.type === "sale" ? "ING" : "EGR" }}
+                {{ item.type === "sale" ? "INGRESO" : "EGRESO" }}
               </VChip>
             </div>
 
-            <p class="text-xs font-weight-bold text-high-emphasis line-clamp-2 min-h-desc mb-2">
+            <p class="text-xs font-weight-bold text-high-emphasis line-clamp-2 min-h-desc mb-1">
               {{ item.description }}
             </p>
+            <span class="text-super-xs text-medium-emphasis d-block mb-2">
+              {{ item.client }} • {{ item.channel }}
+            </span>
 
             <VDivider class="my-2 opacity-10" />
 
             <div class="d-flex flex-column gap-1">
               <div class="d-flex justify-space-between align-center text-super-xs">
-                <span class="text-disabled">MONTO:</span>
-                <span :class="['font-weight-black', item.type === 'sale' ? 'text-success' : 'text-error']">
+                <span class="text-disabled font-weight-bold">VENTA:</span>
+                <span :class="['font-weight-black text-body-2', item.type === 'sale' ? 'text-success' : 'text-error']">
                   {{ item.type === 'sale' ? '+' : '-' }}{{ formatCurrency(item.amount) }}
                 </span>
               </div>
               <div v-if="item.costs > 0" class="d-flex justify-space-between align-center text-super-xs">
-                <span class="text-disabled">COSTO:</span>
-                <span class="font-weight-black text-warning">-{{ formatCurrency(item.costs) }}</span>
+                <span class="text-disabled font-weight-bold">COSTO:</span>
+                <span class="font-weight-bold text-warning">-{{ formatCurrency(item.costs) }}</span>
               </div>
               <div class="d-flex justify-space-between align-center text-xs pt-1 border-t mt-1">
-                <span class="font-weight-bold text-disabled">UTIL:</span>
-                <span :class="['font-weight-black', item.profit >= 0 ? 'text-info' : 'text-error']">
-                  {{ formatCurrency(item.profit) }}
+                <div class="d-flex align-center gap-1">
+                  <span class="font-weight-bold text-disabled">MARGEN:</span>
+                  <VChip
+                    v-if="item.type === 'sale'"
+                    :color="item.margin_percentage >= 25 ? 'success' : item.margin_percentage >= 15 ? 'warning' : 'error'"
+                    size="x-small"
+                    variant="tonal"
+                    class="font-weight-black font-mono"
+                    style="font-size: 0.65rem; height: 18px;"
+                  >
+                    {{ item.margin_percentage }}%
+                  </VChip>
+                </div>
+                <span :class="['font-weight-black text-body-2', item.profit >= 0 ? 'text-info' : 'text-error']">
+                  {{ item.profit >= 0 ? '+' : '' }}{{ formatCurrency(item.profit) }}
                 </span>
               </div>
             </div>

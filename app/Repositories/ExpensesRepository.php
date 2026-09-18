@@ -57,6 +57,11 @@ class ExpensesRepository implements Expenses
             unset($expenseData['account']);
         }
 
+        if (($expenseData['status'] ?? null) === Expense::STATUS_APPROVED || ($expenseData['status'] ?? null) === \App\Enums\ExpenseStatus::APPROVED->value) {
+            $expenseData['approved_by_id'] = $expenseData['approved_by_id'] ?? auth()->id() ?? $expenseData['user_id'] ?? 1;
+            $expenseData['approved_at'] = $expenseData['approved_at'] ?? now();
+        }
+
         $expense = Expense::create($expenseData);
 
         ExpenseAudit::create([

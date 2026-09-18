@@ -35,8 +35,10 @@ class ExpensesServices implements Expenses
     {
         $settings = \App\Models\GeneralSetting::first();
         $autoApprove = $settings?->expense_auto_approve ?? false;
+        $user = auth()->user();
+        $isAdmin = $user && ($user->role_id === 1 || in_array(strtolower((string) $user->role?->name), ['admin', 'administrador']));
 
-        $data->status = $autoApprove ? ExpenseStatus::APPROVED->value : ExpenseStatus::PENDING->value;
+        $data->status = ($isAdmin || $autoApprove) ? ExpenseStatus::APPROVED->value : ExpenseStatus::PENDING->value;
 
         return $this->expensesRepository->create($data);
     }
