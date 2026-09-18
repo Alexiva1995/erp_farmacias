@@ -17,30 +17,8 @@ const props = defineProps({
 const emit = defineEmits(['select', 'adjust']);
 const authStore = useAuthStore();
 
-// ─── Preferencia de vista persistida en BD ────────────────────────────────────
-const isCompact   = ref(false);
+// ─── Estado colapsable ───────────────────────────────────────────────────────
 const isCollapsed = ref(false);
-let prefSaveTimer = null;
-
-onMounted(async () => {
-  try {
-    const { data } = await axios.get('/user/ui-preferences');
-    const prefs = data?.data?.ui_preferences ?? {};
-    if (typeof prefs?.cash_wallets_compact === 'boolean') {
-      isCompact.value = prefs.cash_wallets_compact;
-    }
-  } catch (e) {
-    // Ignorar silenciosamente — no crítico
-  }
-});
-
-// Guardar preferencia en BD con debounce de 600ms para no saturar
-watch(isCompact, (val) => {
-  clearTimeout(prefSaveTimer);
-  prefSaveTimer = setTimeout(() => {
-    axios.post('/user/ui-preferences', { key: 'cash_wallets_compact', value: val }).catch(() => {});
-  }, 600);
-});
 
 // ─── Config por moneda ─────────────────────────────────────────────────────────
 const C = {
@@ -147,7 +125,6 @@ const walletIconColor = (method) => {
         <VTooltip location="bottom">
           <template #activator="{ props: tp }">
             <div v-bind="tp" class="rate-pill rate-pill--bs">
-              <VIcon icon="tabler-currency-real" size="13" />
               <span class="rate-pill__label">{{ rateTypeLabel }}</span>
               <span class="rate-pill__sep">·</span>
               <span class="rate-pill__value">{{ rates.bcv?.rate > 0 ? Number(rates.bcv.rate).toLocaleString('es-ES', { minimumFractionDigits: 2 }) : '—' }}</span>
@@ -160,7 +137,6 @@ const walletIconColor = (method) => {
         <VTooltip location="bottom">
           <template #activator="{ props: tp }">
             <div v-bind="tp" class="rate-pill rate-pill--cop">
-              <VIcon icon="tabler-currency-peso" size="13" />
               <span class="rate-pill__label">COP</span>
               <span class="rate-pill__sep">·</span>
               <span class="rate-pill__value">{{ rates.cop?.rate > 0 ? Number(rates.cop.rate).toLocaleString('es-ES', { maximumFractionDigits: 0 }) : '—' }}</span>
@@ -169,19 +145,11 @@ const walletIconColor = (method) => {
           <span>Tasa COP/USD · Act: {{ rates.cop?.updated_at ?? 'N/A' }}</span>
         </VTooltip>
 
-
-
         <!-- Total USD -->
         <div class="total-pill">
           <span class="total-pill__label">Total USD</span>
-          <span class="total-pill__value">USD {{ fmtUsd(totalUsd) }}</span>
+          <span class="total-pill__value">{{ fmtUsd(totalUsd) }} USD</span>
         </div>
-
-        <!-- Toggle vista compacta / expandida -->
-        <VBtnToggle v-model="isCompact" density="compact" variant="outlined" rounded="0" color="primary" mandatory class="view-toggle">
-          <VBtn :value="false" size="small" icon="tabler-layout-grid" class="rounded" />
-          <VBtn :value="true"  size="small" icon="tabler-layout-list" class="rounded" />
-        </VBtnToggle>
       </div>
     </div>
     <!-- ╚════════════════════════════════════════════╝ -->
@@ -196,8 +164,8 @@ const walletIconColor = (method) => {
           <div class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Cargando estado de cajas...</div>
         </div>
 
-        <!-- ══ VISTA EXPANDIDA: GRILLA POR MONEDA (3 COLUMNAS) ══ -->
-        <div v-else-if="!isCompact">
+        <!-- ══ GRILLA POR MONEDA (3 COLUMNAS) ══ -->
+        <div v-else>
           <VRow>
             <VCol
               v-for="section in sections"
@@ -278,72 +246,6 @@ const walletIconColor = (method) => {
               </VCard>
             </VCol>
           </VRow>
-        </div>
-
-        <!-- ══ VISTA COMPACTA ══ -->
-        <div v-else class="d-flex flex-column gap-3">
-          <div
-            v-for="section in sections"
-            :key="section.currency"
-            class="cblock"
-          >
-            <!-- Cabecera compacta -->
-            <div class="cblock__head">
-              <div class="cblock__icon">
-                <VIcon :icon="C[section.currency]?.icon" size="14" />
-              </div>
-              <span class="cblock__name">{{ C[section.currency]?.label }}</span>
-              <span class="cblock__ticker">{{ C[section.currency]?.ticker }}</span>
-              <!-- Total a la derecha: label micro + monto grande, nunca en 2 líneas -->
-              <div class="cblock__total-wrap ms-auto">
-                <span class="cblock__total-label">Total</span>
-                <span class="cblock__total">
-                  {{ C[section.currency]?.prefix }} {{ fmt(section.section_total, section.currency) }}
-                </span>
-              </div>
-            </div>
-
-            <!-- Wallets fila -->
-            <div class="cblock__row">
-              <div
-                v-for="wallet in section.wallets"
-                :key="wallet.key"
-                :class="['cwallet', isSelected(wallet) ? 'cwallet--active' : '', wallet.balance < 0 ? 'cwallet--neg' : '']"
-                @click="handleSelect(wallet)"
-              >
-                <!-- Ícono tonal -->
-                <VAvatar
-                  :color="walletIconColor(wallet.method)"
-                  variant="tonal"
-                  size="30"
-                  class="rounded flex-shrink-0"
-                >
-                  <VIcon :icon="M[wallet.method]?.icon || 'tabler-cash'" size="15" />
-                </VAvatar>
-
-                <!-- Textos -->
-                <div class="cwallet__body">
-                  <span class="cwallet__method">{{ methodLabel(wallet) }}</span>
-                  <span :class="['cwallet__balance', wallet.balance < 0 ? 'cwallet__balance--neg' : '']">
-                    {{ C[section.currency]?.prefix }} {{ fmt(wallet.balance, wallet.currency) }}
-                  </span>
-                </div>
-
-                <!-- Punto selección activa -->
-                <div v-if="isSelected(wallet)" class="cwallet__dot" />
-
-                <!-- Ajuste contable -->
-                <VTooltip v-if="canAdjust" location="top">
-                  <template #activator="{ props: tp }">
-                    <VBtn v-bind="tp" icon="tabler-scale" variant="text" size="x-small"
-                      color="medium-emphasis" class="cwallet__adj"
-                      @click.stop="emit('adjust', wallet)" />
-                  </template>
-                  <span>Ajuste contable</span>
-                </VTooltip>
-              </div>
-            </div>
-          </div>
         </div>
 
       </div>
@@ -476,120 +378,4 @@ const walletIconColor = (method) => {
 .mcard__bar {
   display: none;
 }
-
-/* ══════════════════════════════════════════════════
-   VISTA COMPACTA — cblock
-══════════════════════════════════════════════════ */
-.cblock {
-  border-radius: 8px;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  overflow: hidden;
-  background: rgb(var(--v-theme-surface));
-}
-
-/* Cabecera */
-.cblock__head {
-  display: flex; align-items: center; gap: 10px;
-  padding: 10px 16px;
-  background: rgba(var(--v-theme-on-surface), 0.02);
-  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
-}
-.cblock__icon {
-  display: flex; align-items: center; justify-content: center;
-  width: 28px; height: 28px; border-radius: 6px;
-  background: rgba(var(--v-theme-on-surface), 0.06);
-  color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity));
-  flex-shrink: 0;
-}
-.cblock__name   { font-size: 0.875rem; font-weight: 700; color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)); white-space: nowrap; }
-.cblock__ticker { font-size: 0.6875rem; font-weight: 600; color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)); text-transform: uppercase; }
-
-.cblock__total-wrap {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  flex-shrink: 0;
-  margin-left: auto;
-  line-height: 1.2;
-}
-.cblock__total-label {
-  font-size: 0.625rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity));
-}
-.cblock__total {
-  font-size: 1.125rem;
-  font-weight: 700;
-  color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity));
-  letter-spacing: -0.3px;
-  white-space: nowrap;
-}
-
-/* Row de wallets */
-.cblock__row {
-  display: flex; flex-wrap: wrap;
-  background: rgb(var(--v-theme-surface));
-}
-
-/* Wallet item */
-.cwallet {
-  display: flex; align-items: center; gap: 12px;
-  padding: 12px 16px;
-  border-right: 1px solid rgba(var(--v-theme-on-surface), 0.05);
-  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.05);
-  cursor: pointer;
-  flex: 1 1 180px;
-  min-width: 170px;
-  position: relative;
-  transition: all 0.18s ease;
-}
-.cwallet:last-child { border-right: none; }
-.cwallet:hover { background: rgba(var(--v-theme-on-surface), 0.02); }
-.cwallet:hover .cwallet__adj { opacity: 0.7 !important; }
-
-.cwallet--active { background: rgba(var(--v-theme-primary), 0.04) !important; }
-.cwallet--active::after {
-  content: '';
-  position: absolute; inset-block-start: 0; inset-inline-start: 0;
-  width: 100%; height: 2px;
-  background: rgb(var(--v-theme-primary));
-}
-.cwallet--neg { border-left: 3px solid rgb(var(--v-theme-error)); }
-
-.cwallet__icon {
-  display: flex; align-items: center; justify-content: center;
-  width: 32px; height: 32px; border-radius: 6px;
-  background: rgba(var(--v-theme-on-surface), 0.04) !important;
-  color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)) !important;
-  flex-shrink: 0;
-}
-.cwallet__body {
-  display: flex; flex-direction: column; gap: 2px;
-  line-height: 1.2; min-width: 0; flex: 1;
-}
-.cwallet__method  {
-  font-size: 0.6875rem; font-weight: 600;
-  text-transform: uppercase; letter-spacing: 0.5px;
-  color: #6B7280; white-space: nowrap;
-}
-.cwallet__balance {
-  font-size: 0.9375rem;
-  font-weight: 700;
-  letter-spacing: -0.2px;
-  color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity));
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.cwallet__balance--neg { color: rgb(var(--v-theme-error)); }
-
-.cwallet__dot {
-  position: absolute; inset-block-start: 50%; inset-inline-end: 8px;
-  transform: translateY(-50%);
-  width: 6px; height: 6px; border-radius: 50%;
-  background: rgb(var(--v-theme-primary)) !important;
-}
-.cwallet__adj { opacity: 0; transition: opacity 0.18s; flex-shrink: 0; }
 </style>
