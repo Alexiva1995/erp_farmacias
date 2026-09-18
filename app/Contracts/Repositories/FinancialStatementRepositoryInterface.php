@@ -8,7 +8,7 @@ interface FinancialStatementRepositoryInterface
 {
     public function getIncomeByCurrency(?string $startDate, ?string $endDate, ?string $search = null): array;
     
-    public function getCostsByCurrency(?string $startDate, ?string $endDate, ?string $search = null): array;
+    public function getTotalCostsUsd(?string $startDate, ?string $endDate, ?string $search = null): float;
     
     public function getExpensesUsdSum(?string $startDate, ?string $endDate, ?string $search = null): float;
     

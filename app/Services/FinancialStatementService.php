@@ -64,11 +64,7 @@ class FinancialStatementService
             $totalIncome += $this->convertToUsd($total, $currency, $exchangeRates);
         }
 
-        $costsByCurrency = $this->repository->getCostsByCurrency($startDate, $endDate, $search);
-        $totalCosts = 0.00;
-        foreach ($costsByCurrency as $currency => $total) {
-            $totalCosts += $this->convertToUsd($total, $currency, $exchangeRates);
-        }
+        $totalCosts = $this->repository->getTotalCostsUsd($startDate, $endDate, $search);
 
         $expensesUsdSum = $this->repository->getExpensesUsdSum($startDate, $endDate, $search);
         $expensesByCurrency = $this->repository->getExpensesByCurrency($startDate, $endDate, $search);

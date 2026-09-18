@@ -23,17 +23,15 @@ class FinancialStatementRepository implements FinancialStatementRepositoryInterf
             ->toArray();
     }
 
-    public function getCostsByCurrency(?string $startDate, ?string $endDate, ?string $search = null): array
+    public function getTotalCostsUsd(?string $startDate, ?string $endDate, ?string $search = null): float
     {
         $query = Order::query()
             ->where('status', 'Completed')
             ->when($startDate && $endDate, fn ($q) => $q->whereBetween('order_date', [$startDate, $endDate]))
             ->when($search, fn ($q) => $q->where('id', 'like', "%{$search}%"));
 
-        return $query->selectRaw('currency, SUM(COALESCE(total_cost, 0)) as total')
-            ->groupBy('currency')
-            ->pluck('total', 'currency')
-            ->toArray();
+        return (float) ($query->selectRaw('SUM(COALESCE(NULLIF(orders.total_cost, 0), (SELECT SUM(od.quantity * od.unit_cost) FROM order_details od WHERE od.order_id = orders.id), 0)) as total_cost_usd')
+            ->value('total_cost_usd') ?? 0.0);
     }
 
     public function getExpensesUsdSum(?string $startDate, ?string $endDate, ?string $search = null): float
@@ -70,7 +68,7 @@ class FinancialStatementRepository implements FinancialStatementRepositoryInterf
                 DB::raw("'sale' as type"),
                 'total_amount as amount',
                 'currency',
-                'total_cost as costs',
+                DB::raw('COALESCE(NULLIF(orders.total_cost, 0), (SELECT SUM(od.quantity * od.unit_cost) FROM order_details od WHERE od.order_id = orders.id), 0) as costs'),
                 'total_amount_usd as amount_usd',
                 'client_id as relation_id',
                 DB::raw("CONCAT('Venta #', id) as description")

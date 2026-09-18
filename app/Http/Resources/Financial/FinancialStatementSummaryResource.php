@@ -41,6 +41,7 @@ class FinancialStatementSummaryResource extends JsonResource
                 'icon'     => $netProfit >= 0 ? 'tabler-pig-money' : 'tabler-chart-down',
                 'color'    => $netProfit >= 0 ? 'success' : 'error',
             ],
+            'margin_percentage' => $this->resource['margin_percentage'] ?? 0.00,
             'date_range' => [
                 'start'           => $this->resource['date_range']['start'],
                 'end'             => $this->resource['date_range']['end'],
