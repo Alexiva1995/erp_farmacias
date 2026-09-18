@@ -36,7 +36,7 @@ class TransactionRepository implements TransactionContract
             ->when(
                 $detailed && $option,
                 fn($q) => ($currency === 'BS' && $option === 'TRANSFER')
-                    ? $q->whereIn('transactions.type', ['CARD', 'TRANSFER'])
+                    ? $q->whereIn('transactions.type', ['CARD', 'TRANSFER', 'MOBILE'])
                     : $q->where('transactions.type', TransactionType::tryFrom($option)?->value ?? $option)
             )
             ->when(
@@ -74,8 +74,8 @@ class TransactionRepository implements TransactionContract
                 $runningBalance = Transaction::query()
                     ->where('currency', $transaction->currency)
                     ->when(
-                        $transaction->currency === 'BS' && in_array($rawType, ['CARD', 'TRANSFER']),
-                        fn($q) => $q->whereIn('type', ['CARD', 'TRANSFER']),
+                        $transaction->currency === 'BS' && in_array($rawType, ['CARD', 'TRANSFER', 'MOBILE']),
+                        fn($q) => $q->whereIn('type', ['CARD', 'TRANSFER', 'MOBILE']),
                         fn($q) => $q->where('type', $rawType)
                     )
                     ->where(function ($q) use ($transaction) {
@@ -101,7 +101,7 @@ class TransactionRepository implements TransactionContract
                 ->where('transactions.currency', $currency)
                 ->when(
                     $currency === 'BS' && $option === 'TRANSFER',
-                    fn($q) => $q->whereIn('transactions.type', ['CARD', 'TRANSFER']),
+                    fn($q) => $q->whereIn('transactions.type', ['CARD', 'TRANSFER', 'MOBILE']),
                     fn($q) => $q->where('transactions.type', TransactionType::tryFrom($option)?->value ?? $option)
                 )
                 ->where('transactions.transaction_date', '<', $startDate ?: now()->format('Y-m-d'))
@@ -204,7 +204,7 @@ class TransactionRepository implements TransactionContract
         $rows = Transaction::query()
             ->selectRaw("
                 currency,
-                CASE WHEN currency = 'BS' AND type IN ('CARD', 'TRANSFER') THEN 'TRANSFER' ELSE type END as type,
+                CASE WHEN currency = 'BS' AND type IN ('CARD', 'TRANSFER', 'MOBILE') THEN 'TRANSFER' ELSE type END as type,
                 SUM(CASE WHEN transaction_date BETWEEN ? AND ? AND movement_type = 'IN'  THEN amount ELSE 0 END) as total_in,
                 SUM(CASE WHEN transaction_date BETWEEN ? AND ? AND movement_type = 'OUT' THEN amount ELSE 0 END) as total_out,
                 SUM(CASE WHEN movement_type = 'IN'  THEN amount ELSE -amount END) as balance,
@@ -212,7 +212,7 @@ class TransactionRepository implements TransactionContract
                 AVG(COALESCE(exchange_rate,1)) as avg_rate
             ", [$flowStart, $flowEnd, $flowStart, $flowEnd])
             ->when($startDate && $endDate, fn($q) => $q->whereBetween('transaction_date', [$startDate, $endDate]))
-            ->groupBy('currency', DB::raw("CASE WHEN currency = 'BS' AND type IN ('CARD', 'TRANSFER') THEN 'TRANSFER' ELSE type END"))
+            ->groupBy('currency', DB::raw("CASE WHEN currency = 'BS' AND type IN ('CARD', 'TRANSFER', 'MOBILE') THEN 'TRANSFER' ELSE type END"))
             ->orderBy('currency')
             ->orderBy('type')
             ->get();
@@ -511,7 +511,7 @@ class TransactionRepository implements TransactionContract
             ->when(
                 $detailed && $option,
                 fn($q) => ($currency === 'BS' && $option === 'TRANSFER')
-                    ? $q->whereIn('transactions.type', ['CARD', 'TRANSFER'])
+                    ? $q->whereIn('transactions.type', ['CARD', 'TRANSFER', 'MOBILE'])
                     : $q->where('transactions.type', TransactionType::tryFrom($option)?->value ?? $option)
             )
             ->when(

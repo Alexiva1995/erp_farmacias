@@ -32,7 +32,6 @@ const options = {
   BS: [
     { title: "Efectivo", value: "CASH_BS" },
     { title: "Banco", value: "TRANSFER_BS" },
-    { title: "Pago móvil", value: "MOBILE_BS" },
   ],
   COP: [
     { title: "Efectivo", value: "CASH_COP" },
