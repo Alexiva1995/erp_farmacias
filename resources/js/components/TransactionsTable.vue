@@ -118,13 +118,15 @@ const groupedByDay = computed(() => {
 
     <div v-else-if="groupedByDay.length > 0">
       <div v-for="group in groupedByDay" :key="group.date" class="mb-6">
-        <!-- Separador de Fecha Sutil -->
-        <VCard class="rounded-lg border mb-3 overflow-hidden bg-surface">
+        <!-- Separador de Fecha con Identidad de Marca sutil -->
+        <VCard class="rounded-lg border mb-3 overflow-hidden bg-surface date-group-card">
           <div
             class="d-flex flex-wrap align-center justify-space-between px-4 py-3 bg-surface-variant-subtle gap-3 border-b"
           >
             <div class="d-flex align-center gap-3">
-              <VIcon icon="tabler-calendar" color="medium-emphasis" size="20" />
+              <VAvatar color="primary" variant="tonal" size="28" class="rounded">
+                <VIcon icon="tabler-calendar" size="16" />
+              </VAvatar>
               <div class="d-flex align-baseline gap-2">
                 <span class="text-subtitle-1 font-weight-bold text-high-emphasis leading-none">{{
                   group.date
@@ -150,7 +152,7 @@ const groupedByDay = computed(() => {
               </div>
               <div class="d-flex align-center gap-1 px-2 py-1 rounded bg-surface border">
                 <span class="text-medium-emphasis font-weight-medium">Neto:</span>
-                <span class="font-weight-bold text-high-emphasis">
+                <span class="font-weight-bold" :class="group.totalInUsd - group.totalOutUsd < 0 ? 'text-error' : 'text-high-emphasis'">
                   {{
                     formatCurrency(group.totalInUsd - group.totalOutUsd, "USD")
                   }}
@@ -209,7 +211,7 @@ const groupedByDay = computed(() => {
                     <template #activator="{ props: tp }">
                       <span v-bind="tp" class="cursor-help font-weight-bold text-high-emphasis">
                         #{{ item._ids[0] }}
-                        <VChip size="x-small" color="primary" variant="tonal" class="ms-1 font-weight-bold">
+                        <VChip size="x-small" color="primary" variant="tonal" label class="ms-1 font-weight-bold">
                           +{{ item._count - 1 }}
                         </VChip>
                       </span>
@@ -231,7 +233,8 @@ const groupedByDay = computed(() => {
                   <VChip
                     size="small"
                     variant="tonal"
-                    color="secondary"
+                    color="primary"
+                    label
                     class="font-weight-medium text-caption"
                   >
                     {{ item.type }}
@@ -432,6 +435,10 @@ const groupedByDay = computed(() => {
 
 .financial-row:hover {
   background-color: rgba(var(--v-theme-on-surface), 0.02);
+}
+
+.date-group-card {
+  border-inline-start: 4px solid rgb(var(--v-theme-primary)) !important;
 }
 
 .border-success-subtle {

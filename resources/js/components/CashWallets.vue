@@ -104,6 +104,23 @@ const rateTypeLabel = computed(() => {
   if (t === 'EUR')     return 'EUR';
   return 'BCV';
 });
+
+const walletIconColor = (method) => {
+  switch (method) {
+    case 'CASH':
+    case 'TRANSFER':
+      return 'success';
+    case 'MOBILE':
+    case 'BINANCE':
+      return 'info';
+    case 'CAMBISTA':
+    case 'CREDIT':
+    case 'PAYPAL':
+      return 'secondary';
+    default:
+      return 'primary';
+  }
+};
 </script>
 
 <template>
@@ -179,65 +196,88 @@ const rateTypeLabel = computed(() => {
           <div class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Cargando estado de cajas...</div>
         </div>
 
-        <!-- ══ VISTA EXPANDIDA ══ -->
-        <div v-else-if="!isCompact" class="d-flex flex-column gap-5">
-          <div v-for="section in sections" :key="section.currency">
-
-            <!-- Cabecera de moneda (Neutro) -->
-            <div class="cur-header d-flex align-center gap-2 mb-3">
-              <VAvatar color="surface-variant" variant="flat" size="26" class="rounded flex-shrink-0">
-                <VIcon :icon="C[section.currency]?.icon" size="14" class="text-medium-emphasis" />
-              </VAvatar>
-              <div class="d-flex align-baseline gap-2">
-                <span class="cur-header__name">{{ C[section.currency]?.label }}</span>
-                <span class="cur-header__ticker">{{ C[section.currency]?.ticker }}</span>
-              </div>
-              <VSpacer />
-              <div class="cur-header__total">
-                {{ C[section.currency]?.prefix }} {{ fmt(section.section_total, section.currency) }}
-              </div>
-            </div>
-
-            <!-- Cards -->
-            <VRow dense>
-              <VCol v-for="wallet in section.wallets" :key="wallet.key" cols="6" sm="4" md="3" lg="2">
-                <div
-                  :class="['mcard', isSelected(wallet) ? 'mcard--sel' : '', wallet.balance < 0 ? 'mcard--neg' : '']"
-                  @click="handleSelect(wallet)"
-                >
-                  <!-- Botón ajuste -->
-                  <VTooltip v-if="canAdjust" location="top">
-                    <template #activator="{ props: tp }">
-                      <VBtn v-bind="tp" icon="tabler-scale" variant="text" size="x-small"
-                        color="medium-emphasis" class="mcard__adj"
-                        @click.stop="emit('adjust', wallet)" />
-                    </template>
-                    <span>Ajuste contable de saldo</span>
-                  </VTooltip>
-
-                  <!-- Ícono método -->
-                  <div class="mcard__icon">
-                    <VIcon :icon="M[wallet.method]?.icon || 'tabler-cash'" size="16" />
+        <!-- ══ VISTA EXPANDIDA: GRILLA POR MONEDA (3 COLUMNAS) ══ -->
+        <div v-else-if="!isCompact">
+          <VRow>
+            <VCol
+              v-for="section in sections"
+              :key="section.currency"
+              cols="12"
+              md="4"
+            >
+              <!-- Tarjeta Contenedora de Moneda -->
+              <VCard class="currency-container-card rounded-lg border h-100 d-flex flex-column bg-surface pa-3">
+                <!-- Cabecera de la moneda -->
+                <div class="cur-header d-flex align-center gap-2 mb-3">
+                  <VAvatar :color="C[section.currency]?.color || 'primary'" variant="tonal" size="30" class="rounded flex-shrink-0">
+                    <VIcon :icon="C[section.currency]?.icon" size="16" />
+                  </VAvatar>
+                  <div class="d-flex flex-column">
+                    <span class="cur-header__name">{{ C[section.currency]?.label }}</span>
+                    <span class="cur-header__ticker">{{ C[section.currency]?.ticker }}</span>
                   </div>
-
-                  <span class="mcard__label">{{ methodLabel(wallet) }}</span>
-
-                  <div class="mcard__amount-row">
-                    <span class="mcard__prefix">{{ C[section.currency]?.prefix }}</span>
-                    <span :class="['mcard__amount', wallet.balance < 0 ? 'mcard__amount--neg' : '']">
-                      {{ fmt(wallet.balance, wallet.currency) }}
-                    </span>
-                  </div>
-
-                  <div class="mcard__footer">
-                    <span class="mcard__in"><VIcon icon="tabler-arrow-up" size="11" />{{ fmt(wallet.total_in, wallet.currency) }}</span>
-                    <span class="mcard__out"><VIcon icon="tabler-arrow-down" size="11" />{{ fmt(wallet.total_out, wallet.currency) }}</span>
+                  <VSpacer />
+                  <div class="cur-header__total" :class="section.section_total < 0 ? 'text-error' : (section.section_total > 0 ? 'text-high-emphasis' : 'text-medium-emphasis')">
+                    {{ C[section.currency]?.prefix }} {{ fmt(section.section_total, section.currency) }}
                   </div>
                 </div>
-              </VCol>
-            </VRow>
 
-          </div>
+                <!-- Sub-cajas dentro de la columna -->
+                <div class="d-flex flex-column gap-2 flex-grow-1">
+                  <div
+                    v-for="wallet in section.wallets"
+                    :key="wallet.key"
+                    :class="['mcard', isSelected(wallet) ? 'mcard--sel' : '', wallet.balance < 0 ? 'mcard--neg' : '']"
+                    @click="handleSelect(wallet)"
+                  >
+                    <div class="d-flex align-center justify-space-between w-100">
+                      <!-- Ícono y Nombre de Método -->
+                      <div class="d-flex align-center gap-2">
+                        <VAvatar
+                          :color="walletIconColor(wallet.method)"
+                          variant="tonal"
+                          size="32"
+                          class="rounded"
+                        >
+                          <VIcon :icon="M[wallet.method]?.icon || 'tabler-cash'" size="16" />
+                        </VAvatar>
+                        <div class="d-flex flex-column">
+                          <span class="mcard__label">{{ methodLabel(wallet) }}</span>
+                          <div class="mcard__amount-row">
+                            <span :class="['mcard__amount', wallet.balance < 0 ? 'text-error' : (wallet.balance > 0 ? 'text-high-emphasis' : 'text-medium-emphasis')]">
+                              {{ fmt(wallet.balance, wallet.currency) }} <span class="mcard__prefix">{{ C[section.currency]?.prefix }}</span>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Botón ajuste contable -->
+                      <VTooltip v-if="canAdjust" location="top">
+                        <template #activator="{ props: tp }">
+                          <VBtn
+                            v-bind="tp"
+                            icon="tabler-scale"
+                            variant="text"
+                            size="x-small"
+                            color="medium-emphasis"
+                            class="mcard__adj"
+                            @click.stop="emit('adjust', wallet)"
+                          />
+                        </template>
+                        <span>Ajuste contable de saldo</span>
+                      </VTooltip>
+                    </div>
+
+                    <!-- Footer hover con entradas y salidas -->
+                    <div class="mcard__footer">
+                      <span class="mcard__in"><VIcon icon="tabler-arrow-up" size="11" />{{ fmt(wallet.total_in, wallet.currency) }}</span>
+                      <span class="mcard__out"><VIcon icon="tabler-arrow-down" size="11" />{{ fmt(wallet.total_out, wallet.currency) }}</span>
+                    </div>
+                  </div>
+                </div>
+              </VCard>
+            </VCol>
+          </VRow>
         </div>
 
         <!-- ══ VISTA COMPACTA ══ -->
@@ -271,10 +311,15 @@ const rateTypeLabel = computed(() => {
                 :class="['cwallet', isSelected(wallet) ? 'cwallet--active' : '', wallet.balance < 0 ? 'cwallet--neg' : '']"
                 @click="handleSelect(wallet)"
               >
-                <!-- Ícono -->
-                <div class="cwallet__icon">
-                  <VIcon :icon="M[wallet.method]?.icon || 'tabler-cash'" size="16" />
-                </div>
+                <!-- Ícono tonal -->
+                <VAvatar
+                  :color="walletIconColor(wallet.method)"
+                  variant="tonal"
+                  size="30"
+                  class="rounded flex-shrink-0"
+                >
+                  <VIcon :icon="M[wallet.method]?.icon || 'tabler-cash'" size="15" />
+                </VAvatar>
 
                 <!-- Textos -->
                 <div class="cwallet__body">
