@@ -162,33 +162,6 @@ const handleDownloadPdf = async (id, type) => {
   }
 };
 
-const handleDownloadBulk = async () => {
-  try {
-    loading.value = true;
-    const response = await axios.get("/finances/payslips/download-bulk-pdf", {
-      params: { year: 2025, type: "legal" },
-      responseType: "blob",
-    });
-
-    const url = window.URL.createObjectURL(
-      new Blob([response.data], { type: "application/pdf" }),
-    );
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", "nominas_consolidadas_2025.pdf");
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(url);
-
-    toast.success("PDF consolidado descargado exitosamente");
-  } catch (error) {
-    toast.error("Hubo un error al descargar el PDF consolidado");
-  } finally {
-    loading.value = false;
-  }
-};
-
 const handleManualPayment = async (date = null) => {
   if (!date) {
     showGenerateDialog.value = true;
@@ -213,7 +186,7 @@ const handleManualPayment = async (date = null) => {
 const handleReopenPayslip = async (payslip) => {
   const result = await toast.fire({
     title: '¿Reabrir esta nómina?',
-    text: `La nómina ID ${payslip.id} pasará a estado PENDIENTE para permitir correcciones en montos y asignaciones.`,
+    text: `La nómina pasará a estado PENDIENTE para permitir correcciones en montos y asignaciones.`,
     icon: 'question',
     showCancelButton: true,
     confirmButtonColor: 'var(--v-theme-warning)',
@@ -241,7 +214,7 @@ const handleReopenPayslip = async (payslip) => {
 const handleDeletePayslip = async (payslip) => {
   const result = await toast.fire({
     title: '¿Eliminar esta nómina?',
-    text: `Se eliminarán permanentemente los registros de la nómina ID ${payslip.id}. Esta acción no se puede deshacer.`,
+    text: `Se eliminarán permanentemente los registros de esta nómina. Esta acción no se puede deshacer.`,
     icon: 'warning',
     showCancelButton: true,
     confirmButtonColor: 'var(--v-theme-error)',
@@ -260,34 +233,6 @@ const handleDeletePayslip = async (payslip) => {
       }
     } catch (error) {
       toast.error("Error al eliminar la nómina");
-    } finally {
-      loading.value = false;
-    }
-  }
-};
-
-const handleRegenerateHistory = async () => {
-  const result = await toast.fire({
-    title: '¿Regenerar historial?',
-    text: "Se borrarán y recalcularán las nóminas del 31/03 y 15/04 con las tasas y exclusiones oficiales. Esta acción no se puede deshacer.",
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonColor: 'var(--v-theme-primary)',
-    cancelButtonColor: 'var(--v-theme-error)',
-    confirmButtonText: 'Sí, regenerar',
-    cancelButtonText: 'Cancelar'
-  });
-
-  if (result.isConfirmed) {
-    loading.value = true;
-    try {
-      const { data } = await axios.post("/finances/payslips/regenerate-history");
-      if (data.status === "success") {
-        toast.success(data.message || "Historial regenerado con éxito");
-        fetchPayslips();
-      }
-    } catch (error) {
-      toast.error("Error al regenerar el historial de nóminas");
     } finally {
       loading.value = false;
     }
@@ -320,8 +265,6 @@ const handleRegenerateHistory = async () => {
         :loading="loading"
         @clear="handleClearFilters"
         @generated="handleManualPayment"
-        @regenerate-history="handleRegenerateHistory"
-        @download-bulk="handleDownloadBulk"
         @refresh="fetchPayslips"
       />
 

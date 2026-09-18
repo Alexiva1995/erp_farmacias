@@ -19,7 +19,6 @@ const emit = defineEmits([
   "update:selectedStatus",
   "clear",
   "generated",
-  "download-bulk",
   "refresh",
 ]);
 
@@ -99,27 +98,6 @@ const handleManualPayment = async () => {
     <template #actions-extra>
       <VBtn
         v-if="authStore.isAdmin"
-        color="success"
-        variant="elevated"
-        size="38"
-        icon
-        class="rounded-circle shadow-sm"
-        @click="emit('download-bulk')"
-      >
-        <VIcon
-          icon="tabler-file-spreadsheet"
-          size="20"
-        />
-        <VTooltip
-          activator="parent"
-          location="top"
-        >
-          Descargar Todo 2025
-        </VTooltip>
-      </VBtn>
-
-      <VBtn
-        v-if="authStore.isAdmin"
         color="primary"
         variant="elevated"
         size="38"
@@ -138,27 +116,6 @@ const handleManualPayment = async () => {
           location="top"
         >
           Generar Nómina Actual
-        </VTooltip>
-      </VBtn>
-
-      <VBtn
-        v-if="authStore.isAdmin"
-        color="warning"
-        variant="elevated"
-        size="38"
-        icon
-        class="rounded-circle shadow-sm"
-        @click="emit('regenerate-history')"
-      >
-        <VIcon
-          icon="tabler-history"
-          size="20"
-        />
-        <VTooltip
-          activator="parent"
-          location="top"
-        >
-          Sincronizar Periodos Críticos (Mar 31 & Abr 15)
         </VTooltip>
       </VBtn>
     </template>
