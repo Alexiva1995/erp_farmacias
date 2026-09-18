@@ -6,42 +6,48 @@ const props = defineProps({
 </script>
 
 <template>
-  <VRow class="mb-6">
+  <VRow class="mb-4">
+    <!-- Asignaciones -->
     <VCol cols="12" sm="4">
-      <VCard class="rounded-lg border-0 shadow-sm stats-card overflow-hidden">
+      <VCard class="rounded-xl border shadow-sm stats-card overflow-hidden bg-surface">
         <VCardText class="d-flex align-center pa-4">
-          <VAvatar color="success" variant="tonal" size="48" class="rounded-lg me-4">
+          <VAvatar color="success" variant="tonal" size="44" class="rounded-lg me-4">
             <VIcon icon="tabler-circle-plus" size="24" />
           </VAvatar>
           <div>
-            <p class="text-super-xs font-weight-black text-disabled uppercase mb-0">Total Asignaciones</p>
-            <h5 class="text-h5 font-weight-black text-success">{{ props.formatCurrency(props.totals.positive_vouchers) }}</h5>
+            <p class="text-super-xs font-weight-black text-disabled uppercase mb-0 letter-spacing-1">Total Asignaciones</p>
+            <h4 class="text-h5 font-weight-black text-success leading-tight mt-1">{{ props.formatCurrency(props.totals.positive_vouchers) }}</h4>
           </div>
         </VCardText>
       </VCard>
     </VCol>
+
+    <!-- Deducciones -->
     <VCol cols="12" sm="4">
-      <VCard class="rounded-lg border-0 shadow-sm stats-card overflow-hidden">
+      <VCard class="rounded-xl border shadow-sm stats-card overflow-hidden bg-surface">
         <VCardText class="d-flex align-center pa-4">
-          <VAvatar color="error" variant="tonal" size="48" class="rounded-lg me-4">
+          <VAvatar color="error" variant="tonal" size="44" class="rounded-lg me-4">
             <VIcon icon="tabler-circle-minus" size="24" />
           </VAvatar>
           <div>
-            <p class="text-super-xs font-weight-black text-disabled uppercase mb-0">Total Deducciones</p>
-            <h5 class="text-h5 font-weight-black text-error">{{ props.formatCurrency(props.totals.negative_vouchers) }}</h5>
+            <p class="text-super-xs font-weight-black text-disabled uppercase mb-0 letter-spacing-1">Total Deducciones</p>
+            <h4 class="text-h5 font-weight-black text-error leading-tight mt-1">{{ props.formatCurrency(props.totals.negative_vouchers) }}</h4>
           </div>
         </VCardText>
       </VCard>
     </VCol>
+
+    <!-- Neto Consolidado -->
     <VCol cols="12" sm="4">
-      <VCard class="rounded-lg border-0 shadow-sm stats-card overflow-hidden bg-primary-gradient shadow-lg">
+      <VCard class="rounded-xl border shadow-sm stats-card overflow-hidden bg-surface net-card position-relative">
+        <div class="net-indicator" />
         <VCardText class="d-flex align-center pa-4">
-          <VAvatar color="white" variant="flat" size="48" class="rounded-lg me-4 opacity-20">
-            <VIcon icon="tabler-wallet" size="24" color="white" />
+          <VAvatar color="primary" variant="tonal" size="44" class="rounded-lg me-4">
+            <VIcon icon="tabler-wallet" size="24" />
           </VAvatar>
           <div>
-            <p class="text-super-xs font-weight-black text-white-opacity-60 uppercase mb-0">Neto Consolidado</p>
-            <h5 class="text-h5 font-weight-black text-white">{{ props.formatCurrency(props.totals.total) }}</h5>
+            <p class="text-super-xs font-weight-black text-disabled uppercase mb-0 letter-spacing-1">Neto Consolidado</p>
+            <h4 class="text-h5 font-weight-black text-primary leading-tight mt-1">{{ props.formatCurrency(props.totals.total) }}</h4>
           </div>
         </VCardText>
       </VCard>
@@ -50,28 +56,37 @@ const props = defineProps({
 </template>
 
 <style scoped>
-.bg-primary-gradient {
-  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #9575cd 100%);
-}
-
-.text-white-opacity-60 {
-  color: rgba(255, 255, 255, 0.6);
-}
-
 .text-super-xs {
   font-size: 0.65rem !important;
   letter-spacing: 0.05em !important;
 }
 
-.shadow-lg {
-  box-shadow: 0 10px 30px -10px rgba(var(--v-theme-primary), 0.5) !important;
+.letter-spacing-1 {
+  letter-spacing: 1px !important;
+}
+
+.leading-tight {
+  line-height: 1.25 !important;
 }
 
 .stats-card {
-  transition: transform 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .stats-card:hover {
-  transform: translateY(-4px);
+  transform: translateY(-2px);
+}
+
+.net-card {
+  border-left: 4px solid rgb(var(--v-theme-primary)) !important;
+}
+
+.net-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background-color: rgb(var(--v-theme-primary));
 }
 </style>

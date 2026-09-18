@@ -18,59 +18,63 @@ const formatRate = (rate) => {
 
 <template>
   <div
-    class="header-premium mb-6 overflow-hidden position-relative rounded-lg"
+    class="header-premium mb-4 overflow-hidden position-relative rounded-xl border bg-surface shadow-sm"
     :class="props.mobile ? 'rounded-0' : ''"
   >
-    <div class="header-overlay pa-6">
-      <div class="d-flex align-center flex-wrap gap-4">
-        <VAvatar color="white" variant="flat" size="64" class="rounded-lg shadow-lg">
-          <VIcon icon="tabler-file-spreadsheet" size="32" color="primary" />
+    <div class="pa-4 pa-sm-5 d-flex align-center flex-wrap justify-space-between gap-4">
+      <!-- Lado Izquierdo: Avatar + Título + Status -->
+      <div class="d-flex align-center gap-3">
+        <VAvatar color="primary" variant="tonal" size="44" class="rounded-lg">
+          <VIcon icon="tabler-file-spreadsheet" size="24" />
         </VAvatar>
-        <div class="flex-grow-1">
-          <div class="d-flex align-center gap-2 mb-1">
-            <h1 class="text-h4 font-weight-black text-white leading-tight" style="color: #ffffff !important;">
-              {{ props.selectedPayslip?.name || 'Cargando Detalles...' }}
+        <div class="d-flex flex-column">
+          <div class="d-flex align-center gap-2">
+            <h1 class="text-h6 font-weight-black text-high-emphasis leading-tight mb-0">
+              {{ props.selectedPayslip?.name || 'Detalles de Nómina' }}
             </h1>
             <VChip
               v-if="props.selectedPayslip?.status !== undefined"
               :color="props.selectedPayslip?.status === 1 ? 'success' : 'warning'"
               variant="flat"
               size="x-small"
-              class="font-weight-black rounded px-3"
+              class="font-weight-black rounded px-2"
             >
               {{ props.selectedPayslip?.status === 1 ? 'FINALIZADA' : 'PENDIENTE' }}
             </VChip>
           </div>
-          <div class="d-flex align-center flex-wrap gap-4 text-white">
-            <span class="d-flex align-center text-xs font-weight-bold" style="color: #ffffff !important;">
-              <VIcon icon="tabler-calendar" size="14" class="me-1 text-white" />
-              {{ props.selectedPayslip?.period }}
-            </span>
-            <span class="d-flex align-center text-xs font-weight-bold" style="color: #ffffff !important;">
-              <VIcon icon="tabler-currency-dollar" size="14" class="me-1 text-white" />
-              Ref: 1 USD = {{ formatRate(props.selectedPayslip?.exchange_rate) }} {{ props.selectedPayslip?.currency_code }}
-            </span>
-          </div>
+          <span class="text-caption text-medium-emphasis font-weight-medium mt-1">
+            {{ props.selectedPayslip?.period }}
+          </span>
         </div>
-        
-        <!-- Selector de Pestañas Premium (Píldora) -->
-        <div class="tab-pill-container bg-surface-dark-pill pa-1 rounded-pill d-flex gap-1">
+      </div>
+
+      <!-- Lado Derecho: Badge Tasa y Selector de Pestañas -->
+      <div class="d-flex align-center flex-wrap gap-3">
+        <!-- Badge de Tasa de Cambio -->
+        <div class="rate-badge d-flex align-center px-3 py-1 rounded-lg border bg-surface-variant-subtle text-caption">
+          <VIcon icon="tabler-currency-dollar" size="16" class="me-1 text-primary" />
+          <span class="text-medium-emphasis me-1">Ref:</span>
+          <span class="font-weight-bold text-high-emphasis">
+            1 USD = {{ formatRate(props.selectedPayslip?.exchange_rate) }} {{ props.selectedPayslip?.currency_code }}
+          </span>
+        </div>
+
+        <!-- Selector de Pestañas (Píldora) -->
+        <div class="tab-pill-container pa-1 rounded-lg border bg-surface-variant-subtle d-flex gap-1">
           <VBtn
             size="small"
-            :variant="props.tab === 'legal' ? 'flat' : 'text'"
-            color="white"
-            class="rounded-pill font-weight-black px-6"
-            :class="props.tab === 'legal' ? 'text-primary' : 'text-white'"
+            :variant="props.tab === 'legal' ? 'elevated' : 'text'"
+            :color="props.tab === 'legal' ? 'primary' : 'default'"
+            class="rounded-md font-weight-black px-4 text-xs"
             @click="emit('change-tab', 'legal')"
           >
             LEGAL (Bs)
           </VBtn>
           <VBtn
             size="small"
-            :variant="props.tab === 'full' ? 'flat' : 'text'"
-            color="white"
-            class="rounded-pill font-weight-black px-6"
-            :class="props.tab === 'full' ? 'text-primary' : 'text-white'"
+            :variant="props.tab === 'full' ? 'elevated' : 'text'"
+            :color="props.tab === 'full' ? 'primary' : 'default'"
+            class="rounded-md font-weight-black px-4 text-xs"
             @click="emit('change-tab', 'full')"
           >
             COMPLETA (COP)
@@ -83,25 +87,18 @@ const formatRate = (rate) => {
 
 <style scoped>
 .header-premium {
-  background: linear-gradient(135deg, #7A0099 0%, #4A0066 100%);
-  min-height: 140px;
+  background: linear-gradient(
+    135deg,
+    rgba(var(--v-theme-primary), 0.04) 0%,
+    rgba(var(--v-theme-surface), 1) 100%
+  ) !important;
 }
 
-.header-overlay {
-  background: rgba(0, 0, 0, 0.25);
-  height: 100%;
-}
-
-.bg-surface-dark-pill {
-  background-color: rgba(0, 0, 0, 0.35);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.shadow-lg {
-  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5) !important;
+.rate-badge {
+  background-color: rgba(var(--v-theme-on-surface), 0.03);
 }
 
 .leading-tight {
-  line-height: 1.25;
+  line-height: 1.25 !important;
 }
 </style>

@@ -35,21 +35,24 @@ const fetchPayslip = async () => {
 onMounted(fetchPayslip);
 
 const fullHeaders = computed(() => {
+  const isFull = tab.value === 'full';
+  const curr = isFull ? 'COP' : (selectedPayslip.value?.currency_code || 'Bs.');
   const rateMention = selectedPayslip.value?.exchange_rate ? `(${selectedPayslip.value.exchange_rate} Bs.)` : '';
+
   return [
     { title: "Trabajador", key: "employee_full_name", sortable: true, align: 'start' },
-    { title: "Identificación", key: "identification", sortable: true },
+    { title: "Identificación", key: "identification", sortable: true, align: 'start' },
     { title: `Salario Mensual ${rateMention}`, key: "base_salary_voucher", sortable: true, align: 'end' },
-    { title: "Sueldo Base (Pago)", key: "salary_to_pay_voucher", sortable: true, align: 'end' },
-    { title: "Cesta Ticket", key: "food_voucher", sortable: true, align: 'end' },
-    { title: "Asist. Salud", key: "health_support_voucher", sortable: true, align: 'end' },
-    { title: "Rendim. Extra", key: "performance_voucher", sortable: true, align: 'end' },
-    { title: "Total Asignaciones", key: "positive_vouchers", sortable: true, align: 'end' },
-    { title: "IVSS (4%)", key: "social_security_voucher", sortable: true, align: 'end' },
-    { title: "RPE (0.5%)", key: "employment_voucher", sortable: true, align: 'end' },
-    { title: "FAOV (1%)", key: "housing_property_benefits_voucher", sortable: true, align: 'end' },
-    { title: "Total Deducciones", key: "negative_vouchers", sortable: true, align: 'end' },
-    { title: "NETO A COBRAR", key: "total", sortable: true, align: 'end' },
+    { title: `Sueldo Base (${curr})`, key: "salary_to_pay_voucher", sortable: true, align: 'end' },
+    { title: `Cesta Ticket (${curr})`, key: "food_voucher", sortable: true, align: 'end' },
+    { title: `Asist. Salud (${curr})`, key: "health_support_voucher", sortable: true, align: 'end' },
+    { title: `Rendim. Extra (${curr})`, key: "performance_voucher", sortable: true, align: 'end' },
+    { title: `Total Asig. (${curr})`, key: "positive_vouchers", sortable: true, align: 'end' },
+    { title: `IVSS 4% (${curr})`, key: "social_security_voucher", sortable: true, align: 'end' },
+    { title: `RPE 0.5% (${curr})`, key: "employment_voucher", sortable: true, align: 'end' },
+    { title: `FAOV 1% (${curr})`, key: "housing_property_benefits_voucher", sortable: true, align: 'end' },
+    { title: `Total Deduc. (${curr})`, key: "negative_vouchers", sortable: true, align: 'end' },
+    { title: `NETO A COBRAR (${curr})`, key: "total", sortable: true, align: 'end' },
   ];
 });
 
@@ -82,30 +85,35 @@ const headers = computed(() => {
       "total",
     ];
     list = list.filter((h) => fullModeKeys.includes(h.key)).map(h => {
-      if (h.key === 'salary_to_pay_voucher') return { ...h, title: 'Salario Base (Interno)' };
+      if (h.key === 'salary_to_pay_voucher') return { ...h, title: 'Salario Base (COP)' };
       return h;
     });
   }
   return list;
 });
 
-const formatCurrency = (amount) => {
+const formatCurrency = (amount, withSymbol = true) => {
   const newAmount = Number(amount) || 0;
+  if (newAmount === 0 && !withSymbol) return '—';
+
   const isFullMode = tab.value === 'full';
   const currencyCode = selectedPayslip.value?.currency_code;
   const isCop = isFullMode || currencyCode === 'COP';
   const symbol = isCop ? 'COP' : (currencyCode || (tab.value === 'legal' ? 'Bs.' : 'COP'));
 
   if (isCop) {
-    return Math.round(newAmount)
+    const num = Math.round(newAmount)
       .toString()
-      .replace(/\B(?=(\d{3})+(?!\d))/g, ".") + " COP";
+      .replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    return withSymbol ? `${num} COP` : num;
   }
 
-  return new Intl.NumberFormat("es-VE", {
+  const num = new Intl.NumberFormat("es-VE", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(newAmount) + " " + symbol;
+  }).format(newAmount);
+
+  return withSymbol ? `${num} ${symbol}` : num;
 };
 
 const formatIdentification = (id) => {
@@ -227,22 +235,28 @@ const changeTab = (newTab) => {
           </template>
 
           <template #item.identification="{ value }">
-            <span class="text-xs font-weight-medium">{{ formatIdentification(value) }}</span>
+            <span class="text-xs font-weight-medium text-medium-emphasis">{{ formatIdentification(value) }}</span>
           </template>
 
           <template v-for="header in headers.filter(h => !['employee_full_name', 'identification'].includes(h.key))" :key="header.key" v-slot:[`item.${header.key}`]="{ value }">
-            <span class="text-xs font-weight-bold" :class="header.key === 'total' ? 'text-primary' : ''">
-              {{ formatCurrency(value) }}
+            <span
+              class="text-xs font-weight-bold"
+              :class="[
+                header.key === 'total' ? 'text-primary font-weight-black text-sm' : '',
+                Number(value) === 0 ? 'text-disabled font-weight-regular' : 'text-high-emphasis'
+              ]"
+            >
+              {{ formatCurrency(value, false) }}
             </span>
           </template>
 
           <template #body.append>
             <tr class="footer-totals font-weight-black bg-surface-variant-opacity-2">
-              <td colspan="2" class="text-right py-4 text-xs">TOTALES GENERALES</td>
+              <td colspan="2" class="text-start py-4 text-xs font-weight-black uppercase">TOTALES GENERALES</td>
               <template v-for="header in headers" :key="header.key">
-                <td v-if="!['employee_full_name', 'identification'].includes(header.key)" class="text-right py-4 text-xs">
-                   <span :class="header.key === 'total' ? 'text-primary' : ''">
-                     {{ formatCurrency(employeesWithVouchers.reduce((s, i) => s + (Number(i[header.key]) || 0), 0)) }}
+                <td v-if="!['employee_full_name', 'identification'].includes(header.key)" class="text-end py-4 text-xs">
+                   <span :class="header.key === 'total' ? 'text-primary font-weight-black text-sm' : 'text-high-emphasis font-weight-bold'">
+                     {{ formatCurrency(employeesWithVouchers.reduce((s, i) => s + (Number(i[header.key]) || 0), 0), true) }}
                    </span>
                 </td>
               </template>
