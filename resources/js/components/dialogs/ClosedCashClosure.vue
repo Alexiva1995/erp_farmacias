@@ -147,38 +147,37 @@ const closeModal = () => emit("update:isDialogVisible", false);
 
 const completeClosure = async () => {
   if (isBlind.value) {
-    // Lista de advertencias para métodos electrónicos si el usuario declara 0 pero tiene ventas registradas en el sistema
-    const warnings = [];
-    
-    if (hasCopTransfer.value && parseFloat(declaredCopTransfer.value || 0) === 0) {
-      warnings.push("Transferencia (COP)");
+    // Validar de forma estricta que los métodos con ventas registradas tengan un monto declarado (> 0)
+    const missingFields = [];
+
+    if (hasCopCash.value && (declaredCop.value === "" || parseFloat(declaredCop.value) <= 0)) {
+      missingFields.push("Efectivo (COP)");
     }
-    if (hasCredit.value && parseFloat(declaredCredit.value || 0) === 0) {
-      warnings.push("Crédito (USD)");
+    if (hasCopTransfer.value && (declaredCopTransfer.value === "" || parseFloat(declaredCopTransfer.value) <= 0)) {
+      missingFields.push("Transferencia (COP)");
     }
-    if (hasBsMobile.value && parseFloat(declaredBsMobile.value || 0) === 0) {
-      warnings.push("Pago Móvil / Transferencia (Bs.)");
+    if (hasUsd.value && (declaredUsd.value === "" || parseFloat(declaredUsd.value) <= 0)) {
+      missingFields.push("Efectivo (USD)");
     }
-    if (hasBsCard.value && parseFloat(declaredBsCard.value || 0) === 0) {
-      warnings.push("Tarjeta Débito / Crédito (Bs.)");
+    if (hasCredit.value && (declaredCredit.value === "" || parseFloat(declaredCredit.value) <= 0)) {
+      missingFields.push("Crédito (USD)");
+    }
+    if (hasBsMobile.value && (declaredBsMobile.value === "" || parseFloat(declaredBsMobile.value) <= 0)) {
+      missingFields.push("Pago Móvil / Transferencia (Bs.)");
+    }
+    if (hasBsCard.value && (declaredBsCard.value === "" || parseFloat(declaredBsCard.value) <= 0)) {
+      missingFields.push("Tarjeta Débito / Crédito (Bs.)");
     }
 
-    if (warnings.length > 0) {
-      const formattedWarnings = warnings.join(", ");
-      const confirm = await Swal.fire({
-        title: "¿Estás seguro?",
-        text: `El sistema detectó ventas registradas en: ${formattedWarnings}, pero has declarado 0 en ellos. ¿Deseas continuar con el cierre reportando 0 en estos métodos?`,
-        icon: "warning",
-        showCancelButton: true,
-        confirmButtonColor: "#3085d6",
-        cancelButtonColor: "#d33",
-        confirmButtonText: "Sí, estoy seguro",
-        cancelButtonText: "No, revisar de nuevo"
+    if (missingFields.length > 0) {
+      await Swal.fire({
+        title: "Monto requerido",
+        text: `Tuviste ventas en: ${missingFields.join(", ")}. Debes ingresar el monto contado para poder cerrar la caja.`,
+        icon: "error",
+        confirmButtonColor: "var(--v-theme-primary)",
+        confirmButtonText: "Entendido"
       });
-
-      if (!confirm.isConfirmed) {
-        return; // Detener el cierre para que el usuario pueda corregir
-      }
+      return;
     }
 
     const copDelivered = parseFloat(props.cashClosureData?.cop_delivered) || 0;
@@ -220,76 +219,188 @@ const completeClosure = async () => {
 <template>
   <VDialog
     v-model="dialogVisible"
-    max-width="780px"
+    max-width="740px"
     scrollable
+    persistent
     :fullscreen="mobile"
-    :transition="mobile ? 'dialog-bottom-transition' : 'dialog-transition'"
+    :transition="mobile ? 'dialog-bottom-transition' : 'scale-transition'"
   >
-    <VCard class="rounded-xl border shadow-sm">
-      <!-- Header Premium -->
-      <VCardTitle class="d-flex justify-space-between align-center px-6 py-4 border-b bg-surface">
-        <div class="d-flex align-center gap-3">
-          <VAvatar color="primary" variant="tonal" rounded class="rounded-lg shadow-sm">
-            <VIcon icon="tabler-cash-register" />
+    <VCard class="rounded-xl border-0 shadow-xl overflow-hidden bg-surface">
+      <!-- Header Premium con Degradado -->
+      <VCardTitle class="pa-0">
+        <div class="header-gradient pa-4 d-flex align-center shadow-sm">
+          <VAvatar
+            size="40"
+            color="white"
+            variant="flat"
+            class="me-3 shadow-sm rounded-lg elevation-1"
+          >
+            <VIcon icon="tabler-cash-register" color="primary" size="22" />
           </VAvatar>
-          <div>
-            <h3 class="text-h6 font-weight-black mb-0 uppercase leading-none">CIERRE DE CAJA</h3>
-            <span class="text-xs text-disabled font-weight-medium uppercase">
-              {{ isBlind ? "Ingresa los valores contados de tu caja" : "Revisa los totales antes de finalizar" }}
-            </span>
+          <div class="d-flex flex-column leading-none">
+            <h3 class="text-h6 font-weight-black text-white leading-tight mb-0">
+              Cierre de Caja
+            </h3>
+            <div class="d-flex align-center gap-2 mt-1">
+              <span
+                class="text-white opacity-75 uppercase font-weight-bold"
+                style="font-size: 0.65rem; letter-spacing: 0.05em;"
+              >
+                {{ isBlind ? "Ingresa los valores contados de tu turno" : "Revisa los totales antes de finalizar" }}
+              </span>
+            </div>
           </div>
+          <VSpacer />
+          <IconBtn
+            variant="tonal"
+            color="white"
+            size="small"
+            class="rounded-lg"
+            @click="closeModal"
+          >
+            <VIcon icon="tabler-x" size="20" />
+            <VTooltip activator="parent" location="top">Cerrar</VTooltip>
+          </IconBtn>
         </div>
-        <VBtn icon="tabler-x" variant="text" size="small" color="secondary" @click="closeModal" />
       </VCardTitle>
 
-      <VCardText class="pa-6" style="background-color: #f8f9fa;">
+      <VCardText class="pa-6 bg-light">
 
         <template v-if="isBlind">
-          <div class="text-subtitle-2 font-weight-bold mb-4 text-primary uppercase">
-            DECLARACIÓN DE VALORES DEL TURNO
+          <div class="text-subtitle-2 font-weight-black mb-4 text-primary uppercase letter-spacing-1">
+            Declaración de Valores del Turno
           </div>
           <VRow dense>
+            <!-- Efectivo COP -->
             <VCol cols="12" sm="6">
-              <VCard variant="outlined" class="pa-3 mb-3 bg-white rounded-lg">
-                <div class="text-caption font-weight-bold text-medium-emphasis mb-1">Efectivo (COP)</div>
-                <VTextField v-model="declaredCop" placeholder="0" type="number" density="compact" variant="outlined" hide-details prefix="$" />
+              <VCard variant="outlined" class="pa-3 mb-3 bg-white rounded-lg" :class="{ 'opacity-60 bg-disabled': !hasCopCash }">
+                <div class="d-flex justify-space-between align-center mb-1">
+                  <span class="text-caption font-weight-bold text-high-emphasis">Efectivo (COP)</span>
+                  <VChip v-if="!hasCopCash" size="x-small" color="secondary" variant="tonal">Sin ventas</VChip>
+                  <VChip v-else size="x-small" color="success" variant="tonal">Con ventas</VChip>
+                </div>
+                <VTextField
+                  v-model="declaredCop"
+                  placeholder="0"
+                  type="number"
+                  density="compact"
+                  variant="outlined"
+                  hide-details
+                  prefix="$"
+                  :disabled="!hasCopCash"
+                />
               </VCard>
             </VCol>
+
+            <!-- Transferencia COP -->
             <VCol cols="12" sm="6">
-              <VCard variant="outlined" class="pa-3 mb-3 bg-white rounded-lg">
-                <div class="text-caption font-weight-bold text-medium-emphasis mb-1">Transferencia (COP)</div>
-                <VTextField v-model="declaredCopTransfer" placeholder="0" type="number" density="compact" variant="outlined" hide-details prefix="$" />
+              <VCard variant="outlined" class="pa-3 mb-3 bg-white rounded-lg" :class="{ 'opacity-60 bg-disabled': !hasCopTransfer }">
+                <div class="d-flex justify-space-between align-center mb-1">
+                  <span class="text-caption font-weight-bold text-high-emphasis">Transferencia (COP)</span>
+                  <VChip v-if="!hasCopTransfer" size="x-small" color="secondary" variant="tonal">Sin ventas</VChip>
+                  <VChip v-else size="x-small" color="success" variant="tonal">Con ventas</VChip>
+                </div>
+                <VTextField
+                  v-model="declaredCopTransfer"
+                  placeholder="0"
+                  type="number"
+                  density="compact"
+                  variant="outlined"
+                  hide-details
+                  prefix="$"
+                  :disabled="!hasCopTransfer"
+                />
               </VCard>
             </VCol>
+
+            <!-- Efectivo USD -->
             <VCol cols="12" sm="6">
-              <VCard variant="outlined" class="pa-3 mb-3 bg-white rounded-lg">
-                <div class="text-caption font-weight-bold text-medium-emphasis mb-1">Efectivo (USD)</div>
-                <VTextField v-model="declaredUsd" placeholder="0" type="number" density="compact" variant="outlined" hide-details prefix="$" />
+              <VCard variant="outlined" class="pa-3 mb-3 bg-white rounded-lg" :class="{ 'opacity-60 bg-disabled': !hasUsd }">
+                <div class="d-flex justify-space-between align-center mb-1">
+                  <span class="text-caption font-weight-bold text-high-emphasis">Efectivo (USD)</span>
+                  <VChip v-if="!hasUsd" size="x-small" color="secondary" variant="tonal">Sin ventas</VChip>
+                  <VChip v-else size="x-small" color="success" variant="tonal">Con ventas</VChip>
+                </div>
+                <VTextField
+                  v-model="declaredUsd"
+                  placeholder="0"
+                  type="number"
+                  density="compact"
+                  variant="outlined"
+                  hide-details
+                  prefix="$"
+                  :disabled="!hasUsd"
+                />
               </VCard>
             </VCol>
+
+            <!-- Crédito USD -->
             <VCol cols="12" sm="6">
-              <VCard variant="outlined" class="pa-3 mb-3 bg-white rounded-lg">
-                <div class="text-caption font-weight-bold text-medium-emphasis mb-1">Crédito (USD)</div>
-                <VTextField v-model="declaredCredit" placeholder="0" type="number" density="compact" variant="outlined" hide-details prefix="$" />
+              <VCard variant="outlined" class="pa-3 mb-3 bg-white rounded-lg" :class="{ 'opacity-60 bg-disabled': !hasCredit }">
+                <div class="d-flex justify-space-between align-center mb-1">
+                  <span class="text-caption font-weight-bold text-high-emphasis">Crédito (USD)</span>
+                  <VChip v-if="!hasCredit" size="x-small" color="secondary" variant="tonal">Sin ventas</VChip>
+                  <VChip v-else size="x-small" color="success" variant="tonal">Con ventas</VChip>
+                </div>
+                <VTextField
+                  v-model="declaredCredit"
+                  placeholder="0"
+                  type="number"
+                  density="compact"
+                  variant="outlined"
+                  hide-details
+                  prefix="$"
+                  :disabled="!hasCredit"
+                />
               </VCard>
             </VCol>
+
+            <!-- Pago Móvil / Transferencia Bs -->
             <VCol cols="12" sm="6">
-              <VCard variant="outlined" class="pa-3 mb-3 bg-white rounded-lg">
-                <div class="text-caption font-weight-bold text-medium-emphasis mb-1">Pago Móvil / Transferencia (Bs.)</div>
-                <VTextField v-model="declaredBsMobile" placeholder="0" type="number" density="compact" variant="outlined" hide-details prefix="Bs" />
+              <VCard variant="outlined" class="pa-3 mb-3 bg-white rounded-lg" :class="{ 'opacity-60 bg-disabled': !hasBsMobile }">
+                <div class="d-flex justify-space-between align-center mb-1">
+                  <span class="text-caption font-weight-bold text-high-emphasis">Pago Móvil / Transferencia (Bs.)</span>
+                  <VChip v-if="!hasBsMobile" size="x-small" color="secondary" variant="tonal">Sin ventas</VChip>
+                  <VChip v-else size="x-small" color="success" variant="tonal">Con ventas</VChip>
+                </div>
+                <VTextField
+                  v-model="declaredBsMobile"
+                  placeholder="0"
+                  type="number"
+                  density="compact"
+                  variant="outlined"
+                  hide-details
+                  prefix="Bs"
+                  :disabled="!hasBsMobile"
+                />
               </VCard>
             </VCol>
+
+            <!-- Tarjeta Bs -->
             <VCol cols="12" sm="6">
-              <VCard variant="outlined" class="pa-3 mb-3 bg-white rounded-lg">
-                <div class="text-caption font-weight-bold text-medium-emphasis mb-1">Tarjeta Débito / Crédito (Bs.)</div>
-                <VTextField v-model="declaredBsCard" placeholder="0" type="number" density="compact" variant="outlined" hide-details prefix="Bs" />
+              <VCard variant="outlined" class="pa-3 mb-3 bg-white rounded-lg" :class="{ 'opacity-60 bg-disabled': !hasBsCard }">
+                <div class="d-flex justify-space-between align-center mb-1">
+                  <span class="text-caption font-weight-bold text-high-emphasis">Tarjeta Débito / Crédito (Bs.)</span>
+                  <VChip v-if="!hasBsCard" size="x-small" color="secondary" variant="tonal">Sin ventas</VChip>
+                  <VChip v-else size="x-small" color="success" variant="tonal">Con ventas</VChip>
+                </div>
+                <VTextField
+                  v-model="declaredBsCard"
+                  placeholder="0"
+                  type="number"
+                  density="compact"
+                  variant="outlined"
+                  hide-details
+                  prefix="Bs"
+                  :disabled="!hasBsCard"
+                />
               </VCard>
             </VCol>
           </VRow>
 
           <!-- Resumen de confirmación propia del cajero antes de enviar -->
-          <VCard variant="tonal" color="primary" class="mt-2 rounded-lg pa-4">
-            <div class="text-caption font-weight-bold uppercase mb-2">Tu resumen ingresado para entregar:</div>
+          <VCard variant="tonal" color="primary" class="mt-3 rounded-lg pa-4 border">
+            <div class="text-caption font-weight-black uppercase mb-2">Tu resumen ingresado para entregar:</div>
             <div class="d-flex flex-wrap gap-4 text-caption font-weight-black">
               <span v-if="parseFloat(declaredCop) > 0">COP Efectivo: {{ formatCurrency(parseFloat(declaredCop) || 0, 'COP') }}</span>
               <span v-if="parseFloat(declaredCopTransfer) > 0">COP Transf: {{ formatCurrency(parseFloat(declaredCopTransfer) || 0, 'COP') }}</span>
@@ -485,3 +596,21 @@ const completeClosure = async () => {
     </VCard>
   </VDialog>
 </template>
+
+<style scoped>
+.header-gradient {
+  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, rgba(var(--v-theme-primary), 0.82) 100%);
+}
+
+.bg-light {
+  background-color: #f8fafc;
+}
+
+.bg-disabled {
+  background-color: #f1f5f9 !important;
+}
+
+.letter-spacing-1 {
+  letter-spacing: 0.05em;
+}
+</style>
