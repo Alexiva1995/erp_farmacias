@@ -351,13 +351,13 @@ watch(searchQuery, () => debouncedLoadData());
                   @click="openOrderModal(item.id)"
                 >
                   <VIcon start icon="tabler-receipt" size="14" />
-                  {{ item.voucher_number || `Order #${item.id}` }}
+                  {{ item.voucher_number || item.id }}
                 </VChip>
                 <span
                   v-else
                   class="font-mono text-xs font-weight-bold text-secondary bg-secondary-subtle px-2 py-1 rounded"
                 >
-                  {{ item.voucher_number || `EGR-#${item.id}` }}
+                  {{ item.voucher_number || item.id }}
                 </span>
               </template>
 
@@ -410,7 +410,7 @@ watch(searchQuery, () => debouncedLoadData());
               <template #item.profit="{ item }">
                 <span
                   class="text-body-2 font-weight-black font-mono"
-                  :class="item.profit >= 0 ? 'text-money-green' : 'text-error'"
+                  :class="Number(item.profit) >= 0 ? 'text-profit-positive' : 'text-profit-negative'"
                 >
                   {{ formatNumber(item.profit) }}
                 </span>
@@ -450,7 +450,7 @@ watch(searchQuery, () => debouncedLoadData());
                   </td>
                   <td
                     class="text-end font-mono text-body-2 font-weight-black pe-4 py-3"
-                    :class="pageTotals.profit >= 0 ? 'text-money-green' : 'text-error'"
+                    :class="Number(pageTotals.profit) >= 0 ? 'text-profit-positive' : 'text-profit-negative'"
                   >
                     {{ formatNumber(pageTotals.profit) }}
                   </td>
@@ -528,6 +528,14 @@ watch(searchQuery, () => debouncedLoadData());
 
 .font-mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.text-profit-positive {
+  color: #16a34a !important;
+}
+
+.text-profit-negative {
+  color: #dc2626 !important;
 }
 
 .text-money-green {

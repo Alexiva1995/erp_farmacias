@@ -150,7 +150,7 @@ class FinancialStatementService
 
                 $voucherNumber = !empty($order->fiscalHistory?->invoice_number)
                     ? "FAC-{$order->fiscalHistory->invoice_number}"
-                    : "Order #{$order->id}";
+                    : (string) $order->id;
 
                 // Obtener métodos de pago / canal formateados en español
                 $pmList = $order->payment_methods ?? [];

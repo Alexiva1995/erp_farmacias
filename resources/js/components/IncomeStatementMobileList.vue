@@ -192,6 +192,14 @@ const getMarginChipClass = (pct) => {
   -webkit-line-clamp: 2;
 }
 
+.text-profit-positive {
+  color: #16a34a !important;
+}
+
+.text-profit-negative {
+  color: #dc2626 !important;
+}
+
 .text-money-green {
   color: #16a34a !important;
 }
