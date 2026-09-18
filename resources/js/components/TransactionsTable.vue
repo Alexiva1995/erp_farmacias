@@ -236,11 +236,11 @@ const groupedByDay = computed(() => {
                       </template>
                       <span>Total de {{ item._count }} transacciones agrupadas</span>
                     </VTooltip>
-                    <!-- Monto formateado limpio -->
+                    <!-- Monto formateado con color explícito: Verde dinero (entrada) / Rojo (salida) -->
                     <div
                       :class="[
                         'text-body-2 font-weight-bold',
-                        item.isEntry ? 'text-success' : 'text-error',
+                        item.isEntry ? 'text-money-in' : 'text-money-out',
                       ]"
                     >
                       {{ item.isEntry ? "+ " : "- " }}{{ formatCurrency(item.amount, item.currency) }}
@@ -298,7 +298,7 @@ const groupedByDay = computed(() => {
                   <div
                     :class="[
                       'text-lg font-weight-black',
-                      item.isEntry ? 'text-success' : 'text-error',
+                      item.isEntry ? 'text-money-in' : 'text-money-out',
                     ]"
                   >
                     {{ item.isEntry ? "+" : "-" }}
@@ -418,5 +418,14 @@ const groupedByDay = computed(() => {
 
 .border-error-subtle {
   border-inline-start: 4px solid rgb(var(--v-theme-error)) !important;
+}
+
+/* Colores explícitos de dinero para transacciones */
+.text-money-in {
+  color: #10B981 !important; /* Verde dinero vivo */
+}
+
+.text-money-out {
+  color: #EF4444 !important; /* Rojo salida vivo */
 }
 </style>
