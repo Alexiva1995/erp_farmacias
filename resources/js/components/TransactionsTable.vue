@@ -215,17 +215,17 @@ const groupedByDay = computed(() => {
     let rate = parseFloat(t.exchange_rate) || 0;
     if (rate <= 1 && t.currency !== "USD") {
       if (t.currency === "COP") {
-        rate = parseFloat(props.rates?.cop?.rate) || 1;
+        rate = parseFloat(props.rates?.cop?.rate) || 3500;
       } else if (t.currency === "BS") {
-        rate = parseFloat(props.rates?.bcv?.rate) || 1;
+        rate = parseFloat(props.rates?.bcv?.rate) || 36;
       }
     }
     if (rate <= 0) rate = 1;
 
     const amountUsd = t.currency === "USD" ? t.amount : t.amount / rate;
 
-    // Las transferencias entre cajas son movimientos internos y NO se suman a las entradas/salidas netas del día
-    if (!isTransferTransaction(t.description)) {
+    // Las transferencias entre cajas y compras/ventas cambista son movimientos internos y NO se suman a las entradas/salidas netas del día
+    if (!isTransferTransaction(t.description) && t.type !== "CAMBISTA") {
       if (t.isEntry) {
         map[day].totalInUsd += amountUsd;
       } else {
