@@ -65,8 +65,14 @@ const formatCurrency = (amount, currencyCode) => {
 
 const formatDate = (date) => {
   if (!date) return "N/A";
-  // Asumiendo formato YYYY-MM-DD
-  const [year, month] = date.split("-");
+  // Formato esperado: YYYY-MM-DD
+  const parts = date.split("-");
+  if (parts.length < 3) return date;
+
+  const year = parts[0];
+  const month = parseInt(parts[1], 10);
+  const day = parseInt(parts[2], 10);
+
   const months = [
     "ENE",
     "FEB",
@@ -81,7 +87,10 @@ const formatDate = (date) => {
     "NOV",
     "DIC",
   ];
-  return `${months[parseInt(month) - 1]} ${year}`;
+  const monthName = months[month - 1] || "";
+  const quincena = day <= 15 ? "1°" : "2°";
+
+  return `${quincena} de ${monthName} ${year}`;
 };
 
 const getAvatarColor = (id) => {
@@ -121,19 +130,9 @@ const getAvatarColor = (id) => {
         </template>
 
         <template #item.payslip_date="{ item }">
-          <div class="d-flex align-center gap-3 py-2">
-            <VAvatar
-              :color="getAvatarColor(item.id)"
-              variant="tonal"
-              size="30"
-              class="rounded-lg"
-            >
-              <VIcon icon="tabler-calendar" size="16" />
-            </VAvatar>
-            <span class="text-sm font-weight-bold text-high-emphasis uppercase">
-              {{ formatDate(item.payslip_date) }}
-            </span>
-          </div>
+          <span class="text-sm font-weight-bold text-high-emphasis uppercase">
+            {{ formatDate(item.payslip_date) }}
+          </span>
         </template>
 
         <template #item.total="{ item }">
