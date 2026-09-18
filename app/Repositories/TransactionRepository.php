@@ -248,13 +248,22 @@ class TransactionRepository implements TransactionContract
             $totalUsd += $balanceUsd;
         }
 
-        // Garantizar que la caja de Crédito en USD siempre aparezca si hay créditos pendientes
+        // Garantizar que la caja de Crédito en USD refleje el saldo pendiente real de la tabla credits
         $pendingCredit = (float) Credit::where('status', '!=', 'Paid')->sum('pending_amount');
         if (!isset($sections['USD'])) {
             $sections['USD'] = ['currency' => 'USD', 'section_total' => 0.0, 'wallets' => []];
         }
-        $hasCreditWallet = collect($sections['USD']['wallets'])->contains('method', 'CREDIT');
-        if (!$hasCreditWallet && $pendingCredit > 0) {
+
+        $creditWalletIndex = collect($sections['USD']['wallets'])->search(fn($w) => $w['method'] === 'CREDIT');
+
+        if ($creditWalletIndex !== false) {
+            // Actualizar balance con la deuda real de créditos pendientes
+            $oldBal = $sections['USD']['wallets'][$creditWalletIndex]['balance'];
+            $sections['USD']['wallets'][$creditWalletIndex]['balance'] = round($pendingCredit, 2);
+            $sections['USD']['wallets'][$creditWalletIndex]['balance_usd'] = round($pendingCredit, 2);
+            $sections['USD']['section_total'] += ($pendingCredit - $oldBal);
+            $totalUsd += ($pendingCredit - $oldBal);
+        } elseif ($pendingCredit > 0) {
             $sections['USD']['wallets'][] = [
                 'key'                => 'CREDIT_USD',
                 'currency'           => 'USD',
