@@ -998,6 +998,8 @@ class PendingPaymentsController extends Controller
             'control_number' => $invoice->control_number,
             'type_of_expense' => 'Normal',
             'count' => $countValue,
+            'url_file' => $payment->photo_url,
+            'file_name' => $payment->photo_url ? basename($payment->photo_url) : null,
             'status' => $isAdmin ? Expense::STATUS_APPROVED : Expense::STATUS_PENDING,
             'approved_by_id' => $isAdmin ? ($user?->id ?? 1) : null,
             'approved_at' => $isAdmin ? now() : null,

@@ -14,6 +14,19 @@ class ExpenseResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $urlFile = $this->url_file;
+        if (empty($urlFile) && !empty($this->name) && str_contains($this->name, 'Pago Factura #')) {
+            if (preg_match('/Pago Factura #\s*([^\s-]+)/i', $this->name, $matches)) {
+                $invNum = $matches[1];
+                $invPayment = \App\Models\InvoicePayment::whereHas('invoices', function ($q) use ($invNum) {
+                    $q->where('invoice_number', $invNum);
+                })->whereNotNull('photo_url')->latest()->first();
+                if ($invPayment) {
+                    $urlFile = $invPayment->photo_url;
+                }
+            }
+        }
+
         return [
             'id' => $this->id,
             'name' => $this->name,
@@ -32,8 +45,8 @@ class ExpenseResource extends JsonResource
             'taxable_base' => $this->taxable_base,
             'exempt_amount' => $this->exempt_amount,
             'total_usd' => $this->total_usd,
-            'url_file' => $this->url_file,
-            'file_name' => $this->file_name,
+            'url_file' => $urlFile,
+            'file_name' => $this->file_name ?: ($urlFile ? basename($urlFile) : null),
             'category' => $this->whenLoaded('category', function () {
                 return [
                     'id' => $this->category->id,
