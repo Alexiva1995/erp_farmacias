@@ -21,13 +21,11 @@ const isFiltered = computed(() => !!props.selectedCurrency);
 // Cabeceras activas: ocultar Balance Caja cuando no hay filtro de moneda
 const allHeaders = [
   { title: "Día / Mov.", key: "direction",     sortable: false, align: "center", width: "90px" },
-  { title: "ID",         key: "id",             sortable: false, align: "start",  width: "80px" },
   { title: "Usuario",    key: "user_name",      sortable: false,                  width: "140px" },
   { title: "Descripción",key: "description",   sortable: false                                  },
   { title: "Tipo",       key: "type",           sortable: false, align: "center", width: "110px" },
   { title: "Monto",      key: "amount",         sortable: false, align: "end",    width: "160px" },
   { title: "Balance Caja",key: "balance",       sortable: false, align: "end",    width: "150px", filteredOnly: true },
-  { title: "Categoría",  key: "category_name", sortable: false,                  width: "130px" },
 ];
 const headers = computed(() =>
   allHeaders.filter((h) => !h.filteredOnly || isFiltered.value)
@@ -204,21 +202,6 @@ const groupedByDay = computed(() => {
                     size="18"
                   />
                 </td>
-                <td class="text-caption font-weight-bold text-medium-emphasis px-4" style="width: 80px;">
-                  <!-- Mostrar todos los IDs si la fila agrupa varias transacciones -->
-                  <span v-if="item._count === 1">#{{ item.id }}</span>
-                  <VTooltip v-else location="bottom">
-                    <template #activator="{ props: tp }">
-                      <span v-bind="tp" class="cursor-help font-weight-bold text-high-emphasis">
-                        #{{ item._ids[0] }}
-                        <VChip size="x-small" color="primary" variant="tonal" label class="ms-1 font-weight-bold">
-                          +{{ item._count - 1 }}
-                        </VChip>
-                      </span>
-                    </template>
-                    <span>IDs agrupados: {{ item._ids.join(', ') }}</span>
-                  </VTooltip>
-                </td>
                 <td class="px-4 text-truncate" style="width: 140px; max-width: 140px;">
                    <span class="text-body-2 text-high-emphasis">{{
                       item.user_name
@@ -270,9 +253,6 @@ const groupedByDay = computed(() => {
                     {{ formatCurrency(item.balance, item.currency) }}
                   </span>
                 </td>
-                <td class="text-caption text-medium-emphasis px-4 text-truncate" style="width: 130px; max-width: 130px;">
-                  {{ item.category_name }}
-                </td>
               </tr>
             </tbody>
           </VTable>
@@ -304,13 +284,7 @@ const groupedByDay = computed(() => {
                     />
                   </VAvatar>
                   <div class="d-flex flex-column">
-                    <!-- ID: si agrupa varios, muestra el primero + badge -->
-                    <span class="text-xs font-weight-black text-primary">
-                      ID: #{{ item._ids[0] }}
-                      <VChip v-if="item._count > 1" size="x-small" color="primary" variant="tonal" class="ms-1 font-weight-black">
-                        +{{ item._count - 1 }}
-                      </VChip>
-                    </span>
+                    <span class="text-sm font-weight-black text-high-emphasis">{{ item.user_name }}</span>
                     <span class="text-super-xs text-disabled font-weight-black uppercase">{{ item.type }}</span>
                   </div>
                 </div>
@@ -330,9 +304,6 @@ const groupedByDay = computed(() => {
                     {{ item.isEntry ? "+" : "-" }}
                     {{ formatCurrency(item.amount, item.currency) }}
                   </div>
-                  <VChip size="x-small" variant="tonal" color="secondary" class="font-weight-bold mt-1">
-                    {{ item.category_name }}
-                  </VChip>
                 </div>
               </div>
 
