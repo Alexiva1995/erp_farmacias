@@ -26,7 +26,6 @@ const emit = defineEmits([
 const { mobile } = useDisplay();
 
 const headers = [
-  { title: "ID", key: "id", sortable: false, width: "80px" },
   { title: "PERIODO", key: "payslip_date", sortable: false },
   { title: "TOTAL BRUTO", key: "total", sortable: false, align: "end" },
   { title: "NETO PAGADO", key: "payed", sortable: false, align: "end" },
@@ -41,13 +40,13 @@ const headers = [
 ];
 
 const formatCurrency = (amount, currencyCode) => {
-  if (!amount && amount !== 0) return "-";
+  const num = Number(amount) || 0;
   const isCop = currencyCode === "COP";
   const symbol = currencyCode || "USD";
 
   if (isCop) {
     return (
-      Math.round(amount)
+      Math.round(num)
         .toString()
         .replace(/\B(?=(\d{3})+(?!\d))/g, ".") + " COP"
     );
@@ -57,7 +56,7 @@ const formatCurrency = (amount, currencyCode) => {
     new Intl.NumberFormat("es-ES", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
-    }).format(amount) +
+    }).format(num) +
     " " +
     symbol
   );
@@ -123,12 +122,6 @@ const getAvatarColor = (id) => {
         class="text-no-wrap premium-table"
         @update:options="(options) => emit('update:options', options)"
       >
-        <template #item.id="{ item }">
-          <span class="text-sm font-weight-black text-primary">{{
-            item.id
-          }}</span>
-        </template>
-
         <template #item.payslip_date="{ item }">
           <span class="text-sm font-weight-bold text-high-emphasis uppercase">
             {{ formatDate(item.payslip_date) }}
@@ -148,9 +141,9 @@ const getAvatarColor = (id) => {
           >
             {{ formatCurrency(item.payed, item.currency) }}
           </span>
-          <span v-else class="text-xs text-disabled font-weight-medium"
-            >PENDIENTE</span
-          >
+          <span v-else class="text-sm font-weight-bold text-medium-emphasis">
+            0
+          </span>
         </template>
 
         <template #item.status="{ item }">
@@ -166,37 +159,19 @@ const getAvatarColor = (id) => {
 
         <template #item.actions="{ item }">
           <div class="d-flex align-center justify-center gap-1">
-            <!-- Ver Nómina Legal -->
-            <VTooltip text="Nómina Legal (Bs)" location="top">
+            <!-- Ver Nómina -->
+            <VTooltip text="Ver Nómina" location="top">
               <template #activator="{ props }">
-                <VBtn
+                <IconBtn
                   v-bind="props"
-                  :href="'/finances/payslips/' + item.id + '?tab=legal'"
-                  icon="tabler-eyeglass"
-                  variant="text"
+                  :href="'/finances/payslips/' + item.id"
                   color="info"
                   size="32"
-                  class="rounded-lg"
-                />
+                >
+                  <VIcon icon="tabler-eye" size="18" />
+                </IconBtn>
               </template>
             </VTooltip>
-
-            <!-- Ver Nómina Completa -->
-            <VTooltip text="Nómina Completa (Interna)" location="top">
-              <template #activator="{ props }">
-                <VBtn
-                  v-bind="props"
-                  :href="'/finances/payslips/' + item.id + '?tab=full'"
-                  icon="tabler-eye"
-                  variant="text"
-                  color="warning"
-                  size="32"
-                  class="rounded-lg"
-                />
-              </template>
-            </VTooltip>
-
-            <VDivider vertical class="mx-1 my-2" />
 
             <!-- Descargas -->
             <VTooltip
@@ -350,9 +325,15 @@ const getAvatarColor = (id) => {
                   class="text-super-xs text-disabled font-weight-bold uppercase d-block mb-1"
                   >Neto Pagado</span
                 >
-                <span class="text-sm font-weight-black text-success">{{
-                  formatCurrency(item.payed, item.currency)
-                }}</span>
+                <span
+                  v-if="item.status === 1"
+                  class="text-sm font-weight-black text-success"
+                >
+                  {{ formatCurrency(item.payed, item.currency) }}
+                </span>
+                <span v-else class="text-sm font-weight-bold text-medium-emphasis">
+                  0
+                </span>
               </div>
             </div>
 
