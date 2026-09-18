@@ -44,6 +44,11 @@ class TransactionServices implements Transaction
         $this->transactionRepository->adjustBalance($data);
     }
 
+    public function transferBetweenWallets(array $data): void
+    {
+        $this->transactionRepository->transferBetweenWallets($data);
+    }
+
     public function exportExcel(array $data)
     {
         return $this->transactionRepository->exportExcel($data);
