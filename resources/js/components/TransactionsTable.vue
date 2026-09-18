@@ -1,6 +1,8 @@
 <script setup>
+import PaymentDetailModal from "@/components/PaymentDetailModal.vue";
+import axios from "@/plugins/axios";
 import { formatCurrency } from "@/utils/currencyFormatter";
-import { computed } from "vue";
+import { computed, ref } from "vue";
 
 const props = defineProps({
   transactions: { type: [Array, Object], default: () => [] },
@@ -14,6 +16,116 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["update:options", "update:selectedTab", "clear"]);
+
+// Modal de Detalle de Pago
+const showPaymentModal = ref(false);
+const selectedPayment = ref(null);
+const loadingPaymentDetail = ref(false);
+
+// Funciones de formateo y parsing de descripción
+const isInvoicePayment = (desc) => {
+  if (!desc) return false;
+  return /pago\s+factura/i.test(desc);
+};
+
+const extractInvoiceNumbers = (desc) => {
+  if (!desc) return [];
+  const match = desc.match(/pago\s+factura\(?s?\)?\s*#?\s*([^\(\n]+)/i);
+  if (!match) return [];
+  
+  // Extraer tokens que parezcan números de factura
+  const cleaned = match[1].trim();
+  const tokens = cleaned.split(/[\s,]+/);
+  return tokens.filter((t) => /^[A-Za-z0-9\-_]+$/.test(t) && t.length >= 2);
+};
+
+const cleanDescription = (desc) => {
+  if (!desc) return "";
+  
+  // 1. Remover paréntesis y su contenido (ej: Origen: ... COP @ Tasa ...)
+  let text = desc.replace(/\s*\([^)]*\)/g, "").trim();
+
+  // 2. Si es pago de facturas, simplificar mostrando "Pago a PROVEEDOR" o "Pago factura(s) - PROVEEDOR"
+  const match = text.match(/pago\s+factura\(?s?\)?\s*#?\s*(.+)$/i);
+  if (match) {
+    let rest = match[1].trim();
+    // Remover números o listas de facturas al inicio (ej: "709484, 709486 DROMEGA" -> "DROMEGA")
+    const cleanedSupplier = rest.replace(/^[0-9A-Za-z\-_,\s]+?\s+([A-Za-zÁÉÍÓÚáéíóúÑñ][A-Za-z0-9ÁÉÍÓÚáéíóúÑñ\s\.\-_&]+)$/, "$1");
+    if (cleanedSupplier && cleanedSupplier !== rest) {
+      return `Pago a ${cleanedSupplier.trim()}`;
+    }
+    // Si no hubo reemplazo por regex estricto, buscar última palabra o palabras en mayúsculas
+    return `Pago a ${rest.trim()}`;
+  }
+
+  return text;
+};
+
+// Abrir detalle del pago
+const openPaymentDetail = async (item) => {
+  loadingPaymentDetail.value = true;
+  try {
+    const numbers = extractInvoiceNumbers(item.description);
+    let paymentFound = null;
+
+    if (numbers.length > 0) {
+      for (const num of numbers) {
+        const res = await axios.get("/finances/payment-history", {
+          params: { search: num, itemsPerPage: 5 },
+        });
+        const list = res.data?.data?.data || [];
+        if (list.length > 0) {
+          paymentFound = list[0];
+          break;
+        }
+      }
+    }
+
+    if (!paymentFound) {
+      // Búsqueda alternativa por texto limpio o descripción
+      const cleaned = cleanDescription(item.description).replace(/^Pago a\s+/i, "");
+      const res = await axios.get("/finances/payment-history", {
+        params: { search: cleaned, itemsPerPage: 5 },
+      });
+      const list = res.data?.data?.data || [];
+      if (list.length > 0) {
+        paymentFound = list[0];
+      }
+    }
+
+    if (paymentFound) {
+      selectedPayment.value = paymentFound;
+      showPaymentModal.value = true;
+    } else {
+      // Fallback: construir objeto básico con la información de la transacción
+      selectedPayment.value = {
+        id: item.id,
+        payment_date: item.transaction_date,
+        currency: item.currency,
+        amount: item.amount,
+        amount_usd: item.currency === "USD" ? item.amount : (item.amount / (item.exchange_rate || 1)),
+        source_amount: item.amount,
+        source_currency: item.currency,
+        reference: item.description,
+        notes: item.description,
+        user: { name: item.user_name || "Sistema" },
+        invoices: extractInvoiceNumbers(item.description).map((num, i) => ({
+          id: i + 1,
+          invoice_number: num,
+          total_amount: item.amount,
+          total_usd: item.currency === "USD" ? item.amount : (item.amount / (item.exchange_rate || 1)),
+          currency: item.currency,
+          supplier: { name: cleanDescription(item.description).replace(/^Pago a\s+/i, "") },
+        })),
+      };
+      showPaymentModal.value = true;
+    }
+  } catch (err) {
+    console.error("Error cargando detalle del pago:", err);
+  } finally {
+    loadingPaymentDetail.value = false;
+  }
+};
 
 // Hay una caja/moneda seleccionada → el balance corrido tiene sentido
 const isFiltered = computed(() => !!props.selectedCurrency);
@@ -210,7 +322,23 @@ const groupedByDay = computed(() => {
                 <td
                   class="text-body-2 text-high-emphasis px-4 text-wrap"
                 >
-                  {{ item.description }}
+                  <div class="d-flex align-center gap-2">
+                    <span>{{ cleanDescription(item.description) }}</span>
+                    <!-- Botón Ojito para ver el detalle de las facturas si es un pago a proveedor -->
+                    <VBtn
+                      v-if="isInvoicePayment(item.description)"
+                      icon="tabler-eye"
+                      size="x-small"
+                      variant="tonal"
+                      color="primary"
+                      class="rounded-lg ms-1 flex-shrink-0"
+                      :loading="loadingPaymentDetail"
+                      @click.stop="openPaymentDetail(item)"
+                    >
+                      <VIcon icon="tabler-eye" size="14" />
+                      <VTooltip activator="parent" location="top">Ver detalle de facturas</VTooltip>
+                    </VBtn>
+                  </div>
                 </td>
                 <td class="text-center px-2" style="width: 110px;">
                   <VChip
@@ -309,9 +437,21 @@ const groupedByDay = computed(() => {
 
               <!-- Descripción -->
               <div
-                class="text-sm text-medium-emphasis mb-4 bg-surface-variant-light pa-2 rounded-lg italic border"
+                class="text-sm text-medium-emphasis mb-4 bg-surface-variant-light pa-2 rounded-lg italic border d-flex align-center justify-space-between gap-2"
               >
-                "{{ item.description }}"
+                <span>"{{ cleanDescription(item.description) }}"</span>
+                <VBtn
+                  v-if="isInvoicePayment(item.description)"
+                  icon="tabler-eye"
+                  size="x-small"
+                  variant="tonal"
+                  color="primary"
+                  class="rounded-lg flex-shrink-0"
+                  :loading="loadingPaymentDetail"
+                  @click.stop="openPaymentDetail(item)"
+                >
+                  <VIcon icon="tabler-eye" size="14" />
+                </VBtn>
               </div>
 
               <!-- Footer de la Card con Balance Destacado -->
@@ -376,6 +516,12 @@ const groupedByDay = computed(() => {
         REINICIAR FILTROS
       </VBtn>
     </div>
+
+    <!-- Modal Detalle de Pago -->
+    <PaymentDetailModal
+      v-model="showPaymentModal"
+      :payment="selectedPayment"
+    />
   </div>
 </template>
 
