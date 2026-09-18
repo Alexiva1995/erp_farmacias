@@ -19,19 +19,25 @@ defineProps({
 });
 
 const page = defineModel("page", { type: Number, default: 1 });
-const emit = defineEmits(["update:page"]);
+const emit = defineEmits(["update:page", "view-order"]);
 
-const formatCurrency = (amount) => {
+const formatNumber = (amount) => {
   return new Intl.NumberFormat("es-VE", {
-    style: "currency",
-    currency: "USD",
     minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(amount || 0);
 };
 
 const formatDate = (date) => {
   if (!date) return "—";
   return new Date(date).toLocaleDateString("es-VE");
+};
+
+const getMarginChipClass = (pct) => {
+  const num = Number(pct || 0);
+  if (num < 0) return "margin-chip-error";
+  if (num < 15) return "margin-chip-warning";
+  return "margin-chip-success";
 };
 </script>
 
@@ -64,10 +70,18 @@ const formatDate = (date) => {
             
             <div class="d-flex justify-space-between align-start mb-2 mt-1">
               <div class="d-flex flex-column">
-                <span class="text-xs font-weight-black text-primary font-mono">
-                  {{ item.voucher_number || `REF #${item.id}` }}
+                <span
+                  v-if="item.type === 'sale'"
+                  class="text-xs font-weight-black text-primary font-mono cursor-pointer clickable-order"
+                  @click="emit('view-order', item.id)"
+                >
+                  <VIcon icon="tabler-receipt" size="14" class="me-1" />
+                  {{ item.voucher_number || `Order #${item.id}` }}
                 </span>
-                <span class="text-super-xs font-weight-bold text-disabled uppercase">
+                <span v-else class="text-xs font-weight-black text-secondary font-mono">
+                  {{ item.voucher_number || `EGR-#${item.id}` }}
+                </span>
+                <span class="text-super-xs font-weight-bold text-disabled uppercase mt-0.5">
                   {{ formatDate(item.date) }}
                 </span>
               </div>
@@ -93,30 +107,32 @@ const formatDate = (date) => {
             <div class="d-flex flex-column gap-1">
               <div class="d-flex justify-space-between align-center text-super-xs">
                 <span class="text-disabled font-weight-bold">VENTA:</span>
-                <span :class="['font-weight-black text-body-2', item.type === 'sale' ? 'text-success' : 'text-error']">
-                  {{ item.type === 'sale' ? '+' : '-' }}{{ formatCurrency(item.amount) }}
+                <span class="font-weight-black font-mono text-body-2 text-high-emphasis">
+                  {{ formatNumber(item.amount) }}
                 </span>
               </div>
-              <div v-if="item.costs > 0" class="d-flex justify-space-between align-center text-super-xs">
+              <div class="d-flex justify-space-between align-center text-super-xs">
                 <span class="text-disabled font-weight-bold">COSTO:</span>
-                <span class="font-weight-bold text-warning">-{{ formatCurrency(item.costs) }}</span>
+                <span class="font-weight-black font-mono text-body-2 text-high-emphasis">
+                  {{ item.costs > 0 ? formatNumber(item.costs) : "0,00" }}
+                </span>
               </div>
               <div class="d-flex justify-space-between align-center text-xs pt-1 border-t mt-1">
                 <div class="d-flex align-center gap-1">
                   <span class="font-weight-bold text-disabled">MARGEN:</span>
                   <VChip
                     v-if="item.type === 'sale'"
-                    :color="item.margin_percentage >= 25 ? 'success' : item.margin_percentage >= 15 ? 'warning' : 'error'"
                     size="x-small"
                     variant="tonal"
                     class="font-weight-black font-mono"
+                    :class="getMarginChipClass(item.margin_percentage)"
                     style="font-size: 0.65rem; height: 18px;"
                   >
-                    {{ item.margin_percentage }}%
+                    {{ Number(item.margin_percentage || 0).toFixed(2) }}%
                   </VChip>
                 </div>
-                <span :class="['font-weight-black text-body-2', item.profit >= 0 ? 'text-info' : 'text-error']">
-                  {{ item.profit >= 0 ? '+' : '' }}{{ formatCurrency(item.profit) }}
+                <span :class="['font-weight-black font-mono text-body-2', item.profit >= 0 ? 'text-money-green' : 'text-error']">
+                  {{ formatNumber(item.profit) }}
                 </span>
               </div>
             </div>
@@ -174,5 +190,37 @@ const formatDate = (date) => {
   overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+}
+
+.text-money-green {
+  color: #16a34a !important;
+}
+
+.margin-chip-success {
+  background-color: #dcfce7 !important;
+  color: #166534 !important;
+  border: 1px solid #86efac !important;
+}
+
+.margin-chip-warning {
+  background-color: #fef3c7 !important;
+  color: #92400e !important;
+  border: 1px solid #fcd34d !important;
+}
+
+.margin-chip-error {
+  background-color: #fee2e2 !important;
+  color: #991b1b !important;
+  border: 1px solid #fca5a5 !important;
+}
+
+.clickable-order {
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.clickable-order:hover {
+  filter: brightness(0.9);
+  text-decoration: underline;
 }
 </style>

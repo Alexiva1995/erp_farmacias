@@ -16,7 +16,9 @@ const emit = defineEmits([
   "update:endDate",
   "update:selectedType",
   "clear",
-  "reset"
+  "reset",
+  "export-excel",
+  "export-pdf",
 ]);
 
 const hasAdvancedFilters = computed(() => !!(props.startDate || props.endDate || props.selectedType));
@@ -58,10 +60,12 @@ function setQuickFilter(days) {
   <AppFilterBase
     :search="props.searchQuery"
     :has-advanced-filters="hasAdvancedFilters"
+    :show-export="true"
     search-placeholder="Buscar registro..."
     class="py-1"
     @update:search="emit('update:searchQuery', $event)"
     @clear="emit('clear')"
+    @export="(fmt) => fmt === 'pdf' ? emit('export-pdf') : emit('export-excel', fmt)"
   >
     <template #advanced-filters>
       <!-- Rango de Fechas -->

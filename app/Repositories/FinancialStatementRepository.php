@@ -71,7 +71,7 @@ class FinancialStatementRepository implements FinancialStatementRepositoryInterf
                 DB::raw('COALESCE(NULLIF(orders.total_cost, 0), (SELECT SUM(od.quantity * od.unit_cost) FROM order_details od WHERE od.order_id = orders.id), 0) as costs'),
                 'total_amount_usd as amount_usd',
                 'client_id as relation_id',
-                DB::raw("CONCAT('Venta #', id) as description")
+                DB::raw("'Venta' as description")
             ])
             ->where('status', 'Completed')
             ->when($startDate && $endDate, fn ($q) => $q->whereBetween('order_date', [$startDate, $endDate]))

@@ -1,4 +1,5 @@
 <script setup>
+import OrderViewModal from "@/components/dialogs/OrderViewModal.vue";
 import IncomeStatementFilters from "@/components/IncomeStatementFilters.vue";
 import IncomeStatementMobileList from "@/components/IncomeStatementMobileList.vue";
 import IncomeStatementSummaryCards from "@/components/IncomeStatementSummaryCards.vue";
@@ -33,14 +34,69 @@ const endDate = ref(getToday());
 const searchQuery = ref("");
 const selectedType = ref(null);
 
+// Diálogo de Ver Orden
+const viewModal = ref(false);
+const orderData = ref(null);
+const orderItems = ref([]);
+const paymentsForPrint = ref([]);
+const changeAmountForPrint = ref(0);
+const amountForPrint = ref(0);
+const creditAmountForPrint = ref(0);
+const creditForPrint = ref(false);
+const selectedOrderCurrency = ref("USD");
+
+const openOrderModal = async (orderId) => {
+  if (!orderId) return;
+  try {
+    const response = await axios.get(`/tpv/orders/${orderId}/print`);
+    if (response.data?.data?.order) {
+      const order = response.data.data.order;
+      orderData.value = order;
+      selectedOrderCurrency.value = order.currency ? order.currency.toUpperCase() : "USD";
+      orderItems.value = (order.details || []).map((detail) => ({
+        title: detail.product?.name || detail.dish?.name || 'Producto',
+        selectedQuantity: detail.quantity,
+        taxRate: 0,
+        unit_price: detail.quantity > 0 ? parseFloat(detail.price) / detail.quantity : parseFloat(detail.price),
+        price_bs: parseFloat(detail.price),
+        price_cop: parseFloat(detail.price),
+        price: parseFloat(detail.price),
+        price_before_discount: parseFloat(detail.price_before_discount || detail.price),
+      }));
+      paymentsForPrint.value = order.payment_methods || [];
+      changeAmountForPrint.value = parseFloat(order.money_returns || 0);
+      amountForPrint.value = parseFloat(order.total_amount || 0);
+      creditAmountForPrint.value = response.data.data.hasCreditPayment
+        ? parseFloat(order.total_amount || 0)
+        : 0;
+      creditForPrint.value = !!response.data.data.hasCreditPayment;
+      viewModal.value = true;
+    }
+  } catch (error) {
+    console.error("Error al obtener los detalles de la orden:", error);
+    toast.error("Error al abrir los detalles de la orden");
+  }
+};
+
+const handleCloseViewModal = () => {
+  viewModal.value = false;
+  orderData.value = null;
+  orderItems.value = [];
+  paymentsForPrint.value = [];
+  changeAmountForPrint.value = 0;
+  amountForPrint.value = 0;
+  creditAmountForPrint.value = 0;
+  creditForPrint.value = false;
+};
+
 const headers = [
   { title: "FECHA", key: "date", sortable: true, width: "110px" },
-  { title: "COMPROBANTE", key: "voucher_number", sortable: false, width: "135px" },
+  { title: "COMPROBANTE", key: "voucher_number", sortable: false, width: "140px" },
   { title: "TIPO", key: "type", sortable: false, align: "center", width: "95px" },
   { title: "DESCRIPCIÓN", key: "description", sortable: true },
   { title: "CLIENTE / CANAL", key: "client", sortable: true },
-  { title: "VENTA (USD)", key: "amount", sortable: true, align: "end", width: "135px" },
-  { title: "COSTO (USD)", key: "costs", sortable: true, align: "end", width: "125px" },
+  { title: "VENTA", key: "amount", sortable: true, align: "end", width: "135px" },
+  { title: "COSTO", key: "costs", sortable: true, align: "end", width: "125px" },
   { title: "MARGEN ($)", key: "profit", sortable: true, align: "end", width: "130px" },
   { title: "MARGEN (%)", key: "margin_percentage", sortable: false, align: "center", width: "115px" },
 ];
@@ -107,12 +163,18 @@ const clearFilters = () => {
   loadData();
 };
 
-const formatCurrency = (amount) => {
+const formatNumber = (amount) => {
   return new Intl.NumberFormat("es-VE", {
-    style: "currency",
-    currency: "USD",
     minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(amount || 0);
+};
+
+const getMarginChipClass = (pct) => {
+  const num = Number(pct || 0);
+  if (num < 0) return "margin-chip-error";
+  if (num < 15) return "margin-chip-warning";
+  return "margin-chip-success";
 };
 
 const formatDate = (date) => {
@@ -134,8 +196,8 @@ const exportToCsv = () => {
     "DESCRIPCIÓN",
     "CLIENTE / PROVEEDOR",
     "CANAL",
-    "VENTA (USD)",
-    "COSTO (USD)",
+    "VENTA",
+    "COSTO",
     "MARGEN ($)",
     "MARGEN (%)"
   ].join(";"));
@@ -224,6 +286,8 @@ watch(searchQuery, () => debouncedLoadData());
         class="mb-5 print-hidden"
         @clear="clearFilters"
         @reset="handleReset"
+        @export-excel="exportToCsv"
+        @export-pdf="printReport"
       />
 
       <!-- Componente Tarjetas de Resumen KPI -->
@@ -245,29 +309,6 @@ watch(searchQuery, () => debouncedLoadData());
                 Auxiliar Transaccional de Ventas y Márgenes
               </span>
             </div>
-          </div>
-
-          <div class="d-flex align-center gap-2 print-hidden">
-            <VBtn
-              variant="outlined"
-              color="secondary"
-              size="small"
-              class="font-weight-bold"
-              prepend-icon="tabler-printer"
-              @click="printReport"
-            >
-              Imprimir / PDF
-            </VBtn>
-            <VBtn
-              variant="flat"
-              color="primary"
-              size="small"
-              class="font-weight-bold"
-              prepend-icon="tabler-file-spreadsheet"
-              @click="exportToCsv"
-            >
-              Exportar CSV / Excel
-            </VBtn>
           </div>
         </div>
 
@@ -301,8 +342,22 @@ watch(searchQuery, () => debouncedLoadData());
 
               <!-- COMPROBANTE -->
               <template #item.voucher_number="{ item }">
-                <span class="font-mono text-xs font-weight-bold text-primary bg-primary-subtle px-2 py-1 rounded">
-                  {{ item.voucher_number || `REF #${item.id}` }}
+                <VChip
+                  v-if="item.type === 'sale'"
+                  size="small"
+                  color="primary"
+                  variant="tonal"
+                  class="font-weight-black cursor-pointer clickable-order"
+                  @click="openOrderModal(item.id)"
+                >
+                  <VIcon start icon="tabler-receipt" size="14" />
+                  {{ item.voucher_number || `Order #${item.id}` }}
+                </VChip>
+                <span
+                  v-else
+                  class="font-mono text-xs font-weight-bold text-secondary bg-secondary-subtle px-2 py-1 rounded"
+                >
+                  {{ item.voucher_number || `EGR-#${item.id}` }}
                 </span>
               </template>
 
@@ -339,18 +394,15 @@ watch(searchQuery, () => debouncedLoadData());
 
               <!-- MONTO VENTA -->
               <template #item.amount="{ item }">
-                <span
-                  class="text-body-2 font-weight-bold font-mono"
-                  :class="item.type === 'sale' ? 'text-success' : 'text-error'"
-                >
-                  {{ item.type === "sale" ? "+" : "-" }}{{ formatCurrency(item.amount) }}
+                <span class="text-body-2 font-weight-black font-mono text-high-emphasis">
+                  {{ formatNumber(item.amount) }}
                 </span>
               </template>
 
               <!-- COSTOS -->
               <template #item.costs="{ item }">
-                <span class="text-body-2 font-weight-bold font-mono text-warning">
-                  {{ item.costs > 0 ? "-" + formatCurrency(item.costs) : "—" }}
+                <span class="text-body-2 font-weight-black font-mono text-high-emphasis">
+                  {{ item.costs > 0 ? formatNumber(item.costs) : "0,00" }}
                 </span>
               </template>
 
@@ -358,9 +410,9 @@ watch(searchQuery, () => debouncedLoadData());
               <template #item.profit="{ item }">
                 <span
                   class="text-body-2 font-weight-black font-mono"
-                  :class="item.profit >= 0 ? 'text-info' : 'text-error'"
+                  :class="item.profit >= 0 ? 'text-money-green' : 'text-error'"
                 >
-                  {{ item.profit >= 0 ? "+" : "" }}{{ formatCurrency(item.profit) }}
+                  {{ formatNumber(item.profit) }}
                 </span>
               </template>
 
@@ -368,12 +420,12 @@ watch(searchQuery, () => debouncedLoadData());
               <template #item.margin_percentage="{ item }">
                 <template v-if="item.type === 'sale'">
                   <VChip
-                    :color="item.margin_percentage >= 25 ? 'success' : item.margin_percentage >= 15 ? 'warning' : 'error'"
                     size="small"
                     variant="tonal"
                     class="font-weight-black font-mono px-2"
+                    :class="getMarginChipClass(item.margin_percentage)"
                   >
-                    {{ item.margin_percentage }}%
+                    {{ Number(item.margin_percentage || 0).toFixed(2) }}%
                   </VChip>
                 </template>
                 <template v-else>
@@ -390,23 +442,26 @@ watch(searchQuery, () => debouncedLoadData());
                       <span>TOTALES DE LA PÁGINA ({{ transactions.length }} REGISTROS)</span>
                     </div>
                   </td>
-                  <td class="text-end font-mono text-body-2 font-weight-black text-success pe-4 py-3">
-                    +{{ formatCurrency(pageTotals.amount) }}
+                  <td class="text-end font-mono text-body-2 font-weight-black text-high-emphasis pe-4 py-3">
+                    {{ formatNumber(pageTotals.amount) }}
                   </td>
-                  <td class="text-end font-mono text-body-2 font-weight-black text-warning pe-4 py-3">
-                    {{ pageTotals.costs > 0 ? '-' + formatCurrency(pageTotals.costs) : '—' }}
+                  <td class="text-end font-mono text-body-2 font-weight-black text-high-emphasis pe-4 py-3">
+                    {{ pageTotals.costs > 0 ? formatNumber(pageTotals.costs) : '0,00' }}
                   </td>
-                  <td class="text-end font-mono text-body-2 font-weight-black text-info pe-4 py-3">
-                    {{ (pageTotals.profit >= 0 ? '+' : '') + formatCurrency(pageTotals.profit) }}
+                  <td
+                    class="text-end font-mono text-body-2 font-weight-black pe-4 py-3"
+                    :class="pageTotals.profit >= 0 ? 'text-money-green' : 'text-error'"
+                  >
+                    {{ formatNumber(pageTotals.profit) }}
                   </td>
                   <td class="text-center font-mono font-weight-black py-3">
                     <VChip
-                      :color="pageTotals.margin_percentage >= 25 ? 'success' : pageTotals.margin_percentage >= 15 ? 'warning' : 'error'"
                       size="small"
                       variant="tonal"
-                      class="font-weight-black font-mono"
+                      class="font-weight-black font-mono px-2"
+                      :class="getMarginChipClass(pageTotals.margin_percentage)"
                     >
-                      {{ pageTotals.margin_percentage }}%
+                      {{ Number(pageTotals.margin_percentage || 0).toFixed(2) }}%
                     </VChip>
                   </td>
                 </tr>
@@ -423,10 +478,25 @@ watch(searchQuery, () => debouncedLoadData());
             :total-items="totalItems"
             :items-per-page="itemsPerPage"
             @update:page="loadDetails"
+            @view-order="openOrderModal"
           />
         </VCardText>
       </VCard>
     </div>
+
+    <!-- Modal de Detalles de Orden -->
+    <OrderViewModal
+      v-model:isDialogVisible="viewModal"
+      :order-data="orderData"
+      :order-products="orderItems"
+      :total-amount="amountForPrint"
+      :selected-currency="selectedOrderCurrency"
+      :payments="paymentsForPrint"
+      :change-amount="changeAmountForPrint"
+      :credit-amount="creditAmountForPrint"
+      :credit="creditForPrint"
+      @close="handleCloseViewModal"
+    />
   </div>
 </template>
 
@@ -444,6 +514,10 @@ watch(searchQuery, () => debouncedLoadData());
   background-color: rgba(var(--v-theme-primary), 0.08);
 }
 
+.bg-secondary-subtle {
+  background-color: rgba(var(--v-theme-secondary), 0.08);
+}
+
 .bg-light {
   background-color: #f8fafc;
 }
@@ -454,6 +528,39 @@ watch(searchQuery, () => debouncedLoadData());
 
 .font-mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.text-money-green {
+  color: #16a34a !important;
+}
+
+.margin-chip-success {
+  background-color: #dcfce7 !important;
+  color: #166534 !important;
+  border: 1px solid #86efac !important;
+}
+
+.margin-chip-warning {
+  background-color: #fef3c7 !important;
+  color: #92400e !important;
+  border: 1px solid #fcd34d !important;
+}
+
+.margin-chip-error {
+  background-color: #fee2e2 !important;
+  color: #991b1b !important;
+  border: 1px solid #fca5a5 !important;
+}
+
+.clickable-order {
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.clickable-order:hover {
+  transform: translateY(-1px);
+  filter: brightness(0.95);
+  box-shadow: 0 2px 6px rgba(var(--v-theme-primary), 0.25);
 }
 
 :deep(.v-data-table.premium-table) {

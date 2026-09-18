@@ -47,6 +47,46 @@ class FinancialStatementService
         return 0.00;
     }
 
+    public function formatPaymentMethodLabel(mixed $pm, ?string $orderCurrency = 'USD'): string
+    {
+        if (is_string($pm)) {
+            $rawMethod = strtolower($pm);
+            $currency = strtoupper((string)($orderCurrency ?: 'USD'));
+        } elseif (is_array($pm)) {
+            $rawMethod = strtolower((string)($pm['method'] ?? ''));
+            $currency = strtoupper((string)($pm['currency'] ?? $orderCurrency ?? 'USD'));
+        } else {
+            return (string) ($orderCurrency ?: 'USD');
+        }
+
+        $methodTranslations = [
+            'cash_cop' => 'COP - Efectivo',
+            'cash_usd' => 'USD - Efectivo',
+            'cash_bs' => 'BS - Efectivo',
+            'cash' => "{$currency} - Efectivo",
+            'mobile_payment' => 'BS - Pago Móvil',
+            'pago_movil' => 'BS - Pago Móvil',
+            'pos' => 'BS - Punto de Venta',
+            'debit_card' => 'BS - Tarjeta de Débito',
+            'credit_card' => "{$currency} - Tarjeta de Crédito",
+            'bank_transfer' => "{$currency} - Transferencia",
+            'transfer' => "{$currency} - Transferencia",
+            'zelle' => 'USD - Zelle',
+            'biopago' => 'BS - Biopago',
+            'cashea' => 'Cashea',
+            'credit' => 'Crédito',
+        ];
+
+        if (isset($methodTranslations[$rawMethod])) {
+            return $methodTranslations[$rawMethod];
+        }
+
+        $formatted = ucwords(str_replace(['_', '-'], ' ', $rawMethod));
+        return !empty($currency) && !str_contains($formatted, $currency)
+            ? "{$currency} - {$formatted}"
+            : $formatted;
+    }
+
     public function getDefaultStartDate(): string
     {
         return now()->startOfMonth()->format('Y-m-d');
@@ -110,26 +150,27 @@ class FinancialStatementService
 
                 $voucherNumber = !empty($order->fiscalHistory?->invoice_number)
                     ? "FAC-{$order->fiscalHistory->invoice_number}"
-                    : "TKT-" . str_pad((string) $order->id, 6, '0', STR_PAD_LEFT);
+                    : "Order #{$order->id}";
 
-                // Obtener métodos de pago / canal
+                // Obtener métodos de pago / canal formateados en español
                 $pmList = $order->payment_methods ?? [];
                 $channels = [];
-                if (is_array($pmList)) {
+                if (is_array($pmList) && !empty($pmList)) {
                     foreach ($pmList as $pm) {
-                        if (isset($pm['method']) && !empty($pm['method'])) {
-                            $channels[] = $pm['method'];
+                        $formatted = $this->formatPaymentMethodLabel($pm, $order->currency);
+                        if (!empty($formatted)) {
+                            $channels[] = $formatted;
                         }
                     }
                 }
-                $channel = !empty($channels) ? implode(', ', array_unique($channels)) : ($order->currency ?? 'USD');
+                $channel = !empty($channels) ? implode(', ', array_unique($channels)) : ($order->currency ? "{$order->currency} - Efectivo" : 'USD - Efectivo');
 
                 return [
                     'id' => $item->id,
                     'type' => 'sale',
                     'voucher_number' => $voucherNumber,
                     'date' => $item->date,
-                    'description' => $item->description,
+                    'description' => 'Venta',
                     'client' => $order->client?->name ?? 'Consumidor Final',
                     'channel' => $channel,
                     'amount' => $amountUsd,
