@@ -216,10 +216,6 @@ const changeTab = (newTab) => {
         <VCardTitle class="pa-4 flex align-center bg-surface-variant-opacity-2">
           <VIcon icon="tabler-users" size="20" class="me-2 text-primary" />
           <span class="text-sm font-weight-black uppercase">Listado de Trabajadores</span>
-          <VSpacer />
-          <VChip size="x-small" variant="tonal" color="primary" class="font-weight-black rounded">
-            {{ employeesWithVouchers.length }} PERSONAL
-          </VChip>
         </VCardTitle>
 
         <!-- Vista Escritorio -->
@@ -327,28 +323,6 @@ const changeTab = (newTab) => {
 </template>
 
 <style scoped>
-.header-premium {
-  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #ce93d8 100%);
-  min-height: 140px;
-}
-
-.header-overlay {
-  background: rgba(0, 0, 0, 0.1);
-  height: 100%;
-}
-
-.bg-primary-gradient {
-  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #9575cd 100%);
-}
-
-.bg-white-opacity-20 {
-  background-color: rgba(255, 255, 255, 0.2);
-}
-
-.text-white-opacity-60 {
-  color: rgba(255, 255, 255, 0.6);
-}
-
 .text-super-xs {
   font-size: 0.65rem !important;
   letter-spacing: 0.05em !important;
