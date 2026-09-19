@@ -25,7 +25,26 @@ class FiscalZReportService
      */
     public function getReports(array $filters, int $perPage = 10, ?string $sortBy = 'report_date', string $orderBy = 'desc'): LengthAwarePaginator
     {
+        $this->syncTodayReportIfHasInvoices();
+
         return $this->repository->getFilteredPaginated($filters, $perPage, $sortBy, $orderBy);
+    }
+
+    /**
+     * Verifica y actualiza en tiempo real el reporte del día si hay facturas hoy.
+     */
+    public function syncTodayReportIfHasInvoices(): void
+    {
+        $today = Carbon::today()->format('Y-m-d');
+        $hasInvoicesToday = FiscalHistory::whereDate('invoice_date', $today)
+            ->orWhere(function ($q) use ($today) {
+                $q->whereNull('invoice_date')->whereDate('created_at', $today);
+            })
+            ->exists();
+
+        if ($hasInvoicesToday) {
+            $this->generateForDate($today, null, true);
+        }
     }
 
     /**
@@ -121,6 +140,9 @@ class FiscalZReportService
         $openingTime = $firstInvoice && $firstInvoice->created_at ? Carbon::parse($firstInvoice->created_at)->format('H:i:s') : '08:00:00';
         $closingTime = $lastInvoice && $lastInvoice->created_at ? Carbon::parse($lastInvoice->created_at)->format('H:i:s') : '23:59:59';
 
+        $isToday = ($date === Carbon::today()->format('Y-m-d'));
+        $status = $isToday ? 'open' : 'closed';
+
         $data = [
             'report_number'        => $reportNumber,
             'report_date'          => $date,
@@ -135,7 +157,7 @@ class FiscalZReportService
             'igtf_base_amount'     => $igtfBaseAmount,
             'igtf_amount'          => $igtfAmount,
             'total_amount'         => $totalAmount,
-            'status'               => 'closed',
+            'status'               => $status,
         ];
 
         return $this->repository->updateOrCreateByDate($date, $data);

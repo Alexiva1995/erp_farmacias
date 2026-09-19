@@ -12,6 +12,8 @@ use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Event;
 use App\Models\InventoryMovement;
+use App\Models\FiscalHistory;
+use App\Observers\FiscalHistoryObserver;
 use App\Observers\InventoryMovementObserver;
 use App\Observers\ProductLotObserver;
 use App\Observers\ProductObserver;
@@ -44,6 +46,7 @@ class EventServiceProvider extends ServiceProvider
         Invoice::class => [InvoiceObserver::class],
         ExpiredLog::class => [ExpiredLogObserver::class],
         InventoryMovement::class => [InventoryMovementObserver::class],
+        FiscalHistory::class => [FiscalHistoryObserver::class],
     ];
 
     /**

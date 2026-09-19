@@ -90,6 +90,7 @@ const headers = [
     value: (item) => formatCurrency(item.total_amount),
     cellProps: { class: "text-sm font-weight-black text-success" },
   },
+  { title: "ESTADO", key: "status", sortable: true, align: "center" },
   { title: "ACCIÓN", key: "actions", sortable: false, align: "center" },
 ];
 
@@ -128,8 +129,8 @@ const formatCurrency = (value) => {
 
           <template #item.report_number="{ item }">
             <div class="d-flex align-center gap-1">
-              <VIcon icon="tabler-file-analytics" size="18" color="primary" />
-              <span class="font-weight-black text-primary">
+              <VIcon icon="tabler-file-analytics" size="18" :color="item.status === 'open' ? 'success' : 'primary'" />
+              <span :class="['font-weight-black', item.status === 'open' ? 'text-success' : 'text-primary']">
                 {{ item.report_number_padded || `Z${String(item.report_number).padStart(6, "0")}` }}
               </span>
             </div>
@@ -138,7 +139,7 @@ const formatCurrency = (value) => {
           <template #item.invoices_count="{ item }">
             <VChip
               size="small"
-              :color="item.invoices_count > 0 ? 'info' : 'secondary'"
+              :color="item.status === 'open' ? 'success' : (item.invoices_count > 0 ? 'info' : 'secondary')"
               variant="tonal"
               class="font-weight-bold"
             >
@@ -150,6 +151,28 @@ const formatCurrency = (value) => {
             <span class="font-weight-black text-success">
               Bs. {{ formatCurrency(item.total_amount) }}
             </span>
+          </template>
+
+          <template #item.status="{ item }">
+            <VChip
+              v-if="item.status === 'open'"
+              color="success"
+              variant="flat"
+              size="x-small"
+              class="font-weight-black text-uppercase animate-pulse"
+            >
+              <VIcon icon="tabler-player-play" size="12" class="me-1" />
+              En Curso
+            </VChip>
+            <VChip
+              v-else
+              color="secondary"
+              variant="tonal"
+              size="x-small"
+              class="font-weight-medium text-uppercase"
+            >
+              Cerrado
+            </VChip>
           </template>
 
           <!-- Acciones -->
