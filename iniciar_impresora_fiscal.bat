@@ -3,7 +3,11 @@ title PUENTE IMPRESORA FISCAL - FARMACIA BARRIO SUCRE
 color 0A
 mode con: cols=75 lines=20
 
-cd /d C:\fiscal_farmacia
+if exist "C:\fiscal_farmacia\fiscal_bridge_con_logo.py" (
+    cd /d C:\fiscal_farmacia
+) else (
+    cd /d "%~dp0"
+)
 
 :MENU
 cls
