@@ -18,6 +18,7 @@ class Expense extends Model
     const COUNT_TRANSFERENCIA = "Transferencia"; // BS, COP
     const COUNT_BINANCE = "Binance"; // USD
     const COUNT_PAYPAL = "PayPal"; // USD
+    const COUNT_CAMBISTA = "Cambista"; // BS, USD, COP
 
     const TYPE_OF_EXPENSE_NORMAL = "Normal";
     const TYPE_OF_EXPENSE_RECURRENTE = "Recurrente";

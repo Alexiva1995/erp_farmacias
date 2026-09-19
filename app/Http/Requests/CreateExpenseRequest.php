@@ -55,6 +55,7 @@ class CreateExpenseRequest extends FormRequest
                     Expense::COUNT_TRANSFERENCIA,
                     Expense::COUNT_BINANCE,
                     Expense::COUNT_PAYPAL,
+                    Expense::COUNT_CAMBISTA,
                 ]),
             ],
             'amount_bs' => ['nullable', 'numeric'],

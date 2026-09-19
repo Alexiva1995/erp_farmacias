@@ -54,6 +54,7 @@ class EditExpenseRequest extends FormRequest
                     Expense::COUNT_TRANSFERENCIA,
                     Expense::COUNT_BINANCE,
                     Expense::COUNT_PAYPAL,
+                    Expense::COUNT_CAMBISTA,
                 ])
             ],
         ];

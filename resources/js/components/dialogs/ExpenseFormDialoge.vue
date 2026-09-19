@@ -38,11 +38,11 @@ const uploadProgress = ref(0);
 const uploadedFileData = ref(null);
 const fileUploadError = ref(null);
 
-const bs = ["Efectivo", "Tarjeta", "Pago móvil", "Transferencia"];
+const bs = ["Efectivo", "Tarjeta", "Pago móvil", "Transferencia", "Cambista"];
 
-const usd = ["Efectivo", "Binance", "PayPal"];
+const usd = ["Efectivo", "Binance", "PayPal", "Cambista"];
 
-const cop = ["Efectivo", "Transferencia"];
+const cop = ["Efectivo", "Transferencia", "Cambista"];
 
 const currencies = ["BS", "USD", "COP"];
 
@@ -56,7 +56,7 @@ const getCurrencySymbol = computed(() => {
   const symbolMap = {
     BS: "Bs.",
     USD: "$",
-    COP: "COP$",
+    COP: "COP",
   };
   return symbolMap[localForm.value.currency] || "$";
 });
@@ -709,18 +709,13 @@ async function submitForm() {
           >
             <VBtn
               color="secondary"
-              variant="tonal"
+              variant="outlined"
               height="50"
               block
               class="font-weight-black rounded-lg text-button uppercase"
               @click="close"
             >
-              <VIcon
-                start
-                icon="tabler-arrow-left"
-                size="18"
-              />
-              Regresar
+              Cancelar
             </VBtn>
           </VCol>
           <VCol
