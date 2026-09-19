@@ -51,6 +51,10 @@ if BRIDGE_MODE == "REAL":
             
             pnp.PFultimo.restype = ctypes.c_void_p
             
+            if hasattr(pnp, 'PFestatus'):
+                pnp.PFestatus.argtypes = [ctypes.c_char_p]
+                pnp.PFestatus.restype = ctypes.c_void_p
+
             if hasattr(pnp, 'PFBarra'):
                 pnp.PFBarra.argtypes = [ctypes.c_char_p]
                 pnp.PFBarra.restype = ctypes.c_void_p
@@ -285,32 +289,41 @@ def process_pending_invoices(sim):
                         ptr = pnp.PFtotal()
                         res_text = get_pnp_res(ptr)
                 
-                # 6. Extraer número de factura fiscal real devuelto por la máquina (Protocolo PNP 0x45)
+                # 6. Extraer número de factura fiscal real emitido por la máquina
                 inv_num = ""
-                if res_text:
-                    parts = [p.strip() for p in res_text.replace(',', '|').split('|') if p.strip()]
-                    # En la respuesta de 0x45: [STX, EstadoImp, EstadoFis, CantFac, NumFactura, ...]
-                    for part in parts:
-                        if part.isdigit() and len(part) >= 4:
-                            inv_num = part
-                            break
-                    if not inv_num and parts:
-                        inv_num = parts[-1]
-
-                if not inv_num:
-                    # Consultar última respuesta de la DLL si no vino directa
+                
+                # Método 1: Consultar contadores actuales de la impresora con PFestatus('N')
+                # Según Protocolo PNP 0141 (Pág. 20): Campo 8 o Campo 10 contiene el # de factura actual
+                if hasattr(pnp, 'PFestatus'):
                     try:
+                        ptr_st = pnp.PFestatus(b'N')
+                        res_st = get_pnp_res(ptr_st)
+                        print(f"[DLL STATUS N] Respuesta: '{res_st}'")
+                        
                         last_ptr = pnp.PFultimo()
-                        last_str = get_pnp_res(last_ptr)
-                        last_parts = [p.strip() for p in last_str.replace(',', '|').split('|') if p.strip()]
-                        for part in last_parts:
-                            if part.isdigit() and len(part) >= 4:
-                                inv_num = part
+                        full_st = get_pnp_res(last_ptr)
+                        print(f"[DLL STATUS FULL] PFultimo: '{full_st}'")
+                        
+                        st_parts = [p.strip() for p in full_st.replace(',', '|').split('|') if p.strip()]
+                        # Campo 10 (o índice 7/8/9) es el número correlativo fiscal
+                        for part in st_parts:
+                            if part.isdigit() and len(part) >= 4 and part != "0000":
+                                inv_num = str(int(part)).zfill(8)
                                 break
-                    except:
-                        pass
+                    except Exception as st_err:
+                        print(f"[DLL STATUS ERR] {st_err}")
 
-                if not inv_num:
+                # Método 2: Parsear la respuesta directa de cierre si el método 1 no extrajo
+                if not inv_num or inv_num == "OK":
+                    if res_text and res_text != "OK":
+                        parts = [p.strip() for p in res_text.replace(',', '|').split('|') if p.strip()]
+                        for part in parts:
+                            if part.isdigit() and len(part) >= 4 and part != "0000":
+                                inv_num = str(int(part)).zfill(8)
+                                break
+
+                # Fallback seguro
+                if not inv_num or inv_num == "OK":
                     inv_num = f"FAC{invoice_id}"
 
                 requests.patch(f"{API_BASE_URL}/fiscal/confirm/{invoice_id}", json={
