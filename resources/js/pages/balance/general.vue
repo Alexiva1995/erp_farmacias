@@ -108,7 +108,7 @@ const chartOptions = computed(() => {
   };
 });
 
-const donutHeight = computed(() => (display.xs.value ? 200 : 250));
+const donutHeight = computed(() => (display.xs.value ? 190 : 230));
 
 const donutSeries = computed(() => [
   Number(balance.assets.details.cash || 0),
@@ -206,8 +206,8 @@ onMounted(() => {
 
       <!-- BLOQUES CONTABLES (ACTIVOS, PASIVOS Y PATRIMONIO) -->
       <VRow class="ma-0 mx-n1" dense>
-        <!-- COLUMNA DE ACTIVOS -->
-        <VCol cols="12" lg="4" md="6" class="pa-1 d-flex">
+        <!-- COLUMNA DE ACTIVOS (Más ancha para el gráfico dona) -->
+        <VCol cols="12" lg="6" md="12" class="pa-1 d-flex">
           <BalanceAssetsCard
             :balance="balance"
             :chart-options="chartOptions"
@@ -219,12 +219,12 @@ onMounted(() => {
         </VCol>
 
         <!-- COLUMNA DE PASIVOS -->
-        <VCol cols="12" lg="4" md="6" class="pa-1 d-flex">
+        <VCol cols="12" lg="3" md="6" class="pa-1 d-flex">
           <BalanceLiabilitiesCard :balance="balance" :format-currency="formatCurrency" />
         </VCol>
 
         <!-- COLUMNA DE PATRIMONIO -->
-        <VCol cols="12" lg="4" md="12" class="pa-1 d-flex">
+        <VCol cols="12" lg="3" md="6" class="pa-1 d-flex">
           <BalanceEquityCard :balance="balance" :format-currency="formatCurrency" />
         </VCol>
 
