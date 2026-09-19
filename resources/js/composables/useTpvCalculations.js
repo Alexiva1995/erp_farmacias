@@ -136,6 +136,19 @@ export function useTpvCalculations({
     let finalUsd = totalUsdBase - descuentoUSD
     if (isSpecialTax) finalUsd += finalUsd * 0.03
 
+    // Aplicar descuento global a monedas alternativas (COP y BS)
+    // para que el modal de pago muestre el total correcto independientemente de la moneda de display
+    let finalCop = amtCop
+    let finalBs = amtBs
+    if (globalDiscountPct > 0) {
+      finalCop = roundUpToNearestHundred(amtCop - amtCop * (globalDiscountPct / 100))
+      finalBs = Math.round((amtBs - amtBs * (globalDiscountPct / 100) + Number.EPSILON) * 100) / 100
+    }
+    if (isSpecialTax) {
+      finalCop = roundUpToNearestHundred(finalCop * 1.03)
+      finalBs = Math.round((finalBs * 1.03 + Number.EPSILON) * 100) / 100
+    }
+
     return {
       eligible,
       companyDiscount,
@@ -151,9 +164,9 @@ export function useTpvCalculations({
       costAmt: parseFloat(costAmt.toFixed(2)),
       orderTotalSinDiscount: baseAmount,
       speSavings,
-      amtBs,
+      amtBs: finalBs,
       amtUsd: finalUsd,
-      amtCop,
+      amtCop: finalCop,
     }
   })
 
