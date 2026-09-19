@@ -118,18 +118,18 @@ def call_pnp(func, *args):
     return res
 
 def format_short_name(full_name):
-    """Extrae únicamente el Primer Nombre y Primer Apellido."""
+    """Extrae únicamente el Primer Nombre y Primer Apellido sin espacios iniciales."""
     if not full_name:
         return "CLIENTE GENERICO"
     parts = full_name.strip().split()
     if len(parts) == 1:
-        return parts[0][:30].upper()
+        return parts[0][:30].strip().upper()
     elif len(parts) >= 2:
-        return f"{parts[0]} {parts[1]}"[:30].upper()
-    return full_name[:30].upper()
+        return f"{parts[0]} {parts[1]}"[:30].strip().upper()
+    return full_name[:30].strip().upper()
 
 def extract_client_name(data):
-    """Obtiene el primer nombre y primer apellido del cliente."""
+    """Obtiene el primer nombre y primer apellido del cliente sin espacios iniciales."""
     order = data.get('order')
     if order:
         client = order.get('client')
@@ -140,7 +140,7 @@ def extract_client_name(data):
             first_l = c_last[0] if c_last else ''
             full = f"{first_n} {first_l}".strip()
             if full:
-                return full[:30].upper()
+                return full[:30].strip().upper()
     
     raw_name = data.get('business_name', 'CLIENTE GENERICO')
     return format_short_name(raw_name)
@@ -237,12 +237,11 @@ def process_pending_invoices(sim):
                     print(f"[DLL] @ {name} | {rif}")
                     call_pnp(pnp.PFabrefiscal, name, rif)
 
-                    # 3. Imprimir Renglones
-                    # Según manual PNP v2.2: DESCRIPCION máximo 40 caracteres (PF-300).
-                    # Desde v1.8 el API añade líneas extra automáticamente si supera el límite.
-                    # No existen prefijos de fuente en el parámetro DESCRIPCION.
+                    # 3. Imprimir Renglones (Limitado a 28 caracteres para garantizar 1 sola línea limpia)
                     for detail in data.get('details', []):
-                        d_name = detail['product_name'][:40]
+                        # Se trunca a 28 caracteres limpios para que la descripción quepa exacta en una sola línea
+                        raw_name = str(detail.get('product_name', 'PRODUCTO')).strip()
+                        d_name = " ".join(raw_name.split())[:28]
                         qty = "{:.3f}".format(float(detail['quantity']))
                         is_taxable = detail.get('vat_status') == 1 or detail.get('vat_status') is True
                         price_u = float(detail['total_amount']) / (1.16 if is_taxable else 1.0) / float(detail['quantity'])
