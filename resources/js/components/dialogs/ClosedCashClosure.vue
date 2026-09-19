@@ -31,9 +31,10 @@ const isBlind = computed(() => !!props.cashClosureData?.blind_cash_closure);
 
 // Variables computadas que determinan si el método de pago tuvo movimiento real en el sistema
 const hasCopCash = computed(() => {
+  const delivered = parseFloat(props.cashClosureData?.cop_delivered || 0);
   const cash = parseFloat(props.cashClosureData?.cop_cash || 0);
   const abono = parseFloat(props.cashClosureData?.cop_cash_payment_credit || 0);
-  return (cash + abono) > 0;
+  return delivered > 0 || (cash + abono) > 0;
 });
 
 const hasCopTransfer = computed(() => {
@@ -43,17 +44,11 @@ const hasCopTransfer = computed(() => {
 });
 
 const hasUsd = computed(() => {
+  const delivered = parseFloat(props.cashClosureData?.usd_delivered || 0);
   const cash = parseFloat(props.cashClosureData?.usd_cash || 0);
-  const trans = parseFloat(props.cashClosureData?.usd_transfer || 0);
-  const pay = parseFloat(props.cashClosureData?.usd_paypal || 0);
-  const bin = parseFloat(props.cashClosureData?.usd_binance || 0);
-  const conv = parseFloat(props.cashClosureData?.usd_conversion || 0);
-  
   const abonoCash = parseFloat(props.cashClosureData?.usd_cash_payment_credit || 0);
-  const abonoPay = parseFloat(props.cashClosureData?.usd_paypal_payment_credit || 0);
-  const abonoBin = parseFloat(props.cashClosureData?.usd_binance_payment_credit || 0);
   
-  return (cash + trans + pay + bin + conv + abonoCash + abonoPay + abonoBin) > 0;
+  return delivered > 0 || (cash + abonoCash) > 0;
 });
 
 const hasCredit = computed(() => {
