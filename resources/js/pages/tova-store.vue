@@ -387,6 +387,22 @@ const formatPrice = (n) => {
   return `$${Number(n).toFixed(2)}`
 }
 
+// Calcula si un color hex es muy claro u oscuro para ajustar el borde del swatch
+const getSwatchStyle = (colorHex) => {
+  const hex = (colorHex || '#E20074').replace('#', '')
+  const r = parseInt(hex.substring(0, 2), 16)
+  const g = parseInt(hex.substring(2, 4), 16)
+  const b = parseInt(hex.substring(4, 6), 16)
+  // Luminancia relativa — colores muy claros (>220) necesitan borde oscuro visible
+  const luminance = 0.299 * r + 0.587 * g + 0.114 * b
+  const borderColor = luminance > 220 ? '#BBBBBB' : '#FFFFFF'
+  return {
+    backgroundColor: colorHex || '#E20074',
+    border: `2px solid ${borderColor}`,
+    boxShadow: `0 0 0 1px ${luminance > 220 ? '#999999' : '#E5E5E5'}`,
+  }
+}
+
 const currencyKeyMap = {
   VES: "BS",
   BS: "BS",
@@ -1091,12 +1107,21 @@ onMounted(async () => {
                     :key="v.id"
                     class="qv-variant-color-circle"
                     :class="{ 'qv-circle-active': selectedVariant?.id === v.id }"
-                    :style="{ backgroundColor: v.color_hex || '#E20074' }"
+                    :style="{ ...getSwatchStyle(v.color_hex), width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', transition: 'all 0.2s ease', position: 'relative' }"
                     :title="v.attribute_value.toUpperCase()"
                     @click="selectedVariant = v"
-                    style="width: 32px; height: 32px; border-radius: 50%; border: 2px solid #FFF; box-shadow: 0 0 0 1px #E5E5E5; cursor: pointer; transition: all 0.2s ease; position: relative;"
                   >
-                    <span v-if="selectedVariant?.id === v.id" style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #FFF; font-size: 12px; font-weight: bold; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">✓</span>
+                    <!-- Check adaptado al color del fondo: blanco en oscuros, negro en claros -->
+                    <span
+                      v-if="selectedVariant?.id === v.id"
+                      :style="{
+                        position: 'absolute', inset: 0, display: 'flex',
+                        alignItems: 'center', justifyContent: 'center',
+                        color: (() => { const h=(v.color_hex||'#E20074').replace('#',''); const l=0.299*parseInt(h.slice(0,2),16)+0.587*parseInt(h.slice(2,4),16)+0.114*parseInt(h.slice(4,6),16); return l > 180 ? '#333333' : '#FFFFFF' })(),
+                        fontSize: '12px', fontWeight: 'bold',
+                        textShadow: '0 1px 2px rgba(0,0,0,0.3)'
+                      }"
+                    >✓</span>
                   </button>
                 </div>
               </div>
