@@ -246,9 +246,17 @@ def process_pending_invoices(sim):
                     apply_igtf = bool(spe_flag == 1 or spe_surcharge > 0)
                     
                     if apply_igtf:
-                        igtf_base_cents = int(round(total_amount * 100))
+                        # Base real del IGTF (subtotal de la venta antes del 3% de recargo)
+                        exempt_amt = float(data.get('exempt_amount', 0.0) or 0.0)
+                        taxable_amt = float(data.get('taxable_amount', 0.0) or 0.0)
+                        iva_amt = float(data.get('iva_amount', 0.0) or 0.0)
+                        base_divisa = (exempt_amt + taxable_amt + iva_amt) if (exempt_amt or taxable_amt or iva_amt) else (total_amount - spe_surcharge)
+                        if base_divisa <= 0:
+                            base_divisa = total_amount
+                        
+                        igtf_base_cents = int(round(base_divisa * 100))
                         igtf_cmd = f"E|U|{igtf_base_cents}"
-                        print(f"[DLL IGTF] Cierre con IGTF 3% -> PFComando('{igtf_cmd}') sobre Base Bs {total_amount:.2f}")
+                        print(f"[DLL IGTF] Cierre con IGTF 3% -> PFComando('{igtf_cmd}') sobre Base Bs {base_divisa:.2f}")
                         res_text = call_pnp(pnp.PFComando, igtf_cmd)
                     else:
                         print("[DLL] Cerrando factura estándar (PFtotal)...")
