@@ -59,6 +59,10 @@ if BRIDGE_MODE == "REAL":
                 pnp.PFTfiscal.argtypes = [ctypes.c_char_p]
                 pnp.PFTfiscal.restype = ctypes.c_void_p
 
+            if hasattr(pnp, 'PFTIPOIMP'):
+                pnp.PFTIPOIMP.argtypes = [ctypes.c_char_p]
+                pnp.PFTIPOIMP.restype = ctypes.c_void_p
+
             if hasattr(pnp, 'PFLogoClick'):
                 pnp.PFLogoClick.restype = ctypes.c_void_p
             
@@ -202,7 +206,14 @@ def process_pending_invoices(sim):
                 if BRIDGE_MODE == "WEBSIM":
                     res_text = sim.print_invoice(data)
                 else:
-                    # 1. Estampar Logo Fiscal en Cabecera (si está cargado en la memoria de la impresora)
+                    # 1. Configurar modelo PF-300 para ancho completo (evita salto de renglón en descripciones)
+                    if hasattr(pnp, 'PFTIPOIMP'):
+                        try:
+                            call_pnp(pnp.PFTIPOIMP, "300")
+                        except Exception as type_err:
+                            print(f"[DLL TYPE NOTE] {type_err}")
+
+                    # 2. Estampar Logo Fiscal en Cabecera (si está cargado en la memoria de la impresora)
                     if hasattr(pnp, 'PFLogoClick'):
                         try:
                             ptr_logo = pnp.PFLogoClick()
@@ -219,7 +230,7 @@ def process_pending_invoices(sim):
                         except Exception as logo_err:
                             print(f"[DLL LOGO NOTE] {logo_err}")
 
-                    # 2. Abrir Factura Fiscal con Primer Nombre y Primer Apellido
+                    # 3. Abrir Factura Fiscal con Primer Nombre y Primer Apellido
                     name = extract_client_name(data)
                     rif = "".join(filter(str.isalnum, data.get('identification', 'V000000000')))[:12]
                     
