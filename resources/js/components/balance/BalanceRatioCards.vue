@@ -58,19 +58,32 @@ defineProps({
         >
           <VCardText class="pa-4 d-flex flex-column h-100">
             <div class="d-flex align-center gap-3 mb-3">
-              <VAvatar color="info" variant="tonal" size="38" class="rounded-lg">
-                <VIcon icon="tabler-shield-check" size="20" />
+              <VAvatar
+                :color="balance.ratios.solvency >= 0.5 ? 'info' : (balance.ratios.solvency >= 0 ? 'warning' : 'error')"
+                variant="tonal"
+                size="38"
+                class="rounded-lg"
+              >
+                <VIcon :icon="balance.ratios.solvency >= 0 ? 'tabler-shield-check' : 'tabler-shield-x'" size="20" />
               </VAvatar>
               <span class="text-overline font-weight-black text-disabled" style="line-height: 1; letter-spacing: 0.1em;">
                 Solvencia
               </span>
             </div>
             <div class="mt-auto d-flex align-center justify-space-between">
-              <span class="text-h4 font-weight-black text-info leading-none">
+              <span
+                class="text-h4 font-weight-black leading-none"
+                :class="balance.ratios.solvency >= 0.5 ? 'text-info' : (balance.ratios.solvency >= 0 ? 'text-warning' : 'text-error')"
+              >
                 {{ balance.ratios.solvency }}
               </span>
-              <VChip size="small" variant="flat" color="info" class="font-weight-black px-3 rounded-lg">
-                NIVEL SEGURO
+              <VChip
+                size="small"
+                variant="flat"
+                :color="balance.ratios.solvency >= 0.5 ? 'info' : (balance.ratios.solvency >= 0 ? 'warning' : 'error')"
+                class="font-weight-black px-3 rounded-lg"
+              >
+                {{ balance.ratios.solvency >= 0.5 ? 'NIVEL SEGURO' : (balance.ratios.solvency >= 0 ? 'VIGILAR' : 'RIESGO ELEVADO') }}
               </VChip>
             </div>
           </VCardText>
