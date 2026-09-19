@@ -43,4 +43,14 @@ interface FiscalZReportRepositoryInterface
      * Crea o actualiza un Reporte Z.
      */
     public function updateOrCreateByDate(string $date, array $data): FiscalZReport;
+
+    /**
+     * Elimina un Reporte Z por su número.
+     */
+    public function deleteByNumber(int $number): bool;
+
+    /**
+     * Elimina un Reporte Z por su fecha.
+     */
+    public function deleteByDate(string $date): bool;
 }

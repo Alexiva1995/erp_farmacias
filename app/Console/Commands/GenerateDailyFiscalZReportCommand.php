@@ -20,6 +20,7 @@ class GenerateDailyFiscalZReportCommand extends Command
                             {--number=740 : Número objetivo para el día más reciente (o base de corte)}
                             {--start-number= : Alias compatible para --number}
                             {--forward : Numerar en orden ascendente hacia adelante en lugar de hacia atrás}
+                            {--include-today : Incluir el día de hoy (en curso) al generar el mes}
                             {--force : Forzar sobrescritura de reportes existentes}';
 
     /**
@@ -39,6 +40,7 @@ class GenerateDailyFiscalZReportCommand extends Command
         $numberOption = $this->option('start-number') ?: $this->option('number');
         $targetNumber = (int) ($numberOption ?: 740);
         $backward = !$this->option('forward');
+        $includeToday = (bool) $this->option('include-today');
 
         if ($specificDate) {
             $this->info("Generando Reporte Z para la fecha: {$specificDate} (N° #{$targetNumber})...");
@@ -64,9 +66,10 @@ class GenerateDailyFiscalZReportCommand extends Command
         $month = $monthOption ? (int) $monthOption : (int) $now->format('m');
 
         $directionText = $backward ? "hacia atrás terminando en #{$targetNumber}" : "hacia adelante iniciando en #{$targetNumber}";
-        $this->info("Generando reportes Z para {$year}-" . str_pad((string)$month, 2, '0', STR_PAD_LEFT) . " ({$directionText})...");
+        $todayText = $includeToday ? "incluyendo hoy" : "hasta ayer (días concluidos)";
+        $this->info("Generando reportes Z para {$year}-" . str_pad((string)$month, 2, '0', STR_PAD_LEFT) . " ({$directionText}, {$todayText})...");
 
-        $reports = $zReportService->generateForMonth($year, $month, $targetNumber, true, $backward);
+        $reports = $zReportService->generateForMonth($year, $month, $targetNumber, true, $backward, $includeToday);
 
         $this->table(
             ['Reporte #', 'Fecha', 'Facturas', 'Exento (Bs.)', 'Base 16% (Bs.)', 'IVA G (Bs.)', 'Base IGTF (Bs.)', 'IGTF (Bs.)', 'Total (Bs.)'],

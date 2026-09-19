@@ -142,15 +142,32 @@ class FiscalZReportService
     }
 
     /**
+     * Elimina un reporte Z por número.
+     */
+    public function deleteByNumber(int $number): bool
+    {
+        return $this->repository->deleteByNumber($number);
+    }
+
+    /**
+     * Elimina un reporte Z por fecha.
+     */
+    public function deleteByDate(string $date): bool
+    {
+        return $this->repository->deleteByDate($date);
+    }
+
+    /**
      * Genera todos los reportes Z para los días de un mes y año dados.
-     * Si backward es true, el día más reciente (hoy o fin de mes) tendrá el targetNumber (ej. 740)
-     * y los días anteriores se numerarán hacia atrás (739, 738, 737...).
+     * Si backward es true, el día más reciente (ayer o fin de mes) tendrá el targetNumber (ej. 739 o 740)
+     * y los días anteriores se numerarán hacia atrás (738, 737...).
      * 
      * @param int $year
      * @param int $month
-     * @param int $targetNumber Número asignado para el último día procesado (por defecto 740)
+     * @param int $targetNumber Número asignado para el último día procesado
      * @param bool $force Recalcular si ya existen
      * @param bool $backward Si es true, numera hacia atrás desde el último día
+     * @param bool $includeToday Si es false (por defecto), solo genera hasta el día de ayer
      * @return \Illuminate\Support\Collection
      */
     public function generateForMonth(
@@ -158,15 +175,24 @@ class FiscalZReportService
         int $month,
         int $targetNumber = self::DEFAULT_START_NUMBER,
         bool $force = true,
-        bool $backward = true
+        bool $backward = true,
+        bool $includeToday = false
     ): \Illuminate\Support\Collection {
         $startDate = Carbon::create($year, $month, 1)->startOfDay();
         $endDate = $startDate->copy()->endOfMonth()->startOfDay();
         $today = Carbon::today()->startOfDay();
+        $yesterday = Carbon::yesterday()->startOfDay();
 
-        // No generar más allá del día actual si es el mes en curso
+        // Si es el mes actual y no se incluye hoy, solo generar hasta ayer
         if ($endDate->isAfter($today)) {
-            $endDate = $today;
+            $endDate = $includeToday ? $today : $yesterday;
+        } elseif ($endDate->equalTo($today) && !$includeToday) {
+            $endDate = $yesterday;
+        }
+
+        // Si la fecha de inicio es posterior a la de fin (ej. día 1 del mes cuando hoy es día 1 y no se incluye hoy)
+        if ($startDate->isAfter($endDate)) {
+            return collect();
         }
 
         // Construir la lista de fechas en orden cronológico (del día 1 al día N)
@@ -179,6 +205,10 @@ class FiscalZReportService
 
         $totalDays = count($dates);
         $generated = collect();
+
+        if ($totalDays === 0) {
+            return $generated;
+        }
 
         if ($backward) {
             // El último día (índice $totalDays - 1) recibe $targetNumber

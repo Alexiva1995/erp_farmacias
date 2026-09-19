@@ -92,6 +92,16 @@ class FiscalZReportRepository implements FiscalZReportRepositoryInterface
         );
     }
 
+    public function deleteByNumber(int $number): bool
+    {
+        return (bool) FiscalZReport::where('report_number', $number)->delete();
+    }
+
+    public function deleteByDate(string $date): bool
+    {
+        return (bool) FiscalZReport::whereDate('report_date', $date)->delete();
+    }
+
     private function applyFilters($query, array $filters): void
     {
         if (!empty($filters['q'])) {
