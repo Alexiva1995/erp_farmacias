@@ -127,44 +127,58 @@ class FiscalZReportService
 
     /**
      * Genera todos los reportes Z para los días de un mes y año dados.
+     * Si backward es true, el día más reciente (hoy o fin de mes) tendrá el targetNumber (ej. 740)
+     * y los días anteriores se numerarán hacia atrás (739, 738, 737...).
      * 
      * @param int $year
      * @param int $month
-     * @param int $startNumber Número inicial para el primer reporte si no existen previos
-     * @param bool $force Recalcular existentes
-     * @return array
+     * @param int $targetNumber Número asignado para el último día procesado (por defecto 740)
+     * @param bool $force Recalcular si ya existen
+     * @param bool $backward Si es true, numera hacia atrás desde el último día
+     * @return \Illuminate\Support\Collection
      */
-    public function generateForMonth(int $year, int $month, int $startNumber = self::DEFAULT_START_NUMBER, bool $force = false): array
-    {
-        $startDate = Carbon::create($year, $month, 1);
-        $endDate = $startDate->copy()->endOfMonth();
-        $today = Carbon::today();
+    public function generateForMonth(
+        int $year,
+        int $month,
+        int $targetNumber = self::DEFAULT_START_NUMBER,
+        bool $force = true,
+        bool $backward = true
+    ): \Illuminate\Support\Collection {
+        $startDate = Carbon::create($year, $month, 1)->startOfDay();
+        $endDate = $startDate->copy()->endOfMonth()->startOfDay();
+        $today = Carbon::today()->startOfDay();
 
         // No generar más allá del día actual si es el mes en curso
         if ($endDate->isAfter($today)) {
             $endDate = $today;
         }
 
-        $generated = [];
-        $currentDate = $startDate->copy();
+        // Construir la lista de fechas en orden cronológico (del día 1 al día N)
+        $dates = [];
+        $tempDate = $startDate->copy();
+        while ($tempDate->lte($endDate)) {
+            $dates[] = $tempDate->copy()->format('Y-m-d');
+            $tempDate->addDay();
+        }
 
-        // Determinar siguiente número consecutivo
-        $nextNumber = $this->repository->getLastReportNumber();
-        $nextNumber = $nextNumber ? ($nextNumber + 1) : $startNumber;
+        $totalDays = count($dates);
+        $generated = collect();
 
-        while ($currentDate->lte($endDate)) {
-            $dateStr = $currentDate->format('Y-m-d');
-            $existing = $this->repository->findByDate($dateStr);
-
-            $assignedNumber = null;
-            if (!$existing) {
-                $assignedNumber = $nextNumber++;
+        if ($backward) {
+            // El último día (índice $totalDays - 1) recibe $targetNumber
+            // El día con índice $i recibe $targetNumber - ($totalDays - 1 - $i)
+            foreach ($dates as $index => $dateStr) {
+                $assignedNumber = $targetNumber - ($totalDays - 1 - $index);
+                $report = $this->generateForDate($dateStr, $assignedNumber, $force);
+                $generated->push($report);
             }
-
-            $report = $this->generateForDate($dateStr, $assignedNumber, $force);
-            $generated[] = $report;
-
-            $currentDate->addDay();
+        } else {
+            // Numeración hacia adelante a partir de $targetNumber
+            foreach ($dates as $index => $dateStr) {
+                $assignedNumber = $targetNumber + $index;
+                $report = $this->generateForDate($dateStr, $assignedNumber, $force);
+                $generated->push($report);
+            }
         }
 
         return $generated;
