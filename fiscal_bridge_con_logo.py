@@ -206,31 +206,19 @@ def process_pending_invoices(sim):
                 if BRIDGE_MODE == "WEBSIM":
                     res_text = sim.print_invoice(data)
                 else:
-                    # 1. Configurar modelo PF-300 para ancho completo (evita salto de renglón en descripciones)
-                    if hasattr(pnp, 'PFTIPOIMP'):
-                        try:
-                            call_pnp(pnp.PFTIPOIMP, "300")
-                        except Exception as type_err:
-                            print(f"[DLL TYPE NOTE] {type_err}")
-
-                    # 2. Estampar Logo Fiscal en Cabecera (si está cargado en la memoria de la impresora)
+                    # 1. Estampar Logo Fiscal en Cabecera (si está cargado en la memoria de la impresora)
                     if hasattr(pnp, 'PFLogoClick'):
                         try:
                             ptr_logo = pnp.PFLogoClick()
                             res_logo = get_pnp_res(ptr_logo)
                             if res_logo == "OK":
                                 print("[DLL LOGO] Logo Fiscal estampado correctamente.")
-                                # Avance de 1 línea para separar el logo del texto SENIAT
-                                try:
-                                    call_pnp(pnp.PFComando, "P") # Comando 0x50 (Avance de papel)
-                                except Exception as adv_err:
-                                    print(f"[DLL ADV NOTE] {adv_err}")
                             else:
                                 print("[DLL LOGO INFO] Sin logo almacenado en memoria de impresora (continuando emisión normal)...")
                         except Exception as logo_err:
                             print(f"[DLL LOGO NOTE] {logo_err}")
 
-                    # 3. Abrir Factura Fiscal con Primer Nombre y Primer Apellido
+                    # 2. Abrir Factura Fiscal con Primer Nombre y Primer Apellido
                     name = extract_client_name(data)
                     rif = "".join(filter(str.isalnum, data.get('identification', 'V000000000')))[:12]
                     
