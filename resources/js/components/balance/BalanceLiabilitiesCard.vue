@@ -27,15 +27,15 @@ defineProps({
           Pasivo Corriente (Corto Plazo)
         </div>
 
-        <VListItem class="rounded-lg px-2">
+        <VListItem class="rounded-lg px-1.5">
           <template #prepend>
-            <VAvatar size="28" color="error" variant="tonal" class="me-3">
-              <VIcon icon="tabler-users" size="16" />
+            <VAvatar size="24" color="error" variant="tonal" class="me-1.5">
+              <VIcon icon="tabler-users" size="14" />
             </VAvatar>
           </template>
-          <VListItemTitle class="text-body-2 font-weight-medium">Cuentas por Pagar a Proveedores</VListItemTitle>
+          <VListItemTitle class="text-caption font-weight-medium text-wrap leading-tight">Cuentas por Pagar a Proveedores</VListItemTitle>
           <template #append>
-            <span class="font-weight-bold">{{ formatCurrency(balance.liabilities.details.supplier_debts) }}</span>
+            <span class="text-caption font-weight-bold">{{ formatCurrency(balance.liabilities.details.supplier_debts) }}</span>
           </template>
         </VListItem>
 
@@ -46,15 +46,15 @@ defineProps({
           Obligaciones Financieras
         </div>
 
-        <VListItem class="rounded-lg px-2">
+        <VListItem class="rounded-lg px-1.5">
           <template #prepend>
-            <VAvatar size="28" color="secondary" variant="tonal" class="me-3">
-              <VIcon icon="tabler-building-bank" size="16" />
+            <VAvatar size="24" color="secondary" variant="tonal" class="me-1.5">
+              <VIcon icon="tabler-building-bank" size="14" />
             </VAvatar>
           </template>
-          <VListItemTitle class="text-body-2 font-weight-medium">Préstamos y Financiamientos</VListItemTitle>
+          <VListItemTitle class="text-caption font-weight-medium text-wrap leading-tight">Préstamos y Financiamientos</VListItemTitle>
           <template #append>
-            <span class="font-weight-bold">{{ formatCurrency(balance.liabilities.details.loans) }}</span>
+            <span class="text-caption font-weight-bold">{{ formatCurrency(balance.liabilities.details.loans) }}</span>
           </template>
         </VListItem>
       </VList>

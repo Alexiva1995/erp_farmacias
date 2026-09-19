@@ -58,11 +58,11 @@ defineProps({
 
           <VListItem class="rounded-lg px-2">
             <template #prepend>
-              <VAvatar size="28" color="success" variant="tonal" class="me-3">
-                <VIcon icon="tabler-cash" size="16" />
+              <VAvatar size="26" color="success" variant="tonal" class="me-2">
+                <VIcon icon="tabler-cash" size="15" />
               </VAvatar>
             </template>
-            <VListItemTitle class="text-body-2 font-weight-medium">Efectivo y Equivalentes</VListItemTitle>
+            <VListItemTitle class="text-caption font-weight-medium text-wrap leading-tight">Efectivo y Equivalentes</VListItemTitle>
             <template #append>
               <span class="font-weight-bold" :class="balance.assets.details.cash >= 0 ? 'text-high-emphasis' : 'text-error'">
                 {{ formatCurrency(balance.assets.details.cash) }}
@@ -72,11 +72,11 @@ defineProps({
 
           <VListItem class="rounded-lg px-2">
             <template #prepend>
-              <VAvatar size="28" color="info" variant="tonal" class="me-3">
-                <VIcon icon="tabler-package" size="16" />
+              <VAvatar size="26" color="info" variant="tonal" class="me-2">
+                <VIcon icon="tabler-package" size="15" />
               </VAvatar>
             </template>
-            <VListItemTitle class="text-body-2 font-weight-medium">Inventario de Mercancías</VListItemTitle>
+            <VListItemTitle class="text-caption font-weight-medium text-wrap leading-tight">Inventario de Mercancías</VListItemTitle>
             <template #append>
               <span class="font-weight-bold">{{ formatCurrency(balance.assets.details.inventory) }}</span>
             </template>
@@ -91,11 +91,11 @@ defineProps({
 
           <VListItem class="rounded-lg px-2">
             <template #prepend>
-              <VAvatar size="28" color="warning" variant="tonal" class="me-3">
-                <VIcon icon="tabler-sofa" size="16" />
+              <VAvatar size="26" color="warning" variant="tonal" class="me-2">
+                <VIcon icon="tabler-sofa" size="15" />
               </VAvatar>
             </template>
-            <VListItemTitle class="text-body-2 font-weight-medium">Mobiliario y Equipos (Bruto)</VListItemTitle>
+            <VListItemTitle class="text-caption font-weight-medium text-wrap leading-tight">Mobiliario y Equipos (Bruto)</VListItemTitle>
             <template #append>
               <span class="font-weight-bold">{{ formatCurrency(balance.assets.details.furniture_bruto) }}</span>
             </template>
@@ -103,11 +103,11 @@ defineProps({
 
           <VListItem class="rounded-lg px-2 text-error">
             <template #prepend>
-              <VAvatar size="28" color="error" variant="tonal" class="me-3">
-                <VIcon icon="tabler-trending-down" size="16" />
+              <VAvatar size="26" color="error" variant="tonal" class="me-2">
+                <VIcon icon="tabler-trending-down" size="15" />
               </VAvatar>
             </template>
-            <VListItemTitle class="text-body-2 font-weight-medium">(-) Depreciación Acumulada</VListItemTitle>
+            <VListItemTitle class="text-caption font-weight-medium text-wrap leading-tight">(-) Depreciación Acumulada</VListItemTitle>
             <template #append>
               <span class="font-weight-bold">- {{ formatCurrency(balance.assets.depreciation) }}</span>
             </template>
