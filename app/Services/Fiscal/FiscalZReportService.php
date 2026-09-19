@@ -29,6 +29,14 @@ class FiscalZReportService
     }
 
     /**
+     * Alias de getReports para compatibilidad.
+     */
+    public function getFilteredPaginated(array $filters, int $perPage = 10, ?string $sortBy = 'report_date', string $orderBy = 'desc'): LengthAwarePaginator
+    {
+        return $this->getReports($filters, $perPage, $sortBy, $orderBy);
+    }
+
+    /**
      * Obtiene estadísticas agregadas de los reportes.
      */
     public function getSummaryStats(array $filters): array
@@ -42,6 +50,14 @@ class FiscalZReportService
     public function getReportById(int $id): ?FiscalZReport
     {
         return $this->repository->findById($id);
+    }
+
+    /**
+     * Alias de getReportById para compatibilidad.
+     */
+    public function findById(int $id): ?FiscalZReport
+    {
+        return $this->getReportById($id);
     }
 
     /**

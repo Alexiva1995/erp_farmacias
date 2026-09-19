@@ -22,8 +22,10 @@ class FiscalZReportController extends Controller
     {
         $filters = $request->validated();
         $perPage = (int) $request->input('itemsPerPage', 15);
+        $sortBy = $request->input('sortBy', 'report_date');
+        $orderBy = $request->input('orderBy', 'desc');
 
-        $paginator = $this->zReportService->getFilteredPaginated($filters, $perPage);
+        $paginator = $this->zReportService->getReports($filters, $perPage, $sortBy, $orderBy);
         $summary = $this->zReportService->getSummaryStats($filters);
 
         return response()->json([
@@ -38,7 +40,7 @@ class FiscalZReportController extends Controller
      */
     public function show(int $id): JsonResponse
     {
-        $report = $this->zReportService->findById($id);
+        $report = $this->zReportService->getReportById($id);
 
         if (!$report) {
             return response()->json([
@@ -58,8 +60,9 @@ class FiscalZReportController extends Controller
     {
         $date = $request->input('date', now()->format('Y-m-d'));
         $force = (bool) $request->input('force', false);
+        $number = $request->has('number') ? (int) $request->input('number') : null;
 
-        $report = $this->zReportService->generateForDate($date, $force);
+        $report = $this->zReportService->generateForDate($date, $number, $force);
 
         return response()->json([
             'message' => 'Reporte Z procesado exitosamente.',
