@@ -202,11 +202,15 @@ def process_pending_invoices(sim):
                 if BRIDGE_MODE == "WEBSIM":
                     res_text = sim.print_invoice(data)
                 else:
-                    # 1. Estampar Logo Fiscal en Cabecera
+                    # 1. Estampar Logo Fiscal en Cabecera (si está cargado en la memoria de la impresora)
                     if hasattr(pnp, 'PFLogoClick'):
                         try:
-                            print("[DLL] Estampando Logo Fiscal de cabecera...")
-                            call_pnp(pnp.PFLogoClick)
+                            ptr_logo = pnp.PFLogoClick()
+                            res_logo = get_pnp_res(ptr_logo)
+                            if res_logo == "OK":
+                                print("[DLL LOGO] Logo Fiscal estampado correctamente.")
+                            else:
+                                print("[DLL LOGO INFO] Sin logo almacenado en memoria de impresora (continuando emisión normal)...")
                         except Exception as logo_err:
                             print(f"[DLL LOGO NOTE] {logo_err}")
 
