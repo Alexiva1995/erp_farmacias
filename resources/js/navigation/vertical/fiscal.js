@@ -24,6 +24,12 @@ export default [
         subject: 'admin',
       },
       {
+        title: 'Reporte Z',
+        to: 'fiscal-reporte-z',
+        action: 'manage',
+        subject: 'admin',
+      },
+      {
         title: 'Máquina Fiscal',
         to: 'fiscal-control',
         action: 'manage',

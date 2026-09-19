@@ -45,6 +45,7 @@ use App\Http\Controllers\Api\MarketOpportunityController;
 use App\Http\Controllers\Api\SupplierController;
 use App\Http\Controllers\Api\SupplierLaboratoryController;
 use App\Http\Controllers\Api\FiscalController;
+use App\Http\Controllers\Api\FiscalZReportController;
 use App\Http\Controllers\Api\InventoryStockController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\ProcessAuditController;
@@ -647,6 +648,11 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
     // Ruta de fiscal
     Route::get("/history", [FiscalController::class, "index"]);
     Route::get("/history/export", [FiscalController::class, "export"]);
+    Route::prefix("fiscal/z-reports")->group(function () {
+        Route::get("/", [FiscalZReportController::class, "index"]);
+        Route::get("/{id}", [FiscalZReportController::class, "show"]);
+        Route::post("/generate", [FiscalZReportController::class, "generate"]);
+    });
 
     // Invoice
     Route::prefix('invoices')->name('invoices.')->controller(InvoiceController::class)->group(function () {

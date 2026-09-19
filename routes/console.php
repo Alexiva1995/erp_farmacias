@@ -30,6 +30,14 @@ Schedule::command('cleaning:generate-executions --days=0')
         \Log::error('Fallo al generar ejecuciones de limpieza');
     });
 
+Schedule::command('fiscal:generate-z-reports')
+    ->dailyAt('00:01')
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->onFailure(function () {
+        \Log::error('[FiscalZReport] Falló la generación automática del reporte Z diario a las 00:01');
+    });
+
 Schedule::call(function () {
     $overdueExecutions = \App\Models\CleaningActivityExecution::whereIn('status', ['Pendiente', 'Vencida'])
         ->where('due_date', '<', now()->startOfDay())
