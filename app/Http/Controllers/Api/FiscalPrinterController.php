@@ -45,7 +45,6 @@ class FiscalPrinterController extends Controller
             $fiscal = FiscalHistory::findOrFail($id);
             $fiscal->update([
                 'invoice_number' => $request->invoice_number,
-                'fiscal_id' => $request->fiscal_id,
                 'invoice_date' => now(),
             ]);
 

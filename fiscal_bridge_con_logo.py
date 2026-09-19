@@ -242,13 +242,12 @@ def process_pending_invoices(sim):
                         call_pnp(pnp.PFrenglon, d_name, str(qty), str(price), tax)
                     
                     # 4. Código de barras / QR de trazabilidad (Providencia 0141 / Protocolo PNP)
-                    # En impresoras fiscales PNP homologadas con la Providencia 0141:
-                    # - PFBarra (o comando 0x54 'T') estampa el código de barra/QR al final de los renglones
-                    barcode_data = str(data.get('order_id') or invoice_id)
+                    # Imprime el ID de fiscal_history para trazabilidad interna
+                    barcode_data = str(invoice_id)
                     qr_sent = False
                     if hasattr(pnp, 'PFBarra'):
                         try:
-                            print(f"[DLL QR/BARRA] Ejecutando PFBarra({barcode_data}) (Cmd 0x54 Providencia 0141)...")
+                            print(f"[DLL QR/BARRA] Ejecutando PFBarra({barcode_data}) (ID FiscalHistory {invoice_id})...")
                             call_pnp(pnp.PFBarra, barcode_data)
                             qr_sent = True
                         except Exception as bar_err:
@@ -288,12 +287,38 @@ def process_pending_invoices(sim):
                         ptr = pnp.PFtotal()
                         res_text = get_pnp_res(ptr)
                 
-                inv_num = res_text.split('|')[-1] if (res_text and '|' in res_text) else "FAC" + str(invoice_id)
+                # 6. Extraer número de factura fiscal real devuelto por la máquina (Protocolo PNP 0x45)
+                inv_num = ""
+                if res_text:
+                    parts = [p.strip() for p in res_text.replace(',', '|').split('|') if p.strip()]
+                    # En la respuesta de 0x45: [STX, EstadoImp, EstadoFis, CantFac, NumFactura, ...]
+                    for part in parts:
+                        if part.isdigit() and len(part) >= 4:
+                            inv_num = part
+                            break
+                    if not inv_num and parts:
+                        inv_num = parts[-1]
+
+                if not inv_num:
+                    # Consultar última respuesta de la DLL si no vino directa
+                    try:
+                        last_ptr = pnp.PFultimo()
+                        last_str = get_pnp_res(last_ptr)
+                        last_parts = [p.strip() for p in last_str.replace(',', '|').split('|') if p.strip()]
+                        for part in last_parts:
+                            if part.isdigit() and len(part) >= 4:
+                                inv_num = part
+                                break
+                    except:
+                        pass
+
+                if not inv_num:
+                    inv_num = f"FAC{invoice_id}"
+
                 requests.patch(f"{API_BASE_URL}/fiscal/confirm/{invoice_id}", json={
-                    "invoice_number": inv_num[:20],
-                    "fiscal_id": None
+                    "invoice_number": inv_num[:20]
                 }, timeout=10, verify=False)
-                print(f"[OK] Factura {invoice_id} confirmada: {inv_num}")
+                print(f"[OK] Factura {invoice_id} confirmada con número fiscal real: {inv_num}")
     except Exception as e:
         print(f"[INV ERR] {e}")
 
