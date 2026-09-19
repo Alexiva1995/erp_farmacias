@@ -326,32 +326,30 @@ async function submitForm() {
         </div>
       </VCardTitle>
 
-      <VCardText 
-        class="pa-4 pa-sm-6 bg-light"
-        style="max-block-size: calc(90vh - 160px); overflow-y: auto;"
-      >
+      <VCardText class="pa-4 pa-sm-5 bg-light">
         <!-- Información General -->
-        <div class="d-flex align-center gap-2 mb-4">
+        <div class="d-flex align-center gap-2 mb-2">
           <div class="header-indicator primary shadow-sm" />
-          <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Información General del Gasto</span>
+          <span class="text-subtitle-2 font-weight-bold text-high-emphasis uppercase letter-spacing-1">Información General</span>
         </div>
 
         <VCard
           variant="flat"
-          class="pa-3 bg-white rounded-xl border shadow-sm mb-4"
+          class="pa-3 bg-white rounded-lg border shadow-sm mb-3"
         >
-          <VRow>
+          <VRow dense>
+            <!-- Fila 1: Nombre (8 cols) + Categoría (4 cols) -->
             <VCol
               cols="12"
-              sm="6"
+              md="8"
             >
               <VTextField
                 v-model="localForm.name"
                 :error-messages="props.formError.name"
-                label="Nombre del Gasto"
-                placeholder="Ej: Pago de Luz"
+                label="Nombre / Concepto del Gasto"
+                placeholder="Ej: Pago de Servicio Eléctrico"
                 variant="outlined"
-                density="comfortable"
+                density="compact"
                 class="rounded-lg"
                 prepend-inner-icon="tabler-file-description"
                 hide-details="auto"
@@ -359,7 +357,7 @@ async function submitForm() {
             </VCol>
             <VCol
               cols="12"
-              sm="6"
+              md="4"
             >
               <VSelect
                 v-model="localForm.category_id"
@@ -369,17 +367,34 @@ async function submitForm() {
                 item-title="name"
                 item-value="id"
                 variant="outlined"
-                density="comfortable"
+                density="compact"
                 class="rounded-lg"
                 prepend-inner-icon="tabler-category"
                 placeholder="Seleccionar categoría"
                 hide-details="auto"
               />
             </VCol>
+
+            <!-- Fila 2: Fecha + Moneda + Método de Pago (+ Recurrencia si aplica) -->
             <VCol
               cols="12"
-              sm="6"
-              md="4"
+              :md="props.type_of_expense === 'recurrente' ? 3 : 4"
+            >
+              <AppDateTimePicker
+                v-model="localForm.expense_date"
+                :error-messages="props.formError.expense_date"
+                placeholder="Fecha del Gasto"
+                variant="outlined"
+                density="compact"
+                class="rounded-lg"
+                prepend-inner-icon="tabler-calendar"
+                :config="{ altInput: true, altFormat: 'd/m/Y', dateFormat: 'Y-m-d' }"
+                hide-details="auto"
+              />
+            </VCol>
+            <VCol
+              cols="12"
+              :md="props.type_of_expense === 'recurrente' ? 3 : 4"
             >
               <VSelect
                 v-model="localForm.currency"
@@ -387,7 +402,7 @@ async function submitForm() {
                 :items="currencies"
                 :error-messages="props.formError.currency"
                 variant="outlined"
-                density="comfortable"
+                density="compact"
                 class="rounded-lg"
                 prepend-inner-icon="tabler-coin"
                 hide-details="auto"
@@ -395,8 +410,7 @@ async function submitForm() {
             </VCol>
             <VCol
               cols="12"
-              sm="6"
-              md="4"
+              :md="props.type_of_expense === 'recurrente' ? 3 : 4"
             >
               <VSelect
                 v-model="localForm.count"
@@ -410,7 +424,7 @@ async function submitForm() {
                 "
                 :error-messages="props.formError.count"
                 variant="outlined"
-                density="comfortable"
+                density="compact"
                 class="rounded-lg"
                 prepend-inner-icon="tabler-wallet"
                 placeholder="Seleccionar método"
@@ -418,27 +432,9 @@ async function submitForm() {
               />
             </VCol>
             <VCol
-              cols="12"
-              sm="6"
-              md="4"
-            >
-              <AppDateTimePicker
-                v-model="localForm.expense_date"
-                :error-messages="props.formError.expense_date"
-                placeholder="Fecha del Gasto"
-                variant="outlined"
-                density="comfortable"
-                class="rounded-lg"
-                prepend-inner-icon="tabler-calendar"
-                :config="{ altInput: true, altFormat: 'd/m/Y', dateFormat: 'Y-m-d' }"
-                hide-details="auto"
-              />
-            </VCol>
-            <VCol
               v-if="props.type_of_expense === 'recurrente'"
               cols="12"
-              sm="6"
-              md="4"
+              md="3"
             >
               <VSelect
                 v-model="localForm.recurrence"
@@ -446,7 +442,7 @@ async function submitForm() {
                 :items="recurrencia"
                 :error-messages="props.formError.recurrence"
                 variant="outlined"
-                density="comfortable"
+                density="compact"
                 class="rounded-lg"
                 prepend-inner-icon="tabler-repeat"
                 hide-details="auto"
@@ -456,177 +452,179 @@ async function submitForm() {
         </VCard>
 
         <!-- Sección Financiera -->
-        <div class="d-flex align-center gap-2 mb-4">
+        <div class="d-flex align-center gap-2 mb-2">
           <div class="header-indicator secondary shadow-sm" />
-          <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Detalles Financieros e Impuestos</span>
+          <span class="text-subtitle-2 font-weight-bold text-high-emphasis uppercase letter-spacing-1">Detalles Financieros e Impuestos</span>
         </div>
 
         <VCard
           variant="flat"
-          class="pa-3 bg-white rounded-xl border shadow-sm mb-4"
+          class="pa-3 bg-white rounded-lg border shadow-sm mb-3"
         >
-          <VRow v-if="brandingStore.settings.expense_mode !== 'simple'">
+          <!-- Modo Detallado / Estándar -->
+          <VRow
+            v-if="brandingStore.settings.expense_mode !== 'simple'"
+            dense
+          >
             <VCol
-              cols="6"
-              md="3"
+              cols="12"
+              sm="4"
             >
-              <div class="d-flex flex-column">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">Monto Exento</span>
-                <VTextField
-                  v-model.number="localForm.exempt_amount"
-                  :error-messages="props.formError.exempt_amount"
-                  placeholder="0.00"
-                  type="number"
-                  variant="underlined"
-                  density="compact"
-                  :prefix="getCurrencySymbol"
-                  hide-details="auto"
-                  class="font-weight-black"
-                />
-              </div>
+              <VTextField
+                v-model.number="localForm.exempt_amount"
+                :error-messages="props.formError.exempt_amount"
+                label="Monto Exento"
+                placeholder="0.00"
+                type="number"
+                variant="outlined"
+                density="compact"
+                :prefix="getCurrencySymbol"
+                class="rounded-lg font-weight-bold"
+                hide-details="auto"
+              />
             </VCol>
             <VCol
-              cols="6"
-              md="3"
+              cols="12"
+              sm="4"
             >
-              <div class="d-flex flex-column">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">Base Imponible</span>
-                <VTextField
-                  v-model.number="localForm.taxable_base"
-                  :error-messages="props.formError.taxable_base"
-                  placeholder="0.00"
-                  type="number"
-                  variant="underlined"
-                  density="compact"
-                  :prefix="getCurrencySymbol"
-                  hide-details="auto"
-                  class="font-weight-black"
-                />
-              </div>
+              <VTextField
+                v-model.number="localForm.taxable_base"
+                :error-messages="props.formError.taxable_base"
+                label="Base Imponible"
+                placeholder="0.00"
+                type="number"
+                variant="outlined"
+                density="compact"
+                :prefix="getCurrencySymbol"
+                class="rounded-lg font-weight-bold"
+                hide-details="auto"
+              />
             </VCol>
             <VCol
-              cols="6"
-              md="3"
+              cols="12"
+              sm="4"
             >
-              <div class="d-flex flex-column">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1">IVA (16%)</span>
-                <VTextField
-                  v-model.number="localForm.tax_amount"
-                  placeholder="0.00"
-                  type="number"
-                  variant="underlined"
-                  density="compact"
-                  :prefix="getCurrencySymbol"
-                  readonly
-                  hide-details="auto"
-                  class="text-disabled font-weight-bold"
-                />
-              </div>
-            </VCol>
-            <VCol
-              cols="6"
-              md="3"
-            >
-              <div class="d-flex flex-column">
-                <span class="text-super-xs font-weight-black text-error uppercase mb-1">Total Factura</span>
-                <VTextField
-                  v-model.number="localForm.total_amount"
-                  placeholder="0.00"
-                  type="number"
-                  variant="underlined"
-                  density="compact"
-                  :prefix="getCurrencySymbol"
-                  readonly
-                  class="font-weight-black text-error"
-                  hide-details="auto"
-                />
-              </div>
+              <VTextField
+                v-model.number="localForm.tax_amount"
+                label="IVA (16%)"
+                placeholder="0.00"
+                type="number"
+                variant="outlined"
+                density="compact"
+                :prefix="getCurrencySymbol"
+                readonly
+                bg-color="grey-lighten-4"
+                class="rounded-lg font-weight-bold"
+                hide-details="auto"
+              />
             </VCol>
           </VRow>
 
-          <!-- Vista en Modo Simple -->
-          <VRow v-else>
-            <VCol
-              cols="12"
-            >
-              <div class="d-flex flex-column">
-                <span class="text-super-xs font-weight-black text-error uppercase mb-1">Monto Total del Gasto</span>
-                <VTextField
-                  v-model.number="localForm.total_amount"
-                  :error-messages="props.formError.total_amount || props.formError.exempt_amount"
-                  placeholder="0.00"
-                  type="number"
-                  variant="outlined"
-                  density="comfortable"
-                  :prefix="getCurrencySymbol"
-                  class="font-weight-black text-error"
-                  hide-details="auto"
-                />
-              </div>
+          <!-- Modo Simple -->
+          <VRow
+            v-else
+            dense
+          >
+            <VCol cols="12">
+              <VTextField
+                v-model.number="localForm.total_amount"
+                :error-messages="props.formError.total_amount || props.formError.exempt_amount"
+                label="Monto Total del Gasto"
+                placeholder="0.00"
+                type="number"
+                variant="outlined"
+                density="compact"
+                :prefix="getCurrencySymbol"
+                class="rounded-lg font-weight-bold"
+                hide-details="auto"
+              />
             </VCol>
           </VRow>
-  
+
+          <!-- Bloque de Resumen y Cálculos (Tasa, Total Factura y USD) -->
+          <div class="mt-3 pt-3 border-t">
             <VRow
-              v-if="shouldShowExchangeRate || localForm.total_amount"
-              class="mt-2 pt-2 border-t border-dashed"
+              dense
+              align="center"
             >
               <VCol
                 v-if="shouldShowExchangeRate"
                 cols="12"
-                sm="6"
+                sm="4"
               >
                 <VTextField
                   v-model.number="localForm.exchange_rate"
                   :error-messages="props.formError.exchange_rate"
-                  label="Tasa de Cambio (Oficial)"
+                  label="Tasa de Cambio"
+                  placeholder="0.00"
                   type="number"
-                  variant="solo"
+                  variant="outlined"
                   density="compact"
-                  flat
-                  bg-color="grey-lighten-4"
                   prepend-inner-icon="tabler-trending-up"
                   class="rounded-lg font-weight-bold"
                   hide-details="auto"
                 />
               </VCol>
+              
               <VCol
                 cols="12"
-                :sm="shouldShowExchangeRate ? 6 : 12"
+                :sm="shouldShowExchangeRate ? 4 : 6"
               >
-                <div class="pa-2 rounded-lg bg-surface border-lg border-error border-opacity-50 d-flex justify-space-between align-center animate__animated animate__fadeIn">
-                  <div class="d-flex align-center gap-2 font-weight-black text-error text-xs uppercase">
-                    <VIcon
-                      icon="tabler-currency-dollar"
-                      size="18"
-                    />
-                    Equivalente USD
+                <div class="pa-2 px-3 rounded-lg bg-grey-50 border d-flex align-center justify-space-between">
+                  <div class="d-flex flex-column">
+                    <span class="text-super-xs font-weight-bold text-medium-emphasis uppercase">Total Factura ({{ localForm.currency || 'BS' }})</span>
+                    <span class="text-subtitle-1 font-weight-black text-high-emphasis leading-tight">
+                      {{ getCurrencySymbol }} {{ (Number(localForm.total_amount) || 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
+                    </span>
                   </div>
-                  <div class="text-h6 font-weight-black text-error leading-tight">
-                    ${{ computedTotalUsd.toLocaleString('es-VE', { minimumFractionDigits: 2 }) }}
+                  <VIcon
+                    icon="tabler-receipt"
+                    size="22"
+                    class="text-medium-emphasis"
+                  />
+                </div>
+              </VCol>
+
+              <VCol
+                cols="12"
+                :sm="shouldShowExchangeRate ? 4 : 6"
+              >
+                <div class="pa-2 px-3 rounded-lg bg-grey-50 border d-flex align-center justify-space-between">
+                  <div class="d-flex flex-column">
+                    <span class="text-super-xs font-weight-bold text-medium-emphasis uppercase">Equivalente USD</span>
+                    <span class="text-subtitle-1 font-weight-black text-success leading-tight">
+                      ${{ computedTotalUsd.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
+                    </span>
                   </div>
+                  <VIcon
+                    icon="tabler-currency-dollar"
+                    size="22"
+                    class="text-success"
+                  />
                 </div>
               </VCol>
             </VRow>
+          </div>
         </VCard>
 
         <!-- Documentación -->
-        <div class="d-flex align-center gap-2 mb-4">
+        <div class="d-flex align-center gap-2 mb-2">
           <div class="header-indicator primary shadow-sm" />
-          <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Documentación y Comprobantes</span>
+          <span class="text-subtitle-2 font-weight-bold text-high-emphasis uppercase letter-spacing-1">Documentación y Comprobantes</span>
         </div>
 
         <VCard
           variant="flat"
-          class="pa-4 bg-white rounded-xl border shadow-sm"
+          class="pa-3 bg-white rounded-lg border shadow-sm"
         >
-          <VRow>
+          <VRow dense>
             <VCol cols="12">
               <VFileInput
                 v-model="invoiceFile"
                 label="Subir Comprobante / Factura"
                 accept="image/*,application/pdf"
                 variant="outlined"
-                density="comfortable"
+                density="compact"
                 class="rounded-lg"
                 prepend-inner-icon="tabler-upload"
                 prepend-icon=""
@@ -664,7 +662,7 @@ async function submitForm() {
               <VExpandTransition>
                 <div
                   v-if="invoicePreview"
-                  class="mt-6 d-flex justify-center border-dashed rounded-xl pa-4 bg-light position-relative"
+                  class="mt-3 d-flex justify-center border-dashed rounded-lg pa-2 bg-light position-relative"
                 >
                   <VBtn
                     icon="tabler-circle-x"
@@ -676,19 +674,19 @@ async function submitForm() {
                   />
                   <VImg
                     :src="invoicePreview"
-                    max-height="300"
+                    max-height="180"
                     contain
                     class="rounded-lg shadow-sm border bg-white"
                   />
                 </div>
               </VExpandTransition>
               
-              <div class="d-flex align-center gap-2 mt-4 text-disabled">
+              <div class="d-flex align-center gap-1 mt-2 text-disabled">
                 <VIcon
                   icon="tabler-info-circle"
-                  size="14"
+                  size="13"
                 />
-                <span class="text-super-xs font-weight-black uppercase letter-spacing-1">Soporte aceptado: JPG, PNG, PDF (Máx. 5MB)</span>
+                <span class="text-super-xs font-weight-bold uppercase letter-spacing-1">Formatos soportados: JPG, PNG, PDF (Máx. 5MB)</span>
               </div>
             </VCol>
           </VRow>
@@ -697,7 +695,7 @@ async function submitForm() {
 
       <VDivider />
 
-      <VCardActions class="pa-4 bg-white border-t px-6">
+      <VCardActions class="pa-3 bg-white border-t px-6">
         <VRow
           no-gutters
           class="w-100"
@@ -710,7 +708,7 @@ async function submitForm() {
             <VBtn
               color="secondary"
               variant="outlined"
-              height="50"
+              height="44"
               block
               class="font-weight-black rounded-lg text-button uppercase"
               @click="close"
@@ -726,7 +724,7 @@ async function submitForm() {
             <VBtn
               color="primary"
               variant="flat"
-              height="50"
+              height="44"
               block
               class="font-weight-black rounded-lg shadow-primary text-button uppercase"
               :loading="props.loading"
@@ -805,17 +803,5 @@ async function submitForm() {
 
 .italic {
   font-style: italic;
-}
-
-:deep(.v-field--variant-underlined .v-field__input) {
-  font-weight: 800 !important;
-  font-size: 0.95rem !important;
-}
-
-:deep(.v-field--variant-underlined .v-label) {
-  font-weight: 800 !important;
-  font-size: 0.65rem !important;
-  text-transform: uppercase !important;
-  opacity: 0.8 !important;
 }
 </style>
