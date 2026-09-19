@@ -1,14 +1,19 @@
 <template>
   <div class="fiscal-home-container pb-6">
     <!-- Encabezado con Filtro de Año Fiscal -->
-    <VCard class="mb-6">
-      <VCardText class="d-flex flex-wrap align-center justify-space-between gap-4">
+    <VCard class="mb-6 border shadow-sm rounded-lg">
+      <VCardText class="d-flex flex-wrap align-center justify-space-between gap-4 pa-4 pa-sm-5">
         <div>
-          <h4 class="text-h4 font-weight-bold mb-1">
-            Panel de Control Fiscal (ISLR)
-          </h4>
+          <div class="d-flex align-center gap-2 mb-1">
+            <VAvatar color="primary" variant="tonal" size="32">
+              <VIcon icon="tabler-building-bank" size="18" />
+            </VAvatar>
+            <h4 class="text-h4 font-weight-bold mb-0">
+              Panel de Control Fiscal y Tributario (Venezuela)
+            </h4>
+          </div>
           <p class="text-body-2 text-medium-emphasis mb-0">
-            Resumen financiero, estimaciones de impuestos y gestión de declaraciones fiscales.
+            Declaración de ISLR, retenciones de IVA, conciliación contable y balances expresados en Bolívares (Bs.).
           </p>
         </div>
         <div class="d-flex align-center gap-3">
@@ -33,7 +38,7 @@
       </VCardText>
     </VCard>
 
-    <!-- Tarjetas de Estadísticas Principales -->
+    <!-- Tarjetas de Estadísticas Principales de ISLR -->
     <FiscalProfitStats
       :loading="loading"
       :loading-declaration="loadingDeclaration"
@@ -47,18 +52,28 @@
       @open-create="openCreateDeclarationDialog"
     />
 
-    <!-- Reporte Gráfico de Ingresos -->
-    <VRow class="mb-6">
-      <VCol cols="12">
-        <EcommerceRevenueReport />
-      </VCol>
-    </VRow>
+    <!-- Reporte Gráfico de Ingresos y Gastos en Bolívares -->
+    <div class="mb-6">
+      <FiscalRevenueReport
+        :year="selectedYear"
+        :format-currency="formatCurrency"
+        @update:year="(y) => { selectedYear = y; loadDashboardData(); }"
+      />
+    </div>
 
     <!-- Desglose de Ingresos y Gastos Deducibles -->
     <FiscalIncomeExpenseBreakdown
       :loading="loading"
       :total-income-data="totalIncomeData"
       :deductible-expenses-data="deductibleExpensesData"
+      :year="selectedYear"
+      :format-currency="formatCurrency"
+    />
+
+    <!-- Bloque de Retenciones y Crédito Fiscal -->
+    <FiscalRetentionsSummaryCard
+      :loading="loading"
+      :retentions-data="retentionsData"
       :year="selectedYear"
       :format-currency="formatCurrency"
     />
@@ -74,7 +89,7 @@
       @print-report="handlePrintReport"
     />
 
-    <!-- Diálogo desacoplado para crear declaración -->
+    <!-- Diálogo para crear declaración ISLR -->
     <FiscalDeclarationDialog
       v-model="showCreateDialog"
       :initial-year="selectedYear"
@@ -86,11 +101,12 @@
 </template>
 
 <script setup>
-import EcommerceRevenueReport from "@/components/EcommerceRevenueReport.vue";
 import FiscalDeclarationDialog from "@/components/fiscal/FiscalDeclarationDialog.vue";
 import FiscalIncomeExpenseBreakdown from "@/components/fiscal/FiscalIncomeExpenseBreakdown.vue";
 import FiscalIncomeExpenseSummary from "@/components/fiscal/FiscalIncomeExpenseSummary.vue";
 import FiscalProfitStats from "@/components/fiscal/FiscalProfitStats.vue";
+import FiscalRetentionsSummaryCard from "@/components/fiscal/FiscalRetentionsSummaryCard.vue";
+import FiscalRevenueReport from "@/components/fiscal/FiscalRevenueReport.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { computed, onMounted, ref } from "vue";
@@ -147,6 +163,22 @@ const nonDeductibleExpensesData = ref({
   categories: [],
 });
 
+const retentionsData = ref({
+  generated: {
+    count: 0,
+    total_base: 0,
+    total_tax: 0,
+    total_withheld: 0,
+  },
+  pending: {
+    count: 0,
+    total_base: 0,
+    total_tax: 0,
+    estimated_withheld: 0,
+  },
+  year: currentYear,
+});
+
 const rentaBruta = computed(() => islrData.value.gross_income || 0);
 
 const impuestoISLR = computed(() => {
@@ -163,7 +195,7 @@ const impuestoISLR = computed(() => {
     impuesto = utCalculadas * 0.34 - 500;
   }
 
-  return impuesto * unidadesTributarias.value;
+  return Math.max(0, impuesto * unidadesTributarias.value);
 });
 
 const tramoISLR = computed(() => {
@@ -181,13 +213,15 @@ const tramoISLR = computed(() => {
   }
 });
 
+/**
+ * Formateador oficial de moneda para Venezuela: Bs. X.XXX.XXX,XX
+ */
 const formatCurrency = (amount) => {
-  return new Intl.NumberFormat("es-VE", {
-    style: "currency",
-    currency: "VES",
+  const formatted = new Intl.NumberFormat("es-VE", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(amount || 0);
+  return `Bs. ${formatted}`;
 };
 
 const formatDate = (date) => {
@@ -223,6 +257,7 @@ const loadDashboardData = async () => {
       deductibleRes,
       revenueRes,
       nonDeductibleRes,
+      retentionsRes,
     ] = await Promise.allSettled([
       axios.get("/islr/summary", { params: { year: selectedYear.value } }),
       axios.get("/islr/declarations", { params: { year: selectedYear.value } }),
@@ -230,6 +265,7 @@ const loadDashboardData = async () => {
       axios.get("/dashboard/deductible-expenses", { params: { year: selectedYear.value } }),
       axios.get("/dashboard/revenue-report", { params: { year: selectedYear.value } }),
       axios.get("/dashboard/non-deductible-expenses", { params: { year: selectedYear.value } }),
+      axios.get("/dashboard/fiscal-retentions", { params: { year: selectedYear.value } }),
     ]);
 
     if (summaryRes.status === "fulfilled") {
@@ -256,6 +292,10 @@ const loadDashboardData = async () => {
 
     if (nonDeductibleRes.status === "fulfilled") {
       nonDeductibleExpensesData.value = nonDeductibleRes.value.data?.data || {};
+    }
+
+    if (retentionsRes.status === "fulfilled") {
+      retentionsData.value = retentionsRes.value.data?.data || {};
     }
   } catch (error) {
     console.error("Error al cargar los datos del dashboard fiscal:", error);

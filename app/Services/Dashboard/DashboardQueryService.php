@@ -11,6 +11,8 @@ use App\Models\FiscalHistory;
 use App\Models\Expense;
 use App\Models\Order;
 use App\Models\DailyCashClosure;
+use App\Models\Retention;
+use App\Models\Invoice;
 
 class DashboardQueryService
 {
@@ -546,6 +548,43 @@ class DashboardQueryService
                 'sellers_ranking' => $sellers,
                 'exchange_rates' => $exchangeRates,
                 'system_profitability' => 25.2
+            ];
+        });
+    }
+
+    public function getFiscalRetentionsData(int $year): array
+    {
+        return Cache::remember("dashboard_fiscal_retentions_{$year}", 60, function () use ($year) {
+            $startDate = Carbon::create($year, 1, 1)->startOfDay();
+            $endDate = Carbon::create($year, 12, 31)->endOfDay();
+
+            $generatedRetentions = Retention::whereBetween('date', [$startDate, $endDate])
+                ->selectRaw('COUNT(*) as total_count, SUM(total_taxable_base) as total_base, SUM(total_tax_amount) as total_tax, SUM(total_withheld_amount) as total_withheld')
+                ->first();
+
+            $pendingInvoices = Invoice::where('retention_generated', false)
+                ->where('tax_amount', '>', 0)
+                ->whereBetween('created_invoice_date', [$startDate, $endDate])
+                ->selectRaw('COUNT(*) as total_count, SUM(taxable_base) as total_base, SUM(tax_amount) as total_tax')
+                ->first();
+
+            $pendingTax = (float) ($pendingInvoices->total_tax ?? 0);
+            $estimatedPendingWithheld = round($pendingTax * 0.75, 2);
+
+            return [
+                'generated' => [
+                    'count' => (int) ($generatedRetentions->total_count ?? 0),
+                    'total_base' => round((float) ($generatedRetentions->total_base ?? 0), 2),
+                    'total_tax' => round((float) ($generatedRetentions->total_tax ?? 0), 2),
+                    'total_withheld' => round((float) ($generatedRetentions->total_withheld ?? 0), 2),
+                ],
+                'pending' => [
+                    'count' => (int) ($pendingInvoices->total_count ?? 0),
+                    'total_base' => round((float) ($pendingInvoices->total_base ?? 0), 2),
+                    'total_tax' => round($pendingTax, 2),
+                    'estimated_withheld' => $estimatedPendingWithheld,
+                ],
+                'year' => $year,
             ];
         });
     }

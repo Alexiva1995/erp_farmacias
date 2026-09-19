@@ -10,6 +10,7 @@ class GeneralSetting extends Model
     protected $fillable = [
         'fiscal_mode',
         'special_taxpayer_status',
+        'enable_ce',
         'all_foreign_sales_spe',
         'rif',
         'address',
@@ -87,6 +88,7 @@ class GeneralSetting extends Model
     ];
 
     protected $casts = [
+        'enable_ce' => 'boolean',
         'all_foreign_sales_spe' => 'boolean',
         'blind_cash_closure' => 'boolean',
         'ecommerce_menu' => 'array',

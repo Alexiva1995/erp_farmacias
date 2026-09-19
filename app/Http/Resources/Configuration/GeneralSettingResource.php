@@ -58,6 +58,7 @@ class GeneralSettingResource extends JsonResource
             'id' => $this->id,
             'fiscal_mode' => $this->fiscal_mode,
             'special_taxpayer_status' => $this->special_taxpayer_status,
+            'enable_ce' => (bool) ($this->enable_ce ?? false),
             'all_foreign_sales_spe' => (bool) $this->all_foreign_sales_spe,
             'app_name' => $this->app_name ?? 'Tova - Cerebro Operativo',
             'app_rif' => $this->app_rif,

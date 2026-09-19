@@ -23,11 +23,41 @@ const itemsPerPage = ref(10);
 const sortBy = ref(undefined);
 const orderBy = ref(undefined);
 const searchQuery = ref("");
+const isCeEnabled = ref(false);
 
-// Fechas predeterminadas: Año actual
-const currentYear = new Date().getFullYear();
-const startDate = ref(`${currentYear}-01-01`);
-const endDate = ref(`${currentYear}-12-31`);
+// Fechas predeterminadas (Mensual o Quincenal según CE)
+const getDefaultDates = (ceActive = false) => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const day = now.getDate();
+
+  const formatOffsetDate = (d) => {
+    const date = new Date(d);
+    date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
+    return date.toISOString().split("T")[0];
+  };
+
+  if (ceActive) {
+    if (day <= 15) {
+      const start = new Date(year, month, 1);
+      const end = new Date(year, month, 15);
+      return { start: formatOffsetDate(start), end: formatOffsetDate(end) };
+    } else {
+      const start = new Date(year, month, 16);
+      const end = new Date(year, month + 1, 0);
+      return { start: formatOffsetDate(start), end: formatOffsetDate(end) };
+    }
+  } else {
+    const start = new Date(year, month, 1);
+    const end = new Date(year, month + 1, 0);
+    return { start: formatOffsetDate(start), end: formatOffsetDate(end) };
+  }
+};
+
+const initialDates = getDefaultDates(false);
+const startDate = ref(initialDates.start);
+const endDate = ref(initialDates.end);
 
 // Diálogo de detalle
 const isEditDialogVisible = ref(false);
@@ -38,6 +68,23 @@ const historyIdToEdit = ref(null);
 const historyNameToEdit = ref("");
 
 // --- Métodos ---
+const fetchGeneralSettings = async () => {
+  try {
+    const response = await axios.get("/general-settings", {
+      params: { only: "enable_ce" },
+    });
+    const ce = !!response.data?.data?.enable_ce;
+    isCeEnabled.value = ce;
+    
+    // Si CE está activo, ajustar el rango predeterminado a la quincena en curso
+    const calibratedDates = getDefaultDates(ce);
+    startDate.value = calibratedDates.start;
+    endDate.value = calibratedDates.end;
+  } catch (error) {
+    console.error("Error al cargar configuración general:", error);
+  }
+};
+
 const fetchHistories = async () => {
   loading.value = true;
   const params = {
@@ -85,7 +132,8 @@ watch([page, itemsPerPage, sortBy, orderBy], () => {
   triggerDebouncedFetch();
 });
 
-onMounted(() => {
+onMounted(async () => {
+  await fetchGeneralSettings();
   fetchHistories();
 });
 
@@ -112,8 +160,9 @@ const handleShowDetailHistory = (history) => {
 
 const handleClearFilters = () => {
   searchQuery.value = "";
-  startDate.value = `${currentYear}-01-01`;
-  endDate.value = `${currentYear}-12-31`;
+  const dates = getDefaultDates(isCeEnabled.value);
+  startDate.value = dates.start;
+  endDate.value = dates.end;
   sortBy.value = undefined;
   orderBy.value = undefined;
   page.value = 1;
@@ -181,6 +230,7 @@ const handleSort = (sortOptions) => {
         v-model:searchQuery="searchQuery"
         v-model:startDate="startDate"
         v-model:endDate="endDate"
+        :is-ce-enabled="isCeEnabled"
         :loading="loading || exportLoading"
         @clear="handleClearFilters"
         @export="handleExport"

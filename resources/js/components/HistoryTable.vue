@@ -38,7 +38,15 @@ const headers = [
     title: "FECHA", 
     key: "invoice_date", 
     sortable: true,
-    value: item => item.invoice_date ? new Date(item.invoice_date).toLocaleDateString("es-VE") : '',
+    value: item => {
+      const dt = item.invoice_date || item.created_at;
+      if (!dt) return '';
+      if (typeof dt === 'string' && /^\d{4}-\d{2}-\d{2}/.test(dt.trim())) {
+        const parts = dt.trim().split('T')[0].split('-');
+        return `${parts[2]}/${parts[1]}/${parts[0]}`;
+      }
+      return new Date(dt).toLocaleDateString("es-VE");
+    },
     cellProps: { class: 'text-sm text-medium-emphasis' }
   },
   { 

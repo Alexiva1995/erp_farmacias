@@ -24,6 +24,7 @@ class UpdateGeneralSettingRequest extends FormRequest
         return [
             'fiscal_mode' => 'nullable|string|in:demo,activa',
             'special_taxpayer_status' => 'nullable|string|in:activa,desactivada',
+            'enable_ce' => 'nullable|boolean',
             'all_foreign_sales_spe' => 'nullable|boolean',
             'app_name' => 'nullable|string|max:255',
             'app_rif' => 'nullable|string|max:255',

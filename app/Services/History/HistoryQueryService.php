@@ -30,9 +30,11 @@ class HistoryQueryService
             'total_amount',
             'audit_hash',
             'user_id',
+            'created_at',
         ])->with([
             'user:id,username',
             'details:id,fiscal_history_id,product_id,product_name,quantity,exempt_amount,vat_status,total_amount,iva_amount',
+            'order:id,order_date,created_at',
             'order.details.product',
         ]);
     }

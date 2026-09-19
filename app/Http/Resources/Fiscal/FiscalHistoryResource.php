@@ -26,6 +26,7 @@ class FiscalHistoryResource extends JsonResource
             'business_name'  => $this->business_name,
             'address'        => $this->address,
             'invoice_date'   => $this->invoice_date,
+            'created_at'     => $this->created_at?->toISOString() ?? ($this->order?->created_at?->toISOString() ?? $this->invoice_date),
             'exempt_amount'  => (float) $this->exempt_amount,
             'taxable_amount' => (float) $this->taxable_amount,
             'iva_amount'     => (float) $this->iva_amount,

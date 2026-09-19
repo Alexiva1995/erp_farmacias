@@ -67,6 +67,14 @@ class DashboardController extends Controller
         return response()->json(['data' => $data]);
     }
 
+    public function getFiscalRetentions(Request $request): JsonResponse
+    {
+        $year = (int) $request->input('year', now()->year);
+        $data = $this->dashboardQueryService->getFiscalRetentionsData($year);
+
+        return response()->json(['data' => $data]);
+    }
+
     public function getClientStats(Request $request): JsonResponse
     {
         $data = $this->dashboardQueryService->getClientStatsData();

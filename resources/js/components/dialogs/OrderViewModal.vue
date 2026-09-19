@@ -84,8 +84,15 @@ const formattedOrderDate = computed(() => {
   const date = props.orderData?.order_date ?? props.orderData?.created_at;
   if (!date) return "—";
   
+  // Si es solo una fecha YYYY-MM-DD sin hora, evitar desfase de zona horaria UTC
+  if (typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date.trim())) {
+    const [y, m, d] = date.trim().split("-");
+    return `${d}/${m}/${y}`;
+  }
+  
   const d = new Date(date);
-  return d.toLocaleString("es-ES", {
+  if (isNaN(d.getTime())) return "—";
+  return d.toLocaleString("es-VE", {
     day : "2-digit",
     month : "2-digit",
     year : "numeric",

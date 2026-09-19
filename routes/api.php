@@ -490,6 +490,7 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
         Route::get('/deductible-expenses', [DashboardController::class, 'getDeductibleExpenses']);
         Route::get('/non-deductible-expenses', [DashboardController::class, 'getNonDeductibleExpenses']);
         Route::get('/revenue-report', [DashboardController::class, 'getRevenueReport']);
+        Route::get('/fiscal-retentions', [DashboardController::class, 'getFiscalRetentions']);
         Route::get('/stats', [DashboardController::class, 'getStats']);
         Route::get('/units-sold', [DashboardController::class, 'getUnitsSold']);
         Route::get('/profit', [DashboardController::class, 'getProfit']);

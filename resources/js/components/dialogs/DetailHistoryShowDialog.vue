@@ -27,7 +27,7 @@ const isDialogVisible = computed({
 
 const orderData = computed(() => ({
   id: props.histories?.fiscal_id || props.histories?.id || "N/A",
-  created_at: props.histories?.invoice_date || props.histories?.created_at,
+  created_at: props.histories?.created_at || props.histories?.invoice_date,
   seller: {
     username: props.user?.username || "N/A",
   },

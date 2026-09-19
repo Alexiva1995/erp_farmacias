@@ -1,5 +1,5 @@
 <script setup>
-// Filtros de Historial Fiscal
+// Filtros de Historial Fiscal (Soporte para Modo Mensual y Modo Quincenal CE)
 import AppFilterBase from "@/components/AppFilterBase.vue";
 import { computed } from "vue";
 
@@ -8,6 +8,7 @@ const props = defineProps({
   startDate: { type: [String, null], default: null },
   endDate: { type: [String, null], default: null },
   loading: { type: Boolean, default: false },
+  isCeEnabled: { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
@@ -28,45 +29,125 @@ const sortOptions = [
 
 const hasAdvancedFilters = computed(() => !!(props.startDate || props.endDate));
 
-// Utilidades para fechas
-const toDateString = (date) => date.toISOString().split("T")[0];
+// Utilidades para fechas del año en curso
+const now = new Date();
+const currentYear = now.getFullYear();
+const currentMonthIndex = now.getMonth();
+const currentDay = now.getDate();
 
+const monthsOfYear = [
+  { name: "Enero", abbr: "Ene", index: 0 },
+  { name: "Febrero", abbr: "Feb", index: 1 },
+  { name: "Marzo", abbr: "Mar", index: 2 },
+  { name: "Abril", abbr: "Abr", index: 3 },
+  { name: "Mayo", abbr: "May", index: 4 },
+  { name: "Junio", abbr: "Jun", index: 5 },
+  { name: "Julio", abbr: "Jul", index: 6 },
+  { name: "Agosto", abbr: "Ago", index: 7 },
+  { name: "Septiembre", abbr: "Sep", index: 8 },
+  { name: "Octubre", abbr: "Oct", index: 9 },
+  { name: "Noviembre", abbr: "Nov", index: 10 },
+  { name: "Diciembre", abbr: "Dic", index: 11 },
+];
+
+const formatOffsetDate = (date) => {
+  const d = new Date(date);
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().split("T")[0];
+};
+
+// --- MODO MENSUAL ---
+const setSpecificMonth = (monthIndex) => {
+  const start = new Date(currentYear, monthIndex, 1);
+  const end = new Date(currentYear, monthIndex + 1, 0);
+
+  emit("update:startDate", formatOffsetDate(start));
+  emit("update:endDate", formatOffsetDate(end));
+};
+
+const isMonthActive = (monthIndex) => {
+  if (!props.startDate || !props.endDate) return false;
+  const start = formatOffsetDate(new Date(currentYear, monthIndex, 1));
+  const end = formatOffsetDate(new Date(currentYear, monthIndex + 1, 0));
+  return props.startDate === start && props.endDate === end;
+};
+
+const activeMonthLabel = computed(() => {
+  for (const m of monthsOfYear) {
+    if (isMonthActive(m.index)) {
+      return `${m.name} ${currentYear}`;
+    }
+  }
+  return null;
+});
+
+// --- MODO QUINCENAL (CE ACTIVADO) ---
+const quincenasOfYear = computed(() => {
+  const list = [];
+  monthsOfYear.forEach((m) => {
+    // 1ra Quincena: 01 al 15
+    const q1Start = formatOffsetDate(new Date(currentYear, m.index, 1));
+    const q1End = formatOffsetDate(new Date(currentYear, m.index, 15));
+    list.push({
+      key: `${m.index}-Q1`,
+      title: `1ra Quincena ${m.name}`,
+      shortTitle: `1Q ${m.abbr}`,
+      monthName: m.name,
+      monthAbbr: m.abbr,
+      quincena: 1,
+      rangeText: `01 al 15`,
+      startDate: q1Start,
+      endDate: q1End,
+      isCurrent: m.index === currentMonthIndex && currentDay <= 15,
+    });
+
+    // 2da Quincena: 16 al último día
+    const q2Start = formatOffsetDate(new Date(currentYear, m.index, 16));
+    const q2End = formatOffsetDate(new Date(currentYear, m.index + 1, 0));
+    list.push({
+      key: `${m.index}-Q2`,
+      title: `2da Quincena ${m.name}`,
+      shortTitle: `2Q ${m.abbr}`,
+      monthName: m.name,
+      monthAbbr: m.abbr,
+      quincena: 2,
+      rangeText: `16 al fin`,
+      startDate: q2Start,
+      endDate: q2End,
+      isCurrent: m.index === currentMonthIndex && currentDay > 15,
+    });
+  });
+  return list;
+});
+
+const setQuincena = (q) => {
+  emit("update:startDate", q.startDate);
+  emit("update:endDate", q.endDate);
+};
+
+const isQuincenaActive = (q) => {
+  return props.startDate === q.startDate && props.endDate === q.endDate;
+};
+
+const currentActiveQuincena = computed(() => {
+  return quincenasOfYear.value.find((q) => isQuincenaActive(q));
+});
+
+const currentQuincenaObj = computed(() => {
+  return quincenasOfYear.value.find((q) => q.isCurrent);
+});
+
+// --- ACCIONES GENERALES ---
 const setDateHoy = () => {
   const t = new Date();
-  emit("update:startDate", toDateString(t));
-  emit("update:endDate", toDateString(t));
+  const str = formatOffsetDate(t);
+  emit("update:startDate", str);
+  emit("update:endDate", str);
 };
 
-const setDateAyer = () => {
-  const a = new Date();
-  a.setDate(a.getDate() - 1);
-  const s = toDateString(a);
-  emit("update:startDate", s);
-  emit("update:endDate", s);
-};
-
-const setDateSemana = () => {
-  const h = new Date();
-  const inicio = new Date(h);
-  const dia = inicio.getDay();
-  const diff = inicio.getDate() - dia + (dia === 0 ? -6 : 1);
-  inicio.setDate(diff);
-  emit("update:startDate", toDateString(inicio));
-  emit("update:endDate", toDateString(h));
-};
-
-const setDateMes = () => {
-  const h = new Date();
-  const inicio = new Date(h.getFullYear(), h.getMonth(), 1);
-  emit("update:startDate", toDateString(inicio));
-  emit("update:endDate", toDateString(h));
-};
-
-const setDateAno = () => {
-  const h = new Date();
-  const inicio = `${h.getFullYear()}-01-01`;
-  emit("update:startDate", inicio);
-  emit("update:endDate", toDateString(h));
+const setDateAnoCompleto = () => {
+  emit("update:startDate", `${currentYear}-01-01`);
+  emit("update:endDate", `${currentYear}-12-31`);
 };
 </script>
 
@@ -85,19 +166,226 @@ const setDateAno = () => {
     @export="(fmt) => emit('export', fmt)"
     @sort="emit('sort', $event)"
   >
-    <!-- Rango Rápido de Fechas -->
+    <!-- Rango Rápido de Fechas (Mensual o Quincenal según CE) -->
     <template #search-extra>
-      <div class="d-none d-lg-flex align-center gap-2 ms-4 border-s ps-4">
-        <span class="text-caption font-weight-bold text-uppercase text-disabled me-1">Rango:</span>
-        <VBtn :disabled="props.loading" color="primary" variant="tonal" size="x-small" class="rounded-pill px-3" @click="setDateHoy">Hoy</VBtn>
-        <VBtn :disabled="props.loading" color="primary" variant="tonal" size="x-small" class="rounded-pill px-3" @click="setDateAyer">Ayer</VBtn>
-        <VBtn :disabled="props.loading" color="primary" variant="tonal" size="x-small" class="rounded-pill px-3" @click="setDateSemana">Semana</VBtn>
-        <VBtn :disabled="props.loading" color="primary" variant="tonal" size="x-small" class="rounded-pill px-3" @click="setDateMes">Mes</VBtn>
-        <VBtn :disabled="props.loading" color="primary" variant="tonal" size="x-small" class="rounded-pill px-3" @click="setDateAno">Año</VBtn>
+      <div class="d-none d-lg-flex align-center gap-1 ms-3 border-s ps-3">
+        <!-- Badge Indicador CE si está activo -->
+        <VChip
+          v-if="props.isCeEnabled"
+          size="x-small"
+          color="primary"
+          variant="flat"
+          class="font-weight-black text-uppercase me-1"
+        >
+          CE: Quincenal
+        </VChip>
+
+        <!-- CASO 1: MODO QUINCENAL (CE ACTIVADO) -->
+        <template v-if="props.isCeEnabled">
+          <VMenu transition="scale-transition">
+            <template #activator="{ props: menuProps }">
+              <VBtn
+                v-bind="menuProps"
+                :disabled="props.loading"
+                color="primary"
+                variant="tonal"
+                size="small"
+                class="font-weight-bold me-1"
+                prepend-icon="tabler-calendar-time"
+                append-icon="tabler-chevron-down"
+              >
+                {{ currentActiveQuincena?.title || `Quincenas ${currentYear}` }}
+              </VBtn>
+            </template>
+            <VList class="rounded-lg shadow-lg pa-1" min-width="240" max-height="360">
+              <div class="px-3 py-1 text-super-xs font-weight-black text-uppercase text-disabled">
+                Quincenas Fiscales {{ currentYear }} (CE)
+              </div>
+              <VListItem
+                v-for="q in quincenasOfYear"
+                :key="q.key"
+                :active="isQuincenaActive(q)"
+                class="rounded-md mb-1"
+                @click="setQuincena(q)"
+              >
+                <template #prepend>
+                  <VIcon
+                    :icon="isQuincenaActive(q) ? 'tabler-circle-check' : 'tabler-calendar'"
+                    size="18"
+                    :color="isQuincenaActive(q) ? 'primary' : 'disabled'"
+                    class="me-2"
+                  />
+                </template>
+                <VListItemTitle class="text-caption font-weight-bold">
+                  {{ q.title }}
+                </VListItemTitle>
+                <VListItemSubtitle class="text-super-xs text-medium-emphasis">
+                  {{ q.rangeText }}
+                </VListItemSubtitle>
+                <template #append>
+                  <VChip
+                    v-if="q.isCurrent"
+                    size="x-small"
+                    color="info"
+                    variant="tonal"
+                    class="font-weight-bold"
+                  >
+                    Actual
+                  </VChip>
+                </template>
+              </VListItem>
+            </VList>
+          </VMenu>
+
+          <!-- Botón rápido Quincena Actual -->
+          <VBtn
+            v-if="currentQuincenaObj"
+            :disabled="props.loading"
+            :color="isQuincenaActive(currentQuincenaObj) ? 'primary' : 'secondary'"
+            :variant="isQuincenaActive(currentQuincenaObj) ? 'flat' : 'tonal'"
+            size="x-small"
+            class="rounded-pill px-3 font-weight-bold"
+            @click="setQuincena(currentQuincenaObj)"
+          >
+            Quincena Actual ({{ currentQuincenaObj.shortTitle }})
+          </VBtn>
+        </template>
+
+        <!-- CASO 2: MODO MENSUAL ESTÁNDAR (CE DESACTIVADO) -->
+        <template v-else>
+          <VMenu transition="scale-transition">
+            <template #activator="{ props: menuProps }">
+              <VBtn
+                v-bind="menuProps"
+                :disabled="props.loading"
+                color="primary"
+                variant="tonal"
+                size="small"
+                class="font-weight-bold me-1"
+                prepend-icon="tabler-calendar-month"
+                append-icon="tabler-chevron-down"
+              >
+                {{ activeMonthLabel || `Meses ${currentYear}` }}
+              </VBtn>
+            </template>
+            <VList class="rounded-lg shadow-lg pa-1" min-width="200" max-height="340">
+              <div class="px-3 py-1 text-super-xs font-weight-black text-uppercase text-disabled">
+                Meses {{ currentYear }}
+              </div>
+              <VListItem
+                v-for="m in monthsOfYear"
+                :key="m.index"
+                :active="isMonthActive(m.index)"
+                class="rounded-md mb-1"
+                @click="setSpecificMonth(m.index)"
+              >
+                <template #prepend>
+                  <VIcon
+                    :icon="isMonthActive(m.index) ? 'tabler-circle-check' : 'tabler-calendar'"
+                    size="18"
+                    :color="isMonthActive(m.index) ? 'primary' : 'disabled'"
+                    class="me-2"
+                  />
+                </template>
+                <VListItemTitle class="text-caption font-weight-bold">
+                  {{ m.name }}
+                </VListItemTitle>
+                <template #append>
+                  <VChip
+                    v-if="m.index === currentMonthIndex"
+                    size="x-small"
+                    color="info"
+                    variant="tonal"
+                    class="font-weight-bold"
+                  >
+                    Actual
+                  </VChip>
+                </template>
+              </VListItem>
+            </VList>
+          </VMenu>
+
+          <!-- Botón rápido Mes Actual -->
+          <VBtn
+            :disabled="props.loading"
+            :color="isMonthActive(currentMonthIndex) ? 'primary' : 'secondary'"
+            :variant="isMonthActive(currentMonthIndex) ? 'flat' : 'tonal'"
+            size="x-small"
+            class="rounded-pill px-3 font-weight-bold"
+            @click="setSpecificMonth(currentMonthIndex)"
+          >
+            Mes Actual ({{ monthsOfYear[currentMonthIndex].abbr }})
+          </VBtn>
+        </template>
+
+        <!-- Botón rápido Hoy -->
+        <VBtn
+          :disabled="props.loading"
+          color="secondary"
+          variant="tonal"
+          size="x-small"
+          class="rounded-pill px-3 font-weight-medium"
+          @click="setDateHoy"
+        >
+          Hoy
+        </VBtn>
+
+        <!-- Botón Año Completo -->
+        <VBtn
+          :disabled="props.loading"
+          color="secondary"
+          variant="tonal"
+          size="x-small"
+          class="rounded-pill px-3 font-weight-medium"
+          @click="setDateAnoCompleto"
+        >
+          Todo {{ currentYear }}
+        </VBtn>
       </div>
     </template>
 
     <template #advanced-filters>
+      <!-- Selector Rápido en Filtros Avanzados -->
+      <VCol cols="12">
+        <!-- Vista Quincenas si CE está activo -->
+        <div v-if="props.isCeEnabled" class="d-flex flex-wrap align-center gap-1 mb-2">
+          <span class="text-caption font-weight-bold text-uppercase text-medium-emphasis me-2">
+            Quincenas {{ currentYear }}:
+          </span>
+          <VBtn
+            v-for="q in quincenasOfYear"
+            :key="q.key"
+            :disabled="props.loading"
+            :color="isQuincenaActive(q) ? 'primary' : 'secondary'"
+            :variant="isQuincenaActive(q) ? 'flat' : 'tonal'"
+            size="x-small"
+            class="rounded-pill font-weight-bold px-2"
+            @click="setQuincena(q)"
+          >
+            {{ q.shortTitle }}
+          </VBtn>
+        </div>
+
+        <!-- Vista Meses si CE está inactivo -->
+        <div v-else class="d-flex flex-wrap align-center gap-1 mb-2">
+          <span class="text-caption font-weight-bold text-uppercase text-medium-emphasis me-2">
+            Seleccionar Mes {{ currentYear }}:
+          </span>
+          <VBtn
+            v-for="m in monthsOfYear"
+            :key="m.index"
+            :disabled="props.loading"
+            :color="isMonthActive(m.index) ? 'primary' : 'secondary'"
+            :variant="isMonthActive(m.index) ? 'flat' : 'tonal'"
+            size="x-small"
+            class="rounded-pill font-weight-bold px-2.5"
+            @click="setSpecificMonth(m.index)"
+          >
+            {{ m.abbr }}
+          </VBtn>
+        </div>
+      </VCol>
+
       <!-- Fecha Desde -->
       <VCol cols="12" sm="6" md="4">
         <AppDateTimePicker

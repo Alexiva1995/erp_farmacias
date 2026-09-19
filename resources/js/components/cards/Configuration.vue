@@ -6,6 +6,7 @@ import { toast } from "@/plugins/sweetalert";
 const form = ref({
   fiscal_mode: 'demo',
   special_taxpayer_status: 'desactivada',
+  enable_ce: false,
   all_foreign_sales_spe: false,
   blind_cash_closure: false,
   tpv_mode: 'complete',
@@ -43,13 +44,14 @@ const fetchSettings = async () => {
   try {
     const response = await axios.get('/general-settings', {
       params: {
-        only: 'fiscal_mode,special_taxpayer_status,all_foreign_sales_spe,blind_cash_closure,tpv_mode'
+        only: 'fiscal_mode,special_taxpayer_status,enable_ce,all_foreign_sales_spe,blind_cash_closure,tpv_mode'
       }
     })
     const settings = response.data.data
     form.value = {
       fiscal_mode: settings.fiscal_mode ?? 'demo',
       special_taxpayer_status: settings.special_taxpayer_status ?? 'desactivada',
+      enable_ce: !!settings.enable_ce,
       all_foreign_sales_spe: !!settings.all_foreign_sales_spe,
       blind_cash_closure: !!settings.blind_cash_closure,
       tpv_mode: settings.tpv_mode ?? 'complete',
@@ -70,6 +72,7 @@ const updateSettings = async () => {
     await axios.post('/general-settings', {
       fiscal_mode: form.value.fiscal_mode,
       special_taxpayer_status: form.value.special_taxpayer_status,
+      enable_ce: form.value.enable_ce,
       all_foreign_sales_spe: form.value.all_foreign_sales_spe,
       blind_cash_closure: form.value.blind_cash_closure,
       tpv_mode: form.value.tpv_mode
@@ -270,6 +273,33 @@ onMounted(() => {
             <VSwitch
               v-model="form.blind_cash_closure"
               label="Habilitar Cierre de Caja Ciego (Ocultar montos teóricos a cajeros)"
+              class="mt-3"
+              color="primary"
+              hide-details
+              :disabled="isSaving"
+              @update:model-value="updateSettings"
+            />
+          </VCard>
+        </VCol>
+
+        <!-- CE -->
+        <VCol cols="12" md="6">
+          <VCard variant="outlined" class="h-100 pa-4 border-dashed">
+            <div class="d-flex align-start gap-3 mb-2">
+              <VAvatar color="success" variant="tonal" rounded>
+                <VIcon icon="tabler-shield-check" size="24" />
+              </VAvatar>
+              <div>
+                <VCardTitle class="text-subtitle-1 font-weight-bold px-0 py-0">CE</VCardTitle>
+                <p class="text-caption text-medium-emphasis mb-0">
+                  Activar o desactivar parámetro CE en el sistema.
+                </p>
+              </div>
+            </div>
+
+            <VSwitch
+              v-model="form.enable_ce"
+              label="Habilitar CE"
               class="mt-3"
               color="primary"
               hide-details
