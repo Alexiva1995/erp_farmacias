@@ -110,7 +110,7 @@ const submitForm = () => {
       <VCardTitle class="pa-0">
         <div class="header-gradient pa-4 d-flex align-center shadow-sm">
           <VAvatar color="white" variant="flat" size="40" class="me-3 elevation-1">
-            <VIcon icon="tabler-currency-dollar" color="success" size="24" />
+            <VIcon icon="tabler-currency-dollar" color="primary" size="24" />
           </VAvatar>
           <div class="d-flex flex-column leading-none text-white">
             <h2 class="text-h6 font-weight-black leading-tight mb-0 uppercase text-white">
@@ -125,25 +125,25 @@ const submitForm = () => {
         </div>
       </VCardTitle>
 
-      <VCardText class="pa-4 pa-sm-6 bg-light">
+      <VCardText class="pa-4 pa-sm-5 bg-light">
         <VForm @submit.prevent="submitForm">
           <!-- Resumen de estado actual del préstamo -->
-          <VCard variant="flat" class="pa-4 bg-white rounded-xl border shadow-sm mb-6">
+          <VCard variant="flat" class="pa-3 bg-white rounded-lg border shadow-sm mb-3">
             <VRow dense>
               <VCol cols="6">
-                <span class="text-super-xs font-weight-black text-disabled uppercase d-block mb-1">Saldo Restante</span>
+                <span class="text-super-xs font-weight-bold text-disabled uppercase d-block mb-1">Saldo Restante</span>
                 <span class="text-subtitle-1 font-weight-black text-error">
                   {{ formatCurrency(props.loan.remaining_balance) }}
                 </span>
               </VCol>
               <VCol cols="6" class="text-right">
-                <span class="text-super-xs font-weight-black text-disabled uppercase d-block mb-1">Cuota Mensual</span>
+                <span class="text-super-xs font-weight-bold text-disabled uppercase d-block mb-1">Cuota Mensual</span>
                 <span class="text-subtitle-1 font-weight-black text-primary">
                   {{ formatCurrency(props.loan.monthly_payment) }}
                 </span>
               </VCol>
             </VRow>
-            <VDivider class="my-3 border-dashed" />
+            <VDivider class="my-2 border-dashed" />
             <div class="d-flex justify-space-between text-xs text-disabled font-weight-medium">
               <span>Inició: {{ formatDate(props.loan.loan_date) }}</span>
               <span>Cuotas: {{ props.loan.total_installments }}</span>
@@ -151,15 +151,15 @@ const submitForm = () => {
           </VCard>
 
           <!-- Formulario -->
-          <div class="d-flex align-center gap-2 mb-3">
-            <div class="header-indicator success shadow-sm" />
-            <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Detalles del Pago</span>
+          <div class="d-flex align-center gap-2 mb-2">
+            <div class="header-indicator primary shadow-sm" />
+            <span class="text-subtitle-2 font-weight-bold text-high-emphasis uppercase letter-spacing-1">Detalles del Pago</span>
           </div>
 
-          <VCard variant="flat" class="pa-4 bg-white rounded-xl border shadow-sm">
-            <VRow>
+          <VCard variant="flat" class="pa-3 bg-white rounded-lg border shadow-sm">
+            <VRow dense>
               <VCol cols="12">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Monto del Abono</span>
+                <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Monto del Abono</span>
                 <VTextField
                   v-model.number="formData.amount"
                   type="number"
@@ -167,41 +167,40 @@ const submitForm = () => {
                   min="0.01"
                   :max="props.loan.remaining_balance"
                   prefix="$"
-                  prepend-inner-icon="tabler-currency-dollar"
-                  placeholder="Monto"
+                  placeholder="0.00"
                   variant="outlined"
-                  density="comfortable"
+                  density="compact"
                   hide-details="auto"
-                  class="rounded-lg font-weight-black text-success"
+                  class="rounded-lg font-weight-bold"
                   :error-messages="formErrors.amount"
                 />
               </VCol>
 
               <VCol cols="12">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Fecha de Pago</span>
+                <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Fecha de Pago</span>
                 <AppDateTimePicker
                   v-model="formData.payment_date"
                   placeholder="Seleccionar fecha..."
                   prepend-inner-icon="tabler-calendar"
                   variant="outlined"
-                  density="comfortable"
+                  density="compact"
                   hide-details="auto"
-                  class="rounded-lg font-weight-black"
+                  class="rounded-lg font-weight-bold"
                   :error-messages="formErrors.payment_date"
                   :config="{ altInput: true, altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
                 />
               </VCol>
 
               <VCol cols="12">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Método de Pago / Cuenta</span>
+                <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Método de Pago / Cuenta</span>
                 <VSelect
                   v-model="formData.account"
                   :items="paymentMethods"
                   prepend-inner-icon="tabler-wallet"
                   variant="outlined"
-                  density="comfortable"
+                  density="compact"
                   hide-details="auto"
-                  class="rounded-lg font-weight-black"
+                  class="rounded-lg font-weight-bold"
                   :error-messages="formErrors.account"
                 />
               </VCol>
@@ -212,13 +211,13 @@ const submitForm = () => {
 
       <VDivider />
 
-      <VCardActions class="pa-4 pa-sm-6 bg-white border-t">
+      <VCardActions class="pa-3 bg-white border-t px-4">
         <VRow dense class="w-100 ma-0">
           <VCol cols="6" class="pa-1">
             <VBtn
               color="secondary"
               variant="outlined"
-              height="50"
+              height="44"
               block
               class="font-weight-black rounded-lg uppercase"
               :disabled="props.submitting"
@@ -229,11 +228,11 @@ const submitForm = () => {
           </VCol>
           <VCol cols="6" class="pa-1">
             <VBtn
-              color="success"
+              color="primary"
               variant="flat"
-              height="50"
+              height="44"
               block
-              class="font-weight-black rounded-lg shadow-success uppercase"
+              class="font-weight-black rounded-lg shadow-primary uppercase"
               :loading="props.submitting"
               :disabled="!formData.amount || !formData.payment_date || !formData.account || props.submitting"
               @click="submitForm"
@@ -250,7 +249,7 @@ const submitForm = () => {
 
 <style scoped>
 .header-gradient {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+  background: var(--brand-gradient) !important;
 }
 
 .detail-dialog-card {
@@ -263,10 +262,10 @@ const submitForm = () => {
   border-radius: 10px;
 }
 
-.header-indicator.success { background-color: rgb(var(--v-theme-success)); }
+.header-indicator.primary { background-color: rgb(var(--v-theme-primary)); }
 
-.shadow-success {
-  box-shadow: 0 4px 14px 0 rgba(var(--v-theme-success), 0.39) !important;
+.shadow-primary {
+  box-shadow: 0 4px 14px 0 rgba(var(--v-theme-primary), 0.39) !important;
 }
 
 .text-super-xs {
