@@ -17,11 +17,11 @@ const { mobile } = useDisplay();
 const headers = [
   { title: "ID", key: "id", sortable: true },
   { title: "Préstamo", key: "loan_date", sortable: true, width: "15%" },
-  { title: "C. Mensual", key: "monthly_payment", sortable: true },
-  { title: "Cuotas", key: "total_installments", sortable: true },
-  { title: "Monto Total", key: "total_amount", sortable: true },
-  { title: "Saldo Pendiente", key: "remaining_balance", sortable: true },
-  { title: "Estado", key: "status", sortable: false },
+  { title: "C. Mensual", key: "monthly_payment", sortable: true, align: "end" },
+  { title: "Cuotas", key: "total_installments", sortable: true, align: "center" },
+  { title: "Monto Total", key: "total_amount", sortable: true, align: "end" },
+  { title: "Saldo Pendiente", key: "remaining_balance", sortable: true, align: "end" },
+  { title: "Estado", key: "status", sortable: false, align: "center" },
   { title: "Acciones", key: "actions", sortable: false, align: "center" },
 ];
 
@@ -76,38 +76,28 @@ const formatDate = (dateString) => {
       </template>
 
       <template #item.loan_date="{ item }">
-        <div class="d-flex align-center gap-3 py-2">
-          <VAvatar
-            color="purple"
-            variant="tonal"
-            rounded
-            size="36"
-            class="rounded-lg"
+        <div class="d-flex flex-column py-2">
+          <span
+            class="text-body-2 font-weight-bold text-high-emphasis leading-tight"
           >
-            <VIcon icon="tabler-calendar-dollar" size="18" />
-          </VAvatar>
-          <div class="d-flex flex-column">
-            <span
-              class="text-body-2 font-weight-bold text-high-emphasis leading-tight"
-            >
-              {{ formatDate(item.loan_date) }}
-            </span>
-            <span class="text-xs text-disabled">
-              Inició hace {{ item.months_passed }} meses
-            </span>
-          </div>
+            {{ formatDate(item.loan_date) }}
+          </span>
+          <span class="text-xs text-disabled">
+            Inició hace {{ item.months_passed }} meses
+          </span>
         </div>
       </template>
 
       <template #item.monthly_payment="{ item }">
-        <span class="text-body-2 font-weight-semibold text-primary">{{
-          formatCurrency(item.monthly_payment)
-        }}</span>
+        <div class="text-end">
+          <span class="text-body-2 font-weight-bold text-high-emphasis">{{
+            formatCurrency(item.monthly_payment)
+          }}</span>
+        </div>
       </template>
 
       <template #item.total_installments="{ item }">
-        <div class="d-flex align-center gap-2">
-          <VIcon icon="tabler-hash" size="14" color="disabled" />
+        <div class="d-flex align-center justify-center gap-1">
           <span class="text-body-2 font-weight-medium"
             >{{ item.total_installments }} cuotas</span
           >
@@ -115,14 +105,16 @@ const formatDate = (dateString) => {
       </template>
 
       <template #item.total_amount="{ item }">
-        <span class="text-body-2 font-weight-medium">{{
-          formatCurrency(item.total_amount)
-        }}</span>
+        <div class="text-end">
+          <span class="text-body-2 font-weight-bold text-high-emphasis">{{
+            formatCurrency(item.total_amount)
+          }}</span>
+        </div>
       </template>
 
       <template #item.remaining_balance="{ item }">
-        <div class="d-flex flex-column" style="min-inline-size: 140px">
-          <div class="d-flex justify-space-between align-center mb-1">
+        <div class="d-flex flex-column align-end text-end ms-auto" style="min-inline-size: 130px">
+          <div class="d-flex justify-space-between align-center w-100 mb-1">
             <span class="text-body-2 font-weight-black">{{
               formatCurrency(item.remaining_balance)
             }}</span>
@@ -135,7 +127,7 @@ const formatDate = (dateString) => {
             :color="item.status.color"
             height="6"
             rounded
-            class="rounded-pill"
+            class="rounded-pill w-100"
           />
           <span class="text-xs text-disabled mt-1 font-weight-medium">
             {{ item.remaining_months }} meses rest.
@@ -158,13 +150,13 @@ const formatDate = (dateString) => {
       </template>
 
       <template #item.actions="{ item }">
-        <div class="d-flex justify-center gap-2">
+        <div class="d-flex justify-center gap-1">
           <VBtn
-            icon
+            icon="tabler-edit"
             size="32"
-            variant="tonal"
+            variant="text"
             color="warning"
-            class="rounded-circle shadow-sm"
+            class="rounded-lg"
             @click="emit('edit-loan', item)"
           >
             <VIcon icon="tabler-edit" size="18" />
@@ -173,11 +165,11 @@ const formatDate = (dateString) => {
 
           <VBtn
             v-if="item.remaining_balance > 0"
-            icon
+            icon="tabler-currency-dollar"
             size="32"
-            variant="tonal"
+            variant="text"
             color="success"
-            class="rounded-circle shadow-sm"
+            class="rounded-lg"
             @click="emit('add-payment', item)"
           >
             <VIcon icon="tabler-currency-dollar" size="18" />
@@ -185,11 +177,11 @@ const formatDate = (dateString) => {
           </VBtn>
 
           <VBtn
-            icon
+            icon="tabler-trash"
             size="32"
-            variant="tonal"
+            variant="text"
             color="error"
-            class="rounded-circle shadow-sm"
+            class="rounded-lg"
             @click="emit('delete-loan', item.id)"
           >
             <VIcon icon="tabler-trash" size="18" />

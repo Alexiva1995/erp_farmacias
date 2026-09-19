@@ -179,61 +179,60 @@ const submitForm = () => {
         </div>
       </VCardTitle>
 
-      <VCardText class="pa-4 pa-sm-6 bg-light">
+      <VCardText class="pa-4 pa-sm-5 bg-light">
         <VForm @submit.prevent="submitForm">
           <!-- Sección: Detalles del Préstamo -->
-          <div class="d-flex align-center gap-2 mb-3">
+          <div class="d-flex align-center gap-2 mb-2">
             <div class="header-indicator primary shadow-sm" />
-            <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Detalles del Préstamo</span>
+            <span class="text-subtitle-2 font-weight-bold text-high-emphasis uppercase letter-spacing-1">Detalles del Préstamo</span>
           </div>
 
-          <VCard variant="flat" class="pa-4 bg-white rounded-xl border shadow-sm mb-6">
-            <VRow>
+          <VCard variant="flat" class="pa-3 bg-white rounded-lg border shadow-sm mb-3">
+            <VRow dense>
               <VCol cols="12">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Fecha de Inicio</span>
+                <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Fecha de Inicio</span>
                 <AppDateTimePicker
                   v-model="formData.loan_date"
                   placeholder="Seleccionar fecha..."
                   prepend-inner-icon="tabler-calendar"
                   variant="outlined"
-                  density="comfortable"
+                  density="compact"
                   hide-details="auto"
-                  class="rounded-lg font-weight-black"
+                  class="rounded-lg font-weight-bold"
                   :error-messages="formErrors.loan_date"
                   :config="{ altInput: true, altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
                 />
               </VCol>
 
               <VCol cols="12" md="6">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Cuota Mensual</span>
+                <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Cuota Mensual</span>
                 <VTextField
                   v-model.number="formData.monthly_payment"
                   type="number"
                   step="0.01"
                   min="0"
                   prefix="$"
-                  prepend-inner-icon="tabler-currency-dollar"
                   placeholder="Ej: 500.00"
                   variant="outlined"
-                  density="comfortable"
+                  density="compact"
                   hide-details="auto"
-                  class="rounded-lg font-weight-black"
+                  class="rounded-lg font-weight-bold"
                   :error-messages="formErrors.monthly_payment"
                 />
               </VCol>
 
               <VCol cols="12" md="6">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Cantidad de Cuotas</span>
+                <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Cantidad de Cuotas</span>
                 <VTextField
                   v-model.number="formData.total_installments"
                   type="number"
                   min="1"
-                  prepend-inner-icon="tabler-hash"
-                  placeholder="Ej: 36, 48, 60..."
+                  prefix="#"
+                  placeholder="Ej: 12, 24, 36..."
                   variant="outlined"
-                  density="comfortable"
+                  density="compact"
                   hide-details="auto"
-                  class="rounded-lg font-weight-black"
+                  class="rounded-lg font-weight-bold"
                   :error-messages="formErrors.total_installments"
                 />
               </VCol>
@@ -242,68 +241,68 @@ const submitForm = () => {
 
           <!-- Sección: Resumen Financiero -->
           <template v-if="formData.monthly_payment && formData.total_installments">
-            <div class="d-flex align-center gap-2 mb-3">
+            <div class="d-flex align-center gap-2 mb-2">
               <div class="header-indicator secondary shadow-sm" />
-              <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Resumen Financiero</span>
+              <span class="text-subtitle-2 font-weight-bold text-high-emphasis uppercase letter-spacing-1">Resumen Financiero</span>
             </div>
 
-            <VCard variant="flat" class="pa-4 bg-white rounded-xl border shadow-sm">
+            <VCard variant="flat" class="pa-3 bg-white rounded-lg border shadow-sm">
               <!-- Montos principales -->
-              <VRow class="mb-4">
+              <VRow dense class="mb-2">
                 <VCol cols="6">
-                  <div class="pa-3 bg-light rounded-xl border-dashed-2 text-center">
-                    <span class="text-super-xs font-weight-black text-disabled uppercase d-block mb-1 letter-spacing-1">Monto Total</span>
-                    <div class="text-h6 font-weight-black text-primary">{{ formatCurrency(calculateTotalAmount) }}</div>
+                  <div class="pa-2 bg-grey-50 rounded-lg border text-center">
+                    <span class="text-super-xs font-weight-bold text-disabled uppercase d-block mb-1 letter-spacing-1">Monto Total</span>
+                    <div class="text-subtitle-1 font-weight-black text-primary">{{ formatCurrency(calculateTotalAmount) }}</div>
                   </div>
                 </VCol>
                 <VCol cols="6">
-                  <div class="pa-3 bg-light rounded-xl border-dashed-2 text-center">
-                    <span class="text-super-xs font-weight-black text-disabled uppercase d-block mb-1 letter-spacing-1">Saldo Pendiente</span>
-                    <div :class="`text-h6 font-weight-black text-${loanStatus.color}`">
+                  <div class="pa-2 bg-grey-50 rounded-lg border text-center">
+                    <span class="text-super-xs font-weight-bold text-disabled uppercase d-block mb-1 letter-spacing-1">Saldo Pendiente</span>
+                    <div :class="`text-subtitle-1 font-weight-black text-${loanStatus.color}`">
                       {{ formatCurrency(calculateRemainingBalance) }}
                     </div>
                   </div>
                 </VCol>
               </VRow>
 
-              <VDivider class="mb-4" />
+              <VDivider class="my-2" />
 
               <!-- Métricas de cuotas -->
-              <VRow class="text-center mb-4">
+              <VRow dense class="text-center mb-2 align-center">
                 <VCol cols="3">
-                  <div class="text-super-xs text-disabled uppercase font-weight-black letter-spacing-1 mb-1">Mensual</div>
-                  <div class="text-subtitle-2 font-weight-black">{{ formatCurrency(formData.monthly_payment) }}</div>
+                  <div class="text-super-xs text-disabled uppercase font-weight-bold letter-spacing-1">Mensual</div>
+                  <div class="text-body-2 font-weight-black">{{ formatCurrency(formData.monthly_payment) }}</div>
                 </VCol>
                 <VCol cols="3">
-                  <div class="text-super-xs text-disabled uppercase font-weight-black letter-spacing-1 mb-1">Pagadas</div>
-                  <div class="text-subtitle-2 font-weight-black text-success">{{ Math.min(loanInfo.monthsPassed, formData.total_installments) }}</div>
+                  <div class="text-super-xs text-disabled uppercase font-weight-bold letter-spacing-1">Pagadas</div>
+                  <div class="text-body-2 font-weight-black text-success">{{ Math.min(loanInfo.monthsPassed, formData.total_installments) }}</div>
                 </VCol>
                 <VCol cols="3">
-                  <div class="text-super-xs text-disabled uppercase font-weight-black letter-spacing-1 mb-1">Restan</div>
-                  <div class="text-subtitle-2 font-weight-black text-warning">{{ loanInfo.remainingMonths }}</div>
+                  <div class="text-super-xs text-disabled uppercase font-weight-bold letter-spacing-1">Restan</div>
+                  <div class="text-body-2 font-weight-black text-warning">{{ loanInfo.remainingMonths }}</div>
                 </VCol>
                 <VCol cols="3">
-                  <div class="text-super-xs text-disabled uppercase font-weight-black letter-spacing-1 mb-1">Estado</div>
-                  <VChip :color="loanStatus.color" size="small" class="font-weight-black rounded-lg shadow-sm">
+                  <div class="text-super-xs text-disabled uppercase font-weight-bold letter-spacing-1 mb-1">Estado</div>
+                  <VChip :color="loanStatus.color" size="x-small" class="font-weight-bold rounded-lg shadow-sm">
                     {{ loanStatus.text }}
                   </VChip>
                 </VCol>
               </VRow>
 
               <!-- Barra de progreso -->
-              <div v-if="formData.loan_date" class="pa-3 bg-light rounded-xl border-dashed-2">
-                <div class="d-flex justify-space-between align-center mb-2">
-                  <span class="text-super-xs font-weight-black text-disabled uppercase letter-spacing-1">Progreso de Pago</span>
+              <div v-if="formData.loan_date" class="pa-2 bg-grey-50 rounded-lg border">
+                <div class="d-flex justify-space-between align-center mb-1">
+                  <span class="text-super-xs font-weight-bold text-disabled uppercase letter-spacing-1">Progreso de Pago</span>
                   <span class="text-xs font-weight-black text-primary">{{ loanInfo.progressPercentage.toFixed(1) }}%</span>
                 </div>
                 <VProgressLinear
                   :model-value="loanInfo.progressPercentage"
                   :color="loanStatus.color"
-                  height="10"
+                  height="8"
                   rounded
                   class="rounded-pill mb-1"
                 />
-                <div class="d-flex justify-space-between text-super-xs font-weight-black text-disabled">
+                <div class="d-flex justify-space-between text-super-xs font-weight-bold text-disabled">
                   <span>INICIO</span>
                   <span>FINAL ({{ formData.total_installments }} CUOTAS)</span>
                 </div>
@@ -315,13 +314,13 @@ const submitForm = () => {
 
       <VDivider />
 
-      <VCardActions class="pa-4 pa-sm-6 bg-white border-t">
+      <VCardActions class="pa-3 bg-white border-t px-4">
         <VRow dense class="w-100 ma-0">
           <VCol cols="6" class="pa-1">
             <VBtn
               color="secondary"
               variant="outlined"
-              height="50"
+              height="44"
               block
               class="font-weight-black rounded-lg uppercase"
               :disabled="props.submitting"
@@ -334,7 +333,7 @@ const submitForm = () => {
             <VBtn
               color="primary"
               variant="flat"
-              height="50"
+              height="44"
               block
               class="font-weight-black rounded-lg shadow-primary uppercase"
               :loading="props.submitting"
