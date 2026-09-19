@@ -156,51 +156,50 @@ const submitForm = () => {
         </div>
       </VCardTitle>
 
-      <VCardText class="pa-4 pa-sm-6 bg-light">
+      <VCardText class="pa-4 pa-sm-5 bg-light">
         <VForm @submit.prevent="submitForm">
           <!-- Sección: Información Básica -->
-          <div class="d-flex align-center gap-2 mb-3">
+          <div class="d-flex align-center gap-2 mb-2">
             <div class="header-indicator primary shadow-sm" />
-            <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Información Básica</span>
+            <span class="text-subtitle-2 font-weight-bold text-high-emphasis uppercase letter-spacing-1">Información Básica</span>
           </div>
 
-          <VCard variant="flat" class="pa-4 bg-white rounded-xl border shadow-sm mb-6">
-            <VRow>
+          <VCard variant="flat" class="pa-3 bg-white rounded-lg border shadow-sm mb-3">
+            <VRow dense>
               <VCol cols="12">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Nombre del Activo</span>
+                <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Nombre del Activo</span>
                 <VTextField
                   v-model="formData.name"
                   placeholder="Ej: Escritorio ejecutivo, Silla ergonómica..."
                   prepend-inner-icon="tabler-tag"
                   variant="outlined"
-                  density="comfortable"
+                  density="compact"
                   hide-details="auto"
-                  class="rounded-lg font-weight-black"
+                  class="rounded-lg font-weight-bold"
                   :disabled="props.loading"
                   :error-messages="formErrors.name"
                 />
               </VCol>
 
               <VCol cols="12" md="6">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Costo de Adquisición</span>
+                <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Costo de Adquisición</span>
                 <VTextField
                   v-model.number="formData.cost"
                   type="number"
                   step="0.01"
                   min="0"
                   prefix="$"
-                  prepend-inner-icon="tabler-currency-dollar"
                   variant="outlined"
-                  density="comfortable"
+                  density="compact"
                   hide-details="auto"
-                  class="rounded-lg font-weight-black"
+                  class="rounded-lg font-weight-bold"
                   :disabled="props.loading"
                   :error-messages="formErrors.cost"
                 />
               </VCol>
 
               <VCol cols="12" md="6">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Año de Adquisición</span>
+                <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Año de Adquisición</span>
                 <VSelect
                   v-model="formData.acquisition_year"
                   :items="props.acquisitionYears"
@@ -208,16 +207,16 @@ const submitForm = () => {
                   item-value="value"
                   prepend-inner-icon="tabler-calendar"
                   variant="outlined"
-                  density="comfortable"
+                  density="compact"
                   hide-details="auto"
-                  class="rounded-lg font-weight-black"
+                  class="rounded-lg font-weight-bold"
                   :disabled="props.loading"
                   :error-messages="formErrors.acquisition_year"
                 />
               </VCol>
 
               <VCol cols="12">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Tasa de Depreciación Anual</span>
+                <span class="text-super-xs font-weight-bold text-disabled uppercase mb-1 d-block">Tasa de Depreciación Anual</span>
                 <VTextField
                   v-model.number="formData.annual_depreciation_rate"
                   type="number"
@@ -228,15 +227,15 @@ const submitForm = () => {
                   prepend-inner-icon="tabler-trending-down"
                   placeholder="Ej: 10, 15.5, 20..."
                   variant="outlined"
-                  density="comfortable"
+                  density="compact"
                   hide-details="auto"
-                  class="rounded-lg font-weight-black"
+                  class="rounded-lg font-weight-bold"
                   :disabled="props.loading"
                   :error-messages="formErrors.annual_depreciation_rate"
                 />
-                <div class="text-super-xs text-disabled mt-2 d-flex align-center gap-1">
-                  <VIcon icon="tabler-help-circle" size="14" />
-                  Referencia: Mobiliario (10-20%), Equipos (25-33%)
+                <div class="text-super-xs text-disabled mt-1 d-flex align-center gap-1">
+                  <VIcon icon="tabler-help-circle" size="13" />
+                  Referencia sugerida: Mobiliario (10-20%), Equipos de computación (25-33%)
                 </div>
               </VCol>
             </VRow>
@@ -244,57 +243,57 @@ const submitForm = () => {
 
           <!-- Sección: Resumen de Valoración -->
           <template v-if="formData.cost && formData.acquisition_year && formData.annual_depreciation_rate">
-            <div class="d-flex align-center gap-2 mb-3">
+            <div class="d-flex align-center gap-2 mb-2">
               <div class="header-indicator secondary shadow-sm" />
-              <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Resumen de Valoración</span>
+              <span class="text-subtitle-2 font-weight-bold text-high-emphasis uppercase letter-spacing-1">Resumen de Valoración</span>
             </div>
 
-            <VCard variant="flat" class="pa-4 bg-white rounded-xl border shadow-sm">
-              <VRow class="mb-4">
+            <VCard variant="flat" class="pa-3 bg-white rounded-lg border shadow-sm">
+              <VRow dense class="mb-2">
                 <VCol cols="6">
-                  <div class="pa-3 bg-light rounded-xl border-dashed-2 text-center">
-                    <span class="text-super-xs font-weight-black text-disabled uppercase d-block mb-1 letter-spacing-1">Costo Original</span>
-                    <div class="text-h6 font-weight-black text-high-emphasis">{{ formatCurrency(formData.cost) }}</div>
+                  <div class="pa-2 bg-grey-50 rounded-lg border text-center">
+                    <span class="text-super-xs font-weight-bold text-disabled uppercase d-block mb-1 letter-spacing-1">Costo Original</span>
+                    <div class="text-subtitle-1 font-weight-black text-high-emphasis">{{ formatCurrency(formData.cost) }}</div>
                   </div>
                 </VCol>
                 <VCol cols="6">
-                  <div class="pa-3 bg-light rounded-xl border-dashed-2 text-center">
-                    <span class="text-super-xs font-weight-black text-disabled uppercase d-block mb-1 letter-spacing-1">Valor Actual</span>
-                    <div :class="`text-h6 font-weight-black text-${depreciationStatus.color}`">
+                  <div class="pa-2 bg-grey-50 rounded-lg border text-center">
+                    <span class="text-super-xs font-weight-bold text-disabled uppercase d-block mb-1 letter-spacing-1">Valor Actual</span>
+                    <div :class="`text-subtitle-1 font-weight-black text-${depreciationStatus.color}`">
                       {{ formatCurrency(calculateCurrentValue) }}
                     </div>
                   </div>
                 </VCol>
               </VRow>
 
-              <VDivider class="mb-4" />
+              <VDivider class="my-2" />
 
-              <VRow class="text-center mb-4">
+              <VRow dense class="text-center mb-2 align-center">
                 <VCol cols="4">
-                  <div class="text-super-xs text-disabled uppercase font-weight-black letter-spacing-1 mb-1">Años de Uso</div>
-                  <div class="text-subtitle-1 font-weight-black">{{ new Date().getFullYear() - formData.acquisition_year }}</div>
+                  <div class="text-super-xs text-disabled uppercase font-weight-bold letter-spacing-1">Años de Uso</div>
+                  <div class="text-body-2 font-weight-black">{{ new Date().getFullYear() - formData.acquisition_year }} años</div>
                 </VCol>
                 <VCol cols="4">
-                  <div class="text-super-xs text-disabled uppercase font-weight-black letter-spacing-1 mb-1">Depreciación</div>
-                  <div class="text-subtitle-1 font-weight-black text-error">{{ depreciationInfo.percentage.toFixed(1) }}%</div>
+                  <div class="text-super-xs text-disabled uppercase font-weight-bold letter-spacing-1">Depreciación Acum.</div>
+                  <div class="text-body-2 font-weight-black text-error">{{ depreciationInfo.percentage.toFixed(1) }}%</div>
                 </VCol>
                 <VCol cols="4">
-                  <div class="text-super-xs text-disabled uppercase font-weight-black letter-spacing-1 mb-1">Estado</div>
-                  <VChip :color="depreciationStatus.color" size="small" class="font-weight-black rounded-lg shadow-sm">
+                  <div class="text-super-xs text-disabled uppercase font-weight-bold letter-spacing-1 mb-1">Estado</div>
+                  <VChip :color="depreciationStatus.color" size="x-small" class="font-weight-bold rounded-lg shadow-sm">
                     {{ depreciationStatus.text }}
                   </VChip>
                 </VCol>
               </VRow>
 
-              <div class="pa-3 bg-light rounded-xl border-dashed-2">
+              <div class="pa-2 bg-grey-50 rounded-lg border">
                 <VProgressLinear
                   :model-value="depreciationInfo.percentage"
                   :color="depreciationStatus.color"
-                  height="10"
+                  height="8"
                   rounded
                   class="rounded-pill mb-1"
                 />
-                <div class="d-flex justify-space-between text-super-xs font-weight-black text-disabled">
+                <div class="d-flex justify-space-between text-super-xs font-weight-bold text-disabled">
                   <span>INICIO</span>
                   <span>FINAL</span>
                 </div>
@@ -306,13 +305,13 @@ const submitForm = () => {
 
       <VDivider />
 
-      <VCardActions class="pa-4 pa-sm-6 bg-white border-t">
+      <VCardActions class="pa-3 bg-white border-t px-4">
         <VRow dense class="w-100 ma-0">
           <VCol cols="6" class="pa-1">
             <VBtn
               color="secondary"
               variant="outlined"
-              height="50"
+              height="44"
               block
               class="font-weight-black rounded-lg uppercase"
               :disabled="props.loading"
@@ -325,7 +324,7 @@ const submitForm = () => {
             <VBtn
               color="primary"
               variant="flat"
-              height="50"
+              height="44"
               block
               class="font-weight-black rounded-lg shadow-primary uppercase"
               :loading="props.loading"

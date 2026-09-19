@@ -20,11 +20,11 @@ const { mobile } = useDisplay();
 const headers = [
   { title: "ID", key: "id", sortable: true },
   { title: "Nombre", key: "name", sortable: true, width: "35%" },
-  { title: "Adquisición", key: "acquisition_year", sortable: true },
-  { title: "Costo Original", key: "cost", sortable: true },
-  { title: "Depreciación", key: "annual_depreciation_rate", sortable: true },
-  { title: "Valor Actual", key: "current_value", sortable: true },
-  { title: "Estado", key: "status", sortable: false },
+  { title: "Adquisición", key: "acquisition_year", sortable: true, align: "center" },
+  { title: "Costo Original", key: "cost", sortable: true, align: "end" },
+  { title: "Depreciación", key: "annual_depreciation_rate", sortable: true, align: "center" },
+  { title: "Valor Actual", key: "current_value", sortable: true, align: "end" },
+  { title: "Estado", key: "status", sortable: false, align: "center" },
   { title: "Acciones", key: "actions", sortable: false, align: "center" },
 ];
 
@@ -90,38 +90,25 @@ const formatDepreciation = (rate) => {
       </template>
 
       <template #item.name="{ item }">
-        <div class="d-flex align-center gap-3 py-2">
-          <VAvatar color="primary" variant="tonal" rounded size="36" class="rounded-lg">
-            <VIcon icon="tabler-sofa" size="18" />
-          </VAvatar>
-          <div class="d-flex flex-column">
-            <span class="text-sm font-weight-bold text-high-emphasis leading-tight">
-              {{ item.name }}
-            </span>
-          </div>
+        <div class="py-2">
+          <span class="text-sm font-weight-bold text-high-emphasis">
+            {{ item.name }}
+          </span>
         </div>
       </template>
 
       <template #item.acquisition_year="{ item }">
-        <div class="d-flex flex-column align-center">
-          <span class="text-sm font-weight-medium">{{ item.acquisition_year }}</span>
-          <VChip
-            :color="getAgeStatus(item.acquisition_year).color"
-            variant="tonal"
-            size="x-small"
-            class="mt-1 font-weight-bold rounded-lg"
-          >
-            {{ getAgeStatus(item.acquisition_year).text }}
-          </VChip>
-        </div>
+        <span class="text-sm font-weight-medium">{{ item.acquisition_year }}</span>
       </template>
 
       <template #item.cost="{ item }">
-        <span class="text-sm font-weight-semibold">{{ formatPrice(item.cost) }}</span>
+        <div class="text-end">
+          <span class="text-sm font-weight-bold text-high-emphasis">{{ formatPrice(item.cost) }}</span>
+        </div>
       </template>
 
       <template #item.annual_depreciation_rate="{ item }">
-        <div class="d-flex align-center gap-2">
+        <div class="d-flex align-center justify-center gap-1">
           <VIcon
             :icon="item.annual_depreciation_rate > 15 ? 'tabler-trending-down' : 'tabler-trending-up'"
             :color="item.annual_depreciation_rate > 15 ? 'error' : 'success'"
@@ -132,8 +119,8 @@ const formatDepreciation = (rate) => {
       </template>
 
       <template #item.current_value="{ item }">
-        <div class="d-flex flex-column">
-          <span class="text-sm font-weight-bold text-primary">
+        <div class="d-flex flex-column align-end text-end">
+          <span class="text-sm font-weight-black text-high-emphasis">
             {{ formatPrice(item.current_value) }}
           </span>
           <span class="text-xs text-disabled font-weight-medium">
@@ -157,13 +144,13 @@ const formatDepreciation = (rate) => {
       </template>
 
       <template #item.actions="{ item }">
-        <div class="d-flex justify-center gap-2">
+        <div class="d-flex justify-center gap-1">
           <VBtn
-            icon
+            icon="tabler-edit"
             size="32"
-            variant="tonal"
+            variant="text"
             color="warning"
-            class="rounded-circle shadow-sm"
+            class="rounded-lg"
             @click="emit('edit-furniture', item)"
           >
             <VIcon icon="tabler-edit" size="18" />
@@ -171,11 +158,11 @@ const formatDepreciation = (rate) => {
           </VBtn>
 
           <VBtn
-            icon
+            icon="tabler-trash"
             size="32"
-            variant="tonal"
+            variant="text"
             color="error"
-            class="rounded-circle shadow-sm"
+            class="rounded-lg"
             @click="emit('delete-furniture', item.id)"
           >
             <VIcon icon="tabler-trash" size="18" />
