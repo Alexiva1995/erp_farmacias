@@ -38,11 +38,12 @@ defineProps({
       </VCardTitle>
     </VCardItem>
     <VDivider />
-    <VRow no-gutters class="flex-grow-1">
-      <VCol cols="12" sm="5" class="pa-2 pa-sm-4 d-flex align-center justify-center">
+    <VRow no-gutters class="flex-grow-1 flex-column flex-sm-row">
+      <VCol cols="12" sm="5" class="pa-2 d-flex align-center justify-center">
         <VueApexCharts
           v-if="isMounted"
           type="donut"
+          width="100%"
           :height="donutHeight"
           :options="chartOptions.donut"
           :series="donutSeries"

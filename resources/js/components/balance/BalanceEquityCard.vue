@@ -44,39 +44,38 @@ defineProps({
 
         <!-- Subtítulo de Ecuación Contable -->
         <div class="text-super-xs font-weight-black text-disabled text-uppercase px-2 mb-1">
-          Ecuación Patrimonial (Activo = Pasivo + Patrimonio)
+          Cálculo y Cuadre de Balance
         </div>
         
+        <!-- Fórmula 1: Cómo se determina el Patrimonio: Activos Netos - Pasivos -->
         <VListItem class="rounded-lg px-2">
           <template #prepend>
-            <VIcon icon="tabler-plus" size="16" color="error" class="me-3" />
+            <VIcon icon="tabler-plus" size="16" color="success" class="me-3" />
           </template>
-          <VListItemTitle class="text-caption font-weight-medium">Total Pasivos</VListItemTitle>
+          <VListItemTitle class="text-caption font-weight-medium">Total Activos Netos</VListItemTitle>
+          <template #append>
+            <span class="text-caption font-weight-bold text-success">{{ formatCurrency(balance.assets.total_neto) }}</span>
+          </template>
+        </VListItem>
+
+        <VListItem class="rounded-lg px-2">
+          <template #prepend>
+            <VIcon icon="tabler-minus" size="16" color="error" class="me-3" />
+          </template>
+          <VListItemTitle class="text-caption font-weight-medium">(-) Total Pasivos</VListItemTitle>
           <template #append>
             <span class="text-caption font-weight-bold text-error">{{ formatCurrency(balance.liabilities.total) }}</span>
           </template>
         </VListItem>
 
-        <VListItem class="rounded-lg px-2">
-          <template #prepend>
-            <VIcon icon="tabler-plus" size="16" color="primary" class="me-3" />
-          </template>
-          <VListItemTitle class="text-caption font-weight-medium">Patrimonio Neto</VListItemTitle>
-          <template #append>
-            <span class="text-caption font-weight-bold" :class="balance.equity >= 0 ? 'text-primary' : 'text-error'">
-              {{ formatCurrency(balance.equity) }}
-            </span>
-          </template>
-        </VListItem>
-
         <VListItem class="rounded-lg px-2 bg-grey-50">
           <template #prepend>
-            <VIcon icon="tabler-equal" size="16" color="success" class="me-3" />
+            <VIcon icon="tabler-equal" size="16" color="primary" class="me-3" />
           </template>
-          <VListItemTitle class="text-caption font-weight-bold text-high-emphasis">Pasivo + Patrimonio</VListItemTitle>
+          <VListItemTitle class="text-caption font-weight-bold text-high-emphasis">Patrimonio Neto (Activo - Pasivo)</VListItemTitle>
           <template #append>
-            <span class="text-caption font-weight-black text-success">
-              {{ formatCurrency(Number(balance.liabilities.total || 0) + Number(balance.equity || 0)) }}
+            <span class="text-caption font-weight-black" :class="balance.equity >= 0 ? 'text-primary' : 'text-error'">
+              {{ formatCurrency(balance.equity) }}
             </span>
           </template>
         </VListItem>

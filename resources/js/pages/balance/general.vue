@@ -31,20 +31,20 @@ const chartOptions = computed(() => {
       plotOptions: {
         pie: {
           donut: {
-            size: "70%",
+            size: "72%",
             labels: {
               show: true,
-              name: { fontSize: "0.9rem", show: true, offsetY: -5 },
+              name: { fontSize: "0.75rem", show: true, offsetY: -3 },
               value: {
-                fontSize: "1.1rem",
+                fontSize: "0.95rem",
                 color: currentTheme.primary,
                 fontWeight: 700,
-                offsetY: 5,
+                offsetY: 3,
                 formatter: (val) => formatCurrency(val),
               },
               total: {
                 show: true,
-                fontSize: "0.8rem",
+                fontSize: "0.7rem",
                 label: "Total Activos",
                 fontWeight: 600,
                 formatter: () => formatCurrency(balance.assets.total_bruto),
