@@ -46,28 +46,24 @@ const tabItems = [
     label: "Todos",
     value: null,
     color: "primary",
-    icon: "tabler-list",
     totalKey: "total",
   },
   {
     label: "Pendientes",
     value: "Pending",
     color: "warning",
-    icon: "tabler-clock",
     totalKey: "totalPending",
   },
   {
     label: "Aprobados",
     value: "Approved",
     color: "success",
-    icon: "tabler-circle-check",
     totalKey: "totalApproved",
   },
   {
     label: "Cancelados",
     value: "Cancelled",
     color: "error",
-    icon: "tabler-circle-x",
     totalKey: "totalCancelled",
   },
 ];
@@ -192,8 +188,7 @@ const kpis = [
             :value="tab.value"
             class="tab-with-badge font-weight-black text-xs uppercase letter-spacing-widest"
           >
-            <VIcon :icon="tab.icon" size="18" class="me-2" />
-            {{ tab.label }}
+            <span>{{ tab.label }}</span>
             <VChip
               v-if="stats[tab.totalKey] >= 0"
               size="x-small"
@@ -314,9 +309,19 @@ const kpis = [
 
 :deep(.v-tabs) {
   border-block-end: 1px solid rgba(var(--v-border-color), 0.1);
+  min-height: 48px !important;
 }
 
 :deep(.v-tab) {
-  min-block-size: 52px !important;
+  min-block-size: 48px !important;
+  height: 48px !important;
+  padding-inline: 16px !important;
+}
+
+:deep(.v-tab .v-btn__content) {
+  display: flex !important;
+  align-items: center !important;
+  line-height: 1 !important;
+  padding-bottom: 0 !important;
 }
 </style>
