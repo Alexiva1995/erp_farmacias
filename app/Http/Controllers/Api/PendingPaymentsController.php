@@ -977,6 +977,9 @@ class PendingPaymentsController extends Controller
         $taxableBase = $invoice->is_indexed ? ($invoice->taxable_base / $invoice->exchange_rate) * $exchangeRate ?? 0 : ($invoice->taxable_base ?? 0);
         $taxAmount = $invoice->is_indexed ? ($invoice->tax_amount / $invoice->exchange_rate) * $exchangeRate ?? 0 : ($invoice->tax_amount ?? 0);
 
+        $actualAmount = (!empty($payment->source_amount) && $payment->source_amount > 0) ? (float)$payment->source_amount : (float)$payment->amount;
+        $actualCurrency = !empty($payment->source_currency) ? $payment->source_currency : ($payment->payment_method ?? 'USD');
+
         // Crear expense: solo se aprueba automáticamente si lo realiza un administrador
         $user = auth()->user() ?? \App\Models\User::find($payment->payment_by);
         $isAdmin = $user && ($user->role_id === 1 || in_array(strtolower((string) $user->role?->name), ['admin', 'administrador']));
@@ -984,9 +987,9 @@ class PendingPaymentsController extends Controller
         Expense::create([
             'name' => "Pago Factura # {$invoice->invoice_number} - Proveedor: {$invoice->supplier->name}",
             'category_id' => $category->id,
-            'amount' => $payment->amount,
+            'amount' => $actualAmount,
             'conversion_rate' => $conversionRate, // <-- ESTE ES EL CAMPO IMPORTANTE
-            'currency' => $payment->payment_method,
+            'currency' => $actualCurrency,
             'expense_date' => $payment->payment_date,
             'user_id' => $user?->id ?? $payment->payment_by ?? 1,
             'has_invoice' => true,

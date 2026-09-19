@@ -224,14 +224,17 @@ class PaymentProcessingService
         $user = auth()->user() ?? \App\Models\User::find($payment->payment_by);
         $isAdmin = $user && ($user->role_id === 1 || in_array(strtolower((string) $user->role?->name), ['admin', 'administrador']));
 
+        $actualAmount = (!empty($payment->source_amount) && $payment->source_amount > 0) ? (float)$payment->source_amount : (float)$payment->amount;
+        $actualCurrency = !empty($payment->source_currency) ? $payment->source_currency : ($payment->payment_method ?? 'USD');
+
         // Crear expense: solo se aprueba si lo hace un administrador
         Expense::create([
             'name' => "Pago Factura # {$invoices[0]->invoice_number} Proveedor {$invoices[0]->supplier->name}",
             'category_id' => $category->id,
-            'amount' => $payment->amount,
+            'amount' => $actualAmount,
             'amount_usd' => $amountUSD,
             'total_usd' => $amountUSD,
-            'currency' => $payment->payment_method,
+            'currency' => $actualCurrency,
             'expense_date' => $payment->payment_date,
             'user_id' => $user?->id ?? $payment->payment_by ?? 1,
             'has_invoice' => true,

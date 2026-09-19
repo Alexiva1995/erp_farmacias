@@ -33,7 +33,6 @@ const headers = computed(() => {
     { title: 'CATEGORÍA',         key: 'category.name',  sortable: false, width: '140px' },
     { title: 'FORMA DE PAGO / CUENTA', key: 'count',     sortable: false, width: '160px' },
     { title: 'MONTO TOTAL',       key: 'total_usd',      sortable: true,  align: 'end', width: '160px' },
-    { title: 'SOPORTE',           key: 'url_file',       sortable: false, align: 'center', width: '85px' },
     { title: 'ESTADO',            key: 'status',         sortable: false, align: 'center', width: '160px' },
   ];
   if (authStore.isAdmin) {
@@ -201,13 +200,6 @@ function openImage(url) {
             {{ parseInvoiceNumber(item) }}
           </span>
           <span v-else class="text-disabled font-weight-medium text-caption">—</span>
-          
-          <!-- Badges de retenciones/IVA -->
-          <div class="d-flex gap-1 flex-wrap" v-if="item.iva || item.tax_amount > 0">
-            <VChip size="x-small" color="secondary" variant="tonal" class="font-weight-bold px-1" style="height: 16px; font-size: 0.65rem;">
-              IVA
-            </VChip>
-          </div>
         </div>
       </template>
 
@@ -232,32 +224,15 @@ function openImage(url) {
       <!-- Monto Total -->
       <template #[`item.total_usd`]="{ item }">
         <div class="d-flex flex-column align-end py-2">
-          <span class="text-body-1 font-weight-black font-mono text-high-emphasis">
+          <span
+            class="text-body-1 font-weight-black font-mono"
+            :class="(item.currency || '').toUpperCase() === 'USD' ? 'text-money-green' : 'text-high-emphasis'"
+          >
             {{ formatOriginalAmount(item.amount, item.currency) }} {{ item.currency || 'USD' }}
           </span>
-          <span v-if="(item.currency || '').toUpperCase() !== 'USD' && item.total_usd > 0" class="text-caption font-weight-bold text-success mt-0 font-mono">
+          <span v-if="(item.currency || '').toUpperCase() !== 'USD' && item.total_usd > 0" class="text-caption font-weight-bold text-money-green mt-0 font-mono">
             ≈ ${{ Number(item.total_usd || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} USD
           </span>
-        </div>
-      </template>
-
-      <!-- Soporte / Adjunto -->
-      <template #[`item.url_file`]="{ item }">
-        <div class="d-flex justify-center">
-          <VBtn
-            v-if="item.url_file"
-            icon
-            size="x-small"
-            variant="tonal"
-            color="primary"
-            :href="item.url_file"
-            target="_blank"
-            class="rounded-lg"
-          >
-            <VIcon icon="tabler-paperclip" size="18" />
-            <VTooltip activator="parent" location="top">Ver Documento Adjunto</VTooltip>
-          </VBtn>
-          <span v-else class="text-disabled font-weight-bold">—</span>
         </div>
       </template>
 
@@ -300,9 +275,25 @@ function openImage(url) {
         </div>
       </template>
 
-      <!-- Acciones & Botón Historial de Auditoría -->
+      <!-- Acciones (Soporte, Aprobar, Auditoría) -->
       <template #[`item.acciones`]="{ item }">
         <div class="d-flex justify-center align-center gap-1">
+          <!-- Ver Soporte / Adjunto -->
+          <VBtn
+            v-if="item.url_file"
+            icon="tabler-paperclip"
+            size="small"
+            variant="text"
+            color="primary"
+            :href="item.url_file"
+            target="_blank"
+            class="rounded-lg"
+          >
+            <VIcon icon="tabler-paperclip" size="18" />
+            <VTooltip activator="parent" location="top">Ver Soporte Adjunto</VTooltip>
+          </VBtn>
+
+          <!-- Aprobar Gasto (si es pendiente) -->
           <VBtn
             v-if="item.status === 'Pending' || item.status === 'Pendiente'"
             variant="tonal"
@@ -343,7 +334,7 @@ function openImage(url) {
           <td class="text-end font-mono text-body-2 font-weight-black text-high-emphasis pe-4 py-3">
             ${{ totalPageUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
           </td>
-          <td colspan="3" class="py-3"></td>
+          <td colspan="2" class="py-3"></td>
         </tr>
       </template>
     </VDataTableServer>
@@ -390,10 +381,13 @@ function openImage(url) {
                 </VChip>
               </div>
               <div class="text-right">
-                <span class="text-body-2 font-weight-black text-high-emphasis font-mono">
+                <span
+                  class="text-body-2 font-weight-black font-mono"
+                  :class="(item.currency || '').toUpperCase() === 'USD' ? 'text-money-green' : 'text-high-emphasis'"
+                >
                   {{ formatOriginalAmount(item.amount, item.currency) }} {{ item.currency || 'USD' }}
                 </span>
-                <span v-if="(item.currency || '').toUpperCase() !== 'USD' && item.total_usd > 0" class="text-super-xs font-weight-bold text-success d-block font-mono">
+                <span v-if="(item.currency || '').toUpperCase() !== 'USD' && item.total_usd > 0" class="text-super-xs font-weight-bold text-money-green d-block font-mono">
                   ≈ ${{ Number(item.total_usd || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) }} USD
                 </span>
               </div>
@@ -616,6 +610,10 @@ function openImage(url) {
 </template>
 
 <style scoped>
+.text-money-green {
+  color: #16a34a !important;
+  font-weight: 700 !important;
+}
 .premium-table :deep(th) {
   background-color: #f8fafc !important;
   block-size: 48px !important;

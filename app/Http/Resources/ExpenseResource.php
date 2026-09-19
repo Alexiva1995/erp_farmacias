@@ -14,15 +14,24 @@ class ExpenseResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $amount = $this->amount;
+        $currency = $this->currency;
         $urlFile = $this->url_file;
-        if (empty($urlFile) && !empty($this->name) && str_contains($this->name, 'Pago Factura #')) {
+
+        if (!empty($this->name) && str_contains($this->name, 'Pago Factura #')) {
             if (preg_match('/Pago Factura #\s*([^\s-]+)/i', $this->name, $matches)) {
                 $invNum = $matches[1];
                 $invPayment = \App\Models\InvoicePayment::whereHas('invoices', function ($q) use ($invNum) {
                     $q->where('invoice_number', $invNum);
-                })->whereNotNull('photo_url')->latest()->first();
+                })->latest()->first();
                 if ($invPayment) {
-                    $urlFile = $invPayment->photo_url;
+                    if (empty($urlFile) && !empty($invPayment->photo_url)) {
+                        $urlFile = $invPayment->photo_url;
+                    }
+                    if (!empty($invPayment->source_currency) && !empty($invPayment->source_amount) && $invPayment->source_amount > 0) {
+                        $currency = $invPayment->source_currency;
+                        $amount = $invPayment->source_amount;
+                    }
                 }
             }
         }
@@ -32,8 +41,8 @@ class ExpenseResource extends JsonResource
             'name' => $this->name,
             'invoice_number' => $this->invoice_number,
             'control_number' => $this->control_number,
-            'amount' => $this->amount,
-            'currency' => $this->currency,
+            'amount' => $amount,
+            'currency' => $currency,
             'status' => $this->status,
             'count' => $this->count,
             'payment_method' => $this->count,
