@@ -73,8 +73,9 @@ class DashboardQueryService
         return Cache::remember("dashboard_revenue_report_{$year}", 60, function () use ($year) {
             $monthsEn = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
-            $dailyClosures = DailyCashClosure::whereYear('created_at', $year)
-                ->selectRaw('MONTH(created_at) as month_num, SUM(total_sales) as total_sales')
+            $monthlyFiscalSales = FiscalHistory::whereYear('invoice_date', $year)
+                ->whereNotNull('invoice_number')
+                ->selectRaw('MONTH(invoice_date) as month_num, SUM(total_amount) as total_sales')
                 ->groupBy('month_num')
                 ->pluck('total_sales', 'month_num');
 
@@ -96,7 +97,7 @@ class DashboardQueryService
             $monthlyData = [];
 
             for ($i = 1; $i <= 12; $i++) {
-                $income = (float) ($dailyClosures->get($i) ?? 0);
+                $income = (float) ($monthlyFiscalSales->get($i) ?? 0);
                 $expensesTotal = (float) ($expenses->get($i) ?? 0);
 
                 $monthOrders = $ordersRaw->get($i);

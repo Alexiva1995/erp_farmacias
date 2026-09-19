@@ -7,7 +7,7 @@ import os
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # ==============================================================================
-# PUENTE FISCAL PNP - VERSIÓN PERSONALIZADA (LOGO, CAJERO, 40 COLUMNAS, IGTF)
+# PUENTE FISCAL PNP - VERSIÓN SIN LOGO (CON IGTF 3% Y NOMBRES FORMATEADOS)
 # ==============================================================================
 
 # --- CONFIGURACIÓN ---
@@ -25,8 +25,6 @@ if BRIDGE_MODE == "REAL":
     try:
         if os.path.exists(DLL_PATH):
             pnp = ctypes.WinDLL(DLL_PATH)
-            
-            # Funciones estándar obligatorias
             pnp.PFabrepuerto.argtypes = [ctypes.c_char_p]
             pnp.PFabrepuerto.restype = ctypes.c_void_p
             
@@ -48,14 +46,6 @@ if BRIDGE_MODE == "REAL":
             pnp.PFrepMemNF.restype = ctypes.c_void_p
             
             pnp.PFultimo.restype = ctypes.c_void_p
-            
-            # Funciones opcionales según compilación de la DLL
-            if hasattr(pnp, 'PFTfiscal'):
-                pnp.PFTfiscal.argtypes = [ctypes.c_char_p]
-                pnp.PFTfiscal.restype = ctypes.c_void_p
-                
-            if hasattr(pnp, 'PFLogoClick'):
-                pnp.PFLogoClick.restype = ctypes.c_void_p
             
             print(f"[DLL] Librería cargada satisfactoriamente desde {DLL_PATH}")
         else:
@@ -136,18 +126,6 @@ def extract_client_name(data):
     raw_name = data.get('business_name', 'CLIENTE GENERICO')
     return format_short_name(raw_name)
 
-def extract_cashier_name(data):
-    """Obtiene el nombre del cajero/vendedor."""
-    user = data.get('user')
-    if user:
-        employee = user.get('employee')
-        if employee and employee.get('name'):
-            emp_name = f"{employee.get('name', '')} {employee.get('last_name', '')}".strip()
-            return format_short_name(emp_name)
-        if user.get('username'):
-            return str(user.get('username')).upper()
-    return None
-
 # --- PROTOCOLO WEBSIM ---
 class WebSimPrinter:
     def __init__(self, url):
@@ -155,15 +133,10 @@ class WebSimPrinter:
 
     def print_invoice(self, data):
         commands = []
-        raw_name = data.get('business_name', 'CLIENTE GENERICO')
-        name = format_short_name(raw_name)
+        name = extract_client_name(data)
         rif = data.get('identification', 'V000000000')
         rif_clean = "".join(filter(str.isalnum, rif))
         commands.append(f"@:{name[:39]}:{rif_clean[:12]}")
-        
-        cashier = extract_cashier_name(data)
-        if cashier:
-            commands.append(f"A:CAJERO: {cashier[:30]}")
         
         for detail in data.get('details', []):
             qty_int = int(float(detail['quantity']) * 1000)
@@ -198,7 +171,7 @@ class WebSimPrinter:
         except Exception as e:
             return f"ERROR: {e}"
 
-# --- WORKER LÓGICA PERSONALIZADA ---
+# --- WORKER LÓGICA SIN LOGO ---
 def process_pending_invoices(sim):
     try:
         print(f"[DEBUG] Ping facturas -> {API_BASE_URL}/fiscal/pending")
@@ -214,29 +187,14 @@ def process_pending_invoices(sim):
                 if BRIDGE_MODE == "WEBSIM":
                     res_text = sim.print_invoice(data)
                 else:
-                    # 1. Configurar Fuente Compacta si está disponible en DLL
-                    if hasattr(pnp, 'PFTIPOIMP'):
-                        try:
-                            call_pnp(pnp.PFTIPOIMP, "300")
-                        except:
-                            pass
-
-                    # 2. Estampar Logo Fiscal en Cabecera
-                    if hasattr(pnp, 'PFLogoClick'):
-                        try:
-                            print("[DLL] Estampando Logo Fiscal de cabecera...")
-                            call_pnp(pnp.PFLogoClick)
-                        except Exception as logo_err:
-                            print(f"[DLL LOGO NOTE] {logo_err}")
-
-                    # 3. Abrir Factura Fiscal con Primer Nombre y Primer Apellido
+                    # 1. Abrir Factura Fiscal con Primer Nombre y Primer Apellido (Sin invocar logo)
                     name = extract_client_name(data)
                     rif = "".join(filter(str.isalnum, data.get('identification', 'V000000000')))[:12]
                     
                     print(f"[DLL] @ {name} | {rif}")
                     call_pnp(pnp.PFabrefiscal, name, rif)
 
-                    # 4. Imprimir Renglones (Hasta 40 caracteres en descripción compacta)
+                    # 2. Imprimir Renglones (Hasta 40 caracteres en descripción)
                     for detail in data.get('details', []):
                         d_name = detail['product_name'][:40]
                         qty = "{:.3f}".format(float(detail['quantity']))
@@ -248,7 +206,7 @@ def process_pending_invoices(sim):
                         print(f"[DLL] B {d_name} | Q:{qty} | P:{price} | T:{tax}")
                         call_pnp(pnp.PFrenglon, d_name, str(qty), str(price), tax)
                     
-                    # 6. Determinar si aplica IGTF (3%) o Cierre Estándar
+                    # 3. Determinar si aplica IGTF (3%) o Cierre Estándar
                     spe_flag = data.get('spe', 0)
                     spe_surcharge = float(data.get('spe_surcharge_amount', 0.0) or 0.0)
                     total_amount = float(data.get('total_amount', 0.0) or 0.0)
@@ -323,7 +281,7 @@ def process_general_commands(sim):
 
 if __name__ == "__main__":
     websim = WebSimPrinter(WEBSIM_URL)
-    print(f"--- Worker Fiscal DLL Personalizado Activo ({BRIDGE_MODE}) ---")
+    print(f"--- Worker Fiscal DLL SIN LOGO Activo ({BRIDGE_MODE}) ---")
     
     if BRIDGE_MODE == "REAL":
         print(f"[DLL] Probando apertura inicial de puerto {SERIAL_PORT_NUM}...")

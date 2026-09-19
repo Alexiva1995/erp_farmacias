@@ -25,7 +25,7 @@ class FiscalPrinterController extends Controller
         try {
             $pending = FiscalHistory::where('is_queued', true)
                 ->whereNull('invoice_number')
-                ->with(['details', 'user.employee'])
+                ->with(['details', 'user.employee', 'order.client'])
                 ->orderBy('created_at', 'asc')
                 ->first();
 

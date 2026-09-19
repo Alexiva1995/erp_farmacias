@@ -14,10 +14,17 @@ class StoreFiscalCommandRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'command' => 'required|string|in:REPORT_Z,REPORT_X,ANNUL_INVOICE,REPRINT_INVOICE,DEBIT_NOTE,REPRINT_REPORT_Z',
-            'payload' => 'nullable|array',
-            'payload.invoice_number' => 'required_if:command,ANNUL_INVOICE,REPRINT_INVOICE,DEBIT_NOTE|string',
-            'payload.z_number' => 'required_if:command,REPRINT_REPORT_Z|numeric',
+            'command'                    => 'required|string|in:REPORT_Z,REPORT_X,REPRINT_INVOICE,CREDIT_NOTE,REPRINT_REPORT_Z',
+            'payload'                    => 'nullable|array',
+            'payload.invoice_number'     => 'required_if:command,REPRINT_INVOICE,CREDIT_NOTE|string',
+            'payload.z_number'           => 'required_if:command,REPRINT_REPORT_Z|numeric',
+            'payload.machine_serial'     => 'required_if:command,CREDIT_NOTE|string|max:20',
+            'payload.invoice_date'       => 'required_if:command,CREDIT_NOTE|string|max:10',
+            'payload.invoice_hour'       => 'required_if:command,CREDIT_NOTE|string|max:8',
+            'payload.refund_amount'      => 'required_if:command,CREDIT_NOTE|numeric|min:0.01',
+            'payload.client_name'        => 'nullable|string|max:38',
+            'payload.client_rif'         => 'nullable|string|max:12',
+            'payload.is_taxable'         => 'nullable|boolean',
         ];
     }
 }

@@ -7,14 +7,18 @@ import os
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # ==============================================================================
-# PUENTE FISCAL PNP - VERSIÓN PERSONALIZADA (LOGO, CAJERO, 40 COLUMNAS, IGTF)
+# PUENTE FISCAL PNP - VERSIÓN CON LOGO (CON IGTF 3% Y NOMBRES FORMATEADOS)
 # ==============================================================================
 
 # --- CONFIGURACIÓN ---
-BRIDGE_MODE = "REAL"  # "REAL" o "WEBSIM" 
+BRIDGE_MODE = "REAL"  # "REAL" o "WEBSIM"
 SERIAL_PORT_NUM = "1" # Puerto serial de la impresora fiscal (ej: 1, 96, 97)
-API_BASE_URL = "https://farmaciabs.com/api" 
-POLLING_INTERVAL = 5 
+API_BASE_URL = "https://farmaciabs.com/api"
+POLLING_INTERVAL = 5
+
+# Serial físico grabado en la máquina fiscal (requerido para Notas de Crédito).
+# Consultar en la etiqueta trasera del equipo o ejecutar PFversion para obtenerlo.
+MACHINE_SERIAL = "00000000001"
 
 DLL_PATH = r"C:\fiscal_farmacia\pnp\pnpdll\pnpdll64.dll"
 WEBSIM_URL = "https://desarrollospnp.com/sim/pf.php"
@@ -25,8 +29,6 @@ if BRIDGE_MODE == "REAL":
     try:
         if os.path.exists(DLL_PATH):
             pnp = ctypes.WinDLL(DLL_PATH)
-            
-            # Funciones estándar obligatorias
             pnp.PFabrepuerto.argtypes = [ctypes.c_char_p]
             pnp.PFabrepuerto.restype = ctypes.c_void_p
             
@@ -49,11 +51,14 @@ if BRIDGE_MODE == "REAL":
             
             pnp.PFultimo.restype = ctypes.c_void_p
             
-            # Funciones opcionales según compilación de la DLL
+            if hasattr(pnp, 'PFBarra'):
+                pnp.PFBarra.argtypes = [ctypes.c_char_p]
+                pnp.PFBarra.restype = ctypes.c_void_p
+            
             if hasattr(pnp, 'PFTfiscal'):
                 pnp.PFTfiscal.argtypes = [ctypes.c_char_p]
                 pnp.PFTfiscal.restype = ctypes.c_void_p
-                
+
             if hasattr(pnp, 'PFLogoClick'):
                 pnp.PFLogoClick.restype = ctypes.c_void_p
             
@@ -136,18 +141,6 @@ def extract_client_name(data):
     raw_name = data.get('business_name', 'CLIENTE GENERICO')
     return format_short_name(raw_name)
 
-def extract_cashier_name(data):
-    """Obtiene el nombre del cajero/vendedor."""
-    user = data.get('user')
-    if user:
-        employee = user.get('employee')
-        if employee and employee.get('name'):
-            emp_name = f"{employee.get('name', '')} {employee.get('last_name', '')}".strip()
-            return format_short_name(emp_name)
-        if user.get('username'):
-            return str(user.get('username')).upper()
-    return None
-
 # --- PROTOCOLO WEBSIM ---
 class WebSimPrinter:
     def __init__(self, url):
@@ -155,15 +148,10 @@ class WebSimPrinter:
 
     def print_invoice(self, data):
         commands = []
-        raw_name = data.get('business_name', 'CLIENTE GENERICO')
-        name = format_short_name(raw_name)
+        name = extract_client_name(data)
         rif = data.get('identification', 'V000000000')
         rif_clean = "".join(filter(str.isalnum, rif))
         commands.append(f"@:{name[:39]}:{rif_clean[:12]}")
-        
-        cashier = extract_cashier_name(data)
-        if cashier:
-            commands.append(f"A:CAJERO: {cashier[:30]}")
         
         for detail in data.get('details', []):
             qty_int = int(float(detail['quantity']) * 1000)
@@ -198,7 +186,7 @@ class WebSimPrinter:
         except Exception as e:
             return f"ERROR: {e}"
 
-# --- WORKER LÓGICA PERSONALIZADA ---
+# --- WORKER LÓGICA CON LOGO ---
 def process_pending_invoices(sim):
     try:
         print(f"[DEBUG] Ping facturas -> {API_BASE_URL}/fiscal/pending")
@@ -214,14 +202,7 @@ def process_pending_invoices(sim):
                 if BRIDGE_MODE == "WEBSIM":
                     res_text = sim.print_invoice(data)
                 else:
-                    # 1. Configurar Fuente Compacta si está disponible en DLL
-                    if hasattr(pnp, 'PFTIPOIMP'):
-                        try:
-                            call_pnp(pnp.PFTIPOIMP, "300")
-                        except:
-                            pass
-
-                    # 2. Estampar Logo Fiscal en Cabecera
+                    # 1. Estampar Logo Fiscal en Cabecera
                     if hasattr(pnp, 'PFLogoClick'):
                         try:
                             print("[DLL] Estampando Logo Fiscal de cabecera...")
@@ -229,14 +210,17 @@ def process_pending_invoices(sim):
                         except Exception as logo_err:
                             print(f"[DLL LOGO NOTE] {logo_err}")
 
-                    # 3. Abrir Factura Fiscal con Primer Nombre y Primer Apellido
+                    # 2. Abrir Factura Fiscal con Primer Nombre y Primer Apellido
                     name = extract_client_name(data)
                     rif = "".join(filter(str.isalnum, data.get('identification', 'V000000000')))[:12]
                     
                     print(f"[DLL] @ {name} | {rif}")
                     call_pnp(pnp.PFabrefiscal, name, rif)
 
-                    # 4. Imprimir Renglones (Hasta 40 caracteres en descripción compacta)
+                    # 3. Imprimir Renglones
+                    # Según manual PNP v2.2: DESCRIPCION máximo 40 caracteres (PF-300).
+                    # Desde v1.8 el API añade líneas extra automáticamente si supera el límite.
+                    # No existen prefijos de fuente en el parámetro DESCRIPCION.
                     for detail in data.get('details', []):
                         d_name = detail['product_name'][:40]
                         qty = "{:.3f}".format(float(detail['quantity']))
@@ -248,7 +232,29 @@ def process_pending_invoices(sim):
                         print(f"[DLL] B {d_name} | Q:{qty} | P:{price} | T:{tax}")
                         call_pnp(pnp.PFrenglon, d_name, str(qty), str(price), tax)
                     
-                    # 6. Determinar si aplica IGTF (3%) o Cierre Estándar
+                    # 4. Código de barras / QR de trazabilidad (Providencia 0141 / Protocolo PNP)
+                    # En impresoras fiscales PNP homologadas con la Providencia 0141:
+                    # - PFBarra (o comando 0x54 'T') estampa el código de barra/QR al final de los renglones
+                    barcode_data = str(data.get('order_id') or invoice_id)
+                    qr_sent = False
+                    if hasattr(pnp, 'PFBarra'):
+                        try:
+                            print(f"[DLL QR/BARRA] Ejecutando PFBarra({barcode_data}) (Cmd 0x54 Providencia 0141)...")
+                            call_pnp(pnp.PFBarra, barcode_data)
+                            qr_sent = True
+                        except Exception as bar_err:
+                            print(f"[DLL QR/BARRA NOTE] PFBarra: {bar_err}")
+
+                    if not qr_sent:
+                        try:
+                            # Fallback directo por protocolo: comando 'T' (0x54)
+                            cmd_barra = f"T|{barcode_data}"
+                            print(f"[DLL QR/BARRA] Enviando PFComando('{cmd_barra}')...")
+                            call_pnp(pnp.PFComando, cmd_barra)
+                        except Exception as cmd_err:
+                            print(f"[DLL QR/BARRA NOTE] PFComando 0x54: {cmd_err}")
+
+                    # 5. Determinar si aplica IGTF (3%) o Cierre Estándar
                     spe_flag = data.get('spe', 0)
                     spe_surcharge = float(data.get('spe_surcharge_amount', 0.0) or 0.0)
                     total_amount = float(data.get('total_amount', 0.0) or 0.0)
@@ -298,9 +304,72 @@ def process_general_commands(sim):
                         if BRIDGE_MODE == "WEBSIM": res_output = sim.print_report("H")
                         else: res_output = call_pnp(pnp.PFrepx)
                     elif cmd_type == "ANNUL_INVOICE":
+                        # Anulación de factura abierta (comando G del protocolo)
                         inv_to_annul = payload.get('invoice_number', '')
                         if BRIDGE_MODE == "WEBSIM": res_output = f"G:{inv_to_annul}"
                         else: res_output = call_pnp(pnp.PFComando, f"G|{inv_to_annul}")
+                    elif cmd_type == "CREDIT_NOTE":
+                        # Nota de Crédito / Devolución — Protocolo PNP 0141 v5.4
+                        # Comando 0x40 con Campo 7 = 'D' activa modo devolución.
+                        # Secuencia: apertura NC → renglón de devolución → cierre.
+                        inv_orig      = payload.get('invoice_number', '')
+                        machine_ser   = payload.get('machine_serial', MACHINE_SERIAL)
+                        inv_date      = payload.get('invoice_date', '')
+                        inv_hour      = payload.get('invoice_hour', '00:00:00')
+                        refund_amt    = float(payload.get('refund_amount', 0))
+                        client_name   = str(payload.get('client_name', 'CLIENTE GENERICO'))[:38]
+                        client_rif    = str(payload.get('client_rif', 'V000000000'))
+                        client_rif    = "".join(filter(str.isalnum, client_rif))[:12]
+                        is_taxable    = bool(payload.get('is_taxable', True))
+                        tax_rate      = "1600" if is_taxable else "0"
+                        # Precio unitario sin IVA para el renglón de devolución
+                        price_u       = refund_amt / 1.16 if is_taxable else refund_amt
+
+                        print(f"[DLL NC] Iniciando Nota de Crédito para Factura #{inv_orig} | Serial:{machine_ser} | Fecha:{inv_date} {inv_hour}")
+
+                        if BRIDGE_MODE == "WEBSIM":
+                            # Simulador: enviar apertura NC + renglón + cierre
+                            nc_commands = [
+                                f"@:{client_name[:39]}:{client_rif}",
+                                f"D:{inv_orig}:{machine_ser}:{inv_date}:{inv_hour}",
+                                f"B:DEVOLUCION FACTURA {inv_orig}:1000:{int(price_u * 100)}:{tax_rate}:m",
+                                "E:T",
+                            ]
+                            res_output = sim._send_to_sim(nc_commands)
+                        else:
+                            # REAL: abrir NC via PFComando con secuencia del Protocolo 0141 v5.4
+                            # Formato: PFabrefiscal abre con campos extendidos para NC
+                            # Campo 7 = 'D' indica devolución
+                            if hasattr(pnp, 'PFLogoClick'):
+                                try:
+                                    call_pnp(pnp.PFLogoClick)
+                                except Exception as logo_err:
+                                    print(f"[DLL NC LOGO] {logo_err}")
+
+                            # Abrir NC: PFabrefiscal estándar + PFComando para inyectar campos de devolución
+                            # Según el protocolo los campos 3-7 del 0x40 se envían en la secuencia de apertura
+                            nc_open_cmd = f"@|{client_name}|{client_rif}|{inv_orig}|{machine_ser}|{inv_date}|{inv_hour}|D"
+                            print(f"[DLL NC] PFComando apertura: {nc_open_cmd}")
+                            open_res = call_pnp(pnp.PFComando, nc_open_cmd)
+                            if "ERROR" in str(open_res):
+                                # Fallback: abrir con PFabrefiscal normal (sin calificador D)
+                                # y anotar en el log — la impresora puede no soportar el campo extendido
+                                print(f"[DLL NC WARN] PFComando NC falló ({open_res}). Intentando PFabrefiscal estándar...")
+                                open_res = call_pnp(pnp.PFabrefiscal, client_name, client_rif)
+
+                            # Renglón de devolución total (calificador 'm' = anulación de ítem)
+                            d_name = f"DEVOLUCION FAC {inv_orig}"[:40]
+                            qty    = "1.000"
+                            price  = "{:.2f}".format(price_u)
+                            print(f"[DLL NC] Renglon devolución: {d_name} | Q:{qty} | P:{price} | T:{tax_rate}")
+                            call_pnp(pnp.PFrenglon, d_name, qty, price, tax_rate)
+
+                            # Cierre de NC
+                            print("[DLL NC] Cerrando Nota de Crédito (PFtotal)...")
+                            ptr = pnp.PFtotal()
+                            res_output = get_pnp_res(ptr)
+
+                        print(f"[DLL NC] Resultado: {res_output}")
                     elif cmd_type == "REPRINT_REPORT_Z":
                         z_num = str(payload.get('z_number', '1'))
                         if BRIDGE_MODE == "WEBSIM": res_output = f"U:{z_num}:{z_num}"
@@ -323,7 +392,7 @@ def process_general_commands(sim):
 
 if __name__ == "__main__":
     websim = WebSimPrinter(WEBSIM_URL)
-    print(f"--- Worker Fiscal DLL Personalizado Activo ({BRIDGE_MODE}) ---")
+    print(f"--- Worker Fiscal DLL CON LOGO Activo ({BRIDGE_MODE}) ---")
     
     if BRIDGE_MODE == "REAL":
         print(f"[DLL] Probando apertura inicial de puerto {SERIAL_PORT_NUM}...")

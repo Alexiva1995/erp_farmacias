@@ -21,7 +21,7 @@ const getCommandColor = (cmd) => {
   if (!cmd) return "secondary";
   if (cmd.includes("REPORT_Z")) return "error";
   if (cmd.includes("REPORT_X")) return "info";
-  if (cmd.includes("ANNUL")) return "warning";
+  if (cmd.includes("CREDIT_NOTE") || cmd.includes("ANNUL")) return "warning";
   if (cmd.includes("PRINT_INVOICE")) return "success";
   return "secondary";
 };

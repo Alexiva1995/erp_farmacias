@@ -666,9 +666,9 @@ class OrderActionService
             // --- CÁLCULOS FISCALES (Uniformidad total BS/COP/USD) ---
             $taxable_base = $exemptAmount + $taxableAmount + $totalIva;
             
-            // Si aplica SPE, aplicamos el recargo del 1%
-            $speRate = $applySpe ? 1.00 : 0.00;
-            $speAmountBs = $applySpe ? ($taxable_base * 0.01) : 0.00;
+            // Si aplica SPE / Divisa, calculamos el IGTF al 3% sobre el total
+            $speRate = $applySpe ? 3.00 : 0.00;
+            $speAmountBs = $applySpe ? ($taxable_base * 0.03) : 0.00;
 
             $totalAmountBs = $taxable_base + $speAmountBs;
 
@@ -760,20 +760,21 @@ class OrderActionService
                 }
 
                 $isTaxable = ($product->iva == 1);
-                $ivaAmountUnit = $isTaxable ? ($priceBs * 0.16) : 0;
-                $totalItemUnit = $priceBs + $ivaAmountUnit;
+                $itemSubtotalBs = $priceBs * $quantity;
+                $itemIvaSubtotal = $isTaxable ? ($itemSubtotalBs * 0.16) : 0;
+                $itemTotalAmount = $itemSubtotalBs + $itemIvaSubtotal;
 
-                // Insertamos en la tabla de detalles
+                // Insertamos en la tabla de detalles (multiplicado por la cantidad del renglón)
                 FiscalHistoryDetail::create([
                     'fiscal_history_id' => $fiscalHistory->id,
                     'product_id'        => $product->id,
                     'product_name'      => $product->name,
                     'quantity'          => $quantity,
                     'vat_status'        => $isTaxable ? 1 : 0,
-                    'exempt_amount'     => !$isTaxable ? $priceBs : 0,
-                    'iva_amount'        => $ivaAmountUnit,
-                    'total_amount'      => $totalItemUnit,
-                    'big_amount'        => $totalItemUnit,
+                    'exempt_amount'     => !$isTaxable ? $itemSubtotalBs : 0,
+                    'iva_amount'        => $itemIvaSubtotal,
+                    'total_amount'      => $itemTotalAmount,
+                    'big_amount'        => $itemTotalAmount,
                 ]);
             }
 
