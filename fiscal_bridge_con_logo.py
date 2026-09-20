@@ -240,7 +240,7 @@ def process_pending_invoices(sim):
                     print(f"[DLL] @ {name} | {rif}")
                     call_pnp(pnp.PFabrefiscal, name, rif)
 
-                    # 3. Imprimir Renglones (Limitado a 28 caracteres para garantizar 1 sola línea limpia)
+                    # 3. Imprimir Renglones (Hasta 38 caracteres en modo condensado 56 columnas)
                     items_printed = 0
                     for detail in details:
                         qty_val = float(detail.get('quantity', 0) or 0)
@@ -249,7 +249,7 @@ def process_pending_invoices(sim):
                             continue
                         
                         raw_name = str(detail.get('product_name', 'PRODUCTO')).strip()
-                        d_name = " ".join(raw_name.split())[:28]
+                        d_name = " ".join(raw_name.split())[:38]
                         qty = "{:.3f}".format(qty_val)
                         is_taxable = detail.get('vat_status') == 1 or detail.get('vat_status') is True
                         price_u = amt_val / (1.16 if is_taxable else 1.0) / qty_val
@@ -493,6 +493,13 @@ if __name__ == "__main__":
             print(f"[DLL ERROR] No se pudo abrir el puerto {SERIAL_PORT_NUM}. Verifica la conexión.")
         else:
             print(f"[DLL OK] Puerto {SERIAL_PORT_NUM} abierto correctamente.")
+            # Establecer modo de impresión condensado (2: fuente condensada 56 columnas)
+            if hasattr(pnp, 'PFTIPOIMP'):
+                try:
+                    call_pnp(pnp.PFTIPOIMP, "2")
+                    print("[DLL OK] Modo de impresión configurado a CONDENSADO (PFTIPOIMP '2' - 56 columnas).")
+                except Exception as imp_err:
+                    print(f"[DLL NOTE] PFTIPOIMP: {imp_err}")
 
     while True:
         process_pending_invoices(websim)
