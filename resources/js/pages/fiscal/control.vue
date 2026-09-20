@@ -39,7 +39,7 @@ const actionLoading = reactive({
 const fetchCommands = async (isBackground = false) => {
   if (!isBackground) fetchingHistory.value = true;
   try {
-    const response = await axios.get("/commands/history");
+    const response = await axios.get("/fiscal/commands/history");
     const result = response.data?.data || response.data || [];
     commands.value = Array.isArray(result) ? result : [];
   } catch (error) {
@@ -52,7 +52,7 @@ const fetchCommands = async (isBackground = false) => {
 const checkBridgeStatus = async (showToast = true) => {
   checkingConnection.value = true;
   try {
-    const response = await axios.get("/commands/status");
+    const response = await axios.get("/fiscal/commands/status");
     isBridgeConnected.value = !!response.data?.is_connected;
     if (showToast) {
       if (isBridgeConnected.value) {
@@ -72,7 +72,7 @@ const checkBridgeStatus = async (showToast = true) => {
 const sendCommand = async (commandKey, payload = {}) => {
   actionLoading[commandKey] = true;
   try {
-    const response = await axios.post("/commands", { command: commandKey, payload });
+    const response = await axios.post("/fiscal/commands", { command: commandKey, payload });
     toast.success(response.data?.message || "Comando encolado correctamente.");
     await fetchCommands(true);
     await checkBridgeStatus(false);
