@@ -116,7 +116,7 @@ const headers = [
     sortable: false,
     align: "end",
     value: (item) => formatCurrency((Number(item.total_amount) || 0) - (Number(item.igtf_amount) || 0)),
-    cellProps: { class: "text-sm font-weight-bold text-high-emphasis" },
+    cellProps: { class: "text-sm text-medium-emphasis" },
   },
   {
     title: "IGTF",
@@ -124,7 +124,7 @@ const headers = [
     sortable: true,
     align: "end",
     value: (item) => formatCurrency(item.igtf_amount),
-    cellProps: { class: "text-sm font-weight-bold text-error" },
+    cellProps: { class: "text-sm text-medium-emphasis" },
   },
   {
     title: "TOTAL",
@@ -182,8 +182,8 @@ const formatCurrency = (value) => {
 
           <template #item.total_amount="{ item }">
             <div class="d-flex flex-column align-end gap-1">
-              <span class="font-weight-black text-success">
-                Bs. {{ formatCurrency(item.total_amount) }}
+              <span class="text-sm font-weight-black text-high-emphasis">
+                {{ formatCurrency(item.total_amount) }}
               </span>
               <VChip
                 size="x-small"
@@ -342,13 +342,13 @@ const formatCurrency = (value) => {
               <span class="text-disabled">IVA:</span>
               <span>Bs. {{ formatCurrency(item.iva_amount) }}</span>
             </div>
-            <div class="d-flex justify-space-between font-weight-bold">
+            <div class="d-flex justify-space-between">
               <span class="text-disabled">Subtotal:</span>
               <span>Bs. {{ formatCurrency((Number(item.total_amount) || 0) - (Number(item.igtf_amount) || 0)) }}</span>
             </div>
             <div class="d-flex justify-space-between">
               <span class="text-disabled">IGTF:</span>
-              <span class="text-error font-weight-bold">Bs. {{ formatCurrency(item.igtf_amount) }}</span>
+              <span>Bs. {{ formatCurrency(item.igtf_amount) }}</span>
             </div>
             <div class="d-flex justify-space-between border-t pt-1 font-weight-bold">
               <span>Total:</span>
