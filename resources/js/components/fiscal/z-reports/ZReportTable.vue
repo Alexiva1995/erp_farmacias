@@ -13,11 +13,11 @@ const emit = defineEmits(["update:options", "view-detail"]);
 
 const headers = [
   {
-    title: "REPORTE Z",
+    title: "N° REPORTE",
     key: "report_number",
     sortable: true,
     value: (item) => item.report_number_padded || `Z${String(item.report_number).padStart(6, "0")}`,
-    cellProps: { class: "text-sm font-weight-black text-primary" },
+    cellProps: { class: "text-sm font-weight-black", style: "color: #e91e63 !important;" },
   },
   {
     title: "FECHA",
@@ -32,7 +32,7 @@ const headers = [
       }
       return new Date(dt).toLocaleDateString("es-VE");
     },
-    cellProps: { class: "text-sm text-medium-emphasis font-weight-medium" },
+    cellProps: { class: "text-sm text-medium-emphasis" },
   },
   {
     title: "FACTURAS",
@@ -43,7 +43,7 @@ const headers = [
     cellProps: { class: "text-sm font-weight-bold" },
   },
   {
-    title: "EXENTO (BS.)",
+    title: "EXENTO",
     key: "exempt_amount",
     sortable: true,
     align: "end",
@@ -51,44 +51,44 @@ const headers = [
     cellProps: { class: "text-sm text-medium-emphasis" },
   },
   {
-    title: "BIG 16.00% (BS.)",
+    title: "BASE",
     key: "base_16_amount",
     sortable: true,
     align: "end",
     value: (item) => formatCurrency(item.base_16_amount),
-    cellProps: { class: "text-sm text-medium-emphasis font-weight-medium" },
-  },
-  {
-    title: "BASE IGTF / SPE (BS.)",
-    key: "igtf_base_amount",
-    sortable: true,
-    align: "end",
-    value: (item) => formatCurrency(item.igtf_base_amount),
     cellProps: { class: "text-sm text-medium-emphasis" },
   },
   {
-    title: "IVA G 16% (BS.)",
+    title: "IVA",
     key: "iva_amount",
     sortable: true,
     align: "end",
     value: (item) => formatCurrency(item.iva_amount),
-    cellProps: { class: "text-sm text-warning font-weight-medium" },
+    cellProps: { class: "text-sm text-medium-emphasis" },
   },
   {
-    title: "IGTF 3% (BS.)",
+    title: "SUBTOTAL",
+    key: "subtotal",
+    sortable: false,
+    align: "end",
+    value: (item) => formatCurrency((Number(item.total_amount) || 0) - (Number(item.igtf_amount) || 0)),
+    cellProps: { class: "text-sm font-weight-bold text-high-emphasis" },
+  },
+  {
+    title: "IGTF",
     key: "igtf_amount",
     sortable: true,
     align: "end",
     value: (item) => formatCurrency(item.igtf_amount),
-    cellProps: { class: "text-sm text-medium-emphasis" },
+    cellProps: { class: "text-sm font-weight-bold text-error" },
   },
   {
-    title: "TOTAL BS.",
+    title: "TOTAL",
     key: "total_amount",
     sortable: true,
     align: "end",
     value: (item) => formatCurrency(item.total_amount),
-    cellProps: { class: "text-sm font-weight-black text-success" },
+    cellProps: { class: "text-sm font-weight-black text-high-emphasis" },
   },
   { title: "ESTADO", key: "status", sortable: true, align: "center" },
   { title: "ACCIÓN", key: "actions", sortable: false, align: "center" },
@@ -246,24 +246,24 @@ const formatCurrency = (value) => {
               <span>Bs. {{ formatCurrency(item.exempt_amount) }}</span>
             </div>
             <div class="d-flex justify-space-between">
-              <span class="text-disabled">Big 16%:</span>
+              <span class="text-disabled">Base:</span>
               <span>Bs. {{ formatCurrency(item.base_16_amount) }}</span>
             </div>
             <div class="d-flex justify-space-between">
-              <span class="text-disabled">IVA G (16%):</span>
-              <span class="text-warning">Bs. {{ formatCurrency(item.iva_amount) }}</span>
+              <span class="text-disabled">IVA:</span>
+              <span>Bs. {{ formatCurrency(item.iva_amount) }}</span>
+            </div>
+            <div class="d-flex justify-space-between font-weight-bold">
+              <span class="text-disabled">Subtotal:</span>
+              <span>Bs. {{ formatCurrency((Number(item.total_amount) || 0) - (Number(item.igtf_amount) || 0)) }}</span>
             </div>
             <div class="d-flex justify-space-between">
-              <span class="text-disabled">Base IGTF / SPE:</span>
-              <span>Bs. {{ formatCurrency(item.igtf_base_amount) }}</span>
-            </div>
-            <div class="d-flex justify-space-between">
-              <span class="text-disabled">IGTF (3%):</span>
-              <span>Bs. {{ formatCurrency(item.igtf_amount) }}</span>
+              <span class="text-disabled">IGTF:</span>
+              <span class="text-error font-weight-bold">Bs. {{ formatCurrency(item.igtf_amount) }}</span>
             </div>
             <div class="d-flex justify-space-between border-t pt-1 font-weight-bold">
-              <span>Total Bs:</span>
-              <span class="text-success font-weight-black">Bs. {{ formatCurrency(item.total_amount) }}</span>
+              <span>Total:</span>
+              <span class="text-high-emphasis font-weight-black">Bs. {{ formatCurrency(item.total_amount) }}</span>
             </div>
           </div>
 
