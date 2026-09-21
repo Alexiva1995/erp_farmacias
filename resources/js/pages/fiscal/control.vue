@@ -213,13 +213,13 @@ onUnmounted(() => {
             <VCardSubtitle>Acciones de lectura y cierre de jornada fiscal</VCardSubtitle>
           </VCardItem>
 
-          <VCardText class="pt-4 flex-grow-1">
+          <VCardText class="pt-4 flex-grow-1 d-flex flex-column">
             <div class="d-flex flex-wrap gap-4 mb-4">
               <VBtn
-                color="info"
-                variant="tonal"
+                color="secondary"
+                variant="flat"
                 prepend-icon="tabler-file-report"
-                class="flex-grow-1"
+                class="flex-grow-1 font-weight-bold"
                 :loading="actionLoading.REPORT_X"
                 @click="handleReportX"
               >
@@ -227,8 +227,9 @@ onUnmounted(() => {
               </VBtn>
               <VBtn
                 color="error"
+                variant="flat"
                 prepend-icon="tabler-lock-access"
-                class="flex-grow-1"
+                class="flex-grow-1 font-weight-black"
                 :loading="actionLoading.REPORT_Z"
                 @click="handleReportZ"
               >
@@ -236,35 +237,39 @@ onUnmounted(() => {
               </VBtn>
             </div>
 
+            <VSpacer />
             <VDivider class="my-6" />
 
-            <VLabel class="mb-2 font-weight-bold text-xs uppercase text-disabled letter-spacing-1">
-              Reimpresión de Reporte Z
-            </VLabel>
-            <VTextField
-              v-model="zReportNumber"
-              label="Número de Reporte Z"
-              placeholder="Ej: 0005"
-              variant="outlined"
-              density="compact"
-              prepend-inner-icon="tabler-hash"
-              class="mb-3"
-              clearable
-            />
-            <VBtn
-              color="secondary"
-              variant="tonal"
-              prepend-icon="tabler-printer"
-              block
-              :disabled="!zReportNumber?.trim()"
-              :loading="actionLoading.REPRINT_REPORT_Z"
-              @click="handleReprintZ"
-            >
-              Reimprimir Reporte Z
-            </VBtn>
+            <div class="mt-auto">
+              <VLabel class="mb-2 font-weight-bold text-xs uppercase text-disabled letter-spacing-1">
+                Reimpresión de Reporte Z
+              </VLabel>
+              <VTextField
+                v-model="zReportNumber"
+                label="Número de Reporte Z"
+                placeholder="Ej: 0005"
+                variant="outlined"
+                density="compact"
+                prepend-inner-icon="tabler-hash"
+                class="mb-3"
+                clearable
+              />
+              <VBtn
+                color="secondary"
+                variant="flat"
+                prepend-icon="tabler-printer"
+                block
+                class="font-weight-bold"
+                :disabled="!zReportNumber?.trim()"
+                :loading="actionLoading.REPRINT_REPORT_Z"
+                @click="handleReprintZ"
+              >
+                Reimprimir Reporte Z
+              </VBtn>
+            </div>
           </VCardText>
           
-          <VCardText class="bg-light-primary rounded-b-lg py-3 mt-auto">
+          <VCardText class="bg-light-primary rounded-b-lg py-3 mt-0">
             <div class="d-flex align-center gap-2">
               <VIcon icon="tabler-info-circle" size="16" color="primary" />
               <span class="text-caption text-primary font-weight-medium">
@@ -398,9 +403,10 @@ onUnmounted(() => {
             </VRow>
 
             <VBtn
-              color="warning"
+              color="primary"
+              variant="flat"
               block
-              class="mt-3"
+              class="mt-3 font-weight-bold"
               prepend-icon="tabler-file-minus"
               :disabled="!ncForm.invoice_number?.trim() || !ncForm.machine_serial?.trim() || !ncForm.refund_amount"
               :loading="actionLoading.CREDIT_NOTE"
@@ -434,13 +440,14 @@ onUnmounted(() => {
       <VCol cols="12">
         <VAlert
           border="start"
-          border-color="info"
+          :border-color="isBridgeConnected ? 'success' : 'warning'"
           variant="tonal"
-          icon="tabler-plug-connected"
+          :color="isBridgeConnected ? 'success' : 'warning'"
+          :icon="isBridgeConnected ? 'tabler-plug-connected' : 'tabler-alert-triangle'"
           closable
           class="rounded-lg"
         >
-          <VAlertTitle class="font-weight-black text-info">Estado del Servicio Impresora</VAlertTitle>
+          <VAlertTitle class="font-weight-black" :class="isBridgeConnected ? 'text-success' : 'text-warning'">Estado del Servicio Impresora</VAlertTitle>
           <p class="mb-0 text-sm">
             Asegúrese de que el script <strong>fiscal_bridge.py</strong> esté ejecutándose en la estación local para procesar automáticamente los comandos encolados.
           </p>
