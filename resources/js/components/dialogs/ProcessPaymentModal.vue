@@ -333,6 +333,17 @@ const totalInUSD = computed(() => {
   }, 0);
 });
 
+const totalInCOP = computed(() => {
+  return props.invoices.reduce((sum, invoice) => {
+    if (invoice.currency === 'COP') {
+      return sum + (parseFloat(invoice.remaining_amount || invoice.total_amount) || 0);
+    }
+    const invUsd = getInvoiceUsdAmount(invoice);
+    const copRate = exchangeRates.value["COP"] || 1;
+    return sum + (invUsd * copRate);
+  }, 0);
+});
+
 const totalInBS = computed(() => {
   return props.invoices.reduce((sum, invoice) => {
     let amount = 0;
@@ -642,8 +653,7 @@ watch(() => form.value.payment_currency, (newCurrency) => {
     if (newCurrency === "VES" || newCurrency === "BS") {
       form.value.payment_amount = Number(totalInBS.value.toFixed(2));
     } else if (newCurrency === "COP") {
-      const copRate = exchangeRates.value["COP"] || 1;
-      form.value.payment_amount = Number((totalInUSD.value * copRate).toFixed(2));
+      form.value.payment_amount = Number(totalInCOP.value.toFixed(2));
     } else {
       form.value.payment_amount = Number(totalInUSD.value.toFixed(2));
     }
@@ -653,14 +663,15 @@ watch(() => form.value.payment_currency, (newCurrency) => {
 watch(() => props.modelValue, (val) => {
   if (val) {
     fetchExchangeRates();
+    const isAllCop = props.paymentGroup?.currency === 'COP' || (props.invoices.length > 0 && props.invoices.every(i => i.currency === 'COP'));
     const today = new Date().toISOString().split("T")[0];
     form.value.payment_date = today;
     form.value.reference = `CAMBISTA-${today}`;
     form.value.photo_url = null;
-    form.value.payment_currency = 'VES';
+    form.value.payment_currency = isAllCop ? 'COP' : 'VES';
     sourceCurrency.value = 'COP';
     form.value.payment_method = 'cambista';
-    form.value.payment_amount = Number(totalInBS.value.toFixed(2));
+    form.value.payment_amount = isAllCop ? Number(totalInCOP.value.toFixed(2)) : Number(totalInBS.value.toFixed(2));
     customConversionMode.value = false;
 
     if (isDromegaPayment.value) {
