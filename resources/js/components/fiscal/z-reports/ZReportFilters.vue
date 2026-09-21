@@ -215,19 +215,6 @@ const setDateAnoCompleto = () => {
               </VListItem>
             </VList>
           </VMenu>
-
-          <!-- Botón rápido Quincena Actual -->
-          <VBtn
-            v-if="currentQuincenaObj"
-            :disabled="props.loading"
-            :color="isQuincenaActive(currentQuincenaObj) ? 'primary' : 'secondary'"
-            :variant="isQuincenaActive(currentQuincenaObj) ? 'flat' : 'tonal'"
-            size="x-small"
-            class="rounded-pill px-3 font-weight-bold"
-            @click="setQuincena(currentQuincenaObj)"
-          >
-            Quincena Actual ({{ currentQuincenaObj.shortTitle }})
-          </VBtn>
         </template>
 
         <!-- CASO 2: MODO MENSUAL ESTÁNDAR (CE DESACTIVADO) -->
@@ -283,18 +270,6 @@ const setDateAnoCompleto = () => {
               </VListItem>
             </VList>
           </VMenu>
-
-          <!-- Botón rápido Mes Actual -->
-          <VBtn
-            :disabled="props.loading"
-            :color="isMonthActive(currentMonthIndex) ? 'primary' : 'secondary'"
-            :variant="isMonthActive(currentMonthIndex) ? 'flat' : 'tonal'"
-            size="x-small"
-            class="rounded-pill px-3 font-weight-bold"
-            @click="setSpecificMonth(currentMonthIndex)"
-          >
-            Mes Actual ({{ monthsOfYear[currentMonthIndex].abbr }})
-          </VBtn>
         </template>
 
         <!-- Botón rápido Hoy -->
@@ -324,44 +299,6 @@ const setDateAnoCompleto = () => {
     </template>
 
     <template #advanced-filters>
-      <VCol cols="12">
-        <div v-if="props.isCeEnabled" class="d-flex flex-wrap align-center gap-1 mb-2">
-          <span class="text-caption font-weight-bold text-uppercase text-medium-emphasis me-2">
-            Quincenas {{ currentYear }}:
-          </span>
-          <VBtn
-            v-for="q in quincenasOfYear"
-            :key="q.key"
-            :disabled="props.loading"
-            :color="isQuincenaActive(q) ? 'primary' : 'secondary'"
-            :variant="isQuincenaActive(q) ? 'flat' : 'tonal'"
-            size="x-small"
-            class="rounded-pill font-weight-bold px-2"
-            @click="setQuincena(q)"
-          >
-            {{ q.shortTitle }}
-          </VBtn>
-        </div>
-
-        <div v-else class="d-flex flex-wrap align-center gap-1 mb-2">
-          <span class="text-caption font-weight-bold text-uppercase text-medium-emphasis me-2">
-            Seleccionar Mes {{ currentYear }}:
-          </span>
-          <VBtn
-            v-for="m in monthsOfYear"
-            :key="m.index"
-            :disabled="props.loading"
-            :color="isMonthActive(m.index) ? 'primary' : 'secondary'"
-            :variant="isMonthActive(m.index) ? 'flat' : 'tonal'"
-            size="x-small"
-            class="rounded-pill font-weight-bold px-2.5"
-            @click="setSpecificMonth(m.index)"
-          >
-            {{ m.abbr }}
-          </VBtn>
-        </div>
-      </VCol>
-
       <VCol cols="12" sm="6" md="4">
         <AppDateTimePicker
           :model-value="props.startDate"
