@@ -66,6 +66,14 @@ const headers = [
     cellProps: { class: 'text-sm text-medium-emphasis' }
   },
   { 
+    title: "IGTF (3%)", 
+    key: "spe_surcharge_amount", 
+    sortable: true, 
+    align: "end",
+    value: item => formatCurrency(item.spe_surcharge_amount),
+    cellProps: { class: 'text-sm font-weight-bold text-error' }
+  },
+  { 
     title: "TOTAL", 
     key: "total_amount", 
     sortable: true, 
@@ -216,7 +224,7 @@ const formatCurrency = (value) => {
               <span class="text-xs text-medium-emphasis leading-tight truncate-2-lines uppercase">{{ item.address || "Dirección no registrada" }}</span>
             </div>
 
-            <div class="d-grid mobile-grid gap-3 mb-1">
+            <div class="d-grid mobile-grid gap-2 mb-1">
               <div class="stat-box">
                 <span class="label">Exento</span>
                 <span class="value font-weight-black text-high-emphasis">Bs. {{ formatCurrency(item.exempt_amount) }}</span>
@@ -224,6 +232,10 @@ const formatCurrency = (value) => {
               <div class="stat-box text-center">
                 <span class="label">IVA</span>
                 <span class="value font-weight-black text-high-emphasis">Bs. {{ formatCurrency(item.iva_amount) }}</span>
+              </div>
+              <div v-if="Number(item.spe_surcharge_amount) > 0" class="stat-box text-center">
+                <span class="label">IGTF (3%)</span>
+                <span class="value font-weight-black text-error">Bs. {{ formatCurrency(item.spe_surcharge_amount) }}</span>
               </div>
               <div class="stat-box text-right">
                 <span class="label">Fecha</span>

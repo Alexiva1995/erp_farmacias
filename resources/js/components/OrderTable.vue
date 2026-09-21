@@ -161,8 +161,19 @@ const renderSellerName = (item) => {
               <div class="d-flex justify-space-between align-center">
                 <div>
                   <div class="text-caption text-medium-emphasis mb-n1">Total</div>
-                  <div class="text-h6 font-weight-black text-primary">
-                    {{ formatAmountOnly(Number(item.raw.total_amount) || 0, item.raw.currency || 'COP') }}
+                  <div class="d-flex align-center gap-1">
+                    <VChip
+                      v-if="item.raw.fiscal_history?.spe || Number(item.raw.fiscal_history?.spe_surcharge_amount) > 0 || Number(item.raw.spe_surcharge_amount) > 0"
+                      size="x-small"
+                      color="error"
+                      variant="tonal"
+                      class="font-weight-bold"
+                    >
+                      IGTF 3%
+                    </VChip>
+                    <div class="text-h6 font-weight-black text-primary">
+                      {{ formatAmountOnly(Number(item.raw.total_amount) || 0, item.raw.currency || 'COP') }}
+                    </div>
                   </div>
                 </div>
                 <div class="d-flex gap-1">
@@ -253,6 +264,15 @@ const renderSellerName = (item) => {
 
       <template v-slot:item.total_amount="{ item }">
         <div class="d-flex align-center justify-end gap-1">
+          <VChip
+            v-if="item.fiscal_history?.spe || Number(item.fiscal_history?.spe_surcharge_amount) > 0 || Number(item.spe_surcharge_amount) > 0"
+            size="x-small"
+            color="error"
+            variant="tonal"
+            class="font-weight-bold me-1"
+          >
+            IGTF 3%
+          </VChip>
           <span class="text-sm font-weight-black text-primary text-end">
             {{ formatAmountOnly(Number(item.total_amount) || 0, item.currency || 'COP') }}
           </span>
