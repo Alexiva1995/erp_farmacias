@@ -96,7 +96,6 @@ const headers = [
     value: item => formatCurrency(item.total_amount),
     cellProps: { class: 'text-sm font-weight-black text-high-emphasis' }
   },
-  { title: "AUDIT", key: "is_audit_valid", sortable: false, align: "center" },
   { title: "ACCIÓN", key: "actions", sortable: false, align: "center" },
 ];
 
@@ -133,22 +132,20 @@ const formatCurrency = (value) => {
             />
           </template>
 
-          <template #item.is_audit_valid="{ item }">
-            <VTooltip location="top" :text="item.is_audit_valid === null ? 'Sin datos de auditoría (Venta antigua)' : (item.is_audit_valid ? 'Integridad Verificada' : 'Hash no coincide o datos alterados')">
-              <template #activator="{ props: tooltipProps }">
-                <div v-bind="tooltipProps" class="d-flex justify-center">
-                  <VIcon 
-                    :icon="item.is_audit_valid === null ? 'tabler-shield-off' : (item.is_audit_valid ? 'tabler-shield-check' : 'tabler-shield-x')" 
-                    :color="item.is_audit_valid === null ? 'disabled' : (item.is_audit_valid ? 'success' : 'error')" 
-                    size="22"
-                  />
-                </div>
-              </template>
-            </VTooltip>
-          </template>
-
           <template #item.actions="{ item }">
-            <div class="d-flex justify-center">
+            <div class="d-flex align-center justify-center gap-1">
+              <VTooltip location="top" :text="item.is_audit_valid === null ? 'Sin datos de auditoría (Venta antigua)' : (item.is_audit_valid ? 'Integridad Verificada' : 'Hash no coincide o datos alterados')">
+                <template #activator="{ props: tooltipProps }">
+                  <div v-bind="tooltipProps" class="cursor-pointer d-flex align-center">
+                    <VIcon 
+                      :icon="item.is_audit_valid === null ? 'tabler-shield-off' : (item.is_audit_valid ? 'tabler-shield-check' : 'tabler-shield-x')" 
+                      :color="item.is_audit_valid === null ? 'disabled' : (item.is_audit_valid ? 'success' : 'error')" 
+                      size="20"
+                    />
+                  </div>
+                </template>
+              </VTooltip>
+
               <IconBtn
                 color="primary"
                 title="Ver Detalle"
