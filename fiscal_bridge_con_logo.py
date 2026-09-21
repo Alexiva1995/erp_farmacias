@@ -221,17 +221,7 @@ def process_pending_invoices(sim):
                 if BRIDGE_MODE == "WEBSIM":
                     res_text = sim.print_invoice(data)
                 else:
-                    # 1. Estampar Logo Fiscal en Cabecera (si está cargado en la memoria de la impresora)
-                    if hasattr(pnp, 'PFLogoClick'):
-                        try:
-                            ptr_logo = pnp.PFLogoClick()
-                            res_logo = get_pnp_res(ptr_logo)
-                            if res_logo == "OK":
-                                print("[DLL LOGO] Logo Fiscal estampado correctamente.")
-                        except Exception as logo_err:
-                            print(f"[DLL LOGO NOTE] {logo_err}")
-
-                    # 2. Abrir Factura Fiscal con Primer Nombre y Primer Apellido
+                    # 1. Abrir Factura Fiscal con Primer Nombre y Primer Apellido
                     name = extract_client_name(data)
                     rif = "".join(filter(str.isalnum, data.get('identification', 'V000000000')))[:12]
                     
