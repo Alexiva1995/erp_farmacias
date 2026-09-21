@@ -23,6 +23,8 @@ class FiscalPrinterController extends Controller
     public function getPending()
     {
         try {
+            \Illuminate\Support\Facades\Cache::put('fiscal_bridge_last_seen', now(), 120);
+
             $pending = FiscalHistory::where('is_queued', true)
                 ->whereNull('invoice_number')
                 ->with(['details', 'user.employee', 'order.client'])
@@ -42,6 +44,8 @@ class FiscalPrinterController extends Controller
     public function confirm(ConfirmFiscalPrintRequest $request, $id)
     {
         try {
+            \Illuminate\Support\Facades\Cache::put('fiscal_bridge_last_seen', now(), 120);
+            
             $fiscal = FiscalHistory::where('id', $id)->orWhere('order_id', $id)->first();
             if (!$fiscal) {
                 return response()->json(['error' => "Registro fiscal no encontrado para ID {$id}"], 404);
@@ -78,6 +82,8 @@ class FiscalPrinterController extends Controller
     public function confirmReplica(ConfirmFiscalPrintRequest $request, $id)
     {
         try {
+            \Illuminate\Support\Facades\Cache::put('fiscal_bridge_last_seen', now(), 120);
+            
             $fiscal = FiscalHistory::where('id', $id)->orWhere('order_id', $id)->first();
             if (!$fiscal) {
                 return response()->json(['error' => "Registro fiscal no encontrado para ID {$id}"], 404);
@@ -148,6 +154,7 @@ class FiscalPrinterController extends Controller
     public function getPendingCommand()
     {
         try {
+            \Illuminate\Support\Facades\Cache::put('fiscal_bridge_last_seen', now(), 120);
             $pending = $this->service->getNextCommand();
             return $pending ? new FiscalCommandResource($pending) : response()->json(null);
         } catch (\Exception $e) {

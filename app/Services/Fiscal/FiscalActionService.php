@@ -79,17 +79,27 @@ class FiscalActionService
     }
 
     /**
-     * Check if the fiscal bridge script is active (interacted in last 60 seconds).
+     * Check if the fiscal bridge script is active (interacted in last 120 seconds).
      */
-    public function isBridgeActive(int $thresholdSeconds = 60): array
+    public function isBridgeActive(int $thresholdSeconds = 120): array
     {
+        $lastSeen = \Illuminate\Support\Facades\Cache::get('fiscal_bridge_last_seen');
         $lastInteraction = $this->repository->getLastInteractionTime();
-        $isAlive = $lastInteraction ? $lastInteraction->diffInSeconds(now()) <= $thresholdSeconds : false;
+        
+        // Determinar cuál fue la fecha más reciente de interacción
+        $mostRecent = null;
+        if ($lastSeen && $lastInteraction) {
+            $mostRecent = $lastSeen->greaterThan($lastInteraction) ? $lastSeen : $lastInteraction;
+        } else {
+            $mostRecent = $lastSeen ?? $lastInteraction;
+        }
+
+        $isAlive = $mostRecent ? $mostRecent->diffInSeconds(now()) <= $thresholdSeconds : false;
 
         return [
             'is_connected' => $isAlive,
-            'last_seen' => $lastInteraction?->toDateTimeString(),
-            'seconds_ago' => $lastInteraction ? $lastInteraction->diffInSeconds(now()) : null,
+            'last_seen' => $mostRecent?->toDateTimeString(),
+            'seconds_ago' => $mostRecent ? $mostRecent->diffInSeconds(now()) : null,
         ];
     }
 }
