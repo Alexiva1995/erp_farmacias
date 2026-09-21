@@ -27,19 +27,10 @@ const headers = [
     cellProps: { class: 'text-sm font-weight-bold text-high-emphasis' }
   },
   { 
-    title: "IDENTIFICACIÓN", 
-    key: "identification", 
-    sortable: true,
-    value: item => (item.identification || 'N/A').toUpperCase(),
-    cellProps: { class: 'text-sm text-medium-emphasis' }
-  },
-  { 
     title: "RAZÓN SOCIAL", 
     key: "business_name", 
     sortable: true, 
-    width: "25%",
-    value: item => (item.business_name || 'N/A').toUpperCase(),
-    cellProps: { class: 'text-sm text-medium-emphasis text-uppercase truncate' }
+    width: "25%"
   },
   { 
     title: "FECHA", 
@@ -65,7 +56,7 @@ const headers = [
     cellProps: { class: 'text-sm text-medium-emphasis' }
   },
   { 
-    title: "BASE (16%)", 
+    title: "BASE", 
     key: "taxable_amount", 
     sortable: true, 
     align: "end",
@@ -73,7 +64,7 @@ const headers = [
     cellProps: { class: 'text-sm text-medium-emphasis' }
   },
   { 
-    title: "IVA (16%)", 
+    title: "IVA", 
     key: "iva_amount", 
     sortable: true, 
     align: "end",
@@ -81,7 +72,7 @@ const headers = [
     cellProps: { class: 'text-sm text-medium-emphasis' }
   },
   { 
-    title: "IGTF (3%)", 
+    title: "IGTF", 
     key: "spe_surcharge_amount", 
     sortable: true, 
     align: "end",
@@ -130,6 +121,17 @@ const formatCurrency = (value) => {
               description="Intenta ajustando los filtros de búsqueda o el rango de fechas."
               class="py-6"
             />
+          </template>
+
+          <template #item.business_name="{ item }">
+            <div class="d-flex flex-column py-1">
+              <span class="text-sm font-weight-bold text-high-emphasis text-uppercase truncate" style="max-width: 250px;">
+                {{ item.business_name || 'N/A' }}
+              </span>
+              <span class="text-xs text-medium-emphasis text-uppercase">
+                {{ item.identification || 'N/A' }}
+              </span>
+            </div>
           </template>
 
           <template #item.actions="{ item }">
@@ -239,15 +241,15 @@ const formatCurrency = (value) => {
                 <span class="value font-weight-black text-high-emphasis">Bs. {{ formatCurrency(item.exempt_amount) }}</span>
               </div>
               <div v-if="Number(item.taxable_amount) > 0" class="stat-box text-center">
-                <span class="label">Base (16%)</span>
+                <span class="label">Base</span>
                 <span class="value font-weight-black text-high-emphasis">Bs. {{ formatCurrency(item.taxable_amount) }}</span>
               </div>
               <div class="stat-box text-center">
-                <span class="label">IVA (16%)</span>
+                <span class="label">IVA</span>
                 <span class="value font-weight-black text-high-emphasis">Bs. {{ formatCurrency(item.iva_amount) }}</span>
               </div>
               <div v-if="Number(item.spe_surcharge_amount) > 0" class="stat-box text-center">
-                <span class="label">IGTF (3%)</span>
+                <span class="label">IGTF</span>
                 <span class="value font-weight-black text-error">Bs. {{ formatCurrency(item.spe_surcharge_amount) }}</span>
               </div>
               <div class="stat-box text-right">
