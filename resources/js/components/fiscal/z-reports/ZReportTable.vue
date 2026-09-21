@@ -85,14 +85,7 @@ const headers = [
     },
     cellProps: { class: "text-sm text-medium-emphasis" },
   },
-  {
-    title: "FACTURAS",
-    key: "invoices_count",
-    sortable: true,
-    align: "center",
-    value: (item) => `${item.invoices_count || 0} Docs.`,
-    cellProps: { class: "text-sm font-weight-bold" },
-  },
+
   {
     title: "EXENTO",
     key: "exempt_amount",
@@ -187,21 +180,20 @@ const formatCurrency = (value) => {
             </div>
           </template>
 
-          <template #item.invoices_count="{ item }">
-            <VChip
-              size="small"
-              :color="item.status === 'open' ? 'success' : (item.invoices_count > 0 ? 'info' : 'secondary')"
-              variant="tonal"
-              class="font-weight-bold"
-            >
-              {{ item.invoices_count }} {{ item.invoices_count === 1 ? 'Doc' : 'Docs' }}
-            </VChip>
-          </template>
-
           <template #item.total_amount="{ item }">
-            <span class="font-weight-black text-success">
-              Bs. {{ formatCurrency(item.total_amount) }}
-            </span>
+            <div class="d-flex flex-column align-end gap-1">
+              <span class="font-weight-black text-success">
+                Bs. {{ formatCurrency(item.total_amount) }}
+              </span>
+              <VChip
+                size="x-small"
+                :color="item.status === 'open' ? 'success' : (item.invoices_count > 0 ? 'info' : 'secondary')"
+                variant="tonal"
+                class="font-weight-bold"
+              >
+                {{ item.invoices_count }} {{ item.invoices_count === 1 ? 'Doc' : 'Docs' }}
+              </VChip>
+            </div>
           </template>
 
           <template #item.status="{ item }">
