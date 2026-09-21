@@ -13,18 +13,11 @@ const emit = defineEmits(["update:options", "show-detailHistory"]);
 
 const headers = [
   { 
-    title: "ID", 
-    key: "order_id", 
-    sortable: true,
-    value: item => item.order_id ? `#${item.order_id}` : (item.id ? `#${item.id}` : ''),
-    cellProps: { class: 'text-sm font-weight-black text-primary' }
-  },
-  { 
     title: "N° FACTURA", 
     key: "invoice_number", 
     sortable: true,
-    value: item => item.invoice_number ? `#${item.invoice_number}` : '—',
-    cellProps: { class: 'text-sm font-weight-bold text-high-emphasis' }
+    value: item => item.invoice_number ? `${item.invoice_number}` : '—',
+    cellProps: { class: 'text-sm font-weight-black', style: 'color: #e91e63 !important;' }
   },
   { 
     title: "RAZÓN SOCIAL", 
@@ -209,8 +202,8 @@ const formatCurrency = (value) => {
                       size="14"
                     />
                   </div>
-                  <h3 class="text-sm font-weight-black text-high-emphasis leading-tight truncate">
-                    #{{ item.invoice_number || item.fiscal_id || item.id }}
+                  <h3 class="text-sm font-weight-black leading-tight truncate" style="color: #e91e63;">
+                    {{ item.invoice_number || item.fiscal_id || item.id }}
                   </h3>
                 </div>
               </div>
