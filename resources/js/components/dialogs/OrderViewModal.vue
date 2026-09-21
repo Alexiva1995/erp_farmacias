@@ -102,18 +102,44 @@ const formattedOrderDate = computed(() => {
   }).replace(',', ' ·');
 });
 
+const effectivePayments = computed(() => {
+  if (props.payments && props.payments.length > 0) return props.payments;
+  const pm = props.orderData?.payment_methods;
+  if (Array.isArray(pm)) return pm;
+  if (typeof pm === "string") {
+    try {
+      const parsed = JSON.parse(pm);
+      if (Array.isArray(parsed)) return parsed;
+    } catch (e) {}
+  }
+  return [];
+});
+
+const paymentBadges = computed(() => {
+  if (props.credit || props.orderData?.status === "Credit") {
+    return [{ label: "Crédito", currency: props.selectedCurrency || "USD", color: "primary" }];
+  }
+  const pays = effectivePayments.value;
+  if (!pays.length) return [{ label: "—", currency: "", color: "secondary" }];
+
+  return pays.map((p) => {
+    const label = getPaymentMethodLabel(p.method, p.currency);
+    const curr = p.currency || props.selectedCurrency || "";
+    let color = "success";
+    if (p.method === "credit" || p.isDebt) color = "primary";
+    else if (["debit_card", "credit_card", "card"].includes(p.method)) color = "info";
+    else if (["binance", "paypal"].includes(p.method)) color = "warning";
+    return {
+      label: label || "Efectivo",
+      amount: p.amount,
+      currency: curr,
+      color,
+    };
+  });
+});
+
 const paymentBadge = computed(() => {
-  if (props.credit) return { label: "Crédito", currency: props.selectedCurrency || "", color: "primary" };
-  if (!props.payments?.length) return { label: "—", currency: "", color: "secondary" };
-  const first = props.payments[0];
-  const label = getPaymentMethodLabel(first.method, first.currency);
-  const currency = first.currency || props.selectedCurrency || "";
-  if (first.method === "credit") return { label: "Crédito", currency, color: "primary" };
-  if (["cash_cop", "cash_bs", "cash_usd", "mobile_payment"].includes(first.method))
-    return { label: label || "Efectivo", currency, color: "success" };
-  if (["debit_card", "credit_card"].includes(first.method))
-    return { label: label || "Tarjeta", currency, color: "info" };
-  return { label: label || "Pagado", currency, color: "success" };
+  return paymentBadges.value[0] || { label: "—", currency: "", color: "secondary" };
 });
 
 const getCurrencyChipColor = (currency) => {
@@ -145,6 +171,7 @@ const getPaymentMethodLabel = (methodValue, currency) => {
       { label: "Binance", value: "binance" },
       { label: "PayPal", value: "paypal" },
       { label: "Crédito", value: "credit" },
+      { label: "Saldo", value: "balance" },
     ],
   };
 
@@ -167,14 +194,69 @@ const getPaymentMethodLabel = (methodValue, currency) => {
 };
 
 const debtPayments = computed(() => {
-  if (!props.payments) return [];
-  return props.payments.filter((payment) => payment.isDebt === true);
+  return effectivePayments.value.filter((payment) => payment.isDebt === true);
 });
 const normalPayments = computed(() => {
-  if (!props.payments) return [];
-  return props.payments.filter(
+  return effectivePayments.value.filter(
     (payment) => payment.isDebt === false || payment.isDebt == null
   );
+});
+
+const fiscalSummary = computed(() => {
+  const fh = props.orderData?.fiscal_history || props.orderData?.fiscalHistory || null;
+  if (fh) {
+    return {
+      hasFiscalRecord: true,
+      invoiceNumber: fh.invoice_number || null,
+      isQueued: !!fh.is_queued,
+      exemptAmount: Number(fh.exempt_amount) || 0,
+      taxableAmount: Number(fh.taxable_amount) || 0,
+      ivaAmount: Number(fh.iva_amount) || 0,
+      speAmount: Number(fh.spe_surcharge_amount) || 0,
+      speRate: Number(fh.spe_surcharge_rate) || 0,
+      totalAmountBs: Number(fh.total_amount) || 0,
+      exchangeRate: Number(fh.exchange_rate) || 0,
+      isSpe: !!fh.spe || Number(fh.spe_surcharge_amount) > 0,
+    };
+  }
+
+  let exempt = 0;
+  let taxable = 0;
+  let iva = 0;
+
+  displayProducts.value.forEach((p) => {
+    const qty = Number(p.selectedQuantity) || 1;
+    const priceBs = Number(p.price_bs) || 0;
+    const lineTotal = priceBs * qty;
+    const isIva = p.product?.iva ?? p.iva ?? false;
+
+    if (isIva) {
+      const base = lineTotal / 1.16;
+      taxable += base;
+      iva += (lineTotal - base);
+    } else {
+      exempt += lineTotal;
+    }
+  });
+
+  const speAmt = Number(props.speSurchargeAmount) || 0;
+  const isSpe = props.isSpecialTaxpayer || speAmt > 0;
+  const speRate = isSpe ? 3.0 : 0.0;
+  const totalBs = exempt + taxable + iva + speAmt;
+
+  return {
+    hasFiscalRecord: false,
+    invoiceNumber: null,
+    isQueued: false,
+    exemptAmount: exempt,
+    taxableAmount: taxable,
+    ivaAmount: iva,
+    speAmount: speAmt,
+    speRate,
+    totalAmountBs: totalBs,
+    exchangeRate: 0,
+    isSpe,
+  };
 });
 
 const hasCompanyDiscount = computed(() => {
@@ -355,9 +437,37 @@ const productLineLabel = (product) => {
                 </VCol>
                 <VCol cols="12" sm="6" class="py-1">
                   <div class="d-flex flex-column align-sm-end">
-                    <span class="text-uppercase mb-0.5" style="color: #444; font-weight: 700; font-size: 10px; letter-spacing: 0.5px;">MÉTODO DE PAGO</span>
-                    <VChip :color="paymentBadge.color" size="x-small" variant="flat" class="font-weight-black">
-                      {{ paymentBadge.label }}
+                    <span class="text-uppercase mb-0.5" style="color: #444; font-weight: 700; font-size: 10px; letter-spacing: 0.5px;">MÉTODO(S) DE PAGO</span>
+                    <div class="d-flex flex-wrap gap-1 justify-sm-end">
+                      <VChip
+                        v-for="(badge, bIdx) in paymentBadges"
+                        :key="`badge-${bIdx}`"
+                        :color="badge.color"
+                        size="x-small"
+                        variant="flat"
+                        class="font-weight-black"
+                      >
+                        {{ badge.label }} <span v-if="badge.amount" class="ms-1 opacity-90">({{ formatAmountOnly(badge.amount, badge.currency) }})</span>
+                      </VChip>
+                    </div>
+                  </div>
+                </VCol>
+
+                <!-- Fila de Información Fiscal si existe o aplica -->
+                <VCol v-if="fiscalSummary.invoiceNumber || fiscalSummary.hasFiscalRecord" cols="12" class="py-1">
+                  <div class="d-flex align-center justify-space-between bg-surface pa-2 rounded border">
+                    <div class="d-flex align-center gap-1.5">
+                      <VIcon icon="tabler-printer" size="16" color="primary" />
+                      <span class="text-caption font-weight-black text-uppercase">Factura Fiscal:</span>
+                      <span class="text-caption font-weight-black text-primary">{{ fiscalSummary.invoiceNumber || 'En Cola de Impresión' }}</span>
+                    </div>
+                    <VChip
+                      :color="fiscalSummary.invoiceNumber ? 'success' : 'warning'"
+                      size="x-small"
+                      variant="tonal"
+                      class="font-weight-black"
+                    >
+                      {{ fiscalSummary.invoiceNumber ? 'IMPRESO' : 'PENDIENTE' }}
                     </VChip>
                   </div>
                 </VCol>
@@ -478,13 +588,47 @@ const productLineLabel = (product) => {
             </div>
           </VCard>
 
-          <!-- Summary -->
+          <!-- Desglose Fiscal SENIAT e Impresora Fiscal -->
+          <div class="d-flex align-center gap-2 mb-2">
+            <div class="header-indicator" style="background-color: #7A0099; width: 4px; height: 16px; border-radius: 2px;" />
+            <span class="text-xs font-weight-black text-uppercase" style="letter-spacing: 0.5px; color: #7A0099 !important; font-size: 12px;">DESGLOSE FISCAL (SENIAT)</span>
+          </div>
+
+          <VCard variant="flat" class="rounded border shadow-sm bg-white overflow-hidden mb-2">
+            <VCardText class="pa-2.5">
+              <div class="summary-list d-flex flex-column gap-1">
+                <div class="summary-row">
+                  <span class="summary-label">Monto Exento (E)</span>
+                  <span class="summary-value font-weight-bold">{{ formatAmountOnly(fiscalSummary.exemptAmount, 'BS') }} Bs</span>
+                </div>
+                <div class="summary-row">
+                  <span class="summary-label">Base Imponible (G 16%)</span>
+                  <span class="summary-value font-weight-bold">{{ formatAmountOnly(fiscalSummary.taxableAmount, 'BS') }} Bs</span>
+                </div>
+                <div class="summary-row">
+                  <span class="summary-label">IVA (16%)</span>
+                  <span class="summary-value font-weight-bold">{{ formatAmountOnly(fiscalSummary.ivaAmount, 'BS') }} Bs</span>
+                </div>
+                <div v-if="fiscalSummary.isSpe || fiscalSummary.speAmount > 0" class="summary-row">
+                  <span class="summary-label">IGTF (3%) Percibido Divisas</span>
+                  <span class="summary-value font-weight-bold text-primary">{{ formatAmountOnly(fiscalSummary.speAmount, 'BS') }} Bs</span>
+                </div>
+                <VDivider class="my-0.5 opacity-10" />
+                <div class="summary-row">
+                  <span class="summary-label font-weight-bold">Total Fiscal en Bolívares</span>
+                  <span class="summary-value font-weight-black text-primary">{{ formatAmountOnly(fiscalSummary.totalAmountBs, 'BS') }} Bs</span>
+                </div>
+              </div>
+            </VCardText>
+          </VCard>
+
+          <!-- Summary de Pagos y Total -->
           <VCard v-if="!isBlind" variant="flat" class="rounded border shadow-sm bg-white overflow-hidden mb-2">
             <VCardText class="pa-2.5">
               <div class="summary-list d-flex flex-column gap-1">
-                <div v-if="activeDiscount" class="summary-row">
-                  <span class="summary-label">Desc.</span>
-                  <span class="summary-value text-error font-weight-bold">- {{ formatCurrency(activeDiscount.amount, selectedCurrency) }}</span>
+                <div v-if="orderDiscounts.total > 0" class="summary-row">
+                  <span class="summary-label">{{ orderDiscounts.label }}</span>
+                  <span class="summary-value text-error font-weight-bold">- {{ formatCurrency(orderDiscounts.total, selectedCurrency) }}</span>
                 </div>
                 <div v-if="credit" class="summary-row">
                   <span class="summary-label">Crédito</span>
@@ -517,22 +661,11 @@ const productLineLabel = (product) => {
       </VCardText>
 
       <!-- Action Buttons Fijos abajo -->
-      <VCardActions class="pa-2.5 bg-white border-t flex-shrink-0 d-flex gap-2">
-        <VBtn
-          v-if="orderData?.status !== 'Cancelled' && orderData?.status !== 'cancelled' && orderData?.status !== 'Abandonada' && orderData?.status !== 'Abandoned'"
-          color="error"
-          variant="tonal"
-          class="rounded-lg font-weight-black text-xs flex-grow-1"
-          height="38"
-          @click="handleCancel"
-        >
-          <VIcon class="me-1">tabler-circle-x</VIcon>
-          CANCELAR ORDEN
-        </VBtn>
+      <VCardActions class="pa-2.5 bg-white border-t flex-shrink-0 d-flex justify-end">
         <VBtn
           color="secondary"
           variant="tonal"
-          class="rounded-lg font-weight-black text-xs flex-grow-1"
+          class="rounded-lg font-weight-black text-xs w-100"
           height="38"
           @click="closeModal"
         >

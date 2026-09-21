@@ -344,7 +344,7 @@ class OrderController extends Controller
 
     public function getCPrintOrder(int $orderId)
     {
-        $order = Order::with('details.product.laboratory', 'details.dish', 'details.court', 'client', 'seller')->find($orderId);
+        $order = Order::with('details.product.laboratory', 'details.dish', 'details.court', 'client', 'seller', 'fiscalHistory')->find($orderId);
         if (!$order) {
             return ApiResponse::error('Orden no encontrada.', 404);
         }

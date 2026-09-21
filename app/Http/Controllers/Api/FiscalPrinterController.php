@@ -42,13 +42,26 @@ class FiscalPrinterController extends Controller
     public function confirm(ConfirmFiscalPrintRequest $request, $id)
     {
         try {
-            $fiscal = FiscalHistory::findOrFail($id);
+            $fiscal = FiscalHistory::where('id', $id)->orWhere('order_id', $id)->first();
+            if (!$fiscal) {
+                return response()->json(['error' => "Registro fiscal no encontrado para ID {$id}"], 404);
+            }
+
+            $targetInvoiceNumber = $request->invoice_number;
+            $targetFiscalId = $request->fiscal_id ?? $request->invoice_number;
+
             $fiscal->update([
-                'invoice_number' => $request->invoice_number,
+                'invoice_number' => $targetInvoiceNumber,
+                'fiscal_id' => $targetFiscalId,
+                'is_queued' => false,
                 'invoice_date' => now(),
             ]);
 
-            return response()->json(['message' => 'Factura confirmada exitosamente']);
+            return response()->json([
+                'message' => 'Factura confirmada exitosamente',
+                'invoice_number' => $targetInvoiceNumber,
+                'fiscal_id' => $targetFiscalId,
+            ]);
         } catch (\Exception $e) {
             Log::error('Error en FiscalPrinterController@confirm: ' . $e->getMessage());
             return response()->json(['error' => 'Error al confirmar la impresión'], 500);
@@ -62,16 +75,18 @@ class FiscalPrinterController extends Controller
     public function confirmReplica(ConfirmFiscalPrintRequest $request, $id)
     {
         try {
-
-            $fiscal = FiscalHistory::findOrFail($id);
+            $fiscal = FiscalHistory::where('id', $id)->orWhere('order_id', $id)->first();
+            if (!$fiscal) {
+                return response()->json(['error' => "Registro fiscal no encontrado para ID {$id}"], 404);
+            }
             
-            // Si fiscal_id viene nulo pero invoice_number no, usamos invoice_number para ambos
             $targetInvoiceNumber = $request->invoice_number;
             $targetFiscalId = $request->fiscal_id ?? $request->invoice_number;
 
             $fiscal->update([
                 'invoice_number' => $targetInvoiceNumber,
                 'fiscal_id' => $targetFiscalId,
+                'is_queued' => false,
                 'invoice_date' => now(),
             ]);
 

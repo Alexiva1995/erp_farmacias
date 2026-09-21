@@ -22,6 +22,7 @@ class OrderListItemResource extends JsonResource
             'total_amount' => $this->total_amount,
             'currency' => $this->currency,
             'status' => $this->status,
+            'payment_methods' => $this->payment_methods,
             'client' => $this->whenLoaded('client', function () {
                 return [
                     'id' => $this->client->id,
@@ -35,6 +36,21 @@ class OrderListItemResource extends JsonResource
                 return [
                     'id' => $this->seller->id,
                     'username' => $this->seller->username,
+                ];
+            }),
+            'fiscal_history' => $this->whenLoaded('fiscalHistory', function () {
+                return [
+                    'id' => $this->fiscalHistory->id,
+                    'invoice_number' => $this->fiscalHistory->invoice_number,
+                    'exempt_amount' => (float) $this->fiscalHistory->exempt_amount,
+                    'taxable_amount' => (float) $this->fiscalHistory->taxable_amount,
+                    'iva_amount' => (float) $this->fiscalHistory->iva_amount,
+                    'total_amount' => (float) $this->fiscalHistory->total_amount,
+                    'spe_surcharge_rate' => (float) $this->fiscalHistory->spe_surcharge_rate,
+                    'spe_surcharge_amount' => (float) $this->fiscalHistory->spe_surcharge_amount,
+                    'exchange_rate' => (float) $this->fiscalHistory->exchange_rate,
+                    'is_queued' => (bool) $this->fiscalHistory->is_queued,
+                    'spe' => (bool) $this->fiscalHistory->spe,
                 ];
             }),
         ];

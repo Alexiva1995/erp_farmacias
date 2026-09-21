@@ -26,8 +26,8 @@ class OrderQueryService
     private function getBaseQuery($valor, ?string $startDate = null, ?string $endDate = null): Builder
     {
         if ($valor == 'Completed') {
-            $query = Order::query()->where('orders.status', $valor)->with('client', 'seller');
-            // Si no hay rango de fechas, usar solo el d├¡a actual (comportamiento por defecto)
+            $query = Order::query()->where('orders.status', $valor)->with(['client', 'seller', 'fiscalHistory']);
+            // Si no hay rango de fechas, usar solo el día actual (comportamiento por defecto)
             if (empty($startDate) && empty($endDate)) {
                 $start = now()->startOfDay();
                 $end = now()->endOfDay();
@@ -35,10 +35,10 @@ class OrderQueryService
             }
             return $query;
         } elseif ($valor == 'all') {
-            return Order::query()->with('client', 'seller');
+            return Order::query()->with(['client', 'seller', 'fiscalHistory']);
         }
 
-        return Order::query()->where('orders.status', $valor)->with('client', 'seller');
+        return Order::query()->where('orders.status', $valor)->with(['client', 'seller', 'fiscalHistory']);
     }
 
 

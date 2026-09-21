@@ -34,7 +34,8 @@ class HistoryQueryService
         ])->with([
             'user:id,username',
             'details:id,fiscal_history_id,product_id,product_name,quantity,exempt_amount,vat_status,total_amount,iva_amount',
-            'order:id,order_date,created_at',
+            'order:id,order_date,created_at,client_id',
+            'order.client:id,identification_type,identification',
             'order.details.product',
         ]);
     }
@@ -149,7 +150,15 @@ class HistoryQueryService
             return null;
         }
 
-        $identOnly = preg_replace('/[^0-9]/', '', (string)$history->identification);
+        $candidateIdents = array_values(array_unique(array_filter([
+            (string)$history->identification,
+            preg_replace('/[^0-9]/', '', (string)$history->identification),
+            preg_replace('/^([VJEGP])-?/i', '', (string)$history->identification),
+            $history->order?->client?->identification ? (string)$history->order->client->identification : null,
+            $history->order?->client?->identification ? preg_replace('/[^0-9]/', '', (string)$history->order->client->identification) : null,
+            '00000000',
+        ])));
+
         $exemptStr = number_format((float)$history->exempt_amount, 2, '.', '');
         $taxableStr = number_format((float)$history->taxable_amount, 2, '.', '');
         $ivaStr = number_format((float)$history->iva_amount, 2, '.', '');
@@ -218,19 +227,21 @@ class HistoryQueryService
             }
         }
 
-        foreach ($detailCombinations as $detailsStr) {
-            $auditString = implode('|', [
-                $identOnly,
-                $exemptStr,
-                $taxableStr,
-                $ivaStr,
-                $totalStr,
-                $history->order_id,
-                $detailsStr
-            ]);
+        foreach ($candidateIdents as $ident) {
+            foreach ($detailCombinations as $detailsStr) {
+                $auditString = implode('|', [
+                    $ident,
+                    $exemptStr,
+                    $taxableStr,
+                    $ivaStr,
+                    $totalStr,
+                    $history->order_id,
+                    $detailsStr
+                ]);
 
-            if (hash_equals($history->audit_hash, hash('sha256', $auditString))) {
-                return true;
+                if (hash_equals($history->audit_hash, hash('sha256', $auditString))) {
+                    return true;
+                }
             }
         }
 
