@@ -13,7 +13,7 @@ class IndexedInvoiceService
 {
     /**
      * Calcular monto indexado para facturas indexadas
-     * Para facturas indexadas: Bs = USD × Tasa BCV actual
+     * Para facturas indexadas: Bs = USD × Tasa BCV actual (exclusivo para moneda Bs)
      */
     public function calculateIndexedAmount(Invoice $invoice): array
     {
@@ -56,6 +56,17 @@ class IndexedInvoiceService
     public function toggleIndexedStatus(int $invoiceId, bool $isIndexed): array
     {
         $invoice = Invoice::findOrFail($invoiceId);
+
+        if ($invoice->currency !== 'Bs') {
+            $invoice->update(['is_indexed' => false]);
+            return [
+                'invoice_id' => $invoice->id,
+                'invoice_number' => $invoice->invoice_number,
+                'is_indexed' => false,
+                'message' => 'Las facturas en ' . $invoice->currency . ' no son indexables y mantienen su precio estipulado'
+            ];
+        }
+
         $invoice->update(['is_indexed' => $isIndexed]);
 
         return [
@@ -114,10 +125,7 @@ class IndexedInvoiceService
                         $invoiceRemainingOriginal = round($invoiceRemainingUSD * $exchangeRate->rate, 2);
                     }
                 } elseif ($invoice->currency === 'COP') {
-                    $exchangeRate = ExchangeRate::where('currency_code', 'COP')->first();
-                    if ($exchangeRate) {
-                        $invoiceRemainingOriginal = round($invoiceRemainingUSD * $exchangeRate->rate, 2);
-                    }
+                    $invoiceRemainingOriginal = $invoice->total_amount;
                 } else {
                     $invoiceRemainingOriginal = $invoiceRemainingUSD;
                 }

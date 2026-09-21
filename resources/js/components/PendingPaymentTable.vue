@@ -22,10 +22,15 @@ const getEffectiveUSD = (item) => {
 };
 
 const getDisplayAmount = (item) => {
+  // Las facturas en COP nunca se indexan y mantienen el precio estipulado en la factura
+  if (item.currency === "COP") {
+    return parseFloat(item.remaining_amount || item.total_amount || 0).toFixed(2);
+  }
+
   const usd = getEffectiveUSD(item);
 
-  // Si está indexada, el monto en Bs se calcula dinámicamente con la tasa del día
-  if (item.is_indexed) {
+  // Si está indexada (solo aplicable a Bs), el monto en Bs se calcula dinámicamente con la tasa del día
+  if (item.is_indexed && item.currency === "Bs") {
     const rate = props.exchangeRate || item.indexed_data?.bcv_rate || 1;
     return (usd * rate).toFixed(2);
   }
@@ -54,19 +59,35 @@ const formatNumber = (value) => {
 
 const selectedTotals = computed(() => {
   const usd = props.selectedTableInvoices.reduce((acc, item) => acc + getEffectiveUSD(item), 0);
-  const bs = props.selectedTableInvoices.reduce((acc, item) => {
+  
+  let bs = 0;
+  let cop = 0;
+  let hasBs = false;
+  let hasCop = false;
+
+  props.selectedTableInvoices.forEach((item) => {
     let amount = parseFloat(getDisplayAmount(item)) || 0;
     // Si tiene Nota de Débito referencial aprobada (descuento), se resta al total a pagar
     if (item.nd_referential_amount && parseFloat(item.nd_referential_amount) > 0) {
       amount = Math.max(0, amount - parseFloat(item.nd_referential_amount));
     }
-    return acc + amount;
-  }, 0);
+
+    if (item.currency === "COP") {
+      cop += amount;
+      hasCop = true;
+    } else {
+      bs += amount;
+      hasBs = true;
+    }
+  });
 
   return {
     count: props.selectedTableInvoices.length,
     usd: formatNumber(usd),
     bs: formatNumber(bs),
+    cop: formatNumber(cop),
+    hasBs,
+    hasCop,
   };
 });
 
@@ -320,6 +341,7 @@ const openInvoiceTab = (item) => {
 
         <template #item.is_indexed="{ item }">
           <VSwitch
+            v-if="item.currency === 'Bs'"
             v-model="item.is_indexed"
             color="primary"
             density="compact"
@@ -327,6 +349,21 @@ const openInvoiceTab = (item) => {
             :disabled="!!props.updatingIndexed[item.id]"
             @change="emit('toggle-indexed', item)"
           />
+          <div v-else class="text-center">
+            <VTooltip text="Facturas en COP no se indexan (mantienen su precio estipulado)" location="top">
+              <template #activator="{ props: tooltipProps }">
+                <VChip
+                  v-bind="tooltipProps"
+                  size="x-small"
+                  variant="tonal"
+                  color="secondary"
+                  class="font-weight-bold"
+                >
+                  N/A
+                </VChip>
+              </template>
+            </VTooltip>
+          </div>
         </template>
 
         <template #item.actions="{ item }">
@@ -489,10 +526,10 @@ const openInvoiceTab = (item) => {
               <div class="premium-stat-box flex-grow-1 pa-3 rounded-lg" :class="getRemainingAmountClass(item) === 'text-success' ? 'bg-success-opacity-2' : 'bg-warning-opacity'">
                 <div class="d-flex align-center justify-space-between mb-1">
                   <span class="text-super-xs font-weight-bold uppercase" :class="getRemainingAmountClass(item)">Pendiente ({{ item.currency }})</span>
-                  <VIcon v-if="item.is_indexed" icon="tabler-link" size="14" color="primary" />
+                  <VIcon v-if="item.is_indexed && item.currency === 'Bs'" icon="tabler-link" size="14" color="primary" />
                 </div>
                 <span class="text-sm font-weight-black" :class="getRemainingAmountClass(item)">
-                  {{ formatCurrency(getDisplayAmount(item), "", true) }}
+                  {{ formatCurrency(getDisplayAmount(item), item.currency, true) }}
                 </span>
               </div>
             </div>
@@ -502,6 +539,7 @@ const openInvoiceTab = (item) => {
               <div class="d-flex align-center gap-2 flex-grow-1">
                 <span class="text-super-xs font-weight-black text-disabled uppercase">Indexada</span>
                 <VSwitch
+                  v-if="item.currency === 'Bs'"
                   v-model="item.is_indexed"
                   color="primary"
                   density="compact"
@@ -509,6 +547,15 @@ const openInvoiceTab = (item) => {
                   :disabled="!!props.updatingIndexed[item.id]"
                   @change="emit('toggle-indexed', item)"
                 />
+                <VChip
+                  v-else
+                  size="x-small"
+                  variant="tonal"
+                  color="secondary"
+                  class="font-weight-bold"
+                >
+                  No Aplica
+                </VChip>
               </div>
               <div class="d-flex gap-1">
                 <!-- Editar Fecha (Móvil) -->
@@ -580,9 +627,10 @@ const openInvoiceTab = (item) => {
             </VAvatar>
             <div class="d-flex flex-column">
               <span class="text-super-xs font-weight-bold text-medium-emphasis uppercase">Lote Seleccionado</span>
-              <div class="d-flex align-center gap-2">
+              <div class="d-flex align-center gap-2 flex-wrap">
                 <span class="text-base font-weight-black text-high-emphasis">{{ selectedTotals.usd }} USD</span>
-                <span class="text-xs text-medium-emphasis font-weight-medium">({{ selectedTotals.bs }} Bs.)</span>
+                <span v-if="selectedTotals.hasBs" class="text-xs text-medium-emphasis font-weight-medium">({{ selectedTotals.bs }} Bs.)</span>
+                <span v-if="selectedTotals.hasCop" class="text-xs text-success font-weight-medium">({{ selectedTotals.cop }} COP)</span>
               </div>
             </div>
           </div>

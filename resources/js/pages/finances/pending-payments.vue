@@ -124,6 +124,11 @@ const handleTableUpdate = (options) => {
 };
 
 const toggleIndexedStatus = async (item) => {
+  if (item.currency !== 'Bs') {
+    item.is_indexed = false;
+    toast.info(`Las facturas en ${item.currency} no se indexan y mantienen su precio estipulado`);
+    return;
+  }
   updatingIndexed.value[item.id] = true;
   const previousState = !item.is_indexed;
   try {

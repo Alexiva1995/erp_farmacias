@@ -18,12 +18,13 @@ class PendingPaymentsService
      */
     public function getPendingInvoices(array $filters = []): Collection
     {
-        // Auto-marcar como indexadas aquellas facturas pendientes que hayan superado su fecha de vencimiento (estrictamente anteriores a hoy)
+        // Auto-marcar como indexadas únicamente aquellas facturas pendientes en Bolívares (Bs) que hayan superado su fecha de vencimiento (estrictamente anteriores a hoy)
         $today = Carbon::today();
         Invoice::where(function ($q) {
             $q->whereNull('status_payment')
                 ->orWhere('status_payment', '!=', 1);
         })
+        ->where('currency', 'Bs')
         ->where('is_indexed', false)
         ->where(function ($q) use ($today) {
             $q->whereDate('payment_date', '<', $today)
@@ -33,6 +34,11 @@ class PendingPaymentsService
               });
         })
         ->update(['is_indexed' => true]);
+
+        // Las facturas en COP o USD nunca se indexan
+        Invoice::whereIn('currency', ['COP', 'USD'])
+            ->where('is_indexed', true)
+            ->update(['is_indexed' => false]);
 
         $query = Invoice::with(['supplier', 'payments'])
             ->where(function ($q) {
@@ -150,7 +156,9 @@ class PendingPaymentsService
 
                     $paymentDate = $invoice->payment_date ?: $invoice->exp_date;
                     $isOverdue = $paymentDate ? Carbon::parse($paymentDate)->startOfDay()->lt(Carbon::today()) : false;
-                    $isIndexed = (bool) ($invoice->is_indexed || $isOverdue);
+                    
+                    // Solo facturas en Bs pueden ser indexadas
+                    $isIndexed = ($invoice->currency === 'Bs') && (bool) ($invoice->is_indexed || $isOverdue);
                     $invoice->is_indexed = $isIndexed;
 
                     $indexedData = $this->calculateIndexedAmountData($invoice, $exchangeRates);
@@ -158,6 +166,32 @@ class PendingPaymentsService
                     if ($isIndexed && $invoice->currency === 'Bs') {
                         $invoiceRemainingUSD = $effectiveUsd;
                         $invoiceRemainingOriginal = round($effectiveUsd * $bcvRateVal, 2);
+                        $displayAmount = $indexedData['indexed_amount'] ?? $invoiceRemainingOriginal;
+                        $displayOriginalAmount = $indexedData['indexed_amount'] ?? $invoiceRemainingOriginal;
+                    } elseif ($invoice->currency === 'COP') {
+                        $invoiceRemainingUSD = $effectiveUsd;
+                        $invoiceRemainingOriginal = (float) $invoice->total_amount;
+
+                        $invoicePayments = $invoice->payments;
+                        if ($invoicePayments->count() > 0) {
+                            $totalPaidCOP = 0;
+                            foreach ($invoicePayments as $payment) {
+                                if ($payment->payment_method === 'COP') {
+                                    $totalPaidCOP += $payment->amount;
+                                } elseif ($payment->payment_method === 'USD') {
+                                    $rateObj = $exchangeRates->get('COP');
+                                    $rate = $rateObj?->rate ?? 1;
+                                    $totalPaidCOP += round($payment->amount * $rate, 2);
+                                }
+                            }
+                            $invoiceRemainingOriginal = max(0, (float) $invoice->total_amount - $totalPaidCOP);
+                            $rateObj = $exchangeRates->get('COP');
+                            $rate = $rateObj?->rate ?? 1;
+                            $invoiceRemainingUSD = $rate > 0 ? round($invoiceRemainingOriginal / $rate, 2) : $effectiveUsd;
+                        }
+
+                        $displayAmount = $invoiceRemainingOriginal;
+                        $displayOriginalAmount = (float) $invoice->total_amount;
                     } else {
                         $invoiceRemainingUSD = $effectiveUsd;
                         $nonIndexedBs = ($effectiveUsd > 0 && (float) ($invoice->exchange_rate ?? 0) > 0)
@@ -185,16 +219,14 @@ class PendingPaymentsService
 
                             if ($invoice->currency === 'Bs') {
                                 $invoiceRemainingOriginal = round($invoiceRemainingUSD * $vesRate, 2);
-                            } elseif ($invoice->currency === 'COP') {
-                                $invoiceRemainingOriginal = round($invoiceRemainingUSD * $copRate, 2);
                             } else {
                                 $invoiceRemainingOriginal = $invoiceRemainingUSD;
                             }
                         }
-                    }
 
-                    $displayAmount = $indexedData['is_indexed'] ? $indexedData['indexed_amount'] : $invoiceRemainingOriginal;
-                    $displayOriginalAmount = $indexedData['is_indexed'] ? $indexedData['indexed_amount'] : (($effectiveUsd > 0 && (float) ($invoice->exchange_rate ?? 0) > 0) ? round($effectiveUsd * (float) $invoice->exchange_rate, 2) : $invoice->total_amount);
+                        $displayAmount = $indexedData['is_indexed'] ? $indexedData['indexed_amount'] : $invoiceRemainingOriginal;
+                        $displayOriginalAmount = $indexedData['is_indexed'] ? $indexedData['indexed_amount'] : (($effectiveUsd > 0 && (float) ($invoice->exchange_rate ?? 0) > 0) ? round($effectiveUsd * (float) $invoice->exchange_rate, 2) : $invoice->total_amount);
+                    }
 
                     return [
                         'id' => $invoice->id,
