@@ -807,10 +807,12 @@ const handleViewOrder = async (orderId) => {
         selectedQuantity: detail.quantity,
         taxRate: 0, // Seteamos a 0 porque el unit_price ya incluye impuestos
         unit_price: detail.quantity > 0 ? parseFloat(detail.price) / detail.quantity : parseFloat(detail.price),
-        price_bs: parseFloat(detail.price),
-        price_cop: parseFloat(detail.price),
+        price_bs: parseFloat(detail.price_bs ?? detail.price),
+        price_cop: parseFloat(detail.price_cop ?? detail.price),
         price: parseFloat(detail.price),
         price_before_discount: parseFloat(detail.price_before_discount),
+        product: detail.product,
+        iva: detail.product?.iva ?? (detail.vat_status == 1 ? 1 : 0),
       }));
       paymentsForPrint.value = response.data.data.order.payment_methods;
       changeAmountForPrint.value = parseFloat(

@@ -398,14 +398,19 @@ const handleViewOrder = async (orderId) => {
       orderData.value = order;
       currency.value = order.currency.toUpperCase();
       orderItems.value = order.details.map((detail) => ({
-        title: detail.product.name,
+        id: detail.product?.id ?? detail.dish?.id ?? detail.court?.id ?? detail.product_id,
+        product_id: detail.product_id ?? detail.product?.id,
+        title: detail.product?.name ?? detail.dish?.name ?? detail.court?.name ?? '—',
+        laboratory: detail.court ? 'Alquiler Deportivo' : (detail.product?.laboratory?.name ?? detail.product?.laboratory ?? null),
         selectedQuantity: detail.quantity,
         taxRate: 0,
         unit_price: detail.quantity > 0 ? parseFloat(detail.price) / detail.quantity : parseFloat(detail.price),
-        price_bs: parseFloat(detail.price),
-        price_cop: parseFloat(detail.price),
+        price_bs: parseFloat(detail.price_bs ?? detail.price),
+        price_cop: parseFloat(detail.price_cop ?? detail.price),
         price: parseFloat(detail.price),
         price_before_discount: parseFloat(detail.price_before_discount),
+        product: detail.product,
+        iva: detail.product?.iva ?? (detail.vat_status == 1 ? 1 : 0),
       }));
       paymentsForPrint.value = order.payment_methods;
       changeAmountForPrint.value = parseFloat(order.money_returns);

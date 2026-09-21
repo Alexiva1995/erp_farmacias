@@ -204,17 +204,22 @@ const normalPayments = computed(() => {
 
 const fiscalSummary = computed(() => {
   const fh = props.orderData?.fiscal_history || props.orderData?.fiscalHistory || null;
-  if (fh) {
+  const fhTotal = Number(fh?.total_amount) || 0;
+  const fhExempt = Number(fh?.exempt_amount) || 0;
+  const fhTaxable = Number(fh?.taxable_amount) || 0;
+  const fhIva = Number(fh?.iva_amount) || 0;
+
+  if (fh && (fhTotal > 0 || fhExempt > 0 || fhTaxable > 0 || fhIva > 0)) {
     return {
       hasFiscalRecord: true,
       invoiceNumber: fh.invoice_number || null,
       isQueued: !!fh.is_queued,
-      exemptAmount: Number(fh.exempt_amount) || 0,
-      taxableAmount: Number(fh.taxable_amount) || 0,
-      ivaAmount: Number(fh.iva_amount) || 0,
+      exemptAmount: fhExempt,
+      taxableAmount: fhTaxable,
+      ivaAmount: fhIva,
       speAmount: Number(fh.spe_surcharge_amount) || 0,
       speRate: Number(fh.spe_surcharge_rate) || 0,
-      totalAmountBs: Number(fh.total_amount) || 0,
+      totalAmountBs: fhTotal,
       exchangeRate: Number(fh.exchange_rate) || 0,
       isSpe: !!fh.spe || Number(fh.spe_surcharge_amount) > 0,
     };
@@ -226,9 +231,9 @@ const fiscalSummary = computed(() => {
 
   displayProducts.value.forEach((p) => {
     const qty = Number(p.selectedQuantity) || 1;
-    const priceBs = Number(p.price_bs) || 0;
+    const priceBs = Number(p.price_bs) || Number(p.price) || 0;
     const lineTotal = priceBs * qty;
-    const isIva = p.product?.iva ?? p.iva ?? false;
+    const isIva = Boolean(p.iva || p.product?.iva == 1);
 
     if (isIva) {
       const base = lineTotal / 1.16;
@@ -239,7 +244,7 @@ const fiscalSummary = computed(() => {
     }
   });
 
-  const speAmt = Number(props.speSurchargeAmount) || 0;
+  const speAmt = Number(props.orderData?.spe_surcharge_amount) || Number(props.speSurchargeAmount) || 0;
   const isSpe = props.isSpecialTaxpayer || speAmt > 0;
   const speRate = isSpe ? 3.0 : 0.0;
   const totalBs = exempt + taxable + iva + speAmt;
@@ -314,6 +319,8 @@ const displayProducts = computed(() => {
     const discountPct = parseFloat(item.discount_percentage ?? detailMatch?.discount_percentage) || 0;
     const discountType = item.discount_type || detailMatch?.discount_type || null;
     const priceBefore = parseFloat(item.price_before_discount ?? detailMatch?.price_before_discount) || null;
+    const productObj = item.product ?? detailMatch?.product ?? null;
+    const isIva = Boolean(productObj?.iva == 1 || item.iva == 1 || detailMatch?.vat_status == 1);
 
     return {
       ...item,
@@ -328,6 +335,8 @@ const displayProducts = computed(() => {
       price_before_discount: priceBefore,
       discount_percentage: discountPct,
       discount_type: discountType,
+      product: productObj,
+      iva: isIva,
     };
   });
 });
@@ -612,11 +621,6 @@ const productLineLabel = (product) => {
                 <div v-if="fiscalSummary.isSpe || fiscalSummary.speAmount > 0" class="summary-row">
                   <span class="summary-label">IGTF (3%) Percibido Divisas</span>
                   <span class="summary-value font-weight-bold text-primary">{{ formatAmountOnly(fiscalSummary.speAmount, 'BS') }} Bs</span>
-                </div>
-                <VDivider class="my-0.5 opacity-10" />
-                <div class="summary-row">
-                  <span class="summary-label font-weight-bold">Total Fiscal en Bolívares</span>
-                  <span class="summary-value font-weight-black text-primary">{{ formatAmountOnly(fiscalSummary.totalAmountBs, 'BS') }} Bs</span>
                 </div>
               </div>
             </VCardText>

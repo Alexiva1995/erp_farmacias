@@ -37,6 +37,7 @@ const orderData = computed(() => ({
     identification_type: "",
     identification: props.histories?.identification || "N/A",
   },
+  fiscal_history: props.histories,
 }));
 
 const orderProducts = computed(() => {
