@@ -1,5 +1,8 @@
 <script setup>
 import AppEmptyState from "@/components/AppEmptyState.vue";
+import { ref } from "vue";
+import axios from "@/plugins/axios";
+import { toast } from "@/plugins/sweetalert";
 
 const props = defineProps({
   reports: { type: Array, required: true },
@@ -10,6 +13,54 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["update:options", "view-detail"]);
+
+const fileInput = ref(null);
+const verifyingId = ref(null);
+const activeReportId = ref(null);
+
+const triggerUpload = (id) => {
+  activeReportId.value = id;
+  if (fileInput.value) {
+    fileInput.value.click();
+  }
+};
+
+const handleFileUpload = async (event) => {
+  const file = event.target.files[0];
+  if (!file || !activeReportId.value) return;
+
+  verifyingId.value = activeReportId.value;
+  const formData = new FormData();
+  formData.append("image", file);
+
+  try {
+    const response = await axios.post(`/fiscal/z-reports/${activeReportId.value}/verify`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+
+    const updatedStatus = response.data.data?.status || response.data.status;
+    const notes = response.data.data?.ai_verification_notes || response.data.ai_verification_notes;
+
+    const reportIndex = props.reports.findIndex((r) => r.id === activeReportId.value);
+    if (reportIndex !== -1) {
+      props.reports[reportIndex].status = updatedStatus;
+      props.reports[reportIndex].ai_verification_notes = notes;
+    }
+
+    if (updatedStatus === "COMPROBADO") {
+      toast.success("Verificación exitosa: Los datos coinciden.");
+    } else {
+      toast.warning("Discrepancia detectada en el ticket.");
+    }
+  } catch (error) {
+    console.error("Error AI verify:", error);
+    toast.error("Error al verificar la imagen con la IA.");
+  } finally {
+    verifyingId.value = null;
+    activeReportId.value = null;
+    event.target.value = "";
+  }
+};
 
 const headers = [
   {
@@ -154,8 +205,36 @@ const formatCurrency = (value) => {
           </template>
 
           <template #item.status="{ item }">
+            <VTooltip v-if="item.status === 'DISCREPANCIA'" location="top" :text="item.ai_verification_notes || 'Discrepancia detectada'">
+              <template #activator="{ props: tooltipProps }">
+                <VChip
+                  v-bind="tooltipProps"
+                  color="error"
+                  variant="flat"
+                  size="x-small"
+                  class="font-weight-black text-uppercase"
+                >
+                  <VIcon icon="tabler-alert-triangle" size="12" class="me-1" />
+                  DISCREPANCIA
+                </VChip>
+              </template>
+            </VTooltip>
+            <VTooltip v-else-if="item.status === 'COMPROBADO'" location="top" text="Datos validados correctamente por IA">
+              <template #activator="{ props: tooltipProps }">
+                <VChip
+                  v-bind="tooltipProps"
+                  color="info"
+                  variant="flat"
+                  size="x-small"
+                  class="font-weight-black text-uppercase"
+                >
+                  <VIcon icon="tabler-check" size="12" class="me-1" />
+                  COMPROBADO
+                </VChip>
+              </template>
+            </VTooltip>
             <VChip
-              v-if="item.status === 'open'"
+              v-else-if="item.status === 'open'"
               color="success"
               variant="flat"
               size="x-small"
@@ -192,9 +271,27 @@ const formatCurrency = (value) => {
                   </VBtn>
                 </template>
               </VTooltip>
+              <VTooltip v-if="item.status === 'closed' || item.status === 'COMPROBADO' || item.status === 'DISCREPANCIA'" location="top" text="Verificar con IA (Subir foto)">
+                <template #activator="{ props: tooltipProps }">
+                  <VBtn
+                    v-bind="tooltipProps"
+                    icon
+                    size="small"
+                    variant="text"
+                    color="info"
+                    :loading="verifyingId === item.id"
+                    @click="triggerUpload(item.id)"
+                  >
+                    <VIcon icon="tabler-camera-check" size="20" />
+                  </VBtn>
+                </template>
+              </VTooltip>
             </div>
           </template>
         </VDataTableServer>
+
+        <!-- Hidden File Input for AI Verification -->
+        <input type="file" ref="fileInput" accept="image/*" class="d-none" @change="handleFileUpload" />
       </VCard>
     </div>
 
@@ -267,16 +364,29 @@ const formatCurrency = (value) => {
             </div>
           </div>
 
-          <VBtn
-            block
-            variant="tonal"
-            color="primary"
-            size="small"
-            prepend-icon="tabler-printer"
-            @click="emit('view-detail', item)"
-          >
-            Ver Ticket Corte Z
-          </VBtn>
+          <div class="d-flex gap-2">
+            <VBtn
+              class="flex-grow-1"
+              variant="tonal"
+              color="primary"
+              size="small"
+              prepend-icon="tabler-printer"
+              @click="emit('view-detail', item)"
+            >
+              Ticket Z
+            </VBtn>
+            <VBtn
+              v-if="item.status === 'closed' || item.status === 'COMPROBADO' || item.status === 'DISCREPANCIA'"
+              variant="tonal"
+              color="info"
+              size="small"
+              prepend-icon="tabler-camera-check"
+              :loading="verifyingId === item.id"
+              @click="triggerUpload(item.id)"
+            >
+              Verificar
+            </VBtn>
+          </div>
         </VCard>
       </div>
     </div>

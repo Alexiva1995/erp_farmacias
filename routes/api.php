@@ -652,6 +652,7 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
         Route::get("/", [FiscalZReportController::class, "index"]);
         Route::get("/{id}", [FiscalZReportController::class, "show"]);
         Route::post("/generate", [FiscalZReportController::class, "generate"]);
+        Route::post("/{id}/verify", [FiscalZReportController::class, "verifyImage"]);
     });
 
     // Invoice

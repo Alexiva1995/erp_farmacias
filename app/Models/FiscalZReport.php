@@ -28,6 +28,8 @@ class FiscalZReport extends Model
         'igtf_amount',
         'total_amount',
         'status',
+        'image_path',
+        'ai_verification_notes',
     ];
 
     protected $casts = [

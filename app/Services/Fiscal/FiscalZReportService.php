@@ -251,4 +251,85 @@ class FiscalZReportService
 
         return $generated;
     }
+
+    /**
+     * Sube y verifica la imagen del reporte Z contra los datos del sistema usando Gemini.
+     */
+    public function verifyImageWithAi(int $id, \Illuminate\Http\UploadedFile $file): FiscalZReport
+    {
+        $report = $this->repository->findById($id);
+        if (!$report) {
+            throw new \Exception("Reporte Z no encontrado.");
+        }
+
+        // Guardar imagen
+        $path = $file->store('z_reports', 'public');
+        $report->image_path = $path;
+        $report->save();
+
+        // Contactar Gemini
+        $apiKey = env('GEMINI_API_KEY');
+        if (!$apiKey) {
+            throw new \Exception("Gemini API key no configurada.");
+        }
+
+        $base64 = base64_encode(file_get_contents($file->path()));
+        $mimeType = $file->getMimeType();
+
+        // Se usa la versión requerida explícitamente por el usuario
+        $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:generateContent?key=" . $apiKey;
+
+        $prompt = "Verifica los siguientes datos del sistema contra la imagen del Reporte Z físico proporcionada.\n"
+            . "Datos del sistema:\n"
+            . "- Nro Reporte: {$report->report_number}\n"
+            . "- Fecha: {$report->report_date}\n"
+            . "- Facturas emitidas: {$report->invoices_count}\n"
+            . "- Exento: {$report->exempt_amount}\n"
+            . "- Base (16%): {$report->base_16_amount}\n"
+            . "- IVA (16%): {$report->iva_amount}\n"
+            . "- IGTF: {$report->igtf_amount}\n"
+            . "- Total: {$report->total_amount}\n\n"
+            . "Por favor, responde estrictamente en JSON con este formato:\n"
+            . "{\n"
+            . "  \"match\": true/false,\n"
+            . "  \"notes\": \"Explicación breve de discrepancias encontradas o confirmación de coincidencia.\"\n"
+            . "}";
+
+        $response = \Illuminate\Support\Facades\Http::post($url, [
+            'contents' => [
+                [
+                    'parts' => [
+                        ['text' => $prompt],
+                        [
+                            'inlineData' => [
+                                'mimeType' => $mimeType,
+                                'data' => $base64,
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        ]);
+
+        if (!$response->successful()) {
+            throw new \Exception("Error al contactar con la IA: " . $response->body());
+        }
+
+        $aiData = $response->json();
+        $text = $aiData['candidates'][0]['content']['parts'][0]['text'] ?? '{}';
+        
+        // Limpiar JSON si viene con backticks de markdown
+        $text = preg_replace('/```json\s*(.*?)\s*```/is', '$1', $text);
+        $text = trim($text);
+
+        $result = json_decode($text, true);
+        $isMatch = $result['match'] ?? false;
+        $notes = $result['notes'] ?? 'Sin notas.';
+
+        $report->ai_verification_notes = $notes;
+        $report->status = $isMatch ? 'COMPROBADO' : 'DISCREPANCIA';
+        $report->save();
+
+        return $report;
+    }
 }
