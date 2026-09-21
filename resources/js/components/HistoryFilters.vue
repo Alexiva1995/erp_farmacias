@@ -168,18 +168,7 @@ const setDateAnoCompleto = () => {
   >
     <!-- Rango Rápido de Fechas (Mensual o Quincenal según CE) -->
     <template #search-extra>
-      <div class="d-none d-lg-flex align-center gap-1 ms-3 border-s ps-3">
-        <!-- Badge Indicador CE si está activo -->
-        <VChip
-          v-if="props.isCeEnabled"
-          size="x-small"
-          color="primary"
-          variant="flat"
-          class="font-weight-black text-uppercase me-1"
-        >
-          CE: Quincenal
-        </VChip>
-
+      <div class="d-none d-lg-flex align-center gap-1 ms-2 border-s ps-2">
         <!-- CASO 1: MODO QUINCENAL (CE ACTIVADO) -->
         <template v-if="props.isCeEnabled">
           <VMenu transition="scale-transition">
