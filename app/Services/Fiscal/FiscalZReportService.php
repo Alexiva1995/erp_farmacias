@@ -279,21 +279,42 @@ class FiscalZReportService
         $base64 = base64_encode(file_get_contents($file->path()));
         $mimeType = $file->getMimeType() ?: 'image/jpeg';
 
-        $prompt = "Analiza minuciosamente la imagen del comprobante / ticket físico de corte fiscal Reporte Z adjunto y compáralo con los datos registrados en el sistema.\n"
+        $prompt = "Eres un auditor fiscal experto. Analiza minuciosamente la imagen del comprobante / ticket físico de corte fiscal Reporte Z adjunto y compáralo con los datos registrados en el sistema.\n\n"
             . "Datos registrados en el sistema:\n"
             . "- Nro Reporte Z: {$report->report_number}\n"
             . "- Fecha de emisión: {$report->report_date}\n"
             . "- Cantidad de facturas/documentos: {$report->invoices_count}\n"
-            . "- Total Exento (Bs): {$report->exempt_amount}\n"
-            . "- Base Imponible 16% (Bs): {$report->base_16_amount}\n"
-            . "- Total IVA 16% (Bs): {$report->iva_amount}\n"
-            . "- Total IGTF (Bs): {$report->igtf_amount}\n"
-            . "- Gran Total (Bs): {$report->total_amount}\n\n"
-            . "Compara número de reporte, fecha, totales gravados, exentos, impuestos y gran total.\n"
-            . "Debes responder estrictamente en formato JSON plano con esta estructura:\n"
+            . "- Total Exento (Bs): " . number_format((float)$report->exempt_amount, 2, '.', '') . "\n"
+            . "- Base Imponible 16% (Bs): " . number_format((float)$report->base_16_amount, 2, '.', '') . "\n"
+            . "- Total IVA 16% (Bs): " . number_format((float)$report->iva_amount, 2, '.', '') . "\n"
+            . "- Total IGTF 3% (Bs): " . number_format((float)$report->igtf_amount, 2, '.', '') . "\n"
+            . "- Gran Total (Bs): " . number_format((float)$report->total_amount, 2, '.', '') . "\n\n"
+            . "Instrucciones de auditoría:\n"
+            . "1. Extrae cuidadosamente de la foto física los valores impresos: Nro de Reporte Z, Fecha, Cantidad de Facturas/Documentos, Ventas Exentas (E), Base Imponible (G / BI 16%), Impuesto IVA (16%), IGTF (3% / SPE) y Total General.\n"
+            . "2. Compara cada campo con el sistema. Se considera discrepancia si hay una diferencia en montos mayor a 0.05 Bs (por posibles redondeos) o si fecha/número difieren.\n"
+            . "3. Retorna estrictamente un objeto JSON plano con la siguiente estructura exacta:\n"
             . "{\n"
             . "  \"match\": true o false,\n"
-            . "  \"notes\": \"Explicación clara y concisa en español indicando si los valores coinciden o detallando las discrepancias exactas encontradas.\"\n"
+            . "  \"notes\": \"Explicación clara y concisa en español indicando el resultado del análisis\",\n"
+            . "  \"extracted_data\": {\n"
+            . "    \"report_number\": <número entero o null>,\n"
+            . "    \"report_date\": \"<YYYY-MM-DD o null>\",\n"
+            . "    \"invoices_count\": <número entero o null>,\n"
+            . "    \"exempt_amount\": <float o null>,\n"
+            . "    \"base_16_amount\": <float o null>,\n"
+            . "    \"iva_amount\": <float o null>,\n"
+            . "    \"igtf_amount\": <float o null>,\n"
+            . "    \"total_amount\": <float o null>\n"
+            . "  },\n"
+            . "  \"discrepancies\": [\n"
+            . "    {\n"
+            . "      \"field\": \"exempt_amount\",\n"
+            . "      \"label\": \"Ventas Exentas\",\n"
+            . "      \"system_value\": 60942.75,\n"
+            . "      \"photo_value\": 58000.00,\n"
+            . "      \"diff\": -2942.75\n"
+            . "    }\n"
+            . "  ]\n"
             . "}";
 
         // Modelos soportados en orden de prioridad
@@ -348,13 +369,60 @@ class FiscalZReportService
         $text = preg_replace('/```json\s*(.*?)\s*```/is', '$1', $text);
         $text = trim($text);
 
-        $result = json_decode($text, true);
-        $isMatch = (bool) ($result['match'] ?? false);
-        $notes = $result['notes'] ?? 'Comprobación finalizada sin observaciones.';
+        $result = json_decode($text, true) ?: [];
+        $extractedData = is_array($result['extracted_data'] ?? null) ? $result['extracted_data'] : [];
+        $discrepancies = is_array($result['discrepancies'] ?? null) ? $result['discrepancies'] : [];
+        $notes = $result['notes'] ?? 'Comprobación finalizada.';
 
-        $report->ai_verification_notes = $notes;
+        // Verificación programática de discrepancias como salvaguarda
+        $fieldComparisons = [
+            'exempt_amount'   => ['label' => 'Ventas Exentas', 'sys' => (float)$report->exempt_amount],
+            'base_16_amount'  => ['label' => 'Base Imponible 16%', 'sys' => (float)$report->base_16_amount],
+            'iva_amount'      => ['label' => 'IVA 16%', 'sys' => (float)$report->iva_amount],
+            'igtf_amount'     => ['label' => 'IGTF 3%', 'sys' => (float)$report->igtf_amount],
+            'total_amount'    => ['label' => 'Total General', 'sys' => (float)$report->total_amount],
+        ];
+
+        foreach ($fieldComparisons as $fKey => $fMeta) {
+            if (isset($extractedData[$fKey]) && is_numeric($extractedData[$fKey])) {
+                $photoVal = round((float)$extractedData[$fKey], 2);
+                $sysVal = round($fMeta['sys'], 2);
+                if (abs($photoVal - $sysVal) > 0.05) {
+                    $alreadyAdded = false;
+                    foreach ($discrepancies as $d) {
+                        if (($d['field'] ?? '') === $fKey) {
+                            $alreadyAdded = true;
+                            break;
+                        }
+                    }
+                    if (!$alreadyAdded) {
+                        $discrepancies[] = [
+                            'field'        => $fKey,
+                            'label'        => $fMeta['label'],
+                            'system_value' => $sysVal,
+                            'photo_value'  => $photoVal,
+                            'diff'         => round($photoVal - $sysVal, 2),
+                        ];
+                    }
+                }
+            }
+        }
+
+        $isMatch = empty($discrepancies) && (bool)($result['match'] ?? false);
+
+        $payloadToStore = [
+            'match'          => $isMatch,
+            'notes'          => $notes,
+            'extracted_data' => $extractedData,
+            'discrepancies'  => $discrepancies,
+            'verified_at'    => now()->toIso8601String(),
+        ];
+
+        $report->ai_verification_notes = json_encode($payloadToStore, JSON_UNESCAPED_UNICODE);
         $report->status = $isMatch ? 'COMPROBADO' : 'DISCREPANCIA';
         $report->save();
+
+        return $report;
 
         return $report;
     }

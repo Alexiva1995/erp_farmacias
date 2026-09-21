@@ -25,6 +25,15 @@ const triggerUpload = (id) => {
   }
 };
 
+const resolveImageUrl = (item) => {
+  if (!item) return null;
+  if (item.image_url) return item.image_url;
+  if (item.image_path) {
+    return item.image_path.startsWith("http") ? item.image_path : `/storage/${item.image_path}`;
+  }
+  return null;
+};
+
 const handleFileUpload = async (event) => {
   const file = event.target.files[0];
   if (!file || !activeReportId.value) return;
@@ -38,28 +47,35 @@ const handleFileUpload = async (event) => {
       headers: { "Content-Type": "multipart/form-data" },
     });
 
-    const updatedStatus = response.data.data?.status || response.data.status;
-    const notes = response.data.data?.ai_verification_notes || response.data.ai_verification_notes;
-
+    const updatedData = response.data.data;
     const reportIndex = props.reports.findIndex((r) => r.id === activeReportId.value);
-    if (reportIndex !== -1) {
-      props.reports[reportIndex].status = updatedStatus;
-      props.reports[reportIndex].ai_verification_notes = notes;
+    if (reportIndex !== -1 && updatedData) {
+      Object.assign(props.reports[reportIndex], updatedData);
     }
 
-    if (updatedStatus === "COMPROBADO") {
-      toast.success("Verificación exitosa: Los datos coinciden.");
+    if (updatedData?.status === "COMPROBADO") {
+      toast.success("Verificación exitosa: Los datos coinciden con la foto.");
     } else {
-      toast.warning("Discrepancia detectada en el ticket.");
+      toast.warning("Discrepancia detectada entre el sistema y la foto del Reporte Z.");
     }
   } catch (error) {
     console.error("Error AI verify:", error);
-    toast.error("Error al verificar la imagen con la IA.");
+    const msg = error.response?.data?.message || "Error al verificar la imagen con la IA.";
+    toast.error(msg);
   } finally {
     verifyingId.value = null;
     activeReportId.value = null;
     event.target.value = "";
   }
+};
+
+const formatDate = (dt) => {
+  if (!dt) return "";
+  if (typeof dt === "string" && /^\d{4}-\d{2}-\d{2}/.test(dt.trim())) {
+    const parts = dt.trim().split("T")[0].split("-");
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+  return new Date(dt).toLocaleDateString("es-VE");
 };
 
 const headers = [
@@ -74,18 +90,9 @@ const headers = [
     title: "FECHA",
     key: "report_date",
     sortable: true,
-    value: (item) => {
-      const dt = item.report_date;
-      if (!dt) return "";
-      if (typeof dt === "string" && /^\d{4}-\d{2}-\d{2}/.test(dt.trim())) {
-        const parts = dt.trim().split("T")[0].split("-");
-        return `${parts[2]}/${parts[1]}/${parts[0]}`;
-      }
-      return new Date(dt).toLocaleDateString("es-VE");
-    },
+    value: (item) => formatDate(item.report_date),
     cellProps: { class: "text-sm text-medium-emphasis" },
   },
-
   {
     title: "EXENTO",
     key: "exempt_amount",
@@ -171,20 +178,125 @@ const formatCurrency = (value) => {
             />
           </template>
 
+          <!-- N° Reporte -->
           <template #item.report_number="{ item }">
-            <div class="d-flex align-center gap-1">
-              <VIcon icon="tabler-file-analytics" size="18" :color="item.status === 'open' ? 'success' : 'primary'" />
-              <span :class="['font-weight-black', item.status === 'open' ? 'text-success' : 'text-primary']">
-                {{ item.report_number_padded || `Z${String(item.report_number).padStart(6, "0")}` }}
+            <div class="d-flex flex-column gap-0.5">
+              <div class="d-flex align-center gap-1">
+                <VIcon icon="tabler-file-analytics" size="18" :color="item.status === 'open' ? 'success' : 'primary'" />
+                <span :class="['font-weight-black', item.status === 'open' ? 'text-success' : 'text-primary']">
+                  {{ item.report_number_padded || `Z${String(item.report_number).padStart(6, "0")}` }}
+                </span>
+              </div>
+              <div
+                v-if="item.discrepancies_map?.report_number"
+                class="text-caption text-error font-weight-bold d-flex align-center gap-1"
+              >
+                <VIcon icon="tabler-camera" size="12" />
+                Foto: {{ item.discrepancies_map.report_number.photo_value }}
+              </div>
+            </div>
+          </template>
+
+          <!-- Fecha -->
+          <template #item.report_date="{ item }">
+            <div class="d-flex flex-column">
+              <span>{{ formatDate(item.report_date) }}</span>
+              <div
+                v-if="item.discrepancies_map?.report_date"
+                class="text-caption text-error font-weight-bold d-flex align-center gap-1"
+              >
+                <VIcon icon="tabler-camera" size="12" />
+                Foto: {{ item.discrepancies_map.report_date.photo_value }}
+              </div>
+            </div>
+          </template>
+
+          <!-- Exento -->
+          <template #item.exempt_amount="{ item }">
+            <div class="d-flex flex-column align-end">
+              <span :class="[item.discrepancies_map?.exempt_amount ? 'text-error font-weight-bold text-decoration-line-through' : 'text-medium-emphasis']">
+                {{ formatCurrency(item.exempt_amount) }}
+              </span>
+              <div
+                v-if="item.discrepancies_map?.exempt_amount"
+                class="text-caption text-error font-weight-black d-flex align-center gap-1 bg-error-tonal px-1 rounded mt-0.5"
+              >
+                <VIcon icon="tabler-camera" size="12" />
+                Foto: {{ formatCurrency(item.discrepancies_map.exempt_amount.photo_value) }}
+              </div>
+            </div>
+          </template>
+
+          <!-- Base 16% -->
+          <template #item.base_16_amount="{ item }">
+            <div class="d-flex flex-column align-end">
+              <span :class="[item.discrepancies_map?.base_16_amount ? 'text-error font-weight-bold text-decoration-line-through' : 'text-medium-emphasis']">
+                {{ formatCurrency(item.base_16_amount) }}
+              </span>
+              <div
+                v-if="item.discrepancies_map?.base_16_amount"
+                class="text-caption text-error font-weight-black d-flex align-center gap-1 bg-error-tonal px-1 rounded mt-0.5"
+              >
+                <VIcon icon="tabler-camera" size="12" />
+                Foto: {{ formatCurrency(item.discrepancies_map.base_16_amount.photo_value) }}
+              </div>
+            </div>
+          </template>
+
+          <!-- IVA 16% -->
+          <template #item.iva_amount="{ item }">
+            <div class="d-flex flex-column align-end">
+              <span :class="[item.discrepancies_map?.iva_amount ? 'text-error font-weight-bold text-decoration-line-through' : 'text-medium-emphasis']">
+                {{ formatCurrency(item.iva_amount) }}
+              </span>
+              <div
+                v-if="item.discrepancies_map?.iva_amount"
+                class="text-caption text-error font-weight-black d-flex align-center gap-1 bg-error-tonal px-1 rounded mt-0.5"
+              >
+                <VIcon icon="tabler-camera" size="12" />
+                Foto: {{ formatCurrency(item.discrepancies_map.iva_amount.photo_value) }}
+              </div>
+            </div>
+          </template>
+
+          <!-- Subtotal -->
+          <template #item.subtotal="{ item }">
+            <div class="d-flex flex-column align-end">
+              <span class="text-medium-emphasis">
+                {{ formatCurrency((Number(item.total_amount) || 0) - (Number(item.igtf_amount) || 0)) }}
               </span>
             </div>
           </template>
 
+          <!-- IGTF 3% -->
+          <template #item.igtf_amount="{ item }">
+            <div class="d-flex flex-column align-end">
+              <span :class="[item.discrepancies_map?.igtf_amount ? 'text-error font-weight-bold text-decoration-line-through' : 'text-medium-emphasis']">
+                {{ formatCurrency(item.igtf_amount) }}
+              </span>
+              <div
+                v-if="item.discrepancies_map?.igtf_amount"
+                class="text-caption text-error font-weight-black d-flex align-center gap-1 bg-error-tonal px-1 rounded mt-0.5"
+              >
+                <VIcon icon="tabler-camera" size="12" />
+                Foto: {{ formatCurrency(item.discrepancies_map.igtf_amount.photo_value) }}
+              </div>
+            </div>
+          </template>
+
+          <!-- Total Final -->
           <template #item.total_amount="{ item }">
-            <div class="d-flex flex-column align-end gap-1">
-              <span class="text-sm font-weight-black text-high-emphasis">
+            <div class="d-flex flex-column align-end gap-0.5">
+              <span :class="['text-sm font-weight-black', item.discrepancies_map?.total_amount ? 'text-error text-decoration-line-through' : 'text-high-emphasis']">
                 {{ formatCurrency(item.total_amount) }}
               </span>
+              <div
+                v-if="item.discrepancies_map?.total_amount"
+                class="text-caption text-error font-weight-black d-flex align-center gap-1 bg-error-tonal px-1 rounded"
+              >
+                <VIcon icon="tabler-camera" size="12" />
+                Foto: {{ formatCurrency(item.discrepancies_map.total_amount.photo_value) }}
+              </div>
               <VChip
                 size="x-small"
                 :color="item.status === 'open' ? 'success' : (item.invoices_count > 0 ? 'info' : 'secondary')"
@@ -196,29 +308,41 @@ const formatCurrency = (value) => {
             </div>
           </template>
 
+          <!-- Estado -->
           <template #item.status="{ item }">
-            <VTooltip v-if="item.status === 'DISCREPANCIA'" location="top" :text="item.ai_verification_notes || 'Discrepancia detectada'">
+            <VTooltip v-if="item.status === 'DISCREPANCIA'" location="top" max-width="320">
               <template #activator="{ props: tooltipProps }">
                 <VChip
                   v-bind="tooltipProps"
                   color="error"
                   variant="flat"
                   size="x-small"
-                  class="font-weight-black text-uppercase"
+                  class="font-weight-black text-uppercase cursor-pointer"
+                  @click="emit('view-detail', item)"
                 >
                   <VIcon icon="tabler-alert-triangle" size="12" class="me-1" />
                   DISCREPANCIA
                 </VChip>
               </template>
+              <div class="pa-1 text-xs">
+                <div class="font-weight-bold mb-1">Discrepancias detectadas:</div>
+                <div v-if="item.discrepancies && item.discrepancies.length > 0">
+                  <div v-for="(disc, dIdx) in item.discrepancies" :key="dIdx" class="mb-1">
+                    • <strong>{{ disc.label || disc.field }}:</strong> Sistema {{ formatCurrency(disc.system_value) }} vs Foto {{ formatCurrency(disc.photo_value) }}
+                  </div>
+                </div>
+                <div v-else>{{ item.ai_verification_notes || 'Valores no coinciden con la foto.' }}</div>
+              </div>
             </VTooltip>
-            <VTooltip v-else-if="item.status === 'COMPROBADO'" location="top" text="Datos validados correctamente por IA">
+            <VTooltip v-else-if="item.status === 'COMPROBADO'" location="top" text="Datos validados correctamente con la foto por IA">
               <template #activator="{ props: tooltipProps }">
                 <VChip
                   v-bind="tooltipProps"
                   color="info"
                   variant="flat"
                   size="x-small"
-                  class="font-weight-black text-uppercase"
+                  class="font-weight-black text-uppercase cursor-pointer"
+                  @click="emit('view-detail', item)"
                 >
                   <VIcon icon="tabler-check" size="12" class="me-1" />
                   COMPROBADO
@@ -248,7 +372,8 @@ const formatCurrency = (value) => {
 
           <!-- Acciones -->
           <template #item.actions="{ item }">
-            <div class="d-flex justify-center gap-1">
+            <div class="d-flex justify-center align-center gap-1">
+              <!-- Ver Ticket Detalle Z -->
               <VTooltip location="top" text="Ver Ticket Corte Z">
                 <template #activator="{ props: tooltipProps }">
                   <VBtn
@@ -263,7 +388,32 @@ const formatCurrency = (value) => {
                   </VBtn>
                 </template>
               </VTooltip>
-              <VTooltip v-if="item.status === 'closed' || item.status === 'COMPROBADO' || item.status === 'DISCREPANCIA'" location="top" text="Verificar con IA (Subir foto)">
+
+              <!-- Descargar Foto Z si existe -->
+              <VTooltip v-if="resolveImageUrl(item)" location="top" text="Descargar Foto del Reporte Z">
+                <template #activator="{ props: tooltipProps }">
+                  <VBtn
+                    v-bind="tooltipProps"
+                    icon
+                    size="small"
+                    variant="text"
+                    color="success"
+                    :href="resolveImageUrl(item)"
+                    target="_blank"
+                    :download="`reporte_z_${item.report_number}.jpg`"
+                    @click.stop
+                  >
+                    <VIcon icon="tabler-download" size="20" />
+                  </VBtn>
+                </template>
+              </VTooltip>
+
+              <!-- Subir / Verificar con IA -->
+              <VTooltip
+                v-if="item.status === 'closed' || item.status === 'COMPROBADO' || item.status === 'DISCREPANCIA'"
+                location="top"
+                :text="item.image_path ? 'Re-verificar con Foto (IA)' : 'Verificar con IA (Subir foto)'"
+              >
                 <template #activator="{ props: tooltipProps }">
                   <VBtn
                     v-bind="tooltipProps"
@@ -320,39 +470,106 @@ const formatCurrency = (value) => {
                 {{ item.report_number_padded || `Z${String(item.report_number).padStart(6, "0")}` }}
               </span>
             </div>
-            <VChip size="x-small" color="info" variant="tonal" class="font-weight-bold">
-              {{ item.invoices_count }} Docs
-            </VChip>
+            <div class="d-flex align-center gap-1">
+              <VChip
+                v-if="item.status === 'DISCREPANCIA'"
+                color="error"
+                variant="flat"
+                size="x-small"
+                class="font-weight-black"
+              >
+                DISCREPANCIA
+              </VChip>
+              <VChip
+                v-else-if="item.status === 'COMPROBADO'"
+                color="info"
+                variant="flat"
+                size="x-small"
+                class="font-weight-black"
+              >
+                COMPROBADO
+              </VChip>
+              <VChip size="x-small" color="info" variant="tonal" class="font-weight-bold">
+                {{ item.invoices_count }} Docs
+              </VChip>
+            </div>
           </div>
 
           <div class="d-flex flex-column gap-1 text-sm mb-3">
             <div class="d-flex justify-space-between">
               <span class="text-disabled">Fecha:</span>
-              <span class="font-weight-medium">{{ item.report_date }}</span>
+              <span class="font-weight-medium">{{ formatDate(item.report_date) }}</span>
             </div>
-            <div class="d-flex justify-space-between">
+
+            <!-- Exento -->
+            <div class="d-flex justify-space-between align-center">
               <span class="text-disabled">Exento:</span>
-              <span>Bs. {{ formatCurrency(item.exempt_amount) }}</span>
+              <div class="text-end">
+                <span :class="{'text-error font-weight-bold text-decoration-line-through': item.discrepancies_map?.exempt_amount}">
+                  Bs. {{ formatCurrency(item.exempt_amount) }}
+                </span>
+                <div v-if="item.discrepancies_map?.exempt_amount" class="text-caption text-error font-weight-bold">
+                  Foto: Bs. {{ formatCurrency(item.discrepancies_map.exempt_amount.photo_value) }}
+                </div>
+              </div>
             </div>
-            <div class="d-flex justify-space-between">
+
+            <!-- Base -->
+            <div class="d-flex justify-space-between align-center">
               <span class="text-disabled">Base:</span>
-              <span>Bs. {{ formatCurrency(item.base_16_amount) }}</span>
+              <div class="text-end">
+                <span :class="{'text-error font-weight-bold text-decoration-line-through': item.discrepancies_map?.base_16_amount}">
+                  Bs. {{ formatCurrency(item.base_16_amount) }}
+                </span>
+                <div v-if="item.discrepancies_map?.base_16_amount" class="text-caption text-error font-weight-bold">
+                  Foto: Bs. {{ formatCurrency(item.discrepancies_map.base_16_amount.photo_value) }}
+                </div>
+              </div>
             </div>
-            <div class="d-flex justify-space-between">
+
+            <!-- IVA -->
+            <div class="d-flex justify-space-between align-center">
               <span class="text-disabled">IVA:</span>
-              <span>Bs. {{ formatCurrency(item.iva_amount) }}</span>
+              <div class="text-end">
+                <span :class="{'text-error font-weight-bold text-decoration-line-through': item.discrepancies_map?.iva_amount}">
+                  Bs. {{ formatCurrency(item.iva_amount) }}
+                </span>
+                <div v-if="item.discrepancies_map?.iva_amount" class="text-caption text-error font-weight-bold">
+                  Foto: Bs. {{ formatCurrency(item.discrepancies_map.iva_amount.photo_value) }}
+                </div>
+              </div>
             </div>
+
+            <!-- Subtotal -->
             <div class="d-flex justify-space-between">
               <span class="text-disabled">Subtotal:</span>
               <span>Bs. {{ formatCurrency((Number(item.total_amount) || 0) - (Number(item.igtf_amount) || 0)) }}</span>
             </div>
-            <div class="d-flex justify-space-between">
+
+            <!-- IGTF -->
+            <div class="d-flex justify-space-between align-center">
               <span class="text-disabled">IGTF:</span>
-              <span>Bs. {{ formatCurrency(item.igtf_amount) }}</span>
+              <div class="text-end">
+                <span :class="{'text-error font-weight-bold text-decoration-line-through': item.discrepancies_map?.igtf_amount}">
+                  Bs. {{ formatCurrency(item.igtf_amount) }}
+                </span>
+                <div v-if="item.discrepancies_map?.igtf_amount" class="text-caption text-error font-weight-bold">
+                  Foto: Bs. {{ formatCurrency(item.discrepancies_map.igtf_amount.photo_value) }}
+                </div>
+              </div>
             </div>
-            <div class="d-flex justify-space-between border-t pt-1 font-weight-bold">
+
+            <!-- Total -->
+            <div class="d-flex justify-space-between align-center border-t pt-1 font-weight-bold">
               <span>Total:</span>
-              <span class="text-high-emphasis font-weight-black">Bs. {{ formatCurrency(item.total_amount) }}</span>
+              <div class="text-end">
+                <span :class="['text-high-emphasis font-weight-black', {'text-error text-decoration-line-through': item.discrepancies_map?.total_amount}]">
+                  Bs. {{ formatCurrency(item.total_amount) }}
+                </span>
+                <div v-if="item.discrepancies_map?.total_amount" class="text-caption text-error font-weight-black">
+                  Foto: Bs. {{ formatCurrency(item.discrepancies_map.total_amount.photo_value) }}
+                </div>
+              </div>
             </div>
           </div>
 
@@ -366,6 +583,18 @@ const formatCurrency = (value) => {
               @click="emit('view-detail', item)"
             >
               Ticket Z
+            </VBtn>
+            <VBtn
+              v-if="resolveImageUrl(item)"
+              variant="tonal"
+              color="success"
+              size="small"
+              icon
+              :href="resolveImageUrl(item)"
+              target="_blank"
+              :download="`reporte_z_${item.report_number}.jpg`"
+            >
+              <VIcon icon="tabler-download" size="18" />
             </VBtn>
             <VBtn
               v-if="item.status === 'closed' || item.status === 'COMPROBADO' || item.status === 'DISCREPANCIA'"
@@ -397,4 +626,13 @@ const formatCurrency = (value) => {
 .premium-table :deep(tbody tr:hover) {
   background-color: rgba(var(--v-theme-primary), 0.03) !important;
 }
+
+.bg-error-tonal {
+  background-color: rgba(var(--v-theme-error), 0.12);
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
 </style>
+

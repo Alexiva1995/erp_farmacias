@@ -73,12 +73,8 @@ class FiscalZReportController extends Controller
     /**
      * Sube y verifica la imagen del reporte Z usando Gemini.
      */
-    public function verifyImage(Request $request, int $id): JsonResponse
+    public function verifyImage(\App\Http\Requests\Fiscal\VerifyFiscalZReportImageRequest $request, int $id): JsonResponse
     {
-        $request->validate([
-            'image' => ['required', 'image', 'max:5120'], // max 5MB
-        ]);
-
         try {
             $file = $request->file('image');
             $result = $this->zReportService->verifyImageWithAi($id, $file);

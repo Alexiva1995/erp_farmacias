@@ -165,31 +165,6 @@ const handleClearFilters = () => {
 
 <template>
   <div class="reporte-z-page">
-    <!-- Encabezado de Sección -->
-    <div class="d-flex flex-wrap align-center justify-space-between gap-3 mb-4">
-      <div>
-        <h4 class="text-h4 font-weight-black mb-1 d-flex align-center gap-2">
-          <VIcon icon="tabler-report-analytics" color="primary" size="32" />
-          Reportes Z Fiscales
-        </h4>
-        <p class="text-body-2 text-medium-emphasis mb-0">
-          Consolidación diaria de cortes fiscales Z automáticos (00:01 AM) e historial de ventas gravadas y exentas.
-        </p>
-      </div>
-
-      <div class="d-flex align-center gap-2">
-        <VBtn
-          color="primary"
-          variant="tonal"
-          prepend-icon="tabler-refresh"
-          :loading="loading"
-          @click="fetchZReports"
-        >
-          Actualizar
-        </VBtn>
-      </div>
-    </div>
-
     <!-- Tarjetas KPI -->
     <ZReportKpiCards :summary="summary" :loading="loading" />
 
