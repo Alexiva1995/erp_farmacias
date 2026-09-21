@@ -14,9 +14,9 @@ const emit = defineEmits(["update:options", "show-detailHistory"]);
 const headers = [
   { 
     title: "ID", 
-    key: "fiscal_id", 
+    key: "order_id", 
     sortable: true,
-    value: item => item.fiscal_id ? `#${item.fiscal_id}` : (item.id ? `#${item.id}` : ''),
+    value: item => item.order_id ? `#${item.order_id}` : (item.id ? `#${item.id}` : ''),
     cellProps: { class: 'text-sm font-weight-black text-primary' }
   },
   { 

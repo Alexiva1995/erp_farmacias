@@ -48,19 +48,22 @@ class FiscalPrinterController extends Controller
             }
 
             $targetInvoiceNumber = $request->invoice_number;
-            $targetFiscalId = $request->fiscal_id ?? $request->invoice_number;
-
-            $fiscal->update([
+            $updateData = [
                 'invoice_number' => $targetInvoiceNumber,
-                'fiscal_id' => $targetFiscalId,
                 'is_queued' => false,
                 'invoice_date' => now(),
-            ]);
+            ];
+
+            if (!empty($request->fiscal_id)) {
+                $updateData['fiscal_id'] = $request->fiscal_id;
+            }
+
+            $fiscal->update($updateData);
 
             return response()->json([
                 'message' => 'Factura confirmada exitosamente',
                 'invoice_number' => $targetInvoiceNumber,
-                'fiscal_id' => $targetFiscalId,
+                'fiscal_id' => $fiscal->fiscal_id,
             ]);
         } catch (\Exception $e) {
             Log::error('Error en FiscalPrinterController@confirm: ' . $e->getMessage());
@@ -81,19 +84,22 @@ class FiscalPrinterController extends Controller
             }
             
             $targetInvoiceNumber = $request->invoice_number;
-            $targetFiscalId = $request->fiscal_id ?? $request->invoice_number;
-
-            $fiscal->update([
+            $updateData = [
                 'invoice_number' => $targetInvoiceNumber,
-                'fiscal_id' => $targetFiscalId,
                 'is_queued' => false,
                 'invoice_date' => now(),
-            ]);
+            ];
+
+            if (!empty($request->fiscal_id)) {
+                $updateData['fiscal_id'] = $request->fiscal_id;
+            }
+
+            $fiscal->update($updateData);
 
             return response()->json([
                 'message' => 'Factura confirmada exitosamente en RÉPLICA',
                 'invoice_number' => $targetInvoiceNumber,
-                'fiscal_id' => $targetFiscalId
+                'fiscal_id' => $fiscal->fiscal_id,
             ]);
         } catch (\Exception $e) {
             Log::error('Error en FiscalPrinterController@confirmReplica: ' . $e->getMessage());

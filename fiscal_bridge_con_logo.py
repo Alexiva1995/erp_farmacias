@@ -221,13 +221,6 @@ def process_pending_invoices(sim):
                 if BRIDGE_MODE == "WEBSIM":
                     res_text = sim.print_invoice(data)
                 else:
-                    # 0. Calibrar márgenes y fuente estándar antes de iniciar cada factura
-                    if hasattr(pnp, 'PFTIPOIMP'):
-                        try:
-                            call_pnp(pnp.PFTIPOIMP, "0")
-                        except Exception:
-                            pass
-
                     # 1. Estampar Logo Fiscal en Cabecera (si está cargado en la memoria de la impresora)
                     if hasattr(pnp, 'PFLogoClick'):
                         try:
@@ -235,8 +228,6 @@ def process_pending_invoices(sim):
                             res_logo = get_pnp_res(ptr_logo)
                             if res_logo == "OK":
                                 print("[DLL LOGO] Logo Fiscal estampado correctamente.")
-                            else:
-                                print("[DLL LOGO INFO] Sin logo almacenado en memoria de impresora (continuando emisión normal)...")
                         except Exception as logo_err:
                             print(f"[DLL LOGO NOTE] {logo_err}")
 
@@ -247,7 +238,7 @@ def process_pending_invoices(sim):
                     print(f"[DLL] @ {name} | {rif}")
                     call_pnp(pnp.PFabrefiscal, name, rif)
 
-                    # 3. Imprimir Renglones (Limitado a 28 caracteres en fuente estándar normal)
+                    # 3. Imprimir Renglones (Formato estándar de fábrica)
                     items_printed = 0
                     for detail in details:
                         qty_val = float(detail.get('quantity', 0) or 0)
@@ -275,29 +266,8 @@ def process_pending_invoices(sim):
                             "invoice_number": f"ERR_RENG_{invoice_id}"
                         }, timeout=10, verify=False)
                         return
-                    
-                    # 4. Código de barras / QR de trazabilidad (Providencia 0141 / Protocolo PNP)
-                    # Imprime el ID de fiscal_history para trazabilidad interna
-                    barcode_data = str(invoice_id)
-                    qr_sent = False
-                    if hasattr(pnp, 'PFBarra'):
-                        try:
-                            print(f"[DLL QR/BARRA] Ejecutando PFBarra({barcode_data}) (ID FiscalHistory {invoice_id})...")
-                            call_pnp(pnp.PFBarra, barcode_data)
-                            qr_sent = True
-                        except Exception as bar_err:
-                            print(f"[DLL QR/BARRA NOTE] PFBarra: {bar_err}")
 
-                    if not qr_sent:
-                        try:
-                            # Fallback directo por protocolo: comando 'T' (0x54)
-                            cmd_barra = f"T|{barcode_data}"
-                            print(f"[DLL QR/BARRA] Enviando PFComando('{cmd_barra}')...")
-                            call_pnp(pnp.PFComando, cmd_barra)
-                        except Exception as cmd_err:
-                            print(f"[DLL QR/BARRA NOTE] PFComando 0x54: {cmd_err}")
-
-                    # 5. Determinar si aplica IGTF (3%) o Cierre Estándar
+                    # 4. Determinar si aplica IGTF (3%) o Cierre Estándar
                     spe_flag = data.get('spe', 0)
                     spe_surcharge = float(data.get('spe_surcharge_amount', 0.0) or 0.0)
                     total_amount = float(data.get('total_amount', 0.0) or 0.0)
@@ -322,17 +292,18 @@ def process_pending_invoices(sim):
                         ptr = pnp.PFtotal()
                         res_text = get_pnp_res(ptr)
                 
-                # 6. Extraer número de factura fiscal real emitido por la máquina
+                # 5. Extraer número de factura fiscal real emitido por la máquina
                 inv_num = ""
+                current_date_str = time.strftime("%y%m%d") # ej: 260921
                 
                 # Método 1: Consultar contadores actuales de la impresora con PFestatus('N')
-                # Protocolo PNP 0141 (Pág. 20):
-                # Campo 1 (parts[0]) = Status Impresora (hex 0080)
-                # Campo 2 (parts[1]) = Status Fiscal (hex 8620)
-                # Campo 3 (parts[2]) = Fecha AAMMDD (ej: 260920)
-                # Campo 4 (parts[3]) = Hora HHMMSS (ej: 123456)
-                # Campo 5 (parts[4]) = Último Reporte Z (ej: 0015)
-                # Campo 6 (parts[5]) = ÚLTIMA FACTURA EMITIDA (ej: 00012274)
+                # Protocolo PNP 0141:
+                # parts[0] = Status Impresora (hex 0080)
+                # parts[1] = Status Fiscal (hex 8620)
+                # parts[2] = Fecha AAMMDD (ej: 260921)
+                # parts[3] = Hora HHMMSS (ej: 123456)
+                # parts[4] = Último Reporte Z (ej: 0015)
+                # parts[5] = ÚLTIMA FACTURA EMITIDA (ej: 00012274)
                 if hasattr(pnp, 'PFestatus'):
                     try:
                         ptr_st = pnp.PFestatus(b'N')
@@ -346,16 +317,16 @@ def process_pending_invoices(sim):
                         for candidate in [res_st, full_st]:
                             if candidate and candidate != "OK":
                                 parts = [p.strip() for p in candidate.replace(',', '|').split('|') if p.strip()]
-                                # En protocolo 0141 estándar: Campo 6 (índice 5) es la última factura
+                                # En protocolo 0141 estándar: Campo 6 (índice 5) es la última factura fiscal
                                 if len(parts) >= 6:
                                     fac_cand = parts[5]
-                                    if fac_cand.isdigit() and int(fac_cand) > 0:
+                                    if fac_cand.isdigit() and int(fac_cand) > 0 and fac_cand != current_date_str and not fac_cand.startswith(current_date_str[:4]):
                                         inv_num = str(int(fac_cand)).zfill(8)
                                         print(f"[DLL PARSER] Factura fiscal extraída del Campo 6 (parts[5]): '{inv_num}'")
                                         break
                                 elif len(parts) >= 5:
                                     fac_cand = parts[4]
-                                    if fac_cand.isdigit() and int(fac_cand) > 0:
+                                    if fac_cand.isdigit() and int(fac_cand) > 0 and fac_cand != current_date_str and not fac_cand.startswith(current_date_str[:4]):
                                         inv_num = str(int(fac_cand)).zfill(8)
                                         print(f"[DLL PARSER] Factura fiscal extraída del Campo 5 (parts[4]): '{inv_num}'")
                                         break
@@ -365,16 +336,21 @@ def process_pending_invoices(sim):
                         print(f"[DLL STATUS ERR] {st_err}")
 
                 # Método 2: Parsear la respuesta directa de cierre si el método 1 no extrajo
-                if not inv_num or inv_num in ["00260920", "00000080", "80"]:
+                if not inv_num or inv_num in ["00260920", "00260921", f"00{current_date_str}", "00000080", "80"]:
                     if res_text and res_text != "OK":
                         parts = [p.strip() for p in res_text.replace(',', '|').split('|') if p.strip()]
                         for part in reversed(parts):
-                            if part.isdigit() and len(part) >= 4 and not part.startswith("2609") and part not in ["0000", "0080", "8620"] and int(part) > 0:
+                            if (part.isdigit() and 
+                                len(part) >= 1 and 
+                                part != current_date_str and 
+                                not part.startswith(current_date_str[:4]) and 
+                                part not in ["0000", "0080", "8620"] and 
+                                int(part) > 0):
                                 inv_num = str(int(part)).zfill(8)
                                 break
 
-                # Fallback seguro
-                if not inv_num or inv_num in ["OK", "00260920", "00000080", "80"]:
+                # Fallback seguro si la impresora no retornó contador
+                if not inv_num or inv_num in ["OK", "00260920", "00260921", f"00{current_date_str}", "00000080", "80"]:
                     inv_num = f"FAC{invoice_id}"
 
                 requests.patch(f"{API_BASE_URL}/fiscal/confirm/{invoice_id}", json={
