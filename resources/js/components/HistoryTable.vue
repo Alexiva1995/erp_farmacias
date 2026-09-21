@@ -20,6 +20,13 @@ const headers = [
     cellProps: { class: 'text-sm font-weight-black text-primary' }
   },
   { 
+    title: "N° FACTURA", 
+    key: "invoice_number", 
+    sortable: true,
+    value: item => item.invoice_number ? `#${item.invoice_number}` : '—',
+    cellProps: { class: 'text-sm font-weight-bold text-high-emphasis' }
+  },
+  { 
     title: "IDENTIFICACIÓN", 
     key: "identification", 
     sortable: true,
@@ -30,7 +37,7 @@ const headers = [
     title: "RAZÓN SOCIAL", 
     key: "business_name", 
     sortable: true, 
-    width: "35%",
+    width: "25%",
     value: item => (item.business_name || 'N/A').toUpperCase(),
     cellProps: { class: 'text-sm text-medium-emphasis text-uppercase truncate' }
   },
@@ -58,7 +65,15 @@ const headers = [
     cellProps: { class: 'text-sm text-medium-emphasis' }
   },
   { 
-    title: "IVA", 
+    title: "BASE (16%)", 
+    key: "taxable_amount", 
+    sortable: true, 
+    align: "end",
+    value: item => formatCurrency(item.taxable_amount),
+    cellProps: { class: 'text-sm text-medium-emphasis' }
+  },
+  { 
+    title: "IVA (16%)", 
     key: "iva_amount", 
     sortable: true, 
     align: "end",
@@ -134,17 +149,14 @@ const formatCurrency = (value) => {
 
           <template #item.actions="{ item }">
             <div class="d-flex justify-center">
-              <VBtn
-                icon="tabler-eye"
+              <IconBtn
                 color="primary"
-                variant="tonal"
-                size="small"
-                rounded="circle"
+                title="Ver Detalle"
                 :aria-label="`Ver detalle de factura ${item.invoice_number || item.id}`"
                 @click="emit('show-detailHistory', item)"
               >
-                <VIcon size="18" icon="tabler-eye" />
-              </VBtn>
+                <VIcon icon="tabler-eye" />
+              </IconBtn>
             </div>
           </template>
         </VDataTableServer>
@@ -229,8 +241,12 @@ const formatCurrency = (value) => {
                 <span class="label">Exento</span>
                 <span class="value font-weight-black text-high-emphasis">Bs. {{ formatCurrency(item.exempt_amount) }}</span>
               </div>
+              <div v-if="Number(item.taxable_amount) > 0" class="stat-box text-center">
+                <span class="label">Base (16%)</span>
+                <span class="value font-weight-black text-high-emphasis">Bs. {{ formatCurrency(item.taxable_amount) }}</span>
+              </div>
               <div class="stat-box text-center">
-                <span class="label">IVA</span>
+                <span class="label">IVA (16%)</span>
                 <span class="value font-weight-black text-high-emphasis">Bs. {{ formatCurrency(item.iva_amount) }}</span>
               </div>
               <div v-if="Number(item.spe_surcharge_amount) > 0" class="stat-box text-center">

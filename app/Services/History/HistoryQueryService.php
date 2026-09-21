@@ -85,7 +85,9 @@ class HistoryQueryService
             'business_name',
             'invoice_date',
             'exempt_amount',
+            'taxable_amount',
             'iva_amount',
+            'spe_surcharge_amount',
             'total_amount',
         ];
 
