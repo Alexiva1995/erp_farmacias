@@ -78,7 +78,7 @@ const cards = computed(() => [
       <VCard border variant="flat" class="kpi-card pa-3">
         <VSkeletonLoader v-if="props.loading" type="list-item-two-line" />
         <div v-else class="d-flex align-center gap-3">
-          <div :class="['pa-3', 'rounded-lg', card.bgColor]">
+          <div :class="['pa-3', 'kpi-icon-wrapper', card.bgColor]">
             <VIcon :icon="card.icon" size="24" :color="card.color" />
           </div>
           <div class="d-flex flex-column overflow-hidden">
@@ -97,8 +97,12 @@ const cards = computed(() => [
 
 <style scoped>
 .kpi-card {
-  border-radius: 12px !important;
+  border-radius: 5px !important;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.kpi-icon-wrapper {
+  border-radius: 5px !important;
 }
 
 .kpi-card:hover {

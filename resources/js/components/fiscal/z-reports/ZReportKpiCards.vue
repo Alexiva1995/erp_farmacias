@@ -30,7 +30,7 @@ const formatCurrency = (value) => {
 
 const cards = computed(() => [
   {
-    title: "TOTAL REPORTE Z (BS.)",
+    title: "TOTAL FACTURADO",
     value: `Bs. ${formatCurrency(props.summary?.grand_total)}`,
     icon: "tabler-cash",
     color: "success",
@@ -51,23 +51,23 @@ const cards = computed(() => [
     bgColor: "bg-info-tonal",
   },
   {
-    title: "TOTAL IVA G (16%)",
+    title: "TOTAL IVA (16%)",
     value: `Bs. ${formatCurrency(props.summary?.total_iva)}`,
     icon: "tabler-percentage",
     color: "warning",
     bgColor: "bg-warning-tonal",
   },
   {
-    title: "BASE IGTF / SPE",
+    title: "BASE IGTF (3%)",
     value: `Bs. ${formatCurrency(props.summary?.total_igtf_base)}`,
     icon: "tabler-credit-card",
     color: "secondary",
     bgColor: "bg-secondary-tonal",
   },
   {
-    title: "IGTF 3% PERCIBIDO",
+    title: "TOTAL IGTF (3%)",
     value: `Bs. ${formatCurrency(props.summary?.total_igtf)}`,
-    icon: "tabler-coins",
+    icon: "tabler-coin",
     color: "error",
     bgColor: "bg-error-tonal",
   },
@@ -82,19 +82,20 @@ const cards = computed(() => [
       cols="12"
       sm="6"
       md="4"
-      lg="2"
+      lg=""
+      class="flex-grow-1"
     >
-      <VCard border variant="flat" class="kpi-card pa-3 h-100">
+      <VCard border variant="flat" class="kpi-card pa-3">
         <VSkeletonLoader v-if="props.loading" type="list-item-two-line" />
-        <div v-else class="d-flex align-center gap-2">
-          <div :class="['pa-2', 'rounded-lg', card.bgColor]">
-            <VIcon :icon="card.icon" size="22" :color="card.color" />
+        <div v-else class="d-flex align-center gap-3">
+          <div :class="['pa-3', 'kpi-icon-wrapper', card.bgColor]">
+            <VIcon :icon="card.icon" size="24" :color="card.color" />
           </div>
           <div class="d-flex flex-column overflow-hidden">
             <span class="text-caption font-weight-bold text-disabled text-uppercase truncate">
               {{ card.title }}
             </span>
-            <span class="text-subtitle-1 font-weight-black text-high-emphasis truncate">
+            <span class="text-h6 font-weight-black text-high-emphasis truncate">
               {{ card.value }}
             </span>
           </div>
@@ -106,8 +107,12 @@ const cards = computed(() => [
 
 <style scoped>
 .kpi-card {
-  border-radius: 12px !important;
+  border-radius: 5px !important;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.kpi-icon-wrapper {
+  border-radius: 5px !important;
 }
 
 .kpi-card:hover {
