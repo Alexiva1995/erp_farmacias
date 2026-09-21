@@ -9,6 +9,7 @@ const props = defineProps({
       total_exempt: 0,
       total_iva: 0,
       grand_total: 0,
+      total_igtf: 0,
     }),
   },
   loading: {
@@ -47,6 +48,13 @@ const cards = computed(() => [
     bgColor: "bg-warning-tonal",
   },
   {
+    title: "TOTAL IGTF (3%)",
+    value: `Bs. ${formatCurrency(props.stats?.total_igtf)}`,
+    icon: "tabler-coin",
+    color: "error",
+    bgColor: "bg-error-tonal",
+  },
+  {
     title: "DOCUMENTOS",
     value: `${props.stats?.total_count || 0} Reg.`,
     icon: "tabler-file-description",
@@ -63,7 +71,9 @@ const cards = computed(() => [
       :key="index"
       cols="12"
       sm="6"
-      md="3"
+      md="4"
+      lg=""
+      class="flex-grow-1"
     >
       <VCard border variant="flat" class="kpi-card pa-3">
         <VSkeletonLoader v-if="props.loading" type="list-item-two-line" />
@@ -106,6 +116,10 @@ const cards = computed(() => [
 
 .bg-warning-tonal {
   background-color: rgba(var(--v-theme-warning), 0.1);
+}
+
+.bg-error-tonal {
+  background-color: rgba(var(--v-theme-error), 0.1);
 }
 
 .bg-info-tonal {

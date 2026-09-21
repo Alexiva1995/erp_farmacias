@@ -15,6 +15,7 @@ const summaryStats = ref({
   total_exempt: 0,
   total_iva: 0,
   grand_total: 0,
+  total_igtf: 0,
 });
 const loading = ref(false);
 const exportLoading = ref(false);

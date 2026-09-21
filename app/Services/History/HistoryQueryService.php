@@ -28,6 +28,10 @@ class HistoryQueryService
             'taxable_amount',
             'iva_amount',
             'total_amount',
+            'spe',
+            'spe_surcharge_rate',
+            'spe_surcharge_amount',
+            'exchange_rate',
             'audit_hash',
             'user_id',
             'created_at',
@@ -130,7 +134,8 @@ class HistoryQueryService
             COUNT(*) as total_count,
             COALESCE(SUM(exempt_amount), 0) as total_exempt,
             COALESCE(SUM(iva_amount), 0) as total_iva,
-            COALESCE(SUM(total_amount), 0) as grand_total
+            COALESCE(SUM(total_amount), 0) as grand_total,
+            COALESCE(SUM(spe_surcharge_amount), 0) as total_igtf
         ')->first();
 
         return [
@@ -138,6 +143,7 @@ class HistoryQueryService
             'total_exempt' => (float) ($stats->total_exempt ?? 0),
             'total_iva'    => (float) ($stats->total_iva ?? 0),
             'grand_total'  => (float) ($stats->grand_total ?? 0),
+            'total_igtf'   => (float) ($stats->total_igtf ?? 0),
         ];
     }
 
