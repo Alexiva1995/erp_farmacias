@@ -65,6 +65,14 @@ const headers = [
     cellProps: { class: 'text-sm text-medium-emphasis' }
   },
   { 
+    title: "SUBTOTAL", 
+    key: "subtotal", 
+    sortable: false, 
+    align: "end",
+    value: item => formatCurrency((Number(item.total_amount) || 0) - (Number(item.spe_surcharge_amount) || 0)),
+    cellProps: { class: 'text-sm font-weight-bold text-high-emphasis' }
+  },
+  { 
     title: "IGTF", 
     key: "spe_surcharge_amount", 
     sortable: true, 
@@ -240,6 +248,10 @@ const formatCurrency = (value) => {
               <div class="stat-box text-center">
                 <span class="label">IVA</span>
                 <span class="value font-weight-black text-high-emphasis">Bs. {{ formatCurrency(item.iva_amount) }}</span>
+              </div>
+              <div class="stat-box text-center">
+                <span class="label">Subtotal</span>
+                <span class="value font-weight-black text-high-emphasis">Bs. {{ formatCurrency((Number(item.total_amount) || 0) - (Number(item.spe_surcharge_amount) || 0)) }}</span>
               </div>
               <div v-if="Number(item.spe_surcharge_amount) > 0" class="stat-box text-center">
                 <span class="label">IGTF</span>
