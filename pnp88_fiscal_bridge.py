@@ -50,6 +50,9 @@ if BRIDGE_MODE == "REAL":
             
             pnp.PFultimo.restype = ctypes.c_void_p
             
+            if hasattr(pnp, 'PFCortar'):
+                pnp.PFCortar.restype = ctypes.c_void_p
+                
             if hasattr(pnp, 'PFestatus'):
                 pnp.PFestatus.argtypes = [ctypes.c_char_p]
                 pnp.PFestatus.restype = ctypes.c_void_p
@@ -151,6 +154,8 @@ class WebSimPrinter:
         except Exception as e:
             return f"ERROR: {e}"
 
+PROCESSED_INVOICE_IDS = set()
+
 # --- LOGICA DE FACTURACION ---
 def process_pending_invoices(sim):
     try:
@@ -159,10 +164,14 @@ def process_pending_invoices(sim):
             data = resp.json()
             if data and 'id' in data:
                 invoice_id = data['id']
+                if invoice_id in PROCESSED_INVOICE_IDS:
+                    return
+
                 details = data.get('details', [])
                 total_amount = float(data.get('total_amount', 0.0) or 0.0)
                 
                 if not details or len(details) == 0 or total_amount <= 0:
+                    PROCESSED_INVOICE_IDS.add(invoice_id)
                     requests.patch(f"{API_BASE_URL}/fiscal/confirm/{invoice_id}", json={"invoice_number": f"ERR_VAC_{invoice_id}"}, verify=False)
                     return
 
@@ -173,8 +182,8 @@ def process_pending_invoices(sim):
                     res_text = sim.print_invoice(data)
                 else:
                     # 1. Logo ANTES de abrir documento (Protocolo Pág. 50)
-                    if hasattr(pnp, 'PFLogoClick'):
-                        call_pnp(pnp.PFLogoClick)
+                    # if hasattr(pnp, 'PFLogoClick'):
+                    #     call_pnp(pnp.PFLogoClick)
 
                     # 2. Abrir Factura (Razón Social completa y RIF)
                     name = extract_client_name(data)
@@ -187,8 +196,8 @@ def process_pending_invoices(sim):
                         qty_val = float(detail.get('quantity', 0) or 0)
                         amt_val = float(detail.get('total_amount', 0) or 0)
                         if qty_val <= 0: continue
-                        
-                        d_name = clean_text(detail.get('product_name', 'PRODUCTO'), 40)
+                        # Máximo 20 caracteres permitidos por la controladora fiscal para evitar ERROR 1
+                        d_name = clean_text(detail.get('product_name', 'PRODUCTO'), 20)
                         qty = "{:.3f}".format(qty_val)
                         
                         is_taxable = detail.get('vat_status') == 1 or detail.get('vat_status') is True
@@ -204,6 +213,8 @@ def process_pending_invoices(sim):
 
                     if items_printed == 0:
                         call_pnp(pnp.PFComando, "G") # Cancelar
+                        if hasattr(pnp, 'PFCortar'):
+                            call_pnp(pnp.PFCortar)
                         requests.patch(f"{API_BASE_URL}/fiscal/confirm/{invoice_id}", json={"invoice_number": f"ERR_RNG_{invoice_id}"}, verify=False)
                         return
 
@@ -224,30 +235,57 @@ def process_pending_invoices(sim):
                     else:
                         print("[CIERRE] Finalizando factura estandar...")
                         res_text = get_pnp_res(pnp.PFtotal())
+
+                    # Forzar avance y corte de papel para expulsar el ticket
+                    if hasattr(pnp, 'PFCortar'):
+                        call_pnp(pnp.PFCortar)
                 
-                # 5. Obtener Número de Factura Emitida
+                # 5. Obtener Número de Factura Fiscal Real desde la memoria de la máquina
                 inv_num = ""
-                # Método A: Respuesta del cierre (Campo 4 en 0x45)
-                if res_text and "ERROR" not in res_text and res_text != "OK":
-                    parts = [p.strip() for p in res_text.replace(',', '|').split('|') if p.strip()]
-                    if len(parts) >= 4 and parts[3].isdigit() and int(parts[3]) > 0:
-                        inv_num = str(int(parts[3])).zfill(8)
-                
-                # Método B: Extraer de Status N (Campo 10 / índice 9)
-                if not inv_num and hasattr(pnp, 'PFestatus'):
-                    res_st = get_pnp_res(pnp.PFestatus(b'N'))
-                    if res_st and "ERROR" not in res_st and res_st != "OK":
-                        parts = [p.strip() for p in res_st.replace(',', '|').split('|') if p.strip()]
-                        if len(parts) >= 10 and parts[9].isdigit() and int(parts[9]) > 0:
-                            inv_num = str(int(parts[9])).zfill(8)
+                if hasattr(pnp, 'PFestatus'):
+                    try:
+                        pnp.PFestatus(b'N')
+                        res_st = get_pnp_res(pnp.PFultimo())
+                        print(f"\n[DEBUG CONTADORES] Trama cruda de la impresora: '{res_st}'")
+                        if res_st and "ERROR" not in res_st:
+                            parts = [p.strip() for p in res_st.replace(',', '|').split('|') if p.strip()]
+                            for i, part in enumerate(parts):
+                                print(f"  -> Campo {i+1}: {part}")
+                            
+                            # Campo 10 (indice 9) = # Factura fiscal acumulado (ej: 00012300)
+                            # Campo 8 (indice 7) = # Factura fiscal del periodo
+                            if len(parts) >= 10 and parts[9].isdigit() and int(parts[9]) > 0:
+                                inv_num = str(int(parts[9])).zfill(8)
+                                print(f"[DLL PARSER] Factura fiscal acumulada seleccionada (Campo 10): '{inv_num}'")
+                            elif len(parts) >= 8 and parts[7].isdigit() and int(parts[7]) > 0:
+                                inv_num = str(int(parts[7])).zfill(8)
+                                print(f"[DLL PARSER] Factura fiscal del periodo seleccionada (Campo 8): '{inv_num}'")
+                    except Exception as st_err:
+                        print(f"[STATUS ERR] {st_err}")
+
+                # Si no se pudo obtener de status, consultar último cierre
+                if not inv_num:
+                    try:
+                        res_close = get_pnp_res(pnp.PFultimo())
+                        print(f"[DEBUG CIERRE] Trama del último comando: '{res_close}'")
+                        if res_close and "ERROR" not in res_close:
+                            parts = [p.strip() for p in res_close.replace(',', '|').split('|') if p.strip()]
+                            if len(parts) >= 4 and parts[3].isdigit() and int(parts[3]) > 0:
+                                inv_num = str(int(parts[3])).zfill(8)
+                                print(f"[DLL PARSER] Factura fiscal extraida de cierre: '{inv_num}'")
+                    except:
+                        pass
                 
                 if not inv_num:
                     inv_num = f"FAC{invoice_id}"
 
+                PROCESSED_INVOICE_IDS.add(invoice_id)
                 requests.patch(f"{API_BASE_URL}/fiscal/confirm/{invoice_id}", json={"invoice_number": inv_num[:20]}, verify=False)
-                print(f"[OK] Factura registrada en plataforma como: {inv_num}")
+                print(f"[OK] Factura confirmada en sistema con Número Fiscal: {inv_num}")
     except Exception as e:
-        pass
+        import traceback
+        print(f"\n[ERROR CRITICO EN FACTURACION] {e}")
+        traceback.print_exc()
 
 def process_general_commands(sim):
     try:
@@ -294,7 +332,7 @@ def process_general_commands(sim):
                         if BRIDGE_MODE == "WEBSIM":
                             res_output = sim._send_to_sim(["@:NC:V", "E:T"])
                         else:
-                            if hasattr(pnp, 'PFLogoClick'): call_pnp(pnp.PFLogoClick)
+                            # if hasattr(pnp, 'PFLogoClick'): call_pnp(pnp.PFLogoClick)
                             
                             # Uso de funcion nativa PFDevolucion para Notas de Credito (Prov. 0071)
                             if hasattr(pnp, 'PFDevolucion'):
@@ -320,7 +358,9 @@ def process_general_commands(sim):
 
                 requests.patch(f"{API_BASE_URL}/fiscal/commands/{cmd_id}/confirm", json={"status": status, "response": res_output}, verify=False)
     except Exception as e:
-        pass
+        import traceback
+        print(f"\n[ERROR EN COMANDOS] {e}")
+        traceback.print_exc()
 
 if __name__ == "__main__":
     websim = WebSimPrinter(WEBSIM_URL)
@@ -336,11 +376,23 @@ if __name__ == "__main__":
         else:
             print(f"[OK] COM{SERIAL_PORT_NUM} ABIERTO.")
             
-            # PFTIPOIMP("300") activa la matriz ancha de 40 columnas para impresoras de 80mm
-            # (El parámetro de la DLL es exactamente "300" para todos los modelos de 80mm incluyendo PNP88)
-            if hasattr(pnp, 'PFTipoImp'):
-                call_pnp(pnp.PFTipoImp, "300")
-                print("[OK] ANCHO PAPEL: 80mm (40 Columnas) ACTIVADO.")
+            # Mantener la fuente y centrado nativo original de la impresora
+            # (No forzar PFTipoImp '300' para no desplazar los espacios grabados en la memoria fiscal)
+
+            # Auto-recuperación: Detectar si quedó una factura o documento trabado y liberarlo automáticamente
+            if hasattr(pnp, 'PFestatus'):
+                try:
+                    res_st = get_pnp_res(pnp.PFestatus(b'N'))
+                    if res_st and "ERROR" not in res_st:
+                        parts = [p.strip() for p in res_st.replace(',', '|').split('|') if p.strip()]
+                        if len(parts) >= 4 and parts[3] in ['01', '02', '05', '1']:
+                            print(f"[AUTO-RECUPERACION] Documento pendiente detectado (Estado: {parts[3]}). Liberando papel...")
+                            call_pnp(pnp.PFComando, "G")
+                            if hasattr(pnp, 'PFCortar'):
+                                call_pnp(pnp.PFCortar)
+                            print("[AUTO-RECUPERACION] Impresora liberada con exito.")
+                except Exception as rec_err:
+                    pass
 
     while True:
         process_pending_invoices(websim)
