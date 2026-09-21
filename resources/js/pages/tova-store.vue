@@ -389,15 +389,15 @@ const formatPrice = (n) => {
 
 // Calcula si un color hex es muy claro u oscuro para ajustar el borde del swatch
 const getSwatchStyle = (colorHex) => {
-  const hex = (colorHex || '#E20074').replace('#', '')
-  const r = parseInt(hex.substring(0, 2), 16)
-  const g = parseInt(hex.substring(2, 4), 16)
-  const b = parseInt(hex.substring(4, 6), 16)
+  const safeHex = (/^#[0-9A-Fa-f]{6}$/.test(colorHex) ? colorHex : '#E20074').replace('#', '')
+  const r = parseInt(safeHex.substring(0, 2), 16) || 0
+  const g = parseInt(safeHex.substring(2, 4), 16) || 0
+  const b = parseInt(safeHex.substring(4, 6), 16) || 0
   // Luminancia relativa — colores muy claros (>220) necesitan borde oscuro visible
   const luminance = 0.299 * r + 0.587 * g + 0.114 * b
   const borderColor = luminance > 220 ? '#BBBBBB' : '#FFFFFF'
   return {
-    backgroundColor: colorHex || '#E20074',
+    backgroundColor: /^#[0-9A-Fa-f]{6}$/.test(colorHex) ? colorHex : '#E20074',
     border: `2px solid ${borderColor}`,
     boxShadow: `0 0 0 1px ${luminance > 220 ? '#999999' : '#E5E5E5'}`,
   }
@@ -1096,7 +1096,12 @@ onMounted(async () => {
               <span v-if="selectedProduct.brand" class="qv-brand-tag">{{ selectedProduct.brand }}</span>
               <h2 class="qv-title-serif">{{ selectedProduct.name.toUpperCase() }}</h2>
               <p class="qv-desc-light">{{ selectedProduct.description || 'Producto de alta gama formulado con los mejores ingredientes.' }}</p>
-              <p class="qv-price-bold">{{ formatPrice(productPrice(selectedProduct, selectedVariant)) }}</p>
+              <div class="editorial-product-footer" style="display: flex; gap: 10px; align-items: baseline; margin-bottom: 20px;">
+                <span v-if="selectedProduct.original_price" class="editorial-product-price-original" style="text-decoration: line-through; color: #888888; font-size: 15px; font-weight: 500;">
+                  {{ formatPrice(productPrice({ sale_price: selectedProduct.original_price }, selectedVariant)) }}
+                </span>
+                <span class="qv-price-bold" style="margin-bottom: 0;">{{ formatPrice(productPrice(selectedProduct, selectedVariant)) }}</span>
+              </div>
 
                <!-- Variantes de Tonos / Tamaños con Círculos de Color Hexadecimal -->
               <div v-if="selectedProduct.variants?.length" class="qv-variants-editorial">

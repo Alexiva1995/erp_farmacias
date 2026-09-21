@@ -112,6 +112,20 @@ class EcommerceController extends Controller
         $transformProduct = function ($product) {
             $product->image_url = $product->photo_url;
             $product->stock = (float) ($product->calculated_stock ?? 0);
+
+            // Aplicar descuento por producto si existe oferta activa individual, categoría o vencimiento
+            $discountPct = (float) ($product->discount_percentage ?? 0);
+            if ($discountPct > 0 && !isset($product->original_price)) {
+                $product->original_price = (float) $product->sale_price;
+                $product->sale_price = round(((float) $product->sale_price) * (1 - ($discountPct / 100)), 2);
+                if (isset($product->price_cop)) {
+                    $product->price_cop = round(((float) $product->price_cop) * (1 - ($discountPct / 100)), 2);
+                }
+                if (isset($product->price_bs)) {
+                    $product->price_bs = round(((float) $product->price_bs) * (1 - ($discountPct / 100)), 2);
+                }
+            }
+
             return $product;
         };
 

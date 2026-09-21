@@ -271,12 +271,21 @@ class ProductActionService
 
             $keepVariantIds = [];
             foreach ($variantsData as $v) {
+                $colorHex = trim($v['color_hex'] ?? '#E20074');
+                if (!preg_match('/^#[0-9A-Fa-f]{6}$/', $colorHex)) {
+                    if (preg_match('/^[0-9A-Fa-f]{6}$/', $colorHex)) {
+                        $colorHex = '#' . $colorHex;
+                    } else {
+                        $colorHex = '#E20074';
+                    }
+                }
+
                 if (!empty($v['id'])) {
                     $variant = $product->variants()->find($v['id']);
                     if ($variant) {
                         $variant->update([
                             'attribute_value' => $v['attribute_value'] ?? '',
-                            'color_hex' => $v['color_hex'] ?? '#E20074',
+                            'color_hex' => $colorHex,
                             'price_modifier' => (float)($v['price_modifier'] ?? 0)
                         ]);
                         $keepVariantIds[] = $variant->id;
@@ -285,7 +294,7 @@ class ProductActionService
                     $newVariant = $product->variants()->create([
                         'attribute_type' => 'shade',
                         'attribute_value' => $v['attribute_value'] ?? '',
-                        'color_hex' => $v['color_hex'] ?? '#E20074',
+                        'color_hex' => $colorHex,
                         'price_modifier' => (float)($v['price_modifier'] ?? 0),
                         'stock' => 0
                     ]);

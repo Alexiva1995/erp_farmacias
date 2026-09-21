@@ -1028,7 +1028,12 @@ onMounted(async () => {
               <span v-if="selectedProduct.brand" class="qv-brand-tag">{{ selectedProduct.brand }}</span>
               <h2 class="qv-title-serif">{{ selectedProduct.name.toUpperCase() }}</h2>
               <p class="qv-desc-light">{{ selectedProduct.description || 'Producto de alta gama formulado con los mejores ingredientes.' }}</p>
-              <p class="qv-price-bold">{{ formatPrice(productPrice(selectedProduct, selectedVariant)) }}</p>
+              <div class="editorial-product-footer" style="display: flex; gap: 10px; align-items: baseline; margin-bottom: 20px;">
+                <span v-if="selectedProduct.original_price" class="editorial-product-price-original" style="text-decoration: line-through; color: #888888; font-size: 15px; font-weight: 500;">
+                  {{ formatPrice(productPrice({ sale_price: selectedProduct.original_price }, selectedVariant)) }}
+                </span>
+                <span class="qv-price-bold" style="margin-bottom: 0;">{{ formatPrice(productPrice(selectedProduct, selectedVariant)) }}</span>
+              </div>
 
                <!-- Variantes de Tonos / Tamaños con Círculos de Color Hexadecimal -->
               <div v-if="selectedProduct.variants?.length" class="qv-variants-editorial">

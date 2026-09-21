@@ -58,7 +58,12 @@ class EcommerceOrderService
                     }
 
                     $variant = null;
-                    $unitPrice = (float) $product->sale_price;
+                    $basePrice = (float) $product->sale_price;
+                    $discountPct = (float) ($product->discount_percentage ?? 0);
+                    if ($discountPct > 0) {
+                        $basePrice = round($basePrice * (1 - ($discountPct / 100)), 2);
+                    }
+                    $unitPrice = $basePrice;
 
                     if (!empty($item['variant_id'])) {
                         $variant = ProductVariant::find($item['variant_id']);

@@ -338,6 +338,16 @@ const submitForm = () => {
   }
 
   if (brandingStore.settings?.enable_variations && Array.isArray(formData.value.variants)) {
+    for (const v of formData.value.variants) {
+      if (!v.attribute_value || !v.attribute_value.trim()) {
+        toast.error("Debe ingresar el nombre del tono para todas las variaciones.");
+        return;
+      }
+      if (v.color_hex && !/^#[0-9A-Fa-f]{6}$/.test(v.color_hex.trim())) {
+        toast.error(`El color "${v.color_hex}" no es un código hexadecimal válido (debe ser formato #RRGGBB).`);
+        return;
+      }
+    }
     payload.append("variants", JSON.stringify(formData.value.variants));
   }
 

@@ -66,7 +66,8 @@ const emit = defineEmits([
               <div class="d-flex align-center gap-2">
                 <input
                   type="color"
-                  v-model="variant.color_hex"
+                  :value="/^#[0-9A-Fa-f]{6}$/.test(variant.color_hex) ? variant.color_hex : '#000000'"
+                  @input="variant.color_hex = $event.target.value"
                   style="width: 40px; height: 40px; border: 1px solid #ccc; border-radius: 8px; cursor: pointer; padding: 0; background: none;"
                 />
                 <AppTextField
@@ -74,6 +75,9 @@ const emit = defineEmits([
                   placeholder="#E20074"
                   variant="outlined"
                   density="comfortable"
+                  :rules="[
+                    v => !v || /^#[0-9A-Fa-f]{6}$/.test(v) || 'Formato #RRGGBB inválido'
+                  ]"
                   hide-details="auto"
                   class="rounded-lg font-weight-black flex-grow-1"
                   maxlength="7"
