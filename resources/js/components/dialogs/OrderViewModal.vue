@@ -264,6 +264,28 @@ const fiscalSummary = computed(() => {
   };
 });
 
+const finalTotalAmount = computed(() => {
+  if (props.selectedCurrency === "BS" || !props.selectedCurrency) {
+    if (fiscalSummary.value?.totalAmountBs > 0) {
+      return fiscalSummary.value.totalAmountBs;
+    }
+  }
+
+  if (props.totalAmount && Number(props.totalAmount) > 0) {
+    const speAmt = fiscalSummary.value?.speAmount || 0;
+    if (props.selectedCurrency === "BS" && speAmt > 0 && Math.abs(Number(props.totalAmount) - (fiscalSummary.value.exemptAmount + fiscalSummary.value.taxableAmount + fiscalSummary.value.ivaAmount)) < 0.05) {
+      return Number(props.totalAmount) + speAmt;
+    }
+    return Number(props.totalAmount);
+  }
+
+  if (props.orderData?.total_amount != null) {
+    return Number(props.orderData.total_amount);
+  }
+
+  return 0;
+});
+
 const hasCompanyDiscount = computed(() => {
   return (
     props.orderData.details?.some(
@@ -598,9 +620,20 @@ const productLineLabel = (product) => {
           </VCard>
 
           <!-- Desglose Fiscal SENIAT e Impresora Fiscal -->
-          <div class="d-flex align-center gap-2 mb-2">
-            <div class="header-indicator" style="background-color: #7A0099; width: 4px; height: 16px; border-radius: 2px;" />
-            <span class="text-xs font-weight-black text-uppercase" style="letter-spacing: 0.5px; color: #7A0099 !important; font-size: 12px;">DESGLOSE FISCAL (SENIAT)</span>
+          <div class="d-flex align-center justify-space-between mb-2">
+            <div class="d-flex align-center gap-2">
+              <div class="header-indicator" style="background-color: #7A0099; inline-size: 4px; block-size: 16px; border-radius: 2px;" />
+              <span class="text-xs font-weight-black text-uppercase" style="letter-spacing: 0.5px; color: #7A0099 !important; font-size: 12px;">DESGLOSE FISCAL (SENIAT)</span>
+            </div>
+            <VChip
+              v-if="fiscalSummary.invoiceNumber"
+              size="x-small"
+              color="success"
+              variant="tonal"
+              class="font-weight-black"
+            >
+              FAC #{{ fiscalSummary.invoiceNumber }}
+            </VChip>
           </div>
 
           <VCard variant="flat" class="rounded border shadow-sm bg-white overflow-hidden mb-2">
@@ -618,9 +651,16 @@ const productLineLabel = (product) => {
                   <span class="summary-label">IVA (16%)</span>
                   <span class="summary-value font-weight-bold">{{ formatAmountOnly(fiscalSummary.ivaAmount, 'BS') }} Bs</span>
                 </div>
-                <div v-if="fiscalSummary.isSpe || fiscalSummary.speAmount > 0" class="summary-row">
+                <div class="summary-row">
                   <span class="summary-label">IGTF (3%) Percibido Divisas</span>
-                  <span class="summary-value font-weight-bold text-primary">{{ formatAmountOnly(fiscalSummary.speAmount, 'BS') }} Bs</span>
+                  <span
+                    :class="[
+                      'summary-value font-weight-bold',
+                      fiscalSummary.speAmount > 0 ? 'text-error font-weight-black' : 'text-medium-emphasis'
+                    ]"
+                  >
+                    {{ formatAmountOnly(fiscalSummary.speAmount, 'BS') }} Bs
+                  </span>
                 </div>
               </div>
             </VCardText>
@@ -655,7 +695,7 @@ const productLineLabel = (product) => {
                 <div class="d-flex align-center justify-space-between pt-0.5">
                   <span class="text-subtitle-1 font-weight-black text-primary">TOTAL</span>
                   <div class="d-flex flex-column align-end">
-                    <span class="text-h5 font-weight-black text-primary leading-none">{{ formatCurrency(totalAmount, selectedCurrency) }}</span>
+                    <span class="text-h5 font-weight-black text-primary leading-none">{{ formatCurrency(finalTotalAmount, selectedCurrency) }}</span>
                   </div>
                 </div>
               </div>

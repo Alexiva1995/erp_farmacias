@@ -53,10 +53,15 @@ const orderProducts = computed(() => {
 });
 
 const totalAmount = computed(() => {
-  return props.details.reduce(
+  if (props.histories?.total_amount != null && Number(props.histories?.total_amount) > 0) {
+    return Number(props.histories.total_amount);
+  }
+  const detailsSum = props.details.reduce(
     (sum, d) => sum + parseFloat(d.total_amount || 0),
     0
   );
+  const speAmount = parseFloat(props.histories?.spe_surcharge_amount || 0);
+  return detailsSum + speAmount;
 });
 
 const selectedCurrency = computed(() => {
