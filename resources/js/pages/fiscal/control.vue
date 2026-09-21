@@ -35,6 +35,70 @@ const actionLoading = reactive({
   CREDIT_NOTE:     false,
 });
 
+const isSearchingInvoice = ref(false);
+const matchedInvoice = ref(null);
+
+// Buscar factura para autocompletar Nota de Crédito
+let invoiceLookupDebounce = null;
+const searchInvoiceForNc = async (invoiceNumber) => {
+  const query = invoiceNumber?.trim();
+  if (!query) {
+    matchedInvoice.value = null;
+    return;
+  }
+
+  isSearchingInvoice.value = true;
+  try {
+    const response = await axios.get("/fiscal/invoices/lookup", {
+      params: { invoice_number: query },
+    });
+
+    if (response.data?.found && response.data?.data) {
+      const inv = response.data.data;
+      matchedInvoice.value = inv;
+      ncForm.machine_serial = inv.machine_serial || ncForm.machine_serial;
+      ncForm.invoice_date   = inv.invoice_date || ncForm.invoice_date;
+      ncForm.invoice_hour   = inv.invoice_hour || ncForm.invoice_hour;
+      ncForm.client_name    = inv.client_name || ncForm.client_name;
+      ncForm.client_rif     = inv.client_rif || ncForm.client_rif;
+      ncForm.refund_amount  = inv.refund_amount;
+      ncForm.is_taxable     = inv.is_taxable;
+      toast.success(`Factura #${inv.invoice_number} encontrada. Datos cargados automáticamente.`);
+    } else {
+      matchedInvoice.value = null;
+      if (response.data?.default_serial && !ncForm.machine_serial) {
+        ncForm.machine_serial = response.data.default_serial;
+      }
+    }
+  } catch (error) {
+    console.error("Error al buscar factura para NC:", error);
+  } finally {
+    isSearchingInvoice.value = false;
+  }
+};
+
+const handleInvoiceNumberInput = (val) => {
+  clearTimeout(invoiceLookupDebounce);
+  if (!val) {
+    matchedInvoice.value = null;
+    return;
+  }
+  invoiceLookupDebounce = setTimeout(() => {
+    searchInvoiceForNc(val);
+  }, 600);
+};
+
+const loadDefaultSerial = async () => {
+  try {
+    const response = await axios.get("/fiscal/invoices/lookup");
+    if (response.data?.default_serial && !ncForm.machine_serial) {
+      ncForm.machine_serial = response.data.default_serial;
+    }
+  } catch (error) {
+    console.error("Error al obtener serial por defecto:", error);
+  }
+};
+
 // --- Operaciones API ---
 const fetchCommands = async (isBackground = false) => {
   if (!isBackground) fetchingHistory.value = true;
@@ -141,6 +205,7 @@ const handleCreditNote = () => {
 onMounted(() => {
   fetchCommands();
   checkBridgeStatus(false);
+  loadDefaultSerial();
   poller = setInterval(() => {
     fetchCommands(true);
     checkBridgeStatus(false);
@@ -304,11 +369,15 @@ onUnmounted(() => {
                 <VTextField
                   v-model="ncForm.invoice_number"
                   label="Número de Factura *"
-                  placeholder="Ej: 00000054"
+                  placeholder="Ej: 00000054 (Escanea o escribe)"
                   variant="outlined"
                   density="compact"
                   prepend-inner-icon="tabler-receipt"
+                  append-inner-icon="tabler-scan"
+                  :loading="isSearchingInvoice"
                   clearable
+                  @update:model-value="handleInvoiceNumberInput"
+                  @click:append-inner="() => searchInvoiceForNc(ncForm.invoice_number)"
                 />
               </VCol>
               <VCol cols="12" sm="6">
@@ -347,6 +416,27 @@ onUnmounted(() => {
             </VRow>
 
             <VDivider class="my-3" />
+
+            <!-- Resumen de Factura Encontrada si existe -->
+            <VAlert
+              v-if="matchedInvoice"
+              density="compact"
+              variant="tonal"
+              color="info"
+              class="mb-3 rounded-lg text-xs"
+              icon="tabler-info-circle"
+            >
+              <div class="d-flex flex-wrap justify-space-between align-center gap-1">
+                <span><strong>Cliente:</strong> {{ matchedInvoice.client_name }} ({{ matchedInvoice.client_rif }})</span>
+                <span><strong>Total Original:</strong> Bs. {{ Number(matchedInvoice.total_amount || 0).toFixed(2) }}</span>
+              </div>
+              <div class="d-flex flex-wrap gap-2 mt-1 text-super-xs text-medium-emphasis">
+                <span>Exento: Bs. {{ Number(matchedInvoice.exempt_amount || 0).toFixed(2) }}</span>
+                <span>Base (16%): Bs. {{ Number(matchedInvoice.taxable_amount || 0).toFixed(2) }}</span>
+                <span>IVA: Bs. {{ Number(matchedInvoice.iva_amount || 0).toFixed(2) }}</span>
+                <span v-if="matchedInvoice.spe_surcharge_amount > 0">IGTF: Bs. {{ Number(matchedInvoice.spe_surcharge_amount).toFixed(2) }}</span>
+              </div>
+            </VAlert>
 
             <!-- Sección: Monto y cliente -->
             <p class="text-xs font-weight-bold text-uppercase text-disabled mb-2 letter-spacing-1">

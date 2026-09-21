@@ -192,6 +192,74 @@ class FiscalPrinterController extends Controller
     }
 
     /**
+     * Look up fiscal invoice by number to autofill credit note data.
+     */
+    public function lookupInvoice(Request $request)
+    {
+        try {
+            $query = trim((string) $request->input('invoice_number', ''));
+            
+            // Serial por defecto (último serial registrado en historial fiscal)
+            $defaultSerial = FiscalHistory::whereNotNull('fiscal_id')
+                ->where('fiscal_id', '!=', '')
+                ->latest('id')
+                ->value('fiscal_id') ?? '';
+
+            if (empty($query)) {
+                return response()->json([
+                    'found' => false,
+                    'default_serial' => $defaultSerial,
+                ]);
+            }
+
+            // Normalizar número de factura (con y sin ceros a la izquierda)
+            $numericOnly = ltrim(preg_replace('/[^0-9]/', '', $query), '0');
+            $padded = str_pad($numericOnly ?: $query, 8, '0', STR_PAD_LEFT);
+
+            $invoice = FiscalHistory::where('invoice_number', $query)
+                ->orWhere('invoice_number', $padded)
+                ->orWhere('invoice_number', $numericOnly)
+                ->orWhere('invoice_number', 'like', "%{$query}%")
+                ->latest('id')
+                ->first();
+
+            if (!$invoice) {
+                return response()->json([
+                    'found' => false,
+                    'default_serial' => $defaultSerial,
+                    'message' => 'Factura no encontrada en el historial.',
+                ]);
+            }
+
+            $date = $invoice->invoice_date ?? $invoice->created_at;
+            $carbonDate = $date ? \Carbon\Carbon::parse($date) : now();
+
+            return response()->json([
+                'found' => true,
+                'default_serial' => $defaultSerial,
+                'data' => [
+                    'invoice_number' => $invoice->invoice_number,
+                    'machine_serial' => !empty($invoice->fiscal_id) ? $invoice->fiscal_id : $defaultSerial,
+                    'invoice_date'   => $carbonDate->format('Y-m-d'),
+                    'invoice_hour'   => $carbonDate->format('H:i:s'),
+                    'client_name'    => $invoice->business_name ?: 'CLIENTE GENERICO',
+                    'client_rif'     => $invoice->identification ?: 'V000000000',
+                    'refund_amount'  => (float) $invoice->total_amount,
+                    'is_taxable'     => (float) ($invoice->iva_amount ?? 0) > 0,
+                    'exempt_amount'  => (float) ($invoice->exempt_amount ?? 0),
+                    'taxable_amount' => (float) ($invoice->taxable_amount ?? 0),
+                    'iva_amount'     => (float) ($invoice->iva_amount ?? 0),
+                    'spe_surcharge_amount' => (float) ($invoice->spe_surcharge_amount ?? 0),
+                    'total_amount'   => (float) $invoice->total_amount,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error en FiscalPrinterController@lookupInvoice: ' . $e->getMessage());
+            return response()->json(['error' => 'Error al buscar la factura'], 500);
+        }
+    }
+
+    /**
      * Check actual connectivity status of the Python fiscal bridge.
      */
     public function checkStatus()

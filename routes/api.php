@@ -1081,6 +1081,7 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
     Route::prefix('fiscal')->group(function () {
         Route::post('/queue/{order}', [\App\Http\Controllers\Api\FiscalPrinterController::class, 'queue']);
         Route::post('/commands', [\App\Http\Controllers\Api\FiscalPrinterController::class, 'storeCommand']);
+        Route::get('/invoices/lookup', [\App\Http\Controllers\Api\FiscalPrinterController::class, 'lookupInvoice']);
     });
 
     Route::prefix('retentions')->group(function () {

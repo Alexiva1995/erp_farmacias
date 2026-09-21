@@ -79,12 +79,19 @@ class FiscalZReportController extends Controller
             'image' => ['required', 'image', 'max:5120'], // max 5MB
         ]);
 
-        $file = $request->file('image');
-        $result = $this->zReportService->verifyImageWithAi($id, $file);
+        try {
+            $file = $request->file('image');
+            $result = $this->zReportService->verifyImageWithAi($id, $file);
 
-        return response()->json([
-            'message' => 'Verificación completada',
-            'data'    => new FiscalZReportResource($result),
-        ]);
+            return response()->json([
+                'message' => 'Verificación completada exitosamente.',
+                'data'    => new FiscalZReportResource($result),
+            ]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Error en verifyImage Z-Report ID {$id}: " . $e->getMessage());
+            return response()->json([
+                'message' => $e->getMessage(),
+            ], 422);
+        }
     }
 }

@@ -267,52 +267,78 @@ class FiscalZReportService
         $report->image_path = $path;
         $report->save();
 
-        // Contactar Gemini
-        $apiKey = env('GEMINI_API_KEY');
+        // Obtener clave de Gemini de config o env
+        $apiKey = config('services.gemini.api_key') 
+            ?: config('services.telegram.gemini_api_key') 
+            ?: env('GEMINI_API_KEY');
+
         if (!$apiKey) {
-            throw new \Exception("Gemini API key no configurada.");
+            throw new \Exception("La clave de API de Gemini (GEMINI_API_KEY) no está configurada en el servidor.");
         }
 
         $base64 = base64_encode(file_get_contents($file->path()));
-        $mimeType = $file->getMimeType();
+        $mimeType = $file->getMimeType() ?: 'image/jpeg';
 
-        // Se usa la versión requerida explícitamente por el usuario
-        $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:generateContent?key=" . $apiKey;
-
-        $prompt = "Verifica los siguientes datos del sistema contra la imagen del Reporte Z físico proporcionada.\n"
-            . "Datos del sistema:\n"
-            . "- Nro Reporte: {$report->report_number}\n"
-            . "- Fecha: {$report->report_date}\n"
-            . "- Facturas emitidas: {$report->invoices_count}\n"
-            . "- Exento: {$report->exempt_amount}\n"
-            . "- Base (16%): {$report->base_16_amount}\n"
-            . "- IVA (16%): {$report->iva_amount}\n"
-            . "- IGTF: {$report->igtf_amount}\n"
-            . "- Total: {$report->total_amount}\n\n"
-            . "Por favor, responde estrictamente en JSON con este formato:\n"
+        $prompt = "Analiza minuciosamente la imagen del comprobante / ticket físico de corte fiscal Reporte Z adjunto y compáralo con los datos registrados en el sistema.\n"
+            . "Datos registrados en el sistema:\n"
+            . "- Nro Reporte Z: {$report->report_number}\n"
+            . "- Fecha de emisión: {$report->report_date}\n"
+            . "- Cantidad de facturas/documentos: {$report->invoices_count}\n"
+            . "- Total Exento (Bs): {$report->exempt_amount}\n"
+            . "- Base Imponible 16% (Bs): {$report->base_16_amount}\n"
+            . "- Total IVA 16% (Bs): {$report->iva_amount}\n"
+            . "- Total IGTF (Bs): {$report->igtf_amount}\n"
+            . "- Gran Total (Bs): {$report->total_amount}\n\n"
+            . "Compara número de reporte, fecha, totales gravados, exentos, impuestos y gran total.\n"
+            . "Debes responder estrictamente en formato JSON plano con esta estructura:\n"
             . "{\n"
-            . "  \"match\": true/false,\n"
-            . "  \"notes\": \"Explicación breve de discrepancias encontradas o confirmación de coincidencia.\"\n"
+            . "  \"match\": true o false,\n"
+            . "  \"notes\": \"Explicación clara y concisa en español indicando si los valores coinciden o detallando las discrepancias exactas encontradas.\"\n"
             . "}";
 
-        $response = \Illuminate\Support\Facades\Http::post($url, [
-            'contents' => [
-                [
-                    'parts' => [
-                        ['text' => $prompt],
+        // Modelos soportados en orden de prioridad
+        $candidateModels = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+        $lastError = null;
+        $response = null;
+
+        foreach ($candidateModels as $model) {
+            $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}";
+
+            try {
+                $res = \Illuminate\Support\Facades\Http::withHeaders([
+                    'x-goog-api-key' => $apiKey,
+                ])->timeout(35)->post($url, [
+                    'contents' => [
                         [
-                            'inlineData' => [
-                                'mimeType' => $mimeType,
-                                'data' => $base64,
+                            'parts' => [
+                                ['text' => $prompt],
+                                [
+                                    'inlineData' => [
+                                        'mimeType' => $mimeType,
+                                        'data' => $base64,
+                                    ]
+                                ]
                             ]
                         ]
-                    ]
-                ]
-            ]
-        ]);
+                    ],
+                    'generationConfig' => [
+                        'responseMimeType' => 'application/json',
+                    ],
+                ]);
 
-        if (!$response->successful()) {
-            throw new \Exception("Error al contactar con la IA: " . $response->body());
+                if ($res->successful()) {
+                    $response = $res;
+                    break;
+                }
+
+                $lastError = $res->body();
+            } catch (\Exception $e) {
+                $lastError = $e->getMessage();
+            }
+        }
+
+        if (!$response || !$response->successful()) {
+            throw new \Exception("Error al comunicarse con la IA de Gemini: " . ($lastError ?: 'Sin respuesta del modelo.'));
         }
 
         $aiData = $response->json();
@@ -323,8 +349,8 @@ class FiscalZReportService
         $text = trim($text);
 
         $result = json_decode($text, true);
-        $isMatch = $result['match'] ?? false;
-        $notes = $result['notes'] ?? 'Sin notas.';
+        $isMatch = (bool) ($result['match'] ?? false);
+        $notes = $result['notes'] ?? 'Comprobación finalizada sin observaciones.';
 
         $report->ai_verification_notes = $notes;
         $report->status = $isMatch ? 'COMPROBADO' : 'DISCREPANCIA';

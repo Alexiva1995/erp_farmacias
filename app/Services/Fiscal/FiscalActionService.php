@@ -52,20 +52,27 @@ class FiscalActionService
     {
         $commands = $this->repository->getHistory($limit);
         
-        $invoices = FiscalHistory::select(['id', 'order_id', 'invoice_number', 'is_queued', 'created_at', 'updated_at'])
-            ->where('is_queued', true)
-            ->orderBy('created_at', 'desc')
+        $invoices = FiscalHistory::select(['id', 'order_id', 'invoice_number', 'is_queued', 'business_name', 'created_at', 'updated_at'])
+            ->orderBy('id', 'desc')
             ->limit($limit)
             ->get();
 
         // Transformar facturas al formato de comando para la UI
-        $mappedInvoices = $invoices->map(function($inv) {
+        $mappedInvoices = $invoices->map(function ($inv) {
+            $hasInvoice = !empty($inv->invoice_number);
+            $isQueued = (bool) $inv->is_queued;
+
+            $status = $hasInvoice ? 'success' : ($isQueued ? 'pending' : 'error');
+            $response = $hasInvoice
+                ? "Factura #{$inv->invoice_number}" . ($inv->business_name ? " ({$inv->business_name})" : "")
+                : ($isQueued ? "En espera de impresión..." : "Pendiente / Sin emitir");
+
             return (object) [
                 'id' => 'inv-' . $inv->id,
                 'command' => 'PRINT_INVOICE',
                 'payload' => ['order_id' => $inv->order_id, 'invoice_number' => $inv->invoice_number],
-                'status' => $inv->invoice_number ? 'success' : 'pending',
-                'response' => $inv->invoice_number ? "Factura #{$inv->invoice_number}" : "En espera de impresión...",
+                'status' => $status,
+                'response' => $response,
                 'created_at' => $inv->created_at?->toDateTimeString(),
                 'updated_at' => $inv->updated_at?->toDateTimeString(),
             ];
