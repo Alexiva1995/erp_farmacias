@@ -120,7 +120,7 @@ const paymentBadges = computed(() => {
     return [{ label: "Crédito", currency: props.selectedCurrency || "USD", color: "primary" }];
   }
   const pays = effectivePayments.value;
-  if (!pays.length) return [{ label: "—", currency: "", color: "secondary" }];
+  if (!pays.length) return [];
 
   return pays.map((p) => {
     const label = getPaymentMethodLabel(p.method, p.currency);
@@ -139,7 +139,7 @@ const paymentBadges = computed(() => {
 });
 
 const paymentBadge = computed(() => {
-  return paymentBadges.value[0] || { label: "—", currency: "", color: "secondary" };
+  return paymentBadges.value[0] || null;
 });
 
 const getCurrencyChipColor = (currency) => {
@@ -262,6 +262,10 @@ const fiscalSummary = computed(() => {
     exchangeRate: 0,
     isSpe,
   };
+});
+
+const subtotalFiscal = computed(() => {
+  return (fiscalSummary.value?.exemptAmount || 0) + (fiscalSummary.value?.taxableAmount || 0) + (fiscalSummary.value?.ivaAmount || 0);
 });
 
 const finalTotalAmount = computed(() => {
@@ -412,70 +416,96 @@ const productLineLabel = (product) => {
   const parts = [id != null ? String(id) : null, name, lab || null].filter(Boolean);
   return parts.join(" - ");
 };
+
+const documentTitle = computed(() => {
+  const inv = fiscalSummary.value?.invoiceNumber
+    || props.orderData?.invoice_number
+    || props.orderData?.fiscal_history?.invoice_number
+    || props.orderData?.fiscalHistory?.invoice_number;
+
+  if (inv) {
+    return `Factura Fiscal ${inv}`;
+  }
+  if (props.orderData?.id && props.orderData?.id !== "N/A") {
+    return `Orden #${props.orderData.id}`;
+  }
+  return "Detalle de Documento";
+});
 </script>
 
 <template>
   <VDialog
     v-model="dialogVisible"
-    max-width="700"
+    max-width="720"
     persistent
     scrollable
     content-class="order-view-dialog"
     :fullscreen="mobile"
     :transition="mobile ? 'dialog-bottom-transition' : 'dialog-transition'"
   >
-    <VCard class="order-view-card rounded-xl border-0 shadow-lg overflow-hidden d-flex flex-column" style="max-block-size: 85vh;">
-      <!-- Cabecera Premium Estilo Trazabilidad -->
+    <VCard class="order-view-card rounded-xl border-0 shadow-lg overflow-hidden d-flex flex-column" style="max-block-size: 90vh;">
+      <!-- Cabecera Compacta en una sola línea -->
       <VCardTitle class="pa-0 flex-shrink-0">
-        <div class="header-gradient pa-4 d-flex align-center" style="background: linear-gradient(135deg, #7A0099, #E20074) !important;">
-          <div class="d-flex align-center">
-            <VAvatar color="white" variant="flat" size="40" class="me-3 elevation-2">
-              <VIcon color="primary" size="22">tabler-receipt</VIcon>
+        <div class="header-gradient px-4 py-2.5 d-flex align-center justify-space-between" style="background: linear-gradient(135deg, #7A0099, #E20074) !important;">
+          <div class="d-flex align-center gap-2.5">
+            <VAvatar color="white" variant="flat" size="34" class="elevation-1">
+              <VIcon color="primary" size="18">tabler-file-invoice</VIcon>
             </VAvatar>
-            <div>
-              <h2 class="text-h6 font-weight-black text-white leading-tight mb-0" style="color: white !important;">Orden #{{ orderData.id }}</h2>
-              <div class="d-flex align-center gap-1 mt-1">
-                <VIcon size="14" color="white" class="opacity-75">tabler-calendar-time</VIcon>
-                <span class="text-caption text-white opacity-75 uppercase font-weight-medium" style="color: white !important;">
+            <div class="d-flex flex-wrap align-center gap-x-3 gap-y-0.5">
+              <h2 class="text-subtitle-1 font-weight-black text-white leading-tight mb-0" style="color: white !important;">
+                {{ documentTitle }}
+              </h2>
+              <div class="d-flex align-center gap-1 opacity-90">
+                <VIcon size="13" color="white">tabler-calendar-time</VIcon>
+                <span class="text-caption text-white font-weight-medium" style="color: white !important;">
                   {{ formattedOrderDate }}
                 </span>
               </div>
             </div>
           </div>
-          <VSpacer />
-          <VBtn icon variant="tonal" color="white" size="small" @click="closeModal" class="rounded-lg">
-            <VIcon>tabler-x</VIcon>
+          <VBtn icon variant="tonal" color="white" size="x-small" @click="closeModal" class="rounded-lg">
+            <VIcon size="18">tabler-x</VIcon>
           </VBtn>
         </div>
       </VCardTitle>
 
-      <VCardText class="pa-0 bg-light flex-grow-1 overflow-y-auto" style="max-block-size: calc(85vh - 120px);">
-        <div class="pa-3">
-          <!-- Document Info -->
-          <div class="d-flex align-center gap-2 mb-2">
-            <div class="header-indicator" style="background-color: #E20074; width: 4px; height: 16px; border-radius: 2px;" />
-            <span class="text-xs font-weight-black text-uppercase" style="letter-spacing: 0.5px; color: #E20074 !important; font-size: 12px;">INFORMACIÓN GENERAL</span>
-          </div>
-
-          <VCard variant="flat" class="rounded border shadow-sm mb-2 bg-white overflow-hidden">
+      <VCardText class="pa-0 bg-light flex-grow-1 overflow-y-auto" style="max-block-size: calc(90vh - 110px);">
+        <div class="pa-2.5 d-flex flex-column gap-2">
+          <!-- Bloque Superior: Información General (Cuadrícula compacta 2x2 sin redundancias) -->
+          <VCard variant="flat" class="rounded border shadow-sm bg-white overflow-hidden">
             <VCardText class="pa-2.5">
-              <VRow dense>
-                <VCol cols="12" sm="6" class="py-1">
+              <VRow dense align="center">
+                <!-- Columna Izquierda: Cliente -->
+                <VCol cols="12" sm="6" class="py-0.5">
                   <div class="d-flex flex-column">
-                    <span class="text-uppercase mb-0.5" style="color: #444; font-weight: 700; font-size: 10px; letter-spacing: 0.5px;">FECHA DE EMISIÓN</span>
-                    <span class="text-body-2 font-weight-bold text-high-emphasis">{{ formattedOrderDate }}</span>
+                    <span class="text-uppercase mb-0.5" style="color: #666; font-weight: 700; font-size: 10px; letter-spacing: 0.5px;">CLIENTE</span>
+                    <span class="text-body-2 font-weight-bold text-high-emphasis text-truncate">
+                      {{ orderData.client?.name || "Sin Identificar" }} {{ orderData.client?.last_name || "" }}
+                    </span>
+                    <span v-if="orderData.client?.identification && orderData.client?.identification !== 'N/A'" class="text-caption text-medium-emphasis font-weight-bold">
+                      {{ orderData.client.identification_type ? `${orderData.client.identification_type}-` : "" }}{{ orderData.client.identification }}
+                    </span>
                   </div>
                 </VCol>
-                <VCol cols="12" sm="6" class="py-1">
+
+                <!-- Columna Derecha: Cajero y Método de Pago -->
+                <VCol cols="12" sm="6" class="py-0.5">
                   <div class="d-flex flex-column align-sm-end">
-                    <span class="text-uppercase mb-0.5" style="color: #444; font-weight: 700; font-size: 10px; letter-spacing: 0.5px;">MÉTODO(S) DE PAGO</span>
-                    <div class="d-flex flex-wrap gap-1 justify-sm-end">
+                    <div class="d-flex flex-column align-sm-end mb-1">
+                      <span class="text-uppercase mb-0.5" style="color: #666; font-weight: 700; font-size: 10px; letter-spacing: 0.5px;">CAJERO / VENDEDOR</span>
+                      <span class="text-body-2 font-weight-bold text-high-emphasis">
+                        {{ orderData.seller?.username ? capitalizeFirstAndLastName(orderData.seller.username) : "—" }}
+                      </span>
+                    </div>
+                    <div v-if="paymentBadges.length" class="d-flex flex-wrap gap-1 justify-sm-end align-center">
+                      <span class="text-uppercase me-1" style="color: #666; font-weight: 700; font-size: 9px; letter-spacing: 0.5px;">PAGO:</span>
                       <VChip
                         v-for="(badge, bIdx) in paymentBadges"
                         :key="`badge-${bIdx}`"
                         :color="badge.color"
                         size="x-small"
-                        variant="flat"
+                        variant="tonal"
+                        density="compact"
                         class="font-weight-black"
                       >
                         {{ badge.label }} <span v-if="badge.amount" class="ms-1 opacity-90">({{ formatAmountOnly(badge.amount, badge.currency) }})</span>
@@ -483,234 +513,184 @@ const productLineLabel = (product) => {
                     </div>
                   </div>
                 </VCol>
+              </VRow>
+            </VCardText>
+          </VCard>
 
-                <!-- Fila de Información Fiscal si existe o aplica -->
-                <VCol v-if="fiscalSummary.invoiceNumber || fiscalSummary.hasFiscalRecord" cols="12" class="py-1">
-                  <div class="d-flex align-center justify-space-between bg-surface pa-2 rounded border">
-                    <div class="d-flex align-center gap-1.5">
-                      <VIcon icon="tabler-printer" size="16" color="primary" />
-                      <span class="text-caption font-weight-black text-uppercase">Factura Fiscal:</span>
-                      <span class="text-caption font-weight-black text-primary">{{ fiscalSummary.invoiceNumber || 'En Cola de Impresión' }}</span>
-                    </div>
-                    <VChip
-                      :color="fiscalSummary.invoiceNumber ? 'success' : 'warning'"
-                      size="x-small"
-                      variant="tonal"
-                      class="font-weight-black"
+          <!-- Tabla Central: Detalle de Productos -->
+          <div>
+            <div class="d-flex align-center gap-1.5 mb-1">
+              <div class="header-indicator" style="background-color: #E20074; inline-size: 3px; block-size: 12px; border-radius: 2px;" />
+              <span class="text-xs font-weight-black text-uppercase" style="letter-spacing: 0.5px; color: #E20074 !important; font-size: 11px;">DETALLE</span>
+            </div>
+
+            <VCard variant="flat" class="rounded border shadow-sm bg-white overflow-hidden">
+              <div class="products-table-wrapper table-responsive" style="max-height: 200px; overflow-y: auto;">
+                <table class="products-table">
+                  <thead>
+                    <tr>
+                      <th class="ps-3 py-1 text-left" style="color: #444; font-weight: 700; font-size: 10px;">ITEM</th>
+                      <th v-if="!isBlind" class="text-end py-1" style="color: #444; font-weight: 700; font-size: 10px; width: 90px;">P.U</th>
+                      <th class="text-center py-1" style="color: #444; font-weight: 700; font-size: 10px; width: 50px;">CANT</th>
+                      <th v-if="!isBlind" class="text-end pe-3 py-1" style="color: #444; font-weight: 700; font-size: 10px; width: 100px;">TOTAL</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr
+                      v-for="(product, idx) in displayProducts"
+                      :key="product.id || product.product_id || idx"
+                      class="products-table-row"
+                      :class="{ 'discounted-row-highlight': !!getProductDiscount(product) }"
                     >
-                      {{ fiscalSummary.invoiceNumber ? 'IMPRESO' : 'PENDIENTE' }}
-                    </VChip>
+                      <td class="product-cell ps-3 py-1">
+                        <div class="d-flex flex-column">
+                          <div class="d-flex align-center flex-wrap gap-1">
+                            <span class="text-caption font-weight-bold text-disabled">#{{ productId(product) }}</span>
+                            <span class="text-caption font-weight-black text-high-emphasis text-uppercase truncate-text">{{ product.title }}</span>
+                          </div>
+                          <span v-if="product.product?.laboratory?.name || product.laboratory" class="text-tiny text-disabled text-uppercase" style="font-size: 9px;">
+                            {{ product.product?.laboratory?.name || product.laboratory }}
+                          </span>
+
+                          <!-- Badge sutil de Descuento -->
+                          <div v-if="getProductDiscount(product)" class="d-flex align-center mt-0.5">
+                            <VChip
+                              color="error"
+                              size="x-small"
+                              variant="flat"
+                              density="compact"
+                              class="font-weight-black text-tiny"
+                              style="height: 18px; font-size: 9px;"
+                            >
+                              <VIcon icon="tabler-tag" size="10" class="me-0.5" />
+                              Desc. {{ (getProductDiscount(product).type || 'INDIVIDUAL').toUpperCase() }}: -{{ getProductDiscount(product).percentage }}%
+                            </VChip>
+                          </div>
+                        </div>
+                      </td>
+                      <td v-if="!isBlind" class="text-end table-amount text-caption font-weight-medium text-medium-emphasis py-1">
+                        <div class="d-flex flex-column align-end">
+                          <template v-if="getProductDiscount(product)">
+                            <span class="font-weight-bold text-error">
+                              {{ formatAmountOnly(getItemPriceByCurrency(product, selectedCurrency), selectedCurrency) }}
+                            </span>
+                            <span class="text-tiny text-disabled text-decoration-line-through">
+                              {{ formatAmountOnly(getProductDiscount(product).basePrice, selectedCurrency) }}
+                            </span>
+                          </template>
+                          <template v-else>
+                            <span>{{ formatAmountOnly(getItemPriceByCurrency(product, selectedCurrency), selectedCurrency) }}</span>
+                          </template>
+                        </div>
+                      </td>
+                      <td class="text-center py-1">
+                        <!-- Chip neutro para no opacar el total ni el producto -->
+                        <VChip size="x-small" variant="tonal" color="secondary" density="compact" class="font-weight-bold px-1.5" style="height: 20px; font-size: 11px;">
+                          {{ product.selectedQuantity }}
+                        </VChip>
+                      </td>
+                      <td v-if="!isBlind" class="text-end table-amount text-caption font-weight-black pe-3 py-1">
+                        <div class="d-flex flex-column align-end">
+                          <span :class="getProductDiscount(product) ? 'text-error' : 'text-high-emphasis'" class="font-weight-black">
+                            {{ formatAmountOnly(getLineTotal(product), selectedCurrency) }}
+                          </span>
+                          <span
+                            v-if="getProductDiscount(product)"
+                            class="text-tiny font-weight-bold text-error leading-tight"
+                            style="font-size: 9px;"
+                          >
+                            -{{ formatAmountOnly(getProductDiscount(product).totalAmount, selectedCurrency) }}
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </VCard>
+          </div>
+
+          <!-- Bloque Inferior: Desglose Fiscal y Total Factura en 2 Columnas -->
+          <VCard variant="flat" class="rounded border shadow-sm bg-white overflow-hidden">
+            <VCardText class="pa-2.5">
+              <VRow dense align="stretch">
+                <!-- Columna Izquierda: Desglose Fiscal SENIAT (limpio sin Bs en cada renglón) -->
+                <VCol cols="12" sm="7" class="py-1 pe-sm-3 border-sm-e">
+                  <div class="d-flex align-center justify-space-between mb-1.5">
+                    <div class="d-flex align-center gap-1.5">
+                      <div class="header-indicator" style="background-color: #7A0099; inline-size: 3px; block-size: 12px; border-radius: 2px;" />
+                      <span class="text-caption font-weight-black text-uppercase" style="letter-spacing: 0.5px; color: #7A0099 !important; font-size: 11px;">DESGLOSE FISCAL (SENIAT)</span>
+                    </div>
+                    <span class="text-tiny text-medium-emphasis font-weight-medium" style="font-size: 10px;">
+                      (Montos en {{ selectedCurrency || 'Bs.' }})
+                    </span>
+                  </div>
+
+                  <div class="summary-list d-flex flex-column gap-1">
+                    <div class="summary-row">
+                      <span class="summary-label">Monto Exento (E)</span>
+                      <span class="summary-value font-weight-bold text-high-emphasis">{{ formatAmountOnly(fiscalSummary.exemptAmount, selectedCurrency) }}</span>
+                    </div>
+                    <div class="summary-row">
+                      <span class="summary-label">Base Imponible (G 16%)</span>
+                      <span class="summary-value font-weight-bold text-high-emphasis">{{ formatAmountOnly(fiscalSummary.taxableAmount, selectedCurrency) }}</span>
+                    </div>
+                    <div class="summary-row">
+                      <span class="summary-label">IVA (16%)</span>
+                      <span class="summary-value font-weight-bold text-high-emphasis">{{ formatAmountOnly(fiscalSummary.ivaAmount, selectedCurrency) }}</span>
+                    </div>
+                    <div class="summary-row">
+                      <span class="summary-label font-weight-bold">Subtotal</span>
+                      <span class="summary-value font-weight-bold text-high-emphasis">{{ formatAmountOnly(subtotalFiscal, selectedCurrency) }}</span>
+                    </div>
+                    <div class="summary-row">
+                      <span class="summary-label">IGTF (3%) Percibido Divisas</span>
+                      <span class="summary-value font-weight-bold text-high-emphasis">
+                        {{ formatAmountOnly(fiscalSummary.speAmount, selectedCurrency) }}
+                      </span>
+                    </div>
+                    <div v-if="orderDiscounts.total > 0" class="summary-row">
+                      <span class="summary-label">{{ orderDiscounts.label }}</span>
+                      <span class="summary-value text-error font-weight-bold">- {{ formatAmountOnly(orderDiscounts.total, selectedCurrency) }}</span>
+                    </div>
                   </div>
                 </VCol>
 
-                <VCol cols="12" class="my-0.5">
-                  <VDivider class="opacity-10" />
-                </VCol>
+                <!-- Columna Derecha: Recuadro Destacado Total Factura -->
+                <VCol cols="12" sm="5" class="py-1 ps-sm-3 d-flex flex-column justify-center">
+                  <div class="total-box pa-2.5 rounded-lg border d-flex flex-column align-center text-center justify-center h-100">
+                    <span class="text-caption font-weight-black text-uppercase tracking-wider text-medium-emphasis mb-0.5" style="letter-spacing: 0.5px; font-size: 11px;">
+                      TOTAL FACTURA
+                    </span>
+                    <span class="font-weight-black text-primary leading-tight my-1" style="font-size: 22px !important; font-weight: 900 !important; color: #7A0099 !important;">
+                      {{ formatCurrency(finalTotalAmount, selectedCurrency) }}
+                    </span>
 
-                <VCol cols="12" sm="6" class="py-1">
-                  <div class="d-flex flex-column">
-                    <span class="text-uppercase mb-0.5" style="color: #444; font-weight: 700; font-size: 10px; letter-spacing: 0.5px;">CAJERO / VENDEDOR</span>
-                    <span class="text-body-2 font-weight-bold text-high-emphasis">
-                      {{ orderData.seller?.username ? capitalizeFirstAndLastName(orderData.seller.username) : "—" }}
-                    </span>
-                  </div>
-                </VCol>
-                <VCol cols="12" sm="6" class="py-1">
-                  <div class="d-flex flex-column align-sm-end">
-                    <span class="text-uppercase mb-0.5" style="color: #444; font-weight: 700; font-size: 10px; letter-spacing: 0.5px;">CLIENTE</span>
-                    <span class="text-body-2 font-weight-bold text-high-emphasis text-truncate" style="max-width: 100%;">
-                      {{ orderData.client?.name || "Sin Identificar" }} {{ orderData.client?.last_name || "" }}
-                    </span>
-                    <span v-if="orderData.client?.identification" class="text-caption text-medium-emphasis font-weight-bold">
-                      {{ orderData.client.identification_type || "" }} {{ orderData.client.identification }}
-                    </span>
+                    <div v-if="credit || debtPayments.length" class="mt-1 d-flex flex-column gap-0.5 w-100">
+                      <div v-if="credit" class="d-flex justify-space-between text-caption font-weight-bold">
+                        <span class="text-disabled">Crédito:</span>
+                        <span class="text-primary">{{ formatCurrency(creditAmount, selectedCurrency) }}</span>
+                      </div>
+                      <div v-if="debtPayments.length" class="d-flex justify-space-between text-caption font-weight-bold">
+                        <span class="text-disabled">Pendiente:</span>
+                        <span class="text-warning">{{ formatCurrency(debtPayments[0]?.amount || 0, debtPayments[0]?.currency) }}</span>
+                      </div>
+                    </div>
                   </div>
                 </VCol>
               </VRow>
             </VCardText>
           </VCard>
-
-          <!-- Products Table -->
-          <div class="d-flex align-center gap-2 mb-2">
-            <div class="header-indicator" style="background-color: #E20074; width: 4px; height: 16px; border-radius: 2px;" />
-            <span class="text-xs font-weight-black text-uppercase" style="letter-spacing: 0.5px; color: #E20074 !important; font-size: 12px;">DETALLE</span>
-          </div>
-
-          <VCard variant="flat" class="rounded border shadow-sm mb-2 bg-white overflow-hidden">
-            <div class="products-table-wrapper table-responsive">
-              <table class="products-table">
-                <thead>
-                  <tr>
-                    <th class="ps-3 py-1.5 text-left" style="color: #444; font-weight: 700; font-size: 10px;">ITEM</th>
-                    <th v-if="!isBlind" class="text-end py-1.5" style="color: #444; font-weight: 700; font-size: 10px;">P.U</th>
-                    <th class="text-center py-1.5" style="color: #444; font-weight: 700; font-size: 10px;">CANT</th>
-                    <th v-if="!isBlind" class="text-end pe-3 py-1.5" style="color: #444; font-weight: 700; font-size: 10px;">TOTAL</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr
-                    v-for="(product, idx) in displayProducts"
-                    :key="product.id || product.product_id || idx"
-                    class="products-table-row"
-                    :class="{ 'discounted-row-highlight': !!getProductDiscount(product) }"
-                  >
-                    <td class="product-cell ps-3 py-1.5">
-                      <div class="d-flex flex-column">
-                        <div class="d-flex align-center flex-wrap gap-1">
-                          <span class="text-primary font-weight-black text-caption">#{{ productId(product) }}</span>
-                          <span class="text-caption font-weight-black text-high-emphasis text-uppercase truncate-text">{{ product.title }}</span>
-                        </div>
-                        <span v-if="product.product?.laboratory?.name || product.laboratory" class="text-tiny text-disabled text-uppercase">
-                          {{ product.product?.laboratory?.name || product.laboratory }}
-                        </span>
-
-                        <!-- Badge destacado de Descuento -->
-                        <div v-if="getProductDiscount(product)" class="d-flex align-center mt-1">
-                          <VChip
-                            color="error"
-                            size="x-small"
-                            variant="flat"
-                            density="compact"
-                            class="font-weight-black text-tiny"
-                          >
-                            <VIcon icon="tabler-tag" size="11" class="me-1" />
-                            Desc. {{ (getProductDiscount(product).type || 'INDIVIDUAL').toUpperCase() }}: -{{ getProductDiscount(product).percentage }}%
-                          </VChip>
-                        </div>
-                      </div>
-                    </td>
-                    <td v-if="!isBlind" class="text-end table-amount text-caption font-weight-bold text-medium-emphasis py-1.5">
-                      <div class="d-flex flex-column align-end">
-                        <template v-if="getProductDiscount(product)">
-                          <span class="font-weight-bold text-error">
-                            {{ formatAmountOnly(getItemPriceByCurrency(product, selectedCurrency), selectedCurrency) }}
-                          </span>
-                          <span class="text-tiny text-disabled text-decoration-line-through">
-                            {{ formatAmountOnly(getProductDiscount(product).basePrice, selectedCurrency) }}
-                          </span>
-                          <span class="text-tiny font-weight-bold text-error leading-tight">
-                            -{{ formatAmountOnly(getProductDiscount(product).unitAmount, selectedCurrency) }}
-                          </span>
-                        </template>
-                        <template v-else>
-                          <span>{{ formatAmountOnly(getItemPriceByCurrency(product, selectedCurrency), selectedCurrency) }}</span>
-                        </template>
-                      </div>
-                    </td>
-                    <td class="text-center py-1.5">
-                      <VChip size="x-small" variant="tonal" color="primary" class="font-weight-black">{{ product.selectedQuantity }}</VChip>
-                    </td>
-                    <td v-if="!isBlind" class="text-end table-amount text-caption font-weight-black pe-3 py-1.5">
-                      <div class="d-flex flex-column align-end">
-                        <span :class="getProductDiscount(product) ? 'text-error' : ''">
-                          {{ formatAmountOnly(getLineTotal(product), selectedCurrency) }}
-                        </span>
-                        <span
-                          v-if="getProductDiscount(product)"
-                          class="text-tiny font-weight-bold text-error leading-tight"
-                        >
-                          Ahorro: -{{ formatAmountOnly(getProductDiscount(product).totalAmount, selectedCurrency) }}
-                        </span>
-                      </div>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </VCard>
-
-          <!-- Desglose Fiscal SENIAT e Impresora Fiscal -->
-          <div class="d-flex align-center justify-space-between mb-2">
-            <div class="d-flex align-center gap-2">
-              <div class="header-indicator" style="background-color: #7A0099; inline-size: 4px; block-size: 16px; border-radius: 2px;" />
-              <span class="text-xs font-weight-black text-uppercase" style="letter-spacing: 0.5px; color: #7A0099 !important; font-size: 12px;">DESGLOSE FISCAL (SENIAT)</span>
-            </div>
-            <VChip
-              v-if="fiscalSummary.invoiceNumber"
-              size="x-small"
-              color="success"
-              variant="tonal"
-              class="font-weight-black"
-            >
-              FAC #{{ fiscalSummary.invoiceNumber }}
-            </VChip>
-          </div>
-
-          <VCard variant="flat" class="rounded border shadow-sm bg-white overflow-hidden mb-2">
-            <VCardText class="pa-2.5">
-              <div class="summary-list d-flex flex-column gap-1">
-                <div class="summary-row">
-                  <span class="summary-label">Monto Exento (E)</span>
-                  <span class="summary-value font-weight-bold">{{ formatAmountOnly(fiscalSummary.exemptAmount, 'BS') }} Bs</span>
-                </div>
-                <div class="summary-row">
-                  <span class="summary-label">Base Imponible (G 16%)</span>
-                  <span class="summary-value font-weight-bold">{{ formatAmountOnly(fiscalSummary.taxableAmount, 'BS') }} Bs</span>
-                </div>
-                <div class="summary-row">
-                  <span class="summary-label">IVA (16%)</span>
-                  <span class="summary-value font-weight-bold">{{ formatAmountOnly(fiscalSummary.ivaAmount, 'BS') }} Bs</span>
-                </div>
-                <div class="summary-row">
-                  <span class="summary-label">IGTF (3%) Percibido Divisas</span>
-                  <span
-                    :class="[
-                      'summary-value font-weight-bold',
-                      fiscalSummary.speAmount > 0 ? 'text-error font-weight-black' : 'text-medium-emphasis'
-                    ]"
-                  >
-                    {{ formatAmountOnly(fiscalSummary.speAmount, 'BS') }} Bs
-                  </span>
-                </div>
-              </div>
-            </VCardText>
-          </VCard>
-
-          <!-- Summary de Pagos y Total -->
-          <VCard v-if="!isBlind" variant="flat" class="rounded border shadow-sm bg-white overflow-hidden mb-2">
-            <VCardText class="pa-2.5">
-              <div class="summary-list d-flex flex-column gap-1">
-                <div v-if="orderDiscounts.total > 0" class="summary-row">
-                  <span class="summary-label">{{ orderDiscounts.label }}</span>
-                  <span class="summary-value text-error font-weight-bold">- {{ formatCurrency(orderDiscounts.total, selectedCurrency) }}</span>
-                </div>
-                <div v-if="credit" class="summary-row">
-                  <span class="summary-label">Crédito</span>
-                  <span class="summary-value text-primary font-weight-black">{{ formatCurrency(creditAmount, selectedCurrency) }}</span>
-                </div>
-                <div v-if="debtPayments.length" class="summary-row">
-                  <span class="summary-label">Saldo Pendiente</span>
-                  <span class="summary-value text-warning font-weight-black">{{ formatCurrency(debtPayments[0]?.amount || 0, debtPayments[0]?.currency) }}</span>
-                </div>
-
-                <template v-if="normalPayments.length">
-                  <div v-for="(payment, pIndex) in normalPayments" :key="`pay-${pIndex}`" class="summary-row">
-                    <span class="summary-label">{{ getPaymentMethodLabel(payment.method, payment.currency) }}</span>
-                    <span class="summary-value font-weight-bold text-high-emphasis">{{ formatCurrency(payment.amount || 0, payment.currency) }}</span>
-                  </div>
-                </template>
-
-                <VDivider class="my-1 opacity-10" />
-
-                <div class="d-flex align-center justify-space-between pt-0.5">
-                  <span class="text-subtitle-1 font-weight-black text-primary">TOTAL</span>
-                  <div class="d-flex flex-column align-end">
-                    <span class="text-h5 font-weight-black text-primary leading-none">{{ formatCurrency(finalTotalAmount, selectedCurrency) }}</span>
-                  </div>
-                </div>
-              </div>
-            </VCardText>
-          </VCard>
         </div>
       </VCardText>
 
-      <!-- Action Buttons Fijos abajo -->
+      <!-- Botón de Salida Accesible -->
       <VCardActions class="pa-2.5 bg-white border-t flex-shrink-0 d-flex justify-end">
         <VBtn
-          color="secondary"
-          variant="tonal"
-          class="rounded-lg font-weight-black text-xs w-100"
-          height="38"
+          color="primary"
+          variant="flat"
+          class="rounded-lg font-weight-black text-caption w-100"
+          height="36"
           @click="closeModal"
         >
           CERRAR DETALLES
@@ -776,7 +756,7 @@ const productLineLabel = (product) => {
   font-size: 0.6rem;
   font-weight: 800;
   letter-spacing: 0.05em;
-  padding-block: 8px;
+  padding-block: 6px;
   padding-inline: 8px;
   text-align: start;
   text-transform: uppercase;
@@ -784,7 +764,7 @@ const productLineLabel = (product) => {
 
 .products-table td {
   border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.05);
-  padding-block: 8px;
+  padding-block: 5px;
   padding-inline: 8px;
 }
 
@@ -818,13 +798,18 @@ const productLineLabel = (product) => {
 
 .summary-label {
   color: rgba(var(--v-theme-on-surface), 0.6);
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 600;
   text-transform: uppercase;
 }
 
 .summary-value {
-  font-size: 0.875rem;
+  font-size: 0.8rem;
+}
+
+.total-box {
+  background-color: rgba(122, 0, 153, 0.04);
+  border-color: rgba(122, 0, 153, 0.15) !important;
 }
 
 .leading-none {
@@ -846,6 +831,11 @@ const productLineLabel = (product) => {
 
 .v-theme--dark .v-theme--dark .bg-white {
   background-color: #2a2a2a !important;
+}
+
+.v-theme--dark .total-box {
+  background-color: rgba(122, 0, 153, 0.15);
+  border-color: rgba(122, 0, 153, 0.3) !important;
 }
 
 .v-theme--dark .header-indicator {

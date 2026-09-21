@@ -27,17 +27,21 @@ const isDialogVisible = computed({
 
 const orderData = computed(() => ({
   id: props.histories?.fiscal_id || props.histories?.id || "N/A",
+  invoice_number: props.histories?.invoice_number || null,
   created_at: props.histories?.created_at || props.histories?.invoice_date,
   seller: {
-    username: props.user?.username || "N/A",
+    username: props.user?.username || props.histories?.user?.username || "N/A",
   },
   client: {
-    name: props.histories?.business_name || "N/A",
+    name: props.histories?.business_name || "Sin Identificar",
     last_name: "",
     identification_type: "",
     identification: props.histories?.identification || "N/A",
   },
   fiscal_history: props.histories,
+  payment_methods: props.histories?.payment_method
+    ? [{ method: props.histories.payment_method, currency: props.histories.currency || 'BS', amount: props.histories.total_amount }]
+    : [],
 }));
 
 const orderProducts = computed(() => {
