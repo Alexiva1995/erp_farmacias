@@ -254,12 +254,19 @@ class ProcessSupplierConnectionJob implements ShouldQueue
             $errorsCount = $saveResult['errors_count'] ?? 0;
             $invoicesCount = $saveResult['invoices_count'] ?? count($results["invoices"] ?? []);
 
+            $invoicesSummary = $saveResult['invoices_summary'] ?? [];
+
             if ($totalFoundProducts > 0 && $insertedProducts === 0) {
                 $status->update([
                     "status" => "failed",
                     "message" => "Se descargaron {$totalFoundProducts} productos pero ninguno pudo ser guardado en la base de datos.",
                     "count_product" => 0,
-                    "count_invoice" => $invoicesCount,
+                    "count_invoice" => count($results["invoices"] ?? []),
+                    "details" => [
+                        "invoices" => $invoicesSummary,
+                        "inserted_products" => 0,
+                        "total_products" => $totalFoundProducts,
+                    ],
                 ]);
             } else {
                 $msg = "Conexión procesada correctamente";
@@ -271,7 +278,13 @@ class ProcessSupplierConnectionJob implements ShouldQueue
                     "status" => "completed",
                     "message" => $msg,
                     "count_product" => $insertedProducts,
-                    "count_invoice" => $invoicesCount,
+                    "count_invoice" => count($results["invoices"] ?? []),
+                    "details" => [
+                        "invoices" => $invoicesSummary,
+                        "inserted_products" => $insertedProducts,
+                        "total_products" => $totalFoundProducts,
+                        "processed_invoices" => $invoicesCount,
+                    ],
                 ]);
             }
 

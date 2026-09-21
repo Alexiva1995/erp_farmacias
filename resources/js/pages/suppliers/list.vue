@@ -1,6 +1,7 @@
 <script setup>
 import SupplierCommercialPanel from "@/components/dialogs/SupplierCommercialPanel.vue";
 import SupplierConnectionDialog from "@/components/dialogs/SupplierConnectionDialog.vue";
+import SupplierConnectionHistoryDialog from "@/components/dialogs/SupplierConnectionHistoryDialog.vue";
 import SupplierEditDialog from "@/components/dialogs/SupplierEditDialog.vue";
 import SupplierFilters from "@/components/SupplierFilters.vue";
 import SupplierStatsCards from "@/components/SupplierStatsCards.vue";
@@ -36,6 +37,8 @@ const isLoadingStats = ref(false);
 // Estado para el diálogo de configuración de conexión FTP/API
 const isConnectionDialogVisible = ref(false);
 const connectionSupplier = ref({});
+const isConnectionHistoryDialogVisible = ref(false);
+const connectionHistorySupplier = ref({});
 
 const laboratories = ref([]);
 const discountRules = ref([]);
@@ -315,6 +318,12 @@ const handleConfigConnection = (supplier) => {
   isConnectionDialogVisible.value = true;
 };
 
+// Abre el historial de conexiones y facturas
+const handleViewConnectionHistory = (supplier) => {
+  connectionHistorySupplier.value = { ...supplier };
+  isConnectionHistoryDialogVisible.value = true;
+};
+
 const handleCommercialPanel = async (supplier) => {
   currentSupplier.value = { ...supplier };
   supplierFormErrors.value = {};
@@ -452,6 +461,7 @@ onUnmounted(() => {
         @supplier-pending-invoices="handleSupplierPendingInvoices"
         @check-supplier-api="handleCheckSupplierApi"
         @config-connection="handleConfigConnection"
+        @view-connection-history="handleViewConnectionHistory"
         @sync-dronena-bot="handleSyncDronenaBot"
         @sync-drosymca-bot="handleSyncDrosymcaBot"
       />
@@ -484,6 +494,12 @@ onUnmounted(() => {
         v-model="isConnectionDialogVisible"
         :supplier="connectionSupplier"
         @saved="fetchSuppliers"
+      />
+
+      <!-- Diálogo de Historial de Conexiones y Auditoría de Facturas -->
+      <SupplierConnectionHistoryDialog
+        v-model="isConnectionHistoryDialogVisible"
+        :supplier="connectionHistorySupplier"
       />
     </div>
   </div>

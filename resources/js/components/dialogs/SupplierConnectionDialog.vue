@@ -2,6 +2,7 @@
 import axios from '@/plugins/axios';
 import { toast } from '@/plugins/sweetalert';
 import { computed, ref, watch } from 'vue';
+import SupplierConnectionHistoryDialog from '@/components/dialogs/SupplierConnectionHistoryDialog.vue';
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
@@ -13,6 +14,7 @@ const emit = defineEmits(['update:modelValue', 'saved']);
 // ─── Estado ───────────────────────────────────────────────────────────────────
 const loading       = ref(false);
 const saving        = ref(false);
+const isHistoryOpen = ref(false);
 const showPassword  = ref(false);
 const showFtpOrdersPassword = ref(false);
 
@@ -230,7 +232,19 @@ watch(() => props.modelValue, (isOpen) => {
             icon="tabler-circle-check"
             class="mb-4 rounded-xl"
           >
-            Última sincronización exitosa: <strong>{{ lastConnection }}</strong>
+            <div class="d-flex align-center justify-space-between flex-wrap gap-2 w-100">
+              <span>Última sincronización exitosa: <strong>{{ lastConnection }}</strong></span>
+              <VBtn
+                size="x-small"
+                variant="flat"
+                color="primary"
+                prepend-icon="tabler-history"
+                class="font-weight-black"
+                @click="isHistoryOpen = true"
+              >
+                Ver Historial y Facturas Traídas
+              </VBtn>
+            </div>
           </VAlert>
           <VAlert
             v-else
@@ -240,7 +254,19 @@ watch(() => props.modelValue, (isOpen) => {
             icon="tabler-alert-triangle"
             class="mb-4 rounded-xl"
           >
-            Este proveedor <strong>no ha sido sincronizado</strong> aún o no tiene conexión configurada.
+            <div class="d-flex align-center justify-space-between flex-wrap gap-2 w-100">
+              <span>Este proveedor <strong>no ha sido sincronizado</strong> aún o no tiene conexión configurada.</span>
+              <VBtn
+                size="x-small"
+                variant="tonal"
+                color="warning"
+                prepend-icon="tabler-history"
+                class="font-weight-black"
+                @click="isHistoryOpen = true"
+              >
+                Ver Historial
+              </VBtn>
+            </div>
           </VAlert>
 
           <!-- Sección 1: Tipo de conexión -->
@@ -586,6 +612,12 @@ watch(() => props.modelValue, (isOpen) => {
         </VRow>
       </VCardActions>
     </VCard>
+
+    <!-- Diálogo de Historial de Conexiones -->
+    <SupplierConnectionHistoryDialog
+      v-model="isHistoryOpen"
+      :supplier="props.supplier"
+    />
   </VDialog>
 </template>
 

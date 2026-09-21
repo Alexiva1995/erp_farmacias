@@ -790,4 +790,20 @@ class SupplierController extends Controller
             'data' => SupplierResource::collection($suppliers)->resolve(),
         ]);
     }
+
+    /**
+     * Obtiene el historial de estados de conexión de un proveedor con el detalle de facturas analizadas.
+     */
+    public function getConnectionHistory(Supplier $supplier)
+    {
+        $history = \App\Models\SupplierConnectionStatus::where('supplier_id', $supplier->id)
+            ->with('user:id,username')
+            ->orderBy('id', 'desc')
+            ->take(30)
+            ->get();
+
+        return response()->json([
+            'data' => \App\Http\Resources\SupplierConnectionStatusResource::collection($history),
+        ]);
+    }
 }

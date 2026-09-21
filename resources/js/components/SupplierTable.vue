@@ -37,6 +37,7 @@ const emit = defineEmits([
   "supplier-pending-invoices",
   "check-supplier-api",
   "config-connection",
+  "view-connection-history",
   "sync-dronena-bot",
   "sync-drosymca-bot",
 ]);
@@ -207,6 +208,10 @@ const headers = [
                   <VListItemTitle>Configurar Conexión</VListItemTitle>
                 </VListItem>
 
+                <VListItem v-if="!isRestaurant" @click="emit('view-connection-history', item)" prepend-icon="tabler-history" base-color="info">
+                  <VListItemTitle>Historial de Conexiones</VListItemTitle>
+                </VListItem>
+
                 <VListItem
                   v-if="(item.name && (item.name.toUpperCase().includes('NENA') || item.name.toUpperCase().includes('DRONENA')))"
                   @click="emit('sync-dronena-bot', item)"
@@ -348,6 +353,14 @@ const headers = [
                   color="warning"
                   size="32"
                   @click="emit('config-connection', item)"
+                />
+                <VBtn
+                  v-if="!isRestaurant"
+                  icon="tabler-history"
+                  variant="tonal"
+                  color="info"
+                  size="32"
+                  @click="emit('view-connection-history', item)"
                 />
                 <VBtn
                   v-if="!isRestaurant"

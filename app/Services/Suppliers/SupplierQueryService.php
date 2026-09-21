@@ -523,12 +523,45 @@ class SupplierQueryService
                 }
             }
 
+            $invoicesAudit = [];
+            foreach ($invoices as $rawInv) {
+                $h = $rawInv['header'] ?? [];
+                $num = strtoupper(trim((string)($h['invoice_number'] ?? '')));
+                $ctrl = strtoupper(trim((string)($h['control_number'] ?? '')));
+                $totalUsd = floatval($h['total_usd'] ?? 0);
+                $totalBs = floatval($h['total_amount'] ?? 0);
+                $date = $h['created_invoice_date'] ?? $h['created_at'] ?? now()->toDateString();
+
+                $isAlreadyRegistered = isset($allInvoiceNumbers[$num]) || (!empty($ctrl) && isset($existingControls[$ctrl]));
+                $action = 'created';
+                $actionLabel = 'Nueva en Pendientes';
+
+                if ($isAlreadyRegistered) {
+                    $action = 'skipped';
+                    $actionLabel = 'Ya Registrada';
+                } elseif ($supplier->invoices()->where('invoice_number', $num)->exists()) {
+                    $action = 'updated';
+                    $actionLabel = 'Actualizada';
+                }
+
+                $invoicesAudit[] = [
+                    'invoice_number' => $num ?: 'S/N',
+                    'control_number' => $ctrl ?: 'S/N',
+                    'date' => $date,
+                    'total_usd' => $totalUsd,
+                    'total_amount' => $totalBs,
+                    'action' => $action,
+                    'action_label' => $actionLabel,
+                ];
+            }
+
             return [
                 'success' => true,
                 'inserted_products' => $insertados,
                 'total_products' => $totalProductos,
                 'errors_count' => $errores,
                 'invoices_count' => count($filteredInvoices),
+                'invoices_summary' => $invoicesAudit,
             ];
         } catch (\Throwable $e) {
             Log::error("Error in storeSupplierConnectionData: " . $e->getMessage());
