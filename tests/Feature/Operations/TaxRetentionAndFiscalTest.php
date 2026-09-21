@@ -110,9 +110,9 @@ class TaxRetentionAndFiscalTest extends TestCase
     }
 
     /**
-     * Test de límite de máximo 8 facturas por comprobante de retención
+     * Test de límite de máximo 7 facturas por comprobante de retención
      */
-    public function test_vat_retentions_chunk_at_maximum_eight_invoices_per_retention(): void
+    public function test_vat_retentions_chunk_at_maximum_seven_invoices_per_retention(): void
     {
         // 1. Crear 10 facturas para el mismo proveedor
         $invoiceIds = [];
@@ -148,12 +148,12 @@ class TaxRetentionAndFiscalTest extends TestCase
         $retentionIds = $responseGenerate->json('retention_ids');
         $this->assertCount(2, $retentionIds, 'Debe haber generado 2 comprobantes de retención para 10 facturas.');
 
-        // Verificar que el primer comprobante tiene 8 facturas y el segundo 2 facturas
+        // Verificar que el primer comprobante tiene 7 facturas y el segundo 3 facturas
         $firstRetention = Retention::with('invoices')->find($retentionIds[0]);
         $secondRetention = Retention::with('invoices')->find($retentionIds[1]);
 
-        $this->assertCount(8, $firstRetention->invoices);
-        $this->assertCount(2, $secondRetention->invoices);
+        $this->assertCount(7, $firstRetention->invoices);
+        $this->assertCount(3, $secondRetention->invoices);
     }
 
     /**

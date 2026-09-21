@@ -125,8 +125,8 @@ class RetentionRepository implements \App\Contracts\Retention
             $nextCorrelative = (int)$lastCorrelative + 1;
         }
 
-        // Límite legal / fiscal: máximo 8 facturas por comprobante de retención
-        $chunks = $invoices->chunk(8);
+        // Límite legal / fiscal: máximo 7 facturas por comprobante de retención
+        $chunks = $invoices->chunk(7);
         $createdRetentions = collect();
 
         foreach ($chunks as $chunk) {
