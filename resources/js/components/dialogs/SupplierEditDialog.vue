@@ -17,7 +17,7 @@ const emit = defineEmits(["update:modelValue", "save", "clearErrors"]);
 const isRestaurant = computed(() => false);
 
 // Proveedor de tipo gasto (formulario simplificado)
-const isExpenseSupplier = computed(() => formData.value.type === "gasto");
+const isExpenseSupplier = computed(() => formData.value.type === "externo" || formData.value.type === "gasto");
 
 // Determina visibilidad de campo según tipo de proveedor
 const isFieldVisible = (fieldKey) => {
@@ -298,6 +298,20 @@ watch(
                     </div>
 
                     <VRow dense>
+                      <VCol cols="12" v-if="!isRestaurant">
+                        <AppSelect
+                          v-model="formData.type"
+                          :items="[
+                            { title: 'Droguerías / Mercancía (Inventario)', value: 'drogueria' },
+                            { title: 'Gastos y Servicios Operativos', value: 'externo' },
+                          ]"
+                          label="Tipo de Proveedor *"
+                          prepend-inner-icon="tabler-category"
+                          :error-messages="formErrors.type"
+                          :readonly="!authStore.isAdmin"
+                        />
+                      </VCol>
+
                       <VCol cols="12" v-if="isFieldVisible('name')">
                         <AppTextField
                           v-model="formData.name"

@@ -26,7 +26,7 @@ const orderBy = ref();
 const searchQuery = ref("");
 const debtFilter = ref(null);
 const minScore = ref(null);
-const typeFilter = ref(null);
+const typeFilter = ref("drogueria");
 
 const stats = ref({
   total_debt: 0,
@@ -164,7 +164,7 @@ const handleClearFilters = () => {
   searchQuery.value = "";
   debtFilter.value = null;
   minScore.value = null;
-  typeFilter.value = null;
+  typeFilter.value = "drogueria";
   sortBy.value = undefined;
   orderBy.value = undefined;
 };
