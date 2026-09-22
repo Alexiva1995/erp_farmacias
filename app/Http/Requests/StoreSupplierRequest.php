@@ -47,7 +47,7 @@ class StoreSupplierRequest extends FormRequest
             'type' => ['sometimes', 'string', Rule::enum(SupplierType::class)],
             'name' => ['required', 'string', 'max:255'],
             'social_reason' => [Rule::requiredIf(fn() => $this->type === SupplierType::EXTERNO->value), 'string', 'max:255'],
-            'rif' => ['required', 'string', 'max:20'],
+            'rif' => ['required', 'string', 'max:20', Rule::unique('suppliers', 'rif')->whereNull('deleted_at')],
             'address' => [Rule::requiredIf(fn() => $this->type === SupplierType::EXTERNO->value), 'nullable', 'string'],
             'sales_phone' => ['nullable', 'string', 'max:50'],
             'collections_phone' => ['nullable', 'string', 'max:50'],
@@ -86,6 +86,9 @@ class StoreSupplierRequest extends FormRequest
             'social_reason.string' => 'La razón social debe ser texto.',
             'social_reason.max' => 'La razón social no puede exceder los 255 caracteres.',
             'social_reason.required' => 'La razón social es obligatoria para proveedores externos.',
+
+            'rif.required' => 'El RIF es obligatorio.',
+            'rif.unique' => 'Ya existe un proveedor registrado con este RIF.',
 
             'address.required' => 'La dirección es obligatoria para proveedores externos.',
 

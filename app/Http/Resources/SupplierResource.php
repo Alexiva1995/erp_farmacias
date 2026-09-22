@@ -42,6 +42,7 @@ class SupplierResource extends JsonResource
             'is_active' => (bool) ($this->is_active ?? true),
             'type' => $this->type,
             'score_breakdown' => $this->score_breakdown,
+            'last_sync_at' => $this->connection?->last_connection ?? ($this->relationLoaded('connections') ? $this->connections->max('last_connection') : null),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
             

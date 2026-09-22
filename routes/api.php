@@ -728,6 +728,7 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
         Route::get('/{supplier}/connection-config', [SupplierController::class, 'getConnectionConfig']);
         Route::post('/{supplier}/connection-config', [SupplierController::class, 'saveConnectionConfig']);
         Route::get('/{supplier}/connection-history', [SupplierController::class, 'getConnectionHistory']);
+        Route::post('/merge', [SupplierController::class, 'merge']);
     });
 
     Route::prefix("suppliers/purchase-orders")->group(function () {

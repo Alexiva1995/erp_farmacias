@@ -96,7 +96,7 @@ const hasAdvancedFilters = computed(
     @update:search="emit('update:searchQuery', $event)"
     @clear="emit('clear')"
     @sort="(sortFilter) => emit('sort', sortFilter)"
-    @add="emit('add-supplier', 'drogueria')"
+    @add="emit('add-supplier', props.type || 'drogueria')"
     class="py-1"
   >
     <template #actions-extra>

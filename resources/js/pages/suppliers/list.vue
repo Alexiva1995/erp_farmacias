@@ -3,6 +3,7 @@ import SupplierCommercialPanel from "@/components/dialogs/SupplierCommercialPane
 import SupplierConnectionDialog from "@/components/dialogs/SupplierConnectionDialog.vue";
 import SupplierConnectionHistoryDialog from "@/components/dialogs/SupplierConnectionHistoryDialog.vue";
 import SupplierEditDialog from "@/components/dialogs/SupplierEditDialog.vue";
+import SupplierMergeDialog from "@/components/dialogs/SupplierMergeDialog.vue";
 import SupplierFilters from "@/components/SupplierFilters.vue";
 import SupplierStatsCards from "@/components/SupplierStatsCards.vue";
 import SupplierTable from "@/components/SupplierTable.vue";
@@ -18,6 +19,7 @@ const suppliers = ref([]);
 const totalSupplier = ref(0);
 const loading = ref(false);
 
+const activeTab = ref("drogueria");
 const page = ref(1);
 const itemsPerPage = ref(10);
 const sortBy = ref();
@@ -25,7 +27,7 @@ const orderBy = ref();
 const searchQuery = ref("");
 const debtFilter = ref(null);
 const minScore = ref(null);
-const typeFilter = ref(null);
+const typeFilter = ref("drogueria");
 
 const stats = ref({
   total_debt: 0,
@@ -39,6 +41,10 @@ const isConnectionDialogVisible = ref(false);
 const connectionSupplier = ref({});
 const isConnectionHistoryDialogVisible = ref(false);
 const connectionHistorySupplier = ref({});
+
+// Estado para el diálogo de fusión de proveedores duplicados
+const isMergeDialogVisible = ref(false);
+const mergeSupplierTarget = ref({});
 
 const laboratories = ref([]);
 const discountRules = ref([]);
@@ -159,18 +165,24 @@ const handleClearFilters = () => {
   searchQuery.value = "";
   debtFilter.value = null;
   minScore.value = null;
-  typeFilter.value = null;
+  typeFilter.value = activeTab.value;
   sortBy.value = undefined;
   orderBy.value = undefined;
 };
+
+watch(activeTab, (newTab) => {
+  typeFilter.value = newTab;
+  page.value = 1;
+});
 
 const handleSort = (sortOptions) => {
   sortBy.value = sortOptions.key;
   orderBy.value = sortOptions.order;
 };
 
-const handleAddSupplier = (type = "drogueria") => {
-  currentSupplier.value = { type };
+const handleAddSupplier = (type = null) => {
+  const defaultType = type || activeTab.value || "drogueria";
+  currentSupplier.value = { type: defaultType };
   supplierFormErrors.value = {};
   isEditDialogVisible.value = true;
 };
@@ -394,6 +406,15 @@ const clearFormErrors = () => {
   supplierFormErrors.value = {};
 };
 
+const handleMergeSupplier = (supplier) => {
+  mergeSupplierTarget.value = { ...supplier };
+  isMergeDialogVisible.value = true;
+};
+
+const handleSupplierMerged = async () => {
+  await Promise.all([fetchSuppliers(), fetchStats()]);
+};
+
 let debounceTimer;
 watch(
   [page, itemsPerPage, sortBy, orderBy, searchQuery, debtFilter, minScore, typeFilter],
@@ -427,7 +448,25 @@ onUnmounted(() => {
 
 <template>
   <div class="suppliers-view pb-12">
-    <div class="d-flex flex-column gap-1 mt-1">
+    <div class="d-flex flex-column gap-3 mt-1">
+      <!-- Pestañas de Proveedores: Inventario vs Gastos -->
+      <VCard class="rounded-lg border shadow-sm">
+        <VTabs
+          v-model="activeTab"
+          color="primary"
+          align-tabs="start"
+        >
+          <VTab value="drogueria" class="font-weight-bold text-none">
+            <VIcon icon="tabler-building-warehouse" class="me-2" />
+            Proveedores Inventario
+          </VTab>
+          <VTab value="externo" class="font-weight-bold text-none">
+            <VIcon icon="tabler-receipt-tax" class="me-2" />
+            Proveedores Gastos
+          </VTab>
+        </VTabs>
+      </VCard>
+
       <SupplierFilters
         v-model:searchQuery="searchQuery"
         v-model:debtFilter="debtFilter"
@@ -457,6 +496,7 @@ onUnmounted(() => {
         @update:options="updateTableOptions"
         @edit-supplier="handleEditSupplier"
         @delete-supplier="handleDeleteSupplier"
+        @merge-supplier="handleMergeSupplier"
         @commercial-panel="handleCommercialPanel"
         @supplier-pending-invoices="handleSupplierPendingInvoices"
         @check-supplier-api="handleCheckSupplierApi"
@@ -500,6 +540,13 @@ onUnmounted(() => {
       <SupplierConnectionHistoryDialog
         v-model="isConnectionHistoryDialogVisible"
         :supplier="connectionHistorySupplier"
+      />
+
+      <!-- Diálogo de Fusión de Proveedores Duplicados -->
+      <SupplierMergeDialog
+        v-model="isMergeDialogVisible"
+        :supplier="mergeSupplierTarget"
+        @merged="handleSupplierMerged"
       />
     </div>
   </div>

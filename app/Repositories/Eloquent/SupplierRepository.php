@@ -18,7 +18,7 @@ class SupplierRepository implements SupplierRepositoryInterface
     {
         return Supplier::query()
             ->withoutTrashed()
-            ->with(['latestScore', 'paymentRules', 'paymentDate']);
+            ->with(['latestScore', 'paymentRules', 'paymentDate', 'connection']);
     }
 
     /**

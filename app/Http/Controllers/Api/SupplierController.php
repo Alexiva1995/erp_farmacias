@@ -6,6 +6,7 @@ use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreSupplierRequest;
 use App\Http\Requests\UpdateSupplierRequest;
+use App\Http\Requests\Suppliers\MergeSuppliersRequest;
 use App\Jobs\UpdateAllSuppliersJob;
 use App\Models\ProductSupplier;
 use App\Services\Suppliers\SupplierQueryService;
@@ -804,6 +805,27 @@ class SupplierController extends Controller
 
         return response()->json([
             'data' => \App\Http\Resources\SupplierConnectionStatusResource::collection($history),
+        ]);
+    }
+
+    /**
+     * Fusiona dos proveedores, reasignando toda la información al principal y eliminando el secundario.
+     *
+     * @param MergeSuppliersRequest $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function merge(MergeSuppliersRequest $request)
+    {
+        $validated = $request->validated();
+        
+        $mergedSupplier = $this->supplierActionService->mergeSuppliers(
+            (int) $validated['target_supplier_id'],
+            (int) $validated['source_supplier_id']
+        );
+
+        return response()->json([
+            'message' => 'Proveedores fusionados exitosamente.',
+            'supplier' => new SupplierResource($mergedSupplier),
         ]);
     }
 }

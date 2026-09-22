@@ -40,12 +40,43 @@ const emit = defineEmits([
   "view-connection-history",
   "sync-dronena-bot",
   "sync-drosymca-bot",
+  "merge-supplier",
 ]);
 
+const formatDate = (dateString) => {
+  if (!dateString) return null;
+  try {
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return dateString;
+    return d.toLocaleDateString("es-VE", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  } catch (e) {
+    return dateString;
+  }
+};
+
+const formatTime = (dateString) => {
+  if (!dateString) return "";
+  try {
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return "";
+    return d.toLocaleTimeString("es-VE", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+  } catch (e) {
+    return "";
+  }
+};
+
 const headers = [
-  { title: "id", key: "id", sortable: true },
+  { title: "ID", key: "id", sortable: true },
   { title: "Nombre", key: "name", sortable: true },
-  { title: "Teléfono", key: "sales_phone", sortable: true },
+  { title: "ÚLTIMA SIC", key: "last_sync_at", sortable: true },
   { title: "Deuda", key: "debt", sortable: true },
   { title: "Calificación", key: "latest_score_value", sortable: true },
   { title: "Acciones", key: "actions", sortable: false },
@@ -87,59 +118,21 @@ const headers = [
         </template>
 
         <template #item.name="{ item }">
-          <div class="d-flex align-center gap-x-3">
-            <VAvatar size="32" color="primary" variant="tonal" class="rounded-lg">
-              <span class="text-caption font-weight-bold">{{ (item.name ?? '?').charAt(0) }}</span>
-            </VAvatar>
-            <span class="text-sm font-weight-bold text-high-emphasis">
-              {{ item.name }}
-            </span>
-          </div>
+          <span class="text-sm font-weight-bold text-high-emphasis">
+            {{ item.name }}
+          </span>
         </template>
 
-        <template #item.sales_phone="{ item }">
-          <div class="d-flex align-center gap-1">
-            <VTooltip text="Contactar Ventas">
-              <template #activator="{ props }">
-                <VBtn
-                  icon="tabler-brand-whatsapp"
-                  size="small"
-                  :disabled="!item.sales_phone"
-                  :href="item.sales_phone ? `https://wa.me/${item.sales_phone.replace(/\D/g, '')}` : undefined"
-                  target="_blank"
-                  variant="text"
-                  color="success"
-                  v-bind="props"
-                />
-              </template>
-            </VTooltip>
-            <VTooltip text="Contactar Cobranza (WhatsApp)">
-              <template #activator="{ props }">
-                <VBtn
-                  icon="tabler-brand-whatsapp"
-                  size="small"
-                  :disabled="!item.collections_phone"
-                  :href="item.collections_phone ? `https://wa.me/${item.collections_phone.replace(/\D/g, '')}` : undefined"
-                  target="_blank"
-                  variant="text"
-                  color="info"
-                  v-bind="props"
-                />
-              </template>
-            </VTooltip>
-            <VTooltip v-if="item.payment_email" :text="`Correo de Pagos: ${item.payment_email}`">
-              <template #activator="{ props }">
-                <VBtn
-                  icon="tabler-mail-dollar"
-                  size="small"
-                  :href="`mailto:${item.payment_email}`"
-                  variant="text"
-                  color="primary"
-                  v-bind="props"
-                />
-              </template>
-            </VTooltip>
+        <template #item.last_sync_at="{ item }">
+          <div v-if="item.last_sync_at" class="d-flex flex-column">
+            <span class="text-xs font-weight-medium text-high-emphasis">
+              {{ formatDate(item.last_sync_at) }}
+            </span>
+            <span class="text-xxs text-disabled">
+              {{ formatTime(item.last_sync_at) }}
+            </span>
           </div>
+          <span v-else class="text-caption text-disabled">—</span>
         </template>
 
         <template #item.debt="{ item }">
@@ -242,6 +235,10 @@ const headers = [
                    <VListItemTitle>Facturas Pendientes</VListItemTitle>
                 </VListItem>
 
+                <VListItem v-if="authStore.isAdmin" @click="emit('merge-supplier', item)" prepend-icon="tabler-arrows-join-2" base-color="warning">
+                  <VListItemTitle>Fusionar Proveedor</VListItemTitle>
+                </VListItem>
+
                 <VDivider v-if="authStore.isAdmin" />
 
                 <VListItem v-if="authStore.isAdmin" base-color="error" @click="emit('delete-supplier', item.id)" prepend-icon="tabler-trash">
@@ -269,14 +266,9 @@ const headers = [
         >
           <VCardText class="pa-4">
             <div class="d-flex justify-space-between align-start mb-3">
-              <div class="d-flex align-center gap-3">
-                <VAvatar color="primary" variant="tonal" size="40">
-                  <span class="text-sm font-weight-black">{{ (item.name ?? '?').charAt(0) }}</span>
-                </VAvatar>
-                <div>
-                  <div class="text-sm font-weight-bold line-clamp-1">{{ item.name ?? 'Sin nombre' }}</div>
-                  <div class="text-xs text-disabled">ID: {{ item.id }}</div>
-                </div>
+              <div>
+                <div class="text-sm font-weight-bold line-clamp-1">{{ item.name ?? 'Sin nombre' }}</div>
+                <div class="text-xs text-disabled">ID: {{ item.id }} <span v-if="item.rif">• RIF: {{ item.rif }}</span></div>
               </div>
               <div v-if="!isRestaurant" class="d-flex align-center gap-1">
                 <VIcon
@@ -298,44 +290,16 @@ const headers = [
                 </span>
               </div>
               <div class="d-flex flex-column align-end">
-                 <span class="text-caption text-disabled mb-1">Calificación</span>
-                  <div class="d-flex align-center">
-                    <VIcon icon="tabler-star-filled" color="warning" size="14" class="me-1" />
-                    <span class="text-body-2 font-weight-bold">{{ item.latest_score_value ? Number(item.latest_score_value).toFixed(1) : '—' }}</span>
-                  </div>
+                <span class="text-caption text-disabled mb-1">Última SIC</span>
+                <span class="text-xs font-weight-bold text-high-emphasis">{{ formatDate(item.last_sync_at) || '—' }}</span>
+                <span class="text-xxs text-disabled">{{ formatTime(item.last_sync_at) }}</span>
               </div>
             </div>
 
             <div class="d-flex justify-space-between align-center mt-2 pa-2 bg-light-surface rounded-lg border">
-              <div class="d-flex gap-2">
-                <VTooltip text="WhatsApp Ventas" location="top">
-                  <template #activator="{ props }">
-                    <VBtn
-                      v-bind="props"
-                      icon="tabler-brand-whatsapp"
-                      variant="tonal"
-                      color="success"
-                      size="32"
-                      :disabled="!item.sales_phone"
-                      :href="item.sales_phone ? `https://wa.me/${item.sales_phone.replace(/\D/g, '')}` : undefined"
-                      target="_blank"
-                    />
-                  </template>
-                </VTooltip>
-                <VTooltip v-if="!isRestaurant" text="WhatsApp Cobranza" location="top">
-                  <template #activator="{ props }">
-                    <VBtn
-                      v-bind="props"
-                      icon="tabler-brand-whatsapp"
-                      variant="tonal"
-                      color="info"
-                      size="32"
-                      :disabled="!item.collections_phone"
-                      :href="item.collections_phone ? `https://wa.me/${item.collections_phone.replace(/\D/g, '')}` : undefined"
-                      target="_blank"
-                    />
-                  </template>
-                </VTooltip>
+              <div class="d-flex align-center gap-1">
+                <VIcon icon="tabler-star-filled" color="warning" size="14" />
+                <span class="text-caption font-weight-bold">{{ item.latest_score_value ? Number(item.latest_score_value).toFixed(1) : '—' }}</span>
               </div>
 
               <div class="d-flex gap-1 flex-wrap">
@@ -345,6 +309,14 @@ const headers = [
                   color="primary"
                   size="32"
                   @click="emit('edit-supplier', item)"
+                />
+                <VBtn
+                  v-if="authStore.isAdmin"
+                  icon="tabler-arrows-join-2"
+                  variant="tonal"
+                  color="warning"
+                  size="32"
+                  @click="emit('merge-supplier', item)"
                 />
                 <VBtn
                   v-if="authStore.isAdmin && !isRestaurant"
@@ -372,12 +344,12 @@ const headers = [
                   @click="emit('check-supplier-api', item)"
                 />
                 <VBtn
-                    v-if="authStore.isAdmin && !isRestaurant"
-                    icon="tabler-settings-dollar"
-                    variant="tonal"
-                    color="primary"
-                    size="32"
-                    @click="emit('commercial-panel', item)"
+                  v-if="authStore.isAdmin && !isRestaurant"
+                  icon="tabler-settings-dollar"
+                  variant="tonal"
+                  color="primary"
+                  size="32"
+                  @click="emit('commercial-panel', item)"
                 />
                 <VBtn
                   v-if="authStore.isAdmin"
