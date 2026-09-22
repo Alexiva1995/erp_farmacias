@@ -869,7 +869,7 @@ class SupplierQueryService
                 $q->whereNull('is_deleted')
                   ->orWhere('is_deleted', false);
             })
-            ->select(["id", "name", "rif", "type", "debt", "social_reason", "is_active"])
+            ->select(["id", "name", "rif", "type", "social_reason", "is_active"])
             ->orderBy("name", "asc")
             ->get();
     }
