@@ -14,6 +14,7 @@ use App\Models\InvoiceDetail;
 use App\Http\Requests\StoreProductIntoautoOrderRequest;
 use App\Models\SupplierConnection;
 use App\Models\SupplierConnectionStatus;
+use App\Models\User;
 use App\Enums\AutoOrderStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -389,11 +390,13 @@ class SupplierQueryService
 
 
             // Procesar facturas de forma segura e individual
+            $invoiceErrors = [];
             foreach ($filteredInvoices as $invoice) {
+                $currentInvNumber = strtoupper(trim((string)($invoice['header']['invoice_number'] ?? '')));
                 try {
                     DB::transaction(function () use ($supplier, $invoice) {
                         $header = $invoice['header'] ?? [];
-                        $lines = $invoice['lines'] ?? [];
+                        $lines = $invoice['lines'] ?? $invoice['details'] ?? [];
 
                         $totalAmount = $header['total_amount'] ?? null;
                         $totalUsd = isset($header['total_usd']) && $header['total_usd'] !== '' ? floatval($header['total_usd']) : 0;
@@ -492,7 +495,6 @@ class SupplierQueryService
                                             'barcode'    => $line['barcode'],
                                             'unit_cost'  => floatval($line['unit_cost'] ?? 0),
                                             'sale_price' => floatval($line['unit_cost'] ?? 0),
-                                            'is_active'  => true,
                                             'is_deleted' => true,
                                         ]);
                                     }
@@ -551,6 +553,7 @@ class SupplierQueryService
                         }
                     });
                 } catch (\Throwable $invError) {
+                    $invoiceErrors[$currentInvNumber] = $invError->getMessage();
                     Log::error("Error guardando factura individual", [
                         'supplier_id' => $supplier->id,
                         'invoice' => $invoice['header']['invoice_number'] ?? null,
@@ -568,12 +571,17 @@ class SupplierQueryService
                 $totalBs = floatval($h['total_amount'] ?? 0);
                 $date = $h['created_invoice_date'] ?? $h['created_at'] ?? now()->toDateString();
 
-                $existsInDb = $supplier->invoices()->where('invoice_number', $num)->exists();
-                $isAlreadyComplete = isset($allInvoiceNumbers[$num]) || (!empty($ctrl) && isset($existingControls[$ctrl]));
+                $invInDb = $supplier->invoices()->where('invoice_number', $num)->first();
+                $isAlreadyComplete = isset($existingSupplierNumbers[$num]) || (!empty($ctrl) && isset($existingControls[$ctrl]));
 
-                if ($existsInDb) {
-                    $action = 'created';
-                    $actionLabel = 'Nueva en Pendientes';
+                if ($invInDb) {
+                    if ($invInDb->status === 'pending') {
+                        $action = 'created';
+                        $actionLabel = 'Nueva en Pendientes';
+                    } else {
+                        $action = 'skipped';
+                        $actionLabel = 'Ya Registrada';
+                    }
                 } elseif ($isAlreadyComplete) {
                     $action = 'skipped';
                     $actionLabel = 'Ya Registrada';
@@ -590,6 +598,7 @@ class SupplierQueryService
                     'total_amount' => $totalBs,
                     'action' => $action,
                     'action_label' => $actionLabel,
+                    'error_message' => $invoiceErrors[$num] ?? null,
                 ];
             }
 

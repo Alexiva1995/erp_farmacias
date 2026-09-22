@@ -309,16 +309,26 @@ const closeDialog = () => {
                         >
                           Nueva
                         </VChip>
-                        <VChip
+                        <VTooltip
                           v-else-if="inv.action === 'failed'"
-                          color="error"
-                          size="x-small"
-                          variant="flat"
-                          class="font-weight-black text-uppercase px-2"
-                          style="font-size: 9px; height: 18px;"
+                          location="top"
+                          max-width="320px"
                         >
-                          Error
-                        </VChip>
+                          <template #activator="{ props: tooltipProps }">
+                            <VChip
+                              v-bind="tooltipProps"
+                              color="error"
+                              size="x-small"
+                              variant="flat"
+                              class="font-weight-black text-uppercase px-2 cursor-pointer"
+                              style="font-size: 9px; height: 18px;"
+                            >
+                              Error
+                              <VIcon end size="10" icon="tabler-help-circle" class="ms-1" />
+                            </VChip>
+                          </template>
+                          <span class="text-caption">{{ inv.error_message || 'Error al guardar la factura en la base de datos' }}</span>
+                        </VTooltip>
                         <span
                           v-else-if="inv.action === 'updated'"
                           class="text-caption font-weight-medium text-disabled"
