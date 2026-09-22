@@ -402,9 +402,9 @@ class SupplierQueryService
                         $totalAmount = $header['total_amount'] ?? null;
                         $totalUsd = isset($header['total_usd']) && $header['total_usd'] !== '' ? floatval($header['total_usd']) : 0;
                         $createdInvoiceDate = $this->sanitizeDate($header['created_invoice_date'] ?? $header['created_at'] ?? null) ?? now()->toDateString();
-                        $expDate = $this->sanitizeDate($header['exp_date'] ?? null) ?? $createdInvoiceDate;
+                        $expDate = $this->sanitizeDate($header['exp_date'] ?? null);
                         $paymentDate = $this->sanitizeDate($header['payment_date'] ?? null) ?? $expDate;
-                        $receivedDate = $this->sanitizeDate($header['received_date'] ?? null) ?? $createdInvoiceDate;
+                        $receivedDate = $this->sanitizeDate($header['received_date'] ?? null);
 
                         $rate = floatval($header['exchange_rate'] ?? 0);
                         if ($rate <= 0) {
