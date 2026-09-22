@@ -7,6 +7,7 @@ namespace App\Repositories;
 use App\AutoOrderDetailStatus;
 use App\Enums\AutoOrderStatus;
 use App\Models\AutoOrder;
+use App\Models\AutoOrderDetail;
 use Carbon\Carbon;
 use Illuminate\Database\QueryException;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -17,6 +18,7 @@ class AutoOrdersRepository
     public function baseQuery()
     {
         return AutoOrder::query()
+            ->with(['supplier.connections'])
             ->select(
                 'auto_orders.id',
                 'auto_orders.supplier_id',
@@ -82,6 +84,11 @@ class AutoOrdersRepository
     public function getAll(array $filters = []): LengthAwarePaginator
     {
         $filters["itemsPerPage"] ??= 10;
+
+        // Sincronizar y auto-finalizar órdenes enviadas según facturas y tiempos
+        if (!isset($filters['status']) || (int)$filters['status'] === 1 || (int)$filters['status'] === 2) {
+            $this->syncSentOrdersForSupplier($filters['selectedSupplier'] ?? null);
+        }
 
         $query = $this->baseQuery();
 
@@ -325,16 +332,124 @@ class AutoOrdersRepository
 
     public function checkAndCompleteOrder(AutoOrder $autoOrder): bool
     {
-        // Verificar si todos los detalles tienen estado != PENDING (received no nulo)
-        $allProcessed = $autoOrder->details()
-            ->whereNull('received')
-            ->count() === 0;
+        return $this->checkAndAutoFinalize($autoOrder);
+    }
 
-        if ($allProcessed && $autoOrder->status === AutoOrderStatus::SENT) {
+    public function checkAndAutoFinalize(AutoOrder $autoOrder): bool
+    {
+        // Solo aplica a órdenes en estado ENVIADA (status = 1)
+        $statusValue = is_object($autoOrder->status) ? $autoOrder->status->value : (int) $autoOrder->status;
+        if ($statusValue !== AutoOrderStatus::SENT->value && $statusValue !== 1) {
+            return false;
+        }
+
+        $supplierId = $autoOrder->supplier_id;
+        if (!$supplierId) {
+            return false;
+        }
+
+        // 1. Verificar si al menos algún producto de la orden ya fue recibido
+        $hasReceivedProducts = $autoOrder->details()->where('received', 1)->exists();
+        if (!$hasReceivedProducts) {
+            return false;
+        }
+
+        // Si ya todos los detalles fueron procesados (ninguno con received === null)
+        $pendingDetailsCount = $autoOrder->details()->whereNull('received')->count();
+        if ($pendingDetailsCount === 0) {
             return $this->finish($autoOrder);
         }
-        
+
+        // 2. Evaluar si se cumple alguna de las 3 condiciones de auto-cierre:
+        $shouldFinalize = false;
+
+        // Condición A: Han pasado más de 20 días desde el envío o creación de la orden
+        $referenceDate = $autoOrder->sent_at ?? $autoOrder->order_date ?? $autoOrder->created_at;
+        if ($referenceDate && Carbon::parse($referenceDate)->diffInDays(now()) >= 20) {
+            $shouldFinalize = true;
+        }
+
+        // Condición B: Ya existen órdenes posteriores del mismo proveedor que ya fueron enviadas o completadas
+        if (!$shouldFinalize) {
+            $hasSubsequentSentOrder = AutoOrder::where('supplier_id', $supplierId)
+                ->where('id', '>', $autoOrder->id)
+                ->whereIn('status', [AutoOrderStatus::SENT, AutoOrderStatus::COMPLETED, 1, 2])
+                ->exists();
+
+            if ($hasSubsequentSentOrder) {
+                $shouldFinalize = true;
+            }
+        }
+
+        // Condición C: Ya no hay más facturas de ese proveedor ni en pendientes ('pending') ni en cargadas ('loaded', 'to_order')
+        if (!$shouldFinalize) {
+            $hasPendingOrLoadedInvoices = \App\Models\Invoice::where('supplier_id', $supplierId)
+                ->whereIn('status', ['pending', 'loaded', 'to_order'])
+                ->where(function ($q) use ($autoOrder) {
+                    $q->where('created_at', '>=', $autoOrder->created_at)
+                      ->orWhere('auto_order_id', $autoOrder->id);
+                })
+                ->exists();
+
+            if (!$hasPendingOrLoadedInvoices) {
+                $shouldFinalize = true;
+            }
+        }
+
+        if ($shouldFinalize) {
+            // Rechazar automáticamente todo lo que no llegó
+            $autoOrder->details()->whereNull('received')->update([
+                'received' => 0,
+                'status'   => \App\AutoOrderDetailStatus::NOT_ARRIVED->value,
+            ]);
+
+            // Finalizar la orden
+            return $this->finish($autoOrder);
+        }
+
         return false;
+    }
+
+    public function syncSentOrdersForSupplier(?int $supplierId = null): void
+    {
+        $query = AutoOrder::where('status', AutoOrderStatus::SENT->value);
+        if ($supplierId) {
+            $query->where('supplier_id', $supplierId);
+        }
+
+        $sentOrders = $query->get();
+
+        foreach ($sentOrders as $order) {
+            // Sincronizar productos recibidos desde facturas cargadas / procesadas
+            $receivedProductIds = \App\Models\InvoiceDetail::whereHas('invoice', function ($q) use ($order) {
+                $q->where('supplier_id', $order->supplier_id)
+                    ->whereIn('status', ['loaded', 'to_order', 'ordered', 'registered'])
+                    ->where(function ($sub) use ($order) {
+                        $sub->where('created_at', '>=', $order->created_at)
+                            ->orWhere('auto_order_id', $order->id);
+                    });
+            })->pluck('product_id')->unique()->toArray();
+
+            if (!empty($receivedProductIds)) {
+                $pendingDetails = AutoOrderDetail::where('order_id', $order->id)
+                    ->whereNull('received')
+                    ->with(['productSupplier'])
+                    ->get();
+
+                foreach ($pendingDetails as $detail) {
+                    $productId = $detail->product_id ?? $detail->productSupplier?->product_id;
+                    if ($productId && in_array($productId, $receivedProductIds)) {
+                        $detail->update([
+                            'received' => 1,
+                            'status'   => \App\AutoOrderDetailStatus::ARRIVED->value,
+                        ]);
+                    }
+                }
+            }
+
+            // Evaluar auto-finalización
+            $this->checkAndAutoFinalize($order);
+        }
     }
     public function finish(AutoOrder $autoOrder): bool
     {

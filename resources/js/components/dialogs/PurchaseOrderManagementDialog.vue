@@ -168,19 +168,30 @@ const handleConfirmSent = async () => {
   }
 };
 
-// Reenviar archivo plano al FTP del proveedor
+const resendLabel = computed(() => {
+  if (props.purchaseOrder?.transmission_type === "api") return "Reenviar API";
+  if (props.purchaseOrder?.transmission_type === "email") return "Reenviar Correo";
+  if (props.purchaseOrder?.transmission_type === "ftp") return "Reenviar FTP";
+  return "Reenviar";
+});
+
+const canResend = computed(() => {
+  return props.purchaseOrder?.status === 1 && Boolean(props.purchaseOrder?.transmission_type);
+});
+
+// Reenviar pedido al proveedor (FTP, API o Correo)
 const handleResendFtp = async () => {
   resending.value = true;
   try {
     const { data } = await axios.post(`/suppliers/purchase-orders/${props.purchaseOrder.id}/resend-ftp`);
     if (data.success) {
-      toast.success(data.message || "Pedido transmitido con éxito al FTP.");
+      toast.success(data.message || "Pedido retransmitido con éxito.");
       emit("refresh");
     } else {
-      toast.error(data.message || "Error al transmitir por FTP.");
+      toast.error(data.message || "Error al transmitir el pedido.");
     }
   } catch (error) {
-    toast.error(error.response?.data?.message || "Error al conectar y enviar al servidor FTP.");
+    toast.error(error.response?.data?.message || "Error al transmitir el pedido al proveedor.");
   } finally {
     resending.value = false;
   }
@@ -380,7 +391,23 @@ watch(
  
           <template #item.actions="{ item }">
             <div class="d-flex align-center justify-center gap-2">
-              <template v-if="item.received === null">
+              <!-- En estado Pendiente: Solo botón de eliminar -->
+              <template v-if="purchaseOrder.status === 0">
+                <VBtn
+                  icon
+                  size="32"
+                  variant="text"
+                  color="error"
+                  class="rounded-lg"
+                  @click="deleteDetail(item.id)"
+                >
+                  <VIcon icon="tabler-trash" size="18" />
+                  <VTooltip activator="parent" location="top">Eliminar de la orden</VTooltip>
+                </VBtn>
+              </template>
+
+              <!-- En estado Enviada u otro: Acciones de recepción / rechazo -->
+              <template v-else-if="item.received === null">
                 <VBtn
                   icon
                   size="32"
@@ -403,19 +430,8 @@ watch(
                   <VIcon icon="tabler-x" size="18" />
                   <VTooltip activator="parent" location="top">Rechazar</VTooltip>
                 </VBtn>
-                <VBtn
-                  v-if="purchaseOrder.status === 0"
-                  icon
-                  size="32"
-                  variant="text"
-                  color="secondary"
-                  class="rounded-lg"
-                  @click="deleteDetail(item.id)"
-                >
-                  <VIcon icon="tabler-trash" size="18" />
-                  <VTooltip activator="parent" location="top">Eliminar</VTooltip>
-                </VBtn>
               </template>
+
               <VChip
                 v-else
                 :color="item.received ? 'success' : 'error'"
@@ -428,7 +444,7 @@ watch(
             </div>
           </template>
         </VDataTableServer>
- 
+
         <!-- Vista Móvil (Cards) -->
         <div v-else class="mobile-products-view pa-4 d-flex flex-column gap-4 bg-var-theme-background">
           <template v-if="details.length > 0">
@@ -452,7 +468,7 @@ watch(
                   </div>
                 </div>
               </div>
- 
+
               <VCardText class="pa-4 bg-var-theme-background-light">
                 <div class="d-flex align-center justify-space-between gap-4">
                   <!-- Control de Cantidad -->
@@ -469,10 +485,22 @@ watch(
                     />
                     <span v-else class="text-sm font-weight-black text-primary">{{ item.quantity }} u.</span>
                   </div>
- 
-                  <!-- Acciones de Estado -->
+
+                  <!-- Acciones de Estado Móvil -->
                   <div class="d-flex align-center gap-2">
-                    <template v-if="item.received === null">
+                    <template v-if="purchaseOrder.status === 0">
+                      <VBtn
+                        icon
+                        size="36"
+                        variant="tonal"
+                        color="error"
+                        class="rounded-lg"
+                        @click="deleteDetail(item.id)"
+                      >
+                        <VIcon icon="tabler-trash" size="20" />
+                      </VBtn>
+                    </template>
+                    <template v-else-if="item.received === null">
                       <VBtn
                         icon
                         size="36"
@@ -501,27 +529,14 @@ watch(
                       label
                       class="font-weight-black rounded px-4"
                     >
-                      {{ item.received ? 'RECIVIDO' : 'RECHAZADO' }}
+                      {{ item.received ? 'RECIBIDO' : 'RECHAZADO' }}
                     </VChip>
                   </div>
-                </div>
- 
-                <div v-if="purchaseOrder.status === 0 && item.received === null" class="mt-4 pt-4 border-t d-flex justify-end">
-                   <VBtn
-                    variant="text"
-                    color="error"
-                    size="small"
-                    class="font-weight-black"
-                    prepend-icon="tabler-trash"
-                    @click="deleteDetail(item.id)"
-                  >
-                    ELIMINAR PRODUCTO
-                  </VBtn>
                 </div>
               </VCardText>
             </VCard>
           </template>
- 
+
           <!-- Paginación Móvil -->
           <div class="d-flex justify-center mt-4" v-if="totalDetails > itemsPerPage">
             <VPagination
@@ -549,17 +564,18 @@ watch(
           PDF
         </VBtn>
 
-        <!-- Botón Reenviar al FTP -->
+        <!-- Botón Reenviar al Proveedor (Solo en Enviadas y si tiene conexión/transmisión configurada) -->
         <VBtn
+          v-if="canResend"
           color="info"
           variant="tonal"
-          prepend-icon="tabler-upload"
+          :prepend-icon="purchaseOrder.transmission_type === 'email' ? 'tabler-mail-forward' : (purchaseOrder.transmission_type === 'api' ? 'tabler-api-app' : 'tabler-upload')"
           @click="handleResendFtp"
           :loading="resending"
           class="flex-grow-1 font-weight-black rounded-lg shadow-sm"
           size="large"
         >
-          Reenviar FTP
+          {{ resendLabel }}
         </VBtn>
 
         <VBtn

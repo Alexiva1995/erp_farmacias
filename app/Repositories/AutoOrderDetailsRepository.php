@@ -46,13 +46,13 @@ class AutoOrderDetailsRepository
         $order = \App\Models\AutoOrder::find($orderId);
 
         // La sincronización automática aplica a órdenes en estado enviadas (status = 1)
-        if ($order && $order->status->value === 1) {
+        if ($order && ($order->status === \App\Enums\AutoOrderStatus::SENT || (int) ($order->status->value ?? $order->status) === 1)) {
             $supplierId = $order->supplier_id;
 
             // Buscar productos en facturas cargadas o aprobadas del mismo proveedor registradas después o asociadas a la orden de compra
             $receivedProductIds = \App\Models\InvoiceDetail::whereHas('invoice', function ($query) use ($supplierId, $order) {
                 $query->where('supplier_id', $supplierId)
-                    ->whereIn('status', ['loaded', 'to_order', 'ordered'])
+                    ->whereIn('status', ['loaded', 'to_order', 'ordered', 'registered'])
                     ->where(function ($q) use ($order) {
                         $q->where('created_at', '>=', $order->created_at)
                           ->orWhere('auto_order_id', $order->id);
@@ -66,7 +66,6 @@ class AutoOrderDetailsRepository
                     ->with(['productSupplier'])
                     ->get();
 
-                $hasUpdates = false;
                 foreach ($pendingOrderDetails as $detail) {
                     $productId = $detail->product_id ?? $detail->productSupplier?->product_id;
                     
@@ -76,16 +75,13 @@ class AutoOrderDetailsRepository
                             'received' => 1,
                             'status'   => \App\AutoOrderDetailStatus::ARRIVED->value
                         ]);
-                        $hasUpdates = true;
                     }
                 }
-
-                if ($hasUpdates) {
-                    // Sincronizar el estado de la orden principal (completada)
-                    $repo = new AutoOrdersRepository();
-                    $repo->checkAndCompleteOrder($order);
-                }
             }
+
+            // Sincronizar y evaluar auto-cierre con rechazo automático de lo no llegado
+            $repo = new AutoOrdersRepository();
+            $repo->checkAndAutoFinalize($order);
         }
 
         $perPage = isset($filters["perPage"]) ? min(max((int)$filters["perPage"], 1), 100) : 10;
