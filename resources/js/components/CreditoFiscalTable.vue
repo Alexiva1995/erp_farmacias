@@ -1,4 +1,6 @@
 <script setup>
+import AppEmptyState from "@/components/AppEmptyState.vue";
+
 const props = defineProps({
   expensesData: { type: Array, required: true },
   loading: { type: Boolean, default: false },
@@ -8,63 +10,6 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["update:options"]);
-
-const headers = [
-  { 
-    title: "ID", 
-    key: "invoice_number", 
-    sortable: true,
-    value: item => item.invoice_number ? `#${item.invoice_number}` : '',
-    cellProps: { class: 'text-sm font-weight-black text-primary' }
-  },
-  { 
-    title: "RIF / IDENTIFICACIÓN", 
-    key: "supplier_rif", 
-    sortable: true,
-    value: item => (item.supplier_rif || 'N/A').toUpperCase(),
-    cellProps: { class: 'text-sm text-medium-emphasis' }
-  },
-  {
-    title: "PROVEEDOR / RAZÓN SOCIAL",
-    key: "supplier_name",
-    sortable: true,
-    width: "35%",
-    value: item => (item.supplier_name || 'N/A').toUpperCase(),
-    cellProps: { class: 'text-sm text-medium-emphasis text-uppercase truncate' }
-  },
-  { 
-    title: "EXENTO", 
-    key: "exempt_amount", 
-    sortable: true, 
-    align: "end", 
-    value: item => formatCurrency(item.exempt_amount),
-    cellProps: { class: 'text-sm text-medium-emphasis' }
-  },
-  {
-    title: "BASE IMPONIBLE",
-    key: "taxable_base",
-    sortable: true,
-    align: "end",
-    value: item => formatCurrency(item.taxable_base),
-    cellProps: { class: 'text-sm text-medium-emphasis' }
-  },
-  { 
-    title: "IVA", 
-    key: "iva_amount", 
-    sortable: true, 
-    align: "end",
-    value: item => formatCurrency(item.iva_amount),
-    cellProps: { class: 'text-sm font-weight-black text-medium-emphasis' }
-  },
-  { 
-    title: "TOTAL", 
-    key: "total_amount", 
-    sortable: true, 
-    align: "end",
-    value: item => formatCurrency(Number(item.taxable_base) + Number(item.iva_amount) + Number(item.exempt_amount)),
-    cellProps: { class: 'text-sm font-weight-black text-info text-high-emphasis' }
-  }
-];
 
 const formatCurrency = (amount) => {
   const number = parseFloat(amount) || 0;
@@ -76,14 +21,78 @@ const formatCurrency = (amount) => {
 
 const formatDate = (dateString) => {
   if (!dateString) return "";
-  return new Date(dateString).toLocaleDateString("es-VE", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
+  if (typeof dateString === "string" && /^\d{4}-\d{2}-\d{2}/.test(dateString.trim())) {
+    const parts = dateString.trim().split("T")[0].split("-");
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+  return new Date(dateString).toLocaleDateString("es-VE");
 };
 
+const headers = [
+  { 
+    title: "N° FACTURA", 
+    key: "invoice_number", 
+    sortable: true,
+    value: item => item.invoice_number ? `${item.invoice_number}` : '—',
+    cellProps: { class: 'text-sm font-weight-black', style: 'color: #e91e63 !important;' }
+  },
+  { 
+    title: "PROVEEDOR / RAZÓN SOCIAL", 
+    key: "supplier_name", 
+    sortable: true, 
+    width: "25%"
+  },
+  { 
+    title: "FECHA", 
+    key: "expense_date", 
+    sortable: true,
+    value: item => formatDate(item.expense_date || item.created_at),
+    cellProps: { class: 'text-sm text-medium-emphasis' }
+  },
+  { 
+    title: "EXENTO", 
+    key: "exempt_amount", 
+    sortable: true, 
+    align: "end",
+    value: item => formatCurrency(item.exempt_amount),
+    cellProps: { class: 'text-sm text-medium-emphasis' }
+  },
+  { 
+    title: "BASE", 
+    key: "taxable_base", 
+    sortable: true, 
+    align: "end",
+    value: item => formatCurrency(item.taxable_base),
+    cellProps: { class: 'text-sm text-medium-emphasis' }
+  },
+  { 
+    title: "SUBTOTAL", 
+    key: "subtotal", 
+    sortable: false, 
+    align: "end",
+    value: item => formatCurrency((Number(item.taxable_base) || 0) + (Number(item.exempt_amount) || 0)),
+    cellProps: { class: 'text-sm font-weight-bold text-high-emphasis' }
+  },
+  { 
+    title: "TOTAL", 
+    key: "total_amount", 
+    sortable: true, 
+    align: "end",
+    value: item => formatCurrency(Number(item.taxable_base) + Number(item.iva_amount) + Number(item.exempt_amount)),
+    cellProps: { class: 'text-sm font-weight-black text-high-emphasis' }
+  },
+  { 
+    title: "IVA", 
+    key: "iva_amount", 
+    sortable: true, 
+    align: "end",
+    value: item => formatCurrency(item.iva_amount),
+    cellProps: { class: 'text-sm font-weight-black text-success iva-highlight-cell' }
+  },
+];
+
 const getCategoryChipColor = (categoryName) => {
+  if (!categoryName) return "primary";
   const colors = ["primary", "secondary", "success", "info", "warning"];
   const hash = categoryName.split("").reduce((a, b) => a + b.charCodeAt(0), 0);
   return colors[hash % colors.length];
@@ -99,9 +108,9 @@ const getCategoryChipColor = (categoryName) => {
           <div class="pa-2 bg-info-tonal rounded-lg me-3">
             <VIcon icon="tabler-receipt-2" size="18" color="info" />
           </div>
-          <span class="text-sm font-weight-black uppercase"
-            >Gastos (Crédito Fiscal)</span
-          >
+          <span class="text-sm font-weight-black uppercase">
+            Gastos (Crédito Fiscal)
+          </span>
           <VSpacer />
           <VChip
             color="info"
@@ -125,49 +134,45 @@ const getCategoryChipColor = (categoryName) => {
           class="text-no-wrap premium-table"
           @update:options="(options) => emit('update:options', options)"
         >
+          <!-- Estado Vacío -->
+          <template #no-data>
+            <AppEmptyState
+              icon="tabler-receipt-off"
+              title="No se encontraron gastos con IVA"
+              description="Intenta ajustando el rango de fechas o los filtros seleccionados."
+              class="py-6"
+            />
+          </template>
 
           <template #item.supplier_name="{ item }">
-            <div class="d-flex flex-column py-2">
+            <div class="d-flex flex-column py-1">
               <span
-                class="text-sm font-weight-black text-high-emphasis text-uppercase truncate"
-                style="max-width: 350px"
+                class="text-sm font-weight-bold text-high-emphasis text-uppercase truncate"
+                style="max-width: 300px"
               >
                 {{ item.supplier_name || "N/A" }}
               </span>
-              <div class="d-flex align-center gap-2 mt-1">
-                 <VChip
+              <div class="d-flex align-center gap-2">
+                <span class="text-xs text-medium-emphasis text-uppercase">
+                  {{ item.supplier_rif || "N/A" }}
+                </span>
+                <VChip
                   v-if="item.category_name"
                   :color="getCategoryChipColor(item.category_name)"
                   variant="tonal"
                   size="x-small"
-                  class="font-weight-black rounded"
+                  class="font-weight-bold rounded"
                 >
                   {{ item.category_name }}
                 </VChip>
-                <span class="text-super-xs text-disabled uppercase font-weight-medium">
-                  {{ formatDate(item.expense_date) }}
-                </span>
               </div>
             </div>
           </template>
 
           <template #item.iva_amount="{ item }">
-            <div class="d-flex flex-column align-end">
-              <span class="text-sm font-weight-black text-high-emphasis">{{
-                formatCurrency(item.iva_amount)
-              }}</span>
-              <span
-                v-if="item.is_deductible"
-                class="text-super-xs text-success font-weight-black uppercase"
-                >Deducible</span
-              >
-            </div>
-          </template>
-
-          <template #item.total_amount="{ item }">
-            <span class="text-sm font-weight-black text-info">{{
-              formatCurrency(Number(item.taxable_base) + Number(item.iva_amount) + Number(item.exempt_amount))
-            }}</span>
+            <span class="text-sm font-weight-black text-success">
+              Bs. {{ formatCurrency(item.iva_amount) }}
+            </span>
           </template>
         </VDataTableServer>
       </VCard>
@@ -184,7 +189,7 @@ const getCategoryChipColor = (categoryName) => {
       <div class="d-flex flex-column gap-3">
         <VCard
           v-for="item in props.expensesData"
-          :key="item.invoice_number"
+          :key="item.invoice_number || item.id"
           variant="flat"
           border
           class="mb-1 overflow-hidden premium-card bg-white"
@@ -196,21 +201,18 @@ const getCategoryChipColor = (categoryName) => {
                    <VIcon icon="tabler-receipt-2" size="18" color="info" />
                 </div>
                 <div class="d-flex flex-column">
-                  <span class="text-primary font-weight-black text-xs uppercase mb-1">Factura</span>
-                  <h3 class="text-sm font-weight-black text-high-emphasis leading-tight truncate">
-                    {{ item.invoice_number || 'S/N' }}
+                  <span class="text-primary font-weight-black text-xs uppercase mb-1">N° Factura</span>
+                  <h3 class="text-sm font-weight-black leading-tight truncate" style="color: #e91e63;">
+                    {{ item.invoice_number || item.id || 'S/N' }}
                   </h3>
                 </div>
               </div>
-              <VChip
-                v-if="item.category_name"
-                :color="getCategoryChipColor(item.category_name)"
-                size="x-small"
-                variant="flat"
-                class="font-weight-black rounded"
-              >
-                {{ item.category_name.toUpperCase() }}
-              </VChip>
+              <div class="d-flex flex-column align-end">
+                <span class="text-sm font-weight-black text-success leading-none mb-1">
+                  Bs. {{ formatCurrency(item.iva_amount) }}
+                </span>
+                <span class="text-super-xs font-weight-black text-disabled uppercase">IVA Crédito</span>
+              </div>
             </div>
 
             <VDivider class="my-3 border-opacity-10" />
@@ -220,6 +222,15 @@ const getCategoryChipColor = (categoryName) => {
               <div class="d-flex align-center gap-2 mb-1">
                  <span class="text-super-xs font-weight-black text-disabled uppercase">RIF:</span>
                  <span class="text-xs font-weight-black text-primary uppercase">{{ item.supplier_rif || 'N/A' }}</span>
+                 <VChip
+                   v-if="item.category_name"
+                   :color="getCategoryChipColor(item.category_name)"
+                   size="x-small"
+                   variant="tonal"
+                   class="font-weight-bold rounded ms-auto"
+                 >
+                   {{ item.category_name }}
+                 </VChip>
               </div>
               <span class="text-sm font-weight-black text-high-emphasis d-block leading-tight text-uppercase mb-1">
                 {{ item.supplier_name }}
@@ -234,31 +245,21 @@ const getCategoryChipColor = (categoryName) => {
                 </span>
               </div>
               <div class="stat-box text-center">
-                <span class="label">Base Imp.</span>
+                <span class="label">Base</span>
                 <span class="value font-weight-black text-high-emphasis">{{ formatCurrency(item.taxable_base) }}</span>
               </div>
+              <div class="stat-box text-center">
+                <span class="label">Subtotal</span>
+                <span class="value font-weight-black text-high-emphasis">{{ formatCurrency((Number(item.taxable_base) || 0) + (Number(item.exempt_amount) || 0)) }}</span>
+              </div>
+              <div class="stat-box text-center">
+                <span class="label">Total</span>
+                <span class="value font-weight-black text-high-emphasis">{{ formatCurrency(Number(item.taxable_base) + Number(item.iva_amount) + Number(item.exempt_amount)) }}</span>
+              </div>
               <div class="stat-box text-right">
-                <span class="label">IVA Pagado</span>
-                <div class="d-flex align-center justify-end gap-1">
-                   <VIcon v-if="item.is_deductible" icon="tabler-shield-check" size="12" color="success" />
-                   <span class="value font-weight-black text-high-emphasis">{{ formatCurrency(item.iva_amount) }}</span>
-                </div>
+                <span class="label">Fecha</span>
+                <span class="value font-weight-black text-disabled uppercase">{{ formatDate(item.expense_date) }}</span>
               </div>
-            </div>
-
-            <div class="pa-3 bg-light rounded-lg border-dashed d-flex align-center justify-space-between">
-              <div class="d-flex flex-column">
-                <span class="text-super-xs text-medium-emphasis uppercase font-weight-black text-info">Total del Gasto</span>
-                <div class="d-flex align-center gap-1">
-                  <span class="text-xs font-weight-bold text-disabled">Bs.</span>
-                  <span class="text-h6 font-weight-black text-info-darken-2 leading-none">
-                    {{ formatCurrency(Number(item.taxable_base) + Number(item.iva_amount) + Number(item.exempt_amount)) }}
-                  </span>
-                </div>
-              </div>
-              <span class="text-super-xs text-disabled uppercase font-weight-black">
-                {{ formatDate(item.expense_date) }}
-              </span>
             </div>
           </div>
         </VCard>
@@ -299,7 +300,6 @@ const getCategoryChipColor = (categoryName) => {
   background-color: rgba(var(--v-theme-primary), 0.02) !important;
 }
 
-/* Eliminar bordes verticales */
 .premium-table :deep(table) {
   border-spacing: 0;
   border-collapse: collapse;
@@ -364,9 +364,5 @@ const getCategoryChipColor = (categoryName) => {
 .stat-box .value {
   font-size: 0.75rem;
   font-weight: 800;
-}
-
-.border-dashed {
-  border: 1px dashed rgba(var(--v-border-color), 0.3) !important;
 }
 </style>
