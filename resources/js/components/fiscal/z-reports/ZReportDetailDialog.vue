@@ -1,4 +1,5 @@
 <script setup>
+import DialogCloseBtn from "@core/components/DialogCloseBtn.vue";
 import { computed, ref } from "vue";
 
 const props = defineProps({
@@ -42,26 +43,22 @@ const printTicket = () => {
     scrollable
     @update:model-value="emit('update:modelValue', $event)"
   >
+    <DialogCloseBtn @click="emit('update:modelValue', false)" />
+
     <VCard class="rounded-xl overflow-hidden">
-      <!-- Encabezado Modal -->
-      <VCardItem class="bg-primary text-white py-3 px-4">
-        <template #prepend>
-          <VIcon icon="tabler-receipt" size="24" class="me-2" />
-        </template>
-        <VCardTitle class="text-white font-weight-black text-subtitle-1">
-          REPORTE Z {{ props.report?.report_number_padded || `Z${String(props.report?.report_number || '').padStart(6, '0')}` }}
-        </VCardTitle>
-        <template #append>
-          <VBtn
-            icon
-            variant="text"
-            color="white"
-            size="small"
-            @click="emit('update:modelValue', false)"
-          >
-            <VIcon icon="tabler-x" size="20" />
-          </VBtn>
-        </template>
+      <!-- Encabezado Estándar del Sistema -->
+      <VCardItem class="pb-3 border-b">
+        <div class="d-flex align-center gap-2">
+          <VIcon icon="tabler-receipt" color="primary" size="26" />
+          <div>
+            <VCardTitle class="text-h6 font-weight-bold">
+              Reporte Z {{ props.report?.report_number_padded || `Z${String(props.report?.report_number || '').padStart(6, '0')}` }}
+            </VCardTitle>
+            <VCardSubtitle class="text-caption">
+              Corte fiscal diario y desglose de operaciones
+            </VCardSubtitle>
+          </div>
+        </div>
       </VCardItem>
 
       <VCardText class="pa-4 bg-background">
@@ -296,38 +293,30 @@ const printTicket = () => {
         </VCard>
       </VCardText>
 
-      <VCardActions class="pa-4 pt-0 d-flex justify-space-between gap-2">
-        <div>
-          <VBtn
-            v-if="resolveImageUrl(props.report)"
-            variant="tonal"
-            color="success"
-            prepend-icon="tabler-download"
-            :href="resolveImageUrl(props.report)"
-            target="_blank"
-            :download="`reporte_z_${props.report?.report_number}.jpg`"
-          >
-            Descargar Foto Z
-          </VBtn>
-        </div>
-
-        <div class="d-flex gap-2">
-          <VBtn
-            variant="outlined"
-            color="secondary"
-            @click="emit('update:modelValue', false)"
-          >
-            Cerrar
-          </VBtn>
-          <VBtn
-            variant="flat"
-            color="primary"
-            prepend-icon="tabler-printer"
-            @click="printTicket"
-          >
-            Imprimir Ticket
-          </VBtn>
-        </div>
+      <VCardActions class="pa-4 pt-0">
+        <VRow dense class="w-100 ma-0">
+          <VCol cols="6" class="ps-0 pe-1">
+            <VBtn
+              block
+              variant="outlined"
+              color="secondary"
+              @click="emit('update:modelValue', false)"
+            >
+              Cerrar
+            </VBtn>
+          </VCol>
+          <VCol cols="6" class="pe-0 ps-1">
+            <VBtn
+              block
+              variant="flat"
+              color="primary"
+              prepend-icon="tabler-printer"
+              @click="printTicket"
+            >
+              Imprimir Ticket
+            </VBtn>
+          </VCol>
+        </VRow>
       </VCardActions>
     </VCard>
   </VDialog>
