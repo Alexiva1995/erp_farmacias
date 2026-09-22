@@ -45,7 +45,9 @@ class InvoiceController extends Controller
             $totalUsdSum = (clone $query)->sum('total_usd');
 
             $perPage = (int) ($validated['itemsPerPage'] ?? 10);
-            if ($perPage <= 0 || $perPage > 100) {
+            if ($perPage === -1 || $perPage > 100000) {
+                $perPage = 100000;
+            } elseif ($perPage <= 0) {
                 $perPage = 10;
             }
             $paginatedResult = $query->paginate($perPage);

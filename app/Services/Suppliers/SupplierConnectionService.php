@@ -989,6 +989,12 @@ class SupplierConnectionService
                 }
 
                 $exchangeRate = floatval($header['exchange_rate'] ?? 0);
+                if ($exchangeRate <= 0) {
+                    $exchangeRate = floatval(\App\Models\ExchangeRate::whereIn('currency_code', ['BS', 'VES'])->orderByDesc('created_at')->value('rate') ?? 0);
+                    if ($exchangeRate > 0) {
+                        $header['exchange_rate'] = $exchangeRate;
+                    }
+                }
                 $totalAmount = floatval($header['total_amount'] ?? 0);
                 if ($exchangeRate > 0) {
                     $header['total_usd'] = number_format($totalAmount / $exchangeRate, 2, '.', '');
@@ -1115,17 +1121,49 @@ class SupplierConnectionService
                     if ($isDromega) {
                         $totalUSD = floatval($currentHeader["total_usd"] ?? 0);
                         $exchangeRate = floatval($currentHeader["exchange_rate"] ?? 0);
+                        if ($exchangeRate <= 0) {
+                            $invDate = !empty($currentHeader["created_invoice_date"]) 
+                                ? \Carbon\Carbon::parse($currentHeader["created_invoice_date"])->endOfDay()
+                                : now();
+                            
+                            // Buscar la tasa BCV más cercana a la fecha de emisión de la factura
+                            $exchangeRate = floatval(\App\Models\ExchangeRate::whereIn('currency_code', ['BS', 'VES'])
+                                ->where('created_at', '<=', $invDate)
+                                ->orderByDesc('created_at')
+                                ->value('rate') ?? 0);
+
+                            if ($exchangeRate <= 0) {
+                                $exchangeRate = floatval(\App\Models\ExchangeRate::whereIn('currency_code', ['BS', 'VES'])->orderByDesc('created_at')->value('rate') ?? 0);
+                            }
+
+                            if ($exchangeRate > 0) {
+                                $currentHeader['exchange_rate'] = $exchangeRate;
+                            }
+                        }
                         $currentExchangeRate = $exchangeRate; // ✅ Guardar para las líneas
 
                         if ($connection->supplier_id !== 9 && $connection->supplier_id !== 1005) {
                             $currentHeader["total_amount"] = $totalUSD * $exchangeRate;
                         }
 
-                        if (isset($currentHeader["tax_amount"])) {
-                            $currentHeader["taxable_base"] = (floatval($currentHeader["tax_amount"]) * 100) / 16; // Suponiendo 16% de IVA
-                            $currentHeader["exempt_amount"] = floatval($currentHeader["total_amount"]) - floatval($currentHeader["tax_amount"]) - floatval($currentHeader["taxable_base"]);
+                        $taxAmount = floatval($currentHeader["tax_amount"] ?? 0);
+                        $totalAmt = floatval($currentHeader["total_amount"] ?? 0);
+
+                        if ($taxAmount > 0) {
+                            $calculatedBase = round(($taxAmount * 100) / 16, 2);
+                            $exempt = round($totalAmt - $taxAmount - $calculatedBase, 2);
+
+                            if ($exempt <= 0.05) {
+                                $currentHeader["exempt_amount"] = 0.00;
+                                $currentHeader["taxable_base"] = round($totalAmt - $taxAmount, 2);
+                            } else {
+                                $currentHeader["exempt_amount"] = $exempt;
+                                $currentHeader["taxable_base"] = $calculatedBase;
+                            }
                         } else {
-                            $currentHeader["exempt_amount"] = $currentHeader["total_amount"];
+                            $currentHeader["tax_amount"] = 0.00;
+                            $currentHeader["taxable_base"] = 0.00;
+                            $currentHeader["exempt_amount"] = $totalAmt;
                         }
 
                         $currentHeader["status_payment"] = 0;

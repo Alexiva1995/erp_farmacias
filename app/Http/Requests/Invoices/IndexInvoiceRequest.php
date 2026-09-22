@@ -23,7 +23,7 @@ class IndexInvoiceRequest extends FormRequest
     {
         return [
             'page' => ['nullable', 'integer', 'min:1'],
-            'itemsPerPage' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'itemsPerPage' => ['nullable', 'integer', 'min:-1', 'max:100000'],
             'sortBy' => ['nullable', 'string', 'max:50'],
             'orderBy' => ['nullable', 'string', 'in:asc,desc,ASC,DESC'],
             'q' => ['nullable', 'string', 'max:100'],

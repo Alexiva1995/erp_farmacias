@@ -15,6 +15,7 @@ use App\Http\Requests\StoreProductIntoautoOrderRequest;
 use App\Models\SupplierConnection;
 use App\Models\SupplierConnectionStatus;
 use App\Models\User;
+use App\Models\ExchangeRate;
 use App\Enums\AutoOrderStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -400,9 +401,22 @@ class SupplierQueryService
 
                         $totalAmount = $header['total_amount'] ?? null;
                         $totalUsd = isset($header['total_usd']) && $header['total_usd'] !== '' ? floatval($header['total_usd']) : 0;
-                        $rate = floatval($header['exchange_rate'] ?? 1);
+                        $createdInvoiceDate = $this->sanitizeDate($header['created_invoice_date'] ?? $header['created_at'] ?? null) ?? now()->toDateString();
+                        $expDate = $this->sanitizeDate($header['exp_date'] ?? null) ?? $createdInvoiceDate;
+                        $paymentDate = $this->sanitizeDate($header['payment_date'] ?? null) ?? $expDate;
+                        $receivedDate = $this->sanitizeDate($header['received_date'] ?? null) ?? $createdInvoiceDate;
+
+                        $rate = floatval($header['exchange_rate'] ?? 0);
                         if ($rate <= 0) {
-                            $rate = 1;
+                            $invDateTime = \Carbon\Carbon::parse($createdInvoiceDate)->endOfDay();
+                            $rate = floatval(ExchangeRate::whereIn('currency_code', ['BS', 'VES'])
+                                ->where('created_at', '<=', $invDateTime)
+                                ->orderByDesc('created_at')
+                                ->value('rate') ?? 0);
+
+                            if ($rate <= 0) {
+                                $rate = floatval(ExchangeRate::whereIn('currency_code', ['BS', 'VES'])->orderByDesc('created_at')->value('rate') ?? 1);
+                            }
                         }
 
                         if ($totalAmount === null || $totalAmount === '') {
@@ -420,16 +434,19 @@ class SupplierQueryService
                             return;
                         }
 
+                        $cleanNum = ltrim((string)$invoiceNumber, '0');
                         $existingInvoice = $supplier->invoices()
-                            ->where('invoice_number', $invoiceNumber)
+                            ->where(function ($q) use ($invoiceNumber, $cleanNum) {
+                                $q->where('invoice_number', $invoiceNumber)
+                                  ->orWhere('invoice_number', $cleanNum)
+                                  ->orWhere('invoice_number', '00' . $cleanNum)
+                                  ->orWhere('invoice_number', '0' . $cleanNum)
+                                  ->orWhere('invoice_number', 'like', '%' . $cleanNum);
+                            })
                             ->first();
 
                         $userId = auth()->id() ?? User::value('id') ?? 1;
 
-                        $createdInvoiceDate = $this->sanitizeDate($header['created_invoice_date'] ?? $header['created_at'] ?? null) ?? now()->toDateString();
-                        $expDate = $this->sanitizeDate($header['exp_date'] ?? null) ?? $createdInvoiceDate;
-                        $paymentDate = $this->sanitizeDate($header['payment_date'] ?? null) ?? $expDate;
-                        $receivedDate = $this->sanitizeDate($header['received_date'] ?? null) ?? $createdInvoiceDate;
                         $currency = $header['currency'] ?? ($supplier->payment_method === 'Divisas' ? 'USD' : 'Bs');
                         $controlNumber = !empty($header['control_number']) 
                             ? trim((string)$header['control_number']) 
@@ -452,14 +469,20 @@ class SupplierQueryService
                             'tax_amount'            => floatval($header['tax_amount'] ?? 0),
                             'exempt_amount'         => floatval($header['exempt_amount'] ?? 0),
                             'net_payable_amount'    => floatval($header['net_payable_amount'] ?? $totalAmount),
-                            'status_payment'        => intval($header['status_payment'] ?? 0),
-                            'status'                => $invoice['status'] ?? 'pending',
                         ];
 
                         if ($existingInvoice) {
+                            // Si la factura ya fue aprobada o procesada, NO tocarla para no alterar compras/lotes
+                            if (in_array($existingInvoice->status, ['approved', 'completed', 'paid', 'ordered', 'received'])) {
+                                return;
+                            }
+                            $invoiceData['status'] = $invoice['status'] ?? 'pending';
+                            $invoiceData['status_payment'] = intval($header['status_payment'] ?? 0);
                             $invoiceModel = $existingInvoice;
                             $invoiceModel->update($invoiceData);
                         } else {
+                            $invoiceData['status'] = $invoice['status'] ?? 'pending';
+                            $invoiceData['status_payment'] = intval($header['status_payment'] ?? 0);
                             $invoiceData['uploaded_by'] = $userId;
                             $invoiceData['registered_by'] = $userId;
                             $invoiceData['loaded_by'] = $userId;
