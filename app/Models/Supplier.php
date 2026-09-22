@@ -51,6 +51,7 @@ class Supplier extends Model
         'is_indexed',
         'type',
         'is_active',
+        'min_order_amount',
     ];
 
     protected $casts = [
@@ -58,6 +59,7 @@ class Supplier extends Model
         'order_days' => 'array',
         'type' => SupplierType::class,
         'is_active' => 'boolean',
+        'min_order_amount' => 'decimal:2',
     ];
 
     /**

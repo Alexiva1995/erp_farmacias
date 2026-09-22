@@ -61,8 +61,23 @@ class AutoOrdersRepository
             $query->whereDate("auto_orders.order_date", "<=", $endDate);
         }
 
-        // Ordenar siempre desde la más reciente (ID más alto) a la más antigua
-        $query->orderByDesc("auto_orders.id");
+        // Ordenamiento dinámico
+        $sortBy = $filters['sortBy'] ?? 'id';
+        $sortOrder = strtolower((string) ($filters['sortOrder'] ?? 'desc')) === 'asc' ? 'asc' : 'desc';
+
+        $sortableColumns = [
+            'id'                      => 'auto_orders.id',
+            'supplier_name'           => 'suppliers.name',
+            'total_quantity'          => 'auto_orders.total_quantity',
+            'total_amount'            => 'auto_orders.total_amount',
+            'status'                  => 'auto_orders.status',
+            'order_date'              => 'auto_orders.order_date',
+            'tentative_delivery_date' => 'auto_orders.tentative_delivery_date',
+            'created_at'              => 'auto_orders.created_at',
+        ];
+
+        $orderColumn = $sortableColumns[$sortBy] ?? 'auto_orders.id';
+        $query->orderBy($orderColumn, $sortOrder);
 
         return $query->paginate($perPage);
     }
@@ -243,7 +258,11 @@ class AutoOrdersRepository
 
     public function getStats(array $filters = [])
     {
-        $query = AutoOrder::query()
+        $hasCustomDate = !empty($filters['start_date']) || !empty($filters['end_date']);
+        $startOfMonth = Carbon::now()->startOfMonth()->toDateString();
+        $endOfMonth = Carbon::now()->endOfMonth()->toDateString();
+
+        $baseQuery = AutoOrder::query()
             ->when(
                 $filters['selectedSupplier'] ?? null,
                 fn($q, $id) => $q->where('auto_orders.supplier_id', $id)
@@ -251,7 +270,10 @@ class AutoOrdersRepository
             ->when(
                 $filters['search'] ?? null,
                 fn($q, $search) => $q->where('auto_orders.id', 'like', "%{$search}%")
-            )
+            );
+
+        // Órdenes pendientes y enviadas (totales acumulados o según rango si se especificó)
+        $statusQuery = (clone $baseQuery)
             ->when(
                 $filters['start_date'] ?? null,
                 fn($q, $date) => $q->whereDate('auto_orders.order_date', '>=', $date)
@@ -261,20 +283,34 @@ class AutoOrdersRepository
                 fn($q, $date) => $q->whereDate('auto_orders.order_date', '<=', $date)
             );
 
-        $stats = $query->selectRaw('
-            COUNT(*) as total_orders,
-            COALESCE(SUM(total_amount), 0) as total_amount,
-            COUNT(CASE WHEN status = 0 THEN 1 END) as pending_orders,
-            COUNT(CASE WHEN status = 1 THEN 1 END) as sent_orders,
-            COUNT(CASE WHEN status = 2 THEN 1 END) as completed_orders
-        ')->first();
+        $pendingOrders = (clone $statusQuery)->where('status', 0)->count();
+        $sentOrders = (clone $statusQuery)->where('status', 1)->count();
+        $totalOrders = (clone $statusQuery)->count();
+
+        // Completadas e Inversión Total: Por defecto "lo que va de mes"
+        $monthQuery = (clone $baseQuery);
+        if ($hasCustomDate) {
+            $monthQuery->when(
+                $filters['start_date'] ?? null,
+                fn($q, $date) => $q->whereDate('auto_orders.order_date', '>=', $date)
+            )->when(
+                $filters['end_date'] ?? null,
+                fn($q, $date) => $q->whereDate('auto_orders.order_date', '<=', $date)
+            );
+        } else {
+            $monthQuery->whereDate('auto_orders.order_date', '>=', $startOfMonth)
+                       ->whereDate('auto_orders.order_date', '<=', $endOfMonth);
+        }
+
+        $completedOrders = (clone $monthQuery)->where('status', 2)->count();
+        $totalAmount = (clone $monthQuery)->where('status', 2)->sum('total_amount');
 
         return [
-            'total_orders' => (int) ($stats->total_orders ?? 0),
-            'total_amount' => (float) ($stats->total_amount ?? 0),
-            'pending_orders' => (int) ($stats->pending_orders ?? 0),
-            'sent_orders' => (int) ($stats->sent_orders ?? 0),
-            'completed_orders' => (int) ($stats->completed_orders ?? 0),
+            'total_orders'     => (int) $totalOrders,
+            'total_amount'     => (float) $totalAmount,
+            'pending_orders'   => (int) $pendingOrders,
+            'sent_orders'      => (int) $sentOrders,
+            'completed_orders' => (int) $completedOrders,
         ];
     }
 

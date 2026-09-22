@@ -70,6 +70,15 @@ class PurchaseOrderServices implements PurchaseOrder
   public function confirmSent(AutoOrder $autoOrder): bool
   {
     $supplier = $autoOrder->supplier ?: \App\Models\Supplier::find($autoOrder->supplier_id);
+
+    // Validación de pedido mínimo configurado para el proveedor
+    if ($supplier && !empty($supplier->min_order_amount) && (float)$supplier->min_order_amount > 0) {
+      $totalAmount = (float)($autoOrder->total_amount ?? 0);
+      $minOrderAmount = (float)$supplier->min_order_amount;
+      if ($totalAmount < $minOrderAmount) {
+        throw new \Exception("El monto total del pedido (" . number_format($totalAmount, 2) . ") no alcanza el pedido mínimo configurado para este proveedor (" . number_format($minOrderAmount, 2) . ").");
+      }
+    }
     
     // Identificar proveedor automatizado (Dronena, Vitalclinic, Drocerca, Mafarta, Cristmedicals)
     $isDronena = false;

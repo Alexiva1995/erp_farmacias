@@ -85,8 +85,11 @@ const fetchStats = async () => {
   }
 };
 
+const sortBy = ref([]);
+
 const fetchPurchaseOrders = async () => {
   loading.value = true;
+  const currentSort = sortBy.value?.[0];
   const params = {
     page: page.value,
     itemsPerPage: itemsPerPage.value,
@@ -95,6 +98,8 @@ const fetchPurchaseOrders = async () => {
     start_date: startDate.value,
     end_date: endDate.value,
     status: activeTab.value,
+    sortBy: currentSort?.key || null,
+    sortOrder: currentSort?.order || null,
   };
 
   try {
@@ -183,6 +188,10 @@ onUnmounted(() => {
 const updateTableOptions = (options) => {
   page.value = options.page;
   itemsPerPage.value = options.itemsPerPage;
+  if (options.sortBy) {
+    sortBy.value = options.sortBy;
+  }
+  fetchPurchaseOrders();
 };
 
 const handleClearFilters = () => {

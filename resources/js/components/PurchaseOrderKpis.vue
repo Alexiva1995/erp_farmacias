@@ -38,14 +38,14 @@ const { mobile } = useDisplay();
           value: props.stats.completed_orders,
           color: 'success',
           icon: 'tabler-circle-check',
-          desc: 'Recibidas con éxito',
+          desc: 'Mes actual',
         },
         {
           title: 'Inversión Total',
-          value: `$ ${Number(props.stats.total_amount || 0).toLocaleString('es-ES', { maximumFractionDigits: 0 })}`,
+          value: Number(props.stats.total_amount || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
           color: 'primary',
           icon: 'tabler-coin',
-          desc: 'Monto total acumulado',
+          desc: 'Mes actual',
         },
       ]"
       :key="index"

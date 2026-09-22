@@ -50,6 +50,7 @@ class AutoOrderResource extends JsonResource
             'transmission_type'       => $transmissionType,
             'total_quantity'          => (float) ($this->total_quantity ?? 0),
             'total_amount'            => (float) ($this->total_amount ?? 0),
+            'min_order_amount'        => (float) ($supplier?->min_order_amount ?? 0),
             'order_date'              => $this->order_date ? (is_string($this->order_date) ? $this->order_date : $this->order_date->toDateTimeString()) : null,
             'tentative_delivery_date' => $this->tentative_delivery_date ? (is_string($this->tentative_delivery_date) ? $this->tentative_delivery_date : $this->tentative_delivery_date->toDateString()) : null,
             'hash_token'              => $this->hash_token ?? null,

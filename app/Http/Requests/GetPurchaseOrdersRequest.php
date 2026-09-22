@@ -19,6 +19,8 @@ class GetPurchaseOrdersRequest extends FormRequest
             'start_date'       => ['nullable', 'date'],
             'end_date'         => ['nullable', 'date', 'after_or_equal:start_date'],
             'status'           => ['nullable', 'integer', 'in:0,1,2'],
+            'sortBy'           => ['nullable', 'string', 'max:50'],
+            'sortOrder'        => ['nullable', 'string', 'in:asc,desc,ASC,DESC'],
             'page'             => ['nullable', 'integer', 'min:1'],
             'itemsPerPage'     => ['nullable', 'integer', 'min:-1', 'max:100000'],
         ];

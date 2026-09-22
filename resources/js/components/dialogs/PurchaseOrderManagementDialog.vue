@@ -66,10 +66,10 @@ const formatDate = (dateString) => {
 };
 
 const headers = [
-  { title: "Producto", key: "product_name", sortable: false },
-  { title: "Cantidad", key: "quantity", sortable: false, width: "150px" },
-  { title: "Costo Unit. (USD)", key: "unit_cost", sortable: false },
-  { title: "Subtotal", key: "subtotal", sortable: false },
+  { title: "Producto", key: "product_name", sortable: true },
+  { title: "Cantidad", key: "quantity", sortable: true, width: "150px" },
+  { title: "Costo Unit.", key: "unit_cost", sortable: true },
+  { title: "Subtotal", key: "subtotal", sortable: true },
   { title: "Estado", key: "actions", sortable: false, align: "center" },
 ];
 
@@ -145,9 +145,20 @@ const handleSave = async () => {
 };
 
 const handleConfirmSent = async () => {
+  const isFinishing = props.purchaseOrder.status === 1 || props.purchaseOrder.sent_at;
+
+  // Validación de pedido mínimo para órdenes en estado pendiente (status 0)
+  if (!isFinishing && Number(props.purchaseOrder?.min_order_amount || 0) > 0) {
+    const total = Number(props.purchaseOrder.total_amount || 0);
+    const min = Number(props.purchaseOrder.min_order_amount);
+    if (total < min) {
+      toast.error(`El monto total de la orden (${total.toFixed(2)}) no alcanza el pedido mínimo configurado (${min.toFixed(2)}).`);
+      return;
+    }
+  }
+
   sending.value = true;
   try {
-    const isFinishing = props.purchaseOrder.status === 1 || props.purchaseOrder.sent_at;
     const url = isFinishing 
       ? `/suppliers/purchase-orders/${props.purchaseOrder.id}/finish` 
       : `/suppliers/purchase-orders/${props.purchaseOrder.id}/confirm-sent`;
@@ -169,10 +180,10 @@ const handleConfirmSent = async () => {
 };
 
 const resendLabel = computed(() => {
-  if (props.purchaseOrder?.transmission_type === "api") return "Reenviar API";
-  if (props.purchaseOrder?.transmission_type === "email") return "Reenviar Correo";
-  if (props.purchaseOrder?.transmission_type === "ftp") return "Reenviar FTP";
-  return "Reenviar";
+  if (props.purchaseOrder?.transmission_type === "api") return "API";
+  if (props.purchaseOrder?.transmission_type === "email") return "CORREO";
+  if (props.purchaseOrder?.transmission_type === "ftp") return "FTP";
+  return "ENVIAR";
 });
 
 const canResend = computed(() => {
@@ -325,9 +336,14 @@ watch(
               </VChip>
             </VCol>
             <VCol cols="6" md="3" class="text-right">
-              <div class="text-xxs text-uppercase text-disabled font-weight-black mb-1">Total Orden</div>
+              <div class="text-xxs text-uppercase text-disabled font-weight-black mb-1">
+                Total Orden
+                <span v-if="Number(purchaseOrder.min_order_amount || 0) > 0" class="text-warning ms-1">
+                  (Mín: {{ Number(purchaseOrder.min_order_amount).toLocaleString('es-ES', { minimumFractionDigits: 2 }) }})
+                </span>
+              </div>
               <div class="text-h6 font-weight-black text-primary leading-tight">
-                $ {{ Number(purchaseOrder.total_amount).toLocaleString('es-ES', { minimumFractionDigits: 2 }) }}
+                {{ Number(purchaseOrder.total_amount).toLocaleString('es-ES', { minimumFractionDigits: 2 }) }}
               </div>
             </VCol>
           </VRow>
@@ -382,13 +398,13 @@ watch(
           </template>
  
           <template #item.unit_cost="{ item }">
-            <span class="text-sm font-weight-bold text-disabled">$ {{ Number(item.unit_cost).toFixed(2) }}</span>
+            <span class="text-sm font-weight-bold text-disabled">{{ Number(item.unit_cost).toFixed(2) }}</span>
           </template>
- 
+
           <template #item.subtotal="{ item }">
-            <span class="font-weight-black text-sm text-primary">$ {{ (item.quantity * item.unit_cost).toFixed(2) }}</span>
+            <span class="font-weight-black text-sm text-primary">{{ (item.quantity * item.unit_cost).toFixed(2) }}</span>
           </template>
- 
+
           <template #item.actions="{ item }">
             <div class="d-flex align-center justify-center gap-2">
               <!-- En estado Pendiente: Solo botón de eliminar -->
@@ -461,10 +477,10 @@ watch(
                 </div>
                 <div class="d-flex justify-space-between align-center">
                   <VChip size="x-small" color="primary" variant="tonal" class="font-weight-black">
-                    $ {{ Number(item.unit_cost).toFixed(2) }} /u
+                    {{ Number(item.unit_cost).toFixed(2) }} /u
                   </VChip>
                   <div class="text-xs font-weight-black text-primary">
-                    SUBTOTAL: $ {{ (item.quantity * item.unit_cost).toFixed(2) }}
+                    SUBTOTAL: {{ (item.quantity * item.unit_cost).toFixed(2) }}
                   </div>
                 </div>
               </div>

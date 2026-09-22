@@ -28,6 +28,7 @@ class SupplierResource extends JsonResource
             'social_reason' => $this->social_reason,
             'rif' => $this->rif,
             'credit_days' => $this->credit_days,
+            'min_order_amount' => (float) ($this->min_order_amount ?? 0),
             'order_days' => $this->order_days,
             'payment_method' => $this->payment_method,
             'cash_payment' => $this->cash_payment,

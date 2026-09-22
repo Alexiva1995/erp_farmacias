@@ -37,13 +37,13 @@ const emit = defineEmits([
 const { mobile } = useDisplay();
 
 const headers = [
-  { title: "Id", key: "id", sortable: false, width: "100px" },
-  { title: "Proveedor", key: "supplier_name", sortable: false },
-  { title: "Unidades", key: "total_quantity", sortable: false, align: "center" },
-  { title: "Monto Total", key: "total_amount", sortable: false },
-  { title: "Estado", key: "status", sortable: false, align: "center" },
-  { title: "Fecha Solicitud", key: "order_date", sortable: false },
-  { title: "Entrega Est.", key: "tentative_delivery_date", sortable: false },
+  { title: "Id", key: "id", sortable: true, width: "100px" },
+  { title: "Proveedor", key: "supplier_name", sortable: true },
+  { title: "Unidades", key: "total_quantity", sortable: true, align: "center" },
+  { title: "Monto Total", key: "total_amount", sortable: true },
+  { title: "Estado", key: "status", sortable: true, align: "center" },
+  { title: "Fecha Solicitud", key: "order_date", sortable: true },
+  { title: "Entrega Est.", key: "tentative_delivery_date", sortable: true },
   { title: "Acciones", key: "actions", sortable: false, align: "center" },
 ];
 
@@ -132,7 +132,7 @@ const formatTime = (dateString) => {
       <template #item.total_amount="{ item }">
         <div class="d-flex flex-column">
           <span class="font-weight-black text-primary text-sm">
-            $ {{ Number(item.total_amount).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
+            {{ Number(item.total_amount).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
           </span>
         </div>
       </template>
@@ -323,7 +323,7 @@ const formatTime = (dateString) => {
               <VCol cols="6">
                 <span class="text-xxs text-disabled text-uppercase d-block mb-1 font-weight-black">Monto Total</span>
                 <span class="text-sm font-weight-black text-primary">
-                  $ {{ Number(item.total_amount).toLocaleString('es-ES', { minimumFractionDigits: 2 }) }}
+                  {{ Number(item.total_amount).toLocaleString('es-ES', { minimumFractionDigits: 2 }) }}
                 </span>
               </VCol>
               <VCol cols="6" class="text-right">

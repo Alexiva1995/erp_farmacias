@@ -55,6 +55,7 @@ class UpdateSupplierRequest extends FormRequest
             'collections_phone' => 'sometimes|nullable|string|max:50',
             'payment_email' => 'sometimes|nullable|email|max:255',
             'credit_days' => 'sometimes|nullable|numeric',
+            'min_order_amount' => 'sometimes|nullable|numeric|min:0',
             'is_indexed' => 'sometimes|boolean',
             'dispatch_days' => 'sometimes|nullable|array',
             'dispatch_days.*' => 'in:monday,tuesday,wednesday,thursday,friday,saturday',

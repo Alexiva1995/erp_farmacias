@@ -44,6 +44,7 @@ const baseForm = {
   custom_due_days: null,
   payment_due_reference: "issue_date",
   credit_days: null,
+  min_order_amount: null,
   payment_method: "Bs",
   cash_payment: false,
   charges_igtf: false,
@@ -459,7 +460,7 @@ watch(
                           />
                         </VCol>
 
-                        <VCol cols="12" v-if="isFieldVisible('credit_days')">
+                        <VCol cols="12" sm="6" v-if="isFieldVisible('credit_days')">
                           <AppTextField
                             v-model.number="formData.credit_days"
                             label="Días de Crédito Habitual"
@@ -467,6 +468,20 @@ watch(
                             placeholder="Ej: 15"
                             prepend-inner-icon="tabler-calendar-time"
                             :error-messages="formErrors.credit_days"
+                            :readonly="!authStore.isAdmin"
+                          />
+                        </VCol>
+
+                        <VCol cols="12" :sm="isFieldVisible('credit_days') ? 6 : 12">
+                          <AppTextField
+                            v-model.number="formData.min_order_amount"
+                            label="Pedido Mínimo"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            placeholder="0.00"
+                            prepend-inner-icon="tabler-shopping-cart-dollar"
+                            :error-messages="formErrors.min_order_amount"
                             :readonly="!authStore.isAdmin"
                           />
                         </VCol>
