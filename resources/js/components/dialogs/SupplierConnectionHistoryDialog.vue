@@ -110,19 +110,19 @@ const closeDialog = () => {
     persistent
     :fullscreen="mobile"
   >
-    <VCard class="rounded-xl border-0 shadow-lg d-flex flex-column history-dialog-card" style="height: 640px; max-height: 90vh; overflow: hidden;">
-      <!-- Cabecera -->
+    <VCard class="rounded-xl border-0 shadow-lg d-flex flex-column history-dialog-card" style="height: 660px; max-height: 90vh; overflow: hidden;">
+      <!-- Cabecera con espaciado correcto -->
       <VCardTitle class="pa-0 flex-shrink-0">
-        <div class="px-4 py-3 bg-primary d-flex align-center justify-space-between text-white" style="background: linear-gradient(135deg, #7A0099, #E20074) !important;">
-          <div class="d-flex align-center gap-2.5">
-            <VAvatar color="white" variant="flat" size="34" class="elevation-1">
-              <VIcon color="primary" size="18">tabler-history</VIcon>
+        <div class="px-5 py-3.5 bg-primary d-flex align-center justify-space-between text-white" style="background: linear-gradient(135deg, #7A0099, #E20074) !important;">
+          <div class="d-flex align-center">
+            <VAvatar color="white" variant="flat" size="38" class="me-3 elevation-1 flex-shrink-0">
+              <VIcon color="primary" size="20">tabler-history</VIcon>
             </VAvatar>
-            <div>
+            <div class="d-flex flex-column">
               <h2 class="text-subtitle-1 font-weight-black text-white leading-tight mb-0" style="color: white !important;">
                 Historial de Conexiones — {{ supplier?.name || "Proveedor" }} (ID #{{ supplier?.id }})
               </h2>
-              <span class="text-caption text-white opacity-80 font-weight-medium" style="color: white !important; font-size: 11px;">
+              <span class="text-caption text-white opacity-85 font-weight-medium mt-0.5" style="color: white !important; font-size: 11px;">
                 Auditoría de facturas y sincronizaciones automáticas
               </span>
             </div>
@@ -173,8 +173,8 @@ const closeDialog = () => {
         </div>
       </div>
 
-      <!-- Contenido Principal: 2 Columnas sin scroll exterior -->
-      <VCardText class="pa-3 bg-light flex-grow-1 overflow-hidden d-flex flex-column">
+      <!-- Contenido Principal: 2 Columnas con scroll interno garantizado -->
+      <VCardText class="pa-3 bg-light flex-grow-1 overflow-hidden d-flex flex-column" style="min-height: 0;">
         <!-- Estado de carga -->
         <div v-if="loading" class="h-100 d-flex flex-column align-center justify-center bg-white rounded-lg border shadow-sm">
           <VProgressCircular indeterminate color="primary" size="36" class="mb-2" />
@@ -193,8 +193,8 @@ const closeDialog = () => {
         <!-- Contenido en 2 Columnas -->
         <VRow v-else dense class="h-100 ma-0" align="stretch">
           <!-- Columna 1: Historial Sincronizaciones -->
-          <VCol cols="12" md="4" class="pa-1 d-flex flex-column h-100">
-            <VCard variant="flat" class="rounded-lg border bg-white d-flex flex-column h-100 overflow-hidden shadow-sm">
+          <VCol cols="12" md="4" class="pa-1 d-flex flex-column h-100" style="min-height: 0;">
+            <VCard variant="flat" class="rounded-lg border bg-white d-flex flex-column h-100 overflow-hidden shadow-sm" style="min-height: 0;">
               <div class="px-3 py-2 border-b bg-light d-flex align-center justify-space-between flex-shrink-0">
                 <span class="text-xs font-weight-black text-uppercase text-medium-emphasis tracking-wider">
                   Historial Sincronizaciones
@@ -204,8 +204,8 @@ const closeDialog = () => {
                 </VChip>
               </div>
 
-              <!-- Lista con scroll interno exclusivo -->
-              <div class="flex-grow-1 overflow-y-auto pa-1.5 custom-scroll">
+              <!-- Lista con scroll interno -->
+              <div class="flex-grow-1 overflow-y-auto pa-1.5 custom-scroll" style="min-height: 0;">
                 <div
                   v-for="item in historyList"
                   :key="item.id"
@@ -238,8 +238,8 @@ const closeDialog = () => {
           </VCol>
 
           <!-- Columna 2: Facturas Obtenidas -->
-          <VCol cols="12" md="8" class="pa-1 d-flex flex-column h-100">
-            <VCard variant="flat" class="rounded-lg border bg-white d-flex flex-column h-100 overflow-hidden shadow-sm">
+          <VCol cols="12" md="8" class="pa-1 d-flex flex-column h-100" style="min-height: 0;">
+            <VCard variant="flat" class="rounded-lg border bg-white d-flex flex-column h-100 overflow-hidden shadow-sm" style="min-height: 0;">
               <!-- Barra de Búsqueda y Título -->
               <div class="px-3 py-1.5 border-b bg-light d-flex align-center justify-space-between gap-2 flex-shrink-0">
                 <div class="d-flex align-center gap-1.5">
@@ -263,8 +263,8 @@ const closeDialog = () => {
                 </div>
               </div>
 
-              <!-- Tabla con scroll interno exclusivo -->
-              <div class="flex-grow-1 overflow-y-auto custom-scroll">
+              <!-- Tabla con scroll interno visible y garantizado -->
+              <div class="flex-grow-1 overflow-y-auto custom-scroll" style="min-height: 0;">
                 <table class="invoices-audit-table w-100">
                   <thead class="sticky-thead">
                     <tr>
@@ -343,13 +343,14 @@ const closeDialog = () => {
         </VRow>
       </VCardText>
 
-      <!-- Pie de acciones -->
-      <VCardActions class="pa-3 bg-white border-t flex-shrink-0 d-flex justify-end">
+      <!-- Pie de acciones full-width adaptado a los modales del sistema -->
+      <VCardActions class="pa-3 bg-white border-t flex-shrink-0">
         <VBtn
           color="primary"
           variant="flat"
-          class="rounded-lg font-weight-black text-caption px-6"
-          height="36"
+          block
+          height="44"
+          class="font-weight-black text-caption rounded-lg uppercase shadow-primary"
           @click="closeDialog"
         >
           CERRAR
@@ -410,7 +411,7 @@ const closeDialog = () => {
   font-size: 0.65rem;
   font-weight: 800;
   letter-spacing: 0.05em;
-  padding-block: 7px;
+  padding-block: 8px;
   padding-inline: 8px;
   text-transform: uppercase;
   border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.1);
@@ -418,7 +419,7 @@ const closeDialog = () => {
 
 .invoices-audit-table td {
   border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.05);
-  padding-block: 5px;
+  padding-block: 6px;
   padding-inline: 8px;
 }
 
@@ -427,16 +428,21 @@ const closeDialog = () => {
 }
 
 .custom-scroll {
+  overflow-y: auto !important;
   scrollbar-width: thin;
-  scrollbar-color: rgba(var(--v-theme-on-surface), 0.2) transparent;
+  scrollbar-color: rgba(var(--v-theme-primary), 0.35) rgba(0, 0, 0, 0.04);
 }
 
 .custom-scroll::-webkit-scrollbar {
-  width: 5px;
+  width: 6px;
+}
+
+.custom-scroll::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.03);
 }
 
 .custom-scroll::-webkit-scrollbar-thumb {
-  background-color: rgba(var(--v-theme-on-surface), 0.2);
+  background-color: rgba(var(--v-theme-primary), 0.35);
   border-radius: 4px;
 }
 
@@ -445,5 +451,9 @@ const closeDialog = () => {
   padding-top: 4px !important;
   padding-bottom: 4px !important;
   min-height: 28px !important;
+}
+
+.shadow-primary {
+  box-shadow: 0 4px 14px 0 rgba(var(--v-theme-primary), 0.39) !important;
 }
 </style>

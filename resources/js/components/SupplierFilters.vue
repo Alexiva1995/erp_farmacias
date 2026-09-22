@@ -61,18 +61,11 @@ const scoreOptions = [
   { title: "2.0+ Estrellas", value: 40 },
 ];
 
-const typeOptions = computed(() => {
-  const enabledTypes = brandingStore.settings.enabled_supplier_types || ['inventory', 'expenses'];
-  const opts = [{ title: "Todos", value: null }];
-  if (enabledTypes.includes('inventory')) {
-    opts.push({ title: "Droguería", value: "drogueria" });
-    opts.push({ title: "Proveedor Externo", value: "externo" });
-  }
-  if (enabledTypes.includes('expenses')) {
-    opts.push({ title: "Proveedor de Gastos", value: "gasto" });
-  }
-  return opts;
-});
+const typeOptions = [
+  { title: "Todos los Proveedores", value: null },
+  { title: "Droguerías / Mercancía", value: "drogueria" },
+  { title: "Gastos y Servicios", value: "externo" },
+];
 
 const showExpenseSupplierBtn = computed(() => {
   const enabledTypes = brandingStore.settings.enabled_supplier_types || ['inventory', 'expenses'];
@@ -91,18 +84,18 @@ const hasAdvancedFilters = computed(
     :show-sort="true"
     :sort-options="sortOptions"
     :show-add="true"
-    add-button-text="Añadir Proveedor"
+    add-button-text="Añadir Droguería"
     search-placeholder="Buscar por ID, Nombre o RIF..."
     @update:search="emit('update:searchQuery', $event)"
     @clear="emit('clear')"
     @sort="(sortFilter) => emit('sort', sortFilter)"
-    @add="emit('add-supplier', props.type || 'drogueria')"
+    @add="emit('add-supplier', 'drogueria')"
     class="py-1"
   >
     <template #actions-extra>
-      <!-- Botón para añadir proveedor externo -->
+      <!-- Botón para añadir proveedor de gastos/servicios -->
       <VBtn
-        v-if="!isRestaurant"
+        v-if="showExpenseSupplierBtn"
         icon
         color="info"
         variant="tonal"
@@ -110,28 +103,28 @@ const hasAdvancedFilters = computed(
         class="rounded-circle shadow-sm"
         @click="emit('add-supplier', 'externo')"
       >
-        <VIcon icon="tabler-building-store" />
-        <VTooltip activator="parent" location="top">Añadir Proveedor Externo</VTooltip>
-      </VBtn>
-
-      <!-- Botón para añadir proveedor de gastos -->
-      <VBtn
-        v-if="showExpenseSupplierBtn"
-        icon
-        color="warning"
-        variant="tonal"
-        size="38"
-        class="rounded-circle shadow-sm"
-        @click="emit('add-supplier', 'gasto')"
-      >
         <VIcon icon="tabler-receipt-tax" />
-        <VTooltip activator="parent" location="top">Añadir Proveedor de Gastos</VTooltip>
+        <VTooltip activator="parent" location="top">Añadir Proveedor de Gastos / Servicios</VTooltip>
       </VBtn>
     </template>
 
     <template #advanced-filters>
+      <!-- Filtro de Tipo de Proveedor (Droguerías / Gastos) -->
+      <VCol v-if="!isRestaurant" cols="12" sm="6" md="4">
+        <VSelect
+          :model-value="props.type"
+          :items="typeOptions"
+          placeholder="Tipo de Proveedor"
+          density="compact"
+          hide-details
+          clearable
+          prepend-inner-icon="tabler-building-warehouse"
+          @update:model-value="emit('update:type', $event)"
+        />
+      </VCol>
+
       <!-- Filtro de Deuda -->
-      <VCol cols="12" sm="6" md="3">
+      <VCol cols="12" sm="6" md="4">
         <VSelect
           :model-value="props.debtFilter"
           :items="debtOptions"
@@ -145,7 +138,7 @@ const hasAdvancedFilters = computed(
       </VCol>
 
       <!-- Filtro de Calificación -->
-      <VCol cols="12" sm="6" md="3">
+      <VCol cols="12" sm="6" md="4">
         <VSelect
           :model-value="props.minScore"
           :items="scoreOptions"
@@ -155,20 +148,6 @@ const hasAdvancedFilters = computed(
           clearable
           prepend-inner-icon="tabler-star"
           @update:model-value="emit('update:minScore', $event)"
-        />
-      </VCol>
-
-      <!-- Filtro de Tipo -->
-      <VCol v-if="!isRestaurant" cols="12" sm="6" md="3">
-        <VSelect
-          :model-value="props.type"
-          :items="typeOptions"
-          placeholder="Tipo de Proveedor"
-          density="compact"
-          hide-details
-          clearable
-          prepend-inner-icon="tabler-tags"
-          @update:model-value="emit('update:type', $event)"
         />
       </VCol>
     </template>

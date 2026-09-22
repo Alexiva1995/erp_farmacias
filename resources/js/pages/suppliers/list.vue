@@ -19,7 +19,6 @@ const suppliers = ref([]);
 const totalSupplier = ref(0);
 const loading = ref(false);
 
-const activeTab = ref("drogueria");
 const page = ref(1);
 const itemsPerPage = ref(10);
 const sortBy = ref();
@@ -27,7 +26,7 @@ const orderBy = ref();
 const searchQuery = ref("");
 const debtFilter = ref(null);
 const minScore = ref(null);
-const typeFilter = ref("drogueria");
+const typeFilter = ref(null);
 
 const stats = ref({
   total_debt: 0,
@@ -449,24 +448,6 @@ onUnmounted(() => {
 <template>
   <div class="suppliers-view pb-12">
     <div class="d-flex flex-column gap-3 mt-1">
-      <!-- Pestañas de Proveedores: Inventario vs Gastos -->
-      <VCard class="rounded-lg border shadow-sm">
-        <VTabs
-          v-model="activeTab"
-          color="primary"
-          align-tabs="start"
-        >
-          <VTab value="drogueria" class="font-weight-bold text-none">
-            <VIcon icon="tabler-building-warehouse" class="me-2" />
-            Proveedores Inventario
-          </VTab>
-          <VTab value="externo" class="font-weight-bold text-none">
-            <VIcon icon="tabler-receipt-tax" class="me-2" />
-            Proveedores Gastos
-          </VTab>
-        </VTabs>
-      </VCard>
-
       <SupplierFilters
         v-model:searchQuery="searchQuery"
         v-model:debtFilter="debtFilter"
