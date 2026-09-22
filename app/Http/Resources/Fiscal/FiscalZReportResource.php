@@ -27,9 +27,10 @@ class FiscalZReportResource extends JsonResource
                 $parsedAiData = $decoded;
                 $notesText = $decoded['notes'] ?? '';
                 $extractedData = $decoded['extracted_data'] ?? null;
-                $discrepancies = $decoded['discrepancies'] ?? [];
-                foreach ($discrepancies as $d) {
-                    if (isset($d['field'])) {
+                $rawDiscrepancies = $decoded['discrepancies'] ?? [];
+                foreach ($rawDiscrepancies as $d) {
+                    if (isset($d['field']) && $d['field'] !== 'report_date') {
+                        $discrepancies[] = $d;
                         $discrepanciesMap[$d['field']] = $d;
                     }
                 }

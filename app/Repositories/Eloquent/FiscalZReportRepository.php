@@ -97,6 +97,15 @@ class FiscalZReportRepository implements FiscalZReportRepositoryInterface
         return (bool) FiscalZReport::where('report_number', $number)->delete();
     }
 
+    public function getWithImages(array $filters): \Illuminate\Database\Eloquent\Collection
+    {
+        $query = FiscalZReport::query()->whereNotNull('image_path')->where('image_path', '!=', '');
+
+        $this->applyFilters($query, $filters);
+
+        return $query->orderBy('report_date', 'asc')->get();
+    }
+
     public function deleteByDate(string $date): bool
     {
         return (bool) FiscalZReport::whereDate('report_date', $date)->delete();

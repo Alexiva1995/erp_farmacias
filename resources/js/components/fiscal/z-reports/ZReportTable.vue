@@ -1,4 +1,5 @@
 <script setup>
+import DialogCloseBtn from "@core/components/DialogCloseBtn.vue";
 import AppEmptyState from "@/components/AppEmptyState.vue";
 import { ref } from "vue";
 import axios from "@/plugins/axios";
@@ -17,6 +18,14 @@ const emit = defineEmits(["update:options", "view-detail"]);
 const fileInput = ref(null);
 const verifyingId = ref(null);
 const activeReportId = ref(null);
+
+const isPhotoModalOpen = ref(false);
+const previewReport = ref(null);
+
+const openPhotoPreview = (item) => {
+  previewReport.value = item;
+  isPhotoModalOpen.value = true;
+};
 
 const triggerUpload = (id) => {
   activeReportId.value = id;
@@ -192,7 +201,7 @@ const formatCurrency = (value) => {
                 class="text-caption text-error font-weight-bold d-flex align-center gap-1"
               >
                 <VIcon icon="tabler-camera" size="12" />
-                Foto: {{ item.discrepancies_map.report_number.photo_value }}
+                {{ item.discrepancies_map.report_number.photo_value }}
               </div>
             </div>
           </template>
@@ -201,13 +210,6 @@ const formatCurrency = (value) => {
           <template #item.report_date="{ item }">
             <div class="d-flex flex-column">
               <span>{{ formatDate(item.report_date) }}</span>
-              <div
-                v-if="item.discrepancies_map?.report_date"
-                class="text-caption text-error font-weight-bold d-flex align-center gap-1"
-              >
-                <VIcon icon="tabler-camera" size="12" />
-                Foto: {{ item.discrepancies_map.report_date.photo_value }}
-              </div>
             </div>
           </template>
 
@@ -222,7 +224,7 @@ const formatCurrency = (value) => {
                 class="text-caption text-error font-weight-black d-flex align-center gap-1 bg-error-tonal px-1 rounded mt-0.5"
               >
                 <VIcon icon="tabler-camera" size="12" />
-                Foto: {{ formatCurrency(item.discrepancies_map.exempt_amount.photo_value) }}
+                {{ formatCurrency(item.discrepancies_map.exempt_amount.photo_value) }}
               </div>
             </div>
           </template>
@@ -238,7 +240,7 @@ const formatCurrency = (value) => {
                 class="text-caption text-error font-weight-black d-flex align-center gap-1 bg-error-tonal px-1 rounded mt-0.5"
               >
                 <VIcon icon="tabler-camera" size="12" />
-                Foto: {{ formatCurrency(item.discrepancies_map.base_16_amount.photo_value) }}
+                {{ formatCurrency(item.discrepancies_map.base_16_amount.photo_value) }}
               </div>
             </div>
           </template>
@@ -254,7 +256,7 @@ const formatCurrency = (value) => {
                 class="text-caption text-error font-weight-black d-flex align-center gap-1 bg-error-tonal px-1 rounded mt-0.5"
               >
                 <VIcon icon="tabler-camera" size="12" />
-                Foto: {{ formatCurrency(item.discrepancies_map.iva_amount.photo_value) }}
+                {{ formatCurrency(item.discrepancies_map.iva_amount.photo_value) }}
               </div>
             </div>
           </template>
@@ -279,7 +281,7 @@ const formatCurrency = (value) => {
                 class="text-caption text-error font-weight-black d-flex align-center gap-1 bg-error-tonal px-1 rounded mt-0.5"
               >
                 <VIcon icon="tabler-camera" size="12" />
-                Foto: {{ formatCurrency(item.discrepancies_map.igtf_amount.photo_value) }}
+                {{ formatCurrency(item.discrepancies_map.igtf_amount.photo_value) }}
               </div>
             </div>
           </template>
@@ -295,7 +297,7 @@ const formatCurrency = (value) => {
                 class="text-caption text-error font-weight-black d-flex align-center gap-1 bg-error-tonal px-1 rounded"
               >
                 <VIcon icon="tabler-camera" size="12" />
-                Foto: {{ formatCurrency(item.discrepancies_map.total_amount.photo_value) }}
+                {{ formatCurrency(item.discrepancies_map.total_amount.photo_value) }}
               </div>
               <VChip
                 size="x-small"
@@ -389,8 +391,8 @@ const formatCurrency = (value) => {
                 </template>
               </VTooltip>
 
-              <!-- Descargar Foto Z si existe -->
-              <VTooltip v-if="resolveImageUrl(item)" location="top" text="Descargar Foto del Reporte Z">
+              <!-- Ver Foto Z si existe -->
+              <VTooltip v-if="resolveImageUrl(item)" location="top" text="Ver Foto del Reporte Z">
                 <template #activator="{ props: tooltipProps }">
                   <VBtn
                     v-bind="tooltipProps"
@@ -398,12 +400,9 @@ const formatCurrency = (value) => {
                     size="small"
                     variant="text"
                     color="success"
-                    :href="resolveImageUrl(item)"
-                    target="_blank"
-                    :download="`reporte_z_${item.report_number}.jpg`"
-                    @click.stop
+                    @click.stop="openPhotoPreview(item)"
                   >
-                    <VIcon icon="tabler-download" size="20" />
+                    <VIcon icon="tabler-photo" size="20" />
                   </VBtn>
                 </template>
               </VTooltip>
@@ -508,8 +507,9 @@ const formatCurrency = (value) => {
                 <span :class="{'text-error font-weight-bold text-decoration-line-through': item.discrepancies_map?.exempt_amount}">
                   Bs. {{ formatCurrency(item.exempt_amount) }}
                 </span>
-                <div v-if="item.discrepancies_map?.exempt_amount" class="text-caption text-error font-weight-bold">
-                  Foto: Bs. {{ formatCurrency(item.discrepancies_map.exempt_amount.photo_value) }}
+                <div v-if="item.discrepancies_map?.exempt_amount" class="text-caption text-error font-weight-bold d-flex align-center justify-end gap-1">
+                  <VIcon icon="tabler-camera" size="12" />
+                  Bs. {{ formatCurrency(item.discrepancies_map.exempt_amount.photo_value) }}
                 </div>
               </div>
             </div>
@@ -521,8 +521,9 @@ const formatCurrency = (value) => {
                 <span :class="{'text-error font-weight-bold text-decoration-line-through': item.discrepancies_map?.base_16_amount}">
                   Bs. {{ formatCurrency(item.base_16_amount) }}
                 </span>
-                <div v-if="item.discrepancies_map?.base_16_amount" class="text-caption text-error font-weight-bold">
-                  Foto: Bs. {{ formatCurrency(item.discrepancies_map.base_16_amount.photo_value) }}
+                <div v-if="item.discrepancies_map?.base_16_amount" class="text-caption text-error font-weight-bold d-flex align-center justify-end gap-1">
+                  <VIcon icon="tabler-camera" size="12" />
+                  Bs. {{ formatCurrency(item.discrepancies_map.base_16_amount.photo_value) }}
                 </div>
               </div>
             </div>
@@ -534,8 +535,9 @@ const formatCurrency = (value) => {
                 <span :class="{'text-error font-weight-bold text-decoration-line-through': item.discrepancies_map?.iva_amount}">
                   Bs. {{ formatCurrency(item.iva_amount) }}
                 </span>
-                <div v-if="item.discrepancies_map?.iva_amount" class="text-caption text-error font-weight-bold">
-                  Foto: Bs. {{ formatCurrency(item.discrepancies_map.iva_amount.photo_value) }}
+                <div v-if="item.discrepancies_map?.iva_amount" class="text-caption text-error font-weight-bold d-flex align-center justify-end gap-1">
+                  <VIcon icon="tabler-camera" size="12" />
+                  Bs. {{ formatCurrency(item.discrepancies_map.iva_amount.photo_value) }}
                 </div>
               </div>
             </div>
@@ -553,8 +555,9 @@ const formatCurrency = (value) => {
                 <span :class="{'text-error font-weight-bold text-decoration-line-through': item.discrepancies_map?.igtf_amount}">
                   Bs. {{ formatCurrency(item.igtf_amount) }}
                 </span>
-                <div v-if="item.discrepancies_map?.igtf_amount" class="text-caption text-error font-weight-bold">
-                  Foto: Bs. {{ formatCurrency(item.discrepancies_map.igtf_amount.photo_value) }}
+                <div v-if="item.discrepancies_map?.igtf_amount" class="text-caption text-error font-weight-bold d-flex align-center justify-end gap-1">
+                  <VIcon icon="tabler-camera" size="12" />
+                  Bs. {{ formatCurrency(item.discrepancies_map.igtf_amount.photo_value) }}
                 </div>
               </div>
             </div>
@@ -566,8 +569,9 @@ const formatCurrency = (value) => {
                 <span :class="['text-high-emphasis font-weight-black', {'text-error text-decoration-line-through': item.discrepancies_map?.total_amount}]">
                   Bs. {{ formatCurrency(item.total_amount) }}
                 </span>
-                <div v-if="item.discrepancies_map?.total_amount" class="text-caption text-error font-weight-black">
-                  Foto: Bs. {{ formatCurrency(item.discrepancies_map.total_amount.photo_value) }}
+                <div v-if="item.discrepancies_map?.total_amount" class="text-caption text-error font-weight-black d-flex align-center justify-end gap-1">
+                  <VIcon icon="tabler-camera" size="12" />
+                  Bs. {{ formatCurrency(item.discrepancies_map.total_amount.photo_value) }}
                 </div>
               </div>
             </div>
@@ -590,11 +594,9 @@ const formatCurrency = (value) => {
               color="success"
               size="small"
               icon
-              :href="resolveImageUrl(item)"
-              target="_blank"
-              :download="`reporte_z_${item.report_number}.jpg`"
+              @click="openPhotoPreview(item)"
             >
-              <VIcon icon="tabler-download" size="18" />
+              <VIcon icon="tabler-photo" size="18" />
             </VBtn>
             <VBtn
               v-if="item.status === 'closed' || item.status === 'COMPROBADO' || item.status === 'DISCREPANCIA'"
@@ -611,6 +613,70 @@ const formatCurrency = (value) => {
         </VCard>
       </div>
     </div>
+
+    <!-- Modal Visor de Foto del Reporte Z -->
+    <VDialog
+      v-model="isPhotoModalOpen"
+      max-width="600"
+      scrollable
+    >
+      <DialogCloseBtn @click="isPhotoModalOpen = false" />
+
+      <VCard class="rounded-xl overflow-hidden">
+        <VCardItem class="pb-3 border-b">
+          <div class="d-flex align-center gap-2">
+            <VIcon icon="tabler-photo" color="primary" size="26" />
+            <div>
+              <VCardTitle class="text-h6 font-weight-bold">
+                Foto del Reporte Z {{ previewReport?.report_number_padded || `Z${String(previewReport?.report_number || '').padStart(6, '0')}` }}
+              </VCardTitle>
+              <VCardSubtitle class="text-caption">
+                Comprobante físico de corte fiscal
+              </VCardSubtitle>
+            </div>
+          </div>
+        </VCardItem>
+
+        <VCardText class="pa-4 bg-background text-center">
+          <div v-if="resolveImageUrl(previewReport)" class="d-flex justify-center align-center">
+            <img
+              :src="resolveImageUrl(previewReport)"
+              alt="Foto del Reporte Z"
+              class="rounded-lg shadow border"
+              style="max-width: 100%; max-height: 65vh; object-fit: contain;"
+            />
+          </div>
+        </VCardText>
+
+        <VCardActions class="pa-4 pt-0">
+          <VRow dense class="w-100 ma-0">
+            <VCol cols="6" class="ps-0 pe-1">
+              <VBtn
+                block
+                variant="outlined"
+                color="secondary"
+                @click="isPhotoModalOpen = false"
+              >
+                Cerrar
+              </VBtn>
+            </VCol>
+            <VCol cols="6" class="pe-0 ps-1">
+              <VBtn
+                block
+                variant="flat"
+                color="success"
+                prepend-icon="tabler-download"
+                :href="resolveImageUrl(previewReport)"
+                target="_blank"
+                :download="`${previewReport?.report_number_padded || `Z${String(previewReport?.report_number || '').padStart(6, '0')}`}.jpg`"
+              >
+                Descargar Foto
+              </VBtn>
+            </VCol>
+          </VRow>
+        </VCardActions>
+      </VCard>
+    </VDialog>
   </div>
 </template>
 

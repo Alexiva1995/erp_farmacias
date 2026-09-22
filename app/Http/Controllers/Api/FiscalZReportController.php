@@ -90,4 +90,34 @@ class FiscalZReportController extends Controller
             ], 422);
         }
     }
+
+    /**
+     * Descarga todas las imágenes de los reportes Z del periodo en un archivo ZIP.
+     */
+    public function downloadImages(FiscalZReportFilterRequest $request): mixed
+    {
+        $filters = $request->validated();
+
+        try {
+            $zipPath = $this->zReportService->createImagesZip($filters);
+            if (!$zipPath || !file_exists($zipPath)) {
+                return response()->json([
+                    'message' => 'No se encontraron imágenes de Reportes Z subidas para el período seleccionado.',
+                ], 404);
+            }
+
+            $startDate = $filters['startDate'] ?? 'inicio';
+            $endDate = $filters['endDate'] ?? 'fin';
+            $filename = "reportes_z_fotos_{$startDate}_al_{$endDate}.zip";
+
+            return response()->download($zipPath, $filename, [
+                'Content-Type' => 'application/zip',
+            ])->deleteFileAfterSend(true);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Error al descargar ZIP de fotos Reporte Z: " . $e->getMessage());
+            return response()->json([
+                'message' => $e->getMessage() ?: 'Error al generar el archivo ZIP de imágenes.',
+            ], 422);
+        }
+    }
 }

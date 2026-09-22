@@ -408,6 +408,10 @@ class FiscalZReportService
             }
         }
 
+        $discrepancies = array_values(array_filter($discrepancies, function ($d) {
+            return ($d['field'] ?? '') !== 'report_date';
+        }));
+
         $isMatch = empty($discrepancies) && (bool)($result['match'] ?? false);
 
         $payloadToStore = [
@@ -423,7 +427,58 @@ class FiscalZReportService
         $report->save();
 
         return $report;
+    }
 
-        return $report;
+    /**
+     * Crea un archivo ZIP temporal con todas las imágenes de los reportes Z del período solicitado.
+     * 
+     * @param array $filters
+     * @return string|null Ruta del archivo ZIP generado o null si no hay imágenes
+     */
+    public function createImagesZip(array $filters): ?string
+    {
+        $reports = $this->repository->getWithImages($filters);
+
+        if ($reports->isEmpty()) {
+            return null;
+        }
+
+        $tempFile = tempnam(sys_get_temp_dir(), 'z_reports_zip_');
+        $zipPath = $tempFile . '.zip';
+        @unlink($tempFile);
+
+        $zip = new \ZipArchive();
+        if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+            throw new \Exception("No se pudo crear el archivo ZIP para las imágenes de Reportes Z.");
+        }
+
+        $filesAdded = 0;
+        $disk = \Illuminate\Support\Facades\Storage::disk('public');
+
+        foreach ($reports as $report) {
+            $imagePath = $report->image_path;
+            if (!$imagePath) {
+                continue;
+            }
+
+            if ($disk->exists($imagePath)) {
+                $fileContents = $disk->get($imagePath);
+                $ext = pathinfo($imagePath, PATHINFO_EXTENSION) ?: 'jpg';
+                $reportNum = $report->report_number ? 'Z' . str_pad((string)$report->report_number, 6, '0', STR_PAD_LEFT) : 'Z000000';
+                $filenameInsideZip = "{$reportNum}.{$ext}";
+
+                $zip->addFromString($filenameInsideZip, $fileContents);
+                $filesAdded++;
+            }
+        }
+
+        $zip->close();
+
+        if ($filesAdded === 0) {
+            @unlink($zipPath);
+            return null;
+        }
+
+        return $zipPath;
     }
 }

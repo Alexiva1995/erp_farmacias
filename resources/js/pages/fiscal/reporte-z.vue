@@ -155,11 +155,59 @@ const handleSort = (sortOption) => {
   orderBy.value = sortOption.order;
 };
 
-const handleClearFilters = () => {
-  searchQuery.value = "";
-  const calibratedDates = getDefaultDates(isCeEnabled.value);
-  startDate.value = calibratedDates.start;
-  endDate.value = calibratedDates.end;
+const downloadingZip = ref(false);
+
+const handleDownloadImages = async () => {
+  downloadingZip.value = true;
+  try {
+    const params = {
+      startDate: startDate.value || undefined,
+      endDate: endDate.value || undefined,
+      q: searchQuery.value || undefined,
+    };
+
+    const response = await axios.get("/fiscal/z-reports/download-images", {
+      params,
+      responseType: "blob",
+    });
+
+    // Validar si retornó JSON en lugar de zip (ej: error 404 o 422 como blob)
+    if (response.data.type === "application/json") {
+      const text = await response.data.text();
+      const json = JSON.parse(text);
+      toast.warning(json.message || "No se encontraron fotos Z para descargar.");
+      return;
+    }
+
+    const blob = new Blob([response.data], { type: "application/zip" });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    const startText = startDate.value || "periodo";
+    const endText = endDate.value || "actual";
+    link.setAttribute("download", `reportes_z_fotos_${startText}_al_${endText}.zip`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+
+    toast.success("Descarga de fotos Z completada exitosamente.");
+  } catch (error) {
+    console.error("Error al descargar imágenes ZIP:", error);
+    if (error.response?.data instanceof Blob) {
+      try {
+        const text = await error.response.data.text();
+        const json = JSON.parse(text);
+        toast.warning(json.message || "No se encontraron fotos subidas de Reportes Z en este período.");
+      } catch (e) {
+        toast.warning("No se encontraron fotos subidas de Reportes Z en este período.");
+      }
+    } else {
+      toast.warning(error.response?.data?.message || "No se encontraron fotos subidas de Reportes Z en este período.");
+    }
+  } finally {
+    downloadingZip.value = false;
+  }
 };
 </script>
 
@@ -174,10 +222,12 @@ const handleClearFilters = () => {
       v-model:start-date="startDate"
       v-model:end-date="endDate"
       :loading="loading"
+      :downloading-images="downloadingZip"
       :is-ce-enabled="isCeEnabled"
       class="mb-3"
       @clear="handleClearFilters"
       @sort="handleSort"
+      @download-images="handleDownloadImages"
     />
 
     <!-- Tabla Principal de Reportes Z -->

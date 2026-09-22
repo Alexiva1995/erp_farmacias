@@ -177,8 +177,9 @@ const printTicket = () => {
                 <span :class="{'text-error font-weight-bold': props.report?.discrepancies_map?.exempt_amount}">
                   Bs. {{ formatCurrency(props.report?.exempt_amount) }}
                 </span>
-                <div v-if="props.report?.discrepancies_map?.exempt_amount" class="text-caption text-error font-weight-bold">
-                  (Foto: Bs. {{ formatCurrency(props.report.discrepancies_map.exempt_amount.photo_value) }})
+                <div v-if="props.report?.discrepancies_map?.exempt_amount" class="text-caption text-error font-weight-bold d-flex align-center justify-end gap-1">
+                  <VIcon icon="tabler-camera" size="12" />
+                  Bs. {{ formatCurrency(props.report.discrepancies_map.exempt_amount.photo_value) }}
                 </div>
               </div>
             </div>
@@ -190,8 +191,9 @@ const printTicket = () => {
                 <span :class="{'text-error font-weight-bold': props.report?.discrepancies_map?.base_16_amount}">
                   Bs. {{ formatCurrency(props.report?.base_16_amount) }}
                 </span>
-                <div v-if="props.report?.discrepancies_map?.base_16_amount" class="text-caption text-error font-weight-bold">
-                  (Foto: Bs. {{ formatCurrency(props.report.discrepancies_map.base_16_amount.photo_value) }})
+                <div v-if="props.report?.discrepancies_map?.base_16_amount" class="text-caption text-error font-weight-bold d-flex align-center justify-end gap-1">
+                  <VIcon icon="tabler-camera" size="12" />
+                  Bs. {{ formatCurrency(props.report.discrepancies_map.base_16_amount.photo_value) }}
                 </div>
               </div>
             </div>
@@ -203,8 +205,9 @@ const printTicket = () => {
                 <span :class="props.report?.discrepancies_map?.iva_amount ? 'text-error font-weight-bold' : 'text-warning font-weight-bold'">
                   Bs. {{ formatCurrency(props.report?.iva_amount) }}
                 </span>
-                <div v-if="props.report?.discrepancies_map?.iva_amount" class="text-caption text-error font-weight-bold">
-                  (Foto: Bs. {{ formatCurrency(props.report.discrepancies_map.iva_amount.photo_value) }})
+                <div v-if="props.report?.discrepancies_map?.iva_amount" class="text-caption text-error font-weight-bold d-flex align-center justify-end gap-1">
+                  <VIcon icon="tabler-camera" size="12" />
+                  Bs. {{ formatCurrency(props.report.discrepancies_map.iva_amount.photo_value) }}
                 </div>
               </div>
             </div>
@@ -222,8 +225,9 @@ const printTicket = () => {
                 <span class="font-weight-bold text-error">
                   Bs. {{ formatCurrency(props.report?.igtf_amount) }}
                 </span>
-                <div v-if="props.report?.discrepancies_map?.igtf_amount" class="text-caption text-error font-weight-bold">
-                  (Foto: Bs. {{ formatCurrency(props.report.discrepancies_map.igtf_amount.photo_value) }})
+                <div v-if="props.report?.discrepancies_map?.igtf_amount" class="text-caption text-error font-weight-bold d-flex align-center justify-end gap-1">
+                  <VIcon icon="tabler-camera" size="12" />
+                  Bs. {{ formatCurrency(props.report.discrepancies_map.igtf_amount.photo_value) }}
                 </div>
               </div>
             </div>
@@ -238,8 +242,9 @@ const printTicket = () => {
               <span class="text-h6 font-weight-black text-success">
                 Bs. {{ formatCurrency(props.report?.total_amount) }}
               </span>
-              <div v-if="props.report?.discrepancies_map?.total_amount" class="text-caption text-error font-weight-black">
-                Foto: Bs. {{ formatCurrency(props.report.discrepancies_map.total_amount.photo_value) }}
+              <div v-if="props.report?.discrepancies_map?.total_amount" class="text-caption text-error font-weight-black d-flex align-center justify-end gap-1">
+                <VIcon icon="tabler-camera" size="12" />
+                Bs. {{ formatCurrency(props.report.discrepancies_map.total_amount.photo_value) }}
               </div>
             </div>
           </div>

@@ -50,6 +50,11 @@ interface FiscalZReportRepositoryInterface
     public function deleteByNumber(int $number): bool;
 
     /**
+     * Obtiene los Reportes Z que tienen imagen subida filtrados por periodo/criterios.
+     */
+    public function getWithImages(array $filters): \Illuminate\Database\Eloquent\Collection;
+
+    /**
      * Elimina un Reporte Z por su fecha.
      */
     public function deleteByDate(string $date): bool;
