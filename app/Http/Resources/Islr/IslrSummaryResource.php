@@ -17,12 +17,15 @@ class IslrSummaryResource extends JsonResource
         return [
             'gross_income' => (float) ($this['gross_income'] ?? 0),
             'deductions' => (float) ($this['deductions'] ?? 0),
+            'non_deductible' => (float) ($this['non_deductible'] ?? 0),
             'net_income' => (float) ($this['net_income'] ?? 0),
             'ibg' => (float) ($this['ibg'] ?? 0),
             'costs' => (float) ($this['costs'] ?? 0),
+            'withholdings' => (float) ($this['withholdings'] ?? 0),
             'year' => (int) ($this['year'] ?? now()->year),
             'currency' => 'VES',
             'calculated_at' => $this['calculated_at'] ?? now()->toISOString(),
+            'monthly_breakdown' => $this['monthly_breakdown'] ?? [],
         ];
     }
 }

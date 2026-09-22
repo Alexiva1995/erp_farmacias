@@ -1,6 +1,7 @@
 <script setup>
 import EditUTDialog from "@/components/dialogs/EditUTDialog.vue";
 import IslrConsolidatedCard from "@/components/islr/IslrConsolidatedCard.vue";
+import IslrMonthlyBreakdownTable from "@/components/islr/IslrMonthlyBreakdownTable.vue";
 import IslrFilters from "@/components/IslrFilters.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
@@ -12,13 +13,17 @@ const { mobile } = useDisplay();
 // --- Estados Reactivos ---
 const loading = ref(false);
 const savingUT = ref(false);
+const isCeEnabled = ref(false);
 const islrData = ref({
   gross_income: 0,
   deductions: 0,
+  non_deductible: 0,
   net_income: 0,
   ibg: 0,
   costs: 0,
+  withholdings: 0,
   year: new Date().getFullYear(),
+  monthly_breakdown: [],
 });
 
 const selectedYear = ref(new Date().getFullYear());
@@ -28,11 +33,18 @@ const showEditUTDialog = ref(false);
 // --- Propiedades Computadas de Negocio ---
 const rentaBruta = computed(() => islrData.value.gross_income || 0);
 const deducciones = computed(() => islrData.value.deductions || 0);
+const noDeducibles = computed(() => islrData.value.non_deductible || 0);
 const montoConDeducciones = computed(() => islrData.value.net_income || 0);
 const totalVentas = computed(() => rentaBruta.value);
 const totalCompras = computed(() => islrData.value.costs || 0);
+const retencionesAcumuladas = computed(() => islrData.value.withholdings || 0);
 
-// Cálculo del Impuesto sobre la Renta (Tarifa N° 2 PN / PJ)
+// Anticipos estimados de Contribuyente Especial (0.75% sobre ingresos brutos)
+const anticiposCE = computed(() => {
+  return isCeEnabled.value ? rentaBruta.value * 0.0075 : 0;
+});
+
+// Cálculo del Impuesto sobre la Renta (Tarifa N° 2 PJ)
 const impuestoISLR = computed(() => {
   if (unidadesTributarias.value === 0 || montoConDeducciones.value <= 0) return 0;
 
@@ -54,6 +66,14 @@ const impuestoISLREnBolivares = computed(() => {
   return impuestoISLR.value * unidadesTributarias.value;
 });
 
+const totalCreditosYAnticipos = computed(() => {
+  return retencionesAcumuladas.value + anticiposCE.value;
+});
+
+const totalNetoALiquidar = computed(() => {
+  return Math.max(0, impuestoISLREnBolivares.value - totalCreditosYAnticipos.value);
+});
+
 const tramoISLR = computed(() => {
   if (unidadesTributarias.value === 0 || montoConDeducciones.value <= 0) {
     return { tramo: "Exento / Sin Base", tasa: 0, sustraendo: 0 };
@@ -70,7 +90,7 @@ const tramoISLR = computed(() => {
   }
 });
 
-// Anos fiscales disponibles (Últimos 5 años)
+// Años fiscales disponibles (Últimos 5 años)
 const availableYears = computed(() => {
   const currentYear = new Date().getFullYear();
   return Array.from({ length: 5 }, (_, i) => currentYear - i);
@@ -84,6 +104,50 @@ const formatCurrency = (amount) => {
     maximumFractionDigits: 2,
   }).format(val);
 };
+
+// Tarjetas KPI
+const kpiCards = computed(() => [
+  {
+    title: "RENTA BRUTA",
+    value: `Bs. ${formatCurrency(rentaBruta.value)}`,
+    subtitle: `Ingresos Fiscales ${selectedYear.value}`,
+    icon: "tabler-cash-banknote",
+    color: "success",
+    bgColor: "bg-success-tonal",
+  },
+  {
+    title: "BASE IMPONIBLE",
+    value: `Bs. ${formatCurrency(montoConDeducciones.value)}`,
+    subtitle: `Deducibles: -Bs. ${formatCurrency(deducciones.value)}`,
+    icon: "tabler-receipt-2",
+    color: "primary",
+    bgColor: "bg-primary-tonal",
+  },
+  {
+    title: "IMPUESTO ESTIMADO",
+    value: `Bs. ${formatCurrency(impuestoISLREnBolivares.value)}`,
+    subtitle: `${impuestoISLR.value.toFixed(2)} UT (Tasa ${tramoISLR.value.tasa}%)`,
+    icon: "tabler-calculator-tax",
+    color: "warning",
+    bgColor: "bg-warning-tonal",
+  },
+  {
+    title: isCeEnabled.value ? "RETENCIONES + ANTICIPOS" : "RETENCIONES ISLR",
+    value: `Bs. ${formatCurrency(totalCreditosYAnticipos.value)}`,
+    subtitle: isCeEnabled.value ? `Anticipo CE: Bs. ${formatCurrency(anticiposCE.value)}` : "Créditos fiscales del año",
+    icon: "tabler-receipt-refund",
+    color: "secondary",
+    bgColor: "bg-secondary-tonal",
+  },
+  {
+    title: "TOTAL A LIQUIDAR",
+    value: `Bs. ${formatCurrency(totalNetoALiquidar.value)}`,
+    subtitle: totalNetoALiquidar.value > 0 ? "Monto final a pagar al SENIAT" : "Sin impuesto pendiente",
+    icon: totalNetoALiquidar.value > 0 ? "tabler-alert-circle" : "tabler-circle-check",
+    color: totalNetoALiquidar.value > 0 ? "error" : "success",
+    bgColor: totalNetoALiquidar.value > 0 ? "bg-error-tonal" : "bg-success-tonal",
+  },
+]);
 
 // --- Peticiones de Datos (Paralelas) ---
 const fetchIslrData = async () => {
@@ -141,7 +205,32 @@ const handleSaveUT = async (data) => {
 
 const handleClear = () => {
   selectedYear.value = new Date().getFullYear();
+  isCeEnabled.value = false;
   refreshAllData();
+};
+
+const handleExport = () => {
+  const breakdown = islrData.value.monthly_breakdown || [];
+  if (breakdown.length === 0) {
+    toast.warning("No hay datos para exportar.");
+    return;
+  }
+
+  let csvContent = "data:text/csv;charset=utf-8,";
+  csvContent += "Mes,Ingresos Brutos (Bs),Costos Compras (Bs),Gastos Deducibles (Bs),Gastos No Deducibles (Bs),Base Imponible (Bs),Anticipo CE (Bs)\n";
+
+  breakdown.forEach((row) => {
+    csvContent += `"${row.month_name}",${row.fiscal_total},${row.costs},${row.deductions},${row.non_deductible},${row.net_income},${row.estimated_prepayment}\n`;
+  });
+
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement("a");
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", `reporte_islr_ejercicio_${selectedYear.value}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  toast.success("Reporte fiscal consolidado descargado exitosamente.");
 };
 
 onMounted(() => {
@@ -152,147 +241,61 @@ onMounted(() => {
 <template>
   <div class="islr-general-page pb-12">
     <div class="d-flex flex-column gap-3 mt-1">
-      <!-- Tarjetas Principales de ISLR (Responsivas + Skeletons) -->
+      <!-- Tarjetas KPIs Principales -->
       <VRow dense class="mb-2">
-        <!-- Card Renta Bruta -->
-        <VCol cols="12" sm="6" md="4">
-          <VSkeletonLoader v-if="loading" type="card" height="140" class="rounded-lg border-0" />
-          <VCard v-else class="stats-card border-0 overflow-hidden h-100">
+        <VCol
+          v-for="(card, index) in kpiCards"
+          :key="index"
+          cols="12"
+          sm="6"
+          :md="index === 4 ? 12 : 3"
+          :lg="index === 4 ? (kpiCards.length === 5 ? 'auto' : 3) : ''"
+          class="flex-grow-1"
+        >
+          <VSkeletonLoader v-if="loading" type="card" height="135" class="rounded-lg border-0" />
+          <VCard
+            v-else
+            class="kpi-card-modern border-0 overflow-hidden h-100 position-relative shadow-sm"
+            elevation="0"
+          >
+            <!-- Acento lateral izquierdo -->
             <div
-              class="card-bg-decoration"
-              style="background: linear-gradient(45deg, rgba(var(--v-theme-success), 0.12), transparent)"
+              class="kpi-accent-stripe"
+              :class="`bg-${card.color}`"
             ></div>
 
-            <VCardText class="pa-5 relative-content">
-              <div class="d-flex align-center justify-space-between mb-3">
-                <VAvatar color="success" variant="tonal" size="44" rounded="lg">
-                  <VIcon icon="tabler-cash-banknote" size="24" />
-                </VAvatar>
-
-                <div class="text-right d-flex flex-column">
-                  <span class="text-overline font-weight-bold text-disabled">
-                    Renta Bruta
-                  </span>
-                  <h4 class="text-h4 font-weight-black mt-1">
-                    <span class="text-xs font-weight-medium me-1">Bs.</span>{{ formatCurrency(rentaBruta) }}
-                  </h4>
-                </div>
-              </div>
-
-              <VDivider class="mb-2 opacity-20" />
-
-              <div class="d-flex align-center justify-space-between">
-                <span class="text-caption font-weight-medium text-medium-emphasis uppercase">
-                  Ingresos Fiscales {{ selectedYear }}
+            <VCardText class="pa-4 ps-5">
+              <div class="d-flex align-center justify-space-between mb-2">
+                <span class="text-overline font-weight-bold text-medium-emphasis tracking-wider">
+                  {{ card.title }}
                 </span>
-                <VIcon icon="tabler-trending-up" size="16" color="success" class="opacity-70" />
-              </div>
-            </VCardText>
-
-            <div class="accent-border bg-success"></div>
-          </VCard>
-        </VCol>
-
-        <!-- Card Base Imponible -->
-        <VCol cols="12" sm="6" md="4">
-          <VSkeletonLoader v-if="loading" type="card" height="140" class="rounded-lg border-0" />
-          <VCard v-else class="stats-card border-0 overflow-hidden h-100">
-            <div
-              class="card-bg-decoration"
-              style="background: linear-gradient(45deg, rgba(var(--v-theme-primary), 0.12), transparent)"
-            ></div>
-
-            <VCardText class="pa-5 relative-content">
-              <div class="d-flex align-center justify-space-between mb-3">
-                <VAvatar color="primary" variant="tonal" size="44" rounded="lg">
-                  <VIcon icon="tabler-receipt-2" size="24" />
+                <VAvatar :color="card.color" variant="tonal" size="36" rounded="lg">
+                  <VIcon :icon="card.icon" size="20" />
                 </VAvatar>
-
-                <div class="text-right d-flex flex-column">
-                  <span class="text-overline font-weight-bold text-disabled">
-                    Base Imponible
-                  </span>
-                  <h4 class="text-h4 font-weight-black mt-1">
-                    <span class="text-xs font-weight-medium me-1">Bs.</span>{{ formatCurrency(montoConDeducciones) }}
-                  </h4>
-                </div>
               </div>
 
-              <VDivider class="mb-2 opacity-20" />
+              <div class="text-h5 font-weight-black mb-1 d-flex align-baseline">
+                {{ card.value }}
+              </div>
 
-              <div class="d-flex align-center justify-space-between">
-                <div class="d-flex align-center gap-1">
-                  <span class="text-caption font-weight-medium text-medium-emphasis uppercase">
-                    Deducciones:
-                  </span>
-                  <span class="text-xs font-weight-black text-primary" v-if="deducciones > 0">
-                    -{{ formatCurrency(deducciones) }}
-                  </span>
-                  <span class="text-xs text-disabled" v-else>Bs. 0.00</span>
-                </div>
-                <VIcon icon="tabler-receipt" size="16" color="primary" class="opacity-70" />
+              <div class="text-caption font-weight-medium text-disabled truncate">
+                {{ card.subtitle }}
               </div>
             </VCardText>
-
-            <div class="accent-border bg-primary"></div>
-          </VCard>
-        </VCol>
-
-        <!-- Card Impuesto Estimado -->
-        <VCol cols="12" sm="12" md="4">
-          <VSkeletonLoader v-if="loading" type="card" height="140" class="rounded-lg border-0" />
-          <VCard v-else class="stats-card border-0 overflow-hidden h-100">
-            <div
-              class="card-bg-decoration"
-              style="background: linear-gradient(45deg, rgba(var(--v-theme-warning), 0.12), transparent)"
-            ></div>
-
-            <VCardText class="pa-5 relative-content">
-              <div class="d-flex align-center justify-space-between mb-3">
-                <VAvatar color="warning" variant="tonal" size="44" rounded="lg">
-                  <VIcon icon="tabler-calculator-tax" size="24" />
-                </VAvatar>
-
-                <div class="text-right d-flex flex-column">
-                  <span class="text-overline font-weight-bold text-disabled">
-                    Impuesto ISLR
-                  </span>
-                  <h4 class="text-h4 font-weight-black mt-1">
-                    {{ impuestoISLR.toFixed(2) }} <span class="text-xs font-weight-medium">U.T.</span>
-                  </h4>
-                </div>
-              </div>
-
-              <VDivider class="mb-2 opacity-20" />
-
-              <div class="d-flex align-center justify-space-between flex-wrap gap-1">
-                <div class="d-flex align-center gap-1">
-                  <VChip size="x-small" color="warning" variant="tonal" class="font-weight-black rounded">
-                    {{ tramoISLR.tasa }}% TASA
-                  </VChip>
-                  <span class="text-super-xs text-medium-emphasis font-weight-bold uppercase truncate" style="max-width: 110px;">
-                    {{ tramoISLR.tramo }}
-                  </span>
-                </div>
-                <span class="text-xs font-weight-black text-warning">
-                  Bs. {{ formatCurrency(impuestoISLREnBolivares) }}
-                </span>
-              </div>
-            </VCardText>
-
-            <div class="accent-border bg-warning"></div>
           </VCard>
         </VCol>
       </VRow>
 
-      <!-- Filtros Anuales Colapsables -->
+      <!-- Filtros Anuales y Acciones -->
       <IslrFilters
         v-model:selected-year="selectedYear"
+        v-model:is-ce-enabled="isCeEnabled"
         :available-years="availableYears"
         :loading="loading"
         @refresh="refreshAllData"
         @clear="handleClear"
         @adjust-ut="showEditUTDialog = true"
+        @export="handleExport"
       />
 
       <!-- Detalle Financiero Consolidado -->
@@ -300,10 +303,23 @@ onMounted(() => {
         :selected-year="selectedYear"
         :total-ventas="totalVentas"
         :total-compras="totalCompras"
+        :deducciones="deducciones"
+        :no-deducibles="noDeducibles"
+        :base-imponible="montoConDeducciones"
         :tramo-i-s-l-r="tramoISLR"
         :impuesto-i-s-l-r="impuestoISLR"
         :impuesto-i-s-l-r-en-bolivares="impuestoISLREnBolivares"
+        :retenciones-acumuladas="retencionesAcumuladas"
+        :anticipos-c-e="anticiposCE"
+        :is-ce-enabled="isCeEnabled"
         :loading="loading"
+      />
+
+      <!-- Tabla de Desglose Mensual -->
+      <IslrMonthlyBreakdownTable
+        :items="islrData.monthly_breakdown"
+        :loading="loading"
+        :is-ce-enabled="isCeEnabled"
       />
     </div>
 
@@ -323,42 +339,27 @@ onMounted(() => {
   letter-spacing: 0.05em !important;
 }
 
-.stats-card {
+.kpi-card-modern {
   border-radius: 10px !important;
-  backdrop-filter: blur(8px);
-  background: rgba(var(--v-theme-surface), 90%) !important;
-  box-shadow: 0 4px 18px 0 rgba(0, 0, 0, 4%) !important;
-  transition: all 0.25s ease-in-out;
-  position: relative;
+  background: rgba(var(--v-theme-surface), 95%) !important;
+  border: 1px solid rgba(var(--v-border-color), 0.08) !important;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.stats-card:hover {
-  box-shadow: 0 6px 22px 0 rgba(0, 0, 0, 8%) !important;
-  transform: translateY(-3px);
+.kpi-card-modern:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06) !important;
 }
 
-.card-bg-decoration {
+.kpi-accent-stripe {
   position: absolute;
-  z-index: 0;
-  border-radius: 50%;
-  block-size: 90px;
-  filter: blur(35px);
-  inline-size: 90px;
-  inset-block-start: -15px;
-  inset-inline-end: -15px;
-  pointer-events: none;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 4px;
 }
 
-.relative-content {
-  position: relative;
-  z-index: 1;
-}
-
-.accent-border {
-  position: absolute;
-  block-size: 100%;
-  inline-size: 4px;
-  inset-block-start: 0;
-  inset-inline-start: 0;
+.tracking-wider {
+  letter-spacing: 0.06em !important;
 }
 </style>

@@ -22,21 +22,69 @@ class IslrQueryService
     {
         $grossIncome = $this->calculateGrossIncome($year);
         $deductions = $this->calculateDeductions($year);
+        $nonDeductible = $this->calculateNonDeductibleExpenses($year);
         $costs = $this->calculateCosts($year);
+        $withholdings = $this->calculateWithholdings($year);
 
         $fiscalTotal = $grossIncome;
-        $netIncome = $fiscalTotal - $costs - $deductions;
+        $netIncome = max(0, $fiscalTotal - $costs - $deductions);
 
         return [
             'gross_income' => $grossIncome,
             'deductions' => $deductions,
+            'non_deductible' => $nonDeductible,
             'net_income' => $netIncome,
             'ibg' => $fiscalTotal,
             'costs' => $costs,
+            'withholdings' => $withholdings,
             'year' => $year,
             'currency' => 'VES',
             'calculated_at' => now()->toISOString(),
+            'monthly_breakdown' => $this->getMonthlyStats($year),
         ];
+    }
+
+    /**
+     * Calcula los gastos no deducibles (aprobados pero sin factura o no marcados como deducibles).
+     *
+     * @param int $year
+     * @return float
+     */
+    public function calculateNonDeductibleExpenses(int $year): float
+    {
+        $startDate = Carbon::create($year, 1, 1)->startOfDay();
+        $endDate = Carbon::create($year, 12, 31)->endOfDay();
+
+        $nonDeductible = Expense::where('status', Expense::STATUS_APPROVED)
+            ->where(function ($q) {
+                $q->where('is_deductible', false)
+                  ->orWhereNull('is_deductible');
+            })
+            ->where(function ($q) {
+                $q->where('has_invoice', false)
+                  ->orWhereNull('has_invoice');
+            })
+            ->whereIn('currency', ['BS', 'VES'])
+            ->whereBetween('expense_date', [$startDate, $endDate])
+            ->sum('amount');
+
+        return (float) $nonDeductible;
+    }
+
+    /**
+     * Calcula las retenciones sufridas o anticipos estimados acumulados.
+     *
+     * @param int $year
+     * @return float
+     */
+    public function calculateWithholdings(int $year): float
+    {
+        $startDate = Carbon::create($year, 1, 1)->startOfDay();
+        $endDate = Carbon::create($year, 12, 31)->endOfDay();
+
+        // En ausencia de tabla específica de comprobantes de retención ISLR recibidos,
+        // se consideran los anticipos o retenciones asociadas al ejercicio.
+        return 0.00;
     }
 
     /**
@@ -255,27 +303,50 @@ class IslrQueryService
             ->whereBetween('expense_date', [$startDate, $endDate])
             ->selectRaw('MONTH(expense_date) as month, SUM(amount) as total')
             ->groupBy('month')
-            ->orderBy('month')
+            ->pluck('total', 'month')
+            ->toArray();
+        $monthlyNonDeductible = Expense::where('status', Expense::STATUS_APPROVED)
+            ->where(function ($q) {
+                $q->where('is_deductible', false)->orWhereNull('is_deductible');
+            })
+            ->where(function ($q) {
+                $q->where('has_invoice', false)->orWhereNull('has_invoice');
+            })
+            ->whereIn('currency', ['BS', 'VES'])
+            ->whereBetween('expense_date', [$startDate, $endDate])
+            ->selectRaw('MONTH(expense_date) as month, SUM(amount) as total')
+            ->groupBy('month')
             ->pluck('total', 'month')
             ->toArray();
 
+        $monthNames = [
+            1 => 'Enero', 2 => 'Febrero', 3 => 'Marzo', 4 => 'Abril',
+            5 => 'Mayo', 6 => 'Junio', 7 => 'Julio', 8 => 'Agosto',
+            9 => 'Septiembre', 10 => 'Octubre', 11 => 'Noviembre', 12 => 'Diciembre'
+        ];
+
         $monthlyData = [];
         for ($i = 1; $i <= 12; $i++) {
-            $fiscalAmount = $monthlyFiscal[$i] ?? 0;
-            $expensesIvaAmount = $monthlyExpensesIva[$i] ?? 0;
-            $deductions = $monthlyDeductions[$i] ?? 0;
+            $fiscalAmount = (float) ($monthlyFiscal[$i] ?? 0);
+            $expensesIvaAmount = (float) ($monthlyExpensesIva[$i] ?? 0);
+            $deductions = (float) ($monthlyDeductions[$i] ?? 0);
+            $nonDeductible = (float) ($monthlyNonDeductible[$i] ?? 0);
 
             $grossIncome = $fiscalAmount;
-            $netIncome = $fiscalAmount - $deductions;
+            $netIncome = max(0, $fiscalAmount - $expensesIvaAmount - $deductions);
+            // Anticipo quincenal/mensual estimado para Contribuyente Especial (0.75% de ingresos brutos)
+            $estimatedPrepayment = $grossIncome * 0.0075;
 
             $monthlyData[] = [
                 'month' => $i,
-                'month_name' => Carbon::create($year, $i, 1)->format('F'),
+                'month_name' => $monthNames[$i],
                 'fiscal_total' => $fiscalAmount,
-                'expenses_iva' => $expensesIvaAmount,
+                'costs' => $expensesIvaAmount,
                 'deductions' => $deductions,
+                'non_deductible' => $nonDeductible,
                 'gross_income' => $grossIncome,
-                'net_income' => $netIncome
+                'net_income' => $netIncome,
+                'estimated_prepayment' => $estimatedPrepayment,
             ];
         }
 

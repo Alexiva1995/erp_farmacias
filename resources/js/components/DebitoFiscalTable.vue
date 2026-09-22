@@ -11,6 +11,23 @@ const props = defineProps({
 
 const emit = defineEmits(["update:options", "show-detailHistory"]);
 
+const formatCurrency = (amount) => {
+  const number = parseFloat(amount) || 0;
+  return new Intl.NumberFormat("es-VE", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(number);
+};
+
+const formatDate = (dateString) => {
+  if (!dateString) return "";
+  if (typeof dateString === "string" && /^\d{4}-\d{2}-\d{2}/.test(dateString.trim())) {
+    const parts = dateString.trim().split("T")[0].split("-");
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+  return new Date(dateString).toLocaleDateString("es-VE");
+};
+
 const headers = [
   { 
     title: "N° FACTURA", 
@@ -29,15 +46,7 @@ const headers = [
     title: "FECHA", 
     key: "invoice_date", 
     sortable: true,
-    value: item => {
-      const dt = item.invoice_date || item.created_at;
-      if (!dt) return '';
-      if (typeof dt === 'string' && /^\d{4}-\d{2}-\d{2}/.test(dt.trim())) {
-        const parts = dt.trim().split('T')[0].split('-');
-        return `${parts[2]}/${parts[1]}/${parts[0]}`;
-      }
-      return new Date(dt).toLocaleDateString("es-VE");
-    },
+    value: item => formatDate(item.invoice_date || item.created_at),
     cellProps: { class: 'text-sm text-medium-emphasis' }
   },
   { 
@@ -54,14 +63,6 @@ const headers = [
     sortable: true, 
     align: "end",
     value: item => formatCurrency(item.taxable_amount ?? item.taxable_base),
-    cellProps: { class: 'text-sm text-medium-emphasis' }
-  },
-  { 
-    title: "IVA", 
-    key: "iva_amount", 
-    sortable: true, 
-    align: "end",
-    value: item => formatCurrency(item.iva_amount),
     cellProps: { class: 'text-sm text-medium-emphasis' }
   },
   { 
@@ -88,25 +89,15 @@ const headers = [
     value: item => formatCurrency(item.total_amount),
     cellProps: { class: 'text-sm font-weight-black text-high-emphasis' }
   },
-  { title: "ACCIÓN", key: "actions", sortable: false, align: "center" },
+  { 
+    title: "IVA", 
+    key: "iva_amount", 
+    sortable: true, 
+    align: "end",
+    value: item => formatCurrency(item.iva_amount),
+    cellProps: { class: 'text-sm font-weight-black text-success iva-highlight-cell' }
+  },
 ];
-
-const formatCurrency = (amount) => {
-  const number = parseFloat(amount) || 0;
-  return new Intl.NumberFormat("es-VE", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(number);
-};
-
-const formatDate = (dateString) => {
-  if (!dateString) return "";
-  return new Date(dateString).toLocaleDateString("es-VE", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
-};
 </script>
 
 <template>
@@ -118,9 +109,9 @@ const formatDate = (dateString) => {
           <div class="pa-2 bg-warning-tonal rounded-lg me-3">
             <VIcon icon="tabler-receipt" size="18" color="warning" />
           </div>
-          <span class="text-sm font-weight-black uppercase"
-            >Ventas (Débito Fiscal)</span
-          >
+          <span class="text-sm font-weight-black uppercase">
+            Ventas (Débito Fiscal)
+          </span>
           <VSpacer />
           <VChip
             color="warning"
@@ -165,17 +156,10 @@ const formatDate = (dateString) => {
             </div>
           </template>
 
-          <template #item.actions="{ item }">
-            <div class="d-flex align-center justify-center gap-1">
-              <IconBtn
-                color="primary"
-                title="Ver Detalle"
-                :aria-label="`Ver detalle de factura ${item.invoice_number || item.id}`"
-                @click="emit('show-detailHistory', item)"
-              >
-                <VIcon icon="tabler-eye" />
-              </IconBtn>
-            </div>
+          <template #item.iva_amount="{ item }">
+            <span class="text-sm font-weight-black text-success">
+              Bs. {{ formatCurrency(item.iva_amount) }}
+            </span>
           </template>
         </VDataTableServer>
       </VCard>
@@ -192,7 +176,7 @@ const formatDate = (dateString) => {
       <div class="d-flex flex-column gap-3">
         <VCard
           v-for="item in props.fiscalData"
-          :key="item.order_id"
+          :key="item.order_id || item.id"
           variant="flat"
           border
           class="mb-1 overflow-hidden premium-card bg-white"
@@ -204,11 +188,17 @@ const formatDate = (dateString) => {
                    <VIcon icon="tabler-receipt" size="18" color="warning" />
                 </div>
                 <div class="d-flex flex-column">
-                  <span class="text-primary font-weight-black text-xs uppercase mb-1">Factura</span>
-                  <h3 class="text-sm font-weight-black text-high-emphasis leading-tight truncate">
-                    {{ item.invoice_number }}
+                  <span class="text-primary font-weight-black text-xs uppercase mb-1">N° Factura</span>
+                  <h3 class="text-sm font-weight-black leading-tight truncate" style="color: #e91e63;">
+                    {{ item.invoice_number || item.fiscal_id || item.id }}
                   </h3>
                 </div>
+              </div>
+              <div class="d-flex flex-column align-end">
+                <span class="text-sm font-weight-black text-success leading-none mb-1">
+                  Bs. {{ formatCurrency(item.iva_amount) }}
+                </span>
+                <span class="text-super-xs font-weight-black text-disabled uppercase">IVA Cobrado</span>
               </div>
             </div>
 
@@ -233,28 +223,25 @@ const formatDate = (dateString) => {
                 </span>
               </div>
               <div class="stat-box text-center">
-                <span class="label">Base Imp.</span>
-                <span class="value font-weight-black text-high-emphasis">{{ formatCurrency(item.taxable_base) }}</span>
+                <span class="label">Base</span>
+                <span class="value font-weight-black text-high-emphasis">{{ formatCurrency(item.taxable_amount ?? item.taxable_base) }}</span>
+              </div>
+              <div class="stat-box text-center">
+                <span class="label">Subtotal</span>
+                <span class="value font-weight-black text-high-emphasis">{{ formatCurrency((Number(item.total_amount) || 0) - (Number(item.spe_surcharge_amount) || 0)) }}</span>
+              </div>
+              <div v-if="Number(item.spe_surcharge_amount) > 0" class="stat-box text-center">
+                <span class="label">IGTF</span>
+                <span class="value font-weight-black text-error">{{ formatCurrency(item.spe_surcharge_amount) }}</span>
+              </div>
+              <div class="stat-box text-center">
+                <span class="label">Total</span>
+                <span class="value font-weight-black text-high-emphasis">{{ formatCurrency(item.total_amount) }}</span>
               </div>
               <div class="stat-box text-right">
-                <span class="label">IVA Cobrado</span>
-                <span class="value font-weight-black text-high-emphasis">{{ formatCurrency(item.iva_amount) }}</span>
+                <span class="label">Fecha</span>
+                <span class="value font-weight-black text-disabled uppercase">{{ formatDate(item.invoice_date) }}</span>
               </div>
-            </div>
-
-            <div class="pa-3 bg-light rounded-lg border-dashed d-flex align-center justify-space-between">
-              <div class="d-flex flex-column">
-                <span class="text-super-xs text-medium-emphasis uppercase font-weight-black">Monto Total</span>
-                <div class="d-flex align-center gap-1">
-                  <span class="text-xs font-weight-bold text-disabled">Bs.</span>
-                  <span class="text-h6 font-weight-black text-success leading-none">
-                    {{ formatCurrency(item.total_amount) }}
-                  </span>
-                </div>
-              </div>
-              <span class="text-super-xs text-disabled uppercase font-weight-black">
-                {{ formatDate(item.invoice_date) }}
-              </span>
             </div>
           </div>
         </VCard>
@@ -289,6 +276,20 @@ const formatDate = (dateString) => {
   padding-block: 10px !important;
   border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.06) !important;
   color: rgba(var(--v-theme-on-surface), 0.8) !important;
+}
+
+.premium-table :deep(.v-data-table__tr:hover) {
+  background-color: rgba(var(--v-theme-primary), 0.02) !important;
+}
+
+.premium-table :deep(table) {
+  border-spacing: 0;
+  border-collapse: collapse;
+}
+
+.premium-table :deep(.v-data-table__td),
+.premium-table :deep(.v-data-table-header th) {
+  border-inline: none !important;
 }
 
 .bg-warning-tonal {
@@ -345,9 +346,5 @@ const formatDate = (dateString) => {
 .stat-box .value {
   font-size: 0.75rem;
   font-weight: 800;
-}
-
-.border-dashed {
-  border: 1px dashed rgba(var(--v-border-color), 0.3) !important;
 }
 </style>
