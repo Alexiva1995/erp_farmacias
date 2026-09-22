@@ -210,6 +210,44 @@ class FiscalZReportService
     }
 
     /**
+     * Inicializa o crea el nuevo Reporte Z abierto para el siguiente ciclo/período fiscal.
+     */
+    public function openNextReport(?string $nextDate = null, ?int $nextReportNumber = null): FiscalZReport
+    {
+        $today = Carbon::today()->format('Y-m-d');
+        $date = $nextDate ?: $today;
+
+        $existing = $this->repository->findByDate($date);
+        if ($existing) {
+            return $existing;
+        }
+
+        if ($nextReportNumber === null) {
+            $lastNumber = $this->repository->getLastReportNumber();
+            $nextReportNumber = $lastNumber ? ($lastNumber + 1) : self::DEFAULT_START_NUMBER;
+        }
+
+        $data = [
+            'report_number'        => $nextReportNumber,
+            'report_date'          => $date,
+            'opening_time'         => now()->format('H:i:s'),
+            'closing_time'         => '23:59:59',
+            'first_invoice_number' => null,
+            'last_invoice_number'  => null,
+            'invoices_count'       => 0,
+            'exempt_amount'        => 0.00,
+            'base_16_amount'       => 0.00,
+            'iva_amount'           => 0.00,
+            'igtf_base_amount'     => 0.00,
+            'igtf_amount'          => 0.00,
+            'total_amount'         => 0.00,
+            'status'               => 'open',
+        ];
+
+        return $this->repository->updateOrCreateByDate($date, $data);
+    }
+
+    /**
      * Elimina un reporte Z por número.
      */
     public function deleteByNumber(int $number): bool

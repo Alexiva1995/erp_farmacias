@@ -48,12 +48,33 @@ class FiscalActionService
         if ($command && $command->command === 'REPORT_Z' && ($data['status'] ?? 'success') === 'success') {
             $date = $command->payload['target_date'] ?? $command->created_at?->format('Y-m-d') ?? now()->format('Y-m-d');
             $zReportService = app(\App\Services\Fiscal\FiscalZReportService::class);
+            
+            // 1. Consolidar y cerrar el reporte Z de la fecha
             $report = $zReportService->generateForDate($date, null, true);
-            if ($report && $report->status === 'open') {
-                $report->update([
+            if ($report) {
+                $zNum = null;
+                if (is_array($data['response'] ?? null) && !empty($data['response']['z_number'])) {
+                    $zNum = (int) $data['response']['z_number'];
+                } elseif (is_string($data['response'] ?? null) && preg_match('/(?:Z|Reporte\s*Z)[^\d]*(\d+)/i', $data['response'], $m)) {
+                    $zNum = (int) $m[1];
+                }
+
+                $updateData = [
                     'status' => 'closed',
                     'closing_time' => now()->format('H:i:s'),
-                ]);
+                ];
+                if ($zNum) {
+                    $updateData['report_number'] = $zNum;
+                }
+
+                $report->update($updateData);
+
+                // 2. Crear inmediatamente el nuevo Reporte Z abierto para el siguiente ciclo
+                $nextDate = \Carbon\Carbon::parse($date)->addDay()->format('Y-m-d');
+                $nextNum = ($zNum ?: $report->report_number) ? (($zNum ?: $report->report_number) + 1) : null;
+                $zReportService->openNextReport($nextDate, $nextNum);
+
+                \Illuminate\Support\Facades\Log::info("[FiscalReportZ] Reporte Z de fecha {$date} cerrado exitosamente y nuevo Reporte Z inicializado para {$nextDate}.");
             }
         }
 
