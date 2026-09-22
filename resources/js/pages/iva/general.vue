@@ -1,52 +1,56 @@
 <script setup>
 import CreditoFiscalTable from "@/components/CreditoFiscalTable.vue";
 import DebitoFiscalTable from "@/components/DebitoFiscalTable.vue";
-import IvaFiscalFilters from "@/components/IvaFiscalFilters.vue";
+import DetailHistoryShowDialog from "@/components/dialogs/DetailHistoryShowDialog.vue";
+import HistoryFilters from "@/components/HistoryFilters.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useDisplay } from "vuetify";
 
 const { mobile } = useDisplay();
 
-// Estados reactivos para las cards de resumen
+// --- Estados Reactivos Principales ---
 const debitoFiscal = ref(0);
 const creditoFiscal = ref(0);
 const retenciones = ref(0);
 const loading = ref(false);
-const periodo = ref({
-  start_date: null,
-  end_date: null,
-});
+const isCeEnabled = ref(false);
+const searchQuery = ref("");
 const detalleCredito = ref({});
 const detalleDebito = ref({});
 
-// Estados para los filtros
-const startDate = ref("");
-const endDate = ref("");
-
-// Estados para la tabla de débito fiscal
+// Estados para la tabla de débito fiscal (Ventas)
 const fiscalData = ref([]);
 const totalRecords = ref(0);
 const page = ref(1);
 const itemsPerPage = ref(10);
-const sortBy = ref([]);
+const sortBy = ref(undefined);
+const orderBy = ref(undefined);
 const tableLoading = ref(false);
 
-// Estados para la tabla de crédito fiscal
+// Estados para la tabla de crédito fiscal (Gastos con IVA)
 const expensesData = ref([]);
 const totalExpensesRecords = ref(0);
 const expensesPage = ref(1);
 const expensesItemsPerPage = ref(10);
 const expensesTableLoading = ref(false);
 
+// Diálogo de detalle de factura
+const isDetailDialogVisible = ref(false);
+const selectedHistory = ref({});
+const currentHistoryDetails = ref([]);
+const currentHistoryUser = ref({});
+const historyIdToEdit = ref(null);
+const historyNameToEdit = ref("");
+
 // Formateador de moneda (Bolívares)
 const formatCurrency = (amount) => {
   const number = parseFloat(amount) || 0;
-  return number.toLocaleString("es-VE", {
+  return new Intl.NumberFormat("es-VE", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  });
+  }).format(number);
 };
 
 // Cálculo automático del IVA a pagar (Débito Fiscal - Crédito Fiscal)
@@ -60,12 +64,108 @@ const igtfAmount = computed(() => {
   return speSalesTotal * 0.03;
 });
 
+// Resumen de KPIs con la misma estructura visual que facturas
+const kpiCards = computed(() => [
+  {
+    title: "DÉBITO FISCAL",
+    value: `Bs. ${formatCurrency(debitoFiscal.value)}`,
+    subtitle: `${detalleDebito.value.total_orders_with_iva || totalRecords.value || 0} ventas registradas`,
+    icon: "tabler-receipt-tax",
+    color: "warning",
+    bgColor: "bg-warning-tonal",
+  },
+  {
+    title: "CRÉDITO FISCAL",
+    value: `Bs. ${formatCurrency(creditoFiscal.value)}`,
+    subtitle: `${detalleCredito.value.total_expenses_with_iva || totalExpensesRecords.value || 0} gastos con IVA`,
+    icon: "tabler-receipt-refund",
+    color: "info",
+    bgColor: "bg-info-tonal",
+  },
+  {
+    title: "SALDO IVA",
+    value: `Bs. ${formatCurrency(Math.abs(ivaAPagar.value))}`,
+    subtitle: ivaAPagar.value > 0 ? "Saldo a Pagar" : (ivaAPagar.value < 0 ? "Saldo a Favor" : "Equilibrado"),
+    icon: ivaAPagar.value > 0 ? "tabler-trending-up" : "tabler-trending-down",
+    color: ivaAPagar.value > 0 ? "error" : "success",
+    bgColor: ivaAPagar.value > 0 ? "bg-error-tonal" : "bg-success-tonal",
+  },
+  {
+    title: "RETENCIONES",
+    value: `Bs. ${formatCurrency(retenciones.value)}`,
+    subtitle: "75% Estimado Crédito",
+    icon: "tabler-percentage",
+    color: "secondary",
+    bgColor: "bg-secondary-tonal",
+  },
+  {
+    title: "TOTAL IGTF (3%)",
+    value: `Bs. ${formatCurrency(igtfAmount.value)}`,
+    subtitle: `${detalleDebito.value.total_spe_count || 0} ventas SPE`,
+    icon: "tabler-building-bank",
+    color: "error",
+    bgColor: "bg-error-tonal",
+  },
+]);
+
+// Cálculo de fechas iniciales según CE (Quincenal si CE activo, Mensual si no)
+const getDefaultDates = (ceActive = false) => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const day = now.getDate();
+
+  const formatOffsetDate = (d) => {
+    const date = new Date(d);
+    date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
+    return date.toISOString().split("T")[0];
+  };
+
+  if (ceActive) {
+    if (day <= 15) {
+      const start = new Date(year, month, 1);
+      const end = new Date(year, month, 15);
+      return { start: formatOffsetDate(start), end: formatOffsetDate(end) };
+    } else {
+      const start = new Date(year, month, 16);
+      const end = new Date(year, month + 1, 0);
+      return { start: formatOffsetDate(start), end: formatOffsetDate(end) };
+    }
+  } else {
+    const start = new Date(year, month, 1);
+    const end = new Date(year, month + 1, 0);
+    return { start: formatOffsetDate(start), end: formatOffsetDate(end) };
+  }
+};
+
+const initialDates = getDefaultDates(false);
+const startDate = ref(initialDates.start);
+const endDate = ref(initialDates.end);
+
+// --- Operaciones API ---
+const fetchGeneralSettings = async () => {
+  try {
+    const response = await axios.get("/general-settings", {
+      params: { only: "enable_ce" },
+    });
+    const ce = !!response.data?.data?.enable_ce;
+    isCeEnabled.value = ce;
+
+    const calibrated = getDefaultDates(ce);
+    startDate.value = calibrated.start;
+    endDate.value = calibrated.end;
+  } catch (error) {
+    console.error("Error al cargar configuración general:", error);
+  }
+};
+
 // Función para obtener crédito fiscal
 const fetchCreditoFiscal = async () => {
   try {
-    const params = {};
-    if (startDate.value) params.start_date = startDate.value;
-    if (endDate.value) params.end_date = endDate.value;
+    const params = {
+      start_date: startDate.value || undefined,
+      end_date: endDate.value || undefined,
+    };
 
     const response = await axios.get(
       "/finances/pending-payments/credito-fiscal",
@@ -77,9 +177,6 @@ const fetchCreditoFiscal = async () => {
       creditoFiscal.value = data.credito_fiscal || 0;
       retenciones.value = data.retenciones ?? (creditoFiscal.value * 0.75);
       detalleCredito.value = data.detalle_credito || {};
-      if (!periodo.value.start_date) {
-        periodo.value = data.periodo || {};
-      }
     }
   } catch (error) {
     console.error("Error al obtener crédito fiscal:", error);
@@ -89,9 +186,10 @@ const fetchCreditoFiscal = async () => {
 // Función para obtener débito fiscal
 const fetchDebitoFiscal = async () => {
   try {
-    const params = {};
-    if (startDate.value) params.start_date = startDate.value;
-    if (endDate.value) params.end_date = endDate.value;
+    const params = {
+      start_date: startDate.value || undefined,
+      end_date: endDate.value || undefined,
+    };
 
     const response = await axios.get("/debito-fiscal", { params });
 
@@ -99,31 +197,25 @@ const fetchDebitoFiscal = async () => {
       const data = response.data.data || {};
       debitoFiscal.value = data.debito_fiscal || 0;
       detalleDebito.value = data.detalle_debito || {};
-      if (!periodo.value.start_date) {
-        periodo.value = data.periodo || {};
-      }
     }
   } catch (error) {
     console.error("Error al obtener débito fiscal:", error);
   }
 };
 
-// Función para obtener datos de la tabla fiscal
+// Función para obtener datos de la tabla fiscal de ventas
 const fetchFiscalHistoryData = async () => {
   tableLoading.value = true;
   try {
     const params = {
       page: page.value,
       itemsPerPage: itemsPerPage.value,
+      sortBy: sortBy.value || undefined,
+      orderBy: orderBy.value || undefined,
+      startDate: startDate.value || undefined,
+      endDate: endDate.value || undefined,
+      q: searchQuery.value || undefined,
     };
-
-    if (sortBy.value && sortBy.value.length > 0) {
-      params.sortBy = sortBy.value[0].key;
-      params.orderBy = sortBy.value[0].order;
-    }
-
-    if (startDate.value) params.start_date = startDate.value;
-    if (endDate.value) params.end_date = endDate.value;
 
     const response = await axios.get("/fiscal-history", { params });
 
@@ -146,10 +238,9 @@ const fetchExpensesData = async () => {
     const params = {
       page: expensesPage.value,
       itemsPerPage: expensesItemsPerPage.value,
+      start_date: startDate.value || undefined,
+      end_date: endDate.value || undefined,
     };
-
-    if (startDate.value) params.start_date = startDate.value;
-    if (endDate.value) params.end_date = endDate.value;
 
     const response = await axios.get(
       "/finances/pending-payments/expenses-history",
@@ -186,243 +277,169 @@ const fetchAllData = async () => {
   }
 };
 
-// Estado visual del IVA acumulado
-const getIvaStatus = computed(() => {
-  if (ivaAPagar.value > 0) {
-    return {
-      color: "error",
-      icon: "tabler-trending-up",
-      message: "Saldo a Pagar",
-    };
-  } else if (ivaAPagar.value < 0) {
-    return {
-      color: "success",
-      icon: "tabler-trending-down",
-      message: "Saldo a Favor",
-    };
-  } else {
-    return {
-      color: "info",
-      icon: "tabler-equal",
-      message: "Equilibrado",
-    };
-  }
-});
+// Debounce para filtros reactivos
+let debounceTimer = null;
+const triggerDebouncedFetch = () => {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => {
+    fetchAllData();
+  }, 300);
+};
 
-// Manejar aplicación de filtros
-const handleApplyFilter = () => {
+// Watchers para filtros
+watch([searchQuery, startDate, endDate], () => {
   page.value = 1;
   expensesPage.value = 1;
-  fetchAllData();
-};
+  triggerDebouncedFetch();
+});
 
-// Manejar limpieza de filtros
-const handleClearFilter = () => {
-  initializeDefaults();
-  fetchAllData();
-};
+watch([page, itemsPerPage, sortBy, orderBy], () => {
+  fetchFiscalHistoryData();
+});
+
+watch([expensesPage, expensesItemsPerPage], () => {
+  fetchExpensesData();
+});
 
 const handleTableOptionsUpdate = (options) => {
   page.value = options.page;
   itemsPerPage.value = options.itemsPerPage;
-  if (options.sortBy) {
-    sortBy.value = options.sortBy;
+  if (options.sortBy && options.sortBy.length > 0) {
+    sortBy.value = options.sortBy[0].key;
+    orderBy.value = options.sortBy[0].order;
+  } else {
+    sortBy.value = undefined;
+    orderBy.value = undefined;
   }
-  fetchFiscalHistoryData();
 };
 
 const handleExpensesTableOptionsUpdate = (options) => {
   expensesPage.value = options.page;
   expensesItemsPerPage.value = options.itemsPerPage;
-  fetchExpensesData();
 };
 
-// Inicializar rango con el mes actual
-const initializeDefaults = () => {
-  const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+const handleClearFilters = () => {
+  searchQuery.value = "";
+  const dates = getDefaultDates(isCeEnabled.value);
+  startDate.value = dates.start;
+  endDate.value = dates.end;
+  sortBy.value = undefined;
+  orderBy.value = undefined;
+  page.value = 1;
+  expensesPage.value = 1;
+};
 
-  const formatOffsetDate = (d) => {
-    const dateCopy = new Date(d);
-    dateCopy.setMinutes(dateCopy.getMinutes() - dateCopy.getTimezoneOffset());
-    return dateCopy.toISOString().split("T")[0];
+const handleSort = (sortOptions) => {
+  sortBy.value = sortOptions.key;
+  orderBy.value = sortOptions.order;
+};
+
+const handleExport = async (format) => {
+  const params = {
+    q: searchQuery.value || undefined,
+    startDate: startDate.value || undefined,
+    endDate: endDate.value || undefined,
+    format: format,
   };
 
-  startDate.value = formatOffsetDate(startOfMonth);
-  endDate.value = formatOffsetDate(endOfMonth);
+  try {
+    const response = await axios.get("/history/export", {
+      params,
+      responseType: "blob",
+    });
+
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement("a");
+    link.href = url;
+
+    const contentDisposition = response.headers["content-disposition"];
+    let fileName = `IvaGeneral_${startDate.value}_${endDate.value}.${format}`;
+    if (contentDisposition) {
+      const fileNameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+      if (fileNameMatch && fileNameMatch[1]) {
+        fileName = fileNameMatch[1];
+      }
+    }
+
+    link.setAttribute("download", fileName);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+
+    toast.success("Archivo exportado con éxito.");
+  } catch (error) {
+    console.error("Error al exportar reporte de IVA general:", error);
+    toast.error("No se pudo exportar el reporte.");
+  }
 };
 
-onMounted(() => {
-  initializeDefaults();
+const handleShowDetailHistory = (history) => {
+  selectedHistory.value = { ...history };
+  currentHistoryDetails.value = history.details || [];
+  currentHistoryUser.value = history.user || {};
+  isDetailDialogVisible.value = true;
+  historyIdToEdit.value = history.id;
+  historyNameToEdit.value = history.business_name || "";
+};
+
+onMounted(async () => {
+  await fetchGeneralSettings();
   fetchAllData();
 });
 </script>
 
 <template>
   <div class="iva-general-page pb-12">
-    <div class="d-flex flex-column gap-3 mt-1">
-      <!-- KPI Cards Responsivas en 1 Sola Fila -->
-      <div class="d-flex flex-wrap flex-md-nowrap gap-3 mb-1">
-        <!-- Débito Fiscal -->
-        <div class="kpi-col-5">
-          <VCard v-if="loading" class="stats-card border-0 overflow-hidden h-100 pa-4">
-            <VSkeletonLoader type="list-item-avatar-two-line" />
-          </VCard>
-          <VCard v-else class="stats-card border-0 overflow-hidden h-100">
-            <div class="card-bg-decoration" :style="{ background: 'linear-gradient(45deg, rgba(var(--v-theme-warning), 0.12), transparent)' }"></div>
-            <VCardText class="pa-5 relative-content">
-              <div class="d-flex align-center justify-space-between mb-3">
-                <VAvatar color="warning" variant="tonal" size="44" rounded="lg">
-                  <VIcon icon="tabler-receipt-tax" size="24" />
-                </VAvatar>
-                <div class="text-right">
-                  <span class="text-overline font-weight-bold text-disabled">Débito Fiscal</span>
-                  <h4 class="text-h5 font-weight-black mt-1">
-                    <span class="text-xs font-weight-medium me-1">Bs.</span>{{ formatCurrency(debitoFiscal) }}
-                  </h4>
-                </div>
-              </div>
-              <VDivider class="mb-2 opacity-20" />
-              <div class="d-flex align-center justify-space-between">
-                <span class="text-caption font-weight-medium text-medium-emphasis">{{ detalleDebito.total_orders_with_iva || 0 }} ventas con IVA</span>
-                <VIcon icon="tabler-trending-up" size="16" color="warning" class="opacity-70" />
-              </div>
-            </VCardText>
-            <div class="accent-border" style="background-color: rgb(var(--v-theme-warning));"></div>
-          </VCard>
-        </div>
+    <!-- Resumen KPI con el mismo diseño que Facturas / Historial Fiscal -->
+    <VRow class="mb-2">
+      <VCol
+        v-for="(card, index) in kpiCards"
+        :key="index"
+        cols="12"
+        sm="6"
+        md="4"
+        lg=""
+        class="flex-grow-1"
+      >
+        <VCard border variant="flat" class="kpi-card pa-3">
+          <VSkeletonLoader v-if="loading" type="list-item-two-line" />
+          <div v-else class="d-flex align-center gap-3">
+            <div :class="['pa-3', 'kpi-icon-wrapper', card.bgColor]">
+              <VIcon :icon="card.icon" size="24" :color="card.color" />
+            </div>
+            <div class="d-flex flex-column overflow-hidden">
+              <span class="text-caption font-weight-bold text-disabled text-uppercase truncate">
+                {{ card.title }}
+              </span>
+              <span class="text-h6 font-weight-black text-high-emphasis truncate">
+                {{ card.value }}
+              </span>
+              <span class="text-super-xs text-medium-emphasis truncate font-weight-medium">
+                {{ card.subtitle }}
+              </span>
+            </div>
+          </div>
+        </VCard>
+      </VCol>
+    </VRow>
 
-        <!-- Crédito Fiscal -->
-        <div class="kpi-col-5">
-          <VCard v-if="loading" class="stats-card border-0 overflow-hidden h-100 pa-4">
-            <VSkeletonLoader type="list-item-avatar-two-line" />
-          </VCard>
-          <VCard v-else class="stats-card border-0 overflow-hidden h-100">
-            <div class="card-bg-decoration" :style="{ background: 'linear-gradient(45deg, rgba(var(--v-theme-info), 0.12), transparent)' }"></div>
-            <VCardText class="pa-5 relative-content">
-              <div class="d-flex align-center justify-space-between mb-3">
-                <VAvatar color="info" variant="tonal" size="44" rounded="lg">
-                  <VIcon icon="tabler-receipt-refund" size="24" />
-                </VAvatar>
-                <div class="text-right">
-                  <span class="text-overline font-weight-bold text-disabled">Crédito Fiscal</span>
-                  <h4 class="text-h5 font-weight-black mt-1">
-                    <span class="text-xs font-weight-medium me-1">Bs.</span>{{ formatCurrency(creditoFiscal) }}
-                  </h4>
-                </div>
-              </div>
-              <VDivider class="mb-2 opacity-20" />
-              <div class="d-flex align-center justify-space-between">
-                <span class="text-caption font-weight-medium text-medium-emphasis">{{ detalleCredito.total_expenses_with_iva || 0 }} gastos con IVA</span>
-                <VIcon icon="tabler-trending-down" size="16" color="info" class="opacity-70" />
-              </div>
-            </VCardText>
-            <div class="accent-border" style="background-color: rgb(var(--v-theme-info));"></div>
-          </VCard>
-        </div>
-
-        <!-- Saldo IVA -->
-        <div class="kpi-col-5">
-          <VCard v-if="loading" class="stats-card border-0 overflow-hidden h-100 pa-4">
-            <VSkeletonLoader type="list-item-avatar-two-line" />
-          </VCard>
-          <VCard v-else class="stats-card border-0 overflow-hidden h-100">
-            <div class="card-bg-decoration" :style="{ background: `linear-gradient(45deg, rgba(var(--v-theme-${getIvaStatus.color}), 0.12), transparent)` }"></div>
-            <VCardText class="pa-5 relative-content">
-              <div class="d-flex align-center justify-space-between mb-3">
-                <VAvatar :color="getIvaStatus.color" variant="tonal" size="44" rounded="lg">
-                  <VIcon :icon="getIvaStatus.icon" size="24" />
-                </VAvatar>
-                <div class="text-right">
-                  <span class="text-overline font-weight-bold text-disabled">Saldo IVA</span>
-                  <h4 class="text-h5 font-weight-black mt-1">
-                    <span class="text-xs font-weight-medium me-1">Bs.</span>{{ formatCurrency(Math.abs(ivaAPagar)) }}
-                  </h4>
-                </div>
-              </div>
-              <VDivider class="mb-2 opacity-20" />
-              <div class="d-flex align-center justify-space-between">
-                <span class="text-caption font-weight-medium text-medium-emphasis">{{ getIvaStatus.message }}</span>
-                <VIcon :icon="getIvaStatus.icon" size="16" :color="getIvaStatus.color" class="opacity-70" />
-              </div>
-            </VCardText>
-            <div class="accent-border" :style="{ backgroundColor: `rgb(var(--v-theme-${getIvaStatus.color}))` }"></div>
-          </VCard>
-        </div>
-
-        <!-- Retenciones (75% del Crédito Fiscal) -->
-        <div class="kpi-col-5">
-          <VCard v-if="loading" class="stats-card border-0 overflow-hidden h-100 pa-4">
-            <VSkeletonLoader type="list-item-avatar-two-line" />
-          </VCard>
-          <VCard v-else class="stats-card border-0 overflow-hidden h-100">
-            <div class="card-bg-decoration" :style="{ background: 'linear-gradient(45deg, rgba(var(--v-theme-secondary), 0.12), transparent)' }"></div>
-            <VCardText class="pa-5 relative-content">
-              <div class="d-flex align-center justify-space-between mb-3">
-                <VAvatar color="secondary" variant="tonal" size="44" rounded="lg">
-                  <VIcon icon="tabler-percentage" size="24" />
-                </VAvatar>
-                <div class="text-right">
-                  <span class="text-overline font-weight-bold text-disabled">Retenciones</span>
-                  <h4 class="text-h5 font-weight-black mt-1">
-                    <span class="text-xs font-weight-medium me-1">Bs.</span>{{ formatCurrency(retenciones) }}
-                  </h4>
-                </div>
-              </div>
-              <VDivider class="mb-2 opacity-20" />
-              <div class="d-flex align-center justify-space-between">
-                <span class="text-caption font-weight-medium text-medium-emphasis">75% Estimado Crédito</span>
-                <VIcon icon="tabler-percentage" size="16" color="secondary" class="opacity-70" />
-              </div>
-            </VCardText>
-            <div class="accent-border" style="background-color: rgb(var(--v-theme-secondary));"></div>
-          </VCard>
-        </div>
-
-        <!-- IGTF (3% de ventas SPE) -->
-        <div class="kpi-col-5">
-          <VCard v-if="loading" class="stats-card border-0 overflow-hidden h-100 pa-4">
-            <VSkeletonLoader type="list-item-avatar-two-line" />
-          </VCard>
-          <VCard v-else class="stats-card border-0 overflow-hidden h-100">
-            <div class="card-bg-decoration" :style="{ background: 'linear-gradient(45deg, rgba(var(--v-theme-error), 0.1), transparent)' }"></div>
-            <VCardText class="pa-5 relative-content">
-              <div class="d-flex align-center justify-space-between mb-3">
-                <VAvatar color="error" variant="tonal" size="44" rounded="lg">
-                  <VIcon icon="tabler-building-bank" size="24" />
-                </VAvatar>
-                <div class="text-right">
-                  <span class="text-overline font-weight-bold text-disabled">IGTF (3%)</span>
-                  <h4 class="text-h5 font-weight-black mt-1">
-                    <span class="text-xs font-weight-medium me-1">Bs.</span>{{ formatCurrency(igtfAmount) }}
-                  </h4>
-                </div>
-              </div>
-              <VDivider class="mb-2 opacity-20" />
-              <div class="d-flex align-center justify-space-between">
-                <span class="text-caption font-weight-medium text-medium-emphasis">{{ detalleDebito.total_spe_count || 0 }} ventas SPE</span>
-                <VIcon icon="tabler-building-bank" size="16" color="error" class="opacity-70" />
-              </div>
-            </VCardText>
-            <div class="accent-border" style="background-color: rgb(var(--v-theme-error));"></div>
-          </VCard>
-        </div>
-      </div>
-
-      <!-- Filtros de Fecha -->
-      <IvaFiscalFilters
-        v-model:start-date="startDate"
-        v-model:end-date="endDate"
+    <!-- Filtros de Búsqueda y Rango de Fechas (Mensual / Quincenal según CE) -->
+    <div class="d-flex flex-column gap-3">
+      <HistoryFilters
+        v-model:searchQuery="searchQuery"
+        v-model:startDate="startDate"
+        v-model:endDate="endDate"
+        :is-ce-enabled="isCeEnabled"
         :loading="loading"
-        @apply-filter="handleApplyFilter"
-        @clear-filter="handleClearFilter"
-        @refresh="fetchAllData"
-        class="mb-0"
+        @clear="handleClearFilters"
+        @export="handleExport"
+        @sort="handleSort"
       />
 
       <!-- Tablas de Débito y Crédito Fiscal -->
-      <VRow class="ma-0 mt-3">
+      <VRow class="ma-0 mt-1">
+        <!-- Tabla de Débito Fiscal (Ventas) -->
         <VCol cols="12" class="pa-0 mb-6">
           <DebitoFiscalTable
             :fiscal-data="fiscalData"
@@ -431,8 +448,11 @@ onMounted(() => {
             :items-per-page="itemsPerPage"
             :page="page"
             @update:options="handleTableOptionsUpdate"
+            @show-detailHistory="handleShowDetailHistory"
           />
         </VCol>
+
+        <!-- Tabla de Crédito Fiscal (Compras / Gastos con IVA) -->
         <VCol cols="12" class="pa-0">
           <CreditoFiscalTable
             :expenses-data="expensesData"
@@ -445,65 +465,66 @@ onMounted(() => {
         </VCol>
       </VRow>
     </div>
+
+    <!-- Modal de Detalle de Factura / Venta Fiscal -->
+    <DetailHistoryShowDialog
+      v-model="isDetailDialogVisible"
+      :histories="selectedHistory"
+      :details="currentHistoryDetails"
+      :user="currentHistoryUser"
+      :history-id="historyIdToEdit"
+      :history-name="historyNameToEdit"
+    />
   </div>
 </template>
 
 <style scoped>
-.stats-card {
-  border-radius: 10px !important;
-  backdrop-filter: blur(8px);
-  background: rgba(var(--v-theme-surface), 90%) !important;
-  box-shadow: 0 4px 18px 0 rgba(0, 0, 0, 4%) !important;
-  transition: all 0.25s ease-in-out;
+.kpi-card {
+  border-radius: 5px !important;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.stats-card:hover {
-  box-shadow: 0 6px 22px 0 rgba(0, 0, 0, 8%) !important;
-  transform: translateY(-3px);
+.kpi-icon-wrapper {
+  border-radius: 5px !important;
 }
 
-.card-bg-decoration {
-  position: absolute;
-  z-index: 0;
-  border-radius: 50%;
-  block-size: 90px;
-  filter: blur(35px);
-  inline-size: 90px;
-  inset-block-start: -15px;
-  inset-inline-end: -15px;
-  pointer-events: none;
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
 }
 
-.relative-content {
-  position: relative;
-  z-index: 1;
+.bg-success-tonal {
+  background-color: rgba(var(--v-theme-success), 0.1);
 }
 
-.accent-border {
-  position: absolute;
-  block-size: 65%;
-  border-end-end-radius: 4px;
-  border-start-end-radius: 4px;
-  inline-size: 4px;
-  inset-block-start: 17.5%;
-  inset-inline-start: 0;
-  opacity: 0.85;
+.bg-primary-tonal {
+  background-color: rgba(var(--v-theme-primary), 0.1);
 }
 
-.text-h5 {
-  color: rgb(var(--v-theme-on-surface));
-  letter-spacing: -0.5px !important;
+.bg-warning-tonal {
+  background-color: rgba(var(--v-theme-warning), 0.1);
 }
 
-.kpi-col-5 {
-  flex: 1 1 0;
-  min-width: 0;
+.bg-error-tonal {
+  background-color: rgba(var(--v-theme-error), 0.1);
 }
 
-@media (max-width: 959px) {
-  .kpi-col-5 {
-    flex: 1 1 calc(50% - 12px);
-    min-width: 220px;
-  }
+.bg-info-tonal {
+  background-color: rgba(var(--v-theme-info), 0.1);
+}
+
+.bg-secondary-tonal {
+  background-color: rgba(var(--v-theme-secondary), 0.1);
+}
+
+.text-super-xs {
+  font-size: 0.65rem !important;
+  line-height: 1.1;
+}
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>

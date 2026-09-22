@@ -16,10 +16,14 @@ class GetFiscalHistoryRequest extends FormRequest
         return [
             'start_date' => 'nullable|date',
             'end_date' => 'nullable|date',
+            'startDate' => 'nullable|date',
+            'endDate' => 'nullable|date',
             'page' => 'nullable|integer',
             'itemsPerPage' => 'nullable|integer',
             'sortBy' => 'nullable|string',
-            'orderBy' => 'nullable|string'
+            'orderBy' => 'nullable|string',
+            'q' => 'nullable|string|max:100',
+            'search' => 'nullable|string|max:100',
         ];
     }
 }

@@ -41,7 +41,7 @@ const matchedInvoice = ref(null);
 // Buscar factura para autocompletar Nota de Crédito
 let invoiceLookupDebounce = null;
 const searchInvoiceForNc = async (invoiceNumber) => {
-  const query = invoiceNumber?.trim();
+  const query = String(invoiceNumber || "").trim();
   if (!query) {
     matchedInvoice.value = null;
     return;
@@ -56,18 +56,19 @@ const searchInvoiceForNc = async (invoiceNumber) => {
     if (response.data?.found && response.data?.data) {
       const inv = response.data.data;
       matchedInvoice.value = inv;
-      ncForm.machine_serial = inv.machine_serial || ncForm.machine_serial;
-      ncForm.invoice_date   = inv.invoice_date || ncForm.invoice_date;
-      ncForm.invoice_hour   = inv.invoice_hour || ncForm.invoice_hour;
-      ncForm.client_name    = inv.client_name || ncForm.client_name;
-      ncForm.client_rif     = inv.client_rif || ncForm.client_rif;
-      ncForm.refund_amount  = inv.refund_amount;
-      ncForm.is_taxable     = inv.is_taxable;
-      toast.success(`Factura #${inv.invoice_number} encontrada. Datos cargados automáticamente.`);
+      ncForm.invoice_number = String(inv.invoice_number || query);
+      ncForm.machine_serial = String(inv.machine_serial || ncForm.machine_serial || "");
+      ncForm.invoice_date   = String(inv.invoice_date || "");
+      ncForm.invoice_hour   = String(inv.invoice_hour || "00:00:00");
+      ncForm.client_name    = String(inv.client_name || "");
+      ncForm.client_rif     = String(inv.client_rif || "");
+      ncForm.refund_amount  = inv.refund_amount != null ? Number(inv.refund_amount) : null;
+      ncForm.is_taxable     = Boolean(inv.is_taxable);
+      toast.success(`Factura #${inv.invoice_number} encontrada. Datos cargados para revisión.`);
     } else {
       matchedInvoice.value = null;
       if (response.data?.default_serial && !ncForm.machine_serial) {
-        ncForm.machine_serial = response.data.default_serial;
+        ncForm.machine_serial = String(response.data.default_serial);
       }
     }
   } catch (error) {
@@ -79,12 +80,13 @@ const searchInvoiceForNc = async (invoiceNumber) => {
 
 const handleInvoiceNumberInput = (val) => {
   clearTimeout(invoiceLookupDebounce);
-  if (!val) {
+  const query = String(val || "").trim();
+  if (!query) {
     matchedInvoice.value = null;
     return;
   }
   invoiceLookupDebounce = setTimeout(() => {
-    searchInvoiceForNc(val);
+    searchInvoiceForNc(query);
   }, 600);
 };
 
@@ -92,7 +94,7 @@ const loadDefaultSerial = async () => {
   try {
     const response = await axios.get("/fiscal/invoices/lookup");
     if (response.data?.default_serial && !ncForm.machine_serial) {
-      ncForm.machine_serial = response.data.default_serial;
+      ncForm.machine_serial = String(response.data.default_serial);
     }
   } catch (error) {
     console.error("Error al obtener serial por defecto:", error);
@@ -164,7 +166,7 @@ const handleReportZ = () => {
 };
 
 const handleReprintZ = () => {
-  const zNum = zReportNumber.value?.trim();
+  const zNum = String(zReportNumber.value || "").trim();
   if (!zNum) return toast.error("Por favor, ingrese un número de Reporte Z.");
   toast.confirm(`¿Desea reimprimir el Reporte Z #${zNum}?`, () =>
     sendCommand("REPRINT_REPORT_Z", { z_number: zNum })
@@ -173,30 +175,38 @@ const handleReprintZ = () => {
 
 /** Validar y enviar Nota de Crédito según Protocolo PNP 0141 v5.4 */
 const handleCreditNote = () => {
-  // Validación mínima de campos requeridos por el protocolo
-  if (!ncForm.invoice_number?.trim())
+  const invNumber = String(ncForm.invoice_number || "").trim();
+  const machineSerial = String(ncForm.machine_serial || "").trim();
+  const invDate = String(ncForm.invoice_date || "").trim();
+  const invHour = String(ncForm.invoice_hour || "").trim() || "00:00:00";
+  const refundAmt = Number(ncForm.refund_amount);
+  const clientName = String(ncForm.client_name || "").trim() || "CLIENTE GENERICO";
+  const clientRif = String(ncForm.client_rif || "").trim() || "V000000000";
+
+  // Validación de campos requeridos por el protocolo
+  if (!invNumber)
     return toast.error("Ingrese el número de la factura original.");
-  if (!ncForm.machine_serial?.trim())
+  if (!machineSerial)
     return toast.error("Ingrese el serial de la máquina fiscal que emitió la factura.");
-  if (!ncForm.invoice_date?.trim())
+  if (!invDate)
     return toast.error("Ingrese la fecha de la factura original.");
-  if (!ncForm.invoice_hour?.trim())
+  if (!invHour)
     return toast.error("Ingrese la hora de la factura original.");
-  if (!ncForm.refund_amount || parseFloat(ncForm.refund_amount) <= 0)
+  if (isNaN(refundAmt) || refundAmt <= 0)
     return toast.error("Ingrese un monto de devolución válido (mayor a 0).");
 
   toast.confirm(
-    `¿Confirma la emisión de una Nota de Crédito por Bs ${parseFloat(ncForm.refund_amount).toFixed(2)} ` +
-    `sobre la Factura #${ncForm.invoice_number}?\n\nEsta acción genera un documento fiscal irreversible.`,
+    `¿Confirma la emisión de una Nota de Crédito por Bs ${refundAmt.toFixed(2)} ` +
+    `sobre la Factura #${invNumber}?\n\nEsta acción genera un documento fiscal irreversible.`,
     () => sendCommand("CREDIT_NOTE", {
-      invoice_number: ncForm.invoice_number.trim(),
-      machine_serial: ncForm.machine_serial.trim(),
-      invoice_date:   ncForm.invoice_date.trim(),
-      invoice_hour:   ncForm.invoice_hour.trim() || "00:00:00",
-      refund_amount:  parseFloat(ncForm.refund_amount),
-      client_name:    ncForm.client_name?.trim() || "CLIENTE GENERICO",
-      client_rif:     ncForm.client_rif?.trim()  || "V000000000",
-      is_taxable:     ncForm.is_taxable,
+      invoice_number: invNumber,
+      machine_serial: machineSerial,
+      invoice_date:   invDate,
+      invoice_hour:   invHour,
+      refund_amount:  refundAmt,
+      client_name:    clientName,
+      client_rif:     clientRif,
+      is_taxable:     Boolean(ncForm.is_taxable),
     })
   );
 };
@@ -376,6 +386,7 @@ onUnmounted(() => {
                   append-inner-icon="tabler-scan"
                   :loading="isSearchingInvoice"
                   clearable
+                  @keydown.enter.prevent="() => searchInvoiceForNc(ncForm.invoice_number)"
                   @update:model-value="handleInvoiceNumberInput"
                   @click:append-inner="() => searchInvoiceForNc(ncForm.invoice_number)"
                 />
@@ -389,6 +400,7 @@ onUnmounted(() => {
                   density="compact"
                   prepend-inner-icon="tabler-device-floppy"
                   clearable
+                  @keydown.enter.prevent
                 />
               </VCol>
               <VCol cols="12" sm="6">
@@ -400,6 +412,7 @@ onUnmounted(() => {
                   density="compact"
                   prepend-inner-icon="tabler-calendar"
                   type="date"
+                  @keydown.enter.prevent
                 />
               </VCol>
               <VCol cols="12" sm="6">
@@ -411,6 +424,7 @@ onUnmounted(() => {
                   density="compact"
                   prepend-inner-icon="tabler-clock"
                   type="time"
+                  @keydown.enter.prevent
                 />
               </VCol>
             </VRow>
@@ -427,14 +441,14 @@ onUnmounted(() => {
               icon="tabler-info-circle"
             >
               <div class="d-flex flex-wrap justify-space-between align-center gap-1">
-                <span><strong>Cliente:</strong> {{ matchedInvoice.client_name }} ({{ matchedInvoice.client_rif }})</span>
+                <span><strong>Cliente:</strong> {{ matchedInvoice.client_name || 'N/A' }} ({{ matchedInvoice.client_rif || 'N/A' }})</span>
                 <span><strong>Total Original:</strong> Bs. {{ Number(matchedInvoice.total_amount || 0).toFixed(2) }}</span>
               </div>
               <div class="d-flex flex-wrap gap-2 mt-1 text-super-xs text-medium-emphasis">
                 <span>Exento: Bs. {{ Number(matchedInvoice.exempt_amount || 0).toFixed(2) }}</span>
                 <span>Base (16%): Bs. {{ Number(matchedInvoice.taxable_amount || 0).toFixed(2) }}</span>
                 <span>IVA: Bs. {{ Number(matchedInvoice.iva_amount || 0).toFixed(2) }}</span>
-                <span v-if="matchedInvoice.spe_surcharge_amount > 0">IGTF: Bs. {{ Number(matchedInvoice.spe_surcharge_amount).toFixed(2) }}</span>
+                <span v-if="Number(matchedInvoice.spe_surcharge_amount || 0) > 0">IGTF: Bs. {{ Number(matchedInvoice.spe_surcharge_amount).toFixed(2) }}</span>
               </div>
             </VAlert>
 
@@ -455,6 +469,7 @@ onUnmounted(() => {
                   type="number"
                   min="0.01"
                   step="0.01"
+                  @keydown.enter.prevent
                 />
               </VCol>
               <VCol cols="12" sm="6" class="d-flex align-center">
@@ -476,6 +491,7 @@ onUnmounted(() => {
                   prepend-inner-icon="tabler-user"
                   :maxlength="38"
                   clearable
+                  @keydown.enter.prevent
                 />
               </VCol>
               <VCol cols="12" sm="6">
@@ -488,6 +504,7 @@ onUnmounted(() => {
                   prepend-inner-icon="tabler-id"
                   :maxlength="12"
                   clearable
+                  @keydown.enter.prevent
                 />
               </VCol>
             </VRow>
@@ -498,7 +515,7 @@ onUnmounted(() => {
               block
               class="mt-3 font-weight-bold"
               prepend-icon="tabler-file-minus"
-              :disabled="!ncForm.invoice_number?.trim() || !ncForm.machine_serial?.trim() || !ncForm.refund_amount"
+              :disabled="!String(ncForm.invoice_number || '').trim() || !String(ncForm.machine_serial || '').trim() || !ncForm.refund_amount"
               :loading="actionLoading.CREDIT_NOTE"
               @click="handleCreditNote"
             >

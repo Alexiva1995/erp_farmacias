@@ -741,35 +741,35 @@ class OrderQueryService
     public function getDebitoFiscal(string $startDate, string $endDate): array
     {
         try {
-            // Consultar tabla fiscal_history para registros con iva_amount
+            // Consultar tabla fiscal_history para registros dentro del rango de fechas
             $query = DB::table('fiscal_history')
-                ->whereNotNull('iva_amount')
-                ->where('iva_amount', '>', 0)
                 ->where('invoice_date', '>=', '2026-01-01')
-                ->whereBetween('invoice_date', [$startDate, $endDate]);
+                ->whereDate('invoice_date', '>=', $startDate)
+                ->whereDate('invoice_date', '<=', $endDate);
 
             $fiscalRecords = $query->get();
 
             // Calcular totales
-            $totalIvaAmount = $fiscalRecords->sum('iva_amount');
-            $totalSpeAmount = $fiscalRecords->sum('spe_amount') ?? 0;
+            $totalIvaAmount = (float) $fiscalRecords->sum('iva_amount');
+            $totalSpeAmount = (float) ($fiscalRecords->sum('spe_surcharge_amount') ?? $fiscalRecords->sum('spe_amount') ?? 0);
+            $totalExemptAmount = (float) $fiscalRecords->sum('exempt_amount');
+            $totalTaxableAmount = (float) $fiscalRecords->sum('taxable_amount');
+            $grandTotal = (float) $fiscalRecords->sum('total_amount');
 
-            // El d├®bito fiscal es la suma del IVA cobrado en ventas
-            $totalDebito = $totalIvaAmount + $totalSpeAmount;
+            // El débito fiscal es la suma del IVA cobrado en ventas
+            $totalDebito = $totalIvaAmount;
 
-            // IGTF: ventas marcadas como SPE ÔÇö el 3% se aplica sobre el total_amount de la venta
-            $speRecords = DB::table('fiscal_history')
-                ->where('spe', 1)
-                ->where('invoice_date', '>=', '2026-01-01')
-                ->whereBetween('invoice_date', [$startDate, $endDate])
-                ->get();
-            $totalSpeSalesAmount = $speRecords->sum('total_amount');
+            // Ventas marcadas como SPE — IGTF
+            $speRecords = $fiscalRecords->where('spe', 1);
+            $totalSpeSalesAmount = (float) $speRecords->sum('total_amount');
             $totalSpeCount       = $speRecords->count();
-
 
             return [
                 'total_records'          => $fiscalRecords->count(),
                 'total_iva_amount'       => $totalIvaAmount,
+                'total_exempt_amount'    => $totalExemptAmount,
+                'total_taxable_amount'   => $totalTaxableAmount,
+                'grand_total'            => $grandTotal,
                 'total_spe_amount'       => $totalSpeAmount,
                 'total_spe_sales_amount' => $totalSpeSalesAmount, // total de ventas SPE (base para IGTF)
                 'total_spe_count'        => $totalSpeCount,       // cantidad de ventas SPE
@@ -782,18 +782,33 @@ class OrderQueryService
             throw $e;
         }
     }
-    public function getFiscalHistoryRecords(string $startDate, string $endDate, int $page = 1, int $itemsPerPage = 10, string $sortBy = 'invoice_date', string $orderBy = 'desc'): array
+
+    public function getFiscalHistoryRecords(string $startDate, string $endDate, int $page = 1, int $itemsPerPage = 10, string $sortBy = 'invoice_date', string $orderBy = 'desc', ?string $search = null): array
     {
         try {
-            // Query base para fiscal_history con IVA - Solo desde 2026 en adelante
-            $query = DB::table('fiscal_history')
-                ->whereNotNull('iva_amount')
-                ->where('iva_amount', '>', 0)
+            // Query base para fiscal_history
+            $query = \App\Models\FiscalHistory::with([
+                'user:id,username',
+                'details:id,fiscal_history_id,product_id,product_name,quantity,exempt_amount,vat_status,total_amount,iva_amount',
+                'order:id,order_date,created_at,client_id',
+                'order.client:id,identification_type,identification',
+            ])
                 ->where('invoice_date', '>=', '2026-01-01')
-                ->whereBetween('invoice_date', [$startDate, $endDate]);
+                ->whereDate('invoice_date', '>=', $startDate)
+                ->whereDate('invoice_date', '<=', $endDate);
 
-            // Aplicar ordenamiento din├ímico
-            $validSortColumns = ['order_id', 'invoice_number', 'identification', 'business_name', 'exempt_amount', 'taxable_base', 'iva_amount', 'total_amount', 'invoice_date'];
+            if (!empty($search)) {
+                $term = "%{$search}%";
+                $query->where(function ($q) use ($term) {
+                    $q->where('invoice_number', 'like', $term)
+                        ->orWhere('fiscal_id', 'like', $term)
+                        ->orWhere('identification', 'like', $term)
+                        ->orWhere('business_name', 'like', $term);
+                });
+            }
+
+            // Aplicar ordenamiento dinámico
+            $validSortColumns = ['id', 'order_id', 'fiscal_id', 'invoice_number', 'identification', 'business_name', 'exempt_amount', 'taxable_amount', 'iva_amount', 'spe_surcharge_amount', 'total_amount', 'invoice_date'];
             $sort = in_array($sortBy, $validSortColumns) ? $sortBy : 'invoice_date';
             $direction = in_array(strtolower($orderBy), ['asc', 'desc']) ? $orderBy : 'desc';
 
@@ -807,52 +822,23 @@ class OrderQueryService
             $totalQuery = clone $query;
             $totalRecords = $totalQuery->count();
 
-            // Aplicar paginaci├│n
+            // Aplicar paginación
             $offset = ($page - 1) * $itemsPerPage;
             $records = $query
                 ->skip($offset)
                 ->take($itemsPerPage)
                 ->get();
 
-            // Formatear los registros para el frontend
-            $formattedRecords = $records->map(function ($record) {
-                return [
-                    'id' => $record->id,
-                    'order_id' => $record->order_id,
-                    'invoice_number' => $record->invoice_number,
-                    'identification' => $record->identification,
-                    'business_name' => $record->business_name,
-                    'address' => $record->address,
-                    'exempt_amount' => (float) $record->exempt_amount,
-                    'taxable_base' => (float) ($record->taxable_base ?? ($record->total_amount - $record->iva_amount - $record->exempt_amount)),
-                    'iva_amount' => (float) $record->iva_amount,
-                    'total_amount' => (float) $record->total_amount,
-                    'invoice_date' => $record->invoice_date,
-                    'spe' => (bool) $record->spe,
-                    'created_at' => $record->created_at,
-                    'updated_at' => $record->updated_at
-                ];
-            });
-
-            // Calcular totales para la p├ígina actual
-            $pageTotals = [
-                'total_exempt' => $formattedRecords->sum('exempt_amount'),
-                'total_iva' => $formattedRecords->sum('iva_amount'),
-                'total_amount' => $formattedRecords->sum('total_amount')
-            ];
-
-
             return [
-                'data' => $formattedRecords->toArray(),
+                'data' => $records,
                 'pagination' => [
                     'current_page' => $page,
                     'per_page' => $itemsPerPage,
                     'total' => $totalRecords,
-                    'last_page' => ceil($totalRecords / $itemsPerPage),
+                    'last_page' => ceil($totalRecords / max($itemsPerPage, 1)),
                     'from' => $offset + 1,
                     'to' => min($offset + $itemsPerPage, $totalRecords)
                 ],
-                'totals' => $pageTotals,
                 'periodo' => [
                     'start_date' => $startDate,
                     'end_date' => $endDate

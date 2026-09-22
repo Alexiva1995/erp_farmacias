@@ -1,4 +1,6 @@
 <script setup>
+import AppEmptyState from "@/components/AppEmptyState.vue";
+
 const props = defineProps({
   fiscalData: { type: Array, required: true },
   loading: { type: Boolean, default: false },
@@ -7,30 +9,36 @@ const props = defineProps({
   page: { type: Number, required: true },
 });
 
-const emit = defineEmits(["update:options"]);
+const emit = defineEmits(["update:options", "show-detailHistory"]);
 
 const headers = [
   { 
-    title: "ID", 
-    key: "fiscal_id", 
+    title: "N° FACTURA", 
+    key: "invoice_number", 
     sortable: true,
-    value: item => item.fiscal_id ? `#${item.fiscal_id}` : '',
-    cellProps: { class: 'text-sm font-weight-black text-primary' }
+    value: item => item.invoice_number ? `${item.invoice_number}` : '—',
+    cellProps: { class: 'text-sm font-weight-black', style: 'color: #e91e63 !important;' }
   },
   { 
-    title: "IDENTIFICACIÓN", 
-    key: "identification", 
-    sortable: true,
-    value: item => (item.identification || 'N/A').toUpperCase(),
-    cellProps: { class: 'text-sm text-medium-emphasis' }
+    title: "RAZÓN SOCIAL", 
+    key: "business_name", 
+    sortable: true, 
+    width: "25%"
   },
-  {
-    title: "RAZÓN SOCIAL",
-    key: "business_name",
+  { 
+    title: "FECHA", 
+    key: "invoice_date", 
     sortable: true,
-    width: "35%",
-    value: item => (item.business_name || 'N/A').toUpperCase(),
-    cellProps: { class: 'text-sm text-medium-emphasis text-uppercase truncate' }
+    value: item => {
+      const dt = item.invoice_date || item.created_at;
+      if (!dt) return '';
+      if (typeof dt === 'string' && /^\d{4}-\d{2}-\d{2}/.test(dt.trim())) {
+        const parts = dt.trim().split('T')[0].split('-');
+        return `${parts[2]}/${parts[1]}/${parts[0]}`;
+      }
+      return new Date(dt).toLocaleDateString("es-VE");
+    },
+    cellProps: { class: 'text-sm text-medium-emphasis' }
   },
   { 
     title: "EXENTO", 
@@ -40,12 +48,12 @@ const headers = [
     value: item => formatCurrency(item.exempt_amount),
     cellProps: { class: 'text-sm text-medium-emphasis' }
   },
-  {
-    title: "BASE IMPONIBLE",
-    key: "taxable_base",
-    sortable: true,
+  { 
+    title: "BASE", 
+    key: "taxable_amount", 
+    sortable: true, 
     align: "end",
-    value: item => formatCurrency(item.taxable_base),
+    value: item => formatCurrency(item.taxable_amount ?? item.taxable_base),
     cellProps: { class: 'text-sm text-medium-emphasis' }
   },
   { 
@@ -57,13 +65,30 @@ const headers = [
     cellProps: { class: 'text-sm text-medium-emphasis' }
   },
   { 
+    title: "SUBTOTAL", 
+    key: "subtotal", 
+    sortable: false, 
+    align: "end",
+    value: item => formatCurrency((Number(item.total_amount) || 0) - (Number(item.spe_surcharge_amount) || 0)),
+    cellProps: { class: 'text-sm font-weight-bold text-high-emphasis' }
+  },
+  { 
+    title: "IGTF", 
+    key: "spe_surcharge_amount", 
+    sortable: true, 
+    align: "end",
+    value: item => formatCurrency(item.spe_surcharge_amount),
+    cellProps: { class: 'text-sm font-weight-bold text-error' }
+  },
+  { 
     title: "TOTAL", 
     key: "total_amount", 
     sortable: true, 
     align: "end",
     value: item => formatCurrency(item.total_amount),
-    cellProps: { class: 'text-sm font-weight-black text-primary' }
-  }
+    cellProps: { class: 'text-sm font-weight-black text-high-emphasis' }
+  },
+  { title: "ACCIÓN", key: "actions", sortable: false, align: "center" },
 ];
 
 const formatCurrency = (amount) => {
@@ -119,39 +144,38 @@ const formatDate = (dateString) => {
           class="text-no-wrap premium-table"
           @update:options="(options) => emit('update:options', options)"
         >
-
-          <template #item.fiscal_id="{ item }">
-            <span class="text-xs font-weight-black text-primary">#{{
-              item.fiscal_id
-            }}</span>
+          <!-- Estado Vacío -->
+          <template #no-data>
+            <AppEmptyState
+              icon="tabler-receipt-off"
+              title="No se encontraron registros de ventas"
+              description="Intenta ajustando el rango de fechas o los filtros seleccionados."
+              class="py-6"
+            />
           </template>
 
           <template #item.business_name="{ item }">
-            <div class="d-flex flex-column py-2">
-                <span class="text-sm font-weight-black text-high-emphasis text-uppercase truncate" style="max-width: 350px">
-                  {{ item.business_name }}
-                </span>
-                <span class="text-super-xs text-disabled truncate uppercase font-weight-medium">
-                  {{ formatDate(item.invoice_date) }}
-                </span>
+            <div class="d-flex flex-column py-1">
+              <span class="text-sm font-weight-bold text-high-emphasis text-uppercase truncate" style="max-width: 250px;">
+                {{ item.business_name || 'N/A' }}
+              </span>
+              <span class="text-xs text-medium-emphasis text-uppercase">
+                {{ item.identification || 'N/A' }}
+              </span>
             </div>
           </template>
 
-          <template #item.iva_amount="{ item }">
-            <div class="d-flex flex-column align-end">
-              <span class="text-sm font-weight-black text-high-emphasis">{{
-                formatCurrency(item.iva_amount)
-              }}</span>
-              <span
-                v-if="item.spe"
-                class="text-super-xs text-warning font-weight-black"
-                >+IGTF</span
+          <template #item.actions="{ item }">
+            <div class="d-flex align-center justify-center gap-1">
+              <IconBtn
+                color="primary"
+                title="Ver Detalle"
+                :aria-label="`Ver detalle de factura ${item.invoice_number || item.id}`"
+                @click="emit('show-detailHistory', item)"
               >
+                <VIcon icon="tabler-eye" />
+              </IconBtn>
             </div>
-          </template>
-
-          <template #item.total_amount="{ item }">
-            <span class="text-sm font-weight-bold">{{ formatCurrency(item.total_amount) }}</span>
           </template>
         </VDataTableServer>
       </VCard>

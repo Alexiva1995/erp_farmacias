@@ -453,8 +453,9 @@ class OrderController extends Controller
     public function getFiscalHistoryData(GetFiscalHistoryRequest $request): JsonResponse
     {
         try {
-            $startDate = $request->start_date ?? now()->startOfMonth()->format('Y-m-d');
-            $endDate = $request->end_date ?? now()->endOfMonth()->format('Y-m-d');
+            $startDate = $request->start_date ?? $request->startDate ?? now()->startOfMonth()->format('Y-m-d');
+            $endDate = $request->end_date ?? $request->endDate ?? now()->endOfMonth()->format('Y-m-d');
+            $search = $request->q ?? $request->search ?? null;
 
             // Asegurar que la fecha inicial no sea menor a 2026
             if ($startDate < '2026-01-01') {
@@ -474,7 +475,8 @@ class OrderController extends Controller
                 $page,
                 $itemsPerPage,
                 $sortBy,
-                $orderBy
+                $orderBy,
+                $search
             );
 
             // Transformar datos mediante Api Resource para garantizar consistencia arquitectónica

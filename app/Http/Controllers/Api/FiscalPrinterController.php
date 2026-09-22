@@ -200,10 +200,10 @@ class FiscalPrinterController extends Controller
             $query = trim((string) $request->input('invoice_number', ''));
             
             // Serial por defecto (último serial registrado en historial fiscal)
-            $defaultSerial = FiscalHistory::whereNotNull('fiscal_id')
+            $defaultSerial = (string) (FiscalHistory::whereNotNull('fiscal_id')
                 ->where('fiscal_id', '!=', '')
                 ->latest('id')
-                ->value('fiscal_id') ?? '';
+                ->value('fiscal_id') ?? '');
 
             if (empty($query)) {
                 return response()->json([
@@ -223,6 +223,43 @@ class FiscalPrinterController extends Controller
                 ->latest('id')
                 ->first();
 
+            // Fallback a modelo Order si no se localizó directamente en FiscalHistory
+            if (!$invoice && !empty($numericOnly)) {
+                $order = \App\Models\Order::with(['client', 'fiscalHistories'])
+                    ->where('id', $numericOnly)
+                    ->orWhere('invoice_number', $query)
+                    ->orWhere('invoice_number', $padded)
+                    ->orWhere('invoice_number', $numericOnly)
+                    ->latest('id')
+                    ->first();
+
+                if ($order) {
+                    $orderFiscal = $order->fiscalHistories()->latest('id')->first();
+                    $date = $orderFiscal?->invoice_date ?? $order->created_at;
+                    $carbonDate = $date ? \Carbon\Carbon::parse($date) : now();
+
+                    return response()->json([
+                        'found' => true,
+                        'default_serial' => $defaultSerial,
+                        'data' => [
+                            'invoice_number' => (string) ($orderFiscal?->invoice_number ?: ($order->invoice_number ?: $padded)),
+                            'machine_serial' => (string) (!empty($orderFiscal?->fiscal_id) ? $orderFiscal->fiscal_id : $defaultSerial),
+                            'invoice_date'   => $carbonDate->format('Y-m-d'),
+                            'invoice_hour'   => $carbonDate->format('H:i:s'),
+                            'client_name'    => (string) ($orderFiscal?->business_name ?: ($order->client?->name ?: 'CLIENTE GENERICO')),
+                            'client_rif'     => (string) ($orderFiscal?->identification ?: ($order->client?->id_number ?: 'V000000000')),
+                            'refund_amount'  => (float) ($orderFiscal?->total_amount ?? $order->total_amount ?? 0),
+                            'is_taxable'     => (float) ($orderFiscal?->iva_amount ?? $order->tax_amount ?? 0) > 0,
+                            'exempt_amount'  => (float) ($orderFiscal?->exempt_amount ?? 0),
+                            'taxable_amount' => (float) ($orderFiscal?->taxable_amount ?? 0),
+                            'iva_amount'     => (float) ($orderFiscal?->iva_amount ?? $order->tax_amount ?? 0),
+                            'spe_surcharge_amount' => (float) ($orderFiscal?->spe_surcharge_amount ?? 0),
+                            'total_amount'   => (float) ($orderFiscal?->total_amount ?? $order->total_amount ?? 0),
+                        ],
+                    ]);
+                }
+            }
+
             if (!$invoice) {
                 return response()->json([
                     'found' => false,
@@ -238,12 +275,12 @@ class FiscalPrinterController extends Controller
                 'found' => true,
                 'default_serial' => $defaultSerial,
                 'data' => [
-                    'invoice_number' => $invoice->invoice_number,
-                    'machine_serial' => !empty($invoice->fiscal_id) ? $invoice->fiscal_id : $defaultSerial,
+                    'invoice_number' => (string) $invoice->invoice_number,
+                    'machine_serial' => (string) (!empty($invoice->fiscal_id) ? $invoice->fiscal_id : $defaultSerial),
                     'invoice_date'   => $carbonDate->format('Y-m-d'),
                     'invoice_hour'   => $carbonDate->format('H:i:s'),
-                    'client_name'    => $invoice->business_name ?: 'CLIENTE GENERICO',
-                    'client_rif'     => $invoice->identification ?: 'V000000000',
+                    'client_name'    => (string) ($invoice->business_name ?: 'CLIENTE GENERICO'),
+                    'client_rif'     => (string) ($invoice->identification ?: 'V000000000'),
                     'refund_amount'  => (float) $invoice->total_amount,
                     'is_taxable'     => (float) ($invoice->iva_amount ?? 0) > 0,
                     'exempt_amount'  => (float) ($invoice->exempt_amount ?? 0),
