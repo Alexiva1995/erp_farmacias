@@ -49,7 +49,7 @@ const formatDateForInput = (dateString) => {
 };
 
 const initLots = (rawLots) => {
-  const lotsArray = Array.isArray(rawLots) ? rawLots : [];
+  const lotsArray = (Array.isArray(rawLots) ? rawLots : []).filter(lot => (Number(lot.quantity) || 0) > 0);
   distributedLots.value = lotsArray.map(lot => ({
     ...lot,
     id: lot.id,
@@ -138,20 +138,20 @@ const hasValidationErrors = computed(() => {
     const lotQuantity = Number(lot.quantity) || 0;
     const currentLotErrors = {};
 
-    if (lotQuantity === 0) continue;
+    if (lot.isNew && lotQuantity === 0) continue;
 
-    if (!lot.lot_number || lot.lot_number.trim() === "") {
+    if (!lot.lot_number || String(lot.lot_number).trim() === "") {
       currentLotErrors.lot_number = "Requerido";
       hasErrors = true;
     }
 
-    if (!lot.expiration_date || lot.expiration_date.trim() === "") {
+    if (!lot.expiration_date || String(lot.expiration_date).trim() === "") {
       currentLotErrors.expiration_date = "Requerido";
       hasErrors = true;
     }
 
-    if (!lot.location || lot.location.trim() === "") {
-      currentLotErrors.location = "Requerido";
+    if (!lot.location || String(lot.location).trim() === "") {
+      currentLotErrors.location = "Ubicación requerida";
       hasErrors = true;
     }
 
@@ -165,7 +165,12 @@ const hasValidationErrors = computed(() => {
 });
 
 const canSave = computed(() => {
-  return discrepancy.value === 0 && !hasValidationErrors.value;
+  if (discrepancy.value !== 0) return false;
+  if (hasValidationErrors.value) return false;
+  const missingLocation = distributedLots.value.some(
+    lot => (Number(lot.quantity) || 0) > 0 && (!lot.location || String(lot.location).trim() === "")
+  );
+  return !missingLocation;
 });
 
 const handleAddNewLot = () => {
@@ -188,8 +193,16 @@ const handleClearLotQuantity = (lot) => {
 };
 
 const handleSave = () => {
+  if (hasValidationErrors.value) {
+    toast.error("Todos los lotes mostrados deben tener lote, vencimiento y ubicación asignada.");
+    return;
+  }
+  if (discrepancy.value !== 0) {
+    toast.error("Asegúrese de que la diferencia sea 0 para guardar.");
+    return;
+  }
   if (!canSave.value) {
-    toast.error("Complete los campos obligatorios y asegúrese de que la diferencia sea 0.");
+    toast.error("Complete los campos obligatorios antes de continuar.");
     return;
   }
 
