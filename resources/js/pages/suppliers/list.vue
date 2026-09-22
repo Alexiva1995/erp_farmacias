@@ -405,6 +405,34 @@ const handleMergeSupplier = (supplier) => {
   isMergeDialogVisible.value = true;
 };
 
+const handleToggleSupplierStatus = async (supplier) => {
+  const isDeactivating = supplier.is_active !== false;
+  const actionText = isDeactivating ? "desactivar" : "activar";
+
+  const result = await Swal.fire({
+    title: `¿Desea ${actionText} a ${supplier.name}?`,
+    text: isDeactivating
+      ? "El proveedor pasará al final de la lista y se omitirá en sincronizaciones automáticas."
+      : "El proveedor volverá a estar activo para compras y sincronizaciones.",
+    icon: "warning",
+    showCancelButton: true,
+    cancelButtonText: "Cancelar",
+    confirmButtonText: isDeactivating ? "Sí, desactivar" : "Sí, activar",
+    reverseButtons: true,
+  });
+
+  if (!result.isConfirmed) return;
+
+  try {
+    const response = await axios.patch(`/suppliers/${supplier.id}/toggle-status`);
+    toast.success(response.data.message || `Proveedor ${isDeactivating ? 'desactivado' : 'activado'} correctamente.`);
+    await fetchSuppliers();
+  } catch (error) {
+    console.error(`Error al ${actionText} el proveedor ${supplier.id}:`, error);
+    toast.error(error.response?.data?.message || "No se pudo cambiar el estado del proveedor.");
+  }
+};
+
 const handleSupplierMerged = async () => {
   await Promise.all([fetchSuppliers(), fetchStats()]);
 };
@@ -483,6 +511,7 @@ onUnmounted(() => {
         @view-connection-history="handleViewConnectionHistory"
         @sync-dronena-bot="handleSyncDronenaBot"
         @sync-drosymca-bot="handleSyncDrosymcaBot"
+        @toggle-supplier-status="handleToggleSupplierStatus"
       />
 
       <SupplierEditDialog

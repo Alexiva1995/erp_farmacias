@@ -118,6 +118,12 @@ class SupplierController extends Controller
      */
     public function connectionServiceSupplier(Supplier $supplier, Request $request)
     {
+        if ($supplier->is_active === false) {
+            return response()->json([
+                "message" => "El proveedor se encuentra desactivado. Active el proveedor para iniciar la sincronización de catálogos y conexiones.",
+            ], 422);
+        }
+
         $userId = auth()->id() ?? 1;
 
         $status = \App\Models\SupplierConnectionStatus::create([

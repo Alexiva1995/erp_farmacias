@@ -51,6 +51,7 @@ const baseForm = {
   dispatch_days: [],
   order_days: {},
   is_indexed: false,
+  is_active: true,
   type: "drogueria",
 };
 const formData = ref({ ...baseForm });
@@ -311,6 +312,23 @@ watch(
                           :error-messages="formErrors.type"
                           :readonly="!authStore.isAdmin"
                         />
+                      </VCol>
+
+                      <VCol cols="12" v-if="authStore.isAdmin">
+                        <div class="d-flex align-center justify-space-between pa-3 rounded-lg border bg-light-surface">
+                          <div class="d-flex flex-column">
+                            <span class="text-caption font-weight-bold">Estado del Proveedor</span>
+                            <span class="text-xxs text-disabled">
+                              {{ formData.is_active ? 'Proveedor activo para compras y sincronizaciones' : 'Desactivado (al final de la lista, sin conexiones)' }}
+                            </span>
+                          </div>
+                          <VSwitch
+                            v-model="formData.is_active"
+                            color="success"
+                            hide-details
+                            density="compact"
+                          />
+                        </div>
                       </VCol>
 
                       <VCol cols="12" v-if="isFieldVisible('name')">

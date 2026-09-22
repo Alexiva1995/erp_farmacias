@@ -94,6 +94,9 @@ class SupplierQueryService
     {
         $direction = strtolower($orderBy) === 'desc' ? 'desc' : 'asc';
 
+        // Proveedores activos primero (1), inactivos siempre al final (0)
+        $query->orderByRaw('COALESCE(suppliers.is_active, 1) DESC');
+
         if (empty($sortBy)) {
             return $query->orderBy("suppliers.name", "asc");
         }

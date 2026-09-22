@@ -41,6 +41,7 @@ const emit = defineEmits([
   "sync-dronena-bot",
   "sync-drosymca-bot",
   "merge-supplier",
+  "toggle-supplier-status",
 ]);
 
 const formatDate = (dateString) => {
@@ -118,9 +119,21 @@ const headers = [
         </template>
 
         <template #item.name="{ item }">
-          <span class="text-sm font-weight-bold text-high-emphasis">
-            {{ item.name }}
-          </span>
+          <div class="d-flex align-center gap-2" :class="{ 'opacity-60': item.is_active === false }">
+            <span class="text-sm font-weight-bold text-high-emphasis">
+              {{ item.name }}
+            </span>
+            <VChip
+              v-if="item.is_active === false"
+              size="x-small"
+              color="secondary"
+              variant="flat"
+              label
+              class="text-xxs font-weight-bold px-1.5"
+            >
+              Inactivo
+            </VChip>
+          </div>
         </template>
 
         <template #item.last_sync_at="{ item }">
@@ -302,6 +315,15 @@ const headers = [
                   <VListItemTitle>Fusionar Proveedor</VListItemTitle>
                 </VListItem>
 
+                <VListItem
+                  v-if="authStore.isAdmin"
+                  :base-color="item.is_active === false ? 'success' : 'warning'"
+                  @click="emit('toggle-supplier-status', item)"
+                  :prepend-icon="item.is_active === false ? 'tabler-toggle-right' : 'tabler-power'"
+                >
+                  <VListItemTitle>{{ item.is_active === false ? 'Activar Proveedor' : 'Desactivar Proveedor' }}</VListItemTitle>
+                </VListItem>
+
                 <VDivider v-if="authStore.isAdmin" />
 
                 <VListItem v-if="authStore.isAdmin" base-color="error" @click="emit('delete-supplier', item.id)" prepend-icon="tabler-trash">
@@ -330,7 +352,19 @@ const headers = [
           <VCardText class="pa-4">
             <div class="d-flex justify-space-between align-start mb-3">
               <div>
-                <div class="text-sm font-weight-bold line-clamp-1">{{ item.name ?? 'Sin nombre' }}</div>
+                <div class="d-flex align-center gap-2">
+                  <div class="text-sm font-weight-bold line-clamp-1" :class="{ 'opacity-60': item.is_active === false }">{{ item.name ?? 'Sin nombre' }}</div>
+                  <VChip
+                    v-if="item.is_active === false"
+                    size="x-small"
+                    color="secondary"
+                    variant="flat"
+                    label
+                    class="text-xxs font-weight-bold px-1.5"
+                  >
+                    Inactivo
+                  </VChip>
+                </div>
                 <div class="text-xs text-disabled">ID: {{ item.id }} <span v-if="item.rif">• RIF: {{ item.rif }}</span></div>
               </div>
               <div v-if="!isRestaurant" class="d-flex align-center gap-1">
@@ -471,6 +505,14 @@ const headers = [
                   color="secondary"
                   size="32"
                   @click="emit('supplier-pending-invoices', item)"
+                />
+                <VBtn
+                  v-if="authStore.isAdmin"
+                  :icon="item.is_active === false ? 'tabler-toggle-right' : 'tabler-power'"
+                  variant="tonal"
+                  :color="item.is_active === false ? 'success' : 'warning'"
+                  size="32"
+                  @click="emit('toggle-supplier-status', item)"
                 />
                 <VBtn
                   v-if="authStore.isAdmin"

@@ -55,6 +55,7 @@ class StoreSupplierRequest extends FormRequest
             'credit_days' => ['sometimes', 'nullable', 'numeric'],
             'min_order_amount' => ['sometimes', 'nullable', 'numeric', 'min:0'],
             'is_indexed' => ['sometimes', 'boolean'],
+            'is_active' => ['sometimes', 'boolean'],
             'dispatch_days' => ['sometimes', 'nullable', 'array'],
             'dispatch_days.*' => ['in:monday,tuesday,wednesday,thursday,friday,saturday'],
             'order_days' => ['sometimes', 'nullable', 'array'],

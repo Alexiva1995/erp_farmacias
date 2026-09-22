@@ -61,6 +61,17 @@ class ProcessSupplierConnectionJob implements ShouldQueue
             $validUserId = \App\Models\User::first()?->id;
         }
 
+        if ($this->supplier->is_active === false) {
+            Log::info("ProcessSupplierConnectionJob: El proveedor {$this->supplier->id} ({$this->supplier->name}) está inactivo. Omitiendo.");
+            if ($this->statusId) {
+                SupplierConnectionStatus::where('id', $this->statusId)->update([
+                    'status' => 'failed',
+                    'message' => 'El proveedor se encuentra desactivado.',
+                ]);
+            }
+            return;
+        }
+
         $status = $this->statusId ? SupplierConnectionStatus::find($this->statusId) : null;
         if (!$status) {
             $status = SupplierConnectionStatus::create([
