@@ -43,23 +43,32 @@ const printTicket = () => {
     scrollable
     @update:model-value="emit('update:modelValue', $event)"
   >
-    <DialogCloseBtn @click="emit('update:modelValue', false)" />
-
     <VCard class="rounded-xl overflow-hidden">
-      <!-- Encabezado Estándar del Sistema -->
-      <VCardItem class="pb-3 border-b">
-        <div class="d-flex align-center gap-2">
-          <VIcon icon="tabler-receipt" color="primary" size="26" />
-          <div>
-            <VCardTitle class="text-h6 font-weight-bold">
+      <!-- Header Premium Institucional -->
+      <VCardTitle class="pa-0">
+        <div class="header-gradient pa-4 d-flex align-center shadow-sm">
+          <VAvatar color="white" variant="flat" size="40" class="me-3 elevation-1">
+            <VIcon icon="tabler-receipt" color="primary" size="22" />
+          </VAvatar>
+          <div class="d-flex flex-column leading-none text-white">
+            <h2 class="text-h6 font-weight-black leading-tight mb-0 uppercase text-white">
               Reporte Z {{ props.report?.report_number_padded || `Z${String(props.report?.report_number || '').padStart(6, '0')}` }}
-            </VCardTitle>
-            <VCardSubtitle class="text-caption">
+            </h2>
+            <span class="text-super-xs opacity-75 font-weight-bold uppercase letter-spacing-1">
               Corte fiscal diario y desglose de operaciones
-            </VCardSubtitle>
+            </span>
           </div>
+          <VSpacer />
+          <VBtn
+            icon="tabler-x"
+            variant="tonal"
+            color="white"
+            size="small"
+            class="rounded-lg"
+            @click="emit('update:modelValue', false)"
+          />
         </div>
-      </VCardItem>
+      </VCardTitle>
 
       <VCardText class="pa-4 bg-background">
         <!-- Banner de Discrepancias si existen -->
@@ -328,6 +337,10 @@ const printTicket = () => {
 </template>
 
 <style scoped>
+.header-gradient {
+  background: var(--brand-gradient) !important;
+}
+
 .fiscal-ticket {
   font-family: monospace;
 }

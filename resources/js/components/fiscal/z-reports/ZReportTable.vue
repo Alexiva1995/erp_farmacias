@@ -620,22 +620,32 @@ const formatCurrency = (value) => {
       max-width="600"
       scrollable
     >
-      <DialogCloseBtn @click="isPhotoModalOpen = false" />
-
       <VCard class="rounded-xl overflow-hidden">
-        <VCardItem class="pb-3 border-b">
-          <div class="d-flex align-center gap-2">
-            <VIcon icon="tabler-photo" color="primary" size="26" />
-            <div>
-              <VCardTitle class="text-h6 font-weight-bold">
+        <!-- Header Premium Institucional -->
+        <VCardTitle class="pa-0">
+          <div class="header-gradient pa-4 d-flex align-center shadow-sm">
+            <VAvatar color="white" variant="flat" size="40" class="me-3 elevation-1">
+              <VIcon icon="tabler-photo" color="primary" size="22" />
+            </VAvatar>
+            <div class="d-flex flex-column leading-none text-white">
+              <h2 class="text-h6 font-weight-black leading-tight mb-0 uppercase text-white">
                 Foto del Reporte Z {{ previewReport?.report_number_padded || `Z${String(previewReport?.report_number || '').padStart(6, '0')}` }}
-              </VCardTitle>
-              <VCardSubtitle class="text-caption">
+              </h2>
+              <span class="text-super-xs opacity-75 font-weight-bold uppercase letter-spacing-1">
                 Comprobante físico de corte fiscal
-              </VCardSubtitle>
+              </span>
             </div>
+            <VSpacer />
+            <VBtn
+              icon="tabler-x"
+              variant="tonal"
+              color="white"
+              size="small"
+              class="rounded-lg"
+              @click="isPhotoModalOpen = false"
+            />
           </div>
-        </VCardItem>
+        </VCardTitle>
 
         <VCardText class="pa-4 bg-background text-center">
           <div v-if="resolveImageUrl(previewReport)" class="d-flex justify-center align-center">
@@ -648,23 +658,25 @@ const formatCurrency = (value) => {
           </div>
         </VCardText>
 
-        <VCardActions class="pa-4 pt-0">
+        <VCardActions class="pa-4 bg-white border-t">
           <VRow dense class="w-100 ma-0">
-            <VCol cols="6" class="ps-0 pe-1">
+            <VCol cols="6" class="pa-1">
               <VBtn
-                block
-                variant="outlined"
                 color="secondary"
+                variant="outlined"
+                block
+                class="font-weight-black rounded-lg uppercase"
                 @click="isPhotoModalOpen = false"
               >
                 Cerrar
               </VBtn>
             </VCol>
-            <VCol cols="6" class="pe-0 ps-1">
+            <VCol cols="6" class="pa-1">
               <VBtn
-                block
+                color="primary"
                 variant="flat"
-                color="success"
+                block
+                class="font-weight-black rounded-lg shadow-primary uppercase"
                 prepend-icon="tabler-download"
                 :href="resolveImageUrl(previewReport)"
                 target="_blank"
@@ -681,6 +693,13 @@ const formatCurrency = (value) => {
 </template>
 
 <style scoped>
+.header-gradient {
+  background: var(--brand-gradient) !important;
+}
+
+.text-super-xs {
+  font-size: 0.65rem;
+}
 .premium-table :deep(thead th) {
   background-color: rgba(var(--v-theme-surface), 0.8) !important;
   font-weight: 800 !important;

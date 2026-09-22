@@ -301,23 +301,19 @@ const setDateAnoCompleto = () => {
     </template>
 
     <template #prepend-actions>
-      <VTooltip location="top" text="Descargar fotos de los Reportes Z del período actual en un archivo ZIP">
-        <template #activator="{ props: tooltipProps }">
-          <VBtn
-            v-bind="tooltipProps"
-            color="success"
-            variant="tonal"
-            size="small"
-            class="font-weight-bold"
-            prepend-icon="tabler-photo-down"
-            :loading="props.downloadingImages"
-            :disabled="props.loading"
-            @click="emit('download-images')"
-          >
-            Descargar Fotos (ZIP)
-          </VBtn>
-        </template>
-      </VTooltip>
+      <VBtn
+        icon
+        color="success"
+        variant="tonal"
+        size="38"
+        rounded="circle"
+        :loading="props.downloadingImages"
+        :disabled="props.loading"
+        @click="emit('download-images')"
+      >
+        <VIcon icon="tabler-photo-down" />
+        <VTooltip activator="parent" location="top">Descargar Fotos Z (ZIP)</VTooltip>
+      </VBtn>
     </template>
 
     <template #advanced-filters>
