@@ -26,7 +26,7 @@ const totalRecords = ref(0);
 const page = ref(1);
 const itemsPerPage = ref(10);
 const selected = ref([]);
-const currentTab = ref("pending");
+const currentTab = ref("by_supplier");
 
 // Filtros de búsqueda
 const search = ref("");
@@ -39,6 +39,7 @@ const {
   startDate,
   endDate,
   selectedPreset,
+  datePresets,
   applyDatePreset,
   setFortnightPreset,
   getCalculatedFiscalDateIso,
@@ -91,12 +92,12 @@ const handleTableUpdate = (options) => {
   fetchRetentions();
 };
 
-const handleBulkGenerate = async () => {
-  if (selected.value.length === 0) return;
+const handleBulkGenerate = async (ids = null) => {
+  const idsToProcess = Array.isArray(ids) && ids.length > 0 ? ids : [...selected.value];
+  if (idsToProcess.length === 0) return;
 
   try {
     loading.value = true;
-    const idsToProcess = [...selected.value];
     const response = await axios.post("/retentions/bulk-generate", {
       ids: idsToProcess,
     });
@@ -348,6 +349,7 @@ onUnmounted(() => {
         v-model:start-date="startDate"
         v-model:end-date="endDate"
         v-model:selected-preset="selectedPreset"
+        :date-presets="datePresets"
         :suppliers="suppliers"
         :loading="loading"
         :selected-count="selected.length"
@@ -374,10 +376,14 @@ onUnmounted(() => {
         </VCardTitle>
 
         <VTabs v-model="currentTab" color="primary" grow class="premium-tabs bg-surface-variant-opacity-2">
+          <VTab value="by_supplier" class="text-xs font-weight-black py-4">
+            <VIcon start icon="tabler-building-factory-2" size="18" />
+            POR PROVEEDOR
+          </VTab>
           <VTab value="pending" class="text-xs font-weight-black py-4">
             <VIcon start icon="tabler-clock-pause" size="18" />
             FACTURAS PENDIENTES
-            <VChip v-if="currentTab === 'pending'" size="x-small" color="primary" class="ms-2 font-weight-black">
+            <VChip v-if="currentTab === 'pending' || currentTab === 'by_supplier'" size="x-small" color="primary" class="ms-2 font-weight-black">
               {{ totalRecords }}
             </VChip>
           </VTab>
@@ -406,6 +412,7 @@ onUnmounted(() => {
             @download-pdf="downloadPdf"
             @delete-retention="handleDeleteRetention"
             @edit-retention="handleEditRetention"
+            @generate-supplier="handleBulkGenerate"
           />
         </VCardText>
       </VCard>

@@ -15,7 +15,7 @@ const props = defineProps({
   selected: { type: Array, default: () => [] },
 });
 
-const emit = defineEmits(["update:options", "update:selected", "download-pdf", "delete-retention", "edit-retention"]);
+const emit = defineEmits(["update:options", "update:selected", "download-pdf", "delete-retention", "edit-retention", "generate-supplier"]);
 
 const { mobile } = useDisplay();
 const authStore = useAuthStore();
@@ -27,22 +27,85 @@ const selectedModel = computed({
 
 const pendingHeaders = [
   { title: "Fecha Factura", key: "created_invoice_date", sortable: true },
-  { title: "Proveedor / Razón Social", key: "supplier.name", sortable: true, width: "30%" },
+  { title: "Proveedor / Razón Social", key: "supplier.name", sortable: true, width: "28%" },
   { title: "Nº Factura", key: "invoice_number", sortable: true },
+  { title: "Exento", key: "exempt_amount", align: "end", sortable: true },
   { title: "Base Imponible", key: "taxable_base", align: "end", sortable: true },
   { title: "IVA", key: "tax_amount", align: "end", sortable: true },
   { title: "Total", key: "total_amount", align: "end", sortable: true },
+  { title: "Retención (75%)", key: "estimated_retention", align: "end", sortable: false },
+];
+
+const supplierHeaders = [
+  { title: "Proveedor / Razón Social", key: "supplier.name", sortable: false, width: "26%" },
+  { title: "Nº Facturas", key: "invoice_numbers", sortable: false, width: "22%" },
+  { title: "Exento", key: "exempt_amount", align: "end", sortable: false },
+  { title: "Base Imponible", key: "taxable_base", align: "end", sortable: false },
+  { title: "IVA", key: "tax_amount", align: "end", sortable: false },
+  { title: "Total", key: "total_amount", align: "end", sortable: false },
+  { title: "Retención (75%)", key: "withheld_amount", align: "end", sortable: false },
+  { title: "Acción", key: "actions", sortable: false, align: "center" },
 ];
 
 const generatedHeaders = [
   { title: "Comprobante #", key: "number", sortable: true },
   { title: "Fecha Emisión", key: "date", sortable: true },
-  { title: "Proveedor", key: "supplier.name", sortable: true, width: "30%" },
+  { title: "Proveedor", key: "supplier.name", sortable: true, width: "28%" },
   { title: "Base Total", key: "total_taxable_base", align: "end", sortable: true },
   { title: "IVA Total", key: "total_tax_amount", align: "end", sortable: true },
   { title: "Monto Retenido", key: "total_withheld_amount", align: "end", sortable: true },
   { title: "Acción", key: "actions", sortable: false, align: "center" },
 ];
+
+const groupedBySupplier = computed(() => {
+  if (!props.invoices || props.invoices.length === 0) return [];
+
+  const map = new Map();
+  props.invoices.forEach((inv) => {
+    const sId = inv.supplier?.id || inv.supplier_id || `temp-${inv.id}`;
+    if (!map.has(sId)) {
+      map.set(sId, {
+        id: sId,
+        supplier: inv.supplier || { id: sId, name: "Sin Proveedor", social_reason: "Sin Proveedor", rif: "Sin RIF" },
+        invoices: [],
+        invoice_numbers: [],
+        exempt_amount: 0,
+        taxable_base: 0,
+        tax_amount: 0,
+        total_amount: 0,
+        withheld_amount: 0,
+      });
+    }
+    const item = map.get(sId);
+    item.invoices.push(inv);
+    if (inv.invoice_number && !item.invoice_numbers.includes(inv.invoice_number)) {
+      item.invoice_numbers.push(inv.invoice_number);
+    }
+    item.exempt_amount += Number(inv.exempt_amount || 0);
+    item.taxable_base += Number(inv.taxable_base || 0);
+    item.tax_amount += Number(inv.tax_amount || 0);
+    item.total_amount += Number(inv.total_amount || 0);
+    item.withheld_amount += Number(inv.tax_amount || 0) * 0.75;
+  });
+
+  return Array.from(map.values());
+});
+
+const currentHeaders = computed(() => {
+  if (props.currentTab === "by_supplier") return supplierHeaders;
+  if (props.currentTab === "pending") return pendingHeaders;
+  return generatedHeaders;
+});
+
+const currentTableItems = computed(() => {
+  if (props.currentTab === "by_supplier") return groupedBySupplier.value;
+  return props.invoices;
+});
+
+const currentItemsLength = computed(() => {
+  if (props.currentTab === "by_supplier") return groupedBySupplier.value.length;
+  return props.totalRecords;
+});
 
 const formatCurrency = (value) => {
   return new Intl.NumberFormat("es-VE", {
@@ -110,9 +173,9 @@ const toggleSelection = (id) => {
         v-model="selectedModel"
         :items-per-page="props.itemsPerPage"
         :page="props.page"
-        :headers="props.currentTab === 'pending' ? pendingHeaders : generatedHeaders"
-        :items="props.invoices"
-        :items-length="props.totalRecords"
+        :headers="currentHeaders"
+        :items="currentTableItems"
+        :items-length="currentItemsLength"
         :loading="props.loading"
         :show-select="props.currentTab === 'pending'"
         class="text-no-wrap premium-table"
@@ -120,24 +183,24 @@ const toggleSelection = (id) => {
       >
         <template #no-data>
           <AppEmptyState
-            :title="props.currentTab === 'pending' ? 'No hay retenciones pendientes' : 'No hay retenciones generadas'"
-            :message="props.currentTab === 'pending' ? 'No se encontraron facturas sujetas a retención en este periodo.' : 'No se han emitido comprobantes de retención aún.'"
+            :title="props.currentTab === 'generated' ? 'No hay retenciones generadas' : 'No hay retenciones pendientes'"
+            :message="props.currentTab === 'generated' ? 'No se han emitido comprobantes de retención aún.' : 'No se encontraron facturas sujetas a retención en este periodo.'"
             icon="tabler-receipt-off"
           />
         </template>
 
         <template #item.created_invoice_date="{ item }">
-          <span class="text-xs font-weight-medium text-disabled uppercase">{{ formatDate(item.created_invoice_date) }}</span>
+          <span class="text-xs text-disabled uppercase">{{ formatDate(item.created_invoice_date) }}</span>
         </template>
 
         <template #item.date="{ item }">
-          <span class="text-xs font-weight-medium text-disabled uppercase">{{ formatDate(item.date) }}</span>
+          <span class="text-xs text-disabled uppercase">{{ formatDate(item.date) }}</span>
         </template>
 
         <template #item.number="{ item }">
           <div class="d-flex align-center gap-2 py-2">
             <VIcon icon="tabler-hash" size="14" color="disabled" />
-            <span class="font-weight-black text-primary">{{ item.number }}</span>
+            <span class="font-weight-bold text-primary">{{ item.number }}</span>
           </div>
         </template>
 
@@ -153,18 +216,7 @@ const toggleSelection = (id) => {
             </VAvatar>
             <div class="d-flex flex-column truncate" style="max-width: 250px;">
               <span class="text-xs font-weight-bold text-high-emphasis text-capitalize truncate">{{ item.supplier?.name || item.supplier?.social_reason || 'N/A' }}</span>
-              <div class="d-flex align-center gap-1">
-                <span class="text-super-xs text-disabled truncate">{{ item.supplier?.rif || item.identification || 'Sin RIF' }}</span>
-                <VChip
-                  v-if="props.currentTab === 'pending' && !isSupplierFiscalValid(item.supplier)"
-                  size="x-small"
-                  color="warning"
-                  variant="tonal"
-                  class="font-weight-bold text-super-xs px-1"
-                >
-                  {{ getSupplierMissingFiscalData(item.supplier) }}
-                </VChip>
-              </div>
+              <span class="text-super-xs text-disabled truncate">{{ item.supplier?.rif || item.identification || 'Sin RIF' }}</span>
             </div>
           </div>
         </template>
@@ -172,71 +224,112 @@ const toggleSelection = (id) => {
         <template #item.invoice_number="{ item }">
           <div class="d-flex align-center gap-2">
             <VIcon icon="tabler-receipt" size="16" color="disabled" />
-            <span class="font-weight-black text-primary">{{ item.invoice_number }}</span>
+            <span class="font-weight-bold text-primary">{{ item.invoice_number }}</span>
           </div>
         </template>
 
+        <template #item.invoice_numbers="{ item }">
+          <div class="d-flex align-center flex-wrap gap-1 py-1" style="max-width: 260px;">
+            <VChip
+              v-for="num in item.invoice_numbers"
+              :key="num"
+              size="x-small"
+              variant="tonal"
+              color="primary"
+              class="font-weight-bold text-super-xs"
+            >
+              #{{ num }}
+            </VChip>
+          </div>
+        </template>
+
+        <template #item.exempt_amount="{ item }">
+          <span class="text-xs">{{ formatCurrency(item.exempt_amount) }}</span>
+        </template>
+
         <template #item.taxable_base="{ item }">
-          <span class="text-xs font-weight-medium">{{ formatCurrency(item.taxable_base) }}</span>
+          <span class="text-xs">{{ formatCurrency(item.taxable_base) }}</span>
         </template>
 
         <template #item.tax_amount="{ item }">
-          <span class="text-xs font-weight-medium text-info">{{ formatCurrency(item.tax_amount) }}</span>
+          <span class="text-xs font-weight-bold text-success">{{ formatCurrency(item.tax_amount) }}</span>
         </template>
 
         <template #item.total_amount="{ item }">
-          <span class="text-sm font-weight-black text-high-emphasis">{{ formatCurrency(item.total_amount) }}</span>
+          <span class="text-xs font-weight-medium text-high-emphasis">{{ formatCurrency(item.total_amount) }}</span>
+        </template>
+
+        <template #item.estimated_retention="{ item }">
+          <span class="text-xs font-weight-bold text-success">{{ formatCurrency(Number(item.tax_amount || 0) * 0.75) }}</span>
+        </template>
+
+        <template #item.withheld_amount="{ item }">
+          <span class="text-xs font-weight-bold text-success">{{ formatCurrency(item.withheld_amount) }}</span>
         </template>
 
         <template #item.total_taxable_base="{ item }">
-          <span class="text-xs font-weight-medium">{{ formatCurrency(item.total_taxable_base) }}</span>
+          <span class="text-xs">{{ formatCurrency(item.total_taxable_base) }}</span>
         </template>
 
         <template #item.total_tax_amount="{ item }">
-          <span class="text-xs font-weight-medium text-info">{{ formatCurrency(item.total_tax_amount) }}</span>
+          <span class="text-xs font-weight-bold text-success">{{ formatCurrency(item.total_tax_amount) }}</span>
         </template>
 
         <template #item.total_withheld_amount="{ item }">
-          <span class="text-sm font-weight-black text-success">{{ formatCurrency(item.total_withheld_amount) }}</span>
+          <span class="text-xs font-weight-bold text-success">{{ formatCurrency(item.total_withheld_amount) }}</span>
         </template>
 
         <template #item.actions="{ item }">
           <div class="d-flex align-center justify-center gap-1">
-            <VBtn
-              icon
-              variant="text"
-              size="32"
-              color="primary"
-              class="rounded-lg shadow-sm"
-              :loading="props.downloadingPdf[item.id]"
-              @click="emit('download-pdf', item.id)"
-            >
-              <VIcon icon="tabler-file-download" size="20" />
-              <VTooltip activator="parent" location="top">Descargar Comprobante</VTooltip>
-            </VBtn>
-            <template v-if="authStore.isAdmin">
+            <template v-if="props.currentTab === 'by_supplier'">
+              <VBtn
+                color="primary"
+                variant="tonal"
+                size="small"
+                class="text-xs font-weight-bold rounded-lg px-2"
+                @click="emit('generate-supplier', item.invoices.map(i => i.id))"
+              >
+                <VIcon start icon="tabler-file-percent" size="16" />
+                Generar Retención
+              </VBtn>
+            </template>
+            <template v-else-if="props.currentTab === 'generated'">
               <VBtn
                 icon
                 variant="text"
                 size="32"
-                color="warning"
+                color="primary"
                 class="rounded-lg shadow-sm"
-                @click="emit('edit-retention', item)"
+                :loading="props.downloadingPdf[item.id]"
+                @click="emit('download-pdf', item.id)"
               >
-                <VIcon icon="tabler-edit" size="20" />
-                <VTooltip activator="parent" location="top">Editar Número</VTooltip>
+                <VIcon icon="tabler-file-download" size="20" />
+                <VTooltip activator="parent" location="top">Descargar Comprobante</VTooltip>
               </VBtn>
-              <VBtn
-                icon
-                variant="text"
-                size="32"
-                color="error"
-                class="rounded-lg shadow-sm"
-                @click="emit('delete-retention', item.id)"
-              >
-                <VIcon icon="tabler-trash" size="20" />
-                <VTooltip activator="parent" location="top">Eliminar Retención</VTooltip>
-              </VBtn>
+              <template v-if="authStore.isAdmin">
+                <VBtn
+                  icon
+                  variant="text"
+                  size="32"
+                  color="warning"
+                  class="rounded-lg shadow-sm"
+                  @click="emit('edit-retention', item)"
+                >
+                  <VIcon icon="tabler-edit" size="20" />
+                  <VTooltip activator="parent" location="top">Editar Número</VTooltip>
+                </VBtn>
+                <VBtn
+                  icon
+                  variant="text"
+                  size="32"
+                  color="error"
+                  class="rounded-lg shadow-sm"
+                  @click="emit('delete-retention', item.id)"
+                >
+                  <VIcon icon="tabler-trash" size="20" />
+                  <VTooltip activator="parent" location="top">Eliminar Retención</VTooltip>
+                </VBtn>
+              </template>
             </template>
           </div>
         </template>
@@ -256,11 +349,11 @@ const toggleSelection = (id) => {
                 class="text-xs font-weight-black"
                 @update:model-value="(val) => emit('update:options', { ...props, itemsPerPage: val, page: 1 })"
               />
-              <span class="text-super-xs text-disabled font-weight-bold uppercase">de {{ props.totalRecords }} registros</span>
+              <span class="text-super-xs text-disabled font-weight-bold uppercase">de {{ currentItemsLength }} registros</span>
             </div>
             <VPagination
                :model-value="props.page"
-               :length="Math.ceil(props.totalRecords / props.itemsPerPage) || 1"
+               :length="Math.ceil(currentItemsLength / props.itemsPerPage) || 1"
                size="small"
                class="premium-pagination"
                @update:model-value="(newPage) => emit('update:options', { ...props, page: newPage })"
@@ -276,15 +369,15 @@ const toggleSelection = (id) => {
         <VProgressCircular indeterminate color="primary" />
       </div>
 
-      <template v-else-if="props.invoices.length > 0">
+      <template v-else-if="currentTableItems.length > 0">
         <VCard
-          v-for="item in props.invoices"
+          v-for="item in currentTableItems"
           :key="item.id || item.order_id"
           class="rounded-lg border shadow-sm premium-card overflow-hidden"
           :class="{ 'card-selected': isItemSelected(item.id) && props.currentTab === 'pending' }"
           @click="props.currentTab === 'pending' ? toggleSelection(item.id) : null"
         >
-          <div class="premium-card-decoration" :class="props.currentTab === 'pending' ? 'bg-primary-opacity' : 'bg-success-opacity'"></div>
+          <div class="premium-card-decoration" :class="props.currentTab === 'generated' ? 'bg-success-opacity' : 'bg-primary-opacity'"></div>
           
           <VCardText class="pa-5">
             <!-- Cabecera Móvil -->
@@ -304,21 +397,21 @@ const toggleSelection = (id) => {
                   variant="tonal"
                   class="rounded-lg shadow-sm"
                 >
-                  <VIcon :icon="props.currentTab === 'pending' ? 'tabler-receipt' : 'tabler-file-percent'" size="18" />
+                  <VIcon :icon="props.currentTab === 'generated' ? 'tabler-file-percent' : (props.currentTab === 'by_supplier' ? 'tabler-building-factory-2' : 'tabler-receipt')" size="18" />
                 </VAvatar>
                 <div class="d-flex flex-column">
                   <span class="text-xs font-weight-black text-disabled uppercase leading-tight">
-                    {{ props.currentTab === 'pending' ? 'Factura #' : 'Comprobante #' }}
+                    {{ props.currentTab === 'pending' ? 'Factura #' : (props.currentTab === 'by_supplier' ? 'Proveedor' : 'Comprobante #') }}
                   </span>
-                  <span class="text-sm font-weight-black text-primary leading-tight">
-                    {{ props.currentTab === 'pending' ? item.invoice_number : item.number }}
+                  <span class="text-sm font-weight-bold text-primary leading-tight">
+                    {{ props.currentTab === 'pending' ? item.invoice_number : (props.currentTab === 'by_supplier' ? `${item.invoices?.length || 0} Facturas` : item.number) }}
                   </span>
                 </div>
               </div>
               <div class="d-flex flex-column align-end">
                 <span class="text-xs font-weight-black text-disabled uppercase leading-tight">Fecha</span>
                 <span class="text-xs font-weight-bold leading-tight uppercase">
-                  {{ props.currentTab === 'pending' ? formatDate(item.created_invoice_date) : formatDate(item.date) }}
+                  {{ props.currentTab === 'pending' ? formatDate(item.created_invoice_date) : (props.currentTab === 'by_supplier' ? '-' : formatDate(item.date)) }}
                 </span>
               </div>
             </div>
@@ -333,14 +426,22 @@ const toggleSelection = (id) => {
               </span>
               <div class="d-flex align-center gap-1 flex-wrap">
                 <span class="text-xs text-disabled leading-tight">{{ item.supplier?.rif || item.identification || 'Sin RIF' }}</span>
+              </div>
+            </div>
+
+            <!-- Chips de facturas si es por proveedor -->
+            <div v-if="props.currentTab === 'by_supplier' && item.invoice_numbers?.length" class="mb-4">
+              <span class="text-super-xs font-weight-black text-disabled uppercase d-block mb-1">Facturas Incluidas</span>
+              <div class="d-flex align-center flex-wrap gap-1">
                 <VChip
-                  v-if="props.currentTab === 'pending' && !isSupplierFiscalValid(item.supplier)"
+                  v-for="num in item.invoice_numbers"
+                  :key="num"
                   size="x-small"
-                  color="warning"
                   variant="tonal"
-                  class="font-weight-bold text-super-xs px-1"
+                  color="primary"
+                  class="font-weight-bold text-super-xs"
                 >
-                  {{ getSupplierMissingFiscalData(item.supplier) }}
+                  #{{ num }}
                 </VChip>
               </div>
             </div>
@@ -349,14 +450,14 @@ const toggleSelection = (id) => {
             <div class="d-flex gap-3 mb-4">
               <div class="premium-stat-box flex-grow-1 pa-3 rounded-lg bg-surface-variant-opacity-2">
                 <span class="text-super-xs text-disabled font-weight-bold uppercase d-block mb-1">Base Imponible</span>
-                <span class="text-sm font-weight-black">
-                  {{ props.currentTab === 'pending' ? formatCurrency(item.taxable_base) : formatCurrency(item.total_taxable_base) }}
+                <span class="text-sm">
+                  {{ props.currentTab === 'generated' ? formatCurrency(item.total_taxable_base) : formatCurrency(item.taxable_base) }}
                 </span>
               </div>
               <div class="premium-stat-box flex-grow-1 pa-3 rounded-lg bg-info-opacity">
                 <span class="text-super-xs text-info font-weight-bold uppercase d-block mb-1">Monto IVA</span>
-                <span class="text-sm font-weight-black text-info">
-                  {{ props.currentTab === 'pending' ? formatCurrency(item.tax_amount) : formatCurrency(item.total_tax_amount) }}
+                <span class="text-sm font-weight-bold text-success">
+                  {{ props.currentTab === 'generated' ? formatCurrency(item.total_tax_amount) : formatCurrency(item.tax_amount) }}
                 </span>
               </div>
             </div>
@@ -364,26 +465,37 @@ const toggleSelection = (id) => {
             <!-- Footer Card Móvil -->
             <div 
               class="d-flex align-center justify-space-between pa-3 rounded-lg"
-              :class="props.currentTab === 'pending' ? 'bg-surface-variant-opacity-2' : 'bg-success-opacity-2'"
+              :class="props.currentTab === 'generated' ? 'bg-success-opacity-2' : 'bg-surface-variant-opacity-2'"
             >
-              <span class="text-xs font-weight-black uppercase">
-                {{ props.currentTab === 'pending' ? 'Monto Total' : 'Total Retenido' }}
+              <span class="text-xs font-weight-bold uppercase">
+                {{ props.currentTab === 'generated' ? 'Total Retenido' : (props.currentTab === 'by_supplier' ? 'Retención (75%)' : 'Monto Total') }}
               </span>
               <span 
-                class="text-h6 font-weight-black"
-                :class="props.currentTab === 'pending' ? 'text-high-emphasis' : 'text-success'"
+                class="text-h6 font-weight-bold text-success"
               >
-                Bs. {{ props.currentTab === 'pending' ? formatCurrency(item.total_amount) : formatCurrency(item.total_withheld_amount) }}
+                {{ props.currentTab === 'generated' ? formatCurrency(item.total_withheld_amount) : (props.currentTab === 'by_supplier' ? formatCurrency(item.withheld_amount) : formatCurrency(item.total_amount)) }}
               </span>
             </div>
 
-            <!-- Botones de Acción (Solo Generados) -->
-            <div v-if="props.currentTab === 'generated'" class="d-flex flex-column gap-2 mt-4">
+            <!-- Botones de Acción (Por Proveedor o Generados) -->
+            <div v-if="props.currentTab === 'by_supplier'" class="mt-4">
               <VBtn
                 color="primary"
                 variant="flat"
                 block
-                class="rounded-lg text-xs font-weight-black shadow-sm"
+                class="rounded-lg text-xs font-weight-bold shadow-sm"
+                @click.stop="emit('generate-supplier', item.invoices.map(i => i.id))"
+              >
+                <VIcon start icon="tabler-file-percent" size="18" />
+                GENERAR RETENCIÓN ({{ item.invoices?.length || 0 }} FACTURAS)
+              </VBtn>
+            </div>
+            <div v-else-if="props.currentTab === 'generated'" class="d-flex flex-column gap-2 mt-4">
+              <VBtn
+                color="primary"
+                variant="flat"
+                block
+                class="rounded-lg text-xs font-weight-bold shadow-sm"
                 :loading="props.downloadingPdf[item.id]"
                 @click.stop="emit('download-pdf', item.id)"
               >
@@ -394,7 +506,7 @@ const toggleSelection = (id) => {
                 <VBtn
                   color="warning"
                   variant="tonal"
-                  class="flex-grow-1 rounded-lg text-xs font-weight-black shadow-sm"
+                  class="flex-grow-1 rounded-lg text-xs font-weight-bold shadow-sm"
                   @click.stop="emit('edit-retention', item)"
                 >
                   <VIcon start icon="tabler-edit" size="18" />
@@ -403,7 +515,7 @@ const toggleSelection = (id) => {
                 <VBtn
                   color="error"
                   variant="tonal"
-                  class="flex-grow-1 rounded-lg text-xs font-weight-black shadow-sm"
+                  class="flex-grow-1 rounded-lg text-xs font-weight-bold shadow-sm"
                   @click.stop="emit('delete-retention', item.id)"
                 >
                   <VIcon start icon="tabler-trash" size="18" />
@@ -415,10 +527,10 @@ const toggleSelection = (id) => {
         </VCard>
 
         <!-- Paginación Móvil -->
-        <div v-if="props.invoices.length > 0" class="d-flex justify-center mt-2 pb-4">
+        <div v-if="currentTableItems.length > 0" class="d-flex justify-center mt-2 pb-4">
           <VPagination
             :model-value="props.page"
-            :length="Math.ceil(props.totalRecords / props.itemsPerPage) || 1"
+            :length="Math.ceil(currentItemsLength / props.itemsPerPage) || 1"
             size="small"
             rounded="circle"
             class="premium-pagination"
@@ -428,7 +540,7 @@ const toggleSelection = (id) => {
       </template>
 
       <VAlert v-else type="info" variant="tonal" class="rounded-lg">
-        {{ props.currentTab === 'pending' ? 'No hay facturas pendientes de retención.' : 'No se han generado comprobantes para este período.' }}
+        {{ props.currentTab === 'generated' ? 'No se han generado comprobantes para este período.' : 'No hay facturas pendientes de retención.' }}
       </VAlert>
     </div>
   </div>

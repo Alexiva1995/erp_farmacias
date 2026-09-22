@@ -9,6 +9,7 @@ const props = defineProps({
   startDate: String,
   endDate: String,
   selectedPreset: { type: String, default: "fortnight_current" },
+  datePresets: { type: Array, default: () => [] },
   suppliers: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
   selectedCount: { type: Number, default: 0 },
@@ -30,11 +31,44 @@ const emit = defineEmits([
   "sort",
 ]);
 
-// Rangos de fechas preestablecidos
-const datePresets = [
-  { title: "Quincena Actual", value: "fortnight_current" },
-  { title: "Quincena Pasada", value: "fortnight_previous" },
+const now = new Date();
+const currentYear = now.getFullYear();
+
+const monthsOfYear = [
+  { name: "Enero", index: 0 },
+  { name: "Febrero", index: 1 },
+  { name: "Marzo", index: 2 },
+  { name: "Abril", index: 3 },
+  { name: "Mayo", index: 4 },
+  { name: "Junio", index: 5 },
+  { name: "Julio", index: 6 },
+  { name: "Agosto", index: 7 },
+  { name: "Septiembre", index: 8 },
+  { name: "Octubre", index: 9 },
+  { name: "Noviembre", index: 10 },
+  { name: "Diciembre", index: 11 },
 ];
+
+const availablePresets = computed(() => {
+  if (props.datePresets && props.datePresets.length > 0) {
+    return props.datePresets;
+  }
+  const list = [
+    { title: "Quincena Actual", value: "fortnight_current" },
+    { title: "Quincena Pasada", value: "fortnight_previous" },
+  ];
+  monthsOfYear.forEach((m) => {
+    list.push({
+      title: `1ra Quincena ${m.name}`,
+      value: `q_${currentYear}_${m.index}_1`,
+    });
+    list.push({
+      title: `2da Quincena ${m.name}`,
+      value: `q_${currentYear}_${m.index}_2`,
+    });
+  });
+  return list;
+});
 
 const sortOptionsPending = [
   { title: "Fecha Reciente", icon: "tabler-calendar-up", key: "created_invoice_date", order: "desc" },
@@ -75,7 +109,7 @@ const hasAdvancedFilters = computed(() =>
       <!-- Acción Masiva (Generación Batch) -->
       <VExpandTransition>
         <VBtn
-          v-show="props.selectedCount > 0 && props.currentTab === 'pending'"
+          v-show="props.selectedCount > 0 && (props.currentTab === 'pending' || props.currentTab === 'by_supplier')"
           icon
           color="success"
           variant="flat"
@@ -90,7 +124,7 @@ const hasAdvancedFilters = computed(() =>
 
       <!-- Botón Generación Automática Total (Solo si hay fechas) -->
       <VBtn
-        v-if="props.currentTab === 'pending' && props.startDate && props.endDate"
+        v-if="props.currentTab !== 'generated' && props.startDate && props.endDate"
         icon
         color="warning"
         variant="elevated"
@@ -104,7 +138,7 @@ const hasAdvancedFilters = computed(() =>
 
       <!-- Botón Omitir Facturas Anteriores a Fecha -->
       <VBtn
-        v-if="props.currentTab === 'pending'"
+        v-if="props.currentTab !== 'generated'"
         icon
         color="error"
         variant="tonal"
@@ -118,7 +152,7 @@ const hasAdvancedFilters = computed(() =>
 
       <!-- Botón Restaurar Facturas Omitidas -->
       <VBtn
-        v-if="props.currentTab === 'pending'"
+        v-if="props.currentTab !== 'generated'"
         icon
         color="info"
         variant="tonal"
@@ -136,7 +170,7 @@ const hasAdvancedFilters = computed(() =>
       <VCol cols="12" sm="3">
         <VSelect
           :model-value="props.selectedPreset"
-          :items="datePresets"
+          :items="availablePresets"
           item-title="title"
           item-value="value"
           placeholder="Rango Preestablecido"

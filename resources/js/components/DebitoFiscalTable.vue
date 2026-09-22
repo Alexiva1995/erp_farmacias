@@ -47,7 +47,7 @@ const headers = [
     key: "invoice_date", 
     sortable: true,
     value: item => formatDate(item.invoice_date || item.created_at),
-    cellProps: { class: 'text-sm text-medium-emphasis' }
+    cellProps: { class: 'text-sm text-medium-emphasis font-weight-regular' }
   },
   { 
     title: "EXENTO", 
@@ -55,7 +55,7 @@ const headers = [
     sortable: true, 
     align: "end",
     value: item => formatCurrency(item.exempt_amount),
-    cellProps: { class: 'text-sm text-medium-emphasis' }
+    cellProps: { class: 'text-sm text-medium-emphasis font-weight-regular' }
   },
   { 
     title: "BASE", 
@@ -63,7 +63,7 @@ const headers = [
     sortable: true, 
     align: "end",
     value: item => formatCurrency(item.taxable_amount ?? item.taxable_base),
-    cellProps: { class: 'text-sm text-medium-emphasis' }
+    cellProps: { class: 'text-sm text-medium-emphasis font-weight-regular' }
   },
   { 
     title: "SUBTOTAL", 
@@ -71,7 +71,7 @@ const headers = [
     sortable: false, 
     align: "end",
     value: item => formatCurrency((Number(item.total_amount) || 0) - (Number(item.spe_surcharge_amount) || 0)),
-    cellProps: { class: 'text-sm font-weight-bold text-high-emphasis' }
+    cellProps: { class: 'text-sm text-medium-emphasis font-weight-regular' }
   },
   { 
     title: "IGTF", 
@@ -79,7 +79,7 @@ const headers = [
     sortable: true, 
     align: "end",
     value: item => formatCurrency(item.spe_surcharge_amount),
-    cellProps: { class: 'text-sm font-weight-bold text-error' }
+    cellProps: { class: 'text-sm text-medium-emphasis font-weight-regular' }
   },
   { 
     title: "TOTAL", 
@@ -87,7 +87,7 @@ const headers = [
     sortable: true, 
     align: "end",
     value: item => formatCurrency(item.total_amount),
-    cellProps: { class: 'text-sm font-weight-black text-high-emphasis' }
+    cellProps: { class: 'text-sm text-medium-emphasis font-weight-regular' }
   },
   { 
     title: "IVA", 
@@ -95,7 +95,7 @@ const headers = [
     sortable: true, 
     align: "end",
     value: item => formatCurrency(item.iva_amount),
-    cellProps: { class: 'text-sm font-weight-black text-success iva-highlight-cell' }
+    cellProps: { class: 'text-sm font-weight-black text-success' }
   },
 ];
 </script>
@@ -110,7 +110,7 @@ const headers = [
             <VIcon icon="tabler-receipt" size="18" color="warning" />
           </div>
           <span class="text-sm font-weight-black uppercase">
-            Ventas (Débito Fiscal)
+            DÉBITO FISCAL
           </span>
           <VSpacer />
           <VChip
@@ -158,7 +158,7 @@ const headers = [
 
           <template #item.iva_amount="{ item }">
             <span class="text-sm font-weight-black text-success">
-              Bs. {{ formatCurrency(item.iva_amount) }}
+              {{ formatCurrency(item.iva_amount) }}
             </span>
           </template>
         </VDataTableServer>
@@ -196,7 +196,7 @@ const headers = [
               </div>
               <div class="d-flex flex-column align-end">
                 <span class="text-sm font-weight-black text-success leading-none mb-1">
-                  Bs. {{ formatCurrency(item.iva_amount) }}
+                  {{ formatCurrency(item.iva_amount) }}
                 </span>
                 <span class="text-super-xs font-weight-black text-disabled uppercase">IVA Cobrado</span>
               </div>
@@ -218,29 +218,29 @@ const headers = [
             <div class="d-grid mobile-grid gap-3 mb-4">
               <div class="stat-box">
                 <span class="label">Exento</span>
-                <span class="value font-weight-black text-high-emphasis">
+                <span class="value font-weight-regular text-medium-emphasis">
                   {{ formatCurrency(item.exempt_amount) }}
                 </span>
               </div>
               <div class="stat-box text-center">
                 <span class="label">Base</span>
-                <span class="value font-weight-black text-high-emphasis">{{ formatCurrency(item.taxable_amount ?? item.taxable_base) }}</span>
+                <span class="value font-weight-regular text-medium-emphasis">{{ formatCurrency(item.taxable_amount ?? item.taxable_base) }}</span>
               </div>
               <div class="stat-box text-center">
                 <span class="label">Subtotal</span>
-                <span class="value font-weight-black text-high-emphasis">{{ formatCurrency((Number(item.total_amount) || 0) - (Number(item.spe_surcharge_amount) || 0)) }}</span>
+                <span class="value font-weight-regular text-medium-emphasis">{{ formatCurrency((Number(item.total_amount) || 0) - (Number(item.spe_surcharge_amount) || 0)) }}</span>
               </div>
               <div v-if="Number(item.spe_surcharge_amount) > 0" class="stat-box text-center">
                 <span class="label">IGTF</span>
-                <span class="value font-weight-black text-error">{{ formatCurrency(item.spe_surcharge_amount) }}</span>
+                <span class="value font-weight-regular text-medium-emphasis">{{ formatCurrency(item.spe_surcharge_amount) }}</span>
               </div>
               <div class="stat-box text-center">
                 <span class="label">Total</span>
-                <span class="value font-weight-black text-high-emphasis">{{ formatCurrency(item.total_amount) }}</span>
+                <span class="value font-weight-regular text-medium-emphasis">{{ formatCurrency(item.total_amount) }}</span>
               </div>
               <div class="stat-box text-right">
                 <span class="label">Fecha</span>
-                <span class="value font-weight-black text-disabled uppercase">{{ formatDate(item.invoice_date) }}</span>
+                <span class="value font-weight-regular text-disabled uppercase">{{ formatDate(item.invoice_date) }}</span>
               </div>
             </div>
           </div>

@@ -22,8 +22,8 @@ class RetentionRepository implements \App\Contracts\Retention
             $sortBy = 'created_invoice_date';
         }
 
-        $query = Invoice::with(['supplier:id,name,social_reason,rif'])
-            ->select(['invoices.id', 'invoices.supplier_id', 'invoices.invoice_number', 'invoices.control_number', 'invoices.taxable_base', 'invoices.tax_amount', 'invoices.total_amount', 'invoices.created_invoice_date', 'invoices.retention_generated', 'invoices.retention_id'])
+        $query = Invoice::with(['supplier:id,name,social_reason,rif,address'])
+            ->select(['invoices.id', 'invoices.supplier_id', 'invoices.invoice_number', 'invoices.control_number', 'invoices.exempt_amount', 'invoices.taxable_base', 'invoices.tax_amount', 'invoices.total_amount', 'invoices.created_invoice_date', 'invoices.retention_generated', 'invoices.retention_id'])
             ->where('invoices.tax_amount', '>', 0)
             ->where('invoices.retention_generated', $isGenerated);
 
