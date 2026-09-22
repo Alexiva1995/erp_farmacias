@@ -1,7 +1,8 @@
 <script setup>
+import axios from "@/plugins/axios";
 import BarcodeScannerDialog from "@/components/dialogs/BarcodeScannerDialog.vue";
 import { toast } from "@/plugins/sweetalert";
-import { formatDateSimple } from "@/utils/formatters";
+import { formatDateSimple, formatNumber } from "@/utils/formatters";
 import { computed, ref, watch } from "vue";
 import { useBrandingStore } from "@/stores/useBrandingStore";
 
@@ -25,6 +26,7 @@ const distributedLots = ref([]);
 const originalLots = ref([]);
 const isScannerVisible = ref(false);
 const activeScannerLot = ref(null);
+const isLoadingLots = ref(false);
 
 const isVisible = computed({
   get: () => props.modelValue,
@@ -46,23 +48,50 @@ const formatDateForInput = (dateString) => {
   }
 };
 
+const initLots = (rawLots) => {
+  const lotsArray = Array.isArray(rawLots) ? rawLots : [];
+  distributedLots.value = lotsArray.map(lot => ({
+    ...lot,
+    id: lot.id,
+    quantity: Number(lot.quantity) || 0,
+    location: lot.location || (isMiniMarket.value ? "LOCAL" : ""),
+    lot_number: lot.lot_number || "",
+    expiration_date: lot.expiration_date ? formatDateForInput(lot.expiration_date) : "",
+  }));
+  originalLots.value = JSON.parse(JSON.stringify(distributedLots.value));
+  tempIdCounter = 0;
+  lotErrors.value = {};
+};
+
+const loadFreshLots = async () => {
+  if (!props.productId) {
+    initLots(props.lots);
+    return;
+  }
+  isLoadingLots.value = true;
+  try {
+    const response = await axios.get(`/lots/product/${props.productId}`);
+    const fetched = response.data?.data?.data || response.data?.data || [];
+    if (Array.isArray(fetched) && fetched.length > 0) {
+      initLots(fetched);
+    } else {
+      initLots(props.lots);
+    }
+  } catch (e) {
+    initLots(props.lots);
+  } finally {
+    isLoadingLots.value = false;
+  }
+};
+
 watch(
-  [() => props.modelValue, () => props.lots],
-  ([isOpening, currentLots]) => {
+  () => props.modelValue,
+  (isOpening) => {
     if (isOpening) {
-      const lotsArray = Array.isArray(currentLots) ? currentLots : [];
-      distributedLots.value = lotsArray.map(lot => ({
-        ...lot,
-        location: lot.location || (isMiniMarket.value ? "LOCAL" : ""),
-        lot_number: lot.lot_number || "",
-        expiration_date: lot.expiration_date ? formatDateForInput(lot.expiration_date) : "",
-      }));
-      originalLots.value = JSON.parse(JSON.stringify(lotsArray));
-      tempIdCounter = 0;
-      lotErrors.value = {};
+      loadFreshLots();
     }
   },
-  { immediate: true, deep: true }
+  { immediate: true }
 );
 
 const currentLotsStockSum = computed(() => {
@@ -363,31 +392,31 @@ const handleScan = (code) => {
                   <VCol :cols="isMiniMarket ? 6 : 4">
                     <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Lote</span>
                     <AppTextField
-                      v-model="item.lot_number"
+                      v-model="(item.raw || item).lot_number"
                       placeholder="Nº..."
                       variant="outlined"
                       density="comfortable"
                       class="rounded-lg font-weight-black"
                       hide-details="auto"
-                      :error-messages="lotErrors[item.isNew ? item.temp_id : item.id]?.lot_number"
+                      :error-messages="lotErrors[(item.raw || item).isNew ? (item.raw || item).temp_id : (item.raw || item).id]?.lot_number"
                     />
                   </VCol>
                   <VCol :cols="isMiniMarket ? 6 : 4">
                     <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Vencimiento</span>
                     <AppTextField
-                      v-model="item.expiration_date"
+                      v-model="(item.raw || item).expiration_date"
                       type="date"
                       variant="outlined"
                       density="comfortable"
                       class="rounded-lg font-weight-black"
                       hide-details="auto"
-                      :error-messages="lotErrors[item.isNew ? item.temp_id : item.id]?.expiration_date"
+                      :error-messages="lotErrors[(item.raw || item).isNew ? (item.raw || item).temp_id : (item.raw || item).id]?.expiration_date"
                     />
                   </VCol>
                   <VCol v-if="!isMiniMarket" cols="4">
                     <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Ubicación</span>
                     <VAutocomplete
-                      v-model="item.location"
+                      v-model="(item.raw || item).location"
                       :items="props.locations"
                       item-title="name"
                       item-value="name"
@@ -396,15 +425,15 @@ const handleScan = (code) => {
                       density="comfortable"
                       class="rounded-lg font-weight-black"
                       hide-details="auto"
-                      :error-messages="lotErrors[item.isNew ? item.temp_id : item.id]?.location"
+                      :error-messages="lotErrors[(item.raw || item).isNew ? (item.raw || item).temp_id : (item.raw || item).id]?.location"
                     />
                   </VCol>
                 </VRow>
               </template>
 
               <template #item.original_stock="{ item }">
-                <VChip v-if="!item.isNew" color="primary" variant="tonal" size="small" class="font-weight-black rounded-lg">
-                  {{ formatNumber(originalLots.find(l => l.id === item.id)?.quantity || 0) }}
+                <VChip v-if="!(item.raw || item).isNew" color="primary" variant="tonal" size="small" class="font-weight-black rounded-lg">
+                  {{ formatNumber(originalLots.find(l => l.id === (item.raw || item).id)?.quantity || 0) }}
                 </VChip>
                 <VChip v-else color="success" variant="flat" size="x-small" class="font-weight-black uppercase shadow-sm rounded-lg">
                   NUEVO
@@ -414,7 +443,7 @@ const handleScan = (code) => {
               <template #item.quantity="{ item }">
                 <div class="pa-1 bg-light rounded-lg border-dashed-2">
                   <AppTextField
-                    v-model.number="item.quantity"
+                    v-model.number="(item.raw || item).quantity"
                     type="number"
                     min="0"
                     variant="plain"
@@ -427,13 +456,13 @@ const handleScan = (code) => {
 
               <template #item.actions="{ item }">
                 <VBtn 
-                  v-if="item.isNew" 
+                  v-if="(item.raw || item).isNew" 
                   icon="tabler-trash"
                   color="error" 
                   variant="tonal" 
                   size="small" 
                   class="rounded-lg"
-                  @click="handleRemoveNewLot(item.temp_id)"
+                  @click="handleRemoveNewLot((item.raw || item).temp_id)"
                 />
                 <VBtn 
                   v-else 
@@ -442,8 +471,8 @@ const handleScan = (code) => {
                   variant="tonal" 
                   size="small" 
                   class="rounded-lg"
-                  :disabled="item.quantity === 0"
-                  @click="handleClearLotQuantity(item)"
+                  :disabled="(item.raw || item).quantity === 0"
+                  @click="handleClearLotQuantity(item.raw || item)"
                 />
               </template>
             </VDataTable>

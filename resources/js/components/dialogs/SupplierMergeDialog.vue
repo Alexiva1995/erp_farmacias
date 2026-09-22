@@ -36,6 +36,17 @@ const fetchAvailableSuppliers = async () => {
   }
 };
 
+const filterSupplier = (itemTitle, queryText, item) => {
+  if (!queryText) return true;
+  const text = queryText.toLowerCase().trim();
+  const raw = item.raw;
+  const name = String(raw.name || "").toLowerCase();
+  const rif = String(raw.rif || "").toLowerCase();
+  const id = String(raw.id || "").toLowerCase();
+  const socialReason = String(raw.social_reason || "").toLowerCase();
+  return name.includes(text) || rif.includes(text) || id.includes(text) || socialReason.includes(text);
+};
+
 watch(
   () => props.modelValue,
   (val) => {
@@ -70,8 +81,8 @@ const handleMerge = async () => {
     title: "¿Confirmar Fusión de Proveedores?",
     html: `
       <div class="text-left text-sm">
-        <p class="mb-2">Se conservará como proveedor principal: <strong>${targetSupplier.value?.name}</strong> (ID: ${targetSupplier.value?.id}).</p>
-        <p class="mb-2 text-error">Se eliminará el proveedor: <strong>${sourceSupplier.value?.name}</strong> (ID: ${sourceSupplier.value?.id}).</p>
+        <p class="mb-2">Se conservará como proveedor principal: <strong>${targetSupplier.value?.name}</strong> (ID: #${targetSupplier.value?.id}).</p>
+        <p class="mb-2 text-error">Se eliminará el proveedor duplicado: <strong>${sourceSupplier.value?.name}</strong> (ID: #${sourceSupplier.value?.id}).</p>
         <p class="text-xs text-muted">Todas las facturas, retenciones, órdenes, movimientos y productos del proveedor eliminado se transferirán al principal. Esta acción no se puede deshacer.</p>
       </div>
     `,
@@ -79,7 +90,7 @@ const handleMerge = async () => {
     showCancelButton: true,
     confirmButtonText: "Sí, Fusionar",
     cancelButtonText: "Cancelar",
-    confirmButtonColor: "#d33",
+    confirmButtonColor: "#7A0099",
     reverseButtons: true,
   });
 
@@ -107,19 +118,28 @@ const handleMerge = async () => {
 
 <template>
   <VDialog v-model="isVisible" max-width="750" persistent>
-    <VCard class="rounded-xl shadow-lg">
-      <VCardItem class="bg-primary py-4 px-6">
-        <div class="d-flex align-center justify-space-between w-100 text-white">
-          <div class="d-flex align-center gap-2">
-            <VIcon icon="tabler-arrows-join-2" size="24" />
-            <div>
-              <div class="text-h6 font-weight-bold text-white">Fusionar Proveedores Duplicados</div>
-              <div class="text-xs text-white-50">Unifica dos registros en uno solo sin perder información histórica</div>
+    <VCard class="rounded-xl border-0 shadow-lg d-flex flex-column overflow-hidden">
+      <!-- Encabezado con Gradiente del Sistema -->
+      <VCardTitle class="pa-0 flex-shrink-0">
+        <div class="px-6 py-4 bg-primary d-flex align-center justify-space-between text-white header-gradient">
+          <div class="d-flex align-center">
+            <VAvatar color="white" variant="flat" size="40" class="me-3 elevation-1 flex-shrink-0">
+              <VIcon color="primary" size="22">tabler-arrows-join-2</VIcon>
+            </VAvatar>
+            <div class="d-flex flex-column">
+              <h2 class="text-subtitle-1 font-weight-black text-white leading-tight mb-0" style="color: white !important;">
+                Fusionar Proveedores Duplicados
+              </h2>
+              <span class="text-caption text-white opacity-85 font-weight-medium mt-1" style="color: white !important; font-size: 11px;">
+                Unifica dos registros en uno solo sin perder el historial operativo y financiero
+              </span>
             </div>
           </div>
-          <VBtn icon="tabler-x" variant="text" color="white" density="compact" @click="isVisible = false" />
+          <VBtn icon variant="tonal" color="white" size="x-small" @click="isVisible = false" class="rounded-lg">
+            <VIcon size="18">tabler-x</VIcon>
+          </VBtn>
         </div>
-      </VCardItem>
+      </VCardTitle>
 
       <VCardText class="pa-6">
         <VAlert
@@ -141,17 +161,31 @@ const handleMerge = async () => {
               v-model="selectedDuplicateId"
               :items="availableSuppliers"
               :loading="loadingSuppliers"
+              :custom-filter="filterSupplier"
               item-title="name"
               item-value="id"
-              placeholder="Buscar por nombre o RIF..."
-              density="compact"
+              placeholder="Buscar por nombre, RIF o ID..."
+              density="comfortable"
               variant="outlined"
               prepend-inner-icon="tabler-search"
               clearable
               no-data-text="No se encontraron otros proveedores disponibles"
             >
-              <template #item="{ props, item }">
-                <VListItem v-bind="props" :subtitle="`RIF: ${item.raw.rif || 'N/A'} | ID: ${item.raw.id} | Tipo: ${item.raw.type || 'Droguería'}`" />
+              <template #item="{ props: itemProps, item }">
+                <VListItem
+                  v-bind="itemProps"
+                  :title="item.raw.name"
+                  :subtitle="`RIF: ${item.raw.rif || 'N/A'} | ID: #${item.raw.id} | Tipo: ${item.raw.type || 'Droguería / Mercancía'}`"
+                >
+                  <template #prepend>
+                    <VAvatar size="28" color="primary" variant="tonal" class="me-2 text-xs font-weight-bold">
+                      #{{ item.raw.id }}
+                    </VAvatar>
+                  </template>
+                  <template #append v-if="item.raw.is_active === false">
+                    <VChip size="x-small" color="warning" variant="tonal">Inactivo</VChip>
+                  </template>
+                </VListItem>
               </template>
             </VAutocomplete>
           </VCol>
@@ -167,7 +201,7 @@ const handleMerge = async () => {
             <VCol cols="12" sm="6">
               <VCard
                 variant="outlined"
-                class="pa-4 rounded-lg cursor-pointer transition-all position-relative"
+                class="pa-4 rounded-lg cursor-pointer transition-all position-relative h-100"
                 :class="{
                   'border-primary bg-primary-subtle border-2': primarySupplierChoice === 'current',
                   'border-dashed opacity-80': primarySupplierChoice !== 'current',
@@ -193,9 +227,9 @@ const handleMerge = async () => {
                 <div class="text-sm font-weight-bold text-high-emphasis line-clamp-1">
                   {{ props.supplier.name }}
                 </div>
-                <div class="text-xs text-medium-emphasis mt-1">ID: {{ props.supplier.id }}</div>
+                <div class="text-xs text-medium-emphasis mt-1">ID: #{{ props.supplier.id }}</div>
                 <div class="text-xs text-medium-emphasis">RIF: {{ props.supplier.rif || 'Sin RIF' }}</div>
-                <div class="text-xs text-medium-emphasis">Deuda: ${{ (props.supplier.debt ?? 0).toLocaleString('es-VE', { minimumFractionDigits: 2 }) }}</div>
+                <div class="text-xs text-medium-emphasis">Deuda: ${{ (Number(props.supplier.debt) || 0).toLocaleString('es-VE', { minimumFractionDigits: 2 }) }}</div>
               </VCard>
             </VCol>
 
@@ -203,7 +237,7 @@ const handleMerge = async () => {
             <VCol cols="12" sm="6">
               <VCard
                 variant="outlined"
-                class="pa-4 rounded-lg cursor-pointer transition-all position-relative"
+                class="pa-4 rounded-lg cursor-pointer transition-all position-relative h-100"
                 :class="{
                   'border-primary bg-primary-subtle border-2': primarySupplierChoice === 'duplicate',
                   'border-dashed opacity-80': primarySupplierChoice !== 'duplicate',
@@ -229,50 +263,61 @@ const handleMerge = async () => {
                 <div class="text-sm font-weight-bold text-high-emphasis line-clamp-1">
                   {{ duplicateSupplier.name }}
                 </div>
-                <div class="text-xs text-medium-emphasis mt-1">ID: {{ duplicateSupplier.id }}</div>
+                <div class="text-xs text-medium-emphasis mt-1">ID: #{{ duplicateSupplier.id }}</div>
                 <div class="text-xs text-medium-emphasis">RIF: {{ duplicateSupplier.rif || 'Sin RIF' }}</div>
-                <div class="text-xs text-medium-emphasis">Deuda: ${{ (duplicateSupplier.debt ?? 0).toLocaleString('es-VE', { minimumFractionDigits: 2 }) }}</div>
+                <div class="text-xs text-medium-emphasis">Deuda: ${{ (Number(duplicateSupplier.debt) || 0).toLocaleString('es-VE', { minimumFractionDigits: 2 }) }}</div>
               </VCard>
             </VCol>
           </VRow>
         </div>
       </VCardText>
 
-      <VCardActions class="px-6 py-4 bg-light-surface border-t d-flex justify-end gap-2">
-        <VBtn
-          variant="outlined"
-          color="secondary"
-          :disabled="loading"
-          @click="isVisible = false"
-        >
-          Cancelar
-        </VBtn>
-        <VBtn
-          color="error"
-          variant="flat"
-          prepend-icon="tabler-arrows-join-2"
-          :loading="loading"
-          :disabled="!duplicateSupplier || loading"
-          @click="handleMerge"
-        >
-          Confirmar Fusión
-        </VBtn>
+      <!-- Pie de Diálogo Unificado (50% de ancho cada botón) -->
+      <VCardActions class="pa-3 bg-white border-t flex-shrink-0">
+        <VRow dense class="w-100 ma-0">
+          <VCol cols="6" class="pa-1">
+            <VBtn
+              color="secondary"
+              variant="outlined"
+              size="large"
+              block
+              height="44"
+              class="font-weight-bold rounded-lg text-button"
+              :disabled="loading"
+              @click="isVisible = false"
+            >
+              CANCELAR
+            </VBtn>
+          </VCol>
+          <VCol cols="6" class="pa-1">
+            <VBtn
+              color="primary"
+              variant="flat"
+              size="large"
+              block
+              height="44"
+              class="font-weight-black rounded-lg shadow-primary text-button"
+              :loading="loading"
+              :disabled="!duplicateSupplier || loading"
+              @click="handleMerge"
+            >
+              <VIcon start icon="tabler-arrows-join-2" size="18" />
+              CONFIRMAR FUSIÓN
+            </VBtn>
+          </VCol>
+        </VRow>
       </VCardActions>
     </VCard>
   </VDialog>
 </template>
 
 <style scoped>
-.text-white-50 {
-  color: rgba(255, 255, 255, 0.8) !important;
+.header-gradient {
+  background: var(--brand-gradient, linear-gradient(135deg, #7A0099, #E20074)) !important;
 }
 
 .bg-primary-subtle {
   background-color: rgba(var(--v-theme-primary), 0.04) !important;
-}
-
-.bg-light-surface {
-  background-color: rgba(var(--v-theme-on-surface), 0.02) !important;
 }
 
 .cursor-pointer {

@@ -113,7 +113,7 @@ const closeDialog = () => {
     <VCard class="rounded-xl border-0 shadow-lg d-flex flex-column history-dialog-card" style="height: 660px; max-height: 90vh; overflow: hidden;">
       <!-- Cabecera con espaciado correcto -->
       <VCardTitle class="pa-0 flex-shrink-0">
-        <div class="px-5 py-3.5 bg-primary d-flex align-center justify-space-between text-white" style="background: linear-gradient(135deg, #7A0099, #E20074) !important;">
+        <div class="px-6 py-4.5 bg-primary d-flex align-center justify-space-between text-white" style="background: linear-gradient(135deg, #7A0099, #E20074) !important;">
           <div class="d-flex align-center">
             <VAvatar color="white" variant="flat" size="38" class="me-3 elevation-1 flex-shrink-0">
               <VIcon color="primary" size="20">tabler-history</VIcon>
@@ -122,7 +122,7 @@ const closeDialog = () => {
               <h2 class="text-subtitle-1 font-weight-black text-white leading-tight mb-0" style="color: white !important;">
                 Historial de Conexiones — {{ supplier?.name || "Proveedor" }} (ID #{{ supplier?.id }})
               </h2>
-              <span class="text-caption text-white opacity-85 font-weight-medium mt-0.5" style="color: white !important; font-size: 11px;">
+              <span class="text-caption text-white opacity-85 font-weight-medium mt-1" style="color: white !important; font-size: 11px;">
                 Auditoría de facturas y sincronizaciones automáticas
               </span>
             </div>
@@ -346,11 +346,11 @@ const closeDialog = () => {
       <!-- Pie de acciones full-width adaptado a los modales del sistema -->
       <VCardActions class="pa-3 bg-white border-t flex-shrink-0">
         <VBtn
-          color="primary"
-          variant="flat"
+          color="secondary"
+          variant="outlined"
           block
           height="44"
-          class="font-weight-black text-caption rounded-lg uppercase shadow-primary"
+          class="font-weight-bold text-caption rounded-lg uppercase"
           @click="closeDialog"
         >
           CERRAR

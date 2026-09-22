@@ -77,14 +77,22 @@ class Invoice extends Model
         'invoice_number',
         'control_number',
         'exp_date',
+        'payment_date',
+        'received_date',
+        'created_invoice_date',
+        'currency',
+        'is_indexed',
         'total_usd',
         'tax_amount',
         'exchange_rate',
         'total_amount',
         'taxable_base',
         'exempt_amount',
+        'net_payable_amount',
         'status_payment',
-        'created_invoice_date'
+        'uploaded_by',
+        'registered_by',
+        'loaded_by',
     ];
 
     protected $fillableFromHeader = self::FILLABLEHEADER;

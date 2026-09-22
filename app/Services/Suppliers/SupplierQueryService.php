@@ -398,41 +398,73 @@ class SupplierQueryService
             foreach ($filteredInvoices as $invoice) {
                 try {
                     DB::transaction(function () use ($supplier, $invoice) {
-                        $header = $invoice['header'];
-                        $lines = $invoice['lines'];
+                        $header = $invoice['header'] ?? [];
+                        $lines = $invoice['lines'] ?? [];
 
                         $totalAmount = $header['total_amount'] ?? null;
+                        $totalUsd = isset($header['total_usd']) && $header['total_usd'] !== '' ? floatval($header['total_usd']) : 0;
+                        $rate = floatval($header['exchange_rate'] ?? 1);
+                        if ($rate <= 0) {
+                            $rate = 1;
+                        }
+
                         if ($totalAmount === null || $totalAmount === '') {
-                            $totalUsd = floatval($header['total_usd'] ?? 0);
-                            $rate = floatval($header['exchange_rate'] ?? 1);
                             $totalAmount = round($totalUsd * $rate, 2);
+                        } else {
+                            $totalAmount = floatval($totalAmount);
+                        }
+
+                        if ($totalUsd <= 0 && $totalAmount > 0 && $rate > 0) {
+                            $totalUsd = round($totalAmount / $rate, 2);
                         }
 
                         $invoiceNumber = $header['invoice_number'] ?? null;
-                        $existingInvoice = null;
-
-                        if ($invoiceNumber) {
-                            $existingInvoice = $supplier->invoices()
-                                ->where('invoice_number', $invoiceNumber)
-                                ->first();
+                        if (!$invoiceNumber) {
+                            return;
                         }
 
-                        $userId = auth()->id() ?? User::value('id');
+                        $existingInvoice = $supplier->invoices()
+                            ->where('invoice_number', $invoiceNumber)
+                            ->first();
+
+                        $userId = auth()->id() ?? User::value('id') ?? 1;
+
+                        $createdInvoiceDate = $header['created_invoice_date'] ?? $header['created_at'] ?? now()->toDateString();
+                        $expDate = $header['exp_date'] ?? $createdInvoiceDate;
+                        $paymentDate = $header['payment_date'] ?? $expDate;
+                        $receivedDate = $header['received_date'] ?? $createdInvoiceDate;
+                        $currency = $header['currency'] ?? ($supplier->payment_method === 'Divisas' ? 'USD' : 'Bs');
+                        $controlNumber = $header['control_number'] ?? ('00-' . str_pad((string)ltrim((string)$invoiceNumber, '0'), 7, '0', STR_PAD_LEFT));
+                        $isIndexed = isset($header['is_indexed']) ? (bool)$header['is_indexed'] : (bool)($supplier->is_indexed ?? false);
+
+                        $invoiceData = [
+                            'invoice_number'        => $invoiceNumber,
+                            'control_number'        => $controlNumber,
+                            'created_invoice_date'  => $createdInvoiceDate,
+                            'exp_date'              => $expDate,
+                            'payment_date'          => $paymentDate,
+                            'received_date'         => $receivedDate,
+                            'currency'              => $currency,
+                            'is_indexed'            => $isIndexed,
+                            'total_amount'          => $totalAmount,
+                            'total_usd'             => $totalUsd,
+                            'exchange_rate'         => $rate,
+                            'taxable_base'          => floatval($header['taxable_base'] ?? 0),
+                            'tax_amount'            => floatval($header['tax_amount'] ?? 0),
+                            'exempt_amount'         => floatval($header['exempt_amount'] ?? 0),
+                            'net_payable_amount'    => floatval($header['net_payable_amount'] ?? $totalAmount),
+                            'status_payment'        => intval($header['status_payment'] ?? 0),
+                            'status'                => $invoice['status'] ?? 'pending',
+                        ];
 
                         if ($existingInvoice) {
                             $invoiceModel = $existingInvoice;
-                            $invoiceModel->update([
-                                ...Arr::only($header, Invoice::FILLABLEHEADER),
-                                'total_amount' => $totalAmount,
-                            ]);
+                            $invoiceModel->update($invoiceData);
                         } else {
-                            $invoiceModel = $supplier->invoices()->create([
-                                ...Arr::only($header, Invoice::FILLABLEHEADER),
-                                'total_amount' => $totalAmount,
-                                'status' => $invoice['status'] ?? 'pending',
-                                'uploaded_by' => $userId,
-                                'registered_by' => $userId,
-                            ]);
+                            $invoiceData['uploaded_by'] = $userId;
+                            $invoiceData['registered_by'] = $userId;
+                            $invoiceData['loaded_by'] = $userId;
+                            $invoiceModel = $supplier->invoices()->create($invoiceData);
                         }
 
                         // ✅ Obtener exchange_rate del header
@@ -532,16 +564,18 @@ class SupplierQueryService
                 $totalBs = floatval($h['total_amount'] ?? 0);
                 $date = $h['created_invoice_date'] ?? $h['created_at'] ?? now()->toDateString();
 
-                $isAlreadyRegistered = isset($allInvoiceNumbers[$num]) || (!empty($ctrl) && isset($existingControls[$ctrl]));
-                $action = 'created';
-                $actionLabel = 'Nueva en Pendientes';
+                $existsInDb = $supplier->invoices()->where('invoice_number', $num)->exists();
+                $isAlreadyComplete = isset($allInvoiceNumbers[$num]) || (!empty($ctrl) && isset($existingControls[$ctrl]));
 
-                if ($isAlreadyRegistered) {
+                if ($existsInDb) {
+                    $action = 'created';
+                    $actionLabel = 'Nueva en Pendientes';
+                } elseif ($isAlreadyComplete) {
                     $action = 'skipped';
                     $actionLabel = 'Ya Registrada';
-                } elseif ($supplier->invoices()->where('invoice_number', $num)->exists()) {
-                    $action = 'updated';
-                    $actionLabel = 'Actualizada';
+                } else {
+                    $action = 'failed';
+                    $actionLabel = 'Error al Guardar';
                 }
 
                 $invoicesAudit[] = [
@@ -832,14 +866,10 @@ class SupplierQueryService
     {
         return Supplier::query()
             ->where(function ($q) {
-                $q->where('is_active', true)
-                  ->orWhereNull('is_active');
-            })
-            ->where(function ($q) {
                 $q->whereNull('is_deleted')
                   ->orWhere('is_deleted', false);
             })
-            ->select(["id", "name"])
+            ->select(["id", "name", "rif", "type", "debt", "social_reason", "is_active"])
             ->orderBy("name", "asc")
             ->get();
     }

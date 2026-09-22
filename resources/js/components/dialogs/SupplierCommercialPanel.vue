@@ -528,23 +528,29 @@ const close = () => {
       </VCardText>
 
       <!-- Pie de Diálogo Unificado -->
-      <VCardActions class="pa-3 pa-sm-4 bg-white border-t flex-shrink-0">
-        <VRow dense class="w-100 ma-0 justify-end" align="center">
-          <VCol cols="12" sm="auto" class="d-flex justify-end gap-2">
+      <VCardActions class="pa-3 bg-white border-t flex-shrink-0">
+        <VRow dense class="w-100 ma-0">
+          <VCol cols="6" class="pa-1">
             <VBtn
               color="secondary"
               variant="outlined"
-              height="40"
-              class="font-weight-bold rounded-lg px-5"
+              size="large"
+              block
+              height="44"
+              class="font-weight-bold rounded-lg text-button"
               @click="close"
             >
               CERRAR
             </VBtn>
+          </VCol>
+          <VCol cols="6" class="pa-1">
             <VBtn
               color="primary"
               variant="flat"
-              height="40"
-              class="font-weight-black rounded-lg px-6 shadow-primary"
+              size="large"
+              block
+              height="44"
+              class="font-weight-black rounded-lg shadow-primary text-button"
               :loading="loading"
               @click="saveCurrentTab"
             >

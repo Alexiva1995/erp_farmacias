@@ -217,6 +217,8 @@ watch(
     v-model="showLotModal"
     mode="return"
     :product-name="returnForLotDistribution?.product?.name ?? 'Producto'"
+    :product-id="returnForLotDistribution?.product?.id ?? ''"
+    :laboratory="returnForLotDistribution?.product?.laboratory?.name ?? ''"
     :lots="lotsForDistribution"
     :target-quantity="returnForLotDistribution?.quantity ?? 0"
     :locations="locations"

@@ -240,6 +240,8 @@ const handleExport = async (format) => {
     <LotDistributionModal
       v-model="showProductLotModal"
       :product-name="productForLotDistribution?.name || 'Producto'"
+      :product-id="productForLotDistribution?.id || ''"
+      :laboratory="productForLotDistribution?.laboratory?.name || ''"
       :lots="productForLotDistribution?.lots || []"
       :target-quantity="productTargetQuantity || 0"
       :locations="locations"
@@ -256,6 +258,8 @@ const handleExport = async (format) => {
     <LotDistributionModal
       v-model="showInvoiceLotModal"
       :product-name="invoiceForLotDistribution?.name || 'Producto'"
+      :product-id="invoiceForLotDistribution?.id || ''"
+      :laboratory="invoiceForLotDistribution?.laboratory?.name || ''"
       :lots="invoiceForLotDistribution?.lots || []"
       :target-quantity="invoiceTargetQuantity || 0"
       :locations="locations"
@@ -272,6 +276,8 @@ const handleExport = async (format) => {
     <LotDistributionModal
       v-model="showSaleLotModal"
       :product-name="saleForLotDistribution?.name || 'Producto'"
+      :product-id="saleForLotDistribution?.id || ''"
+      :laboratory="saleForLotDistribution?.laboratory?.name || ''"
       :lots="saleForLotDistribution?.lots || []"
       :target-quantity="saleTargetQuantity || 0"
       :locations="locations"

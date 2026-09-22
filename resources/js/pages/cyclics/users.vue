@@ -413,6 +413,8 @@ const handleLotsDistributed = async ({ updatedLots, newLots }) => {
     <LotDistributionModal
       v-model="showLotDistributionModal"
       :product-name="itemForLotDistribution?.name || 'Producto'"
+      :product-id="itemForLotDistribution?.id || ''"
+      :laboratory="itemForLotDistribution?.laboratory?.name || ''"
       :lots="itemForLotDistribution?.lots || []"
       :target-quantity="targetQuantityForDistribution"
       :locations="locations"
