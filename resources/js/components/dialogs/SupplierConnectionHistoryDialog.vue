@@ -59,6 +59,7 @@ watch(
   }
 );
 
+// Facturas filtradas de la conexión seleccionada
 const currentInvoices = computed(() => {
   const invs = selectedStatus.value?.details?.invoices || [];
   if (!searchInvoiceQuery.value) return invs;
@@ -70,29 +71,30 @@ const currentInvoices = computed(() => {
   );
 });
 
-const getStatusColor = (status) => {
-  switch (status) {
-    case "completed":
-      return "success";
-    case "processing":
-      return "warning";
-    case "failed":
-      return "error";
-    default:
-      return "secondary";
+const formatAmount = (inv) => {
+  const bs = Number(inv.total_amount || 0);
+  const usd = Number(inv.total_usd || 0);
+
+  if (bs > 0 && usd > 0) {
+    return `Bs. ${bs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ($${usd.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`;
+  } else if (bs > 0) {
+    return `Bs. ${bs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  } else if (usd > 0) {
+    return `$${usd.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   }
+  return '—';
 };
 
-const getActionColor = (action) => {
-  switch (action) {
-    case "created":
-      return "success";
-    case "updated":
-      return "info";
-    case "skipped":
-      return "secondary";
+const getStatusBadge = (status) => {
+  switch (status) {
+    case "completed":
+      return { label: "Exitosa", color: "success", icon: "tabler-circle-check-filled" };
+    case "processing":
+      return { label: "Procesando", color: "warning", icon: "tabler-loader" };
+    case "failed":
+      return { label: "Fallida", color: "error", icon: "tabler-alert-triangle-filled" };
     default:
-      return "default";
+      return { label: status || "Pendiente", color: "secondary", icon: "tabler-help-circle" };
   }
 };
 
@@ -104,25 +106,24 @@ const closeDialog = () => {
 <template>
   <VDialog
     v-model="isVisible"
-    max-width="950"
+    max-width="1000"
     persistent
-    scrollable
     :fullscreen="mobile"
   >
-    <VCard class="rounded-xl border-0 shadow-lg overflow-hidden d-flex flex-column" style="max-block-size: 90vh;">
+    <VCard class="rounded-xl border-0 shadow-lg d-flex flex-column history-dialog-card" style="height: 640px; max-height: 90vh; overflow: hidden;">
       <!-- Cabecera -->
       <VCardTitle class="pa-0 flex-shrink-0">
         <div class="px-4 py-3 bg-primary d-flex align-center justify-space-between text-white" style="background: linear-gradient(135deg, #7A0099, #E20074) !important;">
           <div class="d-flex align-center gap-2.5">
-            <VAvatar color="white" variant="flat" size="36" class="elevation-1">
-              <VIcon color="primary" size="20">tabler-history</VIcon>
+            <VAvatar color="white" variant="flat" size="34" class="elevation-1">
+              <VIcon color="primary" size="18">tabler-history</VIcon>
             </VAvatar>
             <div>
               <h2 class="text-subtitle-1 font-weight-black text-white leading-tight mb-0" style="color: white !important;">
-                Historial de Conexiones y Facturas Traídas
+                Historial de Conexiones — {{ supplier?.name || "Proveedor" }} (ID #{{ supplier?.id }})
               </h2>
-              <span class="text-caption text-white opacity-90 font-weight-medium" style="color: white !important;">
-                {{ supplier?.name || "Proveedor" }} (ID #{{ supplier?.id }})
+              <span class="text-caption text-white opacity-80 font-weight-medium" style="color: white !important; font-size: 11px;">
+                Auditoría de facturas y sincronizaciones automáticas
               </span>
             </div>
           </div>
@@ -132,200 +133,218 @@ const closeDialog = () => {
         </div>
       </VCardTitle>
 
-      <!-- Contenido Principal -->
-      <VCardText class="pa-3 bg-light flex-grow-1 overflow-y-auto" style="max-block-size: calc(90vh - 120px);">
+      <!-- Sub-Barra de Resumen de Conexión Seleccionada -->
+      <div v-if="selectedStatus" class="px-4 py-2 border-b bg-surface flex-shrink-0 d-flex flex-wrap align-center justify-space-between gap-2">
+        <div class="d-flex align-center gap-2 flex-wrap">
+          <span class="text-caption font-weight-bold text-high-emphasis">
+            Conexión: #{{ selectedStatus.id }} ({{ selectedStatus.created_at_formatted }})
+          </span>
+          <span class="text-disabled font-weight-light">|</span>
+          <div class="d-flex align-center gap-1">
+            <span class="text-caption text-medium-emphasis">Estado:</span>
+            <VChip
+              :color="getStatusBadge(selectedStatus.status).color"
+              size="x-small"
+              variant="tonal"
+              class="font-weight-black text-uppercase px-2"
+              style="font-size: 10px; height: 20px;"
+            >
+              <VIcon start size="12">{{ getStatusBadge(selectedStatus.status).icon }}</VIcon>
+              {{ getStatusBadge(selectedStatus.status).label }}
+            </VChip>
+          </div>
+          <span class="text-disabled font-weight-light">|</span>
+          <span class="text-caption text-medium-emphasis">
+            Por: <strong class="text-high-emphasis">{{ selectedStatus.user_name }}</strong>
+          </span>
+        </div>
+
+        <!-- Métricas compactas -->
+        <div class="d-flex align-center gap-1.5 flex-wrap">
+          <VChip size="x-small" variant="outlined" color="primary" class="font-weight-bold" style="font-size: 10px; height: 22px;">
+            {{ selectedStatus.count_invoice }} Facturas Servidor
+          </VChip>
+          <VChip size="x-small" variant="outlined" color="success" class="font-weight-bold" style="font-size: 10px; height: 22px;">
+            {{ selectedStatus.details?.invoices?.length || selectedStatus.count_invoice || 0 }} Facturas Analizadas
+          </VChip>
+          <VChip size="x-small" variant="outlined" color="info" class="font-weight-bold" style="font-size: 10px; height: 22px;">
+            {{ selectedStatus.count_product }} Productos
+          </VChip>
+        </div>
+      </div>
+
+      <!-- Contenido Principal: 2 Columnas sin scroll exterior -->
+      <VCardText class="pa-3 bg-light flex-grow-1 overflow-hidden d-flex flex-column">
         <!-- Estado de carga -->
-        <div v-if="loading" class="pa-8 text-center bg-white rounded-lg border shadow-sm">
+        <div v-if="loading" class="h-100 d-flex flex-column align-center justify-center bg-white rounded-lg border shadow-sm">
           <VProgressCircular indeterminate color="primary" size="36" class="mb-2" />
-          <div class="text-xs font-weight-black text-primary text-uppercase tracking-wider">Cargando historial de conexiones...</div>
+          <div class="text-xs font-weight-black text-primary text-uppercase tracking-wider">Cargando historial...</div>
         </div>
 
         <!-- Sin registros -->
-        <AppEmptyState
-          v-else-if="!historyList.length"
-          title="Sin historial de sincronizaciones"
-          message="Este proveedor no cuenta con registros previos de conexiones o sincronización de facturas."
-          icon="tabler-plug-connected-x"
-        />
+        <div v-else-if="!historyList.length" class="h-100 d-flex align-center justify-center bg-white rounded-lg border">
+          <AppEmptyState
+            title="Sin historial de sincronizaciones"
+            message="Este proveedor no cuenta con registros previos de conexiones o sincronización de facturas."
+            icon="tabler-plug-connected-x"
+          />
+        </div>
 
-        <!-- Contenido Dividido en 2 Columnas -->
-        <VRow v-else dense align="stretch">
-          <!-- Columna 1: Lista de Conexiones Realizadas -->
-          <VCol cols="12" md="4" class="pe-md-2">
-            <div class="d-flex align-center justify-space-between mb-1.5">
-              <span class="text-xs font-weight-black text-uppercase text-medium-emphasis tracking-wider">
-                Sincronizaciones
-              </span>
-              <VChip size="x-small" variant="tonal" color="primary" class="font-weight-black">
-                {{ historyList.length }} reg.
-              </VChip>
-            </div>
+        <!-- Contenido en 2 Columnas -->
+        <VRow v-else dense class="h-100 ma-0" align="stretch">
+          <!-- Columna 1: Historial Sincronizaciones -->
+          <VCol cols="12" md="4" class="pa-1 d-flex flex-column h-100">
+            <VCard variant="flat" class="rounded-lg border bg-white d-flex flex-column h-100 overflow-hidden shadow-sm">
+              <div class="px-3 py-2 border-b bg-light d-flex align-center justify-space-between flex-shrink-0">
+                <span class="text-xs font-weight-black text-uppercase text-medium-emphasis tracking-wider">
+                  Historial Sincronizaciones
+                </span>
+                <VChip size="x-small" variant="tonal" color="primary" class="font-weight-black">
+                  {{ historyList.length }}
+                </VChip>
+              </div>
 
-            <VCard variant="flat" class="rounded-lg border bg-white overflow-hidden" style="max-height: 520px; overflow-y: auto;">
-              <VList lines="two" density="compact" class="pa-1">
-                <VListItem
+              <!-- Lista con scroll interno exclusivo -->
+              <div class="flex-grow-1 overflow-y-auto pa-1.5 custom-scroll">
+                <div
                   v-for="item in historyList"
                   :key="item.id"
-                  :active="selectedStatus?.id === item.id"
-                  color="primary"
-                  class="rounded-lg mb-1 cursor-pointer border"
-                  :class="{ 'border-primary bg-primary-lighten-5': selectedStatus?.id === item.id }"
+                  class="sync-item pa-2 mb-1 rounded-lg border cursor-pointer transition-all"
+                  :class="{
+                    'sync-item-active': selectedStatus?.id === item.id,
+                  }"
                   @click="selectedStatus = item"
                 >
-                  <template #prepend>
-                    <VAvatar size="28" :color="getStatusColor(item.status)" variant="tonal" class="me-2">
-                      <VIcon size="16">
-                        {{ item.status === 'completed' ? 'tabler-check' : item.status === 'failed' ? 'tabler-alert-circle' : 'tabler-loader' }}
-                      </VIcon>
-                    </VAvatar>
-                  </template>
-
-                  <VListItemTitle class="text-caption font-weight-bold">
-                    {{ item.created_at_formatted }}
-                  </VListItemTitle>
-                  
-                  <VListItemSubtitle class="text-super-xs text-medium-emphasis">
-                    {{ item.count_invoice }} facturas · {{ item.count_product }} productos
-                  </VListItemSubtitle>
-
-                  <template #append>
-                    <VChip
-                      :color="getStatusColor(item.status)"
-                      size="x-small"
-                      variant="flat"
-                      class="font-weight-black text-uppercase"
-                      style="font-size: 9px; height: 18px;"
-                    >
-                      {{ item.status }}
-                    </VChip>
-                  </template>
-                </VListItem>
-              </VList>
+                  <div class="d-flex align-center justify-space-between mb-1">
+                    <div class="d-flex align-center gap-1.5">
+                      <span
+                        class="status-dot"
+                        :class="item.status === 'completed' ? 'dot-success' : item.status === 'failed' ? 'dot-error' : 'dot-warning'"
+                      ></span>
+                      <span class="text-caption font-weight-bold text-high-emphasis">
+                        {{ item.created_at_formatted }}
+                      </span>
+                    </div>
+                    <span class="text-caption font-weight-black text-medium-emphasis" style="font-size: 11px;">
+                      ({{ item.count_invoice }})
+                    </span>
+                  </div>
+                  <div class="text-caption text-medium-emphasis ps-3" style="font-size: 10px;">
+                    #{{ item.id }} · {{ item.count_product }} productos catálogo
+                  </div>
+                </div>
+              </div>
             </VCard>
           </VCol>
 
-          <!-- Columna 2: Detalle de Facturas de la Conexión Seleccionada -->
-          <VCol cols="12" md="8" class="ps-md-2 mt-3 mt-md-0">
-            <template v-if="selectedStatus">
-              <!-- Tarjeta de Resumen de la Conexión -->
-              <VCard variant="flat" class="pa-2.5 rounded-lg border bg-white mb-2 shadow-sm">
-                <div class="d-flex flex-wrap align-center justify-space-between gap-2 mb-1.5">
-                  <div class="d-flex align-center gap-2">
-                    <span class="text-subtitle-2 font-weight-black text-high-emphasis">
-                      Conexión #{{ selectedStatus.id }}
-                    </span>
-                    <VChip :color="getStatusColor(selectedStatus.status)" size="x-small" variant="tonal" class="font-weight-black text-uppercase">
-                      {{ selectedStatus.status }}
-                    </VChip>
-                  </div>
-                  <span class="text-caption text-medium-emphasis font-weight-medium">
-                    Ejecutado por: <strong>{{ selectedStatus.user_name }}</strong>
+          <!-- Columna 2: Facturas Obtenidas -->
+          <VCol cols="12" md="8" class="pa-1 d-flex flex-column h-100">
+            <VCard variant="flat" class="rounded-lg border bg-white d-flex flex-column h-100 overflow-hidden shadow-sm">
+              <!-- Barra de Búsqueda y Título -->
+              <div class="px-3 py-1.5 border-b bg-light d-flex align-center justify-space-between gap-2 flex-shrink-0">
+                <div class="d-flex align-center gap-1.5">
+                  <span class="text-xs font-weight-black text-uppercase text-high-emphasis tracking-wider">
+                    Facturas Obtenidas (#{{ selectedStatus?.id }})
                   </span>
+                  <VChip size="x-small" variant="flat" color="primary" class="font-weight-black px-1.5" style="height: 18px; font-size: 10px;">
+                    {{ currentInvoices.length }}
+                  </VChip>
                 </div>
-
-                <div class="text-caption text-disabled mb-2">
-                  {{ selectedStatus.message || "Conexión procesada correctamente." }}
+                <div style="max-width: 220px; width: 100%;">
+                  <VTextField
+                    v-model="searchInvoiceQuery"
+                    placeholder="Buscar factura / control..."
+                    density="compact"
+                    hide-details
+                    prepend-inner-icon="tabler-search"
+                    variant="outlined"
+                    class="bg-white text-xs search-input"
+                  />
                 </div>
+              </div>
 
-                <VRow dense class="text-center">
-                  <VCol cols="4">
-                    <div class="pa-1.5 bg-light rounded border">
-                      <div class="text-caption font-weight-black text-primary">{{ selectedStatus.count_invoice }}</div>
-                      <div class="text-super-xs text-medium-emphasis text-uppercase font-weight-bold" style="font-size: 9px;">Facturas Servidor</div>
-                    </div>
-                  </VCol>
-                  <VCol cols="4">
-                    <div class="pa-1.5 bg-light rounded border">
-                      <div class="text-caption font-weight-black text-success">{{ selectedStatus.details?.invoices?.length || selectedStatus.count_invoice || 0 }}</div>
-                      <div class="text-super-xs text-medium-emphasis text-uppercase font-weight-bold" style="font-size: 9px;">Facturas Analizadas</div>
-                    </div>
-                  </VCol>
-                  <VCol cols="4">
-                    <div class="pa-1.5 bg-light rounded border">
-                      <div class="text-caption font-weight-black text-info">{{ selectedStatus.count_product }}</div>
-                      <div class="text-super-xs text-medium-emphasis text-uppercase font-weight-bold" style="font-size: 9px;">Productos Catálogo</div>
-                    </div>
-                  </VCol>
-                </VRow>
-              </VCard>
-
-              <!-- Tabla de Facturas Traídas -->
-              <VCard variant="flat" class="rounded-lg border bg-white overflow-hidden shadow-sm">
-                <div class="px-3 py-2 border-b d-flex align-center justify-space-between gap-2 bg-light">
-                  <span class="text-xs font-weight-black text-uppercase tracking-wider text-high-emphasis">
-                    Facturas de Esta Conexión ({{ currentInvoices.length }})
-                  </span>
-                  <div style="max-width: 200px;">
-                    <VTextField
-                      v-model="searchInvoiceQuery"
-                      placeholder="Filtrar factura/control..."
-                      density="compact"
-                      hide-details
-                      prepend-inner-icon="tabler-search"
-                      variant="outlined"
-                      class="bg-white text-xs"
-                      style="font-size: 11px;"
-                    />
-                  </div>
-                </div>
-
-                <div class="table-responsive" style="max-height: 340px; overflow-y: auto;">
-                  <table class="invoices-audit-table w-100">
-                    <thead>
-                      <tr>
-                        <th class="ps-3 py-1.5 text-left">N° FACTURA</th>
-                        <th class="py-1.5 text-left">N° CONTROL</th>
-                        <th class="py-1.5 text-left">FECHA</th>
-                        <th class="py-1.5 text-end">MONTO USD</th>
-                        <th class="pe-3 py-1.5 text-center">ACCIÓN</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr v-if="!currentInvoices.length">
-                        <td colspan="5" class="text-center py-6 text-caption text-disabled">
-                          No hay detalles específicos registrados para esta conexión.
-                        </td>
-                      </tr>
-                      <tr
-                        v-for="(inv, idx) in currentInvoices"
-                        :key="idx"
-                        class="invoice-audit-row"
-                      >
-                        <td class="ps-3 py-1.5 font-weight-black text-caption text-primary">
-                          {{ inv.invoice_number }}
-                        </td>
-                        <td class="py-1.5 text-caption font-weight-medium text-medium-emphasis">
-                          {{ inv.control_number || '—' }}
-                        </td>
-                        <td class="py-1.5 text-caption text-medium-emphasis">
-                          {{ inv.date || '—' }}
-                        </td>
-                        <td class="py-1.5 text-end text-caption font-weight-bold text-high-emphasis">
-                          ${{ Number(inv.total_usd || 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
-                        </td>
-                        <td class="pe-3 py-1.5 text-center">
-                          <VChip
-                            :color="getActionColor(inv.action)"
-                            size="x-small"
-                            variant="flat"
-                            class="font-weight-black text-uppercase"
-                            style="font-size: 9px; height: 18px;"
-                          >
-                            {{ inv.action_label || (inv.action === 'created' ? 'Nueva' : inv.action === 'updated' ? 'Actualizada' : 'Ya Registrada') }}
-                          </VChip>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </VCard>
-            </template>
+              <!-- Tabla con scroll interno exclusivo -->
+              <div class="flex-grow-1 overflow-y-auto custom-scroll">
+                <table class="invoices-audit-table w-100">
+                  <thead class="sticky-thead">
+                    <tr>
+                      <th class="ps-3 py-2 text-left">N° FACTURA</th>
+                      <th class="py-2 text-left">N° CONTROL</th>
+                      <th class="py-2 text-left">FECHA</th>
+                      <th class="py-2 text-end">MONTO</th>
+                      <th class="pe-3 py-2 text-center" style="width: 130px;">ACCIÓN</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-if="!currentInvoices.length">
+                      <td colspan="5" class="text-center py-8 text-caption text-disabled">
+                        No hay facturas registradas en este lote de sincronización.
+                      </td>
+                    </tr>
+                    <tr
+                      v-for="(inv, idx) in currentInvoices"
+                      :key="idx"
+                      class="invoice-audit-row"
+                    >
+                      <td class="ps-3 py-1.5 font-weight-black text-caption text-primary">
+                        {{ inv.invoice_number }}
+                      </td>
+                      <td class="py-1.5 text-caption font-weight-medium text-medium-emphasis">
+                        {{ inv.control_number || '—' }}
+                      </td>
+                      <td class="py-1.5 text-caption text-medium-emphasis">
+                        {{ inv.date || '—' }}
+                      </td>
+                      <td class="py-1.5 text-end text-caption font-weight-bold text-high-emphasis">
+                        {{ formatAmount(inv) }}
+                      </td>
+                      <td class="pe-3 py-1.5 text-center">
+                        <VChip
+                          v-if="inv.action === 'created'"
+                          color="success"
+                          size="x-small"
+                          variant="flat"
+                          class="font-weight-black text-uppercase px-2"
+                          style="font-size: 9px; height: 18px;"
+                        >
+                          Nueva
+                        </VChip>
+                        <VChip
+                          v-else-if="inv.action === 'failed'"
+                          color="error"
+                          size="x-small"
+                          variant="flat"
+                          class="font-weight-black text-uppercase px-2"
+                          style="font-size: 9px; height: 18px;"
+                        >
+                          Error
+                        </VChip>
+                        <span
+                          v-else-if="inv.action === 'updated'"
+                          class="text-caption font-weight-medium text-disabled"
+                          style="font-size: 11px;"
+                        >
+                          Actualizada
+                        </span>
+                        <span
+                          v-else
+                          class="text-caption font-weight-medium text-disabled"
+                          style="font-size: 11px;"
+                        >
+                          Ya Registrada
+                        </span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </VCard>
           </VCol>
         </VRow>
       </VCardText>
 
-      <!-- Botón de Cerrar -->
-      <VCardActions class="pa-2.5 bg-white border-t flex-shrink-0 d-flex justify-end">
+      <!-- Pie de acciones -->
+      <VCardActions class="pa-3 bg-white border-t flex-shrink-0 d-flex justify-end">
         <VBtn
           color="primary"
           variant="flat"
@@ -341,28 +360,90 @@ const closeDialog = () => {
 </template>
 
 <style scoped>
+.sync-item {
+  background-color: #ffffff;
+  border-color: rgba(var(--v-theme-on-surface), 0.08);
+}
+
+.sync-item:hover {
+  background-color: rgba(var(--v-theme-primary), 0.04);
+  border-color: rgba(var(--v-theme-primary), 0.2);
+}
+
+.sync-item-active {
+  background-color: rgba(var(--v-theme-primary), 0.08) !important;
+  border-color: rgb(var(--v-theme-primary)) !important;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.dot-success {
+  background-color: #28c76f;
+  box-shadow: 0 0 4px rgba(40, 199, 111, 0.6);
+}
+
+.dot-warning {
+  background-color: #ff9f43;
+  box-shadow: 0 0 4px rgba(255, 159, 67, 0.6);
+}
+
+.dot-error {
+  background-color: #ea5455;
+  box-shadow: 0 0 4px rgba(234, 84, 85, 0.6);
+}
+
 .invoices-audit-table {
   border-collapse: collapse;
 }
 
-.invoices-audit-table th {
-  background: rgba(var(--v-theme-on-surface), 0.03);
+.sticky-thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #f8f9fa;
   color: rgba(var(--v-theme-on-surface), 0.7);
   font-size: 0.65rem;
   font-weight: 800;
   letter-spacing: 0.05em;
-  padding-block: 6px;
+  padding-block: 7px;
   padding-inline: 8px;
   text-transform: uppercase;
+  border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.1);
 }
 
 .invoices-audit-table td {
   border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.05);
-  padding-block: 6px;
+  padding-block: 5px;
   padding-inline: 8px;
 }
 
 .invoice-audit-row:hover {
   background-color: rgba(var(--v-theme-primary), 0.03);
+}
+
+.custom-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--v-theme-on-surface), 0.2) transparent;
+}
+
+.custom-scroll::-webkit-scrollbar {
+  width: 5px;
+}
+
+.custom-scroll::-webkit-scrollbar-thumb {
+  background-color: rgba(var(--v-theme-on-surface), 0.2);
+  border-radius: 4px;
+}
+
+.search-input :deep(.v-field__input) {
+  font-size: 11px !important;
+  padding-top: 4px !important;
+  padding-bottom: 4px !important;
+  min-height: 28px !important;
 }
 </style>

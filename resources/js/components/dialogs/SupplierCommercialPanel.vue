@@ -33,7 +33,7 @@ const tempIdCounter = ref(-1)
 
 const scaleTypes = [
   { id: 'units', name: 'Por unidades' },
-  { id: 'amount', name: 'Por dólares' },
+  { id: 'amount', name: 'Por dólares ($)' },
 ]
 
 // --- WATCHERS PARA SINCRONIZAR PROPS ---
@@ -78,14 +78,14 @@ const removePaymentRule = (index) => {
   editablePaymentRules.value.splice(index, 1)
 }
 
-// --- LÓGICA DE ESCALAS (Integrada en la misma pestaña de marcas) ---
+// --- LÓGICA DE ESCALAS ---
 const addScaleRule = () => {
   editableScaleRules.value.push({
     id: tempIdCounter.value--,
-    laboratory: { id: null, name: '' },
+    laboratory: null,
     scale_type: { id: 'units', name: 'Por unidades' },
-    min: null,
-    max: null,
+    min: 1,
+    max: 100,
     discount_percentage: null,
     _markedNew: true
   })
@@ -104,9 +104,11 @@ const removeDiscount = (index) => {
   editableDiscounts.value.splice(index, 1)
 }
 
-// --- GUARDADO POR SECCIÓN ---
+// --- GUARDADO UNIFICADO POR SECCIÓN ---
 const saveFinances = () => {
-  const data = editablePaymentRules.value.map(r => ({
+  // Filtrar reglas vacías sin días ni porcentaje
+  const validRules = editablePaymentRules.value.filter(r => (Number(r.days) > 0 || Number(r.discount_percentage) > 0))
+  const data = validRules.map(r => ({
     id: r.id > 0 ? r.id : undefined,
     days: Number(r.days) || 0,
     discount_percentage: Number(r.discount_percentage) || 0
@@ -114,8 +116,7 @@ const saveFinances = () => {
   emit('save-payment-rules', data)
 }
 
-const saveBrands = async () => {
-  // Guardamos las escalas (solo las nuevas/editadas)
+const saveBrands = () => {
   const scalesData = editableScaleRules.value.map(s => ({
     id: s.id > 0 ? s.id : undefined,
     laboratory: s.laboratory,
@@ -128,12 +129,23 @@ const saveBrands = async () => {
 }
 
 const saveDiscounts = () => {
-  const data = editableDiscounts.value.map(d => ({
+  const validDiscounts = editableDiscounts.value.filter(d => (d.name && d.name.trim() !== '') || Number(d.discount_percentage) > 0)
+  const data = validDiscounts.map(d => ({
     id: d.id > 0 ? d.id : undefined,
     name: d.name,
     discount_percentage: Number(d.discount_percentage) || 0
   }))
   emit('save-discounts', data)
+}
+
+const saveCurrentTab = () => {
+  if (activeTab.value === 0) {
+    saveFinances()
+  } else if (activeTab.value === 1) {
+    saveBrands()
+  } else if (activeTab.value === 2) {
+    saveDiscounts()
+  }
 }
 
 const close = () => {
@@ -145,24 +157,24 @@ const close = () => {
 <template>
   <VDialog
     :model-value="modelValue"
-    max-width="1000px"
+    max-width="980px"
     :fullscreen="$vuetify.display.mobile"
     persistent
     @update:model-value="close"
   >
     <VCard class="detail-dialog-card overflow-hidden">
-      <!-- Header Premium Institucional -->
-      <VCardTitle class="pa-0">
+      <!-- Header Institucional con Gradiente de Marca -->
+      <VCardTitle class="pa-0 flex-shrink-0">
         <div class="header-gradient pa-4 d-flex align-center shadow-sm">
-          <VAvatar color="white" variant="flat" size="40" class="me-3 elevation-1">
-            <VIcon icon="tabler-settings-dollar" color="primary" size="22" />
+          <VAvatar color="white" variant="flat" size="38" class="me-3 elevation-1">
+            <VIcon icon="tabler-settings-dollar" color="primary" size="20" />
           </VAvatar>
           <div class="d-flex flex-column leading-none text-white">
-            <h2 class="text-h6 font-weight-black leading-tight mb-0 uppercase text-white">
-              Panel Comercial
+            <h2 class="text-subtitle-1 font-weight-black leading-tight mb-0 uppercase text-white">
+              Panel Comercial — {{ supplier.name }}
             </h2>
-            <span class="text-super-xs opacity-75 font-weight-bold uppercase letter-spacing-1">
-              {{ supplier.name }} • RIF: {{ supplier.rif }}
+            <span class="text-caption opacity-85 font-weight-medium">
+              RIF: {{ supplier.rif || 'N/A' }} • Configuración de políticas y bonificaciones
             </span>
           </div>
           <VSpacer />
@@ -170,11 +182,11 @@ const close = () => {
         </div>
       </VCardTitle>
 
-      <!-- Tabs -->
-      <VTabs v-model="activeTab" color="primary" grow bg-color="white">
+      <!-- Pestañas Institucionales -->
+      <VTabs v-model="activeTab" color="primary" grow bg-color="white" class="border-b">
         <VTab :value="0" class="font-weight-black text-xs uppercase letter-spacing-1">
           <VIcon start>tabler-receipt-2</VIcon>
-          Finanzas
+          Finanzas (Pronto Pago)
         </VTab>
         <VTab :value="1" class="font-weight-black text-xs uppercase letter-spacing-1">
           <VIcon start>tabler-building-factory-2</VIcon>
@@ -186,17 +198,19 @@ const close = () => {
         </VTab>
       </VTabs>
 
-      <VDivider />
-
+      <!-- Contenido del Diálogo -->
       <VCardText class="pa-0 dialog-content-scroll">
-        <VWindow v-model="activeTab" class="pa-4 pa-sm-6 bg-light">
+        <VWindow v-model="activeTab" class="pa-4 pa-sm-5 bg-light">
 
           <!-- TAB 1: FINANZAS (PRONTO PAGO) -->
           <VWindowItem :value="0">
-            <div class="d-flex align-center gap-2 mb-3">
-              <div class="header-indicator primary shadow-sm" />
-              <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Reglas de Pronto Pago</span>
-              <VSpacer />
+            <div class="d-flex align-center justify-space-between mb-3">
+              <div class="d-flex align-center gap-2">
+                <div class="header-indicator primary shadow-sm" />
+                <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">
+                  Reglas de Pronto Pago
+                </span>
+              </div>
               <VBtn
                 prepend-icon="tabler-plus"
                 variant="tonal"
@@ -205,123 +219,226 @@ const close = () => {
                 class="rounded-lg font-weight-black"
                 @click="addPaymentRule"
               >
-                Nueva Regla
+                + Nueva Regla
               </VBtn>
             </div>
 
-            <VCard variant="flat" class="bg-white rounded-xl border shadow-sm mb-4">
+            <VCard variant="flat" class="bg-white rounded-xl border shadow-sm mb-4 overflow-hidden">
               <VTable class="premium-table">
                 <thead>
                   <tr>
-                    <th>Días de Anticipación</th>
-                    <th>% Descuento</th>
-                    <th class="text-center">Acciones</th>
+                    <th style="inline-size: 45%;">DÍAS DE ANTICIPACIÓN</th>
+                    <th style="inline-size: 40%;">% DESCUENTO</th>
+                    <th class="text-center" style="inline-size: 15%;">ACCIONES</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr v-for="(rule, index) in editablePaymentRules" :key="index" class="hover-row">
                     <td>
-                      <AppTextField v-model="rule.days" type="number" density="compact" placeholder="0" hide-details class="centered-input-field" @focus="$event.target?.select()" />
+                      <AppTextField
+                        v-model="rule.days"
+                        type="number"
+                        density="compact"
+                        placeholder="Ej: 7"
+                        hide-details
+                        class="centered-input-field"
+                        @focus="$event.target?.select()"
+                      />
                     </td>
                     <td>
-                      <AppTextField v-model="rule.discount_percentage" type="number" density="compact" suffix="%" placeholder="0.00" hide-details class="centered-input-field" @focus="$event.target?.select()" />
+                      <AppTextField
+                        v-model="rule.discount_percentage"
+                        type="number"
+                        density="compact"
+                        suffix="%"
+                        placeholder="0.00"
+                        hide-details
+                        class="centered-input-field"
+                        @focus="$event.target?.select()"
+                      />
                     </td>
                     <td class="text-center">
-                      <VBtn icon="tabler-trash" variant="tonal" color="error" size="small" class="rounded-lg" @click="removePaymentRule(index)" />
+                      <VBtn
+                        icon="tabler-trash"
+                        variant="tonal"
+                        color="error"
+                        size="small"
+                        class="rounded-lg"
+                        @click="removePaymentRule(index)"
+                      />
                     </td>
                   </tr>
                   <tr v-if="editablePaymentRules.length === 0">
-                    <td colspan="3" class="text-center py-10">
-                      <VIcon icon="tabler-receipt-off" size="40" color="disabled" class="mb-2 opacity-25" />
-                      <p class="text-super-xs font-weight-black text-disabled uppercase letter-spacing-1">No hay reglas de pronto pago configuradas</p>
+                    <td colspan="3" class="text-center py-8">
+                      <VIcon icon="tabler-receipt-off" size="36" color="disabled" class="mb-2 opacity-30" />
+                      <p class="text-caption font-weight-bold text-disabled uppercase mb-0">No hay reglas de pronto pago configuradas</p>
                     </td>
                   </tr>
                 </tbody>
               </VTable>
             </VCard>
 
-            <VAlert color="primary" variant="tonal" border="start" class="rounded-xl">
+            <!-- Callout Estandarizado -->
+            <VAlert
+              color="primary"
+              variant="tonal"
+              border="start"
+              class="rounded-xl border shadow-none"
+              density="comfortable"
+            >
               <template #prepend>
-                <VIcon icon="tabler-info-circle" size="22" />
+                <VIcon icon="tabler-info-circle" size="22" color="primary" />
               </template>
-              <div class="text-xs font-weight-black uppercase letter-spacing-1 mb-1">Información Financiera</div>
-              <div class="text-super-xs text-medium-emphasis">
-                Estas reglas definen el porcentaje de descuento que el proveedor otorga si la factura se paga antes de los días indicados. Se calcula sobre el monto neto.
+              <div class="text-xs font-weight-black uppercase letter-spacing-1 mb-0.5 text-primary">
+                Información de Pronto Pago
+              </div>
+              <div class="text-caption text-medium-emphasis">
+                Define los porcentajes de descuento otorgados por el proveedor según los días de anticipación en el pago. Se calcula sobre el monto neto de la factura.
               </div>
             </VAlert>
           </VWindowItem>
 
           <!-- TAB 2: MARCAS Y ESCALAS -->
           <VWindowItem :value="1">
-            <div class="d-flex align-center gap-2 mb-3">
-              <div class="header-indicator secondary shadow-sm" />
-              <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Escalas de Negociación</span>
-              <VSpacer />
+            <div class="d-flex align-center justify-space-between mb-3">
+              <div class="d-flex align-center gap-2">
+                <div class="header-indicator primary shadow-sm" />
+                <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">
+                  Escalas de Negociación por Laboratorio
+                </span>
+              </div>
               <VBtn
                 prepend-icon="tabler-plus"
                 variant="tonal"
-                color="success"
+                color="primary"
                 size="small"
                 class="rounded-lg font-weight-black"
                 @click="addScaleRule"
               >
-                Nueva Escala
+                + Nueva Escala
               </VBtn>
             </div>
 
-            <VCard variant="flat" class="bg-white rounded-xl border shadow-sm">
+            <VCard variant="flat" class="bg-white rounded-xl border shadow-sm mb-4 overflow-hidden">
               <VTable class="premium-table">
                 <thead>
                   <tr>
-                    <th>Lab. Objetivo</th>
-                    <th>Tipo</th>
-                    <th>Rango (Min - Max)</th>
-                    <th>% Dscto</th>
-                    <th class="text-center">Acciones</th>
+                    <th style="inline-size: 32%;">LABORATORIO / MARCA</th>
+                    <th style="inline-size: 22%;">TIPO DE ESCALA</th>
+                    <th style="inline-size: 24%;">RANGO (MÍN - MÁX)</th>
+                    <th style="inline-size: 12%;">% DSCTO</th>
+                    <th class="text-center" style="inline-size: 10%;">ACCIONES</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr v-for="(scale, index) in editableScaleRules" :key="index" class="hover-row">
-                    <td style="inline-size: 30%;">
-                      <AppAutocomplete v-model="scale.laboratory" :items="laboratories" item-title="name" return-object density="compact" hide-details />
-                    </td>
-                    <td style="inline-size: 20%;">
-                      <VChip :color="scale.scale_type?.id === 'units' ? 'success' : 'info'" size="x-small" class="mb-1 d-block text-center font-weight-black rounded-lg" variant="flat">
-                        {{ scale.scale_type?.id === 'units' ? 'UNIDADES' : 'DÓLARES' }}
-                      </VChip>
-                      <AppSelect v-model="scale.scale_type" :items="scaleTypes" item-title="name" return-object density="compact" hide-details />
+                    <td>
+                      <AppAutocomplete
+                        v-model="scale.laboratory"
+                        :items="laboratories"
+                        item-title="name"
+                        return-object
+                        density="compact"
+                        placeholder="Seleccionar laboratorio..."
+                        no-data-text="No hay laboratorios disponibles"
+                        hide-details
+                      />
                     </td>
                     <td>
-                      <div class="d-flex align-center gap-2">
-                        <AppTextField v-model="scale.min" type="number" density="compact" placeholder="1" hide-details @focus="$event.target?.select()" />
+                      <AppSelect
+                        v-model="scale.scale_type"
+                        :items="scaleTypes"
+                        item-title="name"
+                        return-object
+                        density="compact"
+                        hide-details
+                      />
+                    </td>
+                    <td>
+                      <div class="d-flex align-center gap-1.5">
+                        <AppTextField
+                          v-model="scale.min"
+                          type="number"
+                          density="compact"
+                          placeholder="Mín"
+                          hide-details
+                          class="centered-input-field"
+                          @focus="$event.target?.select()"
+                        />
                         <span class="text-disabled font-weight-black">–</span>
-                        <AppTextField v-model="scale.max" type="number" density="compact" placeholder="1" hide-details @focus="$event.target?.select()" />
+                        <AppTextField
+                          v-model="scale.max"
+                          type="number"
+                          density="compact"
+                          placeholder="Máx"
+                          hide-details
+                          class="centered-input-field"
+                          @focus="$event.target?.select()"
+                        />
                       </div>
                     </td>
-                    <td style="inline-size: 15%;">
-                      <AppTextField v-model="scale.discount_percentage" type="number" density="compact" suffix="%" placeholder="0.00" hide-details class="centered-input-field" @focus="$event.target?.select()" />
+                    <td>
+                      <AppTextField
+                        v-model="scale.discount_percentage"
+                        type="number"
+                        density="compact"
+                        suffix="%"
+                        placeholder="0.00"
+                        hide-details
+                        class="centered-input-field"
+                        @focus="$event.target?.select()"
+                      />
                     </td>
                     <td class="text-center">
-                      <VBtn icon="tabler-trash" variant="tonal" color="error" size="small" class="rounded-lg" @click="removeScaleRule(index)" />
+                      <VBtn
+                        icon="tabler-trash"
+                        variant="tonal"
+                        color="error"
+                        size="small"
+                        class="rounded-lg"
+                        @click="removeScaleRule(index)"
+                      />
                     </td>
                   </tr>
                   <tr v-if="editableScaleRules.length === 0">
-                    <td colspan="5" class="text-center py-10">
-                      <VIcon icon="tabler-chart-arrows-vertical" size="40" color="disabled" class="mb-2 opacity-25" />
-                      <p class="text-super-xs font-weight-black text-disabled uppercase letter-spacing-1">Configura escalas para bonificaciones por volumen</p>
+                    <td colspan="5" class="text-center py-8">
+                      <VIcon icon="tabler-chart-arrows-vertical" size="36" color="disabled" class="mb-2 opacity-30" />
+                      <p class="text-caption font-weight-bold text-disabled uppercase mb-0">Configura escalas para bonificaciones y descuentos por volumen</p>
                     </td>
                   </tr>
                 </tbody>
               </VTable>
             </VCard>
+
+            <!-- Callout Estandarizado -->
+            <VAlert
+              color="primary"
+              variant="tonal"
+              border="start"
+              class="rounded-xl border shadow-none"
+              density="comfortable"
+            >
+              <template #prepend>
+                <VIcon icon="tabler-info-circle" size="22" color="primary" />
+              </template>
+              <div class="text-xs font-weight-black uppercase letter-spacing-1 mb-0.5 text-primary">
+                Información de Escalas por Volumen
+              </div>
+              <div class="text-caption text-medium-emphasis">
+                Establece bonificaciones o descuentos comerciales escalonados por rangos de unidades compradas o montos en dólares por laboratorio.
+              </div>
+            </VAlert>
           </VWindowItem>
 
           <!-- TAB 3: OTROS DESCUENTOS -->
           <VWindowItem :value="2">
-            <div class="d-flex align-center gap-2 mb-3">
-              <div class="header-indicator primary shadow-sm" />
-              <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Descuentos Indirectos / Campañas</span>
-              <VSpacer />
+            <div class="d-flex align-center justify-space-between mb-3">
+              <div class="d-flex align-center gap-2">
+                <div class="header-indicator primary shadow-sm" />
+                <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">
+                  Descuentos Comerciales Directos
+                </span>
+              </div>
               <VBtn
                 prepend-icon="tabler-plus"
                 variant="tonal"
@@ -330,104 +447,109 @@ const close = () => {
                 class="rounded-lg font-weight-black"
                 @click="addDiscount"
               >
-                Añadir
+                + Nuevo Descuento
               </VBtn>
             </div>
 
-            <VCard variant="flat" class="bg-white rounded-xl border shadow-sm mb-4">
+            <VCard variant="flat" class="bg-white rounded-xl border shadow-sm mb-4 overflow-hidden">
               <VTable class="premium-table">
                 <thead>
                   <tr>
-                    <th>Identificación del Descuento</th>
-                    <th>% Aplicado</th>
-                    <th class="text-center">Acciones</th>
+                    <th style="inline-size: 65%;">IDENTIFICACIÓN DEL DESCUENTO</th>
+                    <th style="inline-size: 20%;">% APLICADO</th>
+                    <th class="text-center" style="inline-size: 15%;">ACCIONES</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr v-for="(disc, index) in editableDiscounts" :key="index" class="hover-row">
-                    <td style="inline-size: 75%;">
-                      <AppTextField v-model="disc.name" density="compact" placeholder="Ej: Descuento Comercial 2%" hide-details @focus="$event.target?.select()" />
+                    <td>
+                      <AppTextField
+                        v-model="disc.name"
+                        density="compact"
+                        placeholder="Ej: Descuento Comercial 2%"
+                        hide-details
+                        @focus="$event.target?.select()"
+                      />
                     </td>
                     <td>
-                      <AppTextField v-model="disc.discount_percentage" type="number" density="compact" suffix="%" placeholder="0.00" hide-details class="centered-input-field" @focus="$event.target?.select()" />
+                      <AppTextField
+                        v-model="disc.discount_percentage"
+                        type="number"
+                        density="compact"
+                        suffix="%"
+                        placeholder="0.00"
+                        hide-details
+                        class="centered-input-field"
+                        @focus="$event.target?.select()"
+                      />
                     </td>
                     <td class="text-center">
-                      <VBtn icon="tabler-trash" variant="tonal" color="error" size="small" class="rounded-lg" @click="removeDiscount(index)" />
+                      <VBtn
+                        icon="tabler-trash"
+                        variant="tonal"
+                        color="error"
+                        size="small"
+                        class="rounded-lg"
+                        @click="removeDiscount(index)"
+                      />
                     </td>
                   </tr>
                   <tr v-if="editableDiscounts.length === 0">
-                    <td colspan="3" class="text-center py-10">
-                      <VIcon icon="tabler-percentage" size="40" color="disabled" class="mb-2 opacity-25" />
-                      <p class="text-super-xs font-weight-black text-disabled uppercase letter-spacing-1">No hay descuentos comerciales adicionales</p>
+                    <td colspan="3" class="text-center py-8">
+                      <VIcon icon="tabler-percentage" size="36" color="disabled" class="mb-2 opacity-30" />
+                      <p class="text-caption font-weight-bold text-disabled uppercase mb-0">No hay descuentos comerciales adicionales</p>
                     </td>
                   </tr>
                 </tbody>
               </VTable>
             </VCard>
 
-            <VAlert color="info" variant="tonal" icon="tabler-bulb" class="rounded-xl">
-              <div class="text-super-xs">Estos descuentos son fijos y se aplican a todo el catálogo del proveedor sin condiciones de marca.</div>
+            <!-- Callout Estandarizado -->
+            <VAlert
+              color="primary"
+              variant="tonal"
+              border="start"
+              class="rounded-xl border shadow-none"
+              density="comfortable"
+            >
+              <template #prepend>
+                <VIcon icon="tabler-info-circle" size="22" color="primary" />
+              </template>
+              <div class="text-xs font-weight-black uppercase letter-spacing-1 mb-0.5 text-primary">
+                Información de Descuentos Comerciales
+              </div>
+              <div class="text-caption text-medium-emphasis">
+                Estos descuentos son fijos y se aplican a todo el catálogo del proveedor sin condiciones de volumen ni laboratorio.
+              </div>
             </VAlert>
           </VWindowItem>
 
         </VWindow>
       </VCardText>
 
-      <VDivider />
-
-      <VCardActions class="pa-4 pa-sm-6 bg-white border-t">
-        <VRow dense class="w-100 ma-0">
-          <VCol cols="6" class="pa-1">
+      <!-- Pie de Diálogo Unificado -->
+      <VCardActions class="pa-3 pa-sm-4 bg-white border-t flex-shrink-0">
+        <VRow dense class="w-100 ma-0 justify-end" align="center">
+          <VCol cols="12" sm="auto" class="d-flex justify-end gap-2">
             <VBtn
               color="secondary"
-              variant="tonal"
-              height="50"
-              block
-              class="font-weight-black rounded-lg uppercase"
+              variant="outlined"
+              height="40"
+              class="font-weight-bold rounded-lg px-5"
               @click="close"
             >
-              Cerrar
+              CERRAR
             </VBtn>
-          </VCol>
-          <VCol cols="6" class="pa-1">
             <VBtn
-              v-if="activeTab === 0"
               color="primary"
               variant="flat"
-              height="50"
-              block
-              class="font-weight-black rounded-lg shadow-primary uppercase"
+              height="40"
+              class="font-weight-black rounded-lg px-6 shadow-primary"
               :loading="loading"
-              @click="saveFinances"
+              @click="saveCurrentTab"
             >
               <VIcon start icon="tabler-device-floppy" size="18" />
-              Guardar Finanzas
-            </VBtn>
-            <VBtn
-              v-if="activeTab === 1"
-              color="success"
-              variant="flat"
-              height="50"
-              block
-              class="font-weight-black rounded-lg shadow-success uppercase"
-              :loading="loading"
-              @click="saveBrands"
-            >
-              <VIcon start icon="tabler-device-floppy" size="18" />
-              Guardar Escalas
-            </VBtn>
-            <VBtn
-              v-if="activeTab === 2"
-              color="primary"
-              variant="flat"
-              height="50"
-              block
-              class="font-weight-black rounded-lg shadow-primary uppercase"
-              :loading="loading"
-              @click="saveDiscounts"
-            >
-              <VIcon start icon="tabler-device-floppy" size="18" />
-              Guardar Descuentos
+              GUARDAR CAMBIOS
             </VBtn>
           </VCol>
         </VRow>
@@ -438,7 +560,7 @@ const close = () => {
 
 <style scoped>
 .header-gradient {
-  background: var(--brand-gradient) !important;
+  background: var(--brand-gradient, linear-gradient(135deg, #7A0099, #E20074)) !important;
 }
 
 .detail-dialog-card {
@@ -452,19 +574,9 @@ const close = () => {
 }
 
 .header-indicator.primary { background-color: rgb(var(--v-theme-primary)); }
-.header-indicator.secondary { background-color: rgb(var(--v-theme-secondary)); }
 
 .shadow-primary {
   box-shadow: 0 4px 14px 0 rgba(var(--v-theme-primary), 0.39) !important;
-}
-
-.shadow-success {
-  box-shadow: 0 4px 14px 0 rgba(var(--v-theme-success), 0.39) !important;
-}
-
-.text-super-xs {
-  font-size: 0.65rem !important;
-  line-height: normal;
 }
 
 .letter-spacing-1 { letter-spacing: 1px !important; }
@@ -485,20 +597,20 @@ const close = () => {
 }
 
 .premium-table :deep(th) {
-  background-color: #f1f5f9 !important;
-  block-size: 44px !important;
+  background-color: #f8f9fa !important;
+  block-size: 40px !important;
   color: #64748b !important;
   font-size: 0.65rem !important;
   font-weight: 800 !important;
   letter-spacing: 0.07em !important;
   text-transform: uppercase;
-  border-block-end: 2px solid #e2e8f0 !important;
+  border-block-end: 1px solid #e2e8f0 !important;
 }
 
 .premium-table :deep(td) {
-  block-size: 54px !important;
+  block-size: 50px !important;
   border-block-end: 1px solid rgba(var(--v-border-color), 0.06) !important;
-  padding-block: 8px !important;
+  padding-block: 6px !important;
 }
 
 .hover-row:hover {
