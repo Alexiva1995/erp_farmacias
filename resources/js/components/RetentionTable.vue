@@ -37,23 +37,23 @@ const pendingHeaders = [
 ];
 
 const supplierHeaders = [
-  { title: "Proveedor / Razón Social", key: "supplier.name", sortable: false, width: "26%" },
+  { title: "Razón Social", key: "supplier.name", sortable: false, width: "26%" },
   { title: "Nº Facturas", key: "invoice_numbers", sortable: false, width: "22%" },
   { title: "Exento", key: "exempt_amount", align: "end", sortable: false },
-  { title: "Base Imponible", key: "taxable_base", align: "end", sortable: false },
+  { title: "BIG", key: "taxable_base", align: "end", sortable: false },
   { title: "IVA", key: "tax_amount", align: "end", sortable: false },
   { title: "Total", key: "total_amount", align: "end", sortable: false },
-  { title: "Retención (75%)", key: "withheld_amount", align: "end", sortable: false },
+  { title: "RET.", key: "withheld_amount", align: "end", sortable: false },
   { title: "Acción", key: "actions", sortable: false, align: "center" },
 ];
 
 const generatedHeaders = [
-  { title: "Comprobante #", key: "number", sortable: true },
-  { title: "Fecha Emisión", key: "date", sortable: true },
-  { title: "Proveedor", key: "supplier.name", sortable: true, width: "28%" },
-  { title: "Base Total", key: "total_taxable_base", align: "end", sortable: true },
-  { title: "IVA Total", key: "total_tax_amount", align: "end", sortable: true },
-  { title: "Monto Retenido", key: "total_withheld_amount", align: "end", sortable: true },
+  { title: "Fecha", key: "date", sortable: true },
+  { title: "Razón Social", key: "supplier.name", sortable: true, width: "28%" },
+  { title: "Comprobante", key: "number", sortable: true },
+  { title: "BIG", key: "total_taxable_base", align: "end", sortable: true },
+  { title: "IVA", key: "total_tax_amount", align: "end", sortable: true },
+  { title: "RET.", key: "total_withheld_amount", align: "end", sortable: true },
   { title: "Acción", key: "actions", sortable: false, align: "center" },
 ];
 
@@ -198,8 +198,7 @@ const toggleSelection = (id) => {
         </template>
 
         <template #item.number="{ item }">
-          <div class="d-flex align-center gap-2 py-2">
-            <VIcon icon="tabler-hash" size="14" color="disabled" />
+          <div class="d-flex align-center gap-1 py-2">
             <span class="font-weight-bold text-primary">{{ item.number }}</span>
           </div>
         </template>
