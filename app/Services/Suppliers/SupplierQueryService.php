@@ -90,21 +90,39 @@ class SupplierQueryService
         return $query;
     }
 
-    private function applySorting(Builder $query, ?string $sortBy, string $orderBy): Builder
+    private function applySorting(Builder $query, ?string $sortBy, string $orderBy = 'asc'): Builder
     {
+        $direction = strtolower($orderBy) === 'desc' ? 'desc' : 'asc';
+
         if (empty($sortBy)) {
             return $query->orderBy("suppliers.name", "asc");
         }
 
         switch ($sortBy) {
+            case "latest_score_value":
             case "latestScore.score":
-                return $query
-                    ->leftJoin("supplier_scores as ss", function ($join) {
-                        $join->on("ss.supplier_id", "=", "suppliers.id");
-                    })
-                    ->orderBy("ss.score", $orderBy)
-                    ->orderBy("ss.evaluated_on", "desc")
-                    ->select("suppliers.*");
+            case "score":
+            case "rating":
+            case "calificacion":
+                $subScore = DB::raw("(
+                    SELECT COALESCE(ss.score, 0)
+                    FROM supplier_scores ss 
+                    WHERE ss.supplier_id = suppliers.id 
+                    ORDER BY ss.evaluated_on DESC, ss.id DESC 
+                    LIMIT 1
+                )");
+                return $query->orderBy($subScore, $direction);
+
+            case "last_sync_at":
+            case "last_connection":
+                $subSync = DB::raw("(
+                    SELECT sc.last_connection 
+                    FROM supplier_connections sc 
+                    WHERE sc.supplier_id = suppliers.id 
+                    ORDER BY sc.last_connection DESC 
+                    LIMIT 1
+                )");
+                return $query->orderBy($subSync, $direction);
 
             case "debt":
                 $currentYearStart = \Carbon\Carbon::now()->startOfYear()->toDateString();
@@ -115,14 +133,18 @@ class SupplierQueryService
                     AND (i.status_payment IS NULL OR i.status_payment != 1)
                     AND DATE(i.payment_date) >= '{$currentYearStart}'
                 )");
-                return $query->orderBy($subDebt, $orderBy);
+                return $query->orderBy($subDebt, $direction);
 
             case "id":
             case "name":
-                return $query->orderBy("suppliers.{$sortBy}", $orderBy);
-        }
+            case "rif":
+            case "created_at":
+            case "updated_at":
+                return $query->orderBy("suppliers.{$sortBy}", $direction);
 
-        return $query;
+            default:
+                return $query->orderBy("suppliers.name", "asc");
+        }
     }
 
     /**

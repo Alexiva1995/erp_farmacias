@@ -430,6 +430,9 @@ const updateTableOptions = (options) => {
   if (options.sortBy && options.sortBy.length > 0) {
     sortBy.value = options.sortBy[0]?.key;
     orderBy.value = options.sortBy[0]?.order;
+  } else {
+    sortBy.value = undefined;
+    orderBy.value = undefined;
   }
 };
 
