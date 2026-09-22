@@ -164,15 +164,10 @@ const handleClearFilters = () => {
   searchQuery.value = "";
   debtFilter.value = null;
   minScore.value = null;
-  typeFilter.value = activeTab.value;
+  typeFilter.value = null;
   sortBy.value = undefined;
   orderBy.value = undefined;
 };
-
-watch(activeTab, (newTab) => {
-  typeFilter.value = newTab;
-  page.value = 1;
-});
 
 const handleSort = (sortOptions) => {
   sortBy.value = sortOptions.key;
@@ -180,7 +175,7 @@ const handleSort = (sortOptions) => {
 };
 
 const handleAddSupplier = (type = null) => {
-  const defaultType = type || activeTab.value || "drogueria";
+  const defaultType = type || typeFilter.value || "drogueria";
   currentSupplier.value = { type: defaultType };
   supplierFormErrors.value = {};
   isEditDialogVisible.value = true;
