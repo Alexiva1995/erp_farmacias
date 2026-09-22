@@ -429,12 +429,14 @@ class SupplierQueryService
 
                         $userId = auth()->id() ?? User::value('id') ?? 1;
 
-                        $createdInvoiceDate = $header['created_invoice_date'] ?? $header['created_at'] ?? now()->toDateString();
-                        $expDate = $header['exp_date'] ?? $createdInvoiceDate;
-                        $paymentDate = $header['payment_date'] ?? $expDate;
-                        $receivedDate = $header['received_date'] ?? $createdInvoiceDate;
+                        $createdInvoiceDate = $this->sanitizeDate($header['created_invoice_date'] ?? $header['created_at'] ?? null) ?? now()->toDateString();
+                        $expDate = $this->sanitizeDate($header['exp_date'] ?? null) ?? $createdInvoiceDate;
+                        $paymentDate = $this->sanitizeDate($header['payment_date'] ?? null) ?? $expDate;
+                        $receivedDate = $this->sanitizeDate($header['received_date'] ?? null) ?? $createdInvoiceDate;
                         $currency = $header['currency'] ?? ($supplier->payment_method === 'Divisas' ? 'USD' : 'Bs');
-                        $controlNumber = $header['control_number'] ?? ('00-' . str_pad((string)ltrim((string)$invoiceNumber, '0'), 7, '0', STR_PAD_LEFT));
+                        $controlNumber = !empty($header['control_number']) 
+                            ? trim((string)$header['control_number']) 
+                            : ('00-' . str_pad((string)ltrim((string)$invoiceNumber, '0'), 7, '0', STR_PAD_LEFT));
                         $isIndexed = isset($header['is_indexed']) ? (bool)$header['is_indexed'] : (bool)($supplier->is_indexed ?? false);
 
                         $invoiceData = [
@@ -479,29 +481,33 @@ class SupplierQueryService
 
                             // 🔍 Vincular producto por barcode si no tiene product_id
                             if (empty($lineData['product_id']) && !empty($line['barcode'])) {
-                                $product = Product::withoutGlobalScope('not_deleted')
-                                    ->withTrashed()
-                                    ->where('barcode', $line['barcode'])
-                                    ->first();
-                                
-                                if ($product) {
-                                    if ($product->trashed()) {
-                                        $product->restore();
+                                try {
+                                    $product = Product::withoutGlobalScope('not_deleted')
+                                        ->withTrashed()
+                                        ->where('barcode', $line['barcode'])
+                                        ->first();
+                                    
+                                    if ($product) {
+                                        if ($product->trashed()) {
+                                            $product->restore();
+                                        }
+                                    } elseif (!empty($line['name']) || !empty($line['descripcion_producto'])) {
+                                        // 🆕 Crear producto en modo borrador (no visible hasta finalizar factura)
+                                        $product = Product::create([
+                                            'name'       => $line['name'] ?? $line['descripcion_producto'] ?? 'PRODUCTO',
+                                            'barcode'    => $line['barcode'],
+                                            'unit_cost'  => floatval($line['unit_cost'] ?? 0),
+                                            'sale_price' => floatval($line['unit_cost'] ?? 0),
+                                            'is_active'  => true,
+                                            'is_deleted' => true,
+                                        ]);
                                     }
-                                } elseif (!empty($line['name']) || !empty($line['descripcion_producto'])) {
-                                    // 🆕 Crear producto en modo borrador (no visible hasta finalizar factura)
-                                    $product = Product::create([
-                                        'name'       => $line['name'] ?? $line['descripcion_producto'] ?? 'PRODUCTO',
-                                        'barcode'    => $line['barcode'],
-                                        'unit_cost'  => floatval($line['unit_cost'] ?? 0),
-                                        'sale_price' => floatval($line['unit_cost'] ?? 0),
-                                        'is_active'  => true,
-                                        'is_deleted' => true,
-                                    ]);
-                                }
 
-                                if ($product) {
-                                    $lineData['product_id'] = $product->id;
+                                    if ($product) {
+                                        $lineData['product_id'] = $product->id;
+                                    }
+                                } catch (\Throwable) {
+                                    // Ignorar error al vincular producto individual
                                 }
                             }
 
@@ -517,6 +523,10 @@ class SupplierQueryService
                                 // Recalcular total_cost también
                                 $quantity = floatval($lineData['quantity'] ?? 0);
                                 $lineData['total_cost'] = number_format($lineData['unit_cost'] * $quantity, 2, '.', '');
+                            }
+
+                            if (isset($lineData['expiration_date'])) {
+                                $lineData['expiration_date'] = $this->sanitizeDate($lineData['expiration_date']);
                             }
 
                             $details[] = [
@@ -1122,5 +1132,38 @@ class SupplierQueryService
             ->with(['connections:id,supplier_id,type,last_connection'])
             ->orderBy('name', 'asc')
             ->get();
+    }
+
+    /**
+     * Sanitiza y normaliza cualquier formato de fecha a YYYY-MM-DD.
+     */
+    private function sanitizeDate(?string $date): ?string
+    {
+        if (empty($date) || trim($date) === '' || in_array(trim($date), ['0000-00-00', '00/00/0000', 'N/A', 'null'])) {
+            return null;
+        }
+
+        $date = trim($date);
+
+        // Si ya viene en formato YYYY-MM-DD
+        if (preg_match('/^\d{4}-\d{2}-\d{2}/', $date)) {
+            return substr($date, 0, 10);
+        }
+
+        // Si viene en formato DD/MM/YYYY o DD-MM-YYYY
+        if (preg_match('/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/', $date, $matches)) {
+            return sprintf('%04d-%02d-%02d', (int)$matches[3], (int)$matches[2], (int)$matches[1]);
+        }
+
+        // Si viene en formato YYYY/MM/DD
+        if (preg_match('/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/', $date, $matches)) {
+            return sprintf('%04d-%02d-%02d', (int)$matches[1], (int)$matches[2], (int)$matches[3]);
+        }
+
+        try {
+            return \Carbon\Carbon::parse($date)->toDateString();
+        } catch (\Throwable) {
+            return null;
+        }
     }
 }
