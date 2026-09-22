@@ -174,7 +174,7 @@ const closeDialog = () => {
       </div>
 
       <!-- Contenido Principal: 2 Columnas con scroll interno garantizado -->
-      <VCardText class="pa-3 bg-light flex-grow-1 d-flex flex-column overflow-hidden" style="min-height: 0; height: 100%;">
+      <VCardText class="pa-3 bg-light flex-grow-1 d-flex flex-column overflow-hidden" style="height: 520px; max-height: 580px;">
         <!-- Estado de carga -->
         <div v-if="loading" class="h-100 d-flex flex-column align-center justify-center bg-white rounded-lg border shadow-sm">
           <VProgressCircular indeterminate color="primary" size="36" class="mb-2" />
@@ -191,10 +191,10 @@ const closeDialog = () => {
         </div>
 
         <!-- Contenido en 2 Columnas -->
-        <div v-else class="d-flex flex-grow-1 gap-2 overflow-hidden" style="min-height: 0; height: 100%;">
+        <div v-else class="d-flex flex-grow-1 gap-3 overflow-hidden" style="height: 100%; min-height: 0;">
           <!-- Columna 1: Historial Sincronizaciones -->
-          <div style="width: 32%; min-width: 250px;" class="d-flex flex-column h-100">
-            <VCard variant="flat" class="rounded-lg border bg-white d-flex flex-column h-100 overflow-hidden shadow-sm" style="min-height: 0;">
+          <div style="width: 32%; min-width: 260px;" class="d-flex flex-column h-100 overflow-hidden">
+            <VCard variant="flat" class="rounded-lg border bg-white d-flex flex-column h-100 overflow-hidden shadow-sm">
               <div class="px-3 py-2 border-b bg-light d-flex align-center justify-space-between flex-shrink-0">
                 <span class="text-xs font-weight-black text-uppercase text-medium-emphasis tracking-wider">
                   Historial Sincronizaciones
@@ -205,11 +205,11 @@ const closeDialog = () => {
               </div>
 
               <!-- Lista con scroll interno -->
-              <div class="flex-grow-1 overflow-y-auto pa-1.5 custom-scroll" style="min-height: 0; height: 0;">
+              <div class="flex-grow-1 overflow-y-auto pa-2 custom-scroll" style="min-height: 0;">
                 <div
                   v-for="item in historyList"
                   :key="item.id"
-                  class="sync-item pa-2 mb-1 rounded-lg border cursor-pointer transition-all"
+                  class="sync-item pa-2 mb-1.5 rounded-lg border cursor-pointer transition-all"
                   :class="{
                     'sync-item-active': selectedStatus?.id === item.id,
                   }"
@@ -238,8 +238,8 @@ const closeDialog = () => {
           </div>
 
           <!-- Columna 2: Facturas Obtenidas -->
-          <div style="width: 68%; flex: 1 1 0;" class="d-flex flex-column h-100">
-            <VCard variant="flat" class="rounded-lg border bg-white d-flex flex-column h-100 overflow-hidden shadow-sm" style="min-height: 0;">
+          <div style="width: 68%; flex: 1 1 0;" class="d-flex flex-column h-100 overflow-hidden">
+            <VCard variant="flat" class="rounded-lg border bg-white d-flex flex-column h-100 overflow-hidden shadow-sm">
               <!-- Barra de Búsqueda y Título -->
               <div class="px-3 py-1.5 border-b bg-light d-flex align-center justify-space-between gap-2 flex-shrink-0">
                 <div class="d-flex align-center gap-1.5">
@@ -264,7 +264,7 @@ const closeDialog = () => {
               </div>
 
               <!-- Tabla con scroll interno visible y garantizado -->
-              <div class="flex-grow-1 overflow-y-auto custom-scroll" style="min-height: 0; height: 0;">
+              <div class="flex-grow-1 overflow-y-auto custom-scroll" style="min-height: 0;">
                 <table class="invoices-audit-table w-100">
                   <thead class="sticky-thead">
                     <tr>

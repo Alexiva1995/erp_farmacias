@@ -243,21 +243,23 @@ class SupplierQueryService
             error_log($logMessage);
 
 
-            // Cargar facturas completas existentes globalmente y para este proveedor
-            // Aquellas facturas que ya tienen detalles con fecha de vencimiento y no están en borrador se excluyen
-            $completeInvoicesQuery = Invoice::whereHas('details')
+            // Cargar facturas completas existentes únicamente para este proveedor
+            // Aquellas facturas que ya tienen detalles con fecha de vencimiento y no están en borrador/pending se excluyen
+            $completeInvoicesQuery = Invoice::where('supplier_id', $supplier->id)
+                ->whereHas('details')
                 ->whereDoesntHave('details', function ($q) {
                     $q->whereNull('expiration_date');
                 })->where('status', '!=', 'pending');
 
-            $allInvoiceNumbers = (clone $completeInvoicesQuery)->pluck('invoice_number')
+            $existingSupplierInvoices = $completeInvoicesQuery
+                ->get(['invoice_number', 'control_number']);
+
+            $existingSupplierNumbers = $existingSupplierInvoices
+                ->pluck('invoice_number')
                 ->filter()
                 ->map(fn($n) => strtoupper(trim((string)$n)))
                 ->flip()
                 ->toArray();
-
-            $existingSupplierInvoices = (clone $completeInvoicesQuery)->where('supplier_id', $supplier->id)
-                ->get(['invoice_number', 'control_number']);
 
             $existingControls = $existingSupplierInvoices
                 ->pluck('control_number')
@@ -266,28 +268,8 @@ class SupplierQueryService
                 ->flip()
                 ->toArray();
 
-            $existingNormalizedNumbers = [];
-            foreach ($existingSupplierInvoices as $inv) {
-                $raw = strtoupper(trim((string)$inv->invoice_number));
-                if (!empty($raw)) {
-                    $existingNormalizedNumbers[$raw] = true;
-                    $stripped = ltrim($raw, 'ABFCD');
-                    $strippedNoZeroes = ltrim($stripped, '0');
-                    $existingNormalizedNumbers[$stripped] = true;
-                    if (!empty($strippedNoZeroes)) {
-                        $existingNormalizedNumbers[$strippedNoZeroes] = true;
-                    }
-                    if (str_starts_with($raw, '70') && strlen($raw) >= 6) {
-                        $sub = ltrim(substr($raw, 2), '0');
-                        if (!empty($sub)) {
-                            $existingNormalizedNumbers[$sub] = true;
-                        }
-                    }
-                }
-            }
-
             $filteredInvoices = collect($invoices)
-                ->filter(function ($invoice) use ($existingControls, $existingNormalizedNumbers, $allInvoiceNumbers) {
+                ->filter(function ($invoice) use ($existingControls, $existingSupplierNumbers) {
                     $number = strtoupper(trim((string)($invoice['header']['invoice_number'] ?? '')));
                     $control = strtoupper(trim((string)($invoice['header']['control_number'] ?? '')));
 
@@ -295,26 +277,13 @@ class SupplierQueryService
                         return false;
                     }
 
-                    // 0. Validar por número de factura existente a nivel global completo
-                    if (isset($allInvoiceNumbers[$number])) {
-                        Log::warning("Factura filtrada: Ya existe completa en la base de datos", ['number' => $number]);
+                    // 1. Validar si ya existe completa y finalizada para este proveedor
+                    if (isset($existingSupplierNumbers[$number])) {
                         return false;
                     }
 
-                    // 1. Validar por número de control fiscal idéntico completo
-                    if (!empty($control) && isset($existingControls[$control])) {
-                        Log::warning("Factura filtrada: Ya existe una factura completa con el número de control '{$control}' para este proveedor", ['number' => $number]);
-                        return false;
-                    }
-
-                    // 2. Validar por número de factura normalizado completo
-                    $stripped = ltrim($number, 'ABFCD');
-                    $strippedNoZeroes = ltrim($stripped, '0');
-
-                    if (isset($existingNormalizedNumbers[$number]) ||
-                        isset($existingNormalizedNumbers[$stripped]) ||
-                        (!empty($strippedNoZeroes) && isset($existingNormalizedNumbers[$strippedNoZeroes]))) {
-                        Log::warning("Factura filtrada: Ya existe completa en el ERP bajo número normalizado", ['number' => $number]);
+                    // 2. Validar por número de control fiscal si está completo y no es genérico
+                    if (!empty($control) && $control !== '—' && $control !== 'S/N' && $control !== '00-0000000' && isset($existingControls[$control])) {
                         return false;
                     }
 
