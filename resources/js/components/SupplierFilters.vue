@@ -7,10 +7,10 @@ import { useBrandingStore } from "@/stores/useBrandingStore";
 const brandingStore = useBrandingStore();
 
 const props = defineProps({
-  searchQuery: String,
-  debtFilter: [String, null],
-  minScore: [Number, String, null],
-  type: [String, null],
+  searchQuery: { type: String, default: "" },
+  debtFilter: { type: [String, null], default: null },
+  minScore: { type: [Number, String, null], default: null },
+  type: { type: [String, null], default: null },
   loading: { type: Boolean, default: false },
 });
 
@@ -23,8 +23,6 @@ const emit = defineEmits([
   "sort",
   "add-supplier",
 ]);
-
-const isRestaurant = computed(() => false);
 
 const sortOptions = [
   { title: "Deuda mayor", icon: "tabler-arrow-up", key: "debt", order: "desc" },
@@ -68,12 +66,12 @@ const typeOptions = [
 ];
 
 const showExpenseSupplierBtn = computed(() => {
-  const enabledTypes = brandingStore.settings.enabled_supplier_types || ['inventory', 'expenses'];
-  return enabledTypes.includes('expenses');
+  const enabledTypes = brandingStore.settings?.enabled_supplier_types || ['inventory', 'expenses'];
+  return Array.isArray(enabledTypes) && enabledTypes.includes('expenses');
 });
 
 const hasAdvancedFilters = computed(
-  () => !!(props.debtFilter || props.minScore || (!isRestaurant.value && props.type)),
+  () => !!(props.debtFilter || props.minScore || props.type),
 );
 </script>
 
@@ -110,7 +108,7 @@ const hasAdvancedFilters = computed(
 
     <template #advanced-filters>
       <!-- Filtro de Tipo de Proveedor (Droguerías / Gastos) -->
-      <VCol v-if="!isRestaurant" cols="12" sm="6" md="4">
+      <VCol cols="12" sm="6" md="4">
         <VSelect
           :model-value="props.type"
           :items="typeOptions"
