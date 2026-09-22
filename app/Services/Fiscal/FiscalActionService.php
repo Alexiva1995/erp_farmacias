@@ -39,10 +39,25 @@ class FiscalActionService
      */
     public function confirmCommand(int $id, array $data): bool
     {
-        return $this->repository->update($id, [
+        $updated = $this->repository->update($id, [
             'status' => $data['status'] ?? 'success',
             'response' => $data['response'] ?? null
         ]);
+
+        $command = $this->repository->find($id);
+        if ($command && $command->command === 'REPORT_Z' && ($data['status'] ?? 'success') === 'success') {
+            $date = $command->payload['target_date'] ?? $command->created_at?->format('Y-m-d') ?? now()->format('Y-m-d');
+            $zReportService = app(\App\Services\Fiscal\FiscalZReportService::class);
+            $report = $zReportService->generateForDate($date, null, true);
+            if ($report && $report->status === 'open') {
+                $report->update([
+                    'status' => 'closed',
+                    'closing_time' => now()->format('H:i:s'),
+                ]);
+            }
+        }
+
+        return $updated;
     }
 
     /**

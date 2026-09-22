@@ -141,7 +141,23 @@ class FiscalZReportService
         $closingTime = $lastInvoice && $lastInvoice->created_at ? Carbon::parse($lastInvoice->created_at)->format('H:i:s') : '23:59:59';
 
         $isToday = ($date === Carbon::today()->format('Y-m-d'));
-        $status = $isToday ? 'open' : 'closed';
+
+        // Verificar si ya se emitió exitosamente un comando REPORT_Z para esta fecha
+        $hasSuccessfulZCommand = \App\Models\FiscalCommand::where('command', 'REPORT_Z')
+            ->where('status', 'success')
+            ->where(function ($q) use ($date) {
+                $q->where('payload->target_date', $date)
+                  ->orWhereDate('created_at', $date);
+            })
+            ->exists();
+
+        if ($existing && in_array($existing->status, ['COMPROBADO', 'DISCREPANCIA', 'closed'])) {
+            $status = $existing->status;
+        } elseif ($hasSuccessfulZCommand) {
+            $status = 'closed';
+        } else {
+            $status = $isToday ? 'open' : 'closed';
+        }
 
         $data = [
             'report_number'        => $reportNumber,
