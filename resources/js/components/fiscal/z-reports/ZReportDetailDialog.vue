@@ -83,35 +83,8 @@ const printTicket = () => {
           <div class="font-weight-black mb-1">
             Discrepancia detectada con la Foto del Reporte Z
           </div>
-          <div v-if="props.report?.ai_verification_notes" class="text-caption mb-2">
+          <div v-if="props.report?.ai_verification_notes" class="text-caption">
             {{ props.report.ai_verification_notes }}
-          </div>
-
-          <!-- Tabla Comparativa de Discrepancias -->
-          <div v-if="props.report?.discrepancies && props.report.discrepancies.length > 0" class="discrepancy-table-container bg-surface rounded pa-2 border">
-            <div class="text-caption font-weight-bold text-error mb-1">
-              Detalle de campos con diferencias:
-            </div>
-            <VTable density="compact" class="text-xs bg-transparent">
-              <thead>
-                <tr>
-                  <th class="text-start font-weight-bold">Concepto</th>
-                  <th class="text-end font-weight-bold">Sistema</th>
-                  <th class="text-end font-weight-bold text-error">Foto Z</th>
-                  <th class="text-end font-weight-bold">Diferencia</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="(disc, idx) in props.report.discrepancies" :key="idx">
-                  <td class="font-weight-medium">{{ disc.label || disc.field }}</td>
-                  <td class="text-end">Bs. {{ formatCurrency(disc.system_value) }}</td>
-                  <td class="text-end font-weight-black text-error">Bs. {{ formatCurrency(disc.photo_value) }}</td>
-                  <td class="text-end font-weight-bold" :class="Number(disc.diff) < 0 ? 'text-error' : 'text-success'">
-                    Bs. {{ formatCurrency(disc.diff) }}
-                  </td>
-                </tr>
-              </tbody>
-            </VTable>
           </div>
         </VAlert>
 
@@ -148,95 +121,95 @@ const printTicket = () => {
           <VDivider class="border-dashed my-2" />
 
           <!-- Datos de Fecha y Auditoría -->
-          <div class="d-flex flex-column gap-1 text-caption mb-3">
-            <div class="d-flex justify-space-between">
+          <div class="d-flex flex-column text-caption mb-3">
+            <div class="d-flex justify-space-between py-1 border-b border-dashed">
               <span class="text-disabled">FECHA DE EMISIÓN:</span>
               <span class="font-weight-bold">{{ props.report?.report_date }}</span>
             </div>
-            <div class="d-flex justify-space-between">
+            <div class="d-flex justify-space-between py-1 border-b border-dashed">
               <span class="text-disabled">HORA DE APERTURA:</span>
               <span>{{ props.report?.opening_time || '00:00:00' }}</span>
             </div>
-            <div class="d-flex justify-space-between">
+            <div class="d-flex justify-space-between py-1 border-b border-dashed">
               <span class="text-disabled">HORA DE CIERRE:</span>
               <span>{{ props.report?.closing_time || '23:59:59' }}</span>
             </div>
-            <div class="d-flex justify-space-between">
+            <div class="d-flex justify-space-between py-1 border-b border-dashed">
               <span class="text-disabled">PRIMERA FACTURA:</span>
               <span class="font-weight-medium">{{ props.report?.first_invoice_number || 'N/A' }}</span>
             </div>
-            <div class="d-flex justify-space-between">
+            <div class="d-flex justify-space-between py-1 border-b border-dashed">
               <span class="text-disabled">ÚLTIMA FACTURA:</span>
               <span class="font-weight-medium">{{ props.report?.last_invoice_number || 'N/A' }}</span>
             </div>
-            <div class="d-flex justify-space-between">
+            <div class="d-flex justify-space-between py-1">
               <span class="text-disabled">CANTIDAD DE FACTURAS:</span>
-              <span class="font-weight-bold text-info">{{ props.report?.invoices_count || 0 }} DOCS</span>
+              <span class="font-weight-bold text-info">{{ Math.round(Number(props.report?.invoices_count || 0)) }} DOCS</span>
             </div>
           </div>
 
           <VDivider class="border-dashed my-2" />
 
           <!-- Desglose Fiscal -->
-          <div class="d-flex flex-column gap-1 text-sm">
+          <div class="d-flex flex-column text-sm">
             <!-- Exento -->
-            <div class="d-flex justify-space-between align-center">
+            <div class="d-flex justify-space-between align-center py-1 border-b border-dashed">
               <span class="font-weight-medium">VENTAS EXENTAS (E):</span>
               <div class="text-end">
-                <span :class="{'text-error font-weight-bold': props.report?.discrepancies_map?.exempt_amount}">
-                  Bs. {{ formatCurrency(props.report?.exempt_amount) }}
+                <span class="font-weight-bold text-success">
+                  {{ formatCurrency(props.report?.exempt_amount) }}
                 </span>
                 <div v-if="props.report?.discrepancies_map?.exempt_amount" class="text-caption text-error font-weight-bold d-flex align-center justify-end gap-1">
                   <VIcon icon="tabler-camera" size="12" />
-                  Bs. {{ formatCurrency(props.report.discrepancies_map.exempt_amount.photo_value) }}
+                  {{ formatCurrency(props.report.discrepancies_map.exempt_amount.photo_value) }}
                 </div>
               </div>
             </div>
 
             <!-- Base 16% -->
-            <div class="d-flex justify-space-between align-center">
+            <div class="d-flex justify-space-between align-center py-1 border-b border-dashed">
               <span class="font-weight-medium">BASE IMPONIBLE (G 16%):</span>
               <div class="text-end">
-                <span :class="{'text-error font-weight-bold': props.report?.discrepancies_map?.base_16_amount}">
-                  Bs. {{ formatCurrency(props.report?.base_16_amount) }}
+                <span class="font-weight-bold text-success">
+                  {{ formatCurrency(props.report?.base_16_amount) }}
                 </span>
                 <div v-if="props.report?.discrepancies_map?.base_16_amount" class="text-caption text-error font-weight-bold d-flex align-center justify-end gap-1">
                   <VIcon icon="tabler-camera" size="12" />
-                  Bs. {{ formatCurrency(props.report.discrepancies_map.base_16_amount.photo_value) }}
+                  {{ formatCurrency(props.report.discrepancies_map.base_16_amount.photo_value) }}
                 </div>
               </div>
             </div>
 
             <!-- IVA 16% -->
-            <div class="d-flex justify-space-between align-center">
-              <span class="font-weight-medium text-warning">IMPUESTO IVA (G 16%):</span>
+            <div class="d-flex justify-space-between align-center py-1 border-b border-dashed">
+              <span class="font-weight-medium">IMPUESTO IVA (G 16%):</span>
               <div class="text-end">
-                <span :class="props.report?.discrepancies_map?.iva_amount ? 'text-error font-weight-bold' : 'text-warning font-weight-bold'">
-                  Bs. {{ formatCurrency(props.report?.iva_amount) }}
+                <span class="font-weight-bold text-success">
+                  {{ formatCurrency(props.report?.iva_amount) }}
                 </span>
                 <div v-if="props.report?.discrepancies_map?.iva_amount" class="text-caption text-error font-weight-bold d-flex align-center justify-end gap-1">
                   <VIcon icon="tabler-camera" size="12" />
-                  Bs. {{ formatCurrency(props.report.discrepancies_map.iva_amount.photo_value) }}
+                  {{ formatCurrency(props.report.discrepancies_map.iva_amount.photo_value) }}
                 </div>
               </div>
             </div>
 
             <!-- Base IGTF -->
-            <div class="d-flex justify-space-between align-center">
+            <div class="d-flex justify-space-between align-center py-1 border-b border-dashed">
               <span class="font-weight-medium">BASE IGTF / SPE:</span>
-              <span class="font-weight-bold">Bs. {{ formatCurrency(props.report?.igtf_base_amount) }}</span>
+              <span class="font-weight-bold text-success">{{ formatCurrency(props.report?.igtf_base_amount) }}</span>
             </div>
 
             <!-- IGTF -->
-            <div class="d-flex justify-space-between align-center">
-              <span class="font-weight-medium text-error">IGTF PERCIBIDO (3%):</span>
+            <div class="d-flex justify-space-between align-center py-1">
+              <span class="font-weight-medium">IGTF PERCIBIDO (3%):</span>
               <div class="text-end">
-                <span class="font-weight-bold text-error">
-                  Bs. {{ formatCurrency(props.report?.igtf_amount) }}
+                <span class="font-weight-bold text-success">
+                  {{ formatCurrency(props.report?.igtf_amount) }}
                 </span>
                 <div v-if="props.report?.discrepancies_map?.igtf_amount" class="text-caption text-error font-weight-bold d-flex align-center justify-end gap-1">
                   <VIcon icon="tabler-camera" size="12" />
-                  Bs. {{ formatCurrency(props.report.discrepancies_map.igtf_amount.photo_value) }}
+                  {{ formatCurrency(props.report.discrepancies_map.igtf_amount.photo_value) }}
                 </div>
               </div>
             </div>
@@ -249,11 +222,11 @@ const printTicket = () => {
             <span class="text-subtitle-1 font-weight-black">TOTAL REPORTE Z:</span>
             <div class="text-end">
               <span class="text-h6 font-weight-black text-success">
-                Bs. {{ formatCurrency(props.report?.total_amount) }}
+                {{ formatCurrency(props.report?.total_amount) }}
               </span>
               <div v-if="props.report?.discrepancies_map?.total_amount" class="text-caption text-error font-weight-black d-flex align-center justify-end gap-1">
                 <VIcon icon="tabler-camera" size="12" />
-                Bs. {{ formatCurrency(props.report.discrepancies_map.total_amount.photo_value) }}
+                {{ formatCurrency(props.report.discrepancies_map.total_amount.photo_value) }}
               </div>
             </div>
           </div>
@@ -355,12 +328,6 @@ const printTicket = () => {
 
 .max-h-400 {
   max-height: 400px;
-}
-
-.discrepancy-table-container table th,
-.discrepancy-table-container table td {
-  padding: 4px 8px !important;
-  font-size: 0.75rem !important;
 }
 </style>
 
