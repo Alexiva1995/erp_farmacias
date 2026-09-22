@@ -1,132 +1,137 @@
 <script setup>
-import axios from '@/plugins/axios';
-import { toast } from '@/plugins/sweetalert';
-import { computed, ref, watch } from 'vue';
-import SupplierConnectionHistoryDialog from '@/components/dialogs/SupplierConnectionHistoryDialog.vue';
+import axios from "@/plugins/axios";
+import { toast } from "@/plugins/sweetalert";
+import { computed, ref, watch } from "vue";
+import SupplierConnectionHistoryDialog from "@/components/dialogs/SupplierConnectionHistoryDialog.vue";
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
-  supplier:   { type: Object, default: () => ({}) },
+  supplier: { type: Object, default: () => ({}) },
 });
 
-const emit = defineEmits(['update:modelValue', 'saved']);
+const emit = defineEmits(["update:modelValue", "saved"]);
 
 // ─── Estado ───────────────────────────────────────────────────────────────────
-const loading       = ref(false);
-const saving        = ref(false);
+const loading = ref(false);
+const saving = ref(false);
 const isHistoryOpen = ref(false);
-const showPassword  = ref(false);
+const showPassword = ref(false);
 const showFtpOrdersPassword = ref(false);
 
-const form = ref({
-  type:                 'ftp',
-  host:                 '',
-  port:                 '',
-  username:             '',
-  password:             '',
-  path:                 '',
-  invoice_path:         '',
-  pasv:                 true,
-  has_header:           false,
-  // FTP complementario para pedidos (ej. Mafarta / Cobeca)
-  ftp_orders_enabled:   false,
-  ftp_orders_host:      '',
-  ftp_orders_port:      21,
-  ftp_orders_username:  '',
-  ftp_orders_password:  '',
-  ftp_orders_path:      '',
+const connectionsMap = ref({});
+
+const getDefaultFormForType = (type) => ({
+  type: type,
+  host: type === "dronena_bot" ? "https://www.dronena.com/NuevaExperiencia/" : "",
+  port: type === "sftp" ? 22 : (type === "ftp" ? 21 : ""),
+  username: "",
+  password: "",
+  path: "",
+  invoice_path: "",
+  pasv: true,
+  has_header: false,
+  ftp_orders_enabled: false,
+  ftp_orders_host: "",
+  ftp_orders_port: 21,
+  ftp_orders_username: "",
+  ftp_orders_password: "",
+  ftp_orders_path: "",
 });
+
+const form = ref(getDefaultFormForType("ftp"));
 
 const hasExistingPassword = ref(false);
 const hasExistingFtpOrdersPassword = ref(false);
-const lastConnection      = ref(null);
-const errors              = ref({});
+const lastConnection = ref(null);
+const errors = ref({});
 
-const isFtp  = computed(() => ['ftp', 'sftp'].includes(form.value.type));
-const isHttp = computed(() => ['http', 'api'].includes(form.value.type));
-const isEmail = computed(() => ['file', 'email'].includes(form.value.type));
-const isDronenaBot = computed(() => form.value.type === 'dronena_bot' || (props.supplier?.name && props.supplier.name.toUpperCase().includes('NENA')));
-const isMafarta = computed(() => props.supplier?.name && (props.supplier.name.toUpperCase().includes('MAFARTA') || props.supplier.name.toUpperCase().includes('COBECA') || props.supplier.id === 23));
+const isFtp = computed(() => ["ftp", "sftp"].includes(form.value.type));
+const isHttp = computed(() => ["http", "api"].includes(form.value.type));
+const isEmail = computed(() => ["file", "email"].includes(form.value.type));
+const isDronenaBot = computed(() => form.value.type === "dronena_bot" || (props.supplier?.name && props.supplier.name.toUpperCase().includes("NENA")));
+const isMafarta = computed(() => props.supplier?.name && (props.supplier.name.toUpperCase().includes("MAFARTA") || props.supplier.name.toUpperCase().includes("COBECA") || props.supplier.id === 23));
 
 const typeOptions = computed(() => {
   const options = [
-    { title: 'FTP',  value: 'ftp',  icon: 'tabler-server', description: 'Conexión por protocolo FTP estándar' },
-    { title: 'SFTP', value: 'sftp', icon: 'tabler-lock',   description: 'FTP seguro sobre SSH' },
-    { title: 'HTTP / API', value: 'api', icon: 'tabler-api', description: 'Endpoint REST con autenticación por token' },
-    { title: 'Correo Gmail (Excel)', value: 'file', icon: 'tabler-mail', description: 'Descarga automática de listas Excel desde tu correo Gmail' },
+    { title: "FTP", value: "ftp", icon: "tabler-server" },
+    { title: "SFTP", value: "sftp", icon: "tabler-lock" },
+    { title: "HTTP / API", value: "api", icon: "tabler-api" },
+    { title: "Correo Gmail", value: "file", icon: "tabler-mail" },
   ];
 
-  if (props.supplier?.name && (props.supplier.name.toUpperCase().includes('NENA') || props.supplier.name.toUpperCase().includes('DRONENA'))) {
+  if (props.supplier?.name && (props.supplier.name.toUpperCase().includes("NENA") || props.supplier.name.toUpperCase().includes("DRONENA"))) {
     options.unshift({
-      title: 'Bot Dronena',
-      value: 'dronena_bot',
-      icon: 'tabler-robot',
-      description: 'Extracción automática directa del portal web de Dronena',
+      title: "Bot Dronena",
+      value: "dronena_bot",
+      icon: "tabler-robot",
     });
   }
 
   return options;
 });
 
-const defaultPort = computed(() => {
-  if (form.value.type === 'ftp')  return 21;
-  if (form.value.type === 'sftp') return 22;
-  return '';
-});
+const loadFormForType = (type) => {
+  const existing = connectionsMap.value[type];
+  if (existing) {
+    form.value = {
+      type: existing.type || type,
+      host: existing.host ?? "",
+      port: existing.port ?? (type === "sftp" ? 22 : (type === "ftp" ? 21 : "")),
+      username: existing.username ?? "",
+      password: "",
+      path: existing.path ?? "",
+      invoice_path: existing.invoice_path ?? "",
+      pasv: existing.pasv ?? true,
+      has_header: existing.has_header ?? false,
+      ftp_orders_enabled: existing.ftp_orders_enabled ?? (connectionsMap.value["ftp"] ? true : false),
+      ftp_orders_host: existing.ftp_orders_host ?? connectionsMap.value["ftp"]?.host ?? "",
+      ftp_orders_port: existing.ftp_orders_port ?? connectionsMap.value["ftp"]?.port ?? 21,
+      ftp_orders_username: existing.ftp_orders_username ?? connectionsMap.value["ftp"]?.username ?? "",
+      ftp_orders_password: "",
+      ftp_orders_path: existing.ftp_orders_path ?? connectionsMap.value["ftp"]?.path ?? "",
+    };
+    hasExistingPassword.value = existing.has_password ?? false;
+    lastConnection.value = existing.last_connection ?? null;
+  } else {
+    form.value = getDefaultFormForType(type);
+    hasExistingPassword.value = false;
+    lastConnection.value = null;
+  }
+};
+
+const switchType = (newType) => {
+  if (!newType || form.value.type === newType) return;
+  errors.value = {};
+  loadFormForType(newType);
+};
 
 // ─── Métodos ──────────────────────────────────────────────────────────────────
 const fetchConfig = async () => {
   if (!props.supplier?.id) return;
   loading.value = true;
-  errors.value  = {};
+  errors.value = {};
   try {
     const { data } = await axios.get(`/suppliers/${props.supplier.id}/connection-config`);
-    if (data) {
-      form.value = {
-        type:                 data.type                 ?? 'ftp',
-        host:                 data.host                 ?? '',
-        port:                 data.port                 ?? '',
-        username:             data.username             ?? '',
-        password:             '',
-        path:                 data.path                 ?? '',
-        invoice_path:         data.invoice_path         ?? '',
-        pasv:                 data.pasv                 ?? true,
-        has_header:           data.has_header           ?? false,
-        ftp_orders_enabled:   data.ftp_orders_enabled   ?? false,
-        ftp_orders_host:      data.ftp_orders_host      ?? '',
-        ftp_orders_port:      data.ftp_orders_port      ?? 21,
-        ftp_orders_username:  data.ftp_orders_username  ?? '',
-        ftp_orders_password:  '',
-        ftp_orders_path:      data.ftp_orders_path      ?? '',
-      };
-      hasExistingPassword.value = data.has_password ?? false;
-      hasExistingFtpOrdersPassword.value = data.ftp_orders_has_pass ?? false;
-      lastConnection.value      = data.last_connection;
+    if (data && data.connections) {
+      connectionsMap.value = data.connections;
+    } else if (data && data.type) {
+      connectionsMap.value = { [data.type]: data };
     } else {
-      // Sin configuración: reset al default
-      form.value = {
-        type: 'ftp',
-        host: '',
-        port: '',
-        username: '',
-        password: '',
-        path: '',
-        invoice_path: '',
-        pasv: true,
-        has_header: false,
-        ftp_orders_enabled: false,
-        ftp_orders_host: '',
-        ftp_orders_port: 21,
-        ftp_orders_username: '',
-        ftp_orders_password: '',
-        ftp_orders_path: '',
-      };
-      hasExistingPassword.value = false;
-      hasExistingFtpOrdersPassword.value = false;
-      lastConnection.value      = null;
+      connectionsMap.value = {};
     }
+
+    const availableTypes = Object.keys(connectionsMap.value);
+    const initialType =
+      availableTypes.find((t) => t === "dronena_bot") ||
+      availableTypes.find((t) => t === "api") ||
+      availableTypes.find((t) => t === "file") ||
+      availableTypes.find((t) => t === "ftp" || t === "sftp") ||
+      "ftp";
+
+    loadFormForType(initialType);
+    hasExistingFtpOrdersPassword.value = data?.ftp_orders_has_pass ?? false;
   } catch {
-    toast.error('No se pudo cargar la configuración.');
+    toast.error("No se pudo cargar la configuración de conexiones.");
   } finally {
     loading.value = false;
   }
@@ -137,32 +142,42 @@ const saveConfig = async () => {
   saving.value = true;
   try {
     const payload = { ...form.value };
-    if (payload.type === 'file') {
+    if (payload.type === "file") {
       payload.host = payload.username;
       payload.port = null;
       payload.path = null;
       payload.invoice_path = null;
       delete payload.password;
-    } else if (payload.type === 'dronena_bot' && !payload.host) {
-      payload.host = 'https://www.dronena.com/NuevaExperiencia/';
+    } else if (payload.type === "dronena_bot" && !payload.host) {
+      payload.host = "https://www.dronena.com/NuevaExperiencia/";
     }
-    // Si no envió nueva contraseña y ya existía una, no mandamos el campo
+
     if (!payload.password && hasExistingPassword.value) {
       delete payload.password;
     }
     if (!payload.ftp_orders_password && hasExistingFtpOrdersPassword.value) {
       delete payload.ftp_orders_password;
     }
-    await axios.post(`/suppliers/${props.supplier.id}/connection-config`, payload);
-    toast.success('Configuración guardada correctamente.');
-    emit('saved');
+
+    const { data } = await axios.post(`/suppliers/${props.supplier.id}/connection-config`, payload);
+
+    if (data?.connection) {
+      connectionsMap.value[data.connection.type] = {
+        ...connectionsMap.value[data.connection.type],
+        ...data.connection,
+      };
+      hasExistingPassword.value = data.connection.has_password ?? hasExistingPassword.value;
+    }
+
+    toast.success(`Configuración de ${form.value.type.toUpperCase()} guardada correctamente.`);
+    emit("saved");
     close();
   } catch (err) {
     if (err.response?.status === 422) {
       errors.value = err.response.data.errors ?? {};
-      toast.error('Revisa los campos marcados en rojo.');
+      toast.error("Revisa los campos marcados en rojo.");
     } else {
-      toast.error('Error al guardar la configuración.');
+      toast.error("Error al guardar la configuración.");
     }
   } finally {
     saving.value = false;
@@ -170,42 +185,38 @@ const saveConfig = async () => {
 };
 
 const close = () => {
-  emit('update:modelValue', false);
+  emit("update:modelValue", false);
   errors.value = {};
 };
 
-// Al abrir el diálogo, muestra el puerto por defecto si el campo está vacío
-watch(() => form.value.type, (newType) => {
-  if (!form.value.port) {
-    form.value.port = defaultPort.value;
-  }
-});
-
-watch(() => props.modelValue, (isOpen) => {
-  if (isOpen) fetchConfig();
-});
+watch(
+  () => props.modelValue,
+  (isOpen) => {
+    if (isOpen) fetchConfig();
+  },
+);
 </script>
 
 <template>
   <VDialog
     :model-value="props.modelValue"
-    max-width="680px"
+    max-width="780px"
     persistent
     scrollable
     @update:model-value="close"
   >
     <VCard class="detail-dialog-card rounded-xl overflow-hidden border-0 shadow-xl bg-surface">
-      <!-- Header Premium Institucional -->
+      <!-- Header -->
       <VCardTitle class="pa-0">
         <div class="header-gradient pa-4 d-flex align-center shadow-sm">
-          <VAvatar color="white" variant="flat" size="40" class="me-3 elevation-1 text-primary">
+          <VAvatar color="white" variant="flat" size="38" class="me-3 elevation-1 text-primary">
             <VIcon icon="tabler-plug" color="primary" size="22" />
           </VAvatar>
           <div class="d-flex flex-column leading-none text-white">
             <h2 class="text-h6 font-weight-black leading-tight mb-0 uppercase text-white">
               Configuración de Conexión
             </h2>
-            <span class="text-super-xs opacity-75 font-weight-bold uppercase letter-spacing-1">
+            <span class="text-super-xs opacity-90 font-weight-bold uppercase letter-spacing-1">
               {{ props.supplier?.name ?? 'Proveedor' }}
             </span>
           </div>
@@ -214,196 +225,109 @@ watch(() => props.modelValue, (isOpen) => {
         </div>
       </VCardTitle>
 
-      <VCardText class="pa-4 pa-sm-6 bg-light" style="overflow-y: auto;">
+      <!-- Selector Compacto de Protocolos (Segmented Tabs) -->
+      <div class="px-4 py-2 bg-white border-b flex-shrink-0">
+        <div class="d-flex align-center justify-space-between mb-1">
+          <span class="text-xxs font-weight-black text-disabled text-uppercase letter-spacing-1">
+            Protocolos Disponibles (Independientes):
+          </span>
+          <span v-if="lastConnection" class="text-xxs text-success font-weight-bold d-flex align-center gap-1">
+            <VIcon icon="tabler-circle-check" size="14" color="success" />
+            Última sinc: {{ lastConnection }}
+          </span>
+          <span v-else class="text-xxs text-medium-emphasis">
+            Sin sincronizaciones previas en este protocolo
+          </span>
+        </div>
 
+        <VTabs
+          :model-value="form.type"
+          color="primary"
+          density="compact"
+          class="protocol-tabs"
+          height="38"
+          @update:model-value="switchType"
+        >
+          <VTab
+            v-for="opt in typeOptions"
+            :key="opt.value"
+            :value="opt.value"
+            class="protocol-tab-item text-xs font-weight-bold text-none rounded-lg me-1"
+          >
+            <VIcon :icon="opt.icon" size="16" class="me-1" />
+            {{ opt.title }}
+            <VChip
+              v-if="connectionsMap[opt.value]"
+              size="x-small"
+              color="success"
+              variant="flat"
+              class="ms-1 px-1 font-weight-bold protocol-badge"
+            >
+              ✓
+            </VChip>
+          </VTab>
+        </VTabs>
+      </div>
+
+      <!-- Contenido de Formulario Compacto -->
+      <VCardText class="pa-4 bg-light flex-grow-1 overflow-y-auto">
         <!-- Loading -->
-        <div v-if="loading" class="d-flex justify-center align-center py-12">
+        <div v-if="loading" class="d-flex justify-center align-center py-10">
           <VProgressCircular indeterminate color="primary" />
         </div>
 
         <VForm v-else @submit.prevent="saveConfig">
-
-          <!-- Estado de conexión -->
-          <VAlert
-            v-if="lastConnection"
-            type="success"
-            variant="tonal"
-            density="compact"
-            icon="tabler-circle-check"
-            class="mb-4 rounded-xl"
-          >
-            <div class="d-flex align-center justify-space-between flex-wrap gap-2 w-100">
-              <span>Última sincronización exitosa: <strong>{{ lastConnection }}</strong></span>
-              <VBtn
-                size="x-small"
-                variant="flat"
-                color="primary"
-                prepend-icon="tabler-history"
-                class="font-weight-black"
-                @click="isHistoryOpen = true"
-              >
-                Ver Historial y Facturas Traídas
-              </VBtn>
-            </div>
-          </VAlert>
-          <VAlert
-            v-else
-            type="warning"
-            variant="tonal"
-            density="compact"
-            icon="tabler-alert-triangle"
-            class="mb-4 rounded-xl"
-          >
-            <div class="d-flex align-center justify-space-between flex-wrap gap-2 w-100">
-              <span>Este proveedor <strong>no ha sido sincronizado</strong> aún o no tiene conexión configurada.</span>
-              <VBtn
-                size="x-small"
-                variant="tonal"
-                color="warning"
-                prepend-icon="tabler-history"
-                class="font-weight-black"
-                @click="isHistoryOpen = true"
-              >
-                Ver Historial
-              </VBtn>
-            </div>
-          </VAlert>
-
-          <!-- Sección 1: Tipo de conexión -->
-          <div class="d-flex align-center gap-2 mb-3">
-            <div class="header-indicator primary shadow-sm" />
-            <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Tipo de Conexión</span>
-          </div>
-
-          <VCard variant="flat" class="pa-4 bg-white rounded-xl border shadow-sm mb-4">
-            <VRow>
-              <VCol
-                v-for="opt in typeOptions"
-                :key="opt.value"
-                cols="12"
-                sm="6"
-                md="3"
-              >
-                <div
-                  class="type-option-card pa-3 text-center rounded-xl border cursor-pointer"
-                  :class="form.type === opt.value ? 'type-option-active' : 'type-option-inactive'"
-                  @click="form.type = opt.value"
-                >
-                  <VIcon :icon="opt.icon" size="26" class="mb-1" />
-                  <div class="text-subtitle-2 font-weight-black">{{ opt.title }}</div>
-                  <div class="text-super-xs text-medium-emphasis">{{ opt.description }}</div>
-                </div>
-              </VCol>
-            </VRow>
-          </VCard>
-
-          <!-- Sección Correo Gmail (Excel) -->
+          <!-- 1. Correo Gmail (Excel) -->
           <template v-if="isEmail">
-            <VAlert
-              type="info"
-              variant="tonal"
-              density="compact"
-              icon="tabler-mail"
-              class="mb-4 rounded-xl"
-            >
-              El sistema revisará automáticamente tu cuenta de Gmail y extraerá el <strong>último archivo Excel</strong> recibido desde el correo remitente configurado.
-            </VAlert>
+            <VCard variant="outlined" class="pa-4 bg-white rounded-lg border-card mb-3">
+              <div class="d-flex align-center gap-2 mb-2">
+                <VIcon icon="tabler-mail" color="primary" size="20" />
+                <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Extracción Automática desde Gmail</span>
+              </div>
+              <p class="text-xs text-medium-emphasis mb-3">
+                El sistema revisará automáticamente la bandeja de entrada y procesará los archivos Excel adjuntos recibidos desde este remitente.
+              </p>
 
-            <div class="d-flex align-center gap-2 mb-3">
-              <div class="header-indicator primary shadow-sm" />
-              <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Correo Remitente</span>
-            </div>
-
-            <VCard variant="flat" class="pa-4 bg-white rounded-xl border shadow-sm mb-4">
-              <VRow>
+              <VRow dense>
                 <VCol cols="12">
-                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">
-                    Correo del Proveedor (desde donde envían la lista)
-                  </span>
                   <AppTextField
                     v-model="form.username"
-                    placeholder="ejemplo: pedidos@proveedor.com"
+                    label="Correo del Remitente del Proveedor *"
+                    placeholder="pedidos@proveedor.com"
                     prepend-inner-icon="tabler-mail"
                     :error-messages="errors.username"
                   />
-                  <span class="text-xxs text-disabled mt-1 d-block">
-                    Los archivos adjuntos (.xlsx, .xls, .csv) de este remitente se procesarán automáticamente con el mapeo de este proveedor.
-                  </span>
                 </VCol>
               </VRow>
             </VCard>
           </template>
 
-          <!-- Sección 2: Servidor (Oculto en Dronena Bot y Email) -->
-          <div v-else-if="form.type !== 'dronena_bot'" class="d-flex align-center gap-2 mb-3">
-            <div class="header-indicator secondary shadow-sm" />
-            <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">
-              {{ isFtp ? 'Servidor FTP' : 'Endpoint de la API' }}
-            </span>
-          </div>
+          <!-- 2. Bot Dronena -->
+          <template v-else-if="form.type === 'dronena_bot'">
+            <VCard variant="outlined" class="pa-4 bg-white rounded-lg border-card mb-3">
+              <div class="d-flex align-center gap-2 mb-2">
+                <VIcon icon="tabler-robot" color="primary" size="20" />
+                <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Credenciales Bot Dronena</span>
+              </div>
+              <p class="text-xs text-medium-emphasis mb-3">
+                Extracción web directa desde <code>https://www.dronena.com/NuevaExperiencia/</code>.
+              </p>
 
-          <VCard v-if="!isEmail && form.type !== 'dronena_bot'" variant="flat" class="pa-4 bg-white rounded-xl border shadow-sm mb-4">
-            <VRow>
-              <VCol cols="12" :md="isFtp ? 8 : 12">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">
-                  {{ isFtp ? 'Host / IP del servidor' : 'URL de Login (endpoint)' }}
-                </span>
-                <AppTextField
-                  v-model="form.host"
-                  :placeholder="isFtp ? 'ftp.proveedor.com' : 'https://api.proveedor.com/login'"
-                  prepend-inner-icon="tabler-server"
-                  :error-messages="errors.host"
-                />
-              </VCol>
-              <VCol v-if="isFtp" cols="12" md="4">
-                <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Puerto</span>
-                <AppTextField
-                  v-model.number="form.port"
-                  type="number"
-                  :placeholder="form.type === 'sftp' ? '22' : '21'"
-                  prepend-inner-icon="tabler-hash"
-                  :error-messages="errors.port"
-                />
-              </VCol>
-            </VRow>
-          </VCard>
-
-          <VAlert
-            v-else-if="form.type === 'dronena_bot'"
-            type="info"
-            variant="tonal"
-            density="compact"
-            icon="tabler-robot"
-            class="mb-4 rounded-xl"
-          >
-            El <strong>Bot Dronena</strong> accederá automáticamente a <code>https://www.dronena.com/NuevaExperiencia/</code>. Solo necesitas ingresar el <strong>Usuario</strong> y la <strong>Contraseña</strong> de la cuenta.
-          </VAlert>
-
-          <!-- Sección 3: Credenciales (Solo para FTP / API / Dronena Bot) -->
-          <template v-if="!isEmail">
-            <div class="d-flex align-center gap-2 mb-3">
-              <div class="header-indicator primary shadow-sm" />
-              <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Credenciales de Acceso</span>
-            </div>
-
-            <VCard variant="flat" class="pa-4 bg-white rounded-xl border shadow-sm mb-4">
-              <VRow>
+              <VRow dense>
                 <VCol cols="12" md="6">
-                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Usuario</span>
                   <AppTextField
                     v-model="form.username"
-                    placeholder="usuario_ftp"
+                    label="Usuario Dronena *"
+                    placeholder="ej: usuario_dronena"
                     prepend-inner-icon="tabler-user"
                     :error-messages="errors.username"
                   />
                 </VCol>
                 <VCol cols="12" md="6">
-                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">
-                    {{ hasExistingPassword ? 'Nueva Contraseña (dejar vacío para no cambiar)' : 'Contraseña' }}
-                  </span>
                   <AppTextField
                     v-model="form.password"
                     :type="showPassword ? 'text' : 'password'"
+                    :label="hasExistingPassword ? 'Contraseña (dejar vacío para mantener)' : 'Contraseña Dronena *'"
                     :placeholder="hasExistingPassword ? '••••••••' : 'Contraseña de acceso'"
                     prepend-inner-icon="tabler-lock"
                     :append-inner-icon="showPassword ? 'tabler-eye-off' : 'tabler-eye'"
@@ -415,201 +339,212 @@ watch(() => props.modelValue, (isOpen) => {
             </VCard>
           </template>
 
-          <!-- Sección 4: Rutas (Solo para FTP / API estándar) -->
-          <template v-if="!isEmail && form.type !== 'dronena_bot'">
-            <div class="d-flex align-center gap-2 mb-3">
-              <div class="header-indicator secondary shadow-sm" />
-              <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">
-                {{ isFtp ? 'Rutas de Archivos' : 'Endpoints de Datos' }}
-              </span>
-            </div>
-
-            <VCard variant="flat" class="pa-4 bg-white rounded-xl border shadow-sm mb-4">
-              <VRow>
-                <VCol cols="12" md="6">
-                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">
-                    {{ isFtp ? 'Ruta de productos' : 'Endpoint de Productos' }}
+          <!-- 3. FTP / SFTP / HTTP API -->
+          <template v-else>
+            <VCard variant="outlined" class="pa-4 bg-white rounded-lg border-card mb-3">
+              <div class="d-flex align-center justify-space-between mb-3">
+                <div class="d-flex align-center gap-2">
+                  <VIcon :icon="isFtp ? 'tabler-server' : 'tabler-api'" color="primary" size="20" />
+                  <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1">
+                    {{ isFtp ? 'Servidor ' + form.type.toUpperCase() : 'Endpoint y Credenciales API' }}
                   </span>
+                </div>
+              </div>
+
+              <VRow dense>
+                <!-- Servidor y Puerto -->
+                <VCol cols="12" :md="isFtp ? 8 : 12">
+                  <AppTextField
+                    v-model="form.host"
+                    :label="isFtp ? 'Host / Servidor IP *' : 'URL Endpoint Login / Base *'"
+                    :placeholder="isFtp ? 'ftp.proveedor.com' : 'https://api.proveedor.com/login'"
+                    prepend-inner-icon="tabler-server"
+                    :error-messages="errors.host"
+                  />
+                </VCol>
+                <VCol v-if="isFtp" cols="12" md="4">
+                  <AppTextField
+                    v-model.number="form.port"
+                    type="number"
+                    label="Puerto *"
+                    :placeholder="form.type === 'sftp' ? '22' : '21'"
+                    prepend-inner-icon="tabler-hash"
+                    :error-messages="errors.port"
+                  />
+                </VCol>
+
+                <!-- Credenciales -->
+                <VCol cols="12" md="6">
+                  <AppTextField
+                    v-model="form.username"
+                    label="Usuario / Token Cliente *"
+                    placeholder="usuario_conexion"
+                    prepend-inner-icon="tabler-user"
+                    :error-messages="errors.username"
+                  />
+                </VCol>
+                <VCol cols="12" md="6">
+                  <AppTextField
+                    v-model="form.password"
+                    :type="showPassword ? 'text' : 'password'"
+                    :label="hasExistingPassword ? 'Contraseña (dejar vacío para mantener)' : 'Contraseña / Clave *'"
+                    :placeholder="hasExistingPassword ? '••••••••' : 'Contraseña de acceso'"
+                    prepend-inner-icon="tabler-lock"
+                    :append-inner-icon="showPassword ? 'tabler-eye-off' : 'tabler-eye'"
+                    :error-messages="errors.password"
+                    @click:append-inner="showPassword = !showPassword"
+                  />
+                </VCol>
+
+                <!-- Rutas de Archivos -->
+                <VCol cols="12" md="6">
                   <AppTextField
                     v-model="form.path"
+                    :label="isFtp ? 'Ruta Archivo Productos' : 'Endpoint Productos'"
                     :placeholder="isFtp ? '/inventario/productos.txt' : '/api/v1/productos'"
                     prepend-inner-icon="tabler-folder"
                     :error-messages="errors.path"
                   />
                 </VCol>
                 <VCol cols="12" md="6">
-                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">
-                    {{ isFtp ? 'Ruta de facturas' : 'Endpoint de Facturas' }}
-                  </span>
                   <AppTextField
                     v-model="form.invoice_path"
+                    :label="isFtp ? 'Ruta Directorio Facturas' : 'Endpoint Facturas'"
                     :placeholder="isFtp ? '/facturas/' : '/api/v1/facturas'"
                     prepend-inner-icon="tabler-file-invoice"
                     :error-messages="errors.invoice_path"
                   />
                 </VCol>
               </VRow>
-            </VCard>
-          </template>
 
-          <!-- Sección 5: Opciones FTP -->
-          <template v-if="isFtp">
-            <div class="d-flex align-center gap-2 mb-3">
-              <div class="header-indicator primary shadow-sm" />
-              <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Opciones FTP</span>
-            </div>
-
-            <VCard variant="flat" class="pa-4 bg-white rounded-xl border shadow-sm">
-              <VRow>
-                <VCol cols="12" md="6">
-                  <div class="d-flex align-center justify-space-between pa-3 bg-light rounded-xl border-dashed-2">
-                    <div>
-                      <div class="text-sm font-weight-black text-high-emphasis">Modo Pasivo (PASV)</div>
-                      <div class="text-super-xs text-disabled">Recomendado si hay firewall o NAT</div>
-                    </div>
-                    <VSwitch v-model="form.pasv" color="primary" hide-details density="compact" />
-                  </div>
-                </VCol>
-                <VCol cols="12" md="6">
-                  <div class="d-flex align-center justify-space-between pa-3 bg-light rounded-xl border-dashed-2">
-                    <div>
-                      <div class="text-sm font-weight-black text-high-emphasis">Archivo con encabezado</div>
-                      <div class="text-super-xs text-disabled">La primera línea es el nombre de columnas</div>
-                    </div>
-                    <VSwitch v-model="form.has_header" color="primary" hide-details density="compact" />
-                  </div>
-                </VCol>
-              </VRow>
-            </VCard>
-          </template>
-
-          <!-- Sección 6: Transmisión de Pedidos FTP / SFTP (PC-CORREO / EDI) para API, Mafarta y Bot Dronena -->
-          <template v-if="isHttp || isMafarta || form.type === 'dronena_bot'">
-            <div class="d-flex align-center justify-space-between mb-3 mt-4">
-              <div class="d-flex align-center gap-2">
-                <div class="header-indicator primary shadow-sm" />
-                <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">
-                  Transmisión de Pedidos FTP / EDI
-                </span>
+              <!-- Opciones FTP en una sola fila compacta -->
+              <div v-if="isFtp" class="d-flex align-center flex-wrap justify-space-between gap-3 pt-2 mt-2 border-t">
+                <div class="d-flex align-center gap-2">
+                  <VSwitch v-model="form.pasv" color="primary" hide-details density="compact" />
+                  <span class="text-xs font-weight-bold text-high-emphasis">Modo Pasivo (PASV)</span>
+                </div>
+                <div class="d-flex align-center gap-2">
+                  <VSwitch v-model="form.has_header" color="primary" hide-details density="compact" />
+                  <span class="text-xs font-weight-bold text-high-emphasis">Archivo con encabezado</span>
+                </div>
               </div>
-              <VSwitch
-                v-model="form.ftp_orders_enabled"
-                color="primary"
-                hide-details
-                density="compact"
-                :label="form.ftp_orders_enabled ? 'Habilitado' : 'Deshabilitado'"
-              />
-            </div>
-
-            <VCard v-if="form.ftp_orders_enabled" variant="flat" class="pa-4 bg-white rounded-xl border shadow-sm mb-4">
-              <VAlert
-                type="info"
-                variant="tonal"
-                density="compact"
-                icon="tabler-info-circle"
-                class="mb-3 rounded-lg"
-              >
-                Permite enviar pedidos automáticamente por <strong>FTP / EDI</strong> mientras mantienes activa la sincronización del portal web o bot.
-              </VAlert>
-
-              <VRow>
-                <VCol cols="12" md="8">
-                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">
-                    Host FTP de Pedidos
-                  </span>
-                  <AppTextField
-                    v-model="form.ftp_orders_host"
-                    placeholder="ej: ftp.drogueriascobeca.com"
-                    prepend-inner-icon="tabler-server"
-                    :error-messages="errors.ftp_orders_host"
-                  />
-                </VCol>
-                <VCol cols="12" md="4">
-                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">
-                    Puerto
-                  </span>
-                  <AppTextField
-                    v-model.number="form.ftp_orders_port"
-                    type="number"
-                    placeholder="21"
-                    prepend-inner-icon="tabler-hash"
-                    :error-messages="errors.ftp_orders_port"
-                  />
-                </VCol>
-                <VCol cols="12" md="6">
-                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">
-                    Usuario / Código de Cliente
-                  </span>
-                  <AppTextField
-                    v-model="form.ftp_orders_username"
-                    placeholder="ej: 31373"
-                    prepend-inner-icon="tabler-user"
-                    :error-messages="errors.ftp_orders_username"
-                  />
-                </VCol>
-                <VCol cols="12" md="6">
-                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">
-                    {{ hasExistingFtpOrdersPassword ? 'Nueva Contraseña (dejar vacío para no cambiar)' : 'Contraseña FTP' }}
-                  </span>
-                  <AppTextField
-                    v-model="form.ftp_orders_password"
-                    :type="showFtpOrdersPassword ? 'text' : 'password'"
-                    :placeholder="hasExistingFtpOrdersPassword ? '••••••••' : 'Contraseña FTP'"
-                    prepend-inner-icon="tabler-lock"
-                    :append-inner-icon="showFtpOrdersPassword ? 'tabler-eye-off' : 'tabler-eye'"
-                    :error-messages="errors.ftp_orders_password"
-                    @click:append-inner="showFtpOrdersPassword = !showFtpOrdersPassword"
-                  />
-                </VCol>
-                <VCol cols="12">
-                  <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">
-                    Ruta Remota de Pedidos (opcional)
-                  </span>
-                  <AppTextField
-                    v-model="form.ftp_orders_path"
-                    placeholder="ej: /pedidos o dejar vacío para la raíz"
-                    prepend-inner-icon="tabler-folder"
-                    :error-messages="errors.ftp_orders_path"
-                  />
-                </VCol>
-              </VRow>
             </VCard>
           </template>
 
+          <!-- Transmisión de Pedidos FTP / EDI Secundaria (si aplica) -->
+          <div v-if="isHttp || isMafarta || form.type === 'dronena_bot'" class="mt-2">
+            <VCard variant="outlined" class="pa-4 bg-white rounded-lg border-card">
+              <div class="d-flex align-center justify-space-between mb-2">
+                <div class="d-flex align-center gap-2">
+                  <VIcon icon="tabler-truck-delivery" color="primary" size="18" />
+                  <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1">
+                    Transmisión de Pedidos FTP / EDI
+                  </span>
+                </div>
+                <VSwitch
+                  v-model="form.ftp_orders_enabled"
+                  color="primary"
+                  hide-details
+                  density="compact"
+                  :label="form.ftp_orders_enabled ? 'Habilitado' : 'Deshabilitado'"
+                />
+              </div>
+
+              <div v-if="form.ftp_orders_enabled" class="pt-2">
+                <VRow dense>
+                  <VCol cols="12" md="8">
+                    <AppTextField
+                      v-model="form.ftp_orders_host"
+                      label="Host FTP Pedidos"
+                      placeholder="ftp.drogueriascobeca.com"
+                      prepend-inner-icon="tabler-server"
+                      :error-messages="errors.ftp_orders_host"
+                    />
+                  </VCol>
+                  <VCol cols="12" md="4">
+                    <AppTextField
+                      v-model.number="form.ftp_orders_port"
+                      type="number"
+                      label="Puerto"
+                      placeholder="21"
+                      prepend-inner-icon="tabler-hash"
+                      :error-messages="errors.ftp_orders_port"
+                    />
+                  </VCol>
+                  <VCol cols="12" md="6">
+                    <AppTextField
+                      v-model="form.ftp_orders_username"
+                      label="Usuario / Código Cliente"
+                      placeholder="ej: 31373"
+                      prepend-inner-icon="tabler-user"
+                      :error-messages="errors.ftp_orders_username"
+                    />
+                  </VCol>
+                  <VCol cols="12" md="6">
+                    <AppTextField
+                      v-model="form.ftp_orders_password"
+                      :type="showFtpOrdersPassword ? 'text' : 'password'"
+                      :label="hasExistingFtpOrdersPassword ? 'Contraseña (dejar vacío para mantener)' : 'Contraseña FTP'"
+                      :placeholder="hasExistingFtpOrdersPassword ? '••••••••' : 'Contraseña FTP'"
+                      prepend-inner-icon="tabler-lock"
+                      :append-inner-icon="showFtpOrdersPassword ? 'tabler-eye-off' : 'tabler-eye'"
+                      :error-messages="errors.ftp_orders_password"
+                      @click:append-inner="showFtpOrdersPassword = !showFtpOrdersPassword"
+                    />
+                  </VCol>
+                  <VCol cols="12">
+                    <AppTextField
+                      v-model="form.ftp_orders_path"
+                      label="Ruta Remota de Pedidos"
+                      placeholder="ej: /pedidos (opcional)"
+                      prepend-inner-icon="tabler-folder"
+                      :error-messages="errors.ftp_orders_path"
+                    />
+                  </VCol>
+                </VRow>
+              </div>
+            </VCard>
+          </div>
         </VForm>
       </VCardText>
 
       <VDivider />
 
-      <VCardActions class="pa-4 pa-sm-6 bg-white border-t">
-        <VRow dense class="w-100 ma-0">
-          <VCol cols="6" class="pa-1">
-            <VBtn
-              color="secondary"
-              variant="outlined"
-              height="50"
-              block
-              class="font-weight-black rounded-lg uppercase"
-              @click="close"
-            >
-              Cancelar
-            </VBtn>
-          </VCol>
-          <VCol cols="6" class="pa-1">
-            <VBtn
-              color="primary"
-              variant="flat"
-              height="50"
-              block
-              class="font-weight-black rounded-lg shadow-primary uppercase"
-              :loading="saving"
-              @click="saveConfig"
-            >
-              <VIcon start icon="tabler-device-floppy" size="18" />
-              Guardar Config.
-            </VBtn>
-          </VCol>
-        </VRow>
+      <!-- Footer con acciones equilibradas -->
+      <VCardActions class="pa-4 bg-white border-t d-flex align-center justify-space-between">
+        <VBtn
+          color="info"
+          variant="tonal"
+          height="42"
+          prepend-icon="tabler-history"
+          class="font-weight-bold rounded-lg text-xs"
+          @click="isHistoryOpen = true"
+        >
+          Historial de Sincronizaciones
+        </VBtn>
+
+        <div class="d-flex align-center gap-2">
+          <VBtn
+            color="secondary"
+            variant="outlined"
+            height="42"
+            class="font-weight-bold rounded-lg text-xs px-4"
+            @click="close"
+          >
+            Cancelar
+          </VBtn>
+          <VBtn
+            color="primary"
+            variant="flat"
+            height="42"
+            class="font-weight-bold rounded-lg shadow-primary text-xs px-4"
+            :loading="saving"
+            @click="saveConfig"
+          >
+            <VIcon start icon="tabler-device-floppy" size="16" />
+            Guardar {{ form.type.toUpperCase() }}
+          </VBtn>
+        </div>
       </VCardActions>
     </VCard>
 
@@ -627,56 +562,53 @@ watch(() => props.modelValue, (isOpen) => {
 }
 
 .detail-dialog-card {
-  border-radius: 12px !important;
+  border-radius: 14px !important;
 }
 
-.header-indicator {
-  inline-size: 4px;
-  block-size: 16px;
-  border-radius: 10px;
+.protocol-tabs {
+  background-color: rgba(var(--v-theme-on-surface), 0.03);
+  border-radius: 8px;
+  padding: 2px;
 }
 
-.header-indicator.primary { background-color: rgb(var(--v-theme-primary)); }
-.header-indicator.secondary { background-color: rgb(var(--v-theme-secondary)); }
+.protocol-tab-item {
+  border-radius: 6px !important;
+}
+
+.protocol-badge {
+  font-size: 0.6rem !important;
+  height: 16px !important;
+}
+
+.border-card {
+  border-color: rgba(var(--v-border-color), 0.15) !important;
+}
+
+.border-t {
+  border-block-start: 1px solid rgba(var(--v-border-color), 0.1) !important;
+}
 
 .shadow-primary {
-  box-shadow: 0 4px 14px 0 rgba(var(--v-theme-primary), 0.39) !important;
+  box-shadow: 0 4px 14px 0 rgba(var(--v-theme-primary), 0.35) !important;
 }
 
 .text-super-xs {
-  font-size: 0.65rem !important;
-  line-height: normal;
+  font-size: 0.7rem !important;
 }
 
-.letter-spacing-1 { letter-spacing: 1px !important; }
-.leading-none { line-height: 1 !important; }
-.leading-tight { line-height: 1.25 !important; }
-
-.border-t {
-  border-block-start: 1px solid rgba(var(--v-border-color), 0.08) !important;
+.text-xxs {
+  font-size: 0.68rem !important;
 }
 
-.border-dashed-2 {
-  border: 1px dashed rgba(var(--v-border-color), 0.3) !important;
+.letter-spacing-1 {
+  letter-spacing: 0.05em !important;
 }
 
-.type-option-card {
-  transition: all 0.2s ease;
+.leading-none {
+  line-height: 1 !important;
 }
 
-.type-option-active {
-  background-color: rgba(var(--v-theme-primary), 0.08);
-  border-color: rgb(var(--v-theme-primary)) !important;
-  color: rgb(var(--v-theme-primary));
-}
-
-.type-option-inactive {
-  background-color: white;
-  border-color: rgba(var(--v-border-color), 0.2) !important;
-}
-
-.type-option-inactive:hover {
-  background-color: rgba(var(--v-theme-primary), 0.04);
-  border-color: rgba(var(--v-theme-primary), 0.3) !important;
+.leading-tight {
+  line-height: 1.25 !important;
 }
 </style>
