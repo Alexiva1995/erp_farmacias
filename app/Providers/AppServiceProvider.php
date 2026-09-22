@@ -463,12 +463,40 @@ class AppServiceProvider extends ServiceProvider
                     $logoBase64 = 'data:' . $mime . ';base64,' . $data;
                 }
 
+                $signatureStampPath = null;
+                $signatureStampBase64 = null;
+
+                if (!empty($setting?->app_signature_stamp)) {
+                    $rawSig = $setting->app_signature_stamp;
+                    $cleanSigPath = ltrim($rawSig, '/');
+
+                    if (str_starts_with($cleanSigPath, 'storage/')) {
+                        $relativeSigPath = substr($cleanSigPath, 8);
+                        $candidateSigPath = storage_path('app/public/' . $relativeSigPath);
+                        if (file_exists($candidateSigPath)) {
+                            $signatureStampPath = $candidateSigPath;
+                        }
+                    }
+
+                    if (!$signatureStampPath && file_exists(public_path($cleanSigPath))) {
+                        $signatureStampPath = public_path($cleanSigPath);
+                    }
+                }
+
+                if ($signatureStampPath && file_exists($signatureStampPath)) {
+                    $sigMime = mime_content_type($signatureStampPath) ?: 'image/png';
+                    $sigData = base64_encode(file_get_contents($signatureStampPath));
+                    $signatureStampBase64 = 'data:' . $sigMime . ';base64,' . $sigData;
+                }
+
                 $view->with([
-                    'general_setting'     => $setting,
-                    'global_company_name' => $appName,
-                    'global_company_rif'  => $appRif,
-                    'global_logo_path'    => $logoPath,
-                    'global_logo_base64'  => $logoBase64,
+                    'general_setting'             => $setting,
+                    'global_company_name'         => $appName,
+                    'global_company_rif'          => $appRif,
+                    'global_logo_path'            => $logoPath,
+                    'global_logo_base64'          => $logoBase64,
+                    'global_signature_stamp_path' => $signatureStampPath,
+                    'global_signature_stamp_base64' => $signatureStampBase64,
                 ]);
             } catch (\Throwable $e) {
                 // Silenciar en entornos de migración inicial o tests sin DB

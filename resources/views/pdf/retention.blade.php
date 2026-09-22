@@ -226,7 +226,13 @@
         <table class="signature-table">
             <tr>
                 <td class="signature-box">
-                    <div style="height: 50px;"></div>
+                    <div style="height: 60px; text-align: center; vertical-align: bottom;">
+                        @if(!empty($global_signature_stamp_base64))
+                            <img src="{{ $global_signature_stamp_base64 }}" style="max-height: 58px; max-width: 170px; margin-bottom: -10px;">
+                        @elseif(!empty($global_signature_stamp_path) && file_exists($global_signature_stamp_path))
+                            <img src="{{ $global_signature_stamp_path }}" style="max-height: 58px; max-width: 170px; margin-bottom: -10px;">
+                        @endif
+                    </div>
                     <div class="signature-line">Firma Y Sello Agente De Retención</div>
                     @if(!empty($agentRif))
                         <div style="font-weight: bold; margin-top: 2px; font-size: 7.5pt;">RIF: {{ $agentRif }}</div>
@@ -234,7 +240,7 @@
                 </td>
                 <td style="width: 10%;"></td>
                 <td class="signature-box">
-                    <div style="height: 50px;"></div>
+                    <div style="height: 60px;"></div>
                     <div class="signature-line">Recibido por el Proveedor</div>
                     <div style="margin-top: 2px; font-size: 6.5pt; color: #444;">Nombre / CI / Firma / Fecha</div>
                 </td>

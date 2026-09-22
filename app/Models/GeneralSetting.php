@@ -19,6 +19,7 @@ class GeneralSetting extends Model
         'app_rif',
         'app_logo',
         'app_favicon',
+        'app_signature_stamp',
         'primary_color',
         'secondary_color',
         'tertiary_color',

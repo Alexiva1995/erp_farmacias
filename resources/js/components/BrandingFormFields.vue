@@ -26,6 +26,10 @@ const props = defineProps({
     type: String,
     default: '',
   },
+  signatureStampPreview: {
+    type: String,
+    default: '',
+  },
   isLoading: {
     type: Boolean,
     default: false,
@@ -38,6 +42,7 @@ const emit = defineEmits([
   'upload-hero',
   'upload-section2',
   'upload-section3',
+  'upload-signature-stamp',
 ])
 </script>
 
@@ -209,6 +214,31 @@ const emit = defineEmits([
                 @change="(e) => emit('upload-favicon', e)"
               />
               <span class="text-xxs text-muted mt-1 d-block">Formatos recomendados: ICO, PNG de 32x32px.</span>
+            </div>
+          </div>
+        </VCol>
+
+        <!-- Firma y Sello Húmedo Digital (Agente de Retención) -->
+        <VCol cols="12">
+          <div class="d-flex align-start gap-4 mt-2">
+            <div class="border rounded-lg bg-light d-flex align-center justify-center border-dashed image-preview-box" style="width: 140px; height: 80px; overflow: hidden; flex-shrink: 0; background: #fafafa;">
+              <img v-if="signatureStampPreview" :src="signatureStampPreview" style="max-width: 100%; max-height: 100%; object-fit: contain;" />
+              <span v-else class="text-caption text-muted text-center text-xxs tracking-tighter">Sin Firma y Sello</span>
+            </div>
+            <div class="flex-grow-1">
+              <VFileInput
+                label="Firma y Sello Digital (Comprobantes de Retención)"
+                placeholder="Cargar firma con sello húmedo"
+                accept="image/png,image/webp,image/jpeg"
+                density="comfortable"
+                variant="outlined"
+                hide-details
+                prepend-icon=""
+                prepend-inner-icon="tabler-signature"
+                :disabled="isLoading"
+                @change="(e) => emit('upload-signature-stamp', e)"
+              />
+              <span class="text-xxs text-muted mt-1 d-block">Recomendado: Imagen PNG con fondo transparente conteniendo la firma del representante y el sello húmedo de la empresa. Se imprimirá en los comprobantes PDF de retenciones de IVA.</span>
             </div>
           </div>
         </VCol>

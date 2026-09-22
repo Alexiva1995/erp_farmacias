@@ -37,12 +37,14 @@ const faviconFile = ref(null)
 const heroImageFile = ref(null)
 const section2ImageFile = ref(null)
 const section3ImageFile = ref(null)
+const signatureStampFile = ref(null)
 
 const logoPreview = ref('')
 const faviconPreview = ref('')
 const heroImagePreview = ref('')
 const section2ImagePreview = ref('')
 const section3ImagePreview = ref('')
+const signatureStampPreview = ref('')
 
 const handleLogoUpload = (e) => {
   const file = e.target.files[0]
@@ -81,6 +83,14 @@ const handleSection3ImageUpload = (e) => {
   if (file) {
     section3ImageFile.value = file
     section3ImagePreview.value = URL.createObjectURL(file)
+  }
+}
+
+const handleSignatureStampUpload = (e) => {
+  const file = e.target.files[0]
+  if (file) {
+    signatureStampFile.value = file
+    signatureStampPreview.value = URL.createObjectURL(file)
   }
 }
 
@@ -126,6 +136,10 @@ const saveBranding = async () => {
 
   if (section3ImageFile.value) {
     formData.append('section3_image', section3ImageFile.value)
+  }
+
+  if (signatureStampFile.value) {
+    formData.append('app_signature_stamp', signatureStampFile.value)
   }
 
   try {
@@ -228,6 +242,7 @@ onMounted(async () => {
     heroImagePreview.value = brandingStore.settings.hero_image
     section2ImagePreview.value = brandingStore.settings.section2_image
     section3ImagePreview.value = brandingStore.settings.section3_image
+    signatureStampPreview.value = brandingStore.settings.app_signature_stamp
   } catch (error) {
     console.error('Error loading settings:', error)
   } finally {
@@ -275,12 +290,14 @@ onMounted(async () => {
                   :hero-image-preview="heroImagePreview"
                   :section2-image-preview="section2ImagePreview"
                   :section3-image-preview="section3ImagePreview"
+                  :signature-stamp-preview="signatureStampPreview"
                   :is-loading="isLoading"
                   @upload-logo="handleLogoUpload"
                   @upload-favicon="handleFaviconUpload"
                   @upload-hero="handleHeroImageUpload"
                   @upload-section2="handleSection2ImageUpload"
                   @upload-section3="handleSection3ImageUpload"
+                  @upload-signature-stamp="handleSignatureStampUpload"
                 />
               </VCol>
 

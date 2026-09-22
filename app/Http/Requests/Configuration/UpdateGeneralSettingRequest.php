@@ -30,6 +30,7 @@ class UpdateGeneralSettingRequest extends FormRequest
             'app_rif' => 'nullable|string|max:255',
             'app_logo' => 'nullable',
             'app_favicon' => 'nullable',
+            'app_signature_stamp' => 'nullable',
             'primary_color' => ['nullable', 'string', 'regex:/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/'],
             'secondary_color' => ['nullable', 'string', 'regex:/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/'],
             'tertiary_color' => ['nullable', 'string', 'regex:/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/'],

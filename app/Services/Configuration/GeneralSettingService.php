@@ -52,6 +52,10 @@ class GeneralSettingService
             $data['app_favicon'] = $this->uploadFile($data['app_favicon'], 'branding');
         }
 
+        if (isset($data['app_signature_stamp']) && $data['app_signature_stamp'] instanceof UploadedFile) {
+            $data['app_signature_stamp'] = $this->uploadFile($data['app_signature_stamp'], 'branding');
+        }
+
         if (isset($data['hero_image']) && $data['hero_image'] instanceof UploadedFile) {
             $data['hero_image'] = $this->uploadFile($data['hero_image'], 'branding');
         }

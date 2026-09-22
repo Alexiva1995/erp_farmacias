@@ -64,6 +64,7 @@ class GeneralSettingResource extends JsonResource
             'app_rif' => $this->app_rif,
             'app_logo' => $this->app_logo,
             'app_favicon' => $this->app_favicon,
+            'app_signature_stamp' => $this->app_signature_stamp,
             'primary_color' => $this->primary_color ?? '#E20074',
             'secondary_color' => $this->secondary_color ?? '#7A0099',
             'tertiary_color' => $this->tertiary_color ?? '#F5C842',

@@ -26,14 +26,14 @@ const selectedModel = computed({
 });
 
 const pendingHeaders = [
-  { title: "Fecha Factura", key: "created_invoice_date", sortable: true },
-  { title: "Proveedor / Razón Social", key: "supplier.name", sortable: true, width: "28%" },
+  { title: "Fecha", key: "created_invoice_date", sortable: true },
+  { title: "Razón Social", key: "supplier.name", sortable: true, width: "28%" },
   { title: "Nº Factura", key: "invoice_number", sortable: true },
   { title: "Exento", key: "exempt_amount", align: "end", sortable: true },
-  { title: "Base Imponible", key: "taxable_base", align: "end", sortable: true },
+  { title: "BIG", key: "taxable_base", align: "end", sortable: true },
   { title: "IVA", key: "tax_amount", align: "end", sortable: true },
   { title: "Total", key: "total_amount", align: "end", sortable: true },
-  { title: "Retención (75%)", key: "estimated_retention", align: "end", sortable: false },
+  { title: "RET.", key: "estimated_retention", align: "end", sortable: false },
 ];
 
 const supplierHeaders = [
@@ -205,25 +205,14 @@ const toggleSelection = (id) => {
         </template>
 
         <template #item.supplier.name="{ item }">
-          <div class="d-flex align-center gap-3 py-2">
-            <VAvatar
-              :color="getAvatarColor(item.supplier?.id || 0)"
-              size="32"
-              variant="tonal"
-              class="rounded-lg"
-            >
-              <span class="text-xs font-weight-black">{{ getInitials(item.supplier?.name || item.supplier?.social_reason || 'N/A') }}</span>
-            </VAvatar>
-            <div class="d-flex flex-column truncate" style="max-width: 250px;">
-              <span class="text-xs font-weight-bold text-high-emphasis text-capitalize truncate">{{ item.supplier?.name || item.supplier?.social_reason || 'N/A' }}</span>
-              <span class="text-super-xs text-disabled truncate">{{ item.supplier?.rif || item.identification || 'Sin RIF' }}</span>
-            </div>
+          <div class="d-flex flex-column truncate py-2" style="max-width: 250px;">
+            <span class="text-xs font-weight-bold text-high-emphasis text-capitalize truncate">{{ item.supplier?.name || item.supplier?.social_reason || 'N/A' }}</span>
+            <span class="text-super-xs text-disabled truncate">{{ item.supplier?.rif || item.identification || 'Sin RIF' }}</span>
           </div>
         </template>
 
         <template #item.invoice_number="{ item }">
           <div class="d-flex align-center gap-2">
-            <VIcon icon="tabler-receipt" size="16" color="disabled" />
             <span class="font-weight-bold text-primary">{{ item.invoice_number }}</span>
           </div>
         </template>
@@ -238,7 +227,7 @@ const toggleSelection = (id) => {
               color="primary"
               class="font-weight-bold text-super-xs"
             >
-              #{{ num }}
+              {{ num }}
             </VChip>
           </div>
         </template>
@@ -283,14 +272,15 @@ const toggleSelection = (id) => {
           <div class="d-flex align-center justify-center gap-1">
             <template v-if="props.currentTab === 'by_supplier'">
               <VBtn
+                icon
+                variant="text"
+                size="32"
                 color="primary"
-                variant="tonal"
-                size="small"
-                class="text-xs font-weight-bold rounded-lg px-2"
+                class="rounded-lg shadow-sm"
                 @click="emit('generate-supplier', item.invoices.map(i => i.id))"
               >
-                <VIcon start icon="tabler-file-percent" size="16" />
-                Generar Retención
+                <VIcon icon="tabler-file-percent" size="20" />
+                <VTooltip activator="parent" location="top">Generar Retención</VTooltip>
               </VBtn>
             </template>
             <template v-else-if="props.currentTab === 'generated'">
@@ -391,17 +381,9 @@ const toggleSelection = (id) => {
                     class="ms-n2"
                   />
                 </div>
-                <VAvatar
-                  :color="getAvatarColor(item.supplier?.id || 0)"
-                  size="38"
-                  variant="tonal"
-                  class="rounded-lg shadow-sm"
-                >
-                  <VIcon :icon="props.currentTab === 'generated' ? 'tabler-file-percent' : (props.currentTab === 'by_supplier' ? 'tabler-building-factory-2' : 'tabler-receipt')" size="18" />
-                </VAvatar>
                 <div class="d-flex flex-column">
                   <span class="text-xs font-weight-black text-disabled uppercase leading-tight">
-                    {{ props.currentTab === 'pending' ? 'Factura #' : (props.currentTab === 'by_supplier' ? 'Proveedor' : 'Comprobante #') }}
+                    {{ props.currentTab === 'pending' ? 'Factura' : (props.currentTab === 'by_supplier' ? 'Proveedor' : 'Comprobante') }}
                   </span>
                   <span class="text-sm font-weight-bold text-primary leading-tight">
                     {{ props.currentTab === 'pending' ? item.invoice_number : (props.currentTab === 'by_supplier' ? `${item.invoices?.length || 0} Facturas` : item.number) }}
@@ -420,7 +402,7 @@ const toggleSelection = (id) => {
 
             <!-- Info Proveedor -->
             <div class="mb-4">
-              <span class="text-super-xs font-weight-black text-disabled uppercase d-block mb-1">Proveedor / RIF</span>
+              <span class="text-super-xs font-weight-black text-disabled uppercase d-block mb-1">Razón Social</span>
               <span class="text-sm font-weight-bold text-high-emphasis d-block leading-tight text-capitalize mb-1">
                 {{ item.supplier?.name || item.supplier?.social_reason || 'N/A' }}
               </span>
@@ -441,7 +423,7 @@ const toggleSelection = (id) => {
                   color="primary"
                   class="font-weight-bold text-super-xs"
                 >
-                  #{{ num }}
+                  {{ num }}
                 </VChip>
               </div>
             </div>
