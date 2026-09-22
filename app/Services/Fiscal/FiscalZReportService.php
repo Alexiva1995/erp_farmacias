@@ -25,9 +25,39 @@ class FiscalZReportService
      */
     public function getReports(array $filters, int $perPage = 10, ?string $sortBy = 'report_date', string $orderBy = 'desc'): LengthAwarePaginator
     {
+        $this->closePastAndExecutedReports();
         $this->syncTodayReportIfHasInvoices();
 
         return $this->repository->getFilteredPaginated($filters, $perPage, $sortBy, $orderBy);
+    }
+
+    /**
+     * Cierra reportes de fechas pasadas o que tengan orden REPORT_Z exitosa.
+     */
+    public function closePastAndExecutedReports(): void
+    {
+        $today = Carbon::today()->format('Y-m-d');
+
+        // 1. Cerrar cualquier reporte de fechas anteriores que haya quedado como 'open'
+        FiscalZReport::where('status', 'open')
+            ->whereDate('report_date', '<', $today)
+            ->update(['status' => 'closed']);
+
+        // 2. Cerrar reportes que tengan un comando REPORT_Z exitoso
+        $successfulDates = \App\Models\FiscalCommand::where('command', 'REPORT_Z')
+            ->where('status', 'success')
+            ->get()
+            ->map(function ($cmd) {
+                return $cmd->payload['target_date'] ?? $cmd->created_at?->format('Y-m-d');
+            })
+            ->filter()
+            ->unique();
+
+        if ($successfulDates->isNotEmpty()) {
+            FiscalZReport::where('status', 'open')
+                ->whereIn('report_date', $successfulDates)
+                ->update(['status' => 'closed']);
+        }
     }
 
     /**

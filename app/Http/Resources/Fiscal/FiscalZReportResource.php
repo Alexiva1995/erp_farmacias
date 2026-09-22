@@ -37,6 +37,14 @@ class FiscalZReportResource extends JsonResource
             }
         }
 
+        $status = $this->status;
+        if ($status === 'open') {
+            $isPast = $this->report_date && $this->report_date->lt(\Carbon\Carbon::today());
+            if ($isPast) {
+                $status = 'closed';
+            }
+        }
+
         return [
             'id'                    => $this->id,
             'report_number'         => $this->report_number,
@@ -53,7 +61,7 @@ class FiscalZReportResource extends JsonResource
             'igtf_base_amount'      => (float) $this->igtf_base_amount,
             'igtf_amount'           => (float) $this->igtf_amount,
             'total_amount'          => (float) $this->total_amount,
-            'status'                => $this->status,
+            'status'                => $status,
             'image_path'            => $this->image_path,
             'image_url'             => $this->image_path ? asset('storage/' . $this->image_path) : null,
             'ai_verification_notes' => $notesText,
