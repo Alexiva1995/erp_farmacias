@@ -53,6 +53,12 @@ export default [
         action: 'manage',
         subject: 'supervisor-or-admin',
       },
+      {
+        title: 'Contribuciones',
+        to: 'fiscal-contribuciones',
+        action: 'manage',
+        subject: 'supervisor-or-admin',
+      },
     ],
   },
 ]

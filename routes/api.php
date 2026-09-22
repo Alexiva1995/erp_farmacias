@@ -1096,6 +1096,16 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
         Route::put('/{id}', [\App\Http\Controllers\Api\RetentionController::class, 'update']);
         Route::delete('/{id}', [\App\Http\Controllers\Api\RetentionController::class, 'destroy']);
     });
+
+    Route::prefix('fiscal-contributions')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Api\FiscalContributionController::class, 'index']);
+        Route::post('/', [\App\Http\Controllers\Api\FiscalContributionController::class, 'store']);
+        Route::put('/{id}', [\App\Http\Controllers\Api\FiscalContributionController::class, 'update']);
+        Route::delete('/{id}', [\App\Http\Controllers\Api\FiscalContributionController::class, 'destroy']);
+        Route::post('/batch-import', [\App\Http\Controllers\Api\FiscalContributionController::class, 'batchImport']);
+        Route::post('/parse-seniat', [\App\Http\Controllers\Api\FiscalContributionController::class, 'parseRawSeniat']);
+        Route::patch('/{id}/toggle-payment', [\App\Http\Controllers\Api\FiscalContributionController::class, 'togglePayment']);
+    });
 });
 
 

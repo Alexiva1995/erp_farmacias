@@ -395,6 +395,11 @@ class AppServiceProvider extends ServiceProvider
             \App\Repositories\Eloquent\FiscalZReportRepository::class
         );
 
+        $this->app->bind(
+            \App\Contracts\FiscalContributionContract::class,
+            \App\Repositories\FiscalContributionRepository::class
+        );
+
         $this->app->when(LocationController::class)
             ->needs(LocationContract::class)
             ->give(LocationRepository::class);
