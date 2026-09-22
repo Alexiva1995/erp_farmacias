@@ -4,157 +4,276 @@ declare(strict_types=1);
 
 namespace App\Services\Suppliers;
 
-use App\Models\Supplier;
-use App\Models\SupplierScore;
+use App\Models\AutoOrder;
 use App\Models\Invoice;
 use App\Models\InvoiceReturn;
-use App\Models\AutoOrder;
+use App\Models\Supplier;
+use App\Models\SupplierScore;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class SupplierEvaluationService
 {
     /**
-     * Evalúa masivamente a todos los proveedores del sistema.
+     * Evalúa masivamente a todos los proveedores del sistema considerando los últimos 90 días.
      */
     public function evaluateAll(): void
     {
+        $since = Carbon::now()->subDays(90)->startOfDay();
         $suppliers = Supplier::all();
 
-        // Calcular gastos totales para el indicador de volumen
-        $totalSpendRaw = Invoice::sum('total_amount_discount') ?: Invoice::sum('total_amount');
-        $totalSystemSpend = max((float) $totalSpendRaw, 1.0);
-
         foreach ($suppliers as $supplier) {
-            $this->evaluate($supplier, $totalSystemSpend);
+            $this->evaluate($supplier, $since);
         }
     }
 
     /**
      * Evalúa un proveedor específico y guarda su puntaje en supplier_scores.
      */
-    public function evaluate(Supplier $supplier, ?float $totalSystemSpend = null): SupplierScore
+    public function evaluate(Supplier $supplier, ?Carbon $since = null): SupplierScore
     {
-        if ($totalSystemSpend === null) {
-            $totalSpendRaw = Invoice::sum('total_amount_discount') ?: Invoice::sum('total_amount');
-            $totalSystemSpend = max((float) $totalSpendRaw, 1.0);
-        }
+        $since = $since ?? Carbon::now()->subDays(90)->startOfDay();
+
+        $fillRateData = $this->calculateFillRate($supplier, $since);
+        $onTimeData = $this->calculateOnTime($supplier, $since);
+        $qualityData = $this->calculateQuality($supplier, $since);
+        $adminAccuracyData = $this->calculateAdminAccuracy($supplier, $since);
+        $commercialData = $this->calculateCommercialConditions($supplier);
+
+        $hasOrders = $fillRateData['score'] !== null;
+        $hasInvoices = $qualityData['score'] !== null;
 
         $breakdown = [
-            'product_arrival' => $this->calculateProductArrival($supplier),
-            'returns_ratio' => $this->calculateReturnsRatio($supplier),
-            'volume' => $this->calculateVolume($supplier, $totalSystemSpend),
-            'frequency' => $this->calculateFrequency($supplier),
-            'consistency' => $this->calculateConsistency($supplier)
+            'fill_rate' => [
+                'score' => $fillRateData['score'],
+                'max'   => 30,
+                'label' => $hasOrders ? 'Completez (Fill Rate)' : 'Completez (N/A - Sin OC)',
+            ],
+            'on_time' => [
+                'score' => $onTimeData['score'],
+                'max'   => 20,
+                'label' => $hasOrders ? 'A Tiempo (On-Time)' : 'A Tiempo (N/A - Sin OC)',
+            ],
+            'quality' => [
+                'score' => $qualityData['score'] ?? 0.0,
+                'max'   => 25,
+                'label' => 'Calidad y Devoluciones',
+            ],
+            'admin_accuracy' => [
+                'score' => $adminAccuracyData['score'] ?? 0.0,
+                'max'   => 15,
+                'label' => 'Precisión Administrativa',
+            ],
+            'commercial_conditions' => [
+                'score' => $commercialData['score'],
+                'max'   => 10,
+                'label' => 'Condiciones Comerciales',
+            ],
+            'is_rescaled' => !$hasOrders && $hasInvoices,
+            'evaluated_at' => now()->toDateString(),
         ];
 
-        // Sumar todos los indicadores (máximo 100)
-        $totalScore = array_sum($breakdown);
+        // Cálculo de Score Total
+        if ($hasOrders) {
+            // Evaluación completa de 5 criterios (Base 100)
+            $totalScore = ($fillRateData['score'] ?? 0.0)
+                + ($onTimeData['score'] ?? 0.0)
+                + ($qualityData['score'] ?? 0.0)
+                + ($adminAccuracyData['score'] ?? 0.0)
+                + ($commercialData['score'] ?? 0.0);
+        } elseif ($hasInvoices) {
+            // Reescalado Proporcional sobre criterios evaluables (Base 50 -> 100)
+            $evaluableEarned = ($qualityData['score'] ?? 0.0)
+                + ($adminAccuracyData['score'] ?? 0.0)
+                + ($commercialData['score'] ?? 0.0);
 
-        // Guardar o actualizar el score actual
-        $scoreModel = $supplier->scores()->create([
-            'score' => $totalScore,
-            'breakdown' => $breakdown,
-            'evaluated_on' => now()->toDateString()
-        ]);
-
-        return $scoreModel;
-    }
-
-    /**
-     * 1. Tasa de Llegada de Productos (30 pts)
-     * Porcentaje de órdenes de compra (auto_order_details) completadas.
-     */
-    private function calculateProductArrival(Supplier $supplier): float
-    {
-        // Órdenes de compra del proveedor
-        $orders = AutoOrder::where('supplier_id', $supplier->id)->get();
-        if ($orders->isEmpty()) return 0; // Sin órdenes, no gana estos puntos
-
-        $totalDetails = 0;
-        $completedDetails = 0;
-
-        foreach ($orders as $order) {
-            $details = $order->details;
-            $totalDetails += $details->count();
-            // Consideramos completado si status == 1 (completado)
-            $completedDetails += $details->where('status', 1)->count();
+            $totalScore = ($evaluableEarned / 50.0) * 100.0;
+        } else {
+            // Proveedor nuevo o sin actividad reciente en los 90 días
+            $totalScore = ($commercialData['score'] / 10.0) * 50.0; // Ponderación inicial por condiciones
         }
 
-        if ($totalDetails === 0) return 0;
+        $totalScore = round(min(100.0, max(0.0, $totalScore)), 1);
 
-        return ($completedDetails / $totalDetails) * 30;
+        return $supplier->scores()->create([
+            'score'        => $totalScore,
+            'breakdown'    => $breakdown,
+            'evaluated_on' => now()->toDateString(),
+        ]);
     }
 
     /**
-     * 2. Ratio de Devoluciones (25 pts)
-     * Qué porcentaje del monto facturado se ha devuelto.
+     * 1. Completez / Fill Rate (Máx. 30 pts)
+     * Unidades recibidas / Unidades pedidas en OC de los últimos 90 días.
      */
-    private function calculateReturnsRatio(Supplier $supplier): float
+    private function calculateFillRate(Supplier $supplier, Carbon $since): array
     {
-        $invoices = $supplier->invoices;
-        if ($invoices->isEmpty()) return 12.5; // Punto medio si no hay facturas (neutral)
+        $orders = AutoOrder::where('supplier_id', $supplier->id)
+            ->where('created_at', '>=', $since)
+            ->with('details')
+            ->get();
 
-        $totalInvoiced = (float) $invoices->sum('total_amount');
-        if ($totalInvoiced <= 0) return 0;
-
-        $totalReturned = (float) InvoiceReturn::whereIn('invoice_id', $invoices->pluck('id'))->sum('amount_refunded');
-
-        $returnRatio = min($totalReturned / $totalInvoiced, 1);
-        
-        // Mientras menos devoluciones, mayor puntaje (25 pts max)
-        return (1 - $returnRatio) * 25;
-    }
-
-    /**
-     * 3. Volumen de Compras (20 pts)
-     * Peso relativo de este proveedor en el sistema.
-     */
-    private function calculateVolume(Supplier $supplier, float $totalSystemSpend): float
-    {
-        $supplierSpend = (float) ($supplier->invoices()->sum('total_amount_discount') ?: $supplier->invoices()->sum('total_amount'));
-        
-        $volumeRatio = min($supplierSpend / $totalSystemSpend, 1);
-
-        // Escalamos un poco el volumen (para no penalizar tan fuerte a proveedores medianos)
-        // Usamos raíz cuadrada para curva logarítmica
-        return sqrt($volumeRatio) * 20;
-    }
-
-    /**
-     * 4. Frecuencia de Facturación (15 pts)
-     * Confianza por historial de transacciones. Max 100 facturas.
-     */
-    private function calculateFrequency(Supplier $supplier): float
-    {
-        $totalInvoices = $supplier->invoices()->count();
-        $frequencyRatio = min($totalInvoices / 100, 1);
-        return $frequencyRatio * 15;
-    }
-
-    /**
-     * 5. Consistencia de Unidades (10 pts)
-     * De los detalles de órdenes, ¿cuántas unidades se recibieron vs las pedidas?
-     */
-    private function calculateConsistency(Supplier $supplier): float
-    {
-        $orders = AutoOrder::where('supplier_id', $supplier->id)->get();
-        if ($orders->isEmpty()) return 0;
+        if ($orders->isEmpty()) {
+            return ['score' => null];
+        }
 
         $totalRequested = 0;
         $totalReceived = 0;
 
         foreach ($orders as $order) {
             foreach ($order->details as $detail) {
-                $totalRequested += $detail->quantity;
-                // Asumiendo que facturadas son las recibidas (o si hay status 1)
-                if ($detail->status == 1) {
-                    $totalReceived += $detail->quantity;
+                $totalRequested += (float) $detail->quantity;
+                if ($detail->received == 1 || $detail->status == 1) {
+                    $totalReceived += (float) $detail->quantity;
                 }
             }
         }
 
-        if ($totalRequested === 0) return 0;
+        if ($totalRequested <= 0) {
+            return ['score' => null];
+        }
 
-        $consistencyRatio = min($totalReceived / $totalRequested, 1);
-        return $consistencyRatio * 10;
+        $ratio = min(1.0, max(0.0, $totalReceived / $totalRequested));
+        return ['score' => round($ratio * 30.0, 1)];
+    }
+
+    /**
+     * 2. A Tiempo / On-Time (Máx. 20 pts)
+     * Entregas realizadas en o antes de la fecha tentativa prometida en los últimos 90 días.
+     */
+    private function calculateOnTime(Supplier $supplier, Carbon $since): array
+    {
+        $orders = AutoOrder::where('supplier_id', $supplier->id)
+            ->where('created_at', '>=', $since)
+            ->whereIn('status', [1, 2])
+            ->get();
+
+        if ($orders->isEmpty()) {
+            return ['score' => null];
+        }
+
+        $totalEvaluated = 0;
+        $onTimeCount = 0;
+
+        foreach ($orders as $order) {
+            $totalEvaluated++;
+            $tentative = $order->tentative_delivery_date ? Carbon::parse($order->tentative_delivery_date)->endOfDay() : null;
+
+            // Fecha real de recepción a través de facturas asociadas o fecha de cierre
+            $actualDeliveryDate = Invoice::where('auto_order_id', $order->id)
+                ->value('received_date');
+
+            if ($actualDeliveryDate) {
+                $actual = Carbon::parse($actualDeliveryDate)->startOfDay();
+                if (!$tentative || $actual->lte($tentative)) {
+                    $onTimeCount++;
+                }
+            } elseif ($order->status->value === 2 || (int)$order->status === 2) {
+                $actual = Carbon::parse($order->updated_at);
+                if (!$tentative || $actual->lte($tentative->addDay())) {
+                    $onTimeCount++;
+                }
+            } else {
+                // Si aún está en tránsito dentro de fecha
+                if ($tentative && Carbon::now()->lte($tentative)) {
+                    $onTimeCount++;
+                }
+            }
+        }
+
+        if ($totalEvaluated <= 0) {
+            return ['score' => null];
+        }
+
+        $ratio = min(1.0, max(0.0, $onTimeCount / $totalEvaluated));
+        return ['score' => round($ratio * 20.0, 1)];
+    }
+
+    /**
+     * 3. Calidad y Cero Devoluciones (Máx. 25 pts)
+     * 1 - (Monto devuelto / Monto facturado) * 25 en los últimos 90 días.
+     */
+    private function calculateQuality(Supplier $supplier, Carbon $since): array
+    {
+        $invoices = $supplier->invoices()
+            ->where('created_at', '>=', $since)
+            ->where('status', '!=', 'deleted')
+            ->get();
+
+        if ($invoices->isEmpty()) {
+            return ['score' => null];
+        }
+
+        $totalInvoiced = (float) $invoices->sum('total_amount');
+        if ($totalInvoiced <= 0) {
+            return ['score' => 25.0];
+        }
+
+        $invoiceIds = $invoices->pluck('id');
+        $totalReturned = (float) InvoiceReturn::whereIn('invoice_id', $invoiceIds)->sum('amount_refunded');
+
+        if ($totalReturned <= 0) {
+            return ['score' => 25.0];
+        }
+
+        $returnRatio = min(1.0, $totalReturned / $totalInvoiced);
+        return ['score' => round((1.0 - $returnRatio) * 25.0, 1)];
+    }
+
+    /**
+     * 4. Precisión Administrativa (Máx. 15 pts)
+     * Porcentaje de facturas sin discrepancias de precio, reclamos o notas de débito referenciales.
+     */
+    private function calculateAdminAccuracy(Supplier $supplier, Carbon $since): array
+    {
+        $invoices = $supplier->invoices()
+            ->where('created_at', '>=', $since)
+            ->where('status', '!=', 'deleted')
+            ->get();
+
+        if ($invoices->isEmpty()) {
+            return ['score' => null];
+        }
+
+        $totalInvoices = $invoices->count();
+        $cleanInvoices = $invoices->filter(function ($inv) {
+            $hasDiscrepancy = ((float) ($inv->nd_referential_amount ?? 0)) > 0;
+            $hasClaim = ((float) ($inv->claim_amount ?? 0)) > 0;
+            return !$hasDiscrepancy && !$hasClaim;
+        })->count();
+
+        $ratio = min(1.0, max(0.0, $cleanInvoices / $totalInvoices));
+        return ['score' => round($ratio * 15.0, 1)];
+    }
+
+    /**
+     * 5. Condiciones Comerciales y Competitividad (Máx. 10 pts)
+     * Días de crédito, facilidades de pago y convenios comerciales.
+     */
+    private function calculateCommercialConditions(Supplier $supplier): array
+    {
+        $score = 0.0;
+
+        // Días de crédito (hasta 5 pts: 30+ días = 5 pts, 15 días = 2.5 pts)
+        $creditDays = (int) ($supplier->credit_days ?? 0);
+        $creditScore = min(5.0, ($creditDays / 30.0) * 5.0);
+        $score += $creditScore;
+
+        // Convenios, pronto pago, descuentos comerciales o no cobro IGTF (hasta 5 pts)
+        $hasDiscounts = $supplier->discounts()->exists();
+        $hasPaymentRules = $supplier->paymentRules()->exists();
+        $noIgtf = !$supplier->charges_igtf;
+
+        $commercialBonus = 0.0;
+        if ($hasDiscounts || $hasPaymentRules) {
+            $commercialBonus += 3.0;
+        }
+        if ($noIgtf) {
+            $commercialBonus += 2.0;
+        }
+
+        $score += min(5.0, $commercialBonus);
+
+        return ['score' => round(min(10.0, max(0.0, $score)), 1)];
     }
 }

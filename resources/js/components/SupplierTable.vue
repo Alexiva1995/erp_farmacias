@@ -150,17 +150,80 @@ const headers = [
         </template>
 
         <template #item.latest_score_value="{ item }">
-          <div v-if="item.latest_score_value" class="d-flex align-center gap-2">
-            <VRating
-              :model-value="Number(item.latest_score_value) / 20"
-              length="5"
-              readonly
-              size="16"
-              color="warning"
-              active-color="warning"
-              half-increments
-            />
-            <span class="text-caption font-weight-bold">{{ Number(item.latest_score_value).toFixed(1) }}</span>
+          <div v-if="item.latest_score_value !== null && item.latest_score_value !== undefined" class="d-flex align-center gap-2">
+            <VTooltip location="top" max-width="320" content-class="score-breakdown-tooltip pa-0 shadow-lg">
+              <template #activator="{ props: tooltipProps }">
+                <div v-bind="tooltipProps" class="d-flex align-center gap-2 cursor-pointer">
+                  <VRating
+                    :model-value="Number(item.latest_score_value) / 20"
+                    length="5"
+                    readonly
+                    size="16"
+                    color="warning"
+                    active-color="warning"
+                    half-increments
+                  />
+                  <span class="text-caption font-weight-black text-high-emphasis">
+                    {{ Number(item.latest_score_value).toFixed(1) }}
+                  </span>
+                  <VIcon icon="tabler-info-circle" size="14" color="secondary" class="opacity-70" />
+                </div>
+              </template>
+
+              <!-- Desglose de Evaluación en Tooltip -->
+              <div class="pa-3 bg-surface text-high-emphasis rounded-lg border">
+                <div class="d-flex justify-space-between align-center mb-2 pb-2 border-b">
+                  <span class="text-xs font-weight-black text-primary uppercase">Evaluación (90 Días)</span>
+                  <VChip size="x-small" color="warning" variant="flat" class="font-weight-black">
+                    {{ Number(item.latest_score_value).toFixed(1) }} / 100
+                  </VChip>
+                </div>
+
+                <div v-if="item.score_breakdown" class="d-flex flex-column gap-1 text-xs">
+                  <div class="d-flex justify-space-between align-center py-0.5">
+                    <span class="text-disabled">📦 Completez (Fill Rate):</span>
+                    <span class="font-weight-bold" :class="item.score_breakdown.fill_rate?.score !== null ? 'text-success' : 'text-disabled'">
+                      {{ item.score_breakdown.fill_rate?.score !== null ? `${item.score_breakdown.fill_rate.score} / 30 pts` : 'N/A (Sin OC)' }}
+                    </span>
+                  </div>
+
+                  <div class="d-flex justify-space-between align-center py-0.5">
+                    <span class="text-disabled">⏱️ A Tiempo (On-Time):</span>
+                    <span class="font-weight-bold" :class="item.score_breakdown.on_time?.score !== null ? 'text-success' : 'text-disabled'">
+                      {{ item.score_breakdown.on_time?.score !== null ? `${item.score_breakdown.on_time.score} / 20 pts` : 'N/A (Sin OC)' }}
+                    </span>
+                  </div>
+
+                  <div class="d-flex justify-space-between align-center py-0.5">
+                    <span class="text-disabled">⭐ Calidad y Devoluciones:</span>
+                    <span class="font-weight-bold text-success">
+                      {{ item.score_breakdown.quality?.score ?? 0 }} / 25 pts
+                    </span>
+                  </div>
+
+                  <div class="d-flex justify-space-between align-center py-0.5">
+                    <span class="text-disabled">📑 Precisión Administrativa:</span>
+                    <span class="font-weight-bold text-success">
+                      {{ item.score_breakdown.admin_accuracy?.score ?? 0 }} / 15 pts
+                    </span>
+                  </div>
+
+                  <div class="d-flex justify-space-between align-center py-0.5">
+                    <span class="text-disabled">🤝 Condiciones Comerciales:</span>
+                    <span class="font-weight-bold text-success">
+                      {{ item.score_breakdown.commercial_conditions?.score ?? 0 }} / 10 pts
+                    </span>
+                  </div>
+
+                  <div v-if="item.score_breakdown.is_rescaled" class="mt-2 pt-1 border-t text-xxs text-info font-weight-medium">
+                    * Proveedor sin órdenes de compra: puntaje reescalado al 100% sobre facturas.
+                  </div>
+                </div>
+                <div v-else class="text-xs text-disabled py-1">
+                  Sin desglose detallado registrado.
+                </div>
+              </div>
+            </VTooltip>
           </div>
           <span v-else class="text-caption text-disabled">N/A</span>
         </template>
@@ -297,9 +360,59 @@ const headers = [
             </div>
 
             <div class="d-flex justify-space-between align-center mt-2 pa-2 bg-light-surface rounded-lg border">
-              <div class="d-flex align-center gap-1">
-                <VIcon icon="tabler-star-filled" color="warning" size="14" />
-                <span class="text-caption font-weight-bold">{{ item.latest_score_value ? Number(item.latest_score_value).toFixed(1) : '—' }}</span>
+              <div class="d-flex align-center gap-1 cursor-pointer">
+                <VTooltip location="top" max-width="320">
+                  <template #activator="{ props: tooltipProps }">
+                    <div v-bind="tooltipProps" class="d-flex align-center gap-1">
+                      <VIcon icon="tabler-star-filled" color="warning" size="14" />
+                      <span class="text-caption font-weight-bold">{{ item.latest_score_value ? Number(item.latest_score_value).toFixed(1) : '—' }}</span>
+                    </div>
+                  </template>
+                  <div class="pa-1">
+                    <div class="text-caption font-weight-black border-b pb-1 mb-1 d-flex justify-space-between">
+                      <span>Evaluación (90 Días)</span>
+                      <span class="text-primary">{{ item.latest_score_value ? Number(item.latest_score_value).toFixed(1) : 0 }}/100</span>
+                    </div>
+                    <div v-if="item.score_breakdown" class="text-caption">
+                      <div class="d-flex justify-space-between align-center py-0.5">
+                        <span class="text-disabled">📦 Completez (Fill Rate):</span>
+                        <span class="font-weight-bold" :class="item.score_breakdown.fill_rate?.score !== null ? 'text-success' : 'text-disabled'">
+                          {{ item.score_breakdown.fill_rate?.score !== null ? `${item.score_breakdown.fill_rate.score} / 30 pts` : 'N/A' }}
+                        </span>
+                      </div>
+                      <div class="d-flex justify-space-between align-center py-0.5">
+                        <span class="text-disabled">⏱️ A Tiempo (On-Time):</span>
+                        <span class="font-weight-bold" :class="item.score_breakdown.on_time?.score !== null ? 'text-success' : 'text-disabled'">
+                          {{ item.score_breakdown.on_time?.score !== null ? `${item.score_breakdown.on_time.score} / 20 pts` : 'N/A' }}
+                        </span>
+                      </div>
+                      <div class="d-flex justify-space-between align-center py-0.5">
+                        <span class="text-disabled">🛡️ Calidad y Devoluciones:</span>
+                        <span class="font-weight-bold text-success">
+                          {{ item.score_breakdown.quality?.score ?? 0 }} / 25 pts
+                        </span>
+                      </div>
+                      <div class="d-flex justify-space-between align-center py-0.5">
+                        <span class="text-disabled">📑 Precisión Administrativa:</span>
+                        <span class="font-weight-bold text-success">
+                          {{ item.score_breakdown.admin_accuracy?.score ?? 0 }} / 15 pts
+                        </span>
+                      </div>
+                      <div class="d-flex justify-space-between align-center py-0.5">
+                        <span class="text-disabled">🤝 Condiciones Comerciales:</span>
+                        <span class="font-weight-bold text-success">
+                          {{ item.score_breakdown.commercial_conditions?.score ?? 0 }} / 10 pts
+                        </span>
+                      </div>
+                      <div v-if="item.score_breakdown.is_rescaled" class="mt-2 pt-1 border-t text-xxs text-info font-weight-medium">
+                        * Proveedor sin órdenes de compra: puntaje reescalado al 100% sobre facturas.
+                      </div>
+                    </div>
+                    <div v-else class="text-xs text-disabled py-1">
+                      Sin desglose detallado registrado.
+                    </div>
+                  </div>
+                </VTooltip>
               </div>
 
               <div class="d-flex gap-1 flex-wrap">

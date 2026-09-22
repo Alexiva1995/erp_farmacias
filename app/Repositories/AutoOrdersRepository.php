@@ -405,14 +405,14 @@ class AutoOrdersRepository
             $shouldFinalize = true;
         }
 
-        // Condición B: Ya existen órdenes posteriores del mismo proveedor que ya fueron enviadas o completadas
+        // Condición B: Ya existe una orden posterior del mismo proveedor que ya fue COMPLETADA
         if (!$shouldFinalize) {
-            $hasSubsequentSentOrder = AutoOrder::where('supplier_id', $supplierId)
+            $hasSubsequentCompletedOrder = AutoOrder::where('supplier_id', $supplierId)
                 ->where('id', '>', $autoOrder->id)
-                ->whereIn('status', [AutoOrderStatus::SENT, AutoOrderStatus::COMPLETED, 1, 2])
+                ->where('status', AutoOrderStatus::COMPLETED->value)
                 ->exists();
 
-            if ($hasSubsequentSentOrder) {
+            if ($hasSubsequentCompletedOrder) {
                 $shouldFinalize = true;
             }
         }
