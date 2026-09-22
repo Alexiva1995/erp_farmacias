@@ -28,6 +28,7 @@ class UpdateGeneralSettingRequest extends FormRequest
             'all_foreign_sales_spe' => 'nullable|boolean',
             'app_name' => 'nullable|string|max:255',
             'app_rif' => 'nullable|string|max:255',
+            'fiscal_printer_serial' => 'nullable|string|max:50',
             'app_logo' => 'nullable',
             'app_favicon' => 'nullable',
             'app_signature_stamp' => 'nullable',

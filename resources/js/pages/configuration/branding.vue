@@ -13,6 +13,7 @@ const isPageLoading = ref(true)
 const form = reactive({
   app_name: '',
   app_rif: '',
+  fiscal_printer_serial: '',
   primary_color: '#E20074',
   secondary_color: '#7A0099',
   tertiary_color: '#F5C842',
@@ -100,6 +101,7 @@ const saveBranding = async () => {
   const formData = new FormData()
   formData.append('app_name', form.app_name || '')
   formData.append('app_rif', form.app_rif || '')
+  formData.append('fiscal_printer_serial', form.fiscal_printer_serial || '')
   formData.append('primary_color', form.primary_color)
   formData.append('secondary_color', form.secondary_color)
   formData.append('tertiary_color', form.tertiary_color)
@@ -219,6 +221,7 @@ onMounted(async () => {
     Object.assign(form, {
       app_name: brandingStore.settings.app_name || '',
       app_rif: brandingStore.settings.app_rif || '',
+      fiscal_printer_serial: brandingStore.settings.fiscal_printer_serial || '',
       primary_color: brandingStore.settings.primary_color || '#E20074',
       secondary_color: brandingStore.settings.secondary_color || '#7A0099',
       tertiary_color: brandingStore.settings.tertiary_color || '#F5C842',

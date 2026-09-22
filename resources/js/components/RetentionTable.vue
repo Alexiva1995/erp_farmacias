@@ -190,29 +190,29 @@ const toggleSelection = (id) => {
         </template>
 
         <template #item.created_invoice_date="{ item }">
-          <span class="text-xs text-disabled uppercase">{{ formatDate(item.created_invoice_date) }}</span>
+          <span class="text-sm font-weight-medium text-medium-emphasis uppercase">{{ formatDate(item.created_invoice_date) }}</span>
         </template>
 
         <template #item.date="{ item }">
-          <span class="text-xs text-disabled uppercase">{{ formatDate(item.date) }}</span>
+          <span class="text-sm font-weight-medium text-medium-emphasis uppercase">{{ formatDate(item.date) }}</span>
         </template>
 
         <template #item.number="{ item }">
           <div class="d-flex align-center gap-1 py-2">
-            <span class="font-weight-bold text-primary">{{ item.number }}</span>
+            <span class="text-sm font-weight-bold text-primary">{{ item.number }}</span>
           </div>
         </template>
 
         <template #item.supplier.name="{ item }">
           <div class="d-flex flex-column truncate py-2" style="max-width: 250px;">
-            <span class="text-xs font-weight-bold text-high-emphasis text-capitalize truncate">{{ item.supplier?.name || item.supplier?.social_reason || 'N/A' }}</span>
-            <span class="text-super-xs text-disabled truncate">{{ item.supplier?.rif || item.identification || 'Sin RIF' }}</span>
+            <span class="text-sm font-weight-bold text-high-emphasis text-capitalize truncate">{{ item.supplier?.name || item.supplier?.social_reason || 'N/A' }}</span>
+            <span class="text-xs text-disabled truncate font-weight-medium">{{ item.supplier?.rif || item.identification || 'Sin RIF' }}</span>
           </div>
         </template>
 
         <template #item.invoice_number="{ item }">
           <div class="d-flex align-center gap-2">
-            <span class="font-weight-bold text-primary">{{ item.invoice_number }}</span>
+            <span class="text-sm font-weight-bold text-primary">{{ item.invoice_number }}</span>
           </div>
         </template>
 
@@ -221,10 +221,10 @@ const toggleSelection = (id) => {
             <VChip
               v-for="num in item.invoice_numbers"
               :key="num"
-              size="x-small"
+              size="small"
               variant="tonal"
               color="primary"
-              class="font-weight-bold text-super-xs"
+              class="font-weight-bold text-xs"
             >
               {{ num }}
             </VChip>
@@ -232,39 +232,39 @@ const toggleSelection = (id) => {
         </template>
 
         <template #item.exempt_amount="{ item }">
-          <span class="text-xs">{{ formatCurrency(item.exempt_amount) }}</span>
+          <span class="text-sm font-weight-medium">{{ formatCurrency(item.exempt_amount) }}</span>
         </template>
 
         <template #item.taxable_base="{ item }">
-          <span class="text-xs">{{ formatCurrency(item.taxable_base) }}</span>
+          <span class="text-sm font-weight-medium">{{ formatCurrency(item.taxable_base) }}</span>
         </template>
 
         <template #item.tax_amount="{ item }">
-          <span class="text-xs font-weight-bold text-success">{{ formatCurrency(item.tax_amount) }}</span>
+          <span class="text-sm font-weight-bold text-success">{{ formatCurrency(item.tax_amount) }}</span>
         </template>
 
         <template #item.total_amount="{ item }">
-          <span class="text-xs font-weight-medium text-high-emphasis">{{ formatCurrency(item.total_amount) }}</span>
+          <span class="text-sm font-weight-bold text-high-emphasis">{{ formatCurrency(item.total_amount) }}</span>
         </template>
 
         <template #item.estimated_retention="{ item }">
-          <span class="text-xs font-weight-bold text-success">{{ formatCurrency(Number(item.tax_amount || 0) * 0.75) }}</span>
+          <span class="text-sm font-weight-bold text-success">{{ formatCurrency(Number(item.tax_amount || 0) * 0.75) }}</span>
         </template>
 
         <template #item.withheld_amount="{ item }">
-          <span class="text-xs font-weight-bold text-success">{{ formatCurrency(item.withheld_amount) }}</span>
+          <span class="text-sm font-weight-bold text-success">{{ formatCurrency(item.withheld_amount) }}</span>
         </template>
 
         <template #item.total_taxable_base="{ item }">
-          <span class="text-xs">{{ formatCurrency(item.total_taxable_base) }}</span>
+          <span class="text-sm font-weight-medium">{{ formatCurrency(item.total_taxable_base) }}</span>
         </template>
 
         <template #item.total_tax_amount="{ item }">
-          <span class="text-xs font-weight-bold text-success">{{ formatCurrency(item.total_tax_amount) }}</span>
+          <span class="text-sm font-weight-bold text-success">{{ formatCurrency(item.total_tax_amount) }}</span>
         </template>
 
         <template #item.total_withheld_amount="{ item }">
-          <span class="text-xs font-weight-bold text-success">{{ formatCurrency(item.total_withheld_amount) }}</span>
+          <span class="text-sm font-weight-bold text-success">{{ formatCurrency(item.total_withheld_amount) }}</span>
         </template>
 
         <template #item.actions="{ item }">
@@ -531,20 +531,21 @@ const toggleSelection = (id) => {
 .premium-table :deep(.v-data-table-header th) {
   background: rgb(var(--v-theme-surface)) !important;
   color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity)) !important;
-  font-size: 0.75rem !important;
+  font-size: 0.8125rem !important;
   font-weight: 700 !important;
   text-transform: uppercase !important;
-  letter-spacing: 0.05rem !important;
+  letter-spacing: 0.04rem !important;
   border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.05) !important;
 }
 
 .premium-table :deep(.v-data-table__td) {
-  padding-block: 12px !important;
+  padding-block: 14px !important;
+  font-size: 0.875rem !important;
   border-block-end: 1px solid rgba(var(--v-theme-on-surface), 0.03) !important;
 }
 
 .text-super-xs {
-  font-size: 0.65rem !important;
+  font-size: 0.7rem !important;
   letter-spacing: 0.05em !important;
 }
 

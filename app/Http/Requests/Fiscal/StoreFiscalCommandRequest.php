@@ -11,6 +11,23 @@ class StoreFiscalCommandRequest extends FormRequest
         return true; 
     }
 
+    /**
+     * Limpiar y normalizar los datos de entrada antes de la validación.
+     */
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('payload') && is_array($this->payload)) {
+            $payload = $this->payload;
+            if (isset($payload['client_rif'])) {
+                $payload['client_rif'] = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) $payload['client_rif']));
+            }
+            if (isset($payload['machine_serial'])) {
+                $payload['machine_serial'] = strtoupper(trim((string) $payload['machine_serial']));
+            }
+            $this->merge(['payload' => $payload]);
+        }
+    }
+
     public function rules(): array
     {
         return [

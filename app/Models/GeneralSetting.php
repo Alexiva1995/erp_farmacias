@@ -17,6 +17,7 @@ class GeneralSetting extends Model
         'income_statement_reset_date',
         'app_name',
         'app_rif',
+        'fiscal_printer_serial',
         'app_logo',
         'app_favicon',
         'app_signature_stamp',

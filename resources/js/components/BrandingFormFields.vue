@@ -55,7 +55,7 @@ const emit = defineEmits([
         Información de la Tienda
       </h3>
       <VRow>
-        <VCol cols="12" md="4">
+        <VCol cols="12" sm="6" md="3">
           <VTextField
             v-model="form.app_name"
             label="Nombre de la Tienda E-commerce"
@@ -66,18 +66,30 @@ const emit = defineEmits([
             :disabled="isLoading"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="6" md="3">
           <VTextField
             v-model="form.app_rif"
             label="RIF de la Empresa"
-            placeholder="Ej: J-12345678-9"
+            placeholder="Ej: J-50540695-7"
             variant="outlined"
             density="comfortable"
             persistent-placeholder
             :disabled="isLoading"
           />
         </VCol>
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="6" md="3">
+          <VTextField
+            v-model="form.fiscal_printer_serial"
+            label="Serial Máquina Fiscal"
+            placeholder="Ej: EOM0000310"
+            variant="outlined"
+            density="comfortable"
+            persistent-placeholder
+            prepend-inner-icon="tabler-printer"
+            :disabled="isLoading"
+          />
+        </VCol>
+        <VCol cols="12" sm="6" md="3">
           <VSelect
             v-model="form.default_currency"
             :items="['COP', 'USD', 'BS']"

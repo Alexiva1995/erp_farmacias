@@ -57,17 +57,17 @@ const searchInvoiceForNc = async (invoiceNumber) => {
       const inv = response.data.data;
       matchedInvoice.value = inv;
       ncForm.invoice_number = String(inv.invoice_number || query);
-      ncForm.machine_serial = String(inv.machine_serial || ncForm.machine_serial || "");
+      ncForm.machine_serial = String(inv.machine_serial || response.data?.default_serial || ncForm.machine_serial || "");
       ncForm.invoice_date   = String(inv.invoice_date || "");
       ncForm.invoice_hour   = String(inv.invoice_hour || "00:00:00");
       ncForm.client_name    = String(inv.client_name || "");
-      ncForm.client_rif     = String(inv.client_rif || "");
+      ncForm.client_rif     = String(inv.client_rif || "").replace(/[^A-Za-z0-9]/g, "").toUpperCase();
       ncForm.refund_amount  = inv.refund_amount != null ? Number(inv.refund_amount) : null;
       ncForm.is_taxable     = Boolean(inv.is_taxable);
       toast.success(`Factura #${inv.invoice_number} encontrada. Datos cargados para revisión.`);
     } else {
       matchedInvoice.value = null;
-      if (response.data?.default_serial && !ncForm.machine_serial) {
+      if (response.data?.default_serial) {
         ncForm.machine_serial = String(response.data.default_serial);
       }
     }
@@ -176,12 +176,12 @@ const handleReprintZ = () => {
 /** Validar y enviar Nota de Crédito según Protocolo PNP 0141 v5.4 */
 const handleCreditNote = () => {
   const invNumber = String(ncForm.invoice_number || "").trim();
-  const machineSerial = String(ncForm.machine_serial || "").trim();
+  const machineSerial = String(ncForm.machine_serial || "").trim().toUpperCase();
   const invDate = String(ncForm.invoice_date || "").trim();
   const invHour = String(ncForm.invoice_hour || "").trim() || "00:00:00";
   const refundAmt = Number(ncForm.refund_amount);
   const clientName = String(ncForm.client_name || "").trim() || "CLIENTE GENERICO";
-  const clientRif = String(ncForm.client_rif || "").trim() || "V000000000";
+  const clientRif = String(ncForm.client_rif || "").replace(/[^A-Za-z0-9]/g, "").toUpperCase() || "V000000000";
 
   // Validación de campos requeridos por el protocolo
   if (!invNumber)
