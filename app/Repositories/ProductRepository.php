@@ -953,8 +953,10 @@ class ProductRepository
         if (array_key_exists("tipo_vista", $filtros) && $filtros["tipo_vista"] == true) {
             $consulta->join("groups_products", "products.group_id", "=", "groups_products.id")
                 ->orderBy("groups_products.name", "ASC");
-        } elseif (empty($filtros["ids_in"]) && array_key_exists("groups", $filtros) && !empty($filtros["groups"])) {
-            $consulta->whereIn("group_id", $filtros["groups"]);
+        }
+
+        if (empty($filtros["ids_in"]) && array_key_exists("groups", $filtros) && !empty($filtros["groups"])) {
+            $consulta->whereIn("products.group_id", (array) $filtros["groups"]);
         }
 
         if (empty($filtros["ids_in"]) && array_key_exists("q", $filtros) && $filtros["q"] != "") {

@@ -33,16 +33,26 @@ class DebugFallas extends Command
             ]);
             $this->info("   -> Éxito Fallas! Items devueltos: " . $res2->count() . " / Total: " . $res2->total());
 
-            $this->info("3. Probando vista grupal con stock=all...");
-            $res3 = $service->getGroupedReportWithPaginate([
-                'stock' => 'all',
-                'tipo_filtracion' => 'stockout_adjusted_rop_plus',
+            $this->info("3. Probando vista grupal con stock=fallas página 1 y página 2...");
+            $res3_p1 = $service->getGroupedReportWithPaginate([
+                'stock' => 'fallas',
+                'tipo_filtracion' => 'stockout_adjusted_rop',
                 'tipo_vista' => true,
                 'lapso_de_tiempo' => '1 month',
                 'page' => 1,
                 'itemsPerPage' => 5
             ]);
-            $this->info("   -> Éxito Grupos! Grupos devueltos: " . count($res3['grupos']) . " / Total grupos: " . $res3['total_grupos']);
+            $this->info("   -> Éxito Grupos P1! Grupos devueltos: " . count($res3_p1['grupos']) . " / Total grupos: " . $res3_p1['total_grupos']);
+
+            $res3_p2 = $service->getGroupedReportWithPaginate([
+                'stock' => 'fallas',
+                'tipo_filtracion' => 'stockout_adjusted_rop',
+                'tipo_vista' => true,
+                'lapso_de_tiempo' => '1 month',
+                'page' => 2,
+                'itemsPerPage' => 5
+            ]);
+            $this->info("   -> Éxito Grupos P2! Grupos devueltos: " . count($res3_p2['grupos']) . " / Total grupos: " . $res3_p2['total_grupos']);
 
             $this->info("TODAS LAS PRUEBAS PASARON CORRECTAMENTE.");
         } catch (\Throwable $e) {
