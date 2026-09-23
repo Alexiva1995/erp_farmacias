@@ -832,16 +832,28 @@ class SupplierController extends Controller
      */
     public function merge(MergeSuppliersRequest $request)
     {
-        $validated = $request->validated();
-        
-        $mergedSupplier = $this->supplierActionService->mergeSuppliers(
-            (int) $validated['target_supplier_id'],
-            (int) $validated['source_supplier_id']
-        );
+        try {
+            $validated = $request->validated();
+            
+            $mergedSupplier = $this->supplierActionService->mergeSuppliers(
+                (int) $validated['target_supplier_id'],
+                (int) $validated['source_supplier_id']
+            );
 
-        return response()->json([
-            'message' => 'Proveedores fusionados exitosamente.',
-            'supplier' => new SupplierResource($mergedSupplier),
-        ]);
+            return response()->json([
+                'message' => 'Proveedores fusionados exitosamente.',
+                'supplier' => new SupplierResource($mergedSupplier),
+            ]);
+        } catch (\Throwable $e) {
+            \Log::error('Error al fusionar proveedores: ' . $e->getMessage(), [
+                'exception' => $e,
+                'request' => $request->all()
+            ]);
+
+            return response()->json([
+                'message' => 'Error al fusionar los proveedores: ' . $e->getMessage(),
+                'error' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
+        }
     }
 }

@@ -198,85 +198,132 @@ class SupplierActionService
             $source = Supplier::findOrFail($sourceSupplierId);
 
             // 1. Facturas y Retenciones
-            DB::table('invoices')->where('supplier_id', $source->id)->update(['supplier_id' => $target->id]);
-            DB::table('retentions')->where('supplier_id', $source->id)->update(['supplier_id' => $target->id]);
+            if (\Illuminate\Support\Facades\Schema::hasTable('invoices')) {
+                DB::table('invoices')->where('supplier_id', $source->id)->update(['supplier_id' => $target->id]);
+            }
+            if (\Illuminate\Support\Facades\Schema::hasTable('retentions')) {
+                DB::table('retentions')->where('supplier_id', $source->id)->update(['supplier_id' => $target->id]);
+            }
 
             // 2. Órdenes automáticas y reposición
-            DB::table('auto_orders')->where('supplier_id', $source->id)->update(['supplier_id' => $target->id]);
-            DB::table('auto_replenishment_configs')->where('supplier_id', $source->id)->update(['supplier_id' => $target->id]);
+            if (\Illuminate\Support\Facades\Schema::hasTable('auto_orders')) {
+                DB::table('auto_orders')->where('supplier_id', $source->id)->update(['supplier_id' => $target->id]);
+            }
+            if (\Illuminate\Support\Facades\Schema::hasTable('auto_replenishment_configs')) {
+                DB::table('auto_replenishment_configs')->where('supplier_id', $source->id)->update(['supplier_id' => $target->id]);
+            }
 
             // 3. Movimientos de inventario, lotes, vencimientos y psicotrópicos
-            DB::table('inventory_movements')->where('supplier_id', $source->id)->update(['supplier_id' => $target->id]);
-            DB::table('product_lots')->where('supplier_id', $source->id)->update(['supplier_id' => $target->id]);
-            DB::table('expirations')->where('supplier_id', $source->id)->update(['supplier_id' => $target->id]);
-            DB::table('psychotropic_controls')->where('supplier_id', $source->id)->update(['supplier_id' => $target->id]);
+            if (\Illuminate\Support\Facades\Schema::hasTable('inventory_movements')) {
+                DB::table('inventory_movements')->where('supplier_id', $source->id)->update(['supplier_id' => $target->id]);
+            }
+            if (\Illuminate\Support\Facades\Schema::hasTable('product_lots')) {
+                DB::table('product_lots')->where('supplier_id', $source->id)->update(['supplier_id' => $target->id]);
+            }
+            if (\Illuminate\Support\Facades\Schema::hasTable('expirations')) {
+                DB::table('expirations')->where('supplier_id', $source->id)->update(['supplier_id' => $target->id]);
+            }
+            if (\Illuminate\Support\Facades\Schema::hasTable('psychotropic_controls')) {
+                DB::table('psychotropic_controls')->where('supplier_id', $source->id)->update(['supplier_id' => $target->id]);
+            }
 
             // 4. Productos asociados
-            DB::table('products')->where('supplier_id', $source->id)->update(['supplier_id' => $target->id]);
+            if (\Illuminate\Support\Facades\Schema::hasTable('products')) {
+                DB::table('products')->where('supplier_id', $source->id)->update(['supplier_id' => $target->id]);
+            }
 
             // 5. Ofertas de proveedor (product_suppliers)
-            // Evitar duplicados si existieran registros idénticos
-            $targetProductIds = DB::table('product_suppliers')
-                ->where('supplier_id', $target->id)
-                ->whereNotNull('product_id')
-                ->pluck('product_id')
-                ->toArray();
+            if (\Illuminate\Support\Facades\Schema::hasTable('product_suppliers')) {
+                $targetProductIds = DB::table('product_suppliers')
+                    ->where('supplier_id', $target->id)
+                    ->whereNotNull('product_id')
+                    ->pluck('product_id')
+                    ->toArray();
 
-            if (!empty($targetProductIds)) {
-                // Eliminar del source aquellos que ya existan en target para no duplicar
-                DB::table('product_suppliers')
-                    ->where('supplier_id', $source->id)
-                    ->whereIn('product_id', $targetProductIds)
-                    ->delete();
+                if (!empty($targetProductIds)) {
+                    // Eliminar rechazos de IA asociados a los que se borrarán
+                    $sourcePsToDelete = DB::table('product_suppliers')
+                        ->where('supplier_id', $source->id)
+                        ->whereIn('product_id', $targetProductIds)
+                        ->pluck('id')
+                        ->toArray();
+
+                    if (!empty($sourcePsToDelete) && \Illuminate\Support\Facades\Schema::hasTable('supplier_ai_match_rejections')) {
+                        DB::table('supplier_ai_match_rejections')->whereIn('product_supplier_id', $sourcePsToDelete)->delete();
+                    }
+
+                    DB::table('product_suppliers')
+                        ->where('supplier_id', $source->id)
+                        ->whereIn('product_id', $targetProductIds)
+                        ->delete();
+                }
+                DB::table('product_suppliers')->where('supplier_id', $source->id)->update(['supplier_id' => $target->id]);
             }
-            DB::table('product_suppliers')->where('supplier_id', $source->id)->update(['supplier_id' => $target->id]);
 
-            // 6. Laboratorios vinculados (evitar duplicados con unique ['supplier_id', 'laboratory_id'])
-            $existingLabIds = DB::table('supplier_laboratories')
-                ->where('supplier_id', $target->id)
-                ->pluck('laboratory_id')
-                ->toArray();
+            // 6. Laboratorios vinculados (evitar duplicados)
+            if (\Illuminate\Support\Facades\Schema::hasTable('supplier_laboratories')) {
+                $existingLabIds = DB::table('supplier_laboratories')
+                    ->where('supplier_id', $target->id)
+                    ->pluck('laboratory_id')
+                    ->toArray();
 
-            if (!empty($existingLabIds)) {
-                DB::table('supplier_laboratories')
-                    ->where('supplier_id', $source->id)
-                    ->whereIn('laboratory_id', $existingLabIds)
-                    ->delete();
+                if (!empty($existingLabIds)) {
+                    DB::table('supplier_laboratories')
+                        ->where('supplier_id', $source->id)
+                        ->whereIn('laboratory_id', $existingLabIds)
+                        ->delete();
+                }
+                DB::table('supplier_laboratories')->where('supplier_id', $source->id)->update(['supplier_id' => $target->id]);
             }
-            DB::table('supplier_laboratories')->where('supplier_id', $source->id)->update(['supplier_id' => $target->id]);
 
             // 7. Reglas de pago y descuentos
-            DB::table('payment_rules')->where('supplier_id', $source->id)->update(['supplier_id' => $target->id]);
-            DB::table('supplier_discounts')->where('supplier_id', $source->id)->update(['supplier_id' => $target->id]);
-            DB::table('suppliers_config_products')->where('supplier_id', $source->id)->update(['supplier_id' => $target->id]);
-
-            // 8. Métodos de pago
-            $existingPaymentTypes = DB::table('supplier_payment_methods')
-                ->where('supplier_id', $target->id)
-                ->pluck('type')
-                ->toArray();
-            if (!empty($existingPaymentTypes)) {
-                DB::table('supplier_payment_methods')
-                    ->where('supplier_id', $source->id)
-                    ->whereIn('type', $existingPaymentTypes)
-                    ->delete();
+            if (\Illuminate\Support\Facades\Schema::hasTable('payment_rules')) {
+                DB::table('payment_rules')->where('supplier_id', $source->id)->update(['supplier_id' => $target->id]);
             }
-            DB::table('supplier_payment_methods')->where('supplier_id', $source->id)->update(['supplier_id' => $target->id]);
+            if (\Illuminate\Support\Facades\Schema::hasTable('supplier_discounts')) {
+                DB::table('supplier_discounts')->where('supplier_id', $source->id)->update(['supplier_id' => $target->id]);
+            }
+            if (\Illuminate\Support\Facades\Schema::hasTable('suppliers_config_products')) {
+                DB::table('suppliers_config_products')->where('supplier_id', $source->id)->update(['supplier_id' => $target->id]);
+            }
+
+            // 8. Métodos de pago (evitar duplicados con unique ['supplier_id', 'type'])
+            if (\Illuminate\Support\Facades\Schema::hasTable('supplier_payment_methods')) {
+                $existingPaymentTypes = DB::table('supplier_payment_methods')
+                    ->where('supplier_id', $target->id)
+                    ->pluck('type')
+                    ->toArray();
+                if (!empty($existingPaymentTypes)) {
+                    DB::table('supplier_payment_methods')
+                        ->where('supplier_id', $source->id)
+                        ->whereIn('type', $existingPaymentTypes)
+                        ->delete();
+                }
+                DB::table('supplier_payment_methods')->where('supplier_id', $source->id)->update(['supplier_id' => $target->id]);
+            }
 
             // 9. Historial de conexiones
-            DB::table('supplier_connection_statuses')->where('supplier_id', $source->id)->update(['supplier_id' => $target->id]);
+            if (\Illuminate\Support\Facades\Schema::hasTable('supplier_connection_statuses')) {
+                DB::table('supplier_connection_statuses')->where('supplier_id', $source->id)->update(['supplier_id' => $target->id]);
+            }
 
-            // 10. Conexiones FTP/API: si el target no tiene conexiones, mover las del source
-            $targetHasConn = DB::table('supplier_connections')->where('supplier_id', $target->id)->exists();
-            if (!$targetHasConn) {
-                DB::table('supplier_connections')->where('supplier_id', $source->id)->update(['supplier_id' => $target->id]);
-            } else {
-                DB::table('supplier_connections')->where('supplier_id', $source->id)->delete();
+            // 10. Conexiones FTP/API
+            if (\Illuminate\Support\Facades\Schema::hasTable('supplier_connections')) {
+                $targetHasConn = DB::table('supplier_connections')->where('supplier_id', $target->id)->exists();
+                if (!$targetHasConn) {
+                    DB::table('supplier_connections')->where('supplier_id', $source->id)->update(['supplier_id' => $target->id]);
+                } else {
+                    DB::table('supplier_connections')->where('supplier_id', $source->id)->delete();
+                }
             }
 
             // 11. Eliminar puntuaciones del source
-            DB::table('supplier_scores')->where('supplier_id', $source->id)->delete();
-            DB::table('supplier_ratings')->where('supplier_id', $source->id)->delete();
+            if (\Illuminate\Support\Facades\Schema::hasTable('supplier_scores')) {
+                DB::table('supplier_scores')->where('supplier_id', $source->id)->delete();
+            }
+            if (\Illuminate\Support\Facades\Schema::hasTable('supplier_ratings')) {
+                DB::table('supplier_ratings')->where('supplier_id', $source->id)->delete();
+            }
 
             // 12. Eliminar proveedor de origen de forma definitiva
             $source->forceDelete();

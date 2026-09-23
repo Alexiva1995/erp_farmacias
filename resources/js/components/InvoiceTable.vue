@@ -111,7 +111,12 @@ const formatCurrency = (value, currency) => {
 
 const formatDate = (dateString) => {
   if (!dateString) return "";
-  return new Date(dateString).toLocaleDateString("es-VE", {
+  const cleanDate = String(dateString).split("T")[0];
+  const parts = cleanDate.split("-");
+  if (parts.length === 3) {
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+  return new Date(`${cleanDate}T00:00:00`).toLocaleDateString("es-VE", {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
