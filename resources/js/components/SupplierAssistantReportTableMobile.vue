@@ -315,6 +315,9 @@ const handleManualOrder = async (item) => {
   display: -webkit-box;
   overflow: hidden;
   -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
 .max-w-140 {
   max-inline-size: 140px;
 }
