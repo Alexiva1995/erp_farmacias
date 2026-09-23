@@ -218,14 +218,25 @@ class IaAssistantReportService
             return is_object($item) ? $item->group_id : $item['group_id'];
         });
 
+        // Obtener nombres reales de los grupos directamente de la base de datos
+        $allGroupIds = $grouped->keys()->filter()->toArray();
+        $groupNamesMap = !empty($allGroupIds)
+            ? \Illuminate\Support\Facades\DB::table('groups_products')->whereIn('id', $allGroupIds)->pluck('name', 'id')->toArray()
+            : [];
+
         // 3. Ordenar los grupos alfabéticamente por nombre de grupo
-        $gruposConsolidados = $grouped->map(function ($items, $groupId) {
+        $gruposConsolidados = $grouped->map(function ($items, $groupId) use ($groupNamesMap) {
             $primerProd = $items->first();
-            $nombreGrupo = '';
-            if (is_object($primerProd)) {
-                $nombreGrupo = $primerProd->group->name ?? $primerProd->group_name ?? '';
-            } elseif (is_array($primerProd)) {
-                $nombreGrupo = $primerProd['group']['name'] ?? $primerProd['group_name'] ?? '';
+            $nombreGrupo = $groupNamesMap[$groupId] ?? '';
+            if (empty($nombreGrupo)) {
+                if (is_object($primerProd)) {
+                    $nombreGrupo = $primerProd->group->name ?? $primerProd->group['name'] ?? $primerProd->group_name ?? '';
+                } elseif (is_array($primerProd)) {
+                    $nombreGrupo = $primerProd['group']['name'] ?? $primerProd['group_name'] ?? '';
+                }
+            }
+            if (empty($nombreGrupo)) {
+                $nombreGrupo = 'GRUPO #' . $groupId;
             }
 
             return [

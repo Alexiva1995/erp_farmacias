@@ -598,9 +598,23 @@ class ProductRepository
 
         if (array_key_exists("q", $filtros)) {
             if ($filtros["q"] != "") {
-                $consulta->where(function ($query) use ($filtros) {
-                    $query->where("name", "like", "%" . $filtros["q"] . "%")
-                        ->orWhere("id", "like", "%" . $filtros["q"] . "%");
+                $consulta->leftJoin("laboratories", "laboratories.id", "=", "products.laboratory_id")
+                    ->leftJoin("groups_products", "groups_products.id", "=", "products.group_id");
+                $searchTerm = $filtros["q"];
+                $words = explode(' ', trim($searchTerm));
+                $consulta->where(function ($query) use ($words) {
+                    foreach ($words as $word) {
+                        $word = trim($word);
+                        if (empty($word)) continue;
+                        $query->where(function ($wordQuery) use ($word) {
+                            $wordQuery->where("products.name", "like", "%" . $word . "%")
+                                ->orWhere("products.active_ingredient", "like", "%" . $word . "%")
+                                ->orWhere("products.barcode", "like", "%" . $word . "%")
+                                ->orWhere("products.id", "like", "%" . $word . "%")
+                                ->orWhere("laboratories.name", "like", "%" . $word . "%")
+                                ->orWhere("groups_products.name", "like", "%" . $word . "%");
+                        });
+                    }
                 });
             }
         }
@@ -948,6 +962,9 @@ class ProductRepository
             $searchTerm = $filtros["q"];
 
             $consulta->leftJoin("laboratories", "laboratories.id", "=", "products.laboratory_id");
+            if (!array_key_exists("tipo_vista", $filtros) || !$filtros["tipo_vista"]) {
+                $consulta->leftJoin("groups_products", "groups_products.id", "=", "products.group_id");
+            }
 
             $consulta->where(function ($query) use ($searchTerm, $isStrictSearch) {
                 if ($isStrictSearch) {
@@ -956,7 +973,8 @@ class ProductRepository
                     $query->whereRaw("products.name REGEXP ?", [$pattern])
                         ->orWhereRaw("products.active_ingredient REGEXP ?", [$pattern])
                         ->orWhere("products.barcode", "=", $searchTerm)
-                        ->orWhere("products.id", "=", $searchTerm);
+                        ->orWhere("products.id", "=", $searchTerm)
+                        ->orWhere("groups_products.name", "like", "%" . $searchTerm . "%");
                 } else {
                     $words = explode(' ', trim($searchTerm));
                     foreach ($words as $word) {
@@ -965,8 +983,10 @@ class ProductRepository
                         $query->where(function ($wordQuery) use ($word) {
                             $wordQuery->where("products.name", "like", "%" . $word . "%")
                                 ->orWhere("products.active_ingredient", "like", "%" . $word . "%")
+                                ->orWhere("products.barcode", "like", "%" . $word . "%")
                                 ->orWhere("products.id", "like", "%" . $word . "%")
-                                ->orWhere("laboratories.name", "like", "%" . $word . "%");
+                                ->orWhere("laboratories.name", "like", "%" . $word . "%")
+                                ->orWhere("groups_products.name", "like", "%" . $word . "%");
                         });
                     }
                 }
@@ -1717,10 +1737,24 @@ class ProductRepository
         }
 
         if (array_key_exists("q", $filtros) && $filtros["q"] != "") {
-             $query->where(function($q) use ($filtros) {
-                 $q->where("products.name", "like", "%" . $filtros["q"] . "%")
-                   ->orWhere("products.id", "like", "%" . $filtros["q"] . "%");
-             });
+            $query->leftJoin("laboratories", "laboratories.id", "=", "products.laboratory_id");
+            $query->leftJoin("groups_products", "groups_products.id", "=", "products.group_id");
+            $searchTerm = $filtros["q"];
+            $words = explode(' ', trim($searchTerm));
+            $query->where(function ($q) use ($words) {
+                foreach ($words as $word) {
+                    $word = trim($word);
+                    if (empty($word)) continue;
+                    $q->where(function ($wordQuery) use ($word) {
+                        $wordQuery->where("products.name", "like", "%" . $word . "%")
+                            ->orWhere("products.active_ingredient", "like", "%" . $word . "%")
+                            ->orWhere("products.barcode", "like", "%" . $word . "%")
+                            ->orWhere("products.id", "like", "%" . $word . "%")
+                            ->orWhere("laboratories.name", "like", "%" . $word . "%")
+                            ->orWhere("groups_products.name", "like", "%" . $word . "%");
+                    });
+                }
+            });
         }
 
         // Seleccionar solicitar para usar en el teniendo (HAVING) sólo sobre los productos ya filtrados
@@ -1733,12 +1767,6 @@ class ProductRepository
             } elseif ($hasStockVal === false || $hasStockVal === 'false' || $hasStockVal === 0) {
                 $query->whereRaw("($subqueryStock) = 0");
             }
-        }
-        if (array_key_exists("q", $filtros) && $filtros["q"] != "") {
-             $query->where(function($q) use ($filtros) {
-                 $q->where("products.name", "like", "%" . $filtros["q"] . "%")
-                   ->orWhere("products.id", "like", "%" . $filtros["q"] . "%");
-             });
         }
 
         // 3. Aplicar Filtro de Stock (HAVING)
