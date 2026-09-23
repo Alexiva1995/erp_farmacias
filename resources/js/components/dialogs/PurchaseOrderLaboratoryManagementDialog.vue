@@ -218,27 +218,25 @@ const handleDeleteDetail = async (detail) => {
     scrollable
     @update:model-value="emit('update:modelValue', $event)"
   >
-    <VCard class="rounded-xl overflow-hidden">
+    <VCard class="management-dialog rounded-lg overflow-hidden">
       <!-- Header del Dialog -->
-      <VCardItem class="py-4 px-6 border-b bg-surface">
-        <div class="d-flex align-center justify-space-between w-100">
+      <VCardTitle class="pa-0">
+        <div class="header-gradient pa-4 d-flex align-center text-white">
           <div class="d-flex align-center gap-3">
-            <VAvatar color="primary" variant="tonal" size="44" class="rounded-lg">
-              <VIcon icon="tabler-flask" size="24" />
+            <VAvatar color="white" variant="tonal" size="44" class="rounded-lg">
+              <VIcon icon="tabler-flask" color="white" size="24" />
             </VAvatar>
             <div>
-              <h2 class="text-h6 font-weight-black text-uppercase text-high-emphasis">
+              <div class="text-h6 font-weight-black leading-tight text-white">
                 {{ props.laboratory?.laboratory_name || 'Sin Laboratorio' }}
-              </h2>
-              <div class="d-flex align-center gap-2 text-xs text-medium-emphasis">
-                <span>SKUs: <strong>{{ props.laboratory?.total_skus || 0 }}</strong></span>
-                <span>•</span>
-                <span>Unidades: <strong>{{ props.laboratory?.total_units || 0 }}</strong></span>
-                <span>•</span>
-                <span>Total Estimado: <strong class="text-success">${{ formatUsd(props.laboratory?.total_amount_usd) }}</strong></span>
+              </div>
+              <div class="text-caption text-white opacity-80 font-weight-bold uppercase">
+                {{ props.laboratory?.laboratory_id ? `ID: #${props.laboratory.laboratory_id}` : 'ORDEN DE COMPRA POR LABORATORIO' }}
               </div>
             </div>
           </div>
+
+          <VSpacer />
 
           <div class="d-flex align-center gap-2">
             <VBtn
@@ -247,22 +245,52 @@ const handleDeleteDetail = async (detail) => {
               variant="flat"
               prepend-icon="tabler-device-floppy"
               size="small"
-              class="font-weight-bold"
+              class="font-weight-bold rounded-lg"
               :loading="saving"
               @click="handleSaveBatchChanges"
             >
               Guardar Cambios
             </VBtn>
             <VBtn
-              icon="tabler-x"
-              variant="text"
-              color="secondary"
+              icon
+              variant="tonal"
+              color="white"
               density="comfortable"
+              class="rounded-lg"
               @click="closeDialog"
-            />
+            >
+              <VIcon>tabler-x</VIcon>
+            </VBtn>
           </div>
         </div>
-      </VCardItem>
+      </VCardTitle>
+
+      <!-- Resumen Superior Adaptativo -->
+      <div class="pa-4 bg-var-theme-background border-b shadow-inner-sm">
+        <VRow no-gutters class="gap-y-3">
+          <VCol cols="4" sm="4">
+            <div class="text-xxs text-uppercase text-disabled font-weight-black mb-1">Total SKUs</div>
+            <div class="d-flex align-center gap-1">
+              <VIcon icon="tabler-box" size="16" class="text-info" />
+              <span class="text-sm font-weight-bold">{{ props.laboratory?.total_skus || 0 }} SKUs</span>
+            </div>
+          </VCol>
+          <VCol cols="4" sm="4">
+            <div class="text-xxs text-uppercase text-disabled font-weight-black mb-1">Unidades Solicitadas</div>
+            <div class="d-flex align-center gap-1">
+              <VIcon icon="tabler-packages" size="16" class="text-warning" />
+              <span class="text-sm font-weight-bold">{{ props.laboratory?.total_units || 0 }} uds</span>
+            </div>
+          </VCol>
+          <VCol cols="4" sm="4" class="text-right text-sm-left">
+            <div class="text-xxs text-uppercase text-disabled font-weight-black mb-1">Total Estimado</div>
+            <div class="d-flex align-center gap-1 justify-end justify-sm-start">
+              <VIcon icon="tabler-currency-dollar" size="16" class="text-success" />
+              <span class="text-sm font-weight-black text-success">${{ formatUsd(props.laboratory?.total_amount_usd) }}</span>
+            </div>
+          </VCol>
+        </VRow>
+      </div>
 
       <!-- Barra de Filtro Interno -->
       <VCardText class="pa-4 border-b bg-var-theme-background">
@@ -410,6 +438,22 @@ const handleDeleteDetail = async (detail) => {
 </template>
 
 <style scoped>
+.header-gradient {
+  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #1e293b 100%);
+}
+
+.shadow-inner-sm {
+  box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 5%);
+}
+
+.text-xxs {
+  font-size: 0.65rem !important;
+}
+
+.leading-tight {
+  line-height: 1.25;
+}
+
 .quantity-input :deep(input) {
   text-align: center;
   font-weight: 700;

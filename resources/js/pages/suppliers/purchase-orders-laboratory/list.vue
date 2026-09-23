@@ -71,7 +71,7 @@ const headers = [
   { title: "SKUS", key: "total_skus", sortable: true, align: "center", width: "130px" },
   { title: "UNIDADES", key: "total_units", sortable: true, align: "center", width: "140px" },
   { title: "TOTAL ($ USD)", key: "total_amount_usd", sortable: true, align: "end", width: "160px" },
-  { title: "ACCIÓN", key: "actions", sortable: false, align: "end", width: "130px" },
+  { title: "ACCIÓN", key: "actions", sortable: false, align: "center", width: "90px" },
 ];
 
 const fetchStats = async () => {
@@ -388,16 +388,19 @@ onUnmounted(() => {
 
           <!-- Acciones -->
           <template #item.actions="{ item }">
-            <VBtn
-              size="small"
-              variant="tonal"
-              color="primary"
-              prepend-icon="tabler-settings"
-              class="font-weight-bold"
-              @click="handleManage(item)"
-            >
-              Gestionar
-            </VBtn>
+            <div class="d-flex align-center justify-center">
+              <VBtn
+                icon
+                size="32"
+                variant="tonal"
+                color="primary"
+                class="rounded-circle shadow-sm"
+                @click="handleManage(item)"
+              >
+                <VIcon icon="tabler-settings" size="18" />
+                <VTooltip activator="parent" location="top">Gestionar</VTooltip>
+              </VBtn>
+            </div>
           </template>
 
           <template #no-data>
