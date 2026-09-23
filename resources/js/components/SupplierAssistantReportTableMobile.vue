@@ -95,30 +95,54 @@ const handleManualOrder = async (item) => {
           :key="item.id"
           variant="flat"
           class="border mb-1 rounded-lg overflow-hidden"
+          :class="roundIaAnalysis(item.solicitar) > 0 ? 'bg-success-subtle-border' : ''"
         >
           <div class="pa-3">
             <div class="d-flex justify-space-between align-start mb-2">
               <div class="flex-grow-1 pr-2">
-                <div class="text-sm font-weight-black text-primary text-uppercase leading-tight truncate-2-lines mb-1">
+                <div class="d-flex align-center gap-1 mb-1">
+                  <span class="text-caption font-mono text-disabled font-weight-medium">#{{ item.id }}</span>
+                  <VChip v-if="item.is_colombian_origin == 1" color="info" size="x-small" variant="tonal" class="font-weight-black chip-col">COL</VChip>
+                </div>
+                <div class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight truncate-2-lines mb-1">
                   {{ item.name }}
                 </div>
                 <div class="d-flex align-center flex-wrap gap-x-2 text-super-xs text-disabled">
-                  <span>{{ item.laboratory?.name || 'S/L' }}</span>
+                  <span class="text-primary font-weight-bold">{{ item.laboratory?.name || 'S/L' }}</span>
                   <span>|</span>
                   <span>{{ item.active_ingredient || 'SIN INGREDIENTE' }}</span>
-                  <VChip v-if="item.is_colombian_origin == 1" color="info" size="x-small" label class="ml-1 text-super-xs">COL</VChip>
                 </div>
               </div>
               <div class="text-right d-flex flex-column align-end">
-                <div 
-                  class="analysis-badge pa-1 px-2 rounded d-flex flex-column align-center"
-                  :class="roundIaAnalysis(item.solicitar) > 0 ? 'bg-success-subtle' : roundIaAnalysis(item.solicitar) < 0 ? 'bg-error-subtle' : 'bg-secondary-subtle'"
+                <VChip
+                  v-if="roundIaAnalysis(item.solicitar) > 0"
+                  color="success"
+                  variant="tonal"
+                  size="small"
+                  class="font-weight-black px-2"
                 >
-                  <span class="text-super-xs font-weight-black text-uppercase opacity-70">Análisis</span>
-                  <span class="text-sm font-weight-black leading-none mt-1">
-                    {{ roundIaAnalysis(item.solicitar) > 0 ? '+' : '' }}{{ roundIaAnalysis(item.solicitar) }}
-                  </span>
-                </div>
+                  <VIcon icon="tabler-arrow-up-right" size="14" class="me-1" />
+                  +{{ roundIaAnalysis(item.solicitar) }} uds
+                </VChip>
+                <VChip
+                  v-else-if="roundIaAnalysis(item.solicitar) < 0"
+                  color="secondary"
+                  variant="tonal"
+                  size="small"
+                  class="font-weight-bold px-2 text-disabled"
+                >
+                  <VIcon icon="tabler-alert-circle" size="14" class="me-1" />
+                  Exceso: {{ Math.abs(roundIaAnalysis(item.solicitar)) }} uds
+                </VChip>
+                <VChip
+                  v-else
+                  color="secondary"
+                  variant="outlined"
+                  size="small"
+                  class="font-weight-medium px-2 text-disabled opacity-70"
+                >
+                  Equilibrio (0)
+                </VChip>
               </div>
             </div>
 
@@ -134,36 +158,52 @@ const handleManualOrder = async (item) => {
                 <span class="value">{{ item.total_sold_completed ? Math.round(Number(item.total_sold_completed)) : 0 }}</span>
               </div>
               <div class="info-item">
-                <span class="label">Costo Actual</span>
-                <span class="value text-primary font-weight-bold">$ {{ Number(item.unit_cost || 0).toFixed(2) }}</span>
+                <span class="label">Costo Ficha</span>
+                <span class="value text-high-emphasis font-weight-bold">$ {{ Number(item.unit_cost || 0).toFixed(2) }}</span>
               </div>
             </div>
 
+            <!-- Cotización de Proveedor -->
             <div v-if="item.best_supplier && Number(item.best_supplier_price) > 0" class="mt-3 pa-2 bg-var-theme-background rounded d-flex align-center justify-space-between border-dashed-thin">
-              <div class="d-flex align-center gap-2">
-                <VIcon icon="tabler-tag" size="14" color="success" />
+              <div class="d-flex align-center gap-2 overflow-hidden">
+                <VIcon icon="tabler-building-store" size="14" color="secondary" />
                 <span 
-                  class="text-super-xs font-weight-black text-truncate max-w-100"
-                  :style="props.selectedSupplierId && (item.best_supplier.id == props.selectedSupplierId || item.best_supplier.supplier_id == props.selectedSupplierId) ? 'color: #e91e63 !important; font-weight: 900 !important;' : ''"
-                  :class="props.selectedSupplierId && (item.best_supplier.id == props.selectedSupplierId || item.best_supplier.supplier_id == props.selectedSupplierId) ? '' : 'text-success'"
+                  class="text-super-xs font-weight-bold text-truncate max-w-140"
+                  :class="props.selectedSupplierId && (item.best_supplier.id == props.selectedSupplierId || item.best_supplier.supplier_id == props.selectedSupplierId) ? 'text-primary font-weight-black' : 'text-disabled'"
                 >
                   {{ item.best_supplier.name || item.best_supplier.supplier?.name || 'PROVEEDOR' }}
                 </span>
               </div>
-              <span class="text-xs font-weight-black text-success">$ {{ Number(item.best_supplier_price || 0).toFixed(2) }}</span>
+              <div class="d-flex align-center gap-1">
+                <span class="text-xs font-weight-black" :class="item.best_supplier_percentage < 0 ? 'text-success' : 'text-high-emphasis'">
+                  $ {{ Number(item.best_supplier_price || 0).toFixed(2) }}
+                </span>
+                <VChip 
+                  v-if="item.best_supplier_percentage && !isNaN(item.best_supplier_percentage) && item.best_supplier_percentage !== 0"
+                  variant="tonal" 
+                  :color="item.best_supplier_percentage < 0 ? 'success' : 'warning'" 
+                  size="x-small" 
+                  class="px-1 font-weight-bold chip-percentage"
+                >
+                  {{ item.best_supplier_percentage > 0 ? '+' : '' }}{{ Math.round(item.best_supplier_percentage) }}%
+                </VChip>
+              </div>
             </div>
             <div v-else-if="item.product_suppliers?.length" class="mt-3 pa-2 bg-var-theme-background rounded d-flex align-center justify-space-between border-dashed-thin">
-              <div class="d-flex align-center gap-2">
-                <VIcon icon="tabler-tag" size="14" color="success" />
+              <div class="d-flex align-center gap-2 overflow-hidden">
+                <VIcon icon="tabler-building-store" size="14" color="secondary" />
                 <span 
-                  class="text-super-xs font-weight-black text-truncate max-w-100"
-                  :style="props.selectedSupplierId && (item.product_suppliers[0].supplier_id == props.selectedSupplierId || item.product_suppliers[0].supplier?.id == props.selectedSupplierId) ? 'color: #e91e63 !important; font-weight: 900 !important;' : ''"
-                  :class="props.selectedSupplierId && (item.product_suppliers[0].supplier_id == props.selectedSupplierId || item.product_suppliers[0].supplier?.id == props.selectedSupplierId) ? '' : 'text-success'"
+                  class="text-super-xs font-weight-bold text-truncate max-w-140"
+                  :class="props.selectedSupplierId && (item.product_suppliers[0].supplier_id == props.selectedSupplierId || item.product_suppliers[0].supplier?.id == props.selectedSupplierId) ? 'text-primary font-weight-black' : 'text-disabled'"
                 >
                   {{ item.product_suppliers[0].supplier?.name || 'PROVEEDOR' }}
                 </span>
               </div>
-              <span class="text-xs font-weight-black text-success">$ {{ Number(item.product_suppliers[0].unit_cost_usd || 0).toFixed(2) }}</span>
+              <div class="d-flex align-center gap-1">
+                <span class="text-xs font-weight-black text-high-emphasis">
+                  $ {{ Number(item.product_suppliers[0].unit_cost_usd || 0).toFixed(2) }}
+                </span>
+              </div>
             </div>
 
             <!-- Acción Móvil: Pedido Manual -->
@@ -172,18 +212,20 @@ const handleManualOrder = async (item) => {
                 :model-value="getInputValue(item)"
                 @update:model-value="(val) => updateQuantity(item, val)"
                 type="number"
+                min="0"
                 density="compact"
                 hide-details
-                placeholder="Cantidad"
+                placeholder="0"
                 class="manual-qty-input flex-grow-1"
                 variant="outlined"
               />
               <VBtn
-                color="primary"
-                variant="elevated"
+                :color="roundIaAnalysis(item.solicitar) > 0 || (manualQuantities[item.id] && manualQuantities[item.id] > 0) ? 'success' : 'secondary'"
+                :variant="roundIaAnalysis(item.solicitar) > 0 || (manualQuantities[item.id] && manualQuantities[item.id] > 0) ? 'elevated' : 'tonal'"
                 size="40"
                 class="rounded-lg"
                 :loading="orderingIds[item.id]"
+                :disabled="!getInputValue(item) || getInputValue(item) <= 0"
                 @click="handleManualOrder(item)"
               >
                 <VIcon icon="tabler-shopping-cart-plus" size="20" />
@@ -273,7 +315,18 @@ const handleManualOrder = async (item) => {
   display: -webkit-box;
   overflow: hidden;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
+.max-w-140 {
+  max-inline-size: 140px;
+}
+.bg-success-subtle-border {
+  border-color: rgba(var(--v-theme-success), 0.3) !important;
+  background-color: rgba(var(--v-theme-success), 0.02) !important;
+}
+.font-mono {
+  font-family: monospace;
+}
+.chip-col,
+.chip-percentage {
+  font-size: 0.6rem !important;
 }
 </style>

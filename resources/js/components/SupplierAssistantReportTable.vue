@@ -40,10 +40,10 @@ const updateQuantity = (item, val) => {
 };
 
 const headers = computed(() => [
-  { title: "id", key: "id", sortable: true, width: '80px' },
-  { title: "Producto", key: "name", sortable: true, minWidth: '320px' },
-  { title: "Costo Actual", key: "unit_cost", sortable: true, align: 'center' },
-  { title: "Mejor Oferta", key: "best_supplier_percentage", sortable: true, align: 'center' },
+  { title: "ID", key: "id", sortable: true, width: '70px', align: 'start' },
+  { title: "Producto", key: "name", sortable: true, minWidth: '300px' },
+  { title: "Costo Actual", key: "unit_cost", sortable: true, align: 'end' },
+  { title: "Mejor Oferta", key: "best_supplier_percentage", sortable: true, align: 'end' },
   { title: "Ventas", key: "total_sold_completed", sortable: true, align: 'end' },
   { title: "Stock", key: "lote_quantity", sortable: true, align: 'end' },
   {
@@ -66,11 +66,14 @@ const headers = computed(() => [
         ? roundIaAnalysis(item.solicitar)
         : 0,
   },
-  { title: "Pedido M.", key: "manual_order", sortable: false, align: 'center', width: '130px' }
+  { title: "Pedido M.", key: "manual_order", sortable: false, align: 'center', width: '140px' }
 ]);
 
 const rowClass = (item) => {
-  return roundIaAnalysis(item.solicitar) > 0 ? 'bg-light-success-50' : '';
+  const analizado = roundIaAnalysis(item.solicitar);
+  if (analizado > 0) return 'row-needs';
+  if (analizado < 0) return 'row-excess';
+  return '';
 };
 
 const getPriceDiff = (current, offer) => {
@@ -95,7 +98,7 @@ const getSelectedSupplierPrice = (item) => {
 const handleManualOrder = async (item) => {
   const quantity = getInputValue(item);
   if (!quantity || quantity <= 0) {
-    toast.info("Por favor ingrese una cantidad válida");
+    toast.info("Por favor ingrese una cantidad válida mayor a cero");
     return;
   }
 
@@ -166,6 +169,11 @@ const handleManualOrder = async (item) => {
             </div>
           </template>
 
+          <!-- ID -->
+          <template #item.id="{ item }">
+            <span class="text-caption font-weight-medium text-disabled font-mono">{{ item.id }}</span>
+          </template>
+
           <!-- Producto -->
           <template #item.name="{ item }">
             <div class="d-flex align-center py-2">
@@ -185,49 +193,44 @@ const handleManualOrder = async (item) => {
             </div>
           </template>
 
-          <!-- ID -->
-          <template #item.id="{ item }">
-            <span class="text-sm font-weight-black text-primary">{{ item.id }}</span>
-          </template>
-
           <!-- Costo Actual -->
           <template #item.unit_cost="{ item }">
-            <div class="d-flex flex-column align-center">
-              <span class="text-primary font-weight-black">$ {{ Number(item.unit_cost || 0).toFixed(2) }}</span>
+            <div class="d-flex flex-column align-end">
+              <span class="text-sm font-weight-bold text-high-emphasis">$ {{ Number(item.unit_cost || 0).toFixed(2) }}</span>
               <span class="text-xxs text-disabled mt-n1">Costo Ficha</span>
             </div>
           </template>
 
-          <!-- Mejor Oferta -->
+          <!-- Mejor Oferta / Cotización -->
           <template #item.best_supplier_percentage="{ item }">
-            <div v-if="item.best_supplier && Number(item.best_supplier_price) > 0" class="d-flex flex-column align-center py-1">
+            <div v-if="item.best_supplier && Number(item.best_supplier_price) > 0" class="d-flex flex-column align-end py-1">
               <div class="d-flex align-center gap-1 mb-1">
                 <span 
                   class="text-xs font-weight-black"
-                  :class="item.best_supplier_percentage > 0 ? 'text-error' : 'text-success'"
+                  :class="item.best_supplier_percentage < 0 ? 'text-success' : 'text-high-emphasis'"
                 >
                   $ {{ Number(item.best_supplier_price || 0).toFixed(2) }}
                 </span>
                 <VChip 
                   v-if="item.best_supplier_percentage && !isNaN(item.best_supplier_percentage) && item.best_supplier_percentage !== 0"
                   variant="tonal" 
-                  :color="item.best_supplier_percentage > 0 ? 'error' : 'success'" 
+                  :color="item.best_supplier_percentage < 0 ? 'success' : 'warning'" 
                   size="x-small" 
                   class="px-1 font-weight-bold chip-percentage"
                 >
                   {{ item.best_supplier_percentage > 0 ? '+' : '' }}{{ Math.round(item.best_supplier_percentage) }}%
+                  {{ item.best_supplier_percentage < 0 ? 'Ahorro' : 'Mercado' }}
                 </VChip>
               </div>
               <span 
-                class="text-super-xs text-uppercase truncate mb-1 max-w-110"
-                :style="props.selectedSupplierId && (item.best_supplier.id == props.selectedSupplierId || item.best_supplier.supplier_id == props.selectedSupplierId) ? 'color: #e91e63 !important; font-weight: 900 !important;' : ''"
-                :class="props.selectedSupplierId && (item.best_supplier.id == props.selectedSupplierId || item.best_supplier.supplier_id == props.selectedSupplierId) ? '' : 'text-disabled font-weight-medium'"
+                class="text-super-xs text-uppercase truncate mb-1 max-w-140"
+                :class="props.selectedSupplierId && (item.best_supplier.id == props.selectedSupplierId || item.best_supplier.supplier_id == props.selectedSupplierId) ? 'text-primary font-weight-black' : 'text-disabled font-weight-medium'"
               >
                 {{ item.best_supplier.name || item.best_supplier.supplier?.name || 'PROVEEDOR' }}
               </span>
 
               <div v-if="getSelectedSupplierPrice(item)" class="selected-supplier-box w-100 mt-1 pa-1 rounded border-t border-dashed">
-                <div class="d-flex flex-column align-center">
+                <div class="d-flex flex-column align-end">
                   <div class="d-flex align-center gap-1">
                     <VIcon icon="tabler-user-check" size="10" color="primary" />
                     <span class="text-xs font-weight-black text-primary">$ {{ getSelectedSupplierPrice(item).toFixed(2) }}</span>
@@ -238,33 +241,33 @@ const handleManualOrder = async (item) => {
                 </div>
               </div>
             </div>
-            <div v-else-if="item.product_suppliers?.length" class="d-flex flex-column align-center py-1">
+            <div v-else-if="item.product_suppliers?.length" class="d-flex flex-column align-end py-1">
               <div class="d-flex align-center gap-1 mb-1">
                 <span 
                   class="text-xs font-weight-black"
-                  :class="getPriceDiff(item.unit_cost, item.product_suppliers[0].unit_cost_usd) > 0 ? 'text-error' : 'text-success'"
+                  :class="getPriceDiff(item.unit_cost, item.product_suppliers[0].unit_cost_usd) < 0 ? 'text-success' : 'text-high-emphasis'"
                 >
                   $ {{ Number(item.product_suppliers[0].unit_cost_usd || 0).toFixed(2) }}
                 </span>
                 <VChip 
                   variant="tonal" 
-                  :color="getPriceDiff(item.unit_cost, item.product_suppliers[0].unit_cost_usd) > 0 ? 'error' : 'success'" 
+                  :color="getPriceDiff(item.unit_cost, item.product_suppliers[0].unit_cost_usd) < 0 ? 'success' : 'warning'" 
                   size="x-small" 
                   class="px-1 font-weight-bold chip-percentage"
                 >
                   {{ getPriceDiff(item.unit_cost, item.product_suppliers[0].unit_cost_usd) > 0 ? '+' : '' }}{{ getPriceDiff(item.unit_cost, item.product_suppliers[0].unit_cost_usd).toFixed(0) }}%
+                  {{ getPriceDiff(item.unit_cost, item.product_suppliers[0].unit_cost_usd) < 0 ? 'Ahorro' : 'Mercado' }}
                 </VChip>
               </div>
               <span 
-                class="text-super-xs text-uppercase truncate mb-1 max-w-110"
-                :style="props.selectedSupplierId && (item.product_suppliers[0].supplier_id == props.selectedSupplierId || item.product_suppliers[0].supplier?.id == props.selectedSupplierId) ? 'color: #e91e63 !important; font-weight: 900 !important;' : ''"
-                :class="props.selectedSupplierId && (item.product_suppliers[0].supplier_id == props.selectedSupplierId || item.product_suppliers[0].supplier?.id == props.selectedSupplierId) ? '' : 'text-disabled font-weight-medium'"
+                class="text-super-xs text-uppercase truncate mb-1 max-w-140"
+                :class="props.selectedSupplierId && (item.product_suppliers[0].supplier_id == props.selectedSupplierId || item.product_suppliers[0].supplier?.id == props.selectedSupplierId) ? 'text-primary font-weight-black' : 'text-disabled font-weight-medium'"
               >
                 {{ item.product_suppliers[0].supplier?.name || 'PROVEEDOR' }}
               </span>
 
               <div v-if="getSelectedSupplierPrice(item)" class="selected-supplier-box w-100 mt-1 pa-1 rounded border-t border-dashed">
-                <div class="d-flex flex-column align-center">
+                <div class="d-flex flex-column align-end">
                   <div class="d-flex align-center gap-1">
                     <VIcon icon="tabler-user-check" size="10" color="primary" />
                     <span class="text-xs font-weight-black text-primary">$ {{ getSelectedSupplierPrice(item).toFixed(2) }}</span>
@@ -275,12 +278,12 @@ const handleManualOrder = async (item) => {
                 </div>
               </div>
             </div>
-            <span v-else class="text-xxs text-disabled italic">Sin ofertas</span>
+            <span v-else class="text-xxs text-disabled italic">Sin cotización</span>
           </template>
 
           <!-- Ventas y Stock -->
           <template #item.total_sold_completed="{ item }">
-            <span class="font-weight-bold">{{ item.total_sold_completed ? Math.round(Number(item.total_sold_completed)) : 0 }}</span>
+            <span class="font-weight-bold text-high-emphasis">{{ item.total_sold_completed ? Math.round(Number(item.total_sold_completed)) : 0 }}</span>
           </template>
           
           <template #item.lote_quantity="{ item }">
@@ -290,33 +293,72 @@ const handleManualOrder = async (item) => {
           </template>
 
           <template #item.promedio_calculado="{ item }">
-            <div class="d-flex flex-column align-end">
-              <span class="font-weight-bold">{{ item.promedio_calculado != null && item.promedio_calculado !== '' ? parseFloat(item.promedio_calculado).toFixed(2) : '0.00' }}</span>
+            <span class="font-weight-bold text-high-emphasis">
+              {{ item.promedio_calculado != null && item.promedio_calculado !== '' ? parseFloat(item.promedio_calculado).toFixed(2) : '0.00' }}
+            </span>
+          </template>
+
+          <!-- Análisis Semántico -->
+          <template #item.solicitar="{ item }">
+            <div class="d-flex justify-end">
+              <VChip
+                v-if="roundIaAnalysis(item.solicitar) > 0"
+                color="success"
+                variant="tonal"
+                size="small"
+                class="font-weight-black px-2"
+              >
+                <VIcon icon="tabler-arrow-up-right" size="14" class="me-1" />
+                +{{ roundIaAnalysis(item.solicitar) }} uds
+              </VChip>
+              <VChip
+                v-else-if="roundIaAnalysis(item.solicitar) < 0"
+                color="secondary"
+                variant="tonal"
+                size="small"
+                class="font-weight-bold px-2 text-disabled"
+              >
+                <VIcon icon="tabler-alert-circle" size="14" class="me-1" />
+                Exceso: {{ Math.abs(roundIaAnalysis(item.solicitar)) }} uds
+              </VChip>
+              <VChip
+                v-else
+                color="secondary"
+                variant="outlined"
+                size="small"
+                class="font-weight-medium px-2 text-disabled opacity-70"
+              >
+                Equilibrio (0)
+              </VChip>
             </div>
           </template>
 
           <!-- Pedido Manual -->
           <template #item.manual_order="{ item }">
-            <div class="d-flex align-center gap-1">
+            <div class="d-flex align-center justify-center gap-1">
               <VTextField
                 :model-value="getInputValue(item)"
                 @update:model-value="(val) => updateQuantity(item, val)"
                 type="number"
+                min="0"
                 density="compact"
                 hide-details
                 class="manual-qty-input max-w-80"
-                placeholder="Cant."
+                placeholder="0"
               />
               <VBtn
                 icon
                 size="30"
-                color="primary"
-                variant="tonal"
+                :color="roundIaAnalysis(item.solicitar) > 0 || (manualQuantities[item.id] && manualQuantities[item.id] > 0) ? 'success' : 'secondary'"
+                :variant="roundIaAnalysis(item.solicitar) > 0 || (manualQuantities[item.id] && manualQuantities[item.id] > 0) ? 'elevated' : 'tonal'"
                 :loading="orderingIds[item.id]"
+                :disabled="!getInputValue(item) || getInputValue(item) <= 0"
                 @click="handleManualOrder(item)"
               >
                 <VIcon icon="tabler-shopping-cart-plus" size="16" />
-                <VTooltip activator="parent" location="top">Añadir al pedido</VTooltip>
+                <VTooltip activator="parent" location="top">
+                  {{ getInputValue(item) > 0 ? `Añadir ${getInputValue(item)} uds al pedido` : 'Sin cantidad para pedir' }}
+                </VTooltip>
               </VBtn>
             </div>
           </template>
@@ -350,12 +392,12 @@ const handleManualOrder = async (item) => {
   border-bottom: 1px solid rgba(var(--v-border-color), 0.08) !important;
 }
 
-:deep(.row-needs td) {
-  background-color: rgba(var(--v-theme-success), 3%) !important;
+:deep(.row-needs) td {
+  background-color: rgba(var(--v-theme-success), 0.04) !important;
 }
 
-:deep(.row-excess td) {
-  background-color: rgba(var(--v-theme-error), 3%) !important;
+:deep(.row-excess) td {
+  background-color: rgba(var(--v-theme-secondary), 0.02) !important;
 }
 
 .chip-col,
@@ -365,6 +407,10 @@ const handleManualOrder = async (item) => {
 
 .max-w-180 {
   max-inline-size: 180px;
+}
+
+.max-w-140 {
+  max-inline-size: 140px;
 }
 
 .max-w-120 {
@@ -386,6 +432,10 @@ const handleManualOrder = async (item) => {
 .text-super-xs {
   font-size: 0.65rem !important;
   line-height: 1;
+}
+
+.font-mono {
+  font-family: monospace;
 }
 </style>
 
