@@ -164,8 +164,6 @@ const supplierMatchOptions = [
             </VList>
           </VMenu>
 
-          <VDivider vertical class="mx-1 my-2" />
-
           <!-- Limpiar Ignore -->
           <VBtn
             icon
@@ -180,14 +178,15 @@ const supplierMatchOptions = [
             <VTooltip activator="parent" location="top">Restaurar Ocultos (Ignore)</VTooltip>
           </VBtn>
 
+          <VDivider vertical class="mx-1 my-2" />
+
           <!-- Limpiar Filtros -->
           <VBtn
             icon
-            variant="tonal"
+            variant="text"
             color="secondary"
             size="38"
             rounded="circle"
-            class="shadow-sm"
             @click="emit('clear')"
           >
             <VIcon icon="tabler-eraser" />
