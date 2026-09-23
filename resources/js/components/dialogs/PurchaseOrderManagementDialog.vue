@@ -36,6 +36,13 @@ const isDirty = computed(() => {
   );
 });
 
+const isBelowMinOrder = computed(() => {
+  const isPending = props.purchaseOrder?.status === 0 || props.purchaseOrder?.status === "0";
+  const min = Number(props.purchaseOrder?.min_order_amount || 0);
+  const total = Number(props.purchaseOrder?.total_amount || 0);
+  return isPending && min > 0 && total < min;
+});
+
 let searchDebounceTimer;
 watch(searchQuery, () => {
   clearTimeout(searchDebounceTimer);
@@ -93,15 +100,28 @@ const getStatusColor = (status) => {
   return colors[status] || "warning";
 };
 
-const fetchDetails = async () => {
+const sortBy = ref([]);
+
+const fetchDetails = async (options = null) => {
   if (!props.purchaseOrder?.id) return;
+  
+  if (options) {
+    if (options.page !== undefined) page.value = options.page;
+    if (options.itemsPerPage !== undefined) itemsPerPage.value = options.itemsPerPage;
+    if (options.sortBy !== undefined) sortBy.value = options.sortBy;
+  }
+
   loading.value = true;
+  const currentSort = sortBy.value?.[0];
+
   try {
     const { data } = await axios.get(`/suppliers/purchase-orders/${props.purchaseOrder.id}`, {
       params: { 
         page: page.value, 
         perPage: itemsPerPage.value,
-        search: searchQuery.value
+        search: searchQuery.value,
+        sortBy: currentSort?.key || null,
+        sortOrder: currentSort?.order || null,
       },
     });
     details.value = data.data;
@@ -342,11 +362,27 @@ watch(
                   (Mín: {{ Number(purchaseOrder.min_order_amount).toLocaleString('es-ES', { minimumFractionDigits: 2 }) }})
                 </span>
               </div>
-              <div class="text-h6 font-weight-black text-primary leading-tight">
+              <div class="text-h6 font-weight-black leading-tight" :class="isBelowMinOrder ? 'text-error' : 'text-primary'">
                 {{ Number(purchaseOrder.total_amount).toLocaleString('es-ES', { minimumFractionDigits: 2 }) }}
               </div>
             </VCol>
           </VRow>
+
+          <!-- Alerta de Pedido Mínimo no alcanzado -->
+          <VAlert
+            v-if="isBelowMinOrder"
+            type="warning"
+            variant="tonal"
+            density="compact"
+            icon="tabler-alert-triangle"
+            class="mt-3 rounded-lg"
+          >
+            <span class="text-xs font-weight-bold">
+              Pedido mínimo no alcanzado: Este proveedor requiere un monto mínimo de 
+              <strong>{{ Number(purchaseOrder.min_order_amount).toLocaleString('es-ES', { minimumFractionDigits: 2 }) }}</strong>. 
+              No se puede enviar la orden hasta alcanzar el monto exigido.
+            </span>
+          </VAlert>
         </div>
 
         <!-- Buscador de Productos -->
@@ -594,18 +630,28 @@ watch(
           {{ resendLabel }}
         </VBtn>
 
-        <VBtn
-          v-if="purchaseOrder.status !== 2"
-          :color="purchaseOrder.status === 1 ? 'primary' : 'success'"
-          variant="elevated"
-          :prepend-icon="purchaseOrder.status === 1 ? 'tabler-circle-check' : 'tabler-send'"
-          @click="handleConfirmSent"
-          :loading="sending"
-          class="flex-grow-1 font-weight-black rounded-lg shadow-sm"
-          size="large"
+        <VTooltip
+          :disabled="!isBelowMinOrder"
+          text="El monto de la orden no alcanza el pedido mínimo configurado para este proveedor"
         >
-          {{ purchaseOrder.status === 1 ? 'Finalizar' : 'Confirmar Envío' }}
-        </VBtn>
+          <template #activator="{ props: tooltipProps }">
+            <span v-bind="tooltipProps" class="flex-grow-1">
+              <VBtn
+                v-if="purchaseOrder.status !== 2"
+                :color="purchaseOrder.status === 1 ? 'primary' : 'success'"
+                variant="elevated"
+                :prepend-icon="purchaseOrder.status === 1 ? 'tabler-circle-check' : 'tabler-send'"
+                @click="handleConfirmSent"
+                :loading="sending"
+                :disabled="isBelowMinOrder"
+                class="w-100 font-weight-black rounded-lg shadow-sm"
+                size="large"
+              >
+                {{ purchaseOrder.status === 1 ? 'Finalizar' : 'Confirmar Envío' }}
+              </VBtn>
+            </span>
+          </template>
+        </VTooltip>
 
         <VBtn
           v-if="isDirty"

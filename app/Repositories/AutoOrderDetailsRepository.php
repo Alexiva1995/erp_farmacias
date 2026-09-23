@@ -99,8 +99,28 @@ class AutoOrderDetailsRepository
             });
         }
 
-        $results = $query->orderBy("product_name", "asc")
-            ->paginate($perPage);
+        $sortBy = $filters["sortBy"] ?? $filters["sort_by"] ?? "product_name";
+        $sortOrder = strtolower($filters["sortOrder"] ?? $filters["order_by"] ?? $filters["orderBy"] ?? "asc");
+        $direction = in_array($sortOrder, ["asc", "desc"]) ? $sortOrder : "asc";
+
+        switch ($sortBy) {
+            case "unit_cost":
+            case "cost":
+                $query->orderBy("auto_order_details.unit_cost", $direction);
+                break;
+            case "subtotal":
+                $query->orderBy("auto_order_details.subtotal", $direction);
+                break;
+            case "quantity":
+                $query->orderBy("auto_order_details.quantity", $direction);
+                break;
+            case "product_name":
+            default:
+                $query->orderBy("product_name", $direction);
+                break;
+        }
+
+        $results = $query->paginate($perPage);
 
         return $results;
     }
