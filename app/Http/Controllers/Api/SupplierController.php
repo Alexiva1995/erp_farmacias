@@ -124,6 +124,12 @@ class SupplierController extends Controller
             ], 422);
         }
 
+        if ($supplier->type && $supplier->type !== \App\Enums\SupplierType::DROGUERIA && $supplier->type !== 'drogueria') {
+            return response()->json([
+                "message" => "Solo los proveedores de mercancía / droguería pueden sincronizar catálogos y conexiones.",
+            ], 422);
+        }
+
         $userId = auth()->id() ?? 1;
 
         $status = \App\Models\SupplierConnectionStatus::create([
@@ -388,6 +394,18 @@ class SupplierController extends Controller
 
     public function importData(Supplier $supplier, GetDataFromSupplierFileRequest $request)
     {
+        if ($supplier->is_active === false) {
+            return response()->json([
+                "message" => "El proveedor se encuentra desactivado. Active el proveedor antes de importar productos.",
+            ], 422);
+        }
+
+        if ($supplier->type && $supplier->type !== \App\Enums\SupplierType::DROGUERIA && $supplier->type !== 'drogueria') {
+            return response()->json([
+                "message" => "Solo los proveedores de mercancía / droguería pueden importar productos.",
+            ], 422);
+        }
+
         $userId = auth()->id() ?? 1;
         $validated = $request->validated();
 

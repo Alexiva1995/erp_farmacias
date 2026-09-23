@@ -666,6 +666,10 @@ class SupplierQueryService
             )
             ->leftJoin("supplier_connections", "supplier_id", "=", "suppliers.id")
             ->whereNull("suppliers.deleted_at")
+            ->where(function ($query) {
+                $query->where("suppliers.type", "drogueria")
+                      ->orWhereNull("suppliers.type");
+            })
             ->when($searchTerm, function ($query) use ($searchTerm) {
                 // Buscamos coincidencia parcial en el nombre
                 $query->where("suppliers.name", "LIKE", "%{$searchTerm}%");
@@ -812,6 +816,15 @@ class SupplierQueryService
             ->leftJoin("products", "products.id", "=", "product_suppliers.product_id")
             ->leftJoin("laboratories", "laboratories.id", "=", "products.laboratory_id")
             ->leftJoin("suppliers", "suppliers.id", "=", "product_suppliers.supplier_id")
+            ->where(function ($q) {
+                $q->where('suppliers.is_active', true)
+                  ->orWhereNull('suppliers.is_active');
+            })
+            ->where(function ($q) {
+                $q->where('suppliers.type', 'drogueria')
+                  ->orWhereNull('suppliers.type');
+            })
+            ->whereNull('suppliers.deleted_at')
             ->when($hasStock !== null, function ($query) {
                 $query->leftJoin('product_lots', function ($join) {
                     $join->on('product_lots.product_id', '=', 'products.id')
@@ -904,6 +917,14 @@ class SupplierQueryService
             ->where(function ($q) {
                 $q->whereNull('is_deleted')
                   ->orWhere('is_deleted', false);
+            })
+            ->where(function ($q) {
+                $q->where('is_active', true)
+                  ->orWhereNull('is_active');
+            })
+            ->where(function ($q) {
+                $q->where('type', 'drogueria')
+                  ->orWhereNull('type');
             })
             ->select(["id", "name", "rif", "type", "social_reason", "is_active"])
             ->orderBy("name", "asc")
@@ -1149,6 +1170,10 @@ class SupplierQueryService
 
         return Supplier::query()
             ->where('is_active', false)
+            ->where(function ($q) {
+                $q->where('type', 'drogueria')
+                  ->orWhereNull('type');
+            })
             ->when(!empty($search), function ($q) use ($search) {
                 $q->where(function ($sq) use ($search) {
                     $sq->where('name', 'like', "%{$search}%")

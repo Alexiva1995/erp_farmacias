@@ -60,11 +60,30 @@ class SupplierEmailCatalogService
         $userId = $systemUser?->id ?? 1;
 
         if ($targetSupplier) {
+            if ($targetSupplier->is_active === false) {
+                $skipped[] = [
+                    'supplier_id' => $targetSupplier->id,
+                    'supplier_name' => $targetSupplier->name,
+                    'reason' => 'El proveedor se encuentra desactivado.',
+                ];
+                return ['processed' => [], 'skipped' => $skipped, 'errors' => []];
+            }
+            if ($targetSupplier->type && $targetSupplier->type !== \App\Enums\SupplierType::DROGUERIA && $targetSupplier->type !== 'drogueria') {
+                $skipped[] = [
+                    'supplier_id' => $targetSupplier->id,
+                    'supplier_name' => $targetSupplier->name,
+                    'reason' => 'El proveedor no es de tipo mercancía/droguería.',
+                ];
+                return ['processed' => [], 'skipped' => $skipped, 'errors' => []];
+            }
             // Sincronizar proveedor específico
             $suppliersToProcess = [$targetSupplier];
         } else {
-            // Sincronizar solo proveedores activos con conexión tipo file/email que tengan un correo configurado
+            // Sincronizar solo proveedores activos de tipo mercancía con conexión tipo file/email que tengan un correo configurado
             $suppliersToProcess = Supplier::where('is_active', true)
+                ->where(function ($q) {
+                    $q->where('type', 'drogueria')->orWhereNull('type');
+                })
                 ->whereHas('connections', function ($q) {
                     $q->whereIn('type', ['file', 'email'])
                       ->where(function ($sq) {

@@ -29,7 +29,14 @@ class InventoryUpdateDaily extends Command
     {
         $this->info('Iniciando la actualización diaria de inventario...');
 
-        $connections = SupplierConnection::with('supplier')
+        $connections = SupplierConnection::whereHas('supplier', function ($q) {
+                $q->where(function ($sq) {
+                    $sq->where('is_active', true)->orWhereNull('is_active');
+                })->where(function ($sq) {
+                    $sq->where('type', 'drogueria')->orWhereNull('type');
+                });
+            })
+            ->with('supplier')
             ->whereIn('type', ['api', 'ftp'])
             ->get();
 

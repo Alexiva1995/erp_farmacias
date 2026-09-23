@@ -41,8 +41,9 @@ class UpdateSuppliersCommand extends Command
             $userId = (int) (\App\Models\User::first()?->id ?? 1);
         }
 
-        $query = Supplier::where(function ($q) {
-            $q->where('is_active', true)->orWhereNull('is_active');
+        $query = Supplier::where('is_active', true)
+        ->where(function ($q) {
+            $q->where('type', 'drogueria')->orWhereNull('type');
         })
         ->whereHas('connections', function ($q) {
             $q->whereIn('type', ['ftp', 'sftp', 'api', 'http']);

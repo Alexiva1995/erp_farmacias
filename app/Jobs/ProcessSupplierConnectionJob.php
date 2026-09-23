@@ -72,6 +72,17 @@ class ProcessSupplierConnectionJob implements ShouldQueue
             return;
         }
 
+        if ($this->supplier->type && $this->supplier->type !== \App\Enums\SupplierType::DROGUERIA && $this->supplier->type !== 'drogueria') {
+            Log::info("ProcessSupplierConnectionJob: El proveedor {$this->supplier->id} ({$this->supplier->name}) no es de tipo mercancía/droguería. Omitiendo.");
+            if ($this->statusId) {
+                SupplierConnectionStatus::where('id', $this->statusId)->update([
+                    'status' => 'failed',
+                    'message' => 'El proveedor no es de tipo mercancía/droguería.',
+                ]);
+            }
+            return;
+        }
+
         $status = $this->statusId ? SupplierConnectionStatus::find($this->statusId) : null;
         if (!$status) {
             $status = SupplierConnectionStatus::create([

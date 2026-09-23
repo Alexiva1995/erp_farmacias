@@ -19,8 +19,12 @@ class SupplierPublicUploadController extends Controller
     {
         $supplier = Supplier::where('public_token', $token)->first();
 
-        if (!$supplier) {
-            return ApiResponse::error('Enlace no válido o expirado.', 404);
+        if (!$supplier || $supplier->is_active === false) {
+            return ApiResponse::error('Enlace no válido o el proveedor se encuentra desactivado.', 404);
+        }
+
+        if ($supplier->type && $supplier->type !== \App\Enums\SupplierType::DROGUERIA && $supplier->type !== 'drogueria') {
+            return ApiResponse::error('El proveedor no es de tipo mercancía/droguería.', 404);
         }
 
         $connection = $supplier->connections()->first();
@@ -45,8 +49,12 @@ class SupplierPublicUploadController extends Controller
     {
         $supplier = Supplier::where('public_token', $token)->first();
 
-        if (!$supplier) {
-            return ApiResponse::error('Enlace no válido.', 404);
+        if (!$supplier || $supplier->is_active === false) {
+            return ApiResponse::error('El proveedor no existe o se encuentra desactivado.', 422);
+        }
+
+        if ($supplier->type && $supplier->type !== \App\Enums\SupplierType::DROGUERIA && $supplier->type !== 'drogueria') {
+            return ApiResponse::error('Solo los proveedores de mercancía / droguería pueden cargar catálogos de productos.', 422);
         }
 
         $connection = $supplier->connections()->first();

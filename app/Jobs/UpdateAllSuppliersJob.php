@@ -32,8 +32,9 @@ class UpdateAllSuppliersJob implements ShouldQueue
     {
         // 1. Log de inicio general del Job
 
-        $suppliers = Supplier::where(function ($q) {
-            $q->where('is_active', true)->orWhereNull('is_active');
+        $suppliers = Supplier::where('is_active', true)
+        ->where(function ($q) {
+            $q->where('type', 'drogueria')->orWhereNull('type');
         })
         ->whereHas('connections', function ($q) {
             $q->whereIn('type', ['ftp', 'sftp', 'api', 'http']);

@@ -177,7 +177,58 @@ class IaAssistantReportService
         $perPage = (int) ($filtros['itemsPerPage'] ?? 25);
         if ($perPage <= 0) $perPage = 999999;
 
+        $sortBy = $filtros['sortBy'] ?? 'solicitar';
+        $orderDir = strtolower($filtros['orderBy'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
+
         $procesado = $this->getProcessedCollection($filtros);
+
+        // Si se solicita ordenar o filtrar por campos de proveedores/ofertas calculados dinámicamente
+        $isSupplierSorting = in_array($sortBy, ['best_supplier_percentage', 'best_supplier_price', 'best_supplier_name']);
+        $hasSupplierFiltering = !empty($filtros['only_best_supplier']);
+
+        if ($isSupplierSorting || $hasSupplierFiltering) {
+            $this->hydrateSuppliers($procesado, $filtros);
+
+            if ($hasSupplierFiltering) {
+                $procesado = $procesado->filter(function ($item) {
+                    $pct = is_object($item) ? ($item->best_supplier_percentage ?? null) : ($item['best_supplier_percentage'] ?? null);
+                    $sup = is_object($item) ? ($item->best_supplier ?? null) : ($item['best_supplier'] ?? null);
+                    return $sup !== null && $pct !== null && $pct <= 0;
+                })->values();
+            }
+
+            if ($sortBy === 'best_supplier_percentage') {
+                $procesado = $procesado->sort(function ($a, $b) use ($orderDir) {
+                    $valA = is_object($a) ? ($a->best_supplier_percentage ?? null) : ($a['best_supplier_percentage'] ?? null);
+                    $valB = is_object($b) ? ($b->best_supplier_percentage ?? null) : ($b['best_supplier_percentage'] ?? null);
+
+                    $hasSupA = is_object($a) ? ($a->best_supplier ?? null) : ($a['best_supplier'] ?? null);
+                    $hasSupB = is_object($b) ? ($b->best_supplier ?? null) : ($b['best_supplier'] ?? null);
+
+                    if (!$hasSupA && !$hasSupB) return 0;
+                    if (!$hasSupA) return 1;
+                    if (!$hasSupB) return -1;
+
+                    // En orden 'asc' (menor a mayor): los valores más negativos (mayor ahorro, ej: -61%, -48%) aparecen primero
+                    // En orden 'desc' (mayor a menor): los valores más altos (más costosos, ej: +6133%, +10%) aparecen primero
+                    return $orderDir === 'asc' ? ($valA <=> $valB) : ($valB <=> $valA);
+                })->values();
+            } elseif ($sortBy === 'best_supplier_price') {
+                $procesado = $procesado->sort(function ($a, $b) use ($orderDir) {
+                    $valA = is_object($a) ? ($a->best_supplier_price ?? null) : ($a['best_supplier_price'] ?? null);
+                    $valB = is_object($b) ? ($b->best_supplier_price ?? null) : ($b['best_supplier_price'] ?? null);
+
+                    $hasSupA = is_object($a) ? ($a->best_supplier ?? null) : ($a['best_supplier'] ?? null);
+                    $hasSupB = is_object($b) ? ($b->best_supplier ?? null) : ($b['best_supplier'] ?? null);
+
+                    if (!$hasSupA && !$hasSupB) return 0;
+                    if (!$hasSupA) return 1;
+                    if (!$hasSupB) return -1;
+
+                    return $orderDir === 'asc' ? ($valA <=> $valB) : ($valB <=> $valA);
+                })->values();
+            }
+        }
 
         $total = $procesado->count();
 
@@ -185,12 +236,12 @@ class IaAssistantReportService
         $offset = ($page - 1) * $perPage;
         $itemsPagina = $procesado->slice($offset, $perPage)->values();
 
-        // 7. Hidratar tendencia de ventas y proveedores SOLO para los 25 ítems visibles de la página
+        // 7. Hidratar tendencia de ventas y proveedores SOLO para los ítems visibles de la página si no fueron hidratados previamente
         if (filter_var($filtros['with_trend'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
             $this->hydrateSalesTrend($itemsPagina);
         }
 
-        if (filter_var($filtros['with_suppliers'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
+        if (filter_var($filtros['with_suppliers'] ?? false, FILTER_VALIDATE_BOOLEAN) && !$isSupplierSorting && !$hasSupplierFiltering) {
             $this->hydrateSuppliers($itemsPagina, $filtros);
         }
 

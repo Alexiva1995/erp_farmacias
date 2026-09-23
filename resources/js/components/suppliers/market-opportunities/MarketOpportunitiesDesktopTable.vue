@@ -61,17 +61,22 @@ const emit = defineEmits([
           <div class="d-flex align-center gap-1 text-super-xs">
             <span
               class="text-disabled truncate"
-              style="max-inline-size: 200px"
-              >{{
-                item.active_ingredient_inventory || "SIN INGREDIENTE"
-              }}</span
+              style="max-inline-size: 160px"
+              :title="item.active_ingredient_inventory || 'SIN INGREDIENTE'"
             >
+              {{ item.active_ingredient_inventory || "SIN INGREDIENTE" }}
+            </span>
             <span class="text-disabled mx-1">|</span>
+            <span class="text-disabled font-weight-medium text-uppercase truncate" style="max-inline-size: 110px" :title="item.laboratory_name">
+              {{ item.laboratory_name || "S/L" }}
+            </span>
+            <span class="text-disabled mx-1">-</span>
             <span
-              class="text-medium-emphasis font-weight-bold text-uppercase truncate"
-              style="max-inline-size: 250px"
+              class="text-primary font-weight-black text-uppercase truncate"
+              style="max-inline-size: 140px"
+              :title="item.supplier_name"
             >
-              {{ item.laboratory_name || "S/L" }} - {{ item.supplier_name }}
+              {{ item.supplier_name }}
             </span>
           </div>
         </div>
