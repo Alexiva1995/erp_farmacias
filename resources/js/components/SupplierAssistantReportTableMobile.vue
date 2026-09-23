@@ -139,7 +139,14 @@ const handleManualOrder = async (item) => {
               </div>
             </div>
 
-            <div v-if="item.product_suppliers?.length" class="mt-3 pa-2 bg-var-theme-background rounded d-flex align-center justify-space-between border-dashed-thin">
+            <div v-if="item.best_supplier && Number(item.best_supplier_price) > 0" class="mt-3 pa-2 bg-var-theme-background rounded d-flex align-center justify-space-between border-dashed-thin">
+              <div class="d-flex align-center gap-2">
+                <VIcon icon="tabler-tag" size="14" color="success" />
+                <span class="text-super-xs font-weight-black text-success text-truncate max-w-100">{{ item.best_supplier.name || item.best_supplier.supplier?.name || 'PROVEEDOR' }}</span>
+              </div>
+              <span class="text-xs font-weight-black text-success">$ {{ Number(item.best_supplier_price || 0).toFixed(2) }}</span>
+            </div>
+            <div v-else-if="item.product_suppliers?.length" class="mt-3 pa-2 bg-var-theme-background rounded d-flex align-center justify-space-between border-dashed-thin">
               <div class="d-flex align-center gap-2">
                 <VIcon icon="tabler-tag" size="14" color="success" />
                 <span class="text-super-xs font-weight-black text-success text-truncate max-w-100">{{ item.product_suppliers[0].supplier.name }}</span>

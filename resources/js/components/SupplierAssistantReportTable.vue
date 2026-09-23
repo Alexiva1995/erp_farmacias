@@ -200,7 +200,41 @@ const handleManualOrder = async (item) => {
 
           <!-- Mejor Oferta -->
           <template #item.product_suppliers="{ item }">
-            <div v-if="item.product_suppliers?.length" class="d-flex flex-column align-center py-1">
+            <div v-if="item.best_supplier && Number(item.best_supplier_price) > 0" class="d-flex flex-column align-center py-1">
+              <div class="d-flex align-center gap-1 mb-1">
+                <span 
+                  class="text-xs font-weight-black"
+                  :class="item.best_supplier_percentage > 0 ? 'text-error' : 'text-success'"
+                >
+                  $ {{ Number(item.best_supplier_price || 0).toFixed(2) }}
+                </span>
+                <VChip 
+                  v-if="item.best_supplier_percentage && !isNaN(item.best_supplier_percentage) && item.best_supplier_percentage !== 0"
+                  variant="tonal" 
+                  :color="item.best_supplier_percentage > 0 ? 'error' : 'success'" 
+                  size="x-small" 
+                  class="px-1 font-weight-bold chip-percentage"
+                >
+                  {{ item.best_supplier_percentage > 0 ? '+' : '' }}{{ Math.round(item.best_supplier_percentage) }}%
+                </VChip>
+              </div>
+              <span class="text-super-xs text-disabled text-uppercase truncate font-weight-medium mb-1 max-w-110">
+                {{ item.best_supplier.name || item.best_supplier.supplier?.name || 'PROVEEDOR' }}
+              </span>
+
+              <div v-if="getSelectedSupplierPrice(item)" class="selected-supplier-box w-100 mt-1 pa-1 rounded border-t border-dashed">
+                <div class="d-flex flex-column align-center">
+                  <div class="d-flex align-center gap-1">
+                    <VIcon icon="tabler-user-check" size="10" color="primary" />
+                    <span class="text-xs font-weight-black text-primary">$ {{ getSelectedSupplierPrice(item).toFixed(2) }}</span>
+                  </div>
+                  <span v-if="props.globalDiscountPercent > 0" class="text-super-xs text-info font-weight-bold">
+                    {{ props.globalDiscountPercent }}% OFF
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div v-else-if="item.product_suppliers?.length" class="d-flex flex-column align-center py-1">
               <div class="d-flex align-center gap-1 mb-1">
                 <span 
                   class="text-xs font-weight-black"

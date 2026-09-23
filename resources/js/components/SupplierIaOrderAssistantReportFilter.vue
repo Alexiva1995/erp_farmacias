@@ -251,15 +251,15 @@ const stockOpciones = [
             </div>
 
             <!-- Switch Colombia -->
-            <div style="min-width: 115px; flex: 0 0 auto;">
-              <div class="d-flex align-center h-100 px-3 rounded-lg border bg-var-theme-background" style="min-height: 40px;">
+            <div style="min-width: 125px; flex: 0 0 auto;">
+              <div class="d-flex align-center justify-center px-3 rounded border bg-surface" style="height: 38px; min-height: 38px;">
                 <VSwitch
                   :model-value="props.checkColombia"
                   label="Colombia"
                   color="info"
                   hide-details
                   density="compact"
-                  class="font-weight-bold text-xs"
+                  class="font-weight-medium text-xs"
                   @update:model-value="emit('update:checkColombia', $event)"
                 />
                 <VTooltip activator="parent" location="top">Filtrar solo origen Colombia</VTooltip>
