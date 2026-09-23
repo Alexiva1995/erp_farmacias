@@ -628,10 +628,10 @@ class IaAssistantReportService
 
     /**
      * Procesa el reporte con el método STOCKOUT-ADJUSTED ROP PLUS (Inteligencia de Demanda y Preferencia Orgánica).
-     * Incluye 3 Capas Analíticas:
-     * 1. Filtro de Disponibilidad Simultánea (Índice de Preferencia Orgánica - IPO).
-     * 2. Ajuste de Elasticidad Precio-Demanda por variación de costo de proveedor.
-     * 3. Proyección de Demanda Verdadera (True Intent) y Distribución Óptima de Presupuesto Grupal.
+     * Incluye 3 Capas Analíticas Rigurosas:
+     * 1. Filtro de Disponibilidad Concurrente Temporal (Índice de Preferencia Orgánica - IPO sobre días coincidentes).
+     * 2. Elasticidad Cruzada Intragrupo basada en Precios Históricos Reales de Transacción (order_details.price).
+     * 3. Techo Antiespeculativo de Concurrencia (Umbral mínimo de 3 días) y Proyección True Intent ROP.
      */
     private function processStockoutAdjustedRopPlusReport($resultados, array $filtros)
     {
@@ -642,7 +642,7 @@ class IaAssistantReportService
             return $resultados;
         }
 
-        // 1. Primero ejecutamos el cálculo base de Stockout-Adjusted ROP
+        // 1. Primero ejecutamos el cálculo base de Stockout-Adjusted ROP (Limpia quiebres individuales)
         $items = $this->processStockoutAdjustedRopReport($items, $filtros);
 
         // 2. Extraer group_ids para analizar la preferencia simultánea de los grupos genéricos
@@ -656,13 +656,44 @@ class IaAssistantReportService
         $allGroupProducts = \App\Models\Product::whereIn('group_id', $groupIds)
             ->where('is_deleted', false)
             ->where('is_scarce', false)
-            ->get(['id', 'group_id', 'sales_average', 'sales_average_weighted', 'unit_cost', 'sale_price'])
+            ->get(['id', 'group_id', 'sales_average', 'sales_average_weighted', 'unit_cost', 'sale_price', 'is_colombian_origin'])
             ->groupBy('group_id');
+
+        $allProductIds = $allGroupProducts->flatten()->pluck('id')->unique()->toArray();
 
         $now = now();
         $date90Days = $now->copy()->subDays(90)->format('Y-m-d H:i:s');
 
-        // 4. Calcular el Índice de Preferencia Orgánica (IPO) y Elasticidad Cruzada de Precio por producto en cada grupo
+        // 4. Consulta SQL Masiva en Bloque: Ventas diarias, ingresos y costos históricos por producto (Últimos 90 días)
+        $dailySales = \Illuminate\Support\Facades\DB::table('order_details')
+            ->join('orders', 'order_details.order_id', '=', 'orders.id')
+            ->whereIn('order_details.product_id', $allProductIds)
+            ->where('orders.status', 'Completed')
+            ->where('orders.created_at', '>=', $date90Days)
+            ->select(
+                'order_details.product_id',
+                \Illuminate\Support\Facades\DB::raw('DATE(orders.created_at) as sale_date'),
+                \Illuminate\Support\Facades\DB::raw('SUM(order_details.quantity) as total_qty'),
+                \Illuminate\Support\Facades\DB::raw('SUM(order_details.price * order_details.quantity) as total_revenue'),
+                \Illuminate\Support\Facades\DB::raw('SUM(order_details.unit_cost * order_details.quantity) as total_cost')
+            )
+            ->groupBy('order_details.product_id', \Illuminate\Support\Facades\DB::raw('DATE(orders.created_at)'))
+            ->get();
+
+        // Mapear ventas diarias en memoria O(1)
+        $salesByProductAndDate = [];
+        foreach ($dailySales as $row) {
+            $pId = (int)$row->product_id;
+            $d = (string)$row->sale_date;
+            $salesByProductAndDate[$pId][$d] = [
+                'qty' => (float)$row->total_qty,
+                'revenue' => (float)$row->total_revenue,
+                'cost' => (float)$row->total_cost,
+                'avg_price' => (float)$row->total_qty > 0 ? ((float)$row->total_revenue / (float)$row->total_qty) : 0,
+            ];
+        }
+
+        // 5. Motor de Concurrencia Temporal y Elasticidad Cruzada por Grupo
         $preferenceShareByProduct = [];
         $groupDemandSum = [];
         $priceElasticityFactorByProduct = [];
@@ -670,7 +701,7 @@ class IaAssistantReportService
         foreach ($groupIds as $gId) {
             $groupProds = $allGroupProducts->get($gId);
             if (!$groupProds || $groupProds->count() <= 1) {
-                // Producto único en el grupo: 100% de preferencia y sin competencia cruzada de precio
+                // Producto único en el grupo: 100% de preferencia y sin competencia intragrupo
                 if ($groupProds) {
                     foreach ($groupProds as $gp) {
                         $preferenceShareByProduct[$gp->id] = 1.0;
@@ -680,68 +711,158 @@ class IaAssistantReportService
                 continue;
             }
 
-            // Suma ponderada total de la demanda del grupo
+            // Suma ponderada total de la demanda del grupo (Base Stockout-Adjusted ROP)
             $totalGroupWeighted = $groupProds->sum(function($gp) {
                 return (float)(($gp->sales_average_weighted ?? 0) > 0 ? $gp->sales_average_weighted : ($gp->sales_average ?? 0));
             });
             $groupDemandSum[$gId] = $totalGroupWeighted;
 
-            // Ventas históricas en días de concurrencia de stock (últimos 90 días)
             $pIds = $groupProds->pluck('id')->toArray();
-            $recentSales = \Illuminate\Support\Facades\DB::table('order_details')
-                ->join('orders', 'order_details.order_id', '=', 'orders.id')
-                ->whereIn('order_details.product_id', $pIds)
-                ->where('orders.status', 'Completed')
-                ->where('orders.created_at', '>=', $date90Days)
-                ->select('order_details.product_id', \Illuminate\Support\Facades\DB::raw('SUM(order_details.quantity) as total_sold'))
-                ->groupBy('order_details.product_id')
-                ->pluck('total_sold', 'product_id');
 
-            $totalSoldInGroup = $recentSales->sum();
+            // Identificar los días donde al menos 2 productos del grupo tuvieron ventas simultáneas
+            $productsSellingOnDate = [];
+            foreach ($pIds as $pId) {
+                foreach (($salesByProductAndDate[$pId] ?? []) as $dateStr => $data) {
+                    if ($data['qty'] > 0) {
+                        $productsSellingOnDate[$dateStr][] = $pId;
+                    }
+                }
+            }
 
-            // Análisis de precios competitivos dentro del grupo sustituto (Costo o Precio de Venta)
-            $validPrices = $groupProds->map(function($gp) {
-                $cost = (float)($gp->unit_cost ?? 0);
-                $sale = (float)($gp->sale_price ?? 0);
-                return $sale > 0 ? $sale : $cost;
-            })->filter(fn($val) => $val > 0);
+            $concurrentDates = [];
+            foreach ($productsSellingOnDate as $dateStr => $sellingPIds) {
+                if (count(array_unique($sellingPIds)) >= 2) {
+                    $concurrentDates[] = $dateStr;
+                }
+            }
+            $coincidentDaysCount = count($concurrentDates);
 
-            $minGroupPrice = $validPrices->isNotEmpty() ? $validPrices->min() : 0;
-            $avgGroupPrice = $validPrices->isNotEmpty() ? $validPrices->avg() : 0;
+            // Control Técnico: Umbral mínimo de concurrencia (>= 3 días) para evitar distorsiones por ventas atípicas de 1 solo día
+            if ($coincidentDaysCount >= 3) {
+                $concurrentVelocities = [];
+                $concurrentAvgPrices = [];
+                $dailyPriceGaps = [];
 
-            foreach ($groupProds as $gp) {
-                // Cuota base de preferencia histórica
-                if ($totalSoldInGroup > 0) {
-                    $sold = (float)($recentSales->get($gp->id) ?? 0);
-                    $preferenceShareByProduct[$gp->id] = max(0.05, $sold / $totalSoldInGroup);
-                } elseif ($totalGroupWeighted > 0) {
-                    $itemWeight = (float)(($gp->sales_average_weighted ?? 0) > 0 ? $gp->sales_average_weighted : ($gp->sales_average ?? 0));
-                    $preferenceShareByProduct[$gp->id] = max(0.05, $itemWeight / $totalGroupWeighted);
-                } else {
-                    $preferenceShareByProduct[$gp->id] = 1.0 / $groupProds->count();
+                // 1. Calcular precio promedio del grupo en cada día concurrente individual
+                $groupDailyAvgPrices = [];
+                foreach ($concurrentDates as $cDate) {
+                    $dayRevenue = 0;
+                    $dayQty = 0;
+                    foreach ($pIds as $pId) {
+                        if (isset($salesByProductAndDate[$pId][$cDate])) {
+                            $dayRevenue += $salesByProductAndDate[$pId][$cDate]['revenue'];
+                            $dayQty += $salesByProductAndDate[$pId][$cDate]['qty'];
+                        }
+                    }
+                    $groupDailyAvgPrices[$cDate] = $dayQty > 0 ? ($dayRevenue / $dayQty) : 0;
                 }
 
-                // Elasticidad Cruzada Intragrupo: Compara el precio de este producto frente a los demás competidores del grupo
-                $itemPrice = (float)(($gp->sale_price ?? 0) > 0 ? $gp->sale_price : ($gp->unit_cost ?? 0));
-                if ($itemPrice > 0 && $avgGroupPrice > 0) {
-                    // Ratio de precio frente al promedio del grupo
-                    // Si el producto es 50% más costoso que el promedio del grupo, su demanda se contrae
-                    // Si es más económico que el promedio, su demanda proyectada se incentiva (hasta un +40%)
-                    $priceRatio = $itemPrice / $avgGroupPrice;
-                    if ($priceRatio > 1.0) {
-                        // Sobreprecio frente a alternativas del grupo -> penaliza demanda estimada (mínimo 40% de retención)
-                        $priceElasticityFactorByProduct[$gp->id] = max(0.4, 1.0 - (0.6 * ($priceRatio - 1.0)));
-                    } else {
-                        // Opción económica o más competitiva dentro del grupo -> impulsa demanda estimada
-                        $priceElasticityFactorByProduct[$gp->id] = min(1.4, 1.0 + (0.5 * (1.0 - $priceRatio)));
+                // 2. Medir velocidad concurrente y brechas relativas de precio día a día (P_gap)
+                foreach ($groupProds as $gp) {
+                    $pId = $gp->id;
+                    $soldInConcurrent = 0;
+                    $revInConcurrent = 0;
+                    $daysActiveInConcurrent = 0;
+                    $accumulatedGap = 0;
+                    $gapDaysCount = 0;
+
+                    foreach ($concurrentDates as $cDate) {
+                        if (isset($salesByProductAndDate[$pId][$cDate])) {
+                            $itemDayQty = $salesByProductAndDate[$pId][$cDate]['qty'];
+                            $itemDayRev = $salesByProductAndDate[$pId][$cDate]['revenue'];
+                            $itemDayPrice = $itemDayQty > 0 ? ($itemDayRev / $itemDayQty) : 0;
+
+                            $soldInConcurrent += $itemDayQty;
+                            $revInConcurrent += $itemDayRev;
+                            $daysActiveInConcurrent++;
+
+                            $groupDayPrice = $groupDailyAvgPrices[$cDate] ?? 0;
+                            if ($itemDayPrice > 0 && $groupDayPrice > 0) {
+                                $accumulatedGap += ($itemDayPrice / $groupDayPrice);
+                                $gapDaysCount++;
+                            }
+                        }
                     }
-                } else {
-                    $priceElasticityFactorByProduct[$gp->id] = 1.0;
+
+                    // Velocidad Diaria Concurrente = Uds Vendidas en Días Simultáneos / Días Simultáneos de Coexistencia
+                    $vConcurrente = $daysActiveInConcurrent > 0 
+                        ? ($soldInConcurrent / $daysActiveInConcurrent) 
+                        : 0;
+
+                    $concurrentVelocities[$pId] = $vConcurrente;
+                    $concurrentAvgPrices[$pId] = $soldInConcurrent > 0 
+                        ? ($revInConcurrent / $soldInConcurrent) 
+                        : (float)(($gp->sale_price ?? 0) > 0 ? $gp->sale_price : ($gp->unit_cost ?? 0));
+
+                    $dailyPriceGaps[$pId] = $gapDaysCount > 0 ? ($accumulatedGap / $gapDaysCount) : 1.0;
+                }
+
+                $totalConcurrentVelocity = array_sum($concurrentVelocities);
+
+                foreach ($groupProds as $gp) {
+                    $pId = $gp->id;
+
+                    // Índice de Preferencia Orgánica (IPO) basado en Velocidad Concurrente
+                    if ($totalConcurrentVelocity > 0 && $concurrentVelocities[$pId] > 0) {
+                        $baseIpo = max(0.05, $concurrentVelocities[$pId] / $totalConcurrentVelocity);
+                    } elseif ($totalGroupWeighted > 0) {
+                        $itemWeight = (float)(($gp->sales_average_weighted ?? 0) > 0 ? $gp->sales_average_weighted : ($gp->sales_average ?? 0));
+                        $baseIpo = max(0.05, $itemWeight / $totalGroupWeighted);
+                    } else {
+                        $baseIpo = 1.0 / $groupProds->count();
+                    }
+
+                    $preferenceShareByProduct[$pId] = $baseIpo;
+
+                    // Elasticidad de Preferencia Dinámica por Brecha Relativa de Precio (P_gap)
+                    $pGap = $dailyPriceGaps[$pId] ?? 1.0;
+                    if ($pGap > 1.0) {
+                        // El producto estuvo en promedio más caro que las alternativas presentes: la preferencia disminuye
+                        $priceElasticityFactorByProduct[$pId] = max(0.40, 1.0 - (0.60 * ($pGap - 1.0)));
+                    } elseif ($pGap < 1.0 && $pGap > 0) {
+                        // El producto fue más económico/competitivo en mostrador: la preferencia aumenta
+                        $priceElasticityFactorByProduct[$pId] = min(1.40, 1.0 + (0.50 * (1.0 - $pGap)));
+                    } else {
+                        $priceElasticityFactorByProduct[$pId] = 1.0;
+                    }
+                }
+            } else {
+                // Fallback Antiespeculativo: Menos de 3 días de coexistencia simultánea
+                // Se usa la demanda individual limpia (Método 5) para no inflar pedidos por ventas aisladas
+                $validPrices = $groupProds->map(function($gp) {
+                    $cost = (float)($gp->unit_cost ?? 0);
+                    $sale = (float)($gp->sale_price ?? 0);
+                    return $sale > 0 ? $sale : $cost;
+                })->filter(fn($val) => $val > 0);
+
+                $avgStaticPrice = $validPrices->isNotEmpty() ? $validPrices->avg() : 0;
+
+                foreach ($groupProds as $gp) {
+                    $pId = $gp->id;
+                    if ($totalGroupWeighted > 0) {
+                        $itemWeight = (float)(($gp->sales_average_weighted ?? 0) > 0 ? $gp->sales_average_weighted : ($gp->sales_average ?? 0));
+                        $preferenceShareByProduct[$pId] = max(0.05, $itemWeight / $totalGroupWeighted);
+                    } else {
+                        $preferenceShareByProduct[$pId] = 1.0 / $groupProds->count();
+                    }
+
+                    // Elasticidad suave de catálogo
+                    $itemPrice = (float)(($gp->sale_price ?? 0) > 0 ? $gp->sale_price : ($gp->unit_cost ?? 0));
+                    if ($itemPrice > 0 && $avgStaticPrice > 0) {
+                        $priceRatio = $itemPrice / $avgStaticPrice;
+                        if ($priceRatio > 1.0) {
+                            $priceElasticityFactorByProduct[$pId] = max(0.50, 1.0 - (0.50 * ($priceRatio - 1.0)));
+                        } else {
+                            $priceElasticityFactorByProduct[$pId] = min(1.30, 1.0 + (0.30 * (1.0 - $priceRatio)));
+                        }
+                    } else {
+                        $priceElasticityFactorByProduct[$pId] = 1.0;
+                    }
                 }
             }
         }
 
-        // 5. Aplicar la Elasticidad Cruzada Intragrupo y True Intent Share a cada ítem
+        // 6. Aplicar la Demanda True Intent (Demanda Grupal * IPO Concurrente * Elasticidad Histórica) y ROP
         $coverageDays = $this->extractCoverageDays($filtros['lapso_de_tiempo'] ?? '1 month');
         $leadTimeDays = 7;
         $bufferDays = 7;
@@ -756,7 +877,7 @@ class IaAssistantReportService
             $gId = $item->group_id;
             $groupTotalDemand = $groupDemandSum[$gId] ?? ($item->promedio_calculado ?? 0);
 
-            // Demanda ajustada por preferencia histórica y elasticidad de precio competitiva frente al grupo
+            // Demanda ajustada por preferencia concurrente y elasticidad histórica real
             $demandaTrueIntent = $groupTotalDemand * $ipo * $elasticityFactor;
 
             $isColombian = (bool)((int)($item->is_colombian_origin ?? 0) === 1);
