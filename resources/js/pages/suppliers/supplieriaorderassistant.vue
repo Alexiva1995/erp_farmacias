@@ -47,7 +47,7 @@ const isFavorite = ref(false);
 const tipoExclusion = ref([]);
 const ordenarAhorro = ref(false);
 const searchQuery = ref("");
-const withSuppliers = ref(false);
+const withSuppliers = ref(true);
 const soloConCoincidencias = ref(false);
 const showIgnored = ref(false);
 const showGraphs = ref(false);
@@ -72,7 +72,7 @@ const displayedTotal = computed(() => {
 });
 
 const handleClearFilters = () => {
-  withSuppliers.value = false;
+  withSuppliers.value = true;
   soloConCoincidencias.value = false;
   con_descuento.value = false;
   tipo_de_vista.value = false;
@@ -203,19 +203,6 @@ async function actualizarTabla() {
 }
 
 const skipAiMatch = ref(true);
-
-async function handleFetchSuppliers() {
-  withSuppliers.value = true;
-  skipAiMatch.value = true;
-  await actualizarTabla();
-}
-
-async function handleFetchAiMatches() {
-  withSuppliers.value = true;
-  skipAiMatch.value = false;
-  toast.info("Iniciando búsqueda de coincidencias con IA...");
-  await actualizarTabla();
-}
 
 const updateTableOptionsTable = (options) => {
   page.value = options.page;
@@ -526,11 +513,6 @@ const handleOpenComparator = ({ item, quantity }) => {
 
 onMounted(async () => {
   await Promise.all([consultarGruposProductos(), consultarLaboratorios(), consultarProveedores()]);
-  if (route.query.auto_match === 'true' || route.query.auto_order === 'true') {
-    withSuppliers.value = true;
-    skipAiMatch.value = false;
-    toast.info("Iniciando búsqueda automática de proveedores e IA para los productos críticos...");
-  }
   await actualizarTabla();
 });
 </script>
@@ -593,8 +575,6 @@ onMounted(async () => {
         @clear="handleClearFilters"
         @clear-ignore="handleClearIgnore"
         @pedirAhorro="pedirTodoAhorro"
-        @fetchSuppliers="handleFetchSuppliers"
-        @fetchAiMatches="handleFetchAiMatches"
         @exportarColombianos="handleExportarColombianos"
       />
 

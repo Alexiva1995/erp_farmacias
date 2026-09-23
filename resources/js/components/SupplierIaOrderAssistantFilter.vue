@@ -56,8 +56,6 @@ const emit = defineEmits([
   "clear",
   "clear-ignore",
   "pedirAhorro",
-  "fetchSuppliers",
-  "fetchAiMatches",
   "exportarColombianos",
 ]);
 
@@ -149,32 +147,6 @@ const hasAdvancedFilters = computed(() => (
       >
         <VIcon icon="tabler-eye-check" />
         <VTooltip activator="parent" location="top">Restaurar Ocultos (Ignore)</VTooltip>
-      </VBtn>
-
-      <!-- Comparar Precios Más Bajos (Búsqueda directa por costo) -->
-      <VBtn
-        icon
-        color="warning"
-        variant="tonal"
-        size="38"
-        class="ml-1 shadow-sm rounded-circle"
-        @click="emit('fetchSuppliers')"
-      >
-        <VIcon icon="tabler-currency-dollar" size="20" />
-        <VTooltip activator="parent" location="top">Comparar Precios Más Bajos (Directo)</VTooltip>
-      </VBtn>
-
-      <!-- Coincidencia Inteligente por IA -->
-      <VBtn
-        icon
-        color="secondary"
-        variant="tonal"
-        size="38"
-        class="ml-1 shadow-sm rounded-circle"
-        @click="emit('fetchAiMatches')"
-      >
-        <VIcon icon="tabler-sparkles" size="20" />
-        <VTooltip activator="parent" location="top">Búsqueda Inteligente por IA (Lento)</VTooltip>
       </VBtn>
 
       <!-- Pedir Todo en Ahorro -->
