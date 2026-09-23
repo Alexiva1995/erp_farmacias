@@ -4,11 +4,21 @@ import DeleteOldProductsDialog from "@/components/dialogs/DeleteOldProductsDialo
 import GeneratePublicLinkDialog from "@/components/dialogs/GeneratePublicLinkDialog.vue";
 import ShowImportProductsFileDialog from "@/components/dialogs/ShowImportProductsFileDialog.vue";
 import ShowSupplierProductsDialog from "@/components/dialogs/ShowSupplierProductsDialog.vue";
+import SupplierConnectionHistoryDialog from "@/components/dialogs/SupplierConnectionHistoryDialog.vue";
 import ComparatorCatalogFiltersDialog from "@/components/dialogs/ComparatorCatalogFiltersDialog.vue";
 import ProductComparisionProductsTable from "@/components/ProductComparisionProductsTable.vue";
 import ProductComparisionTable from "@/components/ProductComparisionTable.vue";
 import ProductsWithoutSupplierComparatorTable from "@/components/ProductsWithoutSupplierComparatorTable.vue";
+import { ref } from "vue";
 import { useProductComparator } from "./useProductComparator";
+
+const isConnectionHistoryDialogVisible = ref(false);
+const connectionHistorySupplier = ref(null);
+
+const handleViewConnectionHistory = (supplier) => {
+  connectionHistorySupplier.value = { ...supplier };
+  isConnectionHistoryDialogVisible.value = true;
+};
 
 const {
   isNeedsVisible,
@@ -119,6 +129,10 @@ const {
         v-model:isDialogVisible="isDeleteDialogVisible"
         @submit="handleDeleteOldProducts"
       />
+      <SupplierConnectionHistoryDialog
+        v-model="isConnectionHistoryDialogVisible"
+        :supplier="connectionHistorySupplier"
+      />
 
       <!-- Tabs Container -->
       <VCard class="rounded-lg border shadow-sm overflow-hidden">
@@ -176,6 +190,7 @@ const {
             @open-discount-dialog="handleShowDiscountDialog"
             @open-public-link="handleOpenPublicLink"
             @toggle-status="handleToggleSupplierStatus"
+            @view-connection-history="handleViewConnectionHistory"
             @update-all-api="handleUpdateAllApi"
             @refresh="fetchSupplierConnections"
           />

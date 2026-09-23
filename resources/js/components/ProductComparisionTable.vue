@@ -29,6 +29,7 @@ const emit = defineEmits([
   "toggle-status",
   "update-all-api",
   "refresh",
+  "view-connection-history",
 ]);
 
 const { mdAndUp } = useDisplay();
@@ -314,6 +315,13 @@ const headers = [
                   </template>
                   <VList density="compact" class="py-2 rounded-lg">
                     <VListItem
+                      @click="emit('view-connection-history', item)"
+                      prepend-icon="tabler-history"
+                      base-color="info"
+                    >
+                      <VListItemTitle>Historial de Conexiones</VListItemTitle>
+                    </VListItem>
+                    <VListItem
                       @click="copyPublicLink(item)"
                       prepend-icon="tabler-copy"
                     >
@@ -480,6 +488,13 @@ const headers = [
                       />
                     </template>
                     <VList density="compact" class="py-2 rounded-lg">
+                      <VListItem
+                        @click="emit('view-connection-history', item)"
+                        prepend-icon="tabler-history"
+                        base-color="info"
+                      >
+                        <VListItemTitle>Historial de Conexiones</VListItemTitle>
+                      </VListItem>
                       <VListItem
                         @click="copyPublicLink(item)"
                         prepend-icon="tabler-copy"
