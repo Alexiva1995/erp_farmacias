@@ -651,29 +651,31 @@ class IaAssistantReportService
         $now = now();
         $date90Days = $now->copy()->subDays(90)->format('Y-m-d H:i:s');
 
-        // 4. Calcular el Índice de Preferencia Orgánica (IPO) por producto en cada grupo
+        // 4. Calcular el Índice de Preferencia Orgánica (IPO) y Elasticidad Cruzada de Precio por producto en cada grupo
         $preferenceShareByProduct = [];
         $groupDemandSum = [];
+        $priceElasticityFactorByProduct = [];
 
         foreach ($groupIds as $gId) {
             $groupProds = $allGroupProducts->get($gId);
             if (!$groupProds || $groupProds->count() <= 1) {
-                // Producto único en el grupo: 100% de preferencia
+                // Producto único en el grupo: 100% de preferencia y sin competencia cruzada de precio
                 if ($groupProds) {
                     foreach ($groupProds as $gp) {
                         $preferenceShareByProduct[$gp->id] = 1.0;
+                        $priceElasticityFactorByProduct[$gp->id] = 1.0;
                     }
                 }
                 continue;
             }
 
-            // Suma ponderada total del grupo
+            // Suma ponderada total de la demanda del grupo
             $totalGroupWeighted = $groupProds->sum(function($gp) {
                 return (float)(($gp->sales_average_weighted ?? 0) > 0 ? $gp->sales_average_weighted : ($gp->sales_average ?? 0));
             });
             $groupDemandSum[$gId] = $totalGroupWeighted;
 
-            // Ventas históricas en días de concurrencia de stock
+            // Ventas históricas en días de concurrencia de stock (últimos 90 días)
             $pIds = $groupProds->pluck('id')->toArray();
             $recentSales = \Illuminate\Support\Facades\DB::table('order_details')
                 ->join('orders', 'order_details.order_id', '=', 'orders.id')
@@ -686,7 +688,18 @@ class IaAssistantReportService
 
             $totalSoldInGroup = $recentSales->sum();
 
+            // Análisis de precios competitivos dentro del grupo sustituto (Costo o Precio de Venta)
+            $validPrices = $groupProds->map(function($gp) {
+                $cost = (float)($gp->unit_cost ?? 0);
+                $sale = (float)($gp->sale_price ?? 0);
+                return $sale > 0 ? $sale : $cost;
+            })->filter(fn($val) => $val > 0);
+
+            $minGroupPrice = $validPrices->isNotEmpty() ? $validPrices->min() : 0;
+            $avgGroupPrice = $validPrices->isNotEmpty() ? $validPrices->avg() : 0;
+
             foreach ($groupProds as $gp) {
+                // Cuota base de preferencia histórica
                 if ($totalSoldInGroup > 0) {
                     $sold = (float)($recentSales->get($gp->id) ?? 0);
                     $preferenceShareByProduct[$gp->id] = max(0.05, $sold / $totalSoldInGroup);
@@ -696,34 +709,44 @@ class IaAssistantReportService
                 } else {
                     $preferenceShareByProduct[$gp->id] = 1.0 / $groupProds->count();
                 }
+
+                // Elasticidad Cruzada Intragrupo: Compara el precio de este producto frente a los demás competidores del grupo
+                $itemPrice = (float)(($gp->sale_price ?? 0) > 0 ? $gp->sale_price : ($gp->unit_cost ?? 0));
+                if ($itemPrice > 0 && $avgGroupPrice > 0) {
+                    // Ratio de precio frente al promedio del grupo
+                    // Si el producto es 50% más costoso que el promedio del grupo, su demanda se contrae
+                    // Si es más económico que el promedio, su demanda proyectada se incentiva (hasta un +40%)
+                    $priceRatio = $itemPrice / $avgGroupPrice;
+                    if ($priceRatio > 1.0) {
+                        // Sobreprecio frente a alternativas del grupo -> penaliza demanda estimada (mínimo 40% de retención)
+                        $priceElasticityFactorByProduct[$gp->id] = max(0.4, 1.0 - (0.6 * ($priceRatio - 1.0)));
+                    } else {
+                        // Opción económica o más competitiva dentro del grupo -> impulsa demanda estimada
+                        $priceElasticityFactorByProduct[$gp->id] = min(1.4, 1.0 + (0.5 * (1.0 - $priceRatio)));
+                    }
+                } else {
+                    $priceElasticityFactorByProduct[$gp->id] = 1.0;
+                }
             }
         }
 
-        // 5. Aplicar la Capa 2 (Elasticidad) y Capa 3 (True Intent Share) a cada ítem
+        // 5. Aplicar la Elasticidad Cruzada Intragrupo y True Intent Share a cada ítem
         $coverageDays = $this->extractCoverageDays($filtros['lapso_de_tiempo'] ?? '1 month');
         $leadTimeDays = 7;
         $bufferDays = 7;
 
-        $items->transform(function ($item) use ($preferenceShareByProduct, $groupDemandSum, $coverageDays, $leadTimeDays, $bufferDays) {
+        $items->transform(function ($item) use ($preferenceShareByProduct, $groupDemandSum, $priceElasticityFactorByProduct, $coverageDays, $leadTimeDays, $bufferDays) {
             if (!$item->group_id || !isset($preferenceShareByProduct[$item->id])) {
                 return $item;
             }
 
             $ipo = $preferenceShareByProduct[$item->id] ?? 1.0;
+            $elasticityFactor = $priceElasticityFactorByProduct[$item->id] ?? 1.0;
             $gId = $item->group_id;
             $groupTotalDemand = $groupDemandSum[$gId] ?? ($item->promedio_calculado ?? 0);
 
-            // True Intent Demand: La demanda mensual real que le corresponde según su IPO
-            $demandaTrueIntent = $groupTotalDemand * $ipo;
-
-            // Elasticidad por variación de precio frente al proveedor
-            $currentCost = (float)($item->unit_cost ?? 0);
-            $bestCost = (float)($item->best_supplier_price ?? $currentCost);
-            if ($currentCost > 0 && $bestCost > $currentCost) {
-                $pctIncrease = ($bestCost - $currentCost) / $currentCost;
-                // Elasticidad moderada e = 0.5 (si sube 20%, reduce demanda estimada en 10%)
-                $demandaTrueIntent = $demandaTrueIntent * max(0.5, (1.0 - (0.5 * $pctIncrease)));
-            }
+            // Demanda ajustada por preferencia histórica y elasticidad de precio competitiva frente al grupo
+            $demandaTrueIntent = $groupTotalDemand * $ipo * $elasticityFactor;
 
             $isColombian = (bool)((int)($item->is_colombian_origin ?? 0) === 1);
             $effectiveLeadTime = $isColombian ? 14 : $leadTimeDays;
