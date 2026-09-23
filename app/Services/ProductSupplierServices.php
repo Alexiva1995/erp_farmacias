@@ -11,7 +11,7 @@ use App\Models\Supplier;
 use App\Repositories\ProductLotsRepository;
 use App\Repositories\ProductSupplierRepository;
 use DateTime;
-use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Collection;
 
 class ProductSupplierServices implements ProductSupplier
 {
@@ -30,9 +30,10 @@ class ProductSupplierServices implements ProductSupplier
 
 
 
-    public function consultSupplierByProductWithBetterPrice(Product $product, string $conDescuento): Collection
+    public function consultSupplierByProductWithBetterPrice(object|array $product, string $conDescuento): Collection
     {
-        return $this->productSupplierRepository->consultSupplierByProductWithBetterPrice($product->id, $conDescuento);
+        $id = is_array($product) ? ($product['id'] ?? null) : ($product->id ?? null);
+        return $this->productSupplierRepository->consultSupplierByProductWithBetterPrice($id, $conDescuento);
     }
 
 
@@ -110,8 +111,9 @@ class ProductSupplierServices implements ProductSupplier
         return $respuesta;
     }
 
-    public function supplierProductFormat(Product $product, Supplier $supplier, ModelsProductSupplier $productSupplier, $repuesto): array
+    public function supplierProductFormat(object|array $product, Supplier $supplier, ModelsProductSupplier $productSupplier, $repuesto): array
     {
+        $solicitar = is_array($product) ? ($product['solicitar'] ?? 0) : ($product->solicitar ?? 0);
         $data = [
             // object
             "supplier" => $supplier,
@@ -120,7 +122,7 @@ class ProductSupplierServices implements ProductSupplier
             "precio_final_supplier" => 0,
             // data
             "reponer" => $repuesto,
-            "solicitar" => $product->solicitar,
+            "solicitar" => $solicitar,
             "percentageIncrease" => 0,
             "increase" => null,
             "tolerance" => 0,
@@ -182,11 +184,12 @@ class ProductSupplierServices implements ProductSupplier
 
         for ($index = 0; $index < count($productos); $index++) {
             $producto = $productos[$index];
-            $costoBaseProducto = (float) ($producto["product"]->unit_cost ?? 0);
+            $prodObj = $producto["product"] ?? null;
+            $costoBaseProducto = is_array($prodObj) ? (float)($prodObj['unit_cost'] ?? 0) : (float)($prodObj->unit_cost ?? 0);
 
             if ($costoBaseProducto > 0) {
                 if ((float) $producto["precio_final_supplier"] < $costoBaseProducto) {
-                    $fechaReferencia = $producto["product"]->updated_at ?? new \DateTime();
+                    $fechaReferencia = is_array($prodObj) ? ($prodObj['updated_at'] ?? new \DateTime()) : ($prodObj->updated_at ?? new \DateTime());
 
                     if (!($fechaReferencia instanceof \DateTimeInterface)) {
                         $fechaReferencia = new \DateTime((string) $fechaReferencia);
@@ -214,7 +217,11 @@ class ProductSupplierServices implements ProductSupplier
             $producto = $productos[$index];
 
             $lote = $this->productLotsRepository->checkTheLotWithTheLowestPriceOnlyProduct($producto);
-            $producto->lote = $lote;
+            if (is_object($producto)) {
+                $producto->lote = $lote;
+            } elseif (is_array($producto)) {
+                $producto['lote'] = $lote;
+            }
             $productosConOportunidad[] = $producto;
         }
 
@@ -226,17 +233,23 @@ class ProductSupplierServices implements ProductSupplier
      * Si el producto tiene un precio de bloqueo activo (price_lock_baseline), compara contra dicho precio.
      * Si el precio del proveedor baja de forma que iguale o sea menor que el bloqueo, el bloqueo se desactiva.
      */
-    private function getBaseCostForToleranceComparison(Product $product, float $supplierPrice = 0): float
+    private function getBaseCostForToleranceComparison(object|array $product, float $supplierPrice = 0): float
     {
-        $localCost = (float)($product->unit_cost ?? 0);
+        $localCost = is_array($product) ? (float)($product['unit_cost'] ?? 0) : (float)($product->unit_cost ?? 0);
+        $priceLockBaseline = is_array($product) ? ($product['price_lock_baseline'] ?? null) : ($product->price_lock_baseline ?? null);
+        $productId = is_array($product) ? ($product['id'] ?? null) : ($product->id ?? null);
 
-        if ($product->price_lock_baseline !== null && (float)$product->price_lock_baseline > 0) {
-            $baseline = (float)$product->price_lock_baseline;
+        if ($priceLockBaseline !== null && (float)$priceLockBaseline > 0) {
+            $baseline = (float)$priceLockBaseline;
 
             // Si el precio del proveedor regresó a niveles originales (menor o igual a la marca de bloqueo), se desactiva el bloqueo
             if ($supplierPrice > 0 && $supplierPrice <= $baseline) {
-                Product::where('id', $product->id)->update(['price_lock_baseline' => null]);
-                $product->price_lock_baseline = null;
+                if ($productId) {
+                    Product::where('id', $productId)->update(['price_lock_baseline' => null]);
+                }
+                if (is_object($product)) {
+                    $product->price_lock_baseline = null;
+                }
                 return $localCost;
             }
 

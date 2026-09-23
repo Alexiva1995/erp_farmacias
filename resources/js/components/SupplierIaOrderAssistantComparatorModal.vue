@@ -28,9 +28,10 @@ const comparatorSortBy = ref([{ key: "unit_cost_usd", order: "asc" }]);
 
 watch(() => props.product, (newProd) => {
   if (newProd) {
-    const namePart = newProd.name ? newProd.name.substring(0, 5) : "";
-    const labPart = newProd.laboratory?.name ? newProd.laboratory.name.substring(0, 3) : "";
-    comparatorSearchQuery.value = `${namePart} ${labPart}`.trim();
+    const cleanName = (newProd.name || "").trim();
+    const words = cleanName.split(/\s+/).filter(Boolean);
+    const namePart = words.slice(0, 2).join(" ");
+    comparatorSearchQuery.value = namePart;
     comparatorPage.value = 1;
   }
 });
