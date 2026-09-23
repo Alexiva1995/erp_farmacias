@@ -39,8 +39,8 @@ class MarketOpportunityResource extends JsonResource
             'promedio_calculado' => (float) $this->promedio_calculado,
             'totalQuantityInAutoOrder' => (float) $this->totalQuantityInAutoOrder,
             'solicitar' => (float) $this->solicitar,
-            // Campo auxiliar para el frontend: pre-llenar con la sugerencia de pedido si es positiva
-            'quantity_to_add' => $this->solicitar > 0 ? (int) $this->solicitar : null,
+            // Campo auxiliar para el frontend: pre-llenar con la sugerencia de pedido calculada o 0
+            'quantity_to_add' => (int) ($this->solicitar > 0 ? $this->solicitar : 0),
         ];
     }
 }

@@ -1,5 +1,5 @@
 <script setup>
-import { formatCurrency } from "@/utils/currencyFormatter";
+import { formatCurrency, formatAmountOnly } from "@/utils/currencyFormatter";
 
 defineProps({
   itemsPerPage: { type: Number, default: 10 },
@@ -42,7 +42,7 @@ const emit = defineEmits([
       <a
         :href="'/inventory/traceability?q=' + item.product_id"
         target="_blank"
-        class="text-decoration-none font-weight-black text-primary"
+        class="text-decoration-none font-weight-bold text-medium-emphasis"
       >
         {{ item.product_id }}
       </a>
@@ -68,7 +68,7 @@ const emit = defineEmits([
             >
             <span class="text-disabled mx-1">|</span>
             <span
-              class="text-primary font-weight-black text-uppercase truncate"
+              class="text-medium-emphasis font-weight-bold text-uppercase truncate"
               style="max-inline-size: 250px"
             >
               {{ item.laboratory_name || "S/L" }} - {{ item.supplier_name }}
@@ -101,44 +101,54 @@ const emit = defineEmits([
     </template>
 
     <template #item.total_sold_completed="{ item }">
-      <span class="text-sm font-weight-bold">{{ item.total_sold_completed || 0 }}</span>
+      <div class="d-flex justify-end">
+        <span class="text-sm font-weight-bold">{{ item.total_sold_completed || 0 }}</span>
+      </div>
     </template>
 
     <template #item.lote_quantity="{ item }">
-      <VChip
-        :color="item.lote_quantity > 0 ? 'secondary' : 'error'"
-        variant="tonal"
-        size="small"
-        class="font-weight-bold"
-      >
-        {{ item.lote_quantity || 0 }}
-      </VChip>
+      <div class="d-flex justify-end">
+        <VChip
+          :color="item.lote_quantity > 0 ? 'info' : 'error'"
+          variant="tonal"
+          size="small"
+          class="font-weight-bold"
+        >
+          {{ item.lote_quantity || 0 }}
+        </VChip>
+      </div>
     </template>
 
     <template #item.totalQuantityInAutoOrder="{ item }">
-      <VChip
-        :color="item.totalQuantityInAutoOrder > 0 ? 'warning' : 'grey'"
-        variant="tonal"
-        size="small"
-        class="font-weight-bold"
-      >
-        {{ item.totalQuantityInAutoOrder || 0 }}
-      </VChip>
+      <div class="d-flex justify-end">
+        <VChip
+          :color="item.totalQuantityInAutoOrder > 0 ? 'warning' : 'grey'"
+          variant="tonal"
+          size="small"
+          class="font-weight-bold"
+        >
+          {{ item.totalQuantityInAutoOrder || 0 }}
+        </VChip>
+      </div>
     </template>
 
     <template #item.promedio_calculado="{ item }">
-      <span class="text-sm font-weight-bold">{{ item.promedio_calculado != null && item.promedio_calculado !== '' ? parseFloat(item.promedio_calculado).toFixed(2) : '0.00' }}</span>
+      <div class="d-flex justify-end">
+        <span class="text-sm font-weight-bold">{{ formatAmountOnly(item.promedio_calculado) }}</span>
+      </div>
     </template>
 
     <template #item.saving_percentage="{ item }">
-      <VChip
-        color="success"
-        size="small"
-        label
-        class="font-weight-bold"
-      >
-        {{ item.saving_percentage }}%
-      </VChip>
+      <div class="d-flex justify-end">
+        <VChip
+          color="success"
+          size="small"
+          label
+          class="font-weight-bold"
+        >
+          {{ item.saving_percentage }}%
+        </VChip>
+      </div>
     </template>
 
     <template #item.actions="{ item }">

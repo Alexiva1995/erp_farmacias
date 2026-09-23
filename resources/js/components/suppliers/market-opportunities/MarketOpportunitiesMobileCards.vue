@@ -1,5 +1,5 @@
 <script setup>
-import { formatCurrency } from "@/utils/currencyFormatter";
+import { formatCurrency, formatAmountOnly } from "@/utils/currencyFormatter";
 import { computed } from "vue";
 
 const props = defineProps({
@@ -44,7 +44,7 @@ const pageModel = computed({
                 <a
                   :href="'/inventory/traceability?q=' + item.product_id"
                   target="_blank"
-                  class="text-decoration-none text-xs font-weight-black text-primary"
+                  class="text-decoration-none text-xs font-weight-bold text-medium-emphasis"
                 >
                   #{{ item.product_id }}
                 </a>
@@ -57,7 +57,7 @@ const pageModel = computed({
               </div>
               <div class="d-flex flex-column ga-1 text-super-xs text-disabled">
                 <span class="truncate">{{ item.active_ingredient_inventory }}</span>
-                <span class="text-primary font-weight-bold">{{ item.laboratory_name }}</span>
+                <span class="text-medium-emphasis font-weight-bold">{{ item.laboratory_name }}</span>
               </div>
             </div>
             
@@ -79,7 +79,7 @@ const pageModel = computed({
           <div class="grid-mobile-info mb-3">
             <div class="info-item">
               <span class="label">Stock</span>
-              <span class="text-sm font-weight-bold" :class="item.lote_quantity > 0 ? 'text-secondary' : 'text-error'">
+              <span class="text-sm font-weight-bold" :class="item.lote_quantity > 0 ? 'text-info' : 'text-error'">
                 {{ item.lote_quantity || 0 }}
               </span>
             </div>
@@ -95,7 +95,7 @@ const pageModel = computed({
             </div>
             <div class="info-item">
               <span class="label">Prom.</span>
-              <span class="text-sm font-weight-bold">{{ item.promedio_calculado != null && item.promedio_calculado !== '' ? parseFloat(item.promedio_calculado).toFixed(2) : '0.00' }}</span>
+              <span class="text-sm font-weight-bold">{{ formatAmountOnly(item.promedio_calculado) }}</span>
             </div>
           </div>
 
@@ -119,7 +119,7 @@ const pageModel = computed({
             <VCol cols="4" class="border-s border-dashed px-2">
               <div class="text-super-xs text-disabled text-uppercase font-weight-black mb-1">Oferta</div>
               <div class="text-sm font-weight-bold text-success">{{ formatCurrency(item.unit_cost_usd, "USD") }}</div>
-              <div class="text-super-xs text-primary truncate font-weight-black">{{ item.supplier_name }}</div>
+              <div class="text-super-xs text-medium-emphasis truncate font-weight-bold">{{ item.supplier_name }}</div>
             </VCol>
             
             <VCol cols="4" class="border-s border-dashed px-2">
