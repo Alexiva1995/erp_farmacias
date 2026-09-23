@@ -16,8 +16,8 @@ class AddToOrderRequest extends FormRequest
         return [
             'product_id' => 'required|exists:products,id',
             'quantity' => 'required|numeric|min:0.01',
-            'supplier_id' => 'nullable|exists:suppliers,id',
-            'product_supplier_id' => 'nullable|exists:product_suppliers,id',
+            'supplier_id' => 'nullable|integer',
+            'product_supplier_id' => 'nullable|integer',
             'unit_cost' => 'nullable|numeric|min:0',
         ];
     }

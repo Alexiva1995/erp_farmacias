@@ -17,8 +17,8 @@ class AddMultipleToOrderRequest extends FormRequest
             'items' => 'required|array',
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity' => 'required|numeric|min:0.01',
-            'items.*.supplier_id' => 'required|exists:suppliers,id',
-            'items.*.product_supplier_id' => 'required|exists:product_suppliers,id',
+            'items.*.supplier_id' => 'nullable|integer',
+            'items.*.product_supplier_id' => 'nullable|integer',
             'items.*.unit_cost' => 'nullable|numeric|min:0',
         ];
     }

@@ -49,9 +49,19 @@ class IaAssistantActionController extends Controller
                 ], 422);
             }
 
-            // Si es origen colombiano (COL), forzar la adición a la orden del proveedor ID 48
+            // Si es origen colombiano (COL), forzar la adición a la orden del proveedor de Colombia
             if ((int)$product->is_colombian_origin === 1) {
-                $supplierId = 48;
+                $colSupplier = Supplier::where('id', 48)
+                    ->orWhere('name', 'like', '%COLOMBIA%')
+                    ->first();
+
+                if (!$colSupplier) {
+                    $colSupplier = Supplier::firstOrCreate(
+                        ['name' => 'DROGUERIA COLOMBIA'],
+                        ['is_active' => true]
+                    );
+                }
+                $supplierId = $colSupplier->id;
                 $productSupplierId = null;
             }
 
@@ -68,14 +78,17 @@ class IaAssistantActionController extends Controller
             }
 
             if (!$ps && $supplierId) {
-                // Crear enlace básico si no existe
-                $ps = ProductSupplier::create([
-                    'product_id' => $productId,
-                    'supplier_id' => $supplierId,
-                    'unit_cost' => $product->unit_cost ?? 0,
-                    'unit_cost_usd' => $product->unit_cost ?? 0,
-                    'connection_date' => now(),
-                ]);
+                $targetSupplier = Supplier::find($supplierId);
+                if ($targetSupplier) {
+                    // Crear enlace básico si el proveedor existe
+                    $ps = ProductSupplier::create([
+                        'product_id' => $productId,
+                        'supplier_id' => $supplierId,
+                        'unit_cost' => $product->unit_cost ?? 0,
+                        'unit_cost_usd' => $product->unit_cost ?? 0,
+                        'connection_date' => now(),
+                    ]);
+                }
             }
 
             if (!$ps) {

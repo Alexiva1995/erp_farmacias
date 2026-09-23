@@ -140,14 +140,20 @@ const onActionClick = async (item, action) => {
       };
 
       if (isColombian) {
-        payload.supplier_id = 48;
+        // El backend resuelve el proveedor colombiano dinámicamente
       } else if (props.selectedSupplierId) {
-        payload.supplier_id = props.selectedSupplierId;
+        payload.supplier_id = typeof props.selectedSupplierId === 'object' ? props.selectedSupplierId?.id : props.selectedSupplierId;
         if (item.best_supplier_price) {
           payload.unit_cost = item.best_supplier_price;
         }
       } else if (item.best_supplier) {
-        payload.product_supplier_id = item.best_supplier.product_suppliers_id;
+        const psId = item.best_supplier.product_suppliers_id || item.best_supplier.product_supplier_id;
+        if (psId) {
+          payload.product_supplier_id = psId;
+        }
+        if (item.best_supplier.id) {
+          payload.supplier_id = item.best_supplier.id;
+        }
         if (item.best_supplier_price) {
           payload.unit_cost = item.best_supplier_price;
         }
