@@ -401,11 +401,14 @@ function rowClass(item) {
               </template>
 
               <template v-if="props.withSuppliers" #item.best_supplier_price="{ item }">
-                <span class="font-weight-black text-warning">
+                <span v-if="item.best_supplier && Number(item.best_supplier_price) > 0" class="font-weight-black text-warning">
                   ${{ Number(item.best_supplier_price || 0).toFixed(2) }}
-                  <span v-if="item.best_supplier_percentage !== 0" class="ms-1" style="font-size: 10px;" :class="item.best_supplier_percentage < 0 ? 'text-success' : 'text-error'">
+                  <span v-if="item.best_supplier_percentage && !isNaN(item.best_supplier_percentage) && item.best_supplier_percentage !== 0" class="ms-1" style="font-size: 10px;" :class="item.best_supplier_percentage < 0 ? 'text-success' : 'text-error'">
                     ({{ item.best_supplier_percentage < 0 ? '↓' : '↑' }}{{ Math.abs(item.best_supplier_percentage).toFixed(0) }}%)
                   </span>
+                </span>
+                <span v-else class="text-disabled text-xs font-weight-bold">
+                  —
                 </span>
               </template>
 
@@ -591,7 +594,8 @@ function rowClass(item) {
                           </div>
                           <div v-if="props.withSuppliers" class="d-flex align-center justify-space-between text-xs">
                             <span class="text-warning font-weight-bold">Mejor Precio:</span>
-                            <span class="text-warning font-weight-black">${{ Number(item.best_supplier_price ?? 0).toFixed(2) }}</span>
+                            <span v-if="item.best_supplier && Number(item.best_supplier_price) > 0" class="text-warning font-weight-black">${{ Number(item.best_supplier_price ?? 0).toFixed(2) }}</span>
+                            <span v-else class="text-disabled font-weight-medium">—</span>
                           </div>
                           <div v-if="item.totalQuantityInAutoOrder > 0" class="d-flex align-center justify-space-between text-xs">
                             <span class="text-info font-weight-bold">En Pedido:</span>
