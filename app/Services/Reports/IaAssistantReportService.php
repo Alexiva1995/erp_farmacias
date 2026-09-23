@@ -204,16 +204,43 @@ class IaAssistantReportService
         $perPage = (int) ($filtros['itemsPerPage'] ?? 25);
         if ($perPage <= 0) $perPage = 25;
 
-        // 1. Obtener la colección procesada con todos los filtros aplicados (incluyendo 'q', laboratorios, etc.)
+        // 1. Obtener la colección procesada con todos los filtros aplicados (incluyendo 'q', stock 'fallas', laboratorios, etc.)
+        // para identificar qué grupos califican para mostrarse según el filtro activo.
         $filtrosBase = $filtros;
         unset($filtrosBase['page'], $filtrosBase['itemsPerPage']);
 
-        $procesado = $this->getProcessedCollection($filtrosBase);
+        $procesadoFiltro = $this->getProcessedCollection($filtrosBase);
 
-        // 2. Agrupar por group_id (omitiendo productos sin grupo o con group_id nulo)
-        $grouped = $procesado->filter(function ($item) {
+        // 2. Extraer los group_ids que califican
+        $qualifyingGroupIds = $procesadoFiltro->filter(function ($item) {
             $groupId = is_object($item) ? ($item->group_id ?? null) : ($item['group_id'] ?? null);
             return !empty($groupId);
+        })->map(function ($item) {
+            return is_object($item) ? $item->group_id : $item['group_id'];
+        })->unique()->values()->all();
+
+        if (empty($qualifyingGroupIds)) {
+            return [
+                'grupos' => [],
+                'total_grupos' => 0,
+                'per_page' => $perPage,
+                'current_page' => $page,
+                'last_page' => 1,
+            ];
+        }
+
+        // 3. Para los grupos que calificaron (ej. con fallas), obtener TODOS los productos pertenecientes a esos grupos
+        // para mostrar la composición completa del grupo sustituto (con stock, faltantes y excesos).
+        $filtrosGrupoCompleto = $filtrosBase;
+        $filtrosGrupoCompleto['groups'] = $qualifyingGroupIds;
+        $filtrosGrupoCompleto['stock'] = 'all';
+        unset($filtrosGrupoCompleto['q'], $filtrosGrupoCompleto['hasStock'], $filtrosGrupoCompleto['product_ids']);
+
+        $procesadoCompleto = $this->getProcessedCollection($filtrosGrupoCompleto);
+
+        $grouped = $procesadoCompleto->filter(function ($item) use ($qualifyingGroupIds) {
+            $groupId = is_object($item) ? ($item->group_id ?? null) : ($item['group_id'] ?? null);
+            return !empty($groupId) && in_array($groupId, $qualifyingGroupIds);
         })->groupBy(function ($item) {
             return is_object($item) ? $item->group_id : $item['group_id'];
         });
@@ -224,7 +251,7 @@ class IaAssistantReportService
             ? \Illuminate\Support\Facades\DB::table('groups_products')->whereIn('id', $allGroupIds)->pluck('name', 'id')->toArray()
             : [];
 
-        // 3. Ordenar los grupos alfabéticamente por nombre de grupo
+        // 4. Ordenar los grupos alfabéticamente por nombre de grupo
         $gruposConsolidados = $grouped->map(function ($items, $groupId) use ($groupNamesMap) {
             $primerProd = $items->first();
             $nombreGrupo = $groupNamesMap[$groupId] ?? '';
