@@ -87,6 +87,11 @@ class MarketOpportunityRepository implements MarketOpportunityRepositoryInterfac
             ->where('created_at', '>=', now()->subDays(7))
             ->groupBy('product_id', 'supplier_id');
 
+        $tipoFiltracion = $filtros['tipo_filtracion'] ?? 'combinado';
+        $baseAvgCol = in_array($tipoFiltracion, ['weighted', 'stockout_adjusted_rop', 'stockout_adjusted_rop_plus'])
+            ? 'COALESCE(NULLIF(products.sales_average_weighted, 0), products.sales_average, 0)'
+            : 'COALESCE(products.sales_average, 0)';
+
         $sub = ProductSupplier::query()
             ->whereIn('product_suppliers.id', $latestIdsQuery)
             ->select(
@@ -101,14 +106,14 @@ class MarketOpportunityRepository implements MarketOpportunityRepositoryInterfac
                 DB::raw('COALESCE(sales.total_sold_completed, 0) as total_sold_completed'),
                 DB::raw('COALESCE(stock.lote_quantity, 0) as lote_quantity'),
                 DB::raw("CASE 
-                    WHEN '$lapsoStr' = '7 days' THEN products.sales_average / 4
-                    WHEN '$lapsoStr' = '15 days' THEN products.sales_average / 2
-                    WHEN '$lapsoStr' = '1 month' THEN products.sales_average
-                    WHEN '$lapsoStr' = '3 month' THEN products.sales_average * 3
-                    WHEN '$lapsoStr' = '6 month' THEN products.sales_average * 6
-                    WHEN '$lapsoStr' = '12 month' THEN products.sales_average * 12
-                    WHEN '$lapsoStr' = '1 year' THEN products.sales_average * 12
-                    ELSE products.sales_average * 3
+                    WHEN '$lapsoStr' = '7 days' THEN $baseAvgCol / 4
+                    WHEN '$lapsoStr' = '15 days' THEN $baseAvgCol / 2
+                    WHEN '$lapsoStr' = '1 month' THEN $baseAvgCol
+                    WHEN '$lapsoStr' = '3 month' THEN $baseAvgCol * 3
+                    WHEN '$lapsoStr' = '6 month' THEN $baseAvgCol * 6
+                    WHEN '$lapsoStr' = '12 month' THEN $baseAvgCol * 12
+                    WHEN '$lapsoStr' = '1 year' THEN $baseAvgCol * 12
+                    ELSE $baseAvgCol * 3
                 END as promedio_calculado"),
                 DB::raw('COALESCE(ao.totalQuantityInAutoOrder, 0) as totalQuantityInAutoOrder')
             )
@@ -140,7 +145,7 @@ class MarketOpportunityRepository implements MarketOpportunityRepositoryInterfac
         $tipoFiltracion = $filtros['tipo_filtracion'] ?? 'combinado';
         $demandaSql = match($tipoFiltracion) {
             'sales'      => 'sub.total_sold_completed',
-            'average'    => 'sub.promedio_calculado',
+            'average', 'weighted', 'stockout_adjusted_rop', 'stockout_adjusted_rop_plus' => 'sub.promedio_calculado',
             'combinado'  => "(CASE WHEN sub.total_sold_completed > 0 THEN ((sub.promedio_calculado + sub.total_sold_completed) / 2) ELSE sub.promedio_calculado END)",
             default      => "(CASE WHEN sub.total_sold_completed > 0 THEN ((sub.promedio_calculado + sub.total_sold_completed) / 2) ELSE sub.promedio_calculado END)",
         };

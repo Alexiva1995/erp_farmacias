@@ -92,6 +92,15 @@ const hasActiveAdvancedFilters = computed(
     props.lapsoTiempo !== "3 month" ||
     props.stockFilter !== "all",
 );
+
+const tipoFiltracionOpciones = [
+  { title: "Stockout-Adjusted ROP PLUS (Inteligencia de Demanda)", value: "stockout_adjusted_rop_plus" },
+  { title: "Stockout-Adjusted ROP (Predeterminado)",               value: "stockout_adjusted_rop"      },
+  { title: "Ponderado (Óptimo ROP)",                              value: "weighted"                   },
+  { title: "Promedio",                                           value: "average"                    },
+  { title: "Ventas",                                             value: "sales"                      },
+  { title: "Combinado",                                          value: "combinado"                  },
+];
 </script>
 
 <template>
@@ -171,11 +180,7 @@ const hasActiveAdvancedFilters = computed(
         <VSelect
           v-model="tipoFiltracionModel"
           label="Calcular por"
-          :items="[
-            { title: 'Combinado', value: 'combinado' },
-            { title: 'Solo Promedio', value: 'average' },
-            { title: 'Solo Ventas', value: 'sales' },
-          ]"
+          :items="tipoFiltracionOpciones"
           hide-details
           density="compact"
           variant="outlined"

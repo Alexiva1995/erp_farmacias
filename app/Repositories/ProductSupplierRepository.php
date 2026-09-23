@@ -79,7 +79,7 @@ class ProductSupplierRepository
      * Obtiene el mejor proveedor para una lista de productos de forma masiva (Optimizado)
      * Utilizado en la vista de Asistente de IA para comparativa de precios instantánea.
      */
-    public function getSupplierToReplenishTheProducts(Collection $products, string $conDescuento, bool $skipAiMatch = false): array
+    public function getSupplierToReplenishTheProducts(Collection $products, string $conDescuento, bool $skipAiMatch = false, ?int $supplierId = null): array
     {
         $productIds = $products->map(fn($p) => is_array($p) ? ($p['id'] ?? null) : ($p->id ?? null))->filter()->values()->toArray();
         $hasIsActive = \Illuminate\Support\Facades\Schema::hasColumn('product_suppliers', 'is_active');
@@ -99,6 +99,10 @@ class ProductSupplierRepository
                   ->orWhere('expiration', '>', $minExpirationDate);
             });
 
+        if ($supplierId) {
+            $latestIdsQuery->where('supplier_id', $supplierId);
+        }
+
         if ($hasIsActive) {
             $latestIdsQuery->where('is_active', true);
         }
@@ -112,6 +116,10 @@ class ProductSupplierRepository
                 $q->whereNull('expiration')
                   ->orWhere('expiration', '>', $minExpirationDate);
             });
+
+        if ($supplierId) {
+            $query->where('supplier_id', $supplierId);
+        }
 
         if ($hasIsActive) {
             $query->where('is_active', true);

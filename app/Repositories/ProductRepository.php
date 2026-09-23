@@ -950,6 +950,12 @@ class ProductRepository
             $consulta->whereIn("laboratory_id", $filtros["laboratoryId"]);
         }
 
+        if (empty($filtros["ids_in"]) && array_key_exists("supplier_id", $filtros) && !empty($filtros["supplier_id"])) {
+            $consulta->whereHas("productSuppliers", function ($sq) use ($filtros) {
+                $sq->where("supplier_id", $filtros["supplier_id"]);
+            });
+        }
+
         if (array_key_exists("tipo_vista", $filtros) && $filtros["tipo_vista"] == true) {
             $consulta->join("groups_products", "products.group_id", "=", "groups_products.id")
                 ->orderBy("groups_products.name", "ASC");
@@ -1339,6 +1345,12 @@ class ProductRepository
             if (count($filtros["laboratoryId"]) > 0) {
                 $consulta->whereIn("laboratory_id", $filtros["laboratoryId"]);
             }
+        }
+
+        if (empty($filtros["ids_in"]) && array_key_exists("supplier_id", $filtros) && !empty($filtros["supplier_id"])) {
+            $consulta->whereHas("productSuppliers", function ($sq) use ($filtros) {
+                $sq->where("supplier_id", $filtros["supplier_id"]);
+            });
         }
 
         if (array_key_exists("tipo_vista", $filtros) && $filtros["tipo_vista"] == true) {

@@ -55,6 +55,7 @@ async function consultarKpisGlobales() {
     const data = {
       product: selectProducts.value,
       laboratoryId: selectedLaboratory.value,
+      supplier_id: selectedSupplierId.value,
       is_colombia: checkColombia.value,
       lapso_de_tiempo: lapso_de_tiempo.value,
       tipo_filtracion: tipo_de_filtracion.value,
@@ -92,6 +93,7 @@ async function consultarDataReport(){
       sortBy: sortBy.value,
       product: selectProducts.value,
       laboratoryId: selectedLaboratory.value,
+      supplier_id: selectedSupplierId.value,
       is_colombia: checkColombia.value,
       lapso_de_tiempo: lapso_de_tiempo.value,
       tipo_filtracion: tipo_de_filtracion.value,
@@ -152,6 +154,8 @@ const handleClearFilters = () => {
   lapso_de_tiempo.value = "3 month";
   selectedLaboratory.value = [];
   selectProducts.value = [];
+  selectedSupplierId.value = null;
+  globalDiscountPercent.value = 0;
   showIgnored.value = false;
   showGraphs.value = false;
 };
@@ -236,6 +240,7 @@ watch([
   checkColombia,
   selectProducts,
   selectedLaboratory,
+  selectedSupplierId,
   tipo_de_filtracion,
   lapso_de_tiempo,
   stock,
@@ -277,6 +282,7 @@ async function generarPdf(){
       sortBy: sortBy.value,
       product: selectProducts.value,
       laboratoryId: selectedLaboratory.value,
+      supplier_id: selectedSupplierId.value,
       is_colombia: checkColombia.value,
       lapso_de_tiempo: lapso_de_tiempo.value,
       tipo_filtracion: tipo_de_filtracion.value,
@@ -312,6 +318,7 @@ async function exportarExcel(formato){
       sortBy: sortBy.value,
       product: selectProducts.value,
       laboratoryId: selectedLaboratory.value,
+      supplier_id: selectedSupplierId.value,
       is_colombia: checkColombia.value,
       lapso_de_tiempo: lapso_de_tiempo.value,
       tipo_filtracion: tipo_de_filtracion.value,

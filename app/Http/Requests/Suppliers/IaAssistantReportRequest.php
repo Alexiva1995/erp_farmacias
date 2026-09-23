@@ -41,6 +41,7 @@ class IaAssistantReportRequest extends FormRequest
             'isNovaventa' => 'nullable|boolean',
             'product' => 'nullable|array',
             'product.*' => 'integer|exists:products,id',
+            'supplier_id' => 'nullable|integer|exists:suppliers,id',
             'hasStock' => 'nullable|string',
             'formato' => 'nullable|string|in:xlsx,pdf',
         ];

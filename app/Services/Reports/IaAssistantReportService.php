@@ -490,7 +490,8 @@ class IaAssistantReportService
         $items = $items->values();
         
         $skipAiMatch = filter_var($filtros['skip_ai_match'] ?? false, FILTER_VALIDATE_BOOLEAN);
-        $itemsWithSuppliers = $this->productSupplierRepository->getSupplierToReplenishTheProducts($items, $conDescuento, $skipAiMatch);
+        $supplierId = !empty($filtros['supplier_id']) ? (int)$filtros['supplier_id'] : null;
+        $itemsWithSuppliers = $this->productSupplierRepository->getSupplierToReplenishTheProducts($items, $conDescuento, $skipAiMatch, $supplierId);
         $itemsWithSuppliers = $this->productSupplierRepository->checkTolerance($itemsWithSuppliers, $conDescuento);
         
         foreach ($items as $index => $producto) {

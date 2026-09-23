@@ -101,6 +101,10 @@ class SupplierIaAssistantReportController extends Controller
             $filtros["ids_in"] = $validated["product"];
         }
 
+        if ($request->filled("supplier_id")) {
+            $filtros["supplier_id"] = (int) $validated["supplier_id"];
+        }
+
         if ($request->filled("hasStock") && $request->hasStock !== "all") {
             $filtros["hasStock"] = $request->hasStock === "with" || $request->hasStock === "true" || $request->hasStock === true;
         }
