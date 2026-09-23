@@ -127,10 +127,21 @@ class ProductSupplierRepository
         
         // Mantener el orden de los productos entrantes
         foreach ($products as $product) {
-            $bestOffer = $allOffers->where('product_id', $product->id)->first();
+            $pId = is_object($product) ? ($product->id ?? null) : ($product['id'] ?? null);
+            $pBarcode = is_object($product) ? ($product->barcode ?? null) : ($product['barcode'] ?? null);
+
+            $bestOffer = $allOffers->first(function ($offer) use ($pId, $pBarcode) {
+                if ($pId && (int)$offer->product_id === (int)$pId) {
+                    return true;
+                }
+                if ($pBarcode && ($offer->barcode_match === $pBarcode || $offer->cod_supplier === $pBarcode)) {
+                    return true;
+                }
+                return false;
+            });
 
             // Si no tiene oferta asociada, intentar asociar por código de barras de manera automática y permanente (máximo 7 días)
-            if (!$bestOffer && $product->barcode) {
+            if (!$bestOffer && $pBarcode) {
                 $barcodeQuery = ProductSupplier::where('created_at', '>=', now()->subDays(7))
                     ->where(function ($q) use ($minExpirationDate) {
                         $q->whereNull('expiration')
@@ -142,9 +153,9 @@ class ProductSupplierRepository
                 }
 
                 $barcodeOffer = $barcodeQuery->with('supplier')
-                    ->where(function ($q) use ($product) {
-                        $q->where('barcode_match', $product->barcode)
-                          ->orWhere('cod_supplier', $product->barcode);
+                    ->where(function ($q) use ($pBarcode) {
+                        $q->where('barcode_match', $pBarcode)
+                          ->orWhere('cod_supplier', $pBarcode);
                     })
                     ->where(function ($query) {
                         $query->where('unit_cost_usd', '>', 0)
@@ -154,10 +165,12 @@ class ProductSupplierRepository
                     ->first();
 
                 if ($barcodeOffer) {
-                    ProductSupplier::where('id', $barcodeOffer->id)->update([
-                        'product_id' => $product->id,
-                        'is_ai_matched' => 0
-                    ]);
+                    if ($pId) {
+                        ProductSupplier::where('id', $barcodeOffer->id)->update([
+                            'product_id' => $pId,
+                            'is_ai_matched' => 0
+                        ]);
+                    }
                     $bestOffer = $barcodeOffer;
                 }
             }

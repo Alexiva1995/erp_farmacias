@@ -47,7 +47,7 @@ const isFavorite = ref(false);
 const tipoExclusion = ref([]);
 const ordenarAhorro = ref(false);
 const searchQuery = ref("");
-const withSuppliers = ref(false);
+const withSuppliers = ref(true);
 const soloConCoincidencias = ref(false);
 const showIgnored = ref(false);
 const showGraphs = ref(false);
@@ -72,7 +72,7 @@ const displayedTotal = computed(() => {
 });
 
 const handleClearFilters = () => {
-  withSuppliers.value = false;
+  withSuppliers.value = true;
   soloConCoincidencias.value = false;
   con_descuento.value = false;
   tipo_de_vista.value = false;
