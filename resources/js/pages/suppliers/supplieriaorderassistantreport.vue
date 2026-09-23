@@ -76,7 +76,14 @@ async function consultarKpisGlobales() {
   }
 }
 
+let abortController = null;
+
 async function consultarDataReport(){
+  if (abortController) {
+    abortController.abort();
+  }
+  abortController = new AbortController();
+
   try {
     let data = {
       itemsPerPage: itemsPerPage.value,
@@ -91,11 +98,17 @@ async function consultarDataReport(){
       stock: stock.value,
       show_ignored: showIgnored.value,
       with_trend: showGraphs.value,
+      with_suppliers: true,
     }
 
-    let respuestaApi = await axios.post(`suppliers-ia-assistant-report/filtrar-paginate?page=${page.value}`, data)
+    let respuestaApi = await axios.post(`/suppliers-ia-assistant-report/filtrar-paginate?page=${page.value}`, data, {
+      signal: abortController.signal
+    })
     return { ...respuestaApi.data }
   } catch (error) {
+    if (axios.isCancel(error) || error.name === 'CanceledError' || error.code === 'ERR_CANCELED') {
+      return { data: { data: reportState.items, total: reportState.total } };
+    }
     console.error("Error al consultar reporte:", error);
     toast.error("Error al obtener los datos del reporte.");
     return { data: { data: [], total: 0 } };
@@ -104,8 +117,10 @@ async function consultarDataReport(){
 
 async function consultarProductos(){
   try {
-    let respuestaApi = await axios.get("suppliers-ia-assistant-report/consult-products")
-    return [...(respuestaApi.data?.data || [])]
+    let respuestaApi = await axios.get("/suppliers-ia-assistant-report/consult-products")
+    const lista = respuestaApi.data?.data || respuestaApi.data || [];
+    productosSelect.value = [...lista];
+    return [...lista];
   } catch (error) {
     console.error("Error al consultar productos:", error);
     toast.error("Error al consultar la lista de productos.");
@@ -268,6 +283,7 @@ async function generarPdf(){
       stock: stock.value,
       show_ignored: showIgnored.value,
       with_trend: showGraphs.value,
+      with_suppliers: true,
     }
 
     let respuestaApi = await filtrarSinPaginar(filtros)
@@ -302,6 +318,7 @@ async function exportarExcel(formato){
       stock: stock.value,
       show_ignored: showIgnored.value,
       with_trend: showGraphs.value,
+      with_suppliers: true,
       formato
     }
 

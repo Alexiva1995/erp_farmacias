@@ -101,13 +101,14 @@ const stockOpciones = [
 
         <VSpacer />
 
-        <div class="d-flex align-center gap-2">
+        <div class="d-flex align-center gap-1">
           <!-- Toggle Filtros -->
           <VBtn
             icon
             variant="tonal"
             :color="isAdvancedFiltersVisible ? 'primary' : 'secondary'"
             size="38"
+            class="shadow-sm rounded-circle"
             @click="toggleAdvancedFilters"
           >
             <VIcon :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" />
@@ -130,6 +131,7 @@ const stockOpciones = [
                 color="success"
                 variant="tonal"
                 size="38"
+                class="shadow-sm rounded-circle"
                 :loading="props.generatingPdf || props.exportingExcel"
                 :disabled="props.generatingPdf || props.exportingExcel"
               >
@@ -162,6 +164,7 @@ const stockOpciones = [
             variant="text"
             color="warning"
             size="38"
+            class="shadow-sm rounded-circle"
             @click="emit('clear-ignore')"
           >
             <VIcon icon="tabler-eye-check" />
@@ -174,6 +177,7 @@ const stockOpciones = [
             variant="text"
             color="secondary"
             size="38"
+            class="shadow-sm rounded-circle"
             @click="emit('clear')"
           >
             <VIcon icon="tabler-eraser" />
@@ -187,8 +191,9 @@ const stockOpciones = [
         <div v-show="isAdvancedFiltersVisible">
           <VDivider class="my-3 border-opacity-10" />
           
-          <VRow dense>
-            <VCol cols="12" sm="6" md="4" lg="2">
+          <div class="d-flex align-center flex-nowrap overflow-x-auto gap-2 py-1">
+            <!-- Laboratorios -->
+            <div style="min-width: 170px; flex: 1 1 180px;">
               <VAutocomplete
                 :model-value="props.selectedLaboratory"
                 :items="props.laboratories"
@@ -204,9 +209,10 @@ const stockOpciones = [
                 prepend-inner-icon="tabler-flask"
                 @update:model-value="emit('update:selectedLaboratory', $event)"
               />
-            </VCol>
+            </div>
 
-            <VCol cols="12" sm="6" md="3" lg="2">
+            <!-- Calcular por -->
+            <div style="min-width: 190px; flex: 1 1 190px;">
               <VSelect
                 :model-value="props.tipo_de_filtracion"
                 :items="tipoFiltracionOpcion"
@@ -216,37 +222,52 @@ const stockOpciones = [
                 prepend-inner-icon="tabler-calculator"
                 @update:model-value="emit('update:tipo_de_filtracion', $event)"
               />
-            </VCol>
+            </div>
 
-            <VCol cols="12" sm="6" md="3" lg="2">
+            <!-- Lapso de tiempo -->
+            <div style="min-width: 125px; flex: 0 1 130px;">
               <VSelect
                 :model-value="props.lapso_de_tiempo"
                 :items="lapsoDeTiempoOpciones"
-                placeholder="Lapso de tiempo"
+                placeholder="Lapso"
                 hide-details
                 density="compact"
                 prepend-inner-icon="tabler-calendar-time"
                 @update:model-value="emit('update:lapso_de_tiempo', $event)"
               />
-            </VCol>
+            </div>
 
-            <VCol cols="12" sm="6" md="2" class="d-flex align-center">
-              <div class="d-flex align-center h-100 px-3 rounded-lg border bg-var-theme-background">
+            <!-- Stock -->
+            <div style="min-width: 110px; flex: 0 1 115px;">
+              <VSelect
+                :model-value="props.stock"
+                :items="stockOpciones"
+                placeholder="Stock"
+                hide-details
+                density="compact"
+                prepend-inner-icon="tabler-box"
+                @update:model-value="emit('update:stock', $event)"
+              />
+            </div>
+
+            <!-- Switch Colombia -->
+            <div style="min-width: 115px; flex: 0 0 auto;">
+              <div class="d-flex align-center h-100 px-3 rounded-lg border bg-var-theme-background" style="min-height: 40px;">
                 <VSwitch
                   :model-value="props.checkColombia"
                   label="Colombia"
                   color="info"
                   hide-details
                   density="compact"
-                  class="ms-1 font-weight-bold text-xs"
+                  class="font-weight-bold text-xs"
                   @update:model-value="emit('update:checkColombia', $event)"
                 />
                 <VTooltip activator="parent" location="top">Filtrar solo origen Colombia</VTooltip>
               </div>
-            </VCol>
+            </div>
 
             <!-- Selector de Proveedor -->
-            <VCol cols="12" md="6" lg="2">
+            <div style="min-width: 160px; flex: 1 1 170px;">
               <VAutocomplete
                 :model-value="props.selectedSupplierId"
                 :items="props.suppliers"
@@ -259,10 +280,10 @@ const stockOpciones = [
                 prepend-inner-icon="tabler-truck-delivery"
                 @update:model-value="emit('update:selectedSupplierId', $event)"
               />
-            </VCol>
+            </div>
 
             <!-- Descuento Global -->
-            <VCol cols="12" sm="6" md="3" lg="2">
+            <div style="min-width: 90px; flex: 0 1 95px;">
               <VTextField
                 :model-value="props.globalDiscountPercent"
                 type="number"
@@ -273,21 +294,8 @@ const stockOpciones = [
                 suffix="%"
                 @update:model-value="emit('update:globalDiscountPercent', $event)"
               />
-            </VCol>
-
-            <!-- Stock (Nuevo) -->
-            <VCol cols="12" sm="6" md="3" lg="2">
-              <VSelect
-                :model-value="props.stock"
-                :items="stockOpciones"
-                placeholder="Stock"
-                hide-details
-                density="compact"
-                prepend-inner-icon="tabler-box"
-                @update:model-value="emit('update:stock', $event)"
-              />
-            </VCol>
-          </VRow>
+            </div>
+          </div>
         </div>
       </VExpandTransition>
     </VCardText>
