@@ -47,7 +47,7 @@ const isFavorite = ref(false);
 const tipoExclusion = ref([]);
 const ordenarAhorro = ref(false);
 const searchQuery = ref("");
-const withSuppliers = ref(true);
+const withSuppliers = ref(false);
 const soloConCoincidencias = ref(false);
 const showIgnored = ref(false);
 const showGraphs = ref(false);
@@ -72,7 +72,7 @@ const displayedTotal = computed(() => {
 });
 
 const handleClearFilters = () => {
-  withSuppliers.value = true;
+  withSuppliers.value = false;
   soloConCoincidencias.value = false;
   con_descuento.value = false;
   tipo_de_vista.value = false;
@@ -236,6 +236,12 @@ const onGrupalPageChange = (payload) => {
 
 const handleProductScarceToggled = (productId) => {
   if (tipo_de_vista.value) {
+    const isFalla = (p) => {
+      const v = roundIaAnalysis(p.solicitar ?? 0);
+      const loteQty = parseFloat(p.lote_quantity ?? p.stock ?? 0);
+      return v > 0 || (v === 0 && loteQty <= 0);
+    };
+
     gruposData.grupos = gruposData.grupos.map(g => {
       if (!g.productos.some(p => p.id === productId)) return g;
 
@@ -254,7 +260,15 @@ const handleProductScarceToggled = (productId) => {
         ...g,
         productos: productosRecalculados,
       };
-    }).filter(g => g.productos.length > 0);
+    }).filter(g => {
+      if (!g.productos || g.productos.length === 0) return false;
+      if (stock.value === 'fallas') {
+        return g.productos.some(isFalla);
+      }
+      return true;
+    });
+
+    gruposData.total_grupos = gruposData.grupos.length;
   } else {
     statuModule.items = statuModule.items.filter(item => item.id !== productId);
     statuModule.total -= 1;
