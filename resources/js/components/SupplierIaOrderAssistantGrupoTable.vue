@@ -698,8 +698,10 @@ function rowClass(item) {
           :items-per-page="props.perPage"
           :total-items="props.totalGrupos"
           :loading="props.loading"
-          :items-per-page-options="[10, 25, 50]"
-          @change="(options) => emit('page-change', options.page)"
+          :items-per-page-options="[10, 25, 50, 100]"
+          @change="(options) => emit('page-change', options)"
+          @update:page="(p) => emit('page-change', { page: p, itemsPerPage: props.perPage })"
+          @update:items-per-page="(i) => emit('page-change', { page: 1, itemsPerPage: i })"
         />
     </div>
   </VCard>

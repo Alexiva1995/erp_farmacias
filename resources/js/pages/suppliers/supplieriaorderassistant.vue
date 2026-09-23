@@ -224,8 +224,13 @@ const updateTableOptionsTable = (options) => {
   orderBy.value = options.sortBy[0]?.order;
 };
 
-const onGrupalPageChange = (newPage) => {
-  page.value = newPage;
+const onGrupalPageChange = (payload) => {
+  if (typeof payload === 'object' && payload !== null) {
+    if (payload.page !== undefined) page.value = Number(payload.page);
+    if (payload.itemsPerPage !== undefined) itemsPerPage.value = Number(payload.itemsPerPage);
+  } else if (typeof payload === 'number' || typeof payload === 'string') {
+    page.value = Number(payload);
+  }
   actualizarTabla();
 };
 

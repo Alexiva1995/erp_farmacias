@@ -4,6 +4,9 @@
  * Combina un selector de cantidad por página y la navegación de páginas.
  */
 import { computed } from 'vue';
+import { useDisplay } from 'vuetify';
+
+const { mdAndUp } = useDisplay();
 
 const props = defineProps({
   page: { type: Number, required: true },
@@ -74,7 +77,7 @@ const handleItemsPerPageChange = (newItems) => {
       <VPagination
         :model-value="props.page"
         :length="totalPages"
-        :total-visible="3"
+        :total-visible="mdAndUp ? 7 : 5"
         density="compact"
         size="small"
         active-color="primary"
