@@ -408,8 +408,14 @@ function rowClass(item) {
 
           <!-- Costo Proveedor -->
           <template v-if="props.withSuppliers" #item.best_supplier_percentage="{ item }">
-            <span class="font-weight-black text-warning">
+            <span v-if="item.best_supplier && Number(item.best_supplier_price) > 0" class="font-weight-black text-warning">
               ${{ Number(item.best_supplier_price || 0).toFixed(2) }}
+              <span v-if="item.best_supplier_percentage && !isNaN(item.best_supplier_percentage) && item.best_supplier_percentage !== 0" class="ms-1" style="font-size: 10px;" :class="item.best_supplier_percentage < 0 ? 'text-success' : 'text-error'">
+                ({{ item.best_supplier_percentage < 0 ? '↓' : '↑' }}{{ Math.abs(item.best_supplier_percentage).toFixed(0) }}%)
+              </span>
+            </span>
+            <span v-else class="text-disabled text-xs font-weight-bold">
+              —
             </span>
           </template>
 
@@ -612,7 +618,8 @@ function rowClass(item) {
                   </div>
                   <div v-if="props.withSuppliers" class="info-item">
                     <span class="label">Prov</span>
-                    <span class="value text-warning">${{ Number(item.best_supplier_price || 0).toFixed(2) }}</span>
+                    <span v-if="item.best_supplier && Number(item.best_supplier_price) > 0" class="value text-warning">${{ Number(item.best_supplier_price || 0).toFixed(2) }}</span>
+                    <span v-else class="value text-disabled">—</span>
                   </div>
                   <div class="info-item">
                     <span class="label">Prom.</span>

@@ -140,14 +140,13 @@ class ProductSupplierServices implements ProductSupplier
             $unitCostProductSupplier = 0;
 
             if ($replenishTheProduct["productSupplier"]) {
+                $costWithDisc = (float)($replenishTheProduct["productSupplier"]->unit_cost_usd_with_discount ?? 0);
+                $costRegular = (float)($replenishTheProduct["productSupplier"]->unit_cost_usd ?? 0);
+
                 if ($conDescuento == "true") {
-                    if ($replenishTheProduct["productSupplier"]->unit_cost_usd_with_discount != null && $replenishTheProduct["productSupplier"]->unit_cost_usd_with_discount != "") {
-                        $unitCostProductSupplier = (float) $replenishTheProduct["productSupplier"]->unit_cost_usd_with_discount;
-                    }
+                    $unitCostProductSupplier = $costWithDisc > 0 ? $costWithDisc : $costRegular;
                 } else {
-                    if ($replenishTheProduct["productSupplier"]->unit_cost_usd != null && $replenishTheProduct["productSupplier"]->unit_cost_usd != "") {
-                        $unitCostProductSupplier = (float) $replenishTheProduct["productSupplier"]->unit_cost_usd;
-                    }
+                    $unitCostProductSupplier = $costRegular > 0 ? $costRegular : $costWithDisc;
                 }
             }
 

@@ -40,11 +40,9 @@ class ProductSupplierRepository
             });
 
         if ($conDescuento == "true") {
-            $consulta->where("unit_cost_usd_with_discount", ">", 0)
-                ->orderBy("unit_cost_usd_with_discount", "ASC");
+            $consulta->orderBy(DB::raw("CASE WHEN unit_cost_usd_with_discount > 0 THEN unit_cost_usd_with_discount ELSE unit_cost_usd END"), "ASC");
         } else {
-            $consulta->where("unit_cost_usd", ">", 0)
-                ->orderBy("unit_cost_usd", "ASC");
+            $consulta->orderBy(DB::raw("CASE WHEN unit_cost_usd > 0 THEN unit_cost_usd ELSE unit_cost_usd_with_discount END"), "ASC");
         }
 
         return $consulta->get();
@@ -117,11 +115,9 @@ class ProductSupplierRepository
 
         // 3. Ordenar por precio según preferencia del usuario (ignorando ceros)
         if ($conDescuento === "true") {
-            $query->where("unit_cost_usd_with_discount", ">", 0)
-                ->orderBy("unit_cost_usd_with_discount", "ASC");
+            $query->orderBy(DB::raw("CASE WHEN unit_cost_usd_with_discount > 0 THEN unit_cost_usd_with_discount ELSE unit_cost_usd END"), "ASC");
         } else {
-            $query->where("unit_cost_usd", ">", 0)
-                ->orderBy("unit_cost_usd", "ASC");
+            $query->orderBy(DB::raw("CASE WHEN unit_cost_usd > 0 THEN unit_cost_usd ELSE unit_cost_usd_with_discount END"), "ASC");
         }
 
         $allOffers = $query->get();
@@ -145,11 +141,18 @@ class ProductSupplierRepository
                     $barcodeQuery->where('is_active', true);
                 }
 
-                $barcodeOffer = $barcodeQuery->where(function ($q) use ($product) {
+                $barcodeOffer = $barcodeQuery->with('supplier')
+                    ->where(function ($q) use ($product) {
                         $q->where('barcode_match', $product->barcode)
                           ->orWhere('cod_supplier', $product->barcode);
                     })
+                    ->where(function ($query) {
+                        $query->where('unit_cost_usd', '>', 0)
+                            ->orWhere('unit_cost_usd_with_discount', '>', 0);
+                    })
+                    ->orderBy(DB::raw("CASE WHEN unit_cost_usd_with_discount > 0 THEN unit_cost_usd_with_discount ELSE unit_cost_usd END"), "ASC")
                     ->first();
+
                 if ($barcodeOffer) {
                     ProductSupplier::where('id', $barcodeOffer->id)->update([
                         'product_id' => $product->id,
