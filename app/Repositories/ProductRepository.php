@@ -951,8 +951,59 @@ class ProductRepository
         }
 
         if (empty($filtros["ids_in"]) && array_key_exists("supplier_id", $filtros) && !empty($filtros["supplier_id"])) {
-            $consulta->whereHas("productSuppliers", function ($sq) use ($filtros) {
-                $sq->where("supplier_id", $filtros["supplier_id"]);
+            if (!empty($filtros["only_best_supplier"])) {
+                $supplierId = (int)$filtros["supplier_id"];
+                $consulta->whereExists(function ($query) use ($supplierId) {
+                    $query->select(DB::raw(1))
+                        ->from('product_suppliers as ps_curr')
+                        ->whereColumn('ps_curr.product_id', 'products.id')
+                        ->where('ps_curr.supplier_id', $supplierId)
+                        ->where(function ($q) {
+                            $q->where('ps_curr.created_at', '>=', now()->subDays(30))
+                              ->orWhere('ps_curr.updated_at', '>=', now()->subDays(30));
+                        })
+                        ->where(function ($q) {
+                            $minExp = now()->addMonths(6)->toDateString();
+                            $q->whereNull('ps_curr.expiration')
+                              ->orWhere('ps_curr.expiration', '>', $minExp);
+                        })
+                        ->where(function ($q) {
+                            $q->where('ps_curr.unit_cost_usd', '>', 0)
+                              ->orWhere('ps_curr.unit_cost_usd_with_discount', '>', 0);
+                        })
+                        ->whereRaw("(CASE WHEN ps_curr.unit_cost_usd_with_discount > 0 THEN ps_curr.unit_cost_usd_with_discount ELSE ps_curr.unit_cost_usd END) <= (
+                            SELECT MIN(CASE WHEN ps_all.unit_cost_usd_with_discount > 0 THEN ps_all.unit_cost_usd_with_discount ELSE ps_all.unit_cost_usd END)
+                            FROM product_suppliers as ps_all
+                            WHERE ps_all.product_id = products.id
+                              AND (ps_all.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) OR ps_all.updated_at >= DATE_SUB(NOW(), INTERVAL 30 DAY))
+                              AND (ps_all.expiration IS NULL OR ps_all.expiration > DATE_ADD(CURDATE(), INTERVAL 6 MONTH))
+                              AND (ps_all.unit_cost_usd > 0 OR ps_all.unit_cost_usd_with_discount > 0)
+                        )");
+                });
+            } else {
+                $consulta->whereHas("productSuppliers", function ($sq) use ($filtros) {
+                    $sq->where("supplier_id", $filtros["supplier_id"]);
+                });
+            }
+        } elseif (empty($filtros["ids_in"]) && !empty($filtros["only_best_supplier"])) {
+            $consulta->whereExists(function ($query) {
+                $query->select(DB::raw(1))
+                    ->from('product_suppliers as ps_all')
+                    ->whereColumn('ps_all.product_id', 'products.id')
+                    ->where(function ($q) {
+                        $q->where('ps_all.created_at', '>=', now()->subDays(30))
+                          ->orWhere('ps_all.updated_at', '>=', now()->subDays(30));
+                    })
+                    ->where(function ($q) {
+                        $minExp = now()->addMonths(6)->toDateString();
+                        $q->whereNull('ps_all.expiration')
+                          ->orWhere('ps_all.expiration', '>', $minExp);
+                    })
+                    ->where(function ($q) {
+                        $q->where('ps_all.unit_cost_usd', '>', 0)
+                          ->orWhere('ps_all.unit_cost_usd_with_discount', '>', 0);
+                    })
+                    ->whereRaw("(CASE WHEN ps_all.unit_cost_usd_with_discount > 0 THEN ps_all.unit_cost_usd_with_discount ELSE ps_all.unit_cost_usd END) < products.unit_cost");
             });
         }
 
@@ -1082,22 +1133,25 @@ class ProductRepository
                     ELSE FLOOR($calcSolicitar) 
                 END) $sortDir");
             } elseif ($sortCol === 'best_supplier_percentage') {
-                $subqueryBestSupplierPrice = '(
+                $supplierWhere = !empty($filtros['supplier_id']) ? "AND ps.supplier_id = " . (int)$filtros['supplier_id'] : "";
+                $subqueryBestSupplierPrice = "(
                     SELECT MIN(
                         CASE 
                             WHEN ps.unit_cost_usd_with_discount > 0 THEN ps.unit_cost_usd_with_discount 
-                            ELSE ps.unit_cost 
+                            ELSE ps.unit_cost_usd 
                         END
                     )
                     FROM product_suppliers ps
                     WHERE ps.product_id = products.id
-                      AND ps.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+                      $supplierWhere
+                      AND (ps.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) OR ps.updated_at >= DATE_SUB(NOW(), INTERVAL 30 DAY))
                       AND (ps.expiration IS NULL OR ps.expiration > DATE_ADD(CURDATE(), INTERVAL 6 MONTH))
-                )';
+                      AND (ps.unit_cost_usd > 0 OR ps.unit_cost_usd_with_discount > 0)
+                )";
                 $subqueryVariation = "CASE 
                     WHEN products.unit_cost > 0 THEN 
-                        ((products.unit_cost - ($subqueryBestSupplierPrice)) / products.unit_cost) * 100
-                    ELSE 0
+                        (((($subqueryBestSupplierPrice) - products.unit_cost) / products.unit_cost) * 100)
+                    ELSE 9999
                 END";
                 $consulta->whereRaw("($subqueryBestSupplierPrice) > 0");
                 $consulta->orderByRaw("($subqueryVariation) $sortDir");
@@ -1348,8 +1402,59 @@ class ProductRepository
         }
 
         if (empty($filtros["ids_in"]) && array_key_exists("supplier_id", $filtros) && !empty($filtros["supplier_id"])) {
-            $consulta->whereHas("productSuppliers", function ($sq) use ($filtros) {
-                $sq->where("supplier_id", $filtros["supplier_id"]);
+            if (!empty($filtros["only_best_supplier"])) {
+                $supplierId = (int)$filtros["supplier_id"];
+                $consulta->whereExists(function ($query) use ($supplierId) {
+                    $query->select(DB::raw(1))
+                        ->from('product_suppliers as ps_curr')
+                        ->whereColumn('ps_curr.product_id', 'products.id')
+                        ->where('ps_curr.supplier_id', $supplierId)
+                        ->where(function ($q) {
+                            $q->where('ps_curr.created_at', '>=', now()->subDays(30))
+                              ->orWhere('ps_curr.updated_at', '>=', now()->subDays(30));
+                        })
+                        ->where(function ($q) {
+                            $minExp = now()->addMonths(6)->toDateString();
+                            $q->whereNull('ps_curr.expiration')
+                              ->orWhere('ps_curr.expiration', '>', $minExp);
+                        })
+                        ->where(function ($q) {
+                            $q->where('ps_curr.unit_cost_usd', '>', 0)
+                              ->orWhere('ps_curr.unit_cost_usd_with_discount', '>', 0);
+                        })
+                        ->whereRaw("(CASE WHEN ps_curr.unit_cost_usd_with_discount > 0 THEN ps_curr.unit_cost_usd_with_discount ELSE ps_curr.unit_cost_usd END) <= (
+                            SELECT MIN(CASE WHEN ps_all.unit_cost_usd_with_discount > 0 THEN ps_all.unit_cost_usd_with_discount ELSE ps_all.unit_cost_usd END)
+                            FROM product_suppliers as ps_all
+                            WHERE ps_all.product_id = products.id
+                              AND (ps_all.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) OR ps_all.updated_at >= DATE_SUB(NOW(), INTERVAL 30 DAY))
+                              AND (ps_all.expiration IS NULL OR ps_all.expiration > DATE_ADD(CURDATE(), INTERVAL 6 MONTH))
+                              AND (ps_all.unit_cost_usd > 0 OR ps_all.unit_cost_usd_with_discount > 0)
+                        )");
+                });
+            } else {
+                $consulta->whereHas("productSuppliers", function ($sq) use ($filtros) {
+                    $sq->where("supplier_id", $filtros["supplier_id"]);
+                });
+            }
+        } elseif (empty($filtros["ids_in"]) && !empty($filtros["only_best_supplier"])) {
+            $consulta->whereExists(function ($query) {
+                $query->select(DB::raw(1))
+                    ->from('product_suppliers as ps_all')
+                    ->whereColumn('ps_all.product_id', 'products.id')
+                    ->where(function ($q) {
+                        $q->where('ps_all.created_at', '>=', now()->subDays(30))
+                          ->orWhere('ps_all.updated_at', '>=', now()->subDays(30));
+                    })
+                    ->where(function ($q) {
+                        $minExp = now()->addMonths(6)->toDateString();
+                        $q->whereNull('ps_all.expiration')
+                          ->orWhere('ps_all.expiration', '>', $minExp);
+                    })
+                    ->where(function ($q) {
+                        $q->where('ps_all.unit_cost_usd', '>', 0)
+                          ->orWhere('ps_all.unit_cost_usd_with_discount', '>', 0);
+                    })
+                    ->whereRaw("(CASE WHEN ps_all.unit_cost_usd_with_discount > 0 THEN ps_all.unit_cost_usd_with_discount ELSE ps_all.unit_cost_usd END) < products.unit_cost");
             });
         }
 
@@ -1464,22 +1569,25 @@ class ProductRepository
                     ELSE FLOOR($calcSolicitarSales) 
                 END) $sortDir");
             } elseif ($sortCol === 'best_supplier_percentage') {
-                $subqueryBestSupplierPrice = '(
+                $supplierWhere = !empty($filtros['supplier_id']) ? "AND ps.supplier_id = " . (int)$filtros['supplier_id'] : "";
+                $subqueryBestSupplierPrice = "(
                     SELECT MIN(
                         CASE 
                             WHEN ps.unit_cost_usd_with_discount > 0 THEN ps.unit_cost_usd_with_discount 
-                            ELSE ps.unit_cost 
+                            ELSE ps.unit_cost_usd 
                         END
                     )
                     FROM product_suppliers ps
                     WHERE ps.product_id = products.id
-                      AND ps.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+                      $supplierWhere
+                      AND (ps.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) OR ps.updated_at >= DATE_SUB(NOW(), INTERVAL 30 DAY))
                       AND (ps.expiration IS NULL OR ps.expiration > DATE_ADD(CURDATE(), INTERVAL 6 MONTH))
-                )';
+                      AND (ps.unit_cost_usd > 0 OR ps.unit_cost_usd_with_discount > 0)
+                )";
                 $subqueryVariation = "CASE 
                     WHEN products.unit_cost > 0 THEN 
-                        ((products.unit_cost - ($subqueryBestSupplierPrice)) / products.unit_cost) * 100
-                    ELSE 0
+                        (((($subqueryBestSupplierPrice) - products.unit_cost) / products.unit_cost) * 100)
+                    ELSE 9999
                 END";
                 $consulta->whereRaw("($subqueryBestSupplierPrice) > 0");
                 $consulta->orderByRaw("($subqueryVariation) $sortDir");

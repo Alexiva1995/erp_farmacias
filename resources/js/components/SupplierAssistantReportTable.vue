@@ -43,7 +43,7 @@ const headers = computed(() => [
   { title: "id", key: "id", sortable: true, width: '80px' },
   { title: "Producto", key: "name", sortable: true, minWidth: '320px' },
   { title: "Costo Actual", key: "unit_cost", sortable: true, align: 'center' },
-  { title: "Mejor Oferta", key: "product_suppliers", sortable: false, align: 'center' },
+  { title: "Mejor Oferta", key: "best_supplier_percentage", sortable: true, align: 'center' },
   { title: "Ventas", key: "total_sold_completed", sortable: true, align: 'end' },
   { title: "Stock", key: "lote_quantity", sortable: true, align: 'end' },
   {
@@ -199,7 +199,7 @@ const handleManualOrder = async (item) => {
           </template>
 
           <!-- Mejor Oferta -->
-          <template #item.product_suppliers="{ item }">
+          <template #item.best_supplier_percentage="{ item }">
             <div v-if="item.best_supplier && Number(item.best_supplier_price) > 0" class="d-flex flex-column align-center py-1">
               <div class="d-flex align-center gap-1 mb-1">
                 <span 
@@ -218,7 +218,11 @@ const handleManualOrder = async (item) => {
                   {{ item.best_supplier_percentage > 0 ? '+' : '' }}{{ Math.round(item.best_supplier_percentage) }}%
                 </VChip>
               </div>
-              <span class="text-super-xs text-disabled text-uppercase truncate font-weight-medium mb-1 max-w-110">
+              <span 
+                class="text-super-xs text-uppercase truncate mb-1 max-w-110"
+                :style="props.selectedSupplierId && (item.best_supplier.id == props.selectedSupplierId || item.best_supplier.supplier_id == props.selectedSupplierId) ? 'color: #e91e63 !important; font-weight: 900 !important;' : ''"
+                :class="props.selectedSupplierId && (item.best_supplier.id == props.selectedSupplierId || item.best_supplier.supplier_id == props.selectedSupplierId) ? '' : 'text-disabled font-weight-medium'"
+              >
                 {{ item.best_supplier.name || item.best_supplier.supplier?.name || 'PROVEEDOR' }}
               </span>
 
@@ -251,8 +255,12 @@ const handleManualOrder = async (item) => {
                   {{ getPriceDiff(item.unit_cost, item.product_suppliers[0].unit_cost_usd) > 0 ? '+' : '' }}{{ getPriceDiff(item.unit_cost, item.product_suppliers[0].unit_cost_usd).toFixed(0) }}%
                 </VChip>
               </div>
-              <span class="text-super-xs text-disabled text-uppercase truncate font-weight-medium mb-1 max-w-110">
-                {{ item.product_suppliers[0].supplier.name }}
+              <span 
+                class="text-super-xs text-uppercase truncate mb-1 max-w-110"
+                :style="props.selectedSupplierId && (item.product_suppliers[0].supplier_id == props.selectedSupplierId || item.product_suppliers[0].supplier?.id == props.selectedSupplierId) ? 'color: #e91e63 !important; font-weight: 900 !important;' : ''"
+                :class="props.selectedSupplierId && (item.product_suppliers[0].supplier_id == props.selectedSupplierId || item.product_suppliers[0].supplier?.id == props.selectedSupplierId) ? '' : 'text-disabled font-weight-medium'"
+              >
+                {{ item.product_suppliers[0].supplier?.name || 'PROVEEDOR' }}
               </span>
 
               <div v-if="getSelectedSupplierPrice(item)" class="selected-supplier-box w-100 mt-1 pa-1 rounded border-t border-dashed">

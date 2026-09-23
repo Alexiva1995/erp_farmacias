@@ -43,6 +43,7 @@ const showGraphs = ref(false);
 const suppliers = ref([]);
 const selectedSupplierId = ref(null);
 const globalDiscountPercent = ref(0);
+const onlyBestSupplier = ref(false);
 
 // KPIs globales
 const loadingStats = ref(false);
@@ -56,6 +57,7 @@ async function consultarKpisGlobales() {
       product: selectProducts.value,
       laboratoryId: selectedLaboratory.value,
       supplier_id: selectedSupplierId.value,
+      only_best_supplier: onlyBestSupplier.value,
       is_colombia: checkColombia.value,
       lapso_de_tiempo: lapso_de_tiempo.value,
       tipo_filtracion: tipo_de_filtracion.value,
@@ -94,6 +96,7 @@ async function consultarDataReport(){
       product: selectProducts.value,
       laboratoryId: selectedLaboratory.value,
       supplier_id: selectedSupplierId.value,
+      only_best_supplier: onlyBestSupplier.value,
       is_colombia: checkColombia.value,
       lapso_de_tiempo: lapso_de_tiempo.value,
       tipo_filtracion: tipo_de_filtracion.value,
@@ -156,6 +159,7 @@ const handleClearFilters = () => {
   selectProducts.value = [];
   selectedSupplierId.value = null;
   globalDiscountPercent.value = 0;
+  onlyBestSupplier.value = false;
   showIgnored.value = false;
   showGraphs.value = false;
 };
@@ -241,6 +245,7 @@ watch([
   selectProducts,
   selectedLaboratory,
   selectedSupplierId,
+  onlyBestSupplier,
   tipo_de_filtracion,
   lapso_de_tiempo,
   stock,
@@ -283,6 +288,7 @@ async function generarPdf(){
       product: selectProducts.value,
       laboratoryId: selectedLaboratory.value,
       supplier_id: selectedSupplierId.value,
+      only_best_supplier: onlyBestSupplier.value,
       is_colombia: checkColombia.value,
       lapso_de_tiempo: lapso_de_tiempo.value,
       tipo_filtracion: tipo_de_filtracion.value,
@@ -319,6 +325,7 @@ async function exportarExcel(formato){
       product: selectProducts.value,
       laboratoryId: selectedLaboratory.value,
       supplier_id: selectedSupplierId.value,
+      only_best_supplier: onlyBestSupplier.value,
       is_colombia: checkColombia.value,
       lapso_de_tiempo: lapso_de_tiempo.value,
       tipo_filtracion: tipo_de_filtracion.value,
@@ -415,6 +422,7 @@ onMounted(async () => {
       @export-excel="exportarExcel"
       v-model:selectedSupplierId="selectedSupplierId"
       v-model:globalDiscountPercent="globalDiscountPercent"
+      v-model:onlyBestSupplier="onlyBestSupplier"
       :suppliers="suppliers"
     />
 

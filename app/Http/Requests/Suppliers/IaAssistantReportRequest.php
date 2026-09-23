@@ -42,6 +42,8 @@ class IaAssistantReportRequest extends FormRequest
             'product' => 'nullable|array',
             'product.*' => 'integer|exists:products,id',
             'supplier_id' => 'nullable|integer|exists:suppliers,id',
+            'only_best_supplier' => 'nullable|boolean',
+            'only_best_offer' => 'nullable|boolean',
             'hasStock' => 'nullable|string',
             'formato' => 'nullable|string|in:xlsx,pdf',
         ];

@@ -105,6 +105,13 @@ class SupplierIaAssistantReportController extends Controller
             $filtros["supplier_id"] = (int) $validated["supplier_id"];
         }
 
+        if ($request->filled("only_best_supplier") || $request->filled("only_best_offer")) {
+            $val = filter_var($request->only_best_supplier ?? $request->only_best_offer, FILTER_VALIDATE_BOOLEAN);
+            if ($val === true) {
+                $filtros["only_best_supplier"] = true;
+            }
+        }
+
         if ($request->filled("hasStock") && $request->hasStock !== "all") {
             $filtros["hasStock"] = $request->hasStock === "with" || $request->hasStock === "true" || $request->hasStock === true;
         }

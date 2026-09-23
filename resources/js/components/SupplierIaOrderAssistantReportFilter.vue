@@ -13,6 +13,7 @@ const props = defineProps({
   suppliers: { type: Array, default: () => [] },
   selectedSupplierId: [Number, String],
   globalDiscountPercent: [Number, String],
+  onlyBestSupplier: { type: Boolean, default: false },
   stock: { type: String, default: "all" },
   generatingPdf: { type: Boolean, default: false },
   exportingExcel: { type: Boolean, default: false },
@@ -31,6 +32,7 @@ const emit = defineEmits([
   "update:showIgnored",
   "update:selectedSupplierId",
   "update:globalDiscountPercent",
+  "update:onlyBestSupplier",
 ]);
 
 const isAdvancedFiltersVisible = ref(false);
@@ -193,7 +195,7 @@ const stockOpciones = [
           
           <div class="d-flex align-center flex-nowrap overflow-x-auto gap-2 py-1">
             <!-- Laboratorios -->
-            <div style="min-width: 170px; flex: 1 1 180px;">
+            <div style="min-width: 130px; flex: 0 1 140px;">
               <VAutocomplete
                 :model-value="props.selectedLaboratory"
                 :items="props.laboratories"
@@ -212,7 +214,7 @@ const stockOpciones = [
             </div>
 
             <!-- Calcular por -->
-            <div style="min-width: 190px; flex: 1 1 190px;">
+            <div style="min-width: 175px; flex: 1 1 175px;">
               <VSelect
                 :model-value="props.tipo_de_filtracion"
                 :items="tipoFiltracionOpcion"
@@ -225,7 +227,7 @@ const stockOpciones = [
             </div>
 
             <!-- Lapso de tiempo -->
-            <div style="min-width: 125px; flex: 0 1 130px;">
+            <div style="min-width: 115px; flex: 0 1 120px;">
               <VSelect
                 :model-value="props.lapso_de_tiempo"
                 :items="lapsoDeTiempoOpciones"
@@ -238,7 +240,7 @@ const stockOpciones = [
             </div>
 
             <!-- Stock -->
-            <div style="min-width: 110px; flex: 0 1 115px;">
+            <div style="min-width: 100px; flex: 0 1 105px;">
               <VSelect
                 :model-value="props.stock"
                 :items="stockOpciones"
@@ -251,7 +253,7 @@ const stockOpciones = [
             </div>
 
             <!-- Switch Colombia -->
-            <div style="min-width: 125px; flex: 0 0 auto;">
+            <div style="min-width: 110px; flex: 0 0 auto;">
               <div class="d-flex align-center justify-center px-3 rounded border bg-surface" style="height: 38px; min-height: 38px;">
                 <VSwitch
                   :model-value="props.checkColombia"
@@ -266,8 +268,24 @@ const stockOpciones = [
               </div>
             </div>
 
+            <!-- Switch Mejor Oferta -->
+            <div style="min-width: 130px; flex: 0 0 auto;">
+              <div class="d-flex align-center justify-center px-3 rounded border bg-surface" style="height: 38px; min-height: 38px;">
+                <VSwitch
+                  :model-value="props.onlyBestSupplier"
+                  label="Mejor Oferta"
+                  color="primary"
+                  hide-details
+                  density="compact"
+                  class="font-weight-medium text-xs"
+                  @update:model-value="emit('update:onlyBestSupplier', $event)"
+                />
+                <VTooltip activator="parent" location="top">Solo mostrar cuando este proveedor es la mejor oferta</VTooltip>
+              </div>
+            </div>
+
             <!-- Selector de Proveedor -->
-            <div style="min-width: 160px; flex: 1 1 170px;">
+            <div style="min-width: 150px; flex: 1 1 160px;">
               <VAutocomplete
                 :model-value="props.selectedSupplierId"
                 :items="props.suppliers"
