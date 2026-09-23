@@ -139,9 +139,15 @@ class IaAssistantReportService
             $shortBy = $filtros['sortBy'] ?? 'solicitar';
             $orderDir = strtolower($filtros['orderBy'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
 
-            $procesado = ($orderDir === 'desc') 
-                ? $procesado->sortByDesc($shortBy) 
-                : $procesado->sortBy($shortBy);
+            if ($shortBy === 'best_supplier_percentage') {
+                $procesado = ($orderDir === 'desc') 
+                    ? $procesado->sortBy(fn($p) => (float)(is_object($p) ? ($p->best_supplier_percentage ?? 9999) : ($p['best_supplier_percentage'] ?? 9999))) 
+                    : $procesado->sortByDesc(fn($p) => (float)(is_object($p) ? ($p->best_supplier_percentage ?? -9999) : ($p['best_supplier_percentage'] ?? -9999)));
+            } else {
+                $procesado = ($orderDir === 'desc') 
+                    ? $procesado->sortByDesc($shortBy) 
+                    : $procesado->sortBy($shortBy);
+            }
 
             // Convertir modelos de Eloquent a objetos stdClass ligeros para reducir el peso en caché en >90%
             return $procesado->map(function ($item) {

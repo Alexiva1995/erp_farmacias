@@ -2,7 +2,6 @@
 import { ref, computed } from 'vue';
 
 const props = defineProps({
-  checkColombia: { type: Boolean, required: true },
   tipo_de_filtracion: String,
   lapso_de_tiempo: String,
   laboratories: { type: Array, default: () => [] },
@@ -24,7 +23,6 @@ const emit = defineEmits([
   "update:lapso_de_tiempo",
   "update:selectedLaboratory",
   "update:selectProducts",
-  "update:checkColombia",
   "clear",
   "clear-ignore",
   "export-excel",
@@ -44,9 +42,10 @@ const toggleAdvancedFilters = () => {
 const hasActiveAdvancedFilters = computed(() => {
   return (
     props.selectedLaboratory?.length > 0 ||
-    props.checkColombia ||
-    props.lapso_de_tiempo !== '1 month' ||
-    props.tipo_de_filtracion !== 'combinado' ||
+    props.selectedSupplierId != null ||
+    props.onlyBestSupplier ||
+    props.lapso_de_tiempo !== '3 month' ||
+    props.tipo_de_filtracion !== 'stockout_adjusted_rop' ||
     props.stock !== 'all'
   );
 });
@@ -74,6 +73,11 @@ const stockOpciones = [
   { title: "Exceso", value: "exceso" },
   { title: "Fallas", value: "fallas" },
   { title: "Todos",  value: "all"    },
+];
+
+const supplierMatchOptions = [
+  { title: "Todas las ofertas", value: false },
+  { title: "Solo más económico", value: true },
 ];
 </script>
 
@@ -110,7 +114,8 @@ const stockOpciones = [
             variant="tonal"
             :color="isAdvancedFiltersVisible ? 'primary' : 'secondary'"
             size="38"
-            class="shadow-sm rounded-circle"
+            rounded="circle"
+            class="shadow-sm"
             @click="toggleAdvancedFilters"
           >
             <VIcon :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" />
@@ -133,7 +138,8 @@ const stockOpciones = [
                 color="success"
                 variant="tonal"
                 size="38"
-                class="shadow-sm rounded-circle"
+                rounded="circle"
+                class="shadow-sm"
                 :loading="props.generatingPdf || props.exportingExcel"
                 :disabled="props.generatingPdf || props.exportingExcel"
               >
@@ -160,26 +166,28 @@ const stockOpciones = [
 
           <VDivider vertical class="mx-1 my-2" />
 
-          <!-- Limpiar Ignore (Nuevo) -->
+          <!-- Limpiar Ignore -->
           <VBtn
             icon
-            variant="text"
+            variant="tonal"
             color="warning"
             size="38"
-            class="shadow-sm rounded-circle"
+            rounded="circle"
+            class="shadow-sm"
             @click="emit('clear-ignore')"
           >
             <VIcon icon="tabler-eye-check" />
             <VTooltip activator="parent" location="top">Restaurar Ocultos (Ignore)</VTooltip>
           </VBtn>
 
-          <!-- Limpiar Filtros (Solo Icono) -->
+          <!-- Limpiar Filtros -->
           <VBtn
             icon
-            variant="text"
+            variant="tonal"
             color="secondary"
             size="38"
-            class="shadow-sm rounded-circle"
+            rounded="circle"
+            class="shadow-sm"
             @click="emit('clear')"
           >
             <VIcon icon="tabler-eraser" />
@@ -252,36 +260,17 @@ const stockOpciones = [
               />
             </div>
 
-            <!-- Switch Colombia -->
-            <div style="min-width: 110px; flex: 0 0 auto;">
-              <div class="d-flex align-center justify-center px-3 rounded border bg-surface" style="height: 38px; min-height: 38px;">
-                <VSwitch
-                  :model-value="props.checkColombia"
-                  label="Colombia"
-                  color="info"
-                  hide-details
-                  density="compact"
-                  class="font-weight-medium text-xs"
-                  @update:model-value="emit('update:checkColombia', $event)"
-                />
-                <VTooltip activator="parent" location="top">Filtrar solo origen Colombia</VTooltip>
-              </div>
-            </div>
-
-            <!-- Switch Mejor Oferta -->
-            <div style="min-width: 130px; flex: 0 0 auto;">
-              <div class="d-flex align-center justify-center px-3 rounded border bg-surface" style="height: 38px; min-height: 38px;">
-                <VSwitch
-                  :model-value="props.onlyBestSupplier"
-                  label="Mejor Oferta"
-                  color="primary"
-                  hide-details
-                  density="compact"
-                  class="font-weight-medium text-xs"
-                  @update:model-value="emit('update:onlyBestSupplier', $event)"
-                />
-                <VTooltip activator="parent" location="top">Solo mostrar cuando este proveedor es la mejor oferta</VTooltip>
-              </div>
+            <!-- Filtro Coincidencias / Mejor Oferta -->
+            <div style="min-width: 165px; flex: 0 1 175px;">
+              <VSelect
+                :model-value="props.onlyBestSupplier"
+                :items="supplierMatchOptions"
+                placeholder="Ofertas"
+                hide-details
+                density="compact"
+                prepend-inner-icon="tabler-award"
+                @update:model-value="emit('update:onlyBestSupplier', $event)"
+              />
             </div>
 
             <!-- Selector de Proveedor -->

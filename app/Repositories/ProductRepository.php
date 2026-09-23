@@ -1154,7 +1154,8 @@ class ProductRepository
                     ELSE 9999
                 END";
                 $consulta->whereRaw("($subqueryBestSupplierPrice) > 0");
-                $consulta->orderByRaw("($subqueryVariation) $sortDir");
+                $dbSortDir = $sortDir === 'desc' ? 'ASC' : 'DESC';
+                $consulta->orderByRaw("($subqueryVariation) $dbSortDir");
             } else {
                 $consulta->orderBy($sortCol, $sortDir);
             }
@@ -1590,7 +1591,8 @@ class ProductRepository
                     ELSE 9999
                 END";
                 $consulta->whereRaw("($subqueryBestSupplierPrice) > 0");
-                $consulta->orderByRaw("($subqueryVariation) $sortDir");
+                $dbSortDir = $sortDir === 'desc' ? 'ASC' : 'DESC';
+                $consulta->orderByRaw("($subqueryVariation) $dbSortDir");
             } else {
                 $consulta->orderBy($sortCol, $sortDir);
             }
