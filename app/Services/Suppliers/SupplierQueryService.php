@@ -670,6 +670,7 @@ class SupplierQueryService
                 $query->where("suppliers.type", "drogueria")
                       ->orWhereNull("suppliers.type");
             })
+            ->where("suppliers.type", "!=", "externo")
             ->when($searchTerm, function ($query) use ($searchTerm) {
                 // Buscamos coincidencia parcial en el nombre
                 $query->where("suppliers.name", "LIKE", "%{$searchTerm}%");
@@ -824,6 +825,7 @@ class SupplierQueryService
                 $q->where('suppliers.type', 'drogueria')
                   ->orWhereNull('suppliers.type');
             })
+            ->where('suppliers.type', '!=', 'externo')
             ->whereNull('suppliers.deleted_at')
             ->when($hasStock !== null, function ($query) {
                 $query->leftJoin('product_lots', function ($join) {
@@ -926,6 +928,7 @@ class SupplierQueryService
                 $q->where('type', 'drogueria')
                   ->orWhereNull('type');
             })
+            ->where('type', '!=', 'externo')
             ->select(["id", "name", "rif", "type", "social_reason", "is_active"])
             ->orderBy("name", "asc")
             ->get();

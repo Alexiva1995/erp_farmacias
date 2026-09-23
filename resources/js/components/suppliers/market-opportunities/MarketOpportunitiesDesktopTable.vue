@@ -42,7 +42,7 @@ const emit = defineEmits([
       <a
         :href="'/inventory/traceability?q=' + item.product_id"
         target="_blank"
-        class="text-decoration-none font-weight-bold text-medium-emphasis"
+        class="text-decoration-none font-weight-black text-primary"
       >
         {{ item.product_id }}
       </a>
