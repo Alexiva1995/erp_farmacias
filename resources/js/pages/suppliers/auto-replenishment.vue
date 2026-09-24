@@ -3,12 +3,13 @@ import AutoReplenishmentFormDialog from "@/components/dialogs/AutoReplenishmentF
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import Swal from "sweetalert2";
-import { onMounted, ref, reactive } from "vue";
+import { computed, onMounted, reactive, ref } from "vue";
 
 const configs = ref([]);
 const suppliers = ref([]);
 const groups = ref([]);
 const loading = ref(false);
+const searchQuery = ref("");
 const dialogVisible = ref(false);
 const dialogLoading = ref(false);
 
@@ -83,11 +84,43 @@ function translateCron(cron) {
   return match ? match.title : `Cron: ${cron}`;
 }
 
+// Formateador amigable de fecha y hora
+function formatDate(dateStr) {
+  if (!dateStr) return "—";
+  const date = new Date(dateStr);
+  return date.toLocaleString("es-ES", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+// KPIs Computados
+const totalRulesCount = computed(() => configs.value.length);
+const activeRulesCount = computed(() => configs.value.filter(c => c.is_active).length);
+const totalOrdersGenerated = computed(() =>
+  configs.value.reduce((acc, c) => acc + (Number(c.last_run_orders) || 0), 0)
+);
+
+// Filtrado reactivo para la tabla
+const filteredConfigs = computed(() => {
+  if (!searchQuery.value.trim()) return configs.value;
+  const q = searchQuery.value.toLowerCase().trim();
+  return configs.value.filter(item => {
+    const nameMatch = item.name?.toLowerCase().includes(q);
+    const supplierMatch = item.supplier?.name?.toLowerCase().includes(q);
+    const cronMatch = item.schedule_expression?.toLowerCase().includes(q);
+    const tipoMatch = item.tipo_filtracion?.toLowerCase().includes(q);
+    return nameMatch || supplierMatch || cronMatch || tipoMatch;
+  });
+});
+
 async function loadConfigs() {
   loading.value = true;
   try {
     const { data } = await axios.get("/auto-replenishment-configs");
-    // Soporte para API Resource (puede venir envuelto en data)
     configs.value = data.data ?? data;
   } catch (error) {
     toast.error("Error al cargar las configuraciones de automatización");
@@ -217,19 +250,85 @@ onMounted(() => {
 
 <template>
   <div class="auto-replenishment-view w-100 flex-grow-1 d-flex flex-column pa-0">
+    <!-- Header principal -->
     <div class="d-flex align-center justify-space-between mb-4 flex-wrap gap-4 pa-0">
-      <h1 class="text-h4 font-weight-bold d-flex align-center gap-2 mb-0">
-        <VIcon icon="tabler-settings-automation" color="primary" />
-        Automatización de Pedidos
-      </h1>
+      <div>
+        <h1 class="text-h4 font-weight-bold d-flex align-center gap-2 mb-1">
+          <VIcon icon="tabler-settings-automation" color="primary" />
+          Automatización de Pedidos
+        </h1>
+        <p class="text-body-2 text-muted mb-0">
+          Programación y control de compras automáticas según modelos de reposición e inventario
+        </p>
+      </div>
+
       <VBtn color="primary" prepend-icon="tabler-plus" class="shadow-sm" @click="openCreate">
         Nueva Regla
       </VBtn>
     </div>
 
+    <!-- Tarjetas de Resumen KPI -->
+    <VRow class="mb-4">
+      <VCol cols="12" sm="4">
+        <VCard elevation="1" class="pa-4 rounded-lg d-flex align-center border">
+          <VAvatar color="primary" variant="tonal" rounded size="48" class="me-3">
+            <VIcon icon="tabler-settings-cog" size="26" />
+          </VAvatar>
+          <div>
+            <div class="text-h6 font-weight-bold leading-tight">{{ totalRulesCount }}</div>
+            <div class="text-caption text-muted">Total de Reglas</div>
+          </div>
+        </VCard>
+      </VCol>
+
+      <VCol cols="12" sm="4">
+        <VCard elevation="1" class="pa-4 rounded-lg d-flex align-center border">
+          <VAvatar color="success" variant="tonal" rounded size="48" class="me-3">
+            <VIcon icon="tabler-player-play" size="26" />
+          </VAvatar>
+          <div>
+            <div class="text-h6 font-weight-bold leading-tight text-success">
+              {{ activeRulesCount }} <span class="text-caption text-muted font-weight-regular">/ {{ totalRulesCount }}</span>
+            </div>
+            <div class="text-caption text-muted">Reglas Activas</div>
+          </div>
+        </VCard>
+      </VCol>
+
+      <VCol cols="12" sm="4">
+        <VCard elevation="1" class="pa-4 rounded-lg d-flex align-center border">
+          <VAvatar color="info" variant="tonal" rounded size="48" class="me-3">
+            <VIcon icon="tabler-shopping-cart-check" size="26" />
+          </VAvatar>
+          <div>
+            <div class="text-h6 font-weight-bold leading-tight text-info">{{ totalOrdersGenerated }}</div>
+            <div class="text-caption text-muted">Órdenes Generadas (Últimas Corridas)</div>
+          </div>
+        </VCard>
+      </VCol>
+    </VRow>
+
     <!-- Lista de configuraciones -->
     <div class="pa-0 flex-grow-1 d-flex flex-column w-100">
-      <VCard class="shadow-md w-100 flex-grow-1 d-flex flex-column overflow-hidden border-0">
+      <VCard class="shadow-md w-100 flex-grow-1 d-flex flex-column overflow-hidden border">
+        <!-- Barra de Búsqueda y Filtro de Tabla -->
+        <VCardText class="pa-4 border-b bg-surface d-flex align-center justify-space-between flex-wrap gap-3">
+          <div style="max-width: 380px; width: 100%;">
+            <VTextField
+              v-model="searchQuery"
+              density="compact"
+              variant="outlined"
+              prepend-inner-icon="tabler-search"
+              placeholder="Buscar por regla, proveedor o cron..."
+              hide-details
+              clearable
+            />
+          </div>
+          <div class="text-caption text-muted">
+            Mostrando <strong>{{ filteredConfigs.length }}</strong> de <strong>{{ configs.length }}</strong> reglas
+          </div>
+        </VCardText>
+
         <!-- Cargador de carga limpio -->
         <div v-if="loading" class="pa-12 text-center bg-white">
           <VProgressCircular indeterminate color="primary" size="38" class="mb-3" />
@@ -237,120 +336,198 @@ onMounted(() => {
         </div>
 
         <div v-else class="table-responsive w-100 flex-grow-1">
-          <VTable v-if="configs.length > 0" class="w-100 auto-replenishment-table">
-          <thead>
-            <tr>
-              <th class="text-start">Nombre</th>
-              <th class="text-start">Análisis</th>
-              <th class="text-start">Frecuencia de Ejecución</th>
-              <th class="text-start">Proveedor Destino</th>
-              <th class="text-center">Estado</th>
-              <th class="text-start">Última Corrida</th>
-              <th class="text-end px-6">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="item in configs" :key="item.id">
-              <td class="font-weight-bold py-3">{{ item.name }}</td>
-              <td class="py-3">
-                <div class="d-flex align-center gap-1 flex-wrap">
-                  <VChip size="small" color="secondary">
-                    {{ tipoFiltracionOpciones.find(o => o.value === item.tipo_filtracion)?.title }}
-                  </VChip>
-                  <VChip size="small" variant="outlined">
-                    {{ lapsoDeTiempoOpciones.find(o => o.value === item.lapso_de_tiempo)?.title }}
-                  </VChip>
-                  <VChip v-if="item.exclude_colombian" size="small" color="warning" variant="tonal">
-                    Sin Col
-                  </VChip>
-                  <VChip v-if="item.exclude_novaventa" size="small" color="warning" variant="tonal">
-                    Sin Novaventa
-                  </VChip>
-                </div>
-              </td>
-              <td class="py-3">
-                <div class="d-flex align-center gap-2 flex-wrap">
-                  <span class="text-body-2 font-weight-medium">
-                    {{ translateCron(item.schedule_expression) }}
-                  </span>
-                  <code class="px-2 py-1 rounded bg-light text-primary font-weight-bold text-xs">
-                    {{ item.schedule_expression }}
-                  </code>
-                </div>
-              </td>
-              <td class="py-3">
-                <span v-if="item.supplier" class="font-weight-medium">{{ item.supplier.name }}</span>
-                <span v-else class="text-muted italic">Todos</span>
-              </td>
-              <td class="text-center py-3">
-                <VSwitch
-                  v-model="item.is_active"
-                  density="compact"
-                  hide-details
-                  color="success"
-                  class="d-inline-flex"
-                  @change="toggleActive(item)"
-                />
-              </td>
-              <td class="py-3">
-                <div v-if="item.last_run_at">
-                  <div class="text-xs text-muted">{{ new Date(item.last_run_at).toLocaleString() }}</div>
-                  <div class="text-xs font-weight-bold text-success">
-                    {{ item.last_run_products }} prod → {{ item.last_run_orders }} órdenes
-                  </div>
-                </div>
-                <span v-else class="text-muted text-xs">—</span>
-              </td>
-              <td class="text-end px-6 py-3">
-                <div class="d-flex ga-1 align-center justify-end">
-                  <VBtn
-                    icon
-                    size="32"
-                    variant="tonal"
-                    color="success"
-                    title="Ejecutar ahora"
-                    :loading="runningConfigs[item.id]"
-                    :disabled="runningConfigs[item.id]"
-                    @click="runConfig(item.id)"
-                  >
-                    <VIcon icon="tabler-play" size="16" />
-                  </VBtn>
-                  <VBtn
-                    icon
-                    size="32"
-                    variant="tonal"
-                    color="info"
-                    title="Editar"
-                    :disabled="runningConfigs[item.id]"
-                    @click="openEdit(item)"
-                  >
-                    <VIcon icon="tabler-pencil" size="16" />
-                  </VBtn>
-                  <VBtn
-                    icon
-                    size="32"
-                    variant="tonal"
-                    color="error"
-                    title="Eliminar"
-                    :disabled="runningConfigs[item.id]"
-                    @click="deleteConfig(item.id)"
-                  >
-                    <VIcon icon="tabler-trash" size="16" />
-                  </VBtn>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </VTable>
+          <VTable v-if="filteredConfigs.length > 0" class="w-100 auto-replenishment-table" hover>
+            <thead>
+              <tr>
+                <th class="text-start font-weight-bold">Nombre</th>
+                <th class="text-start font-weight-bold">Análisis</th>
+                <th class="text-start font-weight-bold">Frecuencia de Ejecución</th>
+                <th class="text-start font-weight-bold">Proveedor Destino</th>
+                <th class="text-center font-weight-bold">Estado</th>
+                <th class="text-start font-weight-bold">Última Corrida</th>
+                <th class="text-end px-6 font-weight-bold">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="item in filteredConfigs" :key="item.id">
+                <!-- Nombre -->
+                <td class="font-weight-bold py-3 text-high-emphasis">
+                  {{ item.name }}
+                </td>
 
-        <VCardText v-else class="text-center py-12 text-muted">
-          <VIcon icon="tabler-settings-automation" size="64" class="mb-4 text-disabled" />
-          <p class="text-h6">No hay reglas de automatización creadas</p>
-          <p>Haga clic en "Nueva Regla" para parametrizar la generación automática de pedidos.</p>
-        </VCardText>
-      </div>
-    </VCard>
-  </div>
+                <!-- Análisis (Algoritmo + Lapso + Exclusiones Limpias) -->
+                <td class="py-3">
+                  <div class="d-flex flex-column gap-1">
+                    <div class="d-flex align-center gap-1.5 flex-wrap">
+                      <span class="text-body-2 font-weight-medium">
+                        {{ tipoFiltracionOpciones.find(o => o.value === item.tipo_filtracion)?.title || item.tipo_filtracion }}
+                      </span>
+                      <VChip size="x-small" variant="tonal" color="primary" class="font-weight-bold">
+                        {{ lapsoDeTiempoOpciones.find(o => o.value === item.lapso_de_tiempo)?.title || item.lapso_de_tiempo }}
+                      </VChip>
+                    </div>
+                    <!-- Badges de Exclusiones Compactos -->
+                    <div v-if="item.exclude_colombian || item.exclude_novaventa" class="d-flex align-center gap-1 flex-wrap">
+                      <VChip v-if="item.exclude_colombian" size="x-small" color="warning" variant="tonal" density="compact">
+                        Sin Col
+                      </VChip>
+                      <VChip v-if="item.exclude_novaventa" size="x-small" color="warning" variant="tonal" density="compact">
+                        Sin Novaventa
+                      </VChip>
+                    </div>
+                  </div>
+                </td>
+
+                <!-- Frecuencia de Ejecución (Traducción destacada + Cron sutil) -->
+                <td class="py-3">
+                  <div class="d-flex flex-column gap-0.5">
+                    <div class="d-flex align-center gap-1 text-body-2 font-weight-medium text-high-emphasis">
+                      <VIcon icon="tabler-clock" size="16" class="text-muted" />
+                      {{ translateCron(item.schedule_expression) }}
+                    </div>
+                    <div>
+                      <code class="px-1.5 py-0.5 rounded text-muted font-weight-regular text-xs bg-grey-100 border">
+                        {{ item.schedule_expression }}
+                      </code>
+                    </div>
+                  </div>
+                </td>
+
+                <!-- Proveedor Destino -->
+                <td class="py-3">
+                  <VChip v-if="item.supplier" size="small" variant="tonal" color="info" prepend-icon="tabler-building-store">
+                    {{ item.supplier.name }}
+                  </VChip>
+                  <VChip v-else size="small" variant="outlined" color="secondary">
+                    Todos los proveedores
+                  </VChip>
+                </td>
+
+                <!-- Estado (Switch interactivo) -->
+                <td class="text-center py-3">
+                  <VSwitch
+                    v-model="item.is_active"
+                    density="compact"
+                    hide-details
+                    color="success"
+                    class="d-inline-flex"
+                    @change="toggleActive(item)"
+                  >
+                    <template #label>
+                      <span class="text-caption" :class="item.is_active ? 'text-success font-weight-bold' : 'text-muted'">
+                        {{ item.is_active ? 'Activo' : 'Inactivo' }}
+                      </span>
+                    </template>
+                  </VSwitch>
+                </td>
+
+                <!-- Última Corrida -->
+                <td class="py-3">
+                  <div v-if="item.last_run_at" class="d-flex flex-column gap-1">
+                    <div class="text-caption text-muted d-flex align-center gap-1">
+                      <VIcon icon="tabler-calendar-time" size="14" />
+                      {{ formatDate(item.last_run_at) }}
+                    </div>
+                    <div>
+                      <VChip size="x-small" color="success" variant="tonal" class="font-weight-bold">
+                        <VIcon icon="tabler-circle-check" size="12" class="me-1" />
+                        {{ item.last_run_products }} prod → {{ item.last_run_orders }} órdenes
+                      </VChip>
+                    </div>
+                  </div>
+                  <div v-else class="text-caption text-disabled d-flex align-center gap-1">
+                    <VIcon icon="tabler-clock-pause" size="14" />
+                    Sin ejecuciones previas
+                  </div>
+                </td>
+
+                <!-- Acciones con Tooltips y Menú Contextual -->
+                <td class="text-end px-6 py-3">
+                  <div class="d-flex ga-1.5 align-center justify-end">
+                    <!-- Ejecutar Ahora -->
+                    <VTooltip text="Ejecutar regla ahora" location="top">
+                      <template #activator="{ props: tooltipProps }">
+                        <VBtn
+                          v-bind="tooltipProps"
+                          icon
+                          size="32"
+                          variant="tonal"
+                          color="success"
+                          :loading="runningConfigs[item.id]"
+                          :disabled="runningConfigs[item.id]"
+                          @click="runConfig(item.id)"
+                        >
+                          <VIcon icon="tabler-player-play" size="16" />
+                        </VBtn>
+                      </template>
+                    </VTooltip>
+
+                    <!-- Editar -->
+                    <VTooltip text="Editar configuración" location="top">
+                      <template #activator="{ props: tooltipProps }">
+                        <VBtn
+                          v-bind="tooltipProps"
+                          icon
+                          size="32"
+                          variant="tonal"
+                          color="primary"
+                          :disabled="runningConfigs[item.id]"
+                          @click="openEdit(item)"
+                        >
+                          <VIcon icon="tabler-pencil" size="16" />
+                        </VBtn>
+                      </template>
+                    </VTooltip>
+
+                    <!-- Menú Contextual para Acciones Secundarias / Destructivas -->
+                    <VMenu location="bottom end">
+                      <template #activator="{ props: menuProps }">
+                        <VBtn
+                          v-bind="menuProps"
+                          icon
+                          size="32"
+                          variant="text"
+                          color="secondary"
+                          :disabled="runningConfigs[item.id]"
+                        >
+                          <VIcon icon="tabler-dots-vertical" size="16" />
+                        </VBtn>
+                      </template>
+                      <VList density="compact" class="py-1">
+                        <VListItem
+                          density="compact"
+                          color="error"
+                          class="text-error"
+                          prepend-icon="tabler-trash"
+                          title="Eliminar regla"
+                          @click="deleteConfig(item.id)"
+                        />
+                      </VList>
+                    </VMenu>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </VTable>
+
+          <!-- Estado Vacío por Búsqueda -->
+          <VCardText v-else-if="searchQuery" class="text-center py-12 text-muted">
+            <VIcon icon="tabler-search-off" size="48" class="mb-3 text-disabled" />
+            <p class="text-h6 mb-1">Sin resultados</p>
+            <p class="text-body-2 text-muted">No se encontraron reglas que coincidan con "{{ searchQuery }}".</p>
+            <VBtn variant="tonal" size="small" @click="searchQuery = ''">Limpiar búsqueda</VBtn>
+          </VCardText>
+
+          <!-- Estado Vacío General -->
+          <VCardText v-else class="text-center py-12 text-muted">
+            <VIcon icon="tabler-settings-automation" size="56" class="mb-3 text-disabled" />
+            <p class="text-h6 mb-1">No hay reglas de automatización creadas</p>
+            <p class="text-body-2 text-muted mb-4">Parametrice la generación automática de pedidos para optimizar su inventario.</p>
+            <VBtn color="primary" prepend-icon="tabler-plus" @click="openCreate">Crear primera regla</VBtn>
+          </VCardText>
+        </div>
+      </VCard>
+    </div>
 
     <!-- Modal Formulario Desacoplado -->
     <AutoReplenishmentFormDialog
@@ -384,3 +561,4 @@ onMounted(() => {
   -webkit-overflow-scrolling: touch;
 }
 </style>
+
