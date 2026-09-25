@@ -1178,19 +1178,21 @@ const formatNumber = (value) => {
 const formatCurrency = (value, currency = null) => {
   const numValue = typeof value === "string" ? parseFloat(value) : value;
   if (typeof numValue !== "number" || isNaN(numValue)) return value;
-  const targetCurrency = currency || invoice.value?.currency;
-  const currencyMap = { BS: "VES", Bs: "VES", COP: "COP", USD: "USD" };
-  const mappedCurrency = currencyMap[targetCurrency] || "VES";
-  return new Intl.NumberFormat("es-VE", {
-    style: "currency",
-    currency: mappedCurrency,
-    minimumFractionDigits: 2,
-  }).format(numValue);
+  const targetCurrency = (currency || invoice.value?.currency || "BS").toUpperCase();
+  const formattedNum = formatNumber(numValue);
+
+  if (targetCurrency === "USD" || targetCurrency === "$") {
+    return `$ ${formattedNum}`;
+  }
+  if (targetCurrency === "COP") {
+    return `COP ${formattedNum}`;
+  }
+  return `Bs. ${formattedNum}`;
 };
 
 const getCurrencySymbol = () => {
   if (!invoice.value?.currency) return "Bs.";
-  const symbolMap = { BS: "Bs.", Bs: "Bs.", USD: "$", COP: "COP$" };
+  const symbolMap = { BS: "Bs.", Bs: "Bs.", VES: "Bs.", USD: "$", COP: "COP$" };
 
   return symbolMap[invoice.value.currency] || "Bs.";
 };
