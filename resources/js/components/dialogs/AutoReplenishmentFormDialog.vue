@@ -264,30 +264,39 @@ function handleSave() {
         </VRow>
       </VCardText>
 
-      <!-- Footer Fijo con Acciones Limpias -->
-      <VDivider />
-
-      <VCardActions class="pa-3 pa-sm-4 bg-surface justify-end gap-2">
-        <VBtn
-          color="secondary"
-          variant="text"
-          class="font-weight-medium rounded-lg px-4"
-          @click="close"
-        >
-          Cancelar
-        </VBtn>
-
-        <VBtn
-          color="primary"
-          variant="flat"
-          class="font-weight-bold rounded-lg px-5 shadow-sm"
-          prepend-icon="tabler-device-floppy"
-          :loading="dialogLoading"
-          :disabled="dialogLoading"
-          @click="handleSave"
-        >
-          Guardar Regla
-        </VBtn>
+      <!-- Footer Fijo con Acciones al 50% según Estilo del Sistema -->
+      <VCardActions class="pa-4 bg-light border-t">
+        <VRow dense class="w-100 ma-0">
+          <VCol cols="6" class="pa-1">
+            <VBtn
+              color="secondary"
+              variant="outlined"
+              size="large"
+              block
+              height="44"
+              class="font-weight-bold rounded-lg text-button"
+              @click="close"
+            >
+              Cancelar
+            </VBtn>
+          </VCol>
+          <VCol cols="6" class="pa-1">
+            <VBtn
+              color="primary"
+              variant="flat"
+              size="large"
+              block
+              height="44"
+              class="font-weight-bold rounded-lg shadow-primary text-button"
+              :loading="dialogLoading"
+              :disabled="dialogLoading"
+              @click="handleSave"
+            >
+              <VIcon icon="tabler-device-floppy" size="18" class="me-2" />
+              Guardar Regla
+            </VBtn>
+          </VCol>
+        </VRow>
       </VCardActions>
     </VCard>
   </VDialog>

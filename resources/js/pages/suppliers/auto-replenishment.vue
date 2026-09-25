@@ -104,6 +104,23 @@ function formatDate(dateStr) {
   });
 }
 
+// Helper para obtener las exclusiones y filtros activos de una regla para el tooltip
+function getActiveExclusions(item) {
+  const list = [];
+  if (item.exclude_colombian) list.push("Excluye productos Plan Colombia");
+  if (item.exclude_novaventa) list.push("Excluye productos Novaventa");
+  if (item.max_price_increase_percentage !== null && item.max_price_increase_percentage !== undefined) {
+    list.push(`Sobrecosto máx. permitido: +${item.max_price_increase_percentage}%`);
+  }
+  if (item.con_descuento) list.push("Aplica precios con descuento");
+  if (item.include_ignored === false) list.push("Omite productos ignorados");
+  if (item.supplier) list.push(`Proveedor exclusivo: ${item.supplier.name}`);
+  if (Array.isArray(item.group_ids) && item.group_ids.length > 0) {
+    list.push(`Limitado a ${item.group_ids.length} grupo(s) de productos`);
+  }
+  return list;
+}
+
 // KPIs Computados
 const totalRulesCount = computed(() => configs.value.length);
 const activeRulesCount = computed(() => configs.value.filter(c => c.is_active).length);
@@ -379,23 +396,40 @@ onMounted(() => {
                       {{ tipoFiltracionOpciones.find(o => o.value === item.tipo_filtracion)?.title || item.tipo_filtracion }}
                     </div>
 
-                    <!-- Chips de Lapso y Exclusiones alineados del mismo tamaño -->
+                    <!-- Chip de Lapso y Badge Agrupado con Tooltip -->
                     <div class="d-flex align-center gap-1.5 flex-wrap mt-0.5">
                       <VChip size="small" variant="tonal" color="primary" class="font-weight-bold">
                         {{ lapsoDeTiempoOpciones.find(o => o.value === item.lapso_de_tiempo)?.title || item.lapso_de_tiempo }}
                       </VChip>
 
-                      <VChip v-if="item.exclude_colombian" size="small" color="warning" variant="tonal" class="font-weight-medium">
-                        Sin Col
-                      </VChip>
+                      <VTooltip
+                        v-if="getActiveExclusions(item).length > 0"
+                        location="top"
+                      >
+                        <template #activator="{ props: tooltipProps }">
+                          <VChip
+                            v-bind="tooltipProps"
+                            size="small"
+                            color="warning"
+                            variant="tonal"
+                            class="font-weight-bold cursor-pointer"
+                          >
+                            <VIcon icon="tabler-filter" size="14" class="me-1" />
+                            {{ getActiveExclusions(item).length }} {{ getActiveExclusions(item).length === 1 ? 'Filtro' : 'Filtros' }}
+                          </VChip>
+                        </template>
 
-                      <VChip v-if="item.exclude_novaventa" size="small" color="warning" variant="tonal" class="font-weight-medium">
-                        Sin Novaventa
-                      </VChip>
-
-                      <VChip v-if="item.max_price_increase_percentage !== null" size="small" color="error" variant="tonal" class="font-weight-medium">
-                        Máx +{{ item.max_price_increase_percentage }}%
-                      </VChip>
+                        <div class="pa-1 text-caption text-high-emphasis">
+                          <div class="font-weight-bold mb-1 border-b pb-0.5 text-warning">
+                            Filtros y Exclusiones Activas
+                          </div>
+                          <ul class="ps-3 ma-0 text-xs">
+                            <li v-for="(exc, idx) in getActiveExclusions(item)" :key="idx" class="py-0.5">
+                              {{ exc }}
+                            </li>
+                          </ul>
+                        </div>
+                      </VTooltip>
                     </div>
                   </div>
                 </td>
