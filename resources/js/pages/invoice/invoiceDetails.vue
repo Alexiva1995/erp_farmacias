@@ -13,11 +13,20 @@ import { useBrandingStore } from "@/stores/useBrandingStore";
 import { useAuthStore } from "@/stores/auth";
 
 const isPreviewDialogVisible = ref(false);
+const isPdfSidePanelOpen = ref(false);
 const previewImageUrl = ref("");
 
 const viewInvoicePhoto = (photoPath) => {
   if (!photoPath) return;
   previewImageUrl.value = photoPath.startsWith("http") ? photoPath : `/storage/${photoPath}`;
+  if (mobile.value) {
+    isPreviewDialogVisible.value = true;
+  } else {
+    isPdfSidePanelOpen.value = !isPdfSidePanelOpen.value;
+  }
+};
+
+const openPdfInModal = () => {
   isPreviewDialogVisible.value = true;
 };
 
@@ -411,6 +420,9 @@ const getCostTooltipText = (item) => {
  * Retorna { icon, color, tooltip } o null si no hay referencia de autoorden.
  */
 const getPriceVsAutoOrderIndicator = (item) => {
+  // Los badges de tendencia de precio son EXCLUSIVOS del modo de aprobación gerencial
+  if (!isApprovalMode.value) return null;
+
   const autoOrderPrice = item.auto_order_unit_cost_usd;
 
   // Sin referencia de autoorden → sin indicador
@@ -1600,8 +1612,14 @@ const detailsHeaders = computed(() => {
     </div>
 
     <div v-else-if="invoice">
-
-      <VCard class="invoice-detail-card mb-6">
+      <VRow class="invoice-workspace-row ma-0">
+        <VCol
+          cols="12"
+          :lg="isPdfSidePanelOpen && invoice.invoice_photo ? 8 : 12"
+          :xl="isPdfSidePanelOpen && invoice.invoice_photo ? 9 : 12"
+          class="invoice-main-col pa-0 pe-lg-2"
+        >
+          <VCard class="invoice-detail-card mb-6">
         <VForm @submit.prevent>
           <VCardText class="header-section py-3 px-4">
             <div class="d-flex flex-wrap align-center justify-space-between ga-3">
@@ -1761,28 +1779,24 @@ const detailsHeaders = computed(() => {
                     v-if="invoice.auto_order_id && invoiceDetails.length === 0"
                     color="warning"
                     variant="tonal"
-                    :size="mobile ? 'default' : 'small'"
-                    :width="mobile ? 38 : undefined"
-                    :height="mobile ? 38 : undefined"
-                    class="rounded-lg px-0"
+                    size="small"
+                    class="rounded-lg px-3 font-weight-bold"
                     :loading="loadingDetails"
                     @click="loadAutoOrderDetails"
                   >
-                    <VIcon icon="tabler-refresh" />
-                    <span v-if="!mobile" class="ms-1">Cargar Auto-Orden</span>
+                    <VIcon icon="tabler-refresh" class="me-1" size="16" />
+                    <span>Cargar Auto-Orden</span>
                   </VBtn>
 
                   <VBtn
                     :color="isScannerMode ? 'info' : 'secondary'"
                     :variant="isScannerMode ? 'flat' : 'tonal'"
-                    :size="mobile ? 'default' : 'small'"
-                    :width="mobile ? 38 : undefined"
-                    :height="mobile ? 38 : undefined"
-                    class="rounded-lg px-0"
+                    size="small"
+                    class="rounded-lg px-3 font-weight-bold"
                     @click="toggleScannerMode"
                   >
-                    <VIcon :icon="isScannerMode ? 'tabler-barcode' : 'tabler-barcode-off'" />
-                    <span v-if="!mobile" class="ms-1">{{ isScannerMode ? "Escáner" : "Cargar" }}</span>
+                    <VIcon :icon="isScannerMode ? 'tabler-barcode' : 'tabler-barcode-off'" class="me-1" size="16" />
+                    <span>{{ isScannerMode ? "Modo Escáner" : "Escanear" }}</span>
                   </VBtn>
                 </template>
 
@@ -1790,12 +1804,12 @@ const detailsHeaders = computed(() => {
                   <VBtn
                     color="warning"
                     variant="tonal"
-                    :size="mobile ? 'default' : 'small'"
-                    class="rounded-lg px-3"
+                    size="small"
+                    class="rounded-lg px-3 font-weight-bold"
                     @click="copyMoreExpensiveProducts"
                   >
-                    <VIcon icon="tabler-copy" />
-                    <span v-if="!mobile" class="ms-1">Copiar más caros</span>
+                    <VIcon icon="tabler-copy" class="me-1" size="16" />
+                    <span>Copiar más caros</span>
                   </VBtn>
                 </template>
 
@@ -1803,26 +1817,24 @@ const detailsHeaders = computed(() => {
                   v-if="isEditableMode && isEditMode && isRestaurant"
                   color="info"
                   variant="tonal"
-                  :size="mobile ? 'default' : 'small'"
-                  class="rounded-lg px-3"
+                  size="small"
+                  class="rounded-lg px-3 font-weight-bold"
                   @click="handleShowProductSearch"
                 >
-                  <VIcon icon="tabler-search" />
-                  <span v-if="!mobile" class="ms-1">Catálogo</span>
+                  <VIcon icon="tabler-search" class="me-1" size="16" />
+                  <span>Catálogo</span>
                 </VBtn>
 
                 <VBtn
                   v-if="isEditableMode && isEditMode"
                   color="primary"
                   variant="flat"
-                  :size="mobile ? 'default' : 'small'"
-                  :width="mobile ? 38 : undefined"
-                  :height="mobile ? 38 : undefined"
-                  class="rounded-lg px-0"
+                  size="small"
+                  class="rounded-lg px-3 font-weight-bold"
                   @click="handleAddProduct"
                 >
-                  <VIcon icon="tabler-plus" />
-                  <span v-if="!mobile" class="ms-1">Agregar</span>
+                  <VIcon icon="tabler-plus" class="me-1" size="16" />
+                  <span>Agregar Producto</span>
                 </VBtn>
               </div>
             </div>
@@ -2636,6 +2648,68 @@ const detailsHeaders = computed(() => {
           </div>
         </VForm>
       </VCard>
+    </VCol>
+
+    <!-- Panel Lateral de Documento PDF (Split Screen 25-33% a la derecha) -->
+    <VCol
+      v-if="isPdfSidePanelOpen && invoice.invoice_photo"
+      cols="12"
+      lg="4"
+      xl="3"
+      class="pdf-side-panel-col pa-0 ps-lg-2"
+    >
+      <VCard class="pdf-side-card border shadow-sm sticky-pdf-panel rounded-lg overflow-hidden">
+        <VCardTitle class="py-2 px-3 bg-surface border-b d-flex justify-space-between align-center">
+          <div class="d-flex align-center ga-1">
+            <VIcon icon="tabler-file-type-pdf" color="error" size="18" />
+            <span class="text-subtitle-2 font-weight-bold">Factura Digital</span>
+          </div>
+          <div class="d-flex align-center ga-1">
+            <VTooltip text="Abrir en ventana completa">
+              <template #activator="{ props: tipProps }">
+                <VBtn
+                  v-bind="tipProps"
+                  icon="tabler-maximize"
+                  size="x-small"
+                  variant="text"
+                  @click="openPdfInModal"
+                />
+              </template>
+            </VTooltip>
+            <VTooltip text="Cerrar visor lateral">
+              <template #activator="{ props: tipProps }">
+                <VBtn
+                  v-bind="tipProps"
+                  icon="tabler-x"
+                  size="x-small"
+                  variant="text"
+                  @click="isPdfSidePanelOpen = false"
+                />
+              </template>
+            </VTooltip>
+          </div>
+        </VCardTitle>
+        <VCardText class="pa-0 bg-grey-lighten-4 pdf-iframe-container">
+          <iframe
+            v-if="previewImageUrl.toLowerCase().endsWith('.pdf') || previewImageUrl.toLowerCase().includes('.pdf')"
+            :src="previewImageUrl"
+            width="100%"
+            height="100%"
+            class="pdf-embed-frame"
+            style="border: none; min-height: calc(100vh - 170px); height: calc(100vh - 170px);"
+          />
+          <VImg
+            v-else
+            :src="previewImageUrl"
+            width="100%"
+            height="100%"
+            cover
+            style="min-height: calc(100vh - 170px); height: calc(100vh - 170px);"
+          />
+        </VCardText>
+      </VCard>
+    </VCol>
+  </VRow>
 
       <template v-if="isEditableMode">
         <div
@@ -2956,6 +3030,21 @@ const detailsHeaders = computed(() => {
 
 .near-expiration-row {
   background-color: rgba(var(--v-theme-warning), 0.04);
+}
+
+.sticky-pdf-panel {
+  position: sticky;
+  top: 75px;
+  z-index: 5;
+  height: calc(100vh - 120px);
+}
+
+.pdf-side-card {
+  background-color: rgb(var(--v-theme-surface)) !important;
+}
+
+.transition-all {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Estilos Móvil de Factura Premium */
