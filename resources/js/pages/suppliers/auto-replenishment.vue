@@ -246,8 +246,8 @@ async function runConfig(id) {
     Swal.fire({
       title: "Ejecución Completada",
       html: `Se procesó la regla de reposición correctamente:<br><br>
-             <strong>Productos analizados:</strong> ${data.last_run_products}<br>
-             <strong>Órdenes creadas/actualizadas:</strong> ${data.last_run_orders}`,
+             <strong>Productos analizados:</strong> ${data.last_run_products ?? 0}<br>
+             <strong>Órdenes creadas/actualizadas:</strong> ${data.last_run_orders ?? 0}`,
       icon: "success",
     });
     await loadConfigs();

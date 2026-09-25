@@ -44,17 +44,23 @@ class AutoReplenishmentCommand extends Command
             return self::SUCCESS;
         }
 
-        $this->info("Iniciando reposición automática — {$configs->count()} configuración(es).");
-
+        $hasErrors = false;
         foreach ($configs as $config) {
-            $this->procesarConfig($config);
+            $ok = $this->procesarConfig($config);
+            if (!$ok) {
+                $hasErrors = true;
+            }
+        }
+
+        if ($hasErrors && $configId) {
+            return self::FAILURE;
         }
 
         $this->info('✅ Reposición automática completada.');
         return self::SUCCESS;
     }
 
-    private function procesarConfig(AutoReplenishmentConfig $config): void
+    private function procesarConfig(AutoReplenishmentConfig $config): bool
     {
         $this->line("  → Procesando: [{$config->id}] {$config->name}");
 
@@ -68,7 +74,7 @@ class AutoReplenishmentCommand extends Command
             if ($productos->isEmpty()) {
                 $this->line("     Sin productos que reponer para: {$config->name}");
                 $config->update(['last_run_at' => now(), 'last_run_products' => 0, 'last_run_orders' => 0]);
-                return;
+                return true;
             }
 
             // 3. Filtrar: solo los que tienen proveedor vinculado y solicitar >= min_solicitar
@@ -81,7 +87,7 @@ class AutoReplenishmentCommand extends Command
             if ($aReponer->isEmpty()) {
                 $this->line("     Sin productos con proveedor y solicitar ≥ {$config->min_solicitar}.");
                 $config->update(['last_run_at' => now(), 'last_run_products' => 0, 'last_run_orders' => 0]);
-                return;
+                return true;
             }
 
             $this->line("     Productos a reponer: {$aReponer->count()}");
@@ -98,12 +104,14 @@ class AutoReplenishmentCommand extends Command
             ]);
 
             $this->info("     ✅ {$aReponer->count()} productos → " . count($ordenesCreadas) . " órdenes creadas/actualizadas.");
+            return true;
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             $this->error("     ❌ Error en '{$config->name}': " . $e->getMessage());
             Log::error("[AutoReplenishment] Error en config {$config->id}: " . $e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
             ]);
+            return false;
         }
     }
 

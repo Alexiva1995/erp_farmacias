@@ -63,8 +63,8 @@ class AutoReplenishmentService
             'success'           => $exitCode === 0,
             'message'           => $exitCode === 0 ? 'Ejecución completada.' : 'La ejecución terminó con errores. Revisa los logs.',
             'last_run_at'       => $config->last_run_at,
-            'last_run_products' => $config->last_run_products,
-            'last_run_orders'   => $config->last_run_orders,
+            'last_run_products' => (int) ($config->last_run_products ?? 0),
+            'last_run_orders'   => (int) ($config->last_run_orders ?? 0),
         ];
     }
 }
