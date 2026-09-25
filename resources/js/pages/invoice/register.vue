@@ -455,12 +455,41 @@ const handleSubmit = async () => {
 
 <template>
   <div>
-    <VCard :title="isEditMode ? 'Editar Factura' : 'Registrar Factura'">
-      <template v-if="isEditMode" #prepend>
-        <VBtn icon="tabler-arrow-left" variant="text" @click="handleCancel" />
-      </template>
+    <VCard elevation="1" class="rounded-lg">
+      <VCardItem class="pb-2">
+        <template #prepend>
+          <VAvatar
+            color="primary"
+            variant="tonal"
+            rounded
+            size="42"
+            class="me-3"
+          >
+            <VIcon :icon="isEditMode ? 'tabler-edit' : 'tabler-file-plus'" size="24" />
+          </VAvatar>
+        </template>
+        
+        <template v-if="isEditMode" #append>
+          <VBtn
+            icon="tabler-arrow-left"
+            variant="tonal"
+            color="secondary"
+            size="small"
+            @click="handleCancel"
+          />
+        </template>
 
-      <VCardText>
+        <VCardTitle class="text-h6 font-weight-bold">
+          {{ isEditMode ? 'Editar Factura de Compra' : 'Registrar Factura de Compra' }}
+        </VCardTitle>
+        <VCardSubtitle class="text-caption">
+          {{ isEditMode ? 'Modifique los datos fiscales y financieros del documento' : 'Ingrese los datos fiscales, fechas y valores para el control de cuentas por pagar' }}
+        </VCardSubtitle>
+      </VCardItem>
+
+      <VDivider />
+
+      <VCardText class="pt-5">
         <div v-if="loadingInvoice" class="py-6">
           <VSkeletonLoader type="card, paragraph, actions" />
         </div>
@@ -477,7 +506,7 @@ const handleSubmit = async () => {
             :is-edit-mode="isEditMode"
           />
 
-          <VDivider class="my-4" />
+          <VDivider class="my-5" />
 
           <InvoiceFinancialForm
             :form-data="formData"
@@ -492,31 +521,28 @@ const handleSubmit = async () => {
         </VForm>
       </VCardText>
 
-      <VCardActions class="pa-4 px-6">
-        <VRow>
-          <VCol cols="6">
-            <VBtn
-              color="secondary"
-              variant="outlined"
-              @click="handleCancel"
-              block
-              :disabled="loading"
-            >
-              Cancelar
-            </VBtn>
-          </VCol>
-          <VCol cols="6">
-            <VBtn
-              color="primary"
-              variant="flat"
-              :loading="loading"
-              @click="handleSubmit"
-              block
-            >
-              {{ isEditMode ? "Actualizar Factura" : "Registrar Factura" }}
-            </VBtn>
-          </VCol>
-        </VRow>
+      <VDivider />
+
+      <VCardActions class="pa-4 px-6 bg-surface">
+        <VSpacer />
+        <VBtn
+          color="secondary"
+          variant="outlined"
+          prepend-icon="tabler-x"
+          @click="handleCancel"
+          :disabled="loading"
+        >
+          Cancelar
+        </VBtn>
+        <VBtn
+          color="primary"
+          variant="flat"
+          :loading="loading"
+          prepend-icon="tabler-device-floppy"
+          @click="handleSubmit"
+        >
+          {{ isEditMode ? "Actualizar Factura" : "Registrar Factura" }}
+        </VBtn>
       </VCardActions>
     </VCard>
   </div>
