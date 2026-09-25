@@ -278,25 +278,34 @@ const isTotalMismatch = computed(() => {
 });
 
 const totalWithDiscount = computed(() => {
-  if (!invoice.value || !selectedPaymentRuleId.value) {
-    return invoice.value?.total_amount || 0;
+  if (!invoice.value) return 0;
+
+  if (isApprovalMode.value && selectedPaymentRuleId.value) {
+    const rules = Array.isArray(props.paymentRules)
+      ? props.paymentRules
+      : props.paymentRules?.payment_rules || [];
+
+    const rule = rules.find((r) => r.id === selectedPaymentRuleId.value);
+    if (rule) {
+      const discountPercentage = Number(rule.discount_percentage) || 0;
+      const discountAmount = invoice.value.total_amount * (discountPercentage / 100);
+      return invoice.value.total_amount - discountAmount;
+    }
   }
 
-  const rules = Array.isArray(props.paymentRules)
-    ? props.paymentRules
-    : props.paymentRules?.payment_rules || [];
-
-  const rule = rules.find((r) => r.id === selectedPaymentRuleId.value);
-
-  if (!rule) {
-    return invoice.value.total_amount;
+  if (isEditableMode.value && selectedSupplierDiscountId.value) {
+    const discount = props.supplierDiscounts.find(
+      (d) => d.id === selectedSupplierDiscountId.value,
+    );
+    if (discount) {
+      const discountPercentage = Number(discount.discount_percentage) || 0;
+      const baseTotal = editableDetailsTotal.value || invoice.value.total_amount || 0;
+      const discountAmount = baseTotal * (discountPercentage / 100);
+      return baseTotal - discountAmount;
+    }
   }
-  const discountPercentage = Number(rule.discount_percentage) || 0;
 
-  const discountAmount =
-    invoice.value.total_amount * (discountPercentage / 100);
-
-  return invoice.value.total_amount - discountAmount;
+  return invoice.value.total_amount || 0;
 });
 
 const editableDetailsTaxAmount = computed(() => {
@@ -1542,7 +1551,7 @@ const detailsHeaders = computed(() => {
       width: isEditMode.value ? "32%" : "38%",
     },
     {
-      title: "Lote / Vencimiento",
+      title: "Lote",
       key: "lot_and_expiration",
       align: "center",
       sortable: false,
@@ -1562,28 +1571,28 @@ const detailsHeaders = computed(() => {
 
   headers.push(
     {
-      title: "Unidades",
+      title: "Unid.",
       key: "quantity",
       align: "end",
       sortable: false,
       width: "8%",
     },
     {
-      title: "Costo Unitario",
+      title: "Costo",
       key: "unit_cost",
       align: "end",
       sortable: false,
       width: "12%",
     },
     {
-      title: "IVA (16%)",
+      title: "IVA",
       key: "tax_amount",
       align: "end",
       sortable: false,
       width: "8%",
     },
     {
-      title: "Costo Total",
+      title: "Total",
       key: "total_cost",
       align: "end",
       sortable: false,

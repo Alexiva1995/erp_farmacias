@@ -63,7 +63,6 @@ const emit = defineEmits([
 
 <template>
   <VCardText class="totals-section pb-6 pt-4 bg-var-theme-background">
-    <h3 class="text-h6 font-weight-black mb-4">Resumen Financiero</h3>
     <VRow>
       <!-- Tarjeta 1: Desglose Fiscal Completo (Exento, Base Imponible e IVA) -->
       <VCol cols="12" md="4">
@@ -104,8 +103,8 @@ const emit = defineEmits([
       <VCol cols="12" md="4">
         <VCard variant="outlined" class="h-100 summary-card glassmorphism">
           <VCardText class="d-flex flex-column justify-center h-100">
-            <!-- Descuentos Edit Mode -->
-            <div v-if="isEditableMode && isEditMode">
+            <!-- Descuentos Editable Mode -->
+            <div v-if="isEditableMode">
               <span class="text-subtitle-2 font-weight-bold text-high-emphasis mb-1 d-block">Descuento del Proveedor</span>
               <VSelect
                 :model-value="selectedSupplierDiscountId"
@@ -113,6 +112,7 @@ const emit = defineEmits([
                 item-title="displayText"
                 item-value="id"
                 label="Seleccionar Descuento"
+                placeholder="Sin descuento aplicado"
                 variant="outlined"
                 density="compact"
                 clearable
@@ -130,6 +130,7 @@ const emit = defineEmits([
                 item-title="displayText"
                 item-value="id"
                 label="Seleccionar Regla"
+                placeholder="Sin descuento aplicado"
                 variant="outlined"
                 density="compact"
                 clearable
@@ -165,8 +166,8 @@ const emit = defineEmits([
               <span class="font-weight-bold">{{ formatNumber(invoice.exchange_rate) }} Bs/$</span>
             </div>
 
-            <VDivider v-if="isApprovalMode && selectedPaymentRuleId" class="my-2" />
-            <div v-if="isApprovalMode && selectedPaymentRuleId" class="d-flex justify-space-between align-center text-success mt-2">
+            <VDivider v-if="(isApprovalMode && selectedPaymentRuleId) || (isEditableMode && selectedSupplierDiscountId)" class="my-2" />
+            <div v-if="(isApprovalMode && selectedPaymentRuleId) || (isEditableMode && selectedSupplierDiscountId)" class="d-flex justify-space-between align-center text-success mt-2">
               <span class="text-subtitle-2 font-weight-bold">Con Descuento</span>
               <span class="text-h6 font-weight-bold">{{ formatCurrency(totalWithDiscount, invoice.currency) }}</span>
             </div>

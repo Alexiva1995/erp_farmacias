@@ -489,21 +489,18 @@ class SupplierQueryService
                             ? trim((string)$header['control_number']) 
                             : ('00-' . str_pad((string)ltrim((string)$invoiceNumber, '0'), 7, '0', STR_PAD_LEFT));
 
-                        // Buscar si la factura ya existe en el proveedor o en la tabla global para evitar colisiones de unicidad
-                        $existingInvoice = Invoice::where(function ($q) use ($supplier, $invoiceNumber, $cleanNum) {
-                            $q->where('supplier_id', $supplier->id)
-                              ->where(function ($sub) use ($invoiceNumber, $cleanNum) {
-                                  $sub->where('invoice_number', $invoiceNumber)
-                                      ->orWhere('invoice_number', $cleanNum)
-                                      ->orWhere('invoice_number', '00' . $cleanNum)
-                                      ->orWhere('invoice_number', '0' . $cleanNum)
-                                      ->orWhere('invoice_number', 'like', '%' . $cleanNum);
-                              });
-                        })->orWhere('invoice_number', $invoiceNumber)
-                          ->orWhere('invoice_number', $cleanNum)
-                          ->first();
+                        // Buscar si la factura ya existe en el proveedor para evitar colisiones de unicidad
+                        $existingInvoice = Invoice::where('supplier_id', $supplier->id)
+                            ->where(function ($sub) use ($invoiceNumber, $cleanNum) {
+                                $sub->where('invoice_number', $invoiceNumber)
+                                    ->orWhere('invoice_number', $cleanNum)
+                                    ->orWhere('invoice_number', 'A' . $cleanNum)
+                                    ->orWhere('invoice_number', '00' . $cleanNum)
+                                    ->orWhere('invoice_number', '0' . $cleanNum);
+                            })
+                            ->first();
 
-                        if (!$existingInvoice && !empty($controlNumber) && $controlNumber !== 'N/A' && !str_starts_with($controlNumber, '00-0000000')) {
+                        if (!$existingInvoice && !empty($controlNumber) && !in_array($controlNumber, ['N/A', 'S/N', '00-0000000', '—'])) {
                             $existingInvoice = Invoice::where('supplier_id', $supplier->id)
                                 ->where('control_number', $controlNumber)
                                 ->first();
@@ -538,6 +535,8 @@ class SupplierQueryService
                                 return;
                             }
                             $invoiceModel = $existingInvoice;
+                            // Actualizar cabecera con datos frescos del archivo
+                            $invoiceModel->update($invoiceData);
                         } else {
                             $invoiceData['status'] = $invoice['status'] ?? 'pending';
                             $invoiceData['status_payment'] = intval($header['status_payment'] ?? 0);
@@ -613,12 +612,17 @@ class SupplierQueryService
                         }
 
                         if ($existingInvoice) {
-                            // Actualizar vencimientos y lotes en los detalles existentes si estaban vacíos
                             $existingDetails = $invoiceModel->details()->get();
-                            if ($existingDetails->count() > 0 && $existingDetails->count() === count($details)) {
-                                foreach ($details as $idx => $det) {
-                                    $targetDetail = $existingDetails[$idx] ?? null;
-                                    if ($targetDetail) {
+                            if ($existingDetails->isEmpty()) {
+                                $invoiceModel->details()->createMany($details);
+                            } else {
+                                $existingByProduct = $existingDetails->keyBy('product_id');
+                                $hasMismatch = false;
+
+                                foreach ($details as $det) {
+                                    $pId = $det['product_id'] ?? null;
+                                    if ($pId && $existingByProduct->has($pId)) {
+                                        $targetDetail = $existingByProduct->get($pId);
                                         $updateFields = [];
                                         if (!empty($det['expiration_date']) && (empty($targetDetail->expiration_date) || $targetDetail->expiration_date === 'Sin Lote')) {
                                             $updateFields['expiration_date'] = $det['expiration_date'];
@@ -629,10 +633,16 @@ class SupplierQueryService
                                         if (!empty($updateFields)) {
                                             $targetDetail->update($updateFields);
                                         }
+                                    } else {
+                                        $hasMismatch = true;
                                     }
                                 }
-                            } elseif ($existingDetails->count() === 0) {
-                                $invoiceModel->details()->createMany($details);
+
+                                // Si hay renglones que no coincidían y la factura está pendiente, sincronizar con la lista oficial del archivo
+                                if ($hasMismatch && $invoiceModel->status === 'pending') {
+                                    $invoiceModel->details()->delete();
+                                    $invoiceModel->details()->createMany($details);
+                                }
                             }
                         } else {
                             $invoiceModel->details()->createMany($details);
