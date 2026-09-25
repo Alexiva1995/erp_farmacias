@@ -4,6 +4,7 @@ import { toast } from "@/plugins/sweetalert";
 import { computed, nextTick, onMounted, ref, watch } from "vue";
 import InvoiceBasicInfoForm from "./components/InvoiceBasicInfoForm.vue";
 import InvoiceFinancialForm from "./components/InvoiceFinancialForm.vue";
+import InvoiceSummaryCard from "./components/InvoiceSummaryCard.vue";
 
 const props = defineProps({
   invoiceId: { type: [Number, String], default: null },
@@ -411,6 +412,69 @@ const handleCancel = () => {
   emit("back-to-list");
 };
 
+const syncingBot = ref(false);
+
+const handleSyncBot = async (bot) => {
+  if (!formData.value.supplier_id) {
+    toast.error("Seleccione un proveedor primero.");
+    return;
+  }
+
+  syncingBot.value = true;
+  try {
+    const payload = {
+      supplier_id: formData.value.supplier_id,
+      invoice_number: formData.value.invoice_number || null,
+    };
+
+    const response = await axios.post(bot.endpoint, payload);
+    const msg = response.data?.message || `Sincronización con ${bot.label} completada.`;
+    toast.success(msg);
+
+    // Si estamos en modo edición, recargar los datos actualizados
+    if (props.isEditMode && props.invoiceId) {
+      await fetchInvoiceData();
+    } else {
+      // Si estamos en modo creación y tenemos el número de factura, buscar los datos actualizados por el bot
+      const searchNumber = formData.value.invoice_number;
+      if (searchNumber) {
+        try {
+          const invRes = await axios.get('/invoices', {
+            params: {
+              supplierId: formData.value.supplier_id,
+              q: searchNumber,
+              itemsPerPage: 1
+            }
+          });
+          const found = (invRes.data?.data || [])[0];
+          if (found) {
+            formData.value.control_number = found.control_number || formData.value.control_number;
+            formData.value.created_invoice_date = found.created_invoice_date || formData.value.created_invoice_date;
+            formData.value.exp_date = found.exp_date || formData.value.exp_date;
+            formData.value.received_date = found.received_date || formData.value.received_date;
+            formData.value.exempt_amount = Number(found.exempt_amount || 0);
+            formData.value.taxable_base = Number(found.taxable_base || 0);
+            formData.value.tax_amount = Number(found.tax_amount || 0);
+            formData.value.total_amount = Number(found.total_amount || 0);
+            formData.value.total_usd = Number(found.total_usd || 0);
+            formData.value.exchange_rate = Number(found.exchange_rate || 0);
+            formData.value.currency = found.currency || formData.value.currency;
+            await nextTick();
+            calculatePaymentDate();
+          }
+        } catch (err) {
+          // Si no se encuentra puntual, continuar
+        }
+      }
+    }
+  } catch (error) {
+    const errorMsg = error.response?.data?.message || `Error al sincronizar con el bot de ${bot.label}.`;
+    toast.error(errorMsg);
+  } finally {
+    syncingBot.value = false;
+  }
+};
+
 const handleSubmit = async () => {
   if (!validateExpDate(formData.value.exp_date)) {
     toast.error(expDateError.value);
@@ -495,55 +559,51 @@ const handleSubmit = async () => {
         </div>
 
         <VForm v-else @submit.prevent="handleSubmit">
-          <InvoiceBasicInfoForm
-            :form-data="formData"
-            :suppliers="suppliers"
-            :loading-suppliers="loadingSuppliers"
-            :validation-errors="validationErrors"
-            :exp-date-error="expDateError"
-            :selected-supplier="selectedSupplier"
-            :is-informal-supplier="isInformalSupplier"
-            :is-edit-mode="isEditMode"
-          />
+          <VRow>
+            <!-- COLUMNA IZQUIERDA: Entrada de Datos Completa (Datos Proveedor, Fechas y Montos) -->
+            <VCol cols="12" md="7" lg="8">
+              <InvoiceBasicInfoForm
+                :form-data="formData"
+                :suppliers="suppliers"
+                :loading-suppliers="loadingSuppliers"
+                :validation-errors="validationErrors"
+                :exp-date-error="expDateError"
+                :selected-supplier="selectedSupplier"
+                :is-informal-supplier="isInformalSupplier"
+                :is-edit-mode="isEditMode"
+                :syncing-bot="syncingBot"
+                @sync-bot="handleSyncBot"
+              />
 
-          <VDivider class="my-5" />
+              <VDivider class="my-5" />
 
-          <InvoiceFinancialForm
-            :form-data="formData"
-            :currency-options="currencyOptions"
-            :should-show-exchange-rate="shouldShowExchangeRate"
-            :get-currency-symbol="getCurrencySymbol"
-            :computed-tax-amount="computedTaxAmount"
-            :computed-total-amount="computedTotalAmount"
-            :computed-total-usd="computedTotalUsd"
-            :validation-errors="validationErrors"
-          />
+              <InvoiceFinancialForm
+                :form-data="formData"
+                :currency-options="currencyOptions"
+                :should-show-exchange-rate="shouldShowExchangeRate"
+                :get-currency-symbol="getCurrencySymbol"
+                :computed-tax-amount="computedTaxAmount"
+                :validation-errors="validationErrors"
+              />
+            </VCol>
+
+            <!-- COLUMNA DERECHA: Resumen Financiero Fijo (Sticky) y Acciones CTA -->
+            <VCol cols="12" md="5" lg="4">
+              <InvoiceSummaryCard
+                :form-data="formData"
+                :get-currency-symbol="getCurrencySymbol"
+                :computed-tax-amount="computedTaxAmount"
+                :computed-total-amount="computedTotalAmount"
+                :computed-total-usd="computedTotalUsd"
+                :loading="loading"
+                :is-edit-mode="isEditMode"
+                @submit="handleSubmit"
+                @cancel="handleCancel"
+              />
+            </VCol>
+          </VRow>
         </VForm>
       </VCardText>
-
-      <VDivider />
-
-      <VCardActions class="pa-4 px-6 bg-surface">
-        <VSpacer />
-        <VBtn
-          color="secondary"
-          variant="outlined"
-          prepend-icon="tabler-x"
-          @click="handleCancel"
-          :disabled="loading"
-        >
-          Cancelar
-        </VBtn>
-        <VBtn
-          color="primary"
-          variant="flat"
-          :loading="loading"
-          prepend-icon="tabler-device-floppy"
-          @click="handleSubmit"
-        >
-          {{ isEditMode ? "Actualizar Factura" : "Registrar Factura" }}
-        </VBtn>
-      </VCardActions>
     </VCard>
   </div>
 </template>
