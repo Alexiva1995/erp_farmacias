@@ -158,6 +158,7 @@ class DronenaScraperService implements DronenaScraperServiceInterface
                 $updateData = [
                     'exp_date' => $expDate,
                     'is_indexed' => $isIndexed,
+                    'currency' => 'Bs',
                     'claim_amount' => $claimAmount,
                     'nd_referential_amount' => $ndRefAmount,
                     'net_payable_amount' => $netPayable,
@@ -174,8 +175,8 @@ class DronenaScraperService implements DronenaScraperServiceInterface
                     $updateData['payment_date'] = $expDate;
                 }
 
-                // Si la factura no tiene PDF guardado, o le falta número de control o montos base, descargar y parsear el PDF
-                if ((empty($invoice->invoice_photo) || empty($invoice->control_number) || $invoice->control_number === 'N/A' || floatval($invoice->total_amount) <= 0) && !empty($doc['pdf_url'])) {
+                // Si la factura tiene PDF disponible, descargar y parsear para obtener montos fiscales exactos y tasa oficial
+                if (!empty($doc['pdf_url'])) {
                     $pdfData = $this->fetchAndParsePdf($doc['pdf_url'], $client);
                     if ($pdfData) {
                         if (!empty($pdfData['invoice_number'])) {
@@ -184,32 +185,40 @@ class DronenaScraperService implements DronenaScraperServiceInterface
                         if (!empty($pdfData['control_number'])) {
                             $updateData['control_number'] = $pdfData['control_number'];
                         }
-                        if (!empty($pdfData['created_invoice_date']) && empty($invoice->created_invoice_date)) {
+                        if (!empty($pdfData['created_invoice_date'])) {
                             $updateData['created_invoice_date'] = $pdfData['created_invoice_date'];
                         }
-
-                        if (floatval($pdfData['exchange_rate'] ?? 0) > 0 && floatval($invoice->exchange_rate ?? 0) <= 0) {
+                        if (floatval($pdfData['exchange_rate'] ?? 0) > 0) {
                             $updateData['exchange_rate'] = $pdfData['exchange_rate'];
                         }
-                        if (floatval($pdfData['exempt_amount'] ?? 0) > 0 && floatval($invoice->exempt_amount ?? 0) <= 0) {
-                            $updateData['exempt_amount'] = $pdfData['exempt_amount'];
-                        }
-                        if (floatval($pdfData['taxable_base'] ?? 0) > 0 && floatval($invoice->taxable_base ?? 0) <= 0) {
-                            $updateData['taxable_base'] = $pdfData['taxable_base'];
-                        }
-                        if (floatval($pdfData['tax_amount'] ?? 0) > 0 && floatval($invoice->tax_amount ?? 0) <= 0) {
-                            $updateData['tax_amount'] = $pdfData['tax_amount'];
-                        }
-                        if (floatval($pdfData['total_amount'] ?? 0) > 0 && floatval($invoice->total_amount ?? 0) <= 0) {
+                        $updateData['exempt_amount'] = $pdfData['exempt_amount'] ?? 0;
+                        $updateData['taxable_base'] = $pdfData['taxable_base'] ?? 0;
+                        $updateData['tax_amount'] = $pdfData['tax_amount'] ?? 0;
+                        if (floatval($pdfData['total_amount'] ?? 0) > 0) {
                             $updateData['total_amount'] = $pdfData['total_amount'];
                         }
-                        if (floatval($pdfData['total_usd'] ?? 0) > 0 && floatval($invoice->total_usd ?? 0) <= 0) {
+                        if (floatval($pdfData['total_usd'] ?? 0) > 0) {
                             $updateData['total_usd'] = $pdfData['total_usd'];
                         }
                         if (!empty($pdfData['invoice_photo'])) {
                             $updateData['invoice_photo'] = $pdfData['invoice_photo'];
                         }
                     }
+                }
+
+                // Si no se obtuvo tasa del PDF, usar la tasa reportada en el portal
+                if (empty($updateData['exchange_rate']) || floatval($updateData['exchange_rate']) <= 0) {
+                    $portalRate = floatval($doc['tasa_db'] ?? 0);
+                    if ($portalRate > 0) {
+                        $updateData['exchange_rate'] = $portalRate;
+                    }
+                }
+
+                // Asegurar cálculo correcto de total_usd con la tasa de cambio
+                $finalRate = floatval($updateData['exchange_rate'] ?? $invoice->exchange_rate ?? 0);
+                $finalTotalAmount = floatval($updateData['total_amount'] ?? $invoice->total_amount ?? 0);
+                if ($finalRate > 0 && $finalTotalAmount > 0) {
+                    $updateData['total_usd'] = round($finalTotalAmount / $finalRate, 2);
                 }
 
                 $invoice->update($updateData);
@@ -538,7 +547,7 @@ class DronenaScraperService implements DronenaScraperServiceInterface
             // Si es FA$ o ND$ => Documento Dolarizado => Indexado de origen (true)
             // Si es FA o ND => Documento en Bs.S => No indexado de origen (false)
             $isIndexed = in_array($tipo, ['FA$', 'ND$']);
-            $currency = in_array($tipo, ['FA$', 'ND$']) ? 'USD' : 'Bs';
+            $currency = 'Bs';
 
             $parsedVencimiento = $this->parseDate($fechaVencimiento);
             $parsedEmision = $this->parseDate($fechaMovimiento);

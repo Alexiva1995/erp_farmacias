@@ -238,6 +238,7 @@ class DrocercaScraperService implements DrocercaScraperServiceInterface
                     'control_number' => $finalControlNumber ?: $invoice->control_number,
                     'exp_date' => $expDate ?: $invoice->exp_date,
                     'is_indexed' => $isIndexed,
+                    'currency' => 'Bs',
                 ];
 
                 if ((int) ($invoice->status_payment ?? 0) !== 1 && $expDate) {
@@ -288,6 +289,7 @@ class DrocercaScraperService implements DrocercaScraperServiceInterface
                     'created_invoice_date' => $createdDate,
                     'exp_date' => $expDate,
                     'payment_date' => $expDate,
+                    'currency' => 'Bs',
                     'exchange_rate' => $exchangeRate,
                     'exempt_amount' => $exemptAmount,
                     'taxable_base' => $taxableBase,

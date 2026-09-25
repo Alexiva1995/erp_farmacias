@@ -447,7 +447,7 @@ class SupplierQueryService
 
                         $userId = auth()->id() ?? User::value('id') ?? 1;
 
-                        $currency = $header['currency'] ?? ($supplier->payment_method === 'Divisas' ? 'USD' : 'Bs');
+                        $currency = $header['currency'] ?? 'Bs';
                         $controlNumber = !empty($header['control_number']) 
                             ? trim((string)$header['control_number']) 
                             : ('00-' . str_pad((string)ltrim((string)$invoiceNumber, '0'), 7, '0', STR_PAD_LEFT));

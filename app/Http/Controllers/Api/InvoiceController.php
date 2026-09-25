@@ -481,8 +481,9 @@ class InvoiceController extends Controller
             $user = $request->input('username');
             $pass = $request->input('password');
             $supplierId = $request->input('supplier_id') ? (int) $request->input('supplier_id') : null;
+            $invoiceNumber = $request->input('invoice_number');
 
-            $result = $this->dronenaScraperService->syncInvoices($user, $pass, $supplierId);
+            $result = $this->dronenaScraperService->syncInvoices($user, $pass, $supplierId, $invoiceNumber);
 
             return response()->json([
                 'success' => true,
@@ -510,8 +511,9 @@ class InvoiceController extends Controller
             $user = $request->input('username');
             $pass = $request->input('password');
             $supplierId = $request->input('supplier_id') ? (int) $request->input('supplier_id') : null;
+            $invoiceNumber = $request->input('invoice_number');
 
-            $result = $this->drocercaScraperService->syncInvoices($user, $pass, $supplierId);
+            $result = $this->drocercaScraperService->syncInvoices($user, $pass, $supplierId, $invoiceNumber);
 
             return response()->json([
                 'success' => true,
@@ -568,8 +570,9 @@ class InvoiceController extends Controller
             $user = $request->input('username');
             $pass = $request->input('password');
             $supplierId = $request->input('supplier_id') ? (int) $request->input('supplier_id') : null;
+            $invoiceNumber = $request->input('invoice_number');
 
-            $result = $this->cristmedicalsScraperService->syncInvoices($user, $pass, $supplierId);
+            $result = $this->cristmedicalsScraperService->syncInvoices($user, $pass, $supplierId, $invoiceNumber);
 
             return response()->json([
                 'success' => true,
@@ -627,8 +630,9 @@ class InvoiceController extends Controller
             $user = $request->input('username');
             $pass = $request->input('password');
             $supplierId = $request->input('supplier_id') ? (int) $request->input('supplier_id') : null;
+            $invoiceNumber = $request->input('invoice_number');
 
-            $result = $this->drosymcaScraperService->syncInvoices($user, $pass, $supplierId);
+            $result = $this->drosymcaScraperService->syncInvoices($user, $pass, $supplierId, $invoiceNumber);
 
             return response()->json([
                 'success' => true,

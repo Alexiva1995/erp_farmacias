@@ -206,6 +206,7 @@ class MafartaScraperService implements MafartaScraperServiceInterface
 
                 // Actualizar estado de indexación
                 $updateData['is_indexed'] = $isIndexed;
+                $updateData['currency'] = 'Bs';
 
                 // Limpiar ND referencial en Mafarta (no aplica)
                 $updateData['nd_referential_amount'] = 0;
@@ -252,6 +253,7 @@ class MafartaScraperService implements MafartaScraperServiceInterface
                     'created_invoice_date' => $emisionDate ?: $today,
                     'exp_date' => $expDate ?: $today,
                     'payment_date' => $expDate ?: $today,
+                    'currency' => 'Bs',
                     'exchange_rate' => $exchangeRate > 0 ? $exchangeRate : 1.00,
                     'exempt_amount' => $exemptAmount,
                     'taxable_base' => $taxableBase,

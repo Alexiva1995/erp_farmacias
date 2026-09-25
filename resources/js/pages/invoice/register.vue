@@ -609,25 +609,30 @@ const handleSubmit = async () => {
               <template #activator="{ props: tooltipProps }">
                 <VBtn
                   v-bind="tooltipProps"
-                  icon="tabler-robot"
+                  icon
                   color="primary"
                   variant="tonal"
                   rounded="circle"
-                  size="default"
+                  size="38"
                   :loading="syncingBot"
                   @click="handleSyncBot(botInfo)"
-                />
+                >
+                  <VIcon icon="tabler-robot" size="20" />
+                </VBtn>
               </template>
             </VTooltip>
 
             <VBtn
               v-if="isEditMode"
-              icon="tabler-arrow-left"
+              icon
               variant="tonal"
               color="secondary"
-              size="small"
+              rounded="circle"
+              size="38"
               @click="handleCancel"
-            />
+            >
+              <VIcon icon="tabler-arrow-left" size="20" />
+            </VBtn>
           </div>
         </template>
 

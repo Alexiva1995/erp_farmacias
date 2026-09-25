@@ -423,6 +423,7 @@ class CristmedicalsScraperService implements CristmedicalsScraperServiceInterfac
                 if ($totalBs > 0) {
                     $updateData['total_amount'] = $totalBs;
                 }
+                $updateData['currency'] = 'Bs';
 
                 $invoice->update($updateData);
                 $updatedCount++;
@@ -443,7 +444,7 @@ class CristmedicalsScraperService implements CristmedicalsScraperServiceInterfac
                     'created_invoice_date' => $emisionDate,
                     'exp_date' => $expDate,
                     'payment_date' => $expDate,
-                    'currency' => 'USD',
+                    'currency' => 'Bs',
                     'exchange_rate' => 1.00,
                     'exempt_amount' => 0,
                     'taxable_base' => $totalNetoUsd,

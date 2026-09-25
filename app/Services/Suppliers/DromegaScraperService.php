@@ -532,6 +532,7 @@ class DromegaScraperService implements DromegaScraperServiceInterface
                     $updateData['total_usd'] = $totalUsd;
                     $updateData['original_amount_usd'] = $totalUsd;
                 }
+                $updateData['currency'] = 'Bs';
 
                 $invoice->update($updateData);
                 $updatedCount++;
@@ -558,10 +559,10 @@ class DromegaScraperService implements DromegaScraperServiceInterface
                     'received_date' => $entregaDate,
                     'exp_date' => $expDate,
                     'payment_date' => $paymentDate,
-                    'currency' => 'USD',
+                    'currency' => 'Bs',
                     'original_amount_usd' => $totalUsd,
                     'total_usd' => $totalUsd,
-                    'total_amount' => $totalUsd,
+                    'total_amount' => $totalBs > 0 ? $totalBs : $totalUsd,
                     'exempt_amount' => 0,
                     'taxable_base' => 0,
                     'tax_amount' => 0,
