@@ -375,13 +375,14 @@ onMounted(() => {
             </thead>
             <tbody>
               <tr v-for="item in filteredConfigs" :key="item.id">
-                <!-- Análisis (Nombre + Algoritmo + Chips de Lapso y Exclusiones alineados del mismo tamaño) -->
+                <!-- Análisis (Nombre + Chips al lado + Algoritmo) -->
                 <td class="py-3">
                   <div class="d-flex flex-column gap-1">
-                    <div class="d-flex align-center gap-2">
+                    <div class="d-flex align-center flex-wrap gap-2">
                       <span class="font-weight-bold text-high-emphasis text-body-1">
                         {{ item.name }}
                       </span>
+
                       <VChip
                         v-if="!item.is_active"
                         size="x-small"
@@ -390,18 +391,13 @@ onMounted(() => {
                       >
                         Inactivo
                       </VChip>
-                    </div>
 
-                    <div class="text-body-2 text-muted">
-                      {{ tipoFiltracionOpciones.find(o => o.value === item.tipo_filtracion)?.title || item.tipo_filtracion }}
-                    </div>
-
-                    <!-- Chip de Lapso y Badge Agrupado con Tooltip -->
-                    <div class="d-flex align-center gap-1.5 flex-wrap mt-0.5">
+                      <!-- Chip de Lapso al lado del nombre -->
                       <VChip size="small" variant="tonal" color="primary" class="font-weight-bold">
                         {{ lapsoDeTiempoOpciones.find(o => o.value === item.lapso_de_tiempo)?.title || item.lapso_de_tiempo }}
                       </VChip>
 
+                      <!-- Badge Agrupado con Tooltip al lado del nombre -->
                       <VTooltip
                         v-if="getActiveExclusions(item).length > 0"
                         location="top"
@@ -419,17 +415,21 @@ onMounted(() => {
                           </VChip>
                         </template>
 
-                        <div class="pa-1 text-caption text-high-emphasis">
-                          <div class="font-weight-bold mb-1 border-b pb-0.5 text-warning">
+                        <div class="pa-1 text-caption text-white" style="color: #ffffff !important;">
+                          <div class="font-weight-bold mb-1 border-b pb-0.5 text-warning" style="border-color: rgba(255, 255, 255, 0.2) !important;">
                             Filtros y Exclusiones Activas
                           </div>
-                          <ul class="ps-3 ma-0 text-xs">
-                            <li v-for="(exc, idx) in getActiveExclusions(item)" :key="idx" class="py-0.5">
+                          <ul class="ps-3 ma-0 text-xs" style="color: #ffffff !important;">
+                            <li v-for="(exc, idx) in getActiveExclusions(item)" :key="idx" class="py-0.5 text-white" style="color: #ffffff !important;">
                               {{ exc }}
                             </li>
                           </ul>
                         </div>
                       </VTooltip>
+                    </div>
+
+                    <div class="text-body-2 text-muted">
+                      {{ tipoFiltracionOpciones.find(o => o.value === item.tipo_filtracion)?.title || item.tipo_filtracion }}
                     </div>
                   </div>
                 </td>
