@@ -12,15 +12,18 @@ const props = defineProps({
   loading: { type: Boolean, default: false },
   showAdd: { type: Boolean, default: true },
   showBulkDelete: { type: Boolean, default: false },
-  showSyncDronena: { type: Boolean, default: true },
+  showSyncAll: { type: Boolean, default: true },
+  isSyncingAll: { type: Boolean, default: false },
+  // Props heredados para compatibilidad
+  showSyncDronena: { type: Boolean, default: false },
   isSyncingDronena: { type: Boolean, default: false },
-  showSyncMafarta: { type: Boolean, default: true },
+  showSyncMafarta: { type: Boolean, default: false },
   isSyncingMafarta: { type: Boolean, default: false },
-  showSyncCristmedicals: { type: Boolean, default: true },
+  showSyncCristmedicals: { type: Boolean, default: false },
   isSyncingCristmedicals: { type: Boolean, default: false },
-  showSyncDromega: { type: Boolean, default: true },
+  showSyncDromega: { type: Boolean, default: false },
   isSyncingDromega: { type: Boolean, default: false },
-  showSyncDrosymca: { type: Boolean, default: true },
+  showSyncDrosymca: { type: Boolean, default: false },
   isSyncingDrosymca: { type: Boolean, default: false },
 });
 
@@ -32,6 +35,7 @@ const emit = defineEmits([
   "clear",
   "create-invoice",
   "bulk-delete",
+  "sync-all",
   "sync-dronena",
   "sync-mafarta",
   "sync-cristmedicals",
@@ -57,6 +61,22 @@ const hasAdvancedFilters = computed(
     @add="emit('create-invoice')"
   >
     <template #prepend-actions>
+      <!-- Botón Único Unificado para Todos los Bots / Scrapers -->
+      <VBtn
+        v-if="props.showSyncAll"
+        icon
+        color="primary"
+        variant="tonal"
+        size="38"
+        rounded="circle"
+        :loading="props.isSyncingAll"
+        @click="emit('sync-all')"
+      >
+        <VIcon icon="tabler-robot" />
+        <VTooltip activator="parent" location="top">Sincronizar Todos los Bots de Proveedores</VTooltip>
+      </VBtn>
+
+      <!-- Botones individuales (si se activan explícitamente) -->
       <VBtn
         v-if="props.showSyncDronena"
         icon
@@ -151,37 +171,32 @@ const hasAdvancedFilters = computed(
           item-title="name"
           item-value="id"
           clearable
+          variant="outlined"
           density="compact"
-          hide-details
-          prepend-inner-icon="tabler-truck"
           @update:model-value="emit('update:selectedSupplier', $event)"
         />
       </VCol>
 
-      <!-- Fecha de Recibo Desde -->
+      <!-- Rango de Fechas -->
       <VCol cols="12" sm="4">
-        <AppDateTimePicker
+        <VTextField
           :model-value="props.startDate"
-          placeholder="Fecha de Recibo Desde"
+          label="Fecha Inicio"
+          type="date"
           clearable
+          variant="outlined"
           density="compact"
-          hide-details
-          :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
-          prepend-inner-icon="tabler-calendar-event"
           @update:model-value="emit('update:startDate', $event)"
         />
       </VCol>
-
-      <!-- Fecha de Recibo Hasta -->
       <VCol cols="12" sm="4">
-        <AppDateTimePicker
+        <VTextField
           :model-value="props.endDate"
-          placeholder="Fecha de Recibo Hasta"
+          label="Fecha Fin"
+          type="date"
           clearable
+          variant="outlined"
           density="compact"
-          hide-details
-          :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
-          prepend-inner-icon="tabler-calendar-event"
           @update:model-value="emit('update:endDate', $event)"
         />
       </VCol>

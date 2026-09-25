@@ -355,78 +355,30 @@ const handleSyncMafarta = async () => {
   }
 };
 
-const handleSyncCristmedicals = async () => {
+const isSyncingAll = ref(false);
+
+const handleSyncAll = async () => {
   const confirmResult = await Swal.fire({
-    title: "¿Sincronizar con Cristmedicals?",
-    text: "Se consultará el portal de Cristmedicals para actualizar vencimientos, saldos con descuento y montos reales a pagar en Bs.",
+    title: "¿Sincronizar todos los bots de proveedores?",
+    text: "Se consultarán automáticamente los portales de Dronena, Drocerca, Mafarta/Cobeca, Cristmedicals, Droguería Mega y Drosymca para actualizar facturas, vencimientos y saldos.",
     icon: "info",
     showCancelButton: true,
-    confirmButtonText: "Sincronizar",
+    confirmButtonText: "Sincronizar Todos",
     cancelButtonText: "Cancelar",
   });
 
   if (!confirmResult.isConfirmed) return;
 
-  isSyncingCristmedicals.value = true;
+  isSyncingAll.value = true;
   try {
-    const response = await axios.post("/invoices/sync-cristmedicals");
-    toast.success(response.data.message || "Sincronización con Cristmedicals completada exitosamente.");
+    const response = await axios.post("/invoices/sync-all");
+    toast.success(response.data.message || "Sincronización general completada exitosamente.");
     await fetchInvoices();
   } catch (error) {
-    console.error("Error al sincronizar con Cristmedicals:", error);
-    toast.error(error.response?.data?.message || "Ocurrió un error al sincronizar con Cristmedicals.");
+    console.error("Error al sincronizar todos los proveedores:", error);
+    toast.error(error.response?.data?.message || "Ocurrió un error al sincronizar los proveedores.");
   } finally {
-    isSyncingCristmedicals.value = false;
-  }
-};
-
-const handleSyncDromega = async () => {
-  const confirmResult = await Swal.fire({
-    title: "¿Sincronizar con Droguería Mega (Dromega)?",
-    text: "Se consultará el estado de cuenta de Droguería Mega para actualizar vencimientos, protección de tasa, indexación y saldos en USD y Bs.",
-    icon: "info",
-    showCancelButton: true,
-    confirmButtonText: "Sincronizar",
-    cancelButtonText: "Cancelar",
-  });
-
-  if (!confirmResult.isConfirmed) return;
-
-  isSyncingDromega.value = true;
-  try {
-    const response = await axios.post("/invoices/sync-dromega");
-    toast.success(response.data.message || "Sincronización con Droguería Mega completada exitosamente.");
-    await fetchInvoices();
-  } catch (error) {
-    console.error("Error al sincronizar con Droguería Mega:", error);
-    toast.error(error.response?.data?.message || "Ocurrió un error al sincronizar con Droguería Mega.");
-  } finally {
-    isSyncingDromega.value = false;
-  }
-};
-
-const handleSyncDrosymca = async () => {
-  const confirmResult = await Swal.fire({
-    title: "¿Sincronizar con Drosymca?",
-    text: "Se consultará el módulo de cobranza de Drosymca para actualizar facturas pendientes, fechas de vencimiento, indexación y saldos a pagar.",
-    icon: "info",
-    showCancelButton: true,
-    confirmButtonText: "Sincronizar",
-    cancelButtonText: "Cancelar",
-  });
-
-  if (!confirmResult.isConfirmed) return;
-
-  isSyncingDrosymca.value = true;
-  try {
-    const response = await axios.post("/invoices/sync-drosymca");
-    toast.success(response.data.message || "Sincronización con Drosymca completada exitosamente.");
-    await fetchInvoices();
-  } catch (error) {
-    console.error("Error al sincronizar con Drosymca:", error);
-    toast.error(error.response?.data?.message || "Ocurrió un error al sincronizar con Drosymca.");
-  } finally {
-    isSyncingDrosymca.value = false;
+    isSyncingAll.value = false;
   }
 };
 </script>
@@ -442,24 +394,12 @@ const handleSyncDrosymca = async () => {
         :suppliers="suppliers"
         :loading="isLoadingFilters"
         :show-bulk-delete="true"
-        :show-sync-dronena="true"
-        :is-syncing-dronena="isSyncingDronena"
-        :show-sync-mafarta="true"
-        :is-syncing-mafarta="isSyncingMafarta"
-        :show-sync-cristmedicals="true"
-        :is-syncing-cristmedicals="isSyncingCristmedicals"
-        :show-sync-dromega="true"
-        :is-syncing-dromega="isSyncingDromega"
-        :show-sync-drosymca="true"
-        :is-syncing-drosymca="isSyncingDrosymca"
+        :show-sync-all="true"
+        :is-syncing-all="isSyncingAll"
         @clear="handleClearFilters"
         @create-invoice="handleCreateInvoice"
         @bulk-delete="handleOpenBulkDeleteModal"
-        @sync-dronena="handleSyncDronena"
-        @sync-mafarta="handleSyncMafarta"
-        @sync-cristmedicals="handleSyncCristmedicals"
-        @sync-dromega="handleSyncDromega"
-        @sync-drosymca="handleSyncDrosymca"
+        @sync-all="handleSyncAll"
         class="mb-6"
       />
 
