@@ -110,6 +110,15 @@ const formattedPaymentRules = computed(() => {
   }));
 });
 
+const isInvoiceDueSoon = computed(() => {
+  const targetDate = invoice.value?.payment_date || invoice.value?.exp_date;
+  if (!targetDate) return false;
+  const due = new Date(targetDate);
+  const now = new Date();
+  const diffDays = (due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+  return diffDays <= 3;
+});
+
 const getRowProps = (data) => {
   const item = data.item;
   const classes = [];
@@ -118,8 +127,15 @@ const getRowProps = (data) => {
     classes.push("draggable-row");
   }
 
-  // Check if product is "new" (pending approval / is_deleted)
+  // Fila marcada como devolución
+  if (item.is_return) {
+    return {
+      class: "returned-row",
+      style: "background-color: rgba(255, 152, 0, 0.08) !important; border-left: 4px solid #ff9800 !important;",
+    };
+  }
 
+  // Check if product is "new" (pending approval / is_deleted)
   if (
     item.product &&
     (item.product.is_deleted == 1 || item.product.is_deleted === true)
@@ -412,26 +428,30 @@ const getPriceVsAutoOrderIndicator = (item) => {
   if (invoicePrice == null || isNaN(invoicePrice)) return null;
 
   const tolerance = 0.01; // Tolerancia de 1 centavo de USD (0.01)
+  const diffPercent = autoOrderPrice > 0 ? (((invoicePrice - autoOrderPrice) / autoOrderPrice) * 100).toFixed(1) : '0';
 
   if (invoicePrice > autoOrderPrice + tolerance) {
     // Más caro que la autoorden
     return {
       icon: 'tabler-trending-up',
       color: 'error',
-      tooltip: `Más caro que la autoorden: Precio autoorden ${formatCurrency(autoOrderPrice, 'USD')}`,
+      badgeText: `+${diffPercent}%`,
+      tooltip: `Más caro que la autoorden (+${diffPercent}%): Precio autoorden ${formatCurrency(autoOrderPrice, 'USD')}`,
     };
   } else if (invoicePrice < autoOrderPrice - tolerance) {
     // Más económico que la autoorden
     return {
       icon: 'tabler-trending-down',
       color: 'success',
-      tooltip: `Más económico que la autoorden: Precio autoorden ${formatCurrency(autoOrderPrice, 'USD')}`,
+      badgeText: `${diffPercent}%`,
+      tooltip: `Más económico que la autoorden (${diffPercent}%): Precio autoorden ${formatCurrency(autoOrderPrice, 'USD')}`,
     };
   } else {
     // Igual al precio de la autoorden
     return {
       icon: 'tabler-equal',
       color: 'secondary',
+      badgeText: '0%',
       tooltip: `Igual al precio de la autoorden: ${formatCurrency(autoOrderPrice, 'USD')}`,
     };
   }
@@ -1597,23 +1617,32 @@ const detailsHeaders = computed(() => {
       <VCard class="invoice-detail-card mb-6">
         <VForm @submit.prevent>
           <VCardText class="header-section pb-4">
-            <VRow align="center" justify="space-between" class="mb-4">
-              <VCol cols="auto">
+            <VRow align="center" justify="space-between" class="mb-3">
+              <VCol cols="auto" class="d-flex align-center ga-2">
                 <VBtn
                   icon="tabler-arrow-left"
                   variant="text"
                   @click="emit('back-to-list')"
                 />
+                <VChip
+                  size="small"
+                  :color="isEditMode ? 'primary' : isApprovalMode ? 'warning' : isLocationMode ? 'info' : 'secondary'"
+                  variant="flat"
+                  class="font-weight-bold uppercase"
+                >
+                  <VIcon start :icon="isEditMode ? 'tabler-edit' : isApprovalMode ? 'tabler-check' : isLocationMode ? 'tabler-map-pin' : 'tabler-eye'" size="14" />
+                  {{ isEditMode ? 'Modo Edición Interactiva' : isApprovalMode ? 'Modo Aprobación Gerencial' : isLocationMode ? 'Modo Asignación de Ubicación' : 'Modo Lectura' }}
+                </VChip>
               </VCol>
-              <VCol cols="auto">
+              <VCol cols="auto" class="d-flex align-center ga-2">
                 <VBtn
                   v-if="isEditableMode && !isEditMode"
                   color="primary"
-                  variant="tonal"
+                  variant="flat"
                   @click="toggleEditMode(true)"
                 >
-                  <VIcon icon="tabler-edit" class="me-2" />
-                  Editar
+                  <VIcon icon="tabler-edit" class="me-1" />
+                  Editar Factura
                 </VBtn>
               </VCol>
             </VRow>
@@ -1646,32 +1675,33 @@ const detailsHeaders = computed(() => {
                     />
                   </h1>
                   <div class="d-flex flex-wrap gap-2 align-center">
-                    <VChip size="small" color="error" variant="flat" class="font-weight-bold">
-                      Control: {{ invoice.control_number }}
+                    <VChip size="small" color="error" variant="tonal" class="font-weight-bold border">
+                      Control: {{ invoice.control_number || 'S/N' }}
                     </VChip>
-                    <VChip size="small" color="error" variant="flat" class="font-weight-bold">
+                    <VChip size="small" color="primary" variant="tonal" class="font-weight-bold border">
                       Factura: {{ invoice.invoice_number }}
                     </VChip>
                   </div>
                 </div>
               </VCol>
               <VCol cols="12" md="6" class="text-md-end">
-                <div class="d-flex flex-wrap justify-md-end gap-2">
-                  <VChip size="small" variant="tonal" color="secondary">
+                <div class="d-flex flex-wrap justify-md-end gap-2 align-center">
+                  <VChip size="small" variant="outlined" color="secondary" class="font-weight-medium">
                     <VIcon start icon="tabler-calendar" size="14" />
                     Emisión: {{ formatDate(invoice.created_invoice_date) || "N/A" }}
                   </VChip>
-                  <VChip size="small" variant="tonal" color="info">
+                  <VChip size="small" variant="outlined" color="info" class="font-weight-medium">
                     <VIcon start icon="tabler-download" size="14" />
                     Recibo: {{ formatDate(invoice.received_date) || "N/A" }}
                   </VChip>
-                  <VChip size="small" variant="tonal" color="warning">
-                    <VIcon start icon="tabler-calendar-due" size="14" />
-                    Vence: {{ formatDate(invoice.payment_date) || "N/A" }}
-                  </VChip>
-                  <VChip v-if="invoice.exp_date" size="small" variant="tonal" color="error">
-                    <VIcon start icon="tabler-alert-triangle" size="14" />
-                    Vencimiento: {{ formatDate(invoice.exp_date) }}
+                  <VChip
+                    size="small"
+                    :variant="isInvoiceDueSoon ? 'flat' : 'outlined'"
+                    :color="isInvoiceDueSoon ? 'error' : 'warning'"
+                    class="font-weight-bold"
+                  >
+                    <VIcon start :icon="isInvoiceDueSoon ? 'tabler-alert-triangle' : 'tabler-calendar-due'" size="14" />
+                    Vence: {{ formatDate(invoice.payment_date || invoice.exp_date) || "N/A" }}
                   </VChip>
                 </div>
               </VCol>
@@ -1935,6 +1965,15 @@ const detailsHeaders = computed(() => {
                   auto-select-first
                   @update:model-value="updateLocation(item.id, $event)"
                 />
+                <VChip
+                  v-else-if="isItemReturned(item)"
+                  size="x-small"
+                  color="warning"
+                  variant="tonal"
+                  class="font-weight-bold"
+                >
+                  N/A (Devolución)
+                </VChip>
                 <span
                   v-else
                   :class="{ 'returned-item': isItemReturned(item) }"
@@ -1986,66 +2025,35 @@ const detailsHeaders = computed(() => {
                     :prefix="getCurrencySymbol()"
                   />
                 </div>
-                <VTooltip
-                  v-else-if="
-                    isApprovalMode &&
-                    item.product &&
-                    typeof item.product.unit_cost !== 'undefined'
-                  "
-                  location="top"
-                >
-                  <template #activator="{ props }">
-                    <div
-                      v-bind="props"
-                      class="cost-cell d-flex flex-column align-end"
-                      :class="[
-                        getCostComparisonClass(item),
-                        { 'returned-item': isItemReturned(item) },
-                      ]"
-                    >
-                      <div class="d-flex align-center gap-1">
-                        <span class="font-weight-medium">{{
-                          formatCurrency(item.unit_cost, invoice.currency)
-                        }}</span>
-                        <!-- Indicador precio vs autoorden activa -->
-                        <VIcon
-                          v-if="getPriceVsAutoOrderIndicator(item)"
-                          :icon="getPriceVsAutoOrderIndicator(item).icon"
-                          :color="getPriceVsAutoOrderIndicator(item).color"
-                          size="15"
-                        />
-                      </div>
-                      <span
-                        v-if="invoice.currency !== 'USD'"
-                        class="text-caption text-medium-emphasis"
-                        >{{ formatCurrency(item.unit_cost_usd, "USD") }}</span
-                      >
-                    </div>
-                  </template>
-                  <span>{{ getCostTooltipText(item) }}</span>
-                </VTooltip>
                 <div
                   v-else
-                  class="d-flex flex-column align-end"
-                  :class="{ 'returned-item': isItemReturned(item) }"
+                  class="cost-cell d-flex flex-column align-end"
+                  :class="[
+                    getCostComparisonClass(item),
+                    { 'returned-item': isItemReturned(item) },
+                  ]"
                 >
                   <div class="d-flex align-center gap-1">
                     <span class="font-weight-medium">{{
                       formatCurrency(item.unit_cost, invoice.currency)
                     }}</span>
-                    <!-- Indicador precio vs autoorden activa -->
+                    <!-- Indicador y badge de tendencia vs autoorden -->
                     <VTooltip
                       v-if="getPriceVsAutoOrderIndicator(item)"
                       :text="getPriceVsAutoOrderIndicator(item).tooltip"
                       location="top"
                     >
                       <template #activator="{ props: tipProps }">
-                        <VIcon
+                        <VChip
                           v-bind="tipProps"
-                          :icon="getPriceVsAutoOrderIndicator(item).icon"
+                          size="x-small"
                           :color="getPriceVsAutoOrderIndicator(item).color"
-                          size="15"
-                        />
+                          variant="tonal"
+                          class="px-1 font-weight-bold"
+                        >
+                          <VIcon :icon="getPriceVsAutoOrderIndicator(item).icon" size="13" class="me-0.5" />
+                          {{ getPriceVsAutoOrderIndicator(item).badgeText }}
+                        </VChip>
                       </template>
                     </VTooltip>
                   </div>
@@ -2089,49 +2097,51 @@ const detailsHeaders = computed(() => {
 
               <template #item.actions="{ item }">
                 <div v-if="isEditableMode && isEditMode">
-                  <div v-if="item.id === editingDetailId" class="d-flex">
-                    <IconBtn @click="saveEditingDetail">
-                      <VIcon icon="tabler-check" color="success" size="22" />
-                    </IconBtn>
-                    <IconBtn @click="cancelEditingDetail">
-                      <VIcon icon="tabler-x" color="error" size="22" />
-                    </IconBtn>
+                  <div v-if="item.id === editingDetailId" class="d-flex align-center ga-1 justify-center">
+                    <VBtn
+                      color="success"
+                      size="small"
+                      variant="flat"
+                      icon="tabler-check"
+                      title="Guardar renglón"
+                      @click="saveEditingDetail"
+                    />
+                    <VBtn
+                      color="error"
+                      size="small"
+                      variant="tonal"
+                      icon="tabler-x"
+                      title="Cancelar edición"
+                      @click="cancelEditingDetail"
+                    />
                   </div>
-                  <div v-else class="d-flex align-center ga-1">
+                  <div v-else class="d-flex align-center ga-1 justify-center">
                     <div class="d-flex flex-column ga-0">
-                      <VTooltip text="Mover arriba">
-                        <template #activator="{ props }">
-                          <IconBtn
-                            v-bind="props"
-                            :disabled="
-                              invoiceDetails.findIndex(
-                                (d) => d.id === item.id,
-                              ) === 0
-                            "
-                            size="small"
-                            @click="moveItemUp(item)"
-                          >
-                            <VIcon icon="tabler-arrow-up" size="16" />
-                          </IconBtn>
-                        </template>
-                      </VTooltip>
-                      <VTooltip text="Mover abajo">
-                        <template #activator="{ props }">
-                          <IconBtn
-                            v-bind="props"
-                            :disabled="
-                              invoiceDetails.findIndex(
-                                (d) => d.id === item.id,
-                              ) ===
-                              invoiceDetails.length - 1
-                            "
-                            size="small"
-                            @click="moveItemDown(item)"
-                          >
-                            <VIcon icon="tabler-arrow-down" size="16" />
-                          </IconBtn>
-                        </template>
-                      </VTooltip>
+                      <IconBtn
+                        :disabled="
+                          invoiceDetails.findIndex(
+                            (d) => d.id === item.id,
+                          ) === 0
+                        "
+                        size="x-small"
+                        title="Mover arriba"
+                        @click="moveItemUp(item)"
+                      >
+                        <VIcon icon="tabler-arrow-up" size="15" />
+                      </IconBtn>
+                      <IconBtn
+                        :disabled="
+                          invoiceDetails.findIndex(
+                            (d) => d.id === item.id,
+                          ) ===
+                          invoiceDetails.length - 1
+                        "
+                        size="x-small"
+                        title="Mover abajo"
+                        @click="moveItemDown(item)"
+                      >
+                        <VIcon icon="tabler-arrow-down" size="15" />
+                      </IconBtn>
                     </div>
                     <VTooltip text="Arrastrar para reordenar">
                       <template #activator="{ props }">
@@ -2142,6 +2152,7 @@ const detailsHeaders = computed(() => {
                             'drag-over': draggedOverItem?.id === item.id,
                           }"
                           draggable="true"
+                          size="small"
                           @dragstart="handleDragStart(item)"
                           @dragover.prevent="handleDragOver($event, item)"
                           @drop="handleDrop(item)"
@@ -2153,13 +2164,13 @@ const detailsHeaders = computed(() => {
                     </VTooltip>
                     <VTooltip text="Marcar para Devolución">
                       <template #activator="{ props }">
-                        <IconBtn v-bind="props" @click="toggleReturnItem(item)">
+                        <IconBtn v-bind="props" size="small" @click="toggleReturnItem(item)">
                           <VIcon
                             :color="
                               isItemReturned(item) ? 'warning' : 'default'
                             "
                             icon="tabler-arrow-back-up"
-                            size="20"
+                            size="18"
                           />
                         </IconBtn>
                       </template>
@@ -2167,7 +2178,7 @@ const detailsHeaders = computed(() => {
                     <VTooltip
                       :text="
                         !invoiceHasIva
-                          ? 'Factura sin IVA - No se puede agregar IVA a productos'
+                          ? 'Factura sin IVA'
                           : item.tax_enabled
                             ? 'Quitar IVA'
                             : 'Agregar IVA'
@@ -2178,6 +2189,7 @@ const detailsHeaders = computed(() => {
                           v-bind="props"
                           :disabled="!invoiceHasIva"
                           :class="{ 'disabled-button': !invoiceHasIva }"
+                          size="small"
                           @click="toggleTax(item)"
                         >
                           <VIcon
@@ -2189,16 +2201,16 @@ const detailsHeaders = computed(() => {
                                   : 'default'
                             "
                             icon="tabler-receipt-tax"
-                            size="20"
+                            size="18"
                           />
                         </IconBtn>
                       </template>
                     </VTooltip>
-                    <IconBtn @click="removeProductFromInvoice(item.id)">
-                      <VIcon icon="tabler-trash" size="20" />
+                    <IconBtn size="small" title="Editar renglón" @click="startEditingDetail(item)">
+                      <VIcon icon="tabler-edit" size="18" />
                     </IconBtn>
-                    <IconBtn @click="startEditingDetail(item)">
-                      <VIcon icon="tabler-edit" size="20" />
+                    <IconBtn size="small" color="error" title="Eliminar renglón" @click="removeProductFromInvoice(item.id)">
+                      <VIcon icon="tabler-trash" size="18" />
                     </IconBtn>
                   </div>
                 </div>
@@ -2573,29 +2585,54 @@ const detailsHeaders = computed(() => {
                 Confirmar Aprobación
               </VBtn>
             </div>
-            <div v-else-if="isEditableMode" class="d-flex ga-3 w-100">
-              <VBtn
-                v-if="isEditMode"
-                color="error"
-                variant="outlined"
-                size="large"
-                class="flex-1-1"
-                @click="toggleEditMode(false)"
-              >
-                Cancelar
-              </VBtn>
-              <VBtn
-                :loading="loading"
-                size="large"
-                :color="isEditMode ? 'info' : 'primary'"
-                variant="flat"
-                :class="isEditMode ? 'flex-1-1' : 'w-100'"
-                @click="
-                  isEditMode ? handleSaveProgress() : handleFinalizeInvoice()
-                "
-              >
-                {{ isEditMode ? "Guardar Progreso" : "Finalizar Factura" }}
-              </VBtn>
+            <div v-else-if="isEditableMode" class="d-flex ga-3 w-100 justify-space-between align-center">
+              <template v-if="isEditMode">
+                <VBtn
+                  color="secondary"
+                  variant="outlined"
+                  size="large"
+                  class="flex-1-1"
+                  @click="toggleEditMode(false)"
+                >
+                  <VIcon icon="tabler-x" class="me-1" />
+                  Cancelar
+                </VBtn>
+                <VBtn
+                  :loading="loading"
+                  size="large"
+                  color="info"
+                  variant="tonal"
+                  class="flex-1-1"
+                  @click="handleSaveProgress"
+                >
+                  <VIcon icon="tabler-device-floppy" class="me-1" />
+                  Guardar Progreso
+                </VBtn>
+                <VBtn
+                  :loading="loading"
+                  size="large"
+                  color="success"
+                  variant="flat"
+                  class="flex-1-1"
+                  @click="handleFinalizeInvoice"
+                >
+                  <VIcon icon="tabler-circle-check" class="me-1" />
+                  Finalizar Factura
+                </VBtn>
+              </template>
+              <template v-else>
+                <VBtn
+                  :loading="loading"
+                  size="large"
+                  color="primary"
+                  variant="flat"
+                  class="w-100"
+                  @click="handleFinalizeInvoice"
+                >
+                  <VIcon icon="tabler-circle-check" class="me-2" />
+                  Finalizar Factura
+                </VBtn>
+              </template>
             </div>
             <div v-else class="d-flex w-100">
               <VBtn
@@ -2923,6 +2960,15 @@ const detailsHeaders = computed(() => {
 
 .drag-handle:active {
   cursor: grabbing;
+}
+
+.returned-row {
+  background-color: rgba(var(--v-theme-warning), 0.08) !important;
+  border-left: 4px solid rgb(var(--v-theme-warning)) !important;
+}
+
+.near-expiration-row {
+  background-color: rgba(var(--v-theme-warning), 0.04);
 }
 
 /* Estilos Móvil de Factura Premium */
