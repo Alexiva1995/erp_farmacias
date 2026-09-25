@@ -195,7 +195,9 @@ class AutoReplenishmentCommand extends Command
         $minExpirationDate = now()->addMonths(6)->toDateString();
 
         // 2. Obtener todas las ofertas activas vigentes de proveedores para estos productos en una sola consulta
+        $hasProductSupplierIsActive = \Illuminate\Support\Facades\Schema::hasColumn('product_suppliers', 'is_active');
         $offersQuery = ProductSupplier::with('supplier')
+            ->whereHas('supplier', fn($q) => $q->where('is_active', true))
             ->whereIn('product_id', $productIds)
             ->where(function ($q) {
                 $q->where('created_at', '>=', now()->subDays(30))
@@ -209,6 +211,10 @@ class AutoReplenishmentCommand extends Command
                 $q->where('unit_cost_usd', '>', 0)
                   ->orWhere('unit_cost_usd_with_discount', '>', 0);
             });
+
+        if ($hasProductSupplierIsActive) {
+            $offersQuery->where('is_active', true);
+        }
 
         if ($config->supplier_id) {
             $offersQuery->where('supplier_id', $config->supplier_id);
@@ -235,8 +241,8 @@ class AutoReplenishmentCommand extends Command
             })->values();
 
             if ($sortedOffers->isEmpty()) {
-                // Si no vino de la BD de ofertas pero vino hidratado con best_supplier
-                if ($item->best_supplier) {
+                // Si no vino de la BD de ofertas pero vino hidratado con best_supplier activo
+                if ($item->best_supplier && ($item->best_supplier->is_active ?? true)) {
                     $unitCost = (float) ($item->best_supplier_price ?? $product->unit_cost ?? 0);
                     $psId = $item->best_supplier->product_suppliers_id ?? null;
                     $psModel = $psId ? ProductSupplier::find($psId) : null;

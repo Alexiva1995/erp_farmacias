@@ -18,24 +18,27 @@ class ProductSupplierRepository
 
         // Obtener solo el ID más reciente por cada proveedor para este producto (máximo 30 días de antigüedad o actualizado y activo)
         $latestIdsQuery = DB::table('product_suppliers')
-            ->select(DB::raw('MAX(id) as id'))
-            ->where("product_id", "=", $product_id)
+            ->join('suppliers', 'suppliers.id', '=', 'product_suppliers.supplier_id')
+            ->select(DB::raw('MAX(product_suppliers.id) as id'))
+            ->where('suppliers.is_active', true)
+            ->where("product_suppliers.product_id", "=", $product_id)
             ->where(function ($q) {
-                $q->where('created_at', '>=', now()->subDays(30))
-                  ->orWhere('updated_at', '>=', now()->subDays(30));
+                $q->where('product_suppliers.created_at', '>=', now()->subDays(30))
+                  ->orWhere('product_suppliers.updated_at', '>=', now()->subDays(30));
             })
             ->where(function ($q) use ($minExpirationDate) {
-                $q->whereNull('expiration')
-                  ->orWhere('expiration', '>', $minExpirationDate);
+                $q->whereNull('product_suppliers.expiration')
+                  ->orWhere('product_suppliers.expiration', '>', $minExpirationDate);
             });
 
         if ($hasIsActive) {
-            $latestIdsQuery->where('is_active', true);
+            $latestIdsQuery->where('product_suppliers.is_active', true);
         }
 
-        $latestIds = $latestIdsQuery->groupBy('supplier_id')->pluck('id');
+        $latestIds = $latestIdsQuery->groupBy('product_suppliers.supplier_id')->pluck('id');
 
         $consulta = ProductSupplier::query()
+            ->whereHas('supplier', fn($q) => $q->where('is_active', true))
             ->whereIn("id", $latestIds)
             ->where(function ($q) use ($minExpirationDate) {
                 $q->whereNull('expiration')
@@ -57,20 +60,23 @@ class ProductSupplierRepository
 
         // Obtener solo el ID más reciente por cada proveedor para este producto (máximo 30 días de antigüedad y activo)
         $latestIdsQuery = DB::table('product_suppliers')
-            ->select(DB::raw('MAX(id) as id'))
-            ->where("product_id", "=", $product_id)
+            ->join('suppliers', 'suppliers.id', '=', 'product_suppliers.supplier_id')
+            ->select(DB::raw('MAX(product_suppliers.id) as id'))
+            ->where('suppliers.is_active', true)
+            ->where("product_suppliers.product_id", "=", $product_id)
             ->where(function ($q) {
-                $q->where('created_at', '>=', now()->subDays(30))
-                  ->orWhere('updated_at', '>=', now()->subDays(30));
+                $q->where('product_suppliers.created_at', '>=', now()->subDays(30))
+                  ->orWhere('product_suppliers.updated_at', '>=', now()->subDays(30));
             });
 
         if ($hasIsActive) {
-            $latestIdsQuery->where('is_active', true);
+            $latestIdsQuery->where('product_suppliers.is_active', true);
         }
 
-        $latestIds = $latestIdsQuery->groupBy('supplier_id')->pluck('id');
+        $latestIds = $latestIdsQuery->groupBy('product_suppliers.supplier_id')->pluck('id');
 
         return ProductSupplier::whereIn("id", $latestIds)
+            ->whereHas('supplier', fn($q) => $q->where('is_active', true))
             ->with("supplier")
             ->get();
     }
@@ -88,29 +94,32 @@ class ProductSupplierRepository
         // 1. Obtener solo los IDs más recientes por combinación de product_id y supplier_id (máximo 30 días y activo)
         // Descartando ofertas que venzan en los próximos 6 meses (si tienen dato de expiración)
         $latestIdsQuery = DB::table('product_suppliers')
-            ->select(DB::raw('MAX(id) as id'))
-            ->whereIn('product_id', $productIds)
+            ->join('suppliers', 'suppliers.id', '=', 'product_suppliers.supplier_id')
+            ->select(DB::raw('MAX(product_suppliers.id) as id'))
+            ->where('suppliers.is_active', true)
+            ->whereIn('product_suppliers.product_id', $productIds)
             ->where(function ($q) {
-                $q->where('created_at', '>=', now()->subDays(30))
-                  ->orWhere('updated_at', '>=', now()->subDays(30));
+                $q->where('product_suppliers.created_at', '>=', now()->subDays(30))
+                  ->orWhere('product_suppliers.updated_at', '>=', now()->subDays(30));
             })
             ->where(function ($q) use ($minExpirationDate) {
-                $q->whereNull('expiration')
-                  ->orWhere('expiration', '>', $minExpirationDate);
+                $q->whereNull('product_suppliers.expiration')
+                  ->orWhere('product_suppliers.expiration', '>', $minExpirationDate);
             });
 
         if ($supplierId) {
-            $latestIdsQuery->where('supplier_id', $supplierId);
+            $latestIdsQuery->where('product_suppliers.supplier_id', $supplierId);
         }
 
         if ($hasIsActive) {
-            $latestIdsQuery->where('is_active', true);
+            $latestIdsQuery->where('product_suppliers.is_active', true);
         }
 
-        $latestIds = $latestIdsQuery->groupBy('product_id', 'supplier_id')->pluck('id');
+        $latestIds = $latestIdsQuery->groupBy('product_suppliers.product_id', 'product_suppliers.supplier_id')->pluck('id');
 
         // 2. Obtener todas las ofertas disponibles para estos productos de una sola vez
         $query = ProductSupplier::with('supplier')
+            ->whereHas('supplier', fn($q) => $q->where('is_active', true))
             ->whereIn('id', $latestIds)
             ->where(function ($q) use ($minExpirationDate) {
                 $q->whereNull('expiration')
@@ -150,7 +159,8 @@ class ProductSupplierRepository
 
             // Si no tiene oferta asociada, intentar asociar por código de barras de manera automática y permanente (máximo 30 días)
             if (!$bestOffer && $productBarcode) {
-                $barcodeQuery = ProductSupplier::where(function ($q) {
+                $barcodeQuery = ProductSupplier::whereHas('supplier', fn($q) => $q->where('is_active', true))
+                    ->where(function ($q) {
                         $q->where('created_at', '>=', now()->subDays(30))
                           ->orWhere('updated_at', '>=', now()->subDays(30));
                     })

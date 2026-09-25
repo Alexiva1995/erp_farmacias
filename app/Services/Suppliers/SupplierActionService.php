@@ -180,6 +180,10 @@ class SupplierActionService
             'is_active' => $newStatus,
         ]);
 
+        if (!$newStatus) {
+            ProductSupplier::where('supplier_id', $supplier->id)->delete();
+        }
+
         return $supplier;
     }
 

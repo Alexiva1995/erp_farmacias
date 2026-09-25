@@ -63,6 +63,22 @@ class Supplier extends Model
     ];
 
     /**
+     * "Boot" the model and its traits.
+     */
+    protected static function booted(): void
+    {
+        static::saved(function (Supplier $supplier) {
+            if ($supplier->wasChanged('is_active') && !$supplier->is_active) {
+                ProductSupplier::where('supplier_id', $supplier->id)->delete();
+            }
+        });
+
+        static::deleted(function (Supplier $supplier) {
+            ProductSupplier::where('supplier_id', $supplier->id)->delete();
+        });
+    }
+
+    /**
      * Los atributos que deben ser convertidos a tipos nativos.
      * Esto es muy útil para manejar JSON, booleanos, fechas, etc.
      *
