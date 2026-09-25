@@ -158,13 +158,13 @@ const emit = defineEmits([
   height: 30px !important;
   display: inline-flex;
   align-items: center;
-  border-radius: 6px;
+  border-radius: 5px !important;
 }
 
 .header-btn {
   height: 30px !important;
   width: 30px !important;
   min-width: 30px !important;
-  border-radius: 6px;
+  border-radius: 5px !important;
 }
 </style>

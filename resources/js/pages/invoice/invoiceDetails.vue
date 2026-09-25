@@ -1188,14 +1188,14 @@ const formatCurrency = (value, currency = null) => {
   if (targetCurrency === "COP") {
     return `COP ${formattedNum}`;
   }
-  return `Bs. ${formattedNum}`;
+  return `Bs ${formattedNum}`;
 };
 
 const getCurrencySymbol = () => {
-  if (!invoice.value?.currency) return "Bs.";
-  const symbolMap = { BS: "Bs.", Bs: "Bs.", VES: "Bs.", USD: "$", COP: "COP$" };
+  if (!invoice.value?.currency) return "Bs";
+  const symbolMap = { BS: "Bs", Bs: "Bs", VES: "Bs", USD: "$", COP: "COP$" };
 
-  return symbolMap[invoice.value.currency] || "Bs.";
+  return symbolMap[invoice.value.currency] || "Bs";
 };
 
 const isNearExpiration = (item) => {
