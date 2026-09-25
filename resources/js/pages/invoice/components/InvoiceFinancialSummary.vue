@@ -65,7 +65,7 @@ const emit = defineEmits([
   <VCardText class="totals-section pb-6 pt-4 bg-var-theme-background">
     <h3 class="text-h6 font-weight-black mb-4">Resumen Financiero</h3>
     <VRow>
-      <!-- Tarjeta: Exento y Base Imponible -->
+      <!-- Tarjeta 1: Desglose Fiscal Completo (Exento, Base Imponible e IVA) -->
       <VCol cols="12" md="4">
         <VCard variant="outlined" class="h-100 summary-card glassmorphism">
           <VCardText>
@@ -73,19 +73,11 @@ const emit = defineEmits([
               <span class="text-subtitle-2 text-medium-emphasis">Total Exento (0%)</span>
               <span class="text-body-1 font-weight-bold">{{ formatCurrency(invoice.exempt_amount, invoice.currency) }}</span>
             </div>
-            <div class="d-flex justify-space-between align-center">
+            <div class="d-flex justify-space-between align-center mb-2">
               <span class="text-subtitle-2 text-medium-emphasis">Base Imponible (16%)</span>
               <span class="text-body-1 font-weight-bold">{{ formatCurrency(invoice.taxable_base, invoice.currency) }}</span>
             </div>
-          </VCardText>
-        </VCard>
-      </VCol>
-
-      <!-- Tarjeta: IVA y Descuentos -->
-      <VCol cols="12" md="4">
-        <VCard variant="outlined" class="h-100 summary-card glassmorphism">
-          <VCardText>
-            <div class="d-flex justify-space-between align-center mb-2">
+            <div class="d-flex justify-space-between align-center border-t pt-2">
               <div class="d-flex align-center">
                 <VTooltip
                   v-if="isTaxAmountMismatch && isEditMode"
@@ -104,42 +96,59 @@ const emit = defineEmits([
                 </div>
               </div>
             </div>
+          </VCardText>
+        </VCard>
+      </VCol>
 
+      <!-- Tarjeta 2: Descuentos y Condiciones Comerciales -->
+      <VCol cols="12" md="4">
+        <VCard variant="outlined" class="h-100 summary-card glassmorphism">
+          <VCardText class="d-flex flex-column justify-center h-100">
             <!-- Descuentos Edit Mode -->
-            <div v-if="isEditableMode && isEditMode" class="mt-3">
+            <div v-if="isEditableMode && isEditMode">
+              <span class="text-subtitle-2 font-weight-bold text-high-emphasis mb-1 d-block">Descuento del Proveedor</span>
               <VSelect
                 :model-value="selectedSupplierDiscountId"
                 :items="formattedSupplierDiscounts"
                 item-title="displayText"
                 item-value="id"
-                label="Descuento Proveedor"
-                variant="underlined"
+                label="Seleccionar Descuento"
+                variant="outlined"
                 density="compact"
                 clearable
                 hide-details
+                class="mt-1"
                 @update:model-value="emit('update:selectedSupplierDiscountId', $event)"
               />
             </div>
             <!-- Descuentos Approval Mode -->
-            <div v-if="isApprovalMode" class="mt-3">
+            <div v-else-if="isApprovalMode">
+              <span class="text-subtitle-2 font-weight-bold text-high-emphasis mb-1 d-block">Condición de Pronto Pago</span>
               <VSelect
                 :model-value="selectedPaymentRuleId"
                 :items="formattedPaymentRules"
                 item-title="displayText"
                 item-value="id"
-                label="Pronto Pago"
-                variant="underlined"
+                label="Seleccionar Regla"
+                variant="outlined"
                 density="compact"
                 clearable
                 hide-details
+                class="mt-1"
                 @update:model-value="emit('update:selectedPaymentRuleId', $event)"
               />
+            </div>
+            <!-- Modo Lectura -->
+            <div v-else class="text-center py-2">
+              <VIcon icon="tabler-discount-check" size="28" color="secondary" class="mb-1" />
+              <div class="text-subtitle-2 font-weight-medium text-medium-emphasis">Condiciones Comerciales</div>
+              <div class="text-caption text-disabled">Sin descuentos comerciales adicionales aplicados</div>
             </div>
           </VCardText>
         </VCard>
       </VCol>
 
-      <!-- Tarjeta: Totales Principales -->
+      <!-- Tarjeta 3: Totales Principales -->
       <VCol cols="12" md="4">
         <VCard color="primary" variant="tonal" class="h-100 summary-card border-primary-variant">
           <VCardText>
