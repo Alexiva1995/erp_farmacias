@@ -246,19 +246,25 @@ class SupplierQueryService
 
 
             // Cargar todas las facturas existentes para este proveedor y evitar duplicados o sobreescrituras
+            // Si una factura está en estado pendiente y NO tiene renglones (0 detalles) o tiene renglones sin lote, permitir procesarla para insertar/actualizar sus productos
             $existingSupplierInvoices = Invoice::where('supplier_id', $supplier->id)
-                ->withCount(['details as missing_lots_count' => function ($q) {
-                    $q->whereNull('lot_number')->orWhere('lot_number', '')->orWhere('lot_number', 'Sin Lote');
-                }])
+                ->withCount([
+                    'details as total_details_count',
+                    'details as missing_lots_count' => function ($q) {
+                        $q->whereNull('lot_number')->orWhere('lot_number', '')->orWhere('lot_number', 'Sin Lote');
+                    }
+                ])
                 ->get(['id', 'invoice_number', 'control_number', 'status', 'status_payment']);
 
             $existingSupplierNumbers = [];
             $existingControls = [];
 
             foreach ($existingSupplierInvoices as $inv) {
-                // Si la factura tiene renglones sin lote y no está finalizada/aprobada, permitir re-procesarla para actualizar lotes
-                if ($inv->missing_lots_count > 0 && !in_array($inv->status, ['approved', 'completed', 'paid', 'ordered', 'received'])) {
-                    continue;
+                // Si la factura no está finalizada/aprobada y (no tiene renglones o tiene renglones sin lote), permitir re-procesarla
+                if (!in_array($inv->status, ['approved', 'completed', 'paid', 'ordered', 'received'])) {
+                    if ($inv->total_details_count === 0 || $inv->missing_lots_count > 0) {
+                        continue;
+                    }
                 }
 
                 $rawNum = strtoupper(trim((string)$inv->invoice_number));

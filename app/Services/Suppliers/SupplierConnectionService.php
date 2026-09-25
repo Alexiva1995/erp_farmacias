@@ -228,18 +228,23 @@ class SupplierConnectionService
             });
 
             // Optimización: Cargar todas las facturas y controles ya registrados en base de datos para no descargarlas repetidamente por FTP
-            // Si una factura está en estado pendiente y tiene renglones sin lote ("Sin Lote"), permitir descargarla para actualizar los lotes
+            // Si una factura está en estado pendiente y NO tiene renglones (0 detalles) o tiene renglones sin lote, permitir descargarla para insertar/actualizar sus productos
             $existingInvoicesData = \App\Models\Invoice::where('supplier_id', $connection->supplier_id)
-                ->withCount(['details as missing_lots_count' => function ($q) {
-                    $q->whereNull('lot_number')->orWhere('lot_number', '')->orWhere('lot_number', 'Sin Lote');
-                }])
+                ->withCount([
+                    'details as total_details_count',
+                    'details as missing_lots_count' => function ($q) {
+                        $q->whereNull('lot_number')->orWhere('lot_number', '')->orWhere('lot_number', 'Sin Lote');
+                    }
+                ])
                 ->get(['id', 'invoice_number', 'control_number', 'status', 'status_payment']);
 
             $existingInvoicesMap = [];
             foreach ($existingInvoicesData as $inv) {
-                // Si la factura tiene renglones sin lote y no está finalizada/aprobada, no excluirla para permitir actualizar sus lotes
-                if ($inv->missing_lots_count > 0 && !in_array($inv->status, ['approved', 'completed', 'paid', 'ordered', 'received'])) {
-                    continue;
+                // Si la factura no está finalizada/aprobada y (no tiene renglones o tiene renglones sin lote), NO excluirla para permitir descargar su archivo FTP
+                if (!in_array($inv->status, ['approved', 'completed', 'paid', 'ordered', 'received'])) {
+                    if ($inv->total_details_count === 0 || $inv->missing_lots_count > 0) {
+                        continue;
+                    }
                 }
 
                 $rawNum = strtoupper(trim((string)$inv->invoice_number));
