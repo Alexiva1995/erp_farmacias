@@ -2042,7 +2042,7 @@ const detailsHeaders = computed(() => {
                 >
                   <div class="d-flex align-center gap-1">
                     <span class="font-weight-bold text-high-emphasis">{{
-                      formatCurrency(item.unit_cost_usd, "USD")
+                      formatCurrency(item.unit_cost, invoice.currency)
                     }}</span>
                     <!-- Indicador y badge de tendencia vs autoorden -->
                     <VTooltip
@@ -2087,7 +2087,7 @@ const detailsHeaders = computed(() => {
                   :class="{ 'returned-item': isItemReturned(item) }"
                 >
                   <span class="font-weight-bold text-high-emphasis">{{
-                    formatCurrency(item.total_cost_usd, "USD")
+                    formatCurrency(item.total_cost, invoice.currency)
                   }}</span>
                 </div>
               </template>

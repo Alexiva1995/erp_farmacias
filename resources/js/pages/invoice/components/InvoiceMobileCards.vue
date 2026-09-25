@@ -134,7 +134,7 @@ const emit = defineEmits([
               <span v-else class="value">{{ item.quantity }}</span>
             </div>
             <div class="detail-item">
-              <span class="label">Costo (USD)</span>
+              <span class="label">Costo ({{ invoice.currency }})</span>
               <div v-if="isEditableMode && item.id === editingDetailId" class="d-flex flex-column gap-1 mt-1">
                 <VTextField
                   v-model.number="editedDetailData.unit_cost"
@@ -161,7 +161,7 @@ const emit = defineEmits([
               </div>
               <div v-else class="d-flex flex-column align-start">
                 <div class="d-flex align-center gap-1">
-                  <span class="value font-weight-bold">{{ formatCurrency(item.unit_cost_usd, 'USD') }}</span>
+                  <span class="value font-weight-bold">{{ formatCurrency(item.unit_cost, invoice.currency) }}</span>
                   <!-- Indicador precio vs autoorden activa -->
                   <VTooltip
                     v-if="getPriceVsAutoOrderIndicator(item)"
@@ -191,7 +191,7 @@ const emit = defineEmits([
             <div class="detail-item">
               <span class="label">Total Item</span>
               <div class="d-flex flex-column align-start">
-                <span class="value font-weight-black text-primary">{{ formatCurrency(item.total_cost_usd, 'USD') }}</span>
+                <span class="value font-weight-black text-primary">{{ formatCurrency(item.total_cost, invoice.currency) }}</span>
               </div>
             </div>
           </div>
