@@ -163,12 +163,13 @@ class SupplierEvaluationService
             $actualDeliveryDate = Invoice::where('auto_order_id', $order->id)
                 ->value('received_date');
 
+            $statusVal = $order->status instanceof \App\Enums\AutoOrderStatus ? $order->status->value : (int) $order->status;
             if ($actualDeliveryDate) {
                 $actual = Carbon::parse($actualDeliveryDate)->startOfDay();
                 if (!$tentative || $actual->lte($tentative)) {
                     $onTimeCount++;
                 }
-            } elseif ($order->status->value === 2 || (int)$order->status === 2) {
+            } elseif ($statusVal === \App\Enums\AutoOrderStatus::COMPLETED->value) {
                 $actual = Carbon::parse($order->updated_at);
                 if (!$tentative || $actual->lte($tentative->addDay())) {
                     $onTimeCount++;

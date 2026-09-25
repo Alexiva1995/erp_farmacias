@@ -23,6 +23,11 @@ interface FiscalCommandRepositoryInterface
     public function update(int $id, array $data): bool;
 
     /**
+     * Find a fiscal command by ID.
+     */
+    public function find(int $id): ?FiscalCommand;
+
+    /**
      * Get recent history of commands.
      */
     public function getHistory(int $limit = 20): Collection;

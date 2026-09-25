@@ -49,8 +49,9 @@ class PrintDailyFiscalZReportCommand extends Command
 
             // 2. Consolidar o calcular el Reporte Z en base de datos para la fecha
             $report = $zReportService->generateForDate($date, null, true);
-            $this->info("✓ Registro fiscal en BD actualizado: Reporte Z #{$report->report_number} - Total: Bs. " . number_format($report->total_amount, 2, ',', '.'));
-            Log::info("[FiscalReportZ] Reporte Z #{$report->report_number} consolidado en base de datos con total Bs. {$report->total_amount}.");
+            $totalMonto = (float) ($report->total_amount ?? 0);
+            $this->info("✓ Registro fiscal en BD actualizado: Reporte Z #{$report->report_number} - Total: Bs. " . number_format($totalMonto, 2, ',', '.'));
+            Log::info("[FiscalReportZ] Reporte Z #{$report->report_number} consolidado en base de datos con total Bs. {$totalMonto}.");
 
             return Command::SUCCESS;
         } catch (\Throwable $e) {

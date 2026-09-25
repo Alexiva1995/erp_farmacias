@@ -32,6 +32,24 @@ class SupplierConnectionService
             case "http":
             case "api":
                 return $this->fetchFromHttp($connection);
+            case "dronena_bot":
+            case "dronena":
+                $dronenaService = app(\App\Contracts\Suppliers\DronenaScraperServiceInterface::class);
+                $res = $dronenaService->syncInvoices(null, null, (int)$connection->supplier_id);
+                return [
+                    'products' => [],
+                    'invoices' => $res['details'] ?? [],
+                    'message' => 'Sincronizado vía bot Dronena.'
+                ];
+            case "drosymca_bot":
+            case "drosymca":
+                $drosymcaService = app(\App\Contracts\Suppliers\DrosymcaScraperServiceInterface::class);
+                $res = $drosymcaService->syncInvoices($connection->username, \App\Helpers\FtpCrypt::decrypt($connection->password ?? ''), (int)$connection->supplier_id);
+                return [
+                    'products' => [],
+                    'invoices' => $res['invoices'] ?? [],
+                    'message' => 'Sincronizado vía bot Drosymca.'
+                ];
             case "file":
             case "email":
                 if (config('mail_sync.email') && config('mail_sync.password')) {

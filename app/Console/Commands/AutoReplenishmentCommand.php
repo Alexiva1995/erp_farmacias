@@ -238,6 +238,9 @@ class AutoReplenishmentCommand extends Command
                 // Si no vino de la BD de ofertas pero vino hidratado con best_supplier
                 if ($item->best_supplier) {
                     $unitCost = (float) ($item->best_supplier_price ?? $product->unit_cost ?? 0);
+                    $psId = $item->best_supplier->product_suppliers_id ?? null;
+                    $psModel = $psId ? ProductSupplier::find($psId) : null;
+
                     $productAssignments[$product->id] = [
                         'item'                 => $item,
                         'product'              => $product,
@@ -245,9 +248,10 @@ class AutoReplenishmentCommand extends Command
                         'selected_offer_index' => 0,
                         'offers'               => [
                             [
-                                'supplier'        => $item->best_supplier,
-                                'productSupplier' => $item->product_supplier ?? null,
-                                'unit_cost'       => $unitCost,
+                                'supplier'             => $item->best_supplier,
+                                'productSupplier'      => $psModel,
+                                'product_suppliers_id' => $psId,
+                                'unit_cost'            => $unitCost,
                             ],
                         ],
                     ];
@@ -274,9 +278,10 @@ class AutoReplenishmentCommand extends Command
                 }
 
                 $formattedOffers[] = [
-                    'supplier'        => $ps->supplier,
-                    'productSupplier' => $ps,
-                    'unit_cost'       => $cost,
+                    'supplier'             => $ps->supplier,
+                    'productSupplier'      => $ps,
+                    'product_suppliers_id' => $ps->id,
+                    'unit_cost'            => $cost,
                 ];
             }
 
@@ -310,9 +315,39 @@ class AutoReplenishmentCommand extends Command
 
             $product         = $assignment['product'];
             $supplier        = $chosenOffer['supplier'];
-            $productSupplier = $chosenOffer['productSupplier'];
+            $productSupplier = $chosenOffer['productSupplier'] ?? null;
             $unitCost        = (float) $chosenOffer['unit_cost'];
             $quantity        = (float) $assignment['quantity'];
+
+            // Resolver ID de ProductSupplier garantizando NOT NULL
+            $prodSuppId = null;
+            if ($productSupplier instanceof ProductSupplier) {
+                $prodSuppId = (int) $productSupplier->id;
+            } elseif (!empty($chosenOffer['product_suppliers_id'])) {
+                $prodSuppId = (int) $chosenOffer['product_suppliers_id'];
+            } elseif (!empty($supplier->product_suppliers_id)) {
+                $prodSuppId = (int) $supplier->product_suppliers_id;
+            }
+
+            if (!$prodSuppId) {
+                $foundPs = ProductSupplier::where('product_id', $product->id)
+                    ->where('supplier_id', $supplier->id)
+                    ->latest('id')
+                    ->first();
+
+                if ($foundPs) {
+                    $prodSuppId = (int) $foundPs->id;
+                } else {
+                    $newPs = ProductSupplier::create([
+                        'product_id'                  => $product->id,
+                        'supplier_id'                 => $supplier->id,
+                        'unit_cost_usd'               => $unitCost,
+                        'unit_cost_usd_with_discount' => $unitCost,
+                        'is_active'                   => true,
+                    ]);
+                    $prodSuppId = (int) $newPs->id;
+                }
+            }
 
             // Buscar o crear la AutoOrder para este proveedor (siempre PENDING)
             $autoOrder = AutoOrder::firstOrCreate(
@@ -335,15 +370,11 @@ class AutoReplenishmentCommand extends Command
                 ->where('product_id', $product->id)
                 ->first();
 
-            $prodSuppId = $productSupplier ? $productSupplier->id : null;
-
             if ($detail) {
                 $detail->quantity            += $quantity;
                 $detail->unit_cost            = $unitCost;
                 $detail->subtotal             = (float) $detail->quantity * $unitCost;
-                if ($prodSuppId) {
-                    $detail->product_suppliers_id = $prodSuppId;
-                }
+                $detail->product_suppliers_id = $prodSuppId;
                 $detail->save();
             } else {
                 AutoOrderDetail::create([

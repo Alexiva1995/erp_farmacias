@@ -34,6 +34,11 @@ class FiscalCommandRepository implements FiscalCommandRepositoryInterface
         return $command->update($data);
     }
 
+    public function find(int $id): ?FiscalCommand
+    {
+        return FiscalCommand::find($id);
+    }
+
     public function getHistory(int $limit = 20): Collection
     {
         return FiscalCommand::orderBy('created_at', 'desc')

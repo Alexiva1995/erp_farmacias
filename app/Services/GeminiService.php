@@ -211,7 +211,8 @@ class GeminiService
         // Construir lista de candidatos enriquecida
         $candidateLines = '';
         foreach ($candidates as $cand) {
-            $candidateLines .= "- ID:{$cand['id']} | {$cand['name']} | Lab: {$cand['laboratory']} | IA: {$cand['active_ingredient']}\n";
+            $candArr = (array) $cand;
+            $candidateLines .= "- ID:" . ($candArr['id'] ?? '') . " | " . ($candArr['name'] ?? '') . " | Lab: " . ($candArr['laboratory'] ?? '') . " | IA: " . ($candArr['active_ingredient'] ?? '') . "\n";
         }
 
         // Construir historial de rechazos si existe para aprendizaje en contexto (in-context learning)
@@ -219,16 +220,22 @@ class GeminiService
         if (!empty($rejections)) {
             $rejectionsSection = "\nHISTORIAL DE RECHAZOS ANTERIORES POR EL FARMACÉUTICO (NO SUGERIR ESTOS Y APRENDER DEL ERROR):\n";
             foreach ($rejections as $rej) {
-                $rejectionsSection .= "- Nombre Proveedor: '{$rej['supplier_product_name']}' | Razón del rechazo: '{$rej['reason']}'\n";
+                $rejArr = (array) $rej;
+                $rejectionsSection .= "- Nombre Proveedor: '" . ($rejArr['supplier_product_name'] ?? '') . "' | Razón del rechazo: '" . ($rejArr['reason'] ?? '') . "'\n";
             }
             $rejectionsSection .= "Analiza por qué fueron rechazados. Por ejemplo, si se rechazó por ser de marca comercial diferente o forma farmacéutica incorrecta, no cometas el mismo error.\n";
         }
 
+        $prodArr = (array) $product;
+        $prodName = $prodArr['name'] ?? '';
+        $prodLab = $prodArr['laboratory'] ?? '';
+        $prodIA = $prodArr['active_ingredient'] ?? '';
+
         $prompt = "Eres un farmacéutico experto de control de inventario. Compara este producto de inventario con la lista de productos del proveedor.\n\n"
             . "PRODUCTO LOCAL:\n"
-            . "  Nombre: {$product['name']}\n"
-            . "  Laboratorio (Marca): {$product['laboratory']}\n"
-            . "  Ingrediente Activo: {$product['active_ingredient']}\n\n"
+            . "  Nombre: {$prodName}\n"
+            . "  Laboratorio (Marca): {$prodLab}\n"
+            . "  Ingrediente Activo: {$prodIA}\n\n"
             . "REGLAS FARMACÉUTICAS ESTRICTAS:\n"
             . "1. Ingrediente Activo y Concentración: Solo marca matched=true si el ingrediente activo y la concentración numérica son EXACTAMENTE IDÉNTICOS (ej. 500mg != 250mg, 10ml != 15ml).\n"
             . "2. Forma Farmacéutica: Deben tener la misma vía de administración y forma (ej. Crema != Ungüento, Tabletas != Cápsulas, Inyectable != Gotas).\n"
