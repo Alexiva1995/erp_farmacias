@@ -173,6 +173,10 @@ const processedInvoiceDetails = computed(() => {
     if (rule) discountPercentage = Number(rule.discount_percentage) || 0;
   }
 
+  const rate = parseFloat(invoice.value.exchange_rate) || 1;
+  const isUsd = invoice.value.currency === "USD";
+  const hasValidRate = rate && rate > 0;
+
   return invoiceDetails.value.map((detail) => {
     const quantity = Number(detail.quantity) || 0;
     const unitCost = Number(detail.unit_cost) || 0;
@@ -211,21 +215,15 @@ const processedInvoiceDetails = computed(() => {
       }
     }
 
-    const rate = parseFloat(invoice.value.exchange_rate) || 1;
-    const isUsd = invoice.value.currency === "USD";
-    const hasValidRate = rate && rate > 0;
+    // Detectar si el costo nominal viene en USD (típico en auto-órdenes y catálogos de droguerías)
+    const isCostInUsd = isUsd || (detail.auto_order_unit_cost_usd != null && Math.abs(unitCost - detail.auto_order_unit_cost_usd) < (unitCost * 0.5 + 0.1))
+      || (hasValidRate && rate > 10 && unitCost < (rate * 0.2));
 
-    const unitCostUsd = isUsd
-      ? unitCost
-      : hasValidRate
-        ? unitCost / rate
-        : unitCost;
+    const unitCostUsd = isCostInUsd ? unitCost : (hasValidRate ? unitCost / rate : unitCost);
+    const unitCostBs = isCostInUsd ? (unitCost * rate) : unitCost;
 
-    const totalCostUsd = isUsd
-      ? finalTotal
-      : hasValidRate
-        ? finalTotal / rate
-        : finalTotal;
+    const totalCostUsd = isCostInUsd ? finalTotal : (hasValidRate ? finalTotal / rate : finalTotal);
+    const totalCostBs = isCostInUsd ? (finalTotal * rate) : finalTotal;
 
     return {
       ...detail,
@@ -235,7 +233,9 @@ const processedInvoiceDetails = computed(() => {
       tax_amount: taxAmount,
       total_cost: finalTotal,
       unit_cost_usd: unitCostUsd,
+      unit_cost_bs: unitCostBs,
       total_cost_usd: totalCostUsd,
+      total_cost_bs: totalCostBs,
     };
   });
 });
@@ -253,20 +253,13 @@ const editableDetailsTotal = computed(() => {
 const isTotalMismatch = computed(() => {
   if (!invoice.value) return false;
 
-  // Calcular la tolerancia de ±1 USD en la moneda de la factura
-  const isUsd = invoice.value.currency === "USD";
   const rate = parseFloat(invoice.value.exchange_rate) || 1;
   const hasValidRate = rate && rate > 0;
 
-  // Tolerancia de 1 USD convertida a la moneda de la factura
-  const toleranceInCurrency = isUsd ? 1 : hasValidRate ? 1 * rate : 1;
+  const invoiceTotalUsd = parseFloat(invoice.value.total_usd) || (hasValidRate ? invoice.value.total_amount / rate : invoice.value.total_amount);
+  const detailsTotalUsd = processedInvoiceDetails.value.reduce((acc, curr) => acc + (Number(curr.total_cost_usd) || 0), 0);
 
-  const difference = Math.abs(
-    editableDetailsTotal.value - invoice.value.total_amount,
-  );
-
-  // Permitir diferencia de hasta 1 USD (convertido a la moneda de la factura)
-  return difference > toleranceInCurrency;
+  return Math.abs(detailsTotalUsd - invoiceTotalUsd) > 0.5;
 });
 
 const totalWithDiscount = computed(() => {
@@ -1526,7 +1519,7 @@ const detailsHeaders = computed(() => {
       title: "Descripción",
       key: "product_name_with_tax",
       sortable: false,
-      width: isEditMode.value ? "35%" : "25%",
+      width: isEditMode.value ? "32%" : "38%",
     },
     {
       title: "Lote / Vencimiento",
@@ -1543,7 +1536,7 @@ const detailsHeaders = computed(() => {
       key: "location",
       align: "center",
       sortable: false,
-      width: "12%",
+      width: "14%",
     });
   }
 
@@ -1560,7 +1553,7 @@ const detailsHeaders = computed(() => {
       key: "unit_cost",
       align: "end",
       sortable: false,
-      width: "10%",
+      width: "12%",
     },
     {
       title: "IVA (16%)",
@@ -1574,25 +1567,19 @@ const detailsHeaders = computed(() => {
       key: "total_cost",
       align: "end",
       sortable: false,
-      width: "9%",
+      width: "12%",
     },
-    {
+  );
+
+  if (isEditableMode.value && isEditMode.value) {
+    headers.push({
       title: "Acciones",
       key: "actions",
       sortable: false,
       align: "center",
-      width: "5%",
-    },
-  );
-
-    // La columna Localización no es necesaria en la vista por defecto de facturas pendientes
-    // headers.splice(2, 0, {
-    //   title: "Localización",
-    //   key: "location",
-    //   align: "center",
-    //   sortable: false,
-    //   width: "10%",
-    // });
+      width: "10%",
+    });
+  }
 
   if (isLocationMode.value) {
     return headers.filter(
@@ -1616,96 +1603,98 @@ const detailsHeaders = computed(() => {
 
       <VCard class="invoice-detail-card mb-6">
         <VForm @submit.prevent>
-          <VCardText class="header-section pb-4">
-            <VRow align="center" justify="space-between" class="mb-3">
-              <VCol cols="auto" class="d-flex align-center ga-2">
+          <VCardText class="header-section py-3 px-4">
+            <div class="d-flex flex-wrap align-center justify-space-between ga-3">
+              <!-- Bloque Izquierdo: Volver + Nombre Proveedor + Iconos PDF/Auditoría + Chips Fiscales -->
+              <div class="d-flex flex-wrap align-center ga-2 ga-sm-3">
                 <VBtn
                   icon="tabler-arrow-left"
                   variant="text"
+                  size="small"
+                  color="secondary"
+                  title="Volver a la lista"
                   @click="emit('back-to-list')"
                 />
+                <div class="d-flex align-center ga-2">
+                  <span class="text-h5 font-weight-black text-primary text-uppercase">{{ invoice.supplier.name }}</span>
+                  <VTooltip text="Ver historial de auditoría">
+                    <template #activator="{ props }">
+                      <VBtn
+                        v-bind="props"
+                        icon="tabler-eye"
+                        size="x-small"
+                        color="secondary"
+                        variant="tonal"
+                        @click="showAuditModal = true"
+                      />
+                    </template>
+                  </VTooltip>
+                  <VTooltip v-if="invoice.invoice_photo" text="Ver documento original / PDF">
+                    <template #activator="{ props }">
+                      <VBtn
+                        v-bind="props"
+                        icon="tabler-file-type-pdf"
+                        size="x-small"
+                        color="error"
+                        variant="tonal"
+                        @click="viewInvoicePhoto(invoice.invoice_photo)"
+                      />
+                    </template>
+                  </VTooltip>
+                </div>
+                <div class="d-flex align-center ga-2 ms-sm-2">
+                  <VChip size="small" color="error" variant="tonal" class="font-weight-bold border">
+                    Control: {{ invoice.control_number || 'S/N' }}
+                  </VChip>
+                  <VChip size="small" color="primary" variant="tonal" class="font-weight-bold border">
+                    Factura: {{ invoice.invoice_number }}
+                  </VChip>
+                </div>
+              </div>
+
+              <!-- Bloque Derecho: Fechas + Modo Operativo + Botón Editar -->
+              <div class="d-flex flex-wrap align-center ga-2 justify-end">
+                <VChip size="small" variant="outlined" color="secondary" class="font-weight-medium">
+                  <VIcon start icon="tabler-calendar" size="13" />
+                  Emisión: {{ formatDate(invoice.created_invoice_date) || "N/A" }}
+                </VChip>
+                <VChip size="small" variant="outlined" color="info" class="font-weight-medium">
+                  <VIcon start icon="tabler-download" size="13" />
+                  Recibo: {{ formatDate(invoice.received_date) || "N/A" }}
+                </VChip>
+                <VChip
+                  size="small"
+                  :variant="isInvoiceDueSoon ? 'flat' : 'outlined'"
+                  :color="isInvoiceDueSoon ? 'error' : 'warning'"
+                  class="font-weight-bold"
+                >
+                  <VIcon start :icon="isInvoiceDueSoon ? 'tabler-alert-triangle' : 'tabler-calendar-due'" size="13" />
+                  Vence: {{ formatDate(invoice.payment_date || invoice.exp_date) || "N/A" }}
+                </VChip>
+
                 <VChip
                   size="small"
                   :color="isEditMode ? 'primary' : isApprovalMode ? 'warning' : isLocationMode ? 'info' : 'secondary'"
                   variant="flat"
-                  class="font-weight-bold uppercase"
+                  class="font-weight-black uppercase"
                 >
-                  <VIcon start :icon="isEditMode ? 'tabler-edit' : isApprovalMode ? 'tabler-check' : isLocationMode ? 'tabler-map-pin' : 'tabler-eye'" size="14" />
-                  {{ isEditMode ? 'Modo Edición Interactiva' : isApprovalMode ? 'Modo Aprobación Gerencial' : isLocationMode ? 'Modo Asignación de Ubicación' : 'Modo Lectura' }}
+                  <VIcon start :icon="isEditMode ? 'tabler-edit' : isApprovalMode ? 'tabler-check' : isLocationMode ? 'tabler-map-pin' : 'tabler-eye'" size="13" />
+                  {{ isEditMode ? 'Edición' : isApprovalMode ? 'Aprobación' : isLocationMode ? 'Ubicación' : 'Lectura' }}
                 </VChip>
-              </VCol>
-              <VCol cols="auto" class="d-flex align-center ga-2">
+
                 <VBtn
                   v-if="isEditableMode && !isEditMode"
                   color="primary"
                   variant="flat"
+                  size="small"
+                  class="font-weight-bold ms-1"
                   @click="toggleEditMode(true)"
                 >
-                  <VIcon icon="tabler-edit" class="me-1" />
+                  <VIcon icon="tabler-edit" class="me-1" size="15" />
                   Editar Factura
                 </VBtn>
-              </VCol>
-            </VRow>
-            <VRow align="center" justify="space-between" class="mt-0">
-              <VCol cols="12" md="6">
-                <div>
-                  <h1
-                    class="font-weight-bold text-primary text-h4 mb-2 d-inline-flex align-center gap-2"
-                    style="text-transform: uppercase !important"
-                  >
-                    <span>{{ invoice.supplier.name }}</span>
-                    <VBtn
-                      icon="tabler-eye"
-                      size="x-small"
-                      color="secondary"
-                      variant="tonal"
-                      class="ms-2"
-                      title="Ver historial de auditoría de la factura"
-                      @click="showAuditModal = true"
-                    />
-                    <VBtn
-                      v-if="invoice.invoice_photo"
-                      icon="tabler-file-type-pdf"
-                      size="x-small"
-                      color="error"
-                      variant="tonal"
-                      class="ms-1"
-                      title="Ver / Descargar PDF digital de la factura"
-                      @click="viewInvoicePhoto(invoice.invoice_photo)"
-                    />
-                  </h1>
-                  <div class="d-flex flex-wrap gap-2 align-center">
-                    <VChip size="small" color="error" variant="tonal" class="font-weight-bold border">
-                      Control: {{ invoice.control_number || 'S/N' }}
-                    </VChip>
-                    <VChip size="small" color="primary" variant="tonal" class="font-weight-bold border">
-                      Factura: {{ invoice.invoice_number }}
-                    </VChip>
-                  </div>
-                </div>
-              </VCol>
-              <VCol cols="12" md="6" class="text-md-end">
-                <div class="d-flex flex-wrap justify-md-end gap-2 align-center">
-                  <VChip size="small" variant="outlined" color="secondary" class="font-weight-medium">
-                    <VIcon start icon="tabler-calendar" size="14" />
-                    Emisión: {{ formatDate(invoice.created_invoice_date) || "N/A" }}
-                  </VChip>
-                  <VChip size="small" variant="outlined" color="info" class="font-weight-medium">
-                    <VIcon start icon="tabler-download" size="14" />
-                    Recibo: {{ formatDate(invoice.received_date) || "N/A" }}
-                  </VChip>
-                  <VChip
-                    size="small"
-                    :variant="isInvoiceDueSoon ? 'flat' : 'outlined'"
-                    :color="isInvoiceDueSoon ? 'error' : 'warning'"
-                    class="font-weight-bold"
-                  >
-                    <VIcon start :icon="isInvoiceDueSoon ? 'tabler-alert-triangle' : 'tabler-calendar-due'" size="14" />
-                    Vence: {{ formatDate(invoice.payment_date || invoice.exp_date) || "N/A" }}
-                  </VChip>
-                </div>
-              </VCol>
-            </VRow>
+              </div>
+            </div>
           </VCardText>
           <VDivider />
 
@@ -2034,8 +2023,8 @@ const detailsHeaders = computed(() => {
                   ]"
                 >
                   <div class="d-flex align-center gap-1">
-                    <span class="font-weight-medium">{{
-                      formatCurrency(item.unit_cost, invoice.currency)
+                    <span class="font-weight-bold text-high-emphasis">{{
+                      formatCurrency(item.unit_cost_usd, "USD")
                     }}</span>
                     <!-- Indicador y badge de tendencia vs autoorden -->
                     <VTooltip
@@ -2058,9 +2047,8 @@ const detailsHeaders = computed(() => {
                     </VTooltip>
                   </div>
                   <span
-                    v-if="invoice.currency !== 'USD'"
                     class="text-caption text-medium-emphasis"
-                    >{{ formatCurrency(item.unit_cost_usd, "USD") }}</span
+                    >{{ formatCurrency(item.unit_cost_bs, "VES") }}</span
                   >
                 </div>
               </template>
@@ -2071,7 +2059,7 @@ const detailsHeaders = computed(() => {
                   :class="{ 'returned-item': isItemReturned(item) }"
                 >
                   <span
-                    :class="{ 'font-weight-medium': item.tax_amount > 0 }"
+                    :class="{ 'font-weight-bold text-high-emphasis': item.tax_amount > 0 }"
                     >{{
                       formatCurrency(item.tax_amount, invoice.currency)
                     }}</span
@@ -2084,13 +2072,12 @@ const detailsHeaders = computed(() => {
                   class="d-flex flex-column align-end"
                   :class="{ 'returned-item': isItemReturned(item) }"
                 >
-                  <span class="font-weight-medium">{{
-                    formatCurrency(item.total_cost, invoice.currency)
+                  <span class="font-weight-bold text-high-emphasis">{{
+                    formatCurrency(item.total_cost_usd, "USD")
                   }}</span>
                   <span
-                    v-if="invoice.currency !== 'USD'"
                     class="text-caption text-medium-emphasis"
-                    >{{ formatCurrency(item.total_cost_usd, "USD") }}</span
+                    >{{ formatCurrency(item.total_cost_bs, "VES") }}</span
                   >
                 </div>
               </template>
@@ -2445,7 +2432,7 @@ const detailsHeaders = computed(() => {
           <VDivider />
 
           <VCardText class="totals-section pb-6 pt-4 bg-var-theme-background">
-            <h3 class="text-h6 font-weight-medium mb-4">Resumen Financiero</h3>
+            <h3 class="text-h6 font-weight-black mb-4">Resumen Financiero</h3>
             <VRow>
               <!-- Tarjeta: Exento y Base Imponible -->
               <VCol cols="12" md="4">
@@ -2453,11 +2440,11 @@ const detailsHeaders = computed(() => {
                   <VCardText>
                     <div class="d-flex justify-space-between align-center mb-2">
                       <span class="text-subtitle-2 text-medium-emphasis">Total Exento (0%)</span>
-                      <span class="text-body-1 font-weight-medium">{{ formatCurrency(invoice.exempt_amount) }}</span>
+                      <span class="text-body-1 font-weight-bold">{{ formatCurrency(invoice.exempt_amount, invoice.currency) }}</span>
                     </div>
                     <div class="d-flex justify-space-between align-center">
                       <span class="text-subtitle-2 text-medium-emphasis">Base Imponible (16%)</span>
-                      <span class="text-body-1 font-weight-medium">{{ formatCurrency(invoice.taxable_base) }}</span>
+                      <span class="text-body-1 font-weight-bold">{{ formatCurrency(invoice.taxable_base, invoice.currency) }}</span>
                     </div>
                   </VCardText>
                 </VCard>
@@ -2480,7 +2467,7 @@ const detailsHeaders = computed(() => {
                         <span class="text-subtitle-2 text-medium-emphasis">Impuesto IVA (16%)</span>
                       </div>
                       <div class="text-right">
-                        <span class="text-body-1 font-weight-medium">{{ formatCurrency(invoice.tax_amount) }}</span>
+                        <span class="text-body-1 font-weight-bold">{{ formatCurrency(invoice.tax_amount, invoice.currency) }}</span>
                         <div v-if="isEditMode" class="text-caption" :class="{ 'text-warning': isTaxAmountMismatch }">
                           Calc: {{ formatCurrency(editableDetailsTaxAmount, invoice.currency) }}
                         </div>
@@ -2521,19 +2508,19 @@ const detailsHeaders = computed(() => {
 
               <!-- Tarjeta: Totales Principales -->
               <VCol cols="12" md="4">
-                <VCard color="primary" variant="tonal" class="h-100 summary-card glassmorphism border-primary-variant">
+                <VCard color="primary" variant="tonal" class="h-100 summary-card border-primary-variant">
                   <VCardText>
-                    <div class="d-flex justify-space-between align-center mb-2">
-                      <span class="text-subtitle-1 font-weight-bold">Total Factura</span>
-                      <span class="text-h5 font-weight-bold text-primary">{{ formatCurrency(invoice.total_amount) }}</span>
+                    <div class="d-flex justify-space-between align-center mb-1">
+                      <span class="text-subtitle-1 font-weight-black">Total Factura</span>
+                      <span class="text-h5 font-weight-black text-primary">{{ formatCurrency(invoice.total_amount, invoice.currency) }}</span>
                     </div>
                     <div class="d-flex justify-space-between align-center mb-2">
-                      <span class="text-subtitle-2 opacity-80">Total USD</span>
-                      <span class="text-subtitle-1 font-weight-medium text-primary">{{ formatCurrency(invoice.total_usd, "USD") }}</span>
+                      <span class="text-subtitle-2 opacity-80">Total USD Referencial</span>
+                      <span class="text-subtitle-1 font-weight-bold text-primary">{{ formatCurrency(invoice.total_usd, "USD") }}</span>
                     </div>
-                    <div class="d-flex justify-space-between align-center text-caption opacity-70">
+                    <div class="d-flex justify-space-between align-center text-caption opacity-80 border-t pt-1">
                       <span>Tasa BCV Aplicada</span>
-                      <span>{{ formatNumber(invoice.exchange_rate) }}</span>
+                      <span class="font-weight-bold">{{ formatNumber(invoice.exchange_rate) }} Bs/$</span>
                     </div>
                     
                     <VDivider v-if="isApprovalMode && selectedPaymentRuleId" class="my-2" />
