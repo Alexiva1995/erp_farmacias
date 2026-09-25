@@ -9,6 +9,7 @@ import InvoiceAuditModal from "./components/InvoiceAuditModal.vue";
 import InvoicePdfSidePanel from "./components/InvoicePdfSidePanel.vue";
 import InvoiceMobileCards from "./components/InvoiceMobileCards.vue";
 import InvoiceHeaderBar from "./components/InvoiceHeaderBar.vue";
+import InvoiceActionFooter from "./components/InvoiceActionFooter.vue";
 import { useDisplay } from "vuetify";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
@@ -2190,106 +2191,21 @@ const detailsHeaders = computed(() => {
             @update:selected-payment-rule-id="selectedPaymentRuleId = $event"
           />
 
-          <div class="sticky-bottom-actions pa-4 bg-surface elevation-10">
-            <VCardActions class="pa-0">
-            <div v-if="isLocationMode" class="d-flex w-100">
-              <VBtn
-                :loading="loading"
-                size="large"
-                color="primary"
-                variant="flat"
-                class="w-100"
-                @click="handleSaveLocations"
-              >
-                <VIcon icon="tabler-device-floppy" class="me-2" />Guardar
-                Ubicaciones
-              </VBtn>
-            </div>
-            <div v-else-if="isApprovalMode" class="d-flex ga-3 w-100">
-              <VBtn
-                :loading="props.isSaving"
-                size="large"
-                color="error"
-                variant="outlined"
-                class="flex-1-1"
-                @click="handleReject"
-              >
-                Rechazar Factura
-              </VBtn>
-              <VBtn
-                :loading="props.isSaving"
-                size="large"
-                color="success"
-                variant="flat"
-                class="flex-1-1"
-                @click="handleConfirmApproval"
-              >
-                <VIcon icon="tabler-check" class="me-2" />
-                Confirmar Aprobación
-              </VBtn>
-            </div>
-            <div v-else-if="isEditableMode" class="d-flex ga-3 w-100 justify-space-between align-center">
-              <template v-if="isEditMode">
-                <VBtn
-                  color="secondary"
-                  variant="outlined"
-                  size="large"
-                  class="flex-1-1"
-                  @click="toggleEditMode(false)"
-                >
-                  <VIcon icon="tabler-x" class="me-1" />
-                  Cancelar
-                </VBtn>
-                <VBtn
-                  :loading="loading"
-                  size="large"
-                  color="info"
-                  variant="tonal"
-                  class="flex-1-1"
-                  @click="handleSaveProgress"
-                >
-                  <VIcon icon="tabler-device-floppy" class="me-1" />
-                  Guardar Progreso
-                </VBtn>
-                <VBtn
-                  :loading="loading"
-                  size="large"
-                  color="success"
-                  variant="flat"
-                  class="flex-1-1"
-                  @click="handleFinalizeInvoice"
-                >
-                  <VIcon icon="tabler-circle-check" class="me-1" />
-                  Finalizar Factura
-                </VBtn>
-              </template>
-              <template v-else>
-                <VBtn
-                  :loading="loading"
-                  size="large"
-                  color="primary"
-                  variant="flat"
-                  class="w-100"
-                  @click="handleFinalizeInvoice"
-                >
-                  <VIcon icon="tabler-circle-check" class="me-2" />
-                  Finalizar Factura
-                </VBtn>
-              </template>
-            </div>
-            <div v-else class="d-flex w-100">
-              <VBtn
-                size="large"
-                color="primary"
-                variant="tonal"
-                class="w-100"
-                @click="emit('back-to-list')"
-              >
-                Volver a la Lista
-              </VBtn>
-            </div>
-            </VCardActions>
-          </div>
+          <InvoiceActionFooter
+            :is-location-mode="isLocationMode"
+            :is-approval-mode="isApprovalMode"
+            :is-editable-mode="isEditableMode"
+            :is-edit-mode="isEditMode"
+            :is-saving="props.isSaving"
+            :loading="loading"
+            @save-locations="handleSaveLocations"
+            @reject="handleReject"
+            @confirm-approval="handleConfirmApproval"
+            @cancel-edit="toggleEditMode(false)"
+            @save-progress="handleSaveProgress"
+            @finalize="handleFinalizeInvoice"
+            @back-to-list="emit('back-to-list')"
+          />
         </VForm>
       </VCard>
     </VCol>
