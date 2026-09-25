@@ -131,6 +131,14 @@ class UpdateSuppliersCommand extends Command
                     'count_invoice' => $invCount,
                 ]);
 
+                // Sincronizar automáticamente datos financieros y vencimientos si el proveedor cuenta con scraper
+                try {
+                    $financialSyncService = app(\App\Contracts\Suppliers\SupplierFinancialSyncServiceInterface::class);
+                    $financialSyncService->dispatchFinancialSync($supplier->id);
+                } catch (\Throwable $finEx) {
+                    $this->warn("   ⚠️ No se pudo despachar sincronización financiera: " . $finEx->getMessage());
+                }
+
                 $this->info("   ✓ Éxito en {$duration}s: {$prodCount} productos y {$invCount} facturas procesadas.");
                 $successCount++;
 

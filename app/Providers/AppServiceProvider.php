@@ -241,6 +241,11 @@ class AppServiceProvider extends ServiceProvider
             \App\Repositories\Eloquent\GeneralSettingRepository::class
         );
 
+        $this->app->bind(
+            \App\Contracts\Suppliers\SupplierFinancialSyncServiceInterface::class,
+            \App\Services\Suppliers\SupplierFinancialSyncService::class
+        );
+
         $this->app->bind(LocationContract::class, LocationRepository::class);
 
 

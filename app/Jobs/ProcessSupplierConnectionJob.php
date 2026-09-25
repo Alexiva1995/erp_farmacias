@@ -308,6 +308,14 @@ class ProcessSupplierConnectionJob implements ShouldQueue
                         "processed_invoices" => $invoicesCount,
                     ],
                 ]);
+
+                // Sincronizar automáticamente datos financieros y vencimientos si el proveedor cuenta con scraper
+                try {
+                    $financialSyncService = app(\App\Contracts\Suppliers\SupplierFinancialSyncServiceInterface::class);
+                    $financialSyncService->dispatchFinancialSync($this->supplier->id);
+                } catch (\Throwable $finEx) {
+                    Log::warning("[ProcessSupplierConnectionJob] No se pudo despachar sincronización financiera: " . $finEx->getMessage());
+                }
             }
 
         } catch (\Throwable $e) {

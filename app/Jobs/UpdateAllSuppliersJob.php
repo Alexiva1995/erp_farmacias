@@ -96,6 +96,14 @@ class UpdateAllSuppliersJob implements ShouldQueue
                     "count_invoice" => $invCount,
                 ]);
 
+                // Sincronizar automáticamente datos financieros y vencimientos si el proveedor cuenta con scraper
+                try {
+                    $financialSyncService = app(\App\Contracts\Suppliers\SupplierFinancialSyncServiceInterface::class);
+                    $financialSyncService->dispatchFinancialSync($supplier->id);
+                } catch (\Throwable $finEx) {
+                    Log::warning("[UpdateAllSuppliersJob] No se pudo despachar sincronización financiera para {$supplier->id}: " . $finEx->getMessage());
+                }
+
                 // 3. Log de éxito con métricas básicas
 
             } catch (\Throwable $e) {
