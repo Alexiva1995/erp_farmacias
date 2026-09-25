@@ -129,17 +129,29 @@ const validateExpDate = (date) => {
   return true;
 };
 
+const addDaysToDate = (dateStr, days) => {
+  if (!dateStr) return null;
+  const parts = String(dateStr).split("-");
+  if (parts.length !== 3) return null;
+  const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+  if (isNaN(d.getTime())) return null;
+  d.setDate(d.getDate() + Number(days));
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+};
+
 const calculatePaymentDate = () => {
   if (!selectedSupplier.value) return;
 
-  if (!selectedSupplier.value.payment_due_type) {
-    return;
-  }
-
   const paymentMethod = selectedSupplier.value.payment_due_type;
-  const customDays = Number(selectedSupplier.value.custom_due_days) || 0;
-  const paymentRef = selectedSupplier.value.payment_due_reference;
-  const invoiceDateRef = selectedSupplier.value.invoice_date_reference;
+  const customDays =
+    Number(selectedSupplier.value.custom_due_days) ||
+    Number(selectedSupplier.value.credit_days) ||
+    0;
+  const paymentRef = selectedSupplier.value.payment_due_reference || "receipt_date";
+  const invoiceDateRef = selectedSupplier.value.invoice_date_reference || "expiration_date";
   const supplierPaymentRules = selectedSupplier.value.payment_rules || [];
 
   let calculatedDate = null;
@@ -159,6 +171,11 @@ const calculatePaymentDate = () => {
         formData.value.created_invoice_date
       ) {
         baseDate = formData.value.created_invoice_date;
+      } else {
+        baseDate =
+          formData.value.exp_date ||
+          formData.value.received_date ||
+          formData.value.created_invoice_date;
       }
 
       if (baseDate) {
@@ -168,37 +185,55 @@ const calculatePaymentDate = () => {
 
     case "early_payment":
       if (paymentRef === "receipt_date") {
-        baseDate = formData.value.received_date;
+        baseDate = formData.value.received_date || formData.value.created_invoice_date;
       } else if (paymentRef === "issue_date") {
-        baseDate = formData.value.created_invoice_date;
+        baseDate = formData.value.created_invoice_date || formData.value.received_date;
+      } else {
+        baseDate = formData.value.received_date || formData.value.created_invoice_date;
       }
 
       if (baseDate && supplierPaymentRules.length > 0) {
         const minDaysRule = supplierPaymentRules.reduce((min, rule) =>
-          rule.days < min.days ? rule : min,
+          Number(rule.days) < Number(min.days) ? rule : min,
         );
-        const dateObj = new Date(baseDate);
-        dateObj.setDate(dateObj.getDate() + Number(minDaysRule.days));
-        calculatedDate = dateObj.toISOString().split("T")[0];
+        calculatedDate = addDaysToDate(baseDate, minDaysRule.days);
+      } else if (formData.value.exp_date) {
+        calculatedDate = formData.value.exp_date;
       }
       break;
 
     case "custom":
       if (paymentRef === "receipt_date") {
-        baseDate = formData.value.received_date;
+        baseDate = formData.value.received_date || formData.value.created_invoice_date;
       } else if (paymentRef === "issue_date") {
-        baseDate = formData.value.created_invoice_date;
+        baseDate = formData.value.created_invoice_date || formData.value.received_date;
+      } else {
+        baseDate = formData.value.received_date || formData.value.created_invoice_date;
       }
 
-      if (baseDate) {
-        const dateObj = new Date(baseDate);
-        dateObj.setDate(dateObj.getDate() + customDays);
-        calculatedDate = dateObj.toISOString().split("T")[0];
+      if (baseDate && customDays > 0) {
+        calculatedDate = addDaysToDate(baseDate, customDays);
+      } else if (formData.value.exp_date) {
+        calculatedDate = formData.value.exp_date;
       }
       break;
 
     default:
-      calculatedDate = null;
+      // Si el proveedor no tiene método explícito configurado:
+      if (
+        customDays > 0 &&
+        (formData.value.received_date || formData.value.created_invoice_date)
+      ) {
+        baseDate =
+          formData.value.received_date || formData.value.created_invoice_date;
+        calculatedDate = addDaysToDate(baseDate, customDays);
+      } else if (formData.value.exp_date) {
+        calculatedDate = formData.value.exp_date;
+      } else if (formData.value.received_date) {
+        calculatedDate = formData.value.received_date;
+      } else if (formData.value.created_invoice_date) {
+        calculatedDate = formData.value.created_invoice_date;
+      }
   }
 
   formData.value.payment_date = calculatedDate;
@@ -320,10 +355,11 @@ watch(
     formData.value.created_invoice_date,
     formData.value.exp_date,
     formData.value.received_date,
+    formData.value.supplier_id,
   ],
   async (newVals, oldVals) => {
-    const [newCreated, newExp] = newVals;
-    const [oldCreated, oldExp] = oldVals || [];
+    const [newCreated, newExp, newRec, newSupp] = newVals;
+    const [oldCreated, oldExp, oldRec, oldSupp] = oldVals || [];
 
     if (newExp !== oldExp) {
       validateExpDate(newExp);
@@ -331,11 +367,10 @@ watch(
       validateExpDate(formData.value.exp_date);
     }
 
-    await nextTick();
     calculatePaymentDate();
 
     if (newCreated !== oldCreated && isInformalSupplier.value && newCreated) {
-      const formattedDate = newCreated.replace(/-/g, "");
+      const formattedDate = String(newCreated).replace(/-/g, "");
       const nowObj = new Date();
       const hh = String(nowObj.getHours()).padStart(2, '0');
       const min = String(nowObj.getMinutes()).padStart(2, '0');
@@ -344,7 +379,8 @@ watch(
       formData.value.invoice_number = seq;
       formData.value.control_number = seq;
     }
-  }
+  },
+  { deep: true }
 );
 
 watch(

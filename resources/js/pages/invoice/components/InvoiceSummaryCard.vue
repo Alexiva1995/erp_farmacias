@@ -10,6 +10,15 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["submit", "cancel"]);
+
+const formatNumber = (value) => {
+  const num = Number(value) || 0;
+  return new Intl.NumberFormat("es-ES", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+    useGrouping: true,
+  }).format(num);
+};
 </script>
 
 <template>
@@ -32,28 +41,28 @@ const emit = defineEmits(["submit", "cancel"]);
     <div class="d-flex flex-column gap-1 mb-2">
       <div class="d-flex justify-space-between text-body-2 py-1">
         <span class="text-medium-emphasis">Monto Exento:</span>
-        <span class="font-weight-medium">{{ getCurrencySymbol }} {{ Number(formData.exempt_amount || 0).toFixed(2) }}</span>
+        <span class="font-weight-medium">{{ getCurrencySymbol }} {{ formatNumber(formData.exempt_amount) }}</span>
       </div>
       <div class="d-flex justify-space-between text-body-2 py-1">
         <span class="text-medium-emphasis">Base Imponible (16%):</span>
-        <span class="font-weight-medium">{{ getCurrencySymbol }} {{ Number(formData.taxable_base || 0).toFixed(2) }}</span>
+        <span class="font-weight-medium">{{ getCurrencySymbol }} {{ formatNumber(formData.taxable_base) }}</span>
       </div>
       <div class="d-flex justify-space-between text-body-2 py-1">
         <span class="text-medium-emphasis">Impuesto IVA (16%):</span>
-        <span class="font-weight-medium">{{ getCurrencySymbol }} {{ computedTaxAmount.toFixed(2) }}</span>
+        <span class="font-weight-medium">{{ getCurrencySymbol }} {{ formatNumber(computedTaxAmount) }}</span>
       </div>
     </div>
 
     <VDivider class="my-3" />
 
-    <!-- Total de la Factura Principal -->
-    <div class="mb-3">
-      <div class="text-caption font-weight-bold text-medium-emphasis text-uppercase mb-1">
+    <!-- Total de la Factura Principal en la misma línea alineado a la derecha -->
+    <div class="d-flex align-center justify-space-between py-1 mb-3">
+      <span class="text-caption font-weight-bold text-medium-emphasis text-uppercase">
         Total Factura ({{ formData.currency }})
-      </div>
-      <div class="text-h4 font-weight-bold text-primary">
-        {{ getCurrencySymbol }} {{ computedTotalAmount.toFixed(2) }}
-      </div>
+      </span>
+      <span class="text-h5 font-weight-bold text-primary text-right">
+        {{ getCurrencySymbol }} {{ formatNumber(computedTotalAmount) }}
+      </span>
     </div>
 
     <!-- Referencia en USD -->
@@ -67,12 +76,12 @@ const emit = defineEmits(["submit", "cancel"]);
         <div>
           <div class="text-caption font-weight-medium text-success">Total Ref. USD</div>
           <div v-if="formData.exchange_rate > 0" class="text-caption text-medium-emphasis" style="font-size: 0.7rem;">
-            Tasa: Bs {{ Number(formData.exchange_rate).toFixed(2) }}
+            Tasa: Bs {{ formatNumber(formData.exchange_rate) }}
           </div>
         </div>
       </div>
       <span class="text-h6 font-weight-bold text-success">
-        $ {{ computedTotalUsd.toFixed(2) }}
+        $ {{ formatNumber(computedTotalUsd) }}
       </span>
     </div>
     <div v-else class="text-caption text-medium-emphasis mb-4 italic">
