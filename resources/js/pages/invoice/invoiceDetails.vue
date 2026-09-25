@@ -1878,6 +1878,7 @@ const detailsHeaders = computed(() => {
             >
               <template #item.product_name_with_tax="{ item }">
                 <div
+                  class="d-flex flex-column align-start py-1"
                   :class="{
                     'near-expiration-row': isNearExpiration(item),
                     'draggable-row': isEditableMode && isEditMode,
@@ -1886,28 +1887,29 @@ const detailsHeaders = computed(() => {
                   @dragover="handleDragOver($event, item)"
                   @drop="handleDrop(item)"
                 >
-                  <span :class="{ 'returned-item': isItemReturned(item) }">
-                    {{ item.product_name_with_tax }}
-                    <span class="text-sm text-disabled">{{
-                      item.product?.laboratory?.name
-                    }}</span>
+                  <div class="d-flex align-center">
+                    <span :class="{ 'returned-item': isItemReturned(item) }" class="font-weight-medium text-high-emphasis">
+                      {{ item.product_name_with_tax }}
+                    </span>
+                    <VTooltip v-if="isNearExpiration(item)" location="top">
+                      <template #activator="{ props }">
+                        <VIcon
+                          v-bind="props"
+                          icon="tabler-alert-triangle"
+                          color="warning"
+                          size="16"
+                          class="ms-2"
+                        />
+                      </template>
+                      <span
+                        >Producto próximo a vencer (menos de 6 meses). Considere
+                        marcarlo como devolución.</span
+                      >
+                    </VTooltip>
+                  </div>
+                  <span class="text-caption text-medium-emphasis">
+                    {{ item.product?.laboratory?.name || 'Sin Laboratorio' }}
                   </span>
-                  <span class="text-sm text-disabled" />
-                  <VTooltip v-if="isNearExpiration(item)" location="top">
-                    <template #activator="{ props }">
-                      <VIcon
-                        v-bind="props"
-                        icon="tabler-alert-triangle"
-                        color="warning"
-                        size="16"
-                        class="ms-2"
-                      />
-                    </template>
-                    <span
-                      >Producto próximo a vencer (menos de 6 meses). Considere
-                      marcarlo como devolución.</span
-                    >
-                  </VTooltip>
                 </div>
               </template>
 
@@ -2058,10 +2060,6 @@ const detailsHeaders = computed(() => {
                       </template>
                     </VTooltip>
                   </div>
-                  <span
-                    class="text-caption text-medium-emphasis"
-                    >{{ formatCurrency(item.unit_cost_bs, "VES") }}</span
-                  >
                 </div>
               </template>
 
@@ -2087,10 +2085,6 @@ const detailsHeaders = computed(() => {
                   <span class="font-weight-bold text-high-emphasis">{{
                     formatCurrency(item.total_cost_usd, "USD")
                   }}</span>
-                  <span
-                    class="text-caption text-medium-emphasis"
-                    >{{ formatCurrency(item.total_cost_bs, "VES") }}</span
-                  >
                 </div>
               </template>
 
