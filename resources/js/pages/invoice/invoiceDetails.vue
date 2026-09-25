@@ -4,6 +4,10 @@ import ProductEditDialog from "@/components/dialogs/ProductEditDialog.vue";
 import ProductFilters from "@/components/ProductFilters.vue";
 import ProductTable from "@/components/ProductTable.vue";
 import InvoicePhotoPreviewDialog from "@/components/InvoicePhotoPreviewDialog.vue";
+import InvoiceFinancialSummary from "./components/InvoiceFinancialSummary.vue";
+import InvoiceAuditModal from "./components/InvoiceAuditModal.vue";
+import InvoicePdfSidePanel from "./components/InvoicePdfSidePanel.vue";
+import InvoiceMobileCards from "./components/InvoiceMobileCards.vue";
 import { useDisplay } from "vuetify";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
@@ -2211,334 +2215,56 @@ const detailsHeaders = computed(() => {
               <template #bottom />
             </VDataTable>
 
-            <!-- Vista Móvil: Tarjetas -->
-            <div v-else class="mobile-products-list pa-2 pa-sm-4 bg-light-surface rounded-lg">
-               <div v-if="loadingDetails" class="d-flex justify-center py-8">
-                <VProgressCircular indeterminate color="primary" />
-              </div>
-              <div v-else-if="processedInvoiceDetails.length === 0" class="text-center py-8 text-disabled text-sm">
-                No hay productos en esta factura.
-              </div>
-              <div v-else class="d-flex flex-column ga-3">
-                <VCard
-                  v-for="(item, index) in processedInvoiceDetails"
-                  :key="item.id"
-                  class="mobile-detail-card border shadow-none rounded-lg overflow-hidden"
-                  :class="{ 
-                    'near-expiration-border': isNearExpiration(item),
-                    'returned-border': isItemReturned(item)
-                  }"
-                >
-                  <VCardText class="pa-3">
-                    <!-- Encabezado Tarjeta -->
-                    <div class="d-flex justify-space-between align-start mb-2">
-                      <div class="d-flex flex-column ga-1" style="max-inline-size: 75%">
-                        <div class="d-flex align-center ga-1">
-                           <span class="text-sm font-weight-black text-high-emphasis text-uppercase line-clamp-2" :class="{ 'returned-item': isItemReturned(item) }">
-                            {{ item.product?.name || 'N/A' }}
-                          </span>
-                          <VChip v-if="item.tax_enabled" size="x-super-small" color="success" variant="flat" class="font-weight-black">IVA</VChip>
-                        </div>
-                        <span class="text-super-xs font-weight-bold text-disabled text-uppercase">{{ item.product?.laboratory?.name || 'S/L' }}</span>
-                      </div>
-                      
-                      <div class="d-flex flex-column align-end">
-                        <VTooltip v-if="isNearExpiration(item)" location="left">
-                          <template #activator="{ props }">
-                            <VIcon v-bind="props" icon="tabler-alert-triangle-filled" color="warning" size="18" />
-                          </template>
-                          <span>Próximo a vencer</span>
-                        </VTooltip>
-                        <VIcon v-if="isItemReturned(item)" icon="tabler-arrow-back-up" color="warning" size="18" />
-                      </div>
-                    </div>
-
-                    <VDivider class="my-2 border-dashed" />
-
-                    <!-- Grid de Información Financiera -->
-                    <div class="grid-financial-info mb-4">
-                      <div class="detail-item">
-                        <span class="label">Cantidad</span>
-                        <VTextField
-                          v-if="isEditableMode && item.id === editingDetailId"
-                          v-model.number="editedDetailData.quantity"
-                          type="number"
-                          density="compact"
-                          hide-details
-                          variant="outlined"
-                          class="mt-1"
-                        />
-                        <span v-else class="value">{{ item.quantity }}</span>
-                      </div>
-                      <div class="detail-item">
-                        <span class="label">Costo ({{ invoice.currency }})</span>
-                        <div v-if="isEditableMode && item.id === editingDetailId" class="d-flex flex-column gap-1 mt-1">
-                          <VTextField
-                            v-model.number="editedDetailData.unit_cost"
-                            @input="recalculateTotalFromUnit"
-                            type="number"
-                            step="0.01"
-                            density="compact"
-                            hide-details
-                            variant="outlined"
-                            placeholder="Costo Unitario"
-                            label="Unitario"
-                          />
-                          <VTextField
-                            v-model.number="editedDetailData.total_cost_input"
-                            @input="recalculateUnitFromTotal"
-                            type="number"
-                            step="0.01"
-                            density="compact"
-                            hide-details
-                            variant="outlined"
-                            placeholder="Costo Total"
-                            label="Total"
-                          />
-                        </div>
-                        <div v-else class="d-flex flex-column align-start">
-                          <div class="d-flex align-center gap-1">
-                            <span class="value font-weight-bold">{{ formatCurrency(item.unit_cost, invoice.currency) }}</span>
-                            <!-- Indicador precio vs autoorden activa -->
-                            <VTooltip
-                              v-if="getPriceVsAutoOrderIndicator(item)"
-                              :text="getPriceVsAutoOrderIndicator(item).tooltip"
-                              location="top"
-                            >
-                              <template #activator="{ props: tipProps }">
-                                <VIcon
-                                  v-bind="tipProps"
-                                  :icon="getPriceVsAutoOrderIndicator(item).icon"
-                                  :color="getPriceVsAutoOrderIndicator(item).color"
-                                  size="15"
-                                />
-                              </template>
-                            </VTooltip>
-                          </div>
-                          <span v-if="invoice.currency !== 'USD'" class="text-super-xs text-disabled">{{ formatCurrency(item.unit_cost_usd, 'USD') }}</span>
-                        </div>
-                      </div>
-                      <div class="detail-item">
-                        <span class="label">IVA</span>
-                        <span class="value">{{ formatCurrency(item.tax_amount, invoice.currency) }}</span>
-                      </div>
-                      <div class="detail-item">
-                        <span class="label">Total Item</span>
-                        <div class="d-flex flex-column align-start">
-                          <span class="value font-weight-black text-primary">{{ formatCurrency(item.total_cost, invoice.currency) }}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <!-- Información Logística -->
-                    <div class="bg-light pa-2 rounded-lg border-dashed mb-2">
-                      <div class="grid-logistics-info">
-                        <div class="detail-item">
-                          <span class="label">Lote</span>
-                          <VTextField
-                            v-if="isEditableMode && item.id === editingDetailId"
-                            v-model="editedDetailData.lot_number"
-                            density="compact"
-                            hide-details
-                            variant="outlined"
-                            class="mt-1"
-                          />
-                          <span v-else class="value text-xs">{{ item.lot_number || 'S/L' }}</span>
-                        </div>
-                        <div class="detail-item">
-                          <span class="label">Vencimiento</span>
-                          <VTextField
-                            v-if="isEditableMode && item.id === editingDetailId"
-                            v-model="editedDetailData.expiration_date"
-                            type="date"
-                            density="compact"
-                            hide-details
-                            variant="outlined"
-                            class="mt-1"
-                          />
-                          <span v-else class="value text-xs" :class="{'text-warning font-weight-bold': isNearExpiration(item)}">
-                            {{ item.expiration_date || 'S/V' }}
-                          </span>
-                        </div>
-                        <div class="detail-item w-100" v-if="isLocationMode && !isItemReturned(item)">
-                          <span class="label">Ubicación</span>
-                          <VAutocomplete
-                            :model-value="item.location"
-                            :items="locations"
-                            item-title="name"
-                            item-value="name"
-                            density="compact"
-                            hide-details
-                            variant="outlined"
-                            class="mt-1"
-                            placeholder="Buscar..."
-                            @update:model-value="updateLocation(item.id, $event)"
-                          />
-                        </div>
-                        <div class="detail-item" v-else>
-                          <span class="label">Ubicación</span>
-                          <span class="value text-xs">{{ item.location || '-' }}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <!-- Botones de Acción Móvil -->
-                    <div v-if="isEditableMode && isEditMode" class="mt-3 pt-2 border-t d-flex align-center justify-space-between ga-2">
-                       <template v-if="item.id === editingDetailId">
-                        <VBtn color="success" size="small" variant="flat" block class="rounded-lg" @click="saveEditingDetail">
-                          <VIcon icon="tabler-check" />
-                        </VBtn>
-                        <VBtn color="error" size="small" variant="tonal" class="rounded-lg" @click="cancelEditingDetail">
-                          <VIcon icon="tabler-x" />
-                        </VBtn>
-                      </template>
-                      <template v-else>
-                        <div class="d-flex ga-1">
-                          <VBtn color="secondary" variant="tonal" size="x-small" icon="tabler-arrow-up" :disabled="index === 0" @click="moveItemUp(item)" />
-                          <VBtn color="secondary" variant="tonal" size="x-small" icon="tabler-arrow-down" :disabled="index === processedInvoiceDetails.length - 1" @click="moveItemDown(item)" />
-                        </div>
-                        
-                        <div class="d-flex ga-2">
-                           <VBtn 
-                            :color="isItemReturned(item) ? 'warning' : 'secondary'" 
-                            variant="tonal" 
-                            size="small" 
-                            class="rounded-lg"
-                            @click="toggleReturnItem(item)"
-                          >
-                            <VIcon icon="tabler-arrow-back-up" />
-                          </VBtn>
-                          
-                          <VBtn 
-                            v-if="invoiceHasIva"
-                            :color="item.tax_enabled ? 'success' : 'secondary'" 
-                            variant="tonal" 
-                            size="small" 
-                            class="rounded-lg"
-                            @click="toggleTax(item)"
-                          >
-                            <VIcon icon="tabler-receipt-tax" />
-                          </VBtn>
-
-                          <VBtn color="warning" variant="tonal" size="small" class="rounded-lg" @click="startEditingDetail(item)">
-                            <VIcon icon="tabler-edit" />
-                          </VBtn>
-
-                          <VBtn color="error" variant="tonal" size="small" class="rounded-lg" @click="removeProductFromInvoice(item.id)">
-                            <VIcon icon="tabler-trash" />
-                          </VBtn>
-                        </div>
-                      </template>
-                    </div>
-                  </VCardText>
-                </VCard>
-              </div>
-            </div>
+            <!-- Vista Móvil: Tarjetas Desacopladas -->
+            <InvoiceMobileCards
+              v-else
+              :processed-invoice-details="processedInvoiceDetails"
+              :loading-details="loadingDetails"
+              :is-editable-mode="isEditableMode"
+              :is-edit-mode="isEditMode"
+              :editing-detail-id="editingDetailId"
+              :edited-detail-data="editedDetailData"
+              :invoice="invoice"
+              :locations="locations"
+              :is-location-mode="isLocationMode"
+              :invoice-has-iva="invoiceHasIva"
+              :is-near-expiration="isNearExpiration"
+              :is-item-returned="isItemReturned"
+              :format-currency="formatCurrency"
+              :get-price-vs-auto-order-indicator="getPriceVsAutoOrderIndicator"
+              @recalculate-total-from-unit="recalculateTotalFromUnit"
+              @recalculate-unit-from-total="recalculateUnitFromTotal"
+              @update-location="updateLocation"
+              @save-editing-detail="saveEditingDetail"
+              @cancel-editing-detail="cancelEditingDetail"
+              @move-item-up="moveItemUp"
+              @move-item-down="moveItemDown"
+              @toggle-return-item="toggleReturnItem"
+              @toggle-tax="toggleTax"
+              @start-editing-detail="startEditingDetail"
+              @remove-product-from-invoice="removeProductFromInvoice"
+            />
           </VCardText>
           <VDivider />
 
-          <VCardText class="totals-section pb-6 pt-4 bg-var-theme-background">
-            <h3 class="text-h6 font-weight-black mb-4">Resumen Financiero</h3>
-            <VRow>
-              <!-- Tarjeta: Exento y Base Imponible -->
-              <VCol cols="12" md="4">
-                <VCard variant="outlined" class="h-100 summary-card glassmorphism">
-                  <VCardText>
-                    <div class="d-flex justify-space-between align-center mb-2">
-                      <span class="text-subtitle-2 text-medium-emphasis">Total Exento (0%)</span>
-                      <span class="text-body-1 font-weight-bold">{{ formatCurrency(invoice.exempt_amount, invoice.currency) }}</span>
-                    </div>
-                    <div class="d-flex justify-space-between align-center">
-                      <span class="text-subtitle-2 text-medium-emphasis">Base Imponible (16%)</span>
-                      <span class="text-body-1 font-weight-bold">{{ formatCurrency(invoice.taxable_base, invoice.currency) }}</span>
-                    </div>
-                  </VCardText>
-                </VCard>
-              </VCol>
-
-              <!-- Tarjeta: IVA y Descuentos -->
-              <VCol cols="12" md="4">
-                <VCard variant="outlined" class="h-100 summary-card glassmorphism">
-                  <VCardText>
-                    <div class="d-flex justify-space-between align-center mb-2">
-                      <div class="d-flex align-center">
-                        <VTooltip
-                          v-if="isTaxAmountMismatch && isEditMode"
-                          text="El monto de IVA calculado difiere del original."
-                        >
-                          <template #activator="{ props }">
-                            <VIcon v-bind="props" icon="tabler-alert-circle" color="warning" size="16" class="me-1" />
-                          </template>
-                        </VTooltip>
-                        <span class="text-subtitle-2 text-medium-emphasis">Impuesto IVA (16%)</span>
-                      </div>
-                      <div class="text-right">
-                        <span class="text-body-1 font-weight-bold">{{ formatCurrency(invoice.tax_amount, invoice.currency) }}</span>
-                        <div v-if="isEditMode" class="text-caption" :class="{ 'text-warning': isTaxAmountMismatch }">
-                          Calc: {{ formatCurrency(editableDetailsTaxAmount, invoice.currency) }}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <!-- Descuentos Edit Mode -->
-                    <div v-if="isEditableMode && isEditMode" class="mt-3">
-                      <VSelect
-                        v-model="selectedSupplierDiscountId"
-                        :items="formattedSupplierDiscounts"
-                        item-title="displayText"
-                        item-value="id"
-                        label="Descuento Proveedor"
-                        variant="underlined"
-                        density="compact"
-                        clearable
-                        hide-details
-                      />
-                    </div>
-                    <!-- Descuentos Approval Mode -->
-                    <div v-if="isApprovalMode" class="mt-3">
-                      <VSelect
-                        v-model="selectedPaymentRuleId"
-                        :items="formattedPaymentRules"
-                        item-title="displayText"
-                        item-value="id"
-                        label="Pronto Pago"
-                        variant="underlined"
-                        density="compact"
-                        clearable
-                        hide-details
-                      />
-                    </div>
-                  </VCardText>
-                </VCard>
-              </VCol>
-
-              <!-- Tarjeta: Totales Principales -->
-              <VCol cols="12" md="4">
-                <VCard color="primary" variant="tonal" class="h-100 summary-card border-primary-variant">
-                  <VCardText>
-                    <div class="d-flex justify-space-between align-center mb-1">
-                      <span class="text-subtitle-1 font-weight-black">Total Factura</span>
-                      <span class="text-h5 font-weight-black text-primary">{{ formatCurrency(invoice.total_amount, invoice.currency) }}</span>
-                    </div>
-                    <div class="d-flex justify-space-between align-center mb-2">
-                      <span class="text-subtitle-2 opacity-80">Total USD Referencial</span>
-                      <span class="text-subtitle-1 font-weight-bold text-primary">{{ formatCurrency(invoice.total_usd, "USD") }}</span>
-                    </div>
-                    <div class="d-flex justify-space-between align-center text-caption opacity-80 border-t pt-1">
-                      <span>Tasa BCV Aplicada</span>
-                      <span class="font-weight-bold">{{ formatNumber(invoice.exchange_rate) }} Bs/$</span>
-                    </div>
-                    
-                    <VDivider v-if="isApprovalMode && selectedPaymentRuleId" class="my-2" />
-                    <div v-if="isApprovalMode && selectedPaymentRuleId" class="d-flex justify-space-between align-center text-success mt-2">
-                      <span class="text-subtitle-2 font-weight-bold">Con Descuento</span>
-                      <span class="text-h6 font-weight-bold">{{ formatCurrency(totalWithDiscount, invoice.currency) }}</span>
-                    </div>
-                  </VCardText>
-                </VCard>
-              </VCol>
-            </VRow>
-          </VCardText>
+          <!-- Resumen Financiero Desacoplado -->
+          <InvoiceFinancialSummary
+            :invoice="invoice"
+            :is-approval-mode="isApprovalMode"
+            :is-editable-mode="isEditableMode"
+            :is-edit-mode="isEditMode"
+            :selected-supplier-discount-id="selectedSupplierDiscountId"
+            :selected-payment-rule-id="selectedPaymentRuleId"
+            :formatted-supplier-discounts="formattedSupplierDiscounts"
+            :formatted-payment-rules="formattedPaymentRules"
+            :total-with-discount="totalWithDiscount"
+            :editable-details-tax-amount="editableDetailsTaxAmount"
+            :is-tax-amount-mismatch="isTaxAmountMismatch"
+            :format-currency="formatCurrency"
+            :format-number="formatNumber"
+            @update:selected-supplier-discount-id="selectedSupplierDiscountId = $event"
+            @update:selected-payment-rule-id="selectedPaymentRuleId = $event"
+          />
 
           <div class="sticky-bottom-actions pa-4 bg-surface elevation-10">
             <VCardActions class="pa-0">
@@ -2644,7 +2370,7 @@ const detailsHeaders = computed(() => {
       </VCard>
     </VCol>
 
-    <!-- Panel Lateral de Documento PDF (Split Screen 25-33% a la derecha) -->
+    <!-- Panel Lateral de Documento PDF Desacoplado -->
     <VCol
       v-if="isPdfSidePanelOpen && invoice.invoice_photo"
       cols="12"
@@ -2652,56 +2378,11 @@ const detailsHeaders = computed(() => {
       xl="3"
       class="pdf-side-panel-col pa-0 ps-lg-2"
     >
-      <VCard class="pdf-side-card border shadow-sm sticky-pdf-panel rounded-lg overflow-hidden">
-        <VCardTitle class="py-2 px-3 bg-surface border-b d-flex justify-space-between align-center">
-          <div class="d-flex align-center ga-1">
-            <VIcon icon="tabler-file-type-pdf" color="error" size="18" />
-            <span class="text-subtitle-2 font-weight-bold">Factura Digital</span>
-          </div>
-          <div class="d-flex align-center ga-1">
-            <VTooltip text="Abrir en ventana completa">
-              <template #activator="{ props: tipProps }">
-                <VBtn
-                  v-bind="tipProps"
-                  icon="tabler-maximize"
-                  size="x-small"
-                  variant="text"
-                  @click="openPdfInModal"
-                />
-              </template>
-            </VTooltip>
-            <VTooltip text="Cerrar visor lateral">
-              <template #activator="{ props: tipProps }">
-                <VBtn
-                  v-bind="tipProps"
-                  icon="tabler-x"
-                  size="x-small"
-                  variant="text"
-                  @click="isPdfSidePanelOpen = false"
-                />
-              </template>
-            </VTooltip>
-          </div>
-        </VCardTitle>
-        <VCardText class="pa-0 bg-grey-lighten-4 pdf-iframe-container">
-          <iframe
-            v-if="previewImageUrl.toLowerCase().endsWith('.pdf') || previewImageUrl.toLowerCase().includes('.pdf')"
-            :src="previewImageUrl"
-            width="100%"
-            height="100%"
-            class="pdf-embed-frame"
-            style="border: none; min-height: calc(100vh - 170px); height: calc(100vh - 170px);"
-          />
-          <VImg
-            v-else
-            :src="previewImageUrl"
-            width="100%"
-            height="100%"
-            cover
-            style="min-height: calc(100vh - 170px); height: calc(100vh - 170px);"
-          />
-        </VCardText>
-      </VCard>
+      <InvoicePdfSidePanel
+        :preview-image-url="previewImageUrl"
+        @open-modal="openPdfInModal"
+        @close="isPdfSidePanelOpen = false"
+      />
     </VCol>
   </VRow>
 
@@ -2762,105 +2443,11 @@ const detailsHeaders = computed(() => {
         />
       </template>
 
-      <!-- Modal de Historial de Auditoría / Operadores -->
-      <VDialog v-model="showAuditModal" max-width="550">
-        <VCard class="overflow-hidden">
-          <VCardTitle class="bg-primary text-white d-flex align-center justify-space-between pa-4">
-            <span class="text-h6 font-weight-bold text-white">Historial de Auditoría - Factura #{{ invoice.invoice_number }}</span>
-            <VBtn icon="tabler-x" variant="text" color="white" @click="showAuditModal = false" />
-          </VCardTitle>
-
-          <VCardText class="pa-6">
-            <p class="text-subtitle-2 text-disabled mb-6 uppercase letter-spacing-1 font-weight-black">
-              Ciclo de Vida de la Factura y Operadores Responsables
-            </p>
-
-            <div class="d-flex flex-column gap-6">
-              <!-- Subido por -->
-              <div class="d-flex align-start gap-4">
-                <VAvatar size="36" color="success" variant="tonal" class="flex-shrink-0">
-                  <VIcon icon="tabler-cloud-upload" size="18" class="text-success" />
-                </VAvatar>
-                <div class="flex-grow-1">
-                  <div class="d-flex align-center justify-space-between">
-                    <span class="font-weight-bold text-high-emphasis text-body-1">1. Subida / Registro Inicial</span>
-                    <VChip size="x-small" color="success" class="font-weight-bold">Completado</VChip>
-                  </div>
-                  <p class="text-body-2 text-medium-emphasis mt-1">
-                    Operador: <strong class="text-high-emphasis">{{ invoice.uploaded_by_user?.name || 'Sistema / N/A' }}</strong>
-                  </p>
-                </div>
-              </div>
-
-              <VDivider />
-
-              <!-- Registrado por -->
-              <div class="d-flex align-start gap-4">
-                <VAvatar size="36" :color="invoice.registered_by_user ? 'info' : 'secondary'" variant="tonal" class="flex-shrink-0">
-                  <VIcon icon="tabler-list-check" size="18" :class="invoice.registered_by_user ? 'text-info' : 'text-secondary'" />
-                </VAvatar>
-                <div class="flex-grow-1">
-                  <div class="d-flex align-center justify-space-between">
-                    <span class="font-weight-bold text-high-emphasis text-body-1">2. Carga / Registro de Productos</span>
-                    <VChip size="x-small" :color="invoice.registered_by_user ? 'success' : 'warning'" class="font-weight-bold">
-                      {{ invoice.registered_by_user ? 'Completado' : 'Pendiente' }}
-                    </VChip>
-                  </div>
-                  <p class="text-body-2 text-medium-emphasis mt-1">
-                    Operador: <strong class="text-high-emphasis">{{ invoice.registered_by_user?.name || 'No asignado' }}</strong>
-                  </p>
-                </div>
-              </div>
-
-              <VDivider />
-
-              <!-- Cargado por (Ubicación de Lotes) -->
-              <div class="d-flex align-start gap-4">
-                <VAvatar size="36" :color="invoice.loaded_by_user ? 'warning' : 'secondary'" variant="tonal" class="flex-shrink-0">
-                  <VIcon icon="tabler-box-margin" size="18" :class="invoice.loaded_by_user ? 'text-warning' : 'text-secondary'" />
-                </VAvatar>
-                <div class="flex-grow-1">
-                  <div class="d-flex align-center justify-space-between">
-                    <span class="font-weight-bold text-high-emphasis text-body-1">3. Verificación y Ubicación Física</span>
-                    <VChip size="x-small" :color="invoice.loaded_by_user ? 'success' : 'warning'" class="font-weight-bold">
-                      {{ invoice.loaded_by_user ? 'Completado' : 'Pendiente' }}
-                    </VChip>
-                  </div>
-                  <p class="text-body-2 text-medium-emphasis mt-1">
-                    Operador: <strong class="text-high-emphasis">{{ invoice.loaded_by_user?.name || 'No asignado' }}</strong>
-                  </p>
-                </div>
-              </div>
-
-              <VDivider />
-
-              <!-- Ordenado por -->
-              <div class="d-flex align-start gap-4">
-                <VAvatar size="36" :color="invoice.ordered_by_user ? 'primary' : 'secondary'" variant="tonal" class="flex-shrink-0">
-                  <VIcon icon="tabler-circle-check" size="18" :class="invoice.ordered_by_user ? 'text-primary' : 'text-secondary'" />
-                </VAvatar>
-                <div class="flex-grow-1">
-                  <div class="d-flex align-center justify-space-between">
-                    <span class="font-weight-bold text-high-emphasis text-body-1">4. Aprobación y Orden de Compra</span>
-                    <VChip size="x-small" :color="invoice.ordered_by_user ? 'success' : 'warning'" class="font-weight-bold">
-                      {{ invoice.ordered_by_user ? 'Completado' : 'Pendiente' }}
-                    </VChip>
-                  </div>
-                  <p class="text-body-2 text-medium-emphasis mt-1">
-                    Operador: <strong class="text-high-emphasis">{{ invoice.ordered_by_user?.name || 'No asignado' }}</strong>
-                  </p>
-                </div>
-              </div>
-            </div>
-          </VCardText>
-
-          <VCardActions class="pa-4 bg-light d-flex justify-end border-t">
-            <VBtn color="secondary" variant="flat" @click="showAuditModal = false">
-              Cerrar Ventana
-            </VBtn>
-          </VCardActions>
-        </VCard>
-      </VDialog>
+      <!-- Modal de Historial de Auditoría Desacoplado -->
+      <InvoiceAuditModal
+        v-model="showAuditModal"
+        :invoice="invoice"
+      />
 
       <!-- Modal de Visualización de PDF / Foto -->
       <InvoicePhotoPreviewDialog

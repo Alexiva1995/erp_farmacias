@@ -83,83 +83,47 @@ class InvoiceQueryService
 
     public function getInvoiceDetails(Invoice $invoice): Collection
     {
-        $invoice->load([
-            'details.product.laboratory',
-            'returns.product.laboratory',
-            'supplier.autoOrders.details.productSupplier.product.laboratory'
-        ]);
-
-        // Obtener todos los precios de autoórdenes activas del proveedor en un solo query (PENDING=0, SENT=1)
-        $latestAutoOrderDetails = DB::table('auto_order_details as aod')
-            ->join('auto_orders as ao', 'aod.order_id', '=', 'ao.id')
-            ->join('product_suppliers as ps', 'aod.product_suppliers_id', '=', 'ps.id')
-            ->where('ao.supplier_id', $invoice->supplier_id)
-            ->whereIn('ao.status', [0, 1]) // PENDING o SENT
-            ->whereNull('ao.deleted_at')
-            ->whereNull('aod.deleted_at')
-            ->select('ps.product_id', 'aod.unit_cost')
-            ->whereIn('aod.id', function ($query) use ($invoice) {
-                $query->select(DB::raw('MAX(sub_aod.id)'))
-                    ->from('auto_order_details as sub_aod')
-                    ->join('auto_orders as sub_ao', 'sub_aod.order_id', '=', 'sub_ao.id')
-                    ->join('product_suppliers as sub_ps', 'sub_aod.product_suppliers_id', '=', 'sub_ps.id')
-                    ->where('sub_ao.supplier_id', $invoice->supplier_id)
-                    ->whereIn('sub_ao.status', [0, 1])
-                    ->whereNull('sub_ao.deleted_at')
-                    ->whereNull('sub_aod.deleted_at')
-                    ->groupBy('sub_ps.product_id');
-            });
-
-        $autoOrderPrices = $latestAutoOrderDetails->get()->keyBy('product_id');
-
+        // 1. Cargar detalles normales y devoluciones con relaciones esenciales
         $normalDetails = $invoice->details()
-            ->with('product.laboratory')
+            ->with(['product.laboratory:id,name'])
             ->orderBy('display_order', 'asc')
             ->orderBy('id', 'asc')
+            ->get();
+
+        $returnDetails = $invoice->returns()
+            ->with(['product.laboratory:id,name'])
             ->get()
-            ->map(function ($detail) use ($autoOrderPrices) {
-                $detail->is_return = false;
+            ->map(function ($returnItem) {
+                $unitCostUSD = ($returnItem->quantity > 0)
+                    ? ($returnItem->amount_refunded / $returnItem->quantity)
+                    : 0;
 
-                // Adjuntar precio de referencia de autoórden activa si existe
-                $autoOrderRef = $autoOrderPrices->get($detail->product_id);
-                $detail->auto_order_unit_cost_usd = $autoOrderRef
-                    ? (float) $autoOrderRef->unit_cost
-                    : null;
-
-                return $detail;
+                return (object) [
+                    'id' => 'return_' . $returnItem->id,
+                    'product_id' => $returnItem->product_id,
+                    'product' => $returnItem->product,
+                    'quantity' => $returnItem->quantity,
+                    'unit_cost' => $unitCostUSD,
+                    'total_cost' => $returnItem->amount_refunded,
+                    'lot_number' => $returnItem->lot_number,
+                    'expiration_date' => $returnItem->expiration_date,
+                    'location' => 'N/A',
+                    'tax_enabled' => (bool) ($returnItem->product?->iva ?? false),
+                    'is_return' => true,
+                    'auto_order_unit_cost_usd' => null,
+                ];
             });
 
-        $returnDetails = $invoice->returns->map(function ($returnItem) {
-            $unitCostUSD = ($returnItem->quantity > 0)
-                ? ($returnItem->amount_refunded / $returnItem->quantity)
-                : 0;
-
-            return (object) [
-                'id' => 'return_' . $returnItem->id,
-                'product_id' => $returnItem->product_id,
-                'product' => $returnItem->product,
-                'quantity' => $returnItem->quantity,
-                'unit_cost' => $unitCostUSD,
-                'total_cost' => $returnItem->amount_refunded,
-                'lot_number' => $returnItem->lot_number,
-                'expiration_date' => $returnItem->expiration_date,
-                'location' => 'N/A',
-                'tax_enabled' => $returnItem->product->iva,
-                'is_return' => true,
-                'auto_order_unit_cost_usd' => null,
-            ];
-        });
-
+        // 2. Si no hay detalles registrados, intentar cargar de autoórdenes activas (fallback)
         if ($normalDetails->isEmpty() && $returnDetails->isEmpty()) {
             $autoOrderDetails = collect();
 
-            // Optimización con Eager Loading para evitar consulta N+1 en autoOrders y details
-            $selectableAutoOrders = $invoice->supplier->autoOrders()
+            $selectableAutoOrders = $invoice->supplier ? $invoice->supplier->autoOrders()
                 ->where('status', 0)
                 ->with(['details' => function ($query) {
-                    $query->where('status', 0)->with('productSupplier.product');
+                    $query->where('status', 0)->with('productSupplier.product.laboratory:id,name');
                 }])
-                ->get();
+                ->get() : collect();
 
             foreach ($selectableAutoOrders as $autoOrder) {
                 foreach ($autoOrder->details as $autoOrderDetail) {
@@ -175,7 +139,7 @@ class InvoiceQueryService
                             'total_cost' => $autoOrderDetail->subtotal,
                             'lot_number' => '',
                             'location' => 'Por Asignar',
-                            'tax_enabled' => $product->iva ?? false,
+                            'tax_enabled' => (bool) ($product->iva ?? false),
                             'is_return' => false,
                             'expiration_date' => $autoOrderDetail->productSupplier->expiration,
                             'auto_order_detail_id' => $autoOrderDetail->id,
@@ -188,8 +152,37 @@ class InvoiceQueryService
             return $autoOrderDetails;
         }
 
-        $mergedArray = array_merge($normalDetails->all(), $returnDetails->all());
-        return collect($mergedArray);
+        // 3. Obtener precios de autoórdenes activas SOLO para los productos presentes en la factura (sin subconsultas correlacionadas masivas)
+        $productIds = $normalDetails->pluck('product_id')->filter()->unique()->values()->all();
+        $autoOrderPrices = collect();
+
+        if (!empty($productIds) && $invoice->supplier_id) {
+            $autoOrderPrices = DB::table('auto_order_details as aod')
+                ->join('auto_orders as ao', 'aod.order_id', '=', 'ao.id')
+                ->join('product_suppliers as ps', 'aod.product_suppliers_id', '=', 'ps.id')
+                ->where('ao.supplier_id', $invoice->supplier_id)
+                ->whereIn('ao.status', [0, 1]) // PENDING o SENT
+                ->whereNull('ao.deleted_at')
+                ->whereNull('aod.deleted_at')
+                ->whereIn('ps.product_id', $productIds)
+                ->select('ps.product_id', 'aod.unit_cost', 'aod.id')
+                ->orderBy('aod.id', 'desc')
+                ->get()
+                ->unique('product_id')
+                ->keyBy('product_id');
+        }
+
+        $normalDetails = $normalDetails->map(function ($detail) use ($autoOrderPrices) {
+            $detail->is_return = false;
+            $autoOrderRef = $autoOrderPrices->get($detail->product_id);
+            $detail->auto_order_unit_cost_usd = $autoOrderRef
+                ? (float) $autoOrderRef->unit_cost
+                : null;
+
+            return $detail;
+        });
+
+        return collect(array_merge($normalDetails->all(), $returnDetails->all()));
     }
 
     public function getSuggestedAndExistingDetails(Invoice $invoice): Collection
