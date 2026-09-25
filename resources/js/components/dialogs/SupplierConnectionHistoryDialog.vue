@@ -305,14 +305,24 @@ const closeDialog = () => {
                           size="x-small"
                           variant="flat"
                           class="font-weight-black text-uppercase px-2"
-                          style="font-size: 9px; height: 18px;"
+                          style="font-size: 9px; height: 20px;"
                         >
                           Nueva
+                        </VChip>
+                        <VChip
+                          v-else-if="inv.action === 'updated'"
+                          color="info"
+                          size="x-small"
+                          variant="tonal"
+                          class="font-weight-black text-uppercase px-2"
+                          style="font-size: 9px; height: 20px;"
+                        >
+                          Actualizada
                         </VChip>
                         <VTooltip
                           v-else-if="inv.action === 'failed'"
                           location="top"
-                          max-width="320px"
+                          max-width="360px"
                         >
                           <template #activator="{ props: tooltipProps }">
                             <VChip
@@ -321,28 +331,26 @@ const closeDialog = () => {
                               size="x-small"
                               variant="flat"
                               class="font-weight-black text-uppercase px-2 cursor-pointer"
-                              style="font-size: 9px; height: 18px;"
+                              style="font-size: 9px; height: 20px;"
                             >
                               Error
-                              <VIcon end size="10" icon="tabler-help-circle" class="ms-1" />
+                              <VIcon end size="11" icon="tabler-help-circle" class="ms-1" />
                             </VChip>
                           </template>
-                          <span class="text-caption">{{ inv.error_message || 'Error al guardar la factura en la base de datos' }}</span>
+                          <div class="pa-1 text-caption text-white font-weight-medium" style="font-size: 11px; line-height: 1.4;">
+                            {{ inv.error_message || 'Error al procesar la factura en la base de datos' }}
+                          </div>
                         </VTooltip>
-                        <span
-                          v-else-if="inv.action === 'updated'"
-                          class="text-caption font-weight-medium text-disabled"
-                          style="font-size: 11px;"
-                        >
-                          Actualizada
-                        </span>
-                        <span
+                        <VChip
                           v-else
-                          class="text-caption font-weight-medium text-disabled"
-                          style="font-size: 11px;"
+                          color="secondary"
+                          size="x-small"
+                          variant="tonal"
+                          class="font-weight-black text-uppercase px-2"
+                          style="font-size: 9px; height: 20px;"
                         >
                           Ya Registrada
-                        </span>
+                        </VChip>
                       </td>
                     </tr>
                   </tbody>

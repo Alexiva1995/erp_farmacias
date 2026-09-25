@@ -246,12 +246,12 @@ class GeminiService
             . $candidateLines
             . "\nResponde con el ID del candidato que coincide o null si ninguno cumple las reglas.";
 
-        $maxRetries = 3;
+        $maxRetries = 2;
         $retryDelay = 2;
 
-        try {
-            for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
-                $response = Http::timeout(25)->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={$key}", [
+        for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
+            try {
+                $response = Http::timeout(15)->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={$key}", [
                     'contents' => [
                         ['parts' => [['text' => $prompt]]]
                     ],
@@ -287,23 +287,29 @@ class GeminiService
                     return null;
                 }
 
-                if ($response->status() === 401) {
-                    Log::warning('[GeminiService::matchProduct] Error 401 de autenticación. Verifica que la clave GEMINI_API_KEY en .env de producción sea una API Key válida de Google AI Studio (comienza por AIzaSy...).');
+                if ($response->status() === 401 || $response->status() === 400) {
+                    Log::warning('[GeminiService::matchProduct] Error en API Key o solicitud (' . $response->status() . '). Asegúrese de que GEMINI_API_KEY comience por AIzaSy...');
                     break;
                 }
 
                 if (in_array($response->status(), [429, 503, 500], true)) {
-                    Log::warning("[GeminiService::matchProduct] Respuesta temporal ({$response->status()}). Reintento {$attempt} de {$maxRetries} en {$retryDelay} segundos...");
+                    Log::warning("[GeminiService::matchProduct] Respuesta temporal ({$response->status()}). Reintento {$attempt} de {$maxRetries}...");
                     sleep($retryDelay);
                     $retryDelay *= 2;
                     continue;
                 }
 
-                Log::error('[GeminiService::matchProduct] API error: ' . $response->body());
+                Log::error('[GeminiService::matchProduct] Error en API Gemini: ' . $response->body());
+                break;
+            } catch (\Illuminate\Http\Client\ConnectionException | \GuzzleHttp\Exception\ConnectException $e) {
+                Log::warning("[GeminiService::matchProduct] Timeout/Fallo de conexión en intento {$attempt} de {$maxRetries}: " . $e->getMessage());
+                if ($attempt < $maxRetries) {
+                    sleep($retryDelay);
+                }
+            } catch (\Throwable $e) {
+                Log::error('[GeminiService::matchProduct] Error inesperado: ' . $e->getMessage());
                 break;
             }
-        } catch (\Exception $e) {
-            Log::error('[GeminiService::matchProduct] Excepción: ' . $e->getMessage());
         }
 
         return null;

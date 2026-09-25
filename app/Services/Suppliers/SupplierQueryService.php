@@ -393,10 +393,19 @@ class SupplierQueryService
             // Procesar facturas de forma segura e individual
             $invoiceErrors = [];
             foreach ($filteredInvoices as $invoice) {
-                $currentInvNumber = strtoupper(trim((string)($invoice['header']['invoice_number'] ?? '')));
+                // Si la factura ya fue procesada por un bot scraper especializado (posee 'action' o no tiene 'header')
+                if (isset($invoice['action']) && !isset($invoice['header'])) {
+                    continue;
+                }
+
+                $header = $invoice['header'] ?? $invoice;
+                $currentInvNumber = strtoupper(trim((string)($header['invoice_number'] ?? '')));
+                if (!$currentInvNumber) {
+                    continue;
+                }
                 try {
                     DB::transaction(function () use ($supplier, $invoice) {
-                        $header = $invoice['header'] ?? [];
+                        $header = $invoice['header'] ?? $invoice;
                         $lines = $invoice['lines'] ?? $invoice['details'] ?? [];
 
                         $totalAmount = $header['total_amount'] ?? null;
@@ -435,25 +444,36 @@ class SupplierQueryService
                         }
 
                         $cleanNum = ltrim((string)$invoiceNumber, '0');
-                        $existingInvoice = $supplier->invoices()
-                            ->where(function ($q) use ($invoiceNumber, $cleanNum) {
-                                $q->where('invoice_number', $invoiceNumber)
-                                  ->orWhere('invoice_number', $cleanNum)
-                                  ->orWhere('invoice_number', '00' . $cleanNum)
-                                  ->orWhere('invoice_number', '0' . $cleanNum)
-                                  ->orWhere('invoice_number', 'like', '%' . $cleanNum);
-                            })
-                            ->first();
-
-                        $userId = auth()->id() ?? User::value('id') ?? 1;
-
-                        $currency = $header['currency'] ?? 'Bs';
                         $controlNumber = !empty($header['control_number']) 
                             ? trim((string)$header['control_number']) 
                             : ('00-' . str_pad((string)ltrim((string)$invoiceNumber, '0'), 7, '0', STR_PAD_LEFT));
+
+                        // Buscar si la factura ya existe en el proveedor o en la tabla global para evitar colisiones de unicidad
+                        $existingInvoice = Invoice::where(function ($q) use ($supplier, $invoiceNumber, $cleanNum) {
+                            $q->where('supplier_id', $supplier->id)
+                              ->where(function ($sub) use ($invoiceNumber, $cleanNum) {
+                                  $sub->where('invoice_number', $invoiceNumber)
+                                      ->orWhere('invoice_number', $cleanNum)
+                                      ->orWhere('invoice_number', '00' . $cleanNum)
+                                      ->orWhere('invoice_number', '0' . $cleanNum)
+                                      ->orWhere('invoice_number', 'like', '%' . $cleanNum);
+                              });
+                        })->orWhere('invoice_number', $invoiceNumber)
+                          ->orWhere('invoice_number', $cleanNum)
+                          ->first();
+
+                        if (!$existingInvoice && !empty($controlNumber) && $controlNumber !== 'N/A' && !str_starts_with($controlNumber, '00-0000000')) {
+                            $existingInvoice = Invoice::where('supplier_id', $supplier->id)
+                                ->where('control_number', $controlNumber)
+                                ->first();
+                        }
+
+                        $userId = auth()->id() ?? User::value('id') ?? 1;
+                        $currency = $header['currency'] ?? 'Bs';
                         $isIndexed = isset($header['is_indexed']) ? (bool)$header['is_indexed'] : (bool)($supplier->is_indexed ?? false);
 
                         $invoiceData = [
+                            'supplier_id'           => $supplier->id,
                             'invoice_number'        => $invoiceNumber,
                             'control_number'        => $controlNumber,
                             'created_invoice_date'  => $createdInvoiceDate,
@@ -587,23 +607,54 @@ class SupplierQueryService
 
             $invoicesAudit = [];
             foreach ($invoices as $rawInv) {
-                $h = $rawInv['header'] ?? [];
-                $num = strtoupper(trim((string)($h['invoice_number'] ?? '')));
-                $ctrl = strtoupper(trim((string)($h['control_number'] ?? '')));
-                $totalUsd = floatval($h['total_usd'] ?? 0);
-                $totalBs = floatval($h['total_amount'] ?? 0);
-                $date = $h['created_invoice_date'] ?? $h['created_at'] ?? now()->toDateString();
+                $h = $rawInv['header'] ?? $rawInv;
+                $num = strtoupper(trim((string)($h['invoice_number'] ?? $rawInv['invoice_number'] ?? '')));
+                $ctrl = strtoupper(trim((string)($h['control_number'] ?? $rawInv['control_number'] ?? '')));
+                $totalUsd = floatval($h['total_usd'] ?? $rawInv['total_usd'] ?? 0);
+                $totalBs = floatval($h['total_amount'] ?? $rawInv['total_amount'] ?? 0);
+                $date = $h['created_invoice_date'] ?? $h['created_at'] ?? $h['exp_date'] ?? $rawInv['date'] ?? now()->toDateString();
 
-                $invInDb = $supplier->invoices()->where('invoice_number', $num)->first();
-                $isAlreadyComplete = isset($existingSupplierNumbers[$num]) || (!empty($ctrl) && isset($existingControls[$ctrl]));
+                $invInDb = null;
+                if ($num) {
+                    $cleanNum = ltrim($num, '0');
+                    $cleanNumA = ltrim($cleanNum, 'A');
+                    $invInDb = $supplier->invoices()
+                        ->where(function ($q) use ($num, $cleanNum, $cleanNumA) {
+                            $q->where('invoice_number', $num)
+                              ->orWhere('invoice_number', $cleanNum)
+                              ->orWhere('invoice_number', 'A' . $cleanNumA);
+                        })
+                        ->first();
+                }
 
                 if ($invInDb) {
+                    if ($totalBs <= 0) {
+                        $totalBs = floatval($invInDb->total_amount ?? 0);
+                    }
+                    if ($totalUsd <= 0) {
+                        $totalUsd = floatval($invInDb->total_usd ?? 0);
+                    }
+                    if (!$ctrl || $ctrl === 'S/N') {
+                        $ctrl = $invInDb->control_number ?: 'S/N';
+                    }
+                }
+
+                $isAlreadyComplete = isset($existingSupplierNumbers[$num]) || (!empty($ctrl) && $ctrl !== 'S/N' && isset($existingControls[$ctrl]));
+
+                if (isset($rawInv['action']) && in_array($rawInv['action'], ['created', 'updated', 'skipped'])) {
+                    $action = $rawInv['action'];
+                    $actionLabel = match($action) {
+                        'created' => 'Nueva en Pendientes',
+                        'updated' => 'Actualizada',
+                        default => 'Ya Registrada',
+                    };
+                } elseif ($invInDb) {
                     if ($invInDb->status === 'pending') {
                         $action = 'created';
                         $actionLabel = 'Nueva en Pendientes';
                     } else {
-                        $action = 'skipped';
-                        $actionLabel = 'Ya Registrada';
+                        $action = 'updated';
+                        $actionLabel = 'Actualizada';
                     }
                 } elseif ($isAlreadyComplete) {
                     $action = 'skipped';

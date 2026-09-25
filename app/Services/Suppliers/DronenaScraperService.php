@@ -227,12 +227,14 @@ class DronenaScraperService implements DronenaScraperServiceInterface
                     'invoice_number' => $invoice->invoice_number,
                     'action' => 'updated',
                     'control_number' => $invoice->control_number,
+                    'created_invoice_date' => $invoice->created_invoice_date,
                     'exp_date' => $expDate,
                     'payment_date' => $expDate,
                     'is_indexed' => $isIndexed,
                     'claim_amount' => $claimAmount,
                     'nd_referential_amount' => $ndRefAmount,
                     'net_payable_amount' => $netPayable,
+                    'total_amount' => (float) ($invoice->total_amount ?? 0),
                     'total_usd' => (float) ($invoice->total_usd ?? 0),
                 ];
             } else {
@@ -278,9 +280,11 @@ class DronenaScraperService implements DronenaScraperServiceInterface
                     'invoice_number' => $newInvoice->invoice_number,
                     'action' => 'created',
                     'control_number' => $newInvoice->control_number,
+                    'created_invoice_date' => $newInvoice->created_invoice_date,
                     'exp_date' => $expDate,
                     'payment_date' => $expDate,
                     'is_indexed' => $isIndexed,
+                    'total_amount' => (float) ($newInvoice->total_amount ?? 0),
                     'total_usd' => (float) ($newInvoice->total_usd ?? 0),
                 ];
             }
