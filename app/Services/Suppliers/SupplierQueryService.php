@@ -245,30 +245,56 @@ class SupplierQueryService
             error_log($logMessage);
 
 
-            // Cargar facturas completas existentes únicamente para este proveedor
-            // Aquellas facturas que ya tienen detalles con fecha de vencimiento y no están en borrador/pending se excluyen
-            $completeInvoicesQuery = Invoice::where('supplier_id', $supplier->id)
-                ->whereHas('details')
-                ->whereDoesntHave('details', function ($q) {
-                    $q->whereNull('expiration_date');
-                })->where('status', '!=', 'pending');
+            // Cargar todas las facturas existentes para este proveedor y evitar duplicados o sobreescrituras
+            $existingSupplierInvoices = Invoice::where('supplier_id', $supplier->id)
+                ->withCount(['details as missing_lots_count' => function ($q) {
+                    $q->whereNull('lot_number')->orWhere('lot_number', '')->orWhere('lot_number', 'Sin Lote');
+                }])
+                ->get(['id', 'invoice_number', 'control_number', 'status', 'status_payment']);
 
-            $existingSupplierInvoices = $completeInvoicesQuery
-                ->get(['invoice_number', 'control_number']);
+            $existingSupplierNumbers = [];
+            $existingControls = [];
 
-            $existingSupplierNumbers = $existingSupplierInvoices
-                ->pluck('invoice_number')
-                ->filter()
-                ->map(fn($n) => strtoupper(trim((string)$n)))
-                ->flip()
-                ->toArray();
+            foreach ($existingSupplierInvoices as $inv) {
+                // Si la factura tiene renglones sin lote y no está finalizada/aprobada, permitir re-procesarla para actualizar lotes
+                if ($inv->missing_lots_count > 0 && !in_array($inv->status, ['approved', 'completed', 'paid', 'ordered', 'received'])) {
+                    continue;
+                }
 
-            $existingControls = $existingSupplierInvoices
-                ->pluck('control_number')
-                ->filter()
-                ->map(fn($c) => strtoupper(trim((string)$c)))
-                ->flip()
-                ->toArray();
+                $rawNum = strtoupper(trim((string)$inv->invoice_number));
+                if (!empty($rawNum)) {
+                    $existingSupplierNumbers[$rawNum] = true;
+                    $cleanDigits = preg_replace('/\D/', '', $rawNum);
+                    $cleanNoZeroes = ltrim($cleanDigits ?: $rawNum, '0');
+                    if (!empty($cleanDigits)) {
+                        $existingSupplierNumbers[$cleanDigits] = true;
+                    }
+                    if (!empty($cleanNoZeroes)) {
+                        $existingSupplierNumbers[$cleanNoZeroes] = true;
+                        $existingSupplierNumbers['F' . $cleanNoZeroes] = true;
+                        $existingSupplierNumbers['FC' . $cleanNoZeroes] = true;
+                        $existingSupplierNumbers['FA' . $cleanNoZeroes] = true;
+                        $existingSupplierNumbers['F' . str_pad($cleanNoZeroes, 8, '0', STR_PAD_LEFT)] = true;
+                        $existingSupplierNumbers['FC' . str_pad($cleanNoZeroes, 8, '0', STR_PAD_LEFT)] = true;
+                        $existingSupplierNumbers['FA' . str_pad($cleanNoZeroes, 8, '0', STR_PAD_LEFT)] = true;
+                    }
+                }
+
+                $rawCtrl = strtoupper(trim((string)$inv->control_number));
+                if (!empty($rawCtrl) && !in_array($rawCtrl, ['S/N', 'N/A', '00-0000000', '—'])) {
+                    $existingControls[$rawCtrl] = true;
+                    $ctrlDigits = preg_replace('/\D/', '', $rawCtrl);
+                    $ctrlNoZeroes = ltrim($ctrlDigits ?: $rawCtrl, '0');
+                    if (!empty($ctrlDigits)) {
+                        $existingControls[$ctrlDigits] = true;
+                    }
+                    if (!empty($ctrlNoZeroes)) {
+                        $existingControls[$ctrlNoZeroes] = true;
+                        $existingControls['00-' . str_pad($ctrlNoZeroes, 7, '0', STR_PAD_LEFT)] = true;
+                        $existingControls['00-' . str_pad($ctrlNoZeroes, 8, '0', STR_PAD_LEFT)] = true;
+                    }
+                }
+            }
 
             $filteredInvoices = collect($invoices)
                 ->filter(function ($invoice) use ($existingControls, $existingSupplierNumbers) {
@@ -279,14 +305,29 @@ class SupplierQueryService
                         return false;
                     }
 
-                    // 1. Validar si ya existe completa y finalizada para este proveedor
-                    if (isset($existingSupplierNumbers[$number])) {
+                    $cleanDigits = preg_replace('/\D/', '', $number);
+                    $cleanNoZeroes = ltrim($cleanDigits ?: $number, '0');
+
+                    // 1. Validar si ya existe en la base de datos para este proveedor
+                    if (
+                        isset($existingSupplierNumbers[$number]) ||
+                        (!empty($cleanDigits) && isset($existingSupplierNumbers[$cleanDigits])) ||
+                        (!empty($cleanNoZeroes) && isset($existingSupplierNumbers[$cleanNoZeroes]))
+                    ) {
                         return false;
                     }
 
-                    // 2. Validar por número de control fiscal si está completo y no es genérico
-                    if (!empty($control) && $control !== '—' && $control !== 'S/N' && $control !== '00-0000000' && isset($existingControls[$control])) {
-                        return false;
+                    // 2. Validar por número de control fiscal
+                    if (!empty($control) && !in_array($control, ['—', 'S/N', 'N/A', '00-0000000'])) {
+                        $ctrlDigits = preg_replace('/\D/', '', $control);
+                        $ctrlNoZeroes = ltrim($ctrlDigits ?: $control, '0');
+                        if (
+                            isset($existingControls[$control]) ||
+                            (!empty($ctrlDigits) && isset($existingControls[$ctrlDigits])) ||
+                            (!empty($ctrlNoZeroes) && isset($existingControls[$ctrlNoZeroes]))
+                        ) {
+                            return false;
+                        }
                     }
 
                     return true;
@@ -496,10 +537,7 @@ class SupplierQueryService
                             if (in_array($existingInvoice->status, ['approved', 'completed', 'paid', 'ordered', 'received'])) {
                                 return;
                             }
-                            $invoiceData['status'] = $invoice['status'] ?? 'pending';
-                            $invoiceData['status_payment'] = intval($header['status_payment'] ?? 0);
                             $invoiceModel = $existingInvoice;
-                            $invoiceModel->update($invoiceData);
                         } else {
                             $invoiceData['status'] = $invoice['status'] ?? 'pending';
                             $invoiceData['status_payment'] = intval($header['status_payment'] ?? 0);
@@ -575,20 +613,25 @@ class SupplierQueryService
                         }
 
                         if ($existingInvoice) {
-                            // Actualizar vencimientos en los detalles existentes o recrear si estaba en borrador
+                            // Actualizar vencimientos y lotes en los detalles existentes si estaban vacíos
                             $existingDetails = $invoiceModel->details()->get();
                             if ($existingDetails->count() > 0 && $existingDetails->count() === count($details)) {
                                 foreach ($details as $idx => $det) {
                                     $targetDetail = $existingDetails[$idx] ?? null;
                                     if ($targetDetail) {
-                                        $targetDetail->update([
-                                            'expiration_date' => $det['expiration_date'] ?? $targetDetail->expiration_date,
-                                            'lot_number' => $det['lot_number'] ?? $targetDetail->lot_number,
-                                        ]);
+                                        $updateFields = [];
+                                        if (!empty($det['expiration_date']) && (empty($targetDetail->expiration_date) || $targetDetail->expiration_date === 'Sin Lote')) {
+                                            $updateFields['expiration_date'] = $det['expiration_date'];
+                                        }
+                                        if (!empty($det['lot_number']) && (empty($targetDetail->lot_number) || $targetDetail->lot_number === 'Sin Lote')) {
+                                            $updateFields['lot_number'] = $det['lot_number'];
+                                        }
+                                        if (!empty($updateFields)) {
+                                            $targetDetail->update($updateFields);
+                                        }
                                     }
                                 }
-                            } else {
-                                $invoiceModel->details()->delete();
+                            } elseif ($existingDetails->count() === 0) {
                                 $invoiceModel->details()->createMany($details);
                             }
                         } else {

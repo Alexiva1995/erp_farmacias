@@ -661,7 +661,8 @@ class SupplierController extends Controller
                         [ "type" => "decimal", "field" => "unit_cost", "decimals" => 2 ],
                         [ "type" => "decimal", "field" => "total_cost", "decimals" => 2 ],
                         [ "type" => "string", "field" => "barcode" ],
-                        [ "type" => "date", "field" => "expiration_date", "format" => "d/m/Y" ]
+                        [ "type" => "date", "field" => "expiration_date", "format" => "d/m/Y" ],
+                        [ "type" => "string", "field" => "lot_number" ]
                     ]
                 ];
             } elseif (stripos($supplier->name, 'CONTIN') !== false || $supplier->id === 1032) {

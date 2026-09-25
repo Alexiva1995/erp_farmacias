@@ -227,31 +227,59 @@ class SupplierConnectionService
                 return str_starts_with($name, $startsWith) && str_ends_with($name, $endsWith);
             });
 
-            // Optimización: Cargar facturas y controles ya registrados en base de datos para no descargarlas repetidamente por FTP
-            // Solo se omiten si tienen detalles guardados y todos sus detalles tienen fecha de vencimiento asignada
+            // Optimización: Cargar todas las facturas y controles ya registrados en base de datos para no descargarlas repetidamente por FTP
+            // Si una factura está en estado pendiente y tiene renglones sin lote ("Sin Lote"), permitir descargarla para actualizar los lotes
             $existingInvoicesData = \App\Models\Invoice::where('supplier_id', $connection->supplier_id)
-                ->whereHas('details')
-                ->whereDoesntHave('details', function ($q) {
-                    $q->whereNull('expiration_date');
-                })
-                ->get(['invoice_number', 'control_number']);
+                ->withCount(['details as missing_lots_count' => function ($q) {
+                    $q->whereNull('lot_number')->orWhere('lot_number', '')->orWhere('lot_number', 'Sin Lote');
+                }])
+                ->get(['id', 'invoice_number', 'control_number', 'status', 'status_payment']);
 
             $existingInvoicesMap = [];
             foreach ($existingInvoicesData as $inv) {
+                // Si la factura tiene renglones sin lote y no está finalizada/aprobada, no excluirla para permitir actualizar sus lotes
+                if ($inv->missing_lots_count > 0 && !in_array($inv->status, ['approved', 'completed', 'paid', 'ordered', 'received'])) {
+                    continue;
+                }
+
                 $rawNum = strtoupper(trim((string)$inv->invoice_number));
                 if (!empty($rawNum)) {
                     $existingInvoicesMap[$rawNum] = true;
-                    $stripped = ltrim($rawNum, 'ABFCD');
+                    $cleanDigits = preg_replace('/\D/', '', $rawNum);
+                    $cleanNoZeroes = ltrim($cleanDigits ?: $rawNum, '0');
+                    if (!empty($cleanDigits)) {
+                        $existingInvoicesMap[$cleanDigits] = true;
+                    }
+                    if (!empty($cleanNoZeroes)) {
+                        $existingInvoicesMap[$cleanNoZeroes] = true;
+                        $existingInvoicesMap['F' . $cleanNoZeroes] = true;
+                        $existingInvoicesMap['FC' . $cleanNoZeroes] = true;
+                        $existingInvoicesMap['FA' . $cleanNoZeroes] = true;
+                        $existingInvoicesMap['F' . str_pad($cleanNoZeroes, 8, '0', STR_PAD_LEFT)] = true;
+                        $existingInvoicesMap['FC' . str_pad($cleanNoZeroes, 8, '0', STR_PAD_LEFT)] = true;
+                        $existingInvoicesMap['FA' . str_pad($cleanNoZeroes, 8, '0', STR_PAD_LEFT)] = true;
+                        $existingInvoicesMap[str_pad($cleanNoZeroes, 8, '0', STR_PAD_LEFT)] = true;
+                    }
+                    $stripped = ltrim($rawNum, 'ABFCD-');
                     $strippedNoZeroes = ltrim($stripped, '0');
                     $existingInvoicesMap[$stripped] = true;
                     if (!empty($strippedNoZeroes)) {
                         $existingInvoicesMap[$strippedNoZeroes] = true;
                     }
-                    if (str_starts_with($rawNum, '70') && strlen($rawNum) >= 6) {
-                        $sub = ltrim(substr($rawNum, 2), '0');
-                        if (!empty($sub)) {
-                            $existingInvoicesMap[$sub] = true;
-                        }
+                }
+
+                $rawCtrl = strtoupper(trim((string)$inv->control_number));
+                if (!empty($rawCtrl) && !in_array($rawCtrl, ['S/N', 'N/A', '00-0000000', '—'])) {
+                    $existingInvoicesMap[$rawCtrl] = true;
+                    $ctrlDigits = preg_replace('/\D/', '', $rawCtrl);
+                    $ctrlNoZeroes = ltrim($ctrlDigits ?: $rawCtrl, '0');
+                    if (!empty($ctrlDigits)) {
+                        $existingInvoicesMap[$ctrlDigits] = true;
+                    }
+                    if (!empty($ctrlNoZeroes)) {
+                        $existingInvoicesMap[$ctrlNoZeroes] = true;
+                        $existingInvoicesMap['00-' . str_pad($ctrlNoZeroes, 7, '0', STR_PAD_LEFT)] = true;
+                        $existingInvoicesMap['00-' . str_pad($ctrlNoZeroes, 8, '0', STR_PAD_LEFT)] = true;
                     }
                 }
             }
@@ -259,18 +287,24 @@ class SupplierConnectionService
             // Filtrar archivos cuya factura ya esté registrada en BD por nombre de archivo o núcleo numérico
             $filesToProcess = [];
             foreach ($files as $filePath) {
-                if (!str_ends_with(strtolower($filePath), ".txt")) {
+                if (!str_ends_with(strtolower($filePath), ".txt") && !str_ends_with(strtolower($filePath), ".fact")) {
                     continue;
                 }
                 $filename = pathinfo($filePath, PATHINFO_FILENAME);
                 $cleanFilename = strtoupper(trim($filename));
                 $cleanFilenameNoPrefix = strtoupper(ltrim($cleanFilename, 'ABFCD'));
                 $cleanFilenameNoZeroes = strtoupper(ltrim($cleanFilenameNoPrefix, '0'));
+                $digitsOnly = preg_replace('/\D/', '', $cleanFilename);
+                $digitsNoZeroes = ltrim($digitsOnly ?: $cleanFilename, '0');
 
-                if (isset($existingInvoicesMap[$cleanFilename]) || 
+                if (
+                    isset($existingInvoicesMap[$cleanFilename]) || 
                     isset($existingInvoicesMap[$cleanFilenameNoPrefix]) ||
-                    (!empty($cleanFilenameNoZeroes) && isset($existingInvoicesMap[$cleanFilenameNoZeroes]))) {
-                    // Ya está en BD con todos sus datos completos, saltar descarga FTP
+                    (!empty($cleanFilenameNoZeroes) && isset($existingInvoicesMap[$cleanFilenameNoZeroes])) ||
+                    (!empty($digitsOnly) && isset($existingInvoicesMap[$digitsOnly])) ||
+                    (!empty($digitsNoZeroes) && isset($existingInvoicesMap[$digitsNoZeroes]))
+                ) {
+                    // Ya está en BD, saltar descarga FTP
                     continue;
                 }
 
@@ -1206,6 +1240,11 @@ class SupplierConnectionService
                             $hasIvaTax = true;
                         }
                     }
+
+                    if ($isDronena && empty($lineData['lot_number']) && !empty($cols[9])) {
+                        $lineData['lot_number'] = trim((string)$cols[9]);
+                    }
+
                     $barcode = $lineData["barcode"] ?? null;
 
                     // ✅ Solo crear producto si no existe
@@ -1584,11 +1623,17 @@ class SupplierConnectionService
                     // Busca un código de barras: número de 12 o 13 dígitos rodeado por límites de palabra
                     preg_match('/\b(\d{12,13})\b/', $line, $b);
 
-                    // Busca una fecha en formato dd/mm/aaaa, dd-mm-aaaa, aaaa-mm-dd o mm/aaaa
-                    preg_match('/\b(\d{2}[\/\-]\d{2}[\/\-]\d{4}|\d{4}[\/\-]\d{2}[\/\-]\d{2}|\d{2}[\/\-]\d{4})\b/', $line, $e);
+                    // Busca lote y fecha de vencimiento en formato Dronena: "<lote> <fecha_vencimiento>" (ej. "03127 01/09/2033")
+                    $lot = '';
+                    $expiration = '';
+                    if (preg_match('/\b([A-Za-z0-9\-]{2,20})\s+(\d{2}[\/\-]\d{2}[\/\-]\d{4}|\d{4}[\/\-]\d{2}[\/\-]\d{2}|\d{2}[\/\-]\d{4})\b/', $line, $lotDateMatch)) {
+                        $lot = $lotDateMatch[1];
+                        $expiration = $lotDateMatch[2];
+                    } elseif (preg_match('/\b(\d{2}[\/\-]\d{2}[\/\-]\d{4}|\d{4}[\/\-]\d{2}[\/\-]\d{2}|\d{2}[\/\-]\d{4})\b/', $line, $e)) {
+                        $expiration = $e[1] ?? '';
+                    }
 
                     $barcode = $b[1] ?? '';
-                    $expiration = $e[1] ?? '';
 
                     // Elimina cualquier punto y coma del nombre del producto para evitar romper el CSV
                     $name = str_replace(';', '', $name);
@@ -1603,7 +1648,8 @@ class SupplierConnectionService
                         $unit_cost,
                         $total_cost,
                         $barcode,
-                        $expiration
+                        $expiration,
+                        $lot
                     ]);
                 }
             }
