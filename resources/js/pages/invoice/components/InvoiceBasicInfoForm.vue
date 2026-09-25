@@ -10,38 +10,6 @@ const props = defineProps({
   selectedSupplier: { type: Object, default: null },
   isInformalSupplier: { type: Boolean, default: false },
   isEditMode: { type: Boolean, default: false },
-  syncingBot: { type: Boolean, default: false },
-});
-
-const emit = defineEmits(["sync-bot"]);
-
-const botInfo = computed(() => {
-  if (!props.selectedSupplier) return null;
-  const name = (props.selectedSupplier.name || "").toLowerCase();
-  const type = (props.selectedSupplier.connection?.type || props.selectedSupplier.type || "").toLowerCase();
-  
-  if (name.includes("dronena") || type.includes("dronena")) {
-    return { type: "dronena", endpoint: "/invoices/sync-dronena", label: "Dronena" };
-  }
-  if (name.includes("drocerca") || type.includes("drocerca")) {
-    return { type: "drocerca", endpoint: "/invoices/sync-drocerca", label: "Drocerca" };
-  }
-  if (name.includes("mafarta") || name.includes("cobeca") || type.includes("mafarta")) {
-    return { type: "mafarta", endpoint: "/invoices/sync-mafarta", label: "Cobeca" };
-  }
-  if (name.includes("cristmedical") || type.includes("cristmedical")) {
-    return { type: "cristmedicals", endpoint: "/invoices/sync-cristmedicals", label: "Cristmedicals" };
-  }
-  if (name.includes("dromega") || name.includes("mega") || type.includes("dromega")) {
-    return { type: "dromega", endpoint: "/invoices/sync-dromega", label: "Dromega" };
-  }
-  if (name.includes("drosymca") || type.includes("drosymca")) {
-    return { type: "drosymca", endpoint: "/invoices/sync-drosymca", label: "Drosymca" };
-  }
-  if (props.selectedSupplier.connection && ['ftp', 'sftp', 'api', 'http', 'bot'].includes(props.selectedSupplier.connection.type)) {
-    return { type: "connection", endpoint: `/suppliers/${props.selectedSupplier.id}/connection-service`, label: props.selectedSupplier.name };
-  }
-  return null;
 });
 </script>
 
@@ -49,24 +17,9 @@ const botInfo = computed(() => {
   <div>
     <!-- SECCIÓN 1: Datos del Proveedor y Control -->
     <div class="mb-4">
-      <div class="d-flex align-center justify-space-between flex-wrap gap-2 mb-3">
-        <div class="d-flex align-center gap-2">
-          <VIcon icon="tabler-building-store" size="20" color="primary" />
-          <span class="text-subtitle-1 font-weight-bold">1. Información del Proveedor y Documento</span>
-        </div>
-
-        <!-- Botón Scraper / Bot de Droguería -->
-        <VBtn
-          v-if="botInfo"
-          color="primary"
-          variant="tonal"
-          size="small"
-          prepend-icon="tabler-robot"
-          :loading="syncingBot"
-          @click="emit('sync-bot', botInfo)"
-        >
-          Actualizar con Bot {{ botInfo.label }}
-        </VBtn>
+      <div class="d-flex align-center gap-2 mb-3">
+        <VIcon icon="tabler-building-store" size="20" color="primary" />
+        <span class="text-subtitle-1 font-weight-bold">1. Información del Proveedor y Documento</span>
       </div>
 
       <!-- Alerta de Proveedor Informal -->

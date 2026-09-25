@@ -59,6 +59,35 @@ const isInformalSupplier = computed(() => {
   return selectedSupplier.value.name.toLowerCase().includes("informal");
 });
 
+const botInfo = computed(() => {
+  if (!selectedSupplier.value) return null;
+  const name = (selectedSupplier.value.name || "").toLowerCase();
+  const type = (selectedSupplier.value.connection?.type || selectedSupplier.value.type || "").toLowerCase();
+  
+  if (name.includes("dronena") || type.includes("dronena")) {
+    return { type: "dronena", endpoint: "/invoices/sync-dronena", label: "Dronena" };
+  }
+  if (name.includes("drocerca") || type.includes("drocerca")) {
+    return { type: "drocerca", endpoint: "/invoices/sync-drocerca", label: "Drocerca" };
+  }
+  if (name.includes("mafarta") || name.includes("cobeca") || type.includes("mafarta")) {
+    return { type: "mafarta", endpoint: "/invoices/sync-mafarta", label: "Cobeca" };
+  }
+  if (name.includes("cristmedical") || type.includes("cristmedical")) {
+    return { type: "cristmedicals", endpoint: "/invoices/sync-cristmedicals", label: "Cristmedicals" };
+  }
+  if (name.includes("dromega") || name.includes("mega") || type.includes("dromega")) {
+    return { type: "dromega", endpoint: "/invoices/sync-dromega", label: "Dromega" };
+  }
+  if (name.includes("drosymca") || type.includes("drosymca")) {
+    return { type: "drosymca", endpoint: "/invoices/sync-drosymca", label: "Drosymca" };
+  }
+  if (selectedSupplier.value.connection && ['ftp', 'sftp', 'api', 'http', 'bot'].includes(selectedSupplier.value.connection.type)) {
+    return { type: "connection", endpoint: `/suppliers/${selectedSupplier.value.id}/connection-service`, label: selectedSupplier.value.name };
+  }
+  return null;
+});
+
 const validateExpDate = (date) => {
   if (!date) {
     expDateError.value = "";
@@ -533,14 +562,37 @@ const handleSubmit = async () => {
           </VAvatar>
         </template>
         
-        <template v-if="isEditMode" #append>
-          <VBtn
-            icon="tabler-arrow-left"
-            variant="tonal"
-            color="secondary"
-            size="small"
-            @click="handleCancel"
-          />
+        <template #append>
+          <div class="d-flex align-center gap-2">
+            <!-- Botón Redondo del Bot Scraper -->
+            <VTooltip
+              v-if="botInfo"
+              location="bottom"
+              :text="`Sincronizar y actualizar con Bot ${botInfo.label}`"
+            >
+              <template #activator="{ props: tooltipProps }">
+                <VBtn
+                  v-bind="tooltipProps"
+                  icon="tabler-robot"
+                  color="primary"
+                  variant="tonal"
+                  rounded="circle"
+                  size="default"
+                  :loading="syncingBot"
+                  @click="handleSyncBot(botInfo)"
+                />
+              </template>
+            </VTooltip>
+
+            <VBtn
+              v-if="isEditMode"
+              icon="tabler-arrow-left"
+              variant="tonal"
+              color="secondary"
+              size="small"
+              @click="handleCancel"
+            />
+          </div>
         </template>
 
         <VCardTitle class="text-h6 font-weight-bold">
@@ -571,8 +623,6 @@ const handleSubmit = async () => {
                 :selected-supplier="selectedSupplier"
                 :is-informal-supplier="isInformalSupplier"
                 :is-edit-mode="isEditMode"
-                :syncing-bot="syncingBot"
-                @sync-bot="handleSyncBot"
               />
 
               <VDivider class="my-5" />
