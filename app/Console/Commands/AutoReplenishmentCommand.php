@@ -248,16 +248,33 @@ class AutoReplenishmentCommand extends Command
             }
 
             $formattedOffers = [];
+            $maxPct = $config->max_price_increase_percentage !== null ? (float) $config->max_price_increase_percentage : null;
+            $baseCost = (float) ($product->unit_cost ?? 0);
+
             foreach ($sortedOffers as $ps) {
                 $cost = $conDescuento && $ps->unit_cost_usd_with_discount > 0
                     ? (float) $ps->unit_cost_usd_with_discount
                     : (float) ($ps->unit_cost_usd > 0 ? $ps->unit_cost_usd : ($product->unit_cost ?? 0));
+
+                // Validación de sobrecosto máximo si está parametrizado
+                if ($maxPct !== null && $baseCost > 0) {
+                    $increasePct = (($cost - $baseCost) / $baseCost) * 100;
+                    if ($increasePct > $maxPct) {
+                        $this->warn("     ⚠️ [{$product->id}] {$product->name} en proveedor '{$ps->supplier?->name}' tiene sobrecosto de +".round($increasePct, 1)."% (supera el límite de +{$maxPct}%). Se descarta esta oferta.");
+                        continue;
+                    }
+                }
 
                 $formattedOffers[] = [
                     'supplier'        => $ps->supplier,
                     'productSupplier' => $ps,
                     'unit_cost'       => $cost,
                 ];
+            }
+
+            if (empty($formattedOffers)) {
+                $this->warn("     ⏩ [{$product->id}] {$product->name} — Ninguna oferta cumple con el límite de aumento máximo (+{$maxPct}%). Se omite.");
+                continue;
             }
 
             $productAssignments[$product->id] = [

@@ -26,6 +26,7 @@ const configForm = ref({
   lapso_de_tiempo: "1 month",
   min_solicitar: 1,
   con_descuento: false,
+  max_price_increase_percentage: null,
   exclude_colombian: false,
   exclude_novaventa: false,
   include_ignored: true,
@@ -43,6 +44,7 @@ const defaultForm = () => ({
   lapso_de_tiempo: "1 month",
   min_solicitar: 1,
   con_descuento: false,
+  max_price_increase_percentage: null,
   exclude_colombian: false,
   exclude_novaventa: false,
   include_ignored: true,
@@ -78,10 +80,15 @@ const scheduleOpciones = [
   { title: "Cada Hora", value: "0 * * * *" },
 ];
 
-// Helper para parsear la expresión cron a algo amigable
+// Helper para formatear la frecuencia de forma limpia (ej. DIARIO (8:00 AM))
 function translateCron(cron) {
+  if (cron === "0 6 * * *") return "DIARIO (6:00 AM)";
+  if (cron === "0 8 * * *") return "DIARIO (8:00 AM)";
+  if (cron === "0 6 * * 1") return "SEMANAL (Lunes 6:00 AM)";
+  if (cron === "0 */12 * * *") return "CADA 12 HORAS";
+  if (cron === "0 * * * *") return "CADA HORA";
   const match = scheduleOpciones.find(o => o.value === cron);
-  return match ? match.title : `Cron: ${cron}`;
+  return match ? match.title.replace("Todos los días", "DIARIO").toUpperCase() : "DIARIO";
 }
 
 // Formateador amigable de fecha y hora
@@ -150,6 +157,7 @@ function openCreate() {
 function openEdit(item) {
   configForm.value = {
     ...item,
+    max_price_increase_percentage: item.max_price_increase_percentage ?? null,
     include_ignored: item.include_ignored ?? true,
     group_ids: item.group_ids || [],
   };
@@ -163,6 +171,9 @@ async function saveConfig() {
   try {
     const payload = {
       ...configForm.value,
+      max_price_increase_percentage: configForm.value.max_price_increase_percentage !== null && configForm.value.max_price_increase_percentage !== ""
+        ? Number(configForm.value.max_price_increase_percentage)
+        : null,
       supplier_id: configForm.value.supplier_id ? Number(configForm.value.supplier_id) : null,
       group_ids: Array.isArray(configForm.value.group_ids) ? configForm.value.group_ids : [],
     };
@@ -339,86 +350,62 @@ onMounted(() => {
           <VTable v-if="filteredConfigs.length > 0" class="w-100 auto-replenishment-table" hover>
             <thead>
               <tr>
-                <th class="text-start font-weight-bold">Nombre</th>
                 <th class="text-start font-weight-bold">Análisis</th>
                 <th class="text-start font-weight-bold">Frecuencia de Ejecución</th>
-                <th class="text-start font-weight-bold">Proveedor Destino</th>
-                <th class="text-center font-weight-bold">Estado</th>
                 <th class="text-start font-weight-bold">Última Corrida</th>
                 <th class="text-end px-6 font-weight-bold">Acciones</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="item in filteredConfigs" :key="item.id">
-                <!-- Nombre -->
-                <td class="font-weight-bold py-3 text-high-emphasis">
-                  {{ item.name }}
-                </td>
-
-                <!-- Análisis (Algoritmo + Lapso + Exclusiones Limpias) -->
+                <!-- Análisis (Nombre + Algoritmo + Chips de Lapso y Exclusiones alineados del mismo tamaño) -->
                 <td class="py-3">
                   <div class="d-flex flex-column gap-1">
-                    <div class="d-flex align-center gap-1.5 flex-wrap">
-                      <span class="text-body-2 font-weight-medium">
-                        {{ tipoFiltracionOpciones.find(o => o.value === item.tipo_filtracion)?.title || item.tipo_filtracion }}
+                    <div class="d-flex align-center gap-2">
+                      <span class="font-weight-bold text-high-emphasis text-body-1">
+                        {{ item.name }}
                       </span>
-                      <VChip size="x-small" variant="tonal" color="primary" class="font-weight-bold">
+                      <VChip
+                        v-if="!item.is_active"
+                        size="x-small"
+                        color="secondary"
+                        variant="outlined"
+                      >
+                        Inactivo
+                      </VChip>
+                    </div>
+
+                    <div class="text-body-2 text-muted">
+                      {{ tipoFiltracionOpciones.find(o => o.value === item.tipo_filtracion)?.title || item.tipo_filtracion }}
+                    </div>
+
+                    <!-- Chips de Lapso y Exclusiones alineados del mismo tamaño -->
+                    <div class="d-flex align-center gap-1.5 flex-wrap mt-0.5">
+                      <VChip size="small" variant="tonal" color="primary" class="font-weight-bold">
                         {{ lapsoDeTiempoOpciones.find(o => o.value === item.lapso_de_tiempo)?.title || item.lapso_de_tiempo }}
                       </VChip>
-                    </div>
-                    <!-- Badges de Exclusiones Compactos -->
-                    <div v-if="item.exclude_colombian || item.exclude_novaventa" class="d-flex align-center gap-1 flex-wrap">
-                      <VChip v-if="item.exclude_colombian" size="x-small" color="warning" variant="tonal" density="compact">
+
+                      <VChip v-if="item.exclude_colombian" size="small" color="warning" variant="tonal" class="font-weight-medium">
                         Sin Col
                       </VChip>
-                      <VChip v-if="item.exclude_novaventa" size="x-small" color="warning" variant="tonal" density="compact">
+
+                      <VChip v-if="item.exclude_novaventa" size="small" color="warning" variant="tonal" class="font-weight-medium">
                         Sin Novaventa
+                      </VChip>
+
+                      <VChip v-if="item.max_price_increase_percentage !== null" size="small" color="error" variant="tonal" class="font-weight-medium">
+                        Máx +{{ item.max_price_increase_percentage }}%
                       </VChip>
                     </div>
                   </div>
                 </td>
 
-                <!-- Frecuencia de Ejecución (Traducción destacada + Cron sutil) -->
+                <!-- Frecuencia de Ejecución (Limpia con formato DIARIO) -->
                 <td class="py-3">
-                  <div class="d-flex flex-column gap-0.5">
-                    <div class="d-flex align-center gap-1 text-body-2 font-weight-medium text-high-emphasis">
-                      <VIcon icon="tabler-clock" size="16" class="text-muted" />
-                      {{ translateCron(item.schedule_expression) }}
-                    </div>
-                    <div>
-                      <code class="px-1.5 py-0.5 rounded text-muted font-weight-regular text-xs bg-grey-100 border">
-                        {{ item.schedule_expression }}
-                      </code>
-                    </div>
+                  <div class="d-flex align-center gap-1.5 text-body-2 font-weight-medium text-high-emphasis">
+                    <VIcon icon="tabler-clock" size="18" class="text-muted" />
+                    <span>{{ translateCron(item.schedule_expression) }}</span>
                   </div>
-                </td>
-
-                <!-- Proveedor Destino -->
-                <td class="py-3">
-                  <VChip v-if="item.supplier" size="small" variant="tonal" color="info" prepend-icon="tabler-building-store">
-                    {{ item.supplier.name }}
-                  </VChip>
-                  <VChip v-else size="small" variant="outlined" color="secondary">
-                    Todos los proveedores
-                  </VChip>
-                </td>
-
-                <!-- Estado (Switch interactivo) -->
-                <td class="text-center py-3">
-                  <VSwitch
-                    v-model="item.is_active"
-                    density="compact"
-                    hide-details
-                    color="success"
-                    class="d-inline-flex"
-                    @change="toggleActive(item)"
-                  >
-                    <template #label>
-                      <span class="text-caption" :class="item.is_active ? 'text-success font-weight-bold' : 'text-muted'">
-                        {{ item.is_active ? 'Activo' : 'Inactivo' }}
-                      </span>
-                    </template>
-                  </VSwitch>
                 </td>
 
                 <!-- Última Corrida -->
@@ -441,7 +428,7 @@ onMounted(() => {
                   </div>
                 </td>
 
-                <!-- Acciones con Tooltips y Menú Contextual -->
+                <!-- Acciones con estilo del sistema -->
                 <td class="text-end px-6 py-3">
                   <div class="d-flex ga-1.5 align-center justify-end">
                     <!-- Ejecutar Ahora -->
@@ -453,6 +440,7 @@ onMounted(() => {
                           size="32"
                           variant="tonal"
                           color="success"
+                          class="rounded-circle shadow-sm"
                           :loading="runningConfigs[item.id]"
                           :disabled="runningConfigs[item.id]"
                           @click="runConfig(item.id)"
@@ -471,10 +459,11 @@ onMounted(() => {
                           size="32"
                           variant="tonal"
                           color="primary"
+                          class="rounded-circle shadow-sm"
                           :disabled="runningConfigs[item.id]"
                           @click="openEdit(item)"
                         >
-                          <VIcon icon="tabler-pencil" size="16" />
+                          <VIcon icon="tabler-edit" size="16" />
                         </VBtn>
                       </template>
                     </VTooltip>
@@ -486,14 +475,23 @@ onMounted(() => {
                           v-bind="menuProps"
                           icon
                           size="32"
-                          variant="text"
+                          variant="tonal"
                           color="secondary"
+                          class="rounded-circle shadow-sm"
                           :disabled="runningConfigs[item.id]"
                         >
                           <VIcon icon="tabler-dots-vertical" size="16" />
                         </VBtn>
                       </template>
-                      <VList density="compact" class="py-1">
+                      <VList density="compact" min-width="180">
+                        <VListItem
+                          density="compact"
+                          :prepend-icon="item.is_active ? 'tabler-toggle-right' : 'tabler-toggle-left'"
+                          :title="item.is_active ? 'Desactivar Regla' : 'Activar Regla'"
+                          :color="item.is_active ? 'warning' : 'success'"
+                          @click="item.is_active = !item.is_active; toggleActive(item)"
+                        />
+                        <VDivider class="my-1" />
                         <VListItem
                           density="compact"
                           color="error"

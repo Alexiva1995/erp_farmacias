@@ -16,6 +16,7 @@ class AutoReplenishmentConfig extends Model
         'lapso_de_tiempo',
         'min_solicitar',
         'con_descuento',
+        'max_price_increase_percentage',
         'exclude_colombian',
         'exclude_novaventa',
         'include_ignored',
@@ -29,14 +30,15 @@ class AutoReplenishmentConfig extends Model
     ];
 
     protected $casts = [
-        'is_active'         => 'boolean',
-        'con_descuento'     => 'boolean',
-        'exclude_colombian' => 'boolean',
-        'exclude_novaventa' => 'boolean',
-        'include_ignored'   => 'boolean',
-        'group_ids'         => 'array',
-        'min_solicitar'     => 'float',
-        'last_run_at'       => 'datetime',
+        'is_active'                     => 'boolean',
+        'con_descuento'                 => 'boolean',
+        'max_price_increase_percentage' => 'float',
+        'exclude_colombian'             => 'boolean',
+        'exclude_novaventa'             => 'boolean',
+        'include_ignored'               => 'boolean',
+        'group_ids'                     => 'array',
+        'min_solicitar'                 => 'float',
+        'last_run_at'                   => 'datetime',
     ];
 
     public function supplier(): BelongsTo
