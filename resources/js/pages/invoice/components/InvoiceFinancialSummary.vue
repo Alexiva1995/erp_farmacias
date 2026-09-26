@@ -90,9 +90,6 @@ const emit = defineEmits([
               </div>
               <div class="text-right">
                 <span class="text-body-1 font-weight-bold">{{ formatCurrency(invoice.tax_amount, invoice.currency) }}</span>
-                <div v-if="isEditMode" class="text-caption" :class="{ 'text-warning': isTaxAmountMismatch }">
-                  Calc: {{ formatCurrency(editableDetailsTaxAmount, invoice.currency) }}
-                </div>
               </div>
             </div>
           </VCardText>
