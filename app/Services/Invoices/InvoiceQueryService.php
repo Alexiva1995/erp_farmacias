@@ -26,6 +26,11 @@ class InvoiceQueryService
         if ($request->filled('status')) {
             $statuses = is_array($request->status) ? $request->status : [$request->status];
             $query->whereIn('status', $statuses);
+
+            // Las Notas de Débito (ND) no son facturas de compra para carga de inventario; no deben aparecer en pendientes
+            if (in_array('pending', $statuses)) {
+                $query->where('invoice_number', 'NOT LIKE', 'ND%');
+            }
         } else {
             $query->where('status', '!=', 'deleted');
         }

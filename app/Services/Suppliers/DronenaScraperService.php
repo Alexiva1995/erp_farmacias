@@ -267,7 +267,7 @@ class DronenaScraperService implements DronenaScraperServiceInterface
                     'nd_referential_amount' => $ndRefAmount,
                     'net_payable_amount' => $netPayable ?: $calcTotalAmount,
                     'invoice_photo' => $pdfData['invoice_photo'] ?? null,
-                    'status' => 'pending',
+                    'status' => $isND ? 'ordered' : 'pending',
                     'status_payment' => 0,
                     'uploaded_by' => 1,
                     'registered_by' => 1,
