@@ -311,26 +311,22 @@ const emit = defineEmits([
                 size="x-small"
                 :color="getPriceVsAutoOrderIndicator(item).color"
                 variant="tonal"
-                class="px-1 font-weight-bold"
-                style="height: 18px; font-size: 10px;"
+                class="px-1.5 font-weight-bold"
+                style="height: 18px; font-size: 11px;"
               >
-                <VIcon :icon="getPriceVsAutoOrderIndicator(item).icon" size="12" class="me-0.5" />
                 {{ getPriceVsAutoOrderIndicator(item).badgeText }}
               </VChip>
             </template>
           </VTooltip>
         </div>
 
-        <!-- Línea 2: Costo en USD en texto negro con indicador vs Costo Actual en Sistema -->
+        <!-- Línea 2: Costo en USD con mismo tamaño de fuente e indicador vs Costo Actual en Sistema -->
         <div
           v-if="invoice.currency !== 'USD' && item.unit_cost_usd != null"
           class="d-flex align-center justify-end gap-1 mt-0.5"
         >
-          <span
-            class="font-weight-bold text-high-emphasis"
-            style="font-size: 11px; color: inherit;"
-          >
-            ${{ Number(item.unit_cost_usd).toFixed(2) }}
+          <span class="font-weight-bold text-high-emphasis">
+            {{ Number(item.unit_cost_usd).toFixed(2) }} USD
           </span>
           <VTooltip
             v-if="getPriceVsSystemCostIndicator(item)"
@@ -343,10 +339,9 @@ const emit = defineEmits([
                 size="x-small"
                 :color="getPriceVsSystemCostIndicator(item).color"
                 variant="tonal"
-                class="px-1 font-weight-bold"
-                style="height: 18px; font-size: 10px;"
+                class="px-1.5 font-weight-bold"
+                style="height: 18px; font-size: 11px;"
               >
-                <VIcon :icon="getPriceVsSystemCostIndicator(item).icon" size="12" class="me-0.5" />
                 {{ getPriceVsSystemCostIndicator(item).badgeText }}
               </VChip>
             </template>

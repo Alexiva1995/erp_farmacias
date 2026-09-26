@@ -329,52 +329,13 @@ const isTaxAmountMismatch = computed(() => {
 });
 
 const getCostComparisonClass = (item) => {
-  if (!isApprovalMode.value) {
-    return "";
-  }
-
-  if (!item.product || typeof item.product.unit_cost === "undefined") {
-    return "";
-  }
-
-  const systemCostUSD = Number(item.product.unit_cost);
-
-  if (systemCostUSD === 0 || systemCostUSD === null || isNaN(systemCostUSD)) {
-    return "cost-new-product";
-  }
-
-  const invoiceCostInLocalCurrency = Number(item.unit_cost);
-  const rate = parseFloat(invoice.value.exchange_rate) || 1;
-  const isUsd = invoice.value.currency === "USD";
-  const hasValidRate = rate && rate > 0;
-
-  let invoiceCostUSD;
-  if (isUsd) {
-    invoiceCostUSD = invoiceCostInLocalCurrency;
-  } else if (hasValidRate) {
-    invoiceCostUSD = invoiceCostInLocalCurrency / rate;
-  } else {
-    return "";
-  }
-
-  if (isNaN(invoiceCostUSD)) {
-    return "";
-  }
-
-  const tolerance = 0.001;
-
-  if (invoiceCostUSD > systemCostUSD + tolerance) {
-    return "cost-higher";
-  } else if (invoiceCostUSD < systemCostUSD - tolerance) {
-    return "cost-lower";
-  }
-
+  // Mantener fondo de celda neutro para evitar sobrecarga y conflicto visual entre Bs y USD
   return "";
 };
 
 /**
  * Compara el precio unitario de la factura (en USD) vs el precio de la Auto-Orden.
- * Retorna { icon, color, tooltip, badgeText } o null si no hay referencia de auto-orden.
+ * Retorna { color, tooltip, badgeText } o null si no hay referencia de auto-orden.
  */
 const getPriceVsAutoOrderIndicator = (item) => {
   if (!isApprovalMode.value && !isEditableMode.value) return null;
@@ -390,23 +351,20 @@ const getPriceVsAutoOrderIndicator = (item) => {
 
   if (invoicePrice > autoOrderPrice + tolerance) {
     return {
-      icon: 'tabler-trending-up',
       color: 'error',
       badgeText: `+${diffPercent}%`,
       tooltip: `vs Orden de Compra: Más caro (+${diffPercent}%) — Pactado $${autoOrderPrice.toFixed(2)} USD`,
     };
   } else if (invoicePrice < autoOrderPrice - tolerance) {
     return {
-      icon: 'tabler-trending-down',
       color: 'success',
       badgeText: `${diffPercent}%`,
       tooltip: `vs Orden de Compra: Más económico (${diffPercent}%) — Pactado $${autoOrderPrice.toFixed(2)} USD`,
     };
   } else {
     return {
-      icon: 'tabler-equal',
       color: 'secondary',
-      badgeText: '0.0%',
+      badgeText: '= 0.0%',
       tooltip: `vs Orden de Compra: Igual al precio pactado ($${autoOrderPrice.toFixed(2)} USD)`,
     };
   }
@@ -414,7 +372,7 @@ const getPriceVsAutoOrderIndicator = (item) => {
 
 /**
  * Compara el precio unitario de la factura (en USD) vs el costo actual registrado en el sistema.
- * Retorna { icon, color, tooltip, badgeText } o null.
+ * Retorna { color, tooltip, badgeText } o null.
  */
 const getPriceVsSystemCostIndicator = (item) => {
   if (!isApprovalMode.value && !isEditableMode.value) return null;
@@ -422,7 +380,6 @@ const getPriceVsSystemCostIndicator = (item) => {
   const systemCost = Number(item.product?.unit_cost);
   if (systemCost == null || isNaN(systemCost) || systemCost <= 0) {
     return {
-      icon: 'tabler-sparkles',
       color: 'info',
       badgeText: 'Nuevo',
       tooltip: 'vs Costo Actual ERP: Producto nuevo sin costo previo registrado',
@@ -439,23 +396,20 @@ const getPriceVsSystemCostIndicator = (item) => {
 
   if (invoiceCostUSD > systemCost + tolerance) {
     return {
-      icon: 'tabler-trending-up',
       color: 'error',
       badgeText: `+${diffPercent}%`,
       tooltip: `vs Costo Actual ERP: Más caro (+${diffPercent}%) — Costo en sistema $${systemCost.toFixed(2)} USD`,
     };
   } else if (invoiceCostUSD < systemCost - tolerance) {
     return {
-      icon: 'tabler-trending-down',
       color: 'success',
       badgeText: `${diffPercent}%`,
       tooltip: `vs Costo Actual ERP: Más económico (${diffPercent}%) — Costo en sistema $${systemCost.toFixed(2)} USD`,
     };
   } else {
     return {
-      icon: 'tabler-equal',
       color: 'secondary',
-      badgeText: '0.0%',
+      badgeText: '= 0.0%',
       tooltip: `vs Costo Actual ERP: Igual al costo actual del sistema ($${systemCost.toFixed(2)} USD)`,
     };
   }
