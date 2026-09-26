@@ -1,4 +1,6 @@
 <script setup>
+import { computed } from 'vue'
+
 // Modal de Auditoría de Factura y Trazabilidad de Ciclo de Vida
 const props = defineProps({
   modelValue: {
@@ -13,48 +15,64 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue'])
 
-const steps = [
+const formatDate = (dateString) => {
+  if (!dateString) return null
+  try {
+    const cleanDate = String(dateString).split('T')[0]
+    const parts = cleanDate.split('-')
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`
+    }
+    const d = new Date(dateString)
+    if (isNaN(d.getTime())) return dateString
+    return d.toLocaleDateString('es-VE', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    })
+  } catch (e) {
+    return dateString
+  }
+}
+
+const steps = computed(() => [
   {
     step: 1,
-    title: 'Subida / Registro Inicial',
+    title: '1. Subida / Registro Inicial',
     description: 'Creación del registro de la factura en el sistema.',
     icon: 'tabler-cloud-upload',
-    userKey: 'uploaded_by_user',
-    defaultUser: 'Sistema / N/A',
-    color: 'success',
-    isDone: (inv) => Boolean(inv?.uploaded_by_user || inv?.id),
+    user: props.invoice?.uploaded_by_user?.name || props.invoice?.uploaded_by_user?.username || 'admin',
+    date: formatDate(props.invoice?.created_at || props.invoice?.created_invoice_date),
+    isDone: Boolean(props.invoice?.uploaded_by_user || props.invoice?.id),
   },
   {
     step: 2,
-    title: 'Carga / Registro de Productos',
+    title: '2. Carga / Registro de Productos',
     description: 'Ingreso y homologación de renglones, cantidades y costos.',
     icon: 'tabler-list-check',
-    userKey: 'registered_by_user',
-    defaultUser: 'No asignado',
-    color: 'info',
-    isDone: (inv) => Boolean(inv?.registered_by_user),
+    user: props.invoice?.registered_by_user?.name || props.invoice?.registered_by_user?.username || (props.invoice?.registered_by ? 'admin' : null),
+    date: formatDate(props.invoice?.received_date || (props.invoice?.registered_by_user ? props.invoice?.updated_at : null)),
+    isDone: Boolean(props.invoice?.registered_by_user || props.invoice?.registered_by),
   },
   {
     step: 3,
-    title: 'Verificación y Ubicación Física',
+    title: '3. Verificación y Ubicación Física',
     description: 'Asignación de ubicaciones de almacén y validación de lotes.',
     icon: 'tabler-box-margin',
-    userKey: 'loaded_by_user',
-    defaultUser: 'No asignado',
-    color: 'warning',
-    isDone: (inv) => Boolean(inv?.loaded_by_user),
+    user: props.invoice?.loaded_by_user?.name || props.invoice?.loaded_by_user?.username || (props.invoice?.loaded_by ? 'admin' : null),
+    date: formatDate(props.invoice?.loaded_by_user ? props.invoice?.updated_at : null),
+    isDone: Boolean(props.invoice?.loaded_by_user || props.invoice?.loaded_by),
   },
   {
     step: 4,
-    title: 'Aprobación y Orden de Compra',
+    title: '4. Aprobación y Orden de Compra',
     description: 'Validación final financiera y aprobación administrativa.',
     icon: 'tabler-circle-check',
-    userKey: 'ordered_by_user',
-    defaultUser: 'No asignado',
-    color: 'primary',
-    isDone: (inv) => Boolean(inv?.ordered_by_user),
+    user: props.invoice?.ordered_by_user?.name || props.invoice?.ordered_by_user?.username || (props.invoice?.ordered_by ? 'admin' : null),
+    date: formatDate(props.invoice?.payment_date || (props.invoice?.ordered_by_user ? props.invoice?.updated_at : null)),
+    isDone: Boolean(props.invoice?.ordered_by_user || props.invoice?.ordered_by),
   },
-]
+])
 </script>
 
 <template>
@@ -64,10 +82,13 @@ const steps = [
     persistent
     @update:model-value="emit('update:modelValue', $event)"
   >
-    <VCard class="rounded-xl overflow-hidden shadow-lg border-0 d-flex flex-column">
+    <VCard class="rounded-xl overflow-hidden shadow-lg border-0 d-flex flex-column bg-surface">
       <!-- Cabecera con Gradiente Institucional del Sistema -->
       <VCardTitle class="pa-0 flex-shrink-0">
-        <div class="px-5 py-4 bg-primary d-flex align-center justify-space-between text-white" style="background: linear-gradient(135deg, #7A0099, #E20074) !important;">
+        <div
+          class="px-5 py-4 d-flex align-center justify-space-between text-white"
+          style="background: linear-gradient(135deg, #7A0099, #E20074) !important;"
+        >
           <div class="d-flex align-center">
             <VAvatar color="white" variant="flat" size="38" class="me-3 elevation-1 flex-shrink-0">
               <VIcon color="primary" size="22">tabler-shield-check</VIcon>
@@ -95,83 +116,92 @@ const steps = [
       <!-- Resumen Compacto de la Factura -->
       <div v-if="invoice" class="px-5 py-2.5 bg-surface border-b d-flex align-center justify-space-between flex-wrap gap-2">
         <div class="d-flex align-center gap-2">
-          <span class="text-caption font-weight-bold text-medium-emphasis">Proveedor:</span>
-          <span class="text-caption font-weight-black text-high-emphasis">{{ invoice?.supplier?.name || 'N/A' }}</span>
+          <VIcon icon="tabler-building" size="16" color="primary" />
+          <span class="text-caption text-medium-emphasis font-weight-medium">Proveedor:</span>
+          <span class="text-caption font-weight-bold text-high-emphasis text-uppercase">{{ invoice?.supplier?.name || 'N/A' }}</span>
         </div>
         <div class="d-flex align-center gap-2">
-          <VChip size="x-small" variant="tonal" color="primary" class="font-weight-black">
+          <VChip size="x-small" variant="tonal" color="primary" class="font-weight-bold">
             Control: {{ invoice?.control_number || 'S/N' }}
           </VChip>
           <VChip
             size="x-small"
             variant="tonal"
-            :color="invoice?.status === 'approved' ? 'success' : invoice?.status === 'rejected' ? 'error' : 'warning'"
-            class="font-weight-black text-uppercase"
+            :color="invoice?.status === 'approved' || invoice?.status === 'ordered' ? 'success' : invoice?.status === 'rejected' ? 'error' : 'warning'"
+            class="font-weight-bold text-uppercase"
           >
             {{ invoice?.status || 'pending' }}
           </VChip>
         </div>
       </div>
 
-      <!-- Contenido del Stepper / Timeline -->
-      <VCardText class="pa-5 bg-light flex-grow-1">
-        <div class="d-flex flex-column gap-3">
+      <!-- Contenido del Stepper / Timeline Limpio -->
+      <VCardText class="pa-5 bg-surface flex-grow-1">
+        <div class="timeline-container ps-1">
           <div
             v-for="(st, idx) in steps"
             :key="st.step"
-            class="audit-step-card pa-3.5 bg-white rounded border transition-all position-relative"
-            :class="{
-              'step-completed': st.isDone(invoice),
-              'step-pending': !st.isDone(invoice),
-            }"
-            style="border-radius: 5px !important;"
+            class="timeline-item d-flex gap-3 position-relative"
+            :class="{ 'is-last': idx === steps.length - 1 }"
           >
-            <div class="d-flex align-start gap-3">
-              <!-- Avatar / Icono del Paso -->
-              <VAvatar
-                size="36"
-                :color="st.isDone(invoice) ? st.color : 'secondary'"
-                variant="tonal"
-                class="flex-shrink-0"
+            <!-- Eje y Conector vertical -->
+            <div class="timeline-indicator-col d-flex flex-column align-center position-relative">
+              <div
+                class="timeline-dot d-flex align-center justify-center rounded-circle elevation-1 transition-all"
+                :class="st.isDone ? 'bg-success text-white' : 'bg-surface border text-disabled'"
+                style="width: 32px; height: 32px; min-width: 32px; z-index: 2;"
               >
-                <VIcon
-                  :icon="st.isDone(invoice) ? st.icon : 'tabler-clock'"
-                  size="20"
-                  :class="st.isDone(invoice) ? `text-${st.color}` : 'text-disabled'"
-                />
-              </VAvatar>
+                <VIcon :icon="st.isDone ? 'tabler-check' : st.icon" size="16" />
+              </div>
+              <div
+                v-if="idx < steps.length - 1"
+                class="timeline-line"
+                :class="st.isDone && steps[idx + 1].isDone ? 'line-completed' : 'line-pending'"
+              />
+            </div>
 
-              <!-- Detalles del Paso -->
-              <div class="flex-grow-1 min-w-0">
-                <div class="d-flex align-center justify-space-between gap-2 mb-1">
-                  <span class="font-weight-black text-body-2 text-high-emphasis leading-tight">
-                    {{ st.step }}. {{ st.title }}
-                  </span>
-                  <VChip
-                    size="x-small"
-                    :color="st.isDone(invoice) ? 'success' : 'secondary'"
-                    variant="tonal"
-                    class="font-weight-black px-2 flex-shrink-0"
-                    style="height: 20px; font-size: 10px;"
-                  >
-                    <VIcon start size="12">
-                      {{ st.isDone(invoice) ? 'tabler-check' : 'tabler-hourglass-empty' }}
-                    </VIcon>
-                    {{ st.isDone(invoice) ? 'Completado' : 'Pendiente' }}
-                  </VChip>
+            <!-- Contenido del Paso -->
+            <div class="timeline-content-col flex-grow-1 pb-5">
+              <div class="d-flex align-center justify-space-between flex-wrap gap-2 mb-1">
+                <span
+                  class="font-weight-bold text-body-2"
+                  :class="st.isDone ? 'text-high-emphasis' : 'text-medium-emphasis'"
+                >
+                  {{ st.title }}
+                </span>
+
+                <VChip
+                  size="x-small"
+                  :color="st.isDone ? 'success' : 'secondary'"
+                  variant="tonal"
+                  class="font-weight-bold px-2 flex-shrink-0"
+                  style="height: 20px; font-size: 10px;"
+                >
+                  <VIcon start size="11">
+                    {{ st.isDone ? 'tabler-circle-check' : 'tabler-clock' }}
+                  </VIcon>
+                  {{ st.isDone ? 'Completado' : 'Pendiente' }}
+                </VChip>
+              </div>
+
+              <p class="text-caption text-medium-emphasis mb-2 leading-relaxed" style="font-size: 11.5px;">
+                {{ st.description }}
+              </p>
+
+              <!-- Metadatos: Operador y Fecha -->
+              <div class="d-flex align-center gap-4 text-caption text-medium-emphasis flex-wrap" style="font-size: 11px;">
+                <div class="d-flex align-center gap-1">
+                  <VIcon icon="tabler-user" size="14" class="text-medium-emphasis" />
+                  <span>Operador:</span>
+                  <strong :class="st.user ? 'text-high-emphasis' : 'text-disabled'">
+                    {{ st.user || 'No asignado' }}
+                  </strong>
                 </div>
 
-                <p class="text-caption text-medium-emphasis mb-2 leading-relaxed" style="font-size: 11px;">
-                  {{ st.description }}
-                </p>
-
-                <!-- Información del Operador -->
-                <div class="d-flex align-center gap-1.5 py-1 px-2.5 rounded bg-surface border text-caption">
-                  <VIcon icon="tabler-user" size="14" class="text-medium-emphasis" />
-                  <span class="text-medium-emphasis font-weight-medium">Operador:</span>
-                  <strong class="text-high-emphasis ms-0.5">
-                    {{ invoice?.[st.userKey]?.name || invoice?.[st.userKey]?.username || (st.step === 1 ? 'admin' : st.defaultUser) }}
-                  </strong>
+                <div v-if="st.date" class="d-flex align-center gap-1">
+                  <VIcon icon="tabler-calendar" size="14" class="text-medium-emphasis" />
+                  <span>Fecha:</span>
+                  <strong class="text-high-emphasis">{{ st.date }}</strong>
                 </div>
               </div>
             </div>
@@ -179,18 +209,19 @@ const steps = [
         </div>
       </VCardText>
 
-      <!-- Pie con Botón Outlined 100% de Ancho -->
-      <VCardActions class="pa-4 bg-white border-t">
+      <VDivider />
+
+      <!-- Pie con Botón de Cierre Secundario Limpio -->
+      <VCardActions class="px-5 py-3 bg-surface d-flex justify-end align-center">
         <VBtn
-          color="primary"
-          variant="outlined"
-          block
+          variant="tonal"
+          color="secondary"
           size="default"
-          class="font-weight-bold tracking-wide text-uppercase"
-          style="border-radius: 5px !important;"
+          class="rounded-lg font-weight-bold px-5"
           @click="emit('update:modelValue', false)"
         >
-          Cerrar Ventana
+          <VIcon start icon="tabler-x" size="16" />
+          Cerrar
         </VBtn>
       </VCardActions>
     </VCard>
@@ -198,16 +229,26 @@ const steps = [
 </template>
 
 <style scoped>
-.audit-step-card {
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+.timeline-line {
+  position: absolute;
+  top: 32px;
+  bottom: 0;
+  width: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1;
 }
 
-.step-completed {
-  border-left: 3px solid rgb(var(--v-theme-success)) !important;
+.line-completed {
+  background-color: rgb(var(--v-theme-success));
 }
 
-.step-pending {
-  border-left: 3px solid rgba(var(--v-theme-on-surface), 0.2) !important;
-  opacity: 0.85;
+.line-pending {
+  background-color: rgba(var(--v-theme-on-surface), 0.12);
+}
+
+.timeline-item.is-last .timeline-content-col {
+  padding-bottom: 0 !important;
 }
 </style>
+
