@@ -1179,7 +1179,7 @@ const invoiceHasIva = computed(() => {
   const taxAmount = parseFloat(invoice.value.tax_amount) || 0;
 
   return taxableBase > 0 || taxAmount > 0;
-};
+});
 
 const moveItemUp = (item) => {
   if (!isEditableMode.value || !isEditMode.value) return;
