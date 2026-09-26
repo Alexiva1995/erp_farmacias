@@ -1021,7 +1021,7 @@ class SupplierConnectionService
             }
         }
 
-        $products = Product::whereIn("barcode", array_unique($barcodes))->get()->keyBy("barcode");
+        $products = Product::withoutGlobalScopes()->withTrashed()->whereIn("barcode", array_unique($barcodes))->get()->keyBy("barcode");
 
         if ($mode === 'flat') {
             $invoiceGroups = [];
