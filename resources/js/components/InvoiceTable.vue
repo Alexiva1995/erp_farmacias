@@ -196,121 +196,133 @@ const formatDate = (dateString) => {
       </template>
 
       <template #item.actions="{ item }">
-        <div class="d-flex ga-2">
-          <!-- Botón Devolver: Visible en todas las vistas EXCEPTO en 'Por Ordenar' (location) -->
-          <div v-if="props.isAdmin && props.actionsMode !== 'location'">
-            <VBtn
-              color="primary"
-              variant="tonal"
+        <div class="d-flex align-center justify-center gap-1">
+          <!-- Modo Approval (Facturas Cargadas) -->
+          <template v-if="props.actionsMode === 'approval'">
+            <IconBtn
               size="small"
+              color="primary"
+              @click="emit('edit-invoice', item)"
+            >
+              <VIcon icon="tabler-eye" size="18" />
+              <VTooltip activator="parent">Revisar y Aprobar</VTooltip>
+            </IconBtn>
+
+            <IconBtn
+              v-if="props.isAdmin"
+              size="small"
+              color="warning"
               @click="emit('return-invoice', item.id)"
             >
-              <VIcon icon="tabler-arrow-back-up" class="me-2" />
-              Devolver
-            </VBtn>
-          </div>
+              <VIcon icon="tabler-arrow-back-up" size="18" />
+              <VTooltip activator="parent">Devolver a Pendiente</VTooltip>
+            </IconBtn>
 
-          <!-- Botón Ver/Descargar PDF o Foto (Disponible siempre si existe) -->
-          <VTooltip v-if="item.invoice_photo" text="Ver Factura PDF / Foto">
-            <template #activator="{ props: tooltipProps }">
-              <IconBtn
-                v-bind="tooltipProps"
-                color="error"
-                @click="viewPhoto(item.invoice_photo)"
-              >
-                <VIcon icon="tabler-file-type-pdf" />
-              </IconBtn>
-            </template>
-          </VTooltip>
+            <IconBtn
+              v-if="item.invoice_photo"
+              size="small"
+              color="error"
+              @click="viewPhoto(item.invoice_photo)"
+            >
+              <VIcon icon="tabler-file-type-pdf" size="18" />
+              <VTooltip activator="parent">Ver Factura PDF / Foto</VTooltip>
+            </IconBtn>
+          </template>
 
-          <div v-if="props.actionsMode === 'approval'">
-            <VTooltip text="Revisar y Aprobar">
-              <template #activator="{ props: tooltipProps }">
-                <VBtn
-                  v-bind="tooltipProps"
-                  color="primary"
-                  variant="tonal"
-                  size="small"
-                  @click="emit('edit-invoice', item)"
-                >
-                  <VIcon icon="tabler-eye" class="me-2" />
-                  Revisar
-                </VBtn>
-              </template>
-            </VTooltip>
-          </div>
+          <!-- Modo Location (Por Ubicar) -->
+          <template v-else-if="props.actionsMode === 'location'">
+            <IconBtn
+              size="small"
+              color="primary"
+              @click="emit('locate-products', item)"
+            >
+              <VIcon icon="tabler-map-pin" size="18" />
+              <VTooltip activator="parent">Ubicar Productos</VTooltip>
+            </IconBtn>
 
-          <div v-else-if="props.actionsMode === 'location'">
-            <VTooltip text="Ubicar Productos">
-              <template #activator="{ props: tooltipProps }">
-                <IconBtn
-                  v-bind="tooltipProps"
-                  color="primary"
-                  @click="emit('locate-products', item)"
-                >
-                  <VIcon icon="tabler-map-pin" />
-                </IconBtn>
-              </template>
-            </VTooltip>
-          </div>
+            <IconBtn
+              v-if="item.invoice_photo"
+              size="small"
+              color="error"
+              @click="viewPhoto(item.invoice_photo)"
+            >
+              <VIcon icon="tabler-file-type-pdf" size="18" />
+              <VTooltip activator="parent">Ver Factura PDF / Foto</VTooltip>
+            </IconBtn>
+          </template>
 
-          <div v-else-if="props.actionsMode === 'ordered'" class="d-flex ga-2">
-            <VTooltip :text="item.invoice_photo ? 'Ver Factura' : 'Subir Foto Factura'">
-              <template #activator="{ props: tooltip }">
-                <IconBtn 
-                  v-bind="tooltip" 
-                  @click="item.invoice_photo ? viewPhoto(item.invoice_photo) : triggerFileUpload(item.id)" 
-                  :color="item.invoice_photo ? 'success' : 'secondary'"
-                  :loading="isUploading && activeInvoiceId === item.id"
-                >
-                  <VIcon :icon="item.invoice_photo ? 'tabler-photo' : 'tabler-camera'" />
-                </IconBtn>
-              </template>
-            </VTooltip>
-            
-            <VTooltip text="Ver Detalles">
-              <template #activator="{ props: tooltip }">
-                <IconBtn v-bind="tooltip" @click="emit('view-details', item)" color="info">
-                  <VIcon icon="tabler-eye" />
-                </IconBtn>
-              </template>
-            </VTooltip>
-          </div>
+          <!-- Modo Ordered (Facturas Ordenadas) -->
+          <template v-else-if="props.actionsMode === 'ordered'">
+            <IconBtn
+              size="small"
+              color="info"
+              @click="emit('view-details', item)"
+            >
+              <VIcon icon="tabler-eye" size="18" />
+              <VTooltip activator="parent">Ver Detalles</VTooltip>
+            </IconBtn>
 
-          <div v-else class="d-flex ga-1">
-            <VTooltip text="Editar Factura">
-              <template #activator="{ props: tooltipProps }">
-                <IconBtn
-                  v-bind="tooltipProps"
-                  color="warning"
-                  @click="emit('edit-invoice-form', item)"
-                >
-                  <VIcon icon="tabler-edit" />
-                </IconBtn>
-              </template>
-            </VTooltip>
-            <VTooltip text="Ver Productos">
-              <template #activator="{ props: tooltipProps }">
-                <IconBtn
-                  v-bind="tooltipProps"
-                  @click="emit('edit-invoice', item)"
-                >
-                  <VIcon icon="tabler-package" />
-                </IconBtn>
-              </template>
-            </VTooltip>
-            <VTooltip text="Eliminar">
-              <template #activator="{ props: tooltipProps }">
-                <IconBtn
-                  v-bind="tooltipProps"
-                  color="error"
-                  @click="emit('delete-invoice', item.id)"
-                >
-                  <VIcon icon="tabler-trash" />
-                </IconBtn>
-              </template>
-            </VTooltip>
-          </div>
+            <IconBtn
+              size="small"
+              :color="item.invoice_photo ? 'success' : 'secondary'"
+              :loading="isUploading && activeInvoiceId === item.id"
+              @click="item.invoice_photo ? viewPhoto(item.invoice_photo) : triggerFileUpload(item.id)"
+            >
+              <VIcon :icon="item.invoice_photo ? 'tabler-photo' : 'tabler-camera'" size="18" />
+              <VTooltip activator="parent">{{ item.invoice_photo ? 'Ver Factura' : 'Subir Foto Factura' }}</VTooltip>
+            </IconBtn>
+
+            <IconBtn
+              v-if="props.isAdmin"
+              size="small"
+              color="warning"
+              @click="emit('return-invoice', item.id)"
+            >
+              <VIcon icon="tabler-arrow-back-up" size="18" />
+              <VTooltip activator="parent">Devolver a Pendiente</VTooltip>
+            </IconBtn>
+          </template>
+
+          <!-- Modo Pending / Default (Facturas Pendientes) -->
+          <template v-else>
+            <IconBtn
+              size="small"
+              color="primary"
+              @click="emit('edit-invoice', item)"
+            >
+              <VIcon icon="tabler-package" size="18" />
+              <VTooltip activator="parent">Ver Productos</VTooltip>
+            </IconBtn>
+
+            <IconBtn
+              size="small"
+              color="warning"
+              @click="emit('edit-invoice-form', item)"
+            >
+              <VIcon icon="tabler-edit" size="18" />
+              <VTooltip activator="parent">Editar Factura</VTooltip>
+            </IconBtn>
+
+            <IconBtn
+              v-if="item.invoice_photo"
+              size="small"
+              color="error"
+              @click="viewPhoto(item.invoice_photo)"
+            >
+              <VIcon icon="tabler-file-type-pdf" size="18" />
+              <VTooltip activator="parent">Ver Factura PDF / Foto</VTooltip>
+            </IconBtn>
+
+            <IconBtn
+              v-if="props.isAdmin"
+              size="small"
+              color="error"
+              @click="emit('delete-invoice', item.id)"
+            >
+              <VIcon icon="tabler-trash" size="18" />
+              <VTooltip activator="parent">Eliminar Factura</VTooltip>
+            </IconBtn>
+          </template>
         </div>
       </template>
     </VDataTableServer>
