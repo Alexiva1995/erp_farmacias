@@ -83,8 +83,19 @@ class SkuReportService
                 } elseif ($filters['semaphore'] === 'negro') {
                     $q->whereRaw('CASE WHEN sub.total_revenue > 0 THEN ((sub.total_revenue - sub.total_historical_cost - COALESCE(expired.total_expired_cost, 0)) / sub.total_revenue) * 100 ELSE 0 END < 0')
                       ->orWhere('sub.total_revenue', '<=', 0);
+                } elseif ($filters['semaphore'] === 'critico') {
+                    $q->whereRaw('CASE WHEN sub.total_revenue > 0 THEN ((sub.total_revenue - sub.total_historical_cost - COALESCE(expired.total_expired_cost, 0)) / sub.total_revenue) * 100 ELSE 0 END < 10')
+                      ->orWhere('sub.total_revenue', '<=', 0);
                 }
             });
+        }
+
+        if (!empty($filters['has_loss'])) {
+            $wrappedQuery->whereRaw('COALESCE(expired.total_expired_cost, 0) > 0');
+        }
+
+        if (!empty($filters['has_discount'])) {
+            $wrappedQuery->where('sub.total_discount_amount', '>', 0);
         }
 
         if (!empty($filters['sortBy']) && !empty($filters['orderBy'])) {

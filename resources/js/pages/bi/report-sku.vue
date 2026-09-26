@@ -16,6 +16,8 @@ const itemsPerPage = ref(10);
 const sortBy = ref();
 const orderBy = ref();
 
+const activeFilterKey = ref(null);
+
 const filters = ref({
   search: "",
   start_date: "2026-04-01",
@@ -23,6 +25,8 @@ const filters = ref({
   laboratory_id: null,
   group_id: null,
   semaphore: null,
+  has_loss: null,
+  has_discount: null,
   is_active: 1
 });
 
@@ -80,8 +84,42 @@ onMounted(() => {
 });
 
 const handleClearFilters = () => {
+  activeFilterKey.value = null;
   page.value = 1;
+  filters.value.has_loss = null;
+  filters.value.has_discount = null;
+  filters.value.semaphore = null;
   fetchReport();
+};
+
+const handleKpiFilter = (key) => {
+  if (activeFilterKey.value === key) {
+    // Alternar para deseleccionar
+    activeFilterKey.value = null;
+    filters.value.semaphore = null;
+    filters.value.has_loss = null;
+    filters.value.has_discount = null;
+  } else {
+    activeFilterKey.value = key;
+    if (key === 'critical') {
+      filters.value.semaphore = 'critico';
+      filters.value.has_loss = null;
+      filters.value.has_discount = null;
+    } else if (key === 'losses') {
+      filters.value.has_loss = 1;
+      filters.value.has_discount = null;
+      filters.value.semaphore = null;
+    } else if (key === 'discounts') {
+      filters.value.has_discount = 1;
+      filters.value.has_loss = null;
+      filters.value.semaphore = null;
+    } else if (key === 'global') {
+      activeFilterKey.value = null;
+      filters.value.semaphore = null;
+      filters.value.has_loss = null;
+      filters.value.has_discount = null;
+    }
+  }
 };
 
 const handleExport = async () => {
@@ -131,9 +169,9 @@ const headers = [
   { title: 'M. BRUTO', key: 'gross_margin_percent', sortable: true, width: '95px' },
   { title: 'DESC.', key: 'discount_avg_percent', sortable: false, width: '85px' },
   { title: 'M. NETO', key: 'net_margin_percent', sortable: false, width: '95px' },
-  { title: 'MERMAS', key: 'loss_value', sortable: false, width: '85px' },
+  { title: 'MERMAS', key: 'loss_value', sortable: false, width: '95px' },
   { title: 'M. REAL', key: 'real_margin_percent', sortable: true, width: '95px' },
-  { title: 'ESTADO', key: 'semaphore', sortable: false, width: '110px' }
+  { title: 'ESTADO', key: 'semaphore', sortable: false, width: '120px' }
 ];
 
 const updateTableOptions = (options) => {
@@ -176,7 +214,7 @@ watch(
 );
 
 const getSemaphoreColor = (status) => {
-  const mapping = { verde: 'success', amarillo: 'warning', rojo: 'error', negro: 'dark' };
+  const mapping = { verde: 'success', amarillo: 'warning', rojo: 'error', negro: 'secondary' };
   return mapping[status] || 'default';
 };
 
@@ -193,19 +231,21 @@ const formatMoney = (val) => '$' + Number(val || 0).toFixed(2);
   <div>
     <!-- Filtros Desacoplados -->
     <SkuReportFilters
+      v-model="filters"
       :loading="loading"
       :exporting="exporting"
       :laboratories="laboratories"
-      @update:filters="val => filters = val"
       @fetch="fetchReport"
       @clear="handleClearFilters"
       @export="handleExport"
     />
 
-    <!-- KPIs Desacoplados -->
+    <!-- KPIs Desacoplados e Interactivos -->
     <SkuReportKpis
       :summary-stats="summaryStats"
       :loading="loading"
+      :active-filter-key="activeFilterKey"
+      @filter-click="handleKpiFilter"
     />
 
     <!-- Card Principal -->
@@ -215,6 +255,17 @@ const formatMoney = (val) => '$' + Number(val || 0).toFixed(2);
           <VIcon icon="tabler-list-details" class="me-2 text-primary" size="22" />
           Desglose Financiero (Waterfall)
         </h2>
+        <div v-if="activeFilterKey" class="d-flex align-center gap-2">
+          <VChip
+            size="small"
+            color="primary"
+            variant="tonal"
+            closable
+            @click:close="handleClearFilters"
+          >
+            Filtro rápido activo: <strong>{{ activeFilterKey }}</strong>
+          </VChip>
+        </div>
       </VCardText>
       <VDivider class="border-opacity-10" />
 
@@ -260,49 +311,88 @@ const formatMoney = (val) => '$' + Number(val || 0).toFixed(2);
           </template>
           
           <template #item.current_cost="{ item }">
-            {{ formatMoney(item.current_cost) }}
+            <span class="font-weight-medium">{{ formatMoney(item.current_cost) }}</span>
           </template>
           
           <template #item.list_price="{ item }">
-            {{ formatMoney(item.list_price) }}
+            <span class="font-weight-medium">{{ formatMoney(item.list_price) }}</span>
           </template>
 
+          <!-- Jerarquía Visual M. BRUTO -->
           <template #item.gross_margin_percent="{ item }">
-            <VChip size="small" variant="tonal" color="info">
-              {{ formatPercent(item.gross_margin_percent) }}
-            </VChip>
-            <div class="text-caption text-disabled mt-1">{{ formatMoney(item.gross_margin_value) }}</div>
+            <div class="d-flex flex-column py-1">
+              <span class="text-sm font-weight-black text-info leading-tight">
+                {{ formatPercent(item.gross_margin_percent) }}
+              </span>
+              <span class="text-super-xs text-medium-emphasis mt-0-5">
+                {{ formatMoney(item.gross_margin_value) }}
+              </span>
+            </div>
           </template>
 
+          <!-- Jerarquía Visual DESCUENTOS -->
           <template #item.discount_avg_percent="{ item }">
-            <span class="text-error font-weight-bold">-{{ formatPercent(item.discount_avg_percent) }}</span>
+            <div class="d-flex flex-column py-1">
+              <span v-if="item.discount_avg_percent > 0" class="text-sm font-weight-bold text-error leading-tight">
+                -{{ formatPercent(item.discount_avg_percent) }}
+              </span>
+              <span v-else class="text-super-xs text-disabled">0.00%</span>
+              <span v-if="item.total_discount_amount > 0" class="text-super-xs text-medium-emphasis mt-0-5">
+                -{{ formatMoney(item.total_discount_amount) }}
+              </span>
+            </div>
           </template>
 
+          <!-- Jerarquía Visual M. NETO -->
           <template #item.net_margin_percent="{ item }">
-            <VChip size="small" variant="tonal" color="primary">
-              {{ formatPercent(item.net_margin_percent) }}
-            </VChip>
-            <div class="text-caption text-disabled mt-1">{{ formatMoney(item.net_margin_value) }}</div>
+            <div class="d-flex flex-column py-1">
+              <span class="text-sm font-weight-black text-primary leading-tight">
+                {{ formatPercent(item.net_margin_percent) }}
+              </span>
+              <span class="text-super-xs text-medium-emphasis mt-0-5">
+                {{ formatMoney(item.net_margin_value) }}
+              </span>
+            </div>
           </template>
           
+          <!-- Jerarquía Visual MERMAS -->
           <template #item.loss_value="{ item }">
-            <span v-if="item.loss_value > 0" class="text-error">-${{ Number(item.loss_value).toFixed(2) }}</span>
-            <span v-else class="text-disabled">$0.00</span>
+            <div class="d-flex align-center py-1">
+              <VChip
+                v-if="Number(item.loss_value) > 0"
+                size="x-small"
+                color="error"
+                variant="tonal"
+                class="font-weight-bold px-1-5"
+              >
+                <VIcon icon="tabler-trending-down" size="12" class="me-1" />
+                -${{ Number(item.loss_value).toFixed(2) }}
+              </VChip>
+              <span v-else class="text-caption text-disabled">$0.00</span>
+            </div>
           </template>
 
+          <!-- Jerarquía Visual M. REAL -->
           <template #item.real_margin_percent="{ item }">
-            <strong class="text-h6" :class="`text-${getSemaphoreColor(item.semaphore)}`">
-               {{ formatPercent(item.real_margin_percent) }}
-            </strong>
-            <div class="text-caption mt-1">{{ formatMoney(item.real_margin_value) }} Total</div>
+            <div class="d-flex flex-column py-1">
+              <span class="text-sm font-weight-black leading-tight" :class="`text-${getSemaphoreColor(item.semaphore)}`">
+                {{ formatPercent(item.real_margin_percent) }}
+              </span>
+              <span class="text-super-xs text-medium-emphasis mt-0-5">
+                {{ formatMoney(item.real_margin_value) }} Total
+              </span>
+            </div>
           </template>
 
+          <!-- Columna ESTADO con Pills y Dot Indicator -->
           <template #item.semaphore="{ item }">
             <VChip
               :color="getSemaphoreColor(item.semaphore)"
               size="small"
-              class="text-uppercase font-weight-bold"
+              variant="tonal"
+              class="font-weight-bold text-caption text-uppercase px-2"
             >
+              <span class="status-dot me-1-5" :class="`bg-${getSemaphoreColor(item.semaphore)}`"></span>
               {{ getSemaphoreLabel(item.semaphore) }}
             </VChip>
           </template>
@@ -347,9 +437,30 @@ const formatMoney = (val) => '$' + Number(val || 0).toFixed(2);
 }
 
 .text-super-xs {
-  font-size: 0.6rem !important;
+  font-size: 0.62rem !important;
   line-height: 1.1;
 }
 
+.mt-0-5 {
+  margin-top: 2px !important;
+}
+
+.px-1-5 {
+  padding-left: 6px !important;
+  padding-right: 6px !important;
+}
+
+.me-1-5 {
+  margin-inline-end: 6px !important;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
 .gap-1 { gap: 4px !important; }
+.gap-2 { gap: 8px !important; }
 </style>

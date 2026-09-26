@@ -1,26 +1,50 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 
 const props = defineProps({
   loading: Boolean,
   exporting: Boolean,
-  laboratories: { type: Array, default: () => [] }
+  laboratories: { type: Array, default: () => [] },
+  modelValue: {
+    type: Object,
+    default: () => ({
+      search: "",
+      start_date: "2026-04-01",
+      end_date: "",
+      laboratory_id: null,
+      group_id: null,
+      semaphore: null,
+      is_active: 1
+    })
+  }
 });
 
-const emit = defineEmits(['update:filters', 'fetch', 'clear', 'export']);
+const emit = defineEmits(['update:modelValue', 'update:filters', 'fetch', 'clear', 'export']);
 
-const search = ref('');
-const startDate = ref('2026-04-01');
-const endDate = ref('');
-const selectedLaboratory = ref(null);
-const selectedGroup = ref(null);
-const semaphoreFilter = ref(null);
-const statusFilter = ref(1);
+const search = ref(props.modelValue.search || '');
+const startDate = ref(props.modelValue.start_date || '2026-04-01');
+const endDate = ref(props.modelValue.end_date || '');
+const selectedLaboratory = ref(props.modelValue.laboratory_id || null);
+const selectedGroup = ref(props.modelValue.group_id || null);
+const semaphoreFilter = ref(props.modelValue.semaphore || null);
+const statusFilter = ref(props.modelValue.is_active !== undefined ? props.modelValue.is_active : 1);
 
 const isAdvancedFiltersVisible = ref(false);
 
+watch(() => props.modelValue, (newVal) => {
+  if (newVal) {
+    if (newVal.search !== undefined) search.value = newVal.search;
+    if (newVal.start_date !== undefined) startDate.value = newVal.start_date;
+    if (newVal.end_date !== undefined) endDate.value = newVal.end_date;
+    if (newVal.laboratory_id !== undefined) selectedLaboratory.value = newVal.laboratory_id;
+    if (newVal.group_id !== undefined) selectedGroup.value = newVal.group_id;
+    if (newVal.semaphore !== undefined) semaphoreFilter.value = newVal.semaphore;
+    if (newVal.is_active !== undefined) statusFilter.value = newVal.is_active;
+  }
+}, { deep: true });
+
 const hasActiveAdvancedFilters = computed(() => {
-  return startDate.value || endDate.value || selectedLaboratory.value || selectedGroup.value || statusFilter.value !== null;
+  return (startDate.value && startDate.value !== '2026-04-01') || endDate.value || selectedLaboratory.value || selectedGroup.value || statusFilter.value !== 1;
 });
 
 const toggleAdvancedFilters = () => {
@@ -28,6 +52,7 @@ const toggleAdvancedFilters = () => {
 };
 
 const getFilterValues = () => ({
+  ...props.modelValue,
   search: search.value,
   start_date: startDate.value,
   end_date: endDate.value,
@@ -38,17 +63,19 @@ const getFilterValues = () => ({
 });
 
 const notifyUpdate = () => {
-  emit('update:filters', getFilterValues());
+  const vals = getFilterValues();
+  emit('update:modelValue', vals);
+  emit('update:filters', vals);
 };
 
 const handleClear = () => {
   search.value = '';
-  startDate.value = '';
+  startDate.value = '2026-04-01';
   endDate.value = '';
   selectedLaboratory.value = null;
   selectedGroup.value = null;
   semaphoreFilter.value = null;
-  statusFilter.value = null;
+  statusFilter.value = 1;
   isAdvancedFiltersVisible.value = false;
   notifyUpdate();
   emit('clear');

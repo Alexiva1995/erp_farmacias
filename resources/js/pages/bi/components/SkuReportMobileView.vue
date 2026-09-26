@@ -9,7 +9,7 @@ defineProps({
 const emit = defineEmits(['update:page']);
 
 const getSemaphoreColor = (status) => {
-  const mapping = { verde: 'success', amarillo: 'warning', rojo: 'error', negro: 'dark' };
+  const mapping = { verde: 'success', amarillo: 'warning', rojo: 'error', negro: 'secondary' };
   return mapping[status] || 'default';
 };
 
@@ -50,10 +50,10 @@ const formatMoney = (val) => '$' + Number(val || 0).toFixed(2);
             <VChip
               :color="getSemaphoreColor(item.semaphore)"
               class="text-uppercase font-weight-black flex-shrink-0"
-              variant="elevated"
+              variant="tonal"
               size="x-small"
-              label
             >
+              <span class="status-dot me-1" :class="`bg-${getSemaphoreColor(item.semaphore)}`"></span>
               {{ getSemaphoreLabel(item.semaphore) }}
             </VChip>
           </div>
@@ -64,25 +64,34 @@ const formatMoney = (val) => '$' + Number(val || 0).toFixed(2);
             <VRow dense class="ma-0">
               <VCol cols="6" class="pa-2 border-r border-b border-opacity-10">
                 <div class="text-super-xs text-disabled text-uppercase font-weight-black mb-1">Costo Unit.</div>
-                <div class="text-sm font-weight-black">{{ formatMoney(item.current_cost) }}</div>
+                <div class="text-sm font-weight-bold">{{ formatMoney(item.current_cost) }}</div>
               </VCol>
               <VCol cols="6" class="pa-2 border-b border-opacity-10">
                 <div class="text-super-xs text-disabled text-uppercase font-weight-black mb-1">Precio Lista / Venta</div>
-                <div class="text-sm font-weight-black">{{ formatMoney(item.list_price) }}</div>
+                <div class="text-sm font-weight-bold">{{ formatMoney(item.list_price) }}</div>
               </VCol>
               <VCol cols="6" class="pa-2 border-r border-b border-opacity-10">
                 <div class="text-super-xs text-disabled text-uppercase font-weight-black mb-1 text-info">Margen Bruto</div>
                 <div class="text-sm font-weight-black text-info">{{ formatPercent(item.gross_margin_percent) }}</div>
-                <div class="text-super-xs text-disabled" v-if="item.discount_avg_percent > 0">Desc: -{{ formatPercent(item.discount_avg_percent) }}</div>
+                <div class="text-super-xs text-medium-emphasis">{{ formatMoney(item.gross_margin_value) }}</div>
+                <div class="text-super-xs text-error mt-1" v-if="item.discount_avg_percent > 0">
+                  Desc: -{{ formatPercent(item.discount_avg_percent) }}
+                </div>
               </VCol>
               <VCol cols="6" class="pa-2 border-b border-opacity-10">
                 <div class="text-super-xs text-disabled text-uppercase font-weight-black mb-1 text-primary">Margen Neto</div>
                 <div class="text-sm font-weight-black text-primary">{{ formatPercent(item.net_margin_percent) }}</div>
-                <div class="text-super-xs text-disabled" :class="{'text-error': item.loss_value > 0}">Mermas: {{ formatMoney(item.loss_value) }}</div>
+                <div class="text-super-xs text-medium-emphasis">{{ formatMoney(item.net_margin_value) }}</div>
+                <div class="text-super-xs mt-1" :class="item.loss_value > 0 ? 'text-error font-weight-bold' : 'text-disabled'">
+                  Mermas: -{{ formatMoney(item.loss_value) }}
+                </div>
               </VCol>
               <VCol cols="12" class="pa-2 d-flex justify-space-between align-center">
-                <div class="text-super-xs text-disabled text-uppercase font-weight-black mb-1">M. Real Efectivo</div>
-                <div class="text-base font-weight-black" :class="`text-${getSemaphoreColor(item.semaphore)}`">
+                <div>
+                  <div class="text-super-xs text-disabled text-uppercase font-weight-black">M. Real Efectivo</div>
+                  <div class="text-super-xs text-medium-emphasis">{{ formatMoney(item.real_margin_value) }} Total</div>
+                </div>
+                <div class="text-h6 font-weight-black" :class="`text-${getSemaphoreColor(item.semaphore)}`">
                   {{ formatPercent(item.real_margin_percent) }}
                 </div>
               </VCol>
@@ -122,7 +131,14 @@ const formatMoney = (val) => '$' + Number(val || 0).toFixed(2);
 
 <style scoped>
 .text-super-xs {
-  font-size: 0.6rem !important;
+  font-size: 0.62rem !important;
   line-height: 1.1;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
 }
 </style>
