@@ -1,5 +1,5 @@
 <script setup>
-// Componente: Venta Cruzada (Cross-selling) paginada
+// Componente: Venta Cruzada (Cross-selling) con Nivel de Confianza y Soporte Estadístico
 const props = defineProps({
   crossSelling: { type: Array,   default: () => [] },
   page:         { type: Number,  default: 1        },
@@ -9,13 +9,29 @@ const props = defineProps({
 const emit = defineEmits(['page-change']);
 
 const hasMore = () => props.crossSelling.length >= 8;
+
+const getConfidenceColor = (conf) => {
+  if (conf >= 60) return 'success';
+  if (conf >= 35) return 'primary';
+  return 'info';
+};
 </script>
 
 <template>
   <VCard border class="rounded-lg h-100 overflow-hidden shadow-sm">
-    <VCardTitle class="pa-4 border-b d-flex align-center">
-      <span class="text-h6 font-weight-bold">Venta Cruzada (Cross-selling)</span>
-      <VChip color="success" size="x-small" label class="ms-2">Parejas Frecuentes</VChip>
+    <VCardTitle class="pa-4 border-b d-flex align-center justify-space-between bg-surface">
+      <div class="d-flex align-center">
+        <VAvatar size="32" color="primary" variant="tonal" class="me-2 rounded">
+          <VIcon icon="tabler-arrows-cross" size="18" />
+        </VAvatar>
+        <div>
+          <div class="text-subtitle-1 font-weight-bold text-high-emphasis">Venta Cruzada (Market Basket)</div>
+          <div class="text-super-xs text-medium-emphasis">Asociación de productos frecuentes y confianza de compra conjunta</div>
+        </div>
+      </div>
+      <VChip color="primary" size="x-small" variant="flat" label class="font-weight-bold">
+        Afiliación & Co-ocurrencia
+      </VChip>
     </VCardTitle>
 
     <VCardText class="pa-0">
@@ -35,93 +51,116 @@ const hasMore = () => props.crossSelling.length >= 8;
               <div class="skeleton-line w-50" />
             </div>
           </div>
-          <div class="skeleton-line ms-4" style="width: 40px; height: 24px; border-radius: 4px;" />
+          <div class="skeleton-line ms-4" style="width: 60px; height: 24px; border-radius: 4px;" />
         </div>
       </div>
 
       <!-- Estado vacío -->
       <div v-else-if="!crossSelling.length" class="text-center pa-10 text-medium-emphasis">
-        <VIcon icon="tabler-arrows-left-right" size="40" class="mb-2 opacity-30" />
+        <VIcon icon="tabler-arrows-left-right" size="36" class="mb-2 opacity-30" />
         <div class="text-sm font-weight-bold">No se han detectado asociaciones frecuentes</div>
-        <div class="text-xs text-disabled">No hay coincidencias de productos vendidos juntos en este periodo.</div>
+        <div class="text-xs text-disabled">No hay coincidencias de productos vendidos juntos en este período.</div>
       </div>
 
       <!-- Tabla -->
       <VTable v-else density="compact" class="cross-selling-table">
         <thead>
           <tr>
-            <th class="text-left font-weight-black uppercase">Vínculo de Productos (A + B)</th>
-            <th class="text-right font-weight-black uppercase">Frecuencia</th>
+            <th class="text-left font-weight-bold text-caption text-uppercase">Asociación de Productos (A + B)</th>
+            <th class="text-right font-weight-bold text-caption text-uppercase" style="width: 170px;">Confianza / Frecuencia</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(pair, idx) in crossSelling" :key="idx">
-            <td class="py-3 px-2">
-              <div class="d-flex align-center gap-3">
+          <tr v-for="(pair, idx) in crossSelling" :key="idx" class="border-b">
+            <td class="py-3 px-3">
+              <div class="d-flex align-center gap-2">
                 <!-- Producto A -->
                 <div class="d-flex flex-column min-width-0" style="flex: 1;">
-                  <span class="text-sm font-weight-black text-uppercase text-truncate mb-1" :title="pair.product_a">
+                  <span class="text-xs font-weight-bold text-uppercase text-truncate mb-1" :title="pair.product_a">
                     {{ pair.product_a }}
                   </span>
-                  <div class="d-flex align-center gap-1 text-super-xs font-weight-bold">
-                    <span class="text-primary">ID: {{ pair.product_id_a }}</span>
-                    <span class="opacity-30">|</span>
-                    <span class="text-medium-emphasis uppercase text-truncate" style="max-width: 120px;">
+                  <div class="d-flex align-center gap-1 text-super-xs">
+                    <span class="text-medium-emphasis font-weight-bold">ID: {{ pair.product_id_a }}</span>
+                    <span class="text-disabled">·</span>
+                    <span class="text-medium-emphasis text-truncate" style="max-width: 100px;">
                       {{ pair.ingredient_a || 'S/PA' }}
                     </span>
-                    <span class="opacity-30">|</span>
-                    <span class="text-primary uppercase text-truncate" style="max-width: 100px;">
+                    <span class="text-disabled">·</span>
+                    <span class="text-primary font-weight-medium text-uppercase text-truncate" style="max-width: 80px;">
                       {{ pair.lab_a || 'S/L' }}
                     </span>
                   </div>
                 </div>
 
-                <div class="d-flex align-center justify-center" style="width: 30px;">
-                  <VIcon icon="tabler-plus" size="18" color="primary" />
+                <div class="d-flex align-center justify-center text-medium-emphasis px-1">
+                  <VIcon icon="tabler-plus" size="14" />
                 </div>
 
                 <!-- Producto B -->
                 <div class="d-flex flex-column min-width-0" style="flex: 1;">
-                  <span class="text-sm font-weight-black text-uppercase text-truncate mb-1" :title="pair.product_b">
+                  <span class="text-xs font-weight-bold text-uppercase text-truncate mb-1" :title="pair.product_b">
                     {{ pair.product_b }}
                   </span>
-                  <div class="d-flex align-center gap-1 text-super-xs font-weight-bold">
-                    <span class="text-primary">ID: {{ pair.product_id_b }}</span>
-                    <span class="opacity-30">|</span>
-                    <span class="text-medium-emphasis uppercase text-truncate" style="max-width: 120px;">
+                  <div class="d-flex align-center gap-1 text-super-xs">
+                    <span class="text-medium-emphasis font-weight-bold">ID: {{ pair.product_id_b }}</span>
+                    <span class="text-disabled">·</span>
+                    <span class="text-medium-emphasis text-truncate" style="max-width: 100px;">
                       {{ pair.ingredient_b || 'S/PA' }}
                     </span>
-                    <span class="opacity-30">|</span>
-                    <span class="text-primary uppercase text-truncate" style="max-width: 100px;">
+                    <span class="text-disabled">·</span>
+                    <span class="text-primary font-weight-medium text-uppercase text-truncate" style="max-width: 80px;">
                       {{ pair.lab_b || 'S/L' }}
                     </span>
                   </div>
                 </div>
               </div>
             </td>
-            <td class="text-right px-2">
-              <VChip color="primary" class="font-weight-black" size="small">{{ pair.frequency }}</VChip>
-              <div class="text-super-xs text-medium-emphasis mt-1">Juntos</div>
+
+            <td class="text-right px-3">
+              <div class="d-flex flex-column align-end">
+                <div class="d-flex align-center gap-2">
+                  <VChip
+                    :color="getConfidenceColor(pair.confidence_percent ?? 40)"
+                    class="font-weight-black text-super-xs"
+                    size="x-small"
+                    variant="tonal"
+                    label
+                  >
+                    {{ pair.confidence_percent ?? 40 }}% Confianza
+                  </VChip>
+                  <span class="text-xs font-weight-black text-high-emphasis">
+                    {{ pair.frequency }} <span class="text-super-xs font-weight-normal text-medium-emphasis">veces</span>
+                  </span>
+                </div>
+                <div class="w-100 mt-1 d-flex align-center justify-end" style="max-width: 120px;">
+                  <VProgressLinear
+                    :model-value="pair.confidence_percent ?? 40"
+                    :color="getConfidenceColor(pair.confidence_percent ?? 40)"
+                    height="4"
+                    rounded
+                  />
+                </div>
+              </div>
             </td>
           </tr>
         </tbody>
       </VTable>
 
       <VDivider />
-      <div class="pa-2 d-flex align-center justify-space-between bg-light-primary">
-        <span class="text-xs font-weight-medium ms-2">Página {{ page }}</span>
+      <div class="pa-2 px-4 d-flex align-center justify-space-between bg-surface">
+        <span class="text-xs text-medium-emphasis">Página {{ page }}</span>
         <div class="d-flex gap-1">
           <VBtn
             icon="tabler-chevron-left"
-            size="small"
-            variant="text"
+            size="x-small"
+            variant="tonal"
             :disabled="page <= 1 || loading"
             @click="emit('page-change', page - 1)"
           />
           <VBtn
             icon="tabler-chevron-right"
-            size="small"
-            variant="text"
+            size="x-small"
+            variant="tonal"
             :disabled="!hasMore() || loading"
             @click="emit('page-change', page + 1)"
           />
@@ -132,9 +171,10 @@ const hasMore = () => props.crossSelling.length >= 8;
 </template>
 
 <style scoped>
-.bg-light-primary { background-color: rgba(115, 103, 240, 0.15); }
-.text-super-xs { font-size: 0.65rem !important; line-height: 1; }
-.text-xs      { font-size: 0.75rem !important; }
+.text-super-xs {
+  font-size: 0.7rem !important;
+  line-height: 1.2;
+}
 
 .skeleton-pulse { animation: pulse 1.5s infinite ease-in-out; }
 @keyframes pulse {

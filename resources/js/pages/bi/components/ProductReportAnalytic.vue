@@ -1,5 +1,5 @@
 <script setup>
-// Componente: Analítica Individual de Producto (búsqueda + gráficos + KPIs)
+// Componente: Analítica Individual de Producto (Hero Bar + Diagnóstico Profundo)
 import { ref, computed, watch } from 'vue';
 import VueApexCharts from 'vue3-apexcharts';
 import axios from '@/plugins/axios';
@@ -58,11 +58,11 @@ const individualChartOptions = computed(() => ({
   stroke: { curve: 'smooth', width: 2 },
   xaxis: {
     categories: productStatsData.value?.trend_chart?.labels ?? [],
-    labels: { style: { fontSize: '10px' } },
+    labels: { style: { fontSize: '11px' } },
   },
-  yaxis: { labels: { style: { fontSize: '10px' } } },
-  grid: { strokeDashArray: 5 },
-  colors: ['#7367f0', '#28c76f', '#ea5455', '#ff9f43', '#00cfe8', '#4b4b4b'],
+  yaxis: { labels: { style: { fontSize: '11px' } } },
+  grid: { strokeDashArray: 4 },
+  colors: ['#4F46E5', '#10B981', '#F59E0B'],
   tooltip: { theme: 'dark' },
 }));
 
@@ -72,16 +72,16 @@ const marketShareOptions = computed(() => ({
     radialBar: {
       startAngle: -135,
       endAngle: 135,
-      hollow: { size: '70%' },
+      hollow: { size: '68%' },
       dataLabels: {
-        name: { fontSize: '13px', color: 'rgba(var(--v-theme-on-surface), 0.6)', offsetY: -10 },
-        value: { offsetY: 5, fontSize: '22px', fontWeight: 800, formatter: val => `${val}%` },
+        name: { fontSize: '12px', color: 'rgba(var(--v-theme-on-surface), 0.6)', offsetY: -8 },
+        value: { offsetY: 6, fontSize: '20px', fontWeight: 800, formatter: val => `${val}%` },
       },
     },
   },
   stroke: { dashArray: 4 },
   labels: ['Preferencia'],
-  colors: ['#7367f0'],
+  colors: ['#4F46E5'],
 }));
 
 const individualSeries  = computed(() => productStatsData.value?.trend_chart?.series ?? []);
@@ -89,50 +89,59 @@ const marketShareSeries = computed(() => [productStatsData.value?.market_share ?
 </script>
 
 <template>
-  <VCard border class="rounded-lg overflow-hidden shadow-md">
-    <!-- Header con buscador -->
-    <header class="pa-4 bg-primary d-flex align-center flex-wrap gap-4">
-      <div class="d-flex align-center text-white">
-        <VIcon icon="tabler-chart-dots" class="me-2" color="white" />
-        <span class="text-h6 font-weight-bold text-white">Analítica Individual de Producto</span>
+  <VCard border class="rounded-lg overflow-hidden shadow-sm analytic-card">
+    <!-- Hero Bar interactivo con buscador corporativo -->
+    <div class="pa-4 pa-sm-5 bg-surface border-b d-flex align-center flex-wrap gap-4">
+      <div class="d-flex align-center gap-3">
+        <VAvatar size="40" color="primary" variant="tonal" class="rounded-lg">
+          <VIcon icon="tabler-chart-dots" size="22" />
+        </VAvatar>
+        <div>
+          <div class="text-subtitle-1 font-weight-bold text-high-emphasis">Analítica Individual por SKU</div>
+          <div class="text-super-xs text-medium-emphasis">Explora dominancia competitiva, rotación y trazabilidad de cualquier ítem</div>
+        </div>
       </div>
       <VSpacer />
-      <div style="width: 400px; max-width: 100%;">
+      <div style="width: 440px; max-width: 100%;">
         <VAutocomplete
           v-model="selectedProduct"
           :items="productSearchItems"
           :loading="productSearchLoading"
           item-title="name"
           item-value="id"
-          placeholder="Escribe el nombre o el ID del producto..."
-          variant="solo"
+          placeholder="Buscar producto por nombre o ID..."
           density="compact"
+          variant="outlined"
           hide-details
           clearable
           no-filter
-          class="bg-white rounded custom-search-analytic"
+          prepend-inner-icon="tabler-search"
+          class="rounded-lg"
           @update:search="searchProducts"
         >
           <template #item="{ props: itemProps, item }">
             <VListItem v-bind="itemProps">
               <template #prepend>
-                <VChip size="x-small" color="primary" label class="me-2">ID: {{ item.raw.id }}</VChip>
+                <VChip size="x-small" color="primary" label class="me-2 font-weight-bold">ID: {{ item.raw.id }}</VChip>
+              </template>
+              <template #subtitle>
+                <span class="text-super-xs text-medium-emphasis">{{ item.raw.active_ingredient || 'Sin principio activo' }}</span>
               </template>
             </VListItem>
           </template>
         </VAutocomplete>
       </div>
-    </header>
+    </div>
 
-    <!-- Estado: cargando (sin datos aún seleccionados o tras seleccionar) -->
+    <!-- Estado: cargando datos de SKU -->
     <VCardText v-if="loadingStats" class="pa-6">
-      <VProgressLinear indeterminate color="primary" class="mb-6" />
+      <VProgressLinear indeterminate color="primary" class="mb-6 rounded" />
       <VRow>
         <VCol cols="12" md="4">
-          <VSkeleton type="card" height="280" />
+          <VSkeleton type="card" height="260" />
         </VCol>
         <VCol cols="12" md="8">
-          <VSkeleton type="card" height="280" />
+          <VSkeleton type="card" height="260" />
         </VCol>
       </VRow>
     </VCardText>
@@ -142,73 +151,79 @@ const marketShareSeries = computed(() => [productStatsData.value?.market_share ?
       <VRow>
         <!-- Market Share -->
         <VCol cols="12" md="4">
-          <VCard variant="outlined" class="pa-4 rounded-lg d-flex flex-column align-center justify-center h-100">
-            <div class="text-xs font-weight-black text-disabled uppercase mb-4">Dominancia del SKU</div>
-            <VueApexCharts type="radialBar" height="240" :options="marketShareOptions" :series="marketShareSeries" />
-            <div class="text-center mt-2">
-              <div class="text-h4 font-weight-black">{{ productStatsData.market_share }}%</div>
-              <div class="text-caption text-medium-emphasis">Participación en su grupo competitivo</div>
+          <VCard variant="outlined" class="pa-4 rounded-lg d-flex flex-column align-center justify-center h-100 bg-surface">
+            <div class="text-xs font-weight-bold text-medium-emphasis text-uppercase mb-2">Dominancia del SKU</div>
+            <VueApexCharts type="radialBar" height="220" :options="marketShareOptions" :series="marketShareSeries" />
+            <div class="text-center mt-1">
+              <div class="text-h4 font-weight-black text-primary">{{ productStatsData.market_share }}%</div>
+              <div class="text-caption text-medium-emphasis">Participación en su categoría competitiva</div>
             </div>
           </VCard>
         </VCol>
 
         <!-- Tendencia histórica -->
         <VCol cols="12" md="8">
-          <VCard variant="outlined" class="pa-4 rounded-lg h-100">
-            <div class="d-flex align-center justify-space-between mb-4">
-              <span class="text-xs font-weight-black text-high-emphasis uppercase">Tendencia Histórica</span>
+          <VCard variant="outlined" class="pa-4 rounded-lg h-100 bg-surface">
+            <div class="d-flex align-center justify-space-between mb-3">
+              <span class="text-xs font-weight-bold text-high-emphasis text-uppercase">Tendencia Histórica de Ventas</span>
               <div class="d-flex gap-4">
                 <div class="text-right">
-                  <div class="text-caption text-disabled uppercase font-weight-black">Ventas Totales</div>
-                  <div class="text-h6 font-weight-black text-primary">{{ productStatsData.total_units_sold }} Unidades</div>
+                  <div class="text-super-xs text-medium-emphasis text-uppercase font-weight-bold">Ventas Totales</div>
+                  <div class="text-subtitle-1 font-weight-black text-primary">{{ productStatsData.total_units_sold }} <span class="text-super-xs font-weight-normal text-medium-emphasis">Unds</span></div>
                 </div>
                 <div class="text-right">
-                  <div class="text-caption text-disabled uppercase font-weight-black">Promedio Mes</div>
-                  <div class="text-h6 font-weight-black text-success">{{ productStatsData.monthly_average }} / mes</div>
+                  <div class="text-super-xs text-medium-emphasis text-uppercase font-weight-bold">Promedio Mensual</div>
+                  <div class="text-subtitle-1 font-weight-black text-success">{{ productStatsData.monthly_average }} <span class="text-super-xs font-weight-normal text-medium-emphasis">/ mes</span></div>
                 </div>
               </div>
             </div>
-            <VueApexCharts type="area" height="250" :options="individualChartOptions" :series="individualSeries" />
+            <VueApexCharts type="area" height="220" :options="individualChartOptions" :series="individualSeries" />
           </VCard>
         </VCol>
 
         <!-- Última operación -->
         <VCol cols="12">
-          <VCard variant="tonal" color="primary" class="pa-3 pa-sm-4 rounded-lg d-flex align-center justify-space-between flex-wrap gap-2">
+          <VCard variant="outlined" class="pa-4 rounded-lg d-flex align-center justify-space-between flex-wrap gap-3 bg-surface">
             <div class="d-flex align-center gap-2">
-              <VIcon icon="tabler-history" size="20" />
-              <span class="font-weight-bold d-none d-sm-inline">Detalle de la última operación:</span>
+              <VAvatar size="30" color="primary" variant="tonal" rounded>
+                <VIcon icon="tabler-history" size="18" />
+              </VAvatar>
+              <span class="text-subtitle-2 font-weight-bold">Detalle de la última transacción registrada:</span>
             </div>
-            <div v-if="productStatsData.last_sale" class="d-flex align-center justify-space-between flex-grow-1 flex-sm-grow-0 gap-4 gap-sm-8">
+            <div v-if="productStatsData.last_sale" class="d-flex align-center justify-space-between flex-grow-1 flex-sm-grow-0 gap-6">
               <div class="d-flex flex-column align-start align-sm-end">
-                <span class="text-super-xs uppercase font-weight-black opacity-70">Fecha</span>
-                <span class="text-subtitle-2 font-weight-black">{{ formatDateSimple(productStatsData.last_sale.date) }}</span>
+                <span class="text-super-xs text-medium-emphasis uppercase font-weight-bold">Fecha</span>
+                <span class="text-subtitle-2 font-weight-bold">{{ formatDateSimple(productStatsData.last_sale.date) }}</span>
               </div>
               <div class="d-flex flex-column align-center align-sm-end">
-                <span class="text-super-xs uppercase font-weight-black opacity-70">Precio</span>
-                <span class="text-subtitle-2 font-weight-black">{{ formatPrice(productStatsData.last_sale.price) }}</span>
+                <span class="text-super-xs text-medium-emphasis uppercase font-weight-bold">Precio Unitario</span>
+                <span class="text-subtitle-2 font-weight-bold text-success">{{ formatPrice(productStatsData.last_sale.price) }}</span>
               </div>
               <div class="d-flex flex-column align-end">
-                <span class="text-super-xs uppercase font-weight-black opacity-70">Cantidad</span>
-                <span class="text-subtitle-2 font-weight-black text-right">{{ productStatsData.last_sale.quantity }} Und</span>
+                <span class="text-super-xs text-medium-emphasis uppercase font-weight-bold">Cantidad</span>
+                <span class="text-subtitle-2 font-weight-bold">{{ productStatsData.last_sale.quantity }} Unds</span>
               </div>
             </div>
-            <span v-else class="text-subtitle-2 italic opacity-70">Sin operaciones recientes</span>
+            <span v-else class="text-subtitle-2 italic text-medium-emphasis">Sin operaciones registradas</span>
           </VCard>
         </VCol>
       </VRow>
     </VCardText>
 
-    <!-- Estado: sin selección -->
-    <VCardText v-else class="pa-16 text-center text-medium-emphasis">
-      <VIcon icon="tabler-search" size="64" class="mb-4 opacity-20" />
-      <div class="text-h6">Analítica de SKU Específico</div>
-      <p>Busca y selecciona un producto arriba para cargar sus estadísticas detalladas</p>
+    <!-- Estado: sin selección (Guía interactiva) -->
+    <VCardText v-else class="pa-10 text-center text-medium-emphasis bg-surface">
+      <VIcon icon="tabler-scan" size="48" class="mb-3 text-primary opacity-60" />
+      <div class="text-subtitle-1 font-weight-bold text-high-emphasis">Búsqueda Rápida de SKU Específico</div>
+      <p class="text-caption text-medium-emphasis" style="max-width: 480px; margin: 0 auto;">
+        Usa el buscador superior para inspeccionar cualquier producto del catálogo: obtendrás de inmediato su índice de dominancia en categoría, curva de ventas e historial de última salida.
+      </p>
     </VCardText>
   </VCard>
 </template>
 
 <style scoped>
-.text-super-xs { font-size: 0.65rem !important; line-height: 1; }
-.text-xs      { font-size: 0.75rem !important; }
+.text-super-xs {
+  font-size: 0.7rem !important;
+  line-height: 1.2;
+}
 </style>

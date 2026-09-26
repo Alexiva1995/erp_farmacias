@@ -231,18 +231,60 @@ onUnmounted(() => {
 });
 
 // ─────────────────────────────────────────────
-// Gráfico de Laboratorios
+// Métricas de Brecha Compras vs Ventas
+// ─────────────────────────────────────────────
+const totalTrendSold = computed(() =>
+  safeTrendData.value.reduce((sum, d) => sum + Number(d?.sold ?? 0), 0)
+);
+const totalTrendPurchased = computed(() =>
+  safeTrendData.value.reduce((sum, d) => sum + Number(d?.purchased ?? 0), 0)
+);
+const trendGap = computed(() =>
+  totalTrendPurchased.value - totalTrendSold.value
+);
+
+// ─────────────────────────────────────────────
+// Gráfico de Laboratorios con Etiquetas Directas
 // ─────────────────────────────────────────────
 const labChartOptions = computed(() => ({
   chart: { type: 'bar', toolbar: { show: false } },
-  plotOptions: { bar: { horizontal: true, borderRadius: 4 } },
-  dataLabels: { enabled: false },
+  plotOptions: {
+    bar: {
+      horizontal: true,
+      borderRadius: 4,
+      barHeight: '60%',
+      dataLabels: { position: 'top' },
+    },
+  },
+  dataLabels: {
+    enabled: true,
+    formatter: (val) => `$${Number(val ?? 0).toLocaleString()}`,
+    offsetX: 12,
+    style: {
+      fontSize: '11px',
+      fontWeight: 'bold',
+      colors: ['#4F46E5'],
+    },
+  },
   xaxis: {
     categories: safeLabData.value.map(l => l?.name ?? 'Desconocido'),
-    labels: { formatter: (val) => `$${Number(val ?? 0).toLocaleString()}` },
+    labels: {
+      formatter: (val) => `$${Number(val ?? 0).toLocaleString()}`,
+      style: { fontSize: '11px' },
+    },
   },
-  colors: ['#7367F0'],
-  tooltip: { y: { formatter: (val) => `$${Number(val ?? 0).toLocaleString()}` } },
+  yaxis: {
+    labels: {
+      style: { fontSize: '12px', fontWeight: 600 },
+      maxWidth: 180,
+    },
+  },
+  colors: ['#4F46E5'],
+  grid: { strokeDashArray: 4 },
+  tooltip: {
+    y: { formatter: (val) => `$${Number(val ?? 0).toLocaleString()}` },
+    theme: 'dark',
+  },
 }));
 
 const labChartSeries = computed(() => [{
@@ -258,24 +300,25 @@ const trendChartOptions = computed(() => ({
   dataLabels: { enabled: false },
   stroke: { width: [3, 3], curve: 'smooth' },
   markers: { size: 4, strokeWidth: 0, hover: { size: 6 } },
-  colors: ['#7367F0', '#FF9F43'],
-  legend: { position: 'top', horizontalAlign: 'right', offsetY: -10 },
+  colors: ['#4F46E5', '#F59E0B'],
+  legend: { position: 'top', horizontalAlign: 'right', offsetY: -10, fontSize: '12px' },
   labels: safeTrendData.value.map(d => {
     if (!d?.week) return '';
     const parts = d.week.split('-');
     return parts.length > 1 ? `S${parts[1]}` : d.week;
   }),
   xaxis: {
-    title: { text: 'Semana' },
+    title: { text: 'Semana del Año' },
     axisBorder: { show: false },
     axisTicks:  { show: false },
-    labels: { hideOverlappingLabels: true, rotate: -45, rotateAlways: false },
+    labels: { hideOverlappingLabels: true, rotate: -45, rotateAlways: false, style: { fontSize: '11px' } },
   },
   yaxis: {
     title: { text: 'Cantidad de Unidades' },
-    labels: { formatter: (val) => Math.trunc(val).toLocaleString() },
+    labels: { formatter: (val) => Math.trunc(val).toLocaleString(), style: { fontSize: '11px' } },
   },
-  grid: { strokeDashArray: 5 },
+  grid: { strokeDashArray: 4 },
+  tooltip: { theme: 'dark' },
 }));
 
 const trendChartSeries = computed(() => ([
@@ -414,20 +457,46 @@ const trendChartSeries = computed(() => ([
         <!-- ─── Tendencias Semanales ─── -->
         <VCol cols="12">
           <VCard border class="rounded-lg overflow-hidden shadow-sm">
-            <VCardTitle class="pa-4 border-b d-flex align-center gap-4 flex-wrap">
-              <span class="text-h6 font-weight-bold">Tendencias: Ventas vs Compras</span>
-              <VSpacer />
-              <div class="pt-2 d-flex gap-2" style="max-width: 400px; width: 100%;">
-                <AppAutocomplete
-                  v-model="selectedTrendGroup"
-                  :items="groups"
-                  item-title="name"
-                  item-value="id"
-                  placeholder="Filtrar por Grupo"
-                  clearable
-                  density="compact"
-                  hide-details
-                />
+            <VCardTitle class="pa-4 border-b d-flex align-center justify-space-between flex-wrap gap-3 bg-surface">
+              <div class="d-flex align-center gap-2">
+                <VAvatar size="32" color="primary" variant="tonal" class="rounded">
+                  <VIcon icon="tabler-chart-line" size="18" />
+                </VAvatar>
+                <div>
+                  <div class="text-subtitle-1 font-weight-bold text-high-emphasis">Tendencias: Ventas vs Compras</div>
+                  <div class="text-super-xs text-medium-emphasis">Balance comparativo de unidades transaccionadas por semana</div>
+                </div>
+              </div>
+
+              <!-- Resumen de brecha de unidades -->
+              <div class="d-flex align-center gap-3 flex-wrap">
+                <div v-if="safeTrendData.length" class="d-flex align-center gap-2 px-3 py-1 bg-surface border rounded-lg">
+                  <div class="text-super-xs">
+                    Ventas: <strong class="text-primary">{{ totalTrendSold.toLocaleString() }}</strong> | Compras: <strong class="text-warning">{{ totalTrendPurchased.toLocaleString() }}</strong>
+                  </div>
+                  <VChip
+                    size="x-small"
+                    :color="trendGap >= 0 ? 'warning' : 'info'"
+                    variant="tonal"
+                    label
+                    class="font-weight-black"
+                  >
+                    {{ trendGap >= 0 ? `+${trendGap.toLocaleString()} Excedente` : `${trendGap.toLocaleString()} Brecha` }}
+                  </VChip>
+                </div>
+
+                <div style="width: 260px; max-width: 100%;">
+                  <AppAutocomplete
+                    v-model="selectedTrendGroup"
+                    :items="groups"
+                    item-title="name"
+                    item-value="id"
+                    placeholder="Filtrar por Grupo"
+                    clearable
+                    density="compact"
+                    hide-details
+                  />
+                </div>
               </div>
             </VCardTitle>
             <VCardText class="pa-4">
@@ -444,7 +513,7 @@ const trendChartSeries = computed(() => ([
 
               <!-- Estado vacío -->
               <div v-else class="text-center pa-10 text-medium-emphasis">
-                <VIcon icon="tabler-chart-line" size="48" class="mb-3 opacity-20" />
+                <VIcon icon="tabler-chart-line" size="40" class="mb-2 opacity-30" />
                 <div class="text-sm font-weight-bold">Sin datos de tendencia</div>
                 <div class="text-xs text-disabled">No hay movimiento registrado en el período seleccionado.</div>
               </div>
@@ -455,9 +524,19 @@ const trendChartSeries = computed(() => ([
         <!-- ─── Ranking Laboratorios ─── -->
         <VCol cols="12">
           <VCard border class="rounded-lg overflow-hidden shadow-sm">
-            <VCardTitle class="pa-4 border-b d-flex align-center gap-2">
-              <VIcon icon="tabler-flask" class="text-primary" />
-              <span class="text-h6 font-weight-bold">Ranking por Laboratorio / Categoría</span>
+            <VCardTitle class="pa-4 border-b d-flex align-center justify-space-between bg-surface">
+              <div class="d-flex align-center gap-2">
+                <VAvatar size="32" color="primary" variant="tonal" class="rounded">
+                  <VIcon icon="tabler-flask" size="18" />
+                </VAvatar>
+                <div>
+                  <div class="text-subtitle-1 font-weight-bold text-high-emphasis">Rentabilidad por Laboratorio / Fabricante</div>
+                  <div class="text-super-xs text-medium-emphasis">Top 10 marcas líderes por margen bruto total aportado</div>
+                </div>
+              </div>
+              <VChip size="x-small" color="primary" variant="flat" label class="font-weight-bold">
+                Margen USD
+              </VChip>
             </VCardTitle>
             <VCardText class="pa-4">
               <!-- Skeleton -->
@@ -466,14 +545,14 @@ const trendChartSeries = computed(() => ([
               <!-- Gráfico -->
               <VueApexCharts
                 v-else-if="safeLabData.length"
-                height="280"
+                height="300"
                 :options="labChartOptions"
                 :series="labChartSeries"
               />
 
               <!-- Estado vacío -->
               <div v-else class="text-center pa-10 text-medium-emphasis">
-                <VIcon icon="tabler-flask-off" size="48" class="mb-3 opacity-20" />
+                <VIcon icon="tabler-flask-off" size="40" class="mb-2 opacity-30" />
                 <div class="text-sm font-weight-bold">Sin datos de laboratorio</div>
                 <div class="text-xs text-disabled">No se registraron ventas por laboratorio en este período.</div>
               </div>

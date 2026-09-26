@@ -21,6 +21,7 @@ class ProductMasterReportService
         // Cuadrante 1: Rendimiento (TOP 10 limitado directamente desde SQL)
         $topByVolume = $this->repository->getPerformanceData($filters, 10, 'total_sold');
         $topByRevenue = $this->repository->getPerformanceData($filters, 10, 'total_revenue');
+        $topByMargin = $this->repository->getPerformanceData($filters, 10, 'total_margin');
         $labRanking = $this->repository->getLaboratoryRanking($filters);
         
         // Pareto KPI calculado eficientemente
@@ -36,6 +37,7 @@ class ProductMasterReportService
             'quadrant1' => [
                 'top_volume' => $topByVolume,
                 'top_revenue' => $topByRevenue,
+                'top_margin' => $topByMargin,
                 'lab_ranking' => $labRanking,
                 'pareto' => $pareto
             ],
@@ -46,7 +48,8 @@ class ProductMasterReportService
             'quadrant4' => [
                 'out_of_stock' => $supplyStats['out_of_stock'],
                 'critical_stock' => $supplyStats['critical_stock'],
-                'avg_inventory_days' => $supplyStats['avg_inventory_days']
+                'avg_inventory_days' => $supplyStats['avg_inventory_days'],
+                'estimated_30d_demand' => $supplyStats['estimated_30d_demand'],
             ]
         ];
     }
