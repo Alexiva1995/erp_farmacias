@@ -335,8 +335,16 @@ class SupplierConnectionService
                         || in_array($connection->supplier_id, [15, 1009]);
                     $parsed = $this->invoiceTxtParser($invoiceContent, $connection, $seenInvoiceNumbers, $isVitalClinic ? $filename : null);
 
-                    if (!empty($parsed) && !empty($parsed['header'])) {
-                        $invoiceResults[] = $parsed;
+                    if (!empty($parsed)) {
+                        if (isset($parsed['header'])) {
+                            $invoiceResults[] = $parsed;
+                        } else {
+                            foreach ($parsed as $singleInv) {
+                                if (!empty($singleInv['header'])) {
+                                    $invoiceResults[] = $singleInv;
+                                }
+                            }
+                        }
                     }
                     @unlink($tempInvoice);
                 }
@@ -628,8 +636,16 @@ class SupplierConnectionService
                     $invoiceCsvString = $this->convertJsonArrayToCsvString($flatData);
                     $parsed = $this->invoiceTxtParser($invoiceCsvString, $connection, $seenInvoiceNumbers);
 
-                    if (!empty($parsed) && !empty($parsed['header'])) {
-                        $invoiceResults[] = $parsed;
+                    if (!empty($parsed)) {
+                        if (isset($parsed['header'])) {
+                            $invoiceResults[] = $parsed;
+                        } else {
+                            foreach ($parsed as $singleInv) {
+                                if (!empty($singleInv['header'])) {
+                                    $invoiceResults[] = $singleInv;
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -1131,10 +1147,12 @@ class SupplierConnectionService
                 $invoiceGroups[$invoiceNumber]['lines'][] = $lineData;
             }
 
+            $invoicesList = [];
             foreach ($invoiceGroups as $number => $invoice) {
-                $invoices = $invoice;
+                $invoicesList[] = $invoice;
                 $seenInvoiceNumbers[] = $number;
             }
+            return $invoicesList;
         } else {
             // ✅ Variable para guardar el exchange_rate del header actual
             $currentExchangeRate = null;
@@ -1147,6 +1165,7 @@ class SupplierConnectionService
                 || in_array($connection->supplier_id, [9, 15, 38, 1005]);
 
             // Modo agrupado (por ejemplo, Dronena / Dromega)
+            $invoicesList = [];
             $header = null;
             $bufferLines = [];
 
@@ -1158,6 +1177,14 @@ class SupplierConnectionService
                 $tipo = trim($cols[0] ?? "");
 
                 if ($tipo === "E" || $tipo === '02') {
+                    if (!empty($header)) {
+                        $invoicesList[] = [
+                            "header" => $header,
+                            "lines" => $bufferLines,
+                        ];
+                        $bufferLines = [];
+                    }
+
                     $currentHeader = [];
 
                     foreach ($structure["header"] as $index => $meta) {
@@ -1283,14 +1310,13 @@ class SupplierConnectionService
             }
 
             if (!empty($header)) {
-                $invoices = [
+                $invoicesList[] = [
                     "header" => $header,
                     "lines" => $bufferLines,
                 ];
             }
+            return $invoicesList;
         }
-
-        return $invoices;
     }
 
     private function createProductFromInvoice(array $lineData, int $supplierId): ?Product
