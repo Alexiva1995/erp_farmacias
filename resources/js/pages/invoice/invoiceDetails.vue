@@ -450,21 +450,21 @@ const getPriceVsAutoOrderIndicator = (item) => {
       icon: 'tabler-trending-up',
       color: 'error',
       badgeText: `+${diffPercent}%`,
-      tooltip: `Más caro que la Auto-Orden (+${diffPercent}%): Auto-Orden $${autoOrderPrice.toFixed(2)} USD`,
+      tooltip: `vs Orden de Compra: Más caro (+${diffPercent}%) — Pactado $${autoOrderPrice.toFixed(2)} USD`,
     };
   } else if (invoicePrice < autoOrderPrice - tolerance) {
     return {
       icon: 'tabler-trending-down',
       color: 'success',
       badgeText: `${diffPercent}%`,
-      tooltip: `Más económico que la Auto-Orden (${diffPercent}%): Auto-Orden $${autoOrderPrice.toFixed(2)} USD`,
+      tooltip: `vs Orden de Compra: Más económico (${diffPercent}%) — Pactado $${autoOrderPrice.toFixed(2)} USD`,
     };
   } else {
     return {
       icon: 'tabler-equal',
       color: 'secondary',
-      badgeText: '= 0%',
-      tooltip: `Igual al precio de la Auto-Orden: $${autoOrderPrice.toFixed(2)} USD`,
+      badgeText: '0.0%',
+      tooltip: `vs Orden de Compra: Igual al precio pactado ($${autoOrderPrice.toFixed(2)} USD)`,
     };
   }
 };
@@ -482,7 +482,7 @@ const getPriceVsSystemCostIndicator = (item) => {
       icon: 'tabler-sparkles',
       color: 'info',
       badgeText: 'Nuevo',
-      tooltip: 'Producto sin costo previo registrado en el sistema',
+      tooltip: 'vs Costo Actual ERP: Producto nuevo sin costo previo registrado',
     };
   }
 
@@ -499,21 +499,21 @@ const getPriceVsSystemCostIndicator = (item) => {
       icon: 'tabler-trending-up',
       color: 'error',
       badgeText: `+${diffPercent}%`,
-      tooltip: `Más caro que el costo en sistema (+${diffPercent}%): Costo sistema $${systemCost.toFixed(2)} USD`,
+      tooltip: `vs Costo Actual ERP: Más caro (+${diffPercent}%) — Costo en sistema $${systemCost.toFixed(2)} USD`,
     };
   } else if (invoiceCostUSD < systemCost - tolerance) {
     return {
       icon: 'tabler-trending-down',
       color: 'success',
       badgeText: `${diffPercent}%`,
-      tooltip: `Más económico que el costo en sistema (${diffPercent}%): Costo sistema $${systemCost.toFixed(2)} USD`,
+      tooltip: `vs Costo Actual ERP: Más económico (${diffPercent}%) — Costo en sistema $${systemCost.toFixed(2)} USD`,
     };
   } else {
     return {
       icon: 'tabler-equal',
       color: 'secondary',
-      badgeText: '= 0%',
-      tooltip: `Igual al costo actual del sistema: $${systemCost.toFixed(2)} USD`,
+      badgeText: '0.0%',
+      tooltip: `vs Costo Actual ERP: Igual al costo actual del sistema ($${systemCost.toFixed(2)} USD)`,
     };
   }
 };
@@ -1589,14 +1589,14 @@ const detailsHeaders = computed(() => {
       title: "Descripción",
       key: "product_name_with_tax",
       sortable: false,
-      width: isEditMode.value ? "32%" : "38%",
+      width: isEditMode.value ? "30%" : "35%",
     },
     {
       title: "Lote",
       key: "lot_and_expiration",
       align: "center",
       sortable: false,
-      width: "18%",
+      width: "16%",
     },
   ];
 
@@ -1616,21 +1616,21 @@ const detailsHeaders = computed(() => {
       key: "quantity",
       align: "end",
       sortable: false,
-      width: "8%",
+      width: "7%",
     },
     {
       title: "Costo",
       key: "unit_cost",
       align: "end",
       sortable: false,
-      width: "12%",
+      width: "15%",
     },
     {
       title: "IVA",
       key: "tax_amount",
       align: "end",
       sortable: false,
-      width: "8%",
+      width: "7%",
     },
     {
       title: "Total",
@@ -1647,7 +1647,7 @@ const detailsHeaders = computed(() => {
       key: "actions",
       sortable: false,
       align: "center",
-      width: "10%",
+      width: "8%",
     });
   }
 
