@@ -36,4 +36,12 @@ class InvoiceReturnService
     {
         return $this->invoiceReturnRepository->updateStatusByInvoice($invoiceId, $status);
     }
+
+    /**
+     * Obtener estadísticas de devoluciones.
+     */
+    public function getStats(array $filters = []): array
+    {
+        return $this->invoiceReturnRepository->getStats($filters);
+    }
 }

@@ -27,12 +27,14 @@ class InvoiceReturnController extends Controller
             $perPage = (int) ($filters['itemsPerPage'] ?? 10);
 
             $paginated = $this->invoiceReturnService->getReturns($filters, $perPage);
+            $stats = $this->invoiceReturnService->getStats($filters);
 
             return response()->json([
                 'data' => InvoiceReturnResource::collection($paginated->items()),
                 'total' => $paginated->total(),
                 'current_page' => $paginated->currentPage(),
                 'last_page' => $paginated->lastPage(),
+                'stats' => $stats,
             ]);
         } catch (\Exception $e) {
             Log::error('Error en InvoiceReturnController@index: ' . $e->getMessage(), [

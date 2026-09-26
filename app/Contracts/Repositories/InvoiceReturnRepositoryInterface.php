@@ -23,4 +23,9 @@ interface InvoiceReturnRepositoryInterface
      * Actualizar estado masivo de devoluciones asociadas a una factura.
      */
     public function updateStatusByInvoice(int $invoiceId, string $status): int;
+
+    /**
+     * Obtener estadísticas globales de devoluciones (totales y por estado).
+     */
+    public function getStats(array $filters = []): array;
 }

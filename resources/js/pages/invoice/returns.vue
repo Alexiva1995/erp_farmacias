@@ -45,6 +45,14 @@ const headers = [
   { title: 'ACCIONES', key: 'actions', align: 'center', sortable: false, width: '12%' },
 ]
 
+// KPIs estadísticos globales desde el backend
+const stats = ref({
+  total: 0,
+  pending: 0,
+  approved: 0,
+  rejected: 0,
+})
+
 // Cargar devoluciones con paginación en servidor
 const fetchReturns = async () => {
   loading.value = true
@@ -61,6 +69,9 @@ const fetchReturns = async () => {
     const { data } = await axios.get('/invoice-returns', { params })
     returnsList.value = data.data || []
     totalItems.value = data.total || 0
+    if (data.stats) {
+      stats.value = data.stats
+    }
   } catch (error) {
     console.error('Error al cargar devoluciones:', error)
     toast.error('Error al cargar las devoluciones de facturas')
@@ -96,20 +107,6 @@ watch(
     }, 300)
   }
 )
-
-// KPIs estadísticos
-const stats = computed(() => {
-  const pending = returnsList.value.filter(item => item.status === 'pending').length
-  const approved = returnsList.value.filter(item => item.status === 'approved').length
-  const rejected = returnsList.value.filter(item => item.status === 'rejected').length
-
-  return {
-    total: totalItems.value,
-    pending,
-    approved,
-    rejected,
-  }
-})
 
 // Función para copiar productos e información de devolución al portapapeles
 const copyReturnData = async (item) => {

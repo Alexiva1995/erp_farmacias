@@ -155,4 +155,49 @@ class InvoiceReturnRepository implements InvoiceReturnRepositoryInterface
         return InvoiceReturn::where('invoice_id', $invoiceId)
             ->update(['status' => $status]);
     }
+
+    /**
+     * Obtener estadísticas de devoluciones (totales y por estado).
+     */
+    public function getStats(array $filters = []): array
+    {
+        $query = InvoiceReturn::query();
+
+        if (!empty($filters['search'])) {
+            $search = trim($filters['search']);
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('invoice', function ($iq) use ($search) {
+                    $iq->where('invoice_number', 'like', "%{$search}%")
+                        ->orWhereHas('supplier', function ($sq) use ($search) {
+                            $sq->where('name', 'like', "%{$search}%");
+                        });
+                })->orWhereHas('product', function ($pq) use ($search) {
+                    $pq->where('name', 'like', "%{$search}%")
+                        ->orWhere('barcode', 'like', "%{$search}%");
+                });
+            });
+        }
+
+        if (!empty($filters['date_from'])) {
+            $query->whereDate('return_date', '>=', $filters['date_from']);
+        }
+
+        if (!empty($filters['date_to'])) {
+            $query->whereDate('return_date', '<=', $filters['date_to']);
+        }
+
+        $raw = (clone $query)->selectRaw("
+            COUNT(*) as total,
+            COALESCE(SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END), 0) as pending,
+            COALESCE(SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END), 0) as approved,
+            COALESCE(SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END), 0) as rejected
+        ")->first();
+
+        return [
+            'total' => (int) ($raw->total ?? 0),
+            'pending' => (int) ($raw->pending ?? 0),
+            'approved' => (int) ($raw->approved ?? 0),
+            'rejected' => (int) ($raw->rejected ?? 0),
+        ];
+    }
 }
