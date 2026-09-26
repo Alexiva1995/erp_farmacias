@@ -262,6 +262,7 @@ class AbcReportService
                 })->sortBy('margin_percentage')->values();
             } elseif ($analysisType === 'expiring_risk') {
                 // Capital Propenso a Vencerse por Expiración (Riesgo FEFO / Lotes con unidades no absorbibles <= 180 días)
+                // Ordenar predeterminadamente por mayor capital en riesgo a vencer (descendente)
                 $data = $data->filter(function ($item) {
                     if ((float) $item->current_stock <= 0) {
                         return false;
@@ -270,8 +271,8 @@ class AbcReportService
                     $riskUnits = (float) ($item->risk_expiring_units ?? 0);
 
                     return $hasExpRisk && $riskUnits > 0;
-                })->sortBy(function ($item) {
-                    return $item->days_to_expiration ?? 9999;
+                })->sortByDesc(function ($item) {
+                    return (float) (($item->risk_expiring_capital > 0) ? $item->risk_expiring_capital : $item->inventory_value);
                 })->values();
             }
 

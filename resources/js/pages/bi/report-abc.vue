@@ -329,11 +329,8 @@ const getGmroiColor = (gmroi) => {
 };
 
 watch(selectedAnalysisType, (newType) => {
-  if (newType === 'frozen_capital' || newType === 'dead_stock') {
+  if (newType === 'frozen_capital' || newType === 'dead_stock' || newType === 'expiring_risk') {
     sortBy.value = [{ key: 'inventory_value', order: 'desc' }];
-    isSimplifiedView.value = true;
-  } else if (newType === 'expiring_risk') {
-    sortBy.value = [{ key: 'days_to_expiration', order: 'asc' }];
     isSimplifiedView.value = true;
   } else if (newType === 'negative_margin') {
     sortBy.value = [{ key: 'margin_percentage', order: 'asc' }];
