@@ -430,72 +430,73 @@ const getCostTooltipText = (item) => {
 };
 
 /**
- * Compara el precio unitario de la factura (en USD) vs el precio de la autoorden
- * activa más reciente del proveedor para ese producto.
- * Retorna { icon, color, tooltip } o null si no hay referencia de autoorden.
+ * Compara el precio unitario de la factura (en USD) vs el costo actual registrado en el sistema.
+ * Retorna { icon, color, tooltip, badgeText } o null.
  */
 const getPriceVsAutoOrderIndicator = (item) => {
-  // Los badges de tendencia de precio son EXCLUSIVOS del modo de aprobación gerencial
-  if (!isApprovalMode.value) return null;
+  if (!isApprovalMode.value && !isEditableMode.value) return null;
 
-  const autoOrderPrice = item.auto_order_unit_cost_usd;
+  const systemCost = Number(item.product?.unit_cost);
+  if (systemCost == null || isNaN(systemCost) || systemCost <= 0) {
+    return {
+      icon: 'tabler-sparkles',
+      color: 'info',
+      badgeText: 'Nuevo',
+      tooltip: 'Producto sin costo previo registrado en el sistema',
+    };
+  }
 
-  // Sin referencia de autoorden → sin indicador
-  if (autoOrderPrice == null) return null;
+  const invoiceCostUSD = item.unit_cost_usd != null ? Number(item.unit_cost_usd) : null;
+  if (invoiceCostUSD == null || isNaN(invoiceCostUSD)) return null;
 
-  // Usar el precio en USD ya calculado en processedInvoiceDetails
-  const invoicePrice = item.unit_cost_usd;
-  if (invoicePrice == null || isNaN(invoicePrice)) return null;
+  const tolerance = 0.01;
+  const diffPercent = systemCost > 0
+    ? (((invoiceCostUSD - systemCost) / systemCost) * 100).toFixed(1)
+    : '0';
 
-  const tolerance = 0.01; // Tolerancia de 1 centavo de USD (0.01)
-  const diffPercent = autoOrderPrice > 0 ? (((invoicePrice - autoOrderPrice) / autoOrderPrice) * 100).toFixed(1) : '0';
-
-  if (invoicePrice > autoOrderPrice + tolerance) {
-    // Más caro que la autoorden
+  if (invoiceCostUSD > systemCost + tolerance) {
     return {
       icon: 'tabler-trending-up',
       color: 'error',
       badgeText: `+${diffPercent}%`,
-      tooltip: `Más caro que la autoorden (+${diffPercent}%): Precio autoorden ${formatCurrency(autoOrderPrice, 'USD')}`,
+      tooltip: `Más caro que el costo en sistema (+${diffPercent}%): Costo sistema $${systemCost.toFixed(2)} USD`,
     };
-  } else if (invoicePrice < autoOrderPrice - tolerance) {
-    // Más económico que la autoorden
+  } else if (invoiceCostUSD < systemCost - tolerance) {
     return {
       icon: 'tabler-trending-down',
       color: 'success',
       badgeText: `${diffPercent}%`,
-      tooltip: `Más económico que la autoorden (${diffPercent}%): Precio autoorden ${formatCurrency(autoOrderPrice, 'USD')}`,
+      tooltip: `Más económico que el costo en sistema (${diffPercent}%): Costo sistema $${systemCost.toFixed(2)} USD`,
     };
   } else {
-    // Igual al precio de la autoorden
     return {
       icon: 'tabler-equal',
       color: 'secondary',
-      badgeText: '0%',
-      tooltip: `Igual al precio de la autoorden: ${formatCurrency(autoOrderPrice, 'USD')}`,
+      badgeText: '= 0%',
+      tooltip: `Igual al costo actual del sistema: $${systemCost.toFixed(2)} USD`,
     };
   }
 };
 
 /**
  * Copia al portapapeles todos los productos de la factura que tengan un precio
- * facturado superior al precio estimado de la auto-orden (con tolerancia de 0.01 USD).
+ * facturado superior al costo registrado en el sistema (con tolerancia de 0.01 USD).
  */
 const copyMoreExpensiveProducts = () => {
   const expensiveProducts = processedInvoiceDetails.value.filter(item => {
-    const autoOrderPrice = item.auto_order_unit_cost_usd;
-    if (autoOrderPrice == null) return false;
-    const invoicePrice = item.unit_cost_usd;
+    const systemCost = Number(item.product?.unit_cost);
+    if (systemCost == null || isNaN(systemCost) || systemCost <= 0) return false;
+    const invoicePrice = Number(item.unit_cost_usd);
     if (invoicePrice == null || isNaN(invoicePrice)) return false;
     
     const tolerance = 0.01;
-    return invoicePrice > autoOrderPrice + tolerance;
+    return invoicePrice > systemCost + tolerance;
   });
 
   if (expensiveProducts.length === 0) {
     toast.fire({
       icon: "info",
-      title: "No hay productos con precio mayor al de la auto-orden.",
+      title: "No hay productos con precio mayor al costo registrado en el sistema.",
     });
     return;
   }
@@ -508,22 +509,22 @@ Tasa de Cambio: ${invoice.value?.exchange_rate || '1'}
 Moneda: ${invoice.value?.currency || 'USD'}
 Total Factura: ${formatCurrency(invoice.value?.total_amount, invoice.value?.currency)}
 
-PRODUCTOS CON PRECIO MAYOR A LA AUTO-ORDEN:
+PRODUCTOS CON PRECIO MAYOR AL COSTO EN SISTEMA:
 `;
 
   let totalDiferencia = 0;
 
   expensiveProducts.forEach((item) => {
-    const facturado = item.unit_cost_usd;
-    const ordenado = item.auto_order_unit_cost_usd;
+    const facturado = Number(item.unit_cost_usd) || 0;
+    const costoSistema = Number(item.product?.unit_cost) || 0;
     const qty = Number(item.quantity) || 0;
-    const difUnit = facturado - ordenado;
+    const difUnit = facturado - costoSistema;
     const difTotalItem = difUnit * qty;
     totalDiferencia += difTotalItem;
 
     text += `- ${item.product?.name || 'Producto'}:
   Facturado: $${facturado.toFixed(2)} USD
-  Auto-Orden: $${ordenado.toFixed(2)} USD
+  Costo Sistema: $${costoSistema.toFixed(2)} USD
   Cantidad: ${qty}
   Diferencia Unitario: $${difUnit.toFixed(2)} USD
   Diferencia Total: $${difTotalItem.toFixed(2)} USD\n`;
@@ -1654,20 +1655,6 @@ const detailsHeaders = computed(() => {
           />
           <VDivider />
 
-          <!-- Alerta de Reglas de Pago Faltantes -->
-          <VCardText v-if="isApprovalMode && formattedPaymentRules.length === 0" class="pb-0">
-            <VAlert
-              type="warning"
-              variant="tonal"
-              closable
-              icon="tabler-alert-triangle"
-              class="mb-0"
-            >
-              <div class="font-weight-bold">Proveedor sin reglas de pago</div>
-              <div>Este proveedor no tiene reglas de pago configuradas. Por favor, revise la ficha del proveedor si esto es un error.</div>
-            </VAlert>
-          </VCardText>
-
           <VCardText class="products-section pt-6">
             <div class="d-flex flex-column flex-sm-row align-sm-center ga-2 mb-4">
               <div class="d-flex align-center">
@@ -1949,17 +1936,20 @@ const detailsHeaders = computed(() => {
                   v-if="isEditableMode && item.id === editingDetailId"
                   v-model.number="editedDetailData.quantity"
                   type="number"
-                  step="any"
+                  step="1"
                   density="compact"
                   hide-details
                   variant="outlined"
                   class="editable-cell"
                   min="0"
-                /><span
+                />
+                <span
                   v-else
                   :class="{ 'returned-item': isItemReturned(item) }"
-                  >{{ item.quantity }}</span
+                  class="font-weight-medium"
                 >
+                  {{ Math.round(Number(item.quantity) || 0) }}
+                </span>
               </template>
 
               <template #item.unit_cost="{ item }">
@@ -2001,7 +1991,7 @@ const detailsHeaders = computed(() => {
                     <span class="font-weight-bold text-high-emphasis">{{
                       formatCurrency(item.unit_cost, invoice.currency)
                     }}</span>
-                    <!-- Indicador y badge de tendencia vs autoorden -->
+                    <!-- Indicador y badge de tendencia vs costo en sistema -->
                     <VTooltip
                       v-if="getPriceVsAutoOrderIndicator(item)"
                       :text="getPriceVsAutoOrderIndicator(item).tooltip"
@@ -2021,6 +2011,14 @@ const detailsHeaders = computed(() => {
                       </template>
                     </VTooltip>
                   </div>
+                  <!-- Costo referencial en USD si la moneda es Bs -->
+                  <span
+                    v-if="invoice.currency !== 'USD' && item.unit_cost_usd != null"
+                    class="text-caption text-medium-emphasis font-weight-medium"
+                    style="font-size: 11px;"
+                  >
+                    ${{ Number(item.unit_cost_usd).toFixed(2) }}
+                  </span>
                 </div>
               </template>
 

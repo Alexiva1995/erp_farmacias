@@ -131,7 +131,7 @@ const emit = defineEmits([
                 variant="outlined"
                 class="mt-1"
               />
-              <span v-else class="value">{{ item.quantity }}</span>
+              <span v-else class="value font-weight-bold">{{ Math.round(Number(item.quantity) || 0) }}</span>
             </div>
             <div class="detail-item">
               <span class="label">Costo ({{ invoice.currency }})</span>
@@ -162,7 +162,7 @@ const emit = defineEmits([
               <div v-else class="d-flex flex-column align-start">
                 <div class="d-flex align-center gap-1">
                   <span class="value font-weight-bold">{{ formatCurrency(item.unit_cost, invoice.currency) }}</span>
-                  <!-- Indicador precio vs autoorden activa -->
+                  <!-- Indicador precio vs costo en sistema -->
                   <VTooltip
                     v-if="getPriceVsAutoOrderIndicator(item)"
                     :text="getPriceVsAutoOrderIndicator(item).tooltip"
@@ -182,6 +182,13 @@ const emit = defineEmits([
                     </template>
                   </VTooltip>
                 </div>
+                <span
+                  v-if="invoice.currency !== 'USD' && item.unit_cost_usd != null"
+                  class="text-caption text-medium-emphasis font-weight-medium"
+                  style="font-size: 11px;"
+                >
+                  ${{ Number(item.unit_cost_usd).toFixed(2) }}
+                </span>
               </div>
             </div>
             <div class="detail-item">
