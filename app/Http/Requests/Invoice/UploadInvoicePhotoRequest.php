@@ -14,7 +14,7 @@ class UploadInvoicePhotoRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'file' => 'required|image|mimes:jpeg,png,jpg|max:5120',
+            'file' => 'required|file|mimes:jpeg,png,jpg,pdf|max:10240',
         ];
     }
 }

@@ -5,6 +5,7 @@ import { computed, nextTick, onMounted, ref, watch } from "vue";
 import InvoiceBasicInfoForm from "./components/InvoiceBasicInfoForm.vue";
 import InvoiceFinancialForm from "./components/InvoiceFinancialForm.vue";
 import InvoiceSummaryCard from "./components/InvoiceSummaryCard.vue";
+import InvoicePhotoPreviewDialog from "@/components/InvoicePhotoPreviewDialog.vue";
 
 const props = defineProps({
   invoiceId: { type: [Number, String], default: null },
@@ -30,7 +31,30 @@ const formData = ref({
   exchange_rate: 0,
   total_amount: 0,
   total_usd: 0,
+  invoice_photo: null,
 });
+
+const selectedFile = ref(null);
+const fileError = ref("");
+const isPhotoPreviewOpen = ref(false);
+
+const previewImageUrl = computed(() => {
+  if (selectedFile.value && selectedFile.value instanceof File) {
+    return URL.createObjectURL(selectedFile.value);
+  }
+  if (formData.value.invoice_photo) {
+    return formData.value.invoice_photo.startsWith("http")
+      ? formData.value.invoice_photo
+      : `/storage/${formData.value.invoice_photo}`;
+  }
+  return "";
+});
+
+const openPhotoPreview = () => {
+  if (previewImageUrl.value) {
+    isPhotoPreviewOpen.value = true;
+  }
+};
 
 const validationErrors = ref({});
 
@@ -298,7 +322,10 @@ const resetFormFields = () => {
     exchange_rate: 0,
     total_amount: 0,
     total_usd: 0,
+    invoice_photo: null,
   };
+  selectedFile.value = null;
+  fileError.value = "";
   validationErrors.value = {};
 };
 
@@ -421,7 +448,10 @@ const fetchInvoiceData = async () => {
       total_amount: invoice.total_amount,
       exchange_rate: invoice.exchange_rate,
       total_usd: invoice.total_usd,
+      invoice_photo: invoice.invoice_photo || null,
     };
+    selectedFile.value = null;
+    fileError.value = "";
 
     if (invoice.supplier_id) {
       await fetchDiscountRules(invoice.supplier_id);
@@ -524,6 +554,9 @@ const handleSyncBot = async (bot) => {
             formData.value.total_usd = Number(found.total_usd || 0);
             formData.value.exchange_rate = Number(found.exchange_rate || 0);
             formData.value.currency = found.currency || formData.value.currency;
+            if (found.invoice_photo) {
+              formData.value.invoice_photo = found.invoice_photo;
+            }
             await nextTick();
             calculatePaymentDate();
           }
@@ -541,6 +574,14 @@ const handleSyncBot = async (bot) => {
 };
 
 const handleSubmit = async () => {
+  fileError.value = "";
+
+  if (!formData.value.invoice_photo && !selectedFile.value) {
+    fileError.value = "El documento digital (PDF o imagen) de la factura es obligatorio.";
+    toast.error(fileError.value);
+    return;
+  }
+
   if (!validateExpDate(formData.value.exp_date)) {
     toast.error(expDateError.value);
     return;
@@ -557,13 +598,29 @@ const handleSubmit = async () => {
   };
 
   try {
+    let savedInvoiceId = props.invoiceId;
+
     if (props.isEditMode) {
       await axios.put(`/invoices/${props.invoiceId}/data`, payload);
+      savedInvoiceId = props.invoiceId;
+    } else {
+      const response = await axios.post("/invoices", payload);
+      savedInvoiceId = response.data?.invoice?.id || response.data?.id;
+    }
+
+    if (selectedFile.value && savedInvoiceId) {
+      const photoFormData = new FormData();
+      photoFormData.append("file", selectedFile.value);
+      await axios.post(`/invoices/${savedInvoiceId}/photo`, photoFormData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+    }
+
+    if (props.isEditMode) {
       toast.success("Factura actualizada con éxito.");
       emit("invoice-saved");
       emit("back-to-list");
     } else {
-      await axios.post("/invoices", payload);
       toast.success("Factura registrada con éxito.");
       emit("invoice-saved");
       resetFormFields();
@@ -661,9 +718,13 @@ const handleSubmit = async () => {
                 :loading-suppliers="loadingSuppliers"
                 :validation-errors="validationErrors"
                 :exp-date-error="expDateError"
+                :file-error="fileError"
+                :selected-file="selectedFile"
                 :selected-supplier="selectedSupplier"
                 :is-informal-supplier="isInformalSupplier"
                 :is-edit-mode="isEditMode"
+                @update:selected-file="selectedFile = $event; fileError = ''"
+                @view-current-photo="openPhotoPreview"
               />
 
               <VDivider class="my-5" />
@@ -696,5 +757,11 @@ const handleSubmit = async () => {
         </VForm>
       </VCardText>
     </VCard>
+
+    <!-- Modal de Vista Previa del Documento / PDF / Foto de la Factura -->
+    <InvoicePhotoPreviewDialog
+      v-model="isPhotoPreviewOpen"
+      :preview-image-url="previewImageUrl"
+    />
   </div>
 </template>

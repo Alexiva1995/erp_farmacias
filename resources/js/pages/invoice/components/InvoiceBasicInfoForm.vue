@@ -1,16 +1,22 @@
 <script setup>
-import { computed } from "vue";
-
 const props = defineProps({
   formData: { type: Object, required: true },
   suppliers: { type: Array, default: () => [] },
   loadingSuppliers: { type: Boolean, default: false },
   validationErrors: { type: Object, default: () => ({}) },
   expDateError: { type: String, default: "" },
+  fileError: { type: String, default: "" },
   selectedSupplier: { type: Object, default: null },
   isInformalSupplier: { type: Boolean, default: false },
   isEditMode: { type: Boolean, default: false },
+  selectedFile: { type: [Object, File, null], default: null },
 });
+
+const emit = defineEmits(["update:selectedFile", "view-current-photo"]);
+
+const onFileChange = (file) => {
+  emit("update:selectedFile", file);
+};
 </script>
 
 <template>
@@ -74,6 +80,53 @@ const props = defineProps({
             :disabled="isInformalSupplier"
             :error-messages="validationErrors.control_number"
           />
+        </VCol>
+
+        <!-- Campo para Subir / Ver Documento PDF de la Factura -->
+        <VCol cols="12" class="mt-1">
+          <div class="d-flex flex-column gap-1">
+            <div class="d-flex align-center justify-space-between flex-wrap gap-2 mb-1">
+              <span class="text-caption font-weight-bold text-high-emphasis">
+                Documento Digital de la Factura (PDF / Imagen) <span v-if="!formData.invoice_photo" class="text-error">*</span>
+              </span>
+              <div v-if="formData.invoice_photo" class="d-flex align-center gap-2">
+                <VChip
+                  size="x-small"
+                  color="success"
+                  variant="tonal"
+                  class="font-weight-bold"
+                >
+                  <VIcon start size="14">tabler-file-check</VIcon>
+                  Archivo Precargado
+                </VChip>
+                <VBtn
+                  size="x-small"
+                  variant="tonal"
+                  color="primary"
+                  class="font-weight-bold"
+                  @click="emit('view-current-photo')"
+                >
+                  <VIcon start size="14">tabler-eye</VIcon>
+                  Ver Documento
+                </VBtn>
+              </div>
+            </div>
+
+            <VFileInput
+              :model-value="selectedFile"
+              :label="formData.invoice_photo ? 'Reemplazar documento actual (PDF o Imagen)...' : 'Subir archivo PDF / Foto de la Factura *'"
+              accept=".pdf,image/*"
+              prepend-icon=""
+              prepend-inner-icon="tabler-file-type-pdf"
+              variant="outlined"
+              density="compact"
+              clearable
+              show-size
+              :error="Boolean(fileError || validationErrors.invoice_photo)"
+              :error-messages="fileError || validationErrors.invoice_photo"
+              @update:model-value="onFileChange"
+            />
+          </div>
         </VCol>
       </VRow>
     </div>
