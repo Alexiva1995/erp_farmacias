@@ -1,6 +1,11 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
 
+const getFirstDayOfCurrentMonth = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+};
+
 const props = defineProps({
   loading: Boolean,
   exporting: Boolean,
@@ -9,7 +14,7 @@ const props = defineProps({
     type: Object,
     default: () => ({
       search: "",
-      start_date: "2026-04-01",
+      start_date: "",
       end_date: "",
       laboratory_id: null,
       group_id: null,
@@ -22,7 +27,7 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'update:filters', 'fetch', 'clear', 'export']);
 
 const search = ref(props.modelValue.search || '');
-const startDate = ref(props.modelValue.start_date || '2026-04-01');
+const startDate = ref(props.modelValue.start_date || getFirstDayOfCurrentMonth());
 const endDate = ref(props.modelValue.end_date || '');
 const selectedLaboratory = ref(props.modelValue.laboratory_id || null);
 const selectedGroup = ref(props.modelValue.group_id || null);
@@ -44,7 +49,7 @@ watch(() => props.modelValue, (newVal) => {
 }, { deep: true });
 
 const hasActiveAdvancedFilters = computed(() => {
-  return (startDate.value && startDate.value !== '2026-04-01') || endDate.value || selectedLaboratory.value || selectedGroup.value || statusFilter.value !== 1;
+  return (startDate.value && startDate.value !== getFirstDayOfCurrentMonth()) || endDate.value || selectedLaboratory.value || selectedGroup.value || statusFilter.value !== 1;
 });
 
 const toggleAdvancedFilters = () => {
@@ -70,7 +75,7 @@ const notifyUpdate = () => {
 
 const handleClear = () => {
   search.value = '';
-  startDate.value = '2026-04-01';
+  startDate.value = getFirstDayOfCurrentMonth();
   endDate.value = '';
   selectedLaboratory.value = null;
   selectedGroup.value = null;

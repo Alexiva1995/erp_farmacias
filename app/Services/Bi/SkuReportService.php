@@ -28,7 +28,7 @@ class SkuReportService
 
 
 
-        }
+
 
         $expiredQuery = DB::table('expired_logs')
             ->select('product_id', DB::raw('SUM(total_lost_value) as total_expired_cost'))
@@ -179,11 +179,11 @@ class SkuReportService
         $totalHistoricalCost = $totals ? (float) $totals->total_historical_cost : 0.0;
         $totalDiscountAmount = $totals ? (float) $totals->total_discounts : 0.0;
 
-        $minDate = '2026-04-01 00:00:00';
-        $startDate = !empty($filters['start_date']) ? $filters['start_date'] . ' 00:00:00' : $minDate;
-        if ($startDate < $minDate) {
-            $startDate = $minDate;
-        }
+        $startDate = !empty($filters['start_date']) ? $filters['start_date'] . ' 00:00:00' : now()->startOfMonth()->format('Y-m-d 00:00:00');
+
+
+
+
 
         $totalLossesQuery = DB::table('expired_logs')
             ->where('created_at', '>=', $startDate);

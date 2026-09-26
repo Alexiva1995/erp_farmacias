@@ -16,11 +16,16 @@ const itemsPerPage = ref(10);
 const sortBy = ref();
 const orderBy = ref();
 
+const getFirstDayOfCurrentMonth = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+};
+
 const activeFilterKey = ref(null);
 
 const filters = ref({
   search: "",
-  start_date: "2026-04-01",
+  start_date: getFirstDayOfCurrentMonth(),
   end_date: "",
   laboratory_id: null,
   group_id: null,
@@ -86,9 +91,15 @@ onMounted(() => {
 const handleClearFilters = () => {
   activeFilterKey.value = null;
   page.value = 1;
+  filters.value.start_date = getFirstDayOfCurrentMonth();
+  filters.value.end_date = "";
+  filters.value.search = "";
+  filters.value.laboratory_id = null;
+  filters.value.group_id = null;
   filters.value.has_loss = null;
   filters.value.has_discount = null;
   filters.value.semaphore = null;
+  filters.value.is_active = 1;
   fetchReport();
 };
 
@@ -278,8 +289,6 @@ const formatMoney = (val) => '$' + Number(val || 0).toFixed(2);
           :items="skus"
           :items-length="totalItems"
           :loading="loading"
-          fixed-header
-          height="600px"
           class="premium-table density-compact"
           @update:options="updateTableOptions"
         >
