@@ -347,19 +347,20 @@ const getPriceVsAutoOrderIndicator = (item) => {
   if (invoicePrice == null || isNaN(invoicePrice)) return null;
 
   const tolerance = 0.001;
-  const diffPercent = (((invoicePrice - autoOrderPrice) / autoOrderPrice) * 100).toFixed(1);
+  const rawDiff = ((invoicePrice - autoOrderPrice) / autoOrderPrice) * 100;
+  const absDiff = Math.abs(rawDiff).toFixed(1);
 
   if (invoicePrice > autoOrderPrice + tolerance) {
     return {
       color: 'error',
-      badgeText: `+${diffPercent}%`,
-      tooltip: `vs Orden de Compra: Más caro (+${diffPercent}%) — Pactado $${autoOrderPrice.toFixed(2)} USD`,
+      badgeText: `+ ${absDiff}%`,
+      tooltip: `vs Orden de Compra: Más caro (+${absDiff}%) — Pactado $${autoOrderPrice.toFixed(2)} USD`,
     };
   } else if (invoicePrice < autoOrderPrice - tolerance) {
     return {
       color: 'success',
-      badgeText: `${diffPercent}%`,
-      tooltip: `vs Orden de Compra: Más económico (${diffPercent}%) — Pactado $${autoOrderPrice.toFixed(2)} USD`,
+      badgeText: `- ${absDiff}%`,
+      tooltip: `vs Orden de Compra: Más económico (-${absDiff}%) — Pactado $${autoOrderPrice.toFixed(2)} USD`,
     };
   } else {
     return {
@@ -390,21 +391,22 @@ const getPriceVsSystemCostIndicator = (item) => {
   if (invoiceCostUSD == null || isNaN(invoiceCostUSD)) return null;
 
   const tolerance = 0.001;
-  const diffPercent = systemCost > 0
-    ? (((invoiceCostUSD - systemCost) / systemCost) * 100).toFixed(1)
-    : '0';
+  const rawDiff = systemCost > 0
+    ? ((invoiceCostUSD - systemCost) / systemCost) * 100
+    : 0;
+  const absDiff = Math.abs(rawDiff).toFixed(1);
 
   if (invoiceCostUSD > systemCost + tolerance) {
     return {
       color: 'error',
-      badgeText: `+${diffPercent}%`,
-      tooltip: `vs Costo Actual ERP: Más caro (+${diffPercent}%) — Costo en sistema $${systemCost.toFixed(2)} USD`,
+      badgeText: `+ ${absDiff}%`,
+      tooltip: `vs Costo Actual ERP: Más caro (+${absDiff}%) — Costo en sistema $${systemCost.toFixed(2)} USD`,
     };
   } else if (invoiceCostUSD < systemCost - tolerance) {
     return {
       color: 'success',
-      badgeText: `${diffPercent}%`,
-      tooltip: `vs Costo Actual ERP: Más económico (${diffPercent}%) — Costo en sistema $${systemCost.toFixed(2)} USD`,
+      badgeText: `- ${absDiff}%`,
+      tooltip: `vs Costo Actual ERP: Más económico (-${absDiff}%) — Costo en sistema $${systemCost.toFixed(2)} USD`,
     };
   } else {
     return {
