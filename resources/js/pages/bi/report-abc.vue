@@ -698,32 +698,38 @@ const handleFilterCritical = () => {
         </div>
 
         <!-- Pestañas de Conmutación de Vistas y Acceso a Foto Finish -->
-        <div class="d-flex align-center gap-2 ms-auto">
-          <VBtnToggle
-            :model-value="isSimplifiedView ? 'simplified' : 'full'"
-            density="compact"
-            variant="outlined"
-            divided
-            mandatory
-            color="primary"
-            class="rounded-lg bg-surface border"
-            @update:model-value="isSimplifiedView = ($event === 'simplified')"
-          >
-            <VBtn value="full" size="small" class="font-weight-medium text-caption px-3">
-              <VIcon icon="tabler-layout-table" size="14" class="me-1" />
+        <div class="d-flex align-center flex-wrap gap-2 ms-auto">
+          <div class="view-toggle-container d-inline-flex align-center pa-1 rounded-lg border bg-surface">
+            <VBtn
+              size="small"
+              :color="!isSimplifiedView ? 'primary' : 'default'"
+              :variant="!isSimplifiedView ? 'flat' : 'text'"
+              class="font-weight-medium text-caption px-3 rounded-md transition-all text-no-wrap"
+              height="32"
+              @click="isSimplifiedView = false"
+            >
+              <VIcon icon="tabler-layout-table" size="15" class="me-1.5" />
               Vista Completa
             </VBtn>
-            <VBtn value="simplified" size="small" class="font-weight-medium text-caption px-3">
-              <VIcon icon="tabler-bulb" size="14" class="me-1" />
+            <VBtn
+              size="small"
+              :color="isSimplifiedView ? 'warning' : 'default'"
+              :variant="isSimplifiedView ? 'flat' : 'text'"
+              class="font-weight-medium text-caption px-3 rounded-md transition-all text-no-wrap"
+              height="32"
+              @click="isSimplifiedView = true"
+            >
+              <VIcon icon="tabler-bolt" size="15" class="me-1.5" />
               {{ selectedAnalysisType === 'expiring_risk' ? 'Capital por Expirar' : 'Capital Parado' }}
             </VBtn>
-          </VBtnToggle>
+          </div>
 
           <VBtn
             color="info"
             variant="tonal"
             size="small"
             class="font-weight-bold text-caption rounded-lg"
+            height="34"
             @click="router.push('/bi/report-finish')"
           >
             <VIcon icon="tabler-camera" size="15" class="me-1" />
@@ -1121,8 +1127,10 @@ const handleFilterCritical = () => {
   text-decoration: underline !important;
 }
 
-.cursor-help {
-  cursor: help;
+.view-toggle-container {
+  border-color: rgba(var(--v-border-color), 0.16) !important;
+  background-color: rgba(var(--v-theme-surface-variant), 0.15) !important;
+  gap: 3px;
 }
 
 .gap-1 { gap: 4px !important; }
