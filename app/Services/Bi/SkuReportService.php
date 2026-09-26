@@ -24,10 +24,10 @@ class SkuReportService
     {
         $baseQuery = $this->skuReportRepository->getBaseQuery($filters);
 
-        $minDate = '2026-04-01 00:00:00';
-        $startDate = !empty($filters['start_date']) ? $filters['start_date'] . ' 00:00:00' : $minDate;
-        if ($startDate < $minDate) {
-            $startDate = $minDate;
+        $startDate = !empty($filters['start_date']) ? $filters['start_date'] . ' 00:00:00' : now()->startOfMonth()->format('Y-m-d 00:00:00');
+
+
+
         }
 
         $expiredQuery = DB::table('expired_logs')

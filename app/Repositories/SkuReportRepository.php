@@ -20,9 +20,9 @@ class SkuReportRepository implements SkuReportRepositoryInterface
     public function getBaseQuery(array $filters): Builder
     {
         // Filtro de Fechas (usa la tabla orders) — Se restringe estrictamente a partir de Abril 2026
-        $minDate = '2026-04-01 00:00:00';
-        $startDate = !empty($filters['start_date']) ? $filters['start_date'] . ' 00:00:00' : $minDate;
-        if ($startDate < $minDate) $startDate = $minDate;
+        $startDate = !empty($filters['start_date']) ? $filters['start_date'] . ' 00:00:00' : now()->startOfMonth()->format('Y-m-d 00:00:00');
+
+
         
         $endDate = !empty($filters['end_date']) ? $filters['end_date'] . ' 23:59:59' : null;
 
@@ -150,12 +150,12 @@ class SkuReportRepository implements SkuReportRepositoryInterface
             )
             ->groupBy('product_id');
 
-        $minDate = '2026-04-01 00:00:00';
-        $startDate = !empty($filters['start_date']) ? $filters['start_date'] . ' 00:00:00' : $minDate;
+        $startDate = !empty($filters['start_date']) ? $filters['start_date'] . ' 00:00:00' : now()->startOfMonth()->format('Y-m-d 00:00:00');
+
         
-        if ($startDate < $minDate) {
-            $startDate = $minDate;
-        }
+
+
+
 
         if (!empty($filters['end_date'])) {
             $endDate = $filters['end_date'] . ' 23:59:59';
