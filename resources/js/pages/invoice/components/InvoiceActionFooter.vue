@@ -66,8 +66,8 @@ const emit = defineEmits([
           class="flex-1-1 font-weight-bold"
           @click="emit('reject')"
         >
-          <VIcon icon="tabler-x" class="me-2" />
-          Rechazar Factura
+          <VIcon icon="tabler-arrow-back-up" class="me-2" />
+          Rechazar y Devolver
         </VBtn>
         <VBtn
           :loading="isSaving"

@@ -57,6 +57,10 @@ const props = defineProps({
     type: Function,
     required: true,
   },
+  getPriceVsSystemCostIndicator: {
+    type: Function,
+    default: () => null,
+  },
 })
 
 const emit = defineEmits([
@@ -162,7 +166,7 @@ const emit = defineEmits([
               <div v-else class="d-flex flex-column align-start">
                 <div class="d-flex align-center gap-1">
                   <span class="value font-weight-bold">{{ formatCurrency(item.unit_cost, invoice.currency) }}</span>
-                  <!-- Indicador precio vs costo en sistema -->
+                  <!-- Indicador precio vs auto-orden -->
                   <VTooltip
                     v-if="getPriceVsAutoOrderIndicator(item)"
                     :text="getPriceVsAutoOrderIndicator(item).tooltip"
@@ -175,20 +179,45 @@ const emit = defineEmits([
                         :color="getPriceVsAutoOrderIndicator(item).color"
                         variant="tonal"
                         class="px-1 font-weight-bold"
+                        style="height: 18px; font-size: 10px;"
                       >
-                        <VIcon :icon="getPriceVsAutoOrderIndicator(item).icon" size="13" class="me-0.5" />
+                        <VIcon :icon="getPriceVsAutoOrderIndicator(item).icon" size="12" class="me-0.5" />
                         {{ getPriceVsAutoOrderIndicator(item).badgeText }}
                       </VChip>
                     </template>
                   </VTooltip>
                 </div>
-                <span
+                <div
                   v-if="invoice.currency !== 'USD' && item.unit_cost_usd != null"
-                  class="text-caption text-medium-emphasis font-weight-medium"
-                  style="font-size: 11px;"
+                  class="d-flex align-center gap-1 mt-0.5"
                 >
-                  ${{ Number(item.unit_cost_usd).toFixed(2) }}
-                </span>
+                  <span
+                    class="font-weight-bold text-high-emphasis"
+                    style="font-size: 11px;"
+                  >
+                    ${{ Number(item.unit_cost_usd).toFixed(2) }}
+                  </span>
+                  <!-- Indicador precio vs costo actual en sistema -->
+                  <VTooltip
+                    v-if="getPriceVsSystemCostIndicator && getPriceVsSystemCostIndicator(item)"
+                    :text="getPriceVsSystemCostIndicator(item).tooltip"
+                    location="top"
+                  >
+                    <template #activator="{ props: tipProps }">
+                      <VChip
+                        v-bind="tipProps"
+                        size="x-small"
+                        :color="getPriceVsSystemCostIndicator(item).color"
+                        variant="tonal"
+                        class="px-1 font-weight-bold"
+                        style="height: 18px; font-size: 10px;"
+                      >
+                        <VIcon :icon="getPriceVsSystemCostIndicator(item).icon" size="12" class="me-0.5" />
+                        {{ getPriceVsSystemCostIndicator(item).badgeText }}
+                      </VChip>
+                    </template>
+                  </VTooltip>
+                </div>
               </div>
             </div>
             <div class="detail-item">

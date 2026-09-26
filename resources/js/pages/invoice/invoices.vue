@@ -10,8 +10,10 @@ import InvoiceForm from "@/pages/invoice/register.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import Swal from "sweetalert2";
+import { useAuthStore } from "@/stores/auth";
 
 const route = useRoute();
+const { isAdmin } = useAuthStore();
 
 const currentView = ref("list");
 const selectedInvoiceId = ref(null);
@@ -409,6 +411,7 @@ const handleSyncAll = async () => {
         :total-invoices="totalInvoices"
         :items-per-page="itemsPerPage"
         :page="page"
+        :is-admin="isAdmin"
         @update:options="updateTableOptions"
         @edit-invoice="handleEditInvoice"
         @edit-invoice-form="handleEditInvoiceForm"

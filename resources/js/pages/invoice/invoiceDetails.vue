@@ -430,10 +430,50 @@ const getCostTooltipText = (item) => {
 };
 
 /**
+ * Compara el precio unitario de la factura (en USD) vs el precio de la Auto-Orden.
+ * Retorna { icon, color, tooltip, badgeText } o null si no hay referencia de auto-orden.
+ */
+const getPriceVsAutoOrderIndicator = (item) => {
+  if (!isApprovalMode.value && !isEditableMode.value) return null;
+
+  const autoOrderPrice = item.auto_order_unit_cost_usd != null ? Number(item.auto_order_unit_cost_usd) : null;
+  if (autoOrderPrice == null || isNaN(autoOrderPrice) || autoOrderPrice <= 0) return null;
+
+  const invoicePrice = item.unit_cost_usd != null ? Number(item.unit_cost_usd) : null;
+  if (invoicePrice == null || isNaN(invoicePrice)) return null;
+
+  const tolerance = 0.001;
+  const diffPercent = (((invoicePrice - autoOrderPrice) / autoOrderPrice) * 100).toFixed(1);
+
+  if (invoicePrice > autoOrderPrice + tolerance) {
+    return {
+      icon: 'tabler-trending-up',
+      color: 'error',
+      badgeText: `+${diffPercent}%`,
+      tooltip: `Más caro que la Auto-Orden (+${diffPercent}%): Auto-Orden $${autoOrderPrice.toFixed(2)} USD`,
+    };
+  } else if (invoicePrice < autoOrderPrice - tolerance) {
+    return {
+      icon: 'tabler-trending-down',
+      color: 'success',
+      badgeText: `${diffPercent}%`,
+      tooltip: `Más económico que la Auto-Orden (${diffPercent}%): Auto-Orden $${autoOrderPrice.toFixed(2)} USD`,
+    };
+  } else {
+    return {
+      icon: 'tabler-equal',
+      color: 'secondary',
+      badgeText: '= 0%',
+      tooltip: `Igual al precio de la Auto-Orden: $${autoOrderPrice.toFixed(2)} USD`,
+    };
+  }
+};
+
+/**
  * Compara el precio unitario de la factura (en USD) vs el costo actual registrado en el sistema.
  * Retorna { icon, color, tooltip, badgeText } o null.
  */
-const getPriceVsAutoOrderIndicator = (item) => {
+const getPriceVsSystemCostIndicator = (item) => {
   if (!isApprovalMode.value && !isEditableMode.value) return null;
 
   const systemCost = Number(item.product?.unit_cost);
@@ -449,7 +489,7 @@ const getPriceVsAutoOrderIndicator = (item) => {
   const invoiceCostUSD = item.unit_cost_usd != null ? Number(item.unit_cost_usd) : null;
   if (invoiceCostUSD == null || isNaN(invoiceCostUSD)) return null;
 
-  const tolerance = 0.01;
+  const tolerance = 0.001;
   const diffPercent = systemCost > 0
     ? (((invoiceCostUSD - systemCost) / systemCost) * 100).toFixed(1)
     : '0';
@@ -700,12 +740,12 @@ const handleConfirmApproval = () => {
 const handleReject = async () => {
   const result = await Swal.fire({
     title: "¿Estás seguro?",
-    text: "Esta factura será devuelta a la lista de carga de productos.",
+    text: `La factura #${invoice.value?.invoice_number || props.invoiceId} junto a todos los productos aceptados serán regresados al estado pendiente.`,
     icon: "warning",
     showCancelButton: true,
     confirmButtonColor: "#d33",
     cancelButtonColor: "#3085d6",
-    confirmButtonText: "Sí, rechazar",
+    confirmButtonText: "Devolver a Pendiente",
     cancelButtonText: "Cancelar",
     reverseButtons: true,
   });
@@ -1987,11 +2027,11 @@ const detailsHeaders = computed(() => {
                     { 'returned-item': isItemReturned(item) },
                   ]"
                 >
-                  <div class="d-flex align-center gap-1">
+                  <!-- Línea 1: Costo en moneda de factura (ej. Bs) con indicador vs Auto-Orden -->
+                  <div class="d-flex align-center justify-end gap-1">
                     <span class="font-weight-bold text-high-emphasis">{{
                       formatCurrency(item.unit_cost, invoice.currency)
                     }}</span>
-                    <!-- Indicador y badge de tendencia vs costo en sistema -->
                     <VTooltip
                       v-if="getPriceVsAutoOrderIndicator(item)"
                       :text="getPriceVsAutoOrderIndicator(item).tooltip"
@@ -2004,21 +2044,46 @@ const detailsHeaders = computed(() => {
                           :color="getPriceVsAutoOrderIndicator(item).color"
                           variant="tonal"
                           class="px-1 font-weight-bold"
+                          style="height: 18px; font-size: 10px;"
                         >
-                          <VIcon :icon="getPriceVsAutoOrderIndicator(item).icon" size="13" class="me-0.5" />
+                          <VIcon :icon="getPriceVsAutoOrderIndicator(item).icon" size="12" class="me-0.5" />
                           {{ getPriceVsAutoOrderIndicator(item).badgeText }}
                         </VChip>
                       </template>
                     </VTooltip>
                   </div>
-                  <!-- Costo referencial en USD si la moneda es Bs -->
-                  <span
+
+                  <!-- Línea 2: Costo en USD en texto negro con indicador vs Costo Actual en Sistema -->
+                  <div
                     v-if="invoice.currency !== 'USD' && item.unit_cost_usd != null"
-                    class="text-caption text-medium-emphasis font-weight-medium"
-                    style="font-size: 11px;"
+                    class="d-flex align-center justify-end gap-1 mt-0.5"
                   >
-                    ${{ Number(item.unit_cost_usd).toFixed(2) }}
-                  </span>
+                    <span
+                      class="font-weight-bold text-high-emphasis"
+                      style="font-size: 11px; color: inherit;"
+                    >
+                      ${{ Number(item.unit_cost_usd).toFixed(2) }}
+                    </span>
+                    <VTooltip
+                      v-if="getPriceVsSystemCostIndicator(item)"
+                      :text="getPriceVsSystemCostIndicator(item).tooltip"
+                      location="top"
+                    >
+                      <template #activator="{ props: tipProps }">
+                        <VChip
+                          v-bind="tipProps"
+                          size="x-small"
+                          :color="getPriceVsSystemCostIndicator(item).color"
+                          variant="tonal"
+                          class="px-1 font-weight-bold"
+                          style="height: 18px; font-size: 10px;"
+                        >
+                          <VIcon :icon="getPriceVsSystemCostIndicator(item).icon" size="12" class="me-0.5" />
+                          {{ getPriceVsSystemCostIndicator(item).badgeText }}
+                        </VChip>
+                      </template>
+                    </VTooltip>
+                  </div>
                 </div>
               </template>
 
@@ -2170,6 +2235,7 @@ const detailsHeaders = computed(() => {
               :is-item-returned="isItemReturned"
               :format-currency="formatCurrency"
               :get-price-vs-auto-order-indicator="getPriceVsAutoOrderIndicator"
+              :get-price-vs-system-cost-indicator="getPriceVsSystemCostIndicator"
               @recalculate-total-from-unit="recalculateTotalFromUnit"
               @recalculate-unit-from-total="recalculateUnitFromTotal"
               @update-location="updateLocation"

@@ -168,12 +168,16 @@ const handleApprovalApiCall = async ({ paymentRuleId }) => {
 const handleRejectApiCall = async () => {
   isApproving.value = true;
   try {
-    await axios.post(`/invoices/${selectedInvoiceId.value}/reject`);
-    toast.success("Factura rechazada con éxito y devuelta a la carga.");
-    handleReturnToList();
+    const { data } = await axios.put(`/invoices/${selectedInvoiceId.value}/return-pending`);
+    if (data.status) {
+      toast.success(data.message || "Factura devuelta a pendientes.");
+      handleReturnToList();
+    } else {
+      toast.error(data.message || "No se pudo devolver la factura.");
+    }
   } catch (error) {
     toast.error(
-      error.response?.data?.message || "No se pudo rechazar la factura."
+      error.response?.data?.message || "No se pudo devolver la factura a estado pendiente."
     );
   } finally {
     isApproving.value = false;

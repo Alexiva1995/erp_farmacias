@@ -6,6 +6,7 @@ import axios from "@/plugins/axios";
 import AppEmptyState from "@/components/AppEmptyState.vue";
 import InvoicePhotoPreviewDialog from "@/components/InvoicePhotoPreviewDialog.vue";
 import { toast } from "@/plugins/sweetalert";
+import { useAuthStore } from "@/stores/auth";
 
 const props = defineProps({
   invoices: { type: Array, required: true },
@@ -23,6 +24,9 @@ const props = defineProps({
     default: null,
   },
 });
+
+const authStore = useAuthStore();
+const isAdminComputed = computed(() => Boolean(props.isAdmin || authStore.isAdmin));
 
 const { mobile } = useDisplay();
 
@@ -209,7 +213,7 @@ const formatDate = (dateString) => {
             </IconBtn>
 
             <IconBtn
-              v-if="props.isAdmin"
+              v-if="isAdminComputed"
               size="small"
               color="warning"
               @click="emit('return-invoice', item.id)"
@@ -273,7 +277,7 @@ const formatDate = (dateString) => {
             </IconBtn>
 
             <IconBtn
-              v-if="props.isAdmin"
+              v-if="isAdminComputed"
               size="small"
               color="warning"
               @click="emit('return-invoice', item.id)"
@@ -314,7 +318,7 @@ const formatDate = (dateString) => {
             </IconBtn>
 
             <IconBtn
-              v-if="props.isAdmin"
+              v-if="isAdminComputed"
               size="small"
               color="error"
               @click="emit('delete-invoice', item.id)"
@@ -427,7 +431,7 @@ const formatDate = (dateString) => {
                   <VBtn color="primary" variant="tonal" size="small" class="flex-grow-1" @click="emit('edit-invoice', item)">
                     <VIcon icon="tabler-package" />
                   </VBtn>
-                   <VBtn v-if="props.isAdmin" color="primary" variant="tonal" size="small" class="flex-grow-1" @click="emit('return-invoice', item.id)">
+                   <VBtn v-if="isAdminComputed" color="primary" variant="tonal" size="small" class="flex-grow-1" @click="emit('return-invoice', item.id)">
                     <VIcon icon="tabler-arrow-back-up" />
                   </VBtn>
                   <VBtn color="error" variant="tonal" size="small" class="flex-grow-1" @click="emit('delete-invoice', item.id)">
