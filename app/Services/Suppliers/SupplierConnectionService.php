@@ -224,7 +224,13 @@ class SupplierConnectionService
             $endsWith = $filter['ends_with'] ?? '.txt';
             $files = array_filter($files, function ($file) use ($startsWith, $endsWith) {
                 $name = basename($file);
-                return str_starts_with($name, $startsWith) && str_ends_with($name, $endsWith);
+                $lowerName = strtolower($name);
+                $lowerStart = strtolower($startsWith);
+                $lowerEnd = strtolower($endsWith);
+
+                $startsOk = empty($startsWith) || str_starts_with($lowerName, $lowerStart) || str_starts_with($lowerName, 'f') || preg_match('/^\d+/', $name);
+                $endsOk = empty($endsWith) || str_ends_with($lowerName, '.txt') || str_ends_with($lowerName, '.fact') || str_ends_with($lowerName, $lowerEnd);
+                return $startsOk && $endsOk;
             });
 
             // Optimización: Cargar todas las facturas y controles ya registrados en base de datos para no descargarlas repetidamente por FTP
@@ -326,7 +332,7 @@ class SupplierConnectionService
                     $invoiceContent = file_get_contents($tempInvoice);
                     $isVitalClinic = str_contains(strtolower($connection->host ?? ''), 'vitalclinic')
                         || str_contains(strtolower($connection->supplier?->name ?? ''), 'vitalclinic')
-                        || in_array($connection->supplier_id, [2, 1009]);
+                        || in_array($connection->supplier_id, [15, 1009]);
                     $parsed = $this->invoiceTxtParser($invoiceContent, $connection, $seenInvoiceNumbers, $isVitalClinic ? $filename : null);
 
                     if (!empty($parsed) && !empty($parsed['header'])) {
@@ -1106,7 +1112,7 @@ class SupplierConnectionService
 
                 $isVitalClinic = str_contains(strtolower($connection->host ?? ''), 'vitalclinic')
                     || str_contains(strtolower($connection->supplier?->name ?? ''), 'vitalclinic')
-                    || in_array($connection->supplier_id, [2, 1009]);
+                    || in_array($connection->supplier_id, [15, 1009]);
 
                 if ($isVitalClinic) {
                     if (isset($header["tax_amount"])) {
