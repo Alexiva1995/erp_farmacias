@@ -18,73 +18,73 @@ defineProps({
 </script>
 
 <template>
-  <v-row class="mb-4">
-    <v-col cols="12" sm="6" md="3">
-      <v-card class="elevation-2 rounded-lg pa-4 border">
+  <VRow class="mb-4">
+    <VCol cols="12" sm="6" md="3">
+      <VCard class="elevation-2 rounded-lg pa-4 border bg-surface">
         <div class="d-flex align-center justify-space-between">
           <div>
             <span class="text-caption text-medium-emphasis uppercase font-weight-bold">Total Registros</span>
             <h3 class="text-h5 font-weight-black mt-1">
-              <v-progress-circular v-if="loading" indeterminate size="20" width="2" color="primary" />
+              <VProgressCircular v-if="loading" indeterminate size="20" width="2" color="primary" />
               <template v-else>{{ stats.total }}</template>
             </h3>
           </div>
-          <v-avatar color="primary" variant="tonal" size="44">
-            <v-icon icon="tabler-file-invoice" size="24" />
-          </v-avatar>
+          <VAvatar color="primary" variant="tonal" size="44" class="rounded-lg">
+            <VIcon icon="tabler-file-invoice" size="24" />
+          </VAvatar>
         </div>
-      </v-card>
-    </v-col>
+      </VCard>
+    </VCol>
 
-    <v-col cols="12" sm="6" md="3">
-      <v-card class="elevation-2 rounded-lg pa-4 border">
+    <VCol cols="12" sm="6" md="3">
+      <VCard class="elevation-2 rounded-lg pa-4 border bg-surface">
         <div class="d-flex align-center justify-space-between">
           <div>
             <span class="text-caption text-medium-emphasis uppercase font-weight-bold">Pendientes</span>
             <h3 class="text-h5 font-weight-black text-warning mt-1">
-              <v-progress-circular v-if="loading" indeterminate size="20" width="2" color="warning" />
+              <VProgressCircular v-if="loading" indeterminate size="20" width="2" color="warning" />
               <template v-else>{{ stats.pending }}</template>
             </h3>
           </div>
-          <v-avatar color="warning" variant="tonal" size="44">
-            <v-icon icon="tabler-clock" size="24" />
-          </v-avatar>
+          <VAvatar color="warning" variant="tonal" size="44" class="rounded-lg">
+            <VIcon icon="tabler-clock" size="24" />
+          </VAvatar>
         </div>
-      </v-card>
-    </v-col>
+      </VCard>
+    </VCol>
 
-    <v-col cols="12" sm="6" md="3">
-      <v-card class="elevation-2 rounded-lg pa-4 border">
+    <VCol cols="12" sm="6" md="3">
+      <VCard class="elevation-2 rounded-lg pa-4 border bg-surface">
         <div class="d-flex align-center justify-space-between">
           <div>
             <span class="text-caption text-medium-emphasis uppercase font-weight-bold">Aprobadas</span>
             <h3 class="text-h5 font-weight-black text-success mt-1">
-              <v-progress-circular v-if="loading" indeterminate size="20" width="2" color="success" />
+              <VProgressCircular v-if="loading" indeterminate size="20" width="2" color="success" />
               <template v-else>{{ stats.approved }}</template>
             </h3>
           </div>
-          <v-avatar color="success" variant="tonal" size="44">
-            <v-icon icon="tabler-circle-check" size="24" />
-          </v-avatar>
+          <VAvatar color="success" variant="tonal" size="44" class="rounded-lg">
+            <VIcon icon="tabler-circle-check" size="24" />
+          </VAvatar>
         </div>
-      </v-card>
-    </v-col>
+      </VCard>
+    </VCol>
 
-    <v-col cols="12" sm="6" md="3">
-      <v-card class="elevation-2 rounded-lg pa-4 border">
+    <VCol cols="12" sm="6" md="3">
+      <VCard class="elevation-2 rounded-lg pa-4 border bg-surface">
         <div class="d-flex align-center justify-space-between">
           <div>
             <span class="text-caption text-medium-emphasis uppercase font-weight-bold">Rechazadas</span>
             <h3 class="text-h5 font-weight-black text-error mt-1">
-              <v-progress-circular v-if="loading" indeterminate size="20" width="2" color="error" />
+              <VProgressCircular v-if="loading" indeterminate size="20" width="2" color="error" />
               <template v-else>{{ stats.rejected }}</template>
             </h3>
           </div>
-          <v-avatar color="error" variant="tonal" size="44">
-            <v-icon icon="tabler-circle-x" size="24" />
-          </v-avatar>
+          <VAvatar color="error" variant="tonal" size="44" class="rounded-lg">
+            <VIcon icon="tabler-circle-x" size="24" />
+          </VAvatar>
         </div>
-      </v-card>
-    </v-col>
-  </v-row>
+      </VCard>
+    </VCol>
+  </VRow>
 </template>

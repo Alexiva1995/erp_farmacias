@@ -9,112 +9,170 @@ const emit = defineEmits(['update:modelValue', 'copy'])
 const close = () => {
   emit('update:modelValue', false)
 }
+
+const formatBs = (value) => {
+  const num = Number(value) || 0
+  return new Intl.NumberFormat('es-VE', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(num)
+}
 </script>
 
 <template>
-  <v-dialog :model-value="modelValue" max-width="600" @update:model-value="emit('update:modelValue', $event)">
-    <v-card v-if="item" class="rounded-lg">
-      <v-card-title class="bg-primary text-white d-flex align-center justify-space-between pa-4">
-        <span class="text-h6 font-weight-bold">Detalle de Devolución #{{ item.invoice_number }}</span>
-        <v-btn icon="tabler-x" variant="text" color="white" density="compact" @click="close" />
-      </v-card-title>
+  <VDialog
+    :model-value="modelValue"
+    max-width="580"
+    @update:model-value="emit('update:modelValue', $event)"
+  >
+    <VCard v-if="item" class="rounded-xl overflow-hidden shadow-lg border-0 d-flex flex-column bg-surface">
+      <!-- Header Corporativo Institucional del Sistema -->
+      <VCardTitle class="pa-0 flex-shrink-0">
+        <div
+          class="px-5 py-4 d-flex align-center justify-space-between text-white"
+          style="background: linear-gradient(135deg, #7A0099, #E20074) !important;"
+        >
+          <div class="d-flex align-center">
+            <VAvatar color="white" variant="flat" size="38" class="me-3 elevation-1 flex-shrink-0">
+              <VIcon color="primary" size="22">tabler-arrow-back-up</VIcon>
+            </VAvatar>
+            <div class="d-flex flex-column">
+              <h2 class="text-subtitle-1 font-weight-black text-white leading-tight mb-0.5" style="color: white !important;">
+                Detalle de Devolución — Factura {{ item.invoice_number }}
+              </h2>
+              <span class="text-caption text-white opacity-90 font-weight-medium" style="color: white !important; font-size: 11px;">
+                Información del producto devuelto y reembolso
+              </span>
+            </div>
+          </div>
+          <VBtn
+            icon="tabler-x"
+            variant="tonal"
+            color="white"
+            size="x-small"
+            class="rounded-lg"
+            @click="close"
+          />
+        </div>
+      </VCardTitle>
 
-      <v-card-text class="pa-6">
-        <v-list density="compact">
-          <v-list-item>
+      <!-- Resumen de Factura y Proveedor -->
+      <div class="px-5 py-2.5 bg-surface border-b d-flex align-center justify-space-between flex-wrap gap-2">
+        <div class="d-flex align-center gap-2">
+          <VIcon icon="tabler-building" size="16" color="primary" />
+          <span class="text-caption text-medium-emphasis font-weight-medium">Proveedor:</span>
+          <span class="text-caption font-weight-bold text-high-emphasis text-uppercase">{{ item.supplier_name }}</span>
+        </div>
+        <div class="d-flex align-center gap-2">
+          <VChip size="x-small" variant="tonal" color="primary" class="font-weight-bold">
+            Factura: {{ item.invoice_number }}
+          </VChip>
+          <VChip
+            size="x-small"
+            variant="tonal"
+            :color="item.status === 'approved' ? 'success' : item.status === 'rejected' ? 'error' : 'warning'"
+            class="font-weight-bold text-uppercase"
+          >
+            {{ item.status_label || item.status }}
+          </VChip>
+        </div>
+      </div>
+
+      <VCardText class="pa-5 bg-surface">
+        <VList density="compact" class="pa-0 bg-transparent">
+          <VListItem class="px-0 py-1">
             <template #prepend>
-              <v-icon icon="tabler-file-invoice" color="primary" class="mr-2" />
+              <VAvatar size="32" color="primary" variant="tonal" class="me-3">
+                <VIcon icon="tabler-package" size="18" />
+              </VAvatar>
             </template>
-            <v-list-item-title class="font-weight-bold">Factura:</v-list-item-title>
-            <v-list-item-subtitle>#{{ item.invoice_number }}</v-list-item-subtitle>
-          </v-list-item>
+            <VListItemTitle class="font-weight-medium text-caption text-medium-emphasis">Producto a Devolver</VListItemTitle>
+            <VListItemSubtitle class="text-body-1 font-weight-bold text-high-emphasis">{{ item.product_name }}</VListItemSubtitle>
+          </VListItem>
 
-          <v-list-item>
+          <VListItem class="px-0 py-1">
             <template #prepend>
-              <v-icon icon="tabler-building-store" color="primary" class="mr-2" />
+              <VAvatar size="32" color="info" variant="tonal" class="me-3">
+                <VIcon icon="tabler-barcode" size="18" />
+              </VAvatar>
             </template>
-            <v-list-item-title class="font-weight-bold">Proveedor:</v-list-item-title>
-            <v-list-item-subtitle>{{ item.supplier_name }} (RIF: {{ item.supplier_rif || 'N/A' }})</v-list-item-subtitle>
-          </v-list-item>
+            <VListItemTitle class="font-weight-medium text-caption text-medium-emphasis">Código de Barras / SKU</VListItemTitle>
+            <VListItemSubtitle class="text-body-2 font-weight-medium text-high-emphasis">{{ item.barcode || item.sku || 'N/A' }}</VListItemSubtitle>
+          </VListItem>
 
-          <v-divider class="my-3" />
-
-          <v-list-item>
+          <VListItem class="px-0 py-1">
             <template #prepend>
-              <v-icon icon="tabler-package" color="primary" class="mr-2" />
+              <VAvatar size="32" color="primary" variant="tonal" class="me-3">
+                <VIcon icon="tabler-numbers" size="18" />
+              </VAvatar>
             </template>
-            <v-list-item-title class="font-weight-bold">Producto a Devolver:</v-list-item-title>
-            <v-list-item-subtitle>{{ item.product_name }}</v-list-item-subtitle>
-          </v-list-item>
+            <VListItemTitle class="font-weight-medium text-caption text-medium-emphasis">Cantidad Devuelta</VListItemTitle>
+            <VListItemSubtitle class="text-body-2 font-weight-bold text-high-emphasis">{{ item.quantity }} unidades</VListItemSubtitle>
+          </VListItem>
 
-          <v-list-item>
+          <VListItem class="px-0 py-1">
             <template #prepend>
-              <v-icon icon="tabler-barcode" color="primary" class="mr-2" />
+              <VAvatar size="32" color="secondary" variant="tonal" class="me-3">
+                <VIcon icon="tabler-cash" size="18" />
+              </VAvatar>
             </template>
-            <v-list-item-title class="font-weight-bold">Código / SKU:</v-list-item-title>
-            <v-list-item-subtitle>{{ item.barcode || item.sku || 'N/A' }}</v-list-item-subtitle>
-          </v-list-item>
+            <VListItemTitle class="font-weight-medium text-caption text-medium-emphasis">Monto Reembolso</VListItemTitle>
+            <VListItemSubtitle class="text-body-1 font-weight-black text-high-emphasis">
+              Bs {{ formatBs(item.amount_refunded_bs || item.amount_refunded) }}
+            </VListItemSubtitle>
+          </VListItem>
 
-          <v-list-item>
+          <VListItem v-if="item.supplier_discount_percentage > 0" class="px-0 py-1">
             <template #prepend>
-              <v-icon icon="tabler-numbers" color="primary" class="mr-2" />
+              <VAvatar size="32" color="warning" variant="tonal" class="me-3">
+                <VIcon icon="tabler-discount-2" size="18" />
+              </VAvatar>
             </template>
-            <v-list-item-title class="font-weight-bold">Cantidad Devuelta:</v-list-item-title>
-            <v-list-item-subtitle>{{ item.quantity }} unidades</v-list-item-subtitle>
-          </v-list-item>
+            <VListItemTitle class="font-weight-medium text-caption text-medium-emphasis">Descuento Proveedor</VListItemTitle>
+            <VListItemSubtitle class="text-body-2 font-weight-medium text-high-emphasis">{{ item.supplier_discount_percentage }}%</VListItemSubtitle>
+          </VListItem>
 
-          <v-list-item>
+          <VListItem class="px-0 py-1">
             <template #prepend>
-              <v-icon icon="tabler-currency-dollar" color="success" class="mr-2" />
+              <VAvatar size="32" color="primary" variant="tonal" class="me-3">
+                <VIcon icon="tabler-calendar-event" size="18" />
+              </VAvatar>
             </template>
-            <v-list-item-title class="font-weight-bold">Monto Reembolso:</v-list-item-title>
-            <v-list-item-subtitle class="text-success font-weight-black">
-              ${{ parseFloat(item.amount_refunded).toFixed(2) }}
-            </v-list-item-subtitle>
-          </v-list-item>
+            <VListItemTitle class="font-weight-medium text-caption text-medium-emphasis">Lote y Vencimiento</VListItemTitle>
+            <VListItemSubtitle class="text-body-2 font-weight-medium text-high-emphasis">
+              Lote: {{ item.lot_number || 'N/A' }} | Venc: {{ item.expiration_date || 'N/A' }}
+            </VListItemSubtitle>
+          </VListItem>
 
-          <v-list-item>
+          <VListItem class="px-0 py-1">
             <template #prepend>
-              <v-icon icon="tabler-discount-2" color="warning" class="mr-2" />
+              <VAvatar size="32" color="secondary" variant="tonal" class="me-3">
+                <VIcon icon="tabler-calendar" size="18" />
+              </VAvatar>
             </template>
-            <v-list-item-title class="font-weight-bold">Descuento Proveedor:</v-list-item-title>
-            <v-list-item-subtitle>{{ item.supplier_discount_percentage }}%</v-list-item-subtitle>
-          </v-list-item>
+            <VListItemTitle class="font-weight-medium text-caption text-medium-emphasis">Fecha de Registro</VListItemTitle>
+            <VListItemSubtitle class="text-body-2 font-weight-medium text-high-emphasis">{{ item.return_date || 'N/A' }}</VListItemSubtitle>
+          </VListItem>
+        </VList>
+      </VCardText>
 
-          <v-list-item>
-            <template #prepend>
-              <v-icon icon="tabler-box" color="primary" class="mr-2" />
-            </template>
-            <v-list-item-title class="font-weight-bold">Lote / Vencimiento:</v-list-item-title>
-            <v-list-item-subtitle>Lote: {{ item.lot_number || 'N/A' }} | Venc: {{ item.expiration_date || 'N/A' }}</v-list-item-subtitle>
-          </v-list-item>
-
-          <v-list-item>
-            <template #prepend>
-              <v-icon icon="tabler-calendar" color="primary" class="mr-2" />
-            </template>
-            <v-list-item-title class="font-weight-bold">Fecha de Registro:</v-list-item-title>
-            <v-list-item-subtitle>{{ item.return_date }}</v-list-item-subtitle>
-          </v-list-item>
-        </v-list>
-      </v-card-text>
-
-      <v-card-actions class="pa-4 bg-light flex-wrap gap-2">
-        <v-btn
+      <VCardActions class="pa-4 bg-surface border-t flex-wrap ga-2">
+        <VBtn
           color="primary"
-          variant="elevated"
+          variant="flat"
           prepend-icon="tabler-copy"
+          class="font-weight-bold"
           @click="emit('copy', item)"
         >
           Copiar Datos
-        </v-btn>
+        </VBtn>
 
-        <v-spacer />
+        <VSpacer />
 
-        <v-btn variant="outlined" color="secondary" @click="close">
+        <VBtn variant="outlined" color="secondary" class="font-weight-bold" @click="close">
           Cerrar
-        </v-btn>
-      </v-card-actions>
-    </v-card>
-  </v-dialog>
+        </VBtn>
+      </VCardActions>
+    </VCard>
+  </VDialog>
 </template>

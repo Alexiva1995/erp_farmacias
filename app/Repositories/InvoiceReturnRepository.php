@@ -30,7 +30,7 @@ class InvoiceReturnRepository implements InvoiceReturnRepositoryInterface
             ])
             ->with([
                 'invoice' => function ($q) {
-                    $q->select(['id', 'invoice_number', 'supplier_id']);
+                    $q->select(['id', 'invoice_number', 'supplier_id', 'currency', 'exchange_rate']);
                 },
                 'invoice.supplier' => function ($q) {
                     $q->select(['id', 'name', 'rif']);
@@ -85,21 +85,66 @@ class InvoiceReturnRepository implements InvoiceReturnRepositoryInterface
      */
     public function updateStatus(int $returnId, string $status): InvoiceReturn
     {
-        $return = InvoiceReturn::findOrFail($returnId);
-        $return->status = $status;
-        $return->save();
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($returnId, $status) {
+            $return = InvoiceReturn::with(['invoice.supplier', 'product'])->findOrFail($returnId);
+            $previousStatus = $return->status ? ($return->status instanceof \BackedEnum ? $return->status->value : (string) $return->status) : 'pending';
 
-        return $return->fresh([
-            'invoice' => function ($q) {
-                $q->select(['id', 'invoice_number', 'supplier_id']);
-            },
-            'invoice.supplier' => function ($q) {
-                $q->select(['id', 'name', 'rif']);
-            },
-            'product' => function ($q) {
-                $q->select(['id', 'name', 'barcode', 'iva']);
-            },
-        ]);
+            $return->status = $status;
+            $return->save();
+
+            // Al aprobar la devolución, generar automáticamente la Nota de Débito (ND) correspondiente para el proveedor
+            if ($status === 'approved' && $previousStatus !== 'approved') {
+                $invoice = $return->invoice;
+                $rate = (float) ($invoice?->exchange_rate ?? 1);
+                $refundAmountUsd = (float) $return->amount_refunded;
+                $refundAmountBs = $invoice?->currency === 'USD' || empty($invoice?->currency)
+                    ? ($refundAmountUsd * ($rate > 0 ? $rate : 1))
+                    : $refundAmountUsd;
+
+                // Generar correlativo de Nota de Débito ND-DEV-{returnId} o ND-{invoice_number}-{returnId}
+                $invNumber = $invoice?->invoice_number ?? 'DEV';
+                $ndNumber = "ND-{$invNumber}-{$return->id}";
+
+                \App\Models\Invoice::updateOrCreate(
+                    [
+                        'invoice_number' => $ndNumber,
+                        'supplier_id' => $invoice?->supplier_id,
+                    ],
+                    [
+                        'control_number' => "ND-CTRL-{$return->id}",
+                        'exp_date' => now()->addDays(30)->toDateString(),
+                        'payment_date' => now()->toDateString(),
+                        'received_date' => now()->toDateString(),
+                        'created_invoice_date' => now()->toDateString(),
+                        'currency' => $invoice?->currency ?? 'USD',
+                        'is_indexed' => false,
+                        'exchange_rate' => $rate > 0 ? $rate : 1,
+                        'exempt_amount' => 0.00,
+                        'taxable_base' => 0.00,
+                        'tax_amount' => 0.00,
+                        'total_amount' => $refundAmountBs,
+                        'total_usd' => $refundAmountUsd,
+                        'net_payable_amount' => $refundAmountBs,
+                        'status' => 'loaded',
+                        'status_payment' => 0, // Pendiente para compensación
+                        'uploaded_by' => auth()->id() ?? 1,
+                        'registered_by' => auth()->id() ?? 1,
+                    ]
+                );
+            }
+
+            return $return->fresh([
+                'invoice' => function ($q) {
+                    $q->select(['id', 'invoice_number', 'supplier_id', 'currency', 'exchange_rate']);
+                },
+                'invoice.supplier' => function ($q) {
+                    $q->select(['id', 'name', 'rif']);
+                },
+                'product' => function ($q) {
+                    $q->select(['id', 'name', 'barcode', 'iva']);
+                },
+            ]);
+        });
     }
 
     /**

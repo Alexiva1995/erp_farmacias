@@ -26,6 +26,11 @@ class InvoiceReturnResource extends JsonResource
             'sku' => $this->product?->barcode ?? '',
             'quantity' => (float) $this->quantity,
             'amount_refunded' => (float) $this->amount_refunded,
+            'currency' => $this->invoice?->currency ?? 'USD',
+            'exchange_rate' => (float) ($this->invoice?->exchange_rate ?? 1),
+            'amount_refunded_bs' => (float) ($this->invoice?->currency === 'USD' || empty($this->invoice?->currency)
+                ? (($this->amount_refunded ?? 0) * (float) ($this->invoice?->exchange_rate ?? 1))
+                : ($this->amount_refunded ?? 0)),
             'supplier_discount_percentage' => (float) ($this->supplier_discount_percentage ?? 0),
             'return_date' => $this->return_date ? ($this->return_date instanceof \Carbon\Carbon ? $this->return_date->format('Y-m-d') : \Carbon\Carbon::parse($this->return_date)->format('Y-m-d')) : null,
             'lot_number' => $this->lot_number,

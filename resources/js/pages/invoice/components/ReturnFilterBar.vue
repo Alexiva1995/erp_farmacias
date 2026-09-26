@@ -18,12 +18,13 @@ const emit = defineEmits([
 </script>
 
 <template>
-  <v-card class="elevation-2 rounded-lg pa-4 mb-4 border">
-    <v-row density="compact" align="center">
-      <v-col cols="12" md="4">
-        <v-text-field
+  <VCard class="elevation-2 rounded-lg pa-4 mb-4 border bg-surface">
+    <VRow density="compact" align="center">
+      <VCol cols="12" md="4">
+        <VTextField
           :model-value="search"
-          label="Buscar por N° Factura, Proveedor o Producto"
+          label="Buscar por Factura, Proveedor o Producto"
+          placeholder="Buscar..."
           prepend-inner-icon="tabler-search"
           density="compact"
           variant="outlined"
@@ -31,10 +32,10 @@ const emit = defineEmits([
           clearable
           @update:model-value="emit('update:search', $event); emit('filter-change')"
         />
-      </v-col>
+      </VCol>
 
-      <v-col cols="12" sm="6" md="3">
-        <v-select
+      <VCol cols="12" sm="6" md="3">
+        <VSelect
           :model-value="status"
           :items="statusOptions"
           item-title="title"
@@ -46,10 +47,10 @@ const emit = defineEmits([
           hide-details
           @update:model-value="emit('update:status', $event); emit('filter-change')"
         />
-      </v-col>
+      </VCol>
 
-      <v-col cols="12" sm="6" md="2">
-        <v-text-field
+      <VCol cols="12" sm="6" md="2">
+        <VTextField
           :model-value="dateFrom"
           type="date"
           label="Desde"
@@ -58,10 +59,10 @@ const emit = defineEmits([
           hide-details
           @update:model-value="emit('update:dateFrom', $event); emit('filter-change')"
         />
-      </v-col>
+      </VCol>
 
-      <v-col cols="12" sm="6" md="2">
-        <v-text-field
+      <VCol cols="12" sm="6" md="2">
+        <VTextField
           :model-value="dateTo"
           type="date"
           label="Hasta"
@@ -70,21 +71,18 @@ const emit = defineEmits([
           hide-details
           @update:model-value="emit('update:dateTo', $event); emit('filter-change')"
         />
-      </v-col>
+      </VCol>
 
-      <!-- Botón de Limpiar Filtros permanente al igual que el estándar AppFilterBase -->
-      <v-col cols="12" md="1" class="d-flex align-center justify-end">
-        <v-btn
+      <VCol cols="12" md="1" class="d-flex align-center justify-end">
+        <IconBtn
           color="secondary"
           variant="tonal"
-          icon="tabler-eraser"
-          density="comfortable"
           @click="emit('clear')"
         >
-          <v-icon icon="tabler-eraser" size="20" />
-          <v-tooltip activator="parent" location="top">Limpiar Filtros</v-tooltip>
-        </v-btn>
-      </v-col>
-    </v-row>
-  </v-card>
+          <VIcon icon="tabler-eraser" size="20" />
+          <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
+        </IconBtn>
+      </VCol>
+    </VRow>
+  </VCard>
 </template>
