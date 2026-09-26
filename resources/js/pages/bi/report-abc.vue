@@ -7,6 +7,8 @@ import { formatCurrency } from '@/utils/currencyFormatter';
 import AbcReportFilters from './components/AbcReportFilters.vue';
 import AbcReportKpiCards from './components/AbcReportKpiCards.vue';
 import AbcReportMobileView from './components/AbcReportMobileView.vue';
+import AbcParetoChart from './components/AbcParetoChart.vue';
+import AbcDecisionMatrix from './components/AbcDecisionMatrix.vue';
 import IndividualCreateOffer from '@/components/dialogs/IndividualOfferModal.vue';
 import AssignProductToEmployeesDialog from './components/AssignProductToEmployeesDialog.vue';
 
@@ -28,6 +30,17 @@ const minGmroi = ref(null);
 const stockFilter = ref('all');
 const search = ref('');
 const isAdvancedFiltersVisible = ref(false);
+
+// Vistas y Herramientas Analíticas
+const showParetoChart = ref(true);
+const showDecisionMatrix = ref(false);
+const selectedQuadrant = ref(null);
+const paretoCurve = ref([]);
+const paretoInflection = ref({
+  point_80: { count: 0, sku_pct: 0, sales_pct: 0 },
+  point_95: { count: 0, sku_pct: 0, sales_pct: 0 },
+});
+const matrix3x3Data = ref({});
 
 // Paginación y Ordenamiento
 const page = ref(1);
@@ -124,6 +137,34 @@ const handleAssignedEmployees = () => {
   // Asignación completada
 };
 
+const handleSuggestIaOrder = (item) => {
+  const productName = item.name || item.product_name || `Producto #${item.id}`;
+  toast.info(`Transfiriendo ${productName} al Asistente IA de Pedidos...`);
+  router.push({
+    name: 'suppliers-supplieriaorderassistant',
+    query: {
+      stock: 'fallas',
+      source: 'abc_row_action',
+      product_ids: item.id.toString(),
+      auto_match: 'true',
+    },
+  });
+};
+
+const handleSelectQuadrant = (code) => {
+  selectedQuadrant.value = code;
+  selectedFinalClassification.value = code;
+};
+
+const handleClearQuadrant = () => {
+  selectedQuadrant.value = null;
+  selectedFinalClassification.value = null;
+};
+
+const handleFilterClass = (classLetter) => {
+  selectedFinalClassification.value = classLetter;
+};
+
 // Catálogos y Estadísticas
 const laboratories = ref([]);
 const laboratoryGroups = ref([]);
@@ -162,12 +203,13 @@ const isSimplifiedView = ref(false);
 const fullHeaders = [
   { title: 'PRODUCTO / LABORATORIO', key: 'name', sortable: true },
   { title: 'Desempeño Comercial', key: 'sold_units', align: 'end', sortable: true },
+  { title: '% Acum. (Pareto)', key: 'accumulated_sales_pct', align: 'end', sortable: true, width: '135px' },
   { title: 'Rentabilidad Bruta', key: 'margin_percentage', align: 'end', sortable: true },
   { title: 'GMROI (Retorno)', key: 'gmroi', align: 'center', sortable: true },
   { title: 'Cobertura', key: 'current_stock', align: 'end', sortable: true },
   { title: 'Costo Unit.', key: 'last_cost', align: 'end', sortable: true },
   { title: 'Perfil ABC-XYZ', key: 'final_classification', align: 'center', sortable: true },
-  { title: 'ACCIONES', key: 'actions', align: 'center', sortable: false, width: '120px' },
+  { title: 'ACCIONES', key: 'actions', align: 'center', sortable: false, width: '130px' },
 ];
 
 const simplifiedHeaders = computed(() => [
@@ -175,7 +217,7 @@ const simplifiedHeaders = computed(() => [
   { title: selectedAnalysisType.value === 'expiring_risk' ? 'STOCK EN RIESGO' : 'STOCK ACTUAL', key: 'current_stock', align: 'end', sortable: true, width: '150px' },
   { title: 'VENTAS EN PERIODO', key: 'sold_units', align: 'end', sortable: true, width: '180px' },
   { title: selectedAnalysisType.value === 'expiring_risk' ? 'CAPITAL POR EXPIRAR ($)' : 'TOTAL CAPITAL PARADO ($)', key: 'inventory_value', align: 'end', sortable: true, width: '200px' },
-  { title: 'ACCIONES', key: 'actions', align: 'center', sortable: false, width: '120px' },
+  { title: 'ACCIONES', key: 'actions', align: 'center', sortable: false, width: '130px' },
 ]);
 
 const activeHeaders = computed(() => {
@@ -240,6 +282,12 @@ const fetchReport = async () => {
         critical_stockouts: summary.critical_stockouts ?? 0,
         total_products: summary.total_products ?? 0,
       };
+      paretoCurve.value = summary.pareto_curve || [];
+      paretoInflection.value = summary.pareto_inflection || {
+        point_80: { count: 0, sku_pct: 0, sales_pct: 0 },
+        point_95: { count: 0, sku_pct: 0, sales_pct: 0 },
+      };
+      matrix3x3Data.value = summary.matrix_3x3 || {};
     }
   } catch (error) {
     console.error('Error fetching ABC report:', error);
@@ -541,48 +589,128 @@ const handleFilterCritical = () => {
       :summary-stats="summaryStats"
     />
 
+    <!-- Selector de Herramientas Analíticas Visuales (Pareto y Matriz 3x3) -->
+    <div class="d-flex align-center justify-space-between flex-wrap gap-2 mb-3">
+      <div class="d-flex align-center flex-wrap gap-2">
+        <VBtn
+          :color="showParetoChart ? 'primary' : 'secondary'"
+          :variant="showParetoChart ? 'tonal' : 'outlined'"
+          size="small"
+          class="font-weight-bold"
+          @click="showParetoChart = !showParetoChart"
+        >
+          <VIcon icon="tabler-chart-dots" size="16" class="me-1.5" />
+          {{ showParetoChart ? 'Ocultar Curva de Pareto' : 'Ver Curva de Pareto (80/15/5)' }}
+        </VBtn>
+
+        <VBtn
+          :color="showDecisionMatrix ? 'info' : 'secondary'"
+          :variant="showDecisionMatrix ? 'tonal' : 'outlined'"
+          size="small"
+          class="font-weight-bold"
+          @click="showDecisionMatrix = !showDecisionMatrix"
+        >
+          <VIcon icon="tabler-grid-dots" size="16" class="me-1.5" />
+          {{ showDecisionMatrix ? 'Ocultar Matriz 3×3' : 'Ver Matriz de Decisión 3×3' }}
+        </VBtn>
+      </div>
+
+      <div v-if="selectedQuadrant" class="d-flex align-center gap-1.5">
+        <span class="text-caption text-medium-emphasis">Filtro activo:</span>
+        <VChip
+          color="primary"
+          size="small"
+          variant="flat"
+          closable
+          class="font-weight-bold"
+          @click:close="handleClearQuadrant"
+        >
+          Cuadrante {{ selectedQuadrant }}
+        </VChip>
+      </div>
+    </div>
+
+    <!-- 1. Curva de Pareto Visual (80/15/5) -->
+    <VExpandTransition>
+      <div v-show="showParetoChart">
+        <AbcParetoChart
+          :pareto-curve="paretoCurve"
+          :pareto-inflection="paretoInflection"
+          :total-products="summaryStats.total_products"
+          :total-sales="summaryStats.total_volume"
+          :loading="loading"
+          @filter-class="handleFilterClass"
+        />
+      </div>
+    </VExpandTransition>
+
+    <!-- 2. Matriz de Decisión Estratégica 3x3 -->
+    <VExpandTransition>
+      <div v-show="showDecisionMatrix">
+        <AbcDecisionMatrix
+          :matrix-data="matrix3x3Data"
+          :selected-quadrant="selectedQuadrant"
+          :total-products="summaryStats.total_products"
+          :total-sales="summaryStats.total_volume"
+          :loading="loading"
+          @select-quadrant="handleSelectQuadrant"
+          @clear-quadrant="handleClearQuadrant"
+        />
+      </div>
+    </VExpandTransition>
+
     <!-- Contenedor Principal de Resultados -->
     <VCard class="mb-6 rounded-lg border shadow-sm overflow-hidden bg-surface">
-      <VCardText class="d-flex justify-space-between align-center py-3 flex-wrap gap-2">
+      <VCardText class="d-flex justify-space-between align-center py-2.5 px-4 flex-wrap gap-2">
         <div class="d-flex align-center flex-wrap gap-2">
-          <h2 class="text-h6 font-weight-bold d-flex align-center mb-0">
-            <VIcon icon="tabler-list-details" class="me-2 text-primary" size="22" />
-            {{ isSimplifiedView ? (selectedAnalysisType === 'expiring_risk' ? 'Datos de Interés: Capital por Expirar' : 'Datos de Interés: Capital Parado') : 'Resultados del Análisis' }}
+          <h2 class="text-subtitle-1 font-weight-bold d-flex align-center mb-0 text-high-emphasis">
+            <VIcon icon="tabler-list-details" class="me-2 text-primary" size="20" />
+            {{ isSimplifiedView ? (selectedAnalysisType === 'expiring_risk' ? 'Datos Clave: Capital por Expirar' : 'Datos Clave: Capital Parado') : 'Resultados del Análisis' }}
           </h2>
           <VChip
             v-if="isSimplifiedView"
             color="warning"
-            size="small"
+            size="x-small"
             variant="tonal"
-            class="font-weight-black"
+            class="font-weight-bold"
           >
-            <VIcon icon="tabler-bolt" size="13" class="me-1" />
-            Vista Rápida (4 Datos Clave)
+            <VIcon icon="tabler-bolt" size="12" class="me-1" />
+            Vista Rápida
           </VChip>
         </div>
 
-        <!-- Botón Toggle de Datos de Interés / Vista Completa y Acceso a Foto Finish -->
+        <!-- Pestañas de Conmutación de Vistas y Acceso a Foto Finish -->
         <div class="d-flex align-center gap-2 ms-auto">
-          <VBtn
-            color="info"
+          <VBtnToggle
+            :model-value="isSimplifiedView ? 'simplified' : 'full'"
+            density="compact"
             variant="outlined"
-            size="small"
-            class="font-weight-bold"
-            @click="router.push('/bi/report-finish')"
+            divided
+            mandatory
+            color="primary"
+            class="rounded-lg bg-surface border"
+            @update:model-value="isSimplifiedView = ($event === 'simplified')"
           >
-            <VIcon icon="tabler-camera" size="16" class="me-1" />
-            Foto Finish
-          </VBtn>
+            <VBtn value="full" size="small" class="font-weight-medium text-caption px-3">
+              <VIcon icon="tabler-layout-table" size="14" class="me-1" />
+              Vista Completa
+            </VBtn>
+            <VBtn value="simplified" size="small" class="font-weight-medium text-caption px-3">
+              <VIcon icon="tabler-bulb" size="14" class="me-1" />
+              {{ selectedAnalysisType === 'expiring_risk' ? 'Capital por Expirar' : 'Capital Parado' }}
+            </VBtn>
+          </VBtnToggle>
 
           <VBtn
-            :color="isSimplifiedView ? 'warning' : 'primary'"
+            color="info"
             variant="tonal"
             size="small"
-            class="font-weight-bold"
-            @click="isSimplifiedView = !isSimplifiedView"
+            class="font-weight-bold text-caption rounded-lg"
+            @click="router.push('/bi/report-finish')"
           >
-            <VIcon :icon="isSimplifiedView ? 'tabler-layout-list' : 'tabler-bulb'" size="16" class="me-1" />
-            {{ isSimplifiedView ? 'Ver Análisis Completo' : (selectedAnalysisType === 'expiring_risk' ? 'Datos de Interés (Capital por Expirar)' : 'Datos de Interés (Capital Parado)') }}
+            <VIcon icon="tabler-camera" size="15" class="me-1" />
+            Foto Finish
+            <VTooltip activator="parent" location="top">Ir a Análisis Comparativo Foto Finish</VTooltip>
           </VBtn>
         </div>
       </VCardText>
@@ -616,54 +744,55 @@ const handleFilterCritical = () => {
             </div>
           </template>
 
+          <!-- Columna Producto / Laboratorio -->
           <template #item.name="{ item }">
-            <div class="d-flex flex-column py-1.5" style="min-width: 230px; max-width: 340px;">
+            <div class="d-flex flex-column py-1" style="min-width: 230px; max-width: 340px;">
               <a
                 :href="`/inventory/traceability?q=${item.id}`"
                 target="_blank"
-                class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate text-decoration-none id-link cursor-pointer"
+                class="text-sm font-weight-bold text-high-emphasis text-uppercase text-truncate text-decoration-none id-link cursor-pointer mb-0.5"
                 :title="item.name"
               >
-                <span class="text-primary font-weight-black me-1">{{ item.id }}</span>
-                - {{ item.name }}
+                <span class="text-primary font-weight-bold me-1">#{{ item.id }}</span>
+                {{ item.name }}
               </a>
 
-              <div class="d-flex align-center flex-wrap gap-1 mt-0.5">
-                <span class="text-xs font-weight-medium text-primary text-uppercase truncate" style="max-width: 200px;">
-                  {{ item.laboratory_name || 'SIN LABORATORIO' }}
+              <div class="d-flex align-center flex-wrap gap-1.5">
+                <span class="text-caption text-medium-emphasis text-uppercase text-truncate" style="max-width: 180px;">
+                  {{ item.laboratory_name || 'Sin laboratorio' }}
                 </span>
 
-                <!-- Oferta Individual al lado del laboratorio -->
+                <!-- Oferta Individual (Ámbar operativo) -->
                 <VTooltip v-if="item.has_individual_offer || item.individual_offer_discount" location="top">
                   <template #activator="{ props: tipProps }">
                     <VChip
                       v-bind="tipProps"
                       color="warning"
                       size="x-small"
-                      variant="flat"
+                      variant="tonal"
                       density="compact"
-                      class="font-weight-bold"
+                      class="font-weight-medium"
                     >
-                      <VIcon icon="tabler-tag" size="11" class="me-1" />
-                      Oferta -{{ Math.round(item.individual_offer_discount) }}%
+                      <VIcon icon="tabler-tag" size="10" class="me-0.5" />
+                      -{{ Math.round(item.individual_offer_discount) }}%
                     </VChip>
                   </template>
-                  <span>Descuento activo por oferta individual: {{ item.individual_offer_discount }}%</span>
+                  <span>Oferta individual activa: {{ item.individual_offer_discount }}% de descuento</span>
                 </VTooltip>
 
-                <!-- Etiqueta Por Caducar / Riesgo FEFO -->
+                <!-- Vencimiento (Rojo solo si vencido; Ámbar si es preventivo) -->
                 <VTooltip v-if="item.is_expiring_soon || (item.days_to_expiration !== null && item.days_to_expiration <= 180) || item.has_expiration_risk" location="top">
                   <template #activator="{ props: tipProps }">
                     <VChip
                       v-bind="tipProps"
-                      :color="item.days_to_expiration <= 60 || item.has_expiration_risk ? 'error' : 'warning'"
+                      :color="(item.days_to_expiration !== null && item.days_to_expiration <= 0) ? 'error' : 'warning'"
                       size="x-small"
-                      variant="flat"
+                      variant="tonal"
                       density="compact"
-                      class="font-weight-bold"
+                      class="font-weight-medium"
                     >
-                      <VIcon icon="tabler-clock-exclamation" size="11" class="me-1" />
-                      {{ item.days_to_expiration <= 0 ? 'Vencido' : (item.days_to_expiration !== null ? `Vence en ${item.days_to_expiration}d` : 'Riesgo FEFO') }}
+                      <VIcon icon="tabler-clock-exclamation" size="10" class="me-0.5" />
+                      {{ item.days_to_expiration <= 0 ? 'Vencido' : (item.days_to_expiration !== null ? `${item.days_to_expiration}d` : 'Riesgo FEFO') }}
                     </VChip>
                   </template>
                   <span>Próximo vencimiento: {{ item.next_expiration_date || 'Lote próximo' }} ({{ item.days_to_expiration }} días restantes)</span>
@@ -672,31 +801,50 @@ const handleFilterCritical = () => {
             </div>
           </template>
 
+          <!-- Columna Desempeño Comercial -->
           <template #item.sold_units="{ item }">
             <div class="d-flex flex-column align-end">
-               <span class="font-weight-bold" :class="item.sold_units > 0 ? 'text-success' : 'text-error'">
-                 {{ item.sold_units }} unds
-               </span>
-               <div class="d-flex align-center gap-1">
-                 <span class="text-super-xs text-medium-emphasis">Fact: {{ formatCurrency(item.total_sales) }}</span>
-                 <span v-if="!isSimplifiedView" class="text-super-xs text-primary font-weight-bold">({{ item.contribution_sales_pct ? item.contribution_sales_pct.toFixed(1) : '0.0' }}%)</span>
-               </div>
+              <span class="text-sm font-weight-bold text-high-emphasis">
+                {{ item.sold_units }} unds
+              </span>
+              <div class="d-flex align-center gap-1 mt-0.5">
+                <span class="text-caption text-medium-emphasis">Fact: {{ formatCurrency(item.total_sales) }}</span>
+                <span v-if="!isSimplifiedView && item.contribution_sales_pct" class="text-caption text-disabled">
+                  ({{ item.contribution_sales_pct.toFixed(1) }}%)
+                </span>
+              </div>
+            </div>
+          </template>
+
+          <!-- Columna % Acumulado Pareto -->
+          <template #item.accumulated_sales_pct="{ item }">
+            <div class="d-flex flex-column align-end">
+              <span class="text-sm font-weight-bold text-high-emphasis">
+                {{ item.accumulated_sales_pct !== undefined ? item.accumulated_sales_pct.toFixed(1) : '100.0' }}%
+              </span>
+              <span
+                class="text-caption font-weight-medium"
+                :class="(item.accumulated_sales_pct <= 80) ? 'text-success' : ((item.accumulated_sales_pct <= 95) ? 'text-warning' : 'text-disabled')"
+              >
+                {{ (item.accumulated_sales_pct <= 80) ? 'Zona A (80%)' : ((item.accumulated_sales_pct <= 95) ? 'Zona B (95%)' : 'Zona C (100%)') }}
+              </span>
             </div>
           </template>
           
+          <!-- Columna Rentabilidad Bruta -->
           <template #item.margin_percentage="{ item }">
             <VTooltip location="top">
               <template #activator="{ props: tipProps }">
                 <div v-bind="tipProps" class="d-flex flex-column align-end cursor-help">
                   <span
-                    class="font-weight-black text-sm"
+                    class="text-sm font-weight-bold"
                     :class="(item.margin_percentage ?? 0) >= 0 ? 'text-success' : 'text-error'"
                   >
                     {{ typeof item.margin_percentage === 'number' ? item.margin_percentage.toFixed(2) : item.margin_percentage }}%
                   </span>
                   <span
-                    class="text-super-xs font-weight-medium"
-                    :class="(item.margin_amount ?? 0) >= 0 ? 'text-medium-emphasis' : 'text-error'"
+                    class="text-caption mt-0.5"
+                    :class="(item.margin_amount ?? 0) >= 0 ? 'text-medium-emphasis' : 'text-error font-weight-medium'"
                   >
                     {{ (item.margin_amount ?? 0) > 0 ? '+' : '' }}{{ formatCurrency(item.margin_amount) }}
                   </span>
@@ -706,65 +854,73 @@ const handleFilterCritical = () => {
             </VTooltip>
           </template>
 
+          <!-- Columna GMROI -->
           <template #item.gmroi="{ item }">
             <div class="d-flex flex-column align-center">
-              <span class="font-weight-black text-h6" :class="getGmroiColor(item.gmroi)">
+              <span class="text-sm font-weight-bold" :class="getGmroiColor(item.gmroi)">
                 {{ item.gmroi >= 9999 ? 'MAX' : Math.round(item.gmroi) + '%' }}
               </span>
-              <span class="text-super-xs text-disabled font-weight-bold">ROI ANUAL</span>
+              <span class="text-caption text-disabled font-weight-medium" style="font-size: 0.65rem !important;">ROI ANUAL</span>
             </div>
           </template>
 
+          <!-- Columna Cobertura -->
           <template #item.current_stock="{ item }">
             <div class="d-flex flex-column align-end">
               <template v-if="isSimplifiedView">
-                <span class="font-weight-black text-body-1">
+                <span class="text-sm font-weight-bold text-high-emphasis">
                   {{ selectedAnalysisType === 'expiring_risk' && item.risk_expiring_units > 0 && item.risk_expiring_units < item.current_stock ? `${item.risk_expiring_units} de ${item.current_stock} unds` : `${item.current_stock} unds` }}
                 </span>
-                <span v-if="selectedAnalysisType === 'expiring_risk' && item.risk_expiring_units > 0 && item.risk_expiring_units < item.current_stock" class="text-super-xs text-warning font-weight-bold">
-                  (En riesgo por lote)
+                <span v-if="selectedAnalysisType === 'expiring_risk' && item.risk_expiring_units > 0 && item.risk_expiring_units < item.current_stock" class="text-caption text-warning font-weight-medium mt-0.5">
+                  (Riesgo por lote)
                 </span>
-                <span v-else class="text-super-xs text-medium-emphasis">
+                <span v-else class="text-caption text-medium-emphasis mt-0.5">
                   Costo: {{ formatCurrency(item.last_cost) }}
                 </span>
               </template>
               <template v-else>
                 <span
-                  class="font-weight-black text-sm"
-                  :class="item.inventory_days < 10 || item.current_stock === 0 ? 'text-error' : 'text-high-emphasis'"
+                  class="text-sm font-weight-bold"
+                  :class="item.current_stock <= 0 || item.inventory_days < 10 ? 'text-error' : 'text-high-emphasis'"
                 >
-                  {{ item.inventory_days === 9999 ? 'Sin rotación' : `${Math.round(item.inventory_days)} días` }}
+                  {{ item.current_stock <= 0 ? 'Sin stock (0d)' : (item.inventory_days === 9999 ? 'Sin rotación' : `${Math.round(item.inventory_days)} días`) }}
                 </span>
-                <span class="text-super-xs font-weight-medium text-medium-emphasis mt-0.5">
-                  {{ item.current_stock }} unds | {{ formatCurrency(item.inventory_value ?? (item.current_stock * (item.last_cost ?? 0))) }}
+                <span class="text-caption text-medium-emphasis mt-0.5">
+                  {{ item.current_stock }} unds · {{ formatCurrency(item.inventory_value ?? (item.current_stock * (item.last_cost ?? 0))) }}
                 </span>
               </template>
             </div>
           </template>
 
+          <!-- Columna Capital Inmovilizado / En Riesgo -->
           <template #item.inventory_value="{ item }">
             <div class="d-flex flex-column align-end">
-              <span class="font-weight-black text-h6" :class="selectedAnalysisType === 'expiring_risk' ? 'text-warning' : 'text-error'">
+              <span
+                class="text-sm font-weight-bold"
+                :class="selectedAnalysisType === 'expiring_risk' ? 'text-warning' : (['dead_stock', 'frozen_capital'].includes(selectedAnalysisType) ? 'text-high-emphasis' : 'text-high-emphasis')"
+              >
                 {{ formatCurrency(selectedAnalysisType === 'expiring_risk' && item.risk_expiring_capital > 0 ? item.risk_expiring_capital : item.inventory_value) }}
               </span>
-              <span v-if="selectedAnalysisType === 'expiring_risk' && summaryStats.expiring_risk_capital > 0" class="text-super-xs text-medium-emphasis">
-                {{ (((item.risk_expiring_capital > 0 ? item.risk_expiring_capital : item.inventory_value) / summaryStats.expiring_risk_capital) * 100).toFixed(1) }}% del dinero por expirar
+              <span v-if="selectedAnalysisType === 'expiring_risk' && summaryStats.expiring_risk_capital > 0" class="text-caption text-medium-emphasis mt-0.5">
+                {{ (((item.risk_expiring_capital > 0 ? item.risk_expiring_capital : item.inventory_value) / summaryStats.expiring_risk_capital) * 100).toFixed(1) }}% del riesgo
               </span>
-              <span v-else-if="summaryStats.frozen_capital > 0" class="text-super-xs text-medium-emphasis">
-                {{ ((item.inventory_value / summaryStats.frozen_capital) * 100).toFixed(1) }}% del dinero parado
+              <span v-else-if="summaryStats.frozen_capital > 0" class="text-caption text-medium-emphasis mt-0.5">
+                {{ ((item.inventory_value / summaryStats.frozen_capital) * 100).toFixed(1) }}% del inmovilizado
               </span>
             </div>
           </template>
           
+          <!-- Columna Costo Unitario -->
           <template #item.last_cost="{ item }">
             <div class="d-flex flex-column align-end">
-              <span class="font-weight-medium">{{ formatCurrency(item.last_cost) }}</span>
-              <span v-if="item.inventory_value > 0" class="text-super-xs font-weight-bold" :class="['dead_stock', 'frozen_capital'].includes(selectedAnalysisType) ? 'text-error' : 'text-disabled'">
+              <span class="text-sm font-weight-bold text-high-emphasis">{{ formatCurrency(item.last_cost) }}</span>
+              <span v-if="item.inventory_value > 0" class="text-caption text-medium-emphasis mt-0.5">
                 Inv: {{ formatCurrency(item.inventory_value) }}
               </span>
             </div>
           </template>
 
+          <!-- Columna Clasificación ABC-XYZ -->
           <template #item.final_classification="{ item }">
             <VTooltip location="top" content-class="bg-grey-900 border-opacity-100">
               <template #activator="{ props: tipProps }">
@@ -784,9 +940,10 @@ const handleFilterCritical = () => {
             </VTooltip>
           </template>
 
-          <!-- Acciones Rápidas (Oferta Individual / Asignar Vendedores) -->
+          <!-- Acciones Operativas en Fila (Oferta Flash / Asignar Vendedores / IA Pedidos / Kardex) -->
           <template #item.actions="{ item }">
             <div class="d-flex align-center justify-center gap-1">
+              <!-- Oferta Flash TPV -->
               <VTooltip location="top">
                 <template #activator="{ props: tooltipProps }">
                   <VBtn
@@ -800,9 +957,10 @@ const handleFilterCritical = () => {
                     <VIcon icon="tabler-tag" size="16" />
                   </VBtn>
                 </template>
-                <span>Crear Oferta Individual</span>
+                <span>🏷️ Crear Oferta Flash en TPV</span>
               </VTooltip>
 
+              <!-- Asignar a Vendedores -->
               <VTooltip location="top">
                 <template #activator="{ props: tooltipProps }">
                   <VBtn
@@ -816,8 +974,38 @@ const handleFilterCritical = () => {
                     <VIcon icon="tabler-user-plus" size="16" />
                   </VBtn>
                 </template>
-                <span>Asignar a Vendedores</span>
+                <span>👤 Asignar meta a Vendedores</span>
               </VTooltip>
+
+              <!-- Menú de Acciones Adicionales -->
+              <VMenu location="bottom end" :close-on-content-click="true">
+                <template #activator="{ props: menuProps }">
+                  <VBtn
+                    v-bind="menuProps"
+                    icon
+                    size="small"
+                    variant="text"
+                    color="secondary"
+                  >
+                    <VIcon icon="tabler-dots-vertical" size="16" />
+                  </VBtn>
+                </template>
+                <VList density="compact" class="py-1 shadow-md border rounded-lg" min-width="230">
+                  <VListItem
+                    prepend-icon="tabler-sparkles"
+                    title="🛒 Cotizar / Pedido con IA"
+                    subtitle="Transferir SKU a Asistente IA"
+                    @click="handleSuggestIaOrder(item)"
+                  />
+                  <VListItem
+                    prepend-icon="tabler-history"
+                    title="📊 Ver Kardex / Trazabilidad"
+                    subtitle="Movimientos y lotes del SKU"
+                    :href="`/inventory/traceability?q=${item.id}`"
+                    target="_blank"
+                  />
+                </VList>
+              </VMenu>
             </div>
           </template>
 
@@ -864,13 +1052,25 @@ const handleFilterCritical = () => {
 
 <style scoped>
 .premium-table :deep(th) {
-  background-color: #fff !important;
+  background-color: rgb(var(--v-theme-surface)) !important;
   color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
-  font-size: 0.75rem !important;
+  font-size: 0.72rem !important;
   font-weight: 700 !important;
   text-transform: uppercase !important;
   letter-spacing: 0.5px !important;
   border-bottom: 1px solid rgba(var(--v-border-color), 0.08) !important;
+  padding-block: 10px !important;
+  padding-inline: 14px !important;
+}
+
+.premium-table :deep(td) {
+  padding-block: 10px !important;
+  padding-inline: 14px !important;
+  border-bottom: 1px solid rgba(var(--v-border-color), 0.06) !important;
+}
+
+.premium-table :deep(tbody tr:hover) {
+  background-color: rgba(var(--v-theme-primary), 0.02) !important;
 }
 
 .text-super-xs {
@@ -907,5 +1107,6 @@ const handleFilterCritical = () => {
 }
 
 .gap-1 { gap: 4px !important; }
+.gap-1\.5 { gap: 6px !important; }
 .gap-2 { gap: 8px !important; }
 </style>

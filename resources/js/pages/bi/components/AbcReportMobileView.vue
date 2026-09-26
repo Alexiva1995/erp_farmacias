@@ -37,39 +37,39 @@ const emit = defineEmits(['update:page', 'openOffer', 'openAssign']);
                 </h3>
               </div>
               
-              <!-- Badges de Alerta (Margen Negativo / Por Caducar / Oferta Individual) -->
+              <!-- Badges de Alerta (Vencimiento / Oferta Individual) -->
               <div
-                v-if="selectedAnalysisType === 'negative_margin' || item.margin_percentage < 0 || item.margin_amount < 0"
+                v-if="item.has_individual_offer || item.individual_offer_discount || item.is_expiring_soon || (item.days_to_expiration !== null && item.days_to_expiration <= 180) || item.has_expiration_risk"
                 class="d-flex align-center flex-wrap gap-1 mb-2"
               >
-                <VChip
-                  v-if="item.is_expiring_soon || (item.days_to_expiration !== null && item.days_to_expiration <= 180)"
-                  color="error"
-                  size="x-small"
-                  variant="flat"
-                  density="compact"
-                  class="font-weight-bold"
-                >
-                  <VIcon icon="tabler-clock-exclamation" size="12" class="me-1" />
-                  {{ item.days_to_expiration <= 0 ? 'Vencido' : (item.months_to_expiration ? `Vence en ${item.months_to_expiration} m` : 'Por vencer') }}
-                </VChip>
-
                 <VChip
                   v-if="item.has_individual_offer || item.individual_offer_discount"
                   color="warning"
                   size="x-small"
-                  variant="flat"
+                  variant="tonal"
                   density="compact"
-                  class="font-weight-bold"
+                  class="font-weight-medium"
                 >
-                  <VIcon icon="tabler-tag" size="12" class="me-1" />
-                  Oferta Ind. -{{ Math.round(item.individual_offer_discount) }}%
+                  <VIcon icon="tabler-tag" size="11" class="me-0.5" />
+                  Oferta -{{ Math.round(item.individual_offer_discount) }}%
+                </VChip>
+
+                <VChip
+                  v-if="item.is_expiring_soon || (item.days_to_expiration !== null && item.days_to_expiration <= 180) || item.has_expiration_risk"
+                  :color="(item.days_to_expiration !== null && item.days_to_expiration <= 0) ? 'error' : 'warning'"
+                  size="x-small"
+                  variant="tonal"
+                  density="compact"
+                  class="font-weight-medium"
+                >
+                  <VIcon icon="tabler-clock-exclamation" size="11" class="me-0.5" />
+                  {{ item.days_to_expiration <= 0 ? 'Vencido' : (item.days_to_expiration !== null ? `Vence en ${item.days_to_expiration}d` : 'Riesgo FEFO') }}
                 </VChip>
               </div>
 
-              <div class="d-flex align-center flex-wrap gap-x-2 text-super-xs">
-                <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 200px;">
-                  {{ item.laboratory_name || 'S/L' }}
+              <div class="d-flex align-center flex-wrap gap-x-2 text-caption">
+                <span class="text-medium-emphasis font-weight-medium text-uppercase truncate" style="max-inline-size: 200px;">
+                  {{ item.laboratory_name || 'Sin laboratorio' }}
                 </span>
               </div>
             </div>
@@ -85,26 +85,26 @@ const emit = defineEmits(['update:page', 'openOffer', 'openAssign']);
           <VDivider class="my-3 border-opacity-10" />
 
           <!-- Grilla Simplificada de Capital Parado -->
-          <div v-if="isSimplifiedView" class="metrics-grid rounded border-dashed-thin bg-var-theme-background">
+          <div v-if="isSimplifiedView" class="metrics-grid rounded border bg-var-theme-background">
             <VRow dense class="ma-0">
               <VCol cols="6" class="pa-2 border-r border-b border-opacity-10">
-                <div class="text-super-xs text-disabled text-uppercase font-weight-black mb-1">Stock Actual</div>
-                <div class="text-sm font-weight-black text-high-emphasis">{{ item.current_stock }} unds</div>
-                <div class="text-super-xs text-medium-emphasis">Costo: {{ formatCurrency(item.last_cost) }}</div>
+                <div class="text-caption text-disabled text-uppercase font-weight-medium mb-0.5" style="font-size: 0.65rem !important;">Stock Actual</div>
+                <div class="text-sm font-weight-bold text-high-emphasis">{{ item.current_stock }} unds</div>
+                <div class="text-caption text-medium-emphasis">Costo: {{ formatCurrency(item.last_cost) }}</div>
               </VCol>
               <VCol cols="6" class="pa-2 border-b border-opacity-10">
-                <div class="text-super-xs text-disabled text-uppercase font-weight-black mb-1">Ventas en Periodo</div>
-                <div class="text-sm font-weight-black" :class="item.sold_units > 0 ? 'text-success' : 'text-error'">
+                <div class="text-caption text-disabled text-uppercase font-weight-medium mb-0.5" style="font-size: 0.65rem !important;">Ventas en Periodo</div>
+                <div class="text-sm font-weight-bold text-high-emphasis">
                   {{ item.sold_units }} unds
                 </div>
-                <div class="text-super-xs text-medium-emphasis">Fact: {{ formatCurrency(item.total_sales) }}</div>
+                <div class="text-caption text-medium-emphasis">Fact: {{ formatCurrency(item.total_sales) }}</div>
               </VCol>
-              <VCol cols="12" class="pa-2.5 bg-error-lighten-5 d-flex justify-space-between align-center">
+              <VCol cols="12" class="pa-2.5 d-flex justify-space-between align-center" style="background: rgba(var(--v-theme-surface-variant), 0.3);">
                 <div>
-                  <span class="text-super-xs text-error font-weight-black text-uppercase d-block leading-tight">Total Capital Parado</span>
-                  <span class="text-super-xs text-medium-emphasis">Dinero en bodega</span>
+                  <span class="text-caption text-high-emphasis font-weight-bold text-uppercase d-block leading-tight">Total Inmovilizado</span>
+                  <span class="text-caption text-medium-emphasis">Dinero en stock</span>
                 </div>
-                <div class="text-h6 font-weight-black text-error leading-none">
+                <div class="text-subtitle-1 font-weight-bold text-high-emphasis leading-none">
                   {{ formatCurrency(item.inventory_value) }}
                 </div>
               </VCol>
@@ -112,41 +112,41 @@ const emit = defineEmits(['update:page', 'openOffer', 'openAssign']);
           </div>
 
           <!-- Métricas en grilla completa -->
-          <div v-else class="metrics-grid rounded border-dashed-thin bg-var-theme-background">
+          <div v-else class="metrics-grid rounded border bg-var-theme-background">
             <VRow dense class="ma-0">
               <VCol cols="6" class="pa-2 border-r border-b border-opacity-10">
-                <div class="text-super-xs text-disabled text-uppercase font-weight-black mb-1">
-                  Ventas ({{ item.contribution_sales_pct ? item.contribution_sales_pct.toFixed(1) : '0.0' }}%)
+                <div class="text-caption text-disabled text-uppercase font-weight-medium mb-0.5" style="font-size: 0.65rem !important;">
+                  Ventas {{ item.contribution_sales_pct ? `(${item.contribution_sales_pct.toFixed(1)}%)` : '' }}
                 </div>
-                <div class="text-sm font-weight-black text-success">{{ formatCurrency(item.total_sales) }}</div>
-                <div class="text-super-xs text-disabled">{{ item.sold_units }} uds</div>
+                <div class="text-sm font-weight-bold text-high-emphasis">{{ formatCurrency(item.total_sales) }}</div>
+                <div class="text-caption text-medium-emphasis">{{ item.sold_units }} uds</div>
               </VCol>
               <VCol cols="6" class="pa-2 border-b border-opacity-10">
-                <div class="text-super-xs text-disabled text-uppercase font-weight-black mb-1">
-                  Margen ({{ item.contribution_margin_pct ? item.contribution_margin_pct.toFixed(1) : '0.0' }}%)
+                <div class="text-caption text-disabled text-uppercase font-weight-medium mb-0.5" style="font-size: 0.65rem !important;">
+                  Margen {{ item.contribution_margin_pct ? `(${item.contribution_margin_pct.toFixed(1)}%)` : '' }}
                 </div>
-                <div class="text-sm font-weight-black" :class="(item.margin_percentage ?? 0) >= 0 ? 'text-success' : 'text-error'">
+                <div class="text-sm font-weight-bold" :class="(item.margin_percentage ?? 0) >= 0 ? 'text-success' : 'text-error'">
                   {{ typeof item.margin_percentage === 'number' ? item.margin_percentage.toFixed(2) : item.margin_percentage }}%
                 </div>
-                <div class="text-super-xs text-medium-emphasis">
+                <div class="text-caption text-medium-emphasis">
                   {{ (item.margin_amount ?? 0) > 0 ? '+' : '' }}{{ formatCurrency(item.margin_amount) }}
                 </div>
               </VCol>
               <VCol cols="6" class="pa-2 border-r border-opacity-10">
-                <div class="text-super-xs text-disabled text-uppercase font-weight-black mb-1">ROI Anual</div>
-                <div class="text-sm font-weight-black" :class="getGmroiColor(item.gmroi)">
+                <div class="text-caption text-disabled text-uppercase font-weight-medium mb-0.5" style="font-size: 0.65rem !important;">ROI Anual</div>
+                <div class="text-sm font-weight-bold" :class="getGmroiColor(item.gmroi)">
                   {{ item.gmroi >= 9999 ? 'MAX' : Math.round(item.gmroi) + '%' }}
                 </div>
               </VCol>
               <VCol cols="6" class="pa-2">
-                <div class="d-flex justify-space-between align-center mb-1">
-                  <span class="text-super-xs text-disabled text-uppercase font-weight-black">Cobertura</span>
+                <div class="d-flex justify-space-between align-center mb-0.5">
+                  <span class="text-caption text-disabled text-uppercase font-weight-medium" style="font-size: 0.65rem !important;">Cobertura</span>
                 </div>
-                <div class="text-sm font-weight-black" :class="item.inventory_days < 10 || item.current_stock === 0 ? 'text-error' : 'text-high-emphasis'">
-                  {{ item.inventory_days === 9999 ? 'Sin rotación' : Math.round(item.inventory_days) + ' días' }}
+                <div class="text-sm font-weight-bold" :class="item.inventory_days < 10 || item.current_stock === 0 ? 'text-error' : 'text-high-emphasis'">
+                  {{ item.current_stock === 0 ? 'Sin stock' : (item.inventory_days === 9999 ? 'Sin rotación' : Math.round(item.inventory_days) + ' días') }}
                 </div>
-                <div class="text-super-xs font-weight-medium text-medium-emphasis">
-                  {{ item.current_stock }} unds | {{ formatCurrency(item.inventory_value ?? (item.current_stock * (item.last_cost ?? 0))) }}
+                <div class="text-caption text-medium-emphasis">
+                  {{ item.current_stock }} unds · {{ formatCurrency(item.inventory_value ?? (item.current_stock * (item.last_cost ?? 0))) }}
                 </div>
               </VCol>
             </VRow>

@@ -103,13 +103,13 @@ const toggleAdvancedFilters = () => {
 <template>
   <VCard class="mb-4 rounded-lg border shadow-sm overflow-hidden bg-surface">
     <VCardText class="pa-3">
-      <!-- Fila 1: Filtros principales -->
+      <!-- Fila 1: Filtros principales Toolbar Unificada -->
       <VRow align="center" dense>
         <!-- Buscador -->
-        <VCol cols="12" md="3">
+        <VCol cols="12" sm="6" md="4" lg="3">
           <AppTextField
             :model-value="search"
-            placeholder="Buscar producto, ID..."
+            placeholder="Buscar por ID, nombre..."
             prepend-inner-icon="tabler-search"
             clearable
             density="compact"
@@ -121,7 +121,7 @@ const toggleAdvancedFilters = () => {
         </VCol>
 
         <!-- Período -->
-        <VCol cols="12" md="3">
+        <VCol cols="12" sm="6" md="3" lg="3">
           <AppSelect
             :model-value="selectedDateRange"
             :items="dateRangeOptions"
@@ -136,7 +136,7 @@ const toggleAdvancedFilters = () => {
         </VCol>
 
         <!-- Modo de Análisis -->
-        <VCol cols="12" md="3">
+        <VCol cols="12" sm="12" md="5" lg="4">
           <AppSelect
             :model-value="selectedAnalysisType"
             :items="analysisTypeOptions"
@@ -150,8 +150,8 @@ const toggleAdvancedFilters = () => {
           />
         </VCol>
 
-        <!-- Botones de acción -->
-        <VCol cols="12" md="auto" class="d-flex align-center gap-1 ms-auto">
+        <!-- Botones de acción unificados a la derecha -->
+        <VCol cols="12" lg="2" class="d-flex align-center justify-end gap-1 ms-auto">
           <VBtn
             icon
             variant="tonal"

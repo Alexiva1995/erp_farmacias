@@ -23,6 +23,8 @@ declare module 'vue-router/auto-routes' {
     'auth-login': RouteRecordInfo<'auth-login', '/auth/login', Record<never, never>, Record<never, never>>,
     'balance-general': RouteRecordInfo<'balance-general', '/balance/general', Record<never, never>, Record<never, never>>,
     'bi-analytics-pos': RouteRecordInfo<'bi-analytics-pos', '/bi/analytics-pos', Record<never, never>, Record<never, never>>,
+    'bi-components-abc-decision-matrix': RouteRecordInfo<'bi-components-abc-decision-matrix', '/bi/components/AbcDecisionMatrix', Record<never, never>, Record<never, never>>,
+    'bi-components-abc-pareto-chart': RouteRecordInfo<'bi-components-abc-pareto-chart', '/bi/components/AbcParetoChart', Record<never, never>, Record<never, never>>,
     'bi-components-abc-report-filters': RouteRecordInfo<'bi-components-abc-report-filters', '/bi/components/AbcReportFilters', Record<never, never>, Record<never, never>>,
     'bi-components-abc-report-kpi-cards': RouteRecordInfo<'bi-components-abc-report-kpi-cards', '/bi/components/AbcReportKpiCards', Record<never, never>, Record<never, never>>,
     'bi-components-abc-report-mobile-view': RouteRecordInfo<'bi-components-abc-report-mobile-view', '/bi/components/AbcReportMobileView', Record<never, never>, Record<never, never>>,

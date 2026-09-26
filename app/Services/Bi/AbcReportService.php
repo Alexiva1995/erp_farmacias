@@ -207,10 +207,20 @@ class AbcReportService
                 return $item;
             });
 
-            // Aplicar filtro de Letra Final si existe
+            // Aplicar filtro de Clasificación / Cuadrante si existe
             if (!empty($filtros['final_classification'])) {
-                $filterLetter = strtoupper($filtros['final_classification']);
-                $data = $data->filter(function ($item) use ($filterLetter) {
+                $filterLetter = strtoupper(trim($filtros['final_classification']));
+                $len = strlen($filterLetter);
+
+                $data = $data->filter(function ($item) use ($filterLetter, $len) {
+                    if ($len === 1) {
+                        // Filtro por Zona Pareto (A, B o C)
+                        return $item->class_sales === $filterLetter;
+                    } elseif ($len === 2) {
+                        // Filtro por Cuadrante 3x3 (ej. AX, CZ: Ventas + Rotación)
+                        return $item->class_sales === $filterLetter[0] && $item->class_rotation === $filterLetter[1];
+                    }
+                    // Filtro exacto por perfil de 3 letras (ej. AAX)
                     return $item->final_classification === $filterLetter;
                 });
             }
@@ -328,6 +338,10 @@ class AbcReportService
             $pctField = $assignField === 'class_sales' ? 'contribution_sales_pct' : 'contribution_margin_pct';
             $item->{$pctField} = ($item->{$metricField} / $totalSum) * 100;
 
+            // Guardar el porcentaje acumulado para la curva de Pareto
+            $accumField = $assignField === 'class_sales' ? 'accumulated_sales_pct' : 'accumulated_margin_pct';
+            $item->{$accumField} = round($accumulatedPercentage, 2);
+
             // Pareto puro: 80/15/5 sin umbrales mínimos de dinero
             if ($accumulatedPercentage <= 80) {
                 $item->{$assignField} = 'A';
@@ -337,6 +351,15 @@ class AbcReportService
                 $item->{$assignField} = 'C';
             }
 
+            return $item;
+        });
+
+        // Asegurar que ítems con valor 0 o negativo tengan acumulado al 100%
+        $sorted->transform(function ($item) use ($assignField) {
+            $accumField = $assignField === 'class_sales' ? 'accumulated_sales_pct' : 'accumulated_margin_pct';
+            if (!isset($item->{$accumField})) {
+                $item->{$accumField} = 100.0;
+            }
             return $item;
         });
 

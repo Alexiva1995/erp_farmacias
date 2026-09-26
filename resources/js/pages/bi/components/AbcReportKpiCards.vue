@@ -108,44 +108,74 @@ defineProps({
       <VCol cols="12" class="pa-1 abc-kpi-col-dist">
         <VCard class="stats-card rounded-lg border shadow-sm overflow-hidden h-full position-relative">
           <div class="card-bg-decoration" style="background: linear-gradient(45deg, rgba(var(--v-theme-secondary), 0.08), transparent)"></div>
-          <VCardText class="pa-5 relative-content">
-            <div class="d-flex align-center justify-space-between mb-3">
-              <VAvatar color="secondary" variant="tonal" size="48" rounded="lg" class="elevation-1">
-                <VIcon icon="tabler-chart-bar" size="26" />
-              </VAvatar>
-              <div class="text-right">
-                <span class="text-overline font-weight-bold text-disabled" style="letter-spacing: 1px !important">Distribución</span>
-                <h4 class="text-h4 font-weight-black mt-1">{{ summaryStats.total_products }}</h4>
+          <VCardText class="pa-5 relative-content d-flex flex-column justify-space-between h-full">
+            <div>
+              <div class="d-flex align-center justify-space-between mb-3">
+                <VAvatar color="secondary" variant="tonal" size="48" rounded="lg" class="elevation-1">
+                  <VIcon icon="tabler-chart-pie-2" size="26" />
+                </VAvatar>
+                <div class="text-right">
+                  <span class="text-overline font-weight-bold text-disabled" style="letter-spacing: 1px !important">Distribución Catálogo</span>
+                  <h4 class="text-h4 font-weight-black mt-1">{{ summaryStats.total_products?.toLocaleString() || 0 }}</h4>
+                </div>
               </div>
+
+              <!-- Barra de Progreso Segmentada (Stacked Progress Bar) -->
+              <VTooltip location="top">
+                <template #activator="{ props: barProps }">
+                  <div
+                    v-bind="barProps"
+                    class="d-flex rounded-pill overflow-hidden my-2 bg-surface-variant cursor-help shadow-inner"
+                    style="height: 10px; gap: 2px; padding: 1px; background: rgba(var(--v-border-color), 0.12);"
+                  >
+                    <div
+                      :style="{
+                        width: summaryStats.total_products > 0 ? (summaryStats.count_a / summaryStats.total_products * 100) + '%' : '0%',
+                        background: '#10B981',
+                        transition: 'width 0.4s ease'
+                      }"
+                      class="rounded-s-pill"
+                    />
+                    <div
+                      :style="{
+                        width: summaryStats.total_products > 0 ? (summaryStats.count_b / summaryStats.total_products * 100) + '%' : '0%',
+                        background: '#F59E0B',
+                        transition: 'width 0.4s ease'
+                      }"
+                    />
+                    <div
+                      :style="{
+                        width: summaryStats.total_products > 0 ? (summaryStats.count_c / summaryStats.total_products * 100) + '%' : '0%',
+                        background: '#9CA3AF',
+                        transition: 'width 0.4s ease'
+                      }"
+                      class="rounded-e-pill flex-grow-1"
+                    />
+                  </div>
+                </template>
+                <div class="text-caption pa-1">
+                  <div><strong class="text-success">Clase A:</strong> {{ summaryStats.count_a }} ({{ summaryStats.total_products > 0 ? ((summaryStats.count_a / summaryStats.total_products) * 100).toFixed(1) : 0 }}%)</div>
+                  <div><strong class="text-warning">Clase B:</strong> {{ summaryStats.count_b }} ({{ summaryStats.total_products > 0 ? ((summaryStats.count_b / summaryStats.total_products) * 100).toFixed(1) : 0 }}%)</div>
+                  <div><strong class="text-secondary">Clase C:</strong> {{ summaryStats.count_c }} ({{ summaryStats.total_products > 0 ? ((summaryStats.count_c / summaryStats.total_products) * 100).toFixed(1) : 0 }}%)</div>
+                </div>
+              </VTooltip>
             </div>
 
-            <!-- Barra de distribución A/B/C -->
-            <div class="d-flex rounded overflow-hidden mb-2" style="height:8px;gap:2px">
-              <div
-                :style="{ width: summaryStats.total_products > 0 ? (summaryStats.count_a / summaryStats.total_products * 100) + '%' : '0%', background: '#4CAF50' }"
-                class="rounded-s"
-              />
-              <div
-                :style="{ width: summaryStats.total_products > 0 ? (summaryStats.count_b / summaryStats.total_products * 100) + '%' : '0%', background: '#FF9800' }"
-              />
-              <div
-                :style="{ width: summaryStats.total_products > 0 ? (summaryStats.count_c / summaryStats.total_products * 100) + '%' : '0%', background: '#9E9E9E' }"
-                class="rounded-e flex-grow-1"
-              />
-            </div>
-
-            <div class="d-flex justify-space-between">
-              <span class="text-caption d-flex align-center gap-1">
-                <span style="width:8px;height:8px;background:#4CAF50;border-radius:50%;display:inline-block"></span>
-                A: <b>{{ summaryStats.count_a }}</b>
+            <div class="d-flex justify-space-between align-center pt-1">
+              <span class="text-caption d-flex align-center gap-1 font-weight-medium text-medium-emphasis">
+                <span style="width:8px;height:8px;background:#10B981;border-radius:50%;display:inline-block"></span>
+                A: <b class="text-high-emphasis">{{ summaryStats.count_a }}</b>
+                <span class="text-disabled text-super-xs">({{ summaryStats.total_products > 0 ? Math.round((summaryStats.count_a / summaryStats.total_products) * 100) : 0 }}%)</span>
               </span>
-              <span class="text-caption d-flex align-center gap-1">
-                <span style="width:8px;height:8px;background:#FF9800;border-radius:50%;display:inline-block"></span>
-                B: <b>{{ summaryStats.count_b }}</b>
+              <span class="text-caption d-flex align-center gap-1 font-weight-medium text-medium-emphasis">
+                <span style="width:8px;height:8px;background:#F59E0B;border-radius:50%;display:inline-block"></span>
+                B: <b class="text-high-emphasis">{{ summaryStats.count_b }}</b>
+                <span class="text-disabled text-super-xs">({{ summaryStats.total_products > 0 ? Math.round((summaryStats.count_b / summaryStats.total_products) * 100) : 0 }}%)</span>
               </span>
-              <span class="text-caption d-flex align-center gap-1">
-                <span style="width:8px;height:8px;background:#9E9E9E;border-radius:50%;display:inline-block"></span>
-                C: <b>{{ summaryStats.count_c }}</b>
+              <span class="text-caption d-flex align-center gap-1 font-weight-medium text-medium-emphasis">
+                <span style="width:8px;height:8px;background:#9CA3AF;border-radius:50%;display:inline-block"></span>
+                C: <b class="text-high-emphasis">{{ summaryStats.count_c }}</b>
+                <span class="text-disabled text-super-xs">({{ summaryStats.total_products > 0 ? Math.round((summaryStats.count_c / summaryStats.total_products) * 100) : 0 }}%)</span>
               </span>
             </div>
           </VCardText>

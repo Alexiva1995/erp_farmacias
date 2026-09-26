@@ -112,6 +112,89 @@ class AbcReportController extends Controller
         $totalSalesGlobal = $reportData->sum('total_sales');
         $totalMarginAmtGlobal = $reportData->sum('margin_amount');
         
+        // Calcular Matriz 3x3 (ABC Ventas vs XYZ Demanda)
+        $matrix3x3 = [];
+        $classesSales = ['A', 'B', 'C'];
+        $classesRotation = ['X', 'Y', 'Z'];
+
+        foreach ($classesSales as $saleClass) {
+            foreach ($classesRotation as $rotClass) {
+                $code = $saleClass . $rotClass;
+                $filteredGroup = $reportData->filter(fn($i) => ($i->class_sales === $saleClass && $i->class_rotation === $rotClass));
+                $groupSales = (float) $filteredGroup->sum('total_sales');
+                $groupMargin = (float) $filteredGroup->sum('margin_amount');
+                $groupInv = (float) $filteredGroup->sum('inventory_value');
+                $groupCount = $filteredGroup->count();
+
+                $matrix3x3[$code] = [
+                    'code' => $code,
+                    'sales_class' => $saleClass,
+                    'rotation_class' => $rotClass,
+                    'count' => $groupCount,
+                    'total_sales' => round($groupSales, 2),
+                    'inventory_value' => round($groupInv, 2),
+                    'margin_amount' => round($groupMargin, 2),
+                    'avg_margin' => $groupSales > 0 ? round(($groupMargin / $groupSales) * 100, 2) : 0,
+                    'sales_pct' => $totalSalesGlobal > 0 ? round(($groupSales / $totalSalesGlobal) * 100, 2) : 0,
+                ];
+            }
+        }
+
+        // Generar Curva de Pareto (Muestreo inteligente de puntos ordenados por venta)
+        $sortedForPareto = $reportData->sortByDesc('total_sales')->values();
+        $totalItemsCount = $sortedForPareto->count();
+        $paretoCurve = [];
+        $runningSales = 0;
+        $skuAt80 = null;
+        $skuAt95 = null;
+
+        if ($totalItemsCount > 0 && $totalSalesGlobal > 0) {
+            // Primer punto base (0,0)
+            $paretoCurve[] = [
+                'sku_index' => 0,
+                'sku_pct' => 0,
+                'sales_pct' => 0,
+                'sales_accum' => 0,
+                'class' => 'A'
+            ];
+
+            // Intervalos de muestreo (máximo 40 puntos para rendimiento óptimo)
+            $step = max(1, (int) ceil($totalItemsCount / 40));
+
+            for ($i = 0; $i < $totalItemsCount; $i++) {
+                $item = $sortedForPareto[$i];
+                $runningSales += (float) $item->total_sales;
+                $currentSalesPct = round(($runningSales / $totalSalesGlobal) * 100, 2);
+                $currentSkuPct = round((($i + 1) / $totalItemsCount) * 100, 2);
+
+                if ($skuAt80 === null && $currentSalesPct >= 80) {
+                    $skuAt80 = [
+                        'count' => $i + 1,
+                        'sku_pct' => $currentSkuPct,
+                        'sales_pct' => $currentSalesPct,
+                    ];
+                }
+
+                if ($skuAt95 === null && $currentSalesPct >= 95) {
+                    $skuAt95 = [
+                        'count' => $i + 1,
+                        'sku_pct' => $currentSkuPct,
+                        'sales_pct' => $currentSalesPct,
+                    ];
+                }
+
+                if ($i % $step === 0 || $i === $totalItemsCount - 1) {
+                    $paretoCurve[] = [
+                        'sku_index' => $i + 1,
+                        'sku_pct' => $currentSkuPct,
+                        'sales_pct' => $currentSalesPct,
+                        'sales_accum' => round($runningSales, 2),
+                        'class' => $item->class_sales ?? 'C'
+                    ];
+                }
+            }
+        }
+
         $summary = [
             'total_sales' => (float) $totalSalesGlobal,
             'avg_margin' => $totalSalesGlobal > 0 ? ($totalMarginAmtGlobal / $totalSalesGlobal) * 100 : 0,
@@ -126,6 +209,13 @@ class AbcReportController extends Controller
             'critical_stockouts' => $reportData->filter(fn($i) => ($i->class_sales === 'A' || $i->class_sales === 'B' || (bool)($i->is_favorite ?? false)) && $i->current_stock <= 0)->count(),
             'negative_margin_count' => $reportData->filter(fn($i) => ((float)($i->margin_percentage ?? 0) < 0 || (float)($i->margin_amount ?? 0) < 0) && (float)($i->current_stock ?? 0) > 0)->count(),
             'total_products' => $reportData->count(),
+            // Estructuras analíticas visuales
+            'matrix_3x3' => $matrix3x3,
+            'pareto_curve' => $paretoCurve,
+            'pareto_inflection' => [
+                'point_80' => $skuAt80 ?? ['count' => 0, 'sku_pct' => 0, 'sales_pct' => 0],
+                'point_95' => $skuAt95 ?? ['count' => 0, 'sku_pct' => 0, 'sales_pct' => 0],
+            ],
         ];
 
         return response()->json([

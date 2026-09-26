@@ -38,6 +38,8 @@ class AbcReportResource extends JsonResource
             'final_classification' => $this->final_classification,
             'contribution_sales_pct' => round($this->contribution_sales_pct ?? 0, 4),
             'contribution_margin_pct' => round($this->contribution_margin_pct ?? 0, 4),
+            'accumulated_sales_pct' => round($this->accumulated_sales_pct ?? 0, 2),
+            'accumulated_margin_pct' => round($this->accumulated_margin_pct ?? 0, 2),
             // Info adicional
             'current_stock' => round($this->current_stock, 2),
             'last_cost' => round($this->last_cost, 2),
