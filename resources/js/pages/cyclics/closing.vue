@@ -13,8 +13,8 @@ const loading = ref(true);
 const isClosing = ref(false);
 const page = ref(1);
 const itemsPerPage = ref(10);
-const sortBy = ref("product.name");
-const orderBy = ref("asc");
+const sortBy = ref("processed_date");
+const orderBy = ref("desc");
 const isAdvancedFiltersVisible = ref(false);
 
 const filters = reactive({
@@ -55,6 +55,7 @@ const fetchData = async () => {
       productId: item.product_id,
       discrepancy: item.discrepancy,
       status: item.status,
+      processedDate: item.processed_date,
       product: { 
         id: item.product_id,
         name: item.product_name, 
@@ -136,8 +137,8 @@ const updateTableOptions = (options) => {
     sortBy.value = options.sortBy[0]?.key;
     orderBy.value = options.sortBy[0]?.order;
   } else {
-    sortBy.value = "product.name";
-    orderBy.value = "asc";
+    sortBy.value = "processed_date";
+    orderBy.value = "desc";
   }
 };
 

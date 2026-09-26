@@ -35,6 +35,7 @@ const headers = computed(() => {
       headerClass: 'd-none d-sm-table-cell',
     },
     { title: "Producto", key: "product.name", sortable: true, minWidth: "260px" },
+    { title: "Fecha Arreglo", key: "processed_date", sortable: true, align: "center", width: "150px" },
     { title: "Cantidad", key: "discrepancy", align: "center", sortable: true, width: "110px" },
     { title: "Costo", key: "product.unit_cost", align: "end", sortable: true, width: "110px" },
     { title: "Usuario", key: "user.name", sortable: true, width: "140px" },
@@ -157,6 +158,17 @@ const handleDelete = (item) => {
                 </span>
               </div>
             </div>
+          </div>
+        </template>
+
+        <template #item.processed_date="{ item }">
+          <div class="d-flex flex-column align-center">
+            <span class="text-xs font-weight-bold text-high-emphasis">
+              {{ item.processedDate ? formatDateSimple(item.processedDate) : '—' }}
+            </span>
+            <span v-if="item.processedDate" class="text-super-xs text-medium-emphasis">
+              {{ new Date(item.processedDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }}
+            </span>
           </div>
         </template>
 
@@ -323,6 +335,10 @@ const handleDelete = (item) => {
                 <span class="text-primary font-weight-bold text-truncate" style="max-inline-size: 120px;">
                   {{ item.product.laboratory?.name || 'S/L' }}
                 </span>
+              </div>
+              <div v-if="item.processedDate" class="d-flex align-center gap-1 text-super-xs text-medium-emphasis mt-1">
+                <VIcon icon="tabler-calendar-time" size="13" class="text-disabled" />
+                <span>{{ formatDateSimple(item.processedDate) }} {{ new Date(item.processedDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }}</span>
               </div>
             </div>
             <div class="d-flex align-start gap-1">
